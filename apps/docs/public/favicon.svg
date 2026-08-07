@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Zerotal">
+  <rect width="64" height="64" rx="14" fill="#0B0D0C"/>
+  <g transform="translate(32,32) scale(0.78) translate(-32,-32)">
+  <defs>
+    <mask id="f-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect x="0" y="0" width="64" height="64" fill="#fff"/>
+      <line x1="18.455" y1="49.336" x2="50.285" y2="8.596" stroke="#000" stroke-width="17.0" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <g fill="none" stroke="#B4F135" stroke-width="9.0">
+    <circle cx="32" cy="32" r="22.0" mask="url(#f-cut)"/>
+    <line x1="18.455" y1="49.336" x2="50.285" y2="8.596" stroke-linecap="round"/>
+  </g>
+  </g>
+</svg>

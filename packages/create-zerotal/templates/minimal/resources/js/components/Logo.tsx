@@ -1,0 +1,48 @@
+export function Logo({ class: className }: { class?: string }) {
+  return (
+    <svg
+      class={className}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="Zerotal"
+    >
+      <defs>
+        <linearGradient id="zt-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#818cf8" />
+          <stop offset="0.5" stop-color="#6366f1" />
+          <stop offset="1" stop-color="#7c3aed" />
+        </linearGradient>
+        <linearGradient id="zt-shine" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ffffff" stop-opacity="0.35" />
+          <stop offset="0.55" stop-color="#ffffff" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="18" fill="url(#zt-grad)" />
+      <rect width="64" height="64" rx="18" fill="url(#zt-shine)" />
+      <rect
+        x="0.75"
+        y="0.75"
+        width="62.5"
+        height="62.5"
+        rx="17.25"
+        stroke="#ffffff"
+        stroke-opacity="0.18"
+        stroke-width="1.5"
+      />
+      <text
+        x="32"
+        y="41"
+        text-anchor="middle"
+        font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+        font-size="20"
+        font-weight="800"
+        letter-spacing="0.5"
+        fill="#ffffff"
+      >
+        ZT
+      </text>
+    </svg>
+  );
+}

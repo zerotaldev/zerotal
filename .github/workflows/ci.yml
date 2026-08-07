@@ -1,0 +1,129 @@
+name: CI
+
+# The seven quality gates in package.json existed before this workflow did, and nothing ran
+# them. Every defect the 2026-07 audit found was reachable by running a command the repo
+# already provided — 18 failing tests, a type error inside a published package, a broken
+# docs build, a README that did not compile. This is the thing that makes the rest stay
+# fixed, so it blocks merges.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Lets a maintainer re-run the gates against a branch without pushing.
+  workflow_dispatch:
+
+# A new push supersedes the run in flight for the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Flow snapshot signing and session encryption both refuse to run without a key.
+  # Deterministic and public on purpose — it protects nothing real.
+  APP_KEY: ci-app-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  APP_ENV: test
+
+jobs:
+  # Static gates: fast, no services, and the ones most likely to catch a mistake.
+  static:
+    name: Types, lint & API surface
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      # `typecheck` excludes *.test.ts, so test files would otherwise get no type
+      # coverage at all — a test can assert against a shape the API never returns
+      # and still pass. Baselined per package: the existing failures are
+      # grandfathered, new ones fail.
+      - name: Typecheck tests
+        run: bun run typecheck:tests
+
+      - name: Lint
+        run: bun run lint:ci
+
+      # Package-convention checks (provider location, config factory shape, error base
+      # class). Zero tolerance: every package passes clean, and a new violation fails CI.
+      - name: Package conventions
+        run: bun run lint:packages:ci
+
+      # `endOfLine: "auto"` in .prettierrc.json is what makes this gate meaningful on a
+      # checkout with `core.autocrlf=true`: without it every file arrives CRLF and fails,
+      # burying the handful of real formatting issues under the whole tree.
+      - name: Formatting
+        run: bun run format:check
+
+      # Both of these keep a baseline file in the repo; they fail when the tree drifts from
+      # it, and the fix is to look at what changed rather than to move the baseline.
+      - name: Cast ratchet
+        run: bun run cast:check
+
+      - name: API surface
+        run: bun run api:surface:check
+
+  test:
+    name: Tests (Bun ${{ matrix.bun }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor is what `engines.bun` promises, so it stays tested; latest
+        # catches a Bun regression within days of its release instead of when
+        # users hit it. Raising the floor means moving the pin here AND in every
+        # package's `engines` — deliberately, in a release-noted change.
+        bun: ["1.3.14", "latest"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ matrix.bun }}
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bun run test
+
+  # The ORM's real query execution is all against SQLite :memory:, while deployment docs
+  # point DATABASE_URL at PostgreSQL. Dialect coverage was substring-matching mocks that
+  # cannot catch invalid SQL — and two of the audit's findings were Postgres-fatal. This job
+  # is allowed to fail while that gap is closed, so it reports without blocking.
+  postgres:
+    name: ORM against PostgreSQL
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: zerotal_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/zerotal_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: ORM tests
+        working-directory: packages/orm
+        run: bun test src/

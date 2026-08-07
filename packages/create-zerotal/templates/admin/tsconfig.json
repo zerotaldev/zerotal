@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "emitDecoratorMetadata": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@zerotal/flow",
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@app/*": [
+        "./app/*"
+      ]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    ".zerotal"
+  ]
+}

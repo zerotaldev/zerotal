@@ -1,0 +1,88 @@
+name: Release
+
+# Publishing was the one process the repo had no automation for: 23 lockstep
+# packages published by hand is unrepeatable and unauditable. This workflow makes
+# a release a verifiable artifact trail — push a `v*` tag and it re-runs the
+# quality gates, publishes every public package to npm with provenance (so
+# consumers can verify each tarball came from this repository's CI), and creates
+# a GitHub Release pointing at the changelog.
+#
+# Requires the `NPM_TOKEN` repository secret (an npm automation token with
+# publish rights to the @zerotal scope and create-zerotal).
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  # Provenance attestation is signed against the workflow's OIDC identity.
+  id-token: write
+  # gh release create.
+  contents: write
+
+env:
+  APP_KEY: ci-app-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  APP_ENV: test
+
+jobs:
+  # A tag is only a release if the tree still passes everything CI enforces.
+  verify:
+    name: Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun run test
+
+      - name: Tag matches package version
+        run: bun run scripts/publish-packages.ts --dry-run --tag "${GITHUB_REF_NAME}"
+
+  publish:
+    name: Publish to npm with provenance
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      # npm does the publishing: `npm publish --provenance` is the attestation
+      # path. Bun does the packing, because `bun pm pack` rewrites workspace:*
+      # dependencies to real versions.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Publish
+        run: bun run scripts/publish-packages.ts --tag "${GITHUB_REF_NAME}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Zerotal ${GITHUB_REF_NAME}" \
+            --notes "Published to npm with provenance. Per-version changes and migration notes: [Release Notes](https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/changelog.md); per-package detail lives in each package's CHANGELOG.md."

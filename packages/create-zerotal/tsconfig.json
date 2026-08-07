@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "composite": false,
+    "incremental": false,
+    "outDir": "./.tsbuild",
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"]
+}

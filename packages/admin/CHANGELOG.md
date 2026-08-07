@@ -1,0 +1,69 @@
+# Changelog â @zerotal/admin
+
+All notable changes to this package are documented here. The format is
+based on [Keep a Changelog](https://keepachangelog.com/); this package
+follows the Zerotal monorepo's unified versioning.
+
+**Maturity: `experimental`**
+
+## [Unreleased]
+
+### Added
+
+#### Panel structure
+
+- `Cluster` — a shared URL segment and one sidebar entry for a group of resources. Members opt in with `static cluster = ShopCluster`, and a cluster's `ability` gates every route inside it.
+- Nested resources — `static parent = { resource: () => PostResource, foreignKey: "post_id" }` moves a resource under its parent's records (`/admin/posts/7/comments`). Every list is scoped to the parent before any tab or filter, and new records inherit the foreign key from the URL rather than from a form field.
+- Singular resources — `static singular = true` collapses list, view and edit into one route for a one-row resource. The row is resolved on first visit and created from the form's defaults if absent.
+- Multiple panels — `Panel.make(id, config)` creates an additional panel with its own resources, pages, widgets, guard, branding and URL prefix. `Panel` remains a facade over the panel owning the current request, so single-panel apps are unaffected.
+- Resources build their own URLs: `routePath()`, `indexUrl()`, `recordUrl()`, `createUrl()`, `editUrl()`. Linking through these lets a resource move into a cluster or under a parent without any caller changing.
+
+#### Tables
+
+- `queryBuilder(key)` — a build-your-own filter with nested AND/OR rule groups, backed by `textConstraint` / `numberConstraint` / `dateConstraint` / `booleanConstraint` / `selectConstraint`. The whole tree is wrapped in one group so an inner `OR` cannot widen a tab, parent or soft-delete scope, and a rule naming an undeclared constraint is dropped.
+- Active-filter indicators — a chip per filter narrowing the list, each its own undo.
+- `filterLayout` — `"inline"` (default), `"panel"` or `"drawer"`.
+- `tableLayout: "grid"`, `striped`, `stickyHeader`, `density`. The grid derives its cards from the columns already declared.
+- `Resource.emptyState()` — a heading, description, icon and actions in place of a blank table. A narrowed view that matches nothing gets a different, automatic message.
+- `Column.exportable(false)` keeps a column out of CSV exports.
+
+#### Actions
+
+- `exportAction()` / `bulkExportAction()` — CSV of the current list, matching its search, filters, tab and sort exactly.
+- `importAction()` — CSV import through a two-step modal: pick a file, then map each column to a field. Mapping is seeded by matching headers to field names and labels. Rows are validated through the resource's own fields; failures are reported by line number and skipped.
+- `importAction({ queue: true })` dispatches `ImportRecordsJob`, lifting the inline row cap. `@zerotal/queue` is resolved lazily and stays optional; with no queue configured the import runs inline.
+- `actionGroup([...])` collapses several actions into one dropdown.
+- `replicateAction()` copies a record and opens the copy, with `.excludeAttributes()` and `.beforeReplicaSaved()`.
+- `Action.formUsing(fn)` builds a modal's fields from what it currently holds.
+
+#### Infolists and forms
+
+- `imageEntry`, `colorEntry`, `codeEntry`, `keyValueEntry`, `repeatableEntry` — the last renders a nested schema once per array item, the read side of `repeater`.
+- `customField(key).render(fn)`, plus `.render()` on `Column` and `Entry`, for controls and cells the catalogue lacks. The renderer owns only the markup; label, validation, sorting and binding still come from the declaration.
+
+#### Extensibility
+
+- Render hooks — 14 named positions in the panel's chrome (`table.start`, `page.header.end`, `sidebar.end`, …). A hook returning `null` renders nothing; one that throws is logged and skipped. Available to packages through the `admin.panel` binding.
+- `Resource.data()` — back a resource with an API, a file or a computation instead of a model. The panel filters, sorts and paginates in memory, so search, tabs and summaries keep working.
+- `Resource.widgets()` — widgets above a resource's table, using the same builders as the dashboard.
+- `databaseNotifications()` — a ready-made notification provider over `@zerotal/notifications`' `DatabaseChannel`, failing soft to an empty bell at every step.
+
+#### Other
+
+- Breadcrumbs derived from panel → cluster → parent record → resource → record.
+- `.poll(interval)` on every widget kind; the dashboard refreshes at the shortest interval any of its widgets asked for.
+- `bun zt make:admin-resource <Model>` with `--cluster`, `--parent`, `--foreign-key` and `--singular`.
+- An `admin` template for `bun create zerotal`.
+
+- `AdminProvider` also loads `app/admin/index.ts`, so a panel large enough to need a directory can have one. `app/admin.ts` still works and is tried first.
+- `AdminProvider` now boots in the `console` environment as well, solely to register `make:admin-resource`; it mounts no routes there.
+- `recordActions()`, `headerActions()` and `bulkActions()` return `ActionItem[]` — an action or an `ActionGroup`.
+- `registerResourceForm()` is keyed by panel and slug, so two panels can each register the same resource slug.
+
+## [1.0.0] — 2026-08-05
+
+_First public release._
+
+### Notes
+
+- Conforms to the Zerotal package conventions (provider in `src/provider/`, PascalCase config factory, `ZerotalError`-based errors, test coverage).

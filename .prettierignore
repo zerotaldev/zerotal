@@ -1,0 +1,22 @@
+node_modules
+dist
+.tsbuild
+build
+coverage
+*.d.ts
+bun.lock
+tsconfig.tsbuildinfo
+packages/create-zerotal
+**/__test_migrations__
+
+# Auto-generated public-API surface snapshots (see scripts/api-surface.ts)
+packages/*/api-surface.md
+
+# Generated cast-audit baseline (see scripts/cast-audit.ts)
+cast-baseline.json
+
+# Bundler output — rewritten by every asset build, so formatting it would make this
+# gate fail whenever someone runs the dev server.
+**/public/assets/**
+**/public/css/**
+**/public/js/**

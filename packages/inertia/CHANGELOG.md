@@ -1,0 +1,26 @@
+# Changelog — @zerotal/inertia
+
+All notable changes to this package are documented here. The format is
+based on [Keep a Changelog](https://keepachangelog.com/); this package
+follows the Zerotal monorepo's unified versioning.
+
+**Maturity: `beta`**
+
+## [Unreleased]
+
+## [1.0.2] — 2026-08-06
+
+### Fixed
+
+- Type-checking a Vue app no longer fails on React. React is an optional peer
+  and is imported dynamically at runtime, but the literal specifiers were still
+  resolved by TypeScript, so Vue projects were asked for modules they never
+  install.
+
+## [1.0.0] — 2026-08-05
+
+_First public release._
+
+### Notes
+
+- Conforms to the Zerotal package conventions (provider in `src/provider/`, PascalCase config factory, `ZerotalError`-based errors, test coverage).

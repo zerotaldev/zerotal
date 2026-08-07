@@ -1,0 +1,5 @@
+# Test config for this package. The preload disables mass-assignment guarding
+# for the test run — test fixtures are trusted code that create() models freely.
+# See scripts/test-preload.ts and BaseModel's mass-assignment docs.
+[test]
+preload = ["../../scripts/test-preload.ts"]

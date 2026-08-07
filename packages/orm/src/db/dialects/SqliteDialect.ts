@@ -1,0 +1,54 @@
+import type { DatePart, DialectQuery, SqlDialect } from "./types.ts";
+
+/**
+ * SQLite strategy — sqlite_master / pragma_table_info introspection,
+ * strftime() date parts, no advisory-lock primitive.
+ */
+export class SqliteDialect implements SqlDialect {
+  readonly name = "sqlite" as const;
+  readonly supportsAdvisoryLocks = false;
+
+  hasTableSql(table: string): DialectQuery {
+    return {
+      sql: `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+      params: [table],
+    };
+  }
+
+  hasColumnSql(table: string, column: string): DialectQuery {
+    // pragma_table_info() is the table-valued form of PRAGMA table_info —
+    // unlike the PRAGMA it accepts bound parameters, so the table name never
+    // needs to be inlined into the SQL.
+    return {
+      sql: `SELECT name FROM pragma_table_info(?) WHERE name = ?`,
+      params: [table, column],
+    };
+  }
+
+  dateExpr(part: DatePart, column: string): string {
+    switch (part) {
+      case "date":
+        return `date(${column})`;
+      case "time":
+        return `time(${column})`;
+      case "day":
+        return `cast(strftime('%d', ${column}) as integer)`;
+      case "month":
+        return `cast(strftime('%m', ${column}) as integer)`;
+      case "year":
+        return `cast(strftime('%Y', ${column}) as integer)`;
+    }
+  }
+
+  autoIncrementColumn(column: string): string {
+    return `${column} INTEGER PRIMARY KEY AUTOINCREMENT`;
+  }
+
+  advisoryLockSql(): DialectQuery | null {
+    return null;
+  }
+
+  advisoryUnlockSql(): DialectQuery | null {
+    return null;
+  }
+}

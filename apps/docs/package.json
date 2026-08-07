@@ -1,0 +1,36 @@
+{
+  "name": "@zerotal/docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun zt.ts serve",
+    "dev": "bun zt.ts serve --dev",
+    "build": "bun zt.ts css:build && bun run build:js",
+    "build:js": "bun build resources/js/app.js --outfile public/js/app.js --format esm --target browser",
+    "migrate": "bun zt migrate",
+    "fresh": "bun zt migrate:fresh",
+    "seed": "bun zt db:seed",
+    "db:backup": "bun run scripts/backup-db.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@tailwindcss/typography": "latest",
+    "@zerotal/auth": "workspace:*",
+    "@zerotal/orm": "workspace:*",
+    "@zerotal/session": "workspace:*",
+    "@zerotal/testing": "workspace:*",
+    "@zerotal/broadcasting": "workspace:*",
+    "@zerotal/devtools": "workspace:*",
+    "@zerotal/flow": "workspace:*",
+    "@zerotal/flow-ui": "workspace:*",
+    "@zerotal/inertia": "workspace:*",
+    "bun-plugin-tailwind": "latest",
+    "prismjs": "^1.29.0",
+    "tailwindcss": "^4.3.0",
+    "zerotal": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0"
+  }
+}

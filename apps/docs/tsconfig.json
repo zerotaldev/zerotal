@@ -1,0 +1,37 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "composite": false,
+    "incremental": false,
+    "rootDir": "../..",
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "jsxImportSource": "@zerotal/flow",
+    "strictPropertyInitialization": false,
+    "paths": {
+      "@app/*": ["./app/*"],
+      "@zerotal/core": ["../../packages/core/src/index.ts"],
+      "@zerotal/orm": ["../../packages/orm/src/index.ts"],
+      "@zerotal/cache": ["../../packages/cache/src/index.ts"],
+      "@zerotal/session": ["../../packages/session/src/index.ts"],
+      "@zerotal/auth": ["../../packages/auth/src/index.ts"],
+      "@zerotal/queue": ["../../packages/queue/src/index.ts"],
+      "@zerotal/scheduler": ["../../packages/scheduler/src/index.ts"],
+      "@zerotal/inertia": ["../../packages/inertia/src/index.ts"],
+      "@zerotal/validator": ["../../packages/validator/src/index.ts"],
+      "@zerotal/core/storage": ["../../packages/core/src/storage/index.ts"],
+      "@zerotal/core/logger": ["../../packages/core/src/logger/index.ts"],
+      "@zerotal/core/lock": ["../../packages/core/src/lock/index.ts"],
+      "@zerotal/notifications": ["../../packages/notifications/src/index.ts"],
+      "@zerotal/broadcasting": ["../../packages/broadcasting/src/index.ts"],
+      "@zerotal/flow": ["../../packages/flow/src/index.ts"],
+      "@zerotal/flow/jsx-runtime": ["../../packages/flow/src/jsx-runtime.ts"],
+      "@zerotal/flow/jsx-dev-runtime": ["../../packages/flow/src/jsx-dev-runtime.ts"],
+      "@zerotal/flow-ui": ["../../packages/flow-ui/src/index.ts"],
+      "@zerotal/flow-ui/registry": ["../../packages/flow-ui/src/registry.ts"]
+    }
+  },
+  "include": ["./**/*"],
+  "exclude": ["dist", "**/*.test.ts", "**/*.test.tsx"]
+}

@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "emitDecoratorMetadata": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "vue",
+    "skipLibCheck": true,
+    "paths": {
+      "@app/*": [
+        "./app/*"
+      ],
+      "@pages/*": [
+        "./resources/js/pages/*"
+      ]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    ".zerotal"
+  ]
+}

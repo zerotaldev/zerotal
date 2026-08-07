@@ -1,0 +1,15 @@
+﻿{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "experimentalDecorators": false,
+    "composite": false,
+    "incremental": false,
+    "rootDir": "..",
+    "outDir": "./dist",
+    "paths": {
+      "@zerotal/core": ["../core/src/index.ts"],
+      "@zerotal/validator": ["../validator/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

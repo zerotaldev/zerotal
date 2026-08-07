@@ -1,0 +1,19 @@
+/**
+ * Dev-only build and live-reload tooling (the `@zerotal/core/dev` subpath):
+ * the build hook, the reload middleware that injects the HMR client snippet,
+ * and the CSS/JS bundling helpers. Owns `Bun.build`, so it is kept off the
+ * kernel barrel and is inactive outside the dev worker.
+ *
+ * @internal — framework dev-server wiring; not part of the app-facing API.
+ *
+ * @packageDocumentation
+ */
+export { registerDevBuildHook } from "./DevBuildHook.ts";
+export type { BuildHookFn, BuildResult } from "./DevBuildHook.ts";
+export { DevReloadMiddleware, registerDevHtmlSnippet } from "./DevReloadMiddleware.ts";
+export type { DevHtmlSnippet } from "./DevReloadMiddleware.ts";
+export { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
+export { detectCssPlugins, buildCssBundle, buildJsBundle } from "./CssPlugins.ts";
+export type { AssetBuildConfig } from "./CssPlugins.ts";
+export { pruneBuildOutput } from "./BuildOutput.ts";
+// `AppAssetsConfig` (the app-level assets config shape) lives on @zerotal/core/config.

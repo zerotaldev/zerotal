@@ -1,0 +1,18 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "githubPages": false,
+  "hideGenerator": true,
+  "skipErrorChecking": true,
+  "out": "docs/api",
+
+  "packageOptions": {
+    "readme": "none",
+    "excludePrivate": true,
+    "excludeInternal": true,
+    "excludeExternals": true,
+    "sort": ["source-order"],
+    "kindSortOrder": ["Class", "Interface", "TypeAlias", "Function", "Variable", "Enum"]
+  }
+}

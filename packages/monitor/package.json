@@ -1,0 +1,74 @@
+{
+  "name": "@zerotal/monitor",
+  "version": "1.0.2",
+  "license": "MIT",
+  "maturity": "experimental",
+  "private": false,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/*.spec.ts",
+    "!src/**/__fixtures__/**"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zerotal/core": "workspace:*",
+    "@zerotal/flow-ui": "workspace:*",
+    "@zerotal/flow": "workspace:*"
+  },
+  "devDependencies": {
+    "@zerotal/queue": "workspace:*",
+    "@zerotal/scheduler": "workspace:*",
+    "@zerotal/telemetry": "workspace:*"
+  },
+  "peerDependencies": {
+    "@zerotal/queue": "^1.0.0",
+    "@zerotal/scheduler": "^1.0.0",
+    "@zerotal/telemetry": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@zerotal/queue": {
+      "optional": true
+    },
+    "@zerotal/scheduler": {
+      "optional": true
+    },
+    "@zerotal/telemetry": {
+      "optional": true
+    }
+  },
+  "description": "Operational monitoring panel and metrics for Zerotal — requests, exceptions, queries, and alerts.",
+  "keywords": [
+    "zerotal",
+    "bun",
+    "typescript",
+    "framework",
+    "monitoring",
+    "metrics",
+    "prometheus"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zerotaldev/zerotal.git",
+    "directory": "packages/monitor"
+  },
+  "homepage": "https://github.com/zerotaldev/zerotal/tree/main/packages/monitor#readme",
+  "bugs": "https://github.com/zerotaldev/zerotal/issues"
+}

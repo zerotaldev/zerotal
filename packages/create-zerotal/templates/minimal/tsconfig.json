@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "emitDecoratorMetadata": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "zerotal",
+    "skipLibCheck": true,
+    "paths": {
+      "@app/*": [
+        "./app/*"
+      ],
+      "@pages/*": [
+        "./resources/js/pages/*"
+      ]
+    },
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "exclude": [
+    "node_modules",
+    ".zerotal"
+  ]
+}

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/zerotaldev/zerotal/security/advisories/new
+    about: Never report vulnerabilities in public issues — use private advisory reporting.

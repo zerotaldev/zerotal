@@ -1,0 +1,31 @@
+# Line endings are decided here, not by each contributor's git config.
+#
+# The repository stores LF, and every checkout produces LF regardless of a
+# clone's `core.autocrlf`. Without this a Windows clone receives CRLF for the
+# whole tree, and `format:check` then fails on every file — burying the handful
+# of genuine formatting issues under thousands of line-ending diffs.
+* text=auto eol=lf
+
+# Databases and their sidecars: byte-exact, never line-ending converted.
+*.sqlite      binary
+*.sqlite-shm  binary
+*.sqlite-wal  binary
+*.db          binary
+
+# Lockfiles Bun writes in binary form.
+*.lockb       binary
+
+# Images and fonts.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+
+# Generated API docs are large and mechanical — keep them out of diff review.
+docs/api/** linguist-generated=true

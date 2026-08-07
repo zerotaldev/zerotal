@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "rootDir": "..",
+    "outDir": "./.tsbuild",
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo",
+    "types": ["bun-types"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "@zerotal/flow",
+    "paths": {
+      "@zerotal/flow": ["../flow/src/index.ts"],
+      "@zerotal/flow/jsx-runtime": ["../flow/src/jsx-runtime.ts"],
+      "@zerotal/flow/jsx-dev-runtime": ["../flow/src/jsx-dev-runtime.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", ".tsbuild", "**/*.test.ts", "**/*.test.tsx"]
+}

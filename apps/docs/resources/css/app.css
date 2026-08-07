@@ -1,0 +1,306 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* flow-ui design tokens — power the live component previews in the docs.
+ * The theme @source-scans flow-ui's own components; this @source covers the class
+ * names baked into the generated component-doc markdown previews. */
+@import "@zerotal/flow-ui/theme.css";
+@source "../../../../docs/components.md";
+
+/* ── Brand tokens (brand book §5) ─────────────────────────────────────────── */
+/* Space Grotesk (display) + Inter + JetBrains Mono load via <link> in head. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Canvas / surfaces / borders */
+  --color-ink: #0b0d0c;
+  --color-ink-800: #131614;
+  --color-ink-600: #242926;
+  --color-cream: #f4f1e8;
+
+  /* Primary — a highlight, not a fill (≤10% of any surface). */
+  --color-voltage: #b4f135;
+  --color-voltage-700: #7fb513; /* contrast-safe on light backgrounds */
+  --color-voltage-100: #e9f7c8;
+  --color-voltage-50: #f5fbe6;
+
+  /* Muted text, secondary accent, signals */
+  --color-ash: #9aa39c;
+  --color-teal-deep: #0fa88f;
+  --color-signal-amber: #ffb020;
+  --color-signal-coral: #ff6b57;
+}
+
+/* Display face for headings — tight tracking, sentence case, never all-caps. */
+.prose h1,
+.prose h2,
+.prose h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+/* ── Prism — the brand code palette ──────────────────────────────────────── */
+/* Brand book §5: Ink 800 surface, keywords in Voltage, types in Deep Teal,  */
+/* strings in Cream, comments in Ash. Code blocks are the brand's most       */
+/* important visual asset — no window chrome, no line numbers.               */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: #f4f1e8;
+  background: none;
+  font-family: "JetBrains Mono", Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+  font-size: 1em;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  line-height: 1.7;
+  tab-size: 4;
+  hyphens: none;
+}
+pre[class*="language-"] {
+  padding: 1em;
+  margin: 0.5em 0;
+  overflow: auto;
+  border-radius: 0.75rem;
+}
+:not(pre) > code[class*="language-"],
+pre[class*="language-"] {
+  background: #131614;
+}
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #9aa39c;
+}
+.token.punctuation {
+  color: #9aa39c;
+}
+.token.namespace {
+  opacity: 0.7;
+}
+.token.property,
+.token.tag,
+.token.constant,
+.token.symbol {
+  color: #0fa88f;
+}
+.token.deleted {
+  color: #ff6b57;
+}
+.token.boolean,
+.token.number {
+  color: #ffb020;
+}
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.inserted {
+  color: #f4f1e8;
+}
+.token.builtin,
+.token.class-name {
+  color: #0fa88f;
+}
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string,
+.token.variable {
+  color: #d9d6cb;
+}
+.token.atrule,
+.token.attr-value,
+.token.function {
+  color: #e4f7b0;
+}
+.token.keyword {
+  color: #b4f135;
+}
+.token.regex,
+.token.important {
+  color: #ffb020;
+}
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+.token.italic {
+  font-style: italic;
+}
+.token.entity {
+  cursor: help;
+}
+
+/* ── Prose overrides ─────────────────────────────────────────────────────── */
+body {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.prose table {
+  display: block;
+  overflow-x: auto;
+}
+.prose table th,
+.prose table td {
+  white-space: normal;
+}
+
+/* Strip the generated backtick quotes around inline code */
+.prose :where(code):not(:where([class~="not-prose"] *))::before,
+.prose :where(code):not(:where([class~="not-prose"] *))::after {
+  content: none;
+}
+
+/* Don't render inline `code` inside headings as a boxed monospace chip — let it
+   read as part of the heading (inherit font, size, weight, colour). Keeps titles
+   like "@expose" or "Router.flow()" clean and on the same baseline. */
+.prose :where(h1, h2, h3, h4) code {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  color: inherit !important;
+}
+
+/* Dark code blocks — Ink 800 on a 1px Ink 600 hairline, 12px radius. */
+.prose pre {
+  position: relative; /* anchor for .copy-btn */
+  background: #131614;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+  line-height: 1.7;
+  margin: 1.25rem 0;
+  border: 1px solid #242926;
+}
+.prose pre[class*="language-"] {
+  margin: 1.25rem 0;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+}
+.prose pre code {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 0.85em;
+  font-family: "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+/* Scrollbar styling for sidebar + ToC */
+#toc::-webkit-scrollbar,
+#sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+#toc::-webkit-scrollbar-thumb,
+#sidebar::-webkit-scrollbar-thumb {
+  background: #e7e5e4;
+  border-radius: 3px;
+}
+
+/* ── Copy button (Decision 1) ────────────────────────────────────────────── */
+/* Absolutely positioned inside .prose pre (which has position: relative).   */
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.7rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #9aa39c;
+  background: transparent;
+  border: 1px solid #2e3430;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+.copy-btn:hover {
+  color: #f4f1e8;
+  border-color: #4a524d;
+  background: rgba(255, 255, 255, 0.06);
+}
+.copy-btn--success {
+  color: #b4f135;
+  border-color: #56710f;
+}
+
+/* ── Heading anchor links (Decision 2) ───────────────────────────────────── */
+/* # link appears on hover of h2 / h3. Headings need no position change      */
+/* because the anchor flows inline after the heading text.                   */
+.heading-anchor {
+  opacity: 0;
+  margin-left: 0.4em;
+  color: #94a3b8;
+  font-weight: 400;
+  font-size: 0.9em;
+  text-decoration: none;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
+  /* Keep out of the heading's text selection */
+  user-select: none;
+}
+article h2:hover .heading-anchor,
+article h3:hover .heading-anchor {
+  opacity: 1;
+}
+.heading-anchor:hover {
+  color: #7fb513;
+}
+
+/* ── Active sidebar link (Decision 7) ────────────────────────────────────── */
+/* aria-current="page" is set by setActiveLink() in initPage() on every nav. */
+/* This style complements the Tailwind active classes already applied by     */
+/* renderSidebar() (server); it adds the semantic attribute's visual         */
+/* treatment and ensures screen-reader cues. It must match the accent-segment
+   look of those classes exactly — an added background here would reintroduce
+   the filled pill the rail design replaces. */
+/* Font weight is deliberately left to the Tailwind classes: leaves are medium
+   and foldable parents semibold, and this higher-specificity rule would flatten
+   both to one weight. */
+#sidebar a[aria-current="page"] {
+  color: #7fb513;
+  border-left-color: #7fb513;
+}
+
+/* ── SPA navigation progress bar ─────────────────────────────────────────── */
+/* Thin bar at the very top while [data-navigating] is set on <html>.        */
+[data-navigating]::before {
+  content: "";
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #7fb513, #b4f135);
+  animation: nav-bar 600ms ease-in-out infinite;
+  z-index: 9999;
+}
+
+@keyframes nav-bar {
+  0% {
+    width: 0%;
+    left: 0;
+  }
+  60% {
+    width: 75%;
+    left: 0;
+  }
+  100% {
+    width: 100%;
+    left: 0;
+    opacity: 0;
+  }
+}

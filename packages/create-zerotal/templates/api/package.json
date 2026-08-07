@@ -1,0 +1,24 @@
+{
+  "name": "{{name}}",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "zt": "bun zt.ts",
+    "dev": "bun zt.ts serve --dev",
+    "start": "bun zt.ts serve",
+    "test": "bun zt.ts test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zerotal/notifications": "{{zerotal_version}}",
+    "zerotal": "{{zerotal_version}}"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "@types/bun": "^1.3.14"
+  }
+}

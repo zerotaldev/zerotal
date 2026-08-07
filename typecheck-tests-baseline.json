@@ -1,0 +1,23 @@
+{
+  "packages": {
+    "validator": 6,
+    "testing": 14,
+    "tenancy": 6,
+    "session": 14,
+    "queue": 5,
+    "orm": 236,
+    "notifications": 10,
+    "monitor": 1,
+    "flow": 14,
+    "devtools": 12,
+    "core": 172,
+    "client": 9,
+    "cache": 5,
+    "broadcasting": 8,
+    "auth": 51,
+    "audit": 3,
+    "admin": 10
+  },
+  "total": 576,
+  "updatedAt": "2026-07-31T13:32:41.986Z"
+}

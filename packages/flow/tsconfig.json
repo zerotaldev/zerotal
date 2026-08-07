@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "rootDir": "..",
+    "outDir": "./.tsbuild",
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo",
+    "types": ["bun-types"],
+    "paths": {
+      "@zerotal/core": ["../core/src/index.ts"],
+      "@zerotal/orm": ["../orm/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", ".tsbuild", "**/*.test.ts", "**/*.test.tsx"]
+}

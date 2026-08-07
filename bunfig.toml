@@ -1,0 +1,7 @@
+[test]
+coverage = true
+coveragePathIgnorePatterns = ["**/AppData/**", "**/tmp/**"]
+preload = ["./scripts/test-preload.ts"]
+
+[install]
+frozenLockfile = false

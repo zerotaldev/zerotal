@@ -1,0 +1,21 @@
+# Dependency update automation. Without this, dependency CVEs are found by luck;
+# with it, they arrive as PRs that run the full CI gate suite like any other change.
+version: 2
+updates:
+  # The Bun workspace — one manifest at the root covers packages/* and apps/*
+  # via bun.lock.
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      # Routine bumps arrive as one reviewable PR instead of ten.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  # The actions pinned in .github/workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

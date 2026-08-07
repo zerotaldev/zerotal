@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "rootDir": "..",
+    "outDir": "./.tsbuild",
+    "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo",
+    "paths": {
+      "@zerotal/auth": ["../auth/src/index.ts"],
+      "@zerotal/cache": ["../cache/src/index.ts"],
+      "@zerotal/client": ["../client/src/index.ts"],
+      "@zerotal/core": ["../core/src/index.ts"],
+      "@zerotal/orm": ["../orm/src/index.ts"],
+      "@zerotal/queue": ["../queue/src/index.ts"],
+      "@zerotal/scheduler": ["../scheduler/src/index.ts"],
+      "@zerotal/session": ["../session/src/index.ts"],
+      "@zerotal/testing": ["../testing/src/index.ts"],
+      "@zerotal/validator": ["../validator/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", ".tsbuild", "**/*.test.ts", "**/*.test.tsx"]
+}

@@ -1,0 +1,12 @@
+#!/usr/bin/env bun
+// worker.ts
+// ─────────────────────────────────────────────────────────────────
+// Background worker process — runs alongside index.ts in production.
+// Handles queue jobs, scheduled tasks, and long-running background work.
+//
+// Start: bun worker.ts
+// The process stays alive until SIGTERM/SIGINT.
+// ─────────────────────────────────────────────────────────────────
+import app from './bootstrap/app.ts';
+
+await app.bootAsWorker();

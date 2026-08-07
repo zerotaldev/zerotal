@@ -1,0 +1,3 @@
+# Every path currently routes to the project maintainer. Add rows above the
+# fallback as subsystem ownership grows — the last matching rule wins.
+* @mbilisphe13

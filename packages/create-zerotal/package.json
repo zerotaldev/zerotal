@@ -1,0 +1,43 @@
+{
+  "name": "create-zerotal",
+  "version": "1.0.2",
+  "description": "Create a new Zerotal application",
+  "license": "MIT",
+  "maturity": "stable",
+  "type": "module",
+  "bin": {
+    "create-zerotal": "./src/index.ts"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "src",
+    "templates",
+    "!src/**/*.test.ts",
+    "!src/**/__fixtures__/**"
+  ],
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  },
+  "keywords": [
+    "zerotal",
+    "bun",
+    "typescript",
+    "framework",
+    "scaffold",
+    "cli",
+    "create"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zerotaldev/zerotal.git",
+    "directory": "packages/create-zerotal"
+  },
+  "homepage": "https://github.com/zerotaldev/zerotal/tree/main/packages/create-zerotal#readme",
+  "bugs": "https://github.com/zerotaldev/zerotal/issues"
+}

@@ -1,0 +1,11 @@
+# The runtime environment. "production" turns on the framework's stricter
+# config checks and turns off verbose error output.
+APP_ENV=development
+
+# Signs sessions, cookies and encrypted values. Generated per project — never
+# reuse one between environments, and never commit a real key.
+APP_KEY={{app_key}}
+
+# Canonical base URL. Used for absolute links, and to recognise your own origin
+# when the app runs behind a reverse proxy.
+APP_URL=http://localhost:3000

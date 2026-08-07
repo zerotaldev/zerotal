@@ -59,7 +59,7 @@ jobs:
       # npm does the publishing: `npm publish --provenance` is the attestation
       # path. Bun does the packing, because `bun pm pack` rewrites workspace:*
       # dependencies to real versions.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org

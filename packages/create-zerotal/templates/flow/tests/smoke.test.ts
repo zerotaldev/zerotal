@@ -74,3 +74,17 @@ describe('auth', () => {
     expect(res.status).toBe(302);
   });
 });
+
+/**
+ * The stylesheet link has to name the path the asset build actually writes.
+ * It shipped pointing at /app.css while the build produced public/css/app.css,
+ * so every page rendered unstyled with a 404 in the log — a failure that looks
+ * like a CSS problem and is really a one-segment path mismatch.
+ */
+describe('assets', () => {
+  test('links the stylesheet where the build writes it', async () => {
+    const res = await app.get('/');
+
+    res.assertSee('/css/app.css');
+  });
+});

@@ -138,7 +138,7 @@ export function systemMeta(opts: {
       typeof Bun !== "undefined" && Bun.version
         ? Bun.version
         : (process.versions.bun ?? process.version.replace(/^v/, "")),
-    zerotal: opts.zerotal ?? "v1.0.3",
+    zerotal: opts.zerotal ?? "v1.0.4",
     region: opts.region ?? process.env.FLY_REGION ?? process.env.AWS_REGION ?? "local",
     deploy: opts.deploy ?? process.env.DEPLOY_SHA?.slice(0, 7) ?? "dev",
     environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",

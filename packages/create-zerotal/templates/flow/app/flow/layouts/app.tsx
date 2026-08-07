@@ -18,13 +18,17 @@ const GUEST_NAV = [
 ];
 
 export class AppLayout extends Layout {
-  // Built by `bun zt serve` from resources/css/app.css (Tailwind) → public/app.css.
+  // Built by `bun zt serve` from resources/css/app.css (Tailwind). The bundler
+  // mirrors the source layout under the asset outDir, so it lands at
+  // public/css/app.css and is served from /css/app.css — not /app.css.
+  //
   // A getter (not a static field) so asset() re-runs per request and picks up
   // the latest ?v= cache-busting token after a dev rebuild.
   static override get head(): string {
     return `
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="${asset("/app.css")}">
+  <link rel="icon" href="/zt.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="${asset("/css/app.css")}">
   `;
   }
 

@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.0.4] — 2026-08-07
+
+### Fixed
+
+- **The Flow starter rendered unstyled.** Its layout linked `/app.css` while the
+  asset build writes `public/css/app.css`, so every page loaded with a 404 for
+  the stylesheet — a one-segment path mismatch that looks like a CSS problem.
+  A test now asserts the rendered page names the path the build produces.
+- The Flow starter also declares a favicon, so a fresh `serve --dev` no longer
+  logs a 404 for `/favicon.ico` on every page load.
+
 ## [1.0.3] — 2026-08-07
 
 ### Changed

@@ -33,7 +33,7 @@
     "@zerotal/core": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0",
+    "typescript": "^7.0.2",
     "@zerotal/orm": "workspace:*"
   },
   "description": "In-browser developer tools for Zerotal — request traces, an inspector panel, and an extensible tab registry.",

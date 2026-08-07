@@ -33,7 +33,7 @@
     "@zerotal/orm": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Multi-tenancy primitives for Zerotal applications.",
   "keywords": [

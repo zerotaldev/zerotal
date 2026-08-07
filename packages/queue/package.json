@@ -34,7 +34,7 @@
     "@zerotal/orm": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Background job queue for Zerotal with SQLite and Redis drivers, delayed jobs, and retries.",
   "keywords": [

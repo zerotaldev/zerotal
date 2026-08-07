@@ -36,7 +36,7 @@
     "@simplewebauthn/server": "^13.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Authentication and authorization for Zerotal — sessions, tokens, 2FA, OAuth, gates, and policies.",
   "keywords": [

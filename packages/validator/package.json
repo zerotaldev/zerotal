@@ -32,7 +32,7 @@
     "@zerotal/core": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Validation for Zerotal — a fluent rule builder, form requests, and database rules.",
   "keywords": [

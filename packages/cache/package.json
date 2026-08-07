@@ -33,7 +33,7 @@
     "@zerotal/core": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Cache layer for Zerotal with SQLite, Redis, and in-memory drivers, tags, and stampede protection.",
   "keywords": [

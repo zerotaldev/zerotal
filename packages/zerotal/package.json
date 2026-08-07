@@ -70,7 +70,7 @@
     "@zerotal/validator": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Zerotal, one install — the meta package re-exporting @zerotal/core and the stable set.",
   "keywords": [

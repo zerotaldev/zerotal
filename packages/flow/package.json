@@ -49,7 +49,7 @@
     "@zerotal/orm": "workspace:*",
     "@zerotal/validator": "workspace:*",
     "alpinejs": "^3.14.9",
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "devDependencies": {
     "@zerotal/broadcasting": "workspace:*",

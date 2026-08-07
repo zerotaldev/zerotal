@@ -36,7 +36,7 @@
     "@zerotal/notifications": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0",
+    "typescript": "^7.0.2",
     "@zerotal/session": "workspace:*"
   },
   "description": "Testing utilities for Zerotal — an in-process test app, HTTP helpers, and database refresh.",

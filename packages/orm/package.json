@@ -34,7 +34,7 @@
     "@zerotal/validator": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Active Record ORM for Zerotal built on Bun.sql — models, relations, query builder, migrations, and schema.",
   "keywords": [

@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@zerotal/broadcasting": "workspace:*",
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Multi-channel notifications for Zerotal — mail (SMTP/Resend), database, broadcast, Slack, and SMS.",
   "keywords": [

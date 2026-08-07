@@ -33,7 +33,7 @@
     "@zerotal/orm": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Model audit logging for Zerotal — record who changed what, and when.",
   "keywords": [

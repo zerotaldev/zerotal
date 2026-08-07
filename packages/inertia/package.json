@@ -61,7 +61,7 @@
   "devDependencies": {
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Inertia.js adapter for Zerotal — server-driven React/Vue single-page apps.",
   "keywords": [

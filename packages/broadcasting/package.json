@@ -32,7 +32,7 @@
     "@zerotal/core": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Real-time event broadcasting over WebSockets for Zerotal, with public/private/presence channels.",
   "keywords": [

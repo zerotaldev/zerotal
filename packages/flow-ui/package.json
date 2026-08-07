@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "bun-types": "^1.3.14",
-    "typescript": "^5.8.0"
+    "typescript": "^7.0.2"
   },
   "description": "Copy-in UI component registry for Flow (Zerotal's reactive SSR layer).",
   "keywords": [

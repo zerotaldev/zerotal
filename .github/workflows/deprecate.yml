@@ -1,0 +1,50 @@
+name: Deprecate
+
+# Marks published versions as deprecated on npm, across every public package in
+# the workspace. Deprecation is a warning printed at install time — the versions
+# stay installable for anyone who pinned them; nothing is unpublished.
+#
+# Manual-only (workflow_dispatch): deprecating is a statement to users, so a
+# human picks the range and the wording. Runs here rather than from a laptop
+# because CI holds the npm Automation token; nobody needs publish credentials
+# on their machine to steer people off a bad version.
+
+on:
+  workflow_dispatch:
+    inputs:
+      range:
+        description: "Version or range to deprecate, e.g. <=1.0.2"
+        required: true
+        default: "<=1.0.2"
+      message:
+        description: "Deprecation message shown at install time"
+        required: true
+        default: "Early releases with packaging defects — install ^1.0.4 instead."
+
+permissions:
+  contents: read
+
+jobs:
+  deprecate:
+    name: Deprecate ${{ inputs.range }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Deprecate every public package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RANGE: ${{ inputs.range }}
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          set -eu
+          for manifest in packages/*/package.json; do
+            name=$(node -p "const m=require('./$manifest'); m.private ? '' : m.name")
+            [ -z "$name" ] && continue
+            echo "deprecating $name@\"$RANGE\""
+            npm deprecate "$name@$RANGE" "$MESSAGE"
+          done

@@ -13,9 +13,22 @@ updates:
       # Routine bumps arrive as one reviewable PR instead of ten.
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # Majors are breaking by definition, so a bot PR for one fails CI against
+      # baselines that cannot absorb it, gets closed, and is reopened next week.
+      # TypeScript 5→7 and ESLint 9→10 did exactly that. Majors are adopted
+      # deliberately by a maintainer, on a branch that also updates the config
+      # and baselines the new major requires.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # The actions pinned in .github/workflows.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # Same policy as above: action majors change runtime/inputs and are taken
+      # by hand (checkout v4→v5 was), not merged from a bot queue.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

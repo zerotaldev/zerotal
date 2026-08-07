@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.0.3] — 2026-08-07
+
+### Changed
+
+- Re-released from a rebuilt repository so the build provenance resolves. The
+  1.0.2 attestation names a repository that was renamed away, which leaves the
+  signature valid but the trace back to source dangling. No code changed.
+
 ## [1.0.2] — 2026-08-06
 
 ### Fixed

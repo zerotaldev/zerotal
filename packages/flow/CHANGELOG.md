@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.0.3] — 2026-08-07
+
+### Changed
+
+- Re-released from a rebuilt repository so the build provenance resolves. The
+  1.0.2 attestation names a repository that was renamed away, which leaves the
+  signature valid but the trace back to source dangling. No code changed.
+
 ### Fixed
 
 - **A session mutated inside a WebSocket action is now saved.** `SessionMiddleware` does not write its cookie inline — it registers a finalizer through `ctx.onResponseReady()` and saves from there, so a session set before a throw still reaches the client. The HTTP dispatcher ran those finalizers; the WebSocket dispatcher never did. Any action that changed the session therefore produced no `Set-Cookie`, so the session-relay frame carried no token and the change was lost the moment the browser navigated. Signing in was the loudest case — the login succeeded, redirected, and bounced straight back to the login screen — but flashes and `@session` props set during an action were dropped the same way. The WS dispatcher now runs `ctx._responseFinalizers` before reading `Set-Cookie`, matching the HTTP path including its log-and-continue on a failing finalizer.

@@ -232,7 +232,7 @@ export async function liveHealth(_app?: AppShape): Promise<HealthEntry[] | null>
   try {
     const report = await Health.run({
       name: "app",
-      version: "1.0.2",
+      version: "1.0.3",
       environment: process.env.NODE_ENV ?? "production",
       uptime: Math.floor(process.uptime()),
     });

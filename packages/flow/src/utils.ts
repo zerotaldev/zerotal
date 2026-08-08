@@ -176,13 +176,44 @@ export interface FlowChain<T> {
 // Shared capture variable: set by instrumented @expose getters in jsx-runtime,
 // consumed immediately by flow() to embed __key in the chain.
 let _exposedKeyCapture: string | undefined;
+
+/**
+ * Every exposed key read since the last consume, in read order.
+ *
+ * `_exposedKeyCapture` is a single slot, but JSX evaluates *all* of an element's
+ * props before `jsx()` runs — so `value={this.destination} disabled={this.notSure}`
+ * leaves the slot pointing at `notSure` and the `value` binding resolves to nothing.
+ * Keeping the full read list lets a binding find the key that actually matches its
+ * own value, while still refusing to bind a literal that was never read through a
+ * `this.` getter at all. Bounded so a pathological render cannot grow it without limit.
+ */
+const _exposedKeyReads: string[] = [];
+const _MAX_KEY_READS = 64;
+
 export function _setExposedKeyCapture(k: string | undefined): void {
   _exposedKeyCapture = k;
+  if (k === undefined) return;
+  // Keep the most recent read last; drop an earlier duplicate so order stays meaningful.
+  const at = _exposedKeyReads.indexOf(k);
+  if (at !== -1) _exposedKeyReads.splice(at, 1);
+  _exposedKeyReads.push(k);
+  if (_exposedKeyReads.length > _MAX_KEY_READS) _exposedKeyReads.shift();
 }
+
 export function _consumeExposedKeyCapture(): string | undefined {
   const k = _exposedKeyCapture;
   _exposedKeyCapture = undefined;
   return k;
+}
+
+/**
+ * The keys read since the last call, most recent first, clearing the list.
+ * Used by the value/checked binding resolver to survive a clobbered single slot.
+ */
+export function _consumeExposedKeyReads(): string[] {
+  const reads = _exposedKeyReads.slice().reverse();
+  _exposedKeyReads.length = 0;
+  return reads;
 }
 
 export function flow<T>(target: T): FlowChain<T> {

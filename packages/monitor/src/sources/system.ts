@@ -8,6 +8,7 @@ import { cpus, loadavg, totalmem, freemem } from "node:os";
 import { readFileSync } from "node:fs";
 import { currentApp } from "@zerotal/core";
 import { httpMetrics } from "@zerotal/core/metrics";
+import { ZEROTAL_VERSION_TAG } from "../version.ts";
 import type { Gauge, SystemMeta } from "../store/types.ts";
 
 /** Bun's native in-flight HTTP count, or 0 when no server is bound (console/test). */
@@ -138,7 +139,7 @@ export function systemMeta(opts: {
       typeof Bun !== "undefined" && Bun.version
         ? Bun.version
         : (process.versions.bun ?? process.version.replace(/^v/, "")),
-    zerotal: opts.zerotal ?? "v1.0.4",
+    zerotal: opts.zerotal ?? ZEROTAL_VERSION_TAG,
     region: opts.region ?? process.env.FLY_REGION ?? process.env.AWS_REGION ?? "local",
     deploy: opts.deploy ?? process.env.DEPLOY_SHA?.slice(0, 7) ?? "dev",
     environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",

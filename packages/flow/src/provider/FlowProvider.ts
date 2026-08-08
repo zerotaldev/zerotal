@@ -274,6 +274,22 @@ async function _handleFlowMessage(ws: FlowBunWs, raw: string, deps: FlowWsDeps):
   await deps.container.runScoped(async (scoped) => {
     const ctx = new HttpContext(request, scoped);
 
+    // A WebSocket action has no Bun `Server` behind it, so `ctx.ip()` — which resolves
+    // through `server.requestIP(request)` — would return null for every action even
+    // though the socket's peer address is known here and was captured at upgrade. Supply
+    // a minimal provider so `request().ip()` answers the same inside an action as it does
+    // during the initial HTTP render, instead of silently degrading to null.
+    const socketIp = ws.data.remoteIp;
+    if (socketIp && socketIp !== "unknown") {
+      ctx._server = {
+        requestIP: () => ({
+          address: socketIp,
+          family: socketIp.includes(":") ? "IPv6" : "IPv4",
+          port: 0, // not carried across the upgrade; nothing reads it
+        }),
+      };
+    }
+
     await RequestContext.run(ctx, async () => {
       let passed = false;
       let redirectUrl: string | undefined;

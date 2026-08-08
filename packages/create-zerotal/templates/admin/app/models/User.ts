@@ -14,7 +14,7 @@ export class User extends BaseModelWith(Authenticatable) {
   @column() email!: string;
   @column() password!: string;
   /** Assigned roles — drives a multi-select field and a badge column. */
-  @column({ cast: "json", nullable: true }) roles?: string[];
+  @column({ cast: "json", nullable: true }) roles?: string[] | undefined;
   /** Profile picture, shown as a circular image entry on the view page. */
-  @column({ nullable: true }) avatarUrl?: string;
+  @column({ nullable: true }) avatarUrl?: string | undefined;
 }

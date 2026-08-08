@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@zerotal/devtools": "{{zerotal_version}}",
     "zerotal": "{{zerotal_version}}",
     "tailwindcss": "^4.0.0",
     "bun-plugin-tailwind": "latest"

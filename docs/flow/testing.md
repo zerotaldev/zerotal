@@ -59,19 +59,42 @@ t.assertRedirectedTo("/posts");
 
 The full lifecycle fires on every `call()` — hooks like `onHydrate`, `onUpdate`, `onRendering`, and `onDehydrate` run exactly as they would in production.
 
-## Updating state
+### When an action throws
 
-Two methods change a property between calls:
+A `ValidationError` is an expected outcome: the error bag is populated, the page re-renders, and you assert on it with `assertHasErrors`.
+
+Any other error is passed to `onError()` — as in production — and then **rethrown**, so the test fails with the real stack. This matters because the alternative is invisible: an action that throws produces no server error, no browser error, and an unchanged page, so a swallowed exception looks exactly like an action that ran and did nothing.
+
+When the error path is what you're testing, opt in with `tolerateErrors()`:
 
 ```typescript
-// set() — direct assignment; no hooks fire
+const t = (await FlowTest.mount(CheckoutPage)).tolerateErrors();
+await t.call("submit");
+
+t.assertErrored(/payment gateway/); // or t.lastError()
+t.assertFlashed("error", "Payment failed");
+```
+
+## Updating state
+
+Three methods change a property between calls:
+
+```typescript
+// set() — direct assignment, then re-renders; no hooks fire
 await t.set("draft", "Hello world");
 await t.set("page", 3);
 
 // update() — simulates a client input; fires onUpdating and onUpdated hooks
 await t.update("username", "alice");
 await t.update("email", "alice@example.com");
+
+// seed() — assignment WITHOUT re-rendering, for batching
+await t.seed("step", 3);
+await t.seed("mode", "advanced");
+await t.render(); // one render for both
 ```
+
+`set()` re-renders, so `html()` and every assertion that reads it describe the state you just set. Reach for `seed()` only when you're assigning several properties and want to pay for a single render — and remember that nothing reads the new values until the next `render()`, `update()`, or `call()`.
 
 Use `set()` to put the component in a specific state for a test scenario. Use `update()` when you're testing that `onUpdating`/`onUpdated` hooks run correctly:
 

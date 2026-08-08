@@ -1181,18 +1181,44 @@ export abstract class Component {
   /**
    * Emit the HTML attributes needed for `flow:model` two-way binding.
    *
+   * Pass `optionValue` for one member of a radio group: the radio carries that
+   * fixed value and is `checked` only when the bound property currently equals it.
+   * A radio group is addressed as a unit — every option binds the same property —
+   * so `value={…}`/`checked={…}` on a radio never infers a binding by itself and
+   * this is the way to bind one.
+   *
    * @example
    * <input {...this.bind('name')} />
    * // → <input flow:model="name" value="Alice" />
    *
+   * @example
+   * // A radio group over a `type` property:
+   * {['CUSTOM', 'ROUTE', 'TEAMS'].map((t) => (
+   *   <label>
+   *     <input type="radio" name="type" {...this.bind('type', t)} /> {t}
+   *   </label>
+   * ))}
+   * // → <input type="radio" name="type" flow:model="type" value="ROUTE" checked>
+   *
    * @param key  the `@expose` property to two-way bind.
-   * @returns the `flow:model` + `value` attributes to spread onto an input.
+   * @param optionValue  this radio's own value; omit for text/checkbox/select inputs.
+   * @returns the `flow:model` + `value` (+ `checked`) attributes to spread onto an input.
    * @category State & exposure
    */
-  bind(key: string): Record<string, unknown> {
+  bind(key: string, optionValue?: string): Record<string, unknown> {
+    const current = (this as Record<string, unknown>)[key];
+    if (optionValue !== undefined) {
+      return {
+        "flow:model": key,
+        value: optionValue,
+        // String-compare so a numeric property still matches its string option value —
+        // the DOM only ever gives a radio's value back as a string.
+        checked: String(current ?? "") === optionValue,
+      };
+    }
     return {
       "flow:model": key,
-      value: (this as Record<string, unknown>)[key] ?? "",
+      value: current ?? "",
     };
   }
 

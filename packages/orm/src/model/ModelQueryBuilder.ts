@@ -1,6 +1,6 @@
 import type { SQLInstance } from "../db/sql-types.ts";
 import { Carbon } from "@zerotal/core/carbon";
-import { QueryBuilder, OPERATORS, _inlineValue } from "../db/QueryBuilder.ts";
+import { QueryBuilder, OPERATORS, _inlineValue, dialectFor } from "../db/QueryBuilder.ts";
 import {
   toCamelKey as _toCamel,
   toSnakeColumn as _toSnakeColumn,
@@ -1266,6 +1266,18 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
     }
     // Carbon instances always serialize to ISO string regardless of column metadata.
     if (value instanceof Carbon) return value.toDatabase();
+    // …and so does a plain Date. Without this, a comparison against a column the cast
+    // lookup above can't see — most importantly the framework-managed `created_at` /
+    // `updated_at` / `deleted_at`, which carry no `@column` metadata — bound the Date
+    // object itself and matched nothing. `where("created_at", ">=", monthStart)` is the
+    // commonest reporting query there is, and it silently returned zero rows: a
+    // dashboard reading "0 this month" looks like a quiet month, not a broken query.
+    // A Date in a comparison is unambiguous intent, so serialize it the way writes do.
+    if (value instanceof Date) {
+      return dialectFor(this._sql) === "mysql"
+        ? value.toISOString().replace("T", " ").slice(0, 19)
+        : value.toISOString();
+    }
     return value;
   }
 

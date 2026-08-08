@@ -34,6 +34,7 @@ export type {
   AppTlsConfig,
   ConventionsConfig,
   AppAssetsConfig,
+  AssetLoaderKind,
 } from "./AppConfig.ts";
 export type { ConfigRegistry, ConfigPath, ConfigValue } from "./registry.ts";
 export { ConfigValidationError } from "./validation.ts";

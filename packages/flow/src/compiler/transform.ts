@@ -448,6 +448,8 @@ interface MemberInfo {
   locked: Set<string>; // @locked only — readable from client, not writable
   computed: Set<string>; // @computed getters — derived, NOT in the snapshot
   readable: Set<string>; // exposed ∪ locked — any prop in the snapshot (client-reactive)
+  /** Every method declared on this class, decorated or not — see `_assertActionExposed`. */
+  declaredMethods: Set<string>;
 }
 
 /** Collect @expose, @locked, and @computed decorated members from the Component class AST. */
@@ -455,7 +457,11 @@ function _getMemberInfo(cls: ts.ClassDeclaration): MemberInfo {
   const exposed = new Set<string>();
   const locked = new Set<string>();
   const computed = new Set<string>();
+  const declaredMethods = new Set<string>();
   for (const member of cls.members) {
+    if (ts.isMethodDeclaration(member) && ts.isIdentifier(member.name)) {
+      declaredMethods.add(member.name.text);
+    }
     // @computed sits on a getter (GetAccessorDeclaration); @expose/@locked on fields/methods.
     if (
       !ts.isPropertyDeclaration(member) &&
@@ -475,7 +481,53 @@ function _getMemberInfo(cls: ts.ClassDeclaration): MemberInfo {
     if (has("locked")) locked.add(name);
     if (has("computed")) computed.add(name);
   }
-  return { exposed, locked, computed, readable: new Set([...exposed, ...locked]) };
+  return {
+    exposed,
+    locked,
+    computed,
+    readable: new Set([...exposed, ...locked]),
+    declaredMethods,
+  };
+}
+
+/**
+ * Reject `onClick={this.method}` when `method` is declared on the page but not `@expose`d.
+ *
+ * `getAllowedMethods()` is `getExposedMethods()`, so an undecorated method is simply absent
+ * from the allowlist. Everything else about the page passes — `tsc` is clean, the compiler
+ * emits `flow:click="submit"`, the button renders enabled — and the click sends a frame the
+ * server refuses, reporting it *only* over the WebSocket to `console.error`:
+ *
+ *     [Flow] Server error on …: Method "submit" is not allowed
+ *
+ * Nothing reaches the server log, nothing throws, the page does not change. To a developer,
+ * and to every test that is not a real browser with the console open, the button simply does
+ * nothing — indistinguishable from the binding bugs, so the instinct is to go hunting for one.
+ *
+ * The member table needed to catch this is already built, so catch it here.
+ *
+ * Only fires for a method *declared on this class*: an inherited handler (a base-class action,
+ * a mixin) is invisible to this AST and must not be second-guessed.
+ */
+function _assertActionExposed(
+  method: string,
+  members: MemberInfo,
+  filename: string,
+  node: ts.Node,
+): void {
+  if (!members.declaredMethods.has(method)) return; // inherited or a magic — not ours to judge
+  if (members.exposed.has(method)) return;
+  if (CLIENT_CALLBACK_MAGICS.has(method) || CLIENT_MAGICS.has(method)) return;
+
+  const sf = node.getSourceFile();
+  const { line, character } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
+  throw new FlowValidationError(
+    `[Flow] \`${method}\` is used as a server action but is not @expose'd.\n` +
+      `  ${_at(filename, line + 1, character + 1)}\n` +
+      `      → Add @expose to ${method}(). Without it the method is not in the action ` +
+      `allowlist, so the click sends a frame the server refuses — and the refusal is ` +
+      `reported only to the browser console, which makes the button look inert.`,
+  );
 }
 
 // ── this.xxx reference extraction (read vs write) ─────────────────────────────
@@ -1671,7 +1723,9 @@ function _compileRenderMethod(
         const event = eventName;
         // onClick={this.method} — server action (named method reference).
         if (_isThisProp(expr)) {
-          emitStatic(` flow:${event}="${(expr as ts.PropertyAccessExpression).name.text}"`);
+          const method = (expr as ts.PropertyAccessExpression).name.text;
+          _assertActionExposed(method, members, filename, expr);
+          emitStatic(` flow:${event}="${method}"`);
           continue;
         }
         // onClick={(e) => this.x = 0} — bare arrow → client expression, emitted verbatim
@@ -1680,6 +1734,20 @@ function _compileRenderMethod(
         // key off it). The <For> path below is the one exception — a loop handler must be an
         // Alpine `@event`, because the loop variable only exists in Alpine's x-for scope.
         if (ts.isArrowFunction(expr)) {
+          // `() => this.method(row.id)` — a server action that wants an argument. The
+          // arrow itself cannot ship: it would be emitted verbatim and `row` does not
+          // exist in the browser. But this render function DOES have `row` in scope at
+          // request time, so emit the action by name and serialise the arguments beside
+          // it as data-args, which the bridge already reads and forwards. Matches what
+          // the runtime renderer achieves by invoking the arrow with a recorder.
+          const argCall = _asServerActionCall(expr, members);
+          if (argCall) {
+            emitStatic(` flow:${event}="${argCall.method}"`);
+            emitStatic(` data-args="`);
+            emitDynamic(`__escAttr(JSON.stringify([${argCall.argsSrc}]))`);
+            emitStatic(`"`);
+            continue;
+          }
           if (_cspSafe) {
             // CSP-safe: emit the bare expression body (no arrow wrapper). An event
             // param or a block body has no CSP-safe inline form → compile error.
@@ -1695,11 +1763,13 @@ function _compileRenderMethod(
                   `  Use a single expression or an @expose action.\n  File: ${filename}`,
               );
             }
+            _assertClientExprScope(expr, members, filename);
             const body = _rewriteClientExpr(expr.body.getText());
             _assertCspExpr(body, filename);
             emitStatic(` flow:${event}="${_escAttr(body)}"`);
             continue;
           }
+          _assertClientExprScope(expr, members, filename);
           const src = _rewriteClientExpr(expr.getText());
           emitStatic(` flow:${event}="${_escAttr(src)}"`);
           continue;
@@ -1716,6 +1786,7 @@ function _compileRenderMethod(
         const flowPropExpr = _extractFlowProp(expr);
         if (flowPropExpr) {
           const method = flowPropExpr.name.text;
+          _assertActionExposed(method, members, filename, flowPropExpr);
           const mods = _extractFlowModifiers(expr);
           const base = `flow:${event}`;
           emitStatic(` ${mods.length ? `${base}.${mods.join(".")}` : base}="${method}"`);
@@ -2047,7 +2118,244 @@ function _clientMagicSrc(expr: ts.Expression, members: MemberInfo, filename: str
       );
     }
   }
+  // Same verbatim-emission hazard as an arrow handler: this expression re-evaluates in
+  // the browser, so a captured server-side name would silently evaluate to undefined.
+  _assertClientExprScope(expr, members, filename);
   return _rewriteClientExpr(expr.getText());
+}
+
+/**
+ * Recognise `() => this.method(a, b)` — a no-parameter arrow whose whole body is one
+ * call to a component action with arguments — and return the pieces needed to emit it
+ * as `flow:<event>="method"` + `data-args`.
+ *
+ * Returns null (leaving the caller on the verbatim client-expression path) when:
+ *  - the arrow takes parameters (it wants the DOM event; that's genuinely client-side);
+ *  - the body isn't a single call, or isn't a call to `this.something`;
+ *  - the callee isn't an @expose action (a client magic like `this.refresh()` must stay
+ *    a client expression);
+ *  - **any argument reads `this`** — `this.count + 1` must re-evaluate on the client
+ *    against live reactive state, not be frozen into the markup at render time.
+ */
+function _asServerActionCall(
+  arrow: ts.ArrowFunction,
+  members: MemberInfo,
+): { method: string; argsSrc: string } | null {
+  if (arrow.parameters.length > 0) return null;
+
+  const body = ts.isBlock(arrow.body)
+    ? arrow.body.statements.length === 1 && ts.isExpressionStatement(arrow.body.statements[0]!)
+      ? (arrow.body.statements[0] as ts.ExpressionStatement).expression
+      : null
+    : arrow.body;
+  if (!body || !ts.isCallExpression(body)) return null;
+  if (!ts.isPropertyAccessExpression(body.expression)) return null;
+  if (body.expression.expression.kind !== ts.SyntaxKind.ThisKeyword) return null;
+
+  const method = body.expression.name.text;
+  if (CLIENT_CALLBACK_MAGICS.has(method) || CLIENT_MAGICS.has(method)) return null;
+  // Actions are @expose methods, so `exposed` is the whole allowlist.
+  if (!members.exposed.has(method)) return null;
+  if (body.arguments.length === 0) return null; // no args → plain flow:click="method"
+
+  for (const arg of body.arguments) {
+    if (_referencesThis(arg)) return null;
+  }
+
+  return { method, argsSrc: body.arguments.map((a) => a.getText()).join(", ") };
+}
+
+/** True when `node` reads `this` anywhere (so it must stay a live client expression). */
+function _referencesThis(node: ts.Node): boolean {
+  if (node.kind === ts.SyntaxKind.ThisKeyword) return true;
+  let found = false;
+  ts.forEachChild(node, (child) => {
+    if (!found && _referencesThis(child)) found = true;
+  });
+  return found;
+}
+
+// ── Client-expression scope validation ────────────────────────────────────────
+
+/**
+ * Names a client expression may reference besides `$flow`, its own parameters, and
+ * its own locals: Alpine's magics (the expression is evaluated by Alpine) and the
+ * browser globals it is reasonable to reach for inline.
+ */
+const CLIENT_EXPR_GLOBALS = new Set([
+  // Alpine magics
+  "$el",
+  "$event",
+  "$refs",
+  "$store",
+  "$dispatch",
+  "$watch",
+  "$nextTick",
+  "$id",
+  "$root",
+  "$data",
+  "$flow",
+  // Language / literals
+  "undefined",
+  "NaN",
+  "Infinity",
+  "globalThis",
+  "arguments",
+  // Standard built-ins
+  "Object",
+  "Array",
+  "String",
+  "Number",
+  "Boolean",
+  "Math",
+  "JSON",
+  "Date",
+  "RegExp",
+  "Map",
+  "Set",
+  "Promise",
+  "Error",
+  "Symbol",
+  "BigInt",
+  "Intl",
+  "parseInt",
+  "parseFloat",
+  "isNaN",
+  "isFinite",
+  "encodeURIComponent",
+  "decodeURIComponent",
+  "encodeURI",
+  "decodeURI",
+  "structuredClone",
+  // Browser
+  "window",
+  "document",
+  "console",
+  "navigator",
+  "location",
+  "history",
+  "localStorage",
+  "sessionStorage",
+  "fetch",
+  "URL",
+  "URLSearchParams",
+  "FormData",
+  "Event",
+  "CustomEvent",
+  "alert",
+  "confirm",
+  "prompt",
+  "setTimeout",
+  "clearTimeout",
+  "setInterval",
+  "clearInterval",
+  "requestAnimationFrame",
+  "cancelAnimationFrame",
+  "matchMedia",
+  "getComputedStyle",
+]);
+
+/** Collect every name a binding pattern introduces (`{a, b: [c]}`, `...rest`). */
+function _collectBoundNames(name: ts.BindingName, into: Set<string>): void {
+  if (ts.isIdentifier(name)) {
+    into.add(name.text);
+    return;
+  }
+  for (const element of name.elements) {
+    if (ts.isOmittedExpression(element)) continue;
+    _collectBoundNames(element.name, into);
+  }
+}
+
+/**
+ * Reject a client expression that references a name the browser will not have.
+ *
+ * Client expressions are emitted as source text with `this.` rewritten to `$flow.`;
+ * every other identifier is emitted verbatim. So a handler that closes over an
+ * enclosing scope — the loop variable in
+ * `{items.map((item) => <button onClick={() => this.select(item.id)}>)}` — compiles
+ * to `$flow.select(item.id)`, where `item` does not exist. At runtime that throws a
+ * ReferenceError inside the bridge's evaluator, which logs to the browser console
+ * and returns: the click does nothing, the server never hears about it, and the page
+ * looks perfect. Catching it here turns a silent dead button into a build error that
+ * names the identifier.
+ *
+ * Server actions that need a row id take arguments instead — `onClick={this.remove}`
+ * with `data-args={JSON.stringify([row.id])}`.
+ */
+function _assertClientExprScope(expr: ts.Expression, members: MemberInfo, filename: string): void {
+  // Names bound *within* the expression (arrow params, block locals, catch bindings).
+  const scoped = new Set<string>();
+
+  const collectScope = (node: ts.Node): void => {
+    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+      for (const param of node.parameters) _collectBoundNames(param.name, scoped);
+    } else if (ts.isVariableDeclaration(node)) {
+      _collectBoundNames(node.name, scoped);
+    } else if (ts.isCatchClause(node) && node.variableDeclaration) {
+      _collectBoundNames(node.variableDeclaration.name, scoped);
+    }
+    ts.forEachChild(node, collectScope);
+  };
+  collectScope(expr);
+
+  const check = (node: ts.Node): void => {
+    // `a.b` — only `a` is a free identifier; `b` is a property name.
+    if (ts.isPropertyAccessExpression(node)) {
+      check(node.expression);
+      return;
+    }
+    // `{ key: value }` — `key` is not a reference.
+    if (ts.isPropertyAssignment(node)) {
+      check(node.initializer);
+      return;
+    }
+    if (ts.isShorthandPropertyAssignment(node)) {
+      // `{ x }` — `x` IS a reference.
+      _checkIdentifier(node.name, scoped, members, filename, expr);
+      return;
+    }
+    if (ts.isIdentifier(node)) {
+      _checkIdentifier(node, scoped, members, filename, expr);
+      return;
+    }
+    ts.forEachChild(node, check);
+  };
+  // Enter through `check`, not forEachChild: when the whole expression IS a property
+  // access (`$flow.store.ui.open`), forEachChild would hand us its trailing name as a
+  // bare identifier and we would reject the root of the chain's own property.
+  check(expr);
+}
+
+function _checkIdentifier(
+  id: ts.Identifier,
+  scoped: Set<string>,
+  members: MemberInfo,
+  filename: string,
+  expr: ts.Expression,
+): void {
+  const name = id.text;
+  if (scoped.has(name)) return;
+  if (CLIENT_EXPR_GLOBALS.has(name)) return;
+  if (name.startsWith("$")) return; // an Alpine plugin magic we don't know about
+
+  const sf = id.getSourceFile();
+  const { line, character } = sf.getLineAndCharacterOfPosition(id.getStart(sf));
+
+  // A member of the component is the most likely intent, and has a precise fix.
+  const isMember = members.readable.has(name) || members.exposed.has(name);
+  const hint = isMember
+    ? `Did you mean this.${name}? A bare \`${name}\` is not in scope in the browser.`
+    : `\`${name}\` comes from an enclosing server-side scope, and client expressions ` +
+      `are emitted verbatim — it will not exist in the browser.\n` +
+      `      To pass a value to a server action, use data-args:\n` +
+      `        <button onClick={this.method} data-args={JSON.stringify([${name}])}>`;
+
+  throw new FlowValidationError(
+    `[Flow] client expression references \`${name}\`, which will be undefined in the browser.\n` +
+      `  ${_at(filename, line + 1, character + 1)}  in \`${_snippet(expr, 60)}\`\n` +
+      `      → ${hint}`,
+  );
 }
 
 function _isComponent(tag: string): boolean {

@@ -67,14 +67,17 @@ describe("Flow compiler — $flow client magics (bare authoring → $-prefixed r
   });
 
   it("frees the bare names on the class: this.set is the dev's member, never the magic", () => {
-    // `set` is no longer reserved. this.set → $flow.set (NOT $flow.$set), so it dispatches the
-    // developer's own `set` action at runtime; validation passes because `set` is @expose.
+    // `set` is no longer reserved, so this must reach the developer's own @expose `set`
+    // action rather than the $set magic. A one-call arrow with arguments now compiles to
+    // a named action plus data-args (rather than an inline `$flow.set('a', 1)` that the
+    // proxy would have to route), which reaches the same action without an eval.
     const r = compile(
       `<button onClick={() => this.set('a', 1)}>x</button>`,
       "@expose set(k, v) {}",
     );
     expect(r).not.toBeNull();
-    expect(html(r)).toContain("$flow.set('a', 1)");
+    expect(html(r)).toContain(`flow:click="set"`);
+    expect(html(r)).toContain("JSON.stringify(['a', 1])");
     expect(html(r)).not.toContain("$flow.$set"); // the dev member must NOT become the magic
   });
 

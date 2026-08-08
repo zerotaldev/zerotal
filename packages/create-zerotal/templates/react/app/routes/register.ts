@@ -33,7 +33,16 @@ export async function POST(http: HttpContext): Promise<void> {
   user.role = "user";
   await user.save();
 
-  await Auth.attempt({ email, password });
+  // Check the result. Redirecting to a guarded page on a failed attempt sends
+  // the visitor to /profile, where the auth guard turns them straight back to
+  // /login — so the account is created and they land on a sign-in form with no
+  // error shown anywhere. Say what happened instead of redirecting into it.
+  if (!(await Auth.attempt({ email, password }))) {
+    http.flash("error", "Your account was created, but signing you in failed. Please sign in.");
+    http.redirect("/login", 303);
+    return;
+  }
+
   http.flash("success", "Welcome aboard.");
   http.redirect("/profile", 303);
 }

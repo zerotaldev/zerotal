@@ -1136,10 +1136,10 @@ class AuthUser = {
   static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
-  static create: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ids: (number | string)[]) => Promise<T[]>
@@ -1151,7 +1151,7 @@ class AuthUser = {
   static firstOrNew: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static implicitBinding?: boolean
@@ -1552,10 +1552,10 @@ class Permission = {
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
-  static create: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ids: (number | string)[]) => Promise<T[]>
@@ -1567,7 +1567,7 @@ class Permission = {
   static firstOrNew: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static idsFor: (items: (string | number | Permission)[], guard?: string) => Promise<number[]>
@@ -1705,10 +1705,10 @@ class Role = {
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
-  static create: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ids: (number | string)[]) => Promise<T[]>
@@ -1720,7 +1720,7 @@ class Role = {
   static firstOrNew: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static idsFor: (items: (string | number | Role)[], guard?: string) => Promise<number[]>
@@ -3683,12 +3683,13 @@ class ConfigValidationError = {
   readonly status: number
 }
 
-function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;    };    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
+function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;        loader?: Record<string, AssetLoaderKind>;    };    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
 
 function configLoader = (dir?: string) => ConfigLoader
 
 interface AppAssetsConfig = {
   entrypoint: string | string[]
+  loader?: Record<string, AssetLoaderKind>
   minify: boolean
   outDir: string
   prefix: string
@@ -3747,6 +3748,8 @@ interface RegisteredConfigValidator = {
   validate: ConfigValidator
 }
 
+type AssetLoaderKind = 'text' | 'file' | 'json' | 'dataurl' | 'base64' | 'toml'
+
 type ConfigIssueLevel = 'error' | 'warning'
 
 type ConfigMap = {    [x: string]: Record<string, unknown>;}
@@ -3789,7 +3792,7 @@ class DevReloadMiddleware = {
 
 const DEV_RELOAD_CLIENT = string
 
-function buildCssBundle = (input: string, outdir: string, minify?: boolean) => Promise<{    success: boolean;    logs: unknown[];}>
+function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<{    success: boolean;    logs: unknown[];}>
 
 function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<{    success: boolean;    logs: unknown[];}>
 
@@ -3803,6 +3806,7 @@ function registerDevHtmlSnippet = (name: string, fn: DevHtmlSnippet) => void
 
 interface AssetBuildConfig = {
   entrypoint: string | string[]
+  loader?: Record<string, string>
   minify: boolean
   outDir: string
   prefix: string
@@ -4473,10 +4477,10 @@ class BaseModel = {
   static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
-  static create: <T extends BaseModel>(this: ModelCtor<T>, data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: ModelCtor<T>, id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: ModelCtor<T>, column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: ModelCtor<T>, ids: (number | string)[]) => Promise<T[]>
@@ -4488,7 +4492,7 @@ class BaseModel = {
   static firstOrNew: <T extends BaseModel>(this: ModelCtor<T>, search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: ModelCtor<T>, data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static implicitBinding?: boolean
@@ -4772,10 +4776,10 @@ class Model = {
   static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
-  static create: <T extends BaseModel>(this: ModelCtor<T>, data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: ModelCtor<T>, id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: ModelCtor<T>, column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: ModelCtor<T>, ids: (number | string)[]) => Promise<T[]>
@@ -4787,7 +4791,7 @@ class Model = {
   static firstOrNew: <T extends BaseModel>(this: ModelCtor<T>, search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: ModelCtor<T>, data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static implicitBinding?: boolean
@@ -5277,7 +5281,7 @@ function BaseModelWith = {    <A extends Constructor>(a: (base: Base) => A): A; 
 
 function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
-function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;}
+function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
 
 function columnsFor = (ctor: Function) => Map<string, ColumnOptions> | null
 
@@ -5371,9 +5375,11 @@ interface ColumnOptions = {
   cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
   default?: unknown
   enumValues?: Record<string, string | number>
+  index?: boolean
   nullable?: boolean
   primary?: boolean
-  type?: 'string' | 'number' | 'boolean' | 'datetime' | 'json'
+  type?: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json'
+  unique?: boolean
 }
 
 interface CursorPaginateResult = {
@@ -5495,10 +5501,12 @@ interface MigrationStatus = {
 
 interface ModelColumn = {
   default: unknown
+  index?: boolean
   name: string
   nullable: boolean
   primary: boolean
-  type: 'string' | 'number' | 'boolean' | 'datetime' | 'json' | undefined
+  type: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json' | undefined
+  unique?: boolean
 }
 
 interface ModelObserver = {
@@ -6785,6 +6793,7 @@ class QueueFake = {
 
 class TestApp = {
   new (_app: Application, _errors?: TestExceptionHandler | undefined): TestApp
+  _shared: boolean
   actingAs: (user: {    id: number | string;}) => TestApp
   actingAsGuest: () => TestApp
   app: Application
@@ -6877,6 +6886,8 @@ function assertDatabaseMissing = (table: string, where: Record<string, unknown>)
 function assertMissingFile = (diskOrDriver: string | StorageDriver, path: string) => Promise<void>
 
 function assertStoredFile = (diskOrDriver: string | StorageDriver, path: string) => Promise<void>
+
+function closeSharedTestApps = () => Promise<void>
 
 function createTestApp = (bootstrap: () => Application | Promise<Application>, setup?: () => void) => Promise<TestApp>
 

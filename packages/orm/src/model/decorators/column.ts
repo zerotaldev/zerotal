@@ -19,8 +19,8 @@ export { columnRegistry };
  *
  * | Shorthand   | Equivalent options                              |
  * |-------------|--------------------------------------------------|
- * | `"string"`  | `{ type: "string" }`                            |
- * | `"text"`    | `{ type: "string" }` (large text, alias)        |
+ * | `"string"`  | `{ type: "string" }` (VARCHAR)                   |
+ * | `"text"`    | `{ type: "text" }` (unbounded TEXT)             |
  * | `"integer"` | `{ type: "number", cast: "integer" }`           |
  * | `"number"`  | `{ type: "number" }`                            |
  * | `"float"`   | `{ type: "number", cast: "float" }`             |
@@ -68,14 +68,32 @@ export type ColumnShorthand =
  * ```
  */
 export interface ColumnOptions {
-  /** Logical storage type; drives schema generation and auto-migration. @default "string" */
-  type?: "string" | "number" | "boolean" | "datetime" | "json";
+  /**
+   * Logical storage type; drives schema generation and auto-migration.
+   *
+   * `"string"` is a bounded VARCHAR; `"text"` is the unbounded TEXT type — a real
+   * distinction on Postgres and MySQL, where a long body in a VARCHAR(255) is an
+   * error rather than a slow column.
+   *
+   * @default "string"
+   */
+  type?: "string" | "text" | "number" | "boolean" | "datetime" | "json";
   /** Mark this column as the table's primary key. */
   primary?: boolean;
   /** Allow SQL `NULL` for this column. */
   nullable?: boolean;
   /** Default value applied when none is provided. */
   default?: unknown;
+  /**
+   * Add a unique index on this column during schema generation / auto-migration.
+   *
+   * Declared here rather than left to a hand-written migration because uniqueness is
+   * usually a correctness property (a webhook idempotency key, an invoice number),
+   * and `migrate:generate` can only emit constraints it can see declared.
+   */
+  unique?: boolean;
+  /** Add a plain (non-unique) index on this column. */
+  index?: boolean;
   /**
    * Shorthand cast types automatically serialize/deserialize the column value.
    * Can also be a custom object with `get`/`set` functions for full control.
@@ -113,7 +131,7 @@ export interface ColumnOptions {
  */
 const SHORTHAND_MAP: Record<ColumnShorthand, ColumnOptions> = {
   string: { type: "string" },
-  text: { type: "string" },
+  text: { type: "text" },
   integer: { type: "number", cast: "integer" },
   number: { type: "number" },
   float: { type: "number", cast: "float" },
@@ -124,7 +142,31 @@ const SHORTHAND_MAP: Record<ColumnShorthand, ColumnOptions> = {
   array: { type: "json", cast: "array" },
 };
 
-function resolveOptions(arg?: ColumnShorthand | ColumnOptions): ColumnOptions {
+/**
+ * Resolve the decorator's arguments to one options object.
+ *
+ * `extra` is the second argument of the `@column("string", { nullable: true })` form —
+ * the shorthand covers the common case and nullability is the most common modifier, so
+ * writing `@column({ type: "number", cast: "integer", nullable: true })` just to say
+ * "nullable int" is noise. The shorthand's own `type`/`cast` win: `extra` is typed as
+ * `Omit<ColumnOptions, "type">`, so it cannot contradict the type it is modifying.
+ */
+function resolveOptions(
+  arg?: ColumnShorthand | ColumnOptions,
+  extra?: Omit<ColumnOptions, "type">,
+): ColumnOptions {
+  const base = _resolveBase(arg);
+  if (!extra) return base;
+  // Spread `base` last for type/cast so the shorthand keeps ownership of them, and never
+  // write an explicit `undefined` — under exactOptionalPropertyTypes that is a distinct,
+  // and invalid, value rather than an absent key.
+  const merged: ColumnOptions = { ...extra };
+  if (base.type !== undefined) merged.type = base.type;
+  if (extra.cast === undefined && base.cast !== undefined) merged.cast = base.cast;
+  return merged;
+}
+
+function _resolveBase(arg?: ColumnShorthand | ColumnOptions): ColumnOptions {
   if (arg === undefined) return { type: "string" };
   if (typeof arg === "string") {
     const a = arg as string;
@@ -243,8 +285,15 @@ type ColumnDecorator = (value: undefined, context: ClassFieldDecoratorContext) =
 export function column(): ColumnDecorator;
 export function column(type: ColumnShorthand): ColumnDecorator;
 export function column(options: ColumnOptions): ColumnDecorator;
-export function column(arg?: ColumnShorthand | ColumnOptions): ColumnDecorator {
-  const options = resolveOptions(arg);
+export function column(
+  type: ColumnShorthand,
+  options: Omit<ColumnOptions, "type">,
+): ColumnDecorator;
+export function column(
+  arg?: ColumnShorthand | ColumnOptions,
+  extra?: Omit<ColumnOptions, "type">,
+): ColumnDecorator {
+  const options = resolveOptions(arg, extra);
   // The decorator BODY runs synchronously at definition time with the correct
   // `context.name` (the only thing Bun 1.3.x compiles reliably for field decorators).
   // We can't defer to a field initializer or addInitializer — Bun cross-wires those

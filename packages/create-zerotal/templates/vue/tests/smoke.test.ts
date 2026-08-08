@@ -7,7 +7,7 @@
  * you have real tests, or keep it as the shape to copy.
  */
 import { beforeAll, afterAll, describe, test, expect } from 'bun:test';
-import { createTestApp, type TestApp } from 'zerotal/testing';
+import { createTestApp, migrateDatabase, type TestApp } from 'zerotal/testing';
 
 let app: TestApp;
 
@@ -18,6 +18,12 @@ beforeAll(async () => {
   // Each run gets its own throwaway schema rather than the dev database.
   Bun.env.ZT_DB_URL ??= ':memory:';
   app = await createTestApp(() => import('../bootstrap/app.ts').then((m) => m.default));
+  // Build the schema from the project's own migrations. config/database.ts keeps
+  // synchronize off — migrations are the single source of truth — so without this
+  // the :memory: database above has no tables and every test fails on 'no such
+  // table'. Running the real migrations also means the schema under test is the
+  // schema that ships, rather than a second definition that drifts from it.
+  await migrateDatabase();
 });
 
 afterAll(() => app.close());

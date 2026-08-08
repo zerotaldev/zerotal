@@ -415,8 +415,26 @@ export class TestApp {
     return this.request(url, { method, headers, body: form });
   }
 
-  /** Stop the test server and shut the app's providers down. Call in afterAll(). */
+  /** @internal Set when this app is the per-process shared instance (see createTestApp). */
+  _shared = false;
+
+  /**
+   * Stop the test server and shut the app's providers down. Call in `afterAll()`.
+   *
+   * When this app is the per-process shared instance — the normal case, where each
+   * test file calls `createTestApp()` with the same `bootstrap/app.ts` — this only
+   * resets per-test state (auth, flash, captured mail) and leaves the app running for
+   * the files that come after. Tearing it down here would close the process-global
+   * database connection out from under them, and the file that broke would be an
+   * entirely correct one that merely ran second.
+   *
+   * The shared instance is torn down once, by {@link closeSharedTestApps}.
+   */
   async close(): Promise<void> {
+    if (this._shared) {
+      resetTestState();
+      return;
+    }
     // Run the full provider teardown (onStopping/onStopped), not just the HTTP
     // server: otherwise queue polling intervals, monitor timers, worker threads,
     // and DB connections from this test file keep running while the next file
@@ -548,10 +566,45 @@ function _toFile(input: TestFileInput | File | Blob): File {
  *   () => { Router.get('/ping', PingController, 'handle'); },
  * );
  */
+/**
+ * The per-process shared apps, keyed by the {@link Application} they wrap.
+ *
+ * Bun runs an entire test suite in one process, and the ORM connection is
+ * process-global — so a second file that boots its own app inherits a connection the
+ * first file's `afterAll` already closed, and dies in `migrateDatabase()` with
+ * "No database connection". Booting once and handing the same instance to every file
+ * removes the interference without asking each test file to know about it.
+ *
+ * Keyed by the Application and not by the `bootstrap` callback: the scaffolded pattern
+ * is `createTestApp(() => import('../bootstrap/app.ts').then((m) => m.default))`, a
+ * fresh arrow on every call. The module it imports is cached, so the *Application* is
+ * the thing that is genuinely the same across files.
+ */
+const _sharedApps = new Map<Application, TestApp>();
+
 export async function createTestApp(
   bootstrap: () => Application | Promise<Application>,
   setup?: () => void,
 ): Promise<TestApp> {
+  // A `setup` callback registers routes, and registering them twice against an
+  // already-started server is not idempotent — so those callers always get a fresh
+  // app and own its teardown, exactly as before.
+  //
+  // Only probe once an app exists: on the first call `bootstrap()` has real side
+  // effects (Application.create + provider registration) and must run after the
+  // reset below, not before it.
+  if (!setup && _sharedApps.size > 0) {
+    const booted = await bootstrap();
+    const existing = _sharedApps.get(booted);
+    if (existing) {
+      // Re-adopt: an earlier file's close() reset the app scope even though the app
+      // itself is still running, so facades need pointing back at it.
+      booted.adoptAsCurrent();
+      resetTestState();
+      return existing;
+    }
+  }
+
   resetTestState();
   const app = await bootstrap();
   // A module-cached `bootstrap/app.ts` returns its top-level app on re-import
@@ -569,5 +622,27 @@ export async function createTestApp(
   errors.inner = app._swapExceptionHandler(errors);
 
   await app.start(0);
-  return new TestApp(app, errors);
+  const testApp = new TestApp(app, errors);
+
+  if (!setup) {
+    testApp._shared = true;
+    _sharedApps.set(app, testApp);
+  }
+  return testApp;
+}
+
+/**
+ * Tear down every shared app created by {@link createTestApp}.
+ *
+ * Only needed when something must be released before the process exits — a global
+ * teardown file, or a suite that asserts no timers are left running. Individual test
+ * files should keep calling `app.close()`; on a shared app that resets per-test state
+ * and leaves the app up for the files still to run.
+ */
+export async function closeSharedTestApps(): Promise<void> {
+  for (const testApp of _sharedApps.values()) {
+    testApp._shared = false;
+    await testApp.close();
+  }
+  _sharedApps.clear();
 }

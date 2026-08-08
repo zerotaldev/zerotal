@@ -66,7 +66,28 @@ export interface AppAssetsConfig {
   prefix: string;
   /** Minify output. Default: true in production, false otherwise. */
   minify: boolean;
+  /**
+   * Per-extension loader overrides handed to Bun's bundler, e.g.
+   * `{ ".woff2": "file" }`.
+   *
+   * Bun inlines small files a stylesheet `url()`s as data URIs. That is the right
+   * default for an icon, and the wrong one for a font: the bytes move into the
+   * render-blocking stylesheet, so nine woff2 subsets can turn a 36KB stylesheet into
+   * 260KB that must download before first paint — the opposite of what `font-display:
+   * swap` is for. `{ ".woff2": "file" }` emits them as separate files again.
+   *
+   * @example
+   * // config/app.ts
+   * assets: { entrypoint: 'resources/css/app.css', loader: { '.woff2': 'file', '.woff': 'file' } }
+   */
+  loader?: Record<string, AssetLoaderKind>;
 }
+
+/**
+ * Bun bundler loaders that are meaningful for an asset referenced from CSS/JS.
+ * Mirrors Bun's `Loader` union, minus the source-code loaders a `url()` cannot name.
+ */
+export type AssetLoaderKind = "file" | "dataurl" | "base64" | "text" | "json" | "toml";
 
 /**
  * Default request-body ceiling: 8 MiB.
@@ -214,7 +235,13 @@ export function AppConfig(options: {
   cors?: Partial<AppCorsConfig>;
   throttle?: Partial<AppThrottleConfig>;
   secureHeaders?: Partial<AppSecureHeadersConfig>;
-  assets?: { entrypoint: string | string[]; outDir?: string; prefix?: string; minify?: boolean };
+  assets?: {
+    entrypoint: string | string[];
+    outDir?: string;
+    prefix?: string;
+    minify?: boolean;
+    loader?: Record<string, AssetLoaderKind>;
+  };
   conventions?: { enabled?: boolean; paths?: Partial<ConventionsConfig["paths"]> };
 }): AppConfigShape {
   // Resolve env-derived defaults, then deep-merge the caller's overrides so partial nested
@@ -247,6 +274,9 @@ export function AppConfig(options: {
       outDir: options.assets.outDir ?? "public",
       prefix: options.assets.prefix ?? "/",
       minify: options.assets.minify ?? isProduction,
+      // Only set when declared: an explicit `undefined` is a distinct value under
+      // exactOptionalPropertyTypes, and would override Bun's own defaults with nothing.
+      ...(options.assets.loader ? { loader: options.assets.loader } : {}),
     };
   }
   return resolved;

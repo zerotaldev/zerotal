@@ -10,7 +10,11 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { escapeHtml } from "@zerotal/core/helpers";
 import { getExposedProps, getLockedProps } from "./decorators.ts";
-import { _setExposedKeyCapture, _consumeExposedKeyCapture } from "./utils.ts";
+import {
+  _setExposedKeyCapture,
+  _consumeExposedKeyCapture,
+  _consumeExposedKeyReads,
+} from "./utils.ts";
 import { URL_ATTRIBUTES, sanitizeUrl } from "./urlSafety.ts";
 
 /** The rendered output of a JSX element: an object carrying its serialized HTML string. */
@@ -557,18 +561,27 @@ export function _resolveBindName(
  * capture AND a value-identity match, so a literal or server value never false-positives),
  * or null when the attribute is just an ordinary server-rendered value.
  * `locked` distinguishes @locked (read-only, reactive) from @expose (two-way).
+ *
+ * @remarks
+ * The getter capture is a single slot and *all* of an element's props are evaluated
+ * before `jsx()` runs, so any later prop that reads an exposed property clobbers it —
+ * `value={this.destination} disabled={this.notSure}` leaves the capture pointing at
+ * `notSure`. The freshness check then fails and the element renders with no
+ * `flow:model` at all: the field accepts typing and nothing ever reaches the server.
+ * When the capture is unusable we therefore fall back to a value-identity scan over
+ * the exposed props, exactly as `_resolveBindName` does — binding correctly whenever
+ * the answer is unambiguous, rather than silently dropping the binding.
  */
 function _resolveValueBind(value: unknown): { name: string; locked: boolean } | null {
   const page = _getRenderCtx()?.page ?? null;
   if (!page) return null;
   const cap = _consumeExposedKeyCapture();
-  if (!cap) return null;
   const exposed = getExposedProps(page); // includes @locked
 
   // Dotted capture (e.g. "form.email") — a Form field. The root must be an exposed
   // prop and the nested value must identity-match (freshness guard). Form fields
   // are always writable (two-way), so locked is false.
-  if (cap.includes(".")) {
+  if (cap && cap.includes(".")) {
     const root = cap.slice(0, cap.indexOf("."));
     if (!exposed.has(root)) return null;
     const nested = cap
@@ -578,11 +591,29 @@ function _resolveValueBind(value: unknown): { name: string; locked: boolean } | 
     return { name: cap, locked: false };
   }
 
-  if (!exposed.has(cap)) return null;
-  // Confirm the capture is fresh for THIS value (guards against a stale capture
-  // lingering from a previous element that didn't consume it).
-  if (!Object.is((page as Record<string, unknown>)[cap], value)) return null;
-  return { name: cap, locked: getLockedProps(page).has(cap) };
+  // Capture fast path: trust it only when it is fresh for THIS value (guards against
+  // a stale capture lingering from a previous element that didn't consume it).
+  if (cap && exposed.has(cap) && Object.is((page as Record<string, unknown>)[cap], value)) {
+    _consumeExposedKeyReads(); // this element is resolved; don't leak reads to the next
+    return { name: cap, locked: getLockedProps(page).has(cap) };
+  }
+
+  // The single slot was clobbered by a later prop on the same element (the B2 case:
+  // `value={this.destination} disabled={this.notSure}`). Fall back to the keys actually
+  // read while this element's props were evaluated, most recent first, and take the one
+  // whose current value IS this value.
+  //
+  // Crucially this is NOT a scan of every exposed prop: a key only qualifies if it was
+  // genuinely read through a `this.` getter, so a literal `value="CUSTOM"` that happens
+  // to equal some property's current value still binds nothing.
+  const reads = _consumeExposedKeyReads();
+  for (const key of reads) {
+    if (key === cap) continue; // already rejected above
+    if (!exposed.has(key)) continue;
+    if (!Object.is((page as Record<string, unknown>)[key], value)) continue;
+    return { name: key, locked: getLockedProps(page).has(key) };
+  }
+  return null;
 }
 
 /**
@@ -1059,6 +1090,18 @@ export function jsx(
       // ordinary attribute so the capture survives intact for the select that follows.
       if (type === "option" && k === "value") {
         attrs.push(`value="${escapeAttr(String(v ?? ""))}"`);
+        continue;
+      }
+      // A radio's `value` is the option's identifier and its `checked` is a per-option
+      // boolean — neither is a two-way binding target, and inferring one is actively
+      // wrong. In a group rendered from a .map() the inference lands on whichever single
+      // option currently equals the bound property, so that one radio claims the whole
+      // group's model and overwrites the user's pick on every flush. Bind a radio group
+      // explicitly with {...this.bind('prop', 'optionValue')}, which knows the group is
+      // addressed as a unit.
+      if (type === "input" && String(p["type"] ?? "") === "radio") {
+        if (k === "value") attrs.push(`value="${escapeAttr(String(v ?? ""))}"`);
+        else if (v) attrs.push("checked");
         continue;
       }
       const bound = _resolveValueBind(v);

@@ -12,5 +12,5 @@ export class User extends BaseModel {
   @column({ type: 'string' }) name!:     string;
   @column({ type: 'string' }) email!:    string;
   @column({ type: 'string' }) password!: string;
-  @column({ type: 'string', nullable: true, default: 'user' }) role?: string;
+  @column({ type: 'string', nullable: true, default: 'user' }) role?: string | undefined;
 }

@@ -9,6 +9,6 @@ export class Setting extends BaseModel {
   static override fillable = ["siteName", "supportEmail", "ordersOpen"];
 
   @column() siteName!: string;
-  @column({ nullable: true }) supportEmail?: string;
-  @column({ cast: "boolean", nullable: true }) ordersOpen?: boolean;
+  @column({ nullable: true }) supportEmail?: string | undefined;
+  @column({ cast: "boolean", nullable: true }) ordersOpen?: boolean | undefined;
 }

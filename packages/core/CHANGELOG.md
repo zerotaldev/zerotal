@@ -1,4 +1,4 @@
-# Changelog â @zerotal/core
+# Changelog — @zerotal/core
 
 All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
@@ -7,6 +7,12 @@ follows the Zerotal monorepo's unified versioning.
 **Maturity: `stable`**
 
 ## [Unreleased]
+
+## [1.1.0] — 2026-08-08
+
+### Added
+
+- `app.assets.loader` — per-extension bundler loader overrides, e.g. `{ ".woff2": "file" }`. Bun inlines small `url()` assets as data URIs, which is right for an icon and wrong for a font: the bytes move into the render-blocking stylesheet, so nine woff2 subsets turned a 36 KB stylesheet into 260 KB that had to download before first paint. There was no configuration to turn it off.
 
 ## [1.0.3] — 2026-08-07
 

@@ -1,4 +1,4 @@
-export { createTestApp, TestApp } from "./TestApp.ts";
+export { createTestApp, closeSharedTestApps, TestApp } from "./TestApp.ts";
 export type { TestFileInput, TestFormValue } from "./TestApp.ts";
 export { TestResponse } from "./TestResponse.ts";
 export type { SessionDecoder, TestResponseContext, InertiaPage } from "./TestResponse.ts";

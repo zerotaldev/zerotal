@@ -6,10 +6,14 @@ import { columnRegistry, columnsFor } from "../model/decorators/_metadata.ts";
 
 export interface ModelColumn {
   name: string;
-  type: ColumnOptions["type"]; // 'string' | 'number' | 'boolean' | 'datetime' | 'json'
+  type: ColumnOptions["type"]; // 'string' | 'text' | 'number' | 'boolean' | 'datetime' | 'json'
   nullable: boolean;
   primary: boolean;
   default: unknown;
+  /** `@column({ unique: true })` — emit a unique index for this column. */
+  unique?: boolean;
+  /** `@column({ index: true })` — emit a plain index for this column. */
+  index?: boolean;
 }
 
 export interface ModelSchema {
@@ -59,6 +63,8 @@ function toModelColumns(fields: Map<string, ColumnOptions>): ModelColumn[] {
       nullable: opts.nullable ?? false,
       primary: opts.primary ?? false,
       default: opts.default,
+      unique: opts.unique ?? false,
+      index: opts.index ?? false,
     });
   }
   return columns;

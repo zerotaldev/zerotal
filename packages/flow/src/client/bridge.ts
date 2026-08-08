@@ -1605,6 +1605,14 @@ function _syncModelInputs(comp: FlowComponent): void {
       el.checked = Boolean(serverVal);
       return;
     }
+    // A radio's `value` is its immutable option identifier — the group's state selects
+    // among those, it does not replace them. Assigning `el.value` here (as the generic
+    // path below does) would rewrite every option in the group to the current value and
+    // destroy the choices.
+    if (el instanceof HTMLInputElement && el.type === "radio") {
+      el.checked = el.value === String(serverVal ?? "");
+      return;
+    }
     const str = String(serverVal ?? "");
     if (el.value !== str) el.value = str;
     // A draft-backed field the server just emptied (e.g. after a successful submit) → drop the draft.
@@ -1844,6 +1852,62 @@ function debounce<T extends unknown[]>(fn: (...args: T) => void, ms: number): (.
   };
 }
 
+/**
+ * Find the nearest ancestor carrying `flow:<event>`, with or without modifiers.
+ *
+ * The compiler emits modifiers into the attribute *name* (`onClick={flow(this.save).stop}`
+ * → `flow:click.stop="save"`), but a `[flow\:click]` attribute selector matches that name
+ * exactly — so every handler that carried a modifier was invisible to the bridge and did
+ * nothing at all, silently. Walking the ancestors and reading the attribute list finds
+ * both forms.
+ */
+export function _findHandler(
+  target: Element | null,
+  event: string,
+): { el: Element; value: string; modifiers: Set<string> } | null {
+  const prefix = `flow:${event}`;
+  for (let el = target; el; el = el.parentElement) {
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name !== prefix && !attr.name.startsWith(`${prefix}.`)) continue;
+      if (!attr.value) continue;
+      const modifiers = new Set(
+        attr.name.length > prefix.length ? attr.name.slice(prefix.length + 1).split(".") : [],
+      );
+      return { el, value: attr.value, modifiers };
+    }
+  }
+  return null;
+}
+
+/**
+ * Whether a click handler should cancel the element's default action.
+ *
+ * `preventDefault()` used to be unconditional, which cancels the *activation behaviour*
+ * of whatever it is placed on — so a radio or checkbox carrying `onClick` never became
+ * checked, and no handler could fix it: the browser restores the control's pre-click
+ * checkedness after listeners run, so assigning `.checked` inside the handler is reverted
+ * a moment later. `onClick` and a form control were effectively mutually exclusive.
+ *
+ * Default only where the default action is the thing in the way — following a link, or
+ * submitting a form. `.prevent` forces it anywhere; `.passive` opts out anywhere.
+ */
+export function _shouldPreventClickDefault(el: Element, modifiers: Set<string>): boolean {
+  if (modifiers.has("passive")) return false;
+  if (modifiers.has("prevent")) return true;
+  // tagName rather than instanceof: an element adopted from another document (an iframe,
+  // a template) fails `instanceof HTMLAnchorElement` against this window's constructors,
+  // and silently taking the wrong branch here is the whole class of bug being fixed.
+  const tag = el.tagName?.toUpperCase();
+  if (tag === "A") return true;
+  const type = (el.getAttribute?.("type") ?? "").toLowerCase();
+  // A <button> with no type attribute is type="submit" per the HTML spec.
+  if (tag === "BUTTON") return type === "" || type === "submit";
+  // Inputs of type submit/image submit a form; every other control (checkbox, radio,
+  // file, …) needs its activation behaviour left alone.
+  if (tag === "INPUT") return type === "submit" || type === "image";
+  return false;
+}
+
 function _parseArgs(el: Element): unknown[] {
   const raw = el.getAttribute("data-args") ?? el.getAttribute("flow:args");
   if (!raw) return [];
@@ -1989,9 +2053,18 @@ function _modelKey(el: Element): string | null {
  * coercion for `type="number"` inputs whose canonical value is already numeric. A checkbox
  * returns its boolean `checked`. `existing` (the current canonical value) guards the implicit
  * number coercion so a string-typed field isn't turned into a number behind the author's back.
+ *
+ * A radio returns its value only when it is the checked member of its group, and
+ * `undefined` otherwise — callers must skip `undefined` rather than write it. Every
+ * radio in a group carries the same `flow:model`, so returning a bare `.value` would
+ * let each unchecked option overwrite the group's state in turn and leave whichever
+ * one happens to be last in DOM order as the winner.
  */
 function _readModelValue(el: ModelEl, existing?: unknown): unknown {
   if (el instanceof HTMLInputElement && el.type === "checkbox") return el.checked;
+  if (el instanceof HTMLInputElement && el.type === "radio") {
+    return el.checked ? el.value : undefined;
+  }
   let v = (el as HTMLInputElement).value;
   if (el.hasAttribute("data-flow-trim")) v = v.trim();
   const wantNumber =
@@ -2010,6 +2083,9 @@ function _flushModelInputs(comp: FlowComponent): void {
       if (!key) return;
       // Coerce (see _readModelValue) so a number field doesn't send "0" as a string, etc.
       const value = _readModelValue(el, _getPath(comp.reactive as Record<string, unknown>, key));
+      // An unchecked radio reports undefined — skip it, or iterating the group would
+      // clear the value its checked sibling just contributed.
+      if (value === undefined) return;
       // reactive first (see set-trap note): ephemeral is the proxy's raw target.
       _setPath(comp.reactive, key, value);
       _setPath(comp.ephemeral, key, value);
@@ -2072,13 +2148,14 @@ function _setupEventDelegation(): void {
   });
 
   document.addEventListener("click", async (e) => {
-    const el = (e.target as Element).closest("[flow\\:click]") as Element | null;
-    if (!el) return;
-    const method = el.getAttribute("flow:click");
-    if (!method) return;
+    const found = _findHandler(e.target as Element, "click");
+    if (!found) return;
+    const { el, value: method, modifiers } = found;
     const comp = findComponentByEl(el);
     if (!comp) return;
-    e.preventDefault();
+
+    if (modifiers.has("stop")) e.stopPropagation();
+    if (_shouldPreventClickDefault(el, modifiers)) e.preventDefault();
 
     // Async: a confirm prompt shows the styled dialog and resolves on Confirm/Cancel.
     if (!(await _requireConfirm(el))) return;
@@ -2130,6 +2207,9 @@ function _setupEventDelegation(): void {
     // Apply the trim/number modifiers on the way in, so client-reactive bindings see the coerced
     // value immediately (not just the server on the next action).
     const value = _readModelValue(el, _getPath(comp.reactive as Record<string, unknown>, key));
+    // Only the newly-checked radio in a group reports a value; the input event that
+    // deselects its sibling carries nothing to write.
+    if (value === undefined) return;
 
     // reactive first (see set-trap note): ephemeral is the proxy's raw target, so writing it
     // first would suppress the reactive trigger and leave x-text/:class bindings stale.
@@ -2168,7 +2248,16 @@ function _setupEventDelegation(): void {
       if (!comp) return;
 
       const key = el.getAttribute("flow:model.blur");
-      if (key) _callAction(comp, "$set", [key, (el as HTMLInputElement).value]);
+      if (key) {
+        // Go through _readModelValue so the blur path applies the same coercions and
+        // the same radio/checkbox rules as input and flush do — a raw `.value` here
+        // sends "on" for a checkbox and an unchecked radio's value for a radio.
+        const blurValue = _readModelValue(
+          el as ModelEl,
+          _getPath(comp.reactive as Record<string, unknown>, key),
+        );
+        if (blurValue !== undefined) _callAction(comp, "$set", [key, blurValue]);
+      }
 
       // `onBlur={this.method}` — the JSX runtime emits `flow:blur` for it like any
       // other `on*` prop, so without this the attribute renders and nothing ever

@@ -45,6 +45,7 @@ export async function buildCssBundle(
   input: string,
   outdir: string,
   minify = false,
+  loader?: Record<string, string>,
 ): Promise<{ success: boolean; logs: unknown[] }> {
   const cwd = process.cwd();
   const plugins = await detectCssPlugins(cwd);
@@ -57,6 +58,9 @@ export async function buildCssBundle(
       target: "browser",
       minify,
       plugins,
+      ...(loader
+        ? { loader: loader as NonNullable<Parameters<typeof Bun.build>[0]["loader"]> }
+        : {}),
     });
   }
 
@@ -135,6 +139,8 @@ export interface AssetBuildConfig {
   outDir: string;
   prefix: string;
   minify: boolean;
+  /** Per-extension loader overrides (e.g. `{ ".woff2": "file" }`). See AppAssetsConfig. */
+  loader?: Record<string, string>;
 }
 
 /**
@@ -174,6 +180,11 @@ export async function buildConfiguredAssets(
       sourcemap: assets.minify ? "none" : "external",
       minify: assets.minify,
       plugins,
+      // `app.assets.loader` — e.g. `{ ".woff2": "file" }` to stop fonts being inlined
+      // as data URIs into the render-blocking stylesheet.
+      ...(assets.loader
+        ? { loader: assets.loader as NonNullable<Parameters<typeof Bun.build>[0]["loader"]> }
+        : {}),
     });
 
     if (result.success) await pruneBuildOutput(outdir, result.outputs);

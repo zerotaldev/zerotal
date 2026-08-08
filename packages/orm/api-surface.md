@@ -24,10 +24,10 @@ class BaseModel = {
   static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
-  static create: <T extends BaseModel>(this: ModelCtor<T>, data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: ModelCtor<T>, id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: ModelCtor<T>, column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: ModelCtor<T>, ids: (number | string)[]) => Promise<T[]>
@@ -39,7 +39,7 @@ class BaseModel = {
   static firstOrNew: <T extends BaseModel>(this: ModelCtor<T>, search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: ModelCtor<T>, data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static implicitBinding?: boolean
@@ -323,10 +323,10 @@ class Model = {
   static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
-  static create: <T extends BaseModel>(this: ModelCtor<T>, data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: ModelCtor<T>, id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: ModelCtor<T>, column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: ModelCtor<T>, ids: (number | string)[]) => Promise<T[]>
@@ -338,7 +338,7 @@ class Model = {
   static firstOrNew: <T extends BaseModel>(this: ModelCtor<T>, search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: ModelCtor<T>, data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static implicitBinding?: boolean
@@ -828,7 +828,7 @@ function BaseModelWith = {    <A extends Constructor>(a: (base: Base) => A): A; 
 
 function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
-function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;}
+function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
 
 function columnsFor = (ctor: Function) => Map<string, ColumnOptions> | null
 
@@ -922,9 +922,11 @@ interface ColumnOptions = {
   cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
   default?: unknown
   enumValues?: Record<string, string | number>
+  index?: boolean
   nullable?: boolean
   primary?: boolean
-  type?: 'string' | 'number' | 'boolean' | 'datetime' | 'json'
+  type?: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json'
+  unique?: boolean
 }
 
 interface CursorPaginateResult = {
@@ -1046,10 +1048,12 @@ interface MigrationStatus = {
 
 interface ModelColumn = {
   default: unknown
+  index?: boolean
   name: string
   nullable: boolean
   primary: boolean
-  type: 'string' | 'number' | 'boolean' | 'datetime' | 'json' | undefined
+  type: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json' | undefined
+  unique?: boolean
 }
 
 interface ModelObserver = {

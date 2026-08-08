@@ -199,6 +199,39 @@ The command lives on `FlowProvider`, so it's available in any app that registers
 
 Client expressions read and write the same `@expose` properties your server sees. Assigning to an `@expose` property from a client expression updates the UI immediately; the new value is held locally and flushed to the server with your next action, where the server reconciles it and remains authoritative. `@locked` properties are read-only on the client.
 
+### Passing arguments to a server action
+
+A list with per-row actions needs to tell the server _which_ row. Write the call as you would expect, and Flow compiles the arguments into the markup:
+
+```tsx
+{this.enquiries.map((row) => (
+  <tr>
+    <td>{row.reference}</td>
+    <td><button onClick={() => this.archive(row.id)}>Archive</button></td>
+  </tr>
+))}
+```
+
+The arguments are evaluated **on the server, during the render** — where `row` exists — and travel with the action as `data-args`. Your action receives them as ordinary parameters:
+
+```ts
+@expose async archive(id: number) {
+  await Enquiry.findOrFail(id).archive();
+}
+```
+
+You can also write `data-args` yourself, which is useful when the handler is built dynamically:
+
+```tsx
+<button onClick={this.archive} data-args={JSON.stringify([row.id])}>Archive</button>
+```
+
+::: warning Arguments are evaluated once, at render time
+An argument that reads `this` is **not** frozen — `onClick={() => this.setPage(this.page + 1)}` stays a live client expression and re-evaluates in the browser against current reactive state. Only arguments that close over server-side values (a loop variable, a computed local) are serialised.
+
+Anything else a client expression references must exist in the browser. A handler that reaches for an enclosing server-side variable outside a call — `onClick={() => (window.location = row.url)}` — is a compile error naming the identifier, because it would otherwise be emitted verbatim and throw a `ReferenceError` in the browser, where nothing surfaces it.
+:::
+
 ### Two-way inputs
 
 Bind an input by passing state straight to `value` (or `checked`). Flow wires up two-way binding when the property is `@expose`, and read-only reflection when it's `@locked`:
@@ -208,6 +241,18 @@ Bind an input by passing state straight to `value` (or `checked`). Flow wires up
 <input type="checkbox" checked={this.agree} />        {/* @expose → two-way    */}
 <input value={this.ownerName} />                      {/* @locked → read-only  */}
 ```
+
+A **radio group** is bound as a unit rather than per input, because every option writes the same property. Pass the option's own value as a second argument to `bind()`:
+
+```tsx
+{['CUSTOM', 'ROUTE', 'TEAMS'].map((t) => (
+  <label>
+    <input type="radio" name="type" {...this.bind('type', t)} /> {t}
+  </label>
+))}
+```
+
+Each option renders with the shared `flow:model="type"`, its own `value`, and `checked` on whichever one matches the current state. A bare `value={…}`/`checked={…}` on a radio is emitted as a plain attribute and never inferred as a binding — one option in a group cannot own the group's state.
 
 By default the value stays **local** — it updates the DOM instantly and is flushed to the server with your next action. Add `live` to sync to the server as you type, or `blur` to sync when the input loses focus:
 

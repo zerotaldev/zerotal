@@ -138,6 +138,7 @@ class QueueFake = {
 
 class TestApp = {
   new (_app: Application, _errors?: TestExceptionHandler | undefined): TestApp
+  _shared: boolean
   actingAs: (user: {    id: number | string;}) => TestApp
   actingAsGuest: () => TestApp
   app: Application
@@ -230,6 +231,8 @@ function assertDatabaseMissing = (table: string, where: Record<string, unknown>)
 function assertMissingFile = (diskOrDriver: string | StorageDriver, path: string) => Promise<void>
 
 function assertStoredFile = (diskOrDriver: string | StorageDriver, path: string) => Promise<void>
+
+function closeSharedTestApps = () => Promise<void>
 
 function createTestApp = (bootstrap: () => Application | Promise<Application>, setup?: () => void) => Promise<TestApp>
 

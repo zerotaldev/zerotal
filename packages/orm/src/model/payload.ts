@@ -93,6 +93,36 @@ type ColumnKeys<T> = WritableKeys<T> &
 export type InsertPayload<T> = Omit<Pick<T, ColumnKeys<T>>, AutoManagedKeys>;
 
 /**
+ * The insert payload narrowed to a model's mass-assignable columns.
+ *
+ * `create()` funnels into `fill()`, which throws {@link MassAssignmentError} for any key
+ * outside `fillable`. Without this narrowing the type demands fields the runtime forbids:
+ * a non-optional column deliberately kept out of `fillable` — a compliance flag that must
+ * never come from a request body — is *required* by `InsertPayload`, and supplying it
+ * throws. There was no way to satisfy both.
+ *
+ * `Fillable` is inferred from the model's `static fillable`. Declare it `as const` (or as
+ * a literal tuple) and the payload becomes exactly the assignable columns: the flag is no
+ * longer required, and passing it is a compile error rather than a runtime one. When
+ * `fillable` is absent or widened to `string[]`, `Fillable` is `string` and the payload is
+ * the unnarrowed {@link InsertPayload}, so existing models are unaffected.
+ *
+ * @example
+ * class Customer extends BaseModel {
+ *   static fillable = ['name', 'email'] as const;
+ *   @column() name!: string;
+ *   @column() email!: string;
+ *   @column({ type: 'boolean', cast: 'boolean', default: false }) legalHold!: boolean;
+ * }
+ *
+ * await Customer.create({ name: 'Ada', email: 'ada@example.com' }); // ok — legalHold not required
+ * await Customer.create({ name: 'Ada', email: 'a@b.c', legalHold: true }); // compile error
+ */
+export type FillablePayload<T, Fillable extends string> = string extends Fillable
+  ? InsertPayload<T>
+  : Pick<InsertPayload<T>, Extract<keyof InsertPayload<T>, Fillable>>;
+
+/**
  * Data shape accepted when updating an existing record.
  * Every field is optional — pass only what should change.
  *

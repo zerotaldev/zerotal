@@ -169,4 +169,35 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
       { compiled, cached, injected, runtime: skipped, ms },
     );
   }
+
+  _warnIfMostlyRuntime(compiled + cached + injected + skipped, skipped);
 }
+
+/**
+ * Falling back to the runtime renderer for a page or two is normal and correct.
+ * A whole app doing it is not: the runtime path resolves `value=`/`checked=`
+ * bindings by observing property reads at render time, which is necessarily
+ * weaker than the compiler reading the same intent out of the AST. An app that
+ * never compiles is relying on that weaker path everywhere without being told.
+ *
+ * So the per-page reasons stay behind ZT_FLOW_COMPILE_LOG (they are noise at a
+ * handful of pages), but the *rate* is reported unconditionally once it passes
+ * half. The message names the flag, because knowing which construct blocks each
+ * page is the only actionable next step.
+ */
+function _warnIfMostlyRuntime(total: number, runtime: number): void {
+  if (total < MIN_PAGES_FOR_FALLBACK_WARNING) return;
+  if (runtime * 2 <= total) return;
+  if (_explainFallbacks()) return; // already printing a reason per page
+
+  const pct = Math.round((runtime / total) * 100);
+  frameworkLog("flow").warn(
+    `${runtime} of ${total} Flow pages (${pct}%) render through the runtime fallback ` +
+      `instead of compiled output.\n` +
+      `  Set ZT_FLOW_COMPILE_LOG=1 to print what blocks each page.`,
+    { total, runtime, pct },
+  );
+}
+
+/** Below this, a high percentage is not yet evidence of anything. */
+const MIN_PAGES_FOR_FALLBACK_WARNING = 4;

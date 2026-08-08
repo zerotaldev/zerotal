@@ -11,11 +11,11 @@ export class Product extends BaseModel {
 
   @column() name!: string;
   @column() sku!: string;
-  @column({ nullable: true }) description?: string;
+  @column({ nullable: true }) description?: string | undefined;
   /** Price in minor units, so money never rides on a float. */
   @column("integer") price!: number;
-  @column({ cast: "integer", nullable: true }) stock?: number;
+  @column({ cast: "integer", nullable: true }) stock?: number | undefined;
   /** draft | active | discontinued — drives the filter tabs and a select column. */
-  @column({ nullable: true }) status?: string;
-  @column({ cast: "boolean", nullable: true }) featured?: boolean;
+  @column({ nullable: true }) status?: string | undefined;
+  @column({ cast: "boolean", nullable: true }) featured?: boolean | undefined;
 }

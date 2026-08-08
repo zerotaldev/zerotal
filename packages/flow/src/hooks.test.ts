@@ -178,8 +178,17 @@ describe("events — dispatch targeting", () => {
 
 describe("exception hook", () => {
   it("onError catches a thrown action and flashes by default", async () => {
-    const t = await FlowTest.mount(HookPage);
+    // tolerateErrors() opts into the capture: this test is *about* the error path.
+    // Without it `call` rethrows, which is what stops an action that throws in
+    // production from looking like an action that quietly did nothing in tests.
+    const t = (await FlowTest.mount(HookPage)).tolerateErrors();
     await t.call("boom");
     t.assertFlashed("error", "kaboom");
+    t.assertErrored("kaboom");
+  });
+
+  it("rethrows a thrown action by default, so a broken action fails its test", async () => {
+    const t = await FlowTest.mount(HookPage);
+    expect(t.call("boom")).rejects.toThrow("kaboom");
   });
 });

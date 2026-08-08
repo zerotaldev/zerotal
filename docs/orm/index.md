@@ -172,12 +172,29 @@ import { column } from "@zerotal/orm";
 @column("float")    score!:     number;
 @column("text")     bio?:       string;
 
+// Shorthand + options — the shorthand keeps its type and cast
+@column("string", { nullable: true }) nickname?: string | null;
+@column("integer", { nullable: true, default: 0 }) retries?: number | null;
+
 // Full options object
 @column({ type: "datetime", cast: "datetime" }) publishedAt?: Carbon;
 @column({ type: "number", cast: "decimal:2" }) price!: number;
 ```
 
 Shorthands map to: `string`, `text`, `integer`, `number`, `float`, `boolean`, `datetime`, `date`, `json`, `array`. See [Casts & Mutators](/docs/orm/casts) for the full cast reference.
+
+`string` is a bounded VARCHAR and `text` is the unbounded TEXT type — a distinction that matters on Postgres and MySQL, where a long body in a `VARCHAR(255)` is an error rather than a slow column.
+
+### Indexes and uniqueness
+
+Declare constraints on the column and schema generation emits them, so `migrate:generate` produces a schema with the guarantees your application depends on rather than a bare set of columns:
+
+```typescript
+@column({ unique: true }) idempotencyKey!: string;   // unique index
+@column({ index: true })  status!: string;           // plain index
+```
+
+Generated migrations also add an index to any column whose name ends in `_id` (`customerId` → `customer_id`), since an unindexed foreign key is a table scan on every join. The reference itself can't always be inferred; the index can.
 
 ## Mass assignment
 
@@ -218,6 +235,29 @@ import type { Columns } from "@zerotal/orm";
 static fillable: Columns<Post>[] = ["title", "body", "status"];
 // TypeScript error if you list a column name that doesn't exist on Post
 ```
+
+Declare `fillable` as a literal tuple (`as const`) and `create()` narrows its payload to
+exactly those columns:
+
+```typescript
+@table("customers")
+export class Customer extends BaseModel {
+  static fillable = ["name", "email"] as const;
+
+  @column() name!: string;
+  @column() email!: string;
+  // A compliance flag that must never come from a request body
+  @column({ type: "boolean", cast: "boolean", default: false }) legalHold!: boolean;
+}
+
+await Customer.create({ name: "Ada", email: "ada@example.com" }); // ✓ legalHold not required
+await Customer.create({ name: "Ada", email: "…", legalHold: true }); // ✗ compile error
+```
+
+Without the `as const`, the payload is the full column set, so a required non-fillable
+column is demanded by the type and rejected by the runtime — a pair of rules that cannot
+both be satisfied. The narrowing makes the type agree with the guard, and moves the
+mistake from a runtime `MassAssignmentError` to a compile error.
 
 ### Trusted writes — forceFill, forceCreate, unguard
 

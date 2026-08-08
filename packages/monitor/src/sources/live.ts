@@ -6,6 +6,7 @@
  * sample data so the panel stays populated and useful.
  */
 import { Health } from "@zerotal/core/health";
+import { ZEROTAL_VERSION } from "../version.ts";
 import type {
   CheckIn,
   DeadJob,
@@ -232,7 +233,7 @@ export async function liveHealth(_app?: AppShape): Promise<HealthEntry[] | null>
   try {
     const report = await Health.run({
       name: "app",
-      version: "1.0.4",
+      version: ZEROTAL_VERSION,
       environment: process.env.NODE_ENV ?? "production",
       uptime: Math.floor(process.uptime()),
     });

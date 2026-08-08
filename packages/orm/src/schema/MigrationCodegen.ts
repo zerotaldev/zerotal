@@ -6,11 +6,22 @@ import { columnDbName, type ModelColumn, type ModelSchema } from "./ModelInspect
 // Maps @column({ type }) to the Blueprint method that generates the right SQL.
 const BLUEPRINT_METHOD: Record<string, string> = {
   string: "string",
+  text: "text",
   number: "integer",
   boolean: "boolean",
   datetime: "dateTime",
   json: "json",
 };
+
+/**
+ * A column named `*_id` (or `*Id` before snake-casing) is a foreign key by convention,
+ * and an unindexed foreign key is a table scan on every join and every cascade check.
+ * The reference itself can't always be inferred — the target table is a guess — but the
+ * index can, and it is the half that matters for performance.
+ */
+function _looksLikeForeignKey(dbName: string): boolean {
+  return dbName.endsWith("_id") && dbName !== "_id";
+}
 
 // ── Code generation helpers ───────────────────────────────────────────────────
 
@@ -21,6 +32,26 @@ function blueprintCall(col: ModelColumn, indent: string): string {
   if (col.default !== undefined) line += `.default(${JSON.stringify(col.default)})`;
   line += ";";
   return line;
+}
+
+/**
+ * The index lines for a table: everything declared via `@column({ unique | index })`,
+ * plus an inferred index on each foreign-key-shaped column that doesn't already have one.
+ */
+function indexLines(columns: ModelColumn[], indent: string): string[] {
+  const lines: string[] = [];
+  for (const col of columns) {
+    if (col.primary) continue; // the PK is already indexed by increments()
+    const dbName = columnDbName(col.name);
+    if (col.unique) {
+      lines.push(`${indent}table.unique('${dbName}');`);
+    } else if (col.index) {
+      lines.push(`${indent}table.index('${dbName}');`);
+    } else if (_looksLikeForeignKey(dbName)) {
+      lines.push(`${indent}table.index('${dbName}');`);
+    }
+  }
+  return lines;
 }
 
 function createTableBlock(schema: ModelSchema): string {
@@ -35,6 +66,8 @@ function createTableBlock(schema: ModelSchema): string {
 
   if (schema.timestamps) lines.push("      table.timestamps();");
   if (schema.softDeletes) lines.push("      table.softDeletes();");
+
+  lines.push(...indexLines(schema.columns, "      "));
 
   lines.push("    });");
   return lines.join("\n");
@@ -57,6 +90,12 @@ function alterTableBlocks(newColumns: NewColumn[]): string {
     const lines: string[] = [];
     lines.push(`    await Schema.table('${table}', (table) => {`);
     for (const nc of cols) lines.push(blueprintCall(nc.column, "      "));
+    lines.push(
+      ...indexLines(
+        cols.map((nc) => nc.column),
+        "      ",
+      ),
+    );
     lines.push("    });");
     blocks.push(lines.join("\n"));
   }

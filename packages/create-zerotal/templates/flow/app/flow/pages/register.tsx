@@ -48,7 +48,15 @@ export class RegisterPage extends Component {
     user.role = "user";
     await user.save();
 
-    await Auth.attempt({ email: this.email, password: this.password });
+    // Check the result. Redirecting to a guarded page on a failed attempt sends
+    // the visitor to /profile, where AuthMiddleware turns them straight back to
+    // /login — so the account is created and they are bounced to a sign-in form
+    // with no error shown anywhere. Report it instead of redirecting into it.
+    if (!(await Auth.attempt({ email: this.email, password: this.password }))) {
+      this.error = "Your account was created, but signing you in failed. Please sign in.";
+      return;
+    }
+
     this.redirect("/profile").withSuccess("Welcome aboard.");
   }
 

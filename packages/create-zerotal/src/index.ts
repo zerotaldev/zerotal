@@ -110,7 +110,9 @@ async function main(): Promise<void> {
   log('');
   log(`${c.bold}  Next steps:${c.reset}`);
   dim(`cd ${name}`);
-  if (template === 'api') {
+  // Every template that ships baseline migrations builds its schema from them
+  // (synchronize is off), so the first migrate is a required step, not a tip.
+  if (template === 'api' || template === 'flow' || template === 'react' || template === 'vue') {
     if (db !== 'sqlite') {
       dim(`# Set DATABASE_URL in .env`);
     }

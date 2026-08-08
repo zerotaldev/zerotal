@@ -8,9 +8,11 @@
  * does rather than that it exists.
  */
 import { beforeAll, afterAll, describe, test, expect } from 'bun:test';
-import { createTestApp, type TestApp } from 'zerotal/testing';
+import { createTestApp, migrateDatabase, type TestApp } from 'zerotal/testing';
 import { FlowTest } from '@zerotal/flow/testing';
+import { Auth, Hash, isAuthenticatable } from 'zerotal/auth';
 import { ContactPage } from '../app/flow/pages/contact.tsx';
+import { User } from '../app/models/User.ts';
 
 let app: TestApp;
 
@@ -22,6 +24,12 @@ beforeAll(async () => {
   // Each run gets its own throwaway schema rather than the dev database.
   Bun.env.ZT_DB_URL ??= ':memory:';
   app = await createTestApp(() => import('../bootstrap/app.ts').then((m) => m.default));
+  // Build the schema from the project's own migrations. config/database.ts keeps
+  // synchronize off — migrations are the single source of truth — so without this
+  // the :memory: database above has no tables and every test fails on 'no such
+  // table'. Running the real migrations also means the schema under test is the
+  // schema that ships, rather than a second definition that drifts from it.
+  await migrateDatabase();
 });
 
 afterAll(() => app.close());
@@ -72,6 +80,46 @@ describe('auth', () => {
     const res = await app.get('/profile');
 
     expect(res.status).toBe(302);
+  });
+
+  /*
+   * Credentials must actually verify. Asserting that /login and /register
+   * *render* proves nothing about whether anyone can get in, and that gap let a
+   * User model ship that the auth layer could not resolve at all: every correct
+   * password was rejected, and the only symptom was being returned to the
+   * sign-in form. Nothing threw, and every other test still passed.
+   */
+  /*
+   * `validate` rather than `attempt`: it runs the same user lookup and password
+   * check, but stops short of `Auth.login`, which needs a live request context
+   * that a plain unit test has no reason to build. The bug this guards against
+   * lives entirely in the lookup half.
+   */
+  test('a registered user can actually sign in', async () => {
+    const user = new User();
+    user.name = 'Test Person';
+    user.email = 'signin-check@example.com';
+    user.password = await Hash.make('correct-horse-battery');
+    user.role = 'user';
+    await user.save();
+
+    expect(await Auth.validate({
+      email: 'signin-check@example.com',
+      password: 'correct-horse-battery',
+    })).toBe(true);
+  });
+
+  test('the User model is resolvable by the auth layer', () => {
+    // The root cause, asserted directly: `Auth.attempt` finds the user model
+    // through this brand, so a plain `BaseModel` makes every login fail.
+    expect(isAuthenticatable(User)).toBe(true);
+  });
+
+  test('a wrong password is still refused', async () => {
+    expect(await Auth.validate({
+      email: 'signin-check@example.com',
+      password: 'not-the-password',
+    })).toBe(false);
   });
 });
 

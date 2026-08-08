@@ -2068,12 +2068,13 @@ class ConfigValidationError = {
   readonly status: number
 }
 
-function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;    };    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
+function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;        loader?: Record<string, AssetLoaderKind>;    };    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
 
 function configLoader = (dir?: string) => ConfigLoader
 
 interface AppAssetsConfig = {
   entrypoint: string | string[]
+  loader?: Record<string, AssetLoaderKind>
   minify: boolean
   outDir: string
   prefix: string
@@ -2132,6 +2133,8 @@ interface RegisteredConfigValidator = {
   validate: ConfigValidator
 }
 
+type AssetLoaderKind = 'text' | 'file' | 'json' | 'dataurl' | 'base64' | 'toml'
+
 type ConfigIssueLevel = 'error' | 'warning'
 
 type ConfigMap = {    [x: string]: Record<string, unknown>;}
@@ -2174,7 +2177,7 @@ class DevReloadMiddleware = {
 
 const DEV_RELOAD_CLIENT = string
 
-function buildCssBundle = (input: string, outdir: string, minify?: boolean) => Promise<{    success: boolean;    logs: unknown[];}>
+function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<{    success: boolean;    logs: unknown[];}>
 
 function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<{    success: boolean;    logs: unknown[];}>
 
@@ -2188,6 +2191,7 @@ function registerDevHtmlSnippet = (name: string, fn: DevHtmlSnippet) => void
 
 interface AssetBuildConfig = {
   entrypoint: string | string[]
+  loader?: Record<string, string>
   minify: boolean
   outDir: string
   prefix: string

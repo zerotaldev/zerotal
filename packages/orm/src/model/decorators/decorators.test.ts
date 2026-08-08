@@ -80,7 +80,9 @@ describe("@column decorator", () => {
     expect(cols.get("dob")?.cast).toBe("date");
     expect(cols.get("meta")?.cast).toBe("json");
     expect(cols.get("tags")?.cast).toBe("array");
-    expect(cols.get("body")?.type).toBe("string");
+    // "text" is its own storage type, not an alias for "string" — the distinction is
+    // real on Postgres/MySQL, where a long body in a VARCHAR(255) is an error.
+    expect(cols.get("body")?.type).toBe("text");
     expect(cols.get("amount")?.type).toBe("number");
     expect(cols.get("price")?.cast).toBe("decimal:2");
     expect(cols.get("frozenAt")?.cast).toBe("immutable_datetime");

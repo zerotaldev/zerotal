@@ -382,6 +382,31 @@ A directory that has been collecting chunks since before this existed is cleaned
 by the next build, since chunks are recognised by name and not only by the
 record.
 
+## Controlling how files are loaded
+
+`url()` references in your CSS are resolved at build time, and Bun inlines small
+files as `data:` URIs. That is the right default for an icon and the wrong one for a
+font: the bytes move **into the stylesheet**, which blocks first paint. Nine woff2
+subsets can turn a 36 KB stylesheet into 260 KB that must download before anything
+renders — the opposite of what `font-display: swap` is for, and expensive on exactly
+the connections that need it most.
+
+Set a per-extension loader to emit them as separate files instead:
+
+```typescript
+// config/app.ts
+export default AppConfig({
+  assets: {
+    entrypoint: "resources/css/app.css",
+    loader: { ".woff2": "file", ".woff": "file" },
+  },
+});
+```
+
+`file` copies the asset to `outDir` and rewrites the `url()` to point at it, so the
+stylesheet stays small and the fonts load in parallel. The other accepted values are
+`dataurl` (force inlining), `base64`, `text`, `json`, and `toml`.
+
 ## Hot reload
 
 Both pipelines above are driven by the same dev process. `bun zt serve --dev`

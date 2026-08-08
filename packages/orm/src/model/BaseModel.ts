@@ -35,7 +35,7 @@ import { type ManyToMany } from "./relations/RelationRegistry.ts";
 import { installReactiveAccessors, type ColumnOptions } from "./decorators/column.ts";
 import { columnsFor, relationsFor } from "./decorators/_metadata.ts";
 import { TransactionContext } from "../db/TransactionContext.ts";
-import type { InsertPayload, UpdatePayload } from "./payload.ts";
+import type { InsertPayload, UpdatePayload, FillablePayload } from "./payload.ts";
 import type { WhereOperator, OrderDirection } from "../db/types.ts";
 
 let _dialect: "sqlite" | "postgres" | "mysql" = "sqlite";
@@ -660,7 +660,7 @@ export class BaseModel {
    *
    * @category Attributes & mass assignment
    */
-  static fillable?: string[];
+  static fillable?: readonly string[];
 
   /**
    * Denylist of camelCase field names blocked from create() / fill().
@@ -669,7 +669,7 @@ export class BaseModel {
    *
    * @category Attributes & mass assignment
    */
-  static guarded?: string[];
+  static guarded?: readonly string[];
 
   /**
    * Disable mass-assignment protection for this model — every attribute passed
@@ -1198,6 +1198,11 @@ export class BaseModel {
    * Mass-assign `data` (respecting {@link fillable} / {@link guarded}) onto a new
    * instance and {@link save} it, returning the persisted model.
    *
+   * When the model declares `static fillable` as a literal tuple (`as const`), the
+   * payload type is narrowed to exactly those columns — so a column deliberately kept
+   * out of `fillable` is neither required nor accepted here, instead of being demanded
+   * by the type and rejected by {@link fill} at runtime.
+   *
    * @throws {MassAssignmentError} when `data` contains a non-fillable key.
    *
    * @example
@@ -1205,7 +1210,10 @@ export class BaseModel {
    *
    * @category Persistence
    */
-  static async create<T extends BaseModel>(this: ModelCtor<T>, data: InsertPayload<T>): Promise<T> {
+  static async create<T extends BaseModel, F extends string = string>(
+    this: ModelCtor<T> & { fillable?: readonly F[] | undefined },
+    data: FillablePayload<T, F>,
+  ): Promise<T> {
     const inst = new this();
     inst.fill(data as UpdatePayload<T>);
     return inst.save() as Promise<T>;
@@ -1604,9 +1612,12 @@ export class BaseModel {
     // On INSERT: hash every hashable field that holds a non-empty string.
     // On UPDATE: only hash hashable fields whose value changed since the last
     //            save (avoids re-hashing an already-stored bcrypt hash).
+    // One keyed view of the instance for the whole method: the hashable pass and the
+    // insert's default-filling both need to read and write columns by name.
+    const self = this as unknown as Record<string, unknown>;
+
     const hashable = ModelClass.hashable;
     if (hashable && hashable.length > 0) {
-      const self = this as unknown as Record<string, unknown>;
       if (!this._exists) {
         for (const key of hashable) {
           const val = self[key];
@@ -1635,7 +1646,24 @@ export class BaseModel {
       const row: Record<string, unknown> = _writeDialect.run(dialect, () => {
         const r: Record<string, unknown> = {};
         for (const [key, val] of ownDataEntries(this, SYSTEM_KEYS, rels, colKeys)) {
-          r[toSnake(key)] = _serializeForWrite(key, val, casts, colReg);
+          // A declared field that was never assigned is `undefined`, and writing that
+          // as an explicit NULL made `@column({ default: … })` inert: the INSERT named
+          // the column, so the database never applied its own default and a NOT NULL
+          // column failed outright. Fall back to the declared default, and if there
+          // isn't one, omit the column entirely so the database decides.
+          //
+          // Only `undefined` is treated this way. An explicit `null` is a deliberate
+          // "store NULL" and still writes one.
+          let effective = val;
+          if (effective === undefined) {
+            const declared = colReg?.get(key)?.default;
+            if (declared === undefined) continue; // omit → database default / NULL
+            effective = typeof declared === "function" ? (declared as () => unknown)() : declared;
+            // Keep the instance consistent with the row we are about to write, so the
+            // value is readable straight after save() without a reload.
+            self[key] = effective;
+          }
+          r[toSnake(key)] = _serializeForWrite(key, effective, casts, colReg);
         }
         if (ModelClass.timestamps) {
           const now = _serializeDate(new Date());

@@ -53,11 +53,32 @@ function createTestApp(
 ```
 
 The optional `setup` callback runs after `resetTestState()` but before `app.start()` —
-use it to register routes or override bindings specific to the suite. `close()` stops
-the server and resets framework state.
+use it to register routes or override bindings specific to the suite.
 
 > **Note** — Routes registered in `setup` are compiled into the server before it
 > starts, so they resolve correctly during the suite.
+
+### One app per process
+
+Bun runs a whole suite in a single process, and the database connection is
+process-global. So when several test files each call `createTestApp()` with the same
+bootstrap module, they share one booted app: the first call boots it, the rest get the
+same instance back.
+
+That means `close()` in a file's `afterAll` resets per-test state (auth, flash, captured
+mail) but leaves the app running for the files still to come. Without this, the first
+file's teardown closed the connection every later file depended on, and the file that
+failed was a correct one that merely ran second:
+
+```text
+[Zerotal ORM] No database connection. Is DatabaseProvider registered?
+```
+
+Keep calling `close()` in every file — it is what resets state between them. Passing a
+`setup` callback opts out of sharing (routes cannot be registered twice against a
+running server), and that app is torn down fully by its own `close()`. To tear the
+shared app down explicitly — a global teardown, or a test asserting no timers leak —
+call `closeSharedTestApps()`.
 
 ## Sending requests
 

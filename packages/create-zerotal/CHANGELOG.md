@@ -1,4 +1,4 @@
-# Changelog â @zerotal/create-zerotal
+# Changelog — @zerotal/create-zerotal
 
 All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
@@ -7,6 +7,14 @@ follows the Zerotal monorepo's unified versioning.
 **Maturity: `stable`**
 
 ## [Unreleased]
+
+## [1.1.0] — 2026-08-08
+
+### Fixed
+
+- **A fresh scaffold can run `migrate`.** The flow, react and vue templates shipped `synchronize` on *and* baseline migrations, so boot-time sync created `users` from the model and the first `bun zt migrate` collided with it — on the very first command a new user types. Migrations are now the single source of truth in those templates, as they already were in `api`, and `bun zt migrate` is listed in the scaffold's next steps.
+- **The scaffolded test suite builds its schema.** With `synchronize` off, `createTestApp()` hands back a `:memory:` database with no tables; the smoke test now calls `migrateDatabase()`, which also means the schema under test is the schema that ships.
+- **Nullable model fields can be cleared.** The templates declared them `?: T` under `exactOptionalPropertyTypes: true`, which means "may be absent, but never `undefined`" — so assigning `undefined` to clear the field, which is the point of a nullable column, did not typecheck. They are now `?: T | undefined`.
 
 ## [1.0.4] — 2026-08-07
 

@@ -37,7 +37,7 @@ class Component = {
   _titleValue: string | null
   _validateField: (field: string) => Promise<void>
   addError: (field: string, message: string) => void
-  bind: (key: string) => Record<string, unknown>
+  bind: (key: string, optionValue?: string) => Record<string, unknown>
   cancelled: boolean
   child: <C extends Component>(ChildClass: new () => C, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>
   clearDurable: () => void
@@ -1020,6 +1020,7 @@ class FlowTest = {
   static mount: <T extends Component>(PageClass: PageClass<T>, props?: Partial<T>) => Promise<FlowTest<T>>
   assertDispatched: (eventName: string) => FlowTest<T>
   assertDontSee: (text: string) => FlowTest<T>
+  assertErrored: (match?: string | RegExp) => FlowTest<T>
   assertFlashed: (level?: string, message?: string) => FlowTest<T>
   assertHasErrors: (field: string, message?: string) => FlowTest<T>
   assertNoErrors: () => FlowTest<T>
@@ -1031,9 +1032,13 @@ class FlowTest = {
   errors: () => Record<string, string[]>
   flashes: () => FlowEffects['flashes']
   html: () => string
+  lastError: () => Error | null
   page: () => T
+  render: () => Promise<FlowTest<T>>
+  seed: (prop: keyof T, value: unknown) => Promise<FlowTest<T>>
   set: (prop: keyof T, value: unknown) => Promise<FlowTest<T>>
   snapshot: () => Snapshot | null
+  tolerateErrors: () => FlowTest<T>
   update: (prop: keyof T, value: unknown) => Promise<FlowTest<T>>
 }
 

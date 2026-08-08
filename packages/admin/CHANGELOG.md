@@ -1,4 +1,4 @@
-# Changelog â @zerotal/admin
+# Changelog — @zerotal/admin
 
 All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package

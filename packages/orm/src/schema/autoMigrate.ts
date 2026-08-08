@@ -9,6 +9,7 @@ import type { ModelColumn } from "./ModelInspector.ts";
 // `migrate:generate` would - but applies it directly instead of writing a migration file.
 const BLUEPRINT_METHOD: Record<string, string> = {
   string: "string",
+  text: "text",
   number: "integer",
   boolean: "boolean",
   datetime: "dateTime",
@@ -21,15 +22,22 @@ type TableBuilder = Record<string, (name: string) => ColumnBuilder> & {
   timestamps(): void;
   softDeletes(): void;
   dropColumn(...names: string[]): unknown;
+  unique(columns: string | string[], name?: string): unknown;
+  index(columns: string | string[], name?: string): unknown;
 };
 
 function applyColumn(table: TableBuilder, col: ModelColumn): void {
   const method = BLUEPRINT_METHOD[col.type ?? "string"] ?? "string";
   // Models declare columns in camelCase; the ORM reads/writes snake_case — emit snake_case
   // so synchronize produces columns the runtime can actually read (e.g. two_factor_secret).
-  const builder = table[method]!(columnDbName(col.name));
+  const dbName = columnDbName(col.name);
+  const builder = table[method]!(dbName);
   if (col.nullable) builder.nullable();
   if (col.default !== undefined) builder.default(col.default);
+  // Declared constraints travel with the column, so a synced schema carries the same
+  // uniqueness guarantee the model asserts rather than only the column's storage type.
+  if (col.unique) table.unique(dbName);
+  else if (col.index) table.index(dbName);
 }
 
 /** Options for {@link synchronizeSchema}. */

@@ -1,4 +1,4 @@
-# Changelog â @zerotal/monitor
+# Changelog — @zerotal/monitor
 
 All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
@@ -7,6 +7,12 @@ follows the Zerotal monorepo's unified versioning.
 **Maturity: `experimental`**
 
 ## [Unreleased]
+
+## [1.1.0] — 2026-08-08
+
+### Fixed
+
+- **The reported framework version follows the release.** Two hardcoded version strings in `sources/live.ts` and `sources/system.ts` meant a monitored app reported whatever version was current when those lines were last edited. They now read the package's own manifest, which the lockstep release keeps correct.
 
 ## [1.0.3] — 2026-08-07
 

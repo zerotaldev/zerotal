@@ -8,6 +8,27 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-08-08
+
+### Fixed
+
+- **A column `default` is applied on insert.** A declared field that was never assigned was written as an explicit `NULL`, so the INSERT named the column, the database never applied its own default, and a `NOT NULL` column failed outright — on a model and migration that both declared `default: 0`. `undefined` now means "I didn't say": the declared default is used, or the column is omitted so the database decides. An explicit `null` still stores `NULL`.
+- **A `Date` compared against a timestamp column matches again.** Bound values are serialised through the column's cast metadata, but the framework-managed `created_at` / `updated_at` / `deleted_at` carry no `@column` registration — so a `Date` was bound raw and matched nothing. `where("created_at", ">=", monthStart)` is the commonest reporting query there is, and it silently returned zero rows: a dashboard reading "0 this month" looks like a quiet month, not a broken query.
+
+### Added
+
+- `@column("string", { nullable: true })` — a two-argument form. The shorthand keeps its type and cast; the options cannot contradict them.
+- `@column({ unique: true })` and `@column({ index: true })`, carried through to both `migrate:generate` and `synchronize`. Uniqueness is usually a correctness property, and it was not expressible at all.
+- Generated migrations index any `*_id` column. The reference cannot always be inferred, but the index can, and an unindexed foreign key is a table scan on every join.
+- `"text"` is its own storage type rather than an alias for `"string"`, so a real `TEXT` column is expressible — the distinction matters on Postgres and MySQL.
+
+### Changed
+
+- **`create()` narrows its payload to the mass-assignable columns** when a model declares `fillable` as a literal tuple (`as const`). A required column deliberately kept out of `fillable` was demanded by `InsertPayload` and refused by `fill()` at runtime: the type required exactly what the runtime forbade, and there was no spelling of `create()` that satisfied both. Models without a literal list are unaffected.
+- `static fillable` / `static guarded` accept `readonly string[]`.
+- A migration that fails with "already exists" now says that `database.synchronize` is the usual cause, since the raw driver error names nothing actionable.
+- `make:model` generates `fillable` as a literal tuple and documents that a nullable column is declared `?: T | undefined` — under the scaffold's `exactOptionalPropertyTypes`, `?: T` cannot be assigned `undefined`, so the field could never be cleared.
+
 ## [1.0.3] — 2026-08-07
 
 ### Changed

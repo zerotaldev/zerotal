@@ -11,9 +11,19 @@ export function modelStub(name: string, tableName: string): string {
 export class ${name} extends BaseModel {
   // Models guard every attribute by default. List the columns that may be
   // mass-assigned from user input via create() / fill().
-  static override fillable: string[] = ['name'];
+  //
+  // \`as const\` is what lets create() narrow its payload to exactly these columns,
+  // so a column kept out of this list is neither required by the type nor accepted
+  // at runtime — instead of being demanded by one and refused by the other.
+  static override fillable = ['name'] as const;
 
   @column() name!: string;
+
+  // A nullable column is declared \`?: T | undefined\`, not \`?: T\`. The scaffold
+  // enables exactOptionalPropertyTypes, under which \`?: T\` means "may be absent,
+  // but never undefined" — so clearing the field, which is the whole point of a
+  // nullable column, would not typecheck.
+  // @column({ nullable: true }) note?: string | undefined;
 }
 `;
 }

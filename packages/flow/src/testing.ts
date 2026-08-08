@@ -54,6 +54,10 @@ export class FlowTest<T extends Component> {
   private _effects: FlowEffects | null = null;
   private _snapshot: Snapshot | null = null;
   private _name: string;
+  /** Set by {@link tolerateErrors}: capture action errors instead of rethrowing them. */
+  private _tolerateErrors = false;
+  /** The last non-validation error an action threw, when {@link tolerateErrors} is on. */
+  private _lastError: Error | null = null;
 
   private constructor(page: T, name: string) {
     this._page = page;
@@ -97,13 +101,43 @@ export class FlowTest<T extends Component> {
   // ── Actions ────────────────────────────────────────────────────────────────
 
   /**
-   * Set a property value directly (state seeding), then return for chaining.
-   * Does NOT fire the updating/updated hooks — use `update()` to simulate a
-   * client-driven property change.
+   * Set a property value directly (state seeding) and re-render, then return for
+   * chaining. Does NOT fire the updating/updated hooks — use `update()` to
+   * simulate a client-driven property change.
+   *
+   * The re-render is the point: without it `html()` and every assertion that reads
+   * it would still describe the render from *before* the assignment, so a test
+   * would silently assert against stale markup. Use {@link seed} when you are
+   * assigning several properties and only want to pay for one render.
    * @category Actions
    */
   async set(prop: keyof T, value: unknown): Promise<this> {
     (this._page as Record<string, unknown>)[prop as string] = value;
+    await this._render();
+    return this;
+  }
+
+  /**
+   * Assign a property without re-rendering — the batching form of {@link set}.
+   * Nothing reads the new value until the next `set`/`update`/`call` (or an
+   * explicit {@link render}) produces a fresh render.
+   * @category Actions
+   *
+   * @example
+   * ```ts
+   * await t.seed('step', 3);
+   * await t.seed('mode', 'advanced');
+   * await t.render();          // one render for both
+   * ```
+   */
+  async seed(prop: keyof T, value: unknown): Promise<this> {
+    (this._page as Record<string, unknown>)[prop as string] = value;
+    return this;
+  }
+
+  /** Re-render the page without changing state (pairs with {@link seed}). @category Actions */
+  async render(): Promise<this> {
+    await this._render();
     return this;
   }
 
@@ -121,14 +155,70 @@ export class FlowTest<T extends Component> {
   }
 
   /**
+   * Opt out of the rethrow in {@link call}: a throwing action is captured on the
+   * harness instead of failing the test, so the error path itself can be asserted.
+   *
+   * Only for tests *about* error handling. Leaving it off is what makes a broken
+   * action fail its test rather than look like a no-op.
+   * @category Actions
+   *
+   * @example
+   * ```ts
+   * const t = (await FlowTest.mount(CheckoutPage)).tolerateErrors();
+   * await t.call('submit');
+   * t.assertErrored(/payment gateway/);
+   * ```
+   */
+  tolerateErrors(): this {
+    this._tolerateErrors = true;
+    return this;
+  }
+
+  /** The last non-validation error an action threw, or null. @category Actions */
+  lastError(): Error | null {
+    return this._lastError;
+  }
+
+  /**
+   * Assert the last action threw, optionally matching its message.
+   * Requires {@link tolerateErrors} — without it a throwing action fails the test outright.
+   * @category Assertions
+   */
+  assertErrored(match?: string | RegExp): this {
+    if (!this._lastError) {
+      throw new Error(
+        `[FlowTest] Expected the last action on ${this._name} to throw, but it did not.`,
+      );
+    }
+    if (match !== undefined) {
+      const message = this._lastError.message;
+      const ok = typeof match === "string" ? message.includes(match) : match.test(message);
+      if (!ok) {
+        throw new Error(
+          `[FlowTest] Expected the error message to match ${String(match)}, but got: ${message}`,
+        );
+      }
+    }
+    return this;
+  }
+
+  /**
    * Call an action method and re-render. Simulates a subsequent (WebSocket) request:
    * runs `onBoot()` + `onHydrate()`, invokes the method, then `onUpdate()` and re-render.
-   * If the action throws ValidationError, the errors are stored and the page re-renders
-   * with the error bag populated; any other thrown error is routed to `onError()`.
+   *
+   * A `ValidationError` is an expected outcome: the errors are stored and the page
+   * re-renders with the error bag populated, exactly as in production.
+   *
+   * Any other error is routed to `onError()` (mirroring production) and then
+   * **rethrown**, so a broken action fails its test instead of silently rendering
+   * an unchanged page. Call {@link tolerateErrors} first when the error path is
+   * what you are testing.
    *
    * @param method - Name of the method to invoke on the page.
    * @param args - Arguments forwarded to the method.
    * @throws If `method` is not a function on the page instance.
+   * @throws Whatever the action threw, unless it was a `ValidationError` or
+   *   {@link tolerateErrors} is on.
    * @category Actions
    */
   async call(method: string, ...args: unknown[]): Promise<this> {
@@ -141,16 +231,25 @@ export class FlowTest<T extends Component> {
     await this._page.onBoot();
     await this._page.onHydrate();
 
+    this._lastError = null;
+    let thrown: Error | null = null;
+
     try {
       await (fn as (...a: unknown[]) => unknown).apply(this._page, args);
     } catch (error) {
       if (error instanceof ValidationError) {
-        // Errors already stored on page._errors
+        // Errors already stored on page._errors — a normal, assertable outcome.
       } else {
+        thrown = error instanceof Error ? error : new Error(String(error));
+        this._lastError = thrown;
+        // Run the production error hook so its side effects (the default flashes
+        // the message) are observable either way. An onError that itself throws
+        // replaces the original — surfacing the deeper bug rather than hiding it.
         try {
-          await this._page.onError(error instanceof Error ? error : new Error(String(error)));
-        } catch {
-          // ignore
+          await this._page.onError(thrown);
+        } catch (hookError) {
+          thrown = hookError instanceof Error ? hookError : new Error(String(hookError));
+          this._lastError = thrown;
         }
       }
     }
@@ -158,6 +257,10 @@ export class FlowTest<T extends Component> {
     await this._page.onUpdate();
     this._effects = this._page._drainEffects();
     await this._render();
+
+    // Rethrow after the re-render, so an opted-in test still sees the rendered
+    // error state and a non-opted-in test gets the real stack.
+    if (thrown && !this._tolerateErrors) throw thrown;
     return this;
   }
 

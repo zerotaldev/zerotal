@@ -78,10 +78,10 @@ class AuthUser = {
   static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
-  static create: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ids: (number | string)[]) => Promise<T[]>
@@ -93,7 +93,7 @@ class AuthUser = {
   static firstOrNew: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static implicitBinding?: boolean
@@ -494,10 +494,10 @@ class Permission = {
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
-  static create: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ids: (number | string)[]) => Promise<T[]>
@@ -509,7 +509,7 @@ class Permission = {
   static firstOrNew: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static idsFor: (items: (string | number | Permission)[], guard?: string) => Promise<number[]>
@@ -647,10 +647,10 @@ class Role = {
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
-  static create: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>) => Promise<T>
+  static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
-  static fillable?: string[]
+  static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ids: (number | string)[]) => Promise<T[]>
@@ -662,7 +662,7 @@ class Role = {
   static firstOrNew: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static forceCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: Record<string, unknown>) => Promise<T>
   static fromRow: (row: Record<string, unknown>) => BaseModel
-  static guarded?: string[]
+  static guarded?: readonly string[]
   static hashable?: string[]
   static hidden: string[]
   static idsFor: (items: (string | number | Role)[], guard?: string) => Promise<number[]>

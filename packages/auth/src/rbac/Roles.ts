@@ -2,8 +2,8 @@
 //
 // Relational, DB-backed roles mixin. Apply to any model that should carry roles:
 //
-//   export class User extends BaseModelWith(Authenticatable, Roles) {}
-//   export class User extends BaseModelWith(Authenticatable, Permissions, Roles) {}
+//   export class User extends Model.using(Authenticatable, Roles) {}
+//   export class User extends Model.using(Authenticatable, Permissions, Roles) {}
 //   // (the nested form Roles(Permissions(AuthUser)) still works too)
 //
 // Roles are a polymorphic many-to-many (`model_roles`) and each role carries its
@@ -65,10 +65,10 @@ export function hasRolesMixin(model: unknown): boolean {
  *
  * @example
  * ```ts
- * import { BaseModelWith, Authenticatable } from "@zerotal/orm";
+ * import { Model, Authenticatable } from "@zerotal/orm";
  * import { Roles } from "@zerotal/auth";
  *
- * export class User extends BaseModelWith(Authenticatable, Roles) {}
+ * export class User extends Model.using(Authenticatable, Roles) {}
  *
  * const user = await User.find(1);
  * await user.assignRole("editor");   // async write

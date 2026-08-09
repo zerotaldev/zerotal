@@ -33,6 +33,8 @@ import {
 } from "../errors/index.ts";
 import { type ManyToMany } from "./relations/RelationRegistry.ts";
 import { installReactiveAccessors, type ColumnOptions } from "./decorators/column.ts";
+import { _compose } from "./mixins.ts";
+import type { Compose } from "./mixins.ts";
 import { columnsFor, relationsFor } from "./decorators/_metadata.ts";
 import { TransactionContext } from "../db/TransactionContext.ts";
 import type { InsertPayload, UpdatePayload, FillablePayload } from "./payload.ts";
@@ -566,6 +568,37 @@ export class BaseModel {
    * key sets automatically.
    */
   declare readonly __isZerotalModel: true;
+
+  /**
+   * Compose one or more model mixins onto this class, folding them left-to-right, so reusable
+   * model behaviour (auth contract, roles, permissions, soft deletes, tenancy, …) stacks flat
+   * instead of nesting.
+   *
+   * @remarks
+   * Each mixin receives the accumulated base and returns an extended class, so this class's full
+   * static surface (`query()`, `find()`, `create()`, scopes, …) and every mixin's instance and
+   * static members flow through to the composed class — fully type-checked. Prefer this over
+   * hand-nesting mixins (`Roles(Permissions(AuthUser))`), which reads inside-out and repeats the
+   * base.
+   *
+   * `using` composes onto whatever class it is called on, so it also works on an intermediate
+   * model base, and the composed class carries `using` itself, so `Model.using(a, b).using(c)`
+   * chains past the 8-mixin overload set.
+   *
+   * Mixin authors declaring columns must call {@link registerColumn} imperatively — the `@column`
+   * decorator cannot run inside a returned class expression.
+   *
+   * @param mixins - Mixin factories applied in order; each receives the class the previous one produced.
+   * @returns A model class extending this one with every mixin applied.
+   *
+   * @example
+   * ```ts
+   * class User extends Model.using(Authenticatable, Permissions, Roles) {}
+   * ```
+   *
+   * @category Composition
+   */
+  static using: Compose = _compose;
 
   /**
    * Database table this model maps to. Usually set for you by the `@table("…")`
@@ -2530,5 +2563,7 @@ function _applyRow(inst: BaseModel, row: Record<string, unknown>): void {
   (inst as unknown as { _original: Record<string, unknown> })._original = orig;
 }
 
-// Backward-compat alias (index.ts exports `Model`)
+// `Model` is the canonical name at the declaration site — `class User extends Model.using(…)`
+// mirrors Flow's `class PostsPage extends Component.using(…)`. `BaseModel` remains exported as
+// an alias (same class object) for code that references the base class by that name.
 export { BaseModel as Model };

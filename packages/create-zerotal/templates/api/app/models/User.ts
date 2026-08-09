@@ -1,7 +1,7 @@
-import { BaseModel, column, table } from 'zerotal/orm';
+import { Model, column, table } from 'zerotal/orm';
 
 @table('users')
-export class User extends BaseModel {
+export class User extends Model {
   // Models guard every attribute by default. List the columns that may be
   // mass-assigned from user input — note `role` is deliberately excluded so a
   // request body cannot escalate privileges via `User.create(ctx.body())`.

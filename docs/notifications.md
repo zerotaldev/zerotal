@@ -284,7 +284,7 @@ import { column, table } from "@zerotal/orm";
 import { Notifiable } from "@zerotal/notifications";
 
 @table("users")
-export class User extends Notifiable(AuthUser) {
+export class User extends AuthUser.using(Notifiable) {
   @column() email!: string;
 }
 ```
@@ -506,7 +506,7 @@ The broadcast channel works like this:
 
   ```ts
   // app/models/User.ts
-  class User extends BaseModel {
+  class User extends Model {
     receivesBroadcastNotificationsOn() {
       return `users.${this.id}`;
     }

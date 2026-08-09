@@ -3,7 +3,7 @@
  * stateless, link-based email verification.
  *
  * @remarks
- * Compose it with `BaseModelWith` — no `@column` and no migration needed: the
+ * Compose it with `Model.using` — no `@column` and no migration needed: the
  * column is registered imperatively here, and `AuthProvider` ensures it exists on
  * the model's table at boot (see `authSchemaConcern`).
  *
@@ -19,7 +19,7 @@
  *
  * @example
  * ```ts
- * class User extends BaseModelWith(Authenticatable, EmailVerification) {}
+ * class User extends Model.using(Authenticatable, EmailVerification) {}
  *
  * user.hasVerifiedEmail();                         // boolean
  * const token = user.createEmailVerificationToken(); // email /verify-email/${token}

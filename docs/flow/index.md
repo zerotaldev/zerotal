@@ -182,14 +182,14 @@ a review, and taken by the page-title accessor.
 
 The names in use:
 
-| Group | Names |
-| --- | --- |
-| Lifecycle | `onBoot` `onMount` `onHydrate` `onDehydrate` `onRendering` `onRendered` `onUpdate` `onUpdating` `onUpdated` `onError` |
-| Rendering | `render` `layout` `placeholder` `slot` `hasSlot` `child` `title` |
-| Actions & state | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal` |
-| Navigation | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent` |
-| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `client` |
-| Misc | `flash` `download` `clearDurable` |
+| Group             | Names                                                                                                                 |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Lifecycle         | `onBoot` `onMount` `onHydrate` `onDehydrate` `onRendering` `onRendered` `onUpdate` `onUpdating` `onUpdated` `onError` |
+| Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child` `title`                                                      |
+| Actions & state   | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal`              |
+| Navigation        | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent`                                          |
+| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `client`                                                              |
+| Misc              | `flash` `download` `clearDurable`                                                                                     |
 
 Anything beginning with `_` is also framework-internal, as is the static `durable`.
 
@@ -227,12 +227,16 @@ Client expressions read and write the same `@expose` properties your server sees
 A list with per-row actions needs to tell the server _which_ row. Write the call as you would expect, and Flow compiles the arguments into the markup:
 
 ```tsx
-{this.enquiries.map((row) => (
-  <tr>
-    <td>{row.reference}</td>
-    <td><button onClick={() => this.archive(row.id)}>Archive</button></td>
-  </tr>
-))}
+{
+  this.enquiries.map((row) => (
+    <tr>
+      <td>{row.reference}</td>
+      <td>
+        <button onClick={() => this.archive(row.id)}>Archive</button>
+      </td>
+    </tr>
+  ));
+}
 ```
 
 The arguments are evaluated **on the server, during the render** — where `row` exists — and travel with the action as `data-args`. Your action receives them as ordinary parameters:
@@ -246,7 +250,9 @@ The arguments are evaluated **on the server, during the render** — where `row`
 You can also write `data-args` yourself, which is useful when the handler is built dynamically:
 
 ```tsx
-<button onClick={this.archive} data-args={JSON.stringify([row.id])}>Archive</button>
+<button onClick={this.archive} data-args={JSON.stringify([row.id])}>
+  Archive
+</button>
 ```
 
 ::: warning Arguments are evaluated once, at render time
@@ -270,11 +276,13 @@ Bind an input by passing state straight to `value` (or `checked`). Flow wires up
 A **radio group** is bound as a unit rather than per input, because every option writes the same property. Pass the option's own value as a second argument to `bind()`:
 
 ```tsx
-{['CUSTOM', 'ROUTE', 'TEAMS'].map((t) => (
-  <label>
-    <input type="radio" name="type" {...this.bind('type', t)} /> {t}
-  </label>
-))}
+{
+  ["CUSTOM", "ROUTE", "TEAMS"].map((t) => (
+    <label>
+      <input type="radio" name="type" {...this.bind("type", t)} /> {t}
+    </label>
+  ));
+}
 ```
 
 Each option renders with the shared `flow:model="type"`, its own `value`, and `checked` on whichever one matches the current state. A bare `value={…}`/`checked={…}` on a radio is emitted as a plain attribute and never inferred as a binding — one option in a group cannot own the group's state.
@@ -542,7 +550,7 @@ Flow is a large surface. Each section below is its own page.
 | [Forms, Validation & Uploads](/docs/flow/forms)   | Two-way bound inputs, real-time validation, and server-handled file uploads.                          |
 | [Pagination](/docs/flow/pagination)               | The Pagination mixin, URL-synced pages, and named paginators.                                         |
 | [Built-in Components](/docs/flow/components)      | The component library that ships with Flow — forms, overlays, tables, and feedback.                   |
-| [Layouts & Composition](/docs/flow/layouts)       | Wrap pages in layouts, nest components, and pass markup between them.                                 |
+| [Layouts & Composition](/docs/flow/layouts)       | Wrap pages in layouts, compose behaviour with mixins, nest components, and pass markup between them.  |
 | [Transport & Performance](/docs/flow/performance) | How updates reach the browser, what to do on hostile networks, and the polish that hides latency.     |
 | [Testing](/docs/flow/testing)                     | Drive a component in-process, assert on its state, and test the rendered markup.                      |
 | [Reference](/docs/flow/references)                | Every decorator, prop, directive, and client global in one table.                                     |

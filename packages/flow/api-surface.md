@@ -9,6 +9,7 @@ class Component = {
   new (): Component
   static durable?: boolean | {    ttl?: string;    scope?: 'user' | 'session';}
   static readonly __isFlowPage: true
+  static using: Compose
   $refresh: () => void
   $set: (key: string, value: unknown) => void
   _applyClientUpdate: (key: string, value: unknown, arrayKey?: string) => Promise<void>
@@ -191,8 +192,6 @@ function Calendar = (props: CalendarProps) => HtmlNode
 function Checkbox = (props: CheckboxProps) => HtmlNode
 
 function Combobox = (props: ComboboxProps) => HtmlNode
-
-function ComponentWith = {    <A extends Constructor>(a: (base: Base) => A): A;    <A extends Constructor, B extends Constructor>(a: (base: Base) => A, b: (base: A) => B): B;    <A extends Constructor, B extends Constructor, C extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C): C;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D): D;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E): E;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F): F;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G): G;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H): H;}
 
 function computed = <This, Return>(getter: (this: This) => Return, context: ClassGetterDecoratorContext<This, Return>) => (this: This) => Return
 
@@ -400,6 +399,17 @@ interface ComboboxProps = {
   placeholder?: string
   query?: unknown
   queryName?: string
+}
+
+interface Compose = {
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H): H
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G): G
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F): F
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E): E
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D): D
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C): C
+  <TBase extends Constructor, A extends Constructor, B extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B): B
+  <TBase extends Constructor, A extends Constructor>(this: TBase, a: (base: TBase) => A): A
 }
 
 interface DescriptionProps = {

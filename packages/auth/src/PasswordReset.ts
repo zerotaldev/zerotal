@@ -15,7 +15,7 @@
  *
  * @example
  * ```ts
- * class User extends BaseModelWith(Authenticatable, PasswordReset) {}
+ * class User extends Model.using(Authenticatable, PasswordReset) {}
  *
  * // 1. Locked-out user requests a reset — email the link:
  * const token = user.createPasswordResetToken();          // /reset-password?token=<token>

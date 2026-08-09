@@ -46,7 +46,7 @@ interface TableConfig {
  * export class Post extends BaseModel { ... }
  *
  * Soft deletes are opt-in via the `SoftDeletes` mixin, not `@table`:
- * `class Post extends BaseModelWith(SoftDeletes) {}` — see /docs/orm/lifecycle.
+ * `class Post extends Model.using(SoftDeletes) {}` — see /docs/orm/lifecycle.
  */
 export interface TableDecoratorBuilder {
   /** Apply the decorator to a class constructor (called automatically by TS). */
@@ -77,7 +77,7 @@ export interface TableDecoratorBuilder {
  * ```
  *
  * Timestamps are **on by default** — use `.withoutTimestamps()` to opt out. Soft
- * deletes are **opt-in via the `SoftDeletes` mixin**: `extends BaseModelWith(SoftDeletes)`.
+ * deletes are **opt-in via the `SoftDeletes` mixin**: `extends Model.using(SoftDeletes)`.
  *
  * `@table` is the single, required way to configure a model: besides setting the
  * table name and options, it anchors the class's `@column`/relation registrations at

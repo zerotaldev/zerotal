@@ -70,9 +70,9 @@ export type {
   FlashBuilder,
   FlashOptions,
 } from "./Component.ts";
-// Compose focused feature mixins onto Component — `class extends ComponentWith(Pagination, …)`.
-export { ComponentWith } from "./mixins.ts";
-export type { Constructor, Mixin } from "./mixins.ts";
+// Mixin authoring types. Compose them onto a page with the `Component.using(...)` static —
+// `class PostsPage extends Component.using(Pagination, …)`.
+export type { Constructor, Mixin, Compose } from "./mixins.ts";
 export { Layout } from "./Layout.ts";
 export { Form, registerForm } from "./Form.ts";
 // Global client store — app-wide, client-only reactive UI state, read in JSX as
@@ -80,7 +80,7 @@ export { Form, registerForm } from "./Form.ts";
 // `FlowStore` to type it.
 export { defineStore } from "./store.ts";
 export type { FlowStore } from "./store.ts";
-// Pagination state mixin (compose with `ComponentWith(Pagination)`); `paginate`/`Paginator`
+// Pagination state mixin (compose with `Component.using(Pagination)`); `paginate`/`Paginator`
 // are the in-memory paginator.
 export { paginate, Pagination } from "./pagination.ts";
 export type { Paginator } from "./pagination.ts";
@@ -227,7 +227,7 @@ import type { PageClassWithMeta } from "./registry.ts";
 // File uploads
 export { TemporaryUploadedFile } from "./uploads/TemporaryUploadedFile.ts";
 export type { UploadRef } from "./uploads/TemporaryUploadedFile.ts";
-// File-upload management mixin (compose with `ComponentWith(FileUploads)`).
+// File-upload management mixin (compose with `Component.using(FileUploads)`).
 export { FileUploads } from "./uploads/FileUploads.ts";
 
 // Validation

@@ -10,6 +10,54 @@ between minor versions.
 
 ## [Unreleased]
 
+### Fixed
+
+- **An `@expose`d action on a shared page base no longer disappears from the allowlist.** Bun
+  1.3.x does not reliably run a method decorator's `addInitializer` callbacks: when a subclass
+  declared a decorated field, the base class's method initializers never ran at all. So a page
+  base carrying `@expose guard()` lost that action the moment any subclass added one `@expose`
+  field — and since the un-`@expose`d action check is fatal, clicking a perfectly legitimate
+  button was rejected at runtime with a message pointing at the wrong cause. It reproduced with a
+  bare `class Sub extends Base` and no mixin anywhere. `@expose` (methods), `@task`,
+  `@renderless`, `@on` and `@computed` were all affected.
+
+  Method and getter decorators now tag the function in the decorator body — which always runs,
+  with the right name — and the readers scan the prototype chain for tagged members, registering
+  against the **declaring** prototype so inheritance resolves through the existing chain walk.
+  Registration no longer requires an instance to have been constructed, so `getExposedMethods()`
+  is correct on a class that has never been instantiated.
+
+### Changed — BREAKING
+
+- **`ComponentWith(...)` is replaced by the `Component.using(...)` static.** Mixin composition is
+  now a property of the base class rather than a helper shipped alongside it, so there is one
+  idiom to learn and nothing extra to import.
+
+  ```tsx
+  // before
+  import { ComponentWith, Pagination } from "@zerotal/flow";
+  class PostsPage extends ComponentWith(Pagination, FileUploads) {}
+
+  // after
+  import { Component, Pagination } from "@zerotal/flow";
+  class PostsPage extends Component.using(Pagination, FileUploads) {}
+  ```
+
+  Run `bun run scripts/codemod-mixin-composition.ts` to rewrite call sites and imports.
+
+  How mixins are **authored** is unchanged — `<T extends Constructor<Component>>(Base: T) => …`
+  still works exactly as before, and every shipped mixin keeps its signature. The `Constructor`
+  and `Mixin` types are still exported; `Compose` (the type of `Component.using`) joins them.
+
+### Added
+
+- **`using` composes onto any class in the chain, not just `Component`.** An app-level base can
+  now carry mixins without being flattened out of the prototype chain — `AdminPage.using(Pagination)`
+  keeps `AdminPage` in the lineage. `ComponentWith` hardcoded `Component`, so this previously
+  required hand-nesting (`Pagination(AdminPage)`).
+- **Composition chains.** The composed class carries `using` itself, so
+  `Component.using(a, b).using(c, d)` works past the 8-mixin overload set.
+
 ## [1.1.0] — 2026-08-08
 
 ### Fixed

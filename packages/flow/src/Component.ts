@@ -23,6 +23,8 @@ import { ValidationError } from "./validation.ts";
 import type { ValidationRules } from "./validation.ts";
 import { resolveUploadValue } from "./uploads/TemporaryUploadedFile.ts";
 import { toScriptJson } from "./utils.ts";
+import { _compose } from "./mixins.ts";
+import type { Compose } from "./mixins.ts";
 import { _validateEventPayload } from "./events.ts";
 import type { FlowEvents, EventName, EventArgs } from "./events.ts";
 import { route, request, safeRedirectPath, HttpContext } from "@zerotal/core";
@@ -342,6 +344,54 @@ export abstract class Component {
    * @internal
    */
   static readonly __isFlowPage = true as const;
+
+  /**
+   * Compose one or more feature mixins onto this class, folding them left-to-right, so a page can
+   * be built from focused, reusable behaviours instead of one bloated class.
+   *
+   * @remarks
+   * Each mixin receives the accumulated base and returns an extended class, so `Component`'s full
+   * surface (`flash()`, `redirect()`, `validate()`, the client magics, …) and every mixin's
+   * `@expose`/`@locked` members flow through to the final page — fully type-checked. Mixin props
+   * register on the mixin prototype, which sits in the page's prototype chain, so snapshot,
+   * reactivity, client writes, and `@url` sync all work exactly as for props declared on the page.
+   *
+   * `using` composes onto whatever class it is called on, so it also works on an intermediate base
+   * (`AdminPage.using(Pagination)` keeps `AdminPage` in the chain), and the composed class carries
+   * `using` itself, so `Component.using(a, b).using(c)` chains past the 8-mixin overload set.
+   *
+   * Pages composed this way render via the runtime path rather than the AOT compiler (which only
+   * statically sees a page's own `extends Component` plus locally-declared members) — the same
+   * fallback complex pages already use; behaviour is identical, you just don't get the
+   * ahead-of-time compile step for that page.
+   *
+   * @param mixins - Mixin factories applied left-to-right (each takes the prior result as its base).
+   * @returns A class extending this one with every mixin's members mixed in.
+   *
+   * @example
+   * ```tsx
+   * // app/flow/mixins/pagination.ts
+   * import { Component, expose, type Constructor } from "@zerotal/flow";
+   *
+   * export function Pagination<T extends Constructor<Component>>(Base: T) {
+   *   abstract class WithPagination extends Base {
+   *     @expose page = 1;
+   *     @expose next() { this.page++; }
+   *   }
+   *   return WithPagination;
+   * }
+   *
+   * // app/flow/UsersPage.tsx
+   * class UsersPage extends Component.using(Pagination) {
+   *   override async render() {
+   *     return <div data-flow-root>Page {this.page}</div>;
+   *   }
+   * }
+   * ```
+   *
+   * @category Composition
+   */
+  static using: Compose = _compose;
 
   // ── @internal: framework bookkeeping, not part of the developer API ──────────
 

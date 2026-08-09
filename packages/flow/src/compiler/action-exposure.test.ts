@@ -64,7 +64,10 @@ describe("a handler pointing at an un-@exposed method", () => {
   // so the server refuses to start.
   it("is fatal through validateFlowFile, the path the server boots on", () => {
     expect(() =>
-      validateFlowFile(page(`<button onClick={this.submit}>Send</button>`, "async submit() {}"), "/app/flow/pages/demo.tsx"),
+      validateFlowFile(
+        page(`<button onClick={this.submit}>Send</button>`, "async submit() {}"),
+        "/app/flow/pages/demo.tsx",
+      ),
     ).toThrow(/not @expose'd/);
   });
 

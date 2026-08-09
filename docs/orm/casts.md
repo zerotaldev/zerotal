@@ -17,11 +17,11 @@ to a built-in get/set pair:
 
 ```typescript
 // app/models/Post.ts
-import { BaseModel, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 import { Carbon } from "zerotal/carbon";
 
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   @column("string") title!: string;
   @column("integer") views!: number;
   @column("float") score!: number;
@@ -57,8 +57,8 @@ export class Post extends BaseModel {
 round-trips as the type you gave it — including a bare scalar:
 
 ```typescript
-setting.value = "62812345678";   // stored as "62812345678", read back as a string
-setting.value = "051001";        // a branch code keeps its leading zero
+setting.value = "62812345678"; // stored as "62812345678", read back as a string
+setting.value = "051001"; // a branch code keeps its leading zero
 setting.value = { plan: "pro" }; // objects and arrays as you would expect
 ```
 
@@ -200,7 +200,7 @@ an external schema, a view, or a generated table):
 ```typescript
 // app/models/Post.ts
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   static casts = {
     publishedAt: "datetime",
     meta: "json",
@@ -237,7 +237,7 @@ that tracks deep mutations:
 ```typescript
 // app/models/Post.ts
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   static reactiveCasts = true;
 
   @column("json") meta!: Record<string, unknown>;

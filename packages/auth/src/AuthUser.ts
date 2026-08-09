@@ -6,7 +6,7 @@ import { Authenticatable } from "./Authenticatable.ts";
  *
  * Extend this instead of `BaseModel` to get the auth contract (`getAuthId()` +
  * `getAuthPassword()`) out of the box. It carries **no** role or permission logic;
- * compose those with `BaseModelWith`:
+ * compose those with `Model.using`:
  *
  * @example
  * // app/models/User.ts — simple case
@@ -22,9 +22,9 @@ import { Authenticatable } from "./Authenticatable.ts";
  *
  * @example
  * // with roles + permissions — flat, no wrapper nesting
- * import { BaseModelWith } from "@zerotal/orm";
+ * import { Model } from "@zerotal/orm";
  * import { Authenticatable, Roles, Permissions } from "@zerotal/auth";
  *
- * export class User extends BaseModelWith(Authenticatable, Permissions, Roles) {}
+ * export class User extends Model.using(Authenticatable, Permissions, Roles) {}
  */
 export class AuthUser extends Authenticatable(BaseModel) {}

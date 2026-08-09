@@ -79,7 +79,7 @@ export default Application.create({ providers }).routing({ web: basePath("routes
 
 > **Tip** — `resolveUsing()` is optional. When omitted, the provider falls back to a convention default that loads the registered `AuthUser` subclass — registering `AuthProvider` is enough for the common case.
 
-The user model extends `AuthUser` instead of `BaseModel`:
+The user model extends `AuthUser` instead of `Model`:
 
 ```typescript
 // app/models/User.ts

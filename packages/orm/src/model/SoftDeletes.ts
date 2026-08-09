@@ -4,10 +4,10 @@
 // `deletedAt`, `forceDelete()`, `restore()`, `trashed()`, and the `withTrashed()` /
 // `onlyTrashed()` query scopes. A hard-delete model has none of these.
 //
-//   import { BaseModelWith, SoftDeletes } from "@zerotal/orm";
+//   import { Model, SoftDeletes } from "@zerotal/orm";
 //
 //   @table("posts")
-//   class Post extends BaseModelWith(SoftDeletes) {
+//   class Post extends Model.using(SoftDeletes) {
 //     @column() title!: string;
 //   }
 //
@@ -47,7 +47,7 @@ interface SoftDeleteModelClass<T extends BaseModel> {
  * @example
  * ```ts
  * @table("posts")
- * class Post extends BaseModelWith(SoftDeletes) {
+ * class Post extends Model.using(SoftDeletes) {
  *   @column() title!: string;
  * }
  *

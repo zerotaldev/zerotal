@@ -1,4 +1,4 @@
-import { BaseModelWith, column, table } from "zerotal/orm";
+import { Model, column, table } from "zerotal/orm";
 import { Authenticatable } from "zerotal/auth";
 
 /**
@@ -6,7 +6,7 @@ import { Authenticatable } from "zerotal/auth";
  * belong to a user.
  */
 @table("users")
-export class User extends BaseModelWith(Authenticatable) {
+export class User extends Model.using(Authenticatable) {
   static override hidden = ["password"];
   static override fillable = ["name", "email", "password", "roles", "avatarUrl"];
 

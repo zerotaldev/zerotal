@@ -111,7 +111,7 @@ describe('auth', () => {
 
   test('the User model is resolvable by the auth layer', () => {
     // The root cause, asserted directly: `Auth.attempt` finds the user model
-    // through this brand, so a plain `BaseModel` makes every login fail.
+    // through this brand, so a plain `Model` makes every login fail.
     expect(isAuthenticatable(User)).toBe(true);
   });
 

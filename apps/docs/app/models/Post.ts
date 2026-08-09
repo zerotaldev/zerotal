@@ -1,4 +1,4 @@
-import { BaseModel, belongsTo, column, table } from "zerotal/orm";
+import { Model, belongsTo, column, table } from "zerotal/orm";
 import { Str } from "zerotal";
 import { Carbon } from "zerotal/carbon";
 import { User } from "./User.ts";
@@ -22,7 +22,7 @@ export const POST_CATEGORIES = ["Announcements", "Flow", "Engineering", "Guides"
 export type PostCategory = (typeof POST_CATEGORIES)[number];
 
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   // Only what an author types. `publishedAt` and `authorId` are set by the server
   // on the way past, never mass-assigned from a form payload.
   static override fillable = ["slug", "title", "description", "body", "category"];

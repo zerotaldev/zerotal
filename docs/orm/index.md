@@ -103,11 +103,11 @@ Every model is configured with the `@table()` decorator. It accepts a fluent cha
 
 ```typescript
 // app/models/Post.ts
-import { BaseModel, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 
 // Fluent chain (recommended for readability)
 @(table("posts").withTimestamps())
-export class Post extends BaseModel {
+export class Post extends Model {
   @column("string") title!: string;
   @column("text") body!: string;
   @column("integer") views!: number;
@@ -115,13 +115,13 @@ export class Post extends BaseModel {
 
 // Options object — same result
 @table("posts", { timestamps: true })
-export class Post extends BaseModel {
+export class Post extends Model {
   /* … */
 }
 
 // Override the primary key
 @(table("users").primaryKey("user_id"))
-export class User extends BaseModel {
+export class User extends Model {
   /* … */
 }
 ```
@@ -145,7 +145,9 @@ otherwise the first save fails with `table ledger has no column named updated_at
 
 ```typescript
 @(table("ledger").withoutTimestamps())
-export class LedgerEntry extends BaseModel { /* … */ }
+export class LedgerEntry extends Model {
+  /* … */
+}
 ```
 
 > **Note** — **Auto-discovery:** Models under `app/models/` don't need `@table` — they're auto-registered at boot with a conventional table name (`pluralize(snake(ClassName))`, e.g. `Post` → `posts`). Use `@table` only to override the name or options.
@@ -163,7 +165,7 @@ export class LedgerEntry extends BaseModel { /* … */ }
 > ```
 
 > **Tip** — Soft deletes are **not** a `@table` option. Opt in per model with the `SoftDeletes`
-> mixin: `class Post extends BaseModelWith(SoftDeletes) {}`. It adds `deletedAt`, `restore()`,
+> mixin: `class Post extends Model.using(SoftDeletes) {}`. It adds `deletedAt`, `restore()`,
 > `forceDelete()`, `trashed()`, and the `withTrashed()` / `onlyTrashed()` scopes. See
 > [Lifecycle & Events](/docs/orm/lifecycle).
 
@@ -210,6 +212,89 @@ Declare constraints on the column and schema generation emits them, so `migrate:
 
 Generated migrations also add an index to any column whose name ends in `_id` (`customerId` → `customer_id`), since an unindexed foreign key is a table scan on every join. The reference itself can't always be inferred; the index can.
 
+### Composing model mixins
+
+Reusable model behaviour ships as **mixins** — soft deletes, state machines, the auth contract,
+roles, permissions, notifications, tenancy, auditing. A model opts into the ones it wants with the
+`Model.using(...)` static, so a model that does not use a feature does not carry its API:
+
+```typescript
+import { Model, SoftDeletes } from "@zerotal/orm";
+import { Authenticatable, Roles, Permissions } from "@zerotal/auth";
+
+@table("users")
+export class User extends Model.using(Authenticatable, Permissions, Roles) {
+  @column() email!: string;
+}
+
+@table("posts")
+export class Post extends Model.using(SoftDeletes) {
+  @column() title!: string;
+}
+```
+
+Mixins fold left to right, and the composed class keeps the full Active Record static surface —
+`User.query()`, `find()`, `create()`, scopes — plus every mixin's instance and static members,
+fully typed. Prefer this over hand-nesting (`Roles(Permissions(AuthUser))`), which reads
+inside-out and repeats the base.
+
+The mixins the framework ships:
+
+| Mixin                                       | Package                  | Adds                                                       |
+| ------------------------------------------- | ------------------------ | ---------------------------------------------------------- |
+| [`SoftDeletes`](/docs/orm/lifecycle)        | `@zerotal/orm`           | `deletedAt`, `restore()`, `withTrashed()`, `onlyTrashed()` |
+| [`State`](/docs/orm/lifecycle)              | `@zerotal/orm`           | `transitionTo()`, guarded state machines                   |
+| [`Authenticatable`](/docs/authentication)   | `@zerotal/auth`          | the auth contract `Auth.attempt()` resolves against        |
+| [`Roles`](/docs/authorization)              | `@zerotal/auth`          | `assignRole()`, `hasRole()`                                |
+| [`Permissions`](/docs/authorization)        | `@zerotal/auth`          | `givePermissionTo()`, `can()`                              |
+| [`EmailVerification`](/docs/authentication) | `@zerotal/auth`          | verification links and state                               |
+| [`PasswordReset`](/docs/authentication)     | `@zerotal/auth`          | reset tokens                                               |
+| [`Notifiable`](/docs/notifications)         | `@zerotal/notifications` | `notify()` and the notification channels                   |
+| [`Tenantable`](/docs/tenancy)               | `@zerotal/tenancy`       | automatic per-tenant scoping                               |
+| [`Auditable`](/docs/audit)                  | `@zerotal/audit`         | change history                                             |
+| [`Media`](/docs/media)                      | `@zerotal/media`         | file attachments, collections, image conversions           |
+
+#### Composing onto a shared base
+
+`using` composes onto whatever class you call it on, not onto `Model` specifically, so an
+app-level base model can carry its own configuration and still take mixins:
+
+```typescript
+class AppModel extends Model {
+  static override primaryKey = "uuid";
+}
+
+@table("invoices")
+export class Invoice extends AppModel.using(SoftDeletes) {} // still uses "uuid"
+```
+
+The composed class carries `using` itself, so composition can also be chained —
+`Model.using(A, B).using(C)`.
+
+#### Writing your own
+
+A mixin is a function taking a base constructor and returning a class that extends it:
+
+```typescript
+import { Model, registerColumn, type Constructor } from "@zerotal/orm";
+
+export function Sluggable<T extends Constructor>(Base: T) {
+  return class extends Base {
+    slug = "";
+
+    setSlug(from: string): this {
+      this.slug = from.toLowerCase().replace(/\s+/g, "-");
+      return this;
+    }
+  };
+}
+
+export class Article extends Model.using(Sluggable) {}
+```
+
+> **Note** — a mixin that needs to declare a real database column must call `registerColumn()`
+> imperatively. The `@column` decorator cannot run inside a returned class expression.
+
 ## Mass assignment
 
 Models **guard every attribute by default.** A model that declares neither
@@ -227,7 +312,7 @@ Any attribute not permitted by the active list throws `MassAssignmentError` (it 
 ```typescript
 // app/models/Post.ts
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   // Only these fields are accepted by create() and fill()
   static fillable = ["title", "body", "status"];
 
@@ -255,7 +340,7 @@ exactly those columns:
 
 ```typescript
 @table("customers")
-export class Customer extends BaseModel {
+export class Customer extends Model {
   static fillable = ["name", "email"] as const;
 
   @column() name!: string;
@@ -284,15 +369,15 @@ role.forceFill({ name, guard });
 await Role.forceCreate({ name, guard });
 
 // A trusted block — guard disabled inside, restored afterwards (even on throw):
-await BaseModel.withoutGuard(() => seeder.run());
+await Model.withoutGuard(() => seeder.run());
 
 // Process-wide (e.g. a seeder entrypoint) — pair with reguard():
-BaseModel.unguard();
+Model.unguard();
 // … bulk trusted work …
-BaseModel.reguard();
+Model.reguard();
 
 // Or opt a single model out entirely (its writes never come from user input):
-class AuditLog extends BaseModel {
+class AuditLog extends Model {
   static override unguarded = true;
 }
 ```
@@ -301,7 +386,7 @@ An explicit `fillable` / `guarded` list is always honoured, even under a global
 `unguard()` — so a model that lists its fillable columns stays protected regardless.
 
 > **Tests:** test fixtures are trusted code that `create()` models freely, so the
-> framework's test suites run with `BaseModel.unguard()` enabled via a preload
+> framework's test suites run with `Model.unguard()` enabled via a preload
 > (`scripts/test-preload.ts`). If your app's tests build models directly rather
 > than through factories, do the same, or declare `fillable` on the models.
 
@@ -324,7 +409,7 @@ Fields listed in `hashable` are automatically hashed with `Bun.password.hash()` 
 ```typescript
 // app/models/User.ts
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   static hashable = ["password"];
 
   @column("string") name!: string;
@@ -353,7 +438,7 @@ export class UserCreated {
 ```typescript
 // app/models/User.ts
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   static dispatchesEvents = {
     created: UserCreated,
     deleted: UserDeleted,
@@ -393,10 +478,10 @@ A generated model skeleton (`app/models/Post.ts`):
 
 ```typescript
 // app/models/Post.ts
-import { BaseModel, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 
 @(table("posts").withTimestamps())
-export class Post extends BaseModel {
+export class Post extends Model {
   // Models guard every attribute by default — list the mass-assignable columns.
   static fillable: string[] = ["name"];
 
@@ -408,14 +493,14 @@ export class Post extends BaseModel {
 
 ```typescript
 // app/models/Post.ts
-import { BaseModel, column, table, hasMany, belongsTo } from "@zerotal/orm";
+import { Model, column, table, hasMany, belongsTo } from "@zerotal/orm";
 import type { Columns } from "@zerotal/orm";
 import { Carbon } from "zerotal/carbon";
 import type { Comment } from "./Comment.ts";
 import type { User } from "./User.ts";
 
 @(table("posts").withTimestamps())
-export class Post extends BaseModel {
+export class Post extends Model {
   // Mass assignment
   static fillable: Columns<Post>[] = ["title", "body", "status", "userId"];
 

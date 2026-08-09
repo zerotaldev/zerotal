@@ -76,7 +76,7 @@ action. Name them freely; the framework just needs the class and method name at
 
 **`app/middleware/`** — custom middleware classes implementing `Pipe<HttpContext>`.
 
-**`app/models/`** — ORM model classes extending `BaseModel` from `@zerotal/orm`.
+**`app/models/`** — ORM model classes extending `Model` from `@zerotal/orm`.
 Auto-discovered at boot; the table name is derived by convention, so `@table` is optional.
 
 **`app/providers/`** — service providers for registering custom bindings and

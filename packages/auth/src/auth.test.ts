@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { BaseModel, BaseModelWith, columnsFor } from "@zerotal/orm";
+import { Model, BaseModel, columnsFor } from "@zerotal/orm";
 import { HashService } from "./HashService.ts";
 import { PersistUserMiddleware } from "./PersistUserMiddleware.ts";
 import { AuthMiddleware } from "./AuthMiddleware.ts";
@@ -246,8 +246,8 @@ describe("Authenticatable", () => {
     expect(u.getAuthPassword()).toBe("hashed");
   });
 
-  it("composes via BaseModelWith and is detected", () => {
-    class User extends BaseModelWith(Authenticatable) {}
+  it("composes via Model.using and is detected", () => {
+    class User extends Model.using(Authenticatable) {}
     expect(isAuthenticatable(User)).toBe(true);
     const u = new User();
     (u as Record<string, unknown>)["id"] = 3;
@@ -269,7 +269,7 @@ describe("Authenticatable", () => {
 
 describe("EmailVerification", () => {
   it("brands the model, registers the column, and provides the contract", () => {
-    class User extends BaseModelWith(Authenticatable, EmailVerification) {}
+    class User extends Model.using(Authenticatable, EmailVerification) {}
     expect(hasEmailVerification(User)).toBe(true);
     expect(columnsFor(User)?.has("emailVerifiedAt")).toBe(true);
     expect(new User().hasVerifiedEmail()).toBe(false);
@@ -278,7 +278,7 @@ describe("EmailVerification", () => {
 
 describe("PasswordReset", () => {
   it("brands the model and exposes the token API", () => {
-    class User extends BaseModelWith(Authenticatable, PasswordReset) {}
+    class User extends Model.using(Authenticatable, PasswordReset) {}
     expect(hasPasswordReset(User)).toBe(true);
     // createPasswordResetToken is an instance method (minted on a user); resetPassword is
     // static (the user is resolved from the token — the requester is locked out).
@@ -290,7 +290,7 @@ describe("PasswordReset", () => {
   });
 
   it("the brands are independent of each other", () => {
-    class Plain extends BaseModelWith(Authenticatable) {}
+    class Plain extends Model.using(Authenticatable) {}
     expect(hasEmailVerification(Plain)).toBe(false);
     expect(hasPasswordReset(Plain)).toBe(false);
   });

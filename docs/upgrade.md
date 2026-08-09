@@ -99,7 +99,7 @@ these are the changes that need action. Full detail is in the
    Models now guard mass assignment by default — a model declaring neither rejects
    every attribute passed to `create()`/`fill()` with a `MassAssignmentError`. For
    trusted, non-user writes use `forceFill()`/`forceCreate()`, wrap a block in
-   `BaseModel.withoutGuard(fn)`, or set `static unguarded = true`.
+   `Model.withoutGuard(fn)`, or set `static unguarded = true`.
 
 1. **Ensure `APP_KEY` is set in every environment.** `local` storage
    `temporaryUrl()` now throws `StorageKeyMissingError` instead of falling back to a

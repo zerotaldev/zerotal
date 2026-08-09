@@ -3,8 +3,8 @@
 // Relational, DB-backed *direct* permissions mixin. Apply to any model that should
 // hold permissions granted to it directly (independent of roles):
 //
-//   export class ApiKey extends BaseModelWith(Authenticatable, Permissions) {}
-//   export class User extends BaseModelWith(Authenticatable, Permissions, Roles) {}
+//   export class ApiKey extends Model.using(Authenticatable, Permissions) {}
+//   export class User extends Model.using(Authenticatable, Permissions, Roles) {}
 //   // (the nested form Roles(Permissions(AuthUser)) still works too)
 //
 // Direct permissions are a polymorphic many-to-many (`model_permissions`), eager-
@@ -63,10 +63,10 @@ export function hasPermissionsMixin(model: unknown): boolean {
  *
  * @example
  * ```ts
- * import { BaseModelWith, Authenticatable } from "@zerotal/orm";
+ * import { Model, Authenticatable } from "@zerotal/orm";
  * import { Permissions, Roles } from "@zerotal/auth";
  *
- * export class User extends BaseModelWith(Authenticatable, Permissions, Roles) {}
+ * export class User extends Model.using(Authenticatable, Permissions, Roles) {}
  *
  * const user = await User.find(1);
  * await user.givePermissionTo("post.publish");

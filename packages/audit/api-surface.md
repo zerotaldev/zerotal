@@ -63,6 +63,7 @@ class AuditLog = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, values: unknown[]) => ModelQueryBuilder<T>

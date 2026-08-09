@@ -9,7 +9,7 @@ Models serialize to plain JavaScript objects for API responses and `JSON.stringi
 
 ## Basic usage
 
-Every `BaseModel` has a `toJSON()` method. It returns a plain object you can pass straight to the `json()` response helper — and `JSON.stringify()` calls it for you automatically:
+Every `Model` has a `toJSON()` method. It returns a plain object you can pass straight to the `json()` response helper — and `JSON.stringify()` calls it for you automatically:
 
 ```typescript
 // in a controller
@@ -31,10 +31,10 @@ Fields in `hidden` are stripped from `toJSON()` output. Use this to prevent sens
 
 ```typescript
 // app/models/User.ts
-import { BaseModel, table, column } from "@zerotal/orm";
+import { Model, table, column } from "@zerotal/orm";
 
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   static hidden = ["password", "rememberToken", "twoFactorSecret"];
 
   @column("string") name!: string;
@@ -59,7 +59,7 @@ user.toJSON();
 ```typescript
 // app/models/User.ts
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   // Only these fields appear in JSON — everything else is excluded:
   static visible = ["id", "name", "email", "avatarUrl"];
 }
@@ -74,7 +74,7 @@ Include the result of a getter method in `toJSON()`. The getter runs at serializ
 ```typescript
 // app/models/User.ts
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   @column("string") firstName!: string;
   @column("string") lastName!: string;
 
@@ -163,12 +163,12 @@ Hidden/visible lists apply per-model and do **not** propagate to nested relation
 ```typescript
 // app/models/User.ts and app/models/Post.ts
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   static hidden = ["password"]; // only applies to User
 }
 
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   // No hidden config — exposes all columns
 }
 
@@ -228,7 +228,7 @@ Use model-level `hidden`/`visible` for globally sensitive fields. Use Resources 
 
 ## References
 
-`toJSON()` and the override methods live on every [`BaseModel`](/docs/orm/index); the `Resource` helpers are exported from `zerotal`.
+`toJSON()` and the override methods live on every [`Model`](/docs/orm/index); the `Resource` helpers are exported from `zerotal`.
 
 | Member                  | Signature                                                          | Description                                                      |
 | ----------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------- |

@@ -7,7 +7,7 @@
 // This mixin adds the ergonomic server-side actions for managing those pending uploads —
 // chiefly removing a chosen file before it's stored — without bloating the base class.
 //
-//   class Avatar extends ComponentWith(FileUploads) {
+//   class Avatar extends Component.using(FileUploads) {
 //     @expose photo: TemporaryUploadedFile | null = null;
 //     @expose async save() {
 //       this.path = await this.photo?.store("avatars"); // persist permanently
@@ -48,7 +48,7 @@ type AbstractComponentCtor = abstract new (...args: any[]) => Component;
  *
  * @example
  * ```tsx
- * class Avatar extends ComponentWith(FileUploads) {
+ * class Avatar extends Component.using(FileUploads) {
  *   @expose photo: TemporaryUploadedFile | null = null;
  *   @expose path = "";
  *

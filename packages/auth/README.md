@@ -42,7 +42,7 @@ AuthProvider.resolveUsing((id) => User.find(id)); // optional
 
 ### The User model
 
-Extend `AuthUser` instead of `BaseModel`:
+Extend `AuthUser` instead of `Model`:
 
 ```ts
 import { column, table } from "@zerotal/orm";
@@ -78,19 +78,19 @@ if (!(await Hash.check(password, user.password))) {
 ### Authorization (Gate, roles & permissions)
 
 Compose the `Authenticatable` / `Roles` / `Permissions` mixins onto your
-model with `BaseModelWith` (flat, left-to-right — no wrapper nesting):
+model with `Model.using` (flat, left-to-right — no wrapper nesting):
 
 ```ts
 import { Authenticatable, Roles, Permissions } from "@zerotal/auth";
-import { BaseModelWith, column } from "@zerotal/orm";
+import { Model, column } from "@zerotal/orm";
 
-export class User extends BaseModelWith(Authenticatable, Permissions, Roles) {
+export class User extends Model.using(Authenticatable, Permissions, Roles) {
   @column() name!: string;
   @column() email!: string;
 }
 
 // `extends Roles(Permissions(AuthUser))` still works — AuthUser is
-// just Authenticatable(BaseModel).
+// just Authenticatable(Model).
 
 // Then:
 await user.assignRole("editor");

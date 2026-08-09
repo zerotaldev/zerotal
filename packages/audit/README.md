@@ -47,16 +47,16 @@ export default AuditConfig({
 
 ## Usage
 
-Compose `Auditable` with `BaseModelWith` (like any other mixin) to record `created`,
+Compose `Auditable` with `Model.using` (like any other mixin) to record `created`,
 `updated`, and `deleted` automatically. Configure it with overridable static fields:
 
 ```ts
-import { BaseModelWith, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 import { Authenticatable } from "@zerotal/auth";
 import { Auditable } from "@zerotal/audit";
 
 @table("users")
-export class User extends BaseModelWith(Authenticatable, Auditable) {
+export class User extends Model.using(Authenticatable, Auditable) {
   protected static auditExcept = ["password", "rememberToken"];
 
   @column() name!: string;
@@ -108,7 +108,7 @@ const page = await Audit.logs(User, user.id).orderBy("id", "desc").paginate(20, 
 
 - `Auditor` — the core service: records events and exposes `logs()` / `logsByActor()` / `logsOfEvent()`.
 - `Audit` — facade over the Auditor (`Audit.log(...)`, `Audit.logs(...)`).
-- `AuditLog` — the queryable `BaseModel` behind the builders.
+- `AuditLog` — the queryable `Model` behind the builders.
 - `AuditObserver` — ORM lifecycle observer that emits model events.
 - `AuditProvider` — wires the auditor, driver, and observer.
 - `Auditable`, `registerAudit` — opt a model in via mixin (adds `auditLog()` / `auditLogs()`) or at boot.

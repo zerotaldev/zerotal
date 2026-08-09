@@ -1,11 +1,11 @@
-import { BaseModel, column, table } from "zerotal/orm";
+import { Model, column, table } from "zerotal/orm";
 
 /**
  * Something the shop sells. Soft-deleted, so a discontinued product can be
  * restored rather than lost.
  */
 @table("products")
-export class Product extends BaseModel {
+export class Product extends Model {
   static override softDeletes = true;
   static override fillable = ["name", "sku", "description", "price", "stock", "status", "featured"];
 

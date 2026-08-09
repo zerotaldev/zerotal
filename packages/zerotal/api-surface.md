@@ -792,6 +792,7 @@ interface ConfigRegistry = {
   flow: FlowConfigShape
   i18n: I18nConfigShape
   inertia: InertiaConfigShape
+  media: MediaConfigShape
   monitor: MonitorConfigShape
   notifications: NotificationConfigShape
   queue: QueueConfigShape
@@ -821,6 +822,7 @@ interface ContainerBindings = {
   i18n: Translator
   lock: LockManager
   log: LogManager
+  media: MediaManager
   monitor.panel: MonitorPanelHost
   monitor.store: MonitorStore
   monitor: ResolvedMonitorConfig
@@ -1181,6 +1183,7 @@ class AuthUser = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, values: unknown[]) => ModelQueryBuilder<T>
@@ -1600,6 +1603,7 @@ class Permission = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, values: unknown[]) => ModelQueryBuilder<T>
@@ -1753,6 +1757,7 @@ class Role = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, values: unknown[]) => ModelQueryBuilder<T>
@@ -2192,7 +2197,7 @@ interface TwoFactorOptions = {
 interface UserModel = {
   $dirty: () => Record<string, unknown>
   append: (...keys: string[]) => UserModel
-  associate: (relation: string, model: BaseModel) => UserModel
+  associate: (relation: string, model: Model) => UserModel
   createdAt?: Date
   decrement: (column: 'id' | 'createdAt' | 'updatedAt' | '__isZerotalModel' | 'fill' | 'forceFill' | 'save' | 'delete' | 'load' | 'loadMissing' | 'fresh' | 'refresh' | 'replicate' | 'touch' | 'is' | 'isNot' | 'increment' | 'decrement' | 'loadCount' | 'loadSum' | 'loadAvg' | 'loadMin' | 'loadMax' | 'makeHidden' | 'makeVisible' | 'append' | 'associate' | 'dissociate' | 'isDirty' | '$dirty' | 'markDirty' | 'toJSON' | 'getAuthId' | 'getAuthPassword' | 'getRememberToken' | 'setRememberToken' | 'getRememberTokenName', amount?: number) => Promise<UserModel>
   delete: () => Promise<void>
@@ -2206,9 +2211,9 @@ interface UserModel = {
   getRememberTokenName: () => string
   id: number
   increment: (column: 'id' | 'createdAt' | 'updatedAt' | '__isZerotalModel' | 'fill' | 'forceFill' | 'save' | 'delete' | 'load' | 'loadMissing' | 'fresh' | 'refresh' | 'replicate' | 'touch' | 'is' | 'isNot' | 'increment' | 'decrement' | 'loadCount' | 'loadSum' | 'loadAvg' | 'loadMin' | 'loadMax' | 'makeHidden' | 'makeVisible' | 'append' | 'associate' | 'dissociate' | 'isDirty' | '$dirty' | 'markDirty' | 'toJSON' | 'getAuthId' | 'getAuthPassword' | 'getRememberToken' | 'setRememberToken' | 'getRememberTokenName', amount?: number) => Promise<UserModel>
-  is: (other: BaseModel | null | undefined) => boolean
+  is: (other: Model | null | undefined) => boolean
   isDirty: (column?: string) => boolean
-  isNot: (other: BaseModel | null | undefined) => boolean
+  isNot: (other: Model | null | undefined) => boolean
   load: (relations: string[]) => Promise<UserModel>
   loadAvg: (relation: string, column: string) => Promise<UserModel>
   loadCount: (relations: string | string[]) => Promise<UserModel>
@@ -4114,6 +4119,8 @@ function isAllowedOrigin = (request: Request, allowedOrigins?: string[]) => bool
 
 function negotiate = (ctx: HttpContext) => <TWeb = void, TJson = void, TCli = void>(map: NegotiateMap<TWeb, TJson, TCli>) => Promise<TWeb | TJson | TCli | void>
 
+function sniffContentType = (bytes: Uint8Array) => SniffedType
+
 function uri = (value?: string | Uri) => Uri
 
 function url = {    (): UrlGenerator;    (path: string, extra?: (string | number)[], secure?: boolean): string;}
@@ -4162,6 +4169,12 @@ interface PaginatedData = {
   perPage: number
   previousPageUrl: (baseUrl?: string, query?: Record<string, string>) => string | null
   total: number
+}
+
+interface SniffedType = {
+  contentType: string
+  extension: string
+  recognised: boolean
 }
 
 interface UriQueryString = {
@@ -4434,6 +4447,484 @@ type LogLevel = 'error' | 'info' | 'debug' | 'warn' | 'fatal'
 
 type TableData = Record<string, unknown> | readonly Record<string, unknown>[]
 
+## ./media  `(./src/media.ts)`
+
+class BunImageDriver = {
+  new (maxPixels?: number): BunImageDriver
+  canEncode: (format: ConversionFormat) => Promise<boolean>
+  convert: (bytes: Uint8Array, manipulation: ImageManipulation) => Promise<ImageResult>
+  encodableFormats: () => Promise<string[]>
+  metadata: (bytes: Uint8Array) => Promise<ImageMetadata | null>
+  placeholder: (bytes: Uint8Array) => Promise<string | null>
+  readonly name: 'BunImageDriver'
+  readonly supportsCrop: false
+}
+
+class ConversionRunner = {
+  new (driver: ImageDriver, config: MediaConfigShape): ConversionRunner
+  run: (media: MediaItem, conversions: ConversionMap) => Promise<{    generated: string[];    failed: Array<{        name: string;        reason: string;    }>;}>
+  runResponsive: (media: MediaItem, widths: number[]) => Promise<ResponsiveImageSet | null>
+}
+
+class DefaultPathGenerator = {
+  new (prefix?: string): DefaultPathGenerator
+  forConversions: (media: MediaItem) => string
+  forOriginal: (media: MediaItem) => string
+  forResponsiveImages: (media: MediaItem) => string
+}
+
+class DisallowedMimeTypeError = {
+  new (collection: string, actual: string, allowed: string[]): DisallowedMimeTypeError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class FileTooLargeError = {
+  new (collection: string, actual: number, max: number): FileTooLargeError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class MediaAdder = {
+  new (owner: MediaOwner, ownerClass: CollectionHost, resolve: SourceResolver): MediaAdder
+  toCollection: (collection?: string) => Promise<MediaItem>
+  toDisk: (disk: string) => MediaAdder
+  usingFileName: (fileName: string) => MediaAdder
+  usingName: (name: string) => MediaAdder
+  withCustomProperties: (properties: Record<string, unknown>) => MediaAdder
+  withOrder: (order: number) => MediaAdder
+}
+
+class MediaError = {
+  new (message: string, code?: string, status?: number, context?: Record<string, unknown>): MediaError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class MediaFileMissingError = {
+  new (path: string, disk: string): MediaFileMissingError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class MediaItem = {
+  new (): MediaItem
+  static _isFillable: (key: string) => boolean
+  static _unscopedQuery: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => ModelQueryBuilder<T>
+  static addGlobalScope: <T extends BaseModel>(this: typeof BaseModel & (new () => T), name: string, callback: GlobalScopeCallback) => void
+  static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
+  static appends: string[]
+  static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static connection?: string
+  static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
+  static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
+  static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
+  static dispatchesEvents?: Record<string, new (model: unknown) => object>
+  static fillable?: readonly string[]
+  static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
+  static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
+  static findMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ids: (number | string)[]) => Promise<T[]>
+  static findOrFail: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T>
+  static findOrNew: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T>
+  static first: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T | null>
+  static firstOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, create?: UpdatePayload<T>) => Promise<T>
+  static firstOrFail: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T>
+  static firstOrNew: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
+  static forOwner: (type: string, id: string | number) => ScopeApplicator
+  static forceCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: Record<string, unknown>) => Promise<T>
+  static fromRow: (row: Record<string, unknown>) => BaseModel
+  static guarded?: readonly string[]
+  static hashable?: string[]
+  static hidden: string[]
+  static implicitBinding?: boolean
+  static implicitBindingKey?: string
+  static inCollection: (collection: string) => ScopeApplicator
+  static latest: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column?: string) => ModelQueryBuilder<T>
+  static loadCount: <T extends BaseModel>(this: typeof BaseModel, models: T[], relations: string | string[]) => Promise<T[]>
+  static massPrune: boolean
+  static observe: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ObserverClass: new () => ModelObserver<T>) => void
+  static oldest: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column?: string) => ModelQueryBuilder<T>
+  static orderBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, direction?: OrderDirection) => ModelQueryBuilder<T>
+  static ordered: () => ScopeApplicator
+  static paginate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), perPage?: number, page?: number, pageName?: string) => Promise<PaginateResult<T>>
+  static primaryKey: string
+  static prunable?: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => ModelQueryBuilder<T>
+  static prune: <T extends BaseModel>(this: typeof BaseModel & (new () => T), chunkSize?: number) => Promise<number>
+  static query: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => ModelQueryBuilder<T>
+  static reactiveCasts: boolean
+  static registerConnection: (name: string, conn: SQLInstance, dialect?: Dialect) => void
+  static reguard: () => void
+  static removeGlobalScope: <T extends BaseModel>(this: typeof BaseModel & (new () => T), name: string) => void
+  static saveMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), models: T[]) => Promise<T[]>
+  static scope: <Args extends unknown[]>(fn: (query: QueryBuilder, ...args: Args) => void) => (...args: Args) => ScopeApplicator
+  static softDeletes: boolean
+  static table: string
+  static timestamps: boolean
+  static unguard: () => void
+  static unguarded: boolean
+  static updateOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
+  static upsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
+  static visible: string[]
+  static where: {    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
+  static whereIn: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, values: unknown[]) => ModelQueryBuilder<T>
+  static withoutGuard: <T>(callback: () => T | Promise<T>) => Promise<T>
+  static withoutTimestamps: <R>(callback: () => Promise<R> | R) => Promise<R>
+  $dirty: () => Record<string, unknown>
+  append: (...keys: string[]) => MediaItem
+  associate: (relation: string, model: BaseModel) => MediaItem
+  bytes: () => Promise<Uint8Array>
+  collectionName: string
+  conversion: (name: string) => GeneratedConversion | null
+  conversionNames: () => string[]
+  conversionsDisk: string | null
+  createdAt?: Date
+  customProperties: Record<string, unknown>
+  decrement: (column: 'id' | 'name' | 'size' | 'createdAt' | 'updatedAt' | '__isZerotalModel' | 'fill' | 'forceFill' | 'save' | 'delete' | 'load' | 'loadMissing' | 'fresh' | 'refresh' | 'replicate' | 'touch' | 'is' | 'isNot' | 'increment' | 'decrement' | 'loadCount' | 'loadSum' | 'loadAvg' | 'loadMin' | 'loadMax' | 'makeHidden' | 'makeVisible' | 'append' | 'associate' | 'dissociate' | 'isDirty' | '$dirty' | 'markDirty' | 'toJSON' | 'modelType' | 'modelId' | 'uuid' | 'collectionName' | 'fileName' | 'mimeType' | 'disk' | 'conversionsDisk' | 'manipulations' | 'customProperties' | 'generatedConversions' | 'responsiveImages' | 'orderColumn' | 'originalDisk' | 'derivedDisk' | 'getPath' | 'getResponsivePath' | 'getUrl' | 'getTemporaryUrl' | 'hasConversion' | 'conversion' | 'conversionNames' | 'responsiveSet' | 'srcset' | 'placeholder' | 'getCustomProperty' | 'setCustomProperty' | 'forgetCustomProperty' | 'bytes' | 'fileExists' | 'deleteFiles', amount?: number) => Promise<MediaItem>
+  delete: () => Promise<void>
+  deleteFiles: () => Promise<void>
+  derivedDisk: () => StorageDriver
+  disk: string
+  dissociate: (relation: string) => MediaItem
+  fileExists: () => Promise<boolean>
+  fileName: string
+  fill: (data: Partial<InsertPayload<MediaItem>>) => MediaItem
+  forceFill: (data: Record<string, unknown>) => MediaItem
+  forgetCustomProperty: (key: string) => MediaItem
+  fresh: () => Promise<MediaItem>
+  generatedConversions: Record<string, GeneratedConversion>
+  getCustomProperty: {    (key: string): unknown;    <T>(key: string, fallback: T): T;}
+  getPath: (conversion?: string) => string
+  getResponsivePath: (width: number) => string
+  getTemporaryUrl: (expiresInSeconds?: number, conversion?: string) => Promise<string>
+  getUrl: (conversion?: string) => string
+  hasConversion: (name: string) => boolean
+  id: number
+  increment: (column: 'id' | 'name' | 'size' | 'createdAt' | 'updatedAt' | '__isZerotalModel' | 'fill' | 'forceFill' | 'save' | 'delete' | 'load' | 'loadMissing' | 'fresh' | 'refresh' | 'replicate' | 'touch' | 'is' | 'isNot' | 'increment' | 'decrement' | 'loadCount' | 'loadSum' | 'loadAvg' | 'loadMin' | 'loadMax' | 'makeHidden' | 'makeVisible' | 'append' | 'associate' | 'dissociate' | 'isDirty' | '$dirty' | 'markDirty' | 'toJSON' | 'modelType' | 'modelId' | 'uuid' | 'collectionName' | 'fileName' | 'mimeType' | 'disk' | 'conversionsDisk' | 'manipulations' | 'customProperties' | 'generatedConversions' | 'responsiveImages' | 'orderColumn' | 'originalDisk' | 'derivedDisk' | 'getPath' | 'getResponsivePath' | 'getUrl' | 'getTemporaryUrl' | 'hasConversion' | 'conversion' | 'conversionNames' | 'responsiveSet' | 'srcset' | 'placeholder' | 'getCustomProperty' | 'setCustomProperty' | 'forgetCustomProperty' | 'bytes' | 'fileExists' | 'deleteFiles', amount?: number) => Promise<MediaItem>
+  is: (other: BaseModel | null | undefined) => boolean
+  isDirty: (column?: string) => boolean
+  isNot: (other: BaseModel | null | undefined) => boolean
+  load: (relations: string[]) => Promise<MediaItem>
+  loadAvg: (relation: string, column: string) => Promise<MediaItem>
+  loadCount: (relations: string | string[]) => Promise<MediaItem>
+  loadMax: (relation: string, column: string) => Promise<MediaItem>
+  loadMin: (relation: string, column: string) => Promise<MediaItem>
+  loadMissing: (relations: string[]) => Promise<MediaItem>
+  loadSum: (relation: string, column: string) => Promise<MediaItem>
+  makeHidden: (...keys: string[]) => MediaItem
+  makeVisible: (...keys: string[]) => MediaItem
+  manipulations: Record<string, unknown>
+  markDirty: (property: keyof MediaItem) => MediaItem
+  mimeType: string | null
+  modelId: string
+  modelType: string
+  name: string
+  orderColumn: number | null
+  originalDisk: () => StorageDriver
+  placeholder: string | null
+  readonly __isZerotalModel: true
+  refresh: () => Promise<MediaItem>
+  replicate: (except?: string[]) => MediaItem
+  responsiveImages: Record<string, never> | ResponsiveImageSet
+  responsiveSet: () => ResponsiveImageSet
+  save: () => Promise<MediaItem>
+  setCustomProperty: (key: string, value: unknown) => MediaItem
+  size: number
+  srcset: () => string
+  toJSON: () => Record<string, unknown>
+  touch: () => Promise<MediaItem>
+  updatedAt?: Date
+  uuid: string
+}
+
+class MediaManager = {
+  new (config: MediaConfigShape, driver: ImageDriver): MediaManager
+  clean: (options?: {    dryRun?: boolean;}) => Promise<CleanReport>
+  readonly config: MediaConfigShape
+  readonly driver: ImageDriver
+  regenerate: (media: MediaItem, ownerClass: CollectionHost, only?: string[]) => Promise<string[]>
+  runner: () => ConversionRunner
+}
+
+class MediaProvider = {
+  new (app: Application): MediaProvider
+  static dependsOn?: (new (app: Application) => ServiceProvider)[]
+  static environments: AppEnvironment[]
+  static priority?: number
+  static provides: readonly ['media']
+  onBooted: () => Promise<void>
+  onBooting: () => Promise<void>
+  onRegister: () => void
+  onRequestProcessed: (_ctx: HttpContext) => Promise<void>
+  onRequestReceived: (_ctx: HttpContext) => Promise<void>
+  onResponseSent: (_ctx: HttpContext) => Promise<void>
+  onStarted: () => Promise<void>
+  onStarting: () => Promise<void>
+  onStopped: () => Promise<void>
+  onStopping: () => Promise<void>
+  replContext: () => Record<string, unknown>
+}
+
+class SharpImageDriver = {
+  new (): SharpImageDriver
+  canEncode: (format: ConversionFormat) => Promise<boolean>
+  convert: (bytes: Uint8Array, manipulation: ImageManipulation) => Promise<ImageResult>
+  metadata: (bytes: Uint8Array) => Promise<ImageMetadata | null>
+  placeholder: (bytes: Uint8Array) => Promise<string | null>
+  readonly name: 'SharpImageDriver'
+  readonly supportsCrop: true
+}
+
+class UnknownCollectionError = {
+  new (model: string, collection: string, known: string[]): UnknownCollectionError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class UnsavedOwnerError = {
+  new (model: string): UnsavedOwnerError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class UnsupportedFormatError = {
+  new (format: string, available: string[]): UnsupportedFormatError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class UnsupportedManipulationError = {
+  new (driver: string, what: string, fix: string): UnsupportedManipulationError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+const CONVERTIBLE_MIME_TYPES = Set<string>
+
+const FORMAT_EXTENSION = Record<ConversionFormat, string>
+
+const FORMAT_MIME = Record<ConversionFormat, string>
+
+const MediaFake = {    all(owner: {        id: number | string;        constructor: {            name: string;        };    }): Promise<MediaItem[]>;    inCollection(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<MediaItem[]>;    assertHas(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<void>;    assertMissing(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<void>;    assertCount(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string, count: number): Promise<void>;    assertConversion(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string, conversion: string): Promise<void>;}
+
+const MediaLibrary = MediaManager
+
+const mediaSchemaConcern = ConcernDescriptor
+
+function applyRetentionRules = (modelType: string, modelId: number | string, collection: string, definition: CollectionDefinition, justAdded: MediaItem) => Promise<void>
+
+function collectionNames = (host: CollectionHost) => string[]
+
+function defaultDiskName = () => string
+
+function diskFor = (name?: string | null) => StorageDriver
+
+function diskNameFor = (name: string | null | undefined, fallback: string) => string
+
+function dispatchConversions = (mediaId: number, conversions: string[]) => Promise<void>
+
+function fromDisk = (path: string, disk?: string) => SourceResolver
+
+function fromPath = (path: string) => SourceResolver
+
+function fromUrl = (url: string, maxBytes: number) => SourceResolver
+
+function fromValue = (source: MediaSource, fileName?: string) => SourceResolver
+
+function hasCollection = (host: CollectionHost, name: string) => boolean
+
+function isConvertible = (mimeType: string | null | undefined) => boolean
+
+function isQueueAvailable = () => boolean
+
+function Media = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): MediaModel;    prototype: Media<any>.MediaModel;    mediaCollections: MediaCollections;} & TBase
+
+function MediaConfig = (options?: Partial<MediaConfigShape>) => MediaConfigShape
+
+function mediaDefaults = () => MediaConfigShape
+
+function mediaState = () => MediaState
+
+function ownerClassFor = (modelType: string) => CollectionHost | null
+
+function partitionConversions = (conversions: ConversionMap | undefined, queueAvailable: boolean) => {    inline: ConversionMap;    queued: ConversionMap;}
+
+function pathGenerator = () => PathGenerator
+
+function performConversions = (mediaId: number, conversions: string[]) => Promise<{    generated: string[];    failed: Array<{        name: string;        reason: string;    }>;}>
+
+function resetMediaState = () => void
+
+function resolveCollection = (host: CollectionHost, name: string) => CollectionDefinition
+
+function setConversionDispatcher = (dispatcher: ConversionDispatcher | null) => void
+
+function setDefaultDiskName = (name: string | null) => void
+
+function setDiskResolver = (resolver: DiskResolver | null) => void
+
+function setMediaState = (state: MediaState) => void
+
+function setPathGenerator = (generator: PathGenerator) => void
+
+interface CleanReport = {
+  danglingConversions: {    mediaId: number;    conversion: string;}[]
+  deletedRows: number[]
+  orphanedRows: number[]
+}
+
+interface CollectionDefinition = {
+  accepts?: string[]
+  conversions?: ConversionMap
+  conversionsDisk?: string
+  disk?: string
+  fallbackPath?: string
+  fallbackUrl?: string
+  maxSize?: number
+  onlyKeepLatest?: number
+  responsive?: boolean | number[]
+  single?: boolean
+}
+
+interface CollectionHost = {
+  mediaCollections?: MediaCollections
+  name: string
+}
+
+interface ConversionDefinition = {
+  fit?: ConversionFit
+  format?: ConversionFormat
+  height?: number
+  quality?: number
+  queued?: boolean
+  rotate?: number
+  width?: number
+}
+
+interface GeneratedConversion = {
+  fileName: string
+  generatedAt: string
+  height: number
+  mimeType: string
+  size: number
+  width: number
+}
+
+interface ImageDriver = {
+  canEncode: (format: ConversionFormat) => Promise<boolean>
+  convert: (bytes: Uint8Array, manipulation: ImageManipulation) => Promise<ImageResult>
+  metadata: (bytes: Uint8Array) => Promise<ImageMetadata | null>
+  placeholder: (bytes: Uint8Array) => Promise<string | null>
+  readonly name: string
+  readonly supportsCrop: boolean
+}
+
+interface ImageManipulation = {
+  fit?: ConversionFit
+  format: ConversionFormat
+  height?: number
+  quality?: number
+  rotate?: number
+  width?: number
+  withoutEnlargement?: boolean
+}
+
+interface ImageMetadata = {
+  format: string
+  height: number
+  width: number
+}
+
+interface ImageResult = {
+  bytes: Uint8Array<ArrayBufferLike>
+  format: ConversionFormat
+  height: number
+  mimeType: string
+  width: number
+}
+
+interface MediaConfigShape = {
+  allowHostFormats: boolean
+  autoCreateTable: boolean
+  conversionsDisk: string
+  disk: string
+  driver: 'bun' | 'sharp'
+  format: SafeConversionFormat
+  maxConversionInputSize: number
+  quality: number
+  queue: string
+  queueConversions: boolean
+  responsivePlaceholder: boolean
+  responsiveWidths: number[]
+  table: string
+}
+
+interface MediaOwner = {
+  id: string | number
+  readonly constructor: {    name: string;}
+}
+
+interface MediaState = {
+  config: MediaConfigShape
+  driver: ImageDriver
+}
+
+interface PathGenerator = {
+  forConversions: (media: MediaItem) => string
+  forOriginal: (media: MediaItem) => string
+  forResponsiveImages: (media: MediaItem) => string
+}
+
+interface PendingMediaMeta = {
+  customProperties?: Record<string, unknown>
+  disk?: string
+  name?: string
+  order?: number
+}
+
+interface ResolvedSource = {
+  bytes: Uint8Array<ArrayBufferLike>
+  originalName: string
+}
+
+interface ResponsiveImage = {
+  fileName: string
+  height: number
+  width: number
+}
+
+interface ResponsiveImageSet = {
+  images: ResponsiveImage[]
+  placeholder?: string
+}
+
+type ConversionDispatcher = (mediaId: number, conversions: string[]) => Promise<void>
+
+type ConversionFit = 'fill' | 'inside' | 'cover'
+
+type ConversionFormat = SafeConversionFormat | 'avif' | 'heic'
+
+type ConversionMap = {    [x: string]: ConversionDefinition;}
+
+type DiskResolver = (name?: string) => StorageDriver
+
+type MediaCollections = {    [x: string]: CollectionDefinition | (() => CollectionDefinition);}
+
+type MediaSource = ArrayBuffer | Blob | UploadedFile | File | Uint8Array<ArrayBufferLike>
+
+type SafeConversionFormat = 'jpeg' | 'png' | 'webp'
+
+type SourceResolver = () => Promise<ResolvedSource>
+
 ## ./metrics  `(./src/metrics.ts)`
 
 function beginHttp = () => void
@@ -4523,6 +5014,7 @@ class BaseModel = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: ModelCtor<T>, search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: ModelCtor<T>, data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: ModelCtor<T>, column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: ModelCtor<T>, column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: ModelCtor<T>, column: string, values: unknown[]) => ModelQueryBuilder<T>
@@ -4823,6 +5315,7 @@ class Model = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: ModelCtor<T>, search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: ModelCtor<T>, data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: ModelCtor<T>, column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: ModelCtor<T>, column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: ModelCtor<T>, column: string, values: unknown[]) => ModelQueryBuilder<T>
@@ -5280,8 +5773,6 @@ function allowNPlusOne = (pattern: string, options?: {    once?: boolean;}, ctx?
 
 function arrayOf = <T = unknown>(mapper?: CastMapper<T>) => ArrayCast<T>
 
-function BaseModelWith = {    <A extends Constructor>(a: (base: Base) => A): A;    <A extends Constructor, B extends Constructor>(a: (base: Base) => A, b: (base: A) => B): B;    <A extends Constructor, B extends Constructor, C extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C): C;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D): D;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E): E;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F): F;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G): G;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H): H;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I): I;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J): J;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K): K;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L): L;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor, M extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L, m: (base: L) => M): M;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor, M extends Constructor, N extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L, m: (base: L) => M, n: (base: M) => N): N;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor, M extends Constructor, N extends Constructor, O extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L, m: (base: L) => M, n: (base: M) => N, o: (base: N) => O): O;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor, M extends Constructor, N extends Constructor, O extends Constructor, P extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L, m: (base: L) => M, n: (base: M) => N, o: (base: N) => O, p: (base: O) => P): P;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor, M extends Constructor, N extends Constructor, O extends Constructor, P extends Constructor, Q extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L, m: (base: L) => M, n: (base: M) => N, o: (base: N) => O, p: (base: O) => P, q: (base: P) => Q): Q;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor, M extends Constructor, N extends Constructor, O extends Constructor, P extends Constructor, Q extends Constructor, R extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L, m: (base: L) => M, n: (base: M) => N, o: (base: N) => O, p: (base: O) => P, q: (base: P) => Q, r: (base: Q) => R): R;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor, M extends Constructor, N extends Constructor, O extends Constructor, P extends Constructor, Q extends Constructor, R extends Constructor, S extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L, m: (base: L) => M, n: (base: M) => N, o: (base: N) => O, p: (base: O) => P, q: (base: P) => Q, r: (base: Q) => R, s: (base: R) => S): S;    <A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor, I extends Constructor, J extends Constructor, K extends Constructor, L extends Constructor, M extends Constructor, N extends Constructor, O extends Constructor, P extends Constructor, Q extends Constructor, R extends Constructor, S extends Constructor, T extends Constructor>(a: (base: Base) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H, i: (base: H) => I, j: (base: I) => J, k: (base: J) => K, l: (base: K) => L, m: (base: L) => M, n: (base: M) => N, o: (base: N) => O, p: (base: O) => P, q: (base: P) => Q, r: (base: Q) => R, s: (base: R) => S, t: (base: S) => T): T;}
-
 function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
 function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
@@ -5383,6 +5874,17 @@ interface ColumnOptions = {
   primary?: boolean
   type?: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json'
   unique?: boolean
+}
+
+interface Compose = {
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor, H extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G, h: (base: G) => H): H
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor, G extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F, g: (base: F) => G): G
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor, F extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E, f: (base: E) => F): F
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor, E extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D, e: (base: D) => E): E
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor, D extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C, d: (base: C) => D): D
+  <TBase extends Constructor, A extends Constructor, B extends Constructor, C extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B, c: (base: B) => C): C
+  <TBase extends Constructor, A extends Constructor, B extends Constructor>(this: TBase, a: (base: TBase) => A, b: (base: A) => B): B
+  <TBase extends Constructor, A extends Constructor>(this: TBase, a: (base: TBase) => A): A
 }
 
 interface CursorPaginateResult = {

@@ -122,7 +122,7 @@ Action helpers available inside any exposed method include `this.flash()`, `this
 
 **Headless (unstyled, accessible) primitives:** `Switch`, `Checkbox`, `Select`, `RadioGroup`, `Listbox`, `Combobox`, `Disclosure`, `Accordion`, `Popover`, `Field`, `Label`, `Description`, `Fieldset`, `Legend`.
 
-**Mixins & helpers:** compose features with `ComponentWith(Pagination, FileUploads)` — the `Pagination` mixin (`page` state + `nextPage`/`gotoPage`/…, paired with `Model.paginate()` and rendered by `<Pager>`) and the `FileUploads` mixin (`removeUpload`, paired with `<FileUpload>` + `TemporaryUploadedFile`). Also `Form` + `registerForm`, the `paginate` helper + `Paginator` type, and `Layout` for shared page shells.
+**Mixins & helpers:** compose features with `Component.using(Pagination, FileUploads)` — the `Pagination` mixin (`page` state + `nextPage`/`gotoPage`/…, paired with `Model.paginate()` and rendered by `<Pager>`) and the `FileUploads` mixin (`removeUpload`, paired with `<FileUpload>` + `TemporaryUploadedFile`). Also `Form` + `registerForm`, the `paginate` helper + `Paginator` type, and `Layout` for shared page shells.
 
 **Slots:** a child component's plain children are its default slot; a `slots={{ header, footer }}` prop supplies named slots. The child places them with `this.slot(name)` / `this.slot()` and branches on `this.hasSlot(name)` — ideal for reusable shells (cards, modals, panels). Slot markup renders in the parent's scope and is carried, signed, in the child's snapshot.
 

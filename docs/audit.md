@@ -77,7 +77,7 @@ export default AuditConfig({
 
 ### The Auditable mixin
 
-Compose `Auditable(Base)` into any `BaseModel` subclass. The audit system hooks
+Compose `Auditable` into any `Model` subclass. The audit system hooks
 into the ORM lifecycle and records `created`, `updated`, and `deleted` events
 automatically. Like every Zerotal mixin it takes only `(Base)` — configure it with
 overridable static fields on the model.
@@ -85,10 +85,10 @@ overridable static fields on the model.
 ```ts
 // app/models/User.ts
 import { Auditable } from "@zerotal/audit";
-import { BaseModel, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 
 @table("users")
-export class User extends Auditable(BaseModel) {
+export class User extends Model.using(Auditable) {
   protected static auditExcept = ["password", "rememberToken"];
 
   @column({ type: "string" }) name: string;
@@ -148,7 +148,7 @@ Pass the **model instance** the event concerns; `auditable_type` and `auditable_
 are derived from it, so logs are always linked to a record:
 
 ```ts
-function log(event: AuditEvent, model: BaseModel, payload?: InstanceAuditPayload): Promise<void>;
+function log(event: AuditEvent, model: Model, payload?: InstanceAuditPayload): Promise<void>;
 function log(event: AuditEvent, payload: Omit<AuditPayload, "event">): Promise<void>;
 ```
 
@@ -195,7 +195,7 @@ operating outside a request.
 
 ## Querying audit logs
 
-`AuditLog` is a full `BaseModel` with scopes and chainable queries:
+`AuditLog` is a full `Model` with scopes and chainable queries:
 
 ```ts
 // in a controller or service

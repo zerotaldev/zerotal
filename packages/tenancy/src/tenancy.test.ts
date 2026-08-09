@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import { SQL } from "bun";
-import { BaseModelWith, _setBaseModelConnection, _setDbConnection } from "@zerotal/orm";
+import { Model, _setBaseModelConnection, _setDbConnection } from "@zerotal/orm";
 import { TenantContext } from "./TenantContext.ts";
 import { Tenantable, registerTenantScoping } from "./Tenantable.ts";
 import { SubdomainResolver } from "./resolvers/SubdomainResolver.ts";
@@ -214,11 +214,11 @@ describe("EnsureTenancyMiddleware — strict gate", () => {
 
 // ── Tenantable mixin (scoping + injection) ────────────────────────────────────
 
-class Project extends BaseModelWith(Tenantable) {
+class Project extends Model.using(Tenantable) {
   static override table = "projects";
   name!: string;
 }
-class Org extends BaseModelWith(Tenantable) {
+class Org extends Model.using(Tenantable) {
   static override table = "orgs";
   static tenantColumn = "org_id"; // override the FK column
   name!: string;

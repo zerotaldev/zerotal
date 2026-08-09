@@ -98,7 +98,7 @@ async function disk(name?: string): Promise<Disk> {
  *
  * @example
  * ```tsx
- * class Avatar extends ComponentWith(FileUploads) {
+ * class Avatar extends Component.using(FileUploads) {
  *   @expose photo: TemporaryUploadedFile | null = null;
  *   @expose path = "";
  *

@@ -4,7 +4,7 @@
 // workflow carry the API — `transitionTo` / `forceState` / `onTransition` / the
 // `states` + `stateField` statics never appear on models that don't use them.
 //
-//   import { BaseModelWith } from "@zerotal/orm";
+//   import { Model, State } from "@zerotal/orm";
 //
 //   const States = {
 //     pending: { canTransitionTo: ["active", "cancelled"] as const },
@@ -14,7 +14,7 @@
 //     cancelled: { canTransitionTo: [] as const },
 //   } as const;
 //
-//   class Subscription extends BaseModelWith(State) {
+//   class Subscription extends Model.using(State) {
 //     static states = States;
 //     @column() status!: keyof typeof States;
 //   }
@@ -132,7 +132,7 @@ interface StateModelClass {
  *   cancelled: { canTransitionTo: [] as const },
  * } as const;
  *
- * class Subscription extends BaseModelWith(State) {
+ * class Subscription extends Model.using(State) {
  *   static states = States;
  *   @column() status!: keyof typeof States;
  * }

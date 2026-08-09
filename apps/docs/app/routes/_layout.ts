@@ -187,6 +187,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { label: "Scheduler", slug: "scheduler" },
       { label: "Cache", slug: "cache" },
       { label: "Storage", slug: "storage" },
+      { label: "Media Library", slug: "media" },
       {
         label: "Broadcasting",
         slug: "broadcasting",

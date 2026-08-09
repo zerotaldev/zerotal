@@ -122,6 +122,7 @@ class AuthUser = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, values: unknown[]) => ModelQueryBuilder<T>
@@ -541,6 +542,7 @@ class Permission = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, values: unknown[]) => ModelQueryBuilder<T>
@@ -694,6 +696,7 @@ class Role = {
   static unguarded: boolean
   static updateOrCreate: <T extends BaseModel>(this: typeof BaseModel & (new () => T), search: UpdatePayload<T>, values?: UpdatePayload<T>) => Promise<T>
   static upsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), data: InsertPayload<T>, conflictKeys: (keyof T & string)[], updateCols?: (keyof T & string)[]) => Promise<void>
+  static using: Compose
   static visible: string[]
   static where: {    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown): ModelQueryBuilder<T>;    <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, operator: WhereOperator, value: unknown): ModelQueryBuilder<T>;}
   static whereIn: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, values: unknown[]) => ModelQueryBuilder<T>
@@ -1133,7 +1136,7 @@ interface TwoFactorOptions = {
 interface UserModel = {
   $dirty: () => Record<string, unknown>
   append: (...keys: string[]) => UserModel
-  associate: (relation: string, model: BaseModel) => UserModel
+  associate: (relation: string, model: Model) => UserModel
   createdAt?: Date
   decrement: (column: 'id' | 'createdAt' | 'updatedAt' | '__isZerotalModel' | 'fill' | 'forceFill' | 'save' | 'delete' | 'load' | 'loadMissing' | 'fresh' | 'refresh' | 'replicate' | 'touch' | 'is' | 'isNot' | 'increment' | 'decrement' | 'loadCount' | 'loadSum' | 'loadAvg' | 'loadMin' | 'loadMax' | 'makeHidden' | 'makeVisible' | 'append' | 'associate' | 'dissociate' | 'isDirty' | '$dirty' | 'markDirty' | 'toJSON' | 'getAuthId' | 'getAuthPassword' | 'getRememberToken' | 'setRememberToken' | 'getRememberTokenName', amount?: number) => Promise<UserModel>
   delete: () => Promise<void>
@@ -1147,9 +1150,9 @@ interface UserModel = {
   getRememberTokenName: () => string
   id: number
   increment: (column: 'id' | 'createdAt' | 'updatedAt' | '__isZerotalModel' | 'fill' | 'forceFill' | 'save' | 'delete' | 'load' | 'loadMissing' | 'fresh' | 'refresh' | 'replicate' | 'touch' | 'is' | 'isNot' | 'increment' | 'decrement' | 'loadCount' | 'loadSum' | 'loadAvg' | 'loadMin' | 'loadMax' | 'makeHidden' | 'makeVisible' | 'append' | 'associate' | 'dissociate' | 'isDirty' | '$dirty' | 'markDirty' | 'toJSON' | 'getAuthId' | 'getAuthPassword' | 'getRememberToken' | 'setRememberToken' | 'getRememberTokenName', amount?: number) => Promise<UserModel>
-  is: (other: BaseModel | null | undefined) => boolean
+  is: (other: Model | null | undefined) => boolean
   isDirty: (column?: string) => boolean
-  isNot: (other: BaseModel | null | undefined) => boolean
+  isNot: (other: Model | null | undefined) => boolean
   load: (relations: string[]) => Promise<UserModel>
   loadAvg: (relation: string, column: string) => Promise<UserModel>
   loadCount: (relations: string | string[]) => Promise<UserModel>

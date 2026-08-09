@@ -40,14 +40,14 @@ app/providers/*    →   register → boot phases   →   app/middleware/*   →
 
 ## Models — app/models/
 
-Every `BaseModel` subclass under `app/models/` is registered automatically:
+Every `Model` subclass under `app/models/` is registered automatically:
 
 ```typescript
 // app/models/User.ts
-import { BaseModel, column, hasMany } from "@zerotal/orm";
+import { Model, column, hasMany } from "@zerotal/orm";
 import { Post } from "./Post.ts";
 
-export class User extends BaseModel {
+export class User extends Model {
   @column() name!: string;
   @column() email!: string;
   @hasMany(() => Post, { foreignKey: "user_id" }) posts!: Post[];
@@ -68,7 +68,7 @@ Override the name (or set timestamps/soft-deletes) with `@table` whenever you ne
 ```typescript
 // app/models/Account.ts
 @table("legacy_accounts", { softDeletes: true })
-export class Account extends BaseModel {
+export class Account extends Model {
   /* … */
 }
 ```
@@ -160,7 +160,7 @@ fire — listeners then react with no coupling to the model:
 
 ```typescript
 // app/models/Order.ts
-export class Order extends BaseModel {
+export class Order extends Model {
   static dispatchesEvents = { created: OrderPlaced, deleted: OrderCancelled };
 }
 ```

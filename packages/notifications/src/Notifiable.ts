@@ -3,10 +3,10 @@
 // Notifiable model mixin — compose it
 // onto any model that should receive notifications (typically User):
 //
-//   import { BaseModelWith } from "@zerotal/orm";
+//   import { Model } from "@zerotal/orm";
 //   import { Notifiable } from "@zerotal/notifications";
 //
-//   export class User extends BaseModelWith(Notifiable) {
+//   export class User extends Model.using(Notifiable) {
 //     @column() email!: string;
 //   }
 //

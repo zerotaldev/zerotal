@@ -1,7 +1,7 @@
-import { BaseModel, column, table } from "zerotal/orm";
+import { Model, column, table } from "zerotal/orm";
 
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   // Models guard every attribute by default. Only these may be mass-assigned
   // from a request body — `role` is deliberately absent, so no amount of extra
   // fields in a form post can promote the account that submitted it.

@@ -43,11 +43,11 @@ export default DatabaseConfig({
 ### Define a model
 
 ```ts
-import { BaseModel, column, table, belongsTo, hasMany } from "@zerotal/orm";
+import { Model, column, table, belongsTo, hasMany } from "@zerotal/orm";
 import type { Columns } from "@zerotal/orm";
 
 @(table("posts").withTimestamps().withSoftDeletes())
-export class Post extends BaseModel {
+export class Post extends Model {
   static fillable: Columns<Post>[] = ["title", "body", "status", "userId"];
 
   @column("string") title!: string;
@@ -144,7 +144,7 @@ This package exposes two subpath entry points:
 
 Main exports from the default entry point:
 
-- **Models** — `BaseModel` / `Model`, `ModelQueryBuilder`, `DB`, `QueryBuilder`
+- **Models** — `Model` (aka `BaseModel`), `ModelQueryBuilder`, `DB`, `QueryBuilder`
 - **Decorators** — `column`, `table`, `belongsTo`, `hasMany`, `hasOne`, `manyToMany`, `morphTo`, `morphMany`, `morphOne`, `hasManyThrough`, `hasOneThrough`, `morphToMany`, `morphedByMany`
 - **Schema / migrations** — `Schema`, `Blueprint`, `Migration`, `MigrationRunner`, `SchemaInspector`, `ModelInspector`, `SchemaDiffer`, `synchronizeSchema`
 - **Seeding** — `Seeder`

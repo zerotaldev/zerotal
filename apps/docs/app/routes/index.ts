@@ -84,6 +84,13 @@ const CARDS: { title: string; slug: string; desc: string; icon: string }[] = [
     icon: `<svg class="w-5 h-5 text-voltage-700 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a1 1 0 0 1 1-1h4l2 2h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/><line x1="10" y1="16" x2="10" y2="11"/><polyline points="8,13 10,11 12,13"/></svg>`,
   },
   {
+    title: "Media Library",
+    slug: "media",
+    desc: "Attach files to models, with image conversions",
+    // Picture frame with sun and mountains
+    icon: `<svg class="w-5 h-5 text-voltage-700 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="12" rx="1.5"/><circle cx="6.75" cy="8.25" r="1.25"/><polyline points="3,14.5 7.5,10.5 11,13.5 13.5,11 17,14.5"/></svg>`,
+  },
+  {
     title: "Validation",
     slug: "validator",
     desc: "Schema-based request validation",
@@ -139,7 +146,7 @@ const FEATURES = [
 
 // A realistic code snippet showing actual Zerotal patterns
 const CODE_SNIPPET = `@table('posts')
-export class Post extends BaseModelWith(SoftDeletes) {
+export class Post extends Model.using(SoftDeletes) {
   @column()        title!:  string;
   @column('text')  body!:   string;
   @column()        slug!:   string;

@@ -73,8 +73,8 @@ describe("Component reserved member names", () => {
   });
 
   it("keeps framework internals underscore-prefixed", () => {
-    const leaked = Object.getOwnPropertyNames(Component.prototype).filter(
-      (n) => n.startsWith("__"),
+    const leaked = Object.getOwnPropertyNames(Component.prototype).filter((n) =>
+      n.startsWith("__"),
     );
 
     expect(leaked).toEqual([]);

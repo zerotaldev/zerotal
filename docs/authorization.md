@@ -50,8 +50,8 @@ come from the package's migrations — see [Schema](#schema).
 ## Composing the mixins
 
 The mixins come from `@zerotal/auth`; `AuthUser` is the authenticatable base
-(`Authenticatable(BaseModel)`). Compose them in either the nested form or the
-flat `BaseModelWith` form — both are equivalent:
+(`Authenticatable(Model)`). Compose them in either the nested form or the
+flat `Model.using` form — both are equivalent:
 
 ```typescript
 // app/models/User.ts — nested form
@@ -62,10 +62,10 @@ class User extends Roles(Permissions(AuthUser)) {}
 
 ```typescript
 // app/models/User.ts — flat form (no wrapper nesting)
-import { BaseModelWith } from "@zerotal/orm";
+import { Model } from "@zerotal/orm";
 import { Authenticatable, Roles, Permissions } from "@zerotal/auth";
 
-class User extends BaseModelWith(Authenticatable, Permissions, Roles) {}
+class User extends Model.using(Authenticatable, Permissions, Roles) {}
 ```
 
 ### Which mixins do I need?
@@ -80,8 +80,8 @@ class User extends BaseModelWith(Authenticatable, Permissions, Roles) {}
 ```typescript
 // app/models/*.ts
 class User extends Roles(Permissions(AuthUser)) {} // roles + direct permissions
-class Team extends Roles(AuthUser) {} // roles only (permissions via roles)
-class ApiKey extends Permissions(AuthUser) {} // direct permissions only
+class Team extends AuthUser.using(Roles) {} // roles only (permissions via roles)
+class ApiKey extends AuthUser.using(Permissions) {} // direct permissions only
 ```
 
 Each mixin exposes a per-model static flag to toggle its eager loading:

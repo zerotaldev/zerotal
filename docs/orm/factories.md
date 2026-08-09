@@ -215,7 +215,7 @@ without mutating the base.
 | `createMany`     | `createMany(n: number, overrides?): Promise<T[]>`                     | Insert `n` records sequentially without batch mode.                  |
 | `make`           | `make(overrides?: Partial<InsertPayload<T>>): T`                      | Build one in-memory instance; does not touch the database.           |
 | `count`          | `count(n: number): FactoryBatch<T>`                                   | Switch to batch mode; the returned `create()` yields `Promise<T[]>`. |
-| `for`            | `for(model: BaseModel, foreignKey?: string): Factory<T>`              | Inject a parent's id as a foreign key (default `<model>Id`).         |
+| `for`            | `for(model: Model, foreignKey?: string): Factory<T>`                  | Inject a parent's id as a foreign key (default `<model>Id`).         |
 | `state`          | `state(stateName: string): Factory<T>`                                | Force created instances into a model state via `forceState()`.       |
 | `afterCreate`    | `afterCreate(cb: (instance: T) => Promise<void> \| void): Factory<T>` | Run `cb` after each instance is saved.                               |
 | `dispatchEvents` | `dispatchEvents(): Factory<T>`                                        | Let observers and hooks fire (suppressed by default).                |

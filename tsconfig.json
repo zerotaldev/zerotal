@@ -32,6 +32,7 @@
     { "path": "./packages/flow" },
     { "path": "./packages/i18n" },
     { "path": "./packages/inertia" },
+    { "path": "./packages/media" },
     { "path": "./packages/monitor" },
     { "path": "./packages/notifications" },
     { "path": "./packages/orm" },

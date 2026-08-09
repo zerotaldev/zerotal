@@ -99,6 +99,7 @@ class AdminPage = {
   static showInNavigation: boolean
   static slug: string
   static title: string
+  static using: Compose
   $refresh: () => void
   $set: (key: string, value: unknown) => void
   _applyClientUpdate: (key: string, value: unknown, arrayKey?: string) => Promise<void>

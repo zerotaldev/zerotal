@@ -76,7 +76,7 @@ await Notify.route({ mail: "ops@acme.test" }).notify(new DeployFinished(build));
 import { Notifiable } from "@zerotal/notifications";
 import { AuthUser } from "@zerotal/auth";
 
-export class User extends Notifiable(AuthUser) {}
+export class User extends AuthUser.using(Notifiable) {}
 
 await user.notify(new OrderShippedNotification(order)); // send now
 await user.notifyLater(new OrderShippedNotification(order)); // queue

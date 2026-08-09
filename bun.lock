@@ -233,6 +233,26 @@
         "vue",
       ],
     },
+    "packages/media": {
+      "name": "@zerotal/media",
+      "version": "1.1.0",
+      "dependencies": {
+        "@zerotal/core": "workspace:*",
+        "@zerotal/orm": "workspace:*",
+      },
+      "devDependencies": {
+        "@zerotal/queue": "workspace:*",
+        "typescript": "^5.8.0",
+      },
+      "peerDependencies": {
+        "@zerotal/queue": "^1.0.0",
+        "sharp": "^0.33 || ^0.34",
+      },
+      "optionalPeers": [
+        "@zerotal/queue",
+        "sharp",
+      ],
+    },
     "packages/monitor": {
       "name": "@zerotal/monitor",
       "version": "1.1.0",
@@ -365,6 +385,7 @@
         "@zerotal/cache": "workspace:*",
         "@zerotal/client": "workspace:*",
         "@zerotal/core": "workspace:*",
+        "@zerotal/media": "workspace:*",
         "@zerotal/orm": "workspace:*",
         "@zerotal/queue": "workspace:*",
         "@zerotal/scheduler": "workspace:*",
@@ -581,6 +602,8 @@
     "@zerotal/i18n": ["@zerotal/i18n@workspace:packages/i18n"],
 
     "@zerotal/inertia": ["@zerotal/inertia@workspace:packages/inertia"],
+
+    "@zerotal/media": ["@zerotal/media@workspace:packages/media"],
 
     "@zerotal/monitor": ["@zerotal/monitor@workspace:packages/monitor"],
 

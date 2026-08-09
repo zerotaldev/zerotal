@@ -55,7 +55,7 @@ Here is a complete feature—a paginated, authenticated, validated resource—in
 ```ts
 // app/models/Post.ts
 @table("posts")
-export class Post extends BaseModelWith(SoftDeletes) {
+export class Post extends Model.using(SoftDeletes) {
   static override fillable = ["title", "body"];
 
   @column() title!: string;

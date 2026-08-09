@@ -1,12 +1,12 @@
 // ── Tenantable ──────────────────────────────────────────────────────────────
 //
-// Multi-tenant model mixin. Compose it via `BaseModelWith`, like every other mixin:
+// Multi-tenant model mixin. Compose it via `Model.using`, like every other mixin:
 //
-//   import { BaseModelWith, column, table } from "@zerotal/orm";
+//   import { Model, column, table } from "@zerotal/orm";
 //   import { Tenantable } from "@zerotal/tenancy";
 //
 //   @table("projects").withTimestamps()
-//   export class Project extends BaseModelWith(Tenantable) {
+//   export class Project extends Model.using(Tenantable) {
 //     @column() name!: string;
 //     @column() tenantId!: number;
 //   }

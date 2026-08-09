@@ -30,6 +30,11 @@ export type { UrlGenerator } from "./url.ts";
 export { Http } from "./Http.ts";
 export { UploadedFile } from "./UploadedFile.ts";
 export type { StorageDisk, FileValidationOptions } from "./UploadedFile.ts";
+// Exported for code that must identify bytes it did not receive as an upload —
+// a file fetched from a URL or read back off a disk still needs its type read
+// from its own contents rather than from whatever claimed to describe it.
+export { sniffContentType } from "./sniffContentType.ts";
+export type { SniffedType } from "./sniffContentType.ts";
 export { HttpClientResponse, HttpClientError, PendingRequest } from "./HttpClient.ts";
 export type { FakeStub } from "./HttpClient.ts";
 export { Resource, ResourceCollection } from "./Resource.ts";

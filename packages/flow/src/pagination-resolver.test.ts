@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { HttpContext, RequestContext, currentPage } from "@zerotal/core";
-import { ComponentWith } from "./mixins.ts";
+import { Component } from "./Component.ts";
 import { Pagination } from "./pagination.ts";
 
 beforeAll(() => {
   Bun.env.APP_KEY = "test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa";
 });
 
-class PostsPage extends ComponentWith(Pagination) {
+class PostsPage extends Component.using(Pagination) {
   override async render() {
     return { html: "" } as never;
   }

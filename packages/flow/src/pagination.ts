@@ -133,7 +133,7 @@ export function paginate<T>(items: T[], page = 1, perPage = 15): Paginator<T> {
 // `previousPage`, `gotoPage`, `resetPage`), WITHOUT putting any of that on
 // the base Component.
 //
-//   class PostsPage extends ComponentWith(Pagination) {
+//   class PostsPage extends Component.using(Pagination) {
 //     @locked posts: Post[] = [];
 //     async onMount() { this.posts = await Post.all(); }
 //     async render() {
@@ -200,7 +200,7 @@ const DEFAULT_PAGE = "page";
  *
  * @example
  * ```tsx
- * class PostsPage extends ComponentWith(Pagination) {
+ * class PostsPage extends Component.using(Pagination) {
  *   @locked posts: Post[] = [];
  *   async onMount() { this.posts = await Post.all(); }
  *   async render() {

@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **Scaffolded models use the new composition idiom.** Templates now generate
+  `class User extends Model.using(Authenticatable)` instead of
+  `class User extends BaseModelWith(Authenticatable)`, and plain models extend `Model` rather than
+  `BaseModel` — following the base-class rename in `@zerotal/orm`. Affects the `admin`, `api`,
+  `flow`, `react` and `vue` templates.
+
 ## [1.1.0] — 2026-08-08
 
 ### Fixed

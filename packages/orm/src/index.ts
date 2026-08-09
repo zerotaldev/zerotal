@@ -1,7 +1,7 @@
 /**
  * A Bun-native Active Record ORM built on `Bun.sql`.
  *
- * Models extend {@link BaseModel}: you declare columns with {@link column | `@column`},
+ * Models extend {@link Model}: you declare columns with {@link column | `@column`},
  * relationships with decorators like {@link hasMany | `@hasMany`} and
  * {@link belongsTo | `@belongsTo`}, and then query and persist through the model's
  * static and instance methods. Under the hood a {@link QueryBuilder} routes every
@@ -11,17 +11,17 @@
  * using the {@link Schema} facade and the {@link Blueprint} table builder.
  *
  * Mass assignment is **guarded by default** — a model with neither `fillable` nor
- * `guarded` declared rejects all attributes in {@link BaseModel.fill | `fill()`}.
+ * `guarded` declared rejects all attributes in {@link Model.fill | `fill()`}.
  * Soft deletes and state machines are opt-in mixins composed via
- * {@link BaseModelWith}. The ORM's CLI commands (`migrate`, `make:model`, …) live
+ * `Model.using(...)`. The ORM's CLI commands (`migrate`, `make:model`, …) live
  * under the `@zerotal/orm/commands` subpath.
  *
  * @example Define a model
  * ```ts
- * import { BaseModel, column, hasMany, type HasMany } from "@zerotal/orm";
+ * import { Model, column, hasMany, type HasMany } from "@zerotal/orm";
  * import { Post } from "./Post.ts";
  *
- * export class User extends BaseModel {
+ * export class User extends Model {
  *   @column({ primary: true }) id!: number;
  *   @column() email!: string;
  *   @column() name!: string;
@@ -70,12 +70,14 @@
 
 // @zerotal/orm — public API barrel
 
-export { BaseModel, Model } from "./model/BaseModel.ts";
-export { BaseModelWith } from "./model/mixins.ts";
-export type { Constructor, Mixin } from "./model/mixins.ts";
-// State-machine behaviour is an opt-in mixin — compose with `BaseModelWith(State)`.
+// `Model` is the canonical base class; `BaseModel` is the same class under its original name.
+export { Model, BaseModel } from "./model/BaseModel.ts";
+// Mixin authoring types. Compose them onto a model with the `Model.using(...)` static —
+// `class User extends Model.using(Authenticatable, Roles)`.
+export type { Constructor, Mixin, Compose } from "./model/mixins.ts";
+// State-machine behaviour is an opt-in mixin — compose with `Model.using(State)`.
 export { State } from "./model/State.ts";
-// Soft deletes are opt-in — compose with `BaseModelWith(SoftDeletes)`.
+// Soft deletes are opt-in — compose with `Model.using(SoftDeletes)`.
 export { SoftDeletes } from "./model/SoftDeletes.ts";
 export type {
   StateDefinition,
@@ -143,7 +145,7 @@ export { column, columnRegistry } from "./model/decorators/column.ts";
 export type { ColumnOptions, ColumnShorthand } from "./model/decorators/column.ts";
 export { registerModel, modelByName, modelsByName } from "./model/decorators/_metadata.ts";
 // Imperative column registration — for mixin authors composing model behaviour with
-// BaseModelWith (the @column decorator can't run inside a returned class expression).
+// Model.using (the @column decorator can't run inside a returned class expression).
 export { registerColumn, columnsFor } from "./model/decorators/_metadata.ts";
 export { table } from "./model/decorators/table.ts";
 export type { TableDecoratorBuilder, TableOptions } from "./model/decorators/table.ts";

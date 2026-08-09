@@ -5,7 +5,7 @@ description: The Pagination mixin, URL-synced pages, and named paginators.
 
 # Pagination
 
-Paginate in the database with `Model.paginate(perPage)` — it returns the page the request is on, so the component holds the result and nothing else. Compose the `Pagination` mixin (`ComponentWith(Pagination)`) for the page state and navigation actions. The standalone `paginate()` helper is for arrays you already hold in memory.
+Paginate in the database with `Model.paginate(perPage)` — it returns the page the request is on, so the component holds the result and nothing else. Compose the `Pagination` mixin (`Component.using(Pagination)`) for the page state and navigation actions. The standalone `paginate()` helper is for arrays you already hold in memory.
 
 ## In-memory pagination
 
@@ -87,12 +87,12 @@ export class PostsPage extends Component {
 
 ## The Pagination mixin
 
-`Pagination` is a class mixin that adds page state, URL sync, and navigation methods automatically. Compose it with [`ComponentWith(...)`](/docs/flow/components).
+`Pagination` is a class mixin that adds page state, URL sync, and navigation methods automatically. Compose it with [`Component.using(...)`](/docs/flow/layouts#composing-behaviour-with-mixins).
 
 ```tsx
-import { Component, ComponentWith, Pagination, Pager } from "@zerotal/flow";
+import { Component, Pagination, Pager } from "@zerotal/flow";
 
-export class PostsPage extends ComponentWith(Pagination) {
+export class PostsPage extends Component.using(Pagination) {
   override async render() {
     const posts = await Post.paginate(10); // uses this component's page
 
@@ -162,16 +162,16 @@ override async render() {
 
 ### Composing mixins
 
-`Pagination` composes cleanly with other mixins via `ComponentWith(...)`:
+`Pagination` composes cleanly with other mixins via `Component.using(...)`:
 
 ```typescript
 // Sorting + pagination — `Sorting` is your own mixin, `Pagination` is shipped:
-export class PostsPage extends ComponentWith(Sorting, Pagination) {
+export class PostsPage extends Component.using(Sorting, Pagination) {
   // has this.page and the nav actions, plus whatever your Sorting mixin adds
 }
 
 // A per-page preference of your own — pass it to the query:
-export class PostsPage extends ComponentWith(Pagination) {
+export class PostsPage extends Component.using(Pagination) {
   readonly perPage = 25;
 
   override async render() {
@@ -188,7 +188,7 @@ For large datasets, avoid loading all rows in `onMount()`. Paginate in the datab
 `Model.paginate(perPage)` returns the page the request is on. Compose the mixin, query in `render()`, and there is no page to pass, no state to hold, and nothing to refresh — a page change re-renders, and the re-render re-queries:
 
 ```tsx
-export class PostsPage extends ComponentWith(Pagination) {
+export class PostsPage extends Component.using(Pagination) {
   override async render() {
     const posts = await Post.paginate(10); // this component's page
 
@@ -231,7 +231,7 @@ const invoices = await Invoice.paginate(10, undefined, "invoices"); // a named p
 The query builder takes the same arguments when you need to build the query up first. Keep the **result** on the component — it already carries the page, the total, the last page, and the URL helpers, so there is nothing to copy out of it:
 
 ```typescript
-export class PostsPage extends ComponentWith(Pagination) {
+export class PostsPage extends Component.using(Pagination) {
   @url search = "";
   @url status = "all";
 

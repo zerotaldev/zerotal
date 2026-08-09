@@ -242,18 +242,18 @@ The middleware throws an [error](/docs/errors) the framework's exception handler
 
 ## ORM scoping — Tenantable
 
-Compose the `Tenantable` mixin via [`BaseModelWith`](/docs/orm/index) onto any model that belongs to a tenant. Two things happen automatically:
+Compose the `Tenantable` mixin via [`Model.using`](/docs/orm/index#composing-model-mixins) onto any model that belongs to a tenant. Two things happen automatically:
 
 1. Every query on the model receives `WHERE tenant_id = <current tenant id>` (skipped outside a tenant context).
 2. `create()` / `save()` inject `tenant_id` on new records, so you never accidentally write cross-tenant data.
 
 ```typescript
 // app/models/Project.ts
-import { BaseModelWith, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 import { Tenantable } from "@zerotal/tenancy";
 
 @(table("projects").withTimestamps())
-export class Project extends BaseModelWith(Tenantable) {
+export class Project extends Model.using(Tenantable) {
   @column() name!: string;
   @column() tenantId!: number;
 }
@@ -277,11 +277,11 @@ Override the static `tenantColumn` field (default `tenant_id`):
 
 ```typescript
 // app/models/Invoice.ts
-import { BaseModelWith, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 import { Tenantable } from "@zerotal/tenancy";
 
 @(table("invoices").withTimestamps())
-export class Invoice extends BaseModelWith(Tenantable) {
+export class Invoice extends Model.using(Tenantable) {
   protected static tenantColumn = "organisation_id";
 
   @column() amount!: number;
@@ -568,7 +568,7 @@ Resolved from the container binding `"tenancy"`; the `Tenant` value is the facad
 
 ## Next steps
 
-- [ORM](/docs/orm/index) — how `Tenantable` composes onto your models via `BaseModelWith`.
+- [ORM](/docs/orm/index) — how `Tenantable` composes onto your models via `Model.using`.
 - [Storage](/docs/storage) — the disks `tenantDisk()` wraps.
 - [Cache](/docs/cache) — the stores `tenantCache()` wraps.
 - [Middleware](/docs/middleware) — where `TenancyMiddleware` runs in the pipeline.

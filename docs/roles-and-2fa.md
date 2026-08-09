@@ -12,7 +12,7 @@ external dependencies.
 
 > **Note** — Looking for roles & permissions? RBAC lives in its own relational
 > model — the `Roles` and `Permissions` mixins composed via
-> `BaseModelWith(Authenticatable, Permissions, Roles)`. See
+> `Model.using(Authenticatable, Permissions, Roles)`. See
 > [Authorization](/docs/authorization).
 
 ## Getting Started

@@ -255,7 +255,7 @@ A data table with URL-driven sortable headers. Clicking a sortable header naviga
 ```tsx
 import { Table, Pager } from "@zerotal/flow";
 
-export class UsersPage extends ComponentWith(Pagination) {
+export class UsersPage extends Component.using(Pagination) {
   @url sortBy: string = "name";
   @url sortDir: string = "asc";
   @locked users: User[] = [];
@@ -367,16 +367,9 @@ import { Tabs } from "@zerotal/flow";
 A dropzone bound to an `@expose` property. Choosing a file POSTs the bytes to `/__flow/upload` over HTTP, shows live upload progress, and resolves to a signed `TemporaryUploadedFile` reference. Compose the `FileUploads` mixin for the `removeUpload` action:
 
 ```tsx
-import {
-  Component,
-  ComponentWith,
-  expose,
-  FileUpload,
-  FileUploads,
-  TemporaryUploadedFile,
-} from "@zerotal/flow";
+import { Component, expose, FileUpload, FileUploads, TemporaryUploadedFile } from "@zerotal/flow";
 
-export class AvatarPage extends ComponentWith(FileUploads) {
+export class AvatarPage extends Component.using(FileUploads) {
   @expose photo: TemporaryUploadedFile | null = null;
   @locked photoUrl: string = "";
 

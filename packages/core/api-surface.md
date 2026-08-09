@@ -792,6 +792,7 @@ interface ConfigRegistry = {
   flow: FlowConfigShape
   i18n: I18nConfigShape
   inertia: InertiaConfigShape
+  media: MediaConfigShape
   monitor: MonitorConfigShape
   notifications: NotificationConfigShape
   queue: QueueConfigShape
@@ -821,6 +822,7 @@ interface ContainerBindings = {
   i18n: Translator
   lock: LockManager
   log: LogManager
+  media: MediaManager
   monitor.panel: MonitorPanelHost
   monitor.store: MonitorStore
   monitor: ResolvedMonitorConfig
@@ -2499,6 +2501,8 @@ function isAllowedOrigin = (request: Request, allowedOrigins?: string[]) => bool
 
 function negotiate = (ctx: HttpContext) => <TWeb = void, TJson = void, TCli = void>(map: NegotiateMap<TWeb, TJson, TCli>) => Promise<TWeb | TJson | TCli | void>
 
+function sniffContentType = (bytes: Uint8Array) => SniffedType
+
 function uri = (value?: string | Uri) => Uri
 
 function url = {    (): UrlGenerator;    (path: string, extra?: (string | number)[], secure?: boolean): string;}
@@ -2547,6 +2551,12 @@ interface PaginatedData = {
   perPage: number
   previousPageUrl: (baseUrl?: string, query?: Record<string, string>) => string | null
   total: number
+}
+
+interface SniffedType = {
+  contentType: string
+  extension: string
+  recognised: boolean
 }
 
 interface UriQueryString = {

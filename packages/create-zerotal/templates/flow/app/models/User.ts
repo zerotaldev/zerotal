@@ -1,8 +1,8 @@
-import { BaseModelWith, column, table } from "zerotal/orm";
+import { Model, column, table } from "zerotal/orm";
 import { Authenticatable } from "zerotal/auth";
 
 /**
- * `BaseModelWith(Authenticatable)`, not a plain `BaseModel`.
+ * `Model.using(Authenticatable)`, not a plain `Model`.
  *
  * The mixin is what brands the class so `authUserModel()` can find it. Without
  * the brand nothing errors and nothing warns — the model saves, queries and
@@ -14,7 +14,7 @@ import { Authenticatable } from "zerotal/auth";
  * reads, and registers the `rememberToken` column that "remember me" needs.
  */
 @table("users")
-export class User extends BaseModelWith(Authenticatable) {
+export class User extends Model.using(Authenticatable) {
   // Models guard every attribute by default. Only these may be mass-assigned
   // from a request body — `role` is deliberately absent, so no amount of extra
   // fields in a form post can promote the account that submitted it.

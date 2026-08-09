@@ -46,7 +46,7 @@ That is the entire feature. No route handler, no `fetch`, no `useState`, no JSON
 A counter proves nothing. Here is a live-searched, database-paginated list with a delete action and a confirmation dialog — the feature you actually write over and over:
 
 ```tsx
-export class PostsPage extends ComponentWith(Pagination) {
+export class PostsPage extends Component.using(Pagination) {
   @url search = "";
 
   override async onUpdated(prop: string) {
@@ -268,7 +268,7 @@ Because the server is the source of truth, a long list of things stop being your
 Compose the cross-cutting pieces the same way you compose everything:
 
 ```ts
-class PostsPage extends ComponentWith(Pagination, FileUploads) {}
+class PostsPage extends Component.using(Pagination, FileUploads) {}
 ```
 
 ## What actually happens on the wire

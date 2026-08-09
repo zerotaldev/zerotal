@@ -1,11 +1,11 @@
 ---
 title: Flow Layouts & Composition
-description: Wrap pages in layouts, nest components, and pass markup between them.
+description: Wrap pages in layouts, compose behaviour with mixins, nest components, and pass markup between them.
 ---
 
 # Layouts & Composition
 
-Wrap pages in layouts, nest components as islands, stream slow content progressively, attach middleware, and test it all.
+Wrap pages in layouts, compose reusable behaviour with mixins, nest components as islands, stream slow content progressively, attach middleware, and test it all.
 
 ## Layouts
 
@@ -142,6 +142,107 @@ override async render() {
   );
 }
 ```
+
+## Composing behaviour with mixins
+
+A layout wraps a page's _markup_. A mixin composes a page's _behaviour_ — page state, actions,
+lifecycle — so a feature lives in one reusable place instead of being copied into every page that
+needs it. Compose them with the `Component.using(...)` static:
+
+```tsx
+import { Component, Pagination, FileUploads } from "@zerotal/flow";
+
+export class PostsPage extends Component.using(Pagination, FileUploads) {
+  override async render() {
+    return <div data-flow-root>Page {this.page}</div>;
+  }
+}
+```
+
+Mixins fold left to right, and everything flows through to the final page: `Component`'s own
+surface (`flash()`, `redirect()`, `validate()`, the client magics), plus every mixin's `@expose` /
+`@locked` members. Mixin props register on the mixin's prototype, which sits in the page's
+prototype chain, so the snapshot, reactivity, client writes and `@url` sync all treat them exactly
+like props declared on the page itself.
+
+Flow ships two mixins — [`Pagination`](/docs/flow/pagination) and
+[`FileUploads`](/docs/flow/forms) — and you write your own the same way.
+
+### Writing a mixin
+
+A mixin is a function taking a base class and returning a class that extends it. Bind the base to
+`Constructor<Component>` to require a Component lineage, and return an `abstract class` so the
+mixin does not have to implement `render()` — the final page supplies that:
+
+```tsx
+// app/flow/mixins/sorting.ts
+import { Component, expose, url, type Constructor } from "@zerotal/flow";
+
+export function Sorting<T extends Constructor<Component>>(Base: T) {
+  abstract class WithSorting extends Base {
+    @url sortBy = "id";
+    @url sortDir: "asc" | "desc" = "asc";
+
+    @expose toggleSort(column: string): void {
+      if (this.sortBy === column) {
+        this.sortDir = this.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        this.sortBy = column;
+        this.sortDir = "asc";
+      }
+    }
+  }
+  return WithSorting;
+}
+```
+
+```tsx
+export class UsersPage extends Component.using(Sorting, Pagination) {}
+```
+
+### Composing onto a shared base
+
+`using` composes onto whatever class you call it on, not onto `Component` specifically. That lets
+an app-level base carry its own state and actions and still take mixins, without being flattened
+out of the prototype chain:
+
+```tsx
+abstract class AdminPage extends Component {
+  @expose breadcrumb = "admin";
+
+  @expose async guard() {
+    /* shared authorization for every admin page */
+  }
+}
+
+export class DashboardPage extends AdminPage.using(Pagination) {
+  override async render() {
+    return (
+      <div data-flow-root>
+        {this.breadcrumb} — page {this.page}
+      </div>
+    );
+  }
+}
+```
+
+`DashboardPage` is still an `AdminPage`, so the base's `@expose` members and the mixin's are both
+live on it.
+
+### Chaining
+
+The composed class carries `using` itself, so composition can be built up in stages — useful when
+a shared base is defined in one file and extended in another:
+
+```tsx
+const AdminBase = Component.using(Pagination).using(Sorting);
+export class ReportsPage extends AdminBase.using(FileUploads) {}
+```
+
+> **Note** — a page composed with `using(...)` renders through the runtime path rather than the
+> ahead-of-time compiler, which only statically sees a page's own `extends Component` plus its
+> locally declared members. This is the same fallback complex pages already use; behaviour is
+> identical, you just do not get the compile step for that page.
 
 ## Nested components
 

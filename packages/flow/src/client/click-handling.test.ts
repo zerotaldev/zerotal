@@ -15,11 +15,7 @@ import { describe, it, expect } from "bun:test";
 import { _findHandler, _shouldPreventClickDefault } from "./bridge.ts";
 
 /** A minimal element stand-in: this file runs without a DOM. */
-function el(
-  tagName: string,
-  attrs: Record<string, string> = {},
-  parent: unknown = null,
-): Element {
+function el(tagName: string, attrs: Record<string, string> = {}, parent: unknown = null): Element {
   return {
     tagName,
     parentElement: parent,

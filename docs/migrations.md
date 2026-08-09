@@ -360,7 +360,7 @@ t.softDeletes(); // adds nullable deleted_at TEXT column
 t.softDeletes("removed_at"); // custom column name
 ```
 
-Compose `SoftDeletes` into a model (`BaseModelWith(SoftDeletes)`) and rows with a
+Compose `SoftDeletes` into a model (`Model.using(SoftDeletes)`) and rows with a
 non-null `deleted_at` are excluded from queries automatically.
 
 ## Pivot / join tables

@@ -3,8 +3,20 @@
 // Standard TC39 decorators, keyed by the class prototype; the `get*` readers walk the
 // prototype chain so subclasses inherit.
 //
-// METHOD / GETTER decorators (@computed, @expose on a method, @renderless, @on) register
-// via `addInitializer`, which Bun compiles correctly.
+// METHOD / GETTER decorators (@computed, @expose on a method, @renderless, @task, @on) CANNOT
+// rely on `addInitializer` either. Bun 1.3.x does not reliably run a method decorator's
+// initializers on construction: a class whose SUBCLASS declares a decorated field never runs the
+// base's method initializers at all, so a shared page base's `@expose` action silently vanished
+// from the allowlist the moment a subclass added one `@expose` field — and since the un-@exposed
+// action check is fatal, a legitimate action was then rejected at runtime. It reproduces with no
+// mixin and no framework code (a bare `class Sub extends Base` on Bun 1.3.14).
+//
+// So method/getter decorators TAG the function object itself in the decorator body — which runs
+// synchronously, with the right name, always — and the `get*` readers scan the prototype chain
+// for tagged members on first read (`_scanProto`). Registration lands on the DECLARING prototype,
+// which is what makes inheritance work through `_collect`'s existing chain walk. `addInitializer`
+// is still called as a belt-and-braces fallback: it is harmless when it fires (the registries are
+// Sets keyed by prototype) and it covers members a prototype scan cannot see.
 //
 // FIELD decorators (@expose on a field, @locked, @reactive, @modelable, @transient,
 // @validate, @url, @session) CANNOT defer to a field initializer or to `addInitializer`:
@@ -104,6 +116,72 @@ function _collectMap<V>(map: WeakMap<object, Map<string, V>>, startProto: object
 /** Register against the instance's own prototype (from an initializer/addInitializer). */
 function _registerOn(map: WeakMap<object, Set<string>>, self: unknown, key: string): void {
   _register(map, Object.getPrototypeOf(self as object) as object, key);
+}
+
+// ── Method/getter tagging (Bun addInitializer workaround) ─────────────────────
+//
+// See the header note. A method or getter decorator marks the function object it is handed
+// (or, for @computed, the wrapper it returns); `_scanProto` later reads those marks off the
+// prototype and populates the registries. Symbols so a mark can never collide with a user
+// property, and non-enumerable so nothing serializes or copies them.
+
+/** Which registry a tagged member belongs in. `on` also carries its event name. */
+interface MemberTag {
+  exposed?: boolean;
+  renderless?: boolean;
+  task?: boolean;
+  computed?: boolean;
+  on?: string;
+}
+
+// `unique symbol` (not a plain `symbol`) so the computed-key types below resolve.
+const TAG: unique symbol = Symbol.for("zerotal.flow.memberTag");
+const SCANNED: unique symbol = Symbol.for("zerotal.flow.scanned");
+
+/** Attach/merge a tag on a decorated method or getter function. */
+function _tag(fn: unknown, patch: MemberTag): void {
+  if (typeof fn !== "function") return;
+  const target = fn as { [TAG]?: MemberTag };
+  if (!Object.prototype.hasOwnProperty.call(fn, TAG)) {
+    // Own, non-enumerable slot — an inherited tag from an overridden base method must not leak.
+    Object.defineProperty(fn, TAG, { value: {}, writable: true, configurable: true });
+  }
+  Object.assign(target[TAG] as MemberTag, patch);
+}
+
+/**
+ * Populate the method/getter registries for one prototype from the tags its own members carry.
+ * Idempotent and cheap: marked with a non-enumerable flag so it runs once per prototype.
+ */
+function _scanProto(proto: object): void {
+  if (!proto || proto === Object.prototype) return;
+  if (Object.prototype.hasOwnProperty.call(proto, SCANNED)) return;
+  Object.defineProperty(proto, SCANNED, { value: true, configurable: true });
+
+  for (const name of Object.getOwnPropertyNames(proto)) {
+    if (name === "constructor") continue;
+    const desc = Object.getOwnPropertyDescriptor(proto, name);
+    if (!desc) continue;
+    // A method lives on `value`; a @computed getter on `get`.
+    const fn: unknown = desc.value ?? desc.get;
+    if (typeof fn !== "function") continue;
+    if (!Object.prototype.hasOwnProperty.call(fn, TAG)) continue;
+    const tag = (fn as { [TAG]?: MemberTag })[TAG];
+    if (!tag) continue;
+
+    if (tag.exposed) _register(_exposedMethods, proto, name);
+    if (tag.renderless) _register(_renderlessMethods, proto, name);
+    if (tag.task) _register(_taskMethods, proto, name);
+    if (tag.computed) _register(_computedProtos, proto, name);
+    if (tag.on !== undefined) _registerMap(_onListeners, proto, tag.on, name);
+  }
+}
+
+/** Scan `startProto` and every prototype above it, so inherited members register too. */
+function _scanChain(startProto: object | null): void {
+  for (let p = startProto; p && p !== Object.prototype; p = Object.getPrototypeOf(p) as object) {
+    _scanProto(p);
+  }
 }
 
 // ── Field-decorator buffer (Bun standard-decorator workaround) ────────────────
@@ -235,7 +313,9 @@ function _assertField(name: string, context: { kind: string }): void {
 }
 
 export function getComputedKeys(instance: object): Set<string> {
-  return _collect(_computedProtos, Object.getPrototypeOf(instance) as object);
+  const proto = Object.getPrototypeOf(instance) as object;
+  _scanChain(proto);
+  return _collect(_computedProtos, proto);
 }
 export function getTransientKeys(instance: object): Set<string> {
   _ensureDrained(instance);
@@ -250,13 +330,16 @@ export function getLockedProps(instance: object): Set<string> {
   return _collect(_lockedProps, Object.getPrototypeOf(instance) as object);
 }
 export function getExposedMethods(PageClass: { prototype: object }): Set<string> {
+  _scanChain(PageClass.prototype as object);
   return _collect(_exposedMethods, PageClass.prototype as object);
 }
 /** `@task` method names — streaming, cancellable long-running actions. */
 export function getTaskMethods(PageClass: { prototype: object }): Set<string> {
+  _scanChain(PageClass.prototype as object);
   return _collect(_taskMethods, PageClass.prototype as object);
 }
 export function getRenderlessMethods(PageClass: { prototype: object }): Set<string> {
+  _scanChain(PageClass.prototype as object);
   return _collect(_renderlessMethods, PageClass.prototype as object);
 }
 export function getValidateRules(instance: object): Map<string, ValidateBuilder> {
@@ -264,6 +347,7 @@ export function getValidateRules(instance: object): Map<string, ValidateBuilder>
   return _collectMap(_validateRules, Object.getPrototypeOf(instance) as object);
 }
 export function getListeners(PageClass: { prototype: object }): Map<string, string> {
+  _scanChain(PageClass.prototype as object);
   return _collectMap(_onListeners, PageClass.prototype as object);
 }
 export function getUrlProps(instance: object): Map<string, UrlOptions> {
@@ -358,7 +442,10 @@ export function computed<This, Return>(
   context.addInitializer(function (this: This) {
     _registerOn(_computedProtos, this, name);
   });
-  return _memoizeGetter(getter, name) as (this: This) => Return;
+  const memoized = _memoizeGetter(getter, name);
+  // Tag the wrapper we return — that is what lands on the prototype, not `getter`.
+  _tag(memoized, { computed: true });
+  return memoized as (this: This) => Return;
 }
 
 // ── @transient ────────────────────────────────────────────────────────────────
@@ -428,7 +515,9 @@ export function expose(_value: unknown, context: ExposeContext): void {
     _enqueueField(name, (proto) => _register(_exposedProps, proto, name));
     return;
   }
-  // Method: addInitializer is available (and reliable) on method contexts.
+  // Method: tag the function so `_scanProto` finds it on the DECLARING prototype (see header);
+  // addInitializer stays as a fallback for anything a prototype scan cannot reach.
+  _tag(_value, { exposed: true });
   context.addInitializer(function (this: unknown) {
     _registerOn(_exposedMethods, this, name);
   });
@@ -664,6 +753,7 @@ export const modelable = _fieldDecorator((proto, name) => {
  * @category Actions
  */
 export function renderless(_fn: unknown, context: ClassMethodDecoratorContext): void {
+  _tag(_fn, { renderless: true });
   context.addInitializer(function (this: unknown) {
     _registerOn(_renderlessMethods, this, String(context.name));
   });
@@ -703,6 +793,8 @@ export function renderless(_fn: unknown, context: ClassMethodDecoratorContext): 
  * @category Actions
  */
 export function task(_fn: unknown, context: ClassMethodDecoratorContext): void {
+  // `@task` implies `@expose` — it registers into the same allowlist.
+  _tag(_fn, { exposed: true, task: true });
   context.addInitializer(function (this: unknown) {
     const proto = Object.getPrototypeOf(this as object) as object;
     const name = String(context.name);
@@ -776,6 +868,8 @@ export function on(
   eventName: LooseEventName,
 ): (fn: unknown, context: ClassMethodDecoratorContext) => void {
   return (_fn: unknown, context: ClassMethodDecoratorContext): void => {
+    // `@on` implies `@expose`; the tag carries the event name so the scan can rebuild the map.
+    _tag(_fn, { exposed: true, on: eventName });
     context.addInitializer(function (this: unknown) {
       const proto = Object.getPrototypeOf(this as object) as object;
       const name = String(context.name);

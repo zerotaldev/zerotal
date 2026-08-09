@@ -1,5 +1,5 @@
 /** @jsxImportSource @zerotal/flow */
-import { ComponentWith, Pagination, expose, url, Pager } from "@zerotal/flow";
+import { Component, Pagination, expose, url, Pager } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 import { Carbon } from "zerotal/carbon";
 import { Post } from "@app/models/Post.ts";
@@ -12,7 +12,7 @@ import { formatDate } from "@app/support/blog.ts";
  * The `Pagination` mixin supplies the `page` field and points database pagination
  * at it, which is what lets `paginate()` below take no page argument.
  */
-export class PostsPage extends ComponentWith(Pagination) {
+export class PostsPage extends Component.using(Pagination) {
   static layout = AdminLayout;
   static title = "Posts";
 

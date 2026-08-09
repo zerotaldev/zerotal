@@ -609,7 +609,7 @@ model, rather than at every route that mentions it. Declare
 ```typescript
 // app/models/User.ts
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   static override async resolveRouteBinding(value: string, ctx: HttpContext, param: string) {
     // One model can answer for several segments — branch on the param, not the URL.
     if (param === "username") return this.where("username", value).firstOrFail();
@@ -650,7 +650,7 @@ Two static properties on the model control implicit binding:
 ```typescript
 // app/models/User.ts
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   // Never bind this model implicitly (the :user param stays a raw string):
   static implicitBinding = false;
 

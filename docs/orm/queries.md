@@ -9,7 +9,7 @@ The query builder is a fluent, type-aware API over your database tables. This pa
 covers reading and writing records, the full builder surface, instance methods, and
 query scopes — everything you reach for after [defining a model](/docs/orm).
 
-`BaseModel` static methods (`find`, `create`, …) cover the common cases; `Model.query()`
+`Model` static methods (`find`, `create`, …) cover the common cases; `Model.query()`
 returns a [`ModelQueryBuilder`](#references) for anything more complex. The same
 fluent API is available on `DB.table()` for unmodelled tables (see
 [Query builder](/docs/query-builder)).
@@ -73,10 +73,10 @@ by composing the `SoftDeletes` mixin — only then do `delete()` set `deleted_at
 
 ```typescript
 // app/models/Post.ts
-import { BaseModelWith, SoftDeletes, table, column } from "@zerotal/orm";
+import { Model, SoftDeletes, table, column } from "@zerotal/orm";
 
 @table("posts")
-export class Post extends BaseModelWith(SoftDeletes) {
+export class Post extends Model.using(SoftDeletes) {
   @column() title!: string;
 }
 ```
@@ -101,7 +101,7 @@ await Post.onlyTrashed().get();
 
 > **Warning** — `withTrashed()` and `onlyTrashed()` are **static** methods added by
 > the `SoftDeletes` mixin (`Post.withTrashed()`), not chainable off `Post.query()`.
-> A plain `BaseModel` has no soft-delete API at all — `delete()` is permanent.
+> A plain `Model` has no soft-delete API at all — `delete()` is permanent.
 
 ## Upsert
 
@@ -126,7 +126,7 @@ await User.upsert(
 );
 ```
 
-> **Note** — `upsert` is a `BaseModel` static. For unmodelled tables, perform the
+> **Note** — `upsert` is a `Model` static. For unmodelled tables, perform the
 > insert/update explicitly via `DB.table()` — the raw query builder has no `upsert`
 > helper.
 
@@ -156,7 +156,7 @@ const user = await User.findOrNew(1);
 
 ## Query builder
 
-`BaseModel.query()` returns a `ModelQueryBuilder`. Most methods are also available on
+`Model.query()` returns a `ModelQueryBuilder`. Most methods are also available on
 `DB.table()` for unmodelled raw queries — see [Query builder](/docs/query-builder).
 
 ### Filtering
@@ -558,19 +558,19 @@ await User.withoutTimestamps(async () => {
 
 ### Named scopes
 
-Group reusable query constraints on the model itself with `BaseModel.scope`:
+Group reusable query constraints on the model itself with `Model.scope`:
 
 ```typescript
 // app/models/Post.ts
-import { BaseModel, table } from "@zerotal/orm";
+import { Model, table } from "@zerotal/orm";
 
 @table("posts")
-export class Post extends BaseModel {
-  static published = BaseModel.scope((q) => q.whereNotNull("published_at"));
+export class Post extends Model {
+  static published = Model.scope((q) => q.whereNotNull("published_at"));
 
-  static byAuthor = BaseModel.scope((q, userId: number) => q.where("user_id", userId));
+  static byAuthor = Model.scope((q, userId: number) => q.where("user_id", userId));
 
-  static recent = BaseModel.scope((q, days = 7) => {
+  static recent = Model.scope((q, days = 7) => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     q.where("created_at", ">", cutoff.toISOString());
@@ -618,7 +618,7 @@ Child models inherit all global scopes registered on a parent model.
 
 ## References
 
-`BaseModel` statics — the entry points for reads and writes:
+`Model` statics — the entry points for reads and writes:
 
 | Method              | Signature                                                | Description                                          |
 | ------------------- | -------------------------------------------------------- | ---------------------------------------------------- |

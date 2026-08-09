@@ -151,14 +151,14 @@ standalone hooks share the same registration-order execution.
 
 When a column moves through a fixed set of statuses, declare the allowed
 transitions as a state machine. The behaviour is an **opt-in mixin**: compose it
-with `BaseModelWith(State)` so only models that declare a workflow carry the
+with `Model.using(State)` so only models that declare a workflow carry the
 `transitionTo` / `forceState` / `onTransition` API.
 
 ### Declaring states
 
 ```typescript
 // app/models/Post.ts
-import { BaseModelWith, State, column, table } from "@zerotal/orm";
+import { Model, State, column, table } from "@zerotal/orm";
 
 const States = {
   draft: { canTransitionTo: ["review", "archived"] as const },
@@ -168,7 +168,7 @@ const States = {
 } as const;
 
 @(table("posts").withTimestamps())
-export class Post extends BaseModelWith(State) {
+export class Post extends Model.using(State) {
   static states = States;
   static stateField = "status"; // default — override if your column isn't named 'status'
 
@@ -176,9 +176,9 @@ export class Post extends BaseModelWith(State) {
 }
 ```
 
-> **Warning** — The state machine is _not_ on `BaseModel`. A model that extends
-> `BaseModel` directly has no `transitionTo()`; you must compose
-> `BaseModelWith(State)`.
+> **Warning** — The state machine is _not_ on `Model`. A model that extends
+> `Model` directly has no `transitionTo()`; you must compose
+> `Model.using(State)`.
 
 ### Transition guards
 
@@ -187,7 +187,7 @@ transition silently, or throw a `StateError` to block it with a message:
 
 ```typescript
 // app/models/Subscription.ts
-import { BaseModelWith, State, StateError, column, table } from "@zerotal/orm";
+import { Model, State, StateError, column, table } from "@zerotal/orm";
 
 const States = {
   pending: { canTransitionTo: ["active", "cancelled"] as const },
@@ -211,7 +211,7 @@ const States = {
 } as const;
 
 @table("subscriptions")
-export class Subscription extends BaseModelWith(State) {
+export class Subscription extends Model.using(State) {
   static states = States;
   static stateField = "status";
 
@@ -303,7 +303,7 @@ export class PostCreated {
 
 // app/models/Post.ts
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   static dispatchesEvents = {
     created: PostCreated,
     updated: PostUpdated,
@@ -339,7 +339,7 @@ queries.
 ```typescript
 // app/models/AuditLog.ts
 @table("audit_logs")
-export class AuditLog extends BaseModel {
+export class AuditLog extends Model {
   @column("datetime") createdAt!: Carbon;
 
   // Return a query that selects records eligible for deletion
@@ -406,12 +406,12 @@ the two are identical.
 | `Model.prune`           | `(chunkSize = 1000): Promise<number>`                        | Delete `prunable()` records in chunks; returns the count.   |
 | `Model.prunable`        | `(): ModelQueryBuilder<T>`                                   | Override to return the query selecting prunable records.    |
 
-| Static field              | Type                                    | Description                                                 |
-| ------------------------- | --------------------------------------- | ----------------------------------------------------------- |
-| `static states`           | `Record<string, StateDefinition>`       | The state machine schema (requires `BaseModelWith(State)`). |
-| `static stateField`       | `string` (default `"status"`)           | Column holding the state value.                             |
-| `static dispatchesEvents` | `Record<string, new (model) => object>` | Maps lifecycle keys to app-bus event classes.               |
-| `static massPrune`        | `boolean` (default `false`)             | Permanently delete prunable rows instead of soft-deleting.  |
+| Static field              | Type                                    | Description                                                |
+| ------------------------- | --------------------------------------- | ---------------------------------------------------------- |
+| `static states`           | `Record<string, StateDefinition>`       | The state machine schema (requires `Model.using(State)`).  |
+| `static stateField`       | `string` (default `"status"`)           | Column holding the state value.                            |
+| `static dispatchesEvents` | `Record<string, new (model) => object>` | Maps lifecycle keys to app-bus event classes.              |
+| `static massPrune`        | `boolean` (default `false`)             | Permanently delete prunable rows instead of soft-deleting. |
 
 ## Next steps
 

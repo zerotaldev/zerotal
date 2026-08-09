@@ -52,7 +52,7 @@ clone — it tracks the proposal toward stable rather than inventing its own dat
 Laravel is the gold standard for developer-friendly full-stack frameworks. Its
 influence on Zerotal is pervasive:
 
-- **Active Record ORM** — `BaseModel`, attribute decorators (`@column`, `@belongsTo`,
+- **Active Record ORM** — `Model`, attribute decorators (`@column`, `@belongsTo`,
   `@hasMany`, `@hasOne`), and the query builder API mirror Eloquent's ergonomics.
 - **Service providers** — the `onRegister` / `onBooting` / `onBooted` lifecycle
   (through to `onStarting` / `onStarted` / `onStopping` / `onStopped`) maps directly

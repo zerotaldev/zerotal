@@ -343,9 +343,9 @@ export class PostsPage extends Component {
 Compose `Pagination` to get the page state and navigation methods automatically — no boilerplate:
 
 ```tsx
-import { ComponentWith, Pagination } from "@zerotal/flow";
+import { Component, Pagination } from "@zerotal/flow";
 
-export class PostsPage extends ComponentWith(Pagination) {
+export class PostsPage extends Component.using(Pagination) {
   @locked all: Post[] = [];
 
   override async onMount() {
@@ -416,7 +416,7 @@ Compose with other mixins:
 ```typescript
 // `Sorting` here is a mixin you author yourself (see Layouts & Composition);
 // `Pagination` is the one shipped by Flow.
-export class PostsPage extends ComponentWith(Sorting, Pagination) {
+export class PostsPage extends Component.using(Sorting, Pagination) {
   // gets both pagination AND sorting for free
 }
 ```

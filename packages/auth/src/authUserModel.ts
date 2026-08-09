@@ -6,7 +6,7 @@ import { isAuthenticatable } from "./Authenticatable.ts";
  * The registered authenticatable model — i.e. the app's user model. Resolved lazily from the
  * model registry (populated by convention discovery / `@table`), so no `resolveUsing(...)` wiring
  * is needed. Detects the `Authenticatable` brand, so it works whether the model uses
- * `extends AuthUser` or `extends BaseModelWith(Authenticatable, …)`. Prefers a model literally
+ * `extends AuthUser` or `extends Model.using(Authenticatable, …)`. Prefers a model literally
  * named `User` when several match; falls back to the first. Returns `undefined` if the app has no
  * authenticatable model registered.
  */

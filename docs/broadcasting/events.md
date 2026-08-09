@@ -137,7 +137,7 @@ export class PostCreated extends BroadcastingEvent {
 ```ts
 // app/models/Post.ts
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   static dispatchesEvents = { created: PostCreated, updated: PostUpdated };
 }
 ```
@@ -153,11 +153,11 @@ wires `created`/`updated`/`deleted` for you. It generates the `BroadcastingEvent
 
 ```ts
 // app/models/Order.ts
-import { BaseModel, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 import { broadcastsModelEvents, privateChannel } from "@zerotal/broadcasting";
 
 @table("orders")
-export class Order extends BaseModel {
+export class Order extends Model {
   @column() id!: number;
   @column() status!: string;
 }

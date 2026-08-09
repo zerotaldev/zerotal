@@ -15,10 +15,10 @@ A `User` has one `Profile`. The foreign key (`user_id`) lives on the `profiles` 
 
 ```typescript
 // app/models/User.ts
-import { BaseModel, column, table, hasOne, belongsTo } from "@zerotal/orm";
+import { Model, column, table, hasOne, belongsTo } from "@zerotal/orm";
 
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   @column("string") name!: string;
 
   @hasOne(() => Profile, { foreignKey: "user_id" })
@@ -26,7 +26,7 @@ export class User extends BaseModel {
 }
 
 @table("profiles")
-export class Profile extends BaseModel {
+export class Profile extends Model {
   @column("integer") userId!: number;
   @column("text") bio!: string;
 
@@ -55,13 +55,13 @@ A `User` has many `Post`s. The foreign key (`user_id`) lives on the `posts` tabl
 ```typescript
 // app/models/User.ts
 @table("users")
-export class User extends BaseModel {
+export class User extends Model {
   @hasMany(() => Post, { foreignKey: "user_id" })
   posts!: Post[];
 }
 
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   @column("integer") userId!: number;
 
   @belongsTo(() => User, { foreignKey: "userId" })
@@ -101,10 +101,10 @@ A `Post` belongs to many `Tag`s through a `post_tags` pivot table:
 
 ```typescript
 // app/models/Post.ts
-import { BaseModel, column, table, manyToMany, type ManyToMany } from "@zerotal/orm";
+import { Model, column, table, manyToMany, type ManyToMany } from "@zerotal/orm";
 
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   @manyToMany(() => Tag, {
     pivotTable: "post_tags",
     pivotForeignKey: "post_id", // FK pointing to Post
@@ -114,7 +114,7 @@ export class Post extends BaseModel {
 }
 
 @table("tags")
-export class Tag extends BaseModel {
+export class Tag extends Model {
   @column("string") name!: string;
 }
 ```
@@ -171,7 +171,7 @@ Access distant models through an intermediate model. A `Country` has many `Post`
 import { hasManyThrough, hasOneThrough } from "@zerotal/orm";
 
 @table("countries")
-export class Country extends BaseModel {
+export class Country extends Model {
   // Country → User (firstKey: FK on users that points to countries)
   // User    → Post (secondKey: FK on posts that points to users)
   @hasManyThrough(() => Post, () => User, {
@@ -215,7 +215,7 @@ import {
 
 // Parent side — Post has many Comments (polymorphic)
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   @morphMany(() => Comment, { morphName: "commentable" })
   declare comments: MorphMany<Comment>;
 
@@ -225,7 +225,7 @@ export class Post extends BaseModel {
 
 // Owning side — Comment stores commentable_type + commentable_id
 @table("comments")
-export class Comment extends BaseModel {
+export class Comment extends Model {
   @column("string") declare commentableType: string;
   @column("integer") declare commentableId: number;
 
@@ -263,21 +263,21 @@ import { morphToMany, morphedByMany, type ManyToMany } from "@zerotal/orm";
 
 // Post can be tagged
 @table("posts")
-export class Post extends BaseModel {
+export class Post extends Model {
   @morphToMany(() => Tag, { morphName: "taggable", relatedPivotKey: "tag_id" })
   tags!: ManyToMany<Tag>;
 }
 
 // Video can also be tagged using the same tags table
 @table("videos")
-export class Video extends BaseModel {
+export class Video extends Model {
   @morphToMany(() => Tag, { morphName: "taggable", relatedPivotKey: "tag_id" })
   tags!: ManyToMany<Tag>;
 }
 
 // Inverse — Tag can retrieve all Posts tagged with it
 @table("tags")
-export class Tag extends BaseModel {
+export class Tag extends Model {
   @morphedByMany(() => Post, { morphName: "taggable", parentPivotKey: "tag_id" })
   posts!: ManyToMany<Post>;
 }

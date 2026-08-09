@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { BaseModelWith } from "@zerotal/orm";
+import { Model } from "@zerotal/orm";
 import { RequestContext, FrameworkEvents } from "@zerotal/core";
 import {
   EmailVerified,
@@ -411,7 +411,7 @@ describe("Auth events", () => {
   });
 
   it("markEmailAsVerified() emits EmailVerified", async () => {
-    class U extends BaseModelWith(Authenticatable, EmailVerification) {
+    class U extends Model.using(Authenticatable, EmailVerification) {
       override async save(): Promise<this> {
         return this;
       }

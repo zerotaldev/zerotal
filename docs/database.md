@@ -118,7 +118,7 @@ await DB.transaction(async (trx) => {
 // Committed — or rolled back automatically if the block threw
 ```
 
-All `BaseModel` and `DB` queries made inside the callback automatically use the transaction connection via `AsyncLocalStorage` — you don't need to pass `trx` explicitly unless you're mixing raw `DB.table()` calls with model calls:
+All `Model` and `DB` queries made inside the callback automatically use the transaction connection via `AsyncLocalStorage` — you don't need to pass `trx` explicitly unless you're mixing raw `DB.table()` calls with model calls:
 
 ```typescript
 // in a service
@@ -346,15 +346,15 @@ Register named connections in a service provider and opt models into them via `s
 
 ```typescript
 // in AppServiceProvider.onBooting()
-import { BaseModel } from "@zerotal/orm";
+import { Model } from "@zerotal/orm";
 
-BaseModel.registerConnection(
+Model.registerConnection(
   "analytics",
   Bun.sql(Bun.env.ANALYTICS_DB_URL!),
   "postgres", // dialect: 'sqlite' | 'postgres' | 'mysql'
 );
 
-BaseModel.registerConnection("warehouse", Bun.sql(Bun.env.WAREHOUSE_DB_URL!), "postgres");
+Model.registerConnection("warehouse", Bun.sql(Bun.env.WAREHOUSE_DB_URL!), "postgres");
 ```
 
 With the connection registered, set `static connection` on any model that should live
@@ -363,7 +363,7 @@ to that connection with no extra arguments:
 
 ```typescript
 // app/models/AnalyticsEvent.ts
-export class AnalyticsEvent extends BaseModel {
+export class AnalyticsEvent extends Model {
   static connection = "analytics";
 
   @column("string") eventType!: string;
@@ -443,18 +443,18 @@ the handler contract, and how to subscribe from a provider.
 
 The `DB` facade surface:
 
-| Method                         | Signature                                                                | Description                                                               |
-| ------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| `DB.table`                     | `table(name: string): QueryBuilder`                                      | Start a fluent query against a table on the active connection.            |
-| `DB.raw`                       | `raw<T>(sql: TemplateStringsArray \| string, ...rest): Promise<T[]>`     | Execute raw SQL via tagged template or `?`-placeholder string.            |
-| `DB.transaction`               | `transaction<T>(cb: (tx?) => Promise<T>, attempts?: number): Promise<T>` | Run `cb` in a transaction; auto-commit/rollback, optional deadlock retry. |
-| `DB.beginTransaction`          | `beginTransaction(): Promise<ManualTransaction>`                         | Begin a transaction with manual `commit()`/`rollback()` control.          |
-| `DB.onPrimary`                 | `onPrimary(): { table(name): QueryBuilder }`                             | Query the primary connection, bypassing replicas (read-your-writes).      |
-| `DB.currentTx`                 | `currentTx(): unknown \| undefined`                                      | The active transaction connection for this call site, if any.             |
-| `DB.advisoryLock`              | `advisoryLock<T>(key: number, cb: () => Promise<T>): Promise<T>`         | Hold a PostgreSQL advisory lock for the duration of `cb`.                 |
-| `DB.preventNPlusOne`           | `preventNPlusOne(options?: NPlusOneOptions): void`                       | Configure N+1 detection (`threshold`, `mode`).                            |
-| `DB.allowNPlusOne`             | `allowNPlusOne(pattern: string, options?: { once?: boolean }): void`     | Suppress N+1 warnings for queries matching `pattern`.                     |
-| `BaseModel.registerConnection` | `registerConnection(name: string, conn: SQLInstance, dialect?): void`    | Register a named connection that models opt into via `static connection`. |
+| Method                     | Signature                                                                | Description                                                               |
+| -------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `DB.table`                 | `table(name: string): QueryBuilder`                                      | Start a fluent query against a table on the active connection.            |
+| `DB.raw`                   | `raw<T>(sql: TemplateStringsArray \| string, ...rest): Promise<T[]>`     | Execute raw SQL via tagged template or `?`-placeholder string.            |
+| `DB.transaction`           | `transaction<T>(cb: (tx?) => Promise<T>, attempts?: number): Promise<T>` | Run `cb` in a transaction; auto-commit/rollback, optional deadlock retry. |
+| `DB.beginTransaction`      | `beginTransaction(): Promise<ManualTransaction>`                         | Begin a transaction with manual `commit()`/`rollback()` control.          |
+| `DB.onPrimary`             | `onPrimary(): { table(name): QueryBuilder }`                             | Query the primary connection, bypassing replicas (read-your-writes).      |
+| `DB.currentTx`             | `currentTx(): unknown \| undefined`                                      | The active transaction connection for this call site, if any.             |
+| `DB.advisoryLock`          | `advisoryLock<T>(key: number, cb: () => Promise<T>): Promise<T>`         | Hold a PostgreSQL advisory lock for the duration of `cb`.                 |
+| `DB.preventNPlusOne`       | `preventNPlusOne(options?: NPlusOneOptions): void`                       | Configure N+1 detection (`threshold`, `mode`).                            |
+| `DB.allowNPlusOne`         | `allowNPlusOne(pattern: string, options?: { once?: boolean }): void`     | Suppress N+1 warnings for queries matching `pattern`.                     |
+| `Model.registerConnection` | `registerConnection(name: string, conn: SQLInstance, dialect?): void`    | Register a named connection that models opt into via `static connection`. |
 
 ## Next steps
 

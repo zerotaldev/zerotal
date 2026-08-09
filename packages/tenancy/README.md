@@ -60,16 +60,16 @@ Application.create({ providers }).use([TenancyMiddleware]);
 
 ## Usage
 
-Compose `Tenantable` via `BaseModelWith` onto any tenant-owned model (the same flat
+Compose `Tenantable` via `Model.using` onto any tenant-owned model (the same flat
 form used for every other mixin). Every query is scoped with
 `WHERE tenant_id = <current tenant>` and `create()` injects the `tenant_id`:
 
 ```ts
-import { BaseModelWith, column, table } from "@zerotal/orm";
+import { Model, column, table } from "@zerotal/orm";
 import { Tenantable } from "@zerotal/tenancy";
 
 @table("projects")
-export class Project extends BaseModelWith(Tenantable) {
+export class Project extends Model.using(Tenantable) {
   @column() name!: string;
   @column() tenantId!: number;
 }

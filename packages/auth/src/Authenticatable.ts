@@ -4,7 +4,7 @@ import { registerColumn, type Constructor } from "@zerotal/orm";
  * Brand marking a model (or one of its ancestors) as carrying the auth contract.
  * `Symbol.for` keeps it stable across module instances. Set on the mixin class and
  * inherited by every subclass, so detection works for both
- * `extends AuthUser` and `extends BaseModelWith(Authenticatable, …)`.
+ * `extends AuthUser` and `extends Model.using(Authenticatable, …)`.
  */
 export const AUTHENTICATABLE: unique symbol = Symbol.for("zerotal.auth.authenticatable");
 
@@ -16,7 +16,7 @@ export function isAuthenticatable(model: unknown): boolean {
 /**
  * The authenticatable contract as a composable mixin: identity (`getAuthId`) and
  * the hashed password (`getAuthPassword`), plus "remember me" token accessors.
- * Stack it with `BaseModelWith` instead of nesting wrappers around a concrete base.
+ * Stack it with `Model.using` instead of nesting wrappers around a concrete base.
  *
  * @remarks
  * These are the methods the auth flow reads: `getAuthId()` is stored in the
@@ -31,16 +31,16 @@ export function isAuthenticatable(model: unknown): boolean {
  *
  * @example
  * ```ts
- * import { BaseModelWith } from "@zerotal/orm";
+ * import { Model } from "@zerotal/orm";
  * import { Authenticatable, Permissions, Roles } from "@zerotal/auth";
  *
- * class User extends BaseModelWith(Authenticatable) {
+ * class User extends Model.using(Authenticatable) {
  *   @column() email!: string;
  *   @column() password!: string;
  * }
  *
  * // with roles + permissions, still flat:
- * class AdminUser extends BaseModelWith(Authenticatable, Permissions, Roles) {}
+ * class AdminUser extends Model.using(Authenticatable, Permissions, Roles) {}
  * ```
  */
 export function Authenticatable<TBase extends Constructor>(Base: TBase) {

@@ -1,5 +1,6 @@
 import { LogProvider } from "zerotal/logger";
 import { DatabaseProvider } from "zerotal/orm";
+import { StorageProvider } from "zerotal/storage";
 import { SessionProvider } from "zerotal/session";
 import { AuthProvider } from "zerotal/auth";
 import { InertiaProvider } from "@zerotal/inertia";

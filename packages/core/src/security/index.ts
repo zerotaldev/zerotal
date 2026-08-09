@@ -20,3 +20,9 @@
 export { Crypt, CryptKeyMissingError, DecryptionError } from "../crypt/Crypt.ts";
 export { Hash } from "../hash/Hash.ts";
 export type { HashAlgorithm } from "../hash/Hash.ts";
+// Signed URLs with a secret you manage yourself. Documented with a full example on the
+// class, but previously reachable only through a deep internal path — which is a worse
+// dependency to take than reimplementing it, so people reimplemented it. For app-key-keyed
+// signing with no secret to manage, `Url.sign` / `Url.verify` on the http subpath is the
+// higher-level option.
+export { URLSigner } from "../crypt/URLSigner.ts";

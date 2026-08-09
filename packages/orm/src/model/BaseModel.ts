@@ -311,8 +311,13 @@ function applyCastSet(value: unknown, cast: StringCast): unknown {
       return value;
     case "array":
     case "json":
-      if (typeof value !== "string") return JSON.stringify(value);
-      return value;
+      // Encode unconditionally. Skipping strings was meant to avoid double-encoding a
+      // value that was already JSON text, but that is indistinguishable from a string
+      // someone means to store — and guessing wrong changed the value's *type* between
+      // write and read: `"62812345678"` went in as bare characters and came back out of
+      // `JSON.parse` as a number. Encoding both ways symmetrically is the only version
+      // of this that round-trips.
+      return JSON.stringify(value);
     case "date":
       if (value instanceof Carbon) return _serializeDate(value.toDate());
       if (value instanceof Date) return _serializeDate(value);
@@ -366,7 +371,9 @@ function _serializeForWrite(
     serializedVal = applyCastSet(val, castOpt);
   } else if (colType === "boolean" && val !== null && val !== undefined) {
     serializedVal = val ? 1 : 0;
-  } else if (colType === "json" && val !== null && typeof val !== "string") {
+  } else if (colType === "json" && val !== null) {
+    // See applyCastSet: strings are encoded too, so the column always holds valid JSON
+    // and a read returns the type that was written.
     serializedVal = JSON.stringify(val);
   } else {
     serializedVal = val;
@@ -460,7 +467,7 @@ export interface ScopeApplicator {
  * — TypeScript will catch typos and non-existent column references.
  *
  * @example
- * \@table("users").withTimestamps()
+ * \@table("users")
  * export class User extends BaseModel {
  *   static fillable: Columns<User>[] = ["name", "email", "role"];
  *   static hidden:   Columns<User>[] = ["password"];
@@ -516,7 +523,7 @@ export type Columns<T> = {
  * @example
  * Defining a model with `@column`:
  * ```ts
- * @table("users").withTimestamps()
+ * @table("users")
  * export class User extends BaseModel {
  *   static fillable: Columns<User>[] = ["name", "email", "password"];
  *   static hidden: Columns<User>[] = ["password"];

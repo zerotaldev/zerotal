@@ -29,6 +29,7 @@ between minor versions.
 
 ### Changed
 
+- The members `Component` reserves are documented, and pinned by a test so the list cannot drift. A page property colliding with one is a compile error with a clear message, but `title` — taken by the page-title accessor — is an obvious name for a field on a row representing a media item or a review, and there was no list to check.
 - **`FlowTest.call()` rethrows.** A `ValidationError` is still an expected outcome, but any other error is routed to `onError()` (as in production) and then rethrown, so a broken action fails its test instead of looking like one that ran and did nothing. Previously it was swallowed — and a throwing `onError` was swallowed too. Call `tolerateErrors()` when the error path is what you are testing.
 - **`FlowTest.set()` re-renders.** A test that set a property and then read `html()` was silently asserting against the previous render. `seed()` is the batching form that does not render.
 - **A handler pointing at an un-`@expose`d method is a build error.** The allowlist is the exposed methods, so an undecorated method was absent from it — the compiler emitted `flow:click="submit"`, the button rendered enabled, and the click sent a frame the server refused, reporting the refusal only over the WebSocket to `console.error`. Nothing reached the server log and the page did not change. The member table needed to catch this was already built; it is now used.

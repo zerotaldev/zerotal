@@ -7,7 +7,7 @@ import { createMigrationFile } from "./MakeMigrationCommand.ts";
 export function modelStub(name: string, tableName: string): string {
   return `import { BaseModel, column, table } from '@zerotal/orm';
 
-@table('${tableName}').withTimestamps()
+@table('${tableName}')
 export class ${name} extends BaseModel {
   // Models guard every attribute by default. List the columns that may be
   // mass-assigned from user input via create() / fill().

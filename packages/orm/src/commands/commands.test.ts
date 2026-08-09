@@ -83,6 +83,31 @@ describe("MakeModelCommand", () => {
     const output = modelStub("User", "users");
     expect(output).toContain("extends BaseModel");
   });
+
+  // The stub emitted `@table('users').withTimestamps()`, which is not valid decorator
+  // syntax — the grammar allows a call at the end of the chain, not in the middle of it,
+  // so every generated model failed to parse with `Expected "class" but found "."`. The
+  // test above could not catch that: a substring check passes on source that will not
+  // compile. Parse it instead. (The parenthesized form, `@(table("x").withoutTimestamps())`,
+  // is the one that works and is what the framework's own models use.)
+  it("model stub is syntactically valid TypeScript", () => {
+    const transpiler = new Bun.Transpiler({ loader: "ts" });
+
+    expect(() => transpiler.transformSync(modelStub("User", "users"))).not.toThrow();
+  });
+
+  it("every generated stub is syntactically valid TypeScript", () => {
+    const transpiler = new Bun.Transpiler({ loader: "ts" });
+    const stubs = {
+      migration: migrationStub("CreateUsersTable"),
+      seeder: seederStub("UserSeeder"),
+      factory: factoryStub("User"),
+    };
+
+    for (const [name, source] of Object.entries(stubs)) {
+      expect(() => transpiler.transformSync(source), `${name} stub`).not.toThrow();
+    }
+  });
 });
 
 describe("DbSeedCommand", () => {

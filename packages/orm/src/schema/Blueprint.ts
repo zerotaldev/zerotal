@@ -333,6 +333,19 @@ export class Blueprint {
   }
 
   /**
+   * Alias of {@link Blueprint.dateTime}, spelled the way the column *type* is.
+   *
+   * The type string is lowercase (`@column({ type: "datetime" })`) while the builder
+   * method is camelCase, so reaching for `table.datetime(...)` is the natural mistake —
+   * and the blueprint is loosely typed, so it surfaced as a `TypeError` mid-migration
+   * rather than a compile error.
+   * @category Column types
+   */
+  datetime(name: string): ColumnBuilder {
+    return this.dateTime(name);
+  }
+
+  /**
    * Timestamp column. Alias of {@link Blueprint.dateTime} — stored as `TEXT` (ISO-8601).
    * @category Column types
    */

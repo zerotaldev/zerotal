@@ -134,6 +134,20 @@ export class User extends BaseModel {
 | `.withoutTimestamps()` | `timestamps: false`          | Disables automatic timestamp management.               |
 | `.primaryKey("col")`   | `primaryKey: "col"`          | Changes the primary key column name (default: `"id"`). |
 
+> **Chain methods need the outer parentheses.** Decorator syntax allows a call at the end
+> of the chain, not in the middle of it, so `@table("x").withoutTimestamps()` is a **parse
+> error** — `Expected "class" but found "."`. Write `@(table("x").withoutTimestamps())`, or
+> use the options object, which needs no parentheses. Plain `@table("x")` is fine as-is.
+
+Timestamps are **on by default**, so `@table("ledger")` alone still writes `created_at` and
+`updated_at`. For an append-only table whose migration creates neither column, say so —
+otherwise the first save fails with `table ledger has no column named updated_at`:
+
+```typescript
+@(table("ledger").withoutTimestamps())
+export class LedgerEntry extends BaseModel { /* … */ }
+```
+
 > **Note** — **Auto-discovery:** Models under `app/models/` don't need `@table` — they're auto-registered at boot with a conventional table name (`pluralize(snake(ClassName))`, e.g. `Post` → `posts`). Use `@table` only to override the name or options.
 >
 > **Packages and tests:** Models defined inside packages or inline in test files always need `@table` (or `registerModel(Class)`). `@table` is the definition-time anchor that registers the queued `@column`/relation fields — without it, those fields won't register.

@@ -116,6 +116,7 @@ class Blueprint = {
   char: (name: string, _length?: number) => ColumnBuilder
   date: (name: string) => ColumnBuilder
   dateTime: (name: string) => ColumnBuilder
+  datetime: (name: string) => ColumnBuilder
   decimal: (name: string, _precision?: number, _scale?: number) => ColumnBuilder
   double: (name: string, _precision?: number, _scale?: number) => ColumnBuilder
   dropColumn: (...names: string[]) => Blueprint
@@ -782,7 +783,7 @@ const modelsByName = Map<string, Function>
 
 const relationRegistry = Map<Function, Map<string, RelationMetadata>>
 
-const Schema = {    create(table: string, callback: (bp: Blueprint) => void): Promise<void>;    createIfNotExists(table: string, callback: (bp: Blueprint) => void): Promise<void>;    table(name: string, callback: (bp: Blueprint) => void): Promise<void>;    drop(table: string): Promise<void>;    dropIfExists(table: string): Promise<void>;    rename(from: string, to: string): Promise<void>;    hasTable(table: string): Promise<boolean>;    hasColumn(table: string, column: string): Promise<boolean>;}
+const Schema = {    create(table: string, callback: (bp: Blueprint) => void): Promise<void>;    createIfNotExists(table: string, callback: (bp: Blueprint) => void): Promise<void>;    table(name: string, callback: (bp: Blueprint) => void): Promise<void>;    alter(name: string, callback: (bp: Blueprint) => void): Promise<void>;    drop(table: string): Promise<void>;    dropIfExists(table: string): Promise<void>;    rename(from: string, to: string): Promise<void>;    hasTable(table: string): Promise<boolean>;    hasColumn(table: string, column: string): Promise<boolean>;}
 
 const SchemaDiffer = {    diff(schemas: ModelSchema[]): Promise<DiffResult>;    isEmpty(diff: DiffResult): boolean;}
 

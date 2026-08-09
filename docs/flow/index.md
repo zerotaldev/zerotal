@@ -173,6 +173,29 @@ import { CounterPage } from "./components/CounterPage.tsx";
 Router.flow("/counter", CounterPage);
 ```
 
+### Reserved member names
+
+`Component` brings its own members, and a property of yours that collides with one is a
+type error. It is caught at compile time and the message is specific, but the name that
+trips people is `title` — an obvious field for a row representing a media item, a guide or
+a review, and taken by the page-title accessor.
+
+The names in use:
+
+| Group | Names |
+| --- | --- |
+| Lifecycle | `onBoot` `onMount` `onHydrate` `onDehydrate` `onRendering` `onRendered` `onUpdate` `onUpdating` `onUpdated` `onError` |
+| Rendering | `render` `layout` `placeholder` `slot` `hasSlot` `child` `title` |
+| Actions & state | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal` |
+| Navigation | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent` |
+| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `client` |
+| Misc | `flash` `download` `clearDurable` |
+
+Anything beginning with `_` is also framework-internal, as is the static `durable`.
+
+If the natural name is taken, the usual fix is a more specific one — `headline`,
+`mediaTitle` — which often reads better than `title` did.
+
 ### Scaffolding with make:flow
 
 You don't have to write each component from a blank file. `make:flow` generates a ready-to-run class with the JSX pragma, the right imports, and an `@expose`/`render` skeleton already in place:

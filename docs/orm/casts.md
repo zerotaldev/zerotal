@@ -51,6 +51,25 @@ export class Post extends BaseModel {
 > `@column("datetime")` reads back a [Carbon](/docs/carbon) instance. Type the
 > property accordingly.
 
+### Scalars in a json column
+
+`json` and `array` encode on write and parse on read, in both directions, so a value
+round-trips as the type you gave it — including a bare scalar:
+
+```typescript
+setting.value = "62812345678";   // stored as "62812345678", read back as a string
+setting.value = "051001";        // a branch code keeps its leading zero
+setting.value = { plan: "pro" }; // objects and arrays as you would expect
+```
+
+This is worth stating because the obvious alternative is wrong. Skipping the encode for
+values that are already strings looks like it avoids double-encoding, but it makes the
+column hold bare characters — and `JSON.parse("62812345678")` is a **number**. The value's
+type would change between write and read, silently, for some values and not others.
+
+If you are reading rows written by an older version that stored bare scalars, a value that
+was a numeric string may come back as a number; coerce on read where it matters.
+
 ## Advanced cast options
 
 ### decimal:N — fixed-precision number

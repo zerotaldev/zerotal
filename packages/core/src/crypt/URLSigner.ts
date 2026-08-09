@@ -8,11 +8,18 @@ import { safeEqual, hmacHex } from "../support/crypto.ts";
  * the full URL (without the signature param) sorted by key so that the
  * order of other query parameters doesn't matter.
  *
- * For app-key-keyed signing without managing a secret, prefer the {@link Url}
- * facade (`Url.sign` / `Url.verify`), which derives the secret from `APP_KEY`.
+ * For app-key-keyed signing without managing a secret, prefer the `Url` facade
+ * (`Url.sign` / `Url.verify`), which derives the secret from `APP_KEY`. It is exported
+ * from the **http** subpath, not this one:
+ *
+ * ```ts
+ * import { Url } from "zerotal/http";       // or "@zerotal/core/http"
+ * ```
  *
  * @example
  * ```ts
+ * import { URLSigner } from "zerotal/security";  // or "@zerotal/core/security"
+ *
  * const signer = new URLSigner(process.env.APP_KEY!);
  *
  * // Generate a link that expires in 15 minutes:

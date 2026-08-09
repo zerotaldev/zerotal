@@ -12,10 +12,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`bun zt test` no longer fails a cold suite on Bun's 5-second hook timeout.** A `beforeAll` that calls `createTestApp()` boots providers and runs migrations, which exceeds 5s on a cold start; `bunfig.toml`'s `[test] timeout` does not cover hooks, only the CLI flag does. The failure appeared on the first run and not the second, which reads as flakiness and sends you looking for a race that is not there. The default is now 30s, still overridable with `--timeout`.
 - **`serve --dev` no longer loses its server to a restart race.** The debounce timer spaced out the *scheduling* of a restart, but its callback cleared the timer and then awaited a rebuild that can take seconds — so a change arriving in that window scheduled a second callback which ran concurrently. Both reached the spawn, two servers raced for the port, and the loser died with "Failed to start server. Is port 3000 in use?". Dev mode was then left owning no server while the winner kept serving stale code, so every later save appeared to do nothing. Restarts are now serialized: a request arriving mid-restart queues exactly one follow-up instead of running in parallel. A failed bind also retries briefly, since the OS releases a listening socket asynchronously after the previous owner exits, and the initial spawn uses the same path — an orphan from a previous run is the commonest reason the first bind fails. An unexpected exit is reported against the child that actually exited rather than whichever child the field happened to hold.
 
 ### Added
 
+- `ctx.param(name, fallback?)` — the single-value route-parameter accessor, matching `string()` and `header()` in shape. Only the `params` record existed, though every other single-value read on the object is a method. Unlike `string()` it does not fall back to the query string: a route parameter either matched or it did not.
+- `URLSigner` is exported from `@zerotal/core/security`. It carried a full documented example but was reachable only through a deep internal path, which is a worse dependency to take than reimplementing it. (`Url` / `url` were already exported — from the **http** subpath, not security; the docblock now says so.)
 - `app.assets.loader` — per-extension bundler loader overrides, e.g. `{ ".woff2": "file" }`. Bun inlines small `url()` assets as data URIs, which is right for an icon and wrong for a font: the bytes move into the render-blocking stylesheet, so nine woff2 subsets turned a 36 KB stylesheet into 260 KB that had to download before first paint. There was no configuration to turn it off.
 
 ## [1.0.3] — 2026-08-07

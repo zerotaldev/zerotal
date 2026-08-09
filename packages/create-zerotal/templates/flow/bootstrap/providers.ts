@@ -1,5 +1,6 @@
 import { LogProvider } from "zerotal/logger";
 import { DatabaseProvider } from "zerotal/orm";
+import { StorageProvider } from "zerotal/storage";
 import { SessionProvider } from "zerotal/session";
 import { AuthProvider } from "zerotal/auth";
 import { FlowProvider } from "@zerotal/flow";
@@ -20,6 +21,7 @@ import { DevtoolsProvider } from "@zerotal/devtools";
 const providers = [
   LogProvider,
   DatabaseProvider,
+  StorageProvider,
   SessionProvider,
   AuthProvider,
   FlowProvider,

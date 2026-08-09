@@ -1261,7 +1261,10 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
     if (colType === "boolean") {
       return value ? 1 : 0;
     }
-    if (colType === "json" && typeof value !== "string") {
+    if (colType === "json") {
+      // Match how writes encode: strings are stringified too, so a column holding
+      // `"051001"` is found by `where("value", "051001")` rather than only by a caller
+      // who knows to pre-encode the quotes themselves.
       return JSON.stringify(value);
     }
     // Carbon instances always serialize to ISO string regardless of column metadata.

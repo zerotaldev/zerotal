@@ -340,6 +340,7 @@ class HttpContext = {
   markdown: (content: string, options?: (BunMarkdownOptions & {    title?: string;}) | undefined, status?: number) => void
   model: <T = unknown>(name: string) => T
   onResponseReady: (callback: (response: Response) => Promise<void>) => HttpContext<TParams>
+  param: (key: string, fallback?: string) => string | undefined
   params: TParams
   path: () => string
   query: (key: string, fallback?: string) => string | undefined
@@ -1990,6 +1991,7 @@ class TestCommand = {
   static description: string
   static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'number';    description: string;    default: number;    short?: never;})[]
   static needsApp: boolean
+  static readonly DEFAULT_TIMEOUT_MS: 30000
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2859,6 +2861,12 @@ class DecryptionError = {
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+}
+
+class URLSigner = {
+  new (secret: string): URLSigner
+  sign: (base: string, params?: Record<string, string>, expiresInMinutes?: number) => string
+  verify: (signedUrl: string) => boolean
 }
 
 const Crypt = CryptManager

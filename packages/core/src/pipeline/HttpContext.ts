@@ -551,6 +551,29 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
   }
 
   /**
+   * Read a single route parameter.
+   *
+   * `params` is the whole record; this is the one-value accessor that matches
+   * {@link HttpContext.string} and {@link HttpContext.header} in shape. Every other
+   * single-value read on this object is a method, so reaching for `param('token')` and
+   * finding only `params['token']` is a needless inconsistency — even caught at compile
+   * time, it is one more thing to remember for no benefit.
+   *
+   * Unlike {@link HttpContext.string} this does **not** fall back to the query string: a
+   * route parameter either matched or it did not, and quietly answering with a
+   * user-supplied query value would let `?id=1` stand in for a path segment.
+   *
+   * @example
+   * const token = ctx.param('token');
+   * const page = ctx.param('page', '1');
+   *
+   * @category Request data
+   */
+  param(key: string, fallback?: string): string | undefined {
+    return (this.params[key] as string | undefined) ?? fallback;
+  }
+
+  /**
    * Read a query param or route param coerced to a boolean.
    * Truthy values: `'1'`, `'true'`, `'yes'`, `'on'` (case-insensitive).
    *

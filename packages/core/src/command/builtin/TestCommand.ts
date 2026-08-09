@@ -28,6 +28,15 @@ export class TestCommand extends Command {
   static description = "Run the test suite in test environment";
   static needsApp = false;
 
+  /**
+   * Default per-test and per-hook timeout, in milliseconds.
+   *
+   * Generous on purpose: the expensive thing in a Zerotal suite is booting the app in a
+   * `beforeAll`, which Bun's 5s default does not allow for. Raising it costs nothing on a
+   * passing suite and removes a failure mode that looks exactly like flakiness.
+   */
+  static readonly DEFAULT_TIMEOUT_MS = 30_000;
+
   static override args = [{ name: "pattern", required: false, default: "" }];
 
   static override flags = [
@@ -47,7 +56,7 @@ export class TestCommand extends Command {
     {
       name: "timeout",
       type: "number" as const,
-      description: "Per-test timeout in milliseconds",
+      description: `Per-test and per-hook timeout in milliseconds (default ${TestCommand.DEFAULT_TIMEOUT_MS})`,
       default: 0,
     },
     {
@@ -103,8 +112,14 @@ export class TestCommand extends Command {
     if (this.flags["watch"]) bunArguments.push("--watch");
     if (this.flags["bail"]) bunArguments.push("--bail");
 
-    const timeout = this.flags["timeout"] as number | undefined;
-    if (timeout && timeout > 0) bunArguments.push(`--timeout=${timeout}`);
+    // Bun's default is 5s and applies to hooks as well as tests — and `bunfig.toml`'s
+    // `[test] timeout` does not cover hooks, only this flag does. A `beforeAll` that calls
+    // `createTestApp()` boots providers and runs migrations, which on a cold start with a
+    // dozen providers exceeds 5s; the failure lands on the first run and not the second,
+    // so it reads as a flaky test and sends you hunting for a race that is not there.
+    // A framework's own test runner should account for that framework's boot cost.
+    const timeout = (this.flags["timeout"] as number | undefined) || TestCommand.DEFAULT_TIMEOUT_MS;
+    bunArguments.push(`--timeout=${timeout}`);
 
     this.dim(`APP_ENV=test  ZT_DB_URL=${dbUrl}`);
     this.dim(`bun ${bunArguments.join(" ")}\n`);

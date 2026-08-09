@@ -578,11 +578,14 @@ describe("the public blog index", () => {
 
     expect(html).toContain("A Release");
     expect(html).toContain("A Deep Dive");
-    // Pills for the two categories actually in use…
+    // Pills for categories in use — from these rows and from the committed file posts.
     expect(html).toContain('href="/blog?category=Announcements"');
     expect(html).toContain('href="/blog?category=Flow"');
-    // …and none for a category no post uses.
-    expect(html).not.toContain('href="/blog?category=Guides"');
+    // The pill bar is derived from posts, not from the category enum: nothing outside
+    // POST_CATEGORIES can appear. (This used to assert no pill for an *unused* enum
+    // category, with Guides as the example — retired when blog/guide-searchable-table.md
+    // became the first Guides post, which put every enum category permanently in use.)
+    expect(html).not.toContain('href="/blog?category=Nonexistent"');
   });
 
   test("?category= narrows the grid to that category", async () => {

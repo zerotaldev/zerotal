@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-08-09
+
 ### Changed — BREAKING
 
 - **`BaseModelWith(...)` is replaced by the `Model.using(...)` static.** Mixin composition is now

@@ -10,6 +10,8 @@ between minor versions.
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-08-09
+
 ### Fixed
 
 - **An `@expose`d action on a shared page base no longer disappears from the allowlist.** Bun

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-08-09
+
 ### Changed
 
 - **Scaffolded models use the new composition idiom.** Templates now generate

@@ -2,7 +2,7 @@
 /**
  * Codemod: `BaseModelWith(...)` / `ComponentWith(...)` → `Model.using(...)` / `Component.using(...)`
  *
- * Zerotal 1.2.0 replaced the two free-function mixin composers with a `static using()` on the base
+ * Zerotal 1.3.0 replaced the two free-function mixin composers with a `static using()` on the base
  * class itself. This script rewrites call sites and fixes up the import specifiers that a plain
  * find-and-replace would leave broken.
  *

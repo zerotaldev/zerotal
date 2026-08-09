@@ -1,3 +1,4 @@
+/** @jsxImportSource @zerotal/flow */
 import type { HtmlNode } from "@zerotal/flow";
 import { highlight } from "./highlight.ts";
 

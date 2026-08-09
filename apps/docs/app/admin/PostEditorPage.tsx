@@ -1,3 +1,4 @@
+/** @jsxImportSource @zerotal/flow */
 import { Component, ErrorMessage, expose, locked, param } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 import { Carbon } from "zerotal/carbon";

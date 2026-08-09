@@ -73,12 +73,18 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
     const src  = join(templateDir, rel);
     // Rename underscore-prefixed dotfiles — npm and Bun glob both skip real dotfiles
     // inside published/scanned directories. _gitignore → .gitignore, etc.
-    // Also strip the .tmpl infix from test files so Bun doesn't discover them
-    // as tests while the package is being developed in the monorepo.
+    //
+    // Test files carry a trailing `.tmpl` that is stripped here, so Bun does not
+    // discover them while this package is developed inside the monorepo — where their
+    // `zerotal/testing` imports cannot resolve, because they are written for the app
+    // being scaffolded rather than for this workspace. The previous spelling was
+    // `_test.ts`, which does not work: Bun's matcher globs `_test.ts` as readily as
+    // `.test.ts` (and `.spec.ts` / `_spec.ts`), so those files were collected and failed
+    // on every root `bun test`. A trailing suffix is matched by none of them.
     const dest = join(opts.target, rel
       .replace('_gitignore',   '.gitignore')
       .replace('_env.example', '.env.example')
-      .replace('_test.ts',     '.test.ts'),
+      .replace(/\.tmpl$/,      ''),
     );
 
     await mkdir(dirname(dest), { recursive: true });

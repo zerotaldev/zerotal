@@ -1,3 +1,4 @@
+/** @jsxImportSource @zerotal/flow */
 import { ComponentWith, Pagination, expose, url, Pager } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 import { Carbon } from "zerotal/carbon";

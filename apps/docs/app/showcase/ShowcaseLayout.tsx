@@ -1,3 +1,4 @@
+/** @jsxImportSource @zerotal/flow */
 import { Head, Link, Flash } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 

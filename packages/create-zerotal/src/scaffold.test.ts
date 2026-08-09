@@ -84,6 +84,33 @@ describe('scaffold — minimal template', () => {
     expect(await Bun.file(join(TMP, '_gitignore')).exists()).toBe(false);
   });
 
+  // Template test files are stored with a trailing `.tmpl` so Bun does not collect them
+  // while this package is developed in the monorepo — their `zerotal/testing` imports
+  // only resolve inside a scaffolded app. The scaffolder has to strip it, or the app
+  // ships a test file the runner never sees.
+  it('strips the .tmpl suffix so the scaffolded test is discoverable', async () => {
+    await scaffold({ name: 'app', template: 'minimal', db: 'sqlite', target: TMP });
+
+    expect(await Bun.file(join(TMP, 'tests/smoke.test.ts')).exists()).toBe(true);
+    expect(await Bun.file(join(TMP, 'tests/smoke.test.ts.tmpl')).exists()).toBe(false);
+  });
+
+  it('leaves no file Bun would collect as a test inside templates/', async () => {
+    // The suffix has to be one Bun's matcher ignores. `_test.ts` is not: Bun globs it
+    // exactly like `.test.ts`, which is why these files used to fail every root run.
+    const { Glob } = await import('bun');
+    const templates = join(import.meta.dir, '..', 'templates');
+    const collected: string[] = [];
+
+    for (const pattern of ['**/*.test.ts', '**/*_test.ts', '**/*.spec.ts', '**/*_spec.ts']) {
+      for await (const rel of new Glob(pattern).scan({ cwd: templates, onlyFiles: true })) {
+        collected.push(rel);
+      }
+    }
+
+    expect(collected).toEqual([]);
+  });
+
   it('leaves no unreplaced {{tokens}}', async () => {
     await scaffold({ name: 'test-app', template: 'minimal', db: 'sqlite', target: TMP });
     const files = ['package.json', 'zt.ts', 'config/app.ts', '.env.example',

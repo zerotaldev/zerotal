@@ -1,3 +1,4 @@
+/** @jsxImportSource @zerotal/flow */
 import { Layout, Link, Flash } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 import { asset } from "zerotal/assets";

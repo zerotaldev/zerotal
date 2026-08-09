@@ -1,3 +1,4 @@
+/** @jsxImportSource @zerotal/flow */
 import { Component, ErrorMessage, expose, validate } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 import { Auth } from "zerotal/auth";

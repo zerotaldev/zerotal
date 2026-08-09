@@ -1,3 +1,4 @@
+/** @jsxImportSource @zerotal/flow */
 import { Component, expose, validate } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 import { ShowcaseLayout } from "../ShowcaseLayout.tsx";

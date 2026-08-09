@@ -1,3 +1,4 @@
+/** @jsxImportSource @zerotal/flow */
 import {
   Component,
   expose,

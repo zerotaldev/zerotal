@@ -1,4 +1,12 @@
 [test]
+# Only the workspace packages are testable from the repository root. `apps/docs` is a real
+# application whose tests need its own working directory — model auto-discovery reads
+# `app/models/` relative to cwd, so from here no models register, `synchronize` builds no
+# schema, and every test fails on `no such table`. It is run package-scoped by
+# `bun run test` (`bun --filter='*' run test`), which is also what CI runs, and passes
+# there. Without this scoping a bare `bun test` reported dozens of failures that said
+# nothing about the code.
+root = "packages"
 coverage = true
 coveragePathIgnorePatterns = ["**/AppData/**", "**/tmp/**"]
 preload = ["./scripts/test-preload.ts"]

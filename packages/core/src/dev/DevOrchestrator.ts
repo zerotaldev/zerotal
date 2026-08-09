@@ -45,6 +45,27 @@ export class DevOrchestrator {
   private _child: ReturnType<typeof Bun.spawn> | null = null;
   private _restartTimer: ReturnType<typeof setTimeout> | null = null;
   private _buildTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Serializes restarts. The debounce timer only spaces out the *scheduling* of a
+   * restart — once its callback starts it clears the timer and then awaits a rebuild
+   * that can take seconds, during which another change schedules a second callback.
+   * Both then reached `_spawnServer()`, so two servers raced for the port, one lost
+   * with "Failed to start server. Is port 3000 in use?", and the dev server was left
+   * dead while the winner kept serving. A restart requested while one is running now
+   * queues a single follow-up instead of running in parallel.
+   */
+  private _restartInFlight: Promise<void> | null = null;
+  private _restartQueued = false;
+
+  /**
+   * Bounded respawn attempts. The race above is fixed at the source, but a port can
+   * still be briefly unavailable after the previous owner exits — the OS releases the
+   * listening socket asynchronously — so a lost bind retries rather than killing dev mode.
+   */
+  private static readonly RESPAWN_ATTEMPTS = 3;
+  private static readonly RESPAWN_DELAY_MS = 300;
+  /** A server that binds stays up; one that loses the port exits almost immediately. */
+  private static readonly BIND_SETTLE_MS = 400;
   /** Per-build asset-version token — bumped on each build, busts `asset()` `?v=` URLs. */
   private _assetVersion = Date.now().toString(36);
 
@@ -61,7 +82,9 @@ export class DevOrchestrator {
       console.warn("  [zerotal:dev] ⚠  initial build failed — starting server anyway");
     }
 
-    this._spawnServer();
+    // Same retry as a restart: the commonest reason the first bind fails is an orphaned
+    // server from a previous run that has not finished exiting.
+    await this._spawnServerWithRetry();
     this._watch();
 
     // Park the process — cleanup happens in signal handlers registered by _watch()
@@ -70,8 +93,8 @@ export class DevOrchestrator {
 
   // ── Server management ──────────────────────────────────────────────────────
 
-  private _spawnServer(): void {
-    this._child = Bun.spawn(
+  private _spawnServer(): ReturnType<typeof Bun.spawn> {
+    const child = Bun.spawn(
       ["bun", Bun.main, "serve", "--port", String(this._port), "--dev-worker"],
       {
         stdin: "pipe",
@@ -91,40 +114,122 @@ export class DevOrchestrator {
       },
     );
 
-    this._child.exited.then((code) => {
-      // Ignore expected exits (restart in progress or clean shutdown)
-      if (this._child && this._restartTimer === null && code !== 0) {
+    this._child = child;
+
+    void child.exited.then((code) => {
+      // Report only the *current* server dying unexpectedly. Comparing against
+      // `this._child` identity matters: reading the field alone reported an exit that a
+      // restart had deliberately caused, because by then the field held the replacement.
+      // A restart in flight owns its own reporting.
+      if (this._child === child && this._restartInFlight === null && code !== 0) {
         console.log(`  [zerotal:dev] server exited with code ${code}`);
       }
     });
+
+    return child;
   }
 
   private _scheduleRestart(): void {
     if (this._restartTimer) clearTimeout(this._restartTimer);
-    this._restartTimer = setTimeout(async () => {
+    this._restartTimer = setTimeout(() => {
       this._restartTimer = null;
-      console.log("  [zerotal:dev] ↻  backend change — rebuilding + restarting server...");
-
-      // Rebuild assets before respawning: server-rendered views (Flow pages in `app/`,
-      // controllers returning markup) contain Tailwind classes the stylesheet scans via
-      // `@source`, so a backend edit can introduce new classes. Without this, a new utility
-      // used in a page wouldn't appear until an unrelated `resources/` file changed. The
-      // fresh `_assetVersion` (bumped by _runBuild) is passed to the respawned worker, so the
-      // browser refetches the updated CSS.
-      await this._runBuild();
-
-      const previousChild = this._child;
-      this._child = null;
-
-      if (previousChild) {
-        previousChild.kill("SIGTERM");
-        const forceKill = setTimeout(() => previousChild.kill("SIGKILL"), 1_500);
-        await previousChild.exited;
-        clearTimeout(forceKill);
-      }
-
-      this._spawnServer();
+      void this._requestRestart();
     }, 150);
+  }
+
+  /**
+   * Run a restart, or fold this request into the one already running.
+   *
+   * Restarts must not overlap: each one kills the current server and binds a new one to
+   * the same port, so two in flight means two servers competing for it. A request that
+   * arrives mid-restart sets a flag instead, and exactly one more restart runs when the
+   * current one finishes — enough to pick up whatever changed, without a queue that
+   * grows one entry per keystroke.
+   */
+  private _requestRestart(): Promise<void> {
+    if (this._restartInFlight) {
+      this._restartQueued = true;
+      return this._restartInFlight;
+    }
+
+    const run = async (): Promise<void> => {
+      try {
+        do {
+          this._restartQueued = false;
+          await this._restartOnce();
+        } while (this._restartQueued);
+      } finally {
+        this._restartInFlight = null;
+      }
+    };
+
+    this._restartInFlight = run();
+    return this._restartInFlight;
+  }
+
+  private async _restartOnce(): Promise<void> {
+    console.log("  [zerotal:dev] ↻  backend change — rebuilding + restarting server...");
+
+    // Rebuild assets before respawning: server-rendered views (Flow pages in `app/`,
+    // controllers returning markup) contain Tailwind classes the stylesheet scans via
+    // `@source`, so a backend edit can introduce new classes. Without this, a new utility
+    // used in a page wouldn't appear until an unrelated `resources/` file changed. The
+    // fresh `_assetVersion` (bumped by _runBuild) is passed to the respawned worker, so the
+    // browser refetches the updated CSS.
+    await this._runBuild();
+
+    // Stop before spawning, always: the old server owns the port until it exits.
+    await this._stopChild();
+    await this._spawnServerWithRetry();
+  }
+
+  /** Stop the running server and wait for it to actually exit, releasing the port. */
+  private async _stopChild(): Promise<void> {
+    const child = this._child;
+    this._child = null;
+    if (!child) return;
+
+    child.kill("SIGTERM");
+    const forceKill = setTimeout(() => child.kill("SIGKILL"), 1_500);
+    try {
+      await child.exited;
+    } finally {
+      clearTimeout(forceKill);
+    }
+  }
+
+  /**
+   * Spawn the server, retrying briefly if it dies on startup.
+   *
+   * A bind failure is indistinguishable from an application crash by exit code alone, so
+   * this retries either — a crash simply fails the remaining attempts quickly and reports.
+   * Leaving dev mode with no server and no explanation is the worse outcome: the watcher
+   * stays alive, so the next save appears to do nothing while the browser talks to
+   * whatever is still listening.
+   */
+  private async _spawnServerWithRetry(): Promise<void> {
+    for (let attempt = 1; attempt <= DevOrchestrator.RESPAWN_ATTEMPTS; attempt++) {
+      const child = this._spawnServer();
+
+      const settled = await Promise.race([
+        child.exited.then(() => true),
+        Bun.sleep(DevOrchestrator.BIND_SETTLE_MS).then(() => false),
+      ]);
+
+      if (!settled) return; // still running → it bound the port
+      if (this._child !== child) return; // superseded by a newer restart
+
+      this._child = null;
+      if (attempt < DevOrchestrator.RESPAWN_ATTEMPTS) {
+        await Bun.sleep(DevOrchestrator.RESPAWN_DELAY_MS);
+      }
+    }
+
+    console.error(
+      `  [zerotal:dev] ✗  server did not start after ${DevOrchestrator.RESPAWN_ATTEMPTS} attempts.\n` +
+        `     Port ${this._port} may be held by another process — the error above says which.\n` +
+        `     Dev mode is still watching; fix the cause and save to retry.`,
+    );
   }
 
   // ── Build management ───────────────────────────────────────────────────────

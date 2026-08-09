@@ -252,7 +252,9 @@ You can also write `data-args` yourself, which is useful when the handler is bui
 ::: warning Arguments are evaluated once, at render time
 An argument that reads `this` is **not** frozen — `onClick={() => this.setPage(this.page + 1)}` stays a live client expression and re-evaluates in the browser against current reactive state. Only arguments that close over server-side values (a loop variable, a computed local) are serialised.
 
-Anything else a client expression references must exist in the browser. A handler that reaches for an enclosing server-side variable outside a call — `onClick={() => (window.location = row.url)}` — is a compile error naming the identifier, because it would otherwise be emitted verbatim and throw a `ReferenceError` in the browser, where nothing surfaces it.
+Anything else a client expression references must exist in the browser. A handler that reaches for an enclosing server-side variable outside a call — `onClick={() => (window.location = row.url)}` — is reported at boot, naming the identifier, because it would otherwise be emitted verbatim and throw a `ReferenceError` in the browser, where nothing surfaces it. The page falls back to the runtime renderer rather than failing the build, since the check works from a known list of globals and a false positive should not stop your server starting. Under `cspSafe`, where there is no runtime fallback, it is fatal.
+
+By contrast, a handler pointing at a method you forgot to `@expose` **is** a hard error — that one is certain, not heuristic, and the alternative is a button that silently does nothing.
 :::
 
 ### Two-way inputs

@@ -11,7 +11,7 @@
  * The compiler already has the member table. It now uses it.
  */
 import { describe, it, expect } from "bun:test";
-import { transformFlowFile } from "./transform.ts";
+import { transformFlowFile, validateFlowFile } from "./transform.ts";
 
 function page(body: string, members: string): string {
   return `/** @jsxImportSource @zerotal/flow */
@@ -56,6 +56,26 @@ describe("a handler pointing at an un-@exposed method", () => {
       /not @expose'd/,
     );
   });
+
+  // The check has to live in the validation pass, not the transform. A transform error is
+  // caught by the compiler orchestrator and downgraded to a runtime fallback, which would
+  // leave the page rendering and the button still silently dead — the exact outcome being
+  // fixed. `validateFlowFile` runs unconditionally (even on a cache hit) and propagates,
+  // so the server refuses to start.
+  it("is fatal through validateFlowFile, the path the server boots on", () => {
+    expect(() =>
+      validateFlowFile(page(`<button onClick={this.submit}>Send</button>`, "async submit() {}"), "/app/flow/pages/demo.tsx"),
+    ).toThrow(/not @expose'd/);
+  });
+
+  it("lets a correct page through validateFlowFile untouched", () => {
+    expect(() =>
+      validateFlowFile(
+        page(`<button onClick={this.submit}>Send</button>`, "@expose async submit() {}"),
+        "/app/flow/pages/demo.tsx",
+      ),
+    ).not.toThrow();
+  });
 });
 
 describe("what it must not reject", () => {
@@ -74,5 +94,25 @@ describe("what it must not reject", () => {
   it("leaves the client magics alone", () => {
     const r = compile(`<button onClick={this.refresh}>x</button>`, "@expose x = 1;");
     expect(html(r)).toContain('flow:click="refresh"');
+  });
+
+  // `@expose` is not the only decorator that puts a method in the allowlist. `@task`
+  // registers into the same set — a streaming task is dispatched exactly like any other
+  // action — and so does `@on`. Checking only for `@expose` rejected a valid page in this
+  // repository's own showcase, which is how this was caught.
+  it("accepts a @task method", () => {
+    const r = compile(
+      `<button onClick={this.generate}>Generate</button>`,
+      "@expose answer = ''; @task async generate() {}",
+    );
+    expect(html(r)).toContain('flow:click="generate"');
+  });
+
+  it("accepts an @on listener, whose decorator takes arguments", () => {
+    const r = compile(
+      `<button onClick={this.sync}>Sync</button>`,
+      "@expose x = 1; @on('refresh') async sync() {}",
+    );
+    expect(html(r)).toContain('flow:click="sync"');
   });
 });

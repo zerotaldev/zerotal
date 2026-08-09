@@ -450,7 +450,17 @@ interface MemberInfo {
   readable: Set<string>; // exposed ∪ locked — any prop in the snapshot (client-reactive)
   /** Every method declared on this class, decorated or not — see `_assertActionExposed`. */
   declaredMethods: Set<string>;
+  /**
+   * Methods the client may call. `@expose` is the usual one, but `@task` and `@on` both
+   * register into the same allowlist (`_exposedMethods`) — a `@task` streams field writes
+   * and is dispatched exactly like any other action. Checking only for `@expose` rejected
+   * perfectly good pages.
+   */
+  callableMethods: Set<string>;
 }
+
+/** Decorators that put a method in the client-callable allowlist. */
+const ACTION_DECORATORS = new Set(["expose", "task", "on"]);
 
 /** Collect @expose, @locked, and @computed decorated members from the Component class AST. */
 function _getMemberInfo(cls: ts.ClassDeclaration): MemberInfo {
@@ -458,9 +468,18 @@ function _getMemberInfo(cls: ts.ClassDeclaration): MemberInfo {
   const locked = new Set<string>();
   const computed = new Set<string>();
   const declaredMethods = new Set<string>();
+  const callableMethods = new Set<string>();
   for (const member of cls.members) {
     if (ts.isMethodDeclaration(member) && ts.isIdentifier(member.name)) {
       declaredMethods.add(member.name.text);
+      for (const m of member.modifiers ?? []) {
+        if (!ts.isDecorator(m)) continue;
+        // `@on("evt")` is a call; `@expose` is a bare identifier.
+        const e = ts.isCallExpression(m.expression) ? m.expression.expression : m.expression;
+        if (ts.isIdentifier(e) && ACTION_DECORATORS.has(e.text)) {
+          callableMethods.add(member.name.text);
+        }
+      }
     }
     // @computed sits on a getter (GetAccessorDeclaration); @expose/@locked on fields/methods.
     if (
@@ -487,6 +506,7 @@ function _getMemberInfo(cls: ts.ClassDeclaration): MemberInfo {
     computed,
     readable: new Set([...exposed, ...locked]),
     declaredMethods,
+    callableMethods,
   };
 }
 
@@ -516,7 +536,7 @@ function _assertActionExposed(
   node: ts.Node,
 ): void {
   if (!members.declaredMethods.has(method)) return; // inherited or a magic — not ours to judge
-  if (members.exposed.has(method)) return;
+  if (members.callableMethods.has(method)) return;
   if (CLIENT_CALLBACK_MAGICS.has(method) || CLIENT_MAGICS.has(method)) return;
 
   const sf = node.getSourceFile();
@@ -524,7 +544,8 @@ function _assertActionExposed(
   throw new FlowValidationError(
     `[Flow] \`${method}\` is used as a server action but is not @expose'd.\n` +
       `  ${_at(filename, line + 1, character + 1)}\n` +
-      `      → Add @expose to ${method}(). Without it the method is not in the action ` +
+      `      → Add @expose to ${method}() (or @task / @on, which also make it callable). ` +
+      `Without it the method is not in the action ` +
       `allowlist, so the click sends a frame the server refuses — and the refusal is ` +
       `reported only to the browser console, which makes the button look inert.`,
   );
@@ -736,6 +757,18 @@ function _validateFlowCallbacks(sf: ts.SourceFile, members: MemberInfo, filename
         // Bare client-handler arrow — onClick={(e) => this.x = 0}. Same safety rules:
         // its this.xxx refs must be @expose (writes) / @expose|@locked (reads).
         _validateArrowRefs(expr, members, filename);
+      }
+
+      // onClick={this.method} / onSubmit={flow(this.method)} — the method must be
+      // @expose'd or it is not in the action allowlist. Checked here, in the pass that
+      // runs unconditionally and whose errors are fatal, rather than during transform:
+      // a transform error is caught and downgraded to a runtime fallback, which would
+      // leave the page rendering and the button still silently dead.
+      if (attrName.startsWith("on") || attrName === "submit") {
+        const ref = _isThisProp(expr)
+          ? (expr as ts.PropertyAccessExpression)
+          : _extractFlowProp(expr);
+        if (ref) _assertActionExposed(ref.name.text, members, filename, ref);
       }
     }
     ts.forEachChild(node, scan);
@@ -1724,7 +1757,6 @@ function _compileRenderMethod(
         // onClick={this.method} — server action (named method reference).
         if (_isThisProp(expr)) {
           const method = (expr as ts.PropertyAccessExpression).name.text;
-          _assertActionExposed(method, members, filename, expr);
           emitStatic(` flow:${event}="${method}"`);
           continue;
         }
@@ -1786,7 +1818,6 @@ function _compileRenderMethod(
         const flowPropExpr = _extractFlowProp(expr);
         if (flowPropExpr) {
           const method = flowPropExpr.name.text;
-          _assertActionExposed(method, members, filename, flowPropExpr);
           const mods = _extractFlowModifiers(expr);
           const base = `flow:${event}`;
           emitStatic(` ${mods.length ? `${base}.${mods.join(".")}` : base}="${method}"`);

@@ -694,6 +694,7 @@ interface LinkProps = {
   exact?: boolean
   hover?: boolean
   href: string
+  preserveScroll?: boolean
 }
 
 interface ListboxOption = {

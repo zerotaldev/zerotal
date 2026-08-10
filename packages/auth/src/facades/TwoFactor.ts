@@ -14,7 +14,8 @@ declare module "@zerotal/core" {
  * import { TwoFactor } from '@zerotal/auth';
  *
  * const secret = TwoFactor.generateSecret();
- * const uri    = TwoFactor.getQrCodeUrl(user.email, secret);
+ * const svg    = TwoFactor.getQrCodeSvg(user.email, secret); // inline this
+ * const uri    = TwoFactor.getQrCodeUrl(user.email, secret); // or link to it
  * const ok     = await TwoFactor.verifyCode(user.twoFactorSecret, inputCode);
  * const codes  = await TwoFactor.generateRecoveryCodes();
  */

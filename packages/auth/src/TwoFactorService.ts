@@ -13,8 +13,10 @@
  * const secret = tf.generateSecret();
  * await user.update({ twoFactorSecret: secret, twoFactorConfirmedAt: null });
  *
- * // 2. Show the QR code:
- * const uri = tf.getQrCodeUrl(user.email, secret);
+ * // 2. Show the QR code. Inline the markup — the payload carries the secret,
+ * //    so it must not be fetched from anywhere, yours or a third party's:
+ * const svg = tf.getQrCodeSvg(user.email, secret, { size: 220 });
+ * const uri = tf.getQrCodeUrl(user.email, secret); // also offer it as a link
  *
  * // 3. Confirm setup — verify the first code:
  * const ok = tf.verifyCode(secret, inputCode); // <-- Now synchronous!
@@ -49,6 +51,7 @@
  */
 
 import { safeEqual, sha256Hex } from "@zerotal/core";
+import { encodeQr, qrSvg, type QrSvgOptions } from "./qrcode.ts";
 
 // ── Base-32 codec ─────────────────────────────────────────────────────────────
 
@@ -169,6 +172,12 @@ export interface TwoFactorOptions {
   recoveryCodeCount?: number;
 }
 
+/** How {@link TwoFactorService.getQrCodeSvg} draws the enrolment QR code. */
+export interface TwoFactorQrOptions extends QrSvgOptions {
+  /** Overrides the constructor `issuer` for this URI. */
+  issuer?: string;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 /**
@@ -222,6 +231,44 @@ export class TwoFactorService {
     const iss = encodeURIComponent(issuer ?? this._issuer);
     const lbl = encodeURIComponent(`${issuer ?? this._issuer}:${label}`);
     return `otpauth://totp/${lbl}?secret=${secret}&issuer=${iss}&algorithm=SHA1&digits=${DIGITS}&period=${PERIOD}`;
+  }
+
+  /**
+   * Render the enrolment QR code as an inline `<svg>` — the thing you actually
+   * put on the setup page.
+   *
+   * @param label - Account label shown in the app, e.g. the user's email.
+   * @param secret - The base-32 secret from {@link generateSecret}.
+   * @param options - Issuer override, plus colours, size and quiet zone.
+   * @returns SVG markup, ready to inline.
+   * @throws {@link QrError} when the issuer and label together push the URI past
+   *   666 bytes, which is the encoder's ceiling.
+   * @category Secret
+   *
+   * @example In a Flow page
+   * ```tsx
+   * const qr = TwoFactor.getQrCodeSvg(user.email, secret, { size: 220 });
+   * return <div dangerouslySetInnerHTML={{ __html: qr }} />;
+   * ```
+   *
+   * @remarks
+   * Inline the returned markup; do not serve it from a route and do not log it.
+   * The modules encode the `otpauth://` URI, which carries the TOTP secret — the
+   * one value the second factor rests on. That is also why this draws in-process
+   * rather than handing the URI to an image service: a QR API would receive the
+   * secret and keep it in its logs.
+   *
+   * Offer the secret as text next to the code as well. A phone cannot photograph
+   * its own screen, so someone enrolling on the device that holds the
+   * authenticator needs to type it — or follow the `otpauth://` URI from
+   * {@link getQrCodeUrl} as a link, which opens the app directly.
+   */
+  getQrCodeSvg(label: string, secret: string, options: TwoFactorQrOptions = {}): string {
+    const { issuer, ...svg } = options;
+    return qrSvg(encodeQr(this.getQrCodeUrl(label, secret, issuer)), {
+      alt: "Scan this QR code with your authenticator app",
+      ...svg,
+    });
   }
 
   // ── Verify TOTP ──────────────────────────────────────────────────────────────

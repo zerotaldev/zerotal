@@ -22,6 +22,7 @@ export interface LinkProps {
   hover?: boolean;
   current?: boolean;
   exact?: boolean;
+  preserveScroll?: boolean;
   [key: string]: unknown;
 }
 
@@ -35,18 +36,26 @@ export interface LinkProps {
  * the automatic active state to an exact path match. Any other props pass through to
  * the `<a>`.
  *
+ * Following a link lands at the top of the new page, as a full navigation would —
+ * or at the fragment, if the href names one. `preserveScroll` leaves the viewport
+ * where it is instead, which is what you want for a control the user is looking at
+ * partway down a page (a filter, a sort header, a tab strip) rather than a link
+ * that takes them somewhere else.
+ *
  * @example
  * ```tsx
  * <Link href="/posts" hover>Posts</Link>
  * <Link href="/dashboard" exact>Dashboard</Link>
+ * <Link href="/posts?sort=title" preserveScroll>Title</Link>
  * ```
  *
  * @category Navigation & data
  */
 export function Link(props: LinkProps & { children?: unknown }): HtmlNode {
-  const { href, hover, current, exact, children, ...rest } = props;
+  const { href, hover, current, exact, preserveScroll, children, ...rest } = props;
   const out: Record<string, unknown> = { ...rest, href, navigate: true, children };
   if (hover) out["navigateHover"] = true;
+  if (preserveScroll) out["navigatePreserveScroll"] = true;
   // `current` overrides the automatic URL-based active state:
   //   false → never active (flow:current.ignore)
   //   true  → always active, and stays active across SPA navigations (flow:current.force).

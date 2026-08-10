@@ -10,6 +10,45 @@ between minor versions.
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-08-10
+
+### Fixed
+
+- **`focusOnError` did nothing on a page that rendered through the runtime.** The
+  JSX runtime rewrites `-` to `.` inside a `flow:` attribute — right for a
+  hand-written `flow:loading-class`, wrong for a name the directive map already
+  spells out. `focusOnError` reached the DOM as `flow:focus.error` while the
+  bridge only ever queries `[flow\:focus-error]`, so focus-on-error worked on a
+  compiled page and silently did not on one the compiler bailed out of (a
+  branching `render()`, say). Mapped names now go out verbatim; the kebab→dot
+  rewrite still applies to attributes written by hand. `sortGroupId` was affected
+  the same way.
+
+- **`flow:navigate` now scrolls, instead of leaving you wherever the last page
+  was.** The SPA swap replaced the page under a stationary viewport and never
+  touched the scroll offset, so following a link from near the bottom of a long
+  list landed you halfway down the next page. Nothing visible changed, which
+  reads as the page having failed to load rather than as a scroll problem.
+
+  A navigation now lands at the top of the new page, or at the fragment when the
+  href names one (`/docs#install`) — which is what the same link does without the
+  SPA swap. Back and Forward restore the position the entry was left at.
+
+  The scroll happens inside the swap, after the root is replaced: the document
+  only has its new height (and its fragment targets) at that point, and inside a
+  View Transition it is also what the "after" snapshot captures, so the animation
+  ends at the right offset rather than sliding to it. It is issued with
+  `behavior: "instant"`, so a page whose CSS sets `scroll-behavior: smooth` does
+  not animate the whole way up on every visit.
+
+### Added
+
+- **`preserveScroll`** — `<Link href="…" preserveScroll>` and
+  `this.navigateCurrent({ query: …, preserveScroll: true })` leave the viewport
+  where it is. For a control partway down a page — a sort header, a filter, a tab
+  strip — going to the top loses the thing the user was just looking at. Compiles
+  to `flow:navigate.preserve` on the anchor.
+
 ## [1.3.0] — 2026-08-09
 
 ### Fixed

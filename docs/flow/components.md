@@ -47,6 +47,25 @@ import { Link } from "@zerotal/flow";
 
 Any extra props (`class`, `target`, `rel`, …) pass through to the rendered `<a>`.
 
+#### Scroll position
+
+Following a link lands at the top of the new page, exactly as a full navigation
+would — or at the fragment, if the href names one (`/docs#install`). Going Back
+returns you to where you were on the page you left, and Forward does the same.
+
+Some links aren't really going anywhere, though: a sort header, a filter chip, a
+tab strip partway down a long page. Jumping to the top for those loses the
+control the user was just looking at. `preserveScroll` leaves the viewport alone:
+
+```tsx
+<Link href={this.currentUrl({ query: { sort: "title" } })} preserveScroll>
+  Title
+</Link>
+```
+
+The same applies to `this.navigateCurrent()`, which takes `preserveScroll` as an
+option — see [Routing](/docs/flow/routing).
+
 ## Head management
 
 ### Head

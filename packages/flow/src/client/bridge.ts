@@ -865,7 +865,11 @@ function _syncUrlParams(comp: FlowComponent): void {
 
   if (newUrl !== location.pathname + location.search + location.hash) {
     if (pushed) {
-      history.pushState({ flowNavigate: true }, "", newUrl);
+      // Bank the scroll offset first: this entry is about to become a Back
+      // target, and the viewport has not moved, so where the user is now is
+      // where Back should return them.
+      _rememberScroll();
+      _pushHistoryEntry(newUrl);
     } else {
       history.replaceState(history.state, "", newUrl);
     }
@@ -2357,7 +2361,127 @@ function _takePrefetched(href: string): string | null {
   return Date.now() - cached.at < PREFETCH_TTL_MS ? cached.html : null;
 }
 
-async function _navigateTo(href: string, pushState = true): Promise<void> {
+// ── Scroll position across SPA navigations ────────────────────────────────────
+//
+// A real navigation puts you at the top of the new page, and Back puts you back
+// where you were. Swapping the DOM under a stationary viewport does neither: you
+// click a link near the bottom of a long list and land halfway down the next
+// page, which reads as the page having failed to load.
+//
+// Positions live in a map keyed by history entry rather than inside
+// `history.state`, because the entry you are *leaving* on a Back cannot be
+// stamped — by the time `popstate` fires, `history.state` is already the
+// destination's. A key per entry lets both directions be recorded.
+
+let _nextHistoryKey = 1;
+let _currentHistoryKey = 0;
+const _scrollByHistoryKey = new Map<number, [number, number]>();
+
+/**
+ * The live scroll offset, tracked passively.
+ *
+ * Read from here rather than from `window.scrollY` at navigation time: on a
+ * `popstate` the browser may already have applied its own scroll restoration
+ * before our handler runs, and by then the outgoing page's real position is gone.
+ */
+let _liveScroll: [number, number] = [0, 0];
+
+function _trackScroll(): void {
+  const update = (): void => {
+    _liveScroll = [window.scrollX, window.scrollY];
+  };
+  update();
+  window.addEventListener("scroll", update, { passive: true });
+}
+
+/** Record where the current history entry was left, so Back can return to it. */
+function _rememberScroll(): void {
+  _scrollByHistoryKey.set(_currentHistoryKey, _liveScroll);
+}
+
+/** Start a new history entry, keyed so its scroll position can be found again. */
+function _pushHistoryEntry(url: string): void {
+  _currentHistoryKey = _nextHistoryKey++;
+  history.pushState({ flowNavigate: true, flowKey: _currentHistoryKey }, "", url);
+}
+
+/** Where a navigation should leave the viewport. */
+export type ScrollIntent = "top" | "preserve" | readonly [number, number];
+
+/** The fragment of an href, without the `#`. Empty when it has none. */
+export function _hashOf(href: string): string {
+  const at = href.indexOf("#");
+  return at === -1 ? "" : href.slice(at + 1);
+}
+
+/**
+ * Resolve what a navigation should do to the viewport.
+ *
+ * A recorded position wins outright: on Back/Forward the whole point is to land
+ * where the user was, and `preserveScroll` is passed alongside it only as the
+ * fallback for an entry with nothing recorded.
+ */
+export function _scrollIntent(options: {
+  preserveScroll?: boolean;
+  restoreScroll?: readonly [number, number] | undefined;
+}): ScrollIntent {
+  return options.restoreScroll ?? (options.preserveScroll ? "preserve" : "top");
+}
+
+/** What {@link _applyScroll} will do, separated out so the decision is testable. */
+export type ScrollAction =
+  | { kind: "none" }
+  | { kind: "offset"; left: number; top: number }
+  | { kind: "fragment"; id: string };
+
+export function _scrollAction(intent: ScrollIntent, hash: string): ScrollAction {
+  if (intent === "preserve") return { kind: "none" };
+  if (intent !== "top") return { kind: "offset", left: intent[0], top: intent[1] };
+
+  // A fragment in the URL beats the top of the page — that is what the browser
+  // would have done for the same link without the SPA swap.
+  let id = hash;
+  if (id) {
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      /* malformed %-escape — take the fragment literally, as browsers do */
+    }
+  }
+  return id ? { kind: "fragment", id } : { kind: "offset", left: 0, top: 0 };
+}
+
+function _applyScroll(intent: ScrollIntent, hash: string): void {
+  const action = _scrollAction(intent, hash);
+  if (action.kind === "none") return;
+
+  // `behavior: "instant"` on purpose: a page with `scroll-behavior: smooth` in
+  // its CSS would otherwise animate the whole way up on every navigation, which
+  // on a long page is a visible scroll-back the user did not ask for.
+  if (action.kind === "offset") {
+    window.scrollTo({ left: action.left, top: action.top, behavior: "instant" });
+    return;
+  }
+
+  const target = document.getElementById(action.id);
+  // A fragment naming nothing on the page lands at the top, same as a real load.
+  if (target) target.scrollIntoView({ behavior: "instant", block: "start" });
+  else window.scrollTo({ left: 0, top: 0, behavior: "instant" });
+}
+
+/** Options for {@link _navigateTo}. */
+interface NavigateOptions {
+  /** Add a history entry. False on Back/Forward, where the entry already exists. */
+  push?: boolean;
+  /** Leave the viewport where it is instead of going to the top of the new page. */
+  preserveScroll?: boolean;
+  /** Offsets to restore, for Back/Forward. Takes precedence over `preserveScroll`. */
+  restoreScroll?: readonly [number, number] | undefined;
+}
+
+async function _navigateTo(href: string, options: NavigateOptions = {}): Promise<void> {
+  const { push = true } = options;
+  const scrollIntent = _scrollIntent(options);
   let html: string;
   const prefetched = _takePrefetched(href);
   if (prefetched !== null) {
@@ -2391,8 +2515,9 @@ async function _navigateTo(href: string, pushState = true): Promise<void> {
     // document.write() here would re-inject the classic runtime <script> into the
     // *current* realm and redeclare its top-level bindings (e.g. `class
     // FlowComponent` → "already declared"). A hard navigation also re-bootstraps
-    // the client cleanly for the new layout.
-    if (pushState) window.location.assign(href);
+    // the client cleanly for the new layout — including the scroll position,
+    // which the browser owns on a real document load.
+    if (push) window.location.assign(href);
     else window.location.reload();
     return;
   }
@@ -2417,6 +2542,12 @@ async function _navigateTo(href: string, pushState = true): Promise<void> {
   const incomingClone = incomingRoot.cloneNode(true) as HTMLElement;
   _carryPersisted(currentRoot, incomingClone);
 
+  // Where this page is sitting, banked before the swap. Replacing the root
+  // changes the document height, and the browser clamps the scroll offset
+  // against it — read afterwards, a position near the bottom of a long page
+  // comes back as somewhere near the bottom of the short one.
+  if (push) _rememberScroll();
+
   // Swap state script + component root. Wrapped in a View Transition when the
   // browser supports it, for a smooth cross-page animation; falls back to an
   // instant swap otherwise.
@@ -2427,6 +2558,11 @@ async function _navigateTo(href: string, pushState = true): Promise<void> {
     _cleanupDisconnected();
     _scanComponents();
     _processHead(doc); // re-apply head from the incoming page (shell stylesheet + page meta)
+    // Inside the swap, not after it: the document only has its new height (and
+    // its fragment targets) once the root is in place. Inside the View
+    // Transition callback this is also what the "after" snapshot captures, so
+    // the animation ends at the right offset instead of sliding there.
+    _applyScroll(scrollIntent, _hashOf(href));
   };
   const _startVT = (document as unknown as { startViewTransition?: (cb: () => void) => unknown })
     .startViewTransition;
@@ -2435,7 +2571,7 @@ async function _navigateTo(href: string, pushState = true): Promise<void> {
   if (typeof _startVT === "function" && !_reduceMotion) _startVT.call(document, _swap);
   else _swap(); // reduced-motion (or unsupported): swap instantly, no cross-page animation
 
-  if (pushState) history.pushState({ flowNavigate: true }, "", href);
+  if (push) _pushHistoryEntry(href);
   const incomingTitle = doc.querySelector("title");
   if (incomingTitle) document.title = incomingTitle.textContent ?? "";
   _updateCurrentLinks();
@@ -2542,14 +2678,22 @@ function _setupPrefetch(): void {
 function _setupNavigationLinks(): void {
   _updateCurrentLinks();
   _setupPrefetch();
+  _trackScroll();
 
   // Stamp the initial history entry as ours. A fresh page load has `history.state === null`,
   // so without this, pressing Back to the first page fires `popstate` with a null state — the
   // handler below ignores it and the URL changes while the page stays put. Replacing (not
-  // pushing) keeps the entry in place; it just gains the flowNavigate marker.
-  if (!(history.state as { flowNavigate?: boolean } | null)?.flowNavigate) {
+  // pushing) keeps the entry in place; it just gains the flowNavigate marker and its scroll key.
+  const initial = history.state as { flowNavigate?: boolean; flowKey?: number } | null;
+  if (typeof initial?.flowKey === "number") {
+    // Restored from bfcache or a reload — keep the key so the entry's recorded
+    // position still matches, and mint above it so a new entry can't collide.
+    _currentHistoryKey = initial.flowKey;
+    _nextHistoryKey = Math.max(_nextHistoryKey, initial.flowKey + 1);
+  } else {
+    _currentHistoryKey = _nextHistoryKey++;
     history.replaceState(
-      { ...(history.state as object | null), flowNavigate: true },
+      { ...(initial as object | null), flowNavigate: true, flowKey: _currentHistoryKey },
       "",
       location.href,
     );
@@ -2566,13 +2710,31 @@ function _setupNavigationLinks(): void {
       return;
     }
     e.preventDefault();
-    void _navigateTo(href);
+    void _navigateTo(href, {
+      preserveScroll: anchor.hasAttribute("flow:navigate.preserve"),
+    });
   });
 
   window.addEventListener("popstate", (e) => {
-    if ((e.state as { flowNavigate?: boolean } | null)?.flowNavigate) {
-      void _navigateTo(window.location.pathname + window.location.search, false);
-    }
+    const state = e.state as { flowNavigate?: boolean; flowKey?: number } | null;
+    if (!state?.flowNavigate) return;
+
+    // Bank the outgoing entry before the key moves on, so Forward lands correctly
+    // too — not just Back. This is the half that cannot be done from
+    // `history.state`, which by now already describes the destination.
+    _rememberScroll();
+    const destination = state.flowKey;
+    const restore = destination === undefined ? undefined : _scrollByHistoryKey.get(destination);
+    if (destination !== undefined) _currentHistoryKey = destination;
+
+    void _navigateTo(location.pathname + location.search + location.hash, {
+      push: false,
+      restoreScroll: restore,
+      // Nothing recorded for this entry — it predates the runtime, or a reload
+      // cleared the map. Leave the viewport alone rather than jumping to the
+      // top, which is not what Back does.
+      preserveScroll: restore === undefined,
+    });
   });
 }
 
@@ -2584,12 +2746,21 @@ function _setupNavigationLinks(): void {
  * Both read the live URL from window.location (kept in sync by flow:navigate).
  * Ideal for instant filters, e.g.:
  *   <select @change="$flow.navigateCurrent({ query: { status: $event.target.value || null } })">
+ *
+ * Like any navigation this lands at the top of the page. For a control sitting
+ * partway down — a filter row the user is looking at while they change it —
+ * pass `preserveScroll: true` to leave the viewport alone:
+ *   $flow.navigateCurrent({ query: { status: … }, preserveScroll: true })
  */
 function _currentUrl(options: CurrentUrlOptions = {}): string {
   return buildUrlWithQuery(window.location.href, options);
 }
-function _navigateCurrent(options: CurrentUrlOptions = {}): Promise<void> {
-  return _navigateTo(buildUrlWithQuery(window.location.href, options));
+function _navigateCurrent(
+  options: CurrentUrlOptions & { preserveScroll?: boolean } = {},
+): Promise<void> {
+  return _navigateTo(buildUrlWithQuery(window.location.href, options), {
+    preserveScroll: options.preserveScroll ?? false,
+  });
 }
 
 const _debouncedModelSend = (() => {

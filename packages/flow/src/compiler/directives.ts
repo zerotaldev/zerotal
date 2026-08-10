@@ -22,6 +22,7 @@ export const BOOLEAN_DIRECTIVES: Record<string, string> = {
   hideOnDirty: "flow:dirty.remove",
   navigate: "flow:navigate",
   navigateHover: "flow:navigate.hover",
+  navigatePreserveScroll: "flow:navigate.preserve",
   currentExact: "flow:current.exact",
   currentStrict: "flow:current.strict",
   cloak: "flow:cloak",

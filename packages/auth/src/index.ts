@@ -149,7 +149,11 @@ export {
 // -- Two-factor authentication ------------------------------------------------
 export { TwoFactorService, RECOVERY_CODE_BITS } from "./TwoFactorService.ts";
 export { TwoFactor } from "./facades/TwoFactor.ts";
-export type { TwoFactorOptions } from "./TwoFactorService.ts";
+export type { TwoFactorOptions, TwoFactorQrOptions } from "./TwoFactorService.ts";
+// QR rendering. `TwoFactor.getQrCodeSvg()` covers the enrolment page; these are
+// for drawing the symbol yourself (canvas, PNG, your own markup).
+export { encodeQr, qrSvg, maxPayloadBytes, QrError } from "./qrcode.ts";
+export type { QrMatrix, QrSvgOptions } from "./qrcode.ts";
 
 // Config
 export { AuthConfig } from "./config.ts";

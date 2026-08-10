@@ -59,6 +59,7 @@ interface FlowDirectives {
 
   navigate?: boolean;
   navigateHover?: boolean;
+  navigatePreserveScroll?: boolean;
   current?: string;
   currentExact?: boolean;
   currentStrict?: boolean;
@@ -704,6 +705,10 @@ const PULSE_PROP_MAP: Record<string, string> = {
   dirtyTarget: "flow:target",
   navigate: "flow:navigate",
   navigateHover: "flow:navigate.hover",
+  // One word on purpose: toFlowHtmlAttr() rewrites every `-` in a flow: attribute
+  // to a `.`, so a hyphenated modifier would reach the DOM under a different name
+  // here than the compiler emits.
+  navigatePreserveScroll: "flow:navigate.preserve",
   current: "flow:current",
   currentExact: "flow:current.exact",
   currentStrict: "flow:current.strict",
@@ -1154,8 +1159,14 @@ export function jsx(
       continue;
     }
 
-    let htmlKey = PULSE_PROP_MAP[k] || k;
-    htmlKey = toFlowHtmlAttr(htmlKey);
+    // A mapped value is the attribute name the compiler emits and the bridge queries
+    // for, so it goes out verbatim. Running it through toFlowHtmlAttr() rewrote the
+    // hyphen in `flow:focus-error` to a dot, and the runtime path then emitted an
+    // attribute nothing listens for: `focusOnError` worked on a compiled page and did
+    // nothing at all on one that fell back to the runtime, with no error either way.
+    // The kebab→dot rewrite is for hand-written `flow:*` attributes only.
+    const mapped = PULSE_PROP_MAP[k];
+    const htmlKey = mapped ?? toFlowHtmlAttr(k);
 
     // Special object formatting for `confirm={{ message, title?, confirm?, cancel?,
     // variant?, danger?, icon?, prompt? }}`. The bare {message} and {message,prompt}

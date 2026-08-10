@@ -1634,6 +1634,10 @@ function _compileRenderMethod(
           emitStatic(" flow:navigate.hover");
           continue;
         }
+        if (ln === "preserveScroll" && attr.initializer === undefined) {
+          emitStatic(" flow:navigate.preserve");
+          continue;
+        }
         if (ln === "current") {
           const ci = attr.initializer;
           // current={false} → opt out of the auto active class; current={true} → default (skip).

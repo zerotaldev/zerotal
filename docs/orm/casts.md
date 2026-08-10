@@ -46,6 +46,8 @@ export class Post extends Model {
 | `'date'`              | `Date`          | constructs a native `Date`     | ISO 8601 string    |
 | `'json'`              | `unknown`       | `JSON.parse()`                 | `JSON.stringify()` |
 | `'array'`             | `unknown[]`     | `JSON.parse()`                 | `JSON.stringify()` |
+| `'encrypted'`         | `string`        | decrypts under `APP_KEY`       | AES-256-GCM        |
+| `'encrypted:json'`    | `unknown`       | decrypts, then `JSON.parse()`  | stringify, encrypt |
 
 > **Note** — `@column("date")` reads back a native `Date`, while
 > `@column("datetime")` reads back a [Carbon](/docs/carbon) instance. Type the
@@ -123,6 +125,70 @@ enum Status {
 // TypeScript now knows post.status is Status, not string:
 if (post.status === Status.Published) { /* … */ }
 ```
+
+### encrypted — ciphertext at rest
+
+The column stores an opaque AES-256-GCM payload keyed by `APP_KEY`; the property
+holds the value you assigned. Nothing in between — your code, validation,
+`$dirty` — has to know:
+
+```typescript
+// app/models/Client.ts
+@column("encrypted", { nullable: true }) idNumber?: string;
+
+// Structured values need the :json variant, so the type round-trips:
+@column("encrypted:json", { nullable: true }) medical?: MedicalInfo;
+
+// The same thing spelled out. `encrypted` is a cast, not a storage type —
+// `{ type: "encrypted" }` is not a thing:
+@column({ type: "text", nullable: true, cast: "encrypted" }) passportNumber?: string;
+```
+
+The shorthand resolves to `{ type: "text", cast: "encrypted" }`, which is why it is
+worth preferring: it gets the storage type right without you having to remember
+that ciphertext outgrows its plaintext.
+
+For several columns at once, list them instead — it means exactly the same thing:
+
+```typescript
+class Client extends BaseModel {
+  static encryptable = ["idNumber", "passportNumber"];
+}
+```
+
+A column in that list whose `@column({ type })` is `json` encrypts as
+`encrypted:json` automatically, so the structure survives the round trip rather
+than reaching the cipher as `"[object Object]"`.
+
+Unlike [`hashable`](/docs/orm/index), this is reversible and does not touch the
+instance: after `save()`, `client.idNumber` still reads as the plaintext you set.
+`$dirty` therefore compares plaintext, and an unchanged column is not rewritten
+with a fresh IV on every unrelated save.
+
+> **Danger** — **You cannot query an encrypted column.** Every write draws a new
+> IV, so the same value encrypts to different ciphertext each time and an equality
+> match can never hit. `where()` on one throws `EncryptedColumnError` rather than
+> quietly returning zero rows. If you need lookup, keep a separate hashed column
+> (a blind index) beside it and query that. Sorting and grouping are meaningless
+> for the same reason, and are not guarded.
+
+Two more things worth knowing:
+
+- **Declare the column as `text`.** A payload is roughly 1.4× the plaintext plus
+  28 bytes, so a `VARCHAR(255)` that held the value will not hold its ciphertext.
+  `migrate:generate` and `synchronize()` widen an encrypted column to TEXT for you
+  — the generated migration says `table.text(...)` — because MySQL outside strict
+  mode truncates instead of failing, and a truncated payload never decrypts.
+- **Add them to `hidden`** if the model is serialized to a client. Decryption puts
+  the real value back on the instance, and `toJSON()` will include it.
+
+**Turning encryption on for a column that already holds data** needs a back-fill
+first: existing plaintext rows are not decryptable, and reading one throws
+`EncryptedColumnError` naming the model and column. Read the rows with the cast
+off, then write them back with it on. The same error covers a rotated `APP_KEY` —
+decrypt with the old key and re-save. Failing the read is deliberate: handing back
+the ciphertext would put an unreadable value where the application expects a real
+one, and re-encrypt it on the next save, losing the original for good.
 
 ### Custom cast — full get/set control
 

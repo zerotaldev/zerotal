@@ -29,6 +29,8 @@ export { columnRegistry };
  * | `"date"`    | `{ type: "datetime", cast: "date" }`            |
  * | `"json"`    | `{ type: "json", cast: "json" }`                |
  * | `"array"`   | `{ type: "json", cast: "array" }`               |
+ * | `"encrypted"` | `{ type: "text", cast: "encrypted" }`         |
+ * | `"encrypted:json"` | `{ type: "text", cast: "encrypted:json" }` |
  */
 export type ColumnShorthand =
   | "string"
@@ -40,7 +42,9 @@ export type ColumnShorthand =
   | "datetime"
   | "date"
   | "json"
-  | "array";
+  | "array"
+  | "encrypted"
+  | "encrypted:json";
 
 /**
  * Full option object accepted by `@column({ ... })`.
@@ -105,6 +109,12 @@ export interface ColumnOptions {
    * - 'integer'        — parseInt on both read and write
    * - 'float'          — parseFloat on both read and write
    * - 'enum'           — pass-through; pairs with `enumValues` for TS enum columns
+   * - 'encrypted'      — AES-256-GCM at rest under `APP_KEY`, plaintext on the model
+   * - 'encrypted:json' — the same, for a structured value (stringified, then encrypted)
+   *
+   * Encrypted columns need `type: "text"` (a payload outgrows the plaintext) and
+   * cannot be filtered on — `where()` against one throws, because a fresh IV per
+   * write means the ciphertext never repeats. See `casts/encrypted.ts`.
    */
   cast?:
     | "datetime"
@@ -116,6 +126,8 @@ export interface ColumnOptions {
     | "float"
     | "enum"
     | "immutable_datetime"
+    | "encrypted"
+    | "encrypted:json"
     | `decimal:${number}`
     | {
         get?: (dbValue: unknown) => unknown;
@@ -140,6 +152,10 @@ const SHORTHAND_MAP: Record<ColumnShorthand, ColumnOptions> = {
   date: { type: "datetime", cast: "date" },
   json: { type: "json", cast: "json" },
   array: { type: "json", cast: "array" },
+  // TEXT, not string: the stored payload is ~1.4× the plaintext plus 28 bytes of
+  // IV and auth tag, so a VARCHAR that held the value will not hold its ciphertext.
+  encrypted: { type: "text", cast: "encrypted" },
+  "encrypted:json": { type: "text", cast: "encrypted:json" },
 };
 
 /**

@@ -6,6 +6,7 @@ import {
   toSnakeColumn as _toSnakeColumn,
   ctorChain,
 } from "../support/identifiers.ts";
+import { collectEncryptable, encryptedQueryError, isEncryptedCast } from "../casts/encrypted.ts";
 import type {
   PaginateResult,
   SimplePaginateResult,
@@ -27,6 +28,14 @@ type CastOption = ColumnOptions["cast"];
 
 function _getCasts(ctor: Function): Record<string, CastOption> {
   const merged: Record<string, CastOption> = {};
+  const colReg = columnsFor(ctor);
+  // Mirrors getCasts() in BaseModel: `static encryptable` resolves to casts, and an
+  // explicit cast on the same column wins. Without this the guard below cannot see
+  // a column declared encrypted through the list form.
+  Object.assign(
+    merged,
+    collectEncryptable(ctorChain(ctor), (key) => colReg?.get(key)?.type),
+  );
   for (const entry of ctorChain(ctor)) {
     const casts = (entry as { casts?: Record<string, CastOption> }).casts;
     if (casts) Object.assign(merged, casts);
@@ -1244,6 +1253,15 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
     const colMeta = columnsFor(this._ModelClass as unknown as Function)?.get(camelKey);
     const castOpt = casts[rawKey] ?? casts[camelKey] ?? colMeta?.cast;
     const colType = colMeta?.type;
+
+    // Before anything binds: an encrypted column cannot be compared. Running the
+    // cast's set() here would encrypt the search term under a fresh IV, producing
+    // ciphertext that cannot equal what is stored — a query that always returns
+    // nothing and never says why. Same failure the created_at note below describes,
+    // and permanent rather than occasional, so it is refused outright.
+    if (isEncryptedCast(castOpt)) {
+      throw encryptedQueryError(`${this._ModelClass.name}.${camelKey}`);
+    }
 
     if (operator === "in" || operator === "not in") {
       if (Array.isArray(value)) {

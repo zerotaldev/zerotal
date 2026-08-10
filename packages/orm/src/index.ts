@@ -244,6 +244,11 @@ export type { DatabaseConfigShape } from "./config.ts";
 // Casts
 export { Cast, JsonCast, ArrayCast, json, objectOf, arrayOf } from "./casts/Cast.ts";
 export type { CastContract, CastMapper, CastField } from "./casts/Cast.ts";
+// Encrypted columns — `cast: "encrypted"` / `static encryptable`. The error is
+// exported so an app can catch an unreadable row (a rotated APP_KEY) and say
+// something useful instead of 500ing.
+export { EncryptedColumnError, isEncryptedCast } from "./casts/encrypted.ts";
+export type { EncryptedCastName } from "./casts/encrypted.ts";
 
 // Framework events emitted by the ORM (subscribe via core's FrameworkEvents bus).
 export {

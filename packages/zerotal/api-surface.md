@@ -1136,12 +1136,13 @@ class AuthUser = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
+  static encryptable?: string[]
   static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
@@ -1552,13 +1553,14 @@ class Permission = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
+  static encryptable?: string[]
   static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
@@ -1658,6 +1660,13 @@ class Policy = {
   new <_Model = unknown>(): Policy<_Model>
 }
 
+class QrError = {
+  new (message: string, context?: Record<string, unknown>): QrError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
 class Registered = {
   new (userId: string | number): Registered
   readonly userId: string | number
@@ -1706,13 +1715,14 @@ class Role = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
+  static encryptable?: string[]
   static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
@@ -1880,6 +1890,7 @@ class TwoFactorService = {
   generateCode: (secret: string, offset?: number) => string
   generateRecoveryCodes: () => {    plain: string[];    hashed: string[];}
   generateSecret: () => string
+  getQrCodeSvg: (label: string, secret: string, options?: TwoFactorQrOptions) => string
   getQrCodeUrl: (label: string, secret: string, issuer?: string) => string
   verifyCode: (secret: string, token: string, lastUsedCounter?: number | null) => boolean
   verifyCodeWithCounter: (secret: string, token: string, lastUsedCounter?: number | null) => {    valid: boolean;    counter: number | null;}
@@ -1961,6 +1972,8 @@ function definePermission = (...names: (string | string[])[]) => void
 
 function EmailVerification = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): EmailVerification;    prototype: EmailVerification<any>.EmailVerification;    emailVerificationExpireMinutes: number;} & TBase
 
+function encodeQr = (text: string) => QrMatrix
+
 function fakeSocialUser = (overrides?: Partial<SocialUser>) => SocialUser
 
 function hasEmailVerification = (model: unknown) => boolean
@@ -1979,11 +1992,15 @@ function isAuthenticatable = (model: unknown) => boolean
 
 function isPasswordCompromised = (password: string, opts?: CompromisedCheckOptions) => Promise<boolean>
 
+function maxPayloadBytes = (version?: number) => number
+
 function mintRememberToken = () => string
 
 function PasswordReset = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): PasswordReset;    prototype: PasswordReset<any>.PasswordReset;    passwordResetExpireMinutes: number;    resetPassword(token: string, newPassword: string): Promise<PasswordReset | null>;} & TBase
 
 function Permissions = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): (Anonymous class);    prototype: Permissions<any>.(Anonymous class);    withPermissions: boolean;} & TBase
+
+function qrSvg = (matrix: QrMatrix, options?: QrSvgOptions) => string
 
 function registeredPermissions = () => string[]
 
@@ -2141,6 +2158,23 @@ interface PasswordBrokerOptions = {
   storeToken: (email: string, hash: string, expiresAt: Date) => Promise<void>
 }
 
+interface QrMatrix = {
+  isDark: (row: number, col: number) => boolean
+  mask: number
+  modules: Uint8Array<ArrayBufferLike>
+  size: number
+  version: number
+}
+
+interface QrSvgOptions = {
+  alt?: string
+  class?: string
+  dark?: string
+  light?: string | null
+  quietZone?: number
+  size?: number
+}
+
 interface RememberMeOptions = {
   secure?: boolean
 }
@@ -2192,6 +2226,16 @@ interface TwoFactorOptions = {
   issuer?: string
   recoveryCodeCount?: number
   window?: number
+}
+
+interface TwoFactorQrOptions = {
+  alt?: string
+  class?: string
+  dark?: string
+  issuer?: string
+  light?: string | null
+  quietZone?: number
+  size?: number
 }
 
 interface UserModel = {
@@ -4519,12 +4563,13 @@ class MediaItem = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
+  static encryptable?: string[]
   static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
@@ -4967,12 +5012,13 @@ class BaseModel = {
   static all: <T extends BaseModel>(this: ModelCtor<T>) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
+  static encryptable?: string[]
   static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: ModelCtor<T>, id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: ModelCtor<T>, column: string, value: unknown) => Promise<T | null>
@@ -5171,6 +5217,13 @@ class DatabaseProvider = {
   replContext: () => Record<string, unknown>
 }
 
+class EncryptedColumnError = {
+  new (message: string, code: string, context?: Record<string, unknown>): EncryptedColumnError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
 class ForeignIdColumnBuilder = {
   new (name: string, sqlType: string, _addFk: (col: string) => ForeignKeyBuilder): ForeignIdColumnBuilder
   after: (_column: string) => ForeignIdColumnBuilder
@@ -5268,12 +5321,13 @@ class Model = {
   static all: <T extends BaseModel>(this: ModelCtor<T>) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
+  static encryptable?: string[]
   static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: ModelCtor<T>, id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: ModelCtor<T>, column: string, value: unknown) => Promise<T | null>
@@ -5799,6 +5853,8 @@ function hasOneThrough = (related: () => unknown, through: () => unknown, option
 
 function installOrmObservability = (app: Application) => () => void
 
+function isEncryptedCast = (cast: unknown) => cast is EncryptedCastName
+
 function json = <T = unknown>(mapper?: CastMapper<T>) => JsonCast<T>
 
 function manyToMany = (related: () => unknown, options: ManyToManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
@@ -5866,7 +5922,7 @@ interface CastField = {
 }
 
 interface ColumnOptions = {
-  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
+  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
   default?: unknown
   enumValues?: Record<string, string | number>
   index?: boolean
@@ -6231,7 +6287,7 @@ type CastMapper = ((raw: unknown) => T) | (new (...args: never[]) => T)
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 
-type ColumnShorthand = 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float'
+type ColumnShorthand = 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'encrypted' | 'encrypted:json'
 
 type Constructor = new (...args: any[]) => T
 
@@ -6240,6 +6296,8 @@ type ContextConnectionResolver = (ModelClass?: typeof BaseModel) => SQLInstance 
 type DatePart = 'date' | 'time' | 'year' | 'month' | 'day'
 
 type DialectName = 'sqlite' | 'postgres' | 'mysql'
+
+type EncryptedCastName = 'encrypted' | 'encrypted:json'
 
 type FKAction = 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION'
 

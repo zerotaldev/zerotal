@@ -194,6 +194,23 @@ The merge rules:
 <button onClick={() => this.navigateCurrent({ query: { search: "" } })}>Clear search</button>
 ```
 
+Like any navigation, this lands at the top of the page. A filter sitting partway
+down is the case where that's wrong — the user is looking at the control they
+just changed, and the results move out from under them. Pass `preserveScroll` to
+leave the viewport where it is:
+
+```tsx
+<select
+  onChange={(e) =>
+    this.navigateCurrent({ query: { status: e.target.value || null }, preserveScroll: true })
+  }
+>
+```
+
+Pagination is the opposite case: page 2 should start at the top, so leave it off.
+`<Link preserveScroll>` does the same thing for a link — see
+[Components](/docs/flow/components).
+
 > **Warning** — Both helpers are client-only: they have no value on the server and throw if called from a server action or `onMount()`. Use them directly inside JSX bindings (an attribute value, a text child, or an `onClick`/`onChange` handler) — the compiler rewrites those to the `$flow.currentUrl` / `$flow.navigateCurrent` client magics. They're fully type-checked, no `$`-prefixed syntax. To navigate from server code instead, return a `redirect()`.
 
 ### Path parameters

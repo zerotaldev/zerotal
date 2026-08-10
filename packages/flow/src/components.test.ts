@@ -30,6 +30,15 @@ describe("<Link>", () => {
     expect(n.html).toContain(">Posts</a>");
     expect(n.html).not.toContain("flow:navigate.hover");
     expect(n.html).not.toContain("flow:current.ignore");
+    // Nothing opted out, so this link goes to the top of the page it opens.
+    expect(n.html).not.toContain("flow:navigate.preserve");
+  });
+
+  it("preserveScroll marks the link so the swap leaves the viewport alone", () => {
+    const n = Link({ href: "/posts?sort=title", preserveScroll: true, children: "Title" });
+    expect(n.html).toContain("flow:navigate.preserve");
+    // The prop is consumed, not passed through to the <a> as-is.
+    expect(n.html).not.toContain("preserveScroll");
   });
 
   it("hover adds prefetch; current={false} opts out of data-current; extra props pass through", () => {

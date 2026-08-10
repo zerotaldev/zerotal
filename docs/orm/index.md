@@ -182,11 +182,12 @@ import { column } from "@zerotal/orm";
 @column("integer")  views!:     number;
 @column("boolean")  active!:    boolean;
 @column("datetime") createdAt!: Carbon;
-@column("date")     birthday?:  Carbon;
+@column("date")     birthday?:  Date;   // native Date — not Carbon; see below
 @column("json")     meta!:      Record<string, unknown>;
 @column("array")    tags!:      string[];
 @column("float")    score!:     number;
 @column("text")     bio?:       string;
+@column("encrypted") idNumber?: string; // ciphertext at rest, plaintext here
 
 // Shorthand + options — the shorthand keeps its type and cast
 @column("string", { nullable: true }) nickname?: string | null;
@@ -194,12 +195,26 @@ import { column } from "@zerotal/orm";
 
 // Full options object
 @column({ type: "datetime", cast: "datetime" }) publishedAt?: Carbon;
-@column({ type: "number", cast: "decimal:2" }) price!: number;
+@column({ type: "number", cast: "decimal:2" }) price!: string; // toFixed() — a string
 ```
 
-Shorthands map to: `string`, `text`, `integer`, `number`, `float`, `boolean`, `datetime`, `date`, `json`, `array`. See [Casts & Mutators](/docs/orm/casts) for the full cast reference.
+Shorthands map to: `string`, `text`, `integer`, `number`, `float`, `boolean`, `datetime`, `date`, `json`, `array`, `encrypted`, `encrypted:json`. See [Casts & Mutators](/docs/orm/casts) for the full cast reference.
+
+A shorthand is not the same as `type`. `type` is only the storage type —
+`string`, `text`, `number`, `boolean`, `datetime`, `json` — so `{ type: "integer" }`
+and `{ type: "encrypted" }` are both errors. The shorthands that look like types
+(`integer`, `float`, `encrypted`) are type-and-cast pairs: `@column("integer")` is
+`{ type: "number", cast: "integer" }`, and `@column("encrypted")` is
+`{ type: "text", cast: "encrypted" }`.
 
 `string` is a bounded VARCHAR and `text` is the unbounded TEXT type — a distinction that matters on Postgres and MySQL, where a long body in a `VARCHAR(255)` is an error rather than a slow column.
+
+Two casts surface as a type you might not expect, so declare the property to match
+what you will actually hold: `date` hydrates a **native `Date`** (only `datetime`
+gives you a [Carbon](/docs/carbon)), and `decimal:N` runs `.toFixed(N)` both ways,
+so it is a **string**. TypeScript cannot catch either — the decorator does not
+constrain the property type — so an annotation that disagrees compiles fine and
+fails at the first `.diffForHumans()` or arithmetic.
 
 ### Indexes and uniqueness
 

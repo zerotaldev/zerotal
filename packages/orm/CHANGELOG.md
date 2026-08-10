@@ -8,6 +8,54 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-08-10
+
+### Added
+
+- **Encrypted columns.** A column can now hold ciphertext at rest and plaintext on
+  the model, keyed by `APP_KEY` with AES-256-GCM. Declare it per-column or as a
+  list; the two mean the same thing and resolve to the same cast:
+
+  ```ts
+  @column("encrypted", { nullable: true }) idNumber?: string;
+  @column("encrypted:json") medical?: MedicalInfo;
+
+  // …the same, spelled out — `encrypted` is a cast, not a storage type:
+  @column({ type: "text", nullable: true, cast: "encrypted" }) passportNumber?: string;
+
+  static encryptable = ["idNumber", "passportNumber"];
+  ```
+
+  `encrypted` and `encrypted:json` join the `@column("…")` shorthands, resolving
+  to `{ type: "text", cast: "encrypted" }` — so the storage type is right without
+  having to know that ciphertext outgrows its plaintext.
+
+  Encryption happens on the way to the database rather than to the instance, so —
+  unlike `hashable` — it is non-destructive: after `save()` the property still
+  holds what you assigned. `$dirty` compares plaintext, so an unchanged column is
+  not rewritten with a fresh IV on every unrelated save.
+
+  A column listed in `encryptable` whose `@column({ type })` is `json` encrypts as
+  `encrypted:json`, so it round-trips as the structure it was instead of reaching
+  the cipher as `"[object Object]"`.
+
+  **`where()` on an encrypted column throws** rather than returning nothing. The
+  bind path runs a column's cast over the search value, which would encrypt it
+  under a fresh IV and compare it against ciphertext written with a different one:
+  zero rows, no error, and a screen reading "no such client" for a client who is
+  right there. `EncryptedColumnError` says so and points at a blind index.
+
+  **A value the key cannot open fails the read**, naming the model, the column and
+  the two causes (a rotated `APP_KEY`, or plaintext that predates the cast).
+  Returning the ciphertext instead would put an unreadable value where the
+  application expects a real one — displayed, reported on, or re-encrypted by the
+  next save, which destroys the original.
+
+  `migrate:generate` and `synchronize()` widen an encrypted column to TEXT
+  whatever it was declared as. A payload is ~1.4× the plaintext plus 28 bytes, and
+  MySQL outside strict mode truncates rather than failing — a truncated payload
+  never decrypts, so the row would be destroyed silently at write time.
+
 ## [1.3.0] — 2026-08-09
 
 ### Changed — BREAKING

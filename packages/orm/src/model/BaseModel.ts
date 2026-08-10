@@ -36,6 +36,13 @@ import { installReactiveAccessors, type ColumnOptions } from "./decorators/colum
 import { _compose } from "./mixins.ts";
 import type { Compose } from "./mixins.ts";
 import { columnsFor, relationsFor } from "./decorators/_metadata.ts";
+import {
+  collectEncryptable,
+  decryptColumn,
+  encryptColumn,
+  isEncryptedCast,
+  type EncryptedCastName,
+} from "../casts/encrypted.ts";
 import { TransactionContext } from "../db/TransactionContext.ts";
 import type { InsertPayload, UpdatePayload, FillablePayload } from "./payload.ts";
 import type { WhereOperator, OrderDirection } from "../db/types.ts";
@@ -222,6 +229,7 @@ type StringCast =
   | "float"
   | "enum"
   | "immutable_datetime"
+  | EncryptedCastName
   | `decimal:${number}`;
 type CastOption = ColumnOptions["cast"];
 
@@ -234,6 +242,13 @@ function getCasts(ctor: Function): Record<string, CastOption> {
     current = Object.getPrototypeOf(current) as Function | null;
   }
   chain.reverse();
+  // `static encryptable` first, so an explicit cast on the same column still wins —
+  // spelling one out is the more specific statement of intent.
+  const colReg = columnsFor(ctor);
+  Object.assign(
+    merged,
+    collectEncryptable(chain, (key) => colReg?.get(key)?.type),
+  );
   for (const entry of chain) {
     const casts = (entry as { casts?: Record<string, CastOption> }).casts;
     if (casts) Object.assign(merged, casts);
@@ -241,8 +256,9 @@ function getCasts(ctor: Function): Record<string, CastOption> {
   return merged;
 }
 
-function applyCastGet(value: unknown, cast: StringCast): unknown {
+function applyCastGet(value: unknown, cast: StringCast, label: string): unknown {
   if (value === null || value === undefined) return value;
+  if (isEncryptedCast(cast)) return decryptColumn(value, cast, label);
   const cstr = cast as unknown as string;
   if (cstr.startsWith("decimal:")) {
     const n = parseInt(cstr.slice(8), 10) || 0;
@@ -294,8 +310,9 @@ function tryParseJson(s: string): unknown {
   }
 }
 
-function applyCastSet(value: unknown, cast: StringCast): unknown {
+function applyCastSet(value: unknown, cast: StringCast, label: string): unknown {
   if (value === null || value === undefined) return value;
+  if (isEncryptedCast(cast)) return encryptColumn(value, cast, label);
   const cstr = cast as unknown as string;
   if (cstr.startsWith("decimal:")) {
     const n = parseInt(cstr.slice(8), 10) || 0;
@@ -362,6 +379,7 @@ function _serializeForWrite(
   val: unknown,
   casts: Record<string, CastOption>,
   colReg: Map<string, ColumnOptions> | null,
+  model?: string,
 ): unknown {
   const colMeta = colReg?.get(key);
   const castOpt = casts[key] ?? colMeta?.cast;
@@ -370,7 +388,7 @@ function _serializeForWrite(
   if (castOpt && typeof castOpt === "object" && castOpt.set) {
     serializedVal = castOpt.set(val);
   } else if (typeof castOpt === "string") {
-    serializedVal = applyCastSet(val, castOpt);
+    serializedVal = applyCastSet(val, castOpt, model ? `${model}.${key}` : key);
   } else if (colType === "boolean" && val !== null && val !== undefined) {
     serializedVal = val ? 1 : 0;
   } else if (colType === "json" && val !== null) {
@@ -832,6 +850,42 @@ export class BaseModel {
    * @category Persistence
    */
   static hashable?: string[];
+
+  /**
+   * Columns encrypted at rest with AES-256-GCM under `APP_KEY`, and decrypted
+   * transparently on read. Shorthand for putting `cast: "encrypted"` on each one.
+   *
+   * Unlike {@link hashable} this is reversible and non-destructive: the model
+   * property still holds the value you assigned after a `save()`, because the
+   * encryption happens on the way to the database rather than to the instance.
+   * `$dirty` therefore compares plaintext, and an unchanged column is not
+   * rewritten with a new IV on every save.
+   *
+   * A `json` column in this list encrypts as `encrypted:json`, so it round-trips
+   * as the structure it was rather than as `"[object Object]"`.
+   *
+   * @example
+   * ```ts
+   * class Client extends BaseModel {
+   *   static encryptable = ["idNumber", "passportNumber"];
+   *
+   *   // TEXT, not VARCHAR — a payload outgrows its plaintext.
+   *   @column({ type: "text", nullable: true }) idNumber?: string;
+   *   @column({ type: "text", nullable: true }) passportNumber?: string;
+   * }
+   * ```
+   *
+   * @remarks
+   * Encrypted columns cannot be filtered, grouped or usefully sorted — every
+   * write draws a fresh IV, so the ciphertext for a given value never repeats.
+   * `where()` on one throws rather than quietly matching nothing. For lookup,
+   * keep a hashed blind-index column beside it. Add these to {@link hidden} too
+   * if the model is serialized to a client: decryption puts the real value back
+   * on the instance, and `toJSON()` will happily include it.
+   *
+   * @category Persistence
+   */
+  static encryptable?: string[];
 
   /**
    * Register an observer class for this model.
@@ -1480,7 +1534,7 @@ export class BaseModel {
         const row: Record<string, unknown> = {};
         for (const [key, val] of Object.entries(rec as Record<string, unknown>)) {
           if (key.startsWith("_")) continue;
-          row[toSnake(key)] = _serializeForWrite(key, val, casts, colReg);
+          row[toSnake(key)] = _serializeForWrite(key, val, casts, colReg, ModelClass.name);
         }
         if (useTs) {
           row["created_at"] = now;
@@ -1562,7 +1616,7 @@ export class BaseModel {
     const row: Record<string, unknown> = _writeDialect.run(dialect, () => {
       const r: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(data as Record<string, unknown>)) {
-        r[toSnake(key)] = _serializeForWrite(key, val, casts, colReg);
+        r[toSnake(key)] = _serializeForWrite(key, val, casts, colReg, this.name);
       }
       return r;
     });
@@ -1703,7 +1757,7 @@ export class BaseModel {
             // value is readable straight after save() without a reload.
             self[key] = effective;
           }
-          r[toSnake(key)] = _serializeForWrite(key, effective, casts, colReg);
+          r[toSnake(key)] = _serializeForWrite(key, effective, casts, colReg, ModelClass.name);
         }
         if (ModelClass.timestamps) {
           const now = _serializeDate(new Date());
@@ -1785,7 +1839,11 @@ export class BaseModel {
       if (Object.keys(dirty).length > 0) {
         const entries = _writeDialect.run(dialect, () =>
           Object.entries(dirty).map(
-            ([k, v]) => [toSnake(k), _serializeForWrite(k, v, casts, colReg)] as [string, unknown],
+            ([k, v]) =>
+              [toSnake(k), _serializeForWrite(k, v, casts, colReg, ModelClass.name)] as [
+                string,
+                unknown,
+              ],
           ),
         );
         const segs: Seg[] = [`UPDATE ${ModelClass.table} SET `];
@@ -2467,7 +2525,7 @@ function _applyRow(inst: BaseModel, row: Record<string, unknown>): void {
       finalVal = castObj.get(rawVal);
     } else if (typeof cast === "string") {
       // Explicit shorthand cast ('boolean', 'json', 'date', etc.)
-      finalVal = applyCastGet(rawVal, cast);
+      finalVal = applyCastGet(rawVal, cast, `${ModelClass.name}.${propKey}`);
     } else if (colType === "boolean" && rawVal !== null && rawVal !== undefined) {
       // Auto-cast based on @column({ type: 'boolean' }) — SQLite stores 0/1
       finalVal = rawVal === 1 || rawVal === "1" || rawVal === true;

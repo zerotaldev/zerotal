@@ -134,8 +134,11 @@ export class TwoFactorController extends Controller {
     const secret = TwoFactor.generateSecret();
     ctx.session.put("two_factor_pending_secret", secret);
 
+    // The scannable code, plus the URI as a link and the secret as text for
+    // anyone enrolling on the phone that holds the authenticator.
+    const qr = TwoFactor.getQrCodeSvg(ctx.user!.email, secret, { size: 220 });
     const uri = TwoFactor.getQrCodeUrl(ctx.user!.email, secret);
-    return this.render("two-factor/setup", { uri, secret });
+    return this.render("two-factor/setup", { qr, uri, secret });
   }
 
   // POST /user/two-factor — confirm and save
@@ -270,14 +273,58 @@ TwoFactorMiddleware.challengeRoute = "/auth/2fa";
 
 ## Displaying the QR code
 
-`getQrCodeUrl()` returns an `otpauth://` URI. Pass it to any QR renderer:
+`getQrCodeSvg()` returns the scannable code as an inline `<svg>`, drawn in your
+process. Inline it — do not fetch it, and do not log it:
 
 ```tsx
 // in a Flow page
-const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`;
+const qr = TwoFactor.getQrCodeSvg(user.email, secret, { size: 220 });
 
-return <img src={qrUrl} alt="Scan with your authenticator app" />;
+return <div dangerouslySetInnerHTML={{ __html: qr }} />;
 ```
+
+> **Danger** — never hand the `otpauth://` URI to a QR image service. It carries
+> the TOTP secret, so a request to `api.qrserver.com` or any similar endpoint
+> posts the second factor to a third party and leaves it in their logs. Serving
+> the image from a route of your own has the same shape of problem: it turns the
+> secret into something requestable, proxy-loggable and browser-cacheable. That
+> is why this renders in-process and returns markup rather than a URL.
+
+Options: `issuer` overrides the configured one for this code; `size` sets width
+and height in pixels (omit it and the symbol scales to its container);
+`dark`/`light` set the colours, with `light: null` for a transparent background;
+`quietZone` is the light margin in modules, which defaults to the 4 the spec
+requires — drop it to `0` only when the surrounding element already provides a
+light margin, because scanners use that margin to find the symbol's edges;
+`alt` and `class` set the accessible name and the CSS class.
+
+**Offer the secret as text too.** A phone cannot photograph its own screen, so
+anyone enrolling on the device that holds the authenticator needs another way in
+— the secret in readable blocks to type, or the `otpauth://` URI from
+`getQrCodeUrl()` as a link, which opens the authenticator app directly:
+
+```tsx
+<a href={TwoFactor.getQrCodeUrl(user.email, secret)}>Open in my authenticator</a>
+```
+
+To draw the code yourself — to a canvas, a PNG, or your own markup — `encodeQr()`
+returns the module matrix and `qrSvg()` renders one:
+
+```ts
+import { encodeQr } from "@zerotal/auth";
+
+const matrix = encodeQr(TwoFactor.getQrCodeUrl(user.email, secret));
+for (let row = 0; row < matrix.size; row++) {
+  for (let col = 0; col < matrix.size; col++) {
+    if (matrix.isDark(row, col)) ctx.fillRect(col * 4, row * 4, 4, 4);
+  }
+}
+```
+
+The encoder covers byte mode at error-correction level M, versions 1 through 20
+— `maxPayloadBytes()` bytes in all. A typical `otpauth://` URI is about 130
+bytes; past the ceiling, `QrError` is thrown rather than a truncated symbol
+produced, and the fix is a shorter issuer or account label.
 
 Authenticator apps that support TOTP: Google Authenticator, Authy, 1Password,
 Bitwarden, Microsoft Authenticator.
@@ -357,6 +404,7 @@ All methods are synchronous.
 | ---------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | `generateSecret()`                       | `() => string`                                                                      | Random 20-byte base-32 secret for a new enrolment.                                 |
 | `getQrCodeUrl(label, secret, issuer?)`   | `(label: string, secret: string, issuer?: string) => string`                        | `otpauth://totp/...` URI for an authenticator app.                                 |
+| `getQrCodeSvg(label, secret, options?)`  | `(label: string, secret: string, options?: TwoFactorQrOptions) => string`           | The same URI as an inline `<svg>`, drawn in-process. Inline it; never fetch it.    |
 | `generateCode(secret, offset?)`          | `(secret: string, offset?: number) => string`                                       | Produce the code an authenticator would show. For tests — never send it to a user. |
 | `verifyCode(secret, token)`              | `(secret: string, token: string) => boolean`                                        | Verify a 6-digit TOTP code within the time window.                                 |
 | `generateRecoveryCodes()`                | `() => { plain: string[]; hashed: string[] }`                                       | Fresh one-time recovery codes (plaintext + hashes).                                |

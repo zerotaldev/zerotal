@@ -1,6 +1,8 @@
 import path from "node:path";
 import type { ColumnOptions } from "../model/decorators/column.ts";
 import { columnRegistry, columnsFor } from "../model/decorators/_metadata.ts";
+import { ctorChain } from "../support/identifiers.ts";
+import { isEncryptedCast } from "../casts/encrypted.ts";
 
 // ── Model schema descriptor ───────────────────────────────────────────────────
 
@@ -54,12 +56,22 @@ function collectColumns(ctor: Function): Map<string, ColumnOptions> | null {
   return columnsFor(ctor);
 }
 
-function toModelColumns(fields: Map<string, ColumnOptions>): ModelColumn[] {
+function toModelColumns(
+  fields: Map<string, ColumnOptions>,
+  encrypted: ReadonlySet<string>,
+): ModelColumn[] {
   const columns: ModelColumn[] = [];
   for (const [name, opts] of fields.entries()) {
     columns.push({
       name,
-      type: opts.type,
+      // An encrypted column is generated as TEXT whatever it was declared as. The
+      // stored payload is the plaintext plus 28 bytes of IV and auth tag, base64'd —
+      // about 1.4× longer — so a VARCHAR(255) that comfortably held the value no
+      // longer holds its ciphertext. MySQL outside strict mode truncates rather than
+      // failing, and a truncated payload will not decrypt: the row is lost, quietly,
+      // at write time. The generated migration says `table.text(...)`, so the
+      // widening is visible in review rather than only here.
+      type: encrypted.has(name) ? "text" : opts.type,
       nullable: opts.nullable ?? false,
       primary: opts.primary ?? false,
       default: opts.default,
@@ -68,6 +80,21 @@ function toModelColumns(fields: Map<string, ColumnOptions>): ModelColumn[] {
     });
   }
   return columns;
+}
+
+/** Columns encrypted by either route — `cast: "encrypted…"` or `static encryptable`. */
+function encryptedColumns(
+  chain: readonly object[],
+  fields: Map<string, ColumnOptions>,
+): Set<string> {
+  const names = new Set<string>();
+  for (const [name, opts] of fields.entries()) {
+    if (isEncryptedCast(opts.cast)) names.add(name);
+  }
+  for (const entry of chain) {
+    for (const key of (entry as { encryptable?: string[] }).encryptable ?? []) names.add(key);
+  }
+  return names;
 }
 
 // ── ModelInspector ────────────────────────────────────────────────────────────
@@ -133,7 +160,7 @@ export const ModelInspector = {
       primaryKey: (M["primaryKey"] as string | undefined) ?? "id",
       timestamps: (M["timestamps"] as boolean | undefined) ?? true,
       softDeletes: (M["softDeletes"] as boolean | undefined) ?? false,
-      columns: toModelColumns(fields),
+      columns: toModelColumns(fields, encryptedColumns(ctorChain(ctor), fields)),
     };
   },
 };

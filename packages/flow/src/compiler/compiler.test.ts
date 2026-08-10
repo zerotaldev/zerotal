@@ -304,6 +304,14 @@ describe("Flow compiler — <Link>", () => {
     expect(html(r)).toContain("Learn more</a>");
   });
 
+  it("compiles <Link preserveScroll> to flow:navigate.preserve", () => {
+    const r = compile(`<Link href="/posts?sort=title" preserveScroll>Title</Link>`);
+    expect(r).not.toBeNull();
+    expect(html(r)).toContain("<a flow:navigate");
+    expect(html(r)).toContain("flow:navigate.preserve");
+    expect(html(r)).not.toContain("preserveScroll");
+  });
+
   it("translates current={false} to flow:current.ignore", () => {
     const r = compile(`<Link href="/" current={false}>Home</Link>`);
     expect(html(r)).toContain("flow:current.ignore");

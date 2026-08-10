@@ -152,12 +152,13 @@ class TenantModel = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
+  static encryptable?: string[]
   static fillable?: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>

@@ -3,7 +3,7 @@ title: "We Almost Named It `with`"
 description: "Zerotal 1.3.0 replaced BaseModelWith(...) with Model.using(...). The interesting part is not the refactor — it is why the obvious name was the wrong one, and what it costs a framework to spend a word."
 date: 2026-08-10
 category: Engineering
-order: 1
+order: 4
 ---
 
 # We Almost Named It `with`

@@ -3,7 +3,7 @@ title: "Guide: A Searchable, Sortable, Paginated Table in One Class"
 description: "Live search, clickable column sorting, numbered pagination, and shareable URLs for all of it — built as a single Flow component, with the two traps this feature always hides called out along the way."
 date: 2026-08-10
 category: Guides
-order: 3
+order: 6
 ---
 
 # Guide: A Searchable, Sortable, Paginated Table in One Class

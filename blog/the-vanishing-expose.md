@@ -3,7 +3,7 @@ title: "The Case of the Vanishing @expose"
 description: "A build error insisted an action was not @exposed. It was. The trail led out of the framework, through a fifteen-line repro with no Zerotal code in it, to a decorator defect in the runtime itself — and to how a framework should behave when the ground moves."
 date: 2026-08-10
 category: Engineering
-order: 2
+order: 5
 ---
 
 # The Case of the Vanishing @expose

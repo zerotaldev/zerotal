@@ -53,6 +53,7 @@
     "packages/core/src/conventions/builtinConcerns.ts": 2,
     "packages/core/src/datetime/Carbon.ts": 1,
     "packages/core/src/datetime/CarbonInterval.ts": 1,
+    "packages/core/src/doctor/AppDoctor.ts": 2,
     "packages/core/src/facade/Facade.ts": 1,
     "packages/core/src/helpers/Collection.ts": 6,
     "packages/core/src/helpers/response.ts": 2,
@@ -83,7 +84,6 @@
     "packages/flow/src/dehydrate.ts": 2,
     "packages/flow/src/durable.ts": 3,
     "packages/flow/src/jsx-runtime.ts": 2,
-    "packages/flow/src/mixins.ts": 1,
     "packages/flow/src/observability.ts": 1,
     "packages/flow/src/pagination.ts": 1,
     "packages/flow/src/presence.ts": 1,
@@ -119,7 +119,6 @@
     "packages/orm/src/model/BaseModel.ts": 57,
     "packages/orm/src/model/decorators/table.ts": 1,
     "packages/orm/src/model/hooks/HookRegistry.ts": 1,
-    "packages/orm/src/model/mixins.ts": 1,
     "packages/orm/src/model/ModelQueryBuilder.ts": 40,
     "packages/orm/src/model/ReactiveProxy.ts": 1,
     "packages/orm/src/model/SoftDeletes.ts": 8,
@@ -157,5 +156,5 @@
     "packages/validator/src/FormRequest.ts": 2,
     "packages/validator/src/validate.ts": 2
   },
-  "updatedAt": "2026-08-05T16:33:15.160Z"
+  "updatedAt": "2026-08-10T18:53:25.657Z"
 }

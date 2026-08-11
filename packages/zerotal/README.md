@@ -31,7 +31,7 @@ Core's own subpaths are mirrored 1:1, so `zerotal` is a full drop-in for `@zerot
 
 There is no behaviour here and no version skew: the meta package pins the same monorepo version as every `@zerotal/*` package it re-exports. Installing a scoped package directly is always equivalent — this package exists so a new app needs exactly one dependency to start.
 
-Beta and experimental packages (`@zerotal/flow`, `@zerotal/flow-ui`, `@zerotal/admin`, `@zerotal/devtools`, ...) are not bundled; install them individually while they harden.
+Beta packages (`@zerotal/media`, `@zerotal/tenancy`, ...) are not bundled; install them individually while they harden. `@zerotal/flow`, `@zerotal/flow-ui`, `@zerotal/admin`, `@zerotal/monitor` and `@zerotal/devtools` are stable but stay unbundled as well — a server-driven UI layer, a component library, an admin panel, an ops panel and a dev-only panel are choices an app makes, not defaults every dependency tree should carry.
 
 Scaffolding a new app? Use `bun create zerotal my-app` instead — it wires an application skeleton, not just dependencies.
 

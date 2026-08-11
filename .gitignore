@@ -76,3 +76,9 @@ storage/logs/
 
 # Release tarballs staged by scripts/publish-packages.ts
 .release-tarballs/
+
+# Working documents — proposals, roadmaps, audit notes, field reports.
+# These are drafting material, not part of the published project, and one of them
+# reached the public repository before this rule existed. Everything under
+# .planning/ stays local; nothing in it is ever committed.
+.planning/

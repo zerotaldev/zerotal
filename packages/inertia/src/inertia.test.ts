@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { HttpContext, RequestContext } from "@zerotal/core";
+import { HttpContext, RequestContext, Router } from "@zerotal/core";
 import {
   inertia,
   inertiaStream,
@@ -586,9 +586,8 @@ describe("inertiaRoute()", () => {
     // Register a route with a unique path so we can find it in the router map
     inertiaRoute("/inertia-route-test", "RoutePage", { x: 1 });
     // Access the handler class stored in the router's state
-    const { Router } = require("@zerotal/core");
     const routeDef = (
-      Router.routes as Map<string, { controller: new () => { handle(): Promise<void> } }>
+      Router.routes as unknown as Map<string, { controller: new () => { handle(): Promise<void> } }>
     ).get("GET /inertia-route-test");
     expect(routeDef).toBeDefined();
     const HandlerClass = routeDef!.controller;

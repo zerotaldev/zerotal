@@ -61,7 +61,7 @@ export function setDevReloadClientActive(active: boolean): void {
 }
 
 export class DevReloadMiddleware extends BaseMiddleware {
-  protected options: {} = {};
+  protected options: Record<string, never> = {};
 
   async handle(http: HttpContext, next: NextFn): Promise<Response | void> {
     const res = await next();

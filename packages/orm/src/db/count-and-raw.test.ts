@@ -9,7 +9,6 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test"
 import { SQL } from "bun";
 import { DB, _setDbConnection } from "./DB.ts";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bun.SQL has no exported type
 let db: any;
 
 beforeAll(async () => {

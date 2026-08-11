@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { SQL } from "bun";
 import { DatabaseProvider, _normaliseSqliteUrl } from "./DatabaseProvider.ts";
 import { DB, _setDbConnection } from "../db/DB.ts";

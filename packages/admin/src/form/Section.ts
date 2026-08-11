@@ -271,11 +271,15 @@ export function formSection(heading?: string): FormSection {
   return new FormSection(heading);
 }
 
+/** @internal */
 export function isFormSection(c: FormComponent): c is FormSection {
   return c instanceof FormSection;
 }
 
-/** Collect every field across sections, tab groups, + loose fields, in order. */
+/** Collect every field across sections, tab groups, + loose fields, in order.
+ *
+ * @internal
+ */
 export function flattenFields(components: FormComponent[]): Field[] {
   const out: Field[] = [];
   for (const c of components) {
@@ -295,7 +299,10 @@ export function flattenFields(components: FormComponent[]): Field[] {
   return out;
 }
 
-/** Normalize components into sections, wrapping loose fields in a default section. */
+/** Normalize components into sections, wrapping loose fields in a default section.
+ *
+ * @internal
+ */
 export function toFormSections(components: FormComponent[]): FormSection[] {
   const sections: FormSection[] = [];
   let loose: Field[] = [];
@@ -326,7 +333,10 @@ export type FormBlock =
   | { kind: "callout"; callout: Callout }
   | { kind: "prime"; prime: Prime };
 
-/** Normalize the schema into ordered layout blocks (loose fields → a section). */
+/** Normalize the schema into ordered layout blocks (loose fields → a section).
+ *
+ * @internal
+ */
 export function toFormLayout(components: FormComponent[]): FormBlock[] {
   const blocks: FormBlock[] = [];
   let loose: Field[] = [];

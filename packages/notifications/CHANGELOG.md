@@ -4,9 +4,41 @@ All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
 follows the Zerotal monorepo's unified versioning.
 
-**Maturity: `beta`**
+**Maturity: `stable`**
 
 ## [Unreleased]
+
+### Added
+
+- **Tests for `ResendDriver`.** Unlike SMTP, this driver's correctness is entirely
+  the shape of one JSON request, and every way of getting it wrong is quiet in
+  development — a stub answers 200 either way. Pinned: the bearer token and
+  endpoint, `Name <addr>` formatting, optional keys omitted rather than sent empty
+  (Resend rejects `cc: []`), `replyTo` mapped to the API's `reply_to` (sending the
+  camelCase key is accepted and silently ignored, so replies would go to the
+  sender), base64 encoding for both string and binary attachments, and
+  `content_type` / `content_id` key names. Plus the half that matters most: a
+  non-2xx raises, because a mail driver that swallows a 401 reports every send as
+  delivered while nothing arrives. 173 tests → 185.
+
+- **27 exports gained documentation** — the channel classes behind each channel
+  name, the three mail drivers, the delivery events (`NotificationSent`,
+  `MessageSent`, `MessageFailed`, `MessageQueued`), the full error table,
+  `OnDemandNotifiable`, `RichLine`, and the `recentDeliveries()` / `channelStats()`
+  counters the admin console renders. The broadcast wire event is now named as
+  `BROADCAST_NOTIFICATION_EVENT` where its value was already documented.
+
+### Changed
+
+- **Five exports are marked `@internal`** — `SendNotificationJob`,
+  `BroadcastNotificationJob`, `validateNotificationConfig` and the two command
+  classes. Queue-serialisation plumbing and CLI wiring, none of it API: you queue
+  through `notifyLater()` and run the commands through `bun zt`. The promise is 38
+  exports, not 43.
+
+- **Maturity is now `stable`** — the public API follows SemVer strictly for the rest
+  of the 1.x line. Every promised export is documented and the transports are
+  covered, including the HTTP driver whose failures are otherwise invisible.
 
 ## [1.0.3] — 2026-08-07
 

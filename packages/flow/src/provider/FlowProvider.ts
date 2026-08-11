@@ -1244,7 +1244,7 @@ export class FlowProvider extends ServiceProvider {
 
     if (!cssExists && !jsExists) return;
 
-    const { registerDevBuildHook, buildCssBundle, buildJsBundle } =
+    const { registerDevBuildHook, buildCssBundle, buildJsBundle, isDevOrchestrated } =
       await import("@zerotal/core/dev");
 
     // Combined hook — DevOrchestrator calls this on any frontend file change.
@@ -1256,16 +1256,28 @@ export class FlowProvider extends ServiceProvider {
       const results = await Promise.all([
         cssExists
           ? buildCssBundle(cssEntry, cssOutdir, false)
-          : Promise.resolve({ success: true, logs: [] as unknown[] }),
+          : Promise.resolve({ success: true, logs: [] as unknown[], skipped: true }),
         jsExists
           ? buildJsBundle(jsEntry, jsOutdir, false)
-          : Promise.resolve({ success: true, logs: [] as unknown[] }),
+          : Promise.resolve({ success: true, logs: [] as unknown[], skipped: true }),
       ]);
       const failed = results.flatMap((r) => (r.success ? [] : (r.logs ?? [])));
-      return { success: failed.length === 0, logs: failed };
+      return {
+        success: failed.length === 0,
+        logs: failed,
+        // A bundle with no entry point counts as skipped: it did no work either.
+        skipped: results.every((r) => r.skipped === true),
+      };
     });
 
-    // Build once at startup so assets are ready before the first request.
+    // Build once at startup so assets are ready before the first request —
+    // except under `serve --dev`, where the orchestrator owns builds and has
+    // already run the hook above before this process could serve anything.
+    // Without this guard a Flow app built its bundles three times per boot (once
+    // here in the orchestrator process, once in the orchestrator's own initial
+    // build, once here again in the spawned worker) and twice per backend save.
+    if (isDevOrchestrated()) return;
+
     const [cssResult, jsResult] = await Promise.all([
       cssExists
         ? buildCssBundle(cssEntry, cssOutdir, false)

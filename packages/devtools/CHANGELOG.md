@@ -4,9 +4,20 @@ All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
 follows the Zerotal monorepo's unified versioning.
 
-**Maturity: `experimental`**
+**Maturity: `stable`**
 
 ## [Unreleased]
+
+### Changed
+
+- **Maturity is now `stable`.** The public API is covered by the SemVer promise from
+  here: anything importable without an `@internal` marker keeps its shape for the rest
+  of the 1.x line, and `api-surface.md` is diffed by CI on every change. The package
+  earned it by being small and self-contained — 32 exported symbols, a single dependency
+  on `@zerotal/core`, no breaking change since its first release, and the one internal
+  seam (`_setTraceStore`) correctly marked. The in-page panel extension API
+  (`window.__zerotalDevtools`, used by Flow to contribute its Timeline tab) is part of
+  that promise.
 
 ## [1.0.3] — 2026-08-07
 

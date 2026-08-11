@@ -57,9 +57,9 @@ export class FileTooLargeError extends MediaError {
 /**
  * A conversion asked for something the active image driver cannot do.
  *
- * Overwhelmingly this is `fit: "cover"` on the default `BunImageDriver`:
- * `Bun.Image.resize()` accepts only `fit: 'fill' | 'inside'` and the class
- * exposes no crop primitive, so a centre-cropped thumbnail is not expressible.
+ * No longer thrown for `fit: "cover"` — the default driver crops natively. It
+ * remains the way any driver reports a manipulation it cannot express, which a
+ * third-party `ImageDriver` may well need.
  */
 export class UnsupportedManipulationError extends MediaError {
   constructor(driver: string, what: string, fix: string) {
@@ -82,6 +82,30 @@ export class UnsupportedFormatError extends MediaError {
       "E_MEDIA_UNSUPPORTED_FORMAT",
       500,
       { format, available },
+    );
+  }
+}
+
+/**
+ * An intermediate raster buffer was not the shape the crop path expects.
+ *
+ * Cropping round-trips through a PNG that `Bun.Image` itself produced, so in
+ * practice this fires for one reason: a Bun upgrade changed what `.png()`
+ * emits. It is deliberately loud — the alternative to a named error here is
+ * silently misread pixels. A canary test asserts the expected shape so the
+ * change is caught in CI rather than in someone's thumbnails.
+ */
+export class RasterFormatError extends MediaError {
+  constructor(detail: string) {
+    super(
+      `[Zerotal Media] Cannot read the intermediate image: ${detail}.\n` +
+        "This usually means the Bun version in use encodes PNG differently than " +
+        "the crop path expects.\n" +
+        'Fix: report the Bun version, and set `driver: "sharp"` in config/media.ts ' +
+        "to route conversions around this path in the meantime.",
+      "E_MEDIA_RASTER_FORMAT",
+      500,
+      { detail },
     );
   }
 }

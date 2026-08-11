@@ -79,6 +79,8 @@ export class MakeCommandCommand extends Command {
         // Bun.write() creates any missing parent directories, so no mkdir is needed.
         return Bun.write(path, commandStub(name)).then(() => {
           this.info(`Created: ${path}`);
+          // app/commands/ is auto-discovered, so the command is immediately runnable.
+          this.info(`Run it with: bun zt.ts ${toKebab(name)}`);
         });
       });
   }

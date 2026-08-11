@@ -77,9 +77,16 @@ export class DevOrchestrator {
 
   async start(): Promise<void> {
     console.log("  [zerotal:dev] ⚙  building assets...");
-    const buildSucceeded = await this._runBuild();
-    if (!buildSucceeded) {
+    const started = Bun.nanoseconds();
+    const build = await this._runBuild();
+
+    if (!build.ok) {
       console.warn("  [zerotal:dev] ⚠  initial build failed — starting server anyway");
+    } else if (build.skipped) {
+      // Said out loud on purpose. A boot that prints "building assets…" and then
+      // nothing looks like a hang, and a developer who cannot tell a skip from a
+      // stall deletes `.zerotal/` and stops trusting the cache.
+      console.log(`  [zerotal:dev] ✓  assets unchanged — reused the last build (${_ms(started)})`);
     }
 
     // Same retry as a restart: the commonest reason the first bind fails is an orphaned
@@ -241,15 +248,22 @@ export class DevOrchestrator {
       const label = path.startsWith("resources/pages/") ? "page" : "asset";
       console.log(`  [zerotal:dev] ⚙  ${label} changed — rebuilding...`);
 
-      const buildSucceeded = await this._runBuild();
-      if (buildSucceeded) {
-        console.log("  [zerotal:dev] ✓  ready — reloading browser");
+      const build = await this._runBuild();
+      if (build.ok) {
+        // Still reload on a skip: the change that triggered this may have been
+        // to a file the bundles do not contain (a server-rendered template),
+        // and the browser has no other way to learn about it.
+        console.log(
+          build.skipped
+            ? "  [zerotal:dev] ✓  bundles unchanged — reloading browser"
+            : "  [zerotal:dev] ✓  ready — reloading browser",
+        );
         this._signalReload();
       }
     }, 80);
   }
 
-  private async _runBuild(): Promise<boolean> {
+  private async _runBuild(): Promise<{ ok: boolean; skipped: boolean }> {
     try {
       const result = await this._build();
       if (!result.success) {
@@ -257,14 +271,18 @@ export class DevOrchestrator {
         for (const entry of result.logs ?? []) {
           console.error("    ", String(entry));
         }
-        return false;
+        return { ok: false, skipped: false };
       }
-      // Fresh token so the next `asset()` URL changes and the browser refetches.
-      this._assetVersion = Date.now().toString(36);
-      return true;
+
+      // A skipped build wrote nothing, so the files the browser already holds
+      // are still current — bumping the token would force a pointless refetch
+      // of every asset on the page.
+      if (result.skipped !== true) this._assetVersion = Date.now().toString(36);
+
+      return { ok: true, skipped: result.skipped === true };
     } catch (error) {
       console.error("  [zerotal:dev] ✗  build error:", error);
-      return false;
+      return { ok: false, skipped: false };
     }
   }
 
@@ -315,4 +333,9 @@ export class DevOrchestrator {
     process.on("SIGTERM", cleanup);
     process.on("SIGINT", cleanup);
   }
+}
+
+/** Elapsed time since a `Bun.nanoseconds()` reading, as `"12ms"`. */
+function _ms(since: number): string {
+  return `${Math.round((Bun.nanoseconds() - since) / 1e6)}ms`;
 }

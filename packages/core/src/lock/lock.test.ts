@@ -12,10 +12,6 @@ function memoryManager(): LockManager {
   return new LockManager(new MemoryLockDriver());
 }
 
-function sqliteManager(): LockManager {
-  return new LockManager(new SqliteLockDriver(":memory:"));
-}
-
 // ── LockNotAcquiredError ──────────────────────────────────────────────────
 
 describe("LockNotAcquiredError", () => {

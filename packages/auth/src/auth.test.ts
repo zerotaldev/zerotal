@@ -597,7 +597,7 @@ describe("PasswordBroker.reset()", () => {
 describe("PasswordBroker.prune()", () => {
   it("calls pruneTokens with a cutoff Date", async () => {
     let prunedCutoff: Date | null = null;
-    const { broker } = makeBroker({
+    makeBroker({
       expireMinutes: 60,
     });
 
@@ -685,7 +685,7 @@ describe("TwoFactorService", () => {
       const tf = new TwoFactorService();
       const secret = tf.generateSecret();
       // Compute the TOTP directly and verify it accepts its own output
-      const { TwoFactorService: TF2 } = await import("./TwoFactorService.ts");
+      await import("./TwoFactorService.ts");
       // We can't easily predict the current code, so instead verify round-trip:
       // generate + verify a code via the same service instance
       // Since verifyCode validates real-time TOTP, we test false for garbage
@@ -1040,8 +1040,8 @@ describe("AuthProvider.onBooted() — ctx.authorize()", () => {
   it("attaches authorize() to HttpContext.prototype after onBooted()", async () => {
     const { Container } = await import("@zerotal/core");
     const { HttpContext } = await import("@zerotal/core");
-    const { ScopedResolver } = await import("@zerotal/core");
-    const { ForbiddenError } = await import("@zerotal/core");
+    await import("@zerotal/core");
+    await import("@zerotal/core");
     const { AuthProvider } = await import("./provider/AuthProvider.ts");
     const { GateService } = await import("./GateService.ts");
 

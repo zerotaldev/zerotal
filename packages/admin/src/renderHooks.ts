@@ -68,6 +68,8 @@ export type RenderHook = (context: RenderHookContext) => HtmlNode | string | nul
  *
  * A hook is decoration: it must not be able to take down the page it decorates,
  * so a throwing hook is logged and skipped rather than propagated.
+ *
+ * @internal
  */
 export function resolveRenderHooks(
   hooks: RenderHook[],

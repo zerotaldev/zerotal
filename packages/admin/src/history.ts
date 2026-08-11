@@ -136,7 +136,10 @@ function diff(
   return changes;
 }
 
-/** The values that would put a record back to how it was before an entry. */
+/** The values that would put a record back to how it was before an entry.
+ *
+ * @internal
+ */
 export function revertPayload(entry: HistoryEntry): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const change of entry.changes) payload[change.field] = change.from;

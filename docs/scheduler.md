@@ -35,10 +35,12 @@ export default providers;
 
 Registering the provider switches on the following, in lifecycle order:
 
-- `onRegister` — registers the `app/schedules/` convention and binds the
-  `scheduler` manager as a lazy singleton.
+- `onRegister` — registers the `app/schedules/` convention, binds the
+  `scheduler` manager and the `scheduler.runs` run store as lazy singletons, and
+  contributes the static-config check to `zt doctor`.
 - `onBooting` — resolves the `scheduler` binding so it is ready before boot finishes.
-- `onBooted` — lazily registers the `schedule:list` command (when a command runner is present).
+- `onBooted` — subscribes the run log to task events and lazily registers the
+  `schedule:list` and `schedule:runs` commands (when a command runner is present).
 - `onStarted` — calls `scheduler.start()`, arming every registered cron.
 - `onStopped` — calls `scheduler.stop()`, so nothing leaks between boots or test suites.
 
@@ -143,6 +145,12 @@ Every setting is an optional property (or method) on your `Schedule` subclass:
 | `emailOutputTo`                                                | `string`                        | Email captured console output (needs an output mailer).                                                       |
 | `when()`                                                       | method → `boolean`              | Dynamic guard — run only when truthy.                                                                         |
 | `skip()`                                                       | method → `boolean`              | Dynamic guard — skip when truthy.                                                                             |
+
+> **Warning** — These are **instance** properties. `static cron = "…"`
+> typechecks (it merely declares a new static member) but registers nothing —
+> unlike `static fillable` on a model or `static layout` on a Flow component.
+> Discovery warns at boot when it sees static schedule config, and
+> `bun zt doctor` reports it.
 
 ```typescript
 // app/schedules/NightlyBackup.ts
@@ -266,6 +274,38 @@ Scheduled tasks (2)
   Description  At 08:00 every day
   Next run     2026-06-22T06:00:00.000Z
 ```
+
+## Run history
+
+Every completed execution — success or failure — is recorded to a capped JSONL
+file under `storage/framework/`, so the history survives restarts. "Did the
+retention sweep run last night?" is answered from the record, not from memory:
+
+```bash
+# in your project root
+bun zt schedule:runs                  # recent runs, newest first
+bun zt schedule:runs popia:sweep      # one task's runs
+bun zt schedule:runs --limit 50
+```
+
+```text
+Recent runs (2)
+  Task      popia:sweep
+  Started   2026-08-10T03:00:00.000Z
+  Duration  5210 ms
+  Result    OK
+```
+
+Configure it under `runLog` in `config/scheduler.ts` — `enabled` (default: on,
+except under `APP_ENV=test`), `path`, and `keep` (records retained after
+compaction, default 500). The store is bound in the container as
+`scheduler.runs`; rebind it to keep the history somewhere else, such as Redis.
+The [monitoring panel's](monitor.md) scheduled-tasks section reads the same
+record, so a task that last ran before a deploy shows that run — marked
+"(recorded)" — instead of "Never run".
+
+Skipped ticks (environment, time window, `when()`/`skip()` guards, overlap) are
+deliberate non-runs and are not recorded.
 
 ## Preventing overlapping runs
 
@@ -445,9 +485,10 @@ The `Scheduler` facade resolves the `scheduler` container binding — a
 
 `@zerotal/scheduler` ships one command:
 
-| Command                | What it does                                  |
-| ---------------------- | --------------------------------------------- |
-| `bun zt schedule:list` | List scheduled tasks with their next run time |
+| Command                       | What it does                                           |
+| ----------------------------- | ------------------------------------------------------ |
+| `bun zt schedule:list`        | List scheduled tasks with their next run time          |
+| `bun zt schedule:runs [name]` | Recent recorded runs, newest first (`--limit` to page) |
 
 ### SchedulerManager
 

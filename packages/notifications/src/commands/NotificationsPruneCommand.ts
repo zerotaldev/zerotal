@@ -8,6 +8,8 @@ import type { NotificationManager } from "../NotificationManager.ts";
  * The database channel never removes anything on its own, so an app that has
  * been notifying users for a year is carrying a year of rows. Run this on a
  * schedule.
+ *
+ * @internal
  */
 export class NotificationsPruneCommand extends Command {
   static commandName = "notifications:prune";

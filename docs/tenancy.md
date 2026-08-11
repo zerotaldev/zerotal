@@ -240,6 +240,25 @@ The middleware throws an [error](/docs/errors) the framework's exception handler
 | `isActive` is false        | `TenantInactiveError`       | 403    | `This account has been disabled.` |
 | Middleware ran before boot | `TenancyNotConfiguredError` | 500    | configuration error               |
 
+### Requiring a tenant on a route
+
+`TenancyMiddleware` _resolves_ a tenant; `EnsureTenancyMiddleware` _insists_ there is
+one. Use it on routes that make no sense without a tenant — it throws
+`TenantNotFoundError` when the context is empty rather than letting a query run
+unscoped:
+
+```typescript
+// routes/web.ts
+import { TenancyMiddleware, EnsureTenancyMiddleware } from "@zerotal/tenancy";
+
+Router.group({ middleware: [TenancyMiddleware, EnsureTenancyMiddleware] }, () => {
+  Router.get("/billing", BillingController, "index");
+});
+```
+
+Register it after `TenancyMiddleware`, never instead of it: on its own there is
+nothing to resolve, so every request fails.
+
 ## ORM scoping — Tenantable
 
 Compose the `Tenantable` mixin via [`Model.using`](/docs/orm/index#composing-model-mixins) onto any model that belongs to a tenant. Two things happen automatically:
@@ -399,6 +418,20 @@ await tenantDisk("s3").put("reports/q4.pdf", pdf);
 ```
 
 > **Warning** — `tenantDisk()` calls `TenantContext.get()` eagerly, so it throws `NoActiveTenantError` outside a tenant boundary. Requires `zerotal/storage` to be installed.
+
+A key that tries to climb out of its tenant's folder is rejected with
+`TenantStoragePathError` before it reaches the driver:
+
+```typescript
+await tenantDisk().put("../other-tenant/secrets.txt", buffer);
+// throws TenantStoragePathError
+```
+
+The check lives at the prefixing layer deliberately. `LocalDriver` confines paths to
+the _disk root_, not to the tenant directory, so a key containing `..` resolved to a
+sibling tenant's folder and passed the driver's own guard — a cross-tenant read that
+looked like a normal write. Catch it if you surface upload errors to users; otherwise
+the exception handler renders it like any other.
 
 ## Tenant-scoped cache
 

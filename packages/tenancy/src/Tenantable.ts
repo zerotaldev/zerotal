@@ -118,6 +118,10 @@ export function Tenantable<TBase extends Constructor>(Base: TBase) {
 // ── Augment ModelQueryBuilder with withoutTenancy() ──────────────────────────
 
 declare module "@zerotal/orm" {
+  // Declaration merging requires the type parameter list to match the merged
+  // declaration exactly, so `M` cannot be renamed or dropped even though this
+  // augmentation's body never reads it.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ModelQueryBuilder<M extends BaseModel> {
     /**
      * Remove the tenant global scope for this query only.

@@ -221,8 +221,6 @@ import "./synths/CarbonIntervalSynth.ts";
 import "./synths/CollectionSynth.ts";
 import "./synths/DateSynth.ts";
 import "./synths/TemporaryUploadedFileSynth.ts";
-import type { MiddlewareClass, RouteRegistration } from "@zerotal/core";
-import type { PageClassWithMeta } from "./registry.ts";
 
 // File uploads
 export { TemporaryUploadedFile } from "./uploads/TemporaryUploadedFile.ts";

@@ -18,6 +18,8 @@ import {
  * (SQLite/Redis) it holds only the serialized snapshot written by `payload()`, and
  * rebuilds both sides in `handle()` — asynchronously, because resolving a
  * notification class may require importing `app/notifications/`.
+ *
+ * @internal
  */
 export class SendNotificationJob extends Job {
   override readonly queue = "notifications";

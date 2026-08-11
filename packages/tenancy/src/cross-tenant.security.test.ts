@@ -46,7 +46,6 @@ function request(slug: string, userId?: number): HttpContext {
   } as unknown as HttpContext;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bun.SQL has no exported type
 let db: any;
 
 beforeAll(async () => {

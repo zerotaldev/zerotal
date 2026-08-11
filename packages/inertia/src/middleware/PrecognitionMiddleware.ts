@@ -13,7 +13,7 @@ import { BaseMiddleware, withHeaders } from "@zerotal/core";
  * Register it globally (before route middleware) when using precognitive forms.
  */
 export class PrecognitionMiddleware extends BaseMiddleware {
-  protected options: {} = {};
+  protected options: Record<string, never> = {};
 
   async handle(http: HttpContext, next: NextFn): Promise<Response | void> {
     const isPrecognitive = http.request.headers.get("Precognition") === "true";

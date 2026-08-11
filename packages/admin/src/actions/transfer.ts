@@ -29,6 +29,8 @@ import { DEFAULT_PANEL_ID } from "../Panel.ts";
  * A synchronous import holds a WebSocket round-trip open, so a hundred-thousand
  * row file would look like a hang and time out half-written. Files beyond this
  * belong on a queue; the action says so rather than trying and failing.
+ *
+ * @internal
  */
 export const IMPORT_ROW_LIMIT = 2000;
 
@@ -202,7 +204,10 @@ export async function importCsv(
   return result;
 }
 
-/** Field key a mapping select writes to, for CSV column `index`. */
+/** Field key a mapping select writes to, for CSV column `index`.
+ *
+ * @internal
+ */
 export const MAPPING_FIELD_PREFIX = "map_";
 
 /**

@@ -113,7 +113,7 @@ describe("instance utilities", () => {
     const before = (u.updatedAt as any)?.valueOf?.() ?? 0;
     await new Promise((r) => setTimeout(r, 5));
     await u.touch();
-    expect(u.updatedAt).toBeDefined();
+    expect((u.updatedAt as any).valueOf()).toBeGreaterThan(before);
   });
   it("loadCount", async () => {
     const u = await User.create({ name: "A" } as never);
@@ -353,7 +353,6 @@ describe("makeVisible() un-hides without becoming an allow-list", () => {
   class Account extends BaseModel {
     static override table = "accounts";
     static override hidden = ["password"];
-    id!: number;
     name!: string;
     email!: string;
     password!: string;

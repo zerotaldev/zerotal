@@ -4,9 +4,41 @@ All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
 follows the Zerotal monorepo's unified versioning.
 
-**Maturity: `experimental`**
+**Maturity: `stable`**
 
 ## [Unreleased]
+
+### Changed
+
+- **The public surface is now an explicit decision rather than whatever happened to be
+  exported.** 36 exports are marked `@internal` and leave the compatibility promise:
+  layout plumbing (`applyLayout`, `reconcile`, `moveKey`), schema normalisation
+  (`toFormLayout`, `toFormSections`, `flattenFields`, `flattenActions`), rule-tree
+  internals (`parseRuleTree`, `describeRuleTree`, `ruleTreeIsEmpty`), predicates
+  (`isImage`, `isUpload`, `isFormSection`), and the session/storage keys and defaults
+  (`IMPERSONATOR_KEY`, `THEME_STORAGE_KEY`, `VIEW_PARAMS`, `DEFAULT_ADMIN_CONFIG`, …).
+
+  None of these were ever meant to be API; they were exported because something else
+  needed them. Deciding that **now** matters, because after `stable` narrowing the
+  surface is itself a breaking change. The promise drops from 182 callables to 146.
+
+- **Every remaining export is documented.** The reference gained sections for
+  configuration and middleware, the row and bulk actions the guide had not reached
+  (`restoreAction`, `forceDeleteAction`, `bulkEditAction`, `bulkRestoreAction`,
+  `bulkForceDeleteAction`, `textFilter`), impersonation, the media helpers behind
+  `mediaPicker`, import/export, history and permissions — each with its real signature
+  read off the API surface rather than paraphrased. Coverage of the promised surface
+  went from 58% to 100%.
+
+- **Maturity is now `stable`** — the public API follows SemVer strictly for the rest of
+  the 1.x line. Every gate is closed: `@zerotal/flow` and `@zerotal/flow-ui` are stable
+  underneath it, the internal/public boundary is explicit, and the documented surface is
+  complete. The guard and ability middleware — the panel's security boundary — were
+  already covered by tests, alongside 222 tests overall.
+
+  This remains the largest surface in the monorepo at 146 callables, which is exactly
+  why the `@internal` triage came first: freezing a smaller, deliberate surface is a
+  promise worth making, where freezing everything that happened to be exported is not.
 
 ## [1.0.3] — 2026-08-07
 

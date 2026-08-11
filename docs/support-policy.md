@@ -92,6 +92,11 @@ a contract, not a mood:
 - **experimental** — no compatibility promise. The API may change or the package
   may be absorbed into another in any release. Build on it with your eyes open.
 
+A package is never more mature than what it is built on: a stable package whose
+foundation can change under it is not stable, whatever its own label says. So
+`@zerotal/admin` and `@zerotal/monitor` cannot pass `@zerotal/flow`, and the
+maturity of your app is the lowest level among the packages it actually uses.
+
 ## Deprecation policy
 
 In stable packages, an API is never removed in the release that deprecates it:

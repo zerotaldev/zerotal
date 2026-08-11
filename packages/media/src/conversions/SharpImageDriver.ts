@@ -6,6 +6,7 @@ import {
   type ImageResult,
 } from "./ImageDriver.ts";
 import { MediaError } from "../errors.ts";
+import { resolveGeometry } from "./raster.ts";
 import type { ConversionFormat } from "../types.ts";
 
 // ── Minimal structural view of sharp ──────────────────────────────────────────
@@ -57,14 +58,19 @@ async function loadSharp(): Promise<SharpFactory> {
     throw new MediaError(
       'config/media.ts sets driver: "sharp" but the sharp package is not installed.\n' +
         "Fix: `bun add sharp`, or switch back to the built-in driver with " +
-        'driver: "bun" (which cannot crop — see fit: "cover").',
+        'driver: "bun" — which supports every manipulation this one does, ' +
+        'including fit: "cover".',
     );
   }
 }
 
 /**
- * Image processing on `sharp`, for apps that need what `Bun.Image` does not do —
- * principally `fit: "cover"`, the centre-crop behind every square thumbnail.
+ * Image processing on `sharp`.
+ *
+ * No longer required for `fit: "cover"` — the default `BunImageDriver` crops
+ * natively, and a shared parity suite holds the two to the same output
+ * dimensions. Reach for this one when you want libvips' throughput on large
+ * batches, or a codec Bun's `system` backend does not carry on your hosts.
  *
  * Opt in by installing `sharp` and setting `driver: "sharp"` in `config/media.ts`.
  * `sharp` builds against Node-API v9, which Bun implements, so it runs here; it
@@ -87,19 +93,59 @@ export class SharpImageDriver implements ImageDriver {
   }
 
   async convert(bytes: Uint8Array, manipulation: ImageManipulation): Promise<ImageResult> {
-    const { width, height, fit = "inside", format, quality, rotate } = manipulation;
+    const { format, quality, rotate } = manipulation;
     const sharp = await loadSharp();
 
-    let pipeline = sharp(bytes);
+    // Rotation first, and materialised, so the geometry below is computed
+    // against the shape it actually produces. Mirrors BunImageDriver — both
+    // drivers must resolve dimensions from the same numbers or they cannot
+    // agree on the rotated cases.
+    let source = bytes;
+    let sourceWidth: number;
+    let sourceHeight: number;
 
-    if (rotate !== undefined && rotate !== 0) pipeline = pipeline.rotate(rotate);
+    if (rotate !== undefined && rotate !== 0) {
+      const rotated = await sharp(bytes).rotate(rotate).png().toBuffer({ resolveWithObject: true });
+      source = rotated.data;
+      sourceWidth = rotated.info.width;
+      sourceHeight = rotated.info.height;
+    } else {
+      const meta = await this.metadata(bytes);
+      if (meta === null)
+        throw new MediaError("[Zerotal Media] The source image could not be read.");
+      sourceWidth = meta.width;
+      sourceHeight = meta.height;
+    }
 
-    if (width !== undefined || height !== undefined) {
+    const geometry = resolveGeometry({
+      sourceWidth,
+      sourceHeight,
+      targetWidth: manipulation.width,
+      targetHeight: manipulation.height,
+      fit: manipulation.fit ?? "inside",
+      withoutEnlargement: manipulation.withoutEnlargement ?? true,
+    });
+
+    let pipeline = sharp(source);
+
+    if (geometry.cropWidth !== undefined && geometry.cropHeight !== undefined) {
+      // sharp crops natively, and its own covering scale matches the one
+      // `resolveGeometry` computed — so handing it the final crop box with
+      // enlargement unlocked reproduces the same window without an extract step.
       pipeline = pipeline.resize({
-        ...(width !== undefined ? { width } : {}),
-        ...(height !== undefined ? { height } : {}),
-        fit,
-        withoutEnlargement: manipulation.withoutEnlargement ?? true,
+        width: geometry.cropWidth,
+        height: geometry.cropHeight,
+        fit: "cover",
+        withoutEnlargement: false,
+      });
+    } else if (!geometry.resizeIsNoop) {
+      // Exact dimensions are already resolved, so `fill` asks for precisely
+      // these numbers rather than letting sharp re-derive them.
+      pipeline = pipeline.resize({
+        width: geometry.resizeWidth,
+        height: geometry.resizeHeight,
+        fit: "fill",
+        withoutEnlargement: false,
       });
     }
 

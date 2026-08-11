@@ -21,10 +21,9 @@ let db: SQLInstance;
 
 @table("docs")
 class Doc extends BaseModel {
-  @column({}) declare id: number;
-  @column({}) declare title: string;
-  @column({ cast: "json" }) declare meta: Record<string, unknown>;
-  @column({ cast: "array" }) declare tags: string[];
+  @column({}) title!: string;
+  @column({ cast: "json" }) meta!: Record<string, unknown>;
+  @column({ cast: "array" }) tags!: string[];
 }
 
 beforeAll(async () => {

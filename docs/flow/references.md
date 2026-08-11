@@ -207,11 +207,13 @@ Inside a client expression — `onClick={() => this.X(...)}` — `this.` resolve
 
 ### State manipulation
 
-| Expression               | Behaviour                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------- |
-| `this.count++`           | Optimistic write to an `@expose` prop — updates DOM immediately, flushed on the next action |
-| `this.open = true`       | Set any `@expose` prop; `@locked` props are read-only                                       |
-| `this.filter = "active"` | Works with any primitive value                                                              |
+| Expression               | Behaviour                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------------------------- |
+| `this.count++`           | Write to an `@expose` prop — updates the DOM instantly, then syncs so `render()` reflects it |
+| `this.open = true`       | Set any `@expose` prop; `@locked` props are read-only                                        |
+| `this.filter = "active"` | Works with any primitive value                                                               |
+
+A write syncs to the server after the expression finishes, unless the same expression also calls a server action (that action's round-trip already carries it) or the value ends back where it started. Client-only UI state belongs in [`this.store()`](#global-client-store), which never round-trips.
 
 ### Querying state
 

@@ -2,14 +2,15 @@
   "name": "@zerotal/media",
   "version": "1.4.0",
   "license": "MIT",
-  "maturity": "experimental",
+  "maturity": "beta",
   "private": false,
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./commands": "./src/commands/index.ts"
+    "./commands": "./src/commands/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "files": [
     "CHANGELOG.md",
@@ -47,6 +48,7 @@
   },
   "devDependencies": {
     "@zerotal/queue": "workspace:*",
+    "sharp": "^0.34.0",
     "typescript": "^5.8.0"
   },
   "description": "Attach files to models: media collections, image conversions, responsive images, and ordering — on any Zerotal storage disk.",

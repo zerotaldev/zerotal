@@ -1142,15 +1142,14 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   withScopes(callback: (scopes: any) => void): this {
     const ModelClass = this._ModelClass;
-    const self = this;
     const proxy = new Proxy({} as Record<string, (...args: unknown[]) => void>, {
-      get(_target, prop: string | symbol) {
+      get: (_target, prop: string | symbol) => {
         return (...args: unknown[]) => {
           const fn = (ModelClass as unknown as Record<string | symbol, unknown>)[prop];
           if (typeof fn !== "function") return;
           const result = fn(...args) as { apply?: (q: unknown) => void } | null | undefined;
           if (result != null && typeof result.apply === "function") {
-            result.apply(self);
+            result.apply(this);
           }
         };
       },

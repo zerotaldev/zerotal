@@ -15,29 +15,29 @@ import type { SQLInstance } from "../db/sql-types.ts";
 
 @table("accounts")
 class GuardedAccount extends BaseModel {
-  @column() declare name: string;
-  @column() declare role: string;
+  @column() name!: string;
+  @column() role!: string;
 }
 
 @table("accounts")
 class FillableAccount extends BaseModel {
   static override fillable = ["name"];
-  @column() declare name: string;
-  @column() declare role: string;
+  @column() name!: string;
+  @column() role!: string;
 }
 
 @table("accounts")
 class GuardedListAccount extends BaseModel {
   static override guarded = ["role"];
-  @column() declare name: string;
-  @column() declare role: string;
+  @column() name!: string;
+  @column() role!: string;
 }
 
 @table("accounts")
 class UnguardedAccount extends BaseModel {
   static override unguarded = true;
-  @column() declare name: string;
-  @column() declare role: string;
+  @column() name!: string;
+  @column() role!: string;
 }
 
 let db: SQLInstance;

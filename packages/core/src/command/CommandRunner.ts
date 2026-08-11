@@ -342,6 +342,7 @@ export class CommandRunner {
       MakeTestCommand,
       TestCommand,
       RouteListCommand,
+      DoctorCommand,
       MakeProviderCommand,
       CssBuildCommand,
       LintPackagesCommand,
@@ -356,8 +357,9 @@ export class CommandRunner {
     this.register(ReloadCommand);
     this.register(StatusCommand);
 
-    // route:list is an inspection command — always available regardless of mode.
+    // route:list and doctor are inspection commands — always available regardless of mode.
     this.register(RouteListCommand);
+    this.register(DoctorCommand);
 
     // Non-web commands (console, worker, test).
     if (this._app._env !== "web") {
@@ -384,7 +386,32 @@ export class CommandRunner {
         LintPackagesCommand,
         MakePackageCommand,
       ]);
+
+      // `make:command` generates into `app/commands/`; the runner reads the same
+      // directory, so a generated command is runnable without registering a provider.
+      // App commands land last, after the built-ins, so a name collision resolves in
+      // the app's favour.
+      await this._discoverAppCommands();
     }
+  }
+
+  /**
+   * Auto-discover commands from the conventional directory (`app/commands/`, overridable
+   * via `app.conventions.paths.commands`). Gated by `app.conventions.enabled`, like every
+   * other convention. Best-effort: a missing directory registers nothing.
+   */
+  private async _discoverAppCommands(root: string = process.cwd()): Promise<string[]> {
+    let raw: { enabled?: boolean; paths?: Record<string, string> } = {};
+    try {
+      const config = this._app.container.makeSync("config") as {
+        get(key: string): unknown;
+      };
+      raw = (config.get("app.conventions") ?? {}) as typeof raw;
+    } catch {
+      /* config not resolvable — use the defaults */
+    }
+    if (raw.enabled === false) return [];
+    return this.discover(`${root}/${raw.paths?.["commands"] ?? "app/commands"}`);
   }
 
   // ── Private resolution ────────────────────────────────────────────────────

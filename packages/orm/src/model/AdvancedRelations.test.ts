@@ -74,7 +74,7 @@ describe("has*Through", () => {
     const m = await Maker.create({ countryId: c.id, name: "Acme" } as never);
     await Article.create({ makerId: m.id, title: "A1" } as never);
     await Article.create({ makerId: m.id, title: "A2" } as never);
-    const c2 = await Country.create({ name: "AU" } as never); // no makers
+    await Country.create({ name: "AU" } as never); // no makers
     const loaded = await Country.query().with("articles").get();
     const nz = loaded.find((x: any) => x.name === "NZ") as any;
     const au = loaded.find((x: any) => x.name === "AU") as any;

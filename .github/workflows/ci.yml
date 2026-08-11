@@ -70,6 +70,12 @@ jobs:
       - name: API surface
         run: bun run api:surface:check
 
+      # The component reference is generated from the flow-ui registry + doc specs.
+      # Without this gate a new component ships undocumented and nothing complains,
+      # which is how the page came to cover 20 of 53.
+      - name: Component docs
+        run: bun run docs:components:check
+
   test:
     name: Tests (Bun ${{ matrix.bun }})
     runs-on: ubuntu-latest

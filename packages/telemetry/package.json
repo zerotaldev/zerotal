@@ -2,7 +2,7 @@
   "name": "@zerotal/telemetry",
   "version": "1.4.0",
   "license": "MIT",
-  "maturity": "beta",
+  "maturity": "stable",
   "private": false,
   "type": "module",
   "main": "./src/index.ts",

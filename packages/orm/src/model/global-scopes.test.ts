@@ -25,16 +25,15 @@ beforeAll(async () => {
 
 afterAll(async () => {
   _setBaseModelConnection(null);
-  await (db as { close(): Promise<void> }).close();
+  await (db as unknown as { close(): Promise<void> }).close();
 });
 
 // ── Model fixtures ────────────────────────────────────────────────────────
 
 @table("users")
 class User extends BaseModel {
-  @column({}) declare id: number;
-  @column({}) declare name: string;
-  @column({}) declare active: number;
+  @column({}) name!: string;
+  @column({}) active!: number;
 }
 
 class ActiveUser extends User {
@@ -63,9 +62,8 @@ describe("addGlobalScope()", () => {
 
     @table("users")
     class OtherModel extends BaseModel {
-      @column({}) declare id: number;
-      @column({}) declare name: string;
-      @column({}) declare active: number;
+      @column({}) name!: string;
+      @column({}) active!: number;
     }
     const all = await OtherModel.query().get();
     expect(all).toHaveLength(3);
@@ -84,7 +82,7 @@ describe("addGlobalScope()", () => {
 
     const users = await User.query().get();
     expect(users).toHaveLength(1);
-    expect(users[0].name).toBe("Alice");
+    expect(users[0]!.name).toBe("Alice");
   });
 });
 
@@ -138,7 +136,7 @@ describe("scope inheritance", () => {
 
     const users = await ActiveUser.query().get();
     expect(users).toHaveLength(1);
-    expect(users[0].name).toBe("Alice");
+    expect(users[0]!.name).toBe("Alice");
 
     // Parent query unaffected by child's extra scope
     const parentUsers = await User.query().get();

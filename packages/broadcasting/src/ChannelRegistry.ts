@@ -42,7 +42,10 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Compile a `[param]` pattern into a regex + ordered param names. */
+/** Compile a `[param]` pattern into a regex + ordered param names.
+ *
+ * @internal
+ */
 export function compileChannelPattern(pattern: string): { regex: RegExp; paramNames: string[] } {
   const paramNames: string[] = [];
   let regexStr = "^";
@@ -64,6 +67,7 @@ export type AuthorizeResult =
   | { matched: false } // no registered pattern claims this channel
   | { matched: true; result: boolean | PresenceMemberData | null | undefined };
 
+/** @internal */
 export class ChannelRegistry {
   private _channels: CompiledChannel[] = [];
 
@@ -108,5 +112,8 @@ export class ChannelRegistry {
   }
 }
 
-/** Process-wide registry shared by the `Broadcast` facade and `BroadcastProvider`. */
+/** Process-wide registry shared by the `Broadcast` facade and `BroadcastProvider`.
+ *
+ * @internal
+ */
 export const channelRegistry = new ChannelRegistry();

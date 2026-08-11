@@ -12,7 +12,9 @@ The default UI ships with **light + dark mode out of the box**. Styling currentl
 loads Tailwind via the Play CDN (configured in `theme.ts`); swapping to a real
 Tailwind build later only touches that one file.
 
-> **Status:** experimental. You get navigation, list pages (search / sort /
+> **Status:** stable — the public API follows SemVer strictly for the rest of the 1.x
+> line. Anything importable without an `@internal` marker is covered, and the surface is
+> snapshotted in `api-surface.md`, which CI diffs on every change. You get navigation, list pages (search / sort /
 > paginate), a read-only **View** page (infolists), reactive **Create / Edit**
 > forms with validation, a **Delete** row action, and a configurable auth
 > **guard**. The previous config-driven admin has been retired; it remains

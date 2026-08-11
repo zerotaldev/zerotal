@@ -8,6 +8,52 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Dev asset builds are skipped when nothing changed.** `serve --dev` rebuilt every bundle
+  on every boot and every backend save, including when the project had not been touched.
+  A build now records what it consumed and produced, and is skipped when none of it moved.
+  The input set comes from two places, because one is not enough: the module graph, read
+  back from the external sourcemaps the dev build already emits (lazily-imported chunks
+  included), and — for stylesheets — a stat sweep of `app/`, `resources/`, `routes/` and
+  `config/`, since Tailwind discovers utility classes by reading templates that appear in
+  no sourcemap. Measured on a small app: a Tailwind CSS build of ~740 ms becomes ~1 ms.
+  Every uncertainty resolves to _build_: a corrupt cache, an unreadable input, a deleted
+  output, a changed config, or a different Bun version all rebuild. Minified (production)
+  builds never consult it, and `ZT_NO_BUILD_CACHE=1` disables it everywhere.
+
+- **`app/commands/` is auto-discovered.** `make:command` generates into the conventional
+  directory, but the runner never read it — a generated command answered
+  `Unknown command` until it was hand-registered in a provider, and nothing said so. The
+  runner now discovers the directory in console/worker/test environments (after the
+  built-ins, so an app command wins a name collision), the path is overridable via
+  `app.conventions.paths.commands`, and `make:command` prints the run invocation. The
+  scaffolded `zt.ts` comment describing the manual registration dance is gone.
+- **`bun zt doctor`.** One command that runs every static sanity check against the booted
+  app and prints each finding with its fix: APP_KEY strength, `database.synchronize`
+  colliding with migration files, a `routes/` directory no `routing()` group loads, and
+  class directories (`app/schedules`, `app/jobs`, `config/storage.ts`) whose consuming
+  provider isn't registered — the family of failures that otherwise fail by doing
+  nothing. Packages contribute their own checks via `app.registerDoctorCheck()` in
+  `onRegister()`; the scheduler's static-config check is the first. Exits 1 when any
+  check fails outright.
+- **Boot warns about an unrouted `routes/` directory.** A conventional `routes/index.ts`
+  full of `Router.get(...)` calls registers nothing until `.routing()` loads it, so every
+  path in it 404s in a way indistinguishable from a typo'd URL. The web boot now names
+  the files and the one-line fix. (`Application.routedFiles` is new, so the check — and
+  anything else — can see what the routing groups actually load.)
+
+### Fixed
+
+- **A Flow app built its bundles three times on every `serve --dev`.** `APP_ENV` defaults to
+  `"web"`, so the orchestrator process passed the view provider's web-runtime check and ran
+  its "build once at startup" pass; the orchestrator then ran the same build hook itself;
+  then it spawned a worker that booted the app and built a third time. Every backend save
+  paid for two of them. View providers now skip their boot-time build when a
+  `DevOrchestrator` owns builds — detected from `argv` for the orchestrator, since providers
+  boot before `ServeCommand` can set an environment variable, and from `ZT_DEV` for the
+  worker it supervises. A plain `serve` still builds at boot.
+
 ## [1.1.0] — 2026-08-08
 
 ### Fixed

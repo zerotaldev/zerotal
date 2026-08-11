@@ -163,6 +163,9 @@ interface FlowDirectives {
   [key: `flow:${string}`]: any;
 }
 
+// TypeScript resolves JSX element/attribute types by looking up a JSX namespace —
+// there is no module-shaped way to provide it.
+// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace JSX {
   export type Element = HtmlNode;
 

@@ -38,6 +38,8 @@ interface SfcDescriptor {
 /**
  * Resolve `@vue/compiler-sfc` from `cwd` and return a Bun plugin that compiles
  * `.vue` files. Returns `[]` when the compiler is not installed.
+ *
+ * @internal Build plumbing for `inertia:build`; apps do not call it.
  */
 export async function detectVuePlugin(cwd: string): Promise<BunPlugin[]> {
   let compilerPath: string;

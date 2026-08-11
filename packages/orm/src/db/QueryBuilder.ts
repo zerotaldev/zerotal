@@ -252,7 +252,7 @@ export async function _runSegments<T = Record<string, unknown>>(
   const durationMs = Date.now() - startMs;
   FrameworkEvents.emit(
     new QueryExecuted(
-      cacheKey.replace(/\x00/g, "?"),
+      cacheKey.replaceAll("\x00", "?"),
       values,
       startMs,
       durationMs,

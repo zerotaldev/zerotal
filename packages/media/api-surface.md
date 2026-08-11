@@ -6,14 +6,14 @@
 ## .  `(./src/index.ts)`
 
 class BunImageDriver = {
-  new (maxPixels?: number): BunImageDriver
+  new (maxPixels?: number, maxCropPixels?: number): BunImageDriver
   canEncode: (format: ConversionFormat) => Promise<boolean>
   convert: (bytes: Uint8Array, manipulation: ImageManipulation) => Promise<ImageResult>
   encodableFormats: () => Promise<string[]>
   metadata: (bytes: Uint8Array) => Promise<ImageMetadata | null>
   placeholder: (bytes: Uint8Array) => Promise<string | null>
   readonly name: 'BunImageDriver'
-  readonly supportsCrop: false
+  readonly supportsCrop: true
 }
 
 class ConversionRunner = {
@@ -227,6 +227,13 @@ class MediaProvider = {
   replContext: () => Record<string, unknown>
 }
 
+class RasterFormatError = {
+  new (detail: string): RasterFormatError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
 class SharpImageDriver = {
   new (): SharpImageDriver
   canEncode: (format: ConversionFormat) => Promise<boolean>
@@ -265,11 +272,11 @@ class UnsupportedManipulationError = {
   readonly status: number
 }
 
-const CONVERTIBLE_MIME_TYPES = Set<string>
+const CONVERTIBLE_MIME_TYPES = ReadonlySet<string>
 
-const FORMAT_EXTENSION = Record<ConversionFormat, string>
+const FORMAT_EXTENSION = Readonly<Record<ConversionFormat, string>>
 
-const FORMAT_MIME = Record<ConversionFormat, string>
+const FORMAT_MIME = Readonly<Record<ConversionFormat, string>>
 
 const MediaFake = {    all(owner: {        id: number | string;        constructor: {            name: string;        };    }): Promise<MediaItem[]>;    inCollection(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<MediaItem[]>;    assertHas(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<void>;    assertMissing(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<void>;    assertCount(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string, count: number): Promise<void>;    assertConversion(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string, conversion: string): Promise<void>;}
 
@@ -284,8 +291,6 @@ function collectionNames = (host: CollectionHost) => string[]
 function defaultDiskName = () => string
 
 function diskFor = (name?: string | null) => StorageDriver
-
-function diskNameFor = (name: string | null | undefined, fallback: string) => string
 
 function dispatchConversions = (mediaId: number, conversions: string[]) => Promise<void>
 
@@ -309,27 +314,9 @@ function MediaConfig = (options?: Partial<MediaConfigShape>) => MediaConfigShape
 
 function mediaDefaults = () => MediaConfigShape
 
-function mediaState = () => MediaState
-
-function ownerClassFor = (modelType: string) => CollectionHost | null
-
-function partitionConversions = (conversions: ConversionMap | undefined, queueAvailable: boolean) => {    inline: ConversionMap;    queued: ConversionMap;}
-
 function pathGenerator = () => PathGenerator
 
-function performConversions = (mediaId: number, conversions: string[]) => Promise<{    generated: string[];    failed: Array<{        name: string;        reason: string;    }>;}>
-
-function resetMediaState = () => void
-
 function resolveCollection = (host: CollectionHost, name: string) => CollectionDefinition
-
-function setConversionDispatcher = (dispatcher: ConversionDispatcher | null) => void
-
-function setDefaultDiskName = (name: string | null) => void
-
-function setDiskResolver = (resolver: DiskResolver | null) => void
-
-function setMediaState = (state: MediaState) => void
 
 function setPathGenerator = (generator: PathGenerator) => void
 
@@ -358,6 +345,7 @@ interface CollectionHost = {
 }
 
 interface ConversionDefinition = {
+  allowEnlargement?: boolean
   fit?: ConversionFit
   format?: ConversionFormat
   height?: number
@@ -430,11 +418,6 @@ interface MediaOwner = {
   readonly constructor: {    name: string;}
 }
 
-interface MediaState = {
-  config: MediaConfigShape
-  driver: ImageDriver
-}
-
 interface PathGenerator = {
   forConversions: (media: MediaItem) => string
   forOriginal: (media: MediaItem) => string
@@ -464,15 +447,11 @@ interface ResponsiveImageSet = {
   placeholder?: string
 }
 
-type ConversionDispatcher = (mediaId: number, conversions: string[]) => Promise<void>
-
 type ConversionFit = 'fill' | 'inside' | 'cover'
 
 type ConversionFormat = SafeConversionFormat | 'avif' | 'heic'
 
 type ConversionMap = {    [x: string]: ConversionDefinition;}
-
-type DiskResolver = (name?: string) => StorageDriver
 
 type MediaCollections = {    [x: string]: CollectionDefinition | (() => CollectionDefinition);}
 
@@ -539,3 +518,34 @@ class MediaRegenerateCommand = {
   warn: (msg: string) => void
   write: (msg: string) => void
 }
+
+## ./testing  `(./src/testing.ts)`
+
+function diskNameFor = (name: string | null | undefined, fallback: string) => string
+
+function mediaState = () => MediaState
+
+function ownerClassFor = (modelType: string) => CollectionHost | null
+
+function partitionConversions = (conversions: ConversionMap | undefined, queueAvailable: boolean) => {    inline: ConversionMap;    queued: ConversionMap;}
+
+function performConversions = (mediaId: number, conversions: string[]) => Promise<{    generated: string[];    failed: Array<{        name: string;        reason: string;    }>;}>
+
+function resetMediaState = () => void
+
+function setConversionDispatcher = (dispatcher: ConversionDispatcher | null) => void
+
+function setDefaultDiskName = (name: string | null) => void
+
+function setDiskResolver = (resolver: DiskResolver | null) => void
+
+function setMediaState = (state: MediaState) => void
+
+interface MediaState = {
+  config: MediaConfigShape
+  driver: ImageDriver
+}
+
+type ConversionDispatcher = (mediaId: number, conversions: string[]) => Promise<void>
+
+type DiskResolver = (name?: string) => StorageDriver

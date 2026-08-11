@@ -5,7 +5,7 @@
 //   bun run scripts/link-all.ts --unlink   # unregister all packages
 //
 // Inside this monorepo you do NOT need this — packages resolve via workspace:*.
-import { readdirSync, existsSync } from "node:fs";
+import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "..");
@@ -17,7 +17,7 @@ const names: string[] = [];
 for (const dir of readdirSync(PKGS)) {
   const pkgPath = join(PKGS, dir, "package.json");
   if (!existsSync(pkgPath)) continue;
-  const pkg = require(pkgPath);
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
   if (pkg.private === true || !pkg.name) continue; // publishable only
 
   const proc = Bun.spawnSync(["bun", cmd], {

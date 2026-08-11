@@ -18,7 +18,7 @@ import type {
   CommandRan,
 } from "@zerotal/core";
 import type { MonitorStore } from "../MonitorStore.ts";
-import { collectRequestState, markRecorded } from "./ctxBuffers.ts";
+import { markRecorded } from "./ctxBuffers.ts";
 
 // Framework/asset noise the panel shouldn't chart as application traffic.
 const IGNORE_PREFIXES = [

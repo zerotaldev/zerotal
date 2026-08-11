@@ -37,7 +37,7 @@ class TxUser extends BaseModel {
 describe("DB.transaction() — TransactionContext propagation", () => {
   it("commits rows created inside the transaction", async () => {
     await DB.transaction(async () => {
-      await TxUser.create({ name: "committed" } as Partial<TxUser>);
+      await TxUser.create({ name: "committed" } as never);
     });
 
     const found = await TxUser.query().where("name", "committed").first();
@@ -48,7 +48,7 @@ describe("DB.transaction() — TransactionContext propagation", () => {
     let threw = false;
     try {
       await DB.transaction(async () => {
-        await TxUser.create({ name: "will-rollback" } as Partial<TxUser>);
+        await TxUser.create({ name: "will-rollback" } as never);
         throw new Error("intentional rollback");
       });
     } catch {
@@ -62,8 +62,8 @@ describe("DB.transaction() — TransactionContext propagation", () => {
 
   it("multiple models created inside one transaction are all committed", async () => {
     await DB.transaction(async () => {
-      await TxUser.create({ name: "alice" } as Partial<TxUser>);
-      await TxUser.create({ name: "bob" } as Partial<TxUser>);
+      await TxUser.create({ name: "alice" } as never);
+      await TxUser.create({ name: "bob" } as never);
     });
 
     const all = await TxUser.query().orderBy("name").get();
@@ -75,8 +75,8 @@ describe("DB.transaction() — TransactionContext propagation", () => {
   it("multiple models are all rolled back when transaction fails", async () => {
     try {
       await DB.transaction(async () => {
-        await TxUser.create({ name: "p1" } as Partial<TxUser>);
-        await TxUser.create({ name: "p2" } as Partial<TxUser>);
+        await TxUser.create({ name: "p1" } as never);
+        await TxUser.create({ name: "p2" } as never);
         throw new Error("abort");
       });
     } catch {
@@ -94,11 +94,11 @@ describe("DB.transaction() — TransactionContext propagation", () => {
     try {
       await DB.transaction(async (tx) => {
         outerTx = tx;
-        await TxUser.create({ name: "outer" } as Partial<TxUser>);
+        await TxUser.create({ name: "outer" } as never);
 
         await DB.transaction(async (nestedTx) => {
           innerTx = nestedTx;
-          await TxUser.create({ name: "inner" } as Partial<TxUser>);
+          await TxUser.create({ name: "inner" } as never);
           throw new Error("nested abort");
         });
       });

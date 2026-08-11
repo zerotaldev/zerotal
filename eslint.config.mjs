@@ -60,6 +60,10 @@ export default tseslint.config(
       // §13 underscore namespacing on extensible base classes + @internal exports
       // is a deliberate convention — keep no-underscore-dangle off.
       "no-underscore-dangle": "off",
+
+      // Empty interfaces are this codebase's augmentation seams (FlowEvents,
+      // ContextRegistry, AuthenticatableUser, …) — apps merge members into them.
+      "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "always" }],
     },
   },
 

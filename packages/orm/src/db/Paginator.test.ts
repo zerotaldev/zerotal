@@ -96,8 +96,8 @@ describe("simplePaginate() — no COUNT, next/prev only", () => {
   it("does not include a total or lastPage", async () => {
     await seed(5);
     const p = await qb().orderBy("id").simplePaginate<Row>(10, 1);
-    expect((p as Record<string, unknown>)["total"]).toBeUndefined();
-    expect((p as Record<string, unknown>)["lastPage"]).toBeUndefined();
+    expect((p as unknown as Record<string, unknown>)["total"]).toBeUndefined();
+    expect((p as unknown as Record<string, unknown>)["lastPage"]).toBeUndefined();
   });
 });
 

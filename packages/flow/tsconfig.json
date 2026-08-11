@@ -9,8 +9,12 @@
     "types": ["bun-types"],
     "paths": {
       "@zerotal/core": ["../core/src/index.ts"],
-      "@zerotal/orm": ["../orm/src/index.ts"]
-    }
+      "@zerotal/orm": ["../orm/src/index.ts"],
+      "@zerotal/flow/jsx-runtime": ["./src/jsx-runtime.ts"],
+      "@zerotal/flow/jsx-dev-runtime": ["./src/jsx-dev-runtime.ts"]
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "@zerotal/flow"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", ".tsbuild", "**/*.test.ts", "**/*.test.tsx"]

@@ -99,7 +99,7 @@ interface JobEntry = {
 
 interface LogEntry = {
   args: string[]
-  level: 'error' | 'info' | 'log' | 'debug' | 'warn'
+  level: 'error' | 'info' | 'log' | 'warn' | 'debug'
   offsetMs: number
 }
 

@@ -62,6 +62,8 @@ type SessionLike = {
  * const data = await StorePostRequest.validate();
  * // data.title → string  (fully typed — no casts needed)
  */
+// Merged with the empty interface below — the app-augmentable seam for typed fields.
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export abstract class FormRequest {
   /**
    * Access the current request's HttpContext from within instance methods.
@@ -251,5 +253,5 @@ export abstract class FormRequest {
  *   }
  * }
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FormRequest {}

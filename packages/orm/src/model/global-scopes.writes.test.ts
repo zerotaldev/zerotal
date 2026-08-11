@@ -34,15 +34,14 @@ beforeAll(async () => {
 
 afterAll(async () => {
   _setBaseModelConnection(null);
-  await (db as { close(): Promise<void> }).close();
+  await (db as unknown as { close(): Promise<void> }).close();
 });
 
 @table("projects")
 class Project extends BaseModel {
-  @column({}) declare id: number;
-  @column({}) declare name: string;
-  @column({}) declare tenant_id: number;
-  @column({}) declare budget: number;
+  @column({}) name!: string;
+  @column({}) tenant_id!: number;
+  @column({}) budget!: number;
 }
 
 /** Reseed a fixed two-tenant fixture and pin the scope to tenant 1. */

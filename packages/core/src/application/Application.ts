@@ -43,7 +43,9 @@ import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { runBootDoctor } from "./BootDoctor.ts";
 import { runConfigValidators } from "../config/validation.ts";
 import { pathToFileURL } from "node:url";
-import { currentApp, defaultApp, setDefaultApp } from "./currentApp.ts";
+import { unroutedRoutesWarning } from "../support/unroutedRoutes.ts";
+import type { DoctorCheck } from "../doctor/AppDoctor.ts";
+import { defaultApp, setDefaultApp } from "./currentApp.ts";
 import type { ConfigValidator, RegisteredConfigValidator } from "../config/validation.ts";
 
 // ── Convention config discovery ───────────────────────────────────────────────
@@ -341,6 +343,8 @@ export class Application {
   private _configValidators: RegisteredConfigValidator[] = [];
   /** Bootstrap container-registration callbacks queued via `bind()`; run during boot(). */
   private _bindCallbacks: Array<(container: Container) => void> = [];
+  /** Doctor checks contributed by providers (see {@link registerDoctorCheck}). */
+  private _doctorChecks: DoctorCheck[] = [];
 
   private constructor() {}
 
@@ -353,6 +357,30 @@ export class Application {
   registerConcern(descriptor: ConcernDescriptor): this {
     this._concerns.push(descriptor);
     return this;
+  }
+
+  /**
+   * Contribute a check to `zt doctor`. Providers call this in `onRegister()`;
+   * the doctor runs the built-in checks plus everything contributed here.
+   *
+   * @category Providers
+   */
+  registerDoctorCheck(check: DoctorCheck): this {
+    this._doctorChecks.push(check);
+    return this;
+  }
+
+  /** The provider-contributed doctor checks (read by `runDoctor`). */
+  get doctorChecks(): readonly DoctorCheck[] {
+    return this._doctorChecks;
+  }
+
+  /**
+   * The files loaded by `routing()` groups — what actually serves explicit routes.
+   * Read by the unrouted-`routes/` boot warning and the doctor.
+   */
+  get routedFiles(): string[] {
+    return this._routeGroups.map((g) => g.file);
   }
 
   /**
@@ -1016,6 +1044,10 @@ export class Application {
       await this._loadFileRoutes();
     }
 
+    // A routes/ directory nobody routed is a silent 404 for every path in it — the file
+    // imports cleanly and registers nothing, which looks identical to a typo'd URL.
+    this._warnUnroutedRoutesDir(process.cwd());
+
     // Convention phase — worker jobs/schedules + public static files.
     await this._bootConventions();
 
@@ -1043,6 +1075,20 @@ export class Application {
     for (const { file, prefix, middleware } of this._routeGroups) {
       await Router.groupAsync({ prefix, middleware }, () => import(_toImportable(file)));
     }
+  }
+
+  /**
+   * Warn when `routes/` exists on disk but no `routing()` group points inside it.
+   * Web only: workers and the console don't answer HTTP, and the test harness
+   * routinely boots apps with no routes at all.
+   */
+  private _warnUnroutedRoutesDir(root: string): void {
+    if (this._env !== "web") return;
+    const warning = unroutedRoutesWarning(
+      root,
+      this._routeGroups.map((g) => g.file),
+    );
+    if (warning) frameworkLog("app").warn(warning);
   }
 
   private async _loadFileRoutes(): Promise<void> {
@@ -1537,7 +1583,6 @@ export class Application {
     const appVersion =
       configManager?.get<string>("app.version", Bun.env["APP_VERSION"] ?? Bun.version) ??
       Bun.version;
-    const app = this;
 
     // Built-in runtime probe — memory, Bun version, in-flight request count.
     Health.register("runtime", () => ({
@@ -1546,7 +1591,7 @@ export class Application {
         memory: process.memoryUsage(),
         bun: Bun.version,
         pendingRequests:
-          (app._static as { pendingRequests?: number } | undefined)?.pendingRequests ?? 0,
+          (this._static as { pendingRequests?: number } | undefined)?.pendingRequests ?? 0,
       },
     }));
 

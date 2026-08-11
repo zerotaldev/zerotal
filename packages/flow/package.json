@@ -2,7 +2,7 @@
   "name": "@zerotal/flow",
   "version": "1.4.0",
   "license": "MIT",
-  "maturity": "experimental",
+  "maturity": "stable",
   "private": false,
   "type": "module",
   "main": "./src/index.ts",
@@ -13,7 +13,8 @@
     "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
     "./compiler-helpers": "./src/compiler/helpers.ts",
     "./store": "./src/store.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./browser": "./src/browser/index.ts"
   },
   "files": [
     "CHANGELOG.md",
@@ -64,7 +65,6 @@
   },
   "description": "Flow (experimental) — server-driven reactive UI for Zerotal with signed snapshots, delta transport, and real-time primitives.",
   "keywords": [
-    "experimental",
     "zerotal",
     "bun",
     "typescript",

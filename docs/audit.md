@@ -141,6 +141,16 @@ registerAudit(User);
 > when you cannot change a model's class hierarchy (e.g. a model from another
 > package).
 
+Both routes attach the same `AuditObserver`, which is what actually watches the
+model's lifecycle. An update is recorded in two phases, and the reason is worth
+knowing if you ever hook the same events yourself: the previous values only exist
+until the ORM refreshes its snapshot, so the observer captures them during
+`saving` and pairs them with the current values in `updated`. That is why an audit
+row shows a real before _and_ after rather than the same values twice.
+
+`AuditObserver` is exported for the rare case of composing it into an observer of
+your own; using the mixin or `registerAudit()` is the supported path.
+
 ## Manual audit events
 
 Log any custom event — logins, exports, settings changes — via the `Audit` facade.
@@ -273,10 +283,14 @@ automatically.
 
 ## Drivers
 
-| Driver     | Description                                           |
-| ---------- | ----------------------------------------------------- |
-| `database` | Stores to `audit_logs` using `@zerotal/orm`. Default. |
-| `null`     | Discards all entries. Useful in tests.                |
+| Driver     | Class            | Description                                           |
+| ---------- | ---------------- | ----------------------------------------------------- |
+| `database` | `DatabaseDriver` | Stores to `audit_logs` using `@zerotal/orm`. Default. |
+| `null`     | `NullDriver`     | Discards all entries. Useful in tests.                |
+
+Both classes are exported, so a custom driver can wrap one rather than
+reimplementing it — decorating `DatabaseDriver` to also ship entries to a SIEM,
+for instance.
 
 Switch the driver in config:
 

@@ -22,7 +22,6 @@ import type { ResourceClass } from "../Panel.ts";
 import { Panel } from "../Panel.ts";
 import type { PanelInstance } from "../PanelInstance.ts";
 import type { Column, BadgeTone } from "../table/Column.ts";
-import type { Group } from "../table/Group.ts";
 import type { Filter, QueryRule } from "../table/Filter.ts";
 import {
   parseRuleTree,
@@ -1824,7 +1823,6 @@ export class ResourceListPage extends Component {
 
   override async render(): Promise<HtmlNode> {
     const R = this._resource;
-    const base = this._panel.base();
     const currentPage = Math.max(1, parseInt(this.page, 10) || 1);
 
     // Resolve the active tab (defaults to the first) and its query scope.

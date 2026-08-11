@@ -39,7 +39,10 @@ export interface DashboardLayoutStore {
   save(layout: DashboardLayout): Promise<void> | void;
 }
 
-/** An empty layout — the state before anyone has arranged anything. */
+/** An empty layout — the state before anyone has arranged anything.
+ *
+ * @internal
+ */
 export const EMPTY_LAYOUT: DashboardLayout = { order: [], hidden: [] };
 
 /**
@@ -49,6 +52,8 @@ export const EMPTY_LAYOUT: DashboardLayout = { order: [], hidden: [] };
  * only says how to arrange them. So a widget added since the layout was saved
  * still appears (at the end, where it is noticeable rather than lost), and a
  * widget since removed does not resurrect because a stale key mentions it.
+ *
+ * @internal
  */
 export function applyLayout<T>(
   widgets: T[],
@@ -75,7 +80,10 @@ export function applyLayout<T>(
   };
 }
 
-/** Move one key up or down, returning the new order. */
+/** Move one key up or down, returning the new order.
+ *
+ * @internal
+ */
 export function moveKey(order: string[], key: string, direction: -1 | 1): string[] {
   const from = order.indexOf(key);
   if (from === -1) return order;
@@ -92,6 +100,8 @@ export function moveKey(order: string[], key: string, direction: -1 | 1): string
  *
  * A layout saved when there were three widgets cannot reorder a fourth, so the
  * order is reconciled against the current keys before anything is moved.
+ *
+ * @internal
  */
 export function reconcile(layout: DashboardLayout | null, keys: string[]): DashboardLayout {
   const known = new Set(keys);

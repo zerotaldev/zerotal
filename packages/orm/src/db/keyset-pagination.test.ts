@@ -13,7 +13,6 @@ import { BaseModel, _setBaseModelConnection } from "../model/BaseModel.ts";
 import { column } from "../model/decorators/column.ts";
 import { table } from "../model/decorators/table.ts";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bun.SQL has no exported type
 let db: any;
 
 @table("articles")

@@ -506,6 +506,35 @@ describe("Blueprint — ALTER TABLE / indexes", () => {
     expect(sqls.some((s) => s.includes("ALTER COLUMN email"))).toBe(true);
   });
 
+  // The NOT NULL / DEFAULT regexes once carried literal backspace characters where
+  // `\b` word boundaries were meant, so neither branch could ever match — every
+  // postgres alter emitted DROP NOT NULL and DROP DEFAULT regardless of the column
+  // definition. These pin the actual statements, not just the column name.
+  it("toAlterSQL on postgres keeps NOT NULL when the altered column declares it", () => {
+    const b = new Blueprint();
+    b.string("email").notNullable().alter();
+    const sqls = b.toAlterSQL("users", "postgres");
+    expect(sqls).toContain("ALTER TABLE users ALTER COLUMN email SET NOT NULL");
+    expect(sqls).not.toContain("ALTER TABLE users ALTER COLUMN email DROP NOT NULL");
+  });
+
+  it("toAlterSQL on postgres drops NOT NULL for a nullable altered column", () => {
+    const b = new Blueprint();
+    b.string("email").nullable().alter();
+    const sqls = b.toAlterSQL("users", "postgres");
+    expect(sqls).toContain("ALTER TABLE users ALTER COLUMN email DROP NOT NULL");
+  });
+
+  it("toAlterSQL on postgres keeps a declared DEFAULT", () => {
+    const b = new Blueprint();
+    b.string("status").default("active").alter();
+    const sqls = b.toAlterSQL("users", "postgres");
+    expect(
+      sqls.some((s) => s.startsWith("ALTER TABLE users ALTER COLUMN status SET DEFAULT")),
+    ).toBe(true);
+    expect(sqls).not.toContain("ALTER TABLE users ALTER COLUMN status DROP DEFAULT");
+  });
+
   it("toAlterSQL with alter column on mysql emits MODIFY COLUMN", () => {
     const b = new Blueprint();
     b.string("email").alter();
@@ -767,7 +796,6 @@ describe("MigrationRunner — additional paths", () => {
 
   it("runFromDirectory() loads and runs migrations from a directory", async () => {
     const { resolve } = await import("node:path");
-    const { fileURLToPath } = await import("node:url");
     const dir = resolve(import.meta.dir, "__test_migrations__");
     const runner = new MigrationRunner({ connection: db });
     const ran = await runner.runFromDirectory(dir);
@@ -819,7 +847,7 @@ describe("ModelInspector.load()", () => {
 // ── SchemaInspector — postgres dialect ────────────────────────────────────────
 
 function makeMockConn(handler: (sql: string) => unknown[]) {
-  return function (tpl: TemplateStringsArray, ...values: unknown[]): Promise<unknown[]> {
+  return function (tpl: TemplateStringsArray, ..._values: unknown[]): Promise<unknown[]> {
     const sql = Array.from(tpl).join("?");
     return Promise.resolve(handler(sql));
   } as unknown as SQLInstance;

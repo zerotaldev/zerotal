@@ -13,7 +13,7 @@ class IbWidget extends BaseModel {
 }
 
 @table("ib_secrets")
-class IbSecret extends BaseModel {
+export class IbSecret extends BaseModel {
   @column() name!: string;
   static override implicitBinding = false;
 }

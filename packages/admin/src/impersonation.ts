@@ -19,7 +19,10 @@
  */
 import { frameworkLog } from "@zerotal/core/logger";
 
-/** Session key holding the original user's id while impersonating. */
+/** Session key holding the original user's id while impersonating.
+ *
+ * @internal
+ */
 export const IMPERSONATOR_KEY = "admin.impersonator";
 
 /** The session surface this needs — kept structural so `@zerotal/session` stays optional. */

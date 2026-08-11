@@ -16,4 +16,7 @@ export { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
 export { detectCssPlugins, buildCssBundle, buildJsBundle } from "./CssPlugins.ts";
 export type { AssetBuildConfig } from "./CssPlugins.ts";
 export { pruneBuildOutput } from "./BuildOutput.ts";
+// Lets a view provider skip its own boot-time build when the orchestrator is
+// already driving builds through the hook above.
+export { isDevOrchestrated } from "../support/env.ts";
 // `AppAssetsConfig` (the app-level assets config shape) lives on @zerotal/core/config.

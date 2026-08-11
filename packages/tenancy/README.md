@@ -7,8 +7,8 @@ everywhere in the call stack — ORM queries, storage paths, and cache keys — 
 no manual thread-through. Supports both single-database (a `tenant_id` column,
 scoped automatically by `Tenantable`) and multi-database (a connection per tenant,
 routed automatically from a one-line `connect` factory) strategies — in both, your
-models "just work" with no per-query wiring. **Beta** — APIs are stable but rough
-edges remain.
+models "just work" with no per-query wiring. **Stable** — the public API follows
+SemVer strictly for the rest of the 1.x line.
 
 Part of the [Zerotal](../../README.md) framework. Requires **Bun ≥ 1.3.14**.
 

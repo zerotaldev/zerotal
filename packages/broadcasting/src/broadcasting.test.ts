@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { BroadcastManager } from "./BroadcastManager.ts";
+import { withApp } from "@zerotal/core";
 import { RedisBroadcastDriver } from "./RedisBroadcastDriver.ts";
 import { BroadcastFake } from "./BroadcastFake.ts";
 import { Broadcast } from "./facades/Broadcast.ts";
@@ -292,7 +293,7 @@ describe("BroadcastManager — broadcasting", () => {
     manager.send(new MultiChannelEvent());
 
     // sent 3 messages: connected + sub×2 — plus 2 broadcasts
-    const broadcasts = sent
+    const _broadcasts = sent
       .map((s) => JSON.parse(s) as { event: string; channel?: string })
       .filter(
         (m) =>
@@ -419,9 +420,8 @@ describe("Broadcast facade — getMembers()", () => {
   it("getMembers() delegates to real manager when no fake is active", () => {
     // Wire a real manager into a mock app, made current for the scope via withApp.
     const manager = new BroadcastManager();
-    const { withApp } = require("@zerotal/core");
     const mockApp = { container: { makeSync: () => manager } };
-    withApp(mockApp, () => {
+    withApp(mockApp as never, () => {
       const members = Broadcast.getMembers("presence-chat");
       expect(Array.isArray(members)).toBe(true);
     });
@@ -489,7 +489,7 @@ describe("Presence channel — member tracking", () => {
 
   it("notifies channel when a member disconnects", async () => {
     manager.authorizePresenceWith(() => ({ id: "u1", info: {} }));
-    const { ws: ws1, sent: s1 } = makeWs("id-1");
+    const { ws: ws1 } = makeWs("id-1");
     const { ws: ws2 } = makeWs("id-2");
 
     manager.handleOpen(ws1);
@@ -513,7 +513,7 @@ describe("Presence channel — member tracking", () => {
 
   it("notifies channel when a member explicitly unsubscribes (e.g. navigates away)", async () => {
     manager.authorizePresenceWith((_ch, ws) => ({ id: ws.data.id, info: {} }));
-    const { ws: ws1, sent: s1 } = makeWs("id-1");
+    const { ws: ws1 } = makeWs("id-1");
     const { ws: ws2, sent: s2 } = makeWs("id-2");
     manager.handleOpen(ws1);
     manager.handleOpen(ws2);

@@ -74,8 +74,11 @@ else.
 
 Required by the linter: `"type": "module"` and an `"exports"` (or `"main"`) entry.
 Depend on other Zerotal packages with `workspace:*`. The `maturity` field
-(`experimental` | `stable`) is informational. Subpath exports like `./commands`
-keep CLI code out of the main bundle until it's needed.
+(`experimental` | `beta` | `stable`) declares the package's compatibility promise —
+see [Support policy](/docs/support-policy#maturity-levels) for what each level
+commits to, and state the same level in the package's README and CHANGELOG so it is
+visible from npm. A package cannot be more mature than what it depends on. Subpath
+exports like `./commands` keep CLI code out of the main bundle until it's needed.
 
 ## The public barrel
 

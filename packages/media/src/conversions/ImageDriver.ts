@@ -37,15 +37,25 @@ export interface ImageMetadata {
 /**
  * The seam between this package and whatever actually manipulates pixels.
  *
- * Two implementations ship: {@link BunImageDriver} (the default — no
- * dependencies, no crop) and `SharpImageDriver` (opt-in, adds crop). Keeping
- * both behind one interface is also what makes `Bun.Image` — which is a few
- * weeks old — a safe thing to depend on: if its API moves, one file changes.
+ * Two implementations ship: `BunImageDriver` (the default — no dependencies)
+ * and `SharpImageDriver` (opt-in, a native module). Both support every
+ * manipulation in {@link ImageManipulation}, and a shared parity suite holds
+ * them to the same output dimensions, so `media.driver` is a throughput and
+ * codec-coverage choice rather than a feature one.
+ *
+ * Keeping both behind one interface is also what makes `Bun.Image` — which is
+ * young — a safe thing to depend on: if its API moves, one file changes.
  */
 export interface ImageDriver {
   /** Name used in error messages. */
   readonly name: string;
-  /** Whether `fit: "cover"` is available. */
+  /**
+   * Whether `fit: "cover"` is available.
+   *
+   * Both shipped drivers report `true`. It stays part of the interface for
+   * third-party drivers wrapping a backend that genuinely cannot crop, which
+   * need a way to say so other than failing at conversion time.
+   */
   readonly supportsCrop: boolean;
 
   /** Read dimensions and format without decoding the whole image. */
@@ -64,26 +74,31 @@ export interface ImageDriver {
   canEncode(format: ConversionFormat): Promise<boolean>;
 }
 
+// These three are exported for reading — to label a download, or to check a type
+// before offering an upload. They are frozen because they are shared module
+// state: an app that mutated one would change how conversions behave for every
+// other caller in the process, including ones it does not own.
+
 /** MIME type for each format a driver may emit. */
-export const FORMAT_MIME: Record<ConversionFormat, string> = {
+export const FORMAT_MIME: Readonly<Record<ConversionFormat, string>> = Object.freeze({
   jpeg: "image/jpeg",
   png: "image/png",
   webp: "image/webp",
   avif: "image/avif",
   heic: "image/heic",
-};
+});
 
 /** File extension for each format. */
-export const FORMAT_EXTENSION: Record<ConversionFormat, string> = {
+export const FORMAT_EXTENSION: Readonly<Record<ConversionFormat, string>> = Object.freeze({
   jpeg: "jpg",
   png: "png",
   webp: "webp",
   avif: "avif",
   heic: "heic",
-};
+});
 
 /** MIME types this package will attempt to convert. */
-export const CONVERTIBLE_MIME_TYPES = new Set([
+export const CONVERTIBLE_MIME_TYPES: ReadonlySet<string> = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",

@@ -292,7 +292,11 @@ export class LinksPage extends Component {
               <input value={this.slug} blur placeholder="payroll" class={FIELD} />
             </Field>
 
-            <Field label="Label" description="What it points at, for this list." error={this.errors.label}>
+            <Field
+              label="Label"
+              description="What it points at, for this list."
+              error={this.errors.label}
+            >
               <input value={this.label} placeholder="Payroll spreadsheet" class={FIELD} />
             </Field>
           </div>
@@ -369,15 +373,15 @@ The page is file-routed, so it is already live at `/links`. One thing to add if 
 
 ### The walkthrough
 
-**A rule is a value.** `destinationRule` is an ordinary arrow function used in two places: on the `@validate` decorator, and in the rule map the action passes to `this.validate()`. That matters because the decorator is what powers *real-time* validation — the destination field is bound with `blur`, so leaving it with a bad URL in it shows the error immediately, with no submit and no round-trip you had to write. When the form is finally submitted, the same function runs again server-side. There is no way for the live check and the real check to disagree.
+**A rule is a value.** `destinationRule` is an ordinary arrow function used in two places: on the `@validate` decorator, and in the rule map the action passes to `this.validate()`. That matters because the decorator is what powers _real-time_ validation — the destination field is bound with `blur`, so leaving it with a bad URL in it shows the error immediately, with no submit and no round-trip you had to write. When the form is finally submitted, the same function runs again server-side. There is no way for the live check and the real check to disagree.
 
 **Conditional rules need no API.** Passing rules explicitly to `validate()` replaces the decorator set, so the map has to be complete — and because it is a plain object, the "only validate the code when they typed one" case is a spread. No `sometimes`, no branching, no second code path.
 
-**`unique()` writes the good error message.** A code that is already taken comes back as an error on the `slug` field, in the right place, in the user's flow. What it does *not* do is guarantee anything — see trap one.
+**`unique()` writes the good error message.** A code that is already taken comes back as an error on the `slug` field, in the right place, in the user's flow. What it does _not_ do is guarantee anything — see trap one.
 
 **Copying is free.** The short URL is known at render time, so the copy button is a plain `onclick` attribute with a server-baked string in it. No round-trip, no client state, no clipboard library.
 
-**`poll` keeps the counts honest.** `poll={{ every: "10s", action: this.refresh }}` re-runs `onMount()` on a timer, so the numbers move while the page sits open. If you want them to move the *instant* someone clicks a link rather than within ten seconds, swap the poll for an `@on("echo:links,LinkClicked")` listener and broadcast from `recordClick()` — same component, three lines different.
+**`poll` keeps the counts honest.** `poll={{ every: "10s", action: this.refresh }}` re-runs `onMount()` on a timer, so the numbers move while the page sits open. If you want them to move the _instant_ someone clicks a link rather than within ten seconds, swap the poll for an `@on("echo:links,LinkClicked")` listener and broadcast from `recordClick()` — same component, three lines different.
 
 **`confirm` and `loadingAttr` are props, not plumbing.** `confirm="…"` gates the action behind a browser confirm; `loadingAttr="disabled"` disables the submit button while the action is in flight, immediately, so a double-click cannot create two links.
 
@@ -421,9 +425,9 @@ Note the ordering in `recordClick()` — increment first, then set `lastUsedAt` 
 
 Two mistakes, both hiding in that tiny route file, both invisible until they are expensive.
 
-**Use 302, not 301.** A 301 tells the browser *this has permanently moved* — and browsers believe it, cache it hard, and stop asking. Your click counter stops counting, because the request never reaches you again. Worse, the whole point of a shortener is that `go/payroll` can be repointed when the spreadsheet moves; a 301 means everyone who has ever clicked it keeps landing at the old destination, and there is nothing you can do from the server to fix them. 302 costs a request per click. That request *is* the product.
+**Use 302, not 301.** A 301 tells the browser _this has permanently moved_ — and browsers believe it, cache it hard, and stop asking. Your click counter stops counting, because the request never reaches you again. Worse, the whole point of a shortener is that `go/payroll` can be repointed when the spreadsheet moves; a 301 means everyone who has ever clicked it keeps landing at the old destination, and there is nothing you can do from the server to fix them. 302 costs a request per click. That request _is_ the product.
 
-**Validate the scheme, not just the shape.** `new URL()` is the right tool for "is this a URL?", and it correctly answers *yes* for `javascript:alert(document.cookie)` — that is a valid URL with a `javascript:` protocol. Correct answer, wrong question. A redirector is a machine that puts arbitrary strings in a `Location` header on your domain's authority, so it needs to ask something narrower:
+**Validate the scheme, not just the shape.** `new URL()` is the right tool for "is this a URL?", and it correctly answers _yes_ for `javascript:alert(document.cookie)` — that is a valid URL with a `javascript:` protocol. Correct answer, wrong question. A redirector is a machine that puts arbitrary strings in a `Location` header on your domain's authority, so it needs to ask something narrower:
 
 ```ts
 const { protocol } = new URL(String(value));

@@ -67,6 +67,12 @@ Broadcast.send(new OrderShipmentStatusUpdated(order));
 `X-Socket-ID` header your Echo client sends), so the user who just made an optimistic UI update
 doesn't receive a duplicate.
 
+`broadcast()` returns a `PendingBroadcast` — a thenable that sends itself on the next
+microtask, or immediately when awaited. That is what lets `.toOthers()` configure it
+first without you having to remember a `.send()`: both lines above deliver, one
+fire-and-forget and one awaited. Hold the value only if you want to configure it across
+several statements; otherwise treat `broadcast(...)` as the whole call.
+
 A broadcastable event emitted on the [event bus](/docs/events) is broadcast automatically:
 
 ```ts

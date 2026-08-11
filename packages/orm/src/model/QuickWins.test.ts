@@ -80,8 +80,8 @@ describe("bulkInsert()", () => {
   it("fills timestamps when enabled", async () => {
     await Person.bulkInsert([{ name: "Ann", active: true }]);
     const [row] = await db`SELECT created_at, updated_at FROM people`;
-    expect(row.created_at).toBeTruthy();
-    expect(row.updated_at).toBeTruthy();
+    expect(row!.created_at).toBeTruthy();
+    expect(row!.updated_at).toBeTruthy();
   });
   it("returns 0 for an empty array (no query)", async () => {
     expect(await Person.bulkInsert([])).toBe(0);

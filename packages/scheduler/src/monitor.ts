@@ -80,8 +80,20 @@ export function installSchedulerMonitor(app: Application): void {
     resolve: () => {
       const scheduler = app.container.tryMake("scheduler") as SchedulerManager | null;
       const tasks = scheduler ? [...scheduler.tasks.values()] : [];
-      const failing = tasks.filter((t) => t.lastOk === false);
-      const neverRun = tasks.filter((t) => t.lastRunAt === undefined);
+      // The durable run log fills what the in-memory state cannot: after a restart
+      // every task reads "never run" in memory even when it ran an hour ago.
+      const runStore = app.container.tryMake("scheduler.runs") ?? undefined;
+      const lastRecorded = (name: string) => {
+        try {
+          return runStore?.lastFor(name);
+        } catch {
+          return undefined;
+        }
+      };
+      const failing = tasks.filter((t) => (t.lastOk ?? lastRecorded(t.name)?.ok) === false);
+      const neverRun = tasks.filter(
+        (t) => t.lastRunAt === undefined && lastRecorded(t.name) === undefined,
+      );
 
       return {
         stats: [
@@ -112,25 +124,62 @@ export function installSchedulerMonitor(app: Application): void {
               {
                 key: "status",
                 label: "Last result",
-                tone: (v) => (v === "Failed" ? "bad" : v === "OK" ? "good" : null),
+                tone: (v) =>
+                  String(v).startsWith("Failed")
+                    ? "bad"
+                    : String(v).startsWith("OK")
+                      ? "good"
+                      : null,
               },
               { key: "lastRunAt", label: "Last run", format: formatWhen },
               { key: "durationMs", label: "Duration", align: "end", format: formatDuration },
               { key: "nextRunAt", label: "Next run", format: formatWhen },
             ],
-            rows: tasks.map((t) => ({
-              name: t.name,
-              schedule: t.schedule,
-              status: t.isRunning
-                ? "Running"
-                : t.lastOk === undefined
-                  ? "Never run"
-                  : t.lastOk
-                    ? "OK"
-                    : "Failed",
-              lastRunAt: t.lastRunAt ?? null,
-              durationMs: t.lastDurationMs ?? null,
-              nextRunAt: t.nextRunAt(),
+            rows: tasks.map((t) => {
+              // Fall back to the recorded run when this process has not run the
+              // task yet — "(recorded)" marks the value as pre-restart history.
+              const recorded = t.lastRunAt === undefined ? lastRecorded(t.name) : undefined;
+              const lastOk = t.lastOk ?? recorded?.ok;
+              return {
+                name: t.name,
+                schedule: t.schedule,
+                status: t.isRunning
+                  ? "Running"
+                  : lastOk === undefined
+                    ? "Never run"
+                    : lastOk
+                      ? recorded
+                        ? "OK (recorded)"
+                        : "OK"
+                      : recorded
+                        ? "Failed (recorded)"
+                        : "Failed",
+                lastRunAt: t.lastRunAt ?? recorded?.finishedAt ?? null,
+                durationMs: t.lastDurationMs ?? recorded?.durationMs ?? null,
+                nextRunAt: t.nextRunAt(),
+              };
+            }),
+          },
+          {
+            title: "Recent runs",
+            empty: "No runs recorded yet.",
+            columns: [
+              { key: "name", label: "Task" },
+              {
+                key: "result",
+                label: "Result",
+                tone: (v) => (v === "OK" ? "good" : "bad"),
+              },
+              { key: "startedAt", label: "Started", format: formatWhen },
+              { key: "durationMs", label: "Duration", align: "end", format: formatDuration },
+              { key: "error", label: "Error" },
+            ],
+            rows: (runStore?.recent(15) ?? []).map((r) => ({
+              name: r.name,
+              result: r.ok ? "OK" : "Failed",
+              startedAt: r.startedAt,
+              durationMs: r.durationMs,
+              error: r.error ?? "—",
             })),
           },
         ],

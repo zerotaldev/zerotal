@@ -69,3 +69,36 @@ export function devSurfacesEnabled(): boolean {
   if (Bun.env[DEV_WORKER_ENV_VAR] === "1") return true;
   return isDevSurfaceAllowed(Bun.env["APP_ENV"] ?? "");
 }
+
+/**
+ * Whether a `DevOrchestrator` owns asset builds for this process.
+ *
+ * View providers build their bundles once at boot so assets are ready before
+ * the first request. Under `serve --dev` that is redundant three times over:
+ * the orchestrator process boots the app (registering hooks, and building), then
+ * runs the hooks itself, then spawns a worker that boots the app and builds
+ * again. Every backend save paid for two of those.
+ *
+ * Both processes are recognised, for different reasons:
+ *
+ *   - The supervised worker carries {@link DEV_WORKER_ENV_VAR}. The orchestrator
+ *     has already built and pruned before spawning it, so its assets are on disk
+ *     before it binds a port.
+ *   - The orchestrator itself is recognised from `argv`, not an environment
+ *     variable, because providers boot *before* `ServeCommand.run()` gets to set
+ *     one — the flag would always arrive too late to be read.
+ *
+ * Anything else — a plain `serve`, a queue worker, a test — is unsupervised and
+ * still builds at boot.
+ *
+ * @param env  Environment to read; defaults to the process environment.
+ * @param argv Command line to read; defaults to the process command line.
+ * @internal
+ */
+export function isDevOrchestrated(
+  env: Record<string, string | undefined> = Bun.env,
+  argv: readonly string[] = Bun.argv,
+): boolean {
+  if (env[DEV_WORKER_ENV_VAR] === "1") return true;
+  return argv.includes("serve") && argv.includes("--dev");
+}

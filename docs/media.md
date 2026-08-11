@@ -152,34 +152,49 @@ conversions: {
 }
 ```
 
-| Field              | Meaning                                        |
-| ------------------ | ---------------------------------------------- |
-| `width` / `height` | Target box                                     |
-| `fit`              | `inside` (default), `fill`, or `cover`         |
-| `format`           | `jpeg`, `png`, `webp`                          |
-| `quality`          | 1–100                                          |
-| `rotate`           | Degrees, applied before resizing               |
-| `queued`           | Generate on a worker instead of in the request |
+| Field              | Meaning                                            |
+| ------------------ | -------------------------------------------------- |
+| `width` / `height` | Target box                                         |
+| `fit`              | `inside` (default), `fill`, or `cover`             |
+| `format`           | `jpeg`, `png`, `webp`                              |
+| `quality`          | 1–100                                              |
+| `rotate`           | Degrees, applied before resizing                   |
+| `allowEnlargement` | Scale small sources up to the box. Default `false` |
+| `queued`           | Generate on a worker instead of in the request     |
 
 Read them back with `media.getUrl("thumb")`, or `""` when that conversion does
 not exist. `media.hasConversion("thumb")` when you need to branch.
 
-### Cropping needs sharp
+### How `fit` behaves
 
-The default image driver is `Bun.Image`, which is built into the runtime — no
-native module, nothing to install, and JPEG/PNG/WebP work everywhere.
+`cover` scales the image so it overflows the target box in at most one axis,
+then keeps the centre — the square thumbnail from a 3:2 photograph. It needs
+both `width` and `height`; given one, there is nothing to crop away and it
+behaves as `inside`.
 
-It cannot crop. `Bun.Image.resize()` offers `fill` (stretch to exact dimensions)
-and `inside` (scale to fit, preserving aspect ratio), and exposes no crop
-primitive to build `cover` from. A square thumbnail from a 3:2 photograph is
-therefore not something the default driver can produce, and asking for
-`fit: "cover"` throws rather than quietly returning a stretched image.
+By default nothing is ever scaled up. If the source is too small to fill the
+box, `cover` returns the largest centre window the source can supply, which may
+not have the aspect ratio you asked for — a 300×500 source covering a 400×400
+box gives 300×400, not 300×300. Set `allowEnlargement: true` on the conversion
+when the exact box matters more than fidelity.
 
-If you need it, install `sharp` and switch drivers:
+All of this works on the default driver, which is `Bun.Image` — built into the
+runtime, no native module, nothing to install.
 
-```bash
-bun add sharp
-```
+### Choosing an image driver
+
+`Bun.Image` (the default) and `sharp` support the same manipulations and are
+held to the same output dimensions by a shared parity suite, so switching is a
+performance decision rather than a feature one:
+
+|                             | `bun` (default)         | `sharp`                          |
+| --------------------------- | ----------------------- | -------------------------------- |
+| Install                     | Nothing                 | `bun add sharp`, a native module |
+| `fit: "cover"`              | Yes                     | Yes                              |
+| Throughput on large batches | Good                    | Better — libvips                 |
+| AVIF / HEIC                 | Host codecs (see below) | Bundled                          |
+
+Switch with:
 
 ```ts
 // config/media.ts

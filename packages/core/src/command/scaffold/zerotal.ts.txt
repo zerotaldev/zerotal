@@ -4,16 +4,8 @@
 // DO NOT MODIFY THIS FILE.
 // This file is managed by the Zerotal framework.
 //
-// To add custom commands, create classes in app/commands/ and
-// register them in your AppServiceProvider.onBooted():
-//
-//   override async onBooted(): Promise<void> {
-//     if (this.app._env === 'console') {
-//       const runner = this.app.container.makeSync('commands');
-//       const { MyCommand } = await import('../commands/MyCommand.ts');
-//       runner.register(MyCommand);
-//     }
-//   }
+// To add custom commands, create classes in app/commands/ —
+// they are discovered automatically (`bun zerotal.ts make:command MyCommand`).
 //
 // Help:  bun zerotal.ts list
 //        bun zerotal.ts help <command>

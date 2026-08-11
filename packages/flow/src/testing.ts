@@ -34,7 +34,7 @@
 import type { Component } from "./Component.ts";
 import type { FlowEffects } from "./Component.ts";
 import { _renderFlowPage } from "./jsx-runtime.ts";
-import { dehydrate, hydrate } from "./dehydrate.ts";
+import { dehydrate } from "./dehydrate.ts";
 import { ValidationError } from "./validation.ts";
 import type { Snapshot } from "./types.ts";
 

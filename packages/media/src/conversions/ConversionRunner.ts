@@ -214,6 +214,9 @@ export class ConversionRunner {
       fit: definition.fit ?? "inside",
       format,
       quality: definition.quality ?? this.config.quality,
+      // Inverted at the boundary: the collection API reads better as an opt-in
+      // ("allow this"), the driver contract as a constraint ("do not do this").
+      withoutEnlargement: definition.allowEnlargement !== true,
     };
   }
 }

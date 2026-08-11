@@ -515,6 +515,23 @@ post.isDirty("email"); // false — "email" is unchanged
 post.markDirty("slug");
 ```
 
+> **Warning** — Dirty means _changed since **this instance** was loaded_, not
+> "differs from the database". If another code path updated the row after your
+> instance was loaded, assigning the value your instance already holds is not
+> dirty — `save()` writes nothing, silently:
+>
+> ```typescript
+> const quote = await Quote.find(id); // status: "DRAFT"
+> await markSent(id); //             …loads its own copy, sets status: "SENT"
+> quote.status = "DRAFT"; //          matches this instance's value → not dirty
+> await quote.save(); //              no UPDATE — the row stays "SENT"
+> ```
+>
+> When an instance may be stale — it crossed a service boundary, or time passed
+> since the load — either `await quote.refresh()` before mutating, or
+> `quote.markDirty("status")` to force the write. Services that accept an id and
+> load their own fresh copy sidestep the problem entirely.
+
 ### Incrementing and touch
 
 ```typescript

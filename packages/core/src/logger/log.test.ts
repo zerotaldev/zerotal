@@ -299,21 +299,19 @@ describe("StackChannel", () => {
 
 // ── ConsoleChannel ────────────────────────────────────────────────────────────
 
-function captureStdout(fn: () => Promise<void>): Promise<string> {
-  return new Promise(async (resolve) => {
-    let out = "";
-    const original = process.stdout.write.bind(process.stdout);
-    process.stdout.write = (s: string) => {
-      out += s;
-      return true;
-    };
-    try {
-      await fn();
-    } finally {
-      process.stdout.write = original;
-    }
-    resolve(out);
-  });
+async function captureStdout(fn: () => Promise<void>): Promise<string> {
+  let out = "";
+  const original = process.stdout.write.bind(process.stdout);
+  process.stdout.write = (s: string) => {
+    out += s;
+    return true;
+  };
+  try {
+    await fn();
+  } finally {
+    process.stdout.write = original;
+  }
+  return out;
 }
 
 describe("ConsoleChannel — json format", () => {

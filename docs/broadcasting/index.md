@@ -91,12 +91,16 @@ export default BroadcastConfig({
 The active driver decides _how_ a broadcast is delivered. Switch drivers per environment via the
 `driver` key — your event classes never change.
 
-| Driver   | Delivery                                       | Use for                                          |
-| -------- | ---------------------------------------------- | ------------------------------------------------ |
-| `null`   | Discards everything (default)                  | Local dev / tests where you don't need real WS   |
-| `ws`     | In-process WebSocket, Zerotal native protocol  | Single-server deployments                        |
-| `redis`  | Redis Pub/Sub fan-out, Zerotal native protocol | Horizontally-scaled deployments (many instances) |
-| `pusher` | Pusher-compatible wire protocol                | Existing Pusher-protocol clients                 |
+| Driver   | Class                  | Delivery                                       | Use for                                          |
+| -------- | ---------------------- | ---------------------------------------------- | ------------------------------------------------ |
+| `null`   | —                      | Discards everything (default)                  | Local dev / tests where you don't need real WS   |
+| `ws`     | —                      | In-process WebSocket, Zerotal native protocol  | Single-server deployments                        |
+| `redis`  | `RedisBroadcastDriver` | Redis Pub/Sub fan-out, Zerotal native protocol | Horizontally-scaled deployments (many instances) |
+| `pusher` | `PusherCompatManager`  | Pusher-compatible wire protocol                | Existing Pusher-protocol clients                 |
+
+You select a driver through the `driver` key rather than constructing one. The classes
+are exported for the cases that need the instance itself — a test asserting on
+fan-out, or a custom driver wrapping one rather than reimplementing it.
 
 > **Tip** — Start on `null` in tests and local dev; switch to `ws` for a single server, `redis`
 > once you run more than one instance, and `pusher` only when you must speak the Pusher wire

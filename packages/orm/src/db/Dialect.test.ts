@@ -88,12 +88,12 @@ describe("per-connection date serialisation", () => {
   it("serialises timestamps in MySQL format on the mysql-declared connection", async () => {
     await MysqlRow.bulkInsert([{ name: "x" }]);
     const [row] = await myDb`SELECT created_at FROM my_rows`;
-    expect(String(row.created_at)).toMatch(MYSQL_FMT);
+    expect(String(row!.created_at)).toMatch(MYSQL_FMT);
   });
   it("serialises timestamps in ISO format on the default sqlite connection", async () => {
     await DefaultRow.bulkInsert([{ name: "y" }]);
     const [row] = await liteDb`SELECT created_at FROM def_rows`;
-    expect(String(row.created_at)).toMatch(ISO_FMT);
+    expect(String(row!.created_at)).toMatch(ISO_FMT);
   });
 });
 

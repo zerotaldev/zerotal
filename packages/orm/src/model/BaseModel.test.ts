@@ -48,7 +48,7 @@ class User extends SoftDeletes(BaseModel) {
   name!: string;
 
   @column({ type: "string", nullable: true })
-  email!: string | null;
+  email?: string | null;
 
   @column({ type: "number" })
   active!: number;
@@ -539,10 +539,10 @@ beforeEach(async () => {
 });
 
 async function seedTag(name: string): Promise<Tag> {
-  return Tag.create({ name } as Partial<Tag>);
+  return Tag.create({ name } as never);
 }
 async function seedPost(userId: number, title: string): Promise<Post> {
-  return Post.create({ userId, title } as Partial<Post>);
+  return Post.create({ userId, title } as never);
 }
 async function linkPostTag(postId: number, tagId: number): Promise<void> {
   await db`INSERT INTO post_tags (post_id, tag_id) VALUES (${postId}, ${tagId})`;
@@ -639,7 +639,7 @@ describe("BaseModel — column casting", () => {
 
     await JsonModel.create({
       permissions: ["read", "write"],
-    } as Partial<JsonModel>);
+    } as never);
     const found = await JsonModel.query().first();
     expect(Array.isArray(found?.permissions)).toBe(true);
     expect(found?.permissions).toContain("read");
@@ -661,11 +661,11 @@ describe("BaseModel — column casting", () => {
 
     const created = await JsonUpdateModel.create({
       permissions: ["read"],
-    } as Partial<JsonUpdateModel>);
+    } as never);
     created.permissions = ["read", "write"];
     await created.save();
 
-    const raw = await db<{ permissions: string }[]>`
+    const raw = await db<{ permissions: string }>`
       SELECT permissions FROM cast_json_update_test WHERE id = ${created.id}
     `;
     expect(typeof raw[0]?.permissions).toBe("string");
@@ -692,7 +692,7 @@ describe("BaseModel — column casting", () => {
 
     const created = await ReactiveModel.create({
       settings: { roles: ["user"], profile: { theme: "light" } },
-    } as Partial<ReactiveModel>);
+    } as never);
 
     const found = await ReactiveModel.query().first();
     if (!found) throw new Error("ReactiveModel not found");
@@ -700,7 +700,7 @@ describe("BaseModel — column casting", () => {
     found.settings.profile.theme = "dark";
     await found.save();
 
-    const raw = await db<{ settings: string }[]>`
+    const raw = await db<{ settings: string }>`
       SELECT settings FROM cast_reactive_test WHERE id = ${created.id}
     `;
     const parsed = JSON.parse(raw[0]!.settings);
@@ -721,12 +721,12 @@ describe("BaseModel — column casting", () => {
       @column({ cast: "boolean" }) isAdmin!: boolean;
     }
 
-    await BoolModel.create({ isAdmin: true } as Partial<BoolModel>);
+    await BoolModel.create({ isAdmin: true } as never);
     const found = await BoolModel.query().first();
     expect(typeof found?.isAdmin).toBe("boolean");
     expect(found?.isAdmin).toBe(true);
 
-    await BoolModel.create({ isAdmin: false } as Partial<BoolModel>);
+    await BoolModel.create({ isAdmin: false } as never);
     const all = await BoolModel.query().orderBy("id").get();
     expect(all[0]!.isAdmin).toBe(true);
     expect(all[1]!.isAdmin).toBe(false);
@@ -745,8 +745,8 @@ describe("BaseModel — column casting", () => {
       @column({ cast: "boolean" }) isActive!: boolean;
     }
 
-    await BoolWhereModel.create({ isActive: true } as Partial<BoolWhereModel>);
-    await BoolWhereModel.create({ isActive: false } as Partial<BoolWhereModel>);
+    await BoolWhereModel.create({ isActive: true } as never);
+    await BoolWhereModel.create({ isActive: false } as never);
 
     const active = await BoolWhereModel.query().where("is_active", true).get();
     expect(active).toHaveLength(1);
@@ -767,7 +767,7 @@ describe("BaseModel — column casting", () => {
     }
 
     const now = new Date("2025-01-15T12:00:00Z");
-    await DateModel.create({ verifiedAt: now } as Partial<DateModel>);
+    await DateModel.create({ verifiedAt: now } as never);
     const found = await DateModel.query().first();
     expect(found?.verifiedAt).toBeInstanceOf(Date);
     expect((found?.verifiedAt as Date).toISOString()).toBe(now.toISOString());
@@ -788,7 +788,7 @@ describe("BaseModel — column casting", () => {
 
     await IntModel.create({
       score: "42" as unknown as number,
-    } as Partial<IntModel>);
+    } as never);
     const found = await IntModel.query().first();
     expect(typeof found?.score).toBe("number");
     expect(found?.score).toBe(42);
@@ -809,7 +809,7 @@ describe("BaseModel — column casting", () => {
 
     await FloatModel.create({
       price: "9.99" as unknown as number,
-    } as Partial<FloatModel>);
+    } as never);
     const found = await FloatModel.query().first();
     expect(typeof found?.price).toBe("number");
     expect(found?.price).toBe(9.99);
@@ -828,7 +828,7 @@ describe("BaseModel — column casting", () => {
       @column({ cast: "array" }) tags!: string[];
     }
 
-    await ArrayModel.create({ tags: ["bun", "reno"] } as Partial<ArrayModel>);
+    await ArrayModel.create({ tags: ["bun", "reno"] } as never);
     const found = await ArrayModel.query().first();
     expect(Array.isArray(found?.tags)).toBe(true);
     expect(found?.tags).toEqual(["bun", "reno"]);
@@ -855,7 +855,7 @@ describe("BaseModel — column casting", () => {
 
     await CustomCastModel.create({
       flags: ["a", "b", "c"],
-    } as Partial<CustomCastModel>);
+    } as never);
     const found = await CustomCastModel.query().first();
     expect(found?.flags).toEqual(["a", "b", "c"]);
 
@@ -917,12 +917,12 @@ describe("BaseModel — type-based auto-casting", () => {
       @column({ type: "boolean" }) isAdmin!: boolean;
     }
 
-    await TypeBoolModel.create({ isAdmin: true } as Partial<TypeBoolModel>);
+    await TypeBoolModel.create({ isAdmin: true } as never);
     const row = await TypeBoolModel.query().first();
     expect(typeof row?.isAdmin).toBe("boolean");
     expect(row?.isAdmin).toBe(true);
 
-    await TypeBoolModel.create({ isAdmin: false } as Partial<TypeBoolModel>);
+    await TypeBoolModel.create({ isAdmin: false } as never);
     const all = await TypeBoolModel.query().orderBy("id").get();
     expect(all[0]?.isAdmin).toBe(true);
     expect(all[1]?.isAdmin).toBe(false);
@@ -943,8 +943,8 @@ describe("BaseModel — type-based auto-casting", () => {
 
     await TypeBoolWriteModel.create({
       isAdmin: true,
-    } as Partial<TypeBoolWriteModel>);
-    const raw = await db<{ is_admin: number }[]>`SELECT is_admin FROM type_bool_write_test LIMIT 1`;
+    } as never);
+    const raw = await db<{ is_admin: number }>`SELECT is_admin FROM type_bool_write_test LIMIT 1`;
     expect(raw[0]?.is_admin).toBe(1);
 
     await db`DROP TABLE type_bool_write_test`;
@@ -963,7 +963,7 @@ describe("BaseModel — type-based auto-casting", () => {
 
     await TypeJsonModel.create({
       settings: { theme: "dark", lang: "en" },
-    } as Partial<TypeJsonModel>);
+    } as never);
     const found = await TypeJsonModel.query().first();
     expect(typeof found?.settings).toBe("object");
     expect((found?.settings as Record<string, unknown>)?.["theme"]).toBe("dark");
@@ -984,8 +984,8 @@ describe("BaseModel — type-based auto-casting", () => {
 
     await TypeJsonWriteModel.create({
       settings: { x: 1 },
-    } as Partial<TypeJsonWriteModel>);
-    const raw = await db<{ settings: string }[]>`SELECT settings FROM type_json_write_test LIMIT 1`;
+    } as never);
+    const raw = await db<{ settings: string }>`SELECT settings FROM type_json_write_test LIMIT 1`;
     expect(typeof raw[0]?.settings).toBe("string");
     expect(raw[0]?.settings).toContain('"x"');
 
@@ -1044,7 +1044,7 @@ describe("BaseModel — static hidden", () => {
       active: 1,
       score: 0,
     });
-    const rows = await db<{ email: string }[]>`SELECT email FROM users WHERE id = ${user.id}`;
+    const rows = await db<{ email: string }>`SELECT email FROM users WHERE id = ${user.id}`;
     expect(rows[0]?.email).toBe("carol@example.com");
   });
 
@@ -1124,7 +1124,7 @@ describe("BaseModel — static hashable", () => {
 
   it("hash is persisted to the database correctly", async () => {
     const user = await HashedUser.create({ name: "persisted", active: 1, score: 0 });
-    const row = await db<{ name: string }[]>`SELECT name FROM users WHERE id = ${user.id}`;
+    const row = await db<{ name: string }>`SELECT name FROM users WHERE id = ${user.id}`;
     expect(row[0]?.name).toBe(user.name);
     expect(await Bun.password.verify("persisted", row[0]?.name ?? "")).toBe(true);
   });
@@ -1152,8 +1152,6 @@ describe("BaseModel — transitionTo()", () => {
     cancelled: { canTransitionTo: [] as const },
   } as const;
 
-  type TicketStatus = keyof typeof TicketStates;
-
   @table("users")
   class Ticket extends State(BaseModel) {
     static override states = TicketStates;
@@ -1176,27 +1174,27 @@ describe("BaseModel — transitionTo()", () => {
   });
 
   it("transitions to a valid target state", async () => {
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     await t.transitionTo("in_progress");
     expect(t.status).toBe("in_progress");
   });
 
   it("persists the new state to the database", async () => {
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     await t.transitionTo("in_progress");
-    const row = await db<{ name: string }[]>`SELECT name FROM users WHERE id = ${t.id}`;
+    const row = await db<{ name: string }>`SELECT name FROM users WHERE id = ${t.id}`;
     expect(row[0]?.name).toBe("in_progress");
   });
 
   it("returns [false, StateError] for an illegal transition", async () => {
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     const [ok, err] = await t.transitionTo("resolved");
     expect(ok).toBe(false);
     expect(err).toBeInstanceOf(StateError);
   });
 
   it("StateError message names the model and states", async () => {
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     const [, err] = await t.transitionTo("resolved");
     expect(err?.message).toContain("Ticket");
     expect(err?.message).toContain("open");
@@ -1205,7 +1203,7 @@ describe("BaseModel — transitionTo()", () => {
   });
 
   it("returns [false, StateError] for a terminal state with no exits", async () => {
-    const t = await Ticket.create({ name: "resolved", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "resolved", active: 1, score: 0 } as never);
     const [ok] = await t.transitionTo("open");
     expect(ok).toBe(false);
   });
@@ -1229,7 +1227,7 @@ describe("BaseModel — transitionTo()", () => {
       events.push(`${from}→${to}`);
     });
 
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     await t.transitionTo("in_progress");
     expect(events).toEqual(["open→in_progress"]);
   });
@@ -1240,7 +1238,7 @@ describe("BaseModel — transitionTo()", () => {
       events.push("cancelled");
     });
 
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     await t.transitionTo("in_progress");
     expect(events).toHaveLength(0);
   });
@@ -1251,7 +1249,7 @@ describe("BaseModel — transitionTo()", () => {
       log.push(`${from}→${to}`);
     });
 
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     await t.transitionTo("in_progress");
     await t.transitionTo("resolved");
     expect(log).toEqual(["open→in_progress", "in_progress→resolved"]);
@@ -1282,12 +1280,12 @@ describe("BaseModel — transitionTo()", () => {
       }
     }
 
-    const pt = await PaidTicket.create({ name: "pending", active: 1, score: 0 });
+    const pt = await PaidTicket.create({ name: "pending", active: 1, score: 0 } as never);
     const [ok, err] = await pt.transitionTo("active");
     expect(ok).toBe(false);
     expect(err).toBeInstanceOf(StateError);
     // Status must not have changed in DB
-    const row = await db<{ name: string }[]>`SELECT name FROM users WHERE id = ${pt.id}`;
+    const row = await db<{ name: string }>`SELECT name FROM users WHERE id = ${pt.id}`;
     expect(row[0]?.name).toBe("pending");
   });
 
@@ -1311,7 +1309,7 @@ describe("BaseModel — transitionTo()", () => {
       }
     }
 
-    const ft = await FalseGuardTicket.create({ name: "pending", active: 1, score: 0 });
+    const ft = await FalseGuardTicket.create({ name: "pending", active: 1, score: 0 } as never);
     const [ok, err] = await ft.transitionTo("active");
     expect(ok).toBe(false);
     expect(err).toBeInstanceOf(StateError);
@@ -1323,14 +1321,14 @@ describe("BaseModel — transitionTo()", () => {
       events.push("hit");
     });
 
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     const [ok] = await t.transitionTo("resolved"); // illegal → blocked, no callbacks fire
     expect(ok).toBe(false);
     expect(events).toHaveLength(0);
   });
 
   it("returns [true] on a successful transition", async () => {
-    const t = await Ticket.create({ name: "open", active: 1, score: 0 });
+    const t = await Ticket.create({ name: "open", active: 1, score: 0 } as never);
     const result = await t.transitionTo("in_progress");
     expect(result).toEqual([true]);
   });
@@ -1372,21 +1370,21 @@ describe("BaseModel — forceState()", () => {
 
   it("sets the state directly, skipping canTransitionTo", async () => {
     // pending → expired is not in LockedStates.pending.canTransitionTo
-    const s = await Sub.create({ name: "pending", active: 1, score: 0 });
+    const s = await Sub.create({ name: "pending", active: 1, score: 0 } as never);
     await s.forceState("expired");
     expect(s.status).toBe("expired");
   });
 
   it("persists the forced state to the database", async () => {
-    const s = await Sub.create({ name: "pending", active: 1, score: 0 });
+    const s = await Sub.create({ name: "pending", active: 1, score: 0 } as never);
     await s.forceState("expired");
-    const row = await db<{ name: string }[]>`SELECT name FROM users WHERE id = ${s.id}`;
+    const row = await db<{ name: string }>`SELECT name FROM users WHERE id = ${s.id}`;
     expect(row[0]?.name).toBe("expired");
   });
 
   it("skips the guard on the target state", async () => {
     // guard on 'active' always throws — forceState should still succeed
-    const s = await Sub.create({ name: "pending", active: 1, score: 0 });
+    const s = await Sub.create({ name: "pending", active: 1, score: 0 } as never);
     await expect(s.forceState("active")).resolves.toBeDefined();
     expect(s.status).toBe("active");
   });
@@ -1400,19 +1398,19 @@ describe("BaseModel — forceState()", () => {
       events.push("wildcard");
     });
 
-    const s = await Sub.create({ name: "pending", active: 1, score: 0 });
+    const s = await Sub.create({ name: "pending", active: 1, score: 0 } as never);
     await s.forceState("expired");
     expect(events).toHaveLength(0);
   });
 
   it("returns `this` for chaining", async () => {
-    const s = await Sub.create({ name: "pending", active: 1, score: 0 });
+    const s = await Sub.create({ name: "pending", active: 1, score: 0 } as never);
     expect(await s.forceState("expired")).toBe(s);
   });
 
   it("throws in production (APP_ENV=production)", async () => {
     Bun.env["APP_ENV"] = "production";
-    const s = await Sub.create({ name: "pending", active: 1, score: 0 });
+    const s = await Sub.create({ name: "pending", active: 1, score: 0 } as never);
     await expect(s.forceState("expired")).rejects.toThrow(/production/);
   });
 });
@@ -1441,7 +1439,7 @@ describe("BaseModel — stateField override", () => {
     const doc = await Document.create({ name: "draft", active: 1, score: 0 });
     await doc.transitionTo("review");
     expect(doc.name).toBe("review");
-    const row = await db<{ name: string }[]>`SELECT name FROM users WHERE id = ${doc.id}`;
+    const row = await db<{ name: string }>`SELECT name FROM users WHERE id = ${doc.id}`;
     expect(row[0]?.name).toBe("review");
   });
 

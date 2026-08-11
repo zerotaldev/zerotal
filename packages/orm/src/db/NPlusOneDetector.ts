@@ -27,7 +27,7 @@ export class NPlusOneError extends ZerotalError {
   readonly count: number;
 
   constructor(fingerprint: string, count: number) {
-    const sql = fingerprint.replace(/\x00/g, "?");
+    const sql = fingerprint.replaceAll("\x00", "?");
     super(
       `NPlusOneError: The query\n\n` +
         `  ${sql}\n\n` +

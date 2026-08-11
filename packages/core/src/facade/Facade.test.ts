@@ -14,7 +14,7 @@ import { createFacade } from "./Facade.ts";
 class TestEvent {}
 let hit = false;
 class TestListener {
-  handle(e: TestEvent) {
+  handle(_e: TestEvent) {
     hit = true;
   }
 }

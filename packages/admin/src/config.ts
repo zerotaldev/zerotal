@@ -99,6 +99,12 @@ export interface AdminConfigShape {
   plugins?: Record<string, boolean>;
 }
 
+/**
+ * The raw defaults `AdminConfig()` merges onto. Apps configure the panel through
+ * that factory rather than reaching for this object.
+ *
+ * @internal
+ */
 export const DEFAULT_ADMIN_CONFIG: AdminConfigShape = {
   path: "/admin",
   brand: "Zerotal",

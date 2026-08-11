@@ -4,11 +4,115 @@ All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
 follows the Zerotal monorepo's unified versioning.
 
-**Maturity: `experimental`** — matching this package's `maturity` field. Flow shares the
-monorepo's version line but not the stable packages' API guarantees; it may change
-between minor versions.
+**Maturity: `stable`** — matching this package's `maturity` field. The public API
+follows SemVer strictly: anything importable without an `@internal` marker keeps its
+shape for the rest of the 1.x line, and `api-surface.md` is diffed by CI on every
+change.
 
 ## [Unreleased]
+
+### Added
+
+- **`@zerotal/flow/browser` — drive a real browser against a running app.** The suite
+  had 568 tests and could not fail the way production fails: `FlowTest` calls actions
+  directly, so it never renders an attribute the client must find, never dispatches a
+  DOM event, and never opens the socket. Every silent failure Flow has shipped lived in
+  exactly that gap — a `<select>` that lost its binding, a click cancelled by
+  `preventDefault`, an action the server refused and mentioned only to `console.error`.
+  Depth was never the problem; shape was.
+
+  `FlowBrowser` drives headless Chrome over the DevTools Protocol, so a click is a real
+  click travelling through the page's own delegated listener, over a real socket, to the
+  real dispatcher, and back as a real patch:
+
+  ```ts
+  const page = await FlowBrowser.open(`http://localhost:${port}/counter`);
+  await page.click("#increment");
+  await page.waitForText("#count", "1");
+  expect(page.consoleErrors()).toEqual([]);
+  ```
+
+  Console output is captured deliberately rather than incidentally: a refused action is
+  reported _only_ there, so a harness that cannot see the console cannot see the
+  failure. Waits are polls with timeouts that name what they were waiting for and what
+  the console said, so a break reads as a diagnosis instead of a mystery.
+
+  No Puppeteer, no Playwright — it speaks CDP over Bun's own WebSocket and drives a
+  browser the machine already has, matching the zero-dependency posture of the telemetry
+  tracer and the media image driver. `FlowBrowser.available()` lets a suite skip where no
+  browser is installed rather than fail; `CHROME_PATH` pins a binary for CI.
+
+- **A compiled-versus-runtime parity suite.** Flow renders a page one of two ways, and
+  when the AOT compiler bails the runtime renderer infers bindings by observing property
+  reads instead of reading intent from the AST — necessarily weaker, and the gap between
+  them is where the field reports kept finding silent failures. "Weaker mechanism" is not
+  the same claim as "different output", so the output is now pinned: each case is written
+  once, compiled _and_ imported as a real class, and both paths must emit the same
+  bindings. They agree across the corpus, including the two shapes that were reported as
+  broken. A case the compiler bails on still has to carry its binding through the
+  fallback.
+
+### Fixed
+
+- **`data-flow-connection` is stamped on a page that connects normally.** The attribute
+  was only written when the connection state _changed_, and the bridge starts optimistic
+  (`_isOnline = true`), so a socket that connected on the first attempt — the normal case
+  — left the attribute absent entirely. A stylesheet or a readiness check keyed on
+  `[data-flow-connection="online"]` would wait forever on a page that was in fact
+  perfectly connected. Found by the browser harness on its first run, which is a fair
+  summary of why the harness exists.
+
+### Changed
+
+- **Maturity is now `stable`** — the public API follows SemVer strictly for the rest of
+  the 1.x line. Both gates that stood in the way are closed in this release, and neither
+  was closed by relabelling:
+
+  - The **bridge is covered by a real browser**, so the layer that produced every silent
+    failure Flow has shipped is now exercised by tests that fail when it breaks. The gap
+    was never depth — it was that 568 tests all stopped short of the socket.
+  - The **two render paths are pinned to the same output**, so the "compiled is stronger
+    than runtime" caveat is now a statement about mechanism rather than an unmeasured
+    behavioural risk.
+
+  The supporting evidence: the deepest test coverage in the monorepo, correct
+  `@internal` discipline across 61 markers, thirteen documentation pages, dependencies
+  only on stable packages, and an API surface snapshotted and CI-diffed on every change.
+  The one breaking change Flow has ever made was 1.3.0's mixin-composition rename; 1.4.0
+  and this release both followed it without one.
+
+  Being honest about what the label does not claim: Flow has less production exposure
+  than the core and ORM layers, and the parity suite characterises a corpus of binding
+  shapes rather than proving the two renderers identical for every program. What
+  `stable` commits to is that the API will not move under you, and that is a promise
+  this release can keep.
+
+- **A client expression that writes an `@expose` prop now syncs to the server.**
+  `onClick={() => (this.selected = row.id)}` updated the reactive store and nothing
+  else — `render()` runs on the server, so a template branch keyed on the write
+  (`this.selected === row.id ? <RowDetail /> : null`) never appeared, with no error
+  anywhere. Worse, it _worked_ whenever some later action happened to flush the
+  pending write, so the mental model "`@expose` state is reactive" was true for
+  `flow:model` inputs and intermittently false for expression writes.
+
+  Writes made during a client-expression evaluation are now recorded; when the
+  expression dispatches no action on that component itself, one `$rerender` follows —
+  the frame's `updates` carry every pending write through the same allowlist and
+  `updating()`/`updated()` hooks as any action, and the re-render is patched back.
+  No loading state is shown (it is a sync, not a user action), an expression that
+  also calls a server action syncs nothing extra (the action's frame already carries
+  the writes), and a write that lands back on the canonical value sends nothing.
+  State the server should never see belongs in `this.store()`, which stays
+  client-only. `$flow.$refresh()` remains for forcing a full `onMount` re-run.
+
+### Fixed
+
+- **The dev timeline pill docks bottom-left, as its own comment always said.** The CSS
+  put it at `top: 88px` at maximum z-index — exactly where a left-rail's first
+  navigation item lives, which it then covered and swallowed clicks for. It now sits at
+  bottom-left with the frame list opening upward, and the corner is configurable via
+  `data-flow-tl-corner="top-right"` (any corner) on `<html>` or `<body>`. Only affects
+  the standalone fallback pill; the devtools-panel Timeline tab is unchanged.
 
 ## [1.4.0] — 2026-08-10
 

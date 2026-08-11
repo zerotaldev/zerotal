@@ -69,6 +69,27 @@ A consolidated cheat-sheet for `@zerotal/inertia`. Each entry links to the secti
 | `.matchOn(path)`                    | Replace items matching the key at `path`.                                                                            |
 | `.once(expiresAt?)`                 | Resolve a single time; the client remembers it across navigations. See [once props](/docs/inertia/props#once-props). |
 
+Each helper returns a wrapper class — `OptionalProp`, `AlwaysProp`, `DeferProp`,
+`MergeProp`, `InfiniteScrollProp`, all extending `InertiaProp`. You build them
+through the helpers above rather than constructing them; the names matter only for
+annotating a variable or narrowing a union, and `InertiaProp` is the type to accept
+when a function takes "any wrapped prop".
+
+## Errors
+
+| Error                           | Thrown when                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| `InertiaError`                  | Base class for the rest — catch this to handle any Inertia failure.                |
+| `InvalidComponentError`         | A page component name is empty or not a string.                                    |
+| `InertiaTemplateNotLoadedError` | The root template was never loaded, so there is no HTML shell to render a page in. |
+
+## Server-side rendering
+
+`SsrHandler` is the class behind `InertiaConfig({ ssr: true })` — it owns the
+`POST /__ssr` route the config registers. Configure SSR through the config flag; the
+class is exported for tests that drive the handler directly. See
+[SSR](/docs/inertia/ssr).
+
 ## Configuration options
 
 Set in `config/inertia.ts` via `InertiaConfig({ … })` — every field is optional.

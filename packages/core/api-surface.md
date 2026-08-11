@@ -29,6 +29,7 @@ class Application = {
   booted: boolean
   close: () => Promise<void>
   defer: {    (token: keyof ContainerBindings, Provider: ProviderClass): Application;    (map: Partial<Record<keyof ContainerBindings, ProviderClass>>): Application;    (providers: DeferrableProviderClass[]): Application;}
+  doctorChecks: readonly DoctorCheck[]
   enableDevWs: () => Application
   environment: Environment
   fileBasedRouting: (config: string | FileRoutingConfig | (FileRoutingEntry & {    dir: string;})) => Application
@@ -38,6 +39,8 @@ class Application = {
   register: (providers: ProviderClass[]) => Application
   registerConcern: (descriptor: ConcernDescriptor) => Application
   registerConfigValidator: (namespace: string, validate: ConfigValidator) => Application
+  registerDoctorCheck: (check: DoctorCheck) => Application
+  routedFiles: string[]
   routing: (config: string | RoutingConfig | (RoutingEntry & {    file: string;})) => Application
   serverMetrics: () => {    pendingRequests: number;    pendingWebSockets: number;}
   start: (port?: number) => Promise<void>
@@ -632,6 +635,8 @@ const App = {    readonly container: Container;    readonly instance: () => Appl
 
 const Artisan = {    call(commandName: string, parameters?: Record<string, string | boolean | number>): Promise<ArtisanResult>;}
 
+const builtinDoctorChecks = DoctorCheck[]
+
 const Config = ConfigManager
 
 const Events = Emitter
@@ -717,6 +722,8 @@ function rescue = <T>(callback: () => Promise<T> | T, fallback: T | ((error: unk
 function rescueSync = <T>(callback: () => T, fallback: T | ((error: unknown) => T)) => T
 
 function route = (name: string, params?: Record<string, string | number>) => string
+
+function runDoctor = (app: Application, extraChecks?: DoctorCheck[]) => Promise<DoctorReportEntry[]>
 
 function safeEqual = (a: string, b: string) => boolean
 
@@ -828,6 +835,7 @@ interface ContainerBindings = {
   monitor: ResolvedMonitorConfig
   notifications: NotificationManager
   queue: QueueManager
+  scheduler.runs: ScheduleRunStore
   scheduler: SchedulerManager
   session.driver: SessionDriver
   session: SessionAccessor
@@ -858,6 +866,23 @@ interface CorsOptions = {
   maxAge?: number
   methods?: string[]
   origin?: string | string[] | ((origin: string) => boolean)
+}
+
+interface DoctorCheck = {
+  id: string
+  label: string
+  run: (app: Application) => DoctorCheckResult | Promise<DoctorCheckResult>
+}
+
+interface DoctorCheckResult = {
+  fix?: string
+  message: string
+  status: 'ok' | 'warn' | 'fail'
+}
+
+interface DoctorReportEntry = {
+  check: DoctorCheck
+  result: DoctorCheckResult
 }
 
 interface FileRouteContext = {
@@ -1346,6 +1371,34 @@ class CssBuildCommand = {
   static commandName: string
   static description: string
   static flags: ({    name: string;    short: string;    type: 'string';    description: string;    default: string;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;})[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
+class DoctorCommand = {
+  new (): DoctorCommand
+  static args: ArgDef[]
+  static commandName: string
+  static description: string
+  static flags: FlagDef[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter
@@ -2129,7 +2182,7 @@ interface ConfigValidationContext = {
 
 interface ConventionsConfig = {
   enabled: boolean
-  paths: {    providers: string;    middleware: string;    models: string;    observers: string;    policies: string;    listeners: string;    events: string;    jobs: string;    schedules: string;    validators: string;}
+  paths: {    providers: string;    middleware: string;    models: string;    observers: string;    policies: string;    listeners: string;    events: string;    jobs: string;    schedules: string;    validators: string;    commands: string;}
 }
 
 interface RegisteredConfigValidator = {
@@ -2143,7 +2196,7 @@ type ConfigIssueLevel = 'error' | 'warning'
 
 type ConfigMap = {    [x: string]: Record<string, unknown>;}
 
-type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
+type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
 
 type ConfigValidator = (value: unknown, ctx: ConfigValidationContext) => ConfigIssue[] | void
 
@@ -2181,11 +2234,13 @@ class DevReloadMiddleware = {
 
 const DEV_RELOAD_CLIENT = string
 
-function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<{    success: boolean;    logs: unknown[];}>
+function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
 
-function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<{    success: boolean;    logs: unknown[];}>
+function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>
 
 function detectCssPlugins = (cwd: string) => Promise<BunPlugin[]>
+
+function isDevOrchestrated = (env?: Record<string, string | undefined>, argv?: readonly string[]) => boolean
 
 function pruneBuildOutput = (outdir: string, outputs: readonly {    path: string;}[]) => Promise<string[]>
 
@@ -2203,6 +2258,7 @@ interface AssetBuildConfig = {
 
 interface BuildResult = {
   logs?: unknown[]
+  skipped?: boolean
   success: boolean
 }
 
@@ -2825,7 +2881,7 @@ interface LoggingConfigShape = {
 
 type ChannelConfig = {    driver: 'console';    level?: LogLevel;    format?: 'json' | 'pretty';} | {    driver: 'single';    level?: LogLevel;    path: string;} | {    driver: 'daily';    level?: LogLevel;    path: string;    days?: number;} | {    driver: 'stack';    level?: LogLevel;    channels: string[];} | {    driver: 'null';}
 
-type LogLevel = 'error' | 'info' | 'debug' | 'warn' | 'fatal'
+type LogLevel = 'error' | 'info' | 'warn' | 'debug' | 'fatal'
 
 type TableData = Record<string, unknown> | readonly Record<string, unknown>[]
 

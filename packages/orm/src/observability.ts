@@ -100,7 +100,7 @@ export function installOrmObservability(app: Application): () => void {
         if (e.ctx) store.markNPlus(e.ctx);
         store.recordEvent({
           kind: "nplus",
-          label: e.fingerprint.replace(/\x00/g, "?"),
+          label: e.fingerprint.replaceAll("\x00", "?"),
           status: "warn",
           route: e.ctx ? _ctxPath(e.ctx) : null,
           data: { count: e.count },
@@ -161,7 +161,7 @@ export function installOrmObservability(app: Application): () => void {
       }),
       FrameworkEvents.on(NPlusOneDetected, (e) => {
         if (!e.ctx) return;
-        trace.bufferWarning(e.ctx, { sql: e.fingerprint.replace(/\x00/g, "?"), count: e.count });
+        trace.bufferWarning(e.ctx, { sql: e.fingerprint.replaceAll("\x00", "?"), count: e.count });
       }),
     );
   }

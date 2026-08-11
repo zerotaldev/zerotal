@@ -30,6 +30,7 @@ export interface ConventionsConfig {
     jobs: string;
     schedules: string;
     validators: string;
+    commands: string;
   };
 }
 
@@ -121,6 +122,7 @@ const DEFAULT_CONVENTION_PATHS: ConventionsConfig["paths"] = {
   jobs: "app/jobs",
   schedules: "app/schedules",
   validators: "app/validators",
+  commands: "app/commands",
 };
 
 // ── Full shape (resolved — what the config store holds after AppConfig()) ────

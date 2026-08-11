@@ -4,9 +4,45 @@ All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
 follows the Zerotal monorepo's unified versioning.
 
-**Maturity: `experimental`**
+**Maturity: `stable`**
 
 ## [Unreleased]
+
+### Added
+
+- **Tests for the three riskiest untested modules**, chosen by consequence rather
+  than by coverage percentage:
+
+  - **`MonitorAuthMiddleware`** — the only thing between the public internet and a
+    page showing recent requests, their users, their IPs and the SQL the app ran.
+    Pinned against the two ways a gate fails open without anyone noticing: a
+    forgotten `await` on an async predicate (a promise is always truthy, so a
+    denying predicate would admit everyone) and a predicate that throws. Also pins
+    that the _default_ predicate survives config merging as a callable — `deepMerge`
+    cannot carry a function through, and the reattach only fires when the caller
+    supplied one.
+  - **`RingBuffer` / `TimeWindow` / `percentile`** — the bounded structures that
+    keep monitoring memory from growing without limit. A buffer that quietly stops
+    evicting is a memory leak in the observability layer, and an off-by-one
+    percentile misreports latency in the direction nobody checks.
+  - **`renderPrometheus`** — the one output a machine parses rather than a person
+    reads, where a scraper rejects a malformed response without telling the
+    application. Covers label escaping for route paths carrying a quote, a
+    backslash or a newline, and metric-name sanitisation for display-string gauge
+    labels — all of which come from application data, so none are hypothetical.
+
+  Monitor's suite goes from 49 tests to 81.
+
+### Changed
+
+- **Maturity is now `stable`** — the public API follows SemVer strictly for the rest
+  of the 1.x line. Both gates are closed: `@zerotal/flow` and `@zerotal/flow-ui` (which
+  the panel renders through) are themselves stable now, and the coverage gap is closed
+  where it mattered.
+
+  Worth stating plainly, since the surface looks larger than it is: of 685 lines of
+  public API, 65 entries are type definitions describing the snapshot shape and only
+  11 are callable entry points — every one of which is documented.
 
 ## [1.1.0] — 2026-08-08
 

@@ -64,6 +64,7 @@ export interface MediaProvider {
 /** Image types the picker shows a thumbnail for rather than an icon. */
 const IMAGE_TYPES = /^image\/(png|jpe?g|gif|webp|avif|svg\+xml)$/i;
 
+/** @internal */
 export function isImage(item: MediaItem): boolean {
   return IMAGE_TYPES.test(item.mime);
 }
@@ -203,7 +204,10 @@ export interface UploadedFileLike {
   store(directory: string, disk?: string, filename?: string): Promise<string>;
 }
 
-/** Whether a bound value is an upload rather than an already-stored path. */
+/** Whether a bound value is an upload rather than an already-stored path.
+ *
+ * @internal
+ */
 export function isUpload(value: unknown): value is UploadedFileLike {
   return (
     value != null &&

@@ -6,6 +6,13 @@ export class SchedulerManager {
   private _tasks: Map<string, ScheduledTask> = new Map();
   private _started: boolean = false;
 
+  /**
+   * Schedule classes found declaring config as `static` during convention
+   * discovery (which registers nothing — config is instance properties).
+   * Written by the schedules concern, read by the scheduler's doctor check.
+   */
+  readonly staticConfigFindings: Array<{ className: string; keys: string[] }> = [];
+
   add(name: string, cronExpression: string, callback: TaskCallback): ScheduledTask {
     const task = new ScheduledTask(name, cronExpression, callback);
     this._tasks.set(name, task);

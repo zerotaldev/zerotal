@@ -4,9 +4,43 @@ All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
 follows the Zerotal monorepo's unified versioning.
 
-**Maturity: `experimental`**
+**Maturity: `stable`**
 
 ## [Unreleased]
+
+### Added
+
+- **The component reference documents all 53 components, and cannot drift again.**
+  The page covered 20 of them. Nothing failed when a component shipped without a
+  section, so the gap grew quietly — and a SemVer promise over an undocumented
+  surface is not one anyone can use, which is what kept this package out of
+  `stable`.
+
+  The material was already here: `registry.ts` knows every component and
+  `src/docs/spec.tsx` carries a usage example, a rendered preview and a props
+  table for each. What was missing was the generator that turns them into the
+  page — `scripts/generate-docs.ts` referenced in `render.ts` had never been
+  written. It exists now, and every component gained install instructions, a live
+  preview and a props table in the process.
+
+  `bun run docs:components:check` fails when the page is out of date and runs in
+  CI, so a component added without a spec is a red build rather than a silent
+  hole. Only the region between the generated markers is rewritten, so the
+  hand-written guide around it — setup, theming, copy-in vs import, testing —
+  is preserved.
+
+### Changed
+
+- **Maturity is now `stable`** — the public API follows SemVer strictly for the rest
+  of the 1.x line. The documentation gate is closed, and closed durably: the reference
+  is generated from the registry and gated in CI rather than maintained by hand, which
+  is what stops it regressing to a third of the surface again.
+
+  The supporting evidence: every one of the 53 components is asserted to render
+  (`docs.test.tsx` checks each spec preview produces non-empty HTML), 119 tests cover
+  behaviour on top of that, the API surface is snapshotted and CI-diffed, there has
+  never been a breaking change, and both dependencies — `@zerotal/core` and
+  `@zerotal/flow` — are themselves stable.
 
 ## [1.0.3] — 2026-08-07
 

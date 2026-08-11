@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Altering a Postgres column no longer silently drops its NOT NULL and DEFAULT.**
+  The regexes that split a column definition into `ALTER COLUMN` sub-commands
+  carried literal backspace characters (0x08) where `\b` word boundaries were
+  meant — invisible in any editor, and impossible for either pattern to match. So
+  `table.string("email").notNullable().alter()` emitted `DROP NOT NULL`, and a
+  declared default emitted `DROP DEFAULT`, on every alter, regardless of the
+  definition. Found by the lint ratchet (`no-control-regex`); the statements are
+  now pinned by tests, not just the column name.
+
 ## [1.4.0] — 2026-08-10
 
 ### Added

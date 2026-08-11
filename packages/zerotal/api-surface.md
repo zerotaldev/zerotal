@@ -29,6 +29,7 @@ class Application = {
   booted: boolean
   close: () => Promise<void>
   defer: {    (token: keyof ContainerBindings, Provider: ProviderClass): Application;    (map: Partial<Record<keyof ContainerBindings, ProviderClass>>): Application;    (providers: DeferrableProviderClass[]): Application;}
+  doctorChecks: readonly DoctorCheck[]
   enableDevWs: () => Application
   environment: Environment
   fileBasedRouting: (config: string | FileRoutingConfig | (FileRoutingEntry & {    dir: string;})) => Application
@@ -38,6 +39,8 @@ class Application = {
   register: (providers: ProviderClass[]) => Application
   registerConcern: (descriptor: ConcernDescriptor) => Application
   registerConfigValidator: (namespace: string, validate: ConfigValidator) => Application
+  registerDoctorCheck: (check: DoctorCheck) => Application
+  routedFiles: string[]
   routing: (config: string | RoutingConfig | (RoutingEntry & {    file: string;})) => Application
   serverMetrics: () => {    pendingRequests: number;    pendingWebSockets: number;}
   start: (port?: number) => Promise<void>
@@ -632,6 +635,8 @@ const App = {    readonly container: Container;    readonly instance: () => Appl
 
 const Artisan = {    call(commandName: string, parameters?: Record<string, string | boolean | number>): Promise<ArtisanResult>;}
 
+const builtinDoctorChecks = DoctorCheck[]
+
 const Config = ConfigManager
 
 const Events = Emitter
@@ -717,6 +722,8 @@ function rescue = <T>(callback: () => Promise<T> | T, fallback: T | ((error: unk
 function rescueSync = <T>(callback: () => T, fallback: T | ((error: unknown) => T)) => T
 
 function route = (name: string, params?: Record<string, string | number>) => string
+
+function runDoctor = (app: Application, extraChecks?: DoctorCheck[]) => Promise<DoctorReportEntry[]>
 
 function safeEqual = (a: string, b: string) => boolean
 
@@ -828,6 +835,7 @@ interface ContainerBindings = {
   monitor: ResolvedMonitorConfig
   notifications: NotificationManager
   queue: QueueManager
+  scheduler.runs: ScheduleRunStore
   scheduler: SchedulerManager
   session.driver: SessionDriver
   session: SessionAccessor
@@ -858,6 +866,23 @@ interface CorsOptions = {
   maxAge?: number
   methods?: string[]
   origin?: string | string[] | ((origin: string) => boolean)
+}
+
+interface DoctorCheck = {
+  id: string
+  label: string
+  run: (app: Application) => DoctorCheckResult | Promise<DoctorCheckResult>
+}
+
+interface DoctorCheckResult = {
+  fix?: string
+  message: string
+  status: 'ok' | 'warn' | 'fail'
+}
+
+interface DoctorReportEntry = {
+  check: DoctorCheck
+  result: DoctorCheckResult
 }
 
 interface FileRouteContext = {
@@ -3030,6 +3055,34 @@ class CssBuildCommand = {
   write: (msg: string) => void
 }
 
+class DoctorCommand = {
+  new (): DoctorCommand
+  static args: ArgDef[]
+  static commandName: string
+  static description: string
+  static flags: FlagDef[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class KeyGenerateCommand = {
   new (): KeyGenerateCommand
   static args: never[]
@@ -3791,7 +3844,7 @@ interface ConfigValidationContext = {
 
 interface ConventionsConfig = {
   enabled: boolean
-  paths: {    providers: string;    middleware: string;    models: string;    observers: string;    policies: string;    listeners: string;    events: string;    jobs: string;    schedules: string;    validators: string;}
+  paths: {    providers: string;    middleware: string;    models: string;    observers: string;    policies: string;    listeners: string;    events: string;    jobs: string;    schedules: string;    validators: string;    commands: string;}
 }
 
 interface RegisteredConfigValidator = {
@@ -3805,7 +3858,7 @@ type ConfigIssueLevel = 'error' | 'warning'
 
 type ConfigMap = {    [x: string]: Record<string, unknown>;}
 
-type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
+type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
 
 type ConfigValidator = (value: unknown, ctx: ConfigValidationContext) => ConfigIssue[] | void
 
@@ -3843,11 +3896,13 @@ class DevReloadMiddleware = {
 
 const DEV_RELOAD_CLIENT = string
 
-function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<{    success: boolean;    logs: unknown[];}>
+function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
 
-function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<{    success: boolean;    logs: unknown[];}>
+function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>
 
 function detectCssPlugins = (cwd: string) => Promise<BunPlugin[]>
+
+function isDevOrchestrated = (env?: Record<string, string | undefined>, argv?: readonly string[]) => boolean
 
 function pruneBuildOutput = (outdir: string, outputs: readonly {    path: string;}[]) => Promise<string[]>
 
@@ -3865,6 +3920,7 @@ interface AssetBuildConfig = {
 
 interface BuildResult = {
   logs?: unknown[]
+  skipped?: boolean
   success: boolean
 }
 
@@ -4487,21 +4543,21 @@ interface LoggingConfigShape = {
 
 type ChannelConfig = {    driver: 'console';    level?: LogLevel;    format?: 'json' | 'pretty';} | {    driver: 'single';    level?: LogLevel;    path: string;} | {    driver: 'daily';    level?: LogLevel;    path: string;    days?: number;} | {    driver: 'stack';    level?: LogLevel;    channels: string[];} | {    driver: 'null';}
 
-type LogLevel = 'error' | 'info' | 'debug' | 'warn' | 'fatal'
+type LogLevel = 'error' | 'info' | 'warn' | 'debug' | 'fatal'
 
 type TableData = Record<string, unknown> | readonly Record<string, unknown>[]
 
 ## ./media  `(./src/media.ts)`
 
 class BunImageDriver = {
-  new (maxPixels?: number): BunImageDriver
+  new (maxPixels?: number, maxCropPixels?: number): BunImageDriver
   canEncode: (format: ConversionFormat) => Promise<boolean>
   convert: (bytes: Uint8Array, manipulation: ImageManipulation) => Promise<ImageResult>
   encodableFormats: () => Promise<string[]>
   metadata: (bytes: Uint8Array) => Promise<ImageMetadata | null>
   placeholder: (bytes: Uint8Array) => Promise<string | null>
   readonly name: 'BunImageDriver'
-  readonly supportsCrop: false
+  readonly supportsCrop: true
 }
 
 class ConversionRunner = {
@@ -4715,6 +4771,13 @@ class MediaProvider = {
   replContext: () => Record<string, unknown>
 }
 
+class RasterFormatError = {
+  new (detail: string): RasterFormatError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
 class SharpImageDriver = {
   new (): SharpImageDriver
   canEncode: (format: ConversionFormat) => Promise<boolean>
@@ -4753,11 +4816,11 @@ class UnsupportedManipulationError = {
   readonly status: number
 }
 
-const CONVERTIBLE_MIME_TYPES = Set<string>
+const CONVERTIBLE_MIME_TYPES = ReadonlySet<string>
 
-const FORMAT_EXTENSION = Record<ConversionFormat, string>
+const FORMAT_EXTENSION = Readonly<Record<ConversionFormat, string>>
 
-const FORMAT_MIME = Record<ConversionFormat, string>
+const FORMAT_MIME = Readonly<Record<ConversionFormat, string>>
 
 const MediaFake = {    all(owner: {        id: number | string;        constructor: {            name: string;        };    }): Promise<MediaItem[]>;    inCollection(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<MediaItem[]>;    assertHas(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<void>;    assertMissing(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string): Promise<void>;    assertCount(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string, count: number): Promise<void>;    assertConversion(owner: {        id: number | string;        constructor: {            name: string;        };    }, collection: string, conversion: string): Promise<void>;}
 
@@ -4772,8 +4835,6 @@ function collectionNames = (host: CollectionHost) => string[]
 function defaultDiskName = () => string
 
 function diskFor = (name?: string | null) => StorageDriver
-
-function diskNameFor = (name: string | null | undefined, fallback: string) => string
 
 function dispatchConversions = (mediaId: number, conversions: string[]) => Promise<void>
 
@@ -4797,27 +4858,9 @@ function MediaConfig = (options?: Partial<MediaConfigShape>) => MediaConfigShape
 
 function mediaDefaults = () => MediaConfigShape
 
-function mediaState = () => MediaState
-
-function ownerClassFor = (modelType: string) => CollectionHost | null
-
-function partitionConversions = (conversions: ConversionMap | undefined, queueAvailable: boolean) => {    inline: ConversionMap;    queued: ConversionMap;}
-
 function pathGenerator = () => PathGenerator
 
-function performConversions = (mediaId: number, conversions: string[]) => Promise<{    generated: string[];    failed: Array<{        name: string;        reason: string;    }>;}>
-
-function resetMediaState = () => void
-
 function resolveCollection = (host: CollectionHost, name: string) => CollectionDefinition
-
-function setConversionDispatcher = (dispatcher: ConversionDispatcher | null) => void
-
-function setDefaultDiskName = (name: string | null) => void
-
-function setDiskResolver = (resolver: DiskResolver | null) => void
-
-function setMediaState = (state: MediaState) => void
 
 function setPathGenerator = (generator: PathGenerator) => void
 
@@ -4846,6 +4889,7 @@ interface CollectionHost = {
 }
 
 interface ConversionDefinition = {
+  allowEnlargement?: boolean
   fit?: ConversionFit
   format?: ConversionFormat
   height?: number
@@ -4918,11 +4962,6 @@ interface MediaOwner = {
   readonly constructor: {    name: string;}
 }
 
-interface MediaState = {
-  config: MediaConfigShape
-  driver: ImageDriver
-}
-
 interface PathGenerator = {
   forConversions: (media: MediaItem) => string
   forOriginal: (media: MediaItem) => string
@@ -4952,15 +4991,11 @@ interface ResponsiveImageSet = {
   placeholder?: string
 }
 
-type ConversionDispatcher = (mediaId: number, conversions: string[]) => Promise<void>
-
 type ConversionFit = 'fill' | 'inside' | 'cover'
 
 type ConversionFormat = SafeConversionFormat | 'avif' | 'heic'
 
 type ConversionMap = {    [x: string]: ConversionDefinition;}
-
-type DiskResolver = (name?: string) => StorageDriver
 
 type MediaCollections = {    [x: string]: CollectionDefinition | (() => CollectionDefinition);}
 
@@ -6639,6 +6674,13 @@ class CronExpression = {
   weekday: (v: number | string) => CronExpression
 }
 
+class FileScheduleRunStore = {
+  new (_path: string, _keep?: number): FileScheduleRunStore
+  lastFor: (name: string) => ScheduleRunRecord | undefined
+  recent: (limit?: number, name?: string) => ScheduleRunRecord[]
+  record: (run: ScheduleRunRecord) => void
+}
+
 class Schedule = {
   new (): Schedule
   appendOutputTo?: string
@@ -6743,6 +6785,7 @@ class SchedulerManager = {
   new (): SchedulerManager
   add: (name: string, cronExpression: string, callback: TaskCallback) => ScheduledTask
   job: (name: string, callback: TaskCallback) => SchedulerBuilder
+  readonly staticConfigFindings: {    className: string;    keys: string[];}[]
   start: () => void
   stop: () => void
   tasks: ReadonlyMap<string, ScheduledTask>
@@ -6787,11 +6830,19 @@ class TaskSkipped = {
   readonly reason: 'lock' | 'window' | 'env' | 'when' | 'skip' | 'overlap'
 }
 
+const DEFAULT_RUN_LOG_KEEP = 500
+
+const DEFAULT_RUN_LOG_PATH = 'storage/framework/schedule-runs.jsonl'
+
 const Scheduler = SchedulerManager
 
 const schedulesConcern = ConcernDescriptor
 
+function installScheduleRunLog = (app: Application) => (() => void) | undefined
+
 function registerSchedule = (manager: SchedulerManager, schedule: Schedule, fallbackName: string) => ScheduledTask | undefined
+
+function resolveRunLogConfig = (app: Application) => RunLogConfig
 
 function SchedulerConfig = (options?: Partial<SchedulerConfigShape>) => SchedulerConfigShape
 
@@ -6800,8 +6851,30 @@ interface OverlapLockOptions = {
   expiresAfterMinutes?: number
 }
 
+interface RunLogConfig = {
+  enabled: boolean
+  keep: number
+  path: string
+}
+
 interface SchedulerConfigShape = {
+  runLog: {    enabled?: boolean;    path: string;    keep: number;}
   timezone: string
+}
+
+interface ScheduleRunRecord = {
+  durationMs: number
+  error?: string
+  finishedAt: string
+  name: string
+  ok: boolean
+  startedAt: string
+}
+
+interface ScheduleRunStore = {
+  lastFor: (name: string) => ScheduleRunRecord | undefined
+  recent: (limit?: number, name?: string) => ScheduleRunRecord[]
+  record: (run: ScheduleRunRecord) => void
 }
 
 type OutputMailer = (email: string, subject: string, body: string) => void | Promise<void>

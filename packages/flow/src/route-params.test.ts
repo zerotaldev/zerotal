@@ -195,6 +195,8 @@ class SetupChild extends Component {
   sawContext = false;
 
   override async onMount(ctx?: never): Promise<void> {
+    // Capturing the mounted instance for assertions is the point of this fixture.
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     mountedChild = this;
     this.sawContext = ctx !== undefined;
     // Props are already assigned by the time any hook runs, so derive straight from them.

@@ -101,12 +101,18 @@ flags, plus the `Command` instance so you can use its output helpers.
 
 ## Auto-discovery
 
-Drop command classes into a folder and register them all at once — no manual
-imports:
+`app/commands/` is discovered automatically: any command class dropped there —
+including everything `make:command` generates — is registered when the CLI boots,
+with no imports or provider wiring. An app command registers after the built-ins,
+so it wins a name collision. The directory is configurable via
+`conventions.paths.commands` in `config/app.ts`, and discovery honours the
+`conventions.enabled` master switch.
+
+To register a folder from somewhere else, call `discover()` yourself:
 
 ```typescript
 // in a service provider or bootstrap script
-await runner.discover("./app/commands");
+await runner.discover("./vendor/acme/commands");
 ```
 
 Every non-test `.ts`/`.js` file under the directory is imported, and any exported
@@ -181,8 +187,18 @@ is about to free itself anyway.
 | Command                | Description                                            |
 | ---------------------- | ------------------------------------------------------ |
 | `bun zt route:list`    | List all registered routes with methods and middleware |
+| `bun zt doctor`        | Check the app for silent misconfigurations             |
 | `bun zt key:generate`  | Generate a new `APP_KEY` and write it to `.env`        |
 | `bun zt lint:packages` | Check every workspace package against convention rules |
+
+`doctor` runs every static sanity check against the booted app and prints each
+finding with its fix: APP_KEY strength, `database.synchronize` colliding with
+migration files, a `routes/` directory nothing loads, and class directories
+(`app/schedules`, `app/jobs`, `config/storage.ts`) whose consuming provider is
+not registered. These failures otherwise fail by _doing nothing_, which is the
+most expensive kind to find. Packages can contribute checks via
+`app.registerDoctorCheck()`. Exits non-zero when a check fails outright, so it
+can gate a deploy.
 
 ### Database
 

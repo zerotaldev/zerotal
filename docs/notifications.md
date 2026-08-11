@@ -513,9 +513,12 @@ The broadcast channel works like this:
   }
   ```
 
-- **Event + payload.** The wire event name is `"notification"`; the payload is
-  your data merged with `{ id, type, readAt: null, createdAt }`, so the client
-  can render it like a stored notification.
+- **Event + payload.** The wire event name is `"notification"` — exported as
+  `BROADCAST_NOTIFICATION_EVENT` if you would rather import it than repeat the
+  string. Every broadcast notification uses that one event name; the payload's
+  `type` is what distinguishes them. The payload is your data merged with
+  `{ id, type, readAt: null, createdAt }`, so the client can render it like a
+  stored notification.
 - **Authorize** the per-user channel in `routes/channels.ts`:
 
   ```ts
@@ -775,6 +778,67 @@ building one can do I/O — reading an attachment, loading a record.
 | `assertSentTimes(Class, n)`                | Throw if `Class` was not sent exactly `n` times, across all recipients.                   |
 | `assertNothingSent()`                      | Throw if any notification was sent.                                                       |
 | `assertSentCount(n)`                       | Throw if total sent count is not `n`.                                                     |
+
+### Channel classes
+
+You name channels as strings from `channels()`; these are the classes behind them,
+exported so a custom channel can wrap one rather than reimplement it, and so
+`extend()` can replace a built-in with a subclass.
+
+| Channel     | Class              | Builds from     |
+| ----------- | ------------------ | --------------- |
+| `mail`      | `MailChannel`      | `toMail()`      |
+| `database`  | `DatabaseChannel`  | `toDatabase()`  |
+| `slack`     | `SlackChannel`     | `toSlack()`     |
+| `sms`       | `SmsChannel`       | `toSms()`       |
+| `broadcast` | `BroadcastChannel` | `toBroadcast()` |
+
+### Mail drivers
+
+Selected through `config/notifications.ts` rather than constructed directly.
+
+| Driver   | Class          | Notes                                                         |
+| -------- | -------------- | ------------------------------------------------------------- |
+| `smtp`   | `SmtpDriver`   | Speaks SMTP directly — no npm dependency.                     |
+| `resend` | `ResendDriver` | Posts to the Resend HTTP API; needs an API key.               |
+| `log`    | `LogDriver`    | Writes the rendered message to the log instead of sending it. |
+
+### Events
+
+Emitted on the [event bus](/docs/events), so an app can observe delivery without
+wrapping the manager.
+
+| Event                           | Fired when                                                 |
+| ------------------------------- | ---------------------------------------------------------- |
+| `NotificationSent`              | A notification finished delivering across its channels.    |
+| `MessageSent` / `MessageFailed` | One channel's delivery succeeded / failed, with the error. |
+| `MessageQueued`                 | A notification was queued rather than sent inline.         |
+
+### Delivery counters
+
+`recentDeliveries()` returns the most recent attempts, newest first, and
+`channelStats()` per-channel totals, busiest first — the two figures the admin
+console renders. Both are in-process counters that reset with the process; the
+durable record is the database channel.
+
+### Errors
+
+| Error                                 | Thrown when                                                   |
+| ------------------------------------- | ------------------------------------------------------------- |
+| `NotificationError`                   | Base class — catch this to handle any notification failure.   |
+| `NotificationDeliveryError`           | A channel's transport rejected the message.                   |
+| `NotificationChannelUnavailableError` | A declared channel is not registered or is missing config.    |
+| `UnknownNotificationTypeError`        | A queued notification's stored type cannot be resolved back.  |
+| `UnknownSmsDriverError`               | The configured SMS driver name is not recognised.             |
+| `SmtpConnectionError`                 | The SMTP server could not be reached or the handshake failed. |
+| `SmtpResponseError`                   | The SMTP server rejected a command, carrying its reply code.  |
+
+### Other exports
+
+| Export               | Purpose                                                                                                                                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OnDemandNotifiable` | The recipient `Notify.route()` builds — a destination with no model behind it. Its database rows are keyed to a random id nothing can query back, so on-demand notifications normally declare transport channels only. |
+| `RichLine`           | The chainable line returned inside `MailMessage` for mixed formatting (`.text()`, `.color()`).                                                                                                                         |
 
 ## Next steps
 

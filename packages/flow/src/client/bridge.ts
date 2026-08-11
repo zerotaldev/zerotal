@@ -452,9 +452,16 @@ function _updateDirty(comp: FlowComponent): void {
 let _isOnline = true;
 
 function _setConnectionState(online: boolean): void {
+  // The attribute mirrors the *current* state, so it is stamped even when that
+  // state hasn't changed. The bridge starts optimistic (`_isOnline = true`), so
+  // a page whose socket connects on the first attempt — the normal case — would
+  // otherwise never carry the attribute at all, and a stylesheet or a readiness
+  // check keyed on `[data-flow-connection="online"]` would wait forever for a
+  // page that is in fact perfectly connected.
+  document.body.setAttribute("data-flow-connection", online ? "online" : "offline");
+
   if (_isOnline === online) return;
   _isOnline = online;
-  document.body.setAttribute("data-flow-connection", online ? "online" : "offline");
   document.dispatchEvent(new CustomEvent(online ? "flow:online" : "flow:offline"));
 
   const offline = !online;
@@ -1206,16 +1213,37 @@ function _renderTimelineInto(el: HTMLElement): void {
   };
 }
 
-// A compact, dev-only scrubbing panel docked bottom-left. The console API above is the primary
-// interface; this is a convenience over it.
+/** The four corners the timeline pill can dock to. */
+const _TL_CORNERS = ["bottom-left", "bottom-right", "top-left", "top-right"] as const;
+type _TlCorner = (typeof _TL_CORNERS)[number];
+
+/**
+ * Which corner the fallback pill docks to. `data-flow-tl-corner` on <html> or <body>
+ * overrides; the default is bottom-left, where it stays clear of an app's own left-rail
+ * navigation (a top-docked panel at max z-index sat exactly on a sidebar's first item).
+ */
+function _timelineCorner(): _TlCorner {
+  const raw =
+    document.documentElement.dataset["flowTlCorner"] ?? document.body.dataset["flowTlCorner"];
+  return (_TL_CORNERS as readonly string[]).includes(raw ?? "")
+    ? (raw as _TlCorner)
+    : "bottom-left";
+}
+
+// A compact, dev-only scrubbing panel docked bottom-left by default (see _timelineCorner).
+// The console API above is the primary interface; this is a convenience over it.
 function _setupTimelinePanel(): void {
   if (document.getElementById("flow-tl-panel")) return;
   const style = document.createElement("style");
   style.textContent = `
-    #flow-tl-panel{position:fixed;left:10px;top:88px;z-index:2147483647;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#e5e7eb}
+    #flow-tl-panel{position:fixed;z-index:2147483647;display:flex;flex-direction:column;gap:6px;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#e5e7eb}
+    #flow-tl-panel[data-corner="bottom-left"]{left:10px;bottom:10px;flex-direction:column-reverse}
+    #flow-tl-panel[data-corner="bottom-right"]{right:10px;bottom:10px;flex-direction:column-reverse;align-items:flex-end}
+    #flow-tl-panel[data-corner="top-left"]{left:10px;top:10px}
+    #flow-tl-panel[data-corner="top-right"]{right:10px;top:10px;align-items:flex-end}
     #flow-tl-panel *{box-sizing:border-box}
-    .flow-tl-toggle{background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:9999px;padding:5px 10px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3)}
-    .flow-tl-body{margin-top:6px;width:320px;max-height:50vh;display:flex;flex-direction:column;background:#0b1220;border:1px solid #374151;border-radius:10px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+    .flow-tl-toggle{background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:9999px;padding:5px 10px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);align-self:inherit}
+    .flow-tl-body{width:320px;max-height:50vh;display:flex;flex-direction:column;background:#0b1220;border:1px solid #374151;border-radius:10px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.45)}
     .flow-tl-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #1f2937;font-weight:600}
     .flow-tl-head .sp{flex:1}
     .flow-tl-live{background:#059669;color:#fff;border:0;border-radius:6px;padding:3px 8px;cursor:pointer}
@@ -1233,6 +1261,7 @@ function _setupTimelinePanel(): void {
 
   const root = document.createElement("div");
   root.id = "flow-tl-panel";
+  root.dataset["corner"] = _timelineCorner();
   root.innerHTML =
     `<button class="flow-tl-toggle" type="button">⏱ <b class="flow-tl-count">0</b></button>` +
     `<div class="flow-tl-body" hidden>` +
@@ -2005,10 +2034,73 @@ function _takeLastAction(compId: string): string {
 }
 
 function _callAction(comp: FlowComponent, method: string, args: unknown[]): void {
+  _countActionDispatch(comp);
   _setActionError(comp, false); // retrying clears any prior failed state
   _setLoading(comp, true, method);
   if (isTimelineEnabled()) _pendingActionByComp.set(comp.id, method);
   _dispatchFrame(comp, method, args);
+}
+
+// ── Client-expression writes sync to the server ───────────────────────────────
+// `onClick={() => (this.selected = row.id)}` writes the reactive store, but render()
+// runs on the server — without a round-trip the page never reflects the write, and
+// nothing errors. (It *looked* reactive whenever a later action happened to flush it,
+// which is the worst kind of sometimes.) So: while a client expression evaluates,
+// every write to an exposed prop is recorded; if the expression wrote state and did
+// not itself dispatch an action on that component (an action's frame already carries
+// all pending writes), one `$rerender` is sent — state applied through the same
+// allowlist + updating()/updated() hooks, re-rendered, patched. No loading state:
+// it is a sync, not a user action. Client-only UI state belongs in `this.store()`,
+// which never round-trips.
+
+/** Writes recorded during the currently-evaluating client expression (null: none active). */
+let _exprWrites: Set<string> | null = null;
+/** Actions dispatched per component, to detect "the expression already sent one". */
+const _actionSeq = new Map<string, number>();
+
+/** @internal Count an action dispatch on `comp` (called by _callAction; exported for tests). */
+export function _countActionDispatch(comp: { id: string }): void {
+  _actionSeq.set(comp.id, (_actionSeq.get(comp.id) ?? 0) + 1);
+}
+
+/** @internal Record a write to an exposed prop; no-op outside an expression evaluation. */
+export function _noteExprWrite(key: string): void {
+  _exprWrites?.add(key);
+}
+
+/** @internal Opaque state carried from {@link _beginExprEval} to {@link _endExprEval}. */
+export interface ExprEvalToken {
+  writes: Set<string>;
+  prev: Set<string> | null;
+  seqBefore: number;
+}
+
+/** @internal Start recording exposed-prop writes for one expression evaluation. */
+export function _beginExprEval(comp: { id: string }): ExprEvalToken {
+  const token: ExprEvalToken = {
+    writes: new Set(),
+    prev: _exprWrites,
+    seqBefore: _actionSeq.get(comp.id) ?? 0,
+  };
+  _exprWrites = token.writes;
+  return token;
+}
+
+/**
+ * @internal Stop recording and decide whether the component needs a sync round-trip:
+ * it does when the expression wrote at least one exposed prop, dispatched no action on
+ * this component itself, and the writes left actual pending changes (a toggle-back to
+ * the canonical value needs nothing).
+ */
+export function _endExprEval(
+  comp: { id: string },
+  token: ExprEvalToken,
+  pendingCount: number,
+): boolean {
+  _exprWrites = token.prev;
+  if (token.writes.size === 0) return false;
+  if ((_actionSeq.get(comp.id) ?? 0) !== token.seqBefore) return false;
+  return pendingCount > 0;
 }
 
 /**
@@ -2020,15 +2112,24 @@ function _callAction(comp: FlowComponent, method: string, args: unknown[]): void
  * Mirrors Alpine's own `x-on` semantics: if the expression evaluates to a function
  * (the author wrote an arrow), call it with the DOM event. A bare statement
  * (`$flow.x = 0`) evaluates directly and returns a non-function, so nothing is called.
+ *
+ * A write to an exposed prop syncs to the server afterwards (see _beginExprEval) —
+ * a partial write before a throw still syncs, since the client state did change.
  */
 function _evalClientExpr(comp: FlowComponent, el: Element, expr: string, event?: Event): void {
   const A = Alpine as unknown as { evaluate(el: Element, expr: string): unknown };
+  const token = _beginExprEval(comp);
+  let needsSync = false;
   try {
     const result = A.evaluate(el, expr);
     if (typeof result === "function") (result as (e?: Event) => unknown)(event);
   } catch (e) {
     console.error("[Flow] client expression error:", e, "\nExpr:", expr);
+  } finally {
+    needsSync = _endExprEval(comp, token, Object.keys(_pendingUpdates(comp)).length);
   }
+  // Serialised like any action; carries every pending write as the frame's `updates`.
+  if (needsSync) _dispatchFrame(comp, "$rerender", []);
 }
 
 /**
@@ -3408,7 +3509,9 @@ function _isWritable(comp: FlowComponent, key: string): boolean {
  *
  *   $flow.method(args)         — call an @expose method
  *   $flow.prop                 — read a reactive property
- *   $flow.prop = value         — write locally (sent with next action)
+ *   $flow.prop = value         — write; inside a client expression that dispatches no
+ *                                action, the write syncs to the server afterwards so
+ *                                render() reflects it (client-only state → $store)
  *
  *   $flow.$refresh()           — re-render the component
  *   $flow.$commit()            — alias for $refresh
@@ -3618,6 +3721,9 @@ export function registerFlowMagic(alpine: AlpineType): void {
         _syncDeclarative(comp);
         // flow:model inputs aren't Alpine-bound, so push the new value into them explicitly.
         _syncModelInputs(comp);
+        // Inside a client expression, the write syncs to the server when the
+        // expression dispatches no action of its own (see _beginExprEval).
+        _noteExprWrite(key);
         return true;
       },
     });

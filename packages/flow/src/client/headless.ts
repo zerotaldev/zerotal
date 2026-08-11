@@ -901,7 +901,8 @@ export function flowCommand(config: { items: FlowCommandItem[]; hotkey?: string 
       this.open = false;
     },
     toggle(this: AlpineCtx & CommandState) {
-      this.open ? this.hide() : this.show();
+      if (this.open) this.hide();
+      else this.show();
     },
     move(this: AlpineCtx & CommandState, by: number) {
       const total = this.results().length;

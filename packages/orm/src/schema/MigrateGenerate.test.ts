@@ -199,7 +199,8 @@ describe("ModelInspector — prototype chain inheritance", () => {
     }
     @table("override_things_child")
     class ChildModel extends ParentModel {
-      @column({ type: "string", nullable: true }) declare kind: string; // nullable override
+      // @ts-expect-error — deliberately shadowing the parent column is the behaviour under test
+      @column({ type: "string", nullable: true }) kind!: string; // nullable override
     }
 
     const schema = ModelInspector.fromClass(ChildModel);

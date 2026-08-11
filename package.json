@@ -21,6 +21,8 @@
     "format:check": "prettier --check .",
     "docs:build": "bun run docs:api && cd apps/docs && bun run build",
     "docs:api": "bun run scripts/api/build-api-docs.ts",
+    "docs:components": "bun run scripts/generate-docs.ts",
+    "docs:components:check": "bun run scripts/generate-docs.ts --check",
     "docs:api:watch": "bun run scripts/api/collect-entrypoints.ts && bunx typedoc --options typedoc.json --watch"
   },
   "dependencies": {

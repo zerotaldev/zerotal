@@ -44,7 +44,7 @@ export type TokenToucher = (id: number) => Promise<void>;
  * ```
  */
 export class BearerTokenMiddleware extends BaseMiddleware {
-  protected options: {} = {};
+  protected options: Record<string, never> = {};
 
   private static _loader: TokenLoader | undefined;
   private static _toucher: TokenToucher | undefined;

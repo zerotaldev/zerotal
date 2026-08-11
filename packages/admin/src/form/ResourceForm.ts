@@ -18,6 +18,7 @@ import { type FormComponent, flattenFields } from "./Section.ts";
 
 export type ResourceFormClass = new () => Form & Record<string, unknown>;
 
+/** @internal */
 export function makeResourceForm(
   schema: FormComponent[],
   mode: FieldMode,

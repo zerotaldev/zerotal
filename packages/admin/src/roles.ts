@@ -151,7 +151,10 @@ export function panelPermissions(panel: PanelInstance): Permission[] {
   return out;
 }
 
-/** Group a flat permission list for rendering, preserving order. */
+/** Group a flat permission list for rendering, preserving order.
+ *
+ * @internal
+ */
 export function groupPermissions(
   permissions: Permission[],
 ): { group: string; items: Permission[] }[] {

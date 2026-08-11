@@ -2,7 +2,7 @@
 
 > Reactive server-side rendering for Zerotal — server-rendered components, streamed over WebSocket, morphed into the DOM by Alpine.
 
-**Maturity: experimental.** Flow ships on the same version line as the rest of Zerotal, but it is not at the same maturity as the stable packages. Its API may change between minor versions, and it has had far less production exposure than the core, ORM, and HTTP layers. The version number alone doesn't tell you that, which is why it is said here — build on it deliberately.
+**Maturity: stable.** Flow's public API follows SemVer strictly: anything importable without an `@internal` marker keeps its shape for the rest of the 1.x line, and its surface is snapshotted in `api-surface.md`, which CI diffs on every change. The WebSocket bridge is covered end to end by a real browser (`@zerotal/flow/browser`), and the compiled and runtime render paths are pinned to the same binding output. It carries less production exposure than the core and ORM layers, so read the release notes — but the API will not move under you.
 
 Flow is Zerotal's server-driven UI layer. Each page is a TypeScript `Component` class whose state lives on the server. You write plain JSX and bind handlers like `onClick={this.save}`; on each interaction the server hydrates the component from a signed snapshot, runs the method, re-renders, and streams only the changed HTML back, which Alpine.js morphs into the page. There is no API layer, no client-side store, and no hand-written client reactivity — the server is the single source of truth.
 

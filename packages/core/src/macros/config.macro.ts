@@ -42,6 +42,8 @@ export function loadConfigsSync(configDir: string): Record<string, Record<string
   for (const file of glob.scanSync({ cwd: configDir })) {
     if (file === "index.ts") continue;
     const key = file.replace(/\.ts$/, "");
+    // Bun macros execute at bundle time, where module loading is synchronous by design.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const loadedModule = require(join(configDir, file)) as Record<string, unknown>;
     result[key] = (loadedModule["default"] ?? loadedModule) as Record<string, unknown>;
   }

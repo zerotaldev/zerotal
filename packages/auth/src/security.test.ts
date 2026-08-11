@@ -16,7 +16,7 @@ function makeCtx(url: string, secret?: string) {
     request: { url },
     response: undefined as Response | undefined,
     container: secret
-      ? { container: { tryMakeSync: () => ({ get: (_k: string, fb: string) => secret }) } }
+      ? { container: { tryMakeSync: () => ({ get: (_k: string, _fb: string) => secret }) } }
       : { container: {} },
     redirect: (_url: string) => {},
   };
@@ -141,7 +141,7 @@ describe("TwoFactorService", () => {
 
   it("verifyRecoveryCode() is case-insensitive and strips spaces", async () => {
     const { plain, hashed } = await tf.generateRecoveryCodes();
-    const code = plain[1]!.toUpperCase().replace(/-/g, " - ");
+    const _code = plain[1]!.toUpperCase().replace(/-/g, " - ");
     // Not a valid code format after spacing changes, so this will be false
     // Just test that it doesn't throw
     const result = await tf.verifyRecoveryCode(hashed, plain[1]!.toUpperCase());

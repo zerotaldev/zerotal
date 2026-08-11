@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { Schedule } from "./Schedule.ts";
 import { SchedulerManager, type SchedulerBuilder } from "./SchedulerManager.ts";
-import { registerSchedule } from "./conventions.ts";
+import { registerSchedule, staticScheduleConfigKeys } from "./conventions.ts";
 
 describe("Schedule base class + registerSchedule", () => {
   it("registers a cron-based schedule with the right name and expression", () => {
@@ -68,5 +68,51 @@ describe("Schedule base class + registerSchedule", () => {
     const task = registerSchedule(mgr, new Broken(), "Broken");
     expect(task).toBeUndefined();
     expect(mgr.tasks.size).toBe(0);
+  });
+});
+
+describe("staticScheduleConfigKeys", () => {
+  it("flags config declared as static fields", () => {
+    class Wrong extends Schedule {
+      static cron = "0 3 * * *";
+      static timezone = "Africa/Johannesburg";
+      handle() {}
+    }
+    expect(staticScheduleConfigKeys(Wrong)).toEqual(["cron", "timezone"]);
+  });
+
+  it("flags a static frequency() method, which is non-enumerable", () => {
+    class Wrong extends Schedule {
+      static frequency(every: SchedulerBuilder) {
+        return every.everyFiveMinutes();
+      }
+      handle() {}
+    }
+    expect(staticScheduleConfigKeys(Wrong)).toEqual(["frequency"]);
+  });
+
+  it("flags a static name field but not the intrinsic Function.name", () => {
+    class Right extends Schedule {
+      cron = "* * * * *";
+      handle() {}
+    }
+    class Wrong extends Schedule {
+      static name = "popia:sweep";
+      cron = "* * * * *";
+      handle() {}
+    }
+    expect(staticScheduleConfigKeys(Right)).toEqual([]);
+    expect(staticScheduleConfigKeys(Wrong)).toEqual(["name"]);
+  });
+
+  it("does not flag instance config", () => {
+    class Right extends Schedule {
+      name = "popia:sweep";
+      cron = "0 3 * * *";
+      timezone = "Africa/Johannesburg";
+      withoutOverlapping = true;
+      handle() {}
+    }
+    expect(staticScheduleConfigKeys(Right)).toEqual([]);
   });
 });

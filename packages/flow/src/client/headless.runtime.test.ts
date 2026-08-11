@@ -252,12 +252,15 @@ describe("flowField cleanup", () => {
 describe("flowMenu", () => {
   it("opens to first item, arrows/Home/End move, Escape closes + refocuses trigger", () => {
     let active: any = null;
-    const mk = (id: string) => ({
-      id,
-      focus() {
-        active = this;
-      },
-    });
+    const mk = (id: string) => {
+      const item = {
+        id,
+        focus: () => {
+          active = item;
+        },
+      };
+      return item;
+    };
     const items = [mk("a"), mk("b"), mk("c")];
     const trigger = mk("trigger");
     const menu = { querySelectorAll: () => items };

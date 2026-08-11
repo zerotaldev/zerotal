@@ -1,4 +1,4 @@
-import { Application, type ExceptionHandler } from "@zerotal/core";
+import { Application } from "@zerotal/core";
 import { TestResponse, type SessionDecoder } from "./TestResponse.ts";
 import { TestExceptionHandler } from "./TestExceptionHandler.ts";
 import { resetTestState } from "./resetTestState.ts";

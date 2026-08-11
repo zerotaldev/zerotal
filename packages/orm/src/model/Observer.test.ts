@@ -51,7 +51,7 @@ describe("BaseModel.observe()", () => {
     }
     ObsUser.observe(Obs);
 
-    await ObsUser.create({ name: "Alice" } as Partial<ObsUser>);
+    await ObsUser.create({ name: "Alice" } as never);
     expect(log).toContain("creating");
   });
 
@@ -64,7 +64,7 @@ describe("BaseModel.observe()", () => {
     }
     ObsUser.observe(Obs);
 
-    await ObsUser.create({ name: "Bob" } as Partial<ObsUser>);
+    await ObsUser.create({ name: "Bob" } as never);
     expect(log).toContain("created");
   });
 
@@ -77,7 +77,7 @@ describe("BaseModel.observe()", () => {
     }
     ObsUser.observe(Obs);
 
-    await ObsUser.create({ name: "Carol" } as Partial<ObsUser>);
+    await ObsUser.create({ name: "Carol" } as never);
     expect(log).toContain("saving");
   });
 
@@ -90,7 +90,7 @@ describe("BaseModel.observe()", () => {
     }
     ObsUser.observe(Obs);
 
-    const user = await ObsUser.create({ name: "Dave" } as Partial<ObsUser>);
+    const user = await ObsUser.create({ name: "Dave" } as never);
     user.name = "David";
     await user.save();
     expect(log).toContain("updating");
@@ -105,7 +105,7 @@ describe("BaseModel.observe()", () => {
     }
     ObsUser.observe(Obs);
 
-    const user = await ObsUser.create({ name: "Eve" } as Partial<ObsUser>);
+    const user = await ObsUser.create({ name: "Eve" } as never);
     user.name = "Eva";
     await user.save();
     expect(log).toContain("updated");
@@ -120,7 +120,7 @@ describe("BaseModel.observe()", () => {
     }
     ObsUser.observe(Obs);
 
-    const user = await ObsUser.create({ name: "Frank" } as Partial<ObsUser>);
+    const user = await ObsUser.create({ name: "Frank" } as never);
     await user.delete();
     expect(log).toContain("deleting");
   });
@@ -134,7 +134,7 @@ describe("BaseModel.observe()", () => {
     }
     ObsUser.observe(Obs);
 
-    const user = await ObsUser.create({ name: "Grace" } as Partial<ObsUser>);
+    const user = await ObsUser.create({ name: "Grace" } as never);
     await user.delete();
     expect(log).toContain("deleted");
   });
@@ -148,7 +148,7 @@ describe("BaseModel.observe()", () => {
     }
     ObsUser.observe(Obs);
 
-    await ObsUser.create({ name: "Heidi" } as Partial<ObsUser>);
+    await ObsUser.create({ name: "Heidi" } as never);
     expect(seen).toContain("Heidi");
   });
 
@@ -168,7 +168,7 @@ describe("BaseModel.observe()", () => {
     ObsUser.observe(ObsA);
     ObsUser.observe(ObsB);
 
-    await ObsUser.create({ name: "Ivan" } as Partial<ObsUser>);
+    await ObsUser.create({ name: "Ivan" } as never);
     expect(log).toContain("A");
     expect(log).toContain("B");
   });
@@ -176,6 +176,6 @@ describe("BaseModel.observe()", () => {
   it("observer with no methods does not throw", async () => {
     class EmptyObs implements ModelObserver<ObsUser> {}
     ObsUser.observe(EmptyObs);
-    await expect(ObsUser.create({ name: "Judy" } as Partial<ObsUser>)).resolves.toBeDefined();
+    await expect(ObsUser.create({ name: "Judy" } as never)).resolves.toBeDefined();
   });
 });

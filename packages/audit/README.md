@@ -5,7 +5,7 @@
 Captures every create, update, and delete on audited models — with old and new
 values, the authenticated actor, and request metadata — and stores them in a
 queryable `audit_logs` table. Custom events can be logged manually via the `Audit`
-facade. **Beta** — APIs are stable but rough edges remain.
+facade. **Stable** — the public API follows SemVer strictly for the rest of the 1.x line.
 
 Part of the [Zerotal](../../README.md) framework. Requires **Bun ≥ 1.3.14**.
 

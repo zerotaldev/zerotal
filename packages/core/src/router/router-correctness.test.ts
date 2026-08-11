@@ -27,11 +27,9 @@ class HomeController {
   }
 }
 
-/** Records whether it ran, so "was this route guarded?" is directly observable. */
-let guardRan = false;
+/** A marker middleware: these tests assert route *registration* shape, not dispatch. */
 class GuardMiddleware {
   async handle(_http: HttpContext, next: NextFn): Promise<Response | void> {
-    guardRan = true;
     return next();
   }
 }
@@ -42,7 +40,6 @@ function compile() {
 
 beforeEach(() => {
   Router.reset();
-  guardRan = false;
 });
 
 describe("domain groups do not collapse onto one another", () => {

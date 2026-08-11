@@ -22,7 +22,7 @@ import { assetVersion } from "../version.ts";
  *    Ensures browser cache treats HTML and JSON versions as distinct.
  */
 export class InertiaMiddleware extends BaseMiddleware {
-  protected options: {} = {};
+  protected options: Record<string, never> = {};
 
   async handle(http: HttpContext, next: NextFn): Promise<Response | void> {
     const isInertia = http.request.headers.get("X-Inertia") === "true";

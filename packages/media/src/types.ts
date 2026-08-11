@@ -24,8 +24,13 @@ export type ConversionFormat = SafeConversionFormat | "avif" | "heic";
  *   ratio. The result may be smaller than the box in one dimension.
  * - `fill` — stretch to exactly `width` × `height`, ignoring aspect ratio.
  * - `cover` — scale and centre-crop to exactly fill the box, preserving aspect
- *   ratio. **Requires an image driver that can crop**; the default
- *   `BunImageDriver` cannot, and says so with a named error.
+ *   ratio. Needs both `width` and `height`: given one, there is nothing to crop
+ *   away and it behaves as `inside`.
+ *
+ * With `withoutEnlargement` (the default), a source too small to fill the box is
+ * never scaled up — `cover` then yields the largest centre window the source can
+ * supply, which may not have the requested aspect ratio. A 300×500 source asked
+ * to cover 400×400 gives 300×400.
  */
 export type ConversionFit = "inside" | "fill" | "cover";
 
@@ -43,6 +48,15 @@ export interface ConversionDefinition {
   quality?: number;
   /** Clockwise rotation in degrees applied before resizing. */
   rotate?: number;
+  /**
+   * Allow scaling a source *up* to meet the target box. Default: `false`.
+   *
+   * Off by default because upscaling produces a larger file that looks worse.
+   * Turn it on when the exact box matters more than fidelity — a `cover`
+   * thumbnail for a fixed-size grid slot, say, which would otherwise come back
+   * undersized (and off-aspect) for small sources.
+   */
+  allowEnlargement?: boolean;
   /** Generate this conversion on the queue instead of inline. Default: `false`. */
   queued?: boolean;
 }

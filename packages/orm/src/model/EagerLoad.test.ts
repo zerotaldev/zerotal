@@ -111,15 +111,15 @@ class Account extends BaseModel {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function seedAccount(name: string) {
-  return Account.create({ name });
+  return Account.create({ name } as never);
 }
 
 async function seedEntry(accountId: number, amount: number) {
-  return Entry.create({ accountId, amount } as Partial<Entry>);
+  return Entry.create({ accountId, amount } as never);
 }
 
 async function seedProfile(accountId: number, bio: string | null) {
-  return Profile.create({ accountId, bio } as Partial<Profile>);
+  return Profile.create({ accountId, bio } as never);
 }
 
 // ── hasMany eager loading ─────────────────────────────────────────────────────
@@ -476,14 +476,12 @@ describe("Model.loadCount() over a fetched collection", () => {
     const accounts = await Account.query().whereIn("id", [a1.id, a2.id]).get();
     await Account.loadCount(accounts, "entries");
 
-    const m1 = accounts.find((x) => (x as unknown as { id: number }).id === a1.id) as Record<
-      string,
-      unknown
-    >;
-    const m2 = accounts.find((x) => (x as unknown as { id: number }).id === a2.id) as Record<
-      string,
-      unknown
-    >;
+    const m1 = accounts.find(
+      (x) => (x as unknown as { id: number }).id === a1.id,
+    ) as unknown as Record<string, unknown>;
+    const m2 = accounts.find(
+      (x) => (x as unknown as { id: number }).id === a2.id,
+    ) as unknown as Record<string, unknown>;
     expect(m1["entriesCount"]).toBe(2);
     expect(m2["entriesCount"]).toBe(1);
   });

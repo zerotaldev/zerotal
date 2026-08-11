@@ -65,10 +65,12 @@ await product.clearMediaCollection("images");
 - **Types come from bytes.** `accepts` is checked against the type sniffed from
   the file's own contents, never the filename or the upload's `Content-Type`.
 - **No native dependency.** Conversions run on `Bun.Image`, built into the
-  runtime. JPEG, PNG and WebP work on every host.
-- **`Bun.Image` cannot crop.** `fit: "cover"` throws rather than silently
-  returning a stretched image. Install `sharp` and set `driver: "sharp"` if you
-  need centre-cropped thumbnails.
+  runtime. JPEG, PNG and WebP work on every host — including `fit: "cover"`,
+  the centre-crop behind square thumbnails. `sharp` is optional, and a shared
+  parity suite holds both drivers to the same output dimensions.
+- **Nothing is upscaled by default.** A source too small to fill the box comes
+  back at the largest size it can supply, rather than blurred up to fit. Set
+  `allowEnlargement: true` on a conversion to opt in.
 - **Deleting a model deletes its files** — unless it soft-deletes, in which case
   they wait for `forceDelete()`.
 - **Paths are keyed on uuid,** not the numeric id, so a public URL discloses

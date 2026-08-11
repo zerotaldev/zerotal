@@ -10,6 +10,7 @@ import {
   fake,
 } from "./index.ts";
 import { TestResponse, type SessionDecoder } from "./TestResponse.ts";
+import { FactoryBatch } from "./factory.ts";
 import { assertStoredFile, assertMissingFile } from "./index.ts";
 import { LocalDriver } from "@zerotal/core/storage";
 import { CookieDriver } from "@zerotal/session";
@@ -960,13 +961,11 @@ describe("FactoryBatch", () => {
   });
 
   it("count(n).state() returns a FactoryBatch", () => {
-    const { FactoryBatch } = require("./factory.ts");
     const batch = UserFactory.count(2).state("premium");
     expect(batch).toBeInstanceOf(FactoryBatch);
   });
 
   it("count(n).for() returns a FactoryBatch", () => {
-    const { FactoryBatch } = require("./factory.ts");
     const parent = new User();
     parent.id = 99;
     const batch = UserFactory.count(2).for(parent, "parentId");
@@ -984,7 +983,6 @@ describe("FactoryBatch", () => {
   });
 
   it("count(n).dispatchEvents() returns FactoryBatch", () => {
-    const { FactoryBatch } = require("./factory.ts");
     const batch = UserFactory.count(2).dispatchEvents();
     expect(batch).toBeInstanceOf(FactoryBatch);
   });

@@ -179,7 +179,7 @@ plus the initial mount. You can then **scrub back to any frame**.
 Jumping re-applies that frame's snapshot _and_ its HTML to the live component, so
 both state and DOM restore exactly. No setup, no instrumentation in your components.
 
-It surfaces as a **Timeline** tab in the [Zerotal devtools panel](/docs/devtools) (`@zerotal/devtools`) — Flow registers it there so all the framework's tooling lives in one place. If devtools isn't installed, Flow falls back to a standalone ⏱ panel so time-travel still works on its own. Each frame shows the action that produced it (`increment`, `$set`, `mount`, …), which state fields changed, and the time. Click a frame to jump there; a **⏵ Resume live** button returns to the latest. It's the fastest way to see how a bug's state evolved — perform the actions, then step backward through them.
+It surfaces as a **Timeline** tab in the [Zerotal devtools panel](/docs/devtools) (`@zerotal/devtools`) — Flow registers it there so all the framework's tooling lives in one place. If devtools isn't installed, Flow falls back to a standalone ⏱ panel so time-travel still works on its own — docked bottom-left, or set `data-flow-tl-corner="bottom-right"` (any corner) on `<html>` or `<body>` if that clashes with your layout. Each frame shows the action that produced it (`increment`, `$set`, `mount`, …), which state fields changed, and the time. Click a frame to jump there; a **⏵ Resume live** button returns to the latest. It's the fastest way to see how a bug's state evolved — perform the actions, then step backward through them.
 
 There's also a console API for scripted inspection:
 

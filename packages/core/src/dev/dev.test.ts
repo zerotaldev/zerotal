@@ -78,7 +78,19 @@ describe("DevBuildHook", () => {
   });
 
   it("succeeds trivially when nothing is registered", async () => {
-    expect(await runDevBuildHooks()).toEqual({ success: true, logs: [] });
+    // `skipped: false` with no routines: there was nothing to skip, and
+    // reporting a skip would have the orchestrator claim it reused a build that
+    // never existed.
+    expect(await runDevBuildHooks()).toEqual({ success: true, logs: [], skipped: false });
+  });
+
+  it("reports a skip only when every routine skipped", async () => {
+    registerDevBuildHook("flow", async () => ({ success: true, logs: [], skipped: true }));
+    expect((await runDevBuildHooks()).skipped).toBe(true);
+
+    // One routine doing real work makes the whole pass a rebuild.
+    registerDevBuildHook("inertia", async () => ({ success: true, logs: [] }));
+    expect((await runDevBuildHooks()).skipped).toBe(false);
   });
 });
 

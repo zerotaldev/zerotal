@@ -366,7 +366,10 @@ export function actionGroup(actions: Action[]): ActionGroup {
 /** Either a single action or a group of them — what a resource may return. */
 export type ActionItem = Action | ActionGroup;
 
-/** Flatten groups so callers that need plain actions (dispatch, lookup) get them. */
+/** Flatten groups so callers that need plain actions (dispatch, lookup) get them.
+ *
+ * @internal
+ */
 export function flattenActions(items: ActionItem[]): Action[] {
   return items.flatMap((item) => (item instanceof ActionGroup ? item._actions : [item]));
 }

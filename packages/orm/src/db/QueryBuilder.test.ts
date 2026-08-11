@@ -319,8 +319,8 @@ describe("QueryBuilder — paginate()", () => {
     expect(result.perPage).toBe(2);
     expect(result.lastPage).toBe(3);
     expect(result.data).toHaveLength(2);
-    expect((result.data[0] as unknown as UserRow).name).toBe("C");
-    expect((result.data[1] as unknown as UserRow).name).toBe("D");
+    expect((result.data[0] as unknown as unknown as UserRow).name).toBe("C");
+    expect((result.data[1] as unknown as unknown as UserRow).name).toBe("D");
   });
 
   it("returns page 1 with defaults when no options passed", async () => {
@@ -369,8 +369,8 @@ describe("QueryBuilder — cursorPaginate()", () => {
     const result = await qb().cursorPaginate({ limit: 2 });
 
     expect(result.data).toHaveLength(2);
-    expect((result.data[0] as unknown as UserRow).name).toBe("A");
-    expect((result.data[1] as unknown as UserRow).name).toBe("B");
+    expect((result.data[0] as unknown as unknown as UserRow).name).toBe("A");
+    expect((result.data[1] as unknown as unknown as UserRow).name).toBe("B");
     expect(result.nextCursor).toBeGreaterThan(0);
   });
 
@@ -390,8 +390,8 @@ describe("QueryBuilder — cursorPaginate()", () => {
 
     const page2 = await qb().cursorPaginate({ limit: 2, cursor: page1.nextCursor! });
     expect(page2.data).toHaveLength(2);
-    expect((page2.data[0] as unknown as UserRow).name).toBe("C");
-    expect((page2.data[1] as unknown as UserRow).name).toBe("D");
+    expect((page2.data[0] as unknown as unknown as UserRow).name).toBe("C");
+    expect((page2.data[1] as unknown as unknown as UserRow).name).toBe("D");
     expect(page2.nextCursor).toBeNull();
   });
 
@@ -410,8 +410,8 @@ describe("QueryBuilder — keysetPaginate()", () => {
     const result = await qb().keysetPaginate({ limit: 2 });
 
     expect(result.data).toHaveLength(2);
-    expect((result.data[0] as UserRow).name).toBe("A");
-    expect((result.data[1] as UserRow).name).toBe("B");
+    expect((result.data[0] as unknown as UserRow).name).toBe("A");
+    expect((result.data[1] as unknown as UserRow).name).toBe("B");
     expect(typeof result.nextCursor).toBe("string");
   });
 
@@ -434,8 +434,8 @@ describe("QueryBuilder — keysetPaginate()", () => {
 
     const page2 = await qb().keysetPaginate({ limit: 2, cursor: page1.nextCursor! });
     expect(page2.data).toHaveLength(2);
-    expect((page2.data[0] as UserRow).name).toBe("C");
-    expect((page2.data[1] as UserRow).name).toBe("D");
+    expect((page2.data[0] as unknown as UserRow).name).toBe("C");
+    expect((page2.data[1] as unknown as UserRow).name).toBe("D");
     expect(page2.nextCursor).toBeNull();
   });
 
@@ -457,8 +457,8 @@ describe("QueryBuilder — keysetPaginate()", () => {
     await seed({ name: "A", score: 10 }, { name: "B", score: 20 }, { name: "C", score: 30 });
     const page1 = await qb().keysetPaginate({ column: "score", direction: "desc", limit: 2 });
 
-    expect((page1.data[0] as UserRow).name).toBe("C"); // highest score first
-    expect((page1.data[1] as UserRow).name).toBe("B");
+    expect((page1.data[0] as unknown as UserRow).name).toBe("C"); // highest score first
+    expect((page1.data[1] as unknown as UserRow).name).toBe("B");
     expect(page1.nextCursor).not.toBeNull();
 
     const page2 = await qb().keysetPaginate({
@@ -467,7 +467,7 @@ describe("QueryBuilder — keysetPaginate()", () => {
       limit: 2,
       cursor: page1.nextCursor!,
     });
-    expect((page2.data[0] as UserRow).name).toBe("A");
+    expect((page2.data[0] as unknown as UserRow).name).toBe("A");
     expect(page2.nextCursor).toBeNull();
   });
 
@@ -475,8 +475,8 @@ describe("QueryBuilder — keysetPaginate()", () => {
     await seed({ name: "Charlie" }, { name: "Alice" }, { name: "Bob" });
     const page1 = await qb().keysetPaginate({ column: "name", direction: "asc", limit: 2 });
 
-    expect((page1.data[0] as UserRow).name).toBe("Alice");
-    expect((page1.data[1] as UserRow).name).toBe("Bob");
+    expect((page1.data[0] as unknown as UserRow).name).toBe("Alice");
+    expect((page1.data[1] as unknown as UserRow).name).toBe("Bob");
     expect(page1.nextCursor).not.toBeNull();
 
     const page2 = await qb().keysetPaginate({
@@ -485,7 +485,7 @@ describe("QueryBuilder — keysetPaginate()", () => {
       limit: 2,
       cursor: page1.nextCursor!,
     });
-    expect((page2.data[0] as UserRow).name).toBe("Charlie");
+    expect((page2.data[0] as unknown as UserRow).name).toBe("Charlie");
     expect(page2.nextCursor).toBeNull();
   });
 
@@ -512,7 +512,7 @@ describe("QueryBuilder — keysetPaginate()", () => {
     const p2 = await qb().keysetPaginate({ limit: 2, cursor: p1.nextCursor! });
     const p3 = await qb().keysetPaginate({ limit: 2, cursor: p2.nextCursor! });
 
-    const all = [...p1.data, ...p2.data, ...p3.data] as UserRow[];
+    const all = [...p1.data, ...p2.data, ...p3.data] as unknown as UserRow[];
     expect(all).toHaveLength(6);
     expect(p3.nextCursor).toBeNull();
 

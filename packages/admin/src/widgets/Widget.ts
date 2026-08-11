@@ -226,6 +226,8 @@ export type DashboardWidget = StatsWidget | ChartWidget | TableWidget;
 /**
  * The shortest poll interval among these widgets, or `undefined` when none
  * polls. The dashboard polls as one unit, so the keenest widget sets the pace.
+ *
+ * @internal
  */
 export function widgetPollInterval(widgets: DashboardWidget[]): string | undefined {
   const intervals = widgets.map((w) => w._poll).filter((i): i is string => Boolean(i));

@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Job } from "./Job.ts";
+import { Batch } from "./Batch.ts";
+import { Bus as BusClass } from "./Bus.ts";
+import { withApp } from "@zerotal/core";
 import { JobRegistry } from "./JobRegistry.ts";
 import { QueueManager } from "./QueueManager.ts";
 import { FrameworkEvents } from "@zerotal/core";
@@ -601,7 +604,6 @@ describe("QueueManager.setWorkerPool()", () => {
 // ── Batch — uncovered getters (lines 28-31) ───────────────────────────────────
 
 describe("Batch — all getters", () => {
-  const { Batch } = require("./Batch.ts");
   const rec = {
     id: "b-123",
     name: "test-batch",
@@ -679,8 +681,7 @@ describe("QueueFake.install() / restore()", () => {
         value: (key: string, val: unknown) => registry.set(key, val),
       },
     };
-    const { withApp } = require("@zerotal/core");
-    withApp(mockApp, () => test(registry));
+    withApp(mockApp as never, () => test(registry));
   }
 
   it("install() captures original and binds the fake to the registry", () => {
@@ -1038,7 +1039,6 @@ describe("QueueProvider — onRegister()", () => {
 
 describe("Bus constructor", () => {
   it("Bus can be instantiated (covers implicit constructor)", () => {
-    const { Bus: BusClass } = require("./Bus.ts");
     expect(new BusClass()).toBeDefined();
   });
 });
@@ -1161,8 +1161,6 @@ describe("WorkerPool — with mock workers", () => {
   });
 
   it("run() dispatches job to free worker and resolves done", async () => {
-    let resolveDispatch: ((result: WorkerResult) => void) | undefined;
-
     (globalThis as any).Worker = class {
       constructor(_url: URL) {
         const et = new EventTarget();

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { SchedulerManager } from "./SchedulerManager.ts";
+import { ScheduledTask } from "./ScheduledTask.ts";
 import { SchedulerConfig } from "./config.ts";
 
 describe("SchedulerManager", () => {
@@ -153,7 +154,6 @@ describe("ScheduledTask.start() / stop()", () => {
     };
 
     try {
-      const { ScheduledTask } = require("./ScheduledTask.ts");
       const task = new ScheduledTask("test", "* * * * *", async () => {});
       task.start();
       expect(handles).toHaveLength(1);
@@ -173,7 +173,6 @@ describe("ScheduledTask.start() / stop()", () => {
     };
 
     try {
-      const { ScheduledTask } = require("./ScheduledTask.ts");
       const task = new ScheduledTask("test", "* * * * *", async () => {});
       task.start();
       task.start(); // second call is a no-op
@@ -193,7 +192,6 @@ describe("ScheduledTask.start() / stop()", () => {
     });
 
     try {
-      const { ScheduledTask } = require("./ScheduledTask.ts");
       const task = new ScheduledTask("test", "* * * * *", async () => {});
       task.start();
       task.stop();
@@ -213,7 +211,6 @@ describe("ScheduledTask.start() / stop()", () => {
     };
 
     try {
-      const { ScheduledTask } = require("./ScheduledTask.ts");
       const task = new ScheduledTask("tz-task", "0 9 * * *", async () => {});
       task.timezone("Africa/Johannesburg");
       task.start();

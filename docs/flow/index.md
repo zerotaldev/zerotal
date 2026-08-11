@@ -213,14 +213,16 @@ The command lives on `FlowProvider`, so it's available in any app that registers
 
 ### Server actions vs. client expressions
 
-| Syntax                              | Behaviour                                          | Round-trip                    |
-| ----------------------------------- | -------------------------------------------------- | ----------------------------- |
-| `onClick={this.save}`               | Calls `save()` on the server, re-renders           | Yes                           |
-| `onClick={() => this.count++}`      | Updates `count` in the browser instantly           | No (flushed with next action) |
-| `onSubmit={this.register}`          | Calls `register()` on the server, prevents default | Yes                           |
-| `onClick={() => this.open = false}` | Sets `open` in the browser instantly               | No (flushed with next action) |
+| Syntax                              | Behaviour                                          | Round-trip              |
+| ----------------------------------- | -------------------------------------------------- | ----------------------- |
+| `onClick={this.save}`               | Calls `save()` on the server, re-renders           | Yes                     |
+| `onClick={() => this.count++}`      | Updates `count` in the browser instantly           | Yes, after (state sync) |
+| `onSubmit={this.register}`          | Calls `register()` on the server, prevents default | Yes                     |
+| `onClick={() => this.open = false}` | Sets `open` in the browser instantly               | Yes, after (state sync) |
 
-Client expressions read and write the same `@expose` properties your server sees. Assigning to an `@expose` property from a client expression updates the UI immediately; the new value is held locally and flushed to the server with your next action, where the server reconciles it and remains authoritative. `@locked` properties are read-only on the client.
+Client expressions read and write the same `@expose` properties your server sees. Assigning to an `@expose` property from a client expression updates the UI immediately, then syncs to the server, which re-renders with the new value — so anything `render()` derives from that property (a selected row's detail, a conditional branch) reflects the write without needing a separate action. The sync is skipped when the same expression also calls a server action (that action's round-trip already carries the write), and when the write leaves the value back where it started. `@locked` properties are read-only on the client.
+
+State that the server should never see — a hover flag, which accordion section is open — belongs in the [global client store](#the-global-client-store) (`this.store()`), which is client-only and never round-trips.
 
 ### Passing arguments to a server action
 

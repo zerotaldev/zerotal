@@ -12,6 +12,46 @@ function isScheduleClass(v: unknown): v is new () => Schedule {
   );
 }
 
+/** Every declarative setting `registerSchedule` reads off a Schedule instance. */
+const SCHEDULE_CONFIG_KEYS = [
+  "name",
+  "cron",
+  "frequency",
+  "timezone",
+  "withoutOverlapping",
+  "environments",
+  "inBackground",
+  "between",
+  "unlessBetween",
+  "pingBefore",
+  "pingAfter",
+  "pingOnSuccess",
+  "pingOnFailure",
+  "appendOutputTo",
+  "emailOutputTo",
+  "when",
+  "skip",
+] as const;
+
+/**
+ * Config keys declared as `static` on a Schedule class. Schedule config is instance
+ * properties, but `static cron = "…"` typechecks (it simply declares a new static) and
+ * registers nothing — matching the `static` convention used by models (`static fillable`)
+ * and Flow components (`static layout`) closely enough to be the natural first attempt.
+ * Exported for the doctor.
+ */
+export function staticScheduleConfigKeys(cls: abstract new () => Schedule): string[] {
+  return SCHEDULE_CONFIG_KEYS.filter((key) => {
+    const desc = Object.getOwnPropertyDescriptor(cls, key);
+    if (desc === undefined) return false;
+    // Every class carries an intrinsic non-enumerable `name`; a `static name = "…"`
+    // field is enumerable, which is what tells the two apart. Static *methods*
+    // (`static frequency() {}`) are non-enumerable by spec, so the other keys are
+    // checked by presence alone — no intrinsic shares their names.
+    return key === "name" ? desc.enumerable === true : true;
+  });
+}
+
 /**
  * Register one Schedule instance with the scheduler manager, translating its declarative
  * settings into a configured ScheduledTask. Exported for testing.
@@ -75,6 +115,15 @@ export const schedulesConcern: ConcernDescriptor = {
     }
     for (const exported of Object.values(mod)) {
       if (!isScheduleClass(exported)) continue;
+      const misdeclared = staticScheduleConfigKeys(exported);
+      if (misdeclared.length > 0) {
+        frameworkLog("scheduler").warn(
+          `Schedule "${exported.name}" declares static ${misdeclared.join(", ")} — ` +
+            `schedule config is instance properties, so static values register nothing. ` +
+            `Drop the \`static\` keyword (e.g. \`override cron = "0 3 * * *"\`).`,
+        );
+        manager.staticConfigFindings.push({ className: exported.name, keys: misdeclared });
+      }
       registerSchedule(manager, new exported(), exported.name);
     }
   },

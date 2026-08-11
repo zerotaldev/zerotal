@@ -137,7 +137,7 @@ describe("Router — request handling", () => {
     Router.get("/users", TestController, "index");
 
     const compiled = Router.compile(new Container());
-    const handler = compiled["/users"]?.["GET"]!;
+    const handler = compiled["/users"]!["GET"]!;
 
     const response = await handler(new Request("http://localhost/users"));
 
@@ -173,7 +173,7 @@ describe("Router — request handling", () => {
 
     Router.get("/track", TrackController, "index", [TrackMiddleware]);
     const compiled = Router.compile(new Container());
-    const handler = compiled["/track"]?.["GET"]!;
+    const handler = compiled["/track"]!["GET"]!;
 
     await handler(new Request("http://localhost/track"));
 
@@ -363,7 +363,7 @@ describe("Router — request handling", () => {
 
     Router.get("/order", OrderController, "index", [RouteMiddleware]);
     const compiled = Router.compile(new Container(), [GlobalMiddleware]);
-    const handler = compiled["/order"]?.["GET"]!;
+    const handler = compiled["/order"]!["GET"]!;
 
     await handler(new Request("http://localhost/order"));
 
@@ -834,7 +834,7 @@ describe("Router.view() — handler invocation (covers _wrapFileHandler.handle)"
 
   it("view() with a function props resolver calls the resolver with ctx", async () => {
     const Comp = (props: { user: string }) => ({ toString: () => `Hello ${props.user}` });
-    Router.view("/profile", Comp, (ctx: HttpContext) => ({ user: "Alice" }));
+    Router.view("/profile", Comp, (_ctx: HttpContext) => ({ user: "Alice" }));
 
     const route = Router.routes.get("GET /profile");
     const CtrlClass = route!.controller as unknown as new () => {

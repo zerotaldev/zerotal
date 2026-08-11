@@ -8,6 +8,33 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-08-10
+
+### Changed
+
+- Version bump in step with the monorepo. The subpath surface re-exports
+  `@zerotal/core` and the stable packages, so the changes that matter are in
+  their changelogs — notably the ORM's encrypted columns and Flow's
+  `preserveScroll`/navigation-scroll fixes this release.
+
+## [1.3.0] — 2026-08-09
+
+### Changed
+
+- Version bump in step with the monorepo. The mixin-composition rename
+  (`BaseModelWith(...)` → `Model.using(...)`, `ComponentWith(...)` →
+  `Component.using(...)`) lands through the re-exported packages; run
+  `bun run scripts/codemod-mixin-composition.ts` when upgrading from 1.1.x.
+
+## [1.1.0] — 2026-08-08
+
+### Changed
+
+- Version bump in step with the monorepo, carrying the 1.1.0 fix wave from the
+  first field reports (radio-group bindings, json-cast round-tripping, insert
+  defaults, `Schema.alter`, `ctx.param()`, and the rest) through the
+  re-exported packages.
+
 ## [1.0.3] — 2026-08-07
 
 ### Changed

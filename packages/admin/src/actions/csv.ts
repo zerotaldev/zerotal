@@ -102,6 +102,8 @@ export function parseCsv(text: string): string[][] {
  * Matching is forgiving about the ways a label and a key differ in practice —
  * case, spaces, underscores, hyphens — so a file exported from the panel
  * re-imports without the user mapping a single column by hand.
+ *
+ * @internal
  */
 export function guessColumnMapping(
   headers: string[],

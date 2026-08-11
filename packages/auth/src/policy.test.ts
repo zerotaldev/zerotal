@@ -63,11 +63,6 @@ describe("GateService.via(PolicyClass).allows()", () => {
 });
 
 describe("GateService.via(PolicyClass).authorize()", () => {
-  let gate: GateService;
-  beforeEach(() => {
-    gate = new GateService();
-  });
-
   it("throws ForbiddenError when policy returns false", () => {
     const policy = new PostPolicy();
     const post = new Post(1);

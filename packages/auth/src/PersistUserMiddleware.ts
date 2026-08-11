@@ -30,7 +30,7 @@ import type { AuthUser } from "./AuthUser.ts";
  *   Auth.userOrNull() → the user or undefined
  */
 export class PersistUserMiddleware extends BaseMiddleware {
-  protected options: {} = {};
+  protected options: Record<string, never> = {};
 
   /**
    * Load the user for a given session user_id from the `auth.userLoader`

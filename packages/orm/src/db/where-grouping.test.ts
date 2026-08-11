@@ -26,10 +26,9 @@ let db: SQLInstance;
 @table("members")
 class Member extends BaseModel {
   static override softDeletes = true;
-  @column({}) declare id: number;
-  @column({}) declare name: string;
-  @column({}) declare role: string;
-  @column({}) declare tenant_id: number;
+  @column({}) name!: string;
+  @column({}) role!: string;
+  @column({}) tenant_id!: number;
 }
 
 beforeAll(async () => {
@@ -50,7 +49,7 @@ beforeAll(async () => {
 afterAll(async () => {
   _setDbConnection(null);
   _setBaseModelConnection(null);
-  await (db as { close(): Promise<void> }).close();
+  await (db as unknown as { close(): Promise<void> }).close();
 });
 
 beforeEach(async () => {

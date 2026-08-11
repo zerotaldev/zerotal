@@ -8,6 +8,8 @@ import { Job, JobRegistry } from "@zerotal/queue";
  * the whole point of the channel is immediacy. Its payload is the resolved wire
  * data, so it round-trips through a persistent driver without needing the
  * notification class.
+ *
+ * @internal
  */
 export class BroadcastNotificationJob extends Job {
   override readonly queue: string;

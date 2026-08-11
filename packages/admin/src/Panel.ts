@@ -47,7 +47,10 @@ import type {
 export { PanelInstance } from "./PanelInstance.ts";
 export type { ResourceClass, NavItem, NavGroup, PanelPage } from "./PanelInstance.ts";
 
-/** The id given to the panel every application starts with. */
+/** The id given to the panel every application starts with.
+ *
+ * @internal
+ */
 export const DEFAULT_PANEL_ID = "admin";
 
 export class Panel {

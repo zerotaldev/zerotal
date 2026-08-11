@@ -45,7 +45,7 @@ function _authUserId(http: HttpContext): number | null {
 }
 
 export class TenancyMiddleware extends BaseMiddleware {
-  protected options: {} = {};
+  protected options: Record<string, never> = {};
 
   private static _config?: TenancyConfigShape;
 

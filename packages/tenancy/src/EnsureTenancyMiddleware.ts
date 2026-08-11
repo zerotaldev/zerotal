@@ -23,7 +23,7 @@ import { TenantContext } from "./TenantContext.ts";
 import { TenantNotFoundError } from "./errors.ts";
 
 export class EnsureTenancyMiddleware extends BaseMiddleware {
-  protected options: {} = {};
+  protected options: Record<string, never> = {};
 
   async handle(_http: HttpContext, next: NextFn): Promise<Response | void> {
     if (TenantContext.tryGet() == null) throw new TenantNotFoundError();

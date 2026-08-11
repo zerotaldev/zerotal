@@ -20,7 +20,10 @@ import {
   THEME_TOGGLE_SCRIPT as FLOW_THEME_TOGGLE_SCRIPT,
 } from "@zerotal/flow-ui";
 
-/** localStorage key the toggle and the no-flash script share. */
+/** localStorage key the toggle and the no-flash script share.
+ *
+ * @internal
+ */
 export const THEME_STORAGE_KEY = FLOW_THEME_STORAGE_KEY;
 
 /** Client helpers (theme toggle + copy-to-clipboard), eval-free. */

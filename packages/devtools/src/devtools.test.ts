@@ -216,7 +216,7 @@ describe("Integration — QueryBuilder spans", () => {
     await db`CREATE TABLE dt_users (id INTEGER PRIMARY KEY, name TEXT)`;
     await db`INSERT INTO dt_users (name) VALUES ('Alice'), ('Bob')`;
 
-    await runRequest("http://localhost/users", async (ctx) => {
+    await runRequest("http://localhost/users", async (_ctx) => {
       await new QueryBuilder("dt_users", db).get();
     });
 

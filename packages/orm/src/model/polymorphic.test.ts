@@ -65,52 +65,48 @@ beforeAll(async () => {
 
 afterAll(async () => {
   _setBaseModelConnection(null);
-  await (db as { close(): Promise<void> }).close();
+  await (db as unknown as { close(): Promise<void> }).close();
 });
 
 // ── Model fixtures ─────────────────────────────────────────────────────────
 
 @table("posts", { timestamps: false })
 class Post extends BaseModel {
-  @column({}) declare id: number;
-  @column({}) declare title: string;
+  @column({}) title!: string;
 
   @morphMany(() => Comment, { morphName: "commentable" })
-  declare comments: MorphMany<Comment>;
+  comments!: MorphMany<Comment>;
 
   @morphOne(() => Image, { morphName: "imageable" })
-  declare image: MorphOne<Image>;
+  image!: MorphOne<Image>;
 }
 
 @table("videos", { timestamps: false })
 class Video extends BaseModel {
-  @column({}) declare id: number;
-  @column({}) declare title: string;
+  @column({}) title!: string;
 
   @morphMany(() => Comment, { morphName: "commentable" })
-  declare comments: MorphMany<Comment>;
+  comments!: MorphMany<Comment>;
 }
 
 @table("comments", { timestamps: false })
 class Comment extends BaseModel {
-  @column({}) declare id: number;
-  @column({}) declare body: string;
-  @column({}) declare commentableType: string;
-  @column({}) declare commentableId: number;
+  @column({}) body!: string;
+  @column({}) commentableType!: string;
+  @column({}) commentableId!: number;
 
   @morphTo({ morphMap: { Post: () => Post, Video: () => Video } })
-  declare commentable: MorphTo<Post | Video>;
+  commentable!: MorphTo<Post | Video>;
 }
 
 @table("images", { timestamps: false })
 class Image extends BaseModel {
-  @column({}) declare id: number;
-  @column({}) declare url: string;
-  @column({}) declare imageableType: string;
-  @column({}) declare imageableId: number;
+  @column({}) url!: string;
+  @column({}) imageableType!: string;
+  @column({}) imageableId!: number;
 
   @morphTo({ morphMap: { Post: () => Post } })
-  declare imageable: MorphTo<Post>;
+  imageable!: MorphTo<Post>;
 }
 
 // ── morphMany ──────────────────────────────────────────────────────────────
@@ -124,15 +120,15 @@ describe("morphMany", () => {
     expect(hello.comments).toHaveLength(2);
     expect(hello.comments.map((c) => c.body).sort()).toEqual(["comment A", "comment B"]);
     expect(world.comments).toHaveLength(1);
-    expect(world.comments[0].body).toBe("comment D");
+    expect(world.comments[0]!.body).toBe("comment D");
   });
 
   it("eager-loads comments for videos", async () => {
     const videos = (await Video.query().with("comments").get()) as (Video & {
       comments: Comment[];
     })[];
-    expect(videos[0].comments).toHaveLength(1);
-    expect(videos[0].comments[0].body).toBe("comment C");
+    expect(videos[0]!.comments).toHaveLength(1);
+    expect(videos[0]!.comments[0]!.body).toBe("comment C");
   });
 
   it("empty result when no comments exist for parent", async () => {
@@ -185,7 +181,7 @@ describe("morphTo", () => {
       .with("commentable")
       .where("body", "orphan")
       .get()) as (Comment & { commentable: Post | Video | null })[];
-    expect(comments[0].commentable).toBeNull();
+    expect(comments[0]!.commentable).toBeNull();
   });
 
   it("sets null when the FK points to a non-existent row", async () => {
@@ -194,6 +190,6 @@ describe("morphTo", () => {
       .with("commentable")
       .where("body", "missing")
       .get()) as (Comment & { commentable: Post | Video | null })[];
-    expect(comments[0].commentable).toBeNull();
+    expect(comments[0]!.commentable).toBeNull();
   });
 });

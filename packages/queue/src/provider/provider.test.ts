@@ -202,7 +202,7 @@ describe("QueueProvider.onStarted()", () => {
 describe("QueueProvider.onStopping()", () => {
   it("is safe to call when no interval was started", async () => {
     const { container, fakeQueue } = makeApp();
-    const provider = new QueueProvider({ container } as any);
+    new QueueProvider({ container } as any);
     // tryMake returns a queue (non-null)
     const app = { container: { ...container, tryMake: () => fakeQueue } } as any;
     const p = new QueueProvider(app);

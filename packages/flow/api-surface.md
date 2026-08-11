@@ -1008,6 +1008,35 @@ type SnapshotData = {    [x: string]: SnapshotTuple;}
 
 type ValidationRules = {    [x: string]: (rule: RuleBuilder) => FieldRule;}
 
+## ./browser  `(./src/browser/index.ts)`
+
+class FlowBrowser = {
+  new (_browser: LaunchedBrowser, _session: CdpSession): FlowBrowser
+  static available: () => boolean
+  static open: (url: string, options?: OpenOptions) => Promise<FlowBrowser>
+  attr: (selector: string, name: string) => Promise<string | null>
+  click: (selector: string) => Promise<void>
+  close: () => Promise<void>
+  consoleErrors: () => string[]
+  evaluate: <T = unknown>(expression: string) => Promise<T>
+  fill: (selector: string, value: string) => Promise<void>
+  goto: (url: string, options?: OpenOptions) => Promise<void>
+  html: () => Promise<string>
+  pageErrors: () => string[]
+  text: (selector: string) => Promise<string>
+  value: (selector: string) => Promise<string>
+  waitForSelector: (selector: string, timeoutMs?: number) => Promise<void>
+  waitForText: (selector: string, text: string, timeoutMs?: number) => Promise<void>
+  waitUntil: (expression: string, label: string, timeoutMs?: number) => Promise<void>
+}
+
+function findChrome = () => string | null
+
+interface OpenOptions = {
+  timeout?: number
+  waitForConnection?: boolean
+}
+
 ## ./compiler-helpers  `(./src/compiler/helpers.ts)`
 
 function __esc = (v: unknown) => string

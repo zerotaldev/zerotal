@@ -169,6 +169,9 @@ export function tenantCache(store?: string, cacheResolver?: CacheResolverLike): 
 
 function _resolveCache(): CacheResolverLike {
   try {
+    // Optional peer probed synchronously — a static import would fail when the
+    // package is absent, and this resolver cannot be async.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Cache } = require("@zerotal/cache") as { Cache: CacheResolverLike };
     return Cache;
   } catch {

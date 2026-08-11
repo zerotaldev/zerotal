@@ -76,6 +76,10 @@ const KERNEL_EXPORTS = [
   "app",
   "basePath",
   "buildCookie",
+  // Deliberate kernel additions: the doctor's check registry is a provider-facing
+  // seam (registerDoctorCheck contributions run through runDoctor), like the
+  // convention concerns it mirrors.
+  "builtinDoctorChecks",
   "camelCase",
   "collect",
   "config",
@@ -110,6 +114,7 @@ const KERNEL_EXPORTS = [
   "rescue",
   "rescueSync",
   "route",
+  "runDoctor",
   "safeEqual",
   "safeRedirectPath",
   "scanFileRoutes",

@@ -831,6 +831,9 @@ export abstract class Component {
   redirect(url: string, status?: number): RedirectFlash {
     this._redirectUrl = url;
     this._redirectStatus = status ?? null;
+    // Two `this` scopes meet here: the builder methods chain on the builder while
+    // flashing through the component, so the alias is load-bearing.
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     const builder: RedirectFlash = {
       with(message: string, level: FlashLevel) {

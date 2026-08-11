@@ -16,6 +16,7 @@ describe("AppConfig conventions", () => {
       jobs: "app/jobs",
       schedules: "app/schedules",
       validators: "app/validators",
+      commands: "app/commands",
     });
   });
 

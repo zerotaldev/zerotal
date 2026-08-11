@@ -16,6 +16,13 @@
 export interface BuildResult {
   success: boolean;
   logs?: unknown[];
+  /**
+   * True when every registered routine skipped — nothing had changed since the
+   * last build. Reported so the dev log can say so: a developer who saves a file
+   * and sees no rebuild, with no explanation, deletes `.zerotal/` and stops
+   * trusting the tool.
+   */
+  skipped?: boolean;
 }
 
 /** A frontend build routine that resolves once the build finishes. */
@@ -60,7 +67,11 @@ export async function runDevBuildHooks(): Promise<BuildResult> {
     Array.from(_hooks, async ([name, fn]): Promise<BuildResult> => {
       try {
         const result = await fn();
-        return { success: result.success, logs: (result.logs ?? []).map((l) => `[${name}] ${l}`) };
+        return {
+          success: result.success,
+          logs: (result.logs ?? []).map((l) => `[${name}] ${l}`),
+          ...(result.skipped === true ? { skipped: true } : {}),
+        };
       } catch (error) {
         return { success: false, logs: [`[${name}] ${error}`] };
       }
@@ -70,5 +81,7 @@ export async function runDevBuildHooks(): Promise<BuildResult> {
   return {
     success: results.every((result) => result.success),
     logs: results.flatMap((result) => result.logs ?? []),
+    // Only when *every* routine skipped: one bundle rebuilding is a rebuild.
+    skipped: results.length > 0 && results.every((result) => result.skipped === true),
   };
 }

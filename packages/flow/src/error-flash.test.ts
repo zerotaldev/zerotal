@@ -146,7 +146,7 @@ describe("this.flash() fluent builder + options", () => {
   test("chained setters mutate the queued payload in place", async () => {
     const t = await FlowTest.mount(Demo);
     await t.call("flashChained");
-    const [f] = t.flashes();
+    const f = t.flashes()[0]!;
     expect(f).toMatchObject({
       message: "Post deleted",
       level: "warning",
@@ -160,7 +160,7 @@ describe("this.flash() fluent builder + options", () => {
   test("options object form maps type→level and carries config", async () => {
     const t = await FlowTest.mount(Demo);
     await t.call("flashWithOptions");
-    const [f] = t.flashes();
+    const f = t.flashes()[0]!;
     expect(f).toMatchObject({
       message: "Saved",
       level: "success",
@@ -174,7 +174,7 @@ describe("this.flash() fluent builder + options", () => {
   test("noAutoDismiss() sets duration to 0", async () => {
     const t = await FlowTest.mount(Demo);
     await t.call("flashSticky");
-    const [f] = t.flashes();
+    const f = t.flashes()[0]!;
     expect(f.level).toBe("error");
     expect(f.duration).toBe(0);
   });
@@ -182,7 +182,7 @@ describe("this.flash() fluent builder + options", () => {
   test("multiple action()s accumulate, with method-by-name + constrained styles", async () => {
     const t = await FlowTest.mount(Demo);
     await t.call("flashWithAction");
-    const [f] = t.flashes();
+    const f = t.flashes()[0]!;
     expect(f.actions).toEqual([
       { label: "Undo", method: "restorePost", args: [42], color: "info" },
       {

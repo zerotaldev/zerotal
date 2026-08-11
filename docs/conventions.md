@@ -393,6 +393,7 @@ export default AppConfig({
       jobs: "app/jobs",
       schedules: "app/schedules",
       validators: "app/validators",
+      commands: "app/commands",
     },
   },
 });
@@ -451,6 +452,11 @@ The concerns that run in the convention phase, in `order`. `events`, `services`,
 
 `providers` (`app/providers`) and `middleware` (`app/middleware`) are not convention-phase concerns
 — they are discovered earlier in the boot sequence (see [Mental model](#mental-model)).
+
+`commands` (`app/commands`) is discovered by the CLI's command runner rather than the convention
+phase — console, worker, and test environments only, since HTTP boot has no use for parsing CLI
+files. It honours `conventions.enabled` and the `paths.commands` override like the rest. See
+[Commands](/docs/commands#auto-discovery).
 
 ## Next steps
 

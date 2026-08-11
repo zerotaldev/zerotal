@@ -19,7 +19,6 @@ import { table } from "./decorators/table.ts";
 import { RelationNotLoadedError } from "../errors/index.ts";
 import type { ManyToMany, HasMany } from "./relations/RelationRegistry.ts";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bun.SQL has no exported type
 let db: any;
 
 @table("permissions")

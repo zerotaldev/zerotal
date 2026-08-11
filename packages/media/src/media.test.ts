@@ -28,8 +28,8 @@ import {
   FileTooLargeError,
   UnknownCollectionError,
   UnsavedOwnerError,
-  UnsupportedManipulationError,
 } from "./errors.ts";
+import type { ImageDriver } from "./conversions/ImageDriver.ts";
 import type { MediaCollections } from "./types.ts";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -490,6 +490,61 @@ describe("conversions", () => {
   });
 
   it("one failing conversion loses neither the others nor the upload", async () => {
+    // A driver that fails one specific conversion. Previously this test used
+    // `fit: "cover"` as its guaranteed failure, which the default driver now
+    // handles — so the failure is injected rather than borrowed from a gap.
+    const base = new BunImageDriver();
+    const driver: ImageDriver = {
+      name: base.name,
+      supportsCrop: base.supportsCrop,
+      metadata: (bytes) => base.metadata(bytes),
+      placeholder: (bytes) => base.placeholder(bytes),
+      canEncode: (format) => base.canEncode(format),
+      convert: (bytes, manipulation) => {
+        if (manipulation.width === 3) throw new Error("codec exploded");
+        return base.convert(bytes, manipulation);
+      },
+    };
+
+    const runner = new ConversionRunner(driver, { ...mediaDefaults(), disk: "local" });
+    const product = await Product.create({ name: "Kettle" });
+    const media = await product.addMedia(PNG_4x4, "a.png").toCollection("plain");
+
+    const { generated, failed } = await runner.run(media, {
+      ok: { width: 2, format: "webp" },
+      broken: { width: 3, format: "webp" },
+    });
+
+    expect(generated).toEqual(["ok"]);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]!.name).toBe("broken");
+    expect(failed[0]!.reason).toContain("codec exploded");
+    disk.assertExists(`media/${media.uuid}/original.png`);
+  });
+});
+
+// ── The default driver ────────────────────────────────────────────────────────
+
+describe("BunImageDriver", () => {
+  it('crops for fit: "cover" without sharp installed', async () => {
+    const driver = new BunImageDriver();
+    const result = await driver.convert(PNG_WIDE, {
+      width: 50,
+      height: 50,
+      fit: "cover",
+      format: "webp",
+    });
+
+    expect([result.width, result.height]).toEqual([50, 50]);
+    expect(result.mimeType).toBe("image/webp");
+    expect(result.bytes.byteLength).toBeGreaterThan(0);
+  });
+
+  it("declares that it can crop", () => {
+    expect(new BunImageDriver().supportsCrop).toBe(true);
+  });
+
+  it("passes allowEnlargement from the collection through to the driver", async () => {
     const runner = new ConversionRunner(new BunImageDriver(), {
       ...mediaDefaults(),
       disk: "local",
@@ -497,32 +552,15 @@ describe("conversions", () => {
     const product = await Product.create({ name: "Kettle" });
     const media = await product.addMedia(PNG_4x4, "a.png").toCollection("plain");
 
-    const { generated, failed } = await runner.run(media, {
-      ok: { width: 2, format: "webp" },
-      broken: { width: 2, fit: "cover" },
+    const { generated } = await runner.run(media, {
+      // The 4px source cannot fill a 32px box without being scaled up.
+      capped: { width: 32, height: 32, fit: "cover", format: "png" },
+      stretched: { width: 32, height: 32, fit: "cover", format: "png", allowEnlargement: true },
     });
 
-    expect(generated).toEqual(["ok"]);
-    expect(failed).toHaveLength(1);
-    expect(failed[0]!.name).toBe("broken");
-    disk.assertExists(`media/${media.uuid}/original.png`);
-  });
-});
-
-// ── The crop gap ──────────────────────────────────────────────────────────────
-
-describe("BunImageDriver — the crop gap", () => {
-  it('rejects fit: "cover" with an error naming the fix', async () => {
-    const driver = new BunImageDriver();
-    const attempt = (): Promise<unknown> =>
-      driver.convert(PNG_4x4, { width: 2, height: 2, fit: "cover", format: "webp" });
-
-    await expect(attempt()).rejects.toThrow(UnsupportedManipulationError);
-    await expect(attempt()).rejects.toThrow(/sharp/);
-  });
-
-  it("declares that it cannot crop", () => {
-    expect(new BunImageDriver().supportsCrop).toBe(false);
+    expect(generated.sort()).toEqual(["capped", "stretched"]);
+    expect(media.generatedConversions!["capped"]).toMatchObject({ width: 4, height: 4 });
+    expect(media.generatedConversions!["stretched"]).toMatchObject({ width: 32, height: 32 });
   });
 
   it("resizes with inside and never upscales by default", async () => {

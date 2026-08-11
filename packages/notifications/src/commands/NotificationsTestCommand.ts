@@ -28,6 +28,8 @@ class TestNotification extends Notification {
  * Mail configuration fails in ways unit tests cannot reach: a wrong port, a
  * refused STARTTLS upgrade, credentials the server rejects. This exercises the
  * whole path and prints what the server said.
+ *
+ * @internal
  */
 export class NotificationsTestCommand extends Command {
   static commandName = "notifications:test";

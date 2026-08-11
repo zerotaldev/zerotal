@@ -48,6 +48,8 @@ export interface SavedViewProvider {
  * Deliberately explicit rather than "everything in the URL": a saved view should
  * restore how the list was *shaped*, not which page of it happened to be open,
  * so `page` is excluded and a restored view always starts at the top.
+ *
+ * @internal
  */
 export const VIEW_PARAMS = [
   "search",
@@ -62,7 +64,10 @@ export const VIEW_PARAMS = [
   "group",
 ] as const;
 
-/** Reduce a full query string to just the parts a view restores. */
+/** Reduce a full query string to just the parts a view restores.
+ *
+ * @internal
+ */
 export function viewQuery(params: URLSearchParams | string): string {
   const source = typeof params === "string" ? new URLSearchParams(params) : params;
   const out = new URLSearchParams();
@@ -73,7 +78,10 @@ export function viewQuery(params: URLSearchParams | string): string {
   return out.toString();
 }
 
-/** Whether a view matches the list's current state — used to mark the active one. */
+/** Whether a view matches the list's current state — used to mark the active one.
+ *
+ * @internal
+ */
 export function viewIsActive(view: SavedView, current: URLSearchParams | string): boolean {
   return viewQuery(view.query) === viewQuery(current);
 }

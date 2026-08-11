@@ -5,6 +5,7 @@ import { runStringRules } from "./stringRules.ts";
 import { ValidatorFacade } from "./facades/Validator.ts";
 import { ValidationRedirectError, ValidationJsonError } from "./ValidationError.ts";
 import { ValidatorConfig } from "./config.ts";
+import { registerDbRuleRunner, runDbRule, _resetDbRuleRunner } from "./dbRules.ts";
 
 const rules = new RuleBuilder();
 
@@ -1340,8 +1341,6 @@ describe("PasswordRule.confirmed()", () => {
 // ── dbRules — registerDbRuleRunner / runDbRule ───────────────────────────────
 
 describe("dbRules", () => {
-  const { registerDbRuleRunner, runDbRule, _resetDbRuleRunner } = require("./dbRules.ts");
-
   it("runDbRule throws when no runner is registered", async () => {
     // `_runner` is a process-global; another suite (via DatabaseProvider) may have
     // registered one before this test runs. Reset it so the no-runner path is deterministic.

@@ -102,6 +102,8 @@ export class Span {
 /**
  * A span whose methods are all no-ops.
  * Used when telemetry is disabled so call sites never need null-checks.
+ *
+ * @internal
  */
 export class NoopSpan extends Span {
   constructor() {
@@ -127,6 +129,11 @@ export class NoopSpan extends Span {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Random hex for trace and span ids.
+ *
+ * @internal
+ */
 export function _randomHex(bytes: number): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
     .map((b) => b.toString(16).padStart(2, "0"))

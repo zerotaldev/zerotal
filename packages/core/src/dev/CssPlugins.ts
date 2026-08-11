@@ -5,6 +5,26 @@
  */
 import type { BunPlugin } from "bun";
 import { pruneBuildOutput } from "./BuildOutput.ts";
+import { BuildCache } from "./BuildCache.ts";
+
+/** Outcome of one bundling helper. `skipped` means the cache answered. */
+export interface BundleResult {
+  success: boolean;
+  logs: unknown[];
+  /** True when nothing was rebuilt because no input had changed. */
+  skipped?: boolean;
+}
+
+/**
+ * Directories whose contents feed Tailwind's `@source` scan.
+ *
+ * A stylesheet's inputs are not its imports — utility classes are discovered by
+ * reading templates and components, none of which appear in a sourcemap. These
+ * are the conventional locations; a missing one contributes nothing.
+ */
+function _scanRoots(cwd: string): string[] {
+  return [`${cwd}/app`, `${cwd}/resources`, `${cwd}/routes`, `${cwd}/config`];
+}
 
 /**
  * Detect and load `bun-plugin-tailwind` from the app's own node_modules.
@@ -46,13 +66,29 @@ export async function buildCssBundle(
   outdir: string,
   minify = false,
   loader?: Record<string, string>,
-): Promise<{ success: boolean; logs: unknown[] }> {
+): Promise<BundleResult> {
   const cwd = process.cwd();
   const plugins = await detectCssPlugins(cwd);
 
+  // The whole source tree is this bundle's input set, because that is what
+  // Tailwind reads. Broad, but a stat sweep is far cheaper than the build.
+  const cache = BuildCache.for(
+    {
+      entrypoints: [input],
+      outdir,
+      minify,
+      loader,
+      plugins: plugins.map((plugin) => plugin.name ?? "anonymous"),
+      extra: { kind: "css", cli: plugins.length === 0 },
+    },
+    cwd,
+  );
+
+  if (!minify && (await cache.isFresh())) return { success: true, logs: [], skipped: true };
+
   if (plugins.length > 0) {
     // bun-plugin-tailwind is available — use Bun's native CSS bundler
-    return Bun.build({
+    const result = await Bun.build({
       entrypoints: [input],
       outdir,
       target: "browser",
@@ -62,6 +98,9 @@ export async function buildCssBundle(
         ? { loader: loader as NonNullable<Parameters<typeof Bun.build>[0]["loader"]> }
         : {}),
     });
+
+    if (result.success) await cache.record(result.outputs, { scanRoots: _scanRoots(cwd) });
+    return { success: result.success, logs: result.logs as unknown[] };
   }
 
   // Fallback: run the Tailwind CLI as a subprocess
@@ -91,6 +130,12 @@ export async function buildCssBundle(
       new Response(subprocess.stderr).text(),
     ]);
 
+    if (exitCode === 0) {
+      // The CLI emits no sourcemap and returns no artifact list, so the one
+      // output is named rather than discovered.
+      await cache.record([{ path: outputFile }], { scanRoots: _scanRoots(cwd) });
+    }
+
     return {
       success: exitCode === 0,
       logs: exitCode !== 0 ? [stderr] : [],
@@ -115,15 +160,30 @@ export async function buildJsBundle(
   input: string,
   outdir: string,
   minify = false,
-): Promise<{ success: boolean; logs: unknown[] }> {
+): Promise<BundleResult> {
+  const cwd = process.cwd();
+  const cache = BuildCache.for(
+    { entrypoints: [input], outdir, minify, extra: { kind: "js" } },
+    cwd,
+  );
+
+  if (!minify && (await cache.isFresh())) return { success: true, logs: [], skipped: true };
+
   try {
-    return await Bun.build({
+    const result = await Bun.build({
       entrypoints: [input],
       outdir,
       target: "browser",
       format: "esm",
       minify,
+      // Not only for debugging: the map's `sources` are how the cache learns
+      // which files this bundle actually pulled in.
+      ...(minify ? {} : { sourcemap: "external" as const }),
     });
+
+    // No scan roots — a JS bundle's inputs are exactly its module graph.
+    if (result.success) await cache.record(result.outputs);
+    return { success: result.success, logs: result.logs as unknown[] };
   } catch (error) {
     return { success: false, logs: [error] };
   }
@@ -162,13 +222,32 @@ export interface AssetBuildConfig {
 export async function buildConfiguredAssets(
   assets: AssetBuildConfig,
   cwd: string,
-): Promise<{ success: boolean; logs: unknown[] }> {
+): Promise<BundleResult> {
   const entries = Array.isArray(assets.entrypoint) ? assets.entrypoint : [assets.entrypoint];
   const entrypoints = entries.map((entry) => `${cwd}/${entry}`);
   const outdir = `${cwd}/${assets.outDir}`;
 
   try {
     const plugins = await detectCssPlugins(cwd);
+
+    const cache = BuildCache.for(
+      {
+        entrypoints,
+        outdir,
+        minify: assets.minify,
+        loader: assets.loader,
+        plugins: plugins.map((plugin) => plugin.name ?? "anonymous"),
+        extra: { kind: "configured" },
+      },
+      cwd,
+    );
+
+    // Never in a minified (production) build: the cost of a wrong skip there is
+    // shipping stale assets, and the build runs once rather than on every save.
+    if (!assets.minify && (await cache.isFresh())) {
+      return { success: true, logs: [], skipped: true };
+    }
+
     const result = await Bun.build({
       entrypoints,
       outdir,
@@ -187,8 +266,15 @@ export async function buildConfiguredAssets(
         : {}),
     });
 
-    if (result.success) await pruneBuildOutput(outdir, result.outputs);
-    return result;
+    // Prune only after a build that actually ran. A skipped build returns no
+    // outputs, and pruning against an empty set would delete the entire
+    // previous build — which is why the cache check returns early above rather
+    // than falling through to here.
+    if (result.success) {
+      await pruneBuildOutput(outdir, result.outputs);
+      await cache.record(result.outputs, { scanRoots: _scanRoots(cwd) });
+    }
+    return { success: result.success, logs: result.logs as unknown[] };
   } catch (error) {
     return { success: false, logs: [error] };
   }

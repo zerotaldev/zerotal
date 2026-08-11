@@ -22,7 +22,10 @@ export type QueryRule =
   | { type: "rule"; constraint: string; operator: string; value?: string }
   | { type: "group"; operator: Conjunction; rules: QueryRule[] };
 
-/** Parse the JSON a query-builder filter stores in the URL. Invalid input filters nothing. */
+/** Parse the JSON a query-builder filter stores in the URL. Invalid input filters nothing.
+ *
+ * @internal
+ */
 export function parseRuleTree(value: string): QueryRule | null {
   if (!value) return null;
   try {
@@ -48,6 +51,8 @@ function isRule(node: unknown): node is QueryRule {
  * "Advanced filter: 3 rules" tells someone their list is narrowed and by roughly
  * how much; the builder itself shows the detail. One rule gets named outright,
  * since that is the common case and the label fits.
+ *
+ * @internal
  */
 export function describeRuleTree(
   node: QueryRule | null,
@@ -73,7 +78,10 @@ export function describeRuleTree(
   return `${rules.length} rules`;
 }
 
-/** Does this tree actually constrain anything? An empty group is a no-op. */
+/** Does this tree actually constrain anything? An empty group is a no-op.
+ *
+ * @internal
+ */
 export function ruleTreeIsEmpty(node: QueryRule | null): boolean {
   if (!node) return true;
   if (node.type === "rule") return false;

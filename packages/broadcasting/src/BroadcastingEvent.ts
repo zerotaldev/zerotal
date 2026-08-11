@@ -8,6 +8,8 @@ const _broadcasted = new WeakSet<object>();
 /**
  * Broadcast an event at most once (idempotent across `dispatch()` and the `Events` auto-broadcast
  * hook), gated by `broadcastWhen()` (default true). Used by both paths; exported for the hook.
+ *
+ * @internal
  */
 export function broadcastOnce(event: BroadcastEvent): void {
   if (_broadcasted.has(event)) return;

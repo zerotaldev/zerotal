@@ -59,6 +59,8 @@ export function NotificationConfig(
  * naming the key — rather than on the first password-reset email of the day.
  *
  * @throws {NotificationConfigError} on the first inconsistency found.
+ *
+ * @internal
  */
 export function validateNotificationConfig(config: NotificationConfigShape): void {
   const { mail, sms } = config;

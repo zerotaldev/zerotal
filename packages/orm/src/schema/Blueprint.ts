@@ -893,7 +893,7 @@ function _postgresAlterStatements(table: string, col: IAlterCol): string[] {
   }
 
   // NOT NULL / nullable.
-  if (/NOT NULL/i.test(afterName)) {
+  if (/\bNOT NULL\b/i.test(afterName)) {
     stmts.push(`ALTER TABLE ${table} ALTER COLUMN ${name} SET NOT NULL`);
   } else {
     stmts.push(`ALTER TABLE ${table} ALTER COLUMN ${name} DROP NOT NULL`);
@@ -901,7 +901,7 @@ function _postgresAlterStatements(table: string, col: IAlterCol): string[] {
 
   // DEFAULT.
   const defMatch = afterName.match(
-    /DEFAULT\s+(\S+(?:\s+\S+)*?)(?:\s+(?:NOT NULL|NULL|UNIQUE|CHECK|GENERATED)|$)/i,
+    /\bDEFAULT\s+(\S+(?:\s+\S+)*?)(?:\s+(?:NOT NULL|NULL|UNIQUE|CHECK|GENERATED)\b|$)/i,
   );
   if (defMatch) {
     stmts.push(`ALTER TABLE ${table} ALTER COLUMN ${name} SET DEFAULT ${defMatch[1]}`);

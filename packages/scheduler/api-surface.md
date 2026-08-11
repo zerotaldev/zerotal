@@ -21,6 +21,13 @@ class CronExpression = {
   weekday: (v: number | string) => CronExpression
 }
 
+class FileScheduleRunStore = {
+  new (_path: string, _keep?: number): FileScheduleRunStore
+  lastFor: (name: string) => ScheduleRunRecord | undefined
+  recent: (limit?: number, name?: string) => ScheduleRunRecord[]
+  record: (run: ScheduleRunRecord) => void
+}
+
 class Schedule = {
   new (): Schedule
   appendOutputTo?: string
@@ -125,6 +132,7 @@ class SchedulerManager = {
   new (): SchedulerManager
   add: (name: string, cronExpression: string, callback: TaskCallback) => ScheduledTask
   job: (name: string, callback: TaskCallback) => SchedulerBuilder
+  readonly staticConfigFindings: {    className: string;    keys: string[];}[]
   start: () => void
   stop: () => void
   tasks: ReadonlyMap<string, ScheduledTask>
@@ -169,11 +177,19 @@ class TaskSkipped = {
   readonly reason: 'lock' | 'window' | 'env' | 'when' | 'skip' | 'overlap'
 }
 
+const DEFAULT_RUN_LOG_KEEP = 500
+
+const DEFAULT_RUN_LOG_PATH = 'storage/framework/schedule-runs.jsonl'
+
 const Scheduler = SchedulerManager
 
 const schedulesConcern = ConcernDescriptor
 
+function installScheduleRunLog = (app: Application) => (() => void) | undefined
+
 function registerSchedule = (manager: SchedulerManager, schedule: Schedule, fallbackName: string) => ScheduledTask | undefined
+
+function resolveRunLogConfig = (app: Application) => RunLogConfig
 
 function SchedulerConfig = (options?: Partial<SchedulerConfigShape>) => SchedulerConfigShape
 
@@ -182,8 +198,30 @@ interface OverlapLockOptions = {
   expiresAfterMinutes?: number
 }
 
+interface RunLogConfig = {
+  enabled: boolean
+  keep: number
+  path: string
+}
+
 interface SchedulerConfigShape = {
+  runLog: {    enabled?: boolean;    path: string;    keep: number;}
   timezone: string
+}
+
+interface ScheduleRunRecord = {
+  durationMs: number
+  error?: string
+  finishedAt: string
+  name: string
+  ok: boolean
+  startedAt: string
+}
+
+interface ScheduleRunStore = {
+  lastFor: (name: string) => ScheduleRunRecord | undefined
+  recent: (limit?: number, name?: string) => ScheduleRunRecord[]
+  record: (run: ScheduleRunRecord) => void
 }
 
 type OutputMailer = (email: string, subject: string, body: string) => void | Promise<void>

@@ -1,4 +1,9 @@
 // @zerotal/media — public API
+//
+// Test and advanced-wiring seams (state swapping, disk resolver overrides,
+// queue-bridge internals) live at `@zerotal/media/testing`. They are
+// deliberately not re-exported here: this entry point is what the package's
+// stability guarantee covers, and it should stay small enough to keep.
 
 // Model + model mixin
 // `Media` is the mixin — it reads as `Model.using(Media)`. `MediaItem` is one
@@ -19,7 +24,7 @@ export type { CollectionHost } from "./collections/resolve.ts";
 export { applyRetentionRules } from "./collections/retention.ts";
 
 // Conversions
-export { ConversionRunner, partitionConversions } from "./conversions/ConversionRunner.ts";
+export { ConversionRunner } from "./conversions/ConversionRunner.ts";
 export { BunImageDriver } from "./conversions/BunImageDriver.ts";
 export { SharpImageDriver } from "./conversions/SharpImageDriver.ts";
 export {
@@ -34,13 +39,7 @@ export type {
   ImageMetadata,
   ImageResult,
 } from "./conversions/ImageDriver.ts";
-export {
-  setConversionDispatcher,
-  isQueueAvailable,
-  dispatchConversions,
-} from "./conversions/dispatch.ts";
-export type { ConversionDispatcher } from "./conversions/dispatch.ts";
-export { performConversions, ownerClassFor } from "./conversions/queueBridge.ts";
+export { isQueueAvailable, dispatchConversions } from "./conversions/dispatch.ts";
 
 // Paths
 export { DefaultPathGenerator } from "./paths/PathGenerator.ts";
@@ -50,15 +49,8 @@ export type { PathGenerator } from "./paths/PathGenerator.ts";
 export { fromValue, fromUrl, fromDisk, fromPath } from "./sources.ts";
 export type { MediaSource, ResolvedSource, SourceResolver } from "./sources.ts";
 
-// Disk resolution (the seam tests use to skip building a container)
-export {
-  diskFor,
-  diskNameFor,
-  defaultDiskName,
-  setDiskResolver,
-  setDefaultDiskName,
-} from "./support/disks.ts";
-export type { DiskResolver } from "./support/disks.ts";
+// Disk resolution
+export { diskFor, defaultDiskName } from "./support/disks.ts";
 
 // Schema provisioning
 export { mediaSchemaConcern } from "./mediaSchemaConcern.ts";
@@ -66,10 +58,6 @@ export { mediaSchemaConcern } from "./mediaSchemaConcern.ts";
 // Config
 export { MediaConfig, mediaDefaults } from "./config.ts";
 export type { MediaConfigShape } from "./config.ts";
-
-// Shared state (mainly for tests and advanced wiring)
-export { mediaState, setMediaState, resetMediaState } from "./state.ts";
-export type { MediaState } from "./state.ts";
 
 // Testing
 export { MediaFake } from "./MediaFake.ts";

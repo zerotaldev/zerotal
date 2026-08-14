@@ -5,6 +5,7 @@ import { AuthProvider } from 'zerotal/auth';
 import { NotificationProvider } from '@zerotal/notifications';
 import { QueueProvider } from 'zerotal/queue';
 import { LogProvider } from 'zerotal/logger';
+import { StorageProvider } from 'zerotal/storage';
 import { DevtoolsProvider } from '@zerotal/devtools';
 
 // `DevtoolsProvider` needs no configuration. It activates only when APP_ENV is
@@ -27,6 +28,12 @@ export default Application.create({
     NotificationProvider,
     QueueProvider,
     LogProvider,
+    // Registered up front because its absence is invisible until the first
+    // upload. A `Storage.disk(...)` call usually sits behind auth, a permission
+    // check and a multipart parse, so every simpler probe returns 401/403 long
+    // before reaching the line that would fail — and the line that would fail
+    // is usually first reached in production. It costs nothing when unused.
+    StorageProvider,
     DevtoolsProvider,
   ],
 })

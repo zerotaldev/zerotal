@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The `api` template registers `StorageProvider`.** Its absence is invisible until the
+  first upload: a `Storage.disk(...)` call usually sits behind auth, a permission check
+  and a multipart parse, so every simpler probe returns 401/403 long before reaching the
+  line that would fail — and that line is often first reached in production. It costs
+  nothing when unused. The `flow`, `react`, `vue` and `admin` templates already had it.
+
 ## [1.3.0] — 2026-08-09
 
 ### Changed

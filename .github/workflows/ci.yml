@@ -76,6 +76,13 @@ jobs:
       - name: Component docs
         run: bun run docs:components:check
 
+      # types/routes.generated.ts is what makes `route()` type-checked, and it is
+      # only correct if it is regenerated when routes change. `zt dev` refreshes it,
+      # but a route added in an editor-only session (or by a provider) would ship
+      # stale otherwise — and a generated file that is wrong is worse than none.
+      - name: Route types
+        run: cd apps/docs && bun zt.ts route:types --check
+
   test:
     name: Tests (Bun ${{ matrix.bun }})
     runs-on: ubuntu-latest

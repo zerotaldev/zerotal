@@ -403,22 +403,88 @@ Router.get("/posts/:slug", PostController, "show").name("posts.show");
 
 // Generate the URL with route()
 route("posts.show", { slug: "hello-world" }); // → '/posts/hello-world'
-route("search", { q: "zerotal", page: 2 }); // → '/search?q=zerotal&page=2'
+route("search", {}, { q: "zerotal", page: 2 }); // → '/search?q=zerotal&page=2'
 ```
 
-Extra params that don't match a `:segment` become query-string entries.
+`route(name, params, query)` takes three arguments, and each one means one thing:
+params fill `:segments`, query values become the query string. A key in `params`
+that matches no segment is an error, not a query param.
 
 Naming is what lets a path change without a sweep through templates: the URL lives
 in one place and every link asks for it by name. A dotted convention —
 `posts.show`, `admin.users.edit` — keeps names sorted and readable as the table
 grows, and mirrors the grouping the routes already sit in.
 
-> **Warning** — `route()` throws if the route name is unknown or a required param
-> is missing.
+> **Warning** — `route()` throws if the route name is unknown, a required param
+> is missing, or a param matches no `:segment`.
 
 Throwing rather than returning a broken string is deliberate: a typo surfaces the
 first time the code runs instead of shipping a link to a 404. Run
 [`bun zt route:list`](#the-routelist-command) to see every registered name.
+
+A catch-all route (`/docs/*`, or `[...slug].ts` under file-based routing) reaches
+the router as `*` — the segment's name is gone by then — so its value is passed
+under the `"*"` key, as a path or as segments:
+
+```typescript
+route("docs.show", { "*": "guides/intro" }); // → '/docs/guides/intro'
+route("docs.show", { "*": ["guides", "intro"] }); // → '/docs/guides/intro'
+```
+
+### Typed route names
+
+Run `bun zt route:types` and the names above stop being strings the compiler has
+to take on faith:
+
+```typescript
+route("psots.show", { slug }); // ✗ not assignable to RouteName
+route("posts.show"); // ✗ Expected 2 arguments, but got 1
+route("posts.show", {}); // ✗ Property 'slug' is missing
+route("posts.show", { slugg: "x" }); // ✗ Did you mean to write 'slug'?
+```
+
+The command boots the app, reads the routes it registered, and writes
+`types/routes.generated.ts` — a name → pattern map plus a one-line augmentation
+that `route()` reads:
+
+```typescript
+export const ROUTES = {
+  home: "/",
+  "posts.show": "/posts/:slug",
+} as const;
+```
+
+It boots rather than scanning the routes directory because a route name comes
+from three places and only one of them is a file path: the file-router's
+convention, a route file's `export const meta = { GET: { name } }`, and
+programmatic registrations — including those a package's provider makes. A
+scanner would see the first and quietly miss the other two. Params are derived
+from the pattern, so adding a segment changes one string and every call site
+updates with it.
+
+**Commit the generated file.** `zt dev` rewrites it on every restart, so it stays
+current while you work, but editors and CI need it without booting the app. In CI:
+
+```bash
+bun zt route:types --check   # fails when the file no longer matches the routes
+```
+
+Until you run the command, the registry is empty and `route()` behaves exactly as
+it always did — every name accepted, nothing checked.
+
+**When the name is not known at compile time** — read from config, chosen by a
+package — use the escape hatch, which does the same work with no checking:
+
+```typescript
+route.dynamic(config("app.home_route"), { id });
+```
+
+It is a separate function rather than an overload on `route()` for a reason: an
+overload that accepts every string is matched by every string, and would make
+the checked signature above decorative.
+
+Typed names flow through the helpers built on `route()` too — `redirect().to()`,
+`Url.route()`, `Uri.route()`, and Flow's `redirectRoute()`.
 
 ## File-based routing
 
@@ -773,6 +839,20 @@ bun zt route:list --verbose
 bun zt route:list -v
 ```
 
+### The route:types command
+
+Write the generated name → pattern map that makes [`route()` typed](#typed-route-names):
+
+```bash
+# writes types/routes.generated.ts — commit it
+bun zt route:types
+
+# CI: fail when the committed file no longer matches the routes
+bun zt route:types --check
+```
+
+Both forms boot the app, so a route a provider registers is included.
+
 ### Programmatic inspection
 
 ```typescript
@@ -852,13 +932,15 @@ Every route registration returns a chainable handle:
 
 ### URLs, inspection and CLI
 
-| API                                    | Signature                           | Description                                                            |
-| -------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------- |
-| `route(name, params?)`                 | `(name, params?): string`           | Build a URL from a named route; extra params become the query string.  |
-| `Router.routes` / `Router.namedRoutes` | `ReadonlyMap`                       | Read the registered route and name maps.                               |
-| `Router.middlewareFor(method, path)`   | `(method, path): MiddlewareClass[]` | List the middleware attached to a route.                               |
-| `HttpContext.fake(url?, init?)`        | `(url?, init?): HttpContext`        | Build a fake context for unit tests.                                   |
-| `bun zt route:list`                    | —                                   | Print every route (`-m` method, `-p` path, `--name`, `-v` middleware). |
+| API                                    | Signature                           | Description                                                             |
+| -------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------- |
+| `route(name, params?, query?)`         | `(name, params?, query?): string`   | Build a URL from a named route. Params are exact; query values go last. |
+| `route.dynamic(name, params?, query?)` | `(name, params?, query?): string`   | The same, for a name only known at runtime — no compile-time checking.  |
+| `Router.routes` / `Router.namedRoutes` | `ReadonlyMap`                       | Read the registered route and name maps.                                |
+| `Router.middlewareFor(method, path)`   | `(method, path): MiddlewareClass[]` | List the middleware attached to a route.                                |
+| `HttpContext.fake(url?, init?)`        | `(url?, init?): HttpContext`        | Build a fake context for unit tests.                                    |
+| `bun zt route:list`                    | —                                   | Print every route (`-m` method, `-p` path, `--name`, `-v` middleware).  |
+| `bun zt route:types`                   | `--check`                           | Write `types/routes.generated.ts`; `--check` fails when it is stale.    |
 
 ## Next steps
 

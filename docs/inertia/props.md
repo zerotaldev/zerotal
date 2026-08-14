@@ -410,6 +410,97 @@ return inertia("Layout", {
 This pattern pairs well with a persistent [layout](/docs/inertia/build#generating-a-page) that
 displays the value on every page.
 
+## Typed props
+
+The props a controller passes are checked against the props the page component
+declares:
+
+```tsx
+// resources/js/pages/Posts/Show.tsx
+interface Props {
+  post: Post;
+  related: Post[];
+  stats?: { views: number }; // optional — it arrives after first paint
+}
+export default function Show({ post, related, stats }: Props) { … }
+```
+
+```ts
+// in a controller
+return Inertia.render("Posts/Show", {
+  post,
+  related: [],
+  stats: defer(() => computeStats()),
+});
+
+Inertia.render("Posts/Shwo", { … }); // ✗ not a page
+Inertia.render("Posts/Show", { post }); // ✗ Property 'related' is missing
+Inertia.render("Posts/Show", { post, relatd: [] }); // ✗ Did you mean 'related'?
+```
+
+Nothing is annotated to make this work. The component already declares its props,
+and `resources/js/pages.generated.ts` already holds an `import()` thunk per page —
+and an `import()` thunk carries the module's full type. The registry is written
+with `satisfies`, so those types survive, and one type-only line in that same file
+hands them to the server. Rebuild it with `bun zt inertia:build` (or just run
+`zt dev`, which rebuilds it on every change).
+
+The check runs in the direction that costs nothing: the **component** declares
+the shape and the **controller** is checked against it.
+
+### Wrappers are unwrapped
+
+The two sides genuinely differ — the controller passes `merge(() => posts)` and
+the component receives `Post[]` — so each prop accepts its value, a factory for
+it, or a wrapper carrying it, and the wrapper's payload is checked against the
+prop it fills:
+
+```ts
+Inertia.render("Posts/Show", { post, related: merge(() => [1, 2]) });
+// ✗ number[] is not Post[]
+```
+
+> **Warning** — `optional()` and `defer()` are only accepted where the component
+> declares the prop as optional. They are _absent on first paint_ by definition,
+> so a component that types such a prop as required is wrong about its own
+> contract. Types that accepted it anyway would launder that bug into something
+> the compiler had signed off on. Add the `?` — and handle the undefined.
+
+### Shared props are never required
+
+`auth`, `flash`, `errors` and `old` are merged into every page, so a controller
+never has to pass them — even when the page component declares them. Props you
+register yourself with `Inertia.share()` are a runtime call that nothing can
+generate, so declare them once:
+
+```ts
+// resources/js/types.ts (next to the interface your pages read with usePage)
+declare module "@zerotal/inertia" {
+  interface SharedProps {
+    appName: string;
+    flags: Record<string, boolean>;
+  }
+}
+```
+
+They then become optional-but-accepted in every `Inertia.render` call: a page may
+still override one, and no page is forced to pass it.
+
+### What is not checked
+
+- **A page name only known at runtime** — an error page chosen by status code, a
+  component from config — has nothing to check against. Use
+  `Inertia.render.dynamic(name, props)`, which takes any name and any props.
+- **Vue pages.** A `.vue` SFC resolves through a `declare module '*.vue'` shim
+  that types the default export as `DefineComponent<{}, {}, any>`, so its props
+  are not visible to TypeScript unless `vue-tsc` is in your typecheck path. Those
+  pages fall back to accepting any props rather than failing on a shape nobody
+  can see. The page **name** is still checked; only its props are not.
+- **A component wrapped in `React.memo()`** (or anything else that returns an
+  object rather than a function) falls back the same way.
+- **Before you rebuild the registry**, every name and every prop bag compiles, as
+  it always did.
+
 ## Next steps
 
 - [Inertia overview](/docs/inertia) — the guide's front page and the rest of the sections.

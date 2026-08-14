@@ -302,6 +302,7 @@ Packages register their own — see
 | Command                | Description                                            |
 | ---------------------- | ------------------------------------------------------ |
 | `bun zt route:list`    | List all registered routes with methods and middleware |
+| `bun zt route:types`   | Write `types/routes.generated.ts` (`--check` in CI)    |
 | `bun zt doctor`        | Check the app for silent misconfigurations             |
 | `bun zt key:generate`  | Generate a new `APP_KEY` and write it to `.env`        |
 | `bun zt lint:packages` | Check every workspace package against convention rules |

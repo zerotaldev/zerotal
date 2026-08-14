@@ -19,25 +19,27 @@ A consolidated cheat-sheet for `@zerotal/inertia`. Each entry links to the secti
 
 ## Server exports
 
-| Export                                               | Purpose                                                                                                                                     |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `inertia(component, props?)`                         | Render an Inertia page from a controller action. See [the inertia helper](/docs/inertia/rendering#the-inertia-helper).                      |
-| `inertiaStream(component, props?)`                   | Streaming SSR alternative to `inertia()`. See [Streaming SSR](/docs/inertia/ssr#streaming-ssr).                                             |
-| `optional(fn)` / `lazy(fn)`                          | Prop sent only on a partial reload that requests it. See [optional and always props](/docs/inertia/props#optional-and-always-props).        |
-| `always(value)`                                      | Prop always sent, even when a partial reload would exclude it.                                                                              |
-| `defer(fn, group?, opts?)`                           | Prop fetched in a follow-up request after first paint. See [deferred props](/docs/inertia/props#deferred-props).                            |
-| `merge(value)` / `deepMerge(value)`                  | Combine reloaded data with existing client data. See [merging props](/docs/inertia/props#merging-props).                                    |
-| `scroll(paginator, opts?)`                           | Infinite-scroll pagination wired to `<InfiniteScroll>`. See [infinite scroll](/docs/inertia/props#infinite-scroll).                         |
-| `sharedProps()`                                      | The auto-merged `auth` / `flash` / `errors` / `old` bag. See [Shared Props](/docs/inertia/props).                                           |
-| `share(key, value)` / `share(map)`                   | Register custom shared props. See [adding custom shared props](/docs/inertia/props#adding-custom-shared-props).                             |
-| `setAssetVersion(v)` / `assetVersion()`              | Set / read the current asset version. See [asset versioning](/docs/inertia/middleware#asset-versioning).                                    |
-| `generatePageRegistry(cwd?)`                         | Regenerate the page registry module. See [page registry](/docs/inertia/build#page-registry).                                                |
-| `inertiaRoute(path, component, props?, middleware?)` | The function behind the `Router.inertia()` macro. See [controller-less routes](/docs/inertia/rendering#controller-less-routes).             |
-| `InertiaProvider`                                    | Wires the middleware, template, asset version, and optional SSR endpoint. See [Register the provider](/docs/inertia#register-the-provider). |
-| `InertiaMiddleware`                                  | Protocol mechanics; auto-registered by the provider. See [Middleware & versioning](/docs/inertia/middleware).                               |
-| `PrecognitionMiddleware`                             | Enables precognition validation. See [precognition](/docs/inertia/props#precognition).                                                      |
-| `InertiaConfig(options?)`                            | Build a typed `config/inertia.ts` object with defaults. See [Configuration](/docs/inertia#configuration).                                   |
-| `Inertia`                                            | Unified facade — see below.                                                                                                                 |
+| Export                                               | Purpose                                                                                                                                           |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `inertia(component, props?)`                         | Render an Inertia page from a controller action. See [the inertia helper](/docs/inertia/rendering#the-inertia-helper).                            |
+| `inertia.dynamic(component, props?)`                 | Render a page whose name is only known at runtime — no compile-time checking. See [what is not checked](/docs/inertia/props#what-is-not-checked). |
+| `inertiaStream(component, props?)`                   | Streaming SSR alternative to `inertia()`. See [Streaming SSR](/docs/inertia/ssr#streaming-ssr).                                                   |
+| `inertiaStream.dynamic(component, props?)`           | The streaming counterpart of `inertia.dynamic()`.                                                                                                 |
+| `optional(fn)` / `lazy(fn)`                          | Prop sent only on a partial reload that requests it. See [optional and always props](/docs/inertia/props#optional-and-always-props).              |
+| `always(value)`                                      | Prop always sent, even when a partial reload would exclude it.                                                                                    |
+| `defer(fn, group?, opts?)`                           | Prop fetched in a follow-up request after first paint. See [deferred props](/docs/inertia/props#deferred-props).                                  |
+| `merge(value)` / `deepMerge(value)`                  | Combine reloaded data with existing client data. See [merging props](/docs/inertia/props#merging-props).                                          |
+| `scroll(paginator, opts?)`                           | Infinite-scroll pagination wired to `<InfiniteScroll>`. See [infinite scroll](/docs/inertia/props#infinite-scroll).                               |
+| `sharedProps()`                                      | The auto-merged `auth` / `flash` / `errors` / `old` bag. See [Shared Props](/docs/inertia/props).                                                 |
+| `share(key, value)` / `share(map)`                   | Register custom shared props. See [adding custom shared props](/docs/inertia/props#adding-custom-shared-props).                                   |
+| `setAssetVersion(v)` / `assetVersion()`              | Set / read the current asset version. See [asset versioning](/docs/inertia/middleware#asset-versioning).                                          |
+| `generatePageRegistry(cwd?)`                         | Regenerate the page registry module. See [page registry](/docs/inertia/build#page-registry).                                                      |
+| `inertiaRoute(path, component, props?, middleware?)` | The function behind the `Router.inertia()` macro. See [controller-less routes](/docs/inertia/rendering#controller-less-routes).                   |
+| `InertiaProvider`                                    | Wires the middleware, template, asset version, and optional SSR endpoint. See [Register the provider](/docs/inertia#register-the-provider).       |
+| `InertiaMiddleware`                                  | Protocol mechanics; auto-registered by the provider. See [Middleware & versioning](/docs/inertia/middleware).                                     |
+| `PrecognitionMiddleware`                             | Enables precognition validation. See [precognition](/docs/inertia/props#precognition).                                                            |
+| `InertiaConfig(options?)`                            | Build a typed `config/inertia.ts` object with defaults. See [Configuration](/docs/inertia#configuration).                                         |
+| `Inertia`                                            | Unified facade — see below.                                                                                                                       |
 
 ## The Inertia facade
 
@@ -123,3 +125,20 @@ Set in `config/inertia.ts` via `InertiaConfig({ … })` — every field is optio
 ## Page object fields
 
 See [page object reference](/docs/inertia/props#page-object-reference) for the full table of fields — `component`, `props`, `url`, `version`, `deferredProps`, `mergeProps`, `scrollProps`, `onceProps`, and the rest — and which API sets each.
+
+## Types
+
+Everything here is type-only, and exists so `Inertia.render` can be checked against
+the page it names. See [Typed props](/docs/inertia/props#typed-props).
+
+| Type                  | Purpose                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `InertiaPageRegistry` | Augmentation target the generated `pages.generated.ts` fills with `{ pages: typeof pages }`. Empty until the registry is built. |
+| `SharedProps`         | Declare your own `Inertia.share()` keys here; they become optional-but-accepted in every render call.                           |
+| `PageName`            | Union of the generated page names (`never` before the registry exists).                                                         |
+| `PageTarget`          | What the helpers accept as a name: `PageName` once generated, `string` before that.                                             |
+| `PropsOf<N>`          | The props page `N`'s component declares.                                                                                        |
+| `PropInput<T>`        | What may be passed for a prop typed `T` — the value, a factory, or a wrapper carrying it.                                       |
+| `RenderProps<N>`      | The full props bag `Inertia.render(N, …)` accepts, shared props subtracted.                                                     |
+| `RenderArgs<N>`       | `render()`'s argument tuple; the props bag is optional only when the page requires nothing.                                     |
+| `PageRenderer`        | The shape of `inertia` / `inertiaStream`: a checked call signature plus `.dynamic`.                                             |

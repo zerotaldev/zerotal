@@ -12,7 +12,7 @@ routes, and how redirects behave.
 ## The inertia helper
 
 ```ts
-function inertia(component: string, props?: Record<string, unknown>): Promise<void>;
+function inertia(component: PageName, props?: RenderProps): Promise<void>;
 ```
 
 Call `inertia()` from any controller action. It reads the active request from
@@ -91,6 +91,19 @@ by default, configurable via `pagesDir`), with the framework extension appended
 
 Component names are validated — a name containing `..` or a leading `/` is rejected
 to prevent path traversal.
+
+### The name is checked at compile time
+
+`inertia("Posts/Shwo", …)` does not compile: the name has to be a page in the
+generated registry (`resources/js/pages.generated.ts`, rebuilt by
+`bun zt inertia:build` and by `zt dev`). A renamed or misspelled page was a
+runtime 500 before — the kind that reaches production because the route it lives
+on is the one nobody clicked.
+
+For a name that genuinely isn't known until runtime, `inertia.dynamic(name, props)`
+takes any string and skips the check.
+
+The props are checked too — see [Typed props](/docs/inertia/props#typed-props).
 
 ### Props serialization
 

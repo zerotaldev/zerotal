@@ -124,6 +124,49 @@ these are the changes that need action. Full detail is in the
    entries under the old `zerotal:` prefix are effectively invalidated on upgrade
    (they are simply not read again) — no action needed beyond expecting a cold cache.
 
+## 1.4 to 1.5
+
+1. **Move query values into `route()`'s third argument.** A param that matches no
+   `:segment` used to be appended to the query string, so a typo'd param name produced
+   a wrong URL instead of an error. Params are now exact, and an unknown key throws:
+
+   ```ts
+   route("search", { q: "zerotal", page: 2 }); // before
+   route("search", {}, { q: "zerotal", page: 2 }); // now
+   ```
+
+   The same applies anywhere params are passed on their own — `redirect().to(name, params)`,
+   `redirectTo()`, `Url.route()`, `Uri.route()`, and Flow's `redirectRoute()`. Where those
+   need a query string, build the URL with `route()` and redirect to it.
+
+   To find them: search for `route(` calls whose second argument holds a key that is not a
+   `:segment` of that route. `bun zt route:list` prints the patterns to check against, and
+   after step 2 the type-checker finds the rest for you.
+
+2. **Generate and commit the route types** — this is what turns the change above from a
+   runtime error into a compile error, and it is the point of the release:
+
+   ```bash
+   bun zt route:types      # writes types/routes.generated.ts
+   ```
+
+   Commit the file. `zt dev` refreshes it on every restart; add
+   `bun zt route:types --check` to CI so it cannot go stale. Skipping this step is
+   supported — `route()` then behaves exactly as it did, minus the query-param change.
+
+3. **Rebuild the Inertia page registry** to get typed page names and props:
+
+   ```bash
+   bun zt inertia:build
+   ```
+
+   Then fix what it finds. Two are worth expecting: a page whose component declares a prop
+   the controller never passes (add it, or make the prop optional), and a `defer()`/
+   `optional()` prop the component declares as required (make it `?` — it really is absent
+   on first paint). Declare any `Inertia.share()` keys of your own on the `SharedProps`
+   interface so pages that read them do not look unpassed; see
+   [Typed props](/docs/inertia/props#typed-props).
+
 ## The managed zt.ts
 
 `zt.ts` is framework-managed — the header says _do not modify_. If a release

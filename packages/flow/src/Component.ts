@@ -16,6 +16,7 @@ import {
   getModelableProps,
 } from "./decorators.ts";
 import { _renderFlowPage } from "./jsx-runtime.ts";
+import { getStreamStore, queueStream } from "./streaming.ts";
 import { RuleBuilder, runValidationAsync } from "@zerotal/validator";
 import type { Schema, FieldRuleDefinition } from "@zerotal/validator";
 import type { ValidateBuilder } from "./decorators.ts";
@@ -1289,6 +1290,10 @@ export abstract class Component {
    * Pass `lazy: true` to use IntersectionObserver — `onMount()` is deferred
    * until the placeholder enters the viewport.
    * Pass `defer: true` to load immediately after page paint (no intersection check).
+   * Pass `stream: true` to render the placeholder now and the real markup later
+   * on the *same* response — no second round trip. Use it for content that is
+   * definitely needed and merely slow; `lazy`/`defer` are for content that may
+   * never be needed at all.
    *
    * @example
    * override async render() {
@@ -1297,13 +1302,14 @@ export abstract class Component {
    *     <StatsWidget />
    *     <CounterWidget key="a" step={5} />
    *     <SlowWidget lazy />
+   *     <SalesReport stream />
    *   </div>;
    * }
    *
    * @param ChildClass  the child Component class to embed.
    * @param opts        `key` disambiguates repeated instances; `props` seed the child before
-   *                    `onMount()`; `lazy`/`defer` render a placeholder first; `slots` pass named
-   *                    slot HTML.
+   *                    `onMount()`; `lazy`/`defer`/`stream` render a placeholder first; `slots`
+   *                    pass named slot HTML.
    * @returns the child's rendered {@link HtmlNode} (root or placeholder).
    * @category Rendering
    */
@@ -1314,6 +1320,8 @@ export abstract class Component {
       props?: Partial<C>;
       lazy?: boolean;
       defer?: boolean;
+      /** Render the placeholder now, the real markup later on the same response. */
+      stream?: boolean;
       /** Named slot HTML (`name → html`, default slot keyed `"default"`), rendered by the parent. */
       slots?: Record<string, string>;
     } = {},
@@ -1407,6 +1415,47 @@ export abstract class Component {
           `<div data-flow-root x-data="{}" data-flow-id="${childId}" data-flow-name="${name}" ${loadAttr}${bindAttrs}>` +
           `${placeholderNode.html}` +
           `<script type="application/json" id="flow-state-${childId}">${toScriptJson(snapshot)}</script>` +
+          `</div>`,
+      };
+    }
+
+    // Streamed: paint the placeholder now and queue the real render to be
+    // appended to this same response once the shell has been flushed. Only
+    // possible during an initial GET — a WS patch has no open response to append
+    // to, so `getStreamStore()` is undefined there and this falls through to the
+    // ordinary inline render below.
+    const streamStore = opts.stream ? getStreamStore() : undefined;
+    if (streamStore) {
+      const childPage = new ChildClass();
+      childPage._flowId = childId;
+      childPage._flowPath = this._flowPath;
+      if (opts.slots) childPage._flowSlots = opts.slots;
+      if (opts.props) {
+        for (const [k, v] of Object.entries(opts.props)) {
+          if (!k.startsWith("_")) (childPage as Record<string, unknown>)[k] = v;
+        }
+      }
+
+      queueStream({
+        childId,
+        render: async () => {
+          const streamCtx = HttpContext.tryGet();
+          await childPage.onBoot(streamCtx);
+          await childPage.onMount(streamCtx);
+          const inner = await _renderFlowPage(childPage, () => childPage.render());
+          await childPage.onDehydrate();
+          const snap = dehydrate(childPage, { id: childId, name, path: this._flowPath });
+          return (
+            inner +
+            `<script type="application/json" id="flow-state-${childId}">${toScriptJson(snap)}</script>`
+          );
+        },
+      });
+
+      return {
+        html:
+          `<div data-flow-root x-data="{}" data-flow-id="${childId}" data-flow-name="${name}" data-flow-streaming${bindAttrs}>` +
+          `${childPage.placeholder().html}` +
           `</div>`,
       };
     }

@@ -188,6 +188,12 @@ export namespace JSX {
     /** Mount a child component right after the first paint (non-blocking). */
     defer?: boolean;
     /**
+     * Render a child component's placeholder now and its real markup later on the
+     * same response — no second round trip. For content that is definitely needed
+     * and merely slow; use `lazy`/`defer` for content that may never be needed.
+     */
+    stream?: boolean;
+    /**
      * Named slot content for a child component: `slots={{ header: <h2>…</h2>, footer: … }}`.
      * The child places each with `this.slot("header")`; its plain children are the default slot.
      */
@@ -945,6 +951,7 @@ export function jsx(
                 slots?: Record<string, string>;
                 lazy?: boolean;
                 defer?: boolean;
+                stream?: boolean;
               },
             ): Promise<HtmlNode>;
           }
@@ -965,6 +972,7 @@ export function jsx(
         slots: _namedSlots,
         lazy: _lazy,
         defer: _defer,
+        stream: _stream,
         ...componentProps
       } = p;
       const slots: Record<string, string> = {};
@@ -987,6 +995,7 @@ export function jsx(
             props: componentProps,
             ...(_lazy ? { lazy: true } : {}),
             ...(_defer ? { defer: true } : {}),
+            ...(_stream ? { stream: true } : {}),
             ...(Object.keys(slots).length ? { slots } : {}),
           }),
       });

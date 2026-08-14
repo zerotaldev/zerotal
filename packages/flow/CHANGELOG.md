@@ -36,6 +36,26 @@ change.
   outside every boundary still fails the page, so a real bug surfaces instead of rendering
   as blank space forever.
 
+- **`stream` — a slow child no longer holds up the shell.** Mark a child
+  `<SalesReport stream />` and the page paints immediately with that child's placeholder;
+  the real markup is appended to the _same_ response as it finishes rendering. The browser
+  receives a `<template>` carrying the finished markup and a one-line script that swaps it
+  in, which runs during parse — so the content appears without a second request, without
+  the socket, and without waiting for (or even having) the runtime.
+
+  This is the missing third option next to `lazy` and `defer`. Both of those also paint a
+  placeholder first, but the real render happens on a second round trip over the socket,
+  which is right for content that may never be needed — a widget below the fold, a tab
+  nobody opens. `stream` is for content that is definitely needed and merely slow, where
+  the only thing a round trip buys is latency.
+
+  A child that fails mid-stream is replaced with a notice rather than failing the
+  response: the shell is already on the wire by then, so there is nothing left to fail.
+  Streaming applies to the initial `GET` only — over the socket there is no open response
+  to append to, so `stream` degrades to an ordinary inline child. Flow sets
+  `X-Accel-Buffering: no`; behind a proxy that buffers anyway the browser simply receives
+  the whole document at once, which is correct but not progressive.
+
 - **`<SectionContent>` / `<SectionOutlet>` — a page can fill a region the layout owns.**
   Putting a page-specific button in the layout's toolbar meant threading it through every
   component in between as props, or the layout knowing about every page that might

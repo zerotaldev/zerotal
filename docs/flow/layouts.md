@@ -395,7 +395,7 @@ Two consequences worth knowing:
 - **Slots are set at mount, not reactive.** They reflect the parent's state at the moment the child mounts. If the parent later re-renders, the existing child island is preserved (its DOM and snapshot are kept), so the slot HTML does not change underneath it. For a value that must track the parent live, pass it as a `@reactive` prop instead of as slot markup.
 - **Prefer plain markup in slots.** Interactive `onClick={this.method}` handlers inside a slot bind to the _parent's_ actions (the slot was rendered in the parent's scope), which is usually what you want for a footer button. Nesting another _stateful child component_ inside a slot is not supported — embed it in the child's own `render()` instead.
 
-### Lazy and deferred loading
+### Lazy, deferred, and streamed loading
 
 ```tsx
 // Defer mount until the placeholder enters the viewport (intersection observer)
@@ -403,7 +403,18 @@ Two consequences worth knowing:
 
 // Mount immediately after page paint (non-blocking)
 <Sidebar defer />
+
+// Render on the SAME response — placeholder first, real markup streamed after
+<SalesReport stream />
 ```
+
+`lazy` and `defer` both mount over the socket on a **second round trip**, which is what you want for
+content that may never be needed: a widget below the fold, a tab nobody opens.
+
+`stream` is for content that is definitely needed and merely slow. The shell reaches the browser
+without waiting for it, and the child's markup arrives as a trailing chunk of the same response —
+no second request, no socket, and no client runtime needed (the swap happens during parse, so it
+works before and without Alpine). See [Streaming the initial render](#streaming-the-initial-render).
 
 Override `placeholder()` to customise the skeleton shown while a lazy component loads:
 
@@ -480,6 +491,45 @@ export class StarRating extends Component {
 ```
 
 ## Streaming
+
+Flow streams in two distinct places: **during the initial page response**, so a slow child does not
+hold up the shell, and **during an action**, so a long-running method can push progress before it
+finishes. They solve different problems and do not interact.
+
+### Streaming the initial render
+
+Mark a child `stream` and the page paints immediately with that child's placeholder; its real markup
+is appended to the same response as soon as it finishes rendering:
+
+```tsx
+override async render() {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <Totals />               {/* fast — rendered inline */}
+      <SalesReport stream />   {/* slow — placeholder now, markup later */}
+    </div>
+  );
+}
+```
+
+The browser receives the document up to the placeholder, then a `<template>` carrying the finished
+markup and a one-line script that swaps it in. That script runs during parse, so the content appears
+without waiting for the runtime — and without a second request. Override `placeholder()` on the
+child to control what shows in the meantime.
+
+A child that fails while streaming is replaced with a notice rather than failing the response: the
+shell is already on the wire by then, so there is nothing left to fail. Everything else on the page
+is unaffected.
+
+Streaming applies to the initial `GET` only. Over the socket there is no open response to append to,
+so `stream` degrades to an ordinary inline child render.
+
+> **Streaming needs an unbuffered response.** Flow sets `X-Accel-Buffering: no` for nginx. Behind a
+> proxy that buffers anyway, the browser simply receives the whole document at once — the page is
+> correct, just not progressive.
+
+### Streaming during an action
 
 Push content to the client mid-action — before the final patch — using `this.stream()`. Useful for LLM token streaming, long-running progress updates, or any content that takes time:
 

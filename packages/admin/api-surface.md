@@ -130,7 +130,7 @@ class AdminPage = {
   addError: (field: string, message: string) => void
   bind: (key: string, optionValue?: string) => Record<string, unknown>
   cancelled: boolean
-  child: <C extends Component>(ChildClass: new () => C, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>
+  child: <C extends Component>(ChildClass: new () => C, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    stream?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>
   clearDurable: () => void
   client: (script: string) => void
   currentUrl: (_options?: CurrentUrlOptions) => string

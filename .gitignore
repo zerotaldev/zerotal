@@ -20,6 +20,7 @@ packages/*/src/**/*.js.map
 # `**/` pattern here would silently drop it from the scaffold.
 apps/*/public/css/app.css
 apps/*/public/js/app.js
+apps/*/public/js/app.js.map
 *.zerotal/
 .zerotal/
 **/.zerotal/

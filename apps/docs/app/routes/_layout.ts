@@ -211,6 +211,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { label: "Getting Started", slug: "testing" },
       { label: "HTTP Tests", slug: "testing/http" },
       { label: "Console Tests", slug: "testing/console" },
+      { label: "FlowBrowser", slug: "testing/flow-browser" },
       { label: "Browser Tests", slug: "testing/browser" },
       { label: "Database", slug: "testing/database" },
       { label: "Mocking", slug: "testing/mocking" },

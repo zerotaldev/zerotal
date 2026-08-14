@@ -10,8 +10,15 @@ driving a live server with Playwright and asserting on what the user sees.
 
 Some behavior only exists in a real browser — [Flow](/docs/flow)'s WebSocket
 bridge and Alpine runtime, [Inertia](/docs/inertia) client navigation, focus and
-keyboard handling. Zerotal has no bespoke browser driver; you test these end-to-end
-with **[Playwright](https://playwright.dev)** pointed at a running server.
+keyboard handling. This page covers **[Playwright](https://playwright.dev)** pointed
+at a running server, which is what to use for cross-browser end-to-end coverage.
+
+> **Testing Flow's bridge?** [`FlowBrowser`](/docs/testing/flow-browser) ships in
+> `@zerotal/testing`, needs no extra dependency, and runs inside `bun test` alongside
+> the rest of your suite. It drives a headless page against a real server and can
+> assert on the WebSocket transport itself — whether the socket upgraded, what frames
+> crossed the wire. Reach for Playwright when you need several browsers, or coverage
+> beyond Flow.
 
 > **Note** — Unit and [HTTP tests](/docs/testing/http) run on Bun's test runner. Browser tests
 > run under Playwright's own runner (`*.e2e.ts` / `*.spec.ts`), separately from

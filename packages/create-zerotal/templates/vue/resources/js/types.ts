@@ -15,3 +15,18 @@ export interface SharedProps {
   old: Record<string, unknown>;
   [key: string]: unknown;
 }
+
+/**
+ * The same list, told to the server side. `Inertia.render(page, props)` checks a
+ * controller's props against the page component's own props — so without this,
+ * a page that reads `auth` through `usePage()` would look to the server like a
+ * page whose controller forgot to pass it.
+ *
+ * `share()` is a runtime call in a provider, so nothing can generate this: when
+ * you register a new shared prop, add it in both places.
+ */
+declare module "@zerotal/inertia" {
+  interface SharedProps {
+    auth: { user: { id: number; name: string; email: string } | null };
+  }
+}

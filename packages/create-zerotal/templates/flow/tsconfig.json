@@ -18,6 +18,7 @@
     "noEmit": true,
     "allowImportingTsExtensions": true
   },
+  "include": ["**/*"],
   "exclude": [
     "node_modules",
     ".zerotal"

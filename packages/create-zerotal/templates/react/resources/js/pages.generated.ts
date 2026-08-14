@@ -5,7 +5,7 @@
 // Bun.build with splitting:true creates one .js chunk per page.
 // Converting to static imports will bundle ALL pages into app.js.
 
-export const pages: Record<string, () => Promise<{ default: unknown }>> = {
+export const pages = {
   about: () => import("./pages/about.tsx"),
   contact: () => import("./pages/contact.tsx"),
   error: () => import("./pages/error.tsx"),
@@ -15,4 +15,13 @@ export const pages: Record<string, () => Promise<{ default: unknown }>> = {
   profile: () => import("./pages/profile.tsx"),
   register: () => import("./pages/register.tsx"),
   "reset-password": () => import("./pages/reset-password.tsx"),
-};
+} satisfies Record<string, () => Promise<{ default: unknown }>>;
+
+// Type-only: lets a controller's `Inertia.render(name, props)` be checked
+// against the props each page component declares. Erased at runtime — and
+// it is the ONLY place the server side touches the client component graph.
+declare module "@zerotal/inertia" {
+  interface InertiaPageRegistry {
+    pages: typeof pages;
+  }
+}

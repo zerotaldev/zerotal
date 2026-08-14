@@ -10,6 +10,33 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **Typed route names — `bun zt route:types`.** The command boots the app, reads the
+  routes it registered, and writes `types/routes.generated.ts`: a name → URL pattern map
+  plus a one-line `RouteRegistry` augmentation. With it, `route("psots.show")` and
+  `route("posts.show", {})` are compile errors, and the second one names the `slug` it
+  wants. Params are derived from the pattern, so adding a segment changes one string and
+  every call site updates with it.
+
+  It boots rather than scanning `routes/` because a route name comes from three places
+  and only one is a file path — the file-router's convention, a route file's
+  `export const meta = { GET: { name } }`, and programmatic registrations, including a
+  package provider's. A scanner sees the first and quietly misses the other two, and a
+  second implementation of the naming rules is a second implementation to disagree with
+  the first.
+
+  Freshness has three parts, because a generated file that is only right after someone
+  remembers to run a command is wrong in every fresh checkout: `zt dev` rewrites it on
+  every restart, the file is committed so editors and CI need no boot, and
+  `route:types --check` fails when the tree has drifted from it. Until the file exists,
+  the registry is empty and `route()` behaves exactly as before.
+
+- **`route.dynamic(name, params?, query?)`** — the escape hatch for a route name that is
+  only known at runtime (read from config, chosen by a package). Deliberately a separate
+  function rather than a `string` overload on `route()`: an overload that accepts every
+  string is matched by every string, which would have made the checked signature
+  decorative. Typed names also flow through `redirect().to()`, `redirectTo()`,
+  `Url.route()` and `Uri.route()`.
+
 - **`app.allowedOrigins` is declared config, and defaults to the origin of `app.url`.**
   WebSocket upgrades and raw routes bypass the middleware pipeline, so each carries its
   own `Origin` check against the app's own origin — which behind a reverse proxy is the
@@ -178,6 +205,33 @@ follows the Zerotal monorepo's unified versioning.
   path in it 404s in a way indistinguishable from a typo'd URL. The web boot now names
   the files and the one-line fix. (`Application.routedFiles` is new, so the check — and
   anything else — can see what the routing groups actually load.)
+
+### Changed — BREAKING
+
+- **`route()` takes query values as a third argument: `route(name, params, query)`.**
+  Previously any param that matched no `:segment` was appended to the query string, which
+  meant a typo'd param name silently produced a URL that was wrong rather than an error —
+  `route("posts.show", { slugg })` shipped `/posts/:slug?slugg=…`. Params are now exact:
+  an unknown key throws, naming the key and pointing at the third argument.
+
+  ```ts
+  route("search", { q: "zerotal", page: 2 }); // before
+  route("search", {}, { q: "zerotal", page: 2 }); // now
+  ```
+
+  Query values may be arrays (`{ tag: ["a", "b"] }` → `?tag=a&tag=b`), and `null` /
+  `undefined` entries are dropped rather than serialised as `"null"`. The same applies to
+  `redirect().to()` / `redirectTo()`, which take params only — build the URL with
+  `route()` when you need a query string.
+
+  This was a decision between typing the existing behaviour and fixing it. Typing it
+  would have made a footgun look safe, which is worse than leaving it alone.
+
+- **A catch-all route's value is passed under the `"*"` key.** `[...slug]` compiles to `*`
+  in the URL pattern — the segment name is gone by the time routing sees it — and
+  `route()` previously left the `*` in the URL untouched, producing a literal
+  `/docs/*`. It now substitutes, from either a path or an array of segments:
+  `route("docs.show", { "*": "guides/intro" })`, `route("docs.show", { "*": ["guides", "intro"] })`.
 
 ### Changed
 

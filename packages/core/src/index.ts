@@ -201,7 +201,25 @@ export type {
   ViewRegistration,
   GroupOptions,
   RouterMacros,
+  RouteBuilder,
 } from "./router/Router.ts";
+// Typed route names — `RouteRegistry` is the augmentation target that
+// `types/routes.generated.ts` fills in (see `bun zt route:types`).
+export type {
+  RouteRegistry,
+  RouteName,
+  RouteTarget,
+  RoutePattern,
+  RouteParams,
+  RouteParamsArg,
+  RouteParamValue,
+  RouteParamValues,
+  RouteQuery,
+  RouteArgs,
+  ParamsOf,
+} from "./router/registry.ts";
+// The generator itself stays off the kernel barrel — it is build-time tooling,
+// reached through `bun zt route:types` (and by `serve --dev-worker` internally).
 export type {
   RouteDefinition,
   HttpMethod,

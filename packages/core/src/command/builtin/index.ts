@@ -48,6 +48,7 @@ export { MakeResourceCommand } from "./MakeResourceCommand.ts";
 export { MakeTestCommand } from "./MakeTestCommand.ts";
 export { TestCommand } from "./TestCommand.ts";
 export { RouteListCommand } from "./RouteListCommand.ts";
+export { RouteTypesCommand } from "./RouteTypesCommand.ts";
 export { DoctorCommand } from "./DoctorCommand.ts";
 export { MakeProviderCommand } from "./MakeProviderCommand.ts";
 export { CssBuildCommand } from "./CssBuildCommand.ts";

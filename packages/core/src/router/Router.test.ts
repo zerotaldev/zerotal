@@ -390,19 +390,46 @@ describe("Named routes — .name() and route()", () => {
     expect(route("posts.index")).toBe("/posts");
   });
 
-  it("route() appends extra params as query string", () => {
+  it("route() appends the third argument as the query string", () => {
     class PostController {}
     Router.get("/search", PostController, "index").name("search");
-    const url = route("search", { q: "reno", page: 2 });
+    const url = route("search", {}, { q: "reno", page: 2 });
     expect(url).toContain("q=reno");
     expect(url).toContain("page=2");
   });
 
-  it("route() preserves :param order in query string", () => {
+  it("route() puts params in the path and query after it", () => {
     class PostController {}
     Router.get("/posts/:id", PostController, "show").name("posts.show");
-    const url = route("posts.show", { id: 42, tab: "comments" });
-    expect(url).toBe("/posts/42?tab=comments");
+    expect(route("posts.show", { id: 42 }, { tab: "comments" })).toBe("/posts/42?tab=comments");
+  });
+
+  it("route() rejects a param the pattern has no segment for", () => {
+    class PostController {}
+    Router.get("/posts/:id", PostController, "show").name("posts.show");
+    // The typo this signature exists to catch: `slugg` used to become `?slugg=…`.
+    expect(() => route("posts.show", { id: 42, tab: "comments" })).toThrow(
+      'Unknown parameter "tab"',
+    );
+    expect(() => route("posts.show", { id: 42, tab: "comments" })).toThrow(
+      "route(name, params, query)",
+    );
+  });
+
+  it("route() drops null/undefined query values and repeats arrays", () => {
+    class PostController {}
+    Router.get("/search", PostController, "index").name("search");
+    expect(route("search", {}, { q: "a", empty: null, missing: undefined })).toBe("/search?q=a");
+    expect(route("search", {}, { tag: ["a", "b"] })).toBe("/search?tag=a&tag=b");
+    expect(route("search", {}, {})).toBe("/search");
+  });
+
+  it("route() fills a catch-all segment from the '*' param", () => {
+    class DocsController {}
+    Router.get("/docs/*", DocsController, "show").name("docs.show");
+    expect(route("docs.show", { "*": "guides/intro" })).toBe("/docs/guides/intro");
+    expect(route("docs.show", { "*": ["guides", "intro"] })).toBe("/docs/guides/intro");
+    expect(() => route("docs.show")).toThrow('Missing catch-all parameter "*"');
   });
 
   it("route() throws for unknown route names", () => {

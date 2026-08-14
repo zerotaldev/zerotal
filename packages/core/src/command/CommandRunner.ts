@@ -343,6 +343,7 @@ export class CommandRunner {
       MakeTestCommand,
       TestCommand,
       RouteListCommand,
+      RouteTypesCommand,
       DoctorCommand,
       MakeProviderCommand,
       CssBuildCommand,
@@ -367,6 +368,10 @@ export class CommandRunner {
     // route:list and doctor are inspection commands — always available regardless of mode.
     this.register(RouteListCommand);
     this.register(DoctorCommand);
+
+    // route:types reads the same booted router, so it is available wherever
+    // route:list is — including in CI containers that only ever run `--check`.
+    this.register(RouteTypesCommand, ["routes:types"]);
 
     // Non-web commands (console, worker, test).
     if (this._app._env !== "web") {

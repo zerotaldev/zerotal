@@ -27,6 +27,7 @@
  */
 import { RequestContext } from "../context/RequestContext.ts";
 import { route } from "../router/Router.ts";
+import type { RouteArgs, RouteParamValues, RouteQuery, RouteTarget } from "../router/registry.ts";
 import { ZerotalError } from "../errors/ZerotalError.ts";
 import { URLSigner } from "../crypt/URLSigner.ts";
 import { Uri, appBaseUrl, type QueryInput } from "./Uri.ts";
@@ -105,8 +106,12 @@ export interface UrlGenerator {
   secure(path: string, extra?: (string | number)[]): string;
   /** A fully-qualified URL with a query string appended. */
   query(path: string, query: QueryInput, extra?: (string | number)[]): string;
-  /** A fully-qualified URL for a named route. */
-  route(name: string, params?: Record<string, string | number>): string;
+  /**
+   * A fully-qualified URL for a named route. Same arguments as the global
+   * {@link route} helper — params are exact, query values go third. For a name
+   * only known at runtime: `url().to(route.dynamic(name, params))`.
+   */
+  route<N extends RouteTarget>(name: N, ...args: RouteArgs<N>): string;
   /**
    * The URL the user was heading to before authentication (the session's `intended_url`),
    * falling back to `fallback`. Cross-origin stored URLs are rejected (open-redirect guard).
@@ -167,8 +172,9 @@ const generator: UrlGenerator = {
   query(path, query, extra = []) {
     return Uri.of(toUrl(path, extra)).withQuery(query).value();
   },
-  route(name, params = {}) {
-    return toUrl(route(name, params));
+  route<N extends RouteTarget>(name: N, ...args: RouteArgs<N>) {
+    const [params = {}, query = {}] = args as [RouteParamValues?, RouteQuery?];
+    return toUrl(route.dynamic(name, params, query));
   },
   intended(fallback = "/") {
     // Uri.intended reads (and clears) the session's intended_url with an open-redirect guard.

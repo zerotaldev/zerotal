@@ -15,6 +15,13 @@ import type {
   ModelBindingResolver,
   ViewLayout,
 } from "./Route.ts";
+import type {
+  RouteArgs,
+  RouteParamValue,
+  RouteParamValues,
+  RouteQuery,
+  RouteTarget,
+} from "./registry.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import type { ExceptionHandler } from "../application/ExceptionHandler.ts";
 import { createRouteHandler } from "./RouteHandler.ts";
@@ -271,26 +278,99 @@ export interface ViewRegistration {
   withLayout(layout: ViewLayout): ViewRegistration;
 }
 
+/** Encode one catch-all value: `'guides/intro'` and `['guides','intro']` both give `guides/intro`. */
+function _encodeWildcard(value: RouteParamValue | readonly RouteParamValue[]): string {
+  const segments = Array.isArray(value) ? value : String(value).split("/");
+  return (segments as readonly RouteParamValue[])
+    .map((segment) => encodeURIComponent(String(segment)))
+    .filter((segment) => segment.length > 0)
+    .join("/");
+}
+
+/** Serialise the query bag: `null`/`undefined` drop out, arrays repeat the key. */
+function _encodeQuery(query: RouteQuery): string {
+  const pairs: string[] = [];
+  for (const [key, value] of Object.entries(query)) {
+    if (value === null || value === undefined) continue;
+    const values = Array.isArray(value) ? value : [value];
+    for (const entry of values as readonly (string | number | boolean)[]) {
+      pairs.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(entry))}`);
+    }
+  }
+  return pairs.join("&");
+}
+
+/** The {@link route} helper: a checked call signature plus its `dynamic` escape hatch. */
+export interface RouteBuilder {
+  /**
+   * Generate a URL for a named route, substituting `:param` segments.
+   *
+   * @param name - The registered route name, e.g. `'posts.show'`.
+   * @param args - `params` (one value per `:param`; a catch-all takes the `"*"` key and accepts an array of segments) then optional `query` values.
+   * @throws {Error} when the route name is unknown, a required `:param` is missing, or a param key matches no segment.
+   */
+  <N extends RouteTarget>(name: N, ...args: RouteArgs<N>): string;
+
+  /**
+   * Build a URL for a route name that isn't known at compile time — a name from
+   * config, a database row, or a package that registers routes conditionally.
+   *
+   * The escape hatch is a separate function rather than an overload on purpose:
+   * an overload taking `string` is matched by every string, which would let
+   * every typo through the front door. This one is greppable, and reads as the
+   * exception it is.
+   *
+   * @param name - The route name, resolved at runtime.
+   * @param params - One value per `:param` in the pattern.
+   * @param query - Optional query-string values.
+   * @throws {Error} on the same conditions as {@link route} — an unknown name still throws.
+   *
+   * @example
+   * route.dynamic(config('app.home_route'), { id })
+   */
+  dynamic(name: string, params?: RouteParamValues, query?: RouteQuery): string;
+}
+
 /**
- * Generate a URL for a named route, substituting :param segments.
- * Extra params that don't match a :segment become query-string entries.
+ * Generate a URL for a named route, substituting `:param` segments.
  *
- * @throws {Error} when the route name is unknown or a required `:param` is missing.
+ * Params are **exact**: a key the pattern has no segment for is a mistake, not a
+ * query-string entry, so query values go in the third argument. That is what
+ * makes the types worth having — a typo'd param name that silently became
+ * `?slugg=hello` is precisely the bug this signature exists to catch.
+ *
+ * Once `types/routes.generated.ts` exists (`bun zt route:types`) the name and
+ * its params are checked at compile time: `route('nope')` and
+ * `route('posts.show', {})` are both errors, and the second one names the
+ * `slug` it wants. Until then every name is accepted and nothing is checked.
+ * For a name that is only known at runtime, use `route.dynamic`.
  *
  * @example
- * route('posts.show', { slug: 'hello' })          // '/posts/hello'
- * route('search',     { q: 'reno', page: 2 })     // '/search?q=reno&page=2'
+ * route('posts.show', { slug: 'hello' })              // '/posts/hello'
+ * route('search', {}, { q: 'reno', page: 2 })         // '/search?q=reno&page=2'
+ * route('docs.show', { '*': 'guides/intro' })         // '/docs/guides/intro'
  *
  * @category Naming & URLs
  */
-export function route(name: string, params: Record<string, string | number> = {}): string {
+export const route: RouteBuilder = Object.assign(
+  <N extends RouteTarget>(name: N, ...args: RouteArgs<N>): string => {
+    const [params = {}, query = {}] = args as [RouteParamValues?, RouteQuery?];
+    return _buildRoute(name, params, query);
+  },
+  {
+    dynamic: (name: string, params: RouteParamValues = {}, query: RouteQuery = {}): string =>
+      _buildRoute(name, params, query),
+  },
+);
+
+function _buildRoute(name: string, params: RouteParamValues, query: RouteQuery): string {
   const pattern = _s().namedRoutes.get(name);
   if (pattern === undefined) {
     throw new Error(`[Zerotal] Named route not found: "${name}"`);
   }
 
   const usedKeys = new Set<string>();
-  const url = pattern.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_, key: string) => {
+  let url = pattern.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_, key: string) => {
     const value = params[key];
     if (value === undefined) {
       throw new Error(`[Zerotal] Missing parameter "${key}" for route "${name}"`);
@@ -300,11 +380,28 @@ export function route(name: string, params: Record<string, string | number> = {}
     return encodeURIComponent(String(value));
   });
 
-  const queryParams = Object.entries(params)
-    .filter(([key]) => !usedKeys.has(key))
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+  // A catch-all segment reaches the router as `*` — the `[...slug]` name is gone
+  // by then — so the wildcard is its own param key.
+  if (url.includes("*")) {
+    const value = params["*"];
+    if (value === undefined) {
+      throw new Error(`[Zerotal] Missing catch-all parameter "*" for route "${name}"`);
+    }
+    usedKeys.add("*");
+    url = url.replace("*", _encodeWildcard(value));
+  }
 
-  return queryParams.length > 0 ? `${url}?${queryParams.join("&")}` : url;
+  const unknown = Object.keys(params).filter((key) => !usedKeys.has(key));
+  if (unknown.length > 0) {
+    throw new Error(
+      `[Zerotal] Unknown parameter${unknown.length > 1 ? "s" : ""} ` +
+        `${unknown.map((key) => `"${key}"`).join(", ")} for route "${name}" (${pattern}). ` +
+        `Query-string values go in the third argument: route(name, params, query).`,
+    );
+  }
+
+  const search = _encodeQuery(query);
+  return search ? `${url}?${search}` : url;
 }
 
 /**

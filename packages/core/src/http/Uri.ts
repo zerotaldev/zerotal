@@ -15,6 +15,7 @@
  */
 import { RequestContext } from "../context/RequestContext.ts";
 import { route } from "../router/Router.ts";
+import type { RouteArgs, RouteParamValues, RouteQuery, RouteTarget } from "../router/registry.ts";
 import { safeRedirectPath } from "../pipeline/HttpContext.ts";
 import { ResponseBuilder } from "../helpers/response.ts";
 import { config } from "../helpers/config.ts";
@@ -185,11 +186,14 @@ export class Uri {
   }
 
   /**
-   * Build a Uri from a named route + params.
+   * Build a Uri from a named route + params (+ optional query values), with the
+   * same typing as the global {@link route} helper. For a name only known at
+   * runtime: `Uri.of(route.dynamic(name, params))`.
    * @category Construction
    */
-  static route(name: string, params: Record<string, string | number> = {}): Uri {
-    return Uri.of(route(name, params));
+  static route<N extends RouteTarget>(name: N, ...args: RouteArgs<N>): Uri {
+    const [params = {}, query = {}] = args as [RouteParamValues?, RouteQuery?];
+    return Uri.of(route.dynamic(name, params, query));
   }
 
   #clone(patch: Partial<UriParts>): Uri {

@@ -99,6 +99,13 @@ export class ServeCommand extends Command {
     if (isWorker) {
       const app = this.app as import("../../application/Application.ts").Application;
 
+      // Refresh types/routes.generated.ts from the routes this boot registered.
+      // The worker is the right place for it: the orchestrator restarts the
+      // worker on every route-file change, so this runs exactly when the route
+      // table can have changed, and it reads a booted router rather than
+      // re-deriving names from filenames.
+      await this._writeRouteTypes();
+
       // Enable the /__dev/ws HMR WebSocket endpoint.
       app.enableDevWs();
 
@@ -268,6 +275,24 @@ export class ServeCommand extends Command {
         ],
         4,
       );
+    }
+  }
+
+  /**
+   * Refresh the generated route-name map from this boot's router.
+   *
+   * Best-effort by design: a read-only project directory (a container mount, a
+   * sandbox) must not take the dev server down over a types file, and the app
+   * still runs perfectly well without it — only the compile-time check is lost.
+   */
+  private async _writeRouteTypes(): Promise<void> {
+    try {
+      const { writeRouteTypes } = await import("../../router/routeTypes.ts");
+      const { Router } = await import("../../router/Router.ts");
+      const result = await writeRouteTypes(Router.namedRoutes);
+      if (result.changed) this.dim(`  [zerotal:dev] wrote ${result.path} (${result.count} routes)`);
+    } catch (error) {
+      this.dim(`  [zerotal:dev] could not write route types: ${error}`);
     }
   }
 

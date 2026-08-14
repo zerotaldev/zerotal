@@ -6,6 +6,7 @@
 import { RequestContext } from "../context/RequestContext.ts";
 import { HttpError, NotFoundError } from "../errors/HttpError.ts";
 import { route } from "../router/Router.ts";
+import type { RouteParamValues, RouteParamsArg, RouteTarget } from "../router/registry.ts";
 import { safeRedirectPath } from "../pipeline/HttpContext.ts";
 import { DEFAULT_MD_OPTIONS, type BunMarkdownOptions } from "../helpers/markdown.ts";
 import type { ZerotalError } from "../errors/ZerotalError.ts";
@@ -107,13 +108,22 @@ export class RedirectBuilder {
     return new ResponseBuilder(this.#ctx);
   }
 
-  /** Redirect to a named route, resolving its URL from the route name and params. */
-  to(
-    name: string,
-    params: Record<string, string | number> = {},
+  /**
+   * Redirect to a named route, resolving its URL from the route name and params.
+   *
+   * Params are checked against the route's pattern once `types/routes.generated.ts`
+   * exists. For a query string, or a name only known at runtime, redirect to a
+   * built URL instead: `redirect().away(route.dynamic(name, params, query))`.
+   */
+  to<N extends RouteTarget>(
+    name: N,
+    params?: RouteParamsArg<N>,
     status: 301 | 302 | 303 | 307 | 308 = 302,
   ): ResponseBuilder {
-    this.#ctx.redirect(route(name, params), status);
+    // The values in `RouteParams<N>` are `RouteParamValue`s by construction, but
+    // `N` is still a type variable here, so the compiler cannot see through the
+    // conditional to say so.
+    this.#ctx.redirect(route.dynamic(name, params as RouteParamValues), status);
     return new ResponseBuilder(this.#ctx);
   }
 
@@ -253,9 +263,9 @@ export function redirect(
  * @param status - Optional HTTP status code (default: 302).
  * @returns
  */
-export function redirectTo(
-  name: string,
-  params: Record<string, string | number> = {},
+export function redirectTo<N extends RouteTarget>(
+  name: N,
+  params?: RouteParamsArg<N>,
   status: 301 | 302 | 303 | 307 | 308 = 302,
 ): ResponseBuilder {
   return redirect().to(name, params, status);

@@ -67,7 +67,9 @@ export async function startDevMode(options: StartDevModeOptions): Promise<void> 
   // deck's key handlers call the supervisor, the supervisor's output callbacks
   // call the deck. Every one of them fires from a later turn of the event loop,
   // by which point all three are assigned.
+  // eslint-disable-next-line prefer-const -- assigned below; the deck closes over both
   let supervisor: DevSupervisor;
+  // eslint-disable-next-line prefer-const -- assigned below; the deck closes over both
   let orchestrator: DevOrchestrator;
 
   const deck = createDeck({

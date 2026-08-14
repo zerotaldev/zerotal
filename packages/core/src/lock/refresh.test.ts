@@ -264,7 +264,6 @@ function trackIntervals(): {
   const open = new Set<unknown>();
   let unreffed = 0;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   globalThis.setInterval = ((handler: any, ms?: number, ...rest: any[]) => {
     const timer = realSet(handler, ms, ...rest);
     open.add(timer);
@@ -274,14 +273,11 @@ function trackIntervals(): {
       return realUnref?.();
     };
     return timer;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   globalThis.clearInterval = ((timer: any) => {
     open.delete(timer);
     return realClear(timer);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any;
 
   return {

@@ -46,7 +46,7 @@ export function inject(...tokens: BindingToken[]) {
   // assignable from classes with typed constructors — `unknown[]` would fail the
   // constructor-parameter contravariance check at the decoration site.
   return function (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any — decorator target must accept any class shape
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- decorator target must accept any class shape
     target: new (...args: any[]) => unknown,
     _context: ClassDecoratorContext,
   ): void {

@@ -357,6 +357,9 @@ async function _runHeld<T>(
   const everySeconds = options.refreshEvery ?? lock.ttl / 3;
   const everyMs = Math.max(1, Math.round(everySeconds * 1000));
 
+  // Assigned once, further down, but read by the `beat()` and `stop()` closures
+  // declared above that assignment — so it cannot be a `const` initialiser.
+  // eslint-disable-next-line prefer-const -- see above
   let timer: ReturnType<typeof setInterval> | undefined;
   let rejectLost: ((error: Error) => void) | undefined;
   // Never resolves — it exists only to lose the race below, and only when the

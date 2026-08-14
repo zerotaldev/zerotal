@@ -1,3 +1,6 @@
+/* eslint-disable no-control-regex -- this suite is about ANSI handling: the
+   regexes deliberately match ESC, which is the character the rule exists to
+   flag when it appears by accident. */
 /**
  * Two renderers, and the ones that matter most are the failure paths.
  *
@@ -154,7 +157,7 @@ describe("stream mode", () => {
     deck.line("queue", "processing job 12", "stdout");
     deck.line("server", "GET /", "stdout");
 
-    expect(writer.all()).not.toMatch(/\x1b\[/);
+    expect(writer.all()).not.toMatch(/\u001b\[/);
     expect(writer.lines).toContain("[queue ] processing job 12");
     expect(writer.lines).toContain("[server] GET /");
   });
@@ -165,7 +168,7 @@ describe("stream mode", () => {
     deck.start([status("queue")]);
     deck.line("queue", "it broke", "stderr");
 
-    expect(writer.all()).not.toMatch(/\x1b\[/);
+    expect(writer.all()).not.toMatch(/\u001b\[/);
   });
 
   it("strips colour the child emitted, not just its own", () => {
@@ -177,7 +180,7 @@ describe("stream mode", () => {
     deck.start([status("queue")]);
     deck.line("queue", "\x1b[32mINFO\x1b[0m booted", "stdout");
 
-    expect(writer.all()).not.toMatch(/\x1b\[/);
+    expect(writer.all()).not.toMatch(/\u001b\[/);
     expect(writer.lines).toContain("[queue] INFO booted");
   });
 

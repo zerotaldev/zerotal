@@ -923,9 +923,8 @@ export class FlowProvider extends ServiceProvider {
 
   /**
    * Global middleware re-applied on every WebSocket update. Matched against the
-   * app's global pipeline by
-   * class reference or class name. Route middleware always re-runs and does
-   * not need to be listed here.
+   * app's global pipeline by class reference or class name. Route middleware
+   * always re-runs and does not need to be listed here.
    */
   static persistentMiddleware: (string | MiddlewareClass)[] = [...DEFAULT_PERSISTENT_MIDDLEWARE];
 
@@ -965,6 +964,11 @@ export class FlowProvider extends ServiceProvider {
   override onRegister(): void {
     this._applyPersistentMiddlewareConfig();
     Router.macro("flow", flowRoute);
+
+    // Declared here rather than alongside the handlers below, because the handlers are
+    // only wired in the web runtime and `bun zt doctor --url=…` runs in a console one.
+    // The socket is the whole application, so a CLI that cannot name it cannot check it.
+    this.app.declareWebSocketPath("/__flow/ws");
 
     registerFileRouteResolver(({ urlPath, module, middleware, name, filePath }) => {
       const PageClass = _findPageExport(module);
@@ -1244,8 +1248,13 @@ export class FlowProvider extends ServiceProvider {
 
     if (!cssExists && !jsExists) return;
 
-    const { registerDevBuildHook, buildCssBundle, buildJsBundle, isDevOrchestrated } =
-      await import("@zerotal/core/dev");
+    const {
+      registerDevBuildHook,
+      buildCssBundle,
+      buildJsBundle,
+      isDevOrchestrated,
+      bootBuildDecision,
+    } = await import("@zerotal/core/dev");
 
     // Combined hook — DevOrchestrator calls this on any frontend file change.
     // Registered under Flow's own name so it sits alongside, rather than on
@@ -1277,6 +1286,18 @@ export class FlowProvider extends ServiceProvider {
     // here in the orchestrator process, once in the orchestrator's own initial
     // build, once here again in the spawned worker) and twice per backend save.
     if (isDevOrchestrated()) return;
+
+    // Nor in a production deployment whose output directory is read-only: those assets
+    // were built at deploy time, and rebuilding them is what turns a hardened systemd
+    // unit into a restart loop. See @zerotal/core/dev/bootBuild.ts.
+    const decision = await bootBuildDecision(
+      [...(cssExists ? [cssOutdir] : []), ...(jsExists ? [jsOutdir] : [])],
+      config.safe<string>("app.env", Bun.env["APP_ENV"] ?? "development"),
+    );
+    if (!decision.build) {
+      console.info(`[Flow] ${decision.reason}`);
+      return;
+    }
 
     const [cssResult, jsResult] = await Promise.all([
       cssExists

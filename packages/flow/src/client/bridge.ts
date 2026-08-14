@@ -502,10 +502,37 @@ let _httpMode = false;
 let _wsFailures = 0;
 const HTTP_FALLBACK_AFTER = 3; // consecutive failed WS handshakes before switching to HTTP
 
+/**
+ * The origin guard refused this page, and no retry will change that.
+ *
+ * Reported once, in full, because the alternative is the worst failure this app has: the
+ * HTML renders, the console shows a generic "action failed", and the only symptom is that
+ * nothing a user clicks does anything. The connection state drops to offline too — the app
+ * genuinely cannot act, so actions queue behind `flow:offline` directives instead of being
+ * fired at an endpoint that will refuse every one of them.
+ */
+let _originRefused = false;
+function _reportOriginRefused(body: string): void {
+  if (_originRefused) return;
+  _originRefused = true;
+  console.error(
+    `[Flow] Actions refused: the server rejected this page's origin (${location.origin}).\n` +
+      `Behind a reverse proxy the app's own origin is the loopback address it bound to, so ` +
+      `the public origin has to be configured for it to accept browser-initiated actions.\n` +
+      `Fix: set \`url\` in config/app.ts to ${location.origin} — AppConfig fills ` +
+      `app.allowedOrigins from it.` +
+      (body ? `\nServer said: ${body}` : ""),
+  );
+  _setConnectionState(false);
+}
+
 function _enableHttpMode(): void {
   if (_httpMode) return;
   _httpMode = true;
-  console.warn("[Flow] WebSocket unavailable — falling back to HTTP requests.");
+  console.warn(
+    "[Flow] WebSocket unavailable — falling back to HTTP requests. If actions also fail, " +
+      "check that the proxy forwards /__flow/* over HTTP/1.1 and does not gate it behind auth.",
+  );
   _setConnectionState(true); // HTTP works, so we're "online" for offline directives
   // The socket that dropped may never come back, so this is the reconnect for anything it
   // left mid-action — resync over HTTP before replaying, same order as the WS path.
@@ -524,12 +551,25 @@ function _httpSend(frame: unknown, compId: string): void {
     credentials: "include",
     body: JSON.stringify(frame),
   })
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then(async (r) => {
+      if (r.ok) return r.json();
+      // The status is the diagnosis, and the body carries the server's own words for it.
+      // Both are dropped by a bare `HTTP 403`, which is what made this failure so quiet.
+      const body = await r.text().catch(() => "");
+      const err = new Error(`HTTP ${r.status}${body ? `: ${body}` : ""}`) as Error & {
+        status?: number;
+        body?: string;
+      };
+      err.status = r.status;
+      err.body = body;
+      throw err;
+    })
     .then((frames: unknown) => {
       if (Array.isArray(frames)) for (const f of frames) void _handleServerFrame(f as ServerFrame);
     })
-    .catch((e) => {
-      console.error("[Flow] HTTP action failed:", e);
+    .catch((e: Error & { status?: number; body?: string }) => {
+      if (e.status === 403) _reportOriginRefused(e.body ?? "");
+      else console.error("[Flow] HTTP action failed:", e);
       _resolveAck(compId); // never wedge the per-component queue
     });
 }

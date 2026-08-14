@@ -11,6 +11,29 @@ change.
 
 ## [Unreleased]
 
+### Changed
+
+- **The client now says which transport failure it hit.** `[Flow] WebSocket unavailable —
+falling back to HTTP requests` was the same line whether the handshake was blocked by a
+  proxy, refused by the origin guard, or genuinely unreachable, and the HTTP fallback then
+  logged a bare `HTTP 403` that dropped both the status and the server's own explanation.
+
+  A `403` from `/__flow/http` is now reported once, in full, naming the page's origin and
+  the config that fixes it — and the connection state drops to **offline**. That is the
+  honest state: the origin guard will refuse every retry, so actions queue behind
+  `flow:offline` directives instead of being fired at an endpoint that cannot accept them.
+  A refused origin was the one failure the fallback could see and was reporting as a
+  transient degrade.
+
+- **Flow no longer rebuilds its CSS/JS bundles at boot in production when `public/` is
+  read-only.** Same policy as `serve`; see `@zerotal/core`. Build them with
+  `bun zt assets:build` as a release step and the service needs no write access to its own
+  output tree.
+
+- **`/__flow/ws` is declared at registration**, so a CLI process can name it. That is what
+  lets `bun zt doctor --url=…` probe the socket through the real proxy — the check that
+  catches an origin guard or an auth gate over the transport before a user does.
+
 ### Fixed
 
 - **A keyless child in a list is no longer identified by its position.** The id was

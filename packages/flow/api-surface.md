@@ -325,6 +325,8 @@ function url = {    (value: unknown, context: ClassFieldDecoratorContext): void;
 
 function validate = (build: ValidateBuilder) => (value: unknown, context: ClassFieldDecoratorContext) => void
 
+function Virtualize = <T>(props: VirtualizeProps<T>) => HtmlNode
+
 interface AccordionItem = {
   content: unknown
   label: unknown
@@ -1005,6 +1007,18 @@ interface UploadRef = {
 interface UrlOptions = {
   as?: string
   history?: 'replace' | 'push'
+}
+
+interface VirtualizeProps = {
+  children: (item: T, index: number) => HtmlNode
+  class?: string
+  height?: number
+  itemHeight: number
+  items: readonly T[]
+  onWindow?: unknown
+  overscan?: number
+  start?: number
+  total?: number
 }
 
 type Constructor = abstract new (...args: any[]) => T

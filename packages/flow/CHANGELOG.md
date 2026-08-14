@@ -62,6 +62,33 @@ change.
   the layout, so content published during one does not reach an outlet outside the
   component being patched.
 
+- **`<Virtualize>` — a scrolling window over a collection too large for the DOM.** Only
+  the visible rows exist as elements; spacers above and below hold the scrollbar at the
+  size the full collection implies. As the viewport moves, `onWindow(start, count)` asks
+  the server for the window it now needs, so the collection never has to reach the client
+  in full — the server-authoritative arrangement, with an
+  `ItemsProvider`.
+
+  ```tsx
+  <Virtualize
+    items={this.rows}
+    start={this.windowStart}
+    total={this.total}
+    itemHeight={36}
+    height={480}
+    onWindow={this.loadWindow}
+  >
+    {(row) => <div class="h-9 px-3 leading-9">{row.name}</div>}
+  </Virtualize>
+  ```
+
+  Rows must be a uniform `itemHeight` — that is what lets a scroll offset become an index
+  without measuring anything. `overscan` (default 6) renders extra rows on each side to
+  hide fetch latency, and a window request is only made when the needed window actually
+  changes, since scroll fires far more often than that. Distinct from `<InfiniteScroll>`,
+  which appends and grows the DOM without bound; reach for this when _keeping_ every
+  rendered row is the problem.
+
 - **`@zerotal/flow/browser` — drive a real browser against a running app.** The suite
   had 568 tests and could not fail the way production fails: `FlowTest` calls actions
   directly, so it never renders an attribute the client must find, never dispatches a

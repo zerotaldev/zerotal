@@ -108,6 +108,7 @@ export {
   ErrorBoundary,
   SectionContent,
   SectionOutlet,
+  Virtualize,
 } from "./components.ts";
 export type {
   LinkProps,
@@ -132,6 +133,7 @@ export type {
   ErrorBoundaryProps,
   SectionContentProps,
   SectionOutletProps,
+  VirtualizeProps,
 } from "./components.ts";
 
 // Headless (unstyled, accessible) primitives — data-* state, Tailwind-friendly.

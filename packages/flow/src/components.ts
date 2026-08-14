@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Native Flow components — the built-in library of PascalCase function
  * components used inside a `Component`'s `render()`. Each one compiles to
  * ordinary HTML elements plus Flow/Alpine directives, so you use them like
@@ -1621,4 +1621,127 @@ export interface SectionOutletProps {
  */
 export function SectionOutlet(props: SectionOutletProps): HtmlNode {
   return { html: reserveSection(props.name, _renderChild(props.children)) };
+}
+
+// ── <Virtualize> ──────────────────────────────────────────────────────────────
+/** Props for {@link Virtualize}: the current window of rows and how to ask for another. */
+export interface VirtualizeProps<T> {
+  /** The rows to render — the current window, not the whole collection. */
+  items: readonly T[];
+  /** Height of one row in pixels. Every row must be this tall. */
+  itemHeight: number;
+  /** Total rows in the full collection. Defaults to `items.length`. */
+  total?: number;
+  /** Index of `items[0]` within the full collection. Defaults to 0. */
+  start?: number;
+  /** Height of the scroll viewport in pixels. Defaults to 400. */
+  height?: number;
+  /**
+   * Server action requesting a different window, called as `(start, count)`.
+   * Omit when the collection is small enough to render whole.
+   */
+  onWindow?: unknown;
+  /** Rows rendered beyond the viewport on each side, to hide fetch latency. Defaults to 6. */
+  overscan?: number;
+  class?: string;
+  /** The row template: `(item, index) => <div>…</div>`, where `index` is absolute. */
+  children: (item: T, index: number) => HtmlNode;
+}
+
+/**
+ * A scrolling window over a collection too large to put in the DOM.
+ *
+ * @remarks
+ * Only the visible rows exist as elements; spacers above and below hold the
+ * scrollbar at the size the full collection implies. As the viewport moves, the
+ * component asks the server for the window it now needs via `onWindow` — a
+ * server-authoritative arrangement, which means the collection never has to
+ * reach the client in full.
+ *
+ * Rows must be a known, uniform `itemHeight`. That is what lets a scroll offset
+ * be turned into an index without measuring anything.
+ *
+ * Distinct from {@link InfiniteScroll}, which appends and grows the DOM without
+ * bound. Reach for this when *keeping* every rendered row is the problem.
+ *
+ * @example
+ * ```tsx
+ * <Virtualize
+ *   items={this.window}
+ *   start={this.windowStart}
+ *   total={this.total}
+ *   itemHeight={36}
+ *   height={480}
+ *   onWindow={this.loadWindow}
+ * >
+ *   {(row) => <div class="h-9 px-3 leading-9">{row.name}</div>}
+ * </Virtualize>
+ * ```
+ *
+ * @category Navigation & data
+ */
+export function Virtualize<T>(props: VirtualizeProps<T>): HtmlNode {
+  const {
+    items,
+    itemHeight,
+    total,
+    start = 0,
+    height = 400,
+    onWindow,
+    overscan = 6,
+    class: cls,
+    children,
+  } = props;
+
+  const rows = items ?? [];
+  const count = total ?? rows.length;
+  const visible = Math.max(1, Math.ceil(height / itemHeight));
+
+  let body = "";
+  for (let i = 0; i < rows.length; i++) {
+    const node = children(rows[i]!, start + i);
+    body += node && typeof node === "object" && "html" in node ? node.html : "";
+  }
+
+  // Spacers rather than absolutely-positioned rows: the browser keeps the
+  // scrollbar honest without every row needing a computed `top`, and the row
+  // template stays ordinary markup the caller can style however they like.
+  const above = start * itemHeight;
+  const below = Math.max(0, (count - start - rows.length) * itemHeight);
+
+  const state =
+    `{ h: ${itemHeight}, v: ${visible}, o: ${overscan}, at: ${start}, ` +
+    `win() { const s = Math.max(0, Math.floor($el.scrollTop / this.h) - this.o); ` +
+    `const c = this.v + this.o * 2; ` +
+    // Only ask when the window actually moved: scroll fires far more often than
+    // the set of needed rows changes, and every request is a round trip.
+    `if (s === this.at) return; this.at = s; ${_virtualizeRequest(onWindow)} } }`;
+
+  return jsx("div", {
+    ...(cls ? { class: cls } : {}),
+    "x-data": state,
+    "x-on:scroll.passive.throttle.100ms": "win()",
+    style: `height:${height}px;overflow-y:auto`,
+    "data-flow-virtualize": true,
+    children: {
+      html:
+        `<div style="height:${above}px" data-flow-virtualize-spacer></div>` +
+        body +
+        `<div style="height:${below}px" data-flow-virtualize-spacer></div>`,
+    },
+  });
+}
+
+/**
+ * The client expression that asks for a new window.
+ *
+ * A method reference arrives as a function whose `name` is the server action to
+ * call. Anything else means no provider was supplied, in which case scrolling
+ * just moves over rows that are already present.
+ */
+function _virtualizeRequest(onWindow: unknown): string {
+  if (typeof onWindow !== "function") return "";
+  const method = (onWindow as { name?: string }).name;
+  if (!method) return "";
+  return `$flow.${method}(s, c);`;
 }

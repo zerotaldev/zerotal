@@ -373,6 +373,52 @@ import { InfiniteScroll } from "@zerotal/flow";
 <InfiniteScroll show={this.posts.length < this.total} onMore={this.loadMore} />
 ```
 
+### Virtualize
+
+A scrolling window over a collection too large to put in the DOM. Only the visible rows exist as
+elements; spacers above and below hold the scrollbar at the size the full collection implies.
+
+As the viewport moves, `onWindow` is called with `(start, count)` and your action loads that slice.
+The collection never has to reach the client in full.
+
+```tsx
+import { Virtualize } from "@zerotal/flow";
+
+@expose rows: Row[] = [];
+@expose windowStart = 0;
+@expose total = 0;
+
+override async onMount(): Promise<void> {
+  this.total = await Row.query().count();
+  await this.loadWindow(0, 30);
+}
+
+@expose async loadWindow(start: number, count: number): Promise<void> {
+  this.rows = await Row.query().offset(start).limit(count).get();
+  this.windowStart = start;
+}
+
+// In render():
+<Virtualize
+  items={this.rows}
+  start={this.windowStart}
+  total={this.total}
+  itemHeight={36}
+  height={480}
+  onWindow={this.loadWindow}
+>
+  {(row) => <div class="h-9 px-3 leading-9">{row.name}</div>}
+</Virtualize>
+```
+
+Rows must all be `itemHeight` pixels tall — that is what lets a scroll offset become an index
+without measuring anything. `overscan` (default 6) renders extra rows beyond the viewport to hide
+fetch latency.
+
+> **Virtualize or InfiniteScroll?** `InfiniteScroll` appends and grows the DOM without bound, which
+> is right for a feed someone scrolls a few screens of. Reach for `Virtualize` when _keeping_ every
+> rendered row is the problem.
+
 ## Navigation menus
 
 ### Dropdown

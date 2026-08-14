@@ -200,7 +200,9 @@ describe("translateSchema", () => {
   it("refuses a recursive schema at definition time rather than at request time", () => {
     const node = rule.object({ label: rule.string() });
     // Tie the shape back to itself — the thing structured output cannot express.
-    node._def.shape!["child"] = node._def;
+    // Cast because the shape type is now exact: `child` is precisely the key the
+    // type system says cannot be there, which is the point of the test.
+    (node._def.shape as Record<string, unknown>)["child"] = node._def;
 
     expect(() => translateSchema({ node } as never)).toThrow(AiSchemaError);
     expect(() => translateSchema({ node } as never)).toThrow(/recursive/);
@@ -212,7 +214,9 @@ describe("translateSchema", () => {
 
   it("refuses an array with no declared item type", () => {
     const bare = rule.array(rule.string());
-    delete bare._def.children;
+    // `children` is required on an ArrayDef, so removing it is only reachable
+    // through a cast — which is exactly the malformed state under test.
+    delete (bare._def as { children?: unknown }).children;
     expect(() => translateSchema({ tags: bare } as never)).toThrow(/no item type/);
   });
 });

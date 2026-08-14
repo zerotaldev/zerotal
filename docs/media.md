@@ -341,3 +341,242 @@ export default MediaConfig({
 `maxConversionInputSize` is a real limit, not a formality: `Bun.Image` has no
 streaming API, so decoding buffers the whole file. Originals above the ceiling
 are still stored — they just get no conversions.
+
+## API reference
+
+Signatures below are the ones `packages/media/api-surface.md` records, which CI diffs on every change. Anything importable and not listed here is `@internal`: it exists because a module inside the package needed it, and it is not covered by the stability guarantee.
+
+### The mixin, and one stored file
+
+`Media` is the mixin — it reads as `Model.using(Media)`, and it declares the static `mediaCollections` field. `MediaItem` is one stored file: a row in the `media` table, and an ordinary model, so every query-builder method is available on it too.
+
+```ts
+function Media<TBase extends Constructor>(
+  Base: TBase,
+): TBase & { mediaCollections: MediaCollections };
+```
+
+`MediaItem`'s own members, on top of what a model already gives you:
+
+| Member                                            | What it answers                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `getUrl(conversion?)`                             | Public URL of the original, or of a named conversion                         |
+| `getPath(conversion?)`                            | Path on the disk, for server-side reads                                      |
+| `getTemporaryUrl(expiresInSeconds?, conversion?)` | Signed, expiring URL — see [Private files](#private-files)                   |
+| `getResponsivePath(width)`                        | Path of one rung of the responsive ladder                                    |
+| `srcset()`                                        | A ready `srcset` string built from `responsiveImages`                        |
+| `responsiveSet()`                                 | The `ResponsiveImageSet` behind it, placeholder included                     |
+| `bytes()`                                         | The original's bytes                                                         |
+| `fileExists()`                                    | Whether the file is actually on the disk — the check `media:clean` automates |
+| `deleteFiles()`                                   | Remove originals, conversions and responsive images, leaving the row         |
+| `conversion(name)` / `hasConversion(name)`        | One `GeneratedConversion`, or whether it exists                              |
+| `conversionNames()`                               | Every conversion generated for this item                                     |
+| `getCustomProperty(key, fallback?)`               | A value from `customProperties`, typed by the fallback                       |
+| `setCustomProperty(key, value)`                   | Set one — chainable; call `save()` to persist                                |
+| `forgetCustomProperty(key)`                       | Drop one — chainable                                                         |
+| `originalDisk()` / `derivedDisk()`                | The resolved `StorageDriver` for each                                        |
+
+Columns: `uuid`, `name`, `fileName`, `mimeType`, `size`, `disk`, `conversionsDisk`, `collectionName`, `modelType`, `modelId`, `orderColumn`, `customProperties`, `manipulations`, `generatedConversions`, `responsiveImages`, `placeholder`.
+
+### The adder
+
+`addMedia(source)` returns a `MediaAdder`. Every method chains; `toCollection()` is what actually stores the file, and it returns the `MediaItem`.
+
+```ts
+class MediaAdder {
+  usingName(name: string): MediaAdder;
+  usingFileName(fileName: string): MediaAdder;
+  withCustomProperties(properties: Record<string, unknown>): MediaAdder;
+  withOrder(order: number): MediaAdder;
+  toDisk(disk: string): MediaAdder;
+  toCollection(collection?: string): Promise<MediaItem>;
+}
+```
+
+`MediaSource` is what a source may be:
+
+```ts
+type MediaSource = ArrayBuffer | Blob | UploadedFile | File | Uint8Array;
+```
+
+`PendingMediaMeta` is the same metadata as an object, for callers that build it up rather than chaining: `{ name?, customProperties?, order?, disk? }`.
+
+`MediaOwner` is the minimum a model must expose to own media — an `id`, and a constructor name, which is what lands in `model_type`.
+
+### Application-level operations
+
+`MediaLibrary` is the facade; `MediaManager` is the class behind it. They are named differently because `Media` is already the mixin, and an app importing both would otherwise have to rename one at every call site.
+
+```ts
+class MediaManager {
+  readonly config: MediaConfigShape;
+  readonly driver: ImageDriver;
+  clean(options?: { dryRun?: boolean }): Promise<CleanReport>;
+  regenerate(media: MediaItem, ownerClass: CollectionHost, only?: string[]): Promise<string[]>;
+}
+```
+
+`CleanReport` is what a sweep found, and is worth reading rather than counting:
+
+```ts
+interface CleanReport {
+  /** Rows whose original file is gone from the disk. */
+  orphanedRows: number[];
+  /** Conversions recorded on a row but missing on the disk. */
+  danglingConversions: { mediaId: number; conversion: string }[];
+  /** Rows actually removed — empty on a dry run. */
+  deletedRows: number[];
+}
+```
+
+### Collections and conversions
+
+```ts
+type MediaCollections = Record<string, CollectionDefinition | (() => CollectionDefinition)>;
+type ConversionMap = Record<string, ConversionDefinition>;
+```
+
+`CollectionDefinition` is the option set documented under [Collection options](#collection-options). `ConversionDefinition` is one derived image: `width`, `height`, `fit`, `format`, `quality`, `rotate`, `allowEnlargement`, `queued`.
+
+```ts
+type ConversionFit = "inside" | "fill" | "cover";
+type SafeConversionFormat = "jpeg" | "png" | "webp";
+type ConversionFormat = SafeConversionFormat | "avif" | "heic";
+```
+
+`SafeConversionFormat` is the set that encodes on every host. `ConversionFormat` adds the two that go through OS codecs — see [AVIF and HEIC are host-dependent](#avif-and-heic-are-host-dependent).
+
+What generation records:
+
+```ts
+interface GeneratedConversion {
+  fileName: string;
+  size: number;
+  mimeType: string;
+  width: number;
+  height: number;
+  /** ISO-8601. */
+  generatedAt: string;
+}
+
+interface ResponsiveImage {
+  fileName: string;
+  width: number;
+  height: number;
+}
+
+interface ResponsiveImageSet {
+  /** Generated widths, ascending. */
+  images: ResponsiveImage[];
+  /** A `data:` low-quality placeholder, when one was produced. */
+  placeholder?: string;
+}
+```
+
+### Image drivers
+
+`ImageDriver` is the seam between this package and whatever actually manipulates pixels. Two implementations ship — `BunImageDriver` (the default, no dependencies) and `SharpImageDriver` (opt-in, a native module) — and a shared parity suite holds them to the same output dimensions.
+
+```ts
+interface ImageDriver {
+  readonly name: string;
+  /** Whether `fit: "cover"` is available. Both shipped drivers report `true`. */
+  readonly supportsCrop: boolean;
+  metadata(bytes: Uint8Array): Promise<ImageMetadata | null>;
+  convert(bytes: Uint8Array, manipulation: ImageManipulation): Promise<ImageResult>;
+  placeholder(bytes: Uint8Array): Promise<string | null>;
+  canEncode(format: ConversionFormat): Promise<boolean>;
+}
+
+interface ImageManipulation {
+  width?: number;
+  height?: number;
+  fit?: ConversionFit;
+  /** Always resolved by the caller — drivers never guess. */
+  format: ConversionFormat;
+  quality?: number;
+  rotate?: number;
+  /** Never scale a source up to meet the box. Default `true`. */
+  withoutEnlargement?: boolean;
+}
+
+interface ImageResult {
+  bytes: Uint8Array;
+  width: number;
+  height: number;
+  format: ConversionFormat;
+  mimeType: string;
+}
+
+interface ImageMetadata {
+  width: number;
+  height: number;
+  format: string;
+}
+```
+
+Writing your own driver is supported, and the interface may grow only in ways that leave yours compiling: **new members arrive optional**, with the package supplying the fallback. `ImageManipulation` may gain optional fields; `ImageResult` and `ImageMetadata` may not gain required ones, because drivers produce them.
+
+`BunImageDriver` takes pixel ceilings, so a decompression bomb fails as a refusal rather than as memory exhaustion. `SharpImageDriver` takes no arguments — libvips streams tiles rather than materialising the full bitmap, so the ceiling has nothing to protect.
+
+```ts
+new BunImageDriver(maxPixels?, maxCropPixels?);
+new SharpImageDriver();
+```
+
+`SharpImageDriver` also loads `sharp` lazily, through a variable specifier, so `tsc` does not try to resolve it in the apps that never installed it — which is most of them. Selecting the driver without the package installed fails at first use with a message naming the install command.
+
+Three lookup tables are exported for reading — to label a download, or to check a type before offering an upload. They are frozen, because they are shared module state: an app that mutated one would change how conversions behave for every other caller in the process, including ones it does not own.
+
+```ts
+const FORMAT_MIME: Readonly<Record<ConversionFormat, string>>;
+const FORMAT_EXTENSION: Readonly<Record<ConversionFormat, string>>;
+const CONVERTIBLE_MIME_TYPES: ReadonlySet<string>;
+function isConvertible(mimeType: string | null | undefined): boolean;
+```
+
+`isConvertible` answers whether a stored file is worth handing to a driver at all — the check to run before offering a "regenerate thumbnails" button.
+
+### Paths
+
+Supply a `PathGenerator` to change the on-disk layout described under [Where files live](#where-files-live). `DefaultPathGenerator` is the shipped one, and `setPathGenerator` installs yours. It is process-global, so a provider's `register()` is the place for it.
+
+```ts
+interface PathGenerator {
+  forOriginal(media: MediaItem): string;
+  forConversions(media: MediaItem): string;
+  forResponsiveImages(media: MediaItem): string;
+}
+
+class DefaultPathGenerator implements PathGenerator {
+  constructor(prefix?: string);
+}
+
+function setPathGenerator(generator: PathGenerator): void;
+```
+
+```ts
+// A provider's register()
+setPathGenerator(new DefaultPathGenerator("uploads"));
+```
+
+### Command classes
+
+`MediaCleanCommand` and `MediaRegenerateCommand` back `media:clean` and `media:regenerate`. `MediaProvider` registers both; they are exported from `@zerotal/media/commands` so an app can subclass one to change its defaults.
+
+### Errors
+
+Every failure is a `MediaError` subclass carrying a stable `code`, an HTTP `status` and a `context` object — so a handler can branch on the code rather than matching a message.
+
+| Class                          | Code                               | Status | Raised when                                                     |
+| ------------------------------ | ---------------------------------- | ------ | --------------------------------------------------------------- |
+| `UnknownCollectionError`       | `E_MEDIA_UNKNOWN_COLLECTION`       | 500    | A collection name matches nothing the model declares            |
+| `DisallowedMimeTypeError`      | `E_MEDIA_DISALLOWED_MIME_TYPE`     | 422    | The sniffed type is not in the collection's `accepts`           |
+| `FileTooLargeError`            | `E_MEDIA_FILE_TOO_LARGE`           | 422    | The file exceeds the collection's `maxSize`                     |
+| `UnsavedOwnerError`            | `E_MEDIA_UNSAVED_OWNER`            | 500    | `addMedia` on a model with no primary key yet                   |
+| `UnsupportedFormatError`       | `E_MEDIA_UNSUPPORTED_FORMAT`       | 500    | This host cannot encode the requested format                    |
+| `UnsupportedManipulationError` | `E_MEDIA_UNSUPPORTED_MANIPULATION` | 500    | The driver cannot do what the conversion asks (a crop, usually) |
+| `RasterFormatError`            | `E_MEDIA_RASTER_FORMAT`            | 500    | A decoded image could not be re-encoded                         |
+| `MediaFileMissingError`        | `E_MEDIA_FILE_MISSING`             | 404    | A row points at a file the disk does not have                   |
+
+`UnknownCollectionError` lists the collections the model _does_ declare, because the mistake is nearly always a typo.

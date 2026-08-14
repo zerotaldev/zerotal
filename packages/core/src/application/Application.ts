@@ -325,6 +325,9 @@ export class Application {
    * a `path` is a catch-all. Each connection is tagged with `_wsPath` on upgrade and dispatched
    * to the matching registration.
    */
+  /** Transport paths declared by providers in any runtime. See `declareWebSocketPath`. */
+  private _declaredWsPaths = new Set<string>();
+
   private _wsRegistrations: Array<{
     path?: string | undefined;
     handlers: WebSocketHandlers;
@@ -880,6 +883,38 @@ export class Application {
   ): this {
     this._wsRegistrations.push({ path, handlers, upgradeData });
     return this;
+  }
+
+  /**
+   * Declare a WebSocket path this app serves, without wiring any handlers for it.
+   *
+   * Handlers are only registered in the web runtime, so a CLI process — which is what
+   * `bun zt doctor` is — has no idea the app has a transport at all. Providers call this
+   * from `onRegister()`, which runs in every mode, so the paths are knowable from the
+   * console even though nothing is listening there.
+   *
+   * @category Server
+   */
+  declareWebSocketPath(path: string): this {
+    this._declaredWsPaths.add(path);
+    return this;
+  }
+
+  /**
+   * Every WebSocket path this app serves: those declared via
+   * {@link Application.declareWebSocketPath} plus those actually registered. A catch-all
+   * registration (no path) is reported as `"*"`.
+   *
+   * Exposed for tooling that has to reach the transport from outside the process — `bun zt
+   * doctor --url=…` probes each of these through the real proxy, because a handshake a
+   * browser cannot complete is invisible from in here.
+   *
+   * @category Server
+   */
+  webSocketPaths(): string[] {
+    return [
+      ...new Set([...this._declaredWsPaths, ...this._wsRegistrations.map((r) => r.path ?? "*")]),
+    ];
   }
 
   /** Find the WS registration handling a connection's path (exact match, else a catch-all). */

@@ -59,6 +59,86 @@ function check(id: string): DoctorCheck {
   return found;
 }
 
+describe("allowed-origins check", () => {
+  const app = (config: Record<string, unknown>) => fakeApp({ config });
+
+  it("fails on an empty list — the silent-403 configuration", async () => {
+    const result = await check("allowed-origins").run(app({ "app.allowedOrigins": [] }));
+    expect(result.status).toBe("fail");
+    expect(result.message).toContain("403");
+  });
+
+  it("passes a configured public origin", async () => {
+    const result = await check("allowed-origins").run(
+      app({
+        "app.url": "https://app.example.com",
+        "app.allowedOrigins": ["https://app.example.com"],
+      }),
+    );
+    expect(result.status).toBe("ok");
+  });
+
+  it("warns on an entry that is not an origin", async () => {
+    // Inert rather than dangerous — but an inert entry is always a typo.
+    const result = await check("allowed-origins").run(
+      app({
+        "app.url": "https://app.example.com",
+        "app.allowedOrigins": ["https://app.example.com", "https://app.example.com/"],
+      }),
+    );
+    expect(result.status).toBe("warn");
+    expect(result.message).toContain("https://app.example.com/");
+  });
+
+  it("fails when production still points at localhost", async () => {
+    const result = await check("allowed-origins").run(
+      app({
+        "app.env": "production",
+        "app.url": "http://localhost:3000",
+        "app.allowedOrigins": ["http://localhost:3000"],
+      }),
+    );
+    expect(result.status).toBe("fail");
+    expect(result.fix).toContain("APP_URL");
+  });
+
+  it("accepts localhost outside production", async () => {
+    const result = await check("allowed-origins").run(
+      app({
+        "app.env": "development",
+        "app.url": "http://localhost:3000",
+        "app.allowedOrigins": ["http://localhost:3000"],
+      }),
+    );
+    expect(result.status).toBe("ok");
+  });
+});
+
+describe("boot-asset-writes check", () => {
+  it("is quiet when nothing is bundled", async () => {
+    const result = await check("boot-asset-writes").run(fakeApp({ config: {} }));
+    expect(result.status).toBe("ok");
+    expect(result.message).toContain("no bundled assets");
+  });
+
+  it("reports a writable output directory in production", async () => {
+    const result = await check("boot-asset-writes").run(
+      fakeApp({ config: { "app.env": "production", "app.assets": { outDir: "public" } } }),
+    );
+    expect(result.status).toBe("ok");
+    expect(result.message).toContain("writable");
+  });
+
+  it("notices Flow's bundle directories from their entry points", async () => {
+    mkdirSync(join(root, "resources/css"), { recursive: true });
+    writeFileSync(join(root, "resources/css/app.css"), "");
+    const result = await check("boot-asset-writes").run(
+      fakeApp({ config: { "app.env": "development" } }),
+    );
+    expect(result.message).toContain("public/css");
+  });
+});
+
 describe("app-key check", () => {
   it("warns when APP_KEY is not set", async () => {
     delete Bun.env["APP_KEY"];
@@ -162,7 +242,7 @@ describe("runDoctor", () => {
   it("includes checks a provider declares with doctorChecks()", async () => {
     // The declarative counterpart to registerDoctorCheck(): same report, but
     // the package lists its checks next to its other contributions.
-    const provider = {
+    const provider: { doctorChecks: () => DoctorCheck[] } = {
       doctorChecks: () => [
         { id: "declared", label: "Declared", run: () => ({ status: "ok", message: "healthy" }) },
       ],

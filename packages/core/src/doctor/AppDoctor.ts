@@ -15,6 +15,7 @@ import { readdirSync } from "node:fs";
 import type { Application } from "../application/Application.ts";
 import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { unroutedRoutesWarning } from "../support/unroutedRoutes.ts";
+import { isWritableDir } from "../dev/bootBuild.ts";
 
 /** One finding: ok is silent health, warn is worth reading, fail is broken now. */
 export interface DoctorCheckResult {
@@ -111,6 +112,122 @@ const syncVsMigrationsCheck: DoctorCheck = {
   },
 };
 
+/**
+ * The origin guard on pipeline-bypassing endpoints compares the browser's `Origin` against
+ * the app's own — which behind a proxy is the loopback address it bound to. Everything the
+ * app needs to be reachable is therefore in `app.allowedOrigins`, and getting it wrong is
+ * silent: pages render, actions 403.
+ */
+const allowedOriginsCheck: DoctorCheck = {
+  id: "allowed-origins",
+  label: "Transport origins",
+  run(app) {
+    const url = _config(app, "app.url");
+    const origins = _config(app, "app.allowedOrigins");
+    const list = Array.isArray(origins) ? origins.filter((o) => typeof o === "string") : [];
+
+    if (list.length === 0) {
+      return fail(
+        "app.allowedOrigins is empty. Behind a reverse proxy the app's own origin is the " +
+          "loopback address it bound to, so every browser-initiated WebSocket and " +
+          "/__flow/http action will be refused with 403 while pages keep rendering.",
+        "Set url in config/app.ts (AppConfig fills allowedOrigins from it).",
+      );
+    }
+
+    // Unparseable entries can never equal an `Origin` header, so they are inert — but an
+    // inert entry is always a typo, and the typo is usually the one that mattered.
+    const unparseable = list.filter((entry) => {
+      try {
+        return new URL(entry).origin !== entry;
+      } catch {
+        return true;
+      }
+    });
+    if (unparseable.length > 0) {
+      return warn(
+        `app.allowedOrigins contains ${unparseable.map((e) => `"${e}"`).join(", ")}, which ` +
+          `${unparseable.length === 1 ? "is not an origin" : "are not origins"} and can never ` +
+          `match an Origin header. An origin is scheme + host + port, with no path or trailing slash.`,
+        "Correct the entry in config/app.ts, e.g. https://app.example.com",
+      );
+    }
+
+    // A production app still pointing at localhost has a plausible-looking config and an
+    // allowedOrigins list that no real browser will ever match.
+    if (_isProductionEnv(app) && typeof url === "string" && _isLoopback(url)) {
+      return fail(
+        `app.url is ${url} in a production environment, so allowedOrigins is a loopback ` +
+          `address. Browsers send the public origin, which is not in the list — every ` +
+          `credentialed action will be refused.`,
+        "Set APP_URL to the public URL the site is served from.",
+      );
+    }
+
+    return ok(list.join(", "));
+  },
+};
+
+/**
+ * `serve` builds configured assets at boot, so the output directory has to be writable —
+ * or the build has to have happened at deploy time. Either is fine; the failure is the
+ * combination nobody chose deliberately.
+ */
+const bootAssetWriteCheck: DoctorCheck = {
+  id: "boot-asset-writes",
+  label: "Asset output",
+  async run(app) {
+    const assets = _config(app, "app.assets") as { outDir?: string } | undefined;
+    const dirs = [
+      ...(assets?.outDir ? [assets.outDir] : []),
+      // Flow bundles its own CSS/JS into these when the entry points exist.
+      ...(await _existingFlowAssetDirs()),
+    ];
+    if (dirs.length === 0) return ok("no bundled assets configured");
+
+    if (!_isProductionEnv(app)) return ok(`${dirs.join(", ")} (built at boot outside production)`);
+
+    const unwritable: string[] = [];
+    for (const dir of dirs) {
+      if (!(await isWritableDir(`${process.cwd()}/${dir}`))) unwritable.push(dir);
+    }
+    if (unwritable.length === 0) return ok(`${dirs.join(", ")} writable`);
+
+    return ok(
+      `${unwritable.join(", ")} is read-only — the boot-time build is skipped and the ` +
+        `assets shipped with the release are served. Build them at deploy time.`,
+    );
+  },
+};
+
+/** Directories Flow writes bundles into, listed only when the matching entry point exists. */
+async function _existingFlowAssetDirs(): Promise<string[]> {
+  const pairs = [
+    ["resources/css/app.css", "public/css"],
+    ["resources/js/app.js", "public/js"],
+  ] as const;
+  const out: string[] = [];
+  for (const [entry, dir] of pairs) {
+    if (await Bun.file(`${process.cwd()}/${entry}`).exists()) out.push(dir);
+  }
+  return out;
+}
+
+function _isProductionEnv(app: Application): boolean {
+  const env = _config(app, "app.env");
+  return env === "production" || env === "prod";
+}
+
+/** Whether a URL points at this machine — i.e. is not something a browser elsewhere can reach. */
+function _isLoopback(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "0.0.0.0";
+  } catch {
+    return false;
+  }
+}
+
 const unroutedRoutesCheck: DoctorCheck = {
   id: "unrouted-routes",
   label: "routes/ directory",
@@ -186,6 +303,8 @@ const storageProviderCheck: DoctorCheck = {
 /** The core checks every app gets. */
 export const builtinDoctorChecks: DoctorCheck[] = [
   appKeyCheck,
+  allowedOriginsCheck,
+  bootAssetWriteCheck,
   syncVsMigrationsCheck,
   unroutedRoutesCheck,
   schedulesProviderCheck,

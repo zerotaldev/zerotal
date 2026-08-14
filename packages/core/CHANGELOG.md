@@ -23,9 +23,24 @@ follows the Zerotal monorepo's unified versioning.
   It is now a first-class field, filled from `url`, and unions rather than replaces: an
   app naming a second origin does not mean "and stop trusting my own public URL".
 
+- **`bun zt doctor --url=…` probes the deployed transport from the outside.** Every other
+  check runs inside the process, and the expensive proxy failures are exactly the ones
+  that cannot be seen from there. This sends a real handshake with a real `Origin` through
+  the real proxy and reads the status: `101` is healthy, `403` is the origin guard, `401`
+  is an auth gate over the transport (browsers do not send basic-auth credentials on a
+  handshake), `404` is usually a proxy not forwarding the path.
+
+  Two static checks come with it: **Transport origins** (empty list, an entry that is not
+  an origin, or a production app still pointing at localhost) and **Asset output**.
+
 - **`bun zt assets:build`** — build every bundle the app declares as a release step:
   `app.assets` entrypoints plus Flow's conventional `resources/css/app.css` and
   `resources/js/app.js`. `css:build` only ever covered the first half of that.
+
+- **`Application.declareWebSocketPath()` / `webSocketPaths()`.** Handlers are only wired in
+  the web runtime, so a CLI process could not name the app's own transport — which is what
+  `doctor --url` needs. Providers declare the path in `onRegister()`, which runs in every
+  mode.
 
 - **`RequestContext.remember(key, factory)`** — run something at most once per request.
   The N+1 detector says a query ran too many times; when the answer is the same every

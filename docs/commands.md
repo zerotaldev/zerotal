@@ -1,4 +1,4 @@
----
+﻿---
 title: Commands
 description: Build and run CLI commands with bun zt, from generators to your own class- or closure-based commands.
 ---
@@ -148,21 +148,27 @@ const token = await this.secret("API token:"); // input hidden on a Unix TTY
 
 ### Server & Development
 
-| Command                       | Description                                                  |
-| ----------------------------- | ------------------------------------------------------------ |
-| `bun zt serve`                | Start the HTTP server on port 3000                           |
-| `bun zt serve --port 8080`    | Start on a custom port                                       |
-| `bun zt serve --force`        | If the port is busy, stop whatever holds it                  |
-| `bun zt serve --auto-port`    | If the port is busy, start on the next free port             |
-| `bun zt reload`               | Hot-reload routes in the running server (sends SIGUSR2)      |
-| `bun zt status`               | Show live metrics from the running server                    |
-| `bun zt repl`                 | Start an interactive REPL with the bootstrapped app in scope |
-| `bun zt worker`               | Start the background job worker process                      |
-| `bun zt worker --queue email` | Process a specific queue                                     |
-| `bun zt worker --once`        | Process one job then exit                                    |
-| `bun zt test`                 | Run the test suite in the `test` environment                 |
-| `bun zt compile`              | Compile the app to a self-contained binary (alias: `build`)  |
-| `bun zt css:build`            | Build the Tailwind CSS bundle for production                 |
+| Command                       | Description                                                     |
+| ----------------------------- | --------------------------------------------------------------- |
+| `bun zt dev`                  | Dev mode: the server plus every registered process (alias: `d`) |
+| `bun zt dev --only=server`    | Run only the named processes, comma-separated                   |
+| `bun zt dev --without=queue`  | Run everything except the named processes                       |
+| `bun zt dev --list`           | Print what would run, and which provider registered it          |
+| `bun zt dev --stream`         | Interleave prefixed output instead of drawing tabs              |
+| `bun zt dev --force-build`    | Rebuild assets even when the build cache says they're current   |
+| `bun zt serve`                | Start the HTTP server on port 3000                              |
+| `bun zt serve --port 8080`    | Start on a custom port                                          |
+| `bun zt serve --force`        | If the port is busy, stop whatever holds it                     |
+| `bun zt serve --auto-port`    | If the port is busy, start on the next free port                |
+| `bun zt reload`               | Hot-reload routes in the running server (sends SIGUSR2)         |
+| `bun zt status`               | Show live metrics from the running server                       |
+| `bun zt repl`                 | Start an interactive REPL with the bootstrapped app in scope    |
+| `bun zt worker`               | Start the background job worker process                         |
+| `bun zt worker --queue email` | Process a specific queue                                        |
+| `bun zt worker --once`        | Process one job then exit                                       |
+| `bun zt test`                 | Run the test suite in the `test` environment                    |
+| `bun zt compile`              | Compile the app to a self-contained binary (alias: `build`)     |
+| `bun zt css:build`            | Build the Tailwind CSS bundle for production                    |
 
 #### When the port is already taken
 
@@ -181,6 +187,115 @@ The dev server is a special case worth knowing about: on every restart it waits 
 few seconds for its own previous process to let go of the socket rather than
 asking you about it. A prompt on each file save would be unbearable, and the port
 is about to free itself anyway.
+
+#### Dev mode and the deck
+
+`bun zt dev` starts the server, the file watcher, and every process a provider or
+your app registered — a queue worker, a type-checker, a Stripe listener — in one
+terminal, each in its own tab. It is `serve --dev` with those extra tabs and the
+keys to drive them, so anything true of one is true of the other.
+
+An app with a queue no longer needs a second terminal:
+
+```bash
+# in your project root
+bun zt dev
+```
+
+The deck draws one tab per process, colour-coded, showing whether each is
+running, restarting, or has given up:
+
+```text
+ 1 server ●│ 2 queue ●│ 3 types ◌
+─────────────────────────────────────────────────
+ GET / 200 4ms
+ GET /posts 200 11ms
+ 1-9 tab · ←/→ cycle · r restart · c clear · / search · t time · s stream · q quit
+```
+
+| Key           | Does                                                             |
+| ------------- | ---------------------------------------------------------------- |
+| `1`–`9`       | Select that tab                                                  |
+| `←` `→` `Tab` | Cycle through tabs                                               |
+| `r`           | Restart the focused process                                      |
+| `c`           | Clear the focused tab's output                                   |
+| `/`           | Search within the focused tab (`Enter` keeps it, `Esc` drops it) |
+| `t`           | Toggle per-line timestamps                                       |
+| `s`           | Switch to stream mode                                            |
+| `PgUp` `PgDn` | Scroll the focused tab                                           |
+| `q`           | Quit — stops every process and restores your shell               |
+
+Scrollback belongs to the deck rather than to your terminal, which is what makes
+per-tab history and search possible. It keeps the last 5,000 lines per process.
+
+**A process that dies never takes the server with it.** It restarts on its own —
+three times, backing off between attempts — and if it still will not start, that
+one tab parks with a message telling you how to retry. Everything else keeps
+running. This is the opposite of the asset build, where a failure deliberately
+aborts the reload.
+
+#### Stream mode
+
+Not everything watching `zt dev` is a person at a terminal. When stdout is not a
+TTY — CI, a pipe, a log file — the deck writes prefixed lines instead, with no
+escape codes at all:
+
+```text
+[server] GET / 200 4ms
+[queue ] processing SendWelcomeEmail
+[server] GET /posts 200 11ms
+```
+
+That happens automatically; `--stream` forces it, and `s` switches to it
+mid-session. It is the same information, and it is what you want in a file.
+
+#### Choosing what runs
+
+`--only` and `--without` take comma-separated names, and the server is an
+ordinary name among them:
+
+```bash
+# in your project root
+bun zt dev --only=server,queue   # just these two
+bun zt dev --without=queue       # everything else
+bun zt dev --only=queue          # no server at all
+```
+
+When you are not sure what a tab is or who asked for it, `--list` answers both
+without starting anything:
+
+```bash
+# in your project root
+bun zt dev --list
+```
+
+```text
+Dev processes
+  server
+    command          managed by the orchestrator
+    registered by    @zerotal/core
+  queue
+    command          bun zt queue:work
+    registered by    QueueProvider
+```
+
+Your app has the last word. `app.dev.disable` removes a process by name, and
+registering the same name again replaces it rather than adding a second tab:
+
+```ts
+// config/app.ts
+export default AppConfig({
+  dev: {
+    processes: [
+      { name: "stripe", command: ["stripe", "listen", "--forward-to", "localhost:3000"] },
+    ],
+    disable: ["queue"],
+  },
+});
+```
+
+Packages register their own — see
+[Registering a dev process](/docs/package-development#registering-a-dev-process).
 
 ### Inspection
 

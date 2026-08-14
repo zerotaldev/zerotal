@@ -10,6 +10,60 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`bun zt dev` — the server and every companion process in one terminal.** An app with
+  a queue needed two terminals and the discipline to restart the right one by hand. Worse,
+  the gap was not closeable from a package: every library with a companion process — a
+  worker, a listener, a watcher — had the same problem and no way to help, because the dev
+  runner only knew about the server.
+
+  A provider now declares one the way it declares `replContext()`:
+
+  ```ts
+  override devProcesses(): DevProcessDefinition[] {
+    return [{ name: "queue", command: "queue:work", enabled: () => this._hasQueue() }];
+  }
+  ```
+
+  and it appears as its own tab, individually restartable with `r`. `QueueProvider` ships
+  the first one; it stays off screen under the `sync` driver and when an in-process worker
+  pool is already draining the queue, because a tab with nothing to do is worse than no
+  tab. Apps get the last word through `app.dev.processes` and `app.dev.disable` — reusing
+  a name replaces the process rather than adding a second one.
+
+  **A dying process never takes the server with it.** It restarts on its own, three times
+  with backoff, and then parks that one tab with instructions rather than tearing dev mode
+  down. This is deliberately the opposite of the asset build hook, where a failure aborts
+  the reload — different lifetimes, different failure rules.
+
+  `--only` / `--without` / `--list` / `--stream` / `--force-build` mirror `artisan dev`,
+  so there is nothing to translate coming from another framework. `--list` names the provider behind
+  every entry, which is the question you actually have when an unfamiliar tab appears.
+  `serve --dev` is unchanged in spelling and gains all of it — `dev` is that command with
+  a richer flag set, not a second implementation of it.
+
+- **The Deck — a tabbed dev UI with no new dependency.** `@zerotal/core` carries exactly
+  one external runtime dependency, and a terminal multiplexer off npm would be the second,
+  in the package everything else depends on, to draw a box. Bun ships every primitive it
+  needs: `Bun.stringWidth` measures what the terminal will actually show, `Bun.sliceAnsi`
+  cuts a styled line without severing an escape sequence, and raw stdin gives us keys.
+
+  Scrollback belongs to the deck rather than the terminal — 5,000 lines per process —
+  which is what makes per-tab history and `/` search possible at all. `1`–`9` and the
+  arrows select, `r` restarts, `c` clears, `t` toggles timestamps, `q` quits.
+
+  **Stream mode is the base case, not a fallback.** Interleaved `[label] line` output with
+  no escape codes whatsoever, chosen automatically whenever stdout is not a TTY, and what
+  you want in a log file or CI. The tab UI is a layer on top of it. Either way the terminal
+  is restored on every exit path there is — `q`, a signal, and an uncaught throw — because
+  raw mode plus the alternate screen left on makes a shell unusable, and that is the
+  classic way a TUI ruins someone's afternoon.
+
+- **`doctorChecks()` on `ServiceProvider`.** The declarative counterpart to
+  `app.registerDoctorCheck()`: same checks, same report, but asked of the provider rather
+  than pushed from inside `onRegister()`, so a package's checks sit next to its other
+  contributions and read without tracing a registration call. A provider whose method
+  throws contributes nothing rather than failing the doctor for every other package.
+
 - **Dev asset builds are skipped when nothing changed.** `serve --dev` rebuilt every bundle
   on every boot and every backend save, including when the project had not been touched.
   A build now records what it consumed and produced, and is skipped when none of it moved.
@@ -44,6 +98,13 @@ follows the Zerotal monorepo's unified versioning.
   anything else — can see what the routing groups actually load.)
 
 ### Fixed
+
+- **`setAppEnv("dev")` resolves to `web`, not `console`.** Dev mode's process 1 boots the
+  app purely to ask its providers what to run, and a provider is only asked if its
+  `static environments` includes the environment it booted under. Falling through to
+  `console` would have silently dropped every web-only provider — no error, no empty tab,
+  just a process that never appears — and would have left `zt dev` and `serve --dev`
+  disagreeing about what dev mode consists of.
 
 - **A Flow app built its bundles three times on every `serve --dev`.** `APP_ENV` defaults to
   `"web"`, so the orchestrator process passed the view provider's web-runtime check and ran

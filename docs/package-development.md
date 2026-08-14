@@ -368,6 +368,96 @@ model.
 > tests that construct the provider with a minimal app stub don't need to implement
 > it.
 
+## Registering a dev process
+
+If your package ships a companion process — a worker, a listener, a watcher —
+declare it and `bun zt dev` runs it beside the server in its own tab. Otherwise
+every user of your package has to remember a second terminal, and there is no way
+for you to help them.
+
+```typescript
+// packages/webhooks/src/provider/WebhooksProvider.ts
+import type { DevProcessDefinition } from "@zerotal/core";
+
+override devProcesses(): DevProcessDefinition[] {
+  return [
+    {
+      name: "webhooks",                  // identity, and what --only / --without take
+      command: ["stripe", "listen"],     // raw argv…
+      enabled: () => this._configured(), // resolved once, at startup
+      restart: "on-failure",             // or "always" / "never"
+    },
+  ];
+}
+```
+
+`command` takes three forms, and the one you want is usually the first:
+
+| Form                   | Runs                                                                    |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `"queue:work"`         | A `zt` command, through the app's own entrypoint                        |
+| `["stripe", "listen"]` | Raw argv, for a tool that is not a `zt` command                         |
+| `() => [...]`          | The same, computed at startup from config you can only read once booted |
+
+Use `run: async (signal) => …` instead of `command` for work with no separate
+binary; the signal aborts on shutdown and on a restart. Set `after: "server"` for
+a process that talks to the server, so it does not spend its restart budget
+against a closed port before the server has bound.
+
+Two things worth knowing:
+
+- **`enabled` is resolved once, at startup.** A process cannot flicker in and out
+  of the deck while dev mode is running, and one that throws while probing
+  contributes nothing rather than failing dev mode for everyone else. Use it to
+  keep a tab off screen when it would have nothing to do — the queue worker sits
+  out under the `sync` driver for exactly this reason.
+- **Your `name` is not private.** An app can replace your process by registering
+  the same name, or drop it with `app.dev.disable`. That is deliberate: they know
+  their setup better than you do.
+
+See [Dev mode and the deck](/docs/commands#dev-mode-and-the-deck) for what the
+user sees.
+
+> **Your provider must be active in `web`.** Dev mode boots the app as `web` to
+> ask providers what to run, so a provider whose `static environments` excludes
+> it is never asked — and contributes nothing, silently.
+
+## Registering a doctor check
+
+`bun zt doctor` is what a developer (or an agent) runs to find out whether an app
+is wired correctly. Contribute the checks only your package can make:
+
+```typescript
+// packages/webhooks/src/provider/WebhooksProvider.ts
+import type { DoctorCheck } from "@zerotal/core";
+
+override doctorChecks(): DoctorCheck[] {
+  return [
+    {
+      id: "webhooks-secret",
+      label: "Webhooks",
+      run: () => {
+        const secret = this.app.container.makeSync("config").get("webhooks.secret");
+        if (secret) return { status: "ok", message: "signing secret configured" };
+        return {
+          status: "warn",
+          message: "no signing secret — every delivery will be rejected unverified.",
+          fix: "Set WEBHOOKS_SECRET in .env.",
+        };
+      },
+    },
+  ];
+}
+```
+
+Keep findings machine-readable, and put the resolution in `fix`. The intended
+last step of an agent's task is `zt doctor`, and "looks fine to me" is not a
+result it can act on. A check that throws is reported as that check failing,
+never as the doctor failing.
+
+`app.registerDoctorCheck()` does the same thing imperatively from `onRegister()`.
+Prefer the method — it keeps your checks next to your other contributions.
+
 ## Tests
 
 Every package must ship at least one `*.test.ts` file — the linter treats their

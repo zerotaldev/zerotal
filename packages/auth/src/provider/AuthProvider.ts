@@ -1,7 +1,7 @@
 import { ServiceProvider, HttpContext, ForbiddenError } from "@zerotal/core";
 import type { AppEnvironment } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
-import type { AuthUser } from "../AuthUser.ts";
+import type { UserModel } from "../facades/Auth.ts";
 import { HashService } from "../HashService.ts";
 import { installAuthObservability } from "../observability.ts";
 import { GateService } from "../GateService.ts";
@@ -49,7 +49,7 @@ export class AuthProvider extends ServiceProvider {
   static override provides = ["hash", "gate", "two_factor"] as const;
   static override environments: AppEnvironment[] = ["web", "console", "test"];
 
-  private static _resolver: ((id: number) => Promise<AuthUser | null>) | undefined;
+  private static _resolver: ((id: number) => Promise<UserModel | null>) | undefined;
 
   private _disposeObservability: (() => void) | undefined = undefined;
 
@@ -66,7 +66,7 @@ export class AuthProvider extends ServiceProvider {
    *
    * export default Application.create({ providers })...
    */
-  static resolveUsing(fn: (id: number) => Promise<AuthUser | null>): void {
+  static resolveUsing(fn: (id: number) => Promise<UserModel | null>): void {
     AuthProvider._resolver = fn;
   }
 
@@ -100,7 +100,7 @@ export class AuthProvider extends ServiceProvider {
     // convention default, which loads the registered AuthUser-subclass model (the app's User).
     // No wiring required — registering AuthProvider is enough.
     const resolver =
-      (this.app._userResolver as ((id: number) => Promise<AuthUser | null>) | undefined) ??
+      (this.app._userResolver as ((id: number) => Promise<UserModel | null>) | undefined) ??
       AuthProvider._resolver ??
       defaultUserLoader;
     // Register as a ready value (not an async `bind`): the resolver is already

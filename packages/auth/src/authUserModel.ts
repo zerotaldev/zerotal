@@ -1,5 +1,6 @@
 import { modelsByName } from "@zerotal/orm";
 import { AuthUser } from "./AuthUser.ts";
+import type { UserModel } from "./facades/Auth.ts";
 import { isAuthenticatable } from "./Authenticatable.ts";
 
 /**
@@ -27,8 +28,8 @@ export function authUserModel(): typeof AuthUser | undefined {
  * app hasn't provided an explicit resolver via `AuthProvider.resolveUsing(...)` /
  * `app.withUserResolver(...)`.
  */
-export async function defaultUserLoader(id: number): Promise<AuthUser | null> {
-  const Model = authUserModel() as { find?(id: number): Promise<AuthUser | null> } | undefined;
+export async function defaultUserLoader(id: number): Promise<UserModel | null> {
+  const Model = authUserModel() as { find?(id: number): Promise<UserModel | null> } | undefined;
   if (!Model?.find) return null;
   return Model.find(id);
 }

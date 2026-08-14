@@ -121,16 +121,18 @@ export interface LoginOptions {
 }
 
 // Minimal structural view of the app's user model used for credential lookup.
+// It yields `UserModel`, not `AuthUser`: the model being queried is the app's own
+// registered user model, so this is the seam where the app's concrete type enters.
 interface CredQuery {
   where(column: string, value: unknown): CredQuery;
-  first(): Promise<AuthUser | null>;
+  first(): Promise<UserModel | null>;
 }
 interface QueryableModel {
   query(): CredQuery;
 }
 
 /** Find the user matching all non-password credentials, or undefined. */
-async function retrieveByCredentials(credentials: Credentials): Promise<AuthUser | undefined> {
+async function retrieveByCredentials(credentials: Credentials): Promise<UserModel | undefined> {
   const Model = authUserModel() as unknown as QueryableModel | undefined;
   if (!Model?.query) return undefined;
   // Everything except the password (and the `remember` flag) identifies the user.
@@ -501,7 +503,7 @@ export const Auth = {
   async attempt(credentials: Credentials, remember = false): Promise<boolean> {
     const user = await retrieveByCredentials(credentials);
     if (user && (await hasValidPassword(user, credentials))) {
-      await Auth.login(user as UserModel, { remember });
+      await Auth.login(user, { remember });
       await _rehashIfNeeded(user, credentials);
       return true;
     }
@@ -540,8 +542,8 @@ export const Auth = {
       return false;
     }
     if (!(await hasValidPassword(user, credentials))) return false;
-    if (!(await callback(user as UserModel))) return false;
-    await Auth.login(user as UserModel, { remember });
+    if (!(await callback(user))) return false;
+    await Auth.login(user, { remember });
     await _rehashIfNeeded(user, credentials);
     return true;
   },
@@ -593,11 +595,11 @@ export const Auth = {
    */
   async loginUsingId(id: number, remember = false): Promise<UserModel | null> {
     const Model = authUserModel() as unknown as
-      { find?(id: number): Promise<AuthUser | null> } | undefined;
+      { find?(id: number): Promise<UserModel | null> } | undefined;
     const user = (await Model?.find?.(id)) ?? null;
     if (!user) return null;
-    await Auth.login(user as UserModel, { remember });
-    return user as UserModel;
+    await Auth.login(user, { remember });
+    return user;
   },
 
   /**

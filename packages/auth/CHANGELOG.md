@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`ctx.user` is typed as `UserModel`, the same interface `Auth.user()` returns.**
+  It was `AuthUser` — the framework's base class — so an app that
+  declaration-merges its own `User` got its columns from `Auth.user()` and lost
+  them one line later on `ctx.user`, and the two could disagree about the same
+  request's user. The user loader, the 2FA pending slot and the credential query
+  all yield `UserModel` now, because the model being queried is the app's own
+  registered user model: that is where the concrete type enters, and typing it as
+  the base class threw the information away at the seam.
+
+  `AuthUser` is unchanged and still the base class to extend. Apps that never
+  declared their own `User` see `UserModel` resolve to it, so nothing that
+  compiled before stops compiling.
+
 ## [1.4.0] — 2026-08-10
 
 ### Added

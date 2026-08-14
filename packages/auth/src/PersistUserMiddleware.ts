@@ -3,7 +3,7 @@ import { BaseMiddleware, FrameworkEvents } from "@zerotal/core";
 import { LoginFailed } from "./events.ts";
 import { TWO_FACTOR_PENDING_KEY } from "./TwoFactorMiddleware.ts";
 import type { SessionManager } from "@zerotal/session";
-import type { AuthUser } from "./AuthUser.ts";
+import type { UserModel } from "./facades/Auth.ts";
 
 /**
  * Reads 'user_id' from the active session and populates ctx.user.
@@ -41,13 +41,13 @@ export class PersistUserMiddleware extends BaseMiddleware {
    * @returns The user, or `null` when the id no longer resolves to a user.
    * @throws {Error} when no `auth.userLoader` binding is registered (call `AuthProvider.resolveUsing(...)`).
    */
-  protected async loadUser(userId: number, ctx: HttpContext): Promise<AuthUser | null> {
+  protected async loadUser(userId: number, ctx: HttpContext): Promise<UserModel | null> {
     const containerLoader = (
       ctx.container as unknown as {
         container?: { tryMake?(key: string): unknown };
       }
     )?.container?.tryMake?.("auth.userLoader") as
-      ((id: number) => Promise<AuthUser | null>) | undefined;
+      ((id: number) => Promise<UserModel | null>) | undefined;
 
     if (containerLoader) return containerLoader(userId);
 
@@ -73,7 +73,7 @@ export class PersistUserMiddleware extends BaseMiddleware {
           // enforcement point for 2FA — attaching TwoFactorMiddleware only changes the
           // 401 into a redirect.
           if (session.get(TWO_FACTOR_PENDING_KEY) === true) {
-            (http as { _twoFactorPendingUser?: AuthUser })._twoFactorPendingUser = user;
+            (http as { _twoFactorPendingUser?: UserModel })._twoFactorPendingUser = user;
           } else {
             http.user = user;
           }

@@ -1,7 +1,7 @@
 import type { NextFn, HttpContext } from "@zerotal/core";
 import { BaseMiddleware, readCookie } from "@zerotal/core";
 import type { SessionManager } from "@zerotal/session";
-import type { AuthUser } from "./AuthUser.ts";
+import type { UserModel } from "./facades/Auth.ts";
 import {
   REMEMBER_COOKIE,
   buildRememberCookie,
@@ -61,11 +61,11 @@ export class RememberMeMiddleware extends BaseMiddleware<RememberMeOptions> {
    * Returns null (no throw) when no loader is registered — remember-me is
    * best-effort and must never break a request.
    */
-  protected async loadUser(userId: number, ctx: HttpContext): Promise<AuthUser | null> {
+  protected async loadUser(userId: number, ctx: HttpContext): Promise<UserModel | null> {
     const loader = (
       ctx.container as unknown as { container?: { tryMake?(key: string): unknown } }
     )?.container?.tryMake?.("auth.userLoader") as
-      ((id: number) => Promise<AuthUser | null>) | undefined;
+      ((id: number) => Promise<UserModel | null>) | undefined;
     if (!loader) return null;
     return loader(userId);
   }
@@ -80,7 +80,7 @@ export class RememberMeMiddleware extends BaseMiddleware<RememberMeOptions> {
     const id = Number(parsed.id);
     if (!Number.isFinite(id)) return;
 
-    let user: AuthUser | null;
+    let user: UserModel | null;
     try {
       user = await this.loadUser(id, http);
     } catch {
@@ -114,7 +114,7 @@ export class RememberMeMiddleware extends BaseMiddleware<RememberMeOptions> {
    * Persistence failures are swallowed: remember-me is best-effort and must never break a
    * request. The old token simply stays valid until the next attempt.
    */
-  private async _rotate(http: HttpContext, user: AuthUser, id: number): Promise<void> {
+  private async _rotate(http: HttpContext, user: UserModel, id: number): Promise<void> {
     const rotatable = user as Rememberable & {
       setRememberToken?(value: string | null): void;
       save?(): Promise<unknown>;

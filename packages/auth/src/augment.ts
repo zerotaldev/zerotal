@@ -1,4 +1,5 @@
 import type { AuthUser } from "./AuthUser.ts";
+import type { UserModel } from "./facades/Auth.ts";
 import type { Policy } from "./Policy.ts";
 import type { GateService } from "./GateService.ts";
 import type { TwoFactorService } from "./TwoFactorService.ts";
@@ -10,12 +11,18 @@ declare module "@zerotal/core" {
     /** Two-factor authentication service — registered by AuthProvider. */
     two_factor: TwoFactorService;
     /** User loader used by AuthMiddleware. Bind this instead of calling setLoader(). */
-    "auth.userLoader": (id: number) => Promise<AuthUser | null>;
+    "auth.userLoader": (id: number) => Promise<UserModel | null>;
   }
 
   interface HttpContext {
-    /** The authenticated user for this request, populated by AuthMiddleware. */
-    user?: AuthUser | undefined;
+    /**
+     * The authenticated user for this request, populated by AuthMiddleware.
+     *
+     * Typed as {@link UserModel}, the same augmentable interface `Auth.user()`
+     * returns — so an app that declaration-merges its own `User` gets its own
+     * columns here too, and `ctx.user` and `Auth.user()` cannot disagree.
+     */
+    user?: UserModel | undefined;
 
     /**
      * Assert the current user is authorized. Throws a 403 ForbiddenError if

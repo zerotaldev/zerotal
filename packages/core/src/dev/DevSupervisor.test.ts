@@ -57,8 +57,18 @@ class FakeChild implements DevChild {
   }
 }
 
-function definition(overrides: Partial<ResolvedDevProcess> = {}): ResolvedDevProcess {
-  return {
+/**
+ * A spawned-process definition, with a default argv.
+ *
+ * `argv: undefined` is how a caller says "this is a `run:` process, not a
+ * spawned one". Under `exactOptionalPropertyTypes` that has to leave the key
+ * *absent* rather than present-and-undefined, which is why it is stripped here
+ * instead of spread through.
+ */
+function definition(
+  overrides: Partial<Omit<ResolvedDevProcess, "argv">> & { argv?: string[] | undefined } = {},
+): ResolvedDevProcess {
+  const base: ResolvedDevProcess = {
     name: "worker",
     label: "worker",
     color: "cyan",
@@ -66,8 +76,9 @@ function definition(overrides: Partial<ResolvedDevProcess> = {}): ResolvedDevPro
     restart: "on-failure",
     after: "none",
     registrant: "TestProvider",
-    ...overrides,
   };
+  const { argv, ...rest } = { ...base, ...overrides };
+  return argv === undefined ? rest : { ...rest, argv };
 }
 
 interface Harness {

@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stampede protection survives a compute slower than 30 seconds.** `remember()`'s
+  recompute lock had a fixed 30s TTL and no way to extend it, so a factory that ran longer
+  silently dropped its lock and let a second node in — and an expensive query is the only
+  kind anyone bothers caching, so the protection failed precisely where it was needed. The
+  lock now refreshes for as long as the factory runs. A lock lost anyway falls back to
+  re-checking the cache and recomputing, which is what a timed-out waiter already did:
+  caching is best-effort here, not a correctness boundary.
+
 ## [1.0.3] — 2026-08-07
 
 ### Changed

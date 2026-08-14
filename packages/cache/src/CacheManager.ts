@@ -3,10 +3,16 @@ import { CacheSerializationError, CacheDeserializationError } from "./errors.ts"
 import { FrameworkEvents, sha256Hex } from "@zerotal/core";
 import { CacheQueried } from "./events.ts";
 import type { LockManager } from "@zerotal/core/lock";
-import { LockNotAcquiredError } from "@zerotal/core/lock";
+import { LockNotAcquiredError, LockLostError } from "@zerotal/core/lock";
 
 // Cross-process recompute lock for remember(): how long the lock is held while the
 // factory runs, and how long a waiter blocks for the holder before recomputing anyway.
+//
+// The TTL is now a heartbeat interval rather than a deadline — the lock is
+// refreshed for as long as the factory runs, so a compute slower than 30s no
+// longer silently drops its lock and lets a second node in. That was the exact
+// case where stampede protection stopped protecting: an expensive query, which
+// is the only kind anyone bothers caching.
 const STAMPEDE_LOCK_TTL = 30; // seconds
 const STAMPEDE_LOCK_WAIT = 30; // seconds
 
@@ -137,9 +143,15 @@ export class CacheManager {
       return await this._lock.block(lockKey, STAMPEDE_LOCK_TTL, recheckThenCompute, {
         timeout: STAMPEDE_LOCK_WAIT,
         retryDelay: 50,
+        refresh: true,
       });
     } catch (err) {
       if (err instanceof LockNotAcquiredError) return recheckThenCompute();
+      // A lost lock is not a reason to fail the read. Caching is best-effort by
+      // design here — a waiter that times out already recomputes — so losing the
+      // lock mid-compute means at worst two nodes did the work, which is the
+      // thing we were optimising, not a correctness boundary.
+      if (err instanceof LockLostError) return recheckThenCompute();
       throw err;
     }
   }

@@ -50,6 +50,53 @@ describe("AppConfig middleware defaults", () => {
   });
 });
 
+describe("AppConfig allowedOrigins", () => {
+  it("defaults to the origin of the app url", () => {
+    // The whole point: behind a proxy the app's own origin is the loopback address, so
+    // the public origin has to come from config or every credentialed action 403s.
+    expect(AppConfig({ url: "https://app.example.com" }).allowedOrigins).toEqual([
+      "https://app.example.com",
+    ]);
+  });
+
+  it("adds configured origins to the app url rather than replacing it", () => {
+    const c = AppConfig({
+      url: "https://app.example.com",
+      allowedOrigins: ["https://admin.example.com"],
+    });
+    expect(c.allowedOrigins).toEqual(["https://app.example.com", "https://admin.example.com"]);
+  });
+
+  it("reduces urls to origins and drops duplicates", () => {
+    // A pasted browser address carries a path; `https://app.example.com/` never equals
+    // the `https://app.example.com` a browser actually sends.
+    const c = AppConfig({
+      url: "https://app.example.com/dashboard?x=1",
+      allowedOrigins: ["https://app.example.com/", "https://app.example.com"],
+    });
+    expect(c.allowedOrigins).toEqual(["https://app.example.com"]);
+  });
+
+  it("keeps a non-url entry verbatim instead of silently dropping it", () => {
+    // Inert either way, but keeping it means `doctor` can point at the typo.
+    const c = AppConfig({ url: "https://app.example.com", allowedOrigins: ["app.example.com"] });
+    expect(c.allowedOrigins).toEqual(["https://app.example.com", "app.example.com"]);
+  });
+
+  it("ignores empty and whitespace-only entries", () => {
+    // `env("ALLOWED_ORIGINS", "").split(",")` yields [""] — a trailing comma should not
+    // put an unmatchable empty string into the list.
+    const c = AppConfig({ url: "https://app.example.com", allowedOrigins: ["", "  "] });
+    expect(c.allowedOrigins).toEqual(["https://app.example.com"]);
+  });
+
+  it("survives an unparseable app url", () => {
+    // Config resolution runs before anything can report an error usefully, so a typo in
+    // APP_URL must not throw here. `doctor` reports it.
+    expect(AppConfig({ url: "not a url" }).allowedOrigins).toEqual(["not a url"]);
+  });
+});
+
 describe("AppConfig health", () => {
   it("defaults to false", () => {
     expect(AppConfig({}).health).toBe(false);

@@ -32,7 +32,7 @@
  *
  * @example
  * ```ts
- * if (!isAllowedOrigin(req, config('app.wsAllowedOrigins'))) {
+ * if (!isAllowedOrigin(req, config('app.allowedOrigins'))) {
  *   return new Response('Forbidden origin', { status: 403 });
  * }
  * ```

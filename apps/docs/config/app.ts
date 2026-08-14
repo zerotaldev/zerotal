@@ -1,11 +1,9 @@
 import { env } from "zerotal";
-import { AppConfig, type AppConfigShape } from "zerotal/config";
+import { AppConfig } from "zerotal/config";
 
-const url = env("APP_URL", "http://localhost:3000");
-
-const base = AppConfig({
+export default AppConfig({
   name: "Zerotal Docs",
-  url,
+  url: env("APP_URL", "http://localhost:3000"),
   key: env("APP_KEY", "changeme-in-production"),
 
   cors: {
@@ -24,23 +22,9 @@ const base = AppConfig({
     secret: env("HEALTH_KEY", "my-health-key"), // required in production
     showDetails: true, // false → bare { "status": "ok" }
   },
+
+  // `allowedOrigins` defaults to the origin of `url`, which is all this site needs:
+  // behind the proxy the app's own origin is the loopback address it bound to, and the
+  // public one has to be declared for the Flow socket and `/__flow/http` to accept a
+  // browser's action frames. Name extra origins here only for a different host.
 });
-
-/**
- * Behind a reverse proxy the app's own origin is whatever loopback address it
- * was bound to, while the browser truthfully sends the public one.
- * `isAllowedOrigin()` guards the endpoints that bypass the middleware pipeline —
- * the Flow WebSocket and `/__flow/http` — by comparing the two, so without the
- * public origin declared here every button on the site is silently inert: the
- * socket never opens and the HTTP fallback answers 403 `Forbidden origin.`
- *
- * Derived from `APP_URL` rather than a second env var, since the public origin
- * is exactly what that already describes. Merged in after `AppConfig()` because
- * the runtime reads `allowedOrigins` but `AppConfigShape` does not declare it.
- */
-const config: AppConfigShape & { allowedOrigins: string[] } = {
-  ...base,
-  allowedOrigins: [new URL(url).origin],
-};
-
-export default config;

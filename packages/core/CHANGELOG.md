@@ -10,6 +10,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`app.allowedOrigins` is declared config, and defaults to the origin of `app.url`.**
+  WebSocket upgrades and raw routes bypass the middleware pipeline, so each carries its
+  own `Origin` check against the app's own origin — which behind a reverse proxy is the
+  loopback address it bound to, never the public URL a browser sends. The runtime already
+  read `allowedOrigins`, but `AppConfigShape` did not declare it, so the only way to set
+  it was to spread it onto the exported config and the type system said nothing. Unset, a
+  proxied app renders every page correctly and refuses every credentialed action with a
+  403 — quieter than a 500, invisible in the logs, and passing any health check that reads
+  a status code.
+
+  It is now a first-class field, filled from `url`, and unions rather than replaces: an
+  app naming a second origin does not mean "and stop trusting my own public URL".
+
 - **`RequestContext.remember(key, factory)`** — run something at most once per request.
   The N+1 detector says a query ran too many times; when the answer is the same every
   time, the fix is to ask once, and every app that hits it rebuilds this by hand. Two

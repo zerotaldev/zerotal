@@ -183,6 +183,26 @@ export interface AppConfigShape {
    */
   health: boolean | HealthConfigShape;
 
+  // ── Transport origins ─────────────────────────────────────────────────────
+  /**
+   * Origins accepted for credentialed endpoints that bypass the middleware pipeline:
+   * WebSocket upgrades and raw routes, of which Flow's `/__flow/http` action fallback
+   * is one. Compared exactly — no wildcards, no suffix matching.
+   *
+   * The app's own origin is always accepted, but "own" means
+   * `new URL(request.url).origin` — behind a reverse proxy that is the loopback
+   * address it was bound to (`http://127.0.0.1:3000`), never the public URL the
+   * browser truthfully sends. So the origin of {@link AppConfigShape.url} is always
+   * merged into this list: without it a proxied app renders every page correctly and
+   * refuses every browser-initiated action with a 403, which is a far quieter failure
+   * than a 500 and passes any health check that reads a status code.
+   *
+   * Add entries only for a *different* host that legitimately drives this app — an SPA
+   * on `app.example.com` calling `api.example.com`. Unlike every other array in this
+   * config, what you pass is added to the URL's origin rather than replacing it.
+   */
+  allowedOrigins: string[];
+
   // ── Middleware defaults ───────────────────────────────────────────────────
   /** CORS defaults applied by `CorsMiddleware` when registered without explicit options. */
   cors: AppCorsConfig;
@@ -217,6 +237,36 @@ export interface AppConfigShape {
   // ── Conventions ───────────────────────────────────────────────────────────
   /** Auto-discovery settings (enabled + per-concern paths). */
   conventions: ConventionsConfig;
+}
+
+/**
+ * Reduce a list of URLs or origins to the deduplicated origins an `Origin` header can be
+ * compared against.
+ *
+ * Full URLs are accepted because the two things that feed this list — `app.url` and an
+ * `ALLOWED_ORIGINS` env var someone pasted a browser address into — usually carry a path
+ * or a trailing slash, and `https://app.com/` never equals the `https://app.com` a browser
+ * sends. Entries that do not parse are kept verbatim rather than dropped: an unmatchable
+ * entry is inert, whereas silently discarding one hides the typo that caused it. `bun zt
+ * doctor` reports those.
+ */
+function _normaliseOrigins(entries: string[]): string[] {
+  const out: string[] = [];
+  for (const entry of entries) {
+    if (typeof entry !== "string") continue;
+    const trimmed = entry.trim();
+    if (trimmed === "") continue;
+    let origin: string;
+    try {
+      origin = new URL(trimmed).origin;
+      // `new URL("mailto:a@b").origin` is "null" — parsed, but not an origin.
+      if (origin === "null") origin = trimmed;
+    } catch {
+      origin = trimmed;
+    }
+    if (!out.includes(origin)) out.push(origin);
+  }
+  return out;
 }
 
 // ── AppConfig factory ─────────────────────────────────────────────────────────
@@ -254,6 +304,7 @@ export function AppConfig(options: {
   tls?: AppTlsConfig;
   maxRequestBodySize?: number;
   health?: boolean | HealthConfigShape;
+  allowedOrigins?: string[];
   cors?: Partial<AppCorsConfig>;
   throttle?: Partial<AppThrottleConfig>;
   secureHeaders?: Partial<AppSecureHeadersConfig>;
@@ -281,12 +332,19 @@ export function AppConfig(options: {
     http3: false,
     maxRequestBodySize: DEFAULT_MAX_REQUEST_BODY_SIZE,
     health: false,
+    allowedOrigins: [],
     cors: DEFAULT_CORS,
     throttle: DEFAULT_THROTTLE,
     secureHeaders: DEFAULT_SECURE_HEADERS,
     conventions: { enabled: true, paths: DEFAULT_CONVENTION_PATHS },
   };
   const resolved = deepMerge(defaults, options as Partial<AppConfigShape>);
+
+  // `allowedOrigins` always contains the origin of `url`, and is the one array here that
+  // unions rather than replaces. An app naming a second origin does not mean "and stop
+  // trusting my own public URL", and the cost of getting that wrong is asymmetric: the
+  // app keeps rendering and every action 403s, with nothing in the logs to say why.
+  resolved.allowedOrigins = _normaliseOrigins([resolved.url, ...resolved.allowedOrigins]);
 
   // Normalise the optional `assets` block: fill outDir/prefix/minify defaults
   // only when the app actually declares an asset entrypoint.

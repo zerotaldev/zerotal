@@ -11,6 +11,14 @@ change.
 
 ## [Unreleased]
 
+### Changed — BREAKING
+
+- **`redirectRoute(name, params)` takes route params only.** Extra keys used to become
+  query-string entries; core's `route()` now treats a key that matches no `:segment` as
+  the mistake it usually is and throws, naming it. Route names and params are checked at
+  compile time once the app has run `bun zt route:types`. For a redirect that needs a
+  query string, build the URL: `this.redirect(route("posts.show", { slug }, { ref }))`.
+
 ### Changed
 
 - **The client now says which transport failure it hit.** `[Flow] WebSocket unavailable —

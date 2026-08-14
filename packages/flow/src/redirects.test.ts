@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "bun:test";
-import { Router, RequestContext } from "@zerotal/core";
+import { Router, RequestContext, route } from "@zerotal/core";
 import { Component } from "./Component.ts";
 import { expose } from "./decorators.ts";
 import type { HtmlNode } from "./jsx-runtime.ts";
@@ -20,7 +20,12 @@ class Page extends Component {
     return this.redirectRoute("profile", { id: 1 });
   }
   @expose goToPostWithQuery(): unknown {
-    return this.redirectRoute("posts.show", { slug: "hello", ref: "email" });
+    // A query string is built with route() and redirected to; redirectRoute()
+    // takes route params only.
+    return this.redirect(route("posts.show", { slug: "hello" }, { ref: "email" }));
+  }
+  @expose goToPostWithStrayParam(): unknown {
+    return this.redirectRoute("posts.show", { slug: "hello", ref: "email" } as never);
   }
   @expose goIntended(): unknown {
     return this.redirectIntended("/fallback");
@@ -50,10 +55,17 @@ describe("redirectRoute", () => {
     expect(p._redirectUrl).toBe("/users/1");
   });
 
-  it("puts extra (non-segment) params in the query string", () => {
+  it("redirects to a URL carrying a query string", () => {
     const p = new Page();
     p.goToPostWithQuery();
     expect(p._redirectUrl).toBe("/posts/hello?ref=email");
+  });
+
+  it("rejects a param the route has no segment for", () => {
+    const p = new Page();
+    // Extra keys used to become query params, so a typo'd param name produced a
+    // wrong URL instead of an error.
+    expect(() => p.goToPostWithStrayParam()).toThrow('Unknown parameter "ref"');
   });
 });
 

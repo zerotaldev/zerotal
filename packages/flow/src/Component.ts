@@ -29,6 +29,7 @@ import type { Compose } from "./mixins.ts";
 import { _validateEventPayload } from "./events.ts";
 import type { FlowEvents, EventName, EventArgs } from "./events.ts";
 import { route, request, safeRedirectPath, HttpContext } from "@zerotal/core";
+import type { RouteParamValues, RouteParamsArg, RouteTarget } from "@zerotal/core";
 
 /**
  * Convert the validator's one-message-per-field result (`Record<string, string>`) into
@@ -951,24 +952,29 @@ export abstract class Component {
 
   /**
    * Redirect to a named route.
-   * Route params fill `:segment` placeholders; any extra keys become query-string params.
+   *
+   * Params fill `:segment` placeholders — one key per segment, no more: a key
+   * the pattern has no segment for throws rather than becoming a query param.
    *
    * @example
    * return this.redirectRoute("profile", { id: 1 }).withSuccess("Saved.");
-   * this.redirectRoute("posts.show", { slug: "hello", ref: "email" }); // /posts/hello?ref=email
+   * // With a query string, build the URL first:
+   * this.redirect(route("posts.show", { slug: "hello" }, { ref: "email" }));
    *
    * @param name    The route name registered with `.name(...)`.
-   * @param params  Route + query params.
+   * @param params  One value per `:param` in the route's pattern.
    * @param status  Optional HTTP-style status (advisory — the client navigates regardless).
    * @returns a {@link RedirectFlash} builder for chaining a flash onto the redirect.
    * @category Navigation & redirects
    */
-  redirectRoute(
-    name: string,
-    params: Record<string, string | number> = {},
+  redirectRoute<N extends RouteTarget>(
+    name: N,
+    params?: RouteParamsArg<N>,
     status?: number,
   ): RedirectFlash {
-    return this.redirect(route(name, params), status);
+    // Values in `RouteParams<N>` are route param values by construction; `N` is
+    // still a type variable here, so the compiler cannot see through to say so.
+    return this.redirect(route.dynamic(name, params as RouteParamValues), status);
   }
 
   /**

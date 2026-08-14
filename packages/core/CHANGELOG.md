@@ -10,6 +10,46 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **Refreshable locks — a lock can now be held across work longer than its TTL.** Sizing
+  a TTL was a trade with no good answer: too short and the lock evaporates mid-job, too
+  long and a crashed holder blocks the key for however long you guessed. The number was
+  being asked two different questions at once.
+
+  `refresh: true` separates them. The lock is extended in the background for as long as
+  the callback runs, so the TTL only has to answer "how long after a crash before someone
+  else may take over" — a decision rather than a guess:
+
+  ```ts
+  await Lock.block(
+    "report:monthly",
+    60,
+    async (lock, signal) => {
+      await buildReport({ signal }); // may take an hour; 60 is fine
+    },
+    { refresh: true },
+  );
+  ```
+
+  Refreshes run every `refreshEvery` seconds, defaulting to a third of the TTL so one
+  missed beat is survivable. `ManagedLock.refresh()` exposes the same thing by hand for
+  flows that span steps, alongside `expiresAt` — a client-side estimate, for deciding
+  when to refresh next rather than for deciding whether you still hold the lock.
+
+  **A lock that is lost anyway is not papered over.** The callback's `AbortSignal` is
+  aborted and `LockLostError` is thrown, because work that continues after losing
+  exclusivity is exactly the situation the lock existed to prevent. The signal is a
+  request, not a guarantee — work that ignores it runs on — so a job that can do damage
+  after losing the lock has to check it between steps.
+
+  `extend` is **optional** on the `LockDriver` contract, so a driver written against 1.x
+  still compiles; refreshing falls back to `acquire(key, owner, ttl)`, which is an
+  owner-guarded refresh on all three built-ins. Both callback arguments are additive —
+  every existing zero-argument call site is untouched.
+
+  The refresh timer is `unref()`d and cleared in `finally` on all three exits (success,
+  throw, and lock lost). An un-unref'd interval in a lock helper is the reason a process
+  stops exiting, and nothing about that symptom points back here.
+
 - **`bun zt dev` — the server and every companion process in one terminal.** An app with
   a queue needed two terminals and the discipline to restart the right one by hand. Worse,
   the gap was not closeable from a package: every library with a companion process — a
@@ -98,6 +138,13 @@ follows the Zerotal monorepo's unified versioning.
   anything else — can see what the routing groups actually load.)
 
 ### Fixed
+
+- **The memory lock driver refreshes on re-acquire.** `ManagedLock.acquire()` documents
+  that re-acquiring while this instance already holds the key refreshes it. Redis honoured
+  that with `EXPIRE` and SQLite with an `UPDATE`; the memory driver returned `true` for the
+  same owner and never touched `expiresAt` — so the driver every app gets by default was
+  the only one of the three that quietly refused. A caller re-acquiring to stay alive was
+  told it had worked and then lost the lock on the original schedule.
 
 - **`setAppEnv("dev")` resolves to `web`, not `console`.** Dev mode's process 1 boots the
   app purely to ask its providers what to run, and a provider is only asked if its

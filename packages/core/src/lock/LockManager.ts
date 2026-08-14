@@ -1,5 +1,37 @@
 import type { LockDriver } from "./drivers/LockDriver.ts";
-import { LockNotAcquiredError } from "./errors.ts";
+import { LockNotAcquiredError, LockLostError } from "./errors.ts";
+
+/**
+ * Keeping a lock alive across work that outlives its TTL.
+ *
+ * Shared by {@link TryOptions} and {@link BlockOptions} because the choice is
+ * about the critical section, not about how you got into it.
+ *
+ * @category Acquiring
+ */
+export interface RefreshOptions {
+  /**
+   * Extend the lock in the background for as long as the callback runs.
+   *
+   * With this on, the TTL stops being "how long the job might take" — a
+   * question nobody can answer — and becomes "how long after a crash before
+   * someone else may take over", which is a decision rather than a guess.
+   */
+  refresh?: boolean;
+
+  /**
+   * Seconds between refreshes. Defaults to a third of the TTL, so two
+   * consecutive failures still leave a full attempt before the lock lapses.
+   */
+  refreshEvery?: number;
+}
+
+/**
+ * Options for {@link LockManager.try | try}.
+ *
+ * @category Acquiring
+ */
+export type TryOptions = RefreshOptions;
 
 /**
  * Options controlling how {@link LockManager.block} and {@link Lock.block} wait
@@ -7,7 +39,7 @@ import { LockNotAcquiredError } from "./errors.ts";
  *
  * @category Acquiring
  */
-export interface BlockOptions {
+export interface BlockOptions extends RefreshOptions {
   /**
    * Maximum seconds to wait for the lock before throwing.
    * Defaults to the lock TTL.
@@ -20,6 +52,20 @@ export interface BlockOptions {
    */
   retryDelay?: number;
 }
+
+/**
+ * The critical section run by {@link LockManager.try} and
+ * {@link LockManager.block}.
+ *
+ * Both arguments are additive — an existing zero-argument callback is still a
+ * valid one, and every call site written before refreshing existed keeps
+ * working untouched.
+ *
+ * @param lock - The held lock, for a manual {@link ManagedLock.refresh}.
+ * @param signal - Aborted if the lock is lost mid-run. Long work should watch it.
+ * @category Acquiring
+ */
+export type LockedCallback<T> = (lock: ManagedLock, signal: AbortSignal) => Promise<T> | T;
 
 /**
  * A single named lock instance.
@@ -42,6 +88,7 @@ export interface BlockOptions {
 export class ManagedLock {
   private readonly _owner: string;
   private _acquired = false;
+  private _expiresAt: number | undefined = undefined;
 
   constructor(
     private readonly _key: string,
@@ -59,7 +106,51 @@ export class ManagedLock {
    */
   async acquire(): Promise<boolean> {
     this._acquired = await this._driver.acquire(this._key, this._owner, this._ttl);
+    if (this._acquired) this._expiresAt = Date.now() + this._ttl * 1000;
     return this._acquired;
+  }
+
+  /**
+   * Push this lock's deadline out, so work that outlives its TTL can keep it.
+   *
+   * Without this a TTL has to be sized for the worst case: too short and the
+   * lock evaporates mid-job, too long and a crashed holder blocks the key for
+   * however long you guessed. Refreshing lets the TTL describe *how quickly a
+   * crash is noticed* instead, which is a much easier number to pick.
+   *
+   * Returns `false` when the lock is gone — expired, or now held by someone
+   * else — and clears {@link isAcquired} so it stops claiming otherwise. A
+   * caller that ignores the return value at least will not go on to release
+   * another holder's lock, because release is owner-guarded too.
+   *
+   * @param ttlSeconds - Seconds from now. Defaults to the lock's own TTL.
+   * @category Acquiring
+   *
+   * @example
+   * ```ts
+   * if (!(await lock.refresh())) throw new LockLostError(lock.key);
+   * ```
+   */
+  async refresh(ttlSeconds?: number): Promise<boolean> {
+    if (!this._acquired) return false;
+    const ttl = ttlSeconds ?? this._ttl;
+
+    // `extend` is optional on the contract so a driver written against 1.x still
+    // satisfies it. `acquire` is the fallback because on every built-in driver it
+    // is an owner-guarded refresh — which is exactly what this needs, and is the
+    // behaviour the memory driver had to be fixed to honour.
+    const extended = this._driver.extend
+      ? await this._driver.extend(this._key, this._owner, ttl)
+      : await this._driver.acquire(this._key, this._owner, ttl);
+
+    if (!extended) {
+      this._acquired = false;
+      this._expiresAt = undefined;
+      return false;
+    }
+
+    this._expiresAt = Date.now() + ttl * 1000;
+    return true;
   }
 
   /**
@@ -93,6 +184,7 @@ export class ManagedLock {
   async release(): Promise<void> {
     if (!this._acquired) return;
     this._acquired = false;
+    this._expiresAt = undefined;
     await this._driver.release(this._key, this._owner);
   }
 
@@ -104,6 +196,7 @@ export class ManagedLock {
    */
   async forceRelease(): Promise<void> {
     this._acquired = false;
+    this._expiresAt = undefined;
     await this._driver.forceRelease(this._key);
   }
 
@@ -114,6 +207,22 @@ export class ManagedLock {
   /** Whether this instance currently believes it holds the lock. */
   get isAcquired(): boolean {
     return this._acquired;
+  }
+  /** The lock's TTL in seconds, as configured. */
+  get ttl(): number {
+    return this._ttl;
+  }
+  /**
+   * When this lock is expected to expire, or `undefined` when not held.
+   *
+   * A **client-side estimate**, computed from the last successful acquire or
+   * refresh — not read back from the driver. It is for deciding when to refresh
+   * next, not for deciding whether you still hold the lock; clock skew between
+   * this process and the lock store makes it approximate, and only the driver
+   * knows the truth. Ask {@link refresh} if you need an answer you can act on.
+   */
+  get expiresAt(): Date | undefined {
+    return this._expiresAt === undefined ? undefined : new Date(this._expiresAt);
   }
 }
 
@@ -176,15 +285,16 @@ export class LockManager {
    * @throws {LockNotAcquiredError} Immediately, if the lock is already held.
    * @category Acquiring
    */
-  async try<T>(key: string, ttlSeconds: number, callback: () => Promise<T> | T): Promise<T> {
+  async try<T>(
+    key: string,
+    ttlSeconds: number,
+    callback: LockedCallback<T>,
+    options: TryOptions = {},
+  ): Promise<T> {
     const lock = this.lock(key, ttlSeconds);
     const acquired = await lock.acquire();
     if (!acquired) throw new LockNotAcquiredError(key);
-    try {
-      return await callback();
-    } finally {
-      await lock.release();
-    }
+    return _runHeld(lock, callback, options);
   }
 
   /**
@@ -204,16 +314,12 @@ export class LockManager {
   async block<T>(
     key: string,
     ttlSeconds: number,
-    callback: () => Promise<T> | T,
+    callback: LockedCallback<T>,
     options: BlockOptions = {},
   ): Promise<T> {
     const lock = this.lock(key, ttlSeconds);
     await lock.block(options.timeout ?? ttlSeconds, options.retryDelay);
-    try {
-      return await callback();
-    } finally {
-      await lock.release();
-    }
+    return _runHeld(lock, callback, options);
   }
 
   /**
@@ -224,5 +330,72 @@ export class LockManager {
    */
   dispose(): void {
     this._driver.dispose?.();
+  }
+}
+
+/**
+ * Run the critical section with the lock held, optionally heartbeating it, and
+ * release on the way out whatever happened.
+ *
+ * Shared by `try` and `block`, which differ only in how they got the lock.
+ */
+async function _runHeld<T>(
+  lock: ManagedLock,
+  callback: LockedCallback<T>,
+  options: RefreshOptions,
+): Promise<T> {
+  const controller = new AbortController();
+
+  if (!options.refresh) {
+    try {
+      return await callback(lock, controller.signal);
+    } finally {
+      await lock.release();
+    }
+  }
+
+  const everySeconds = options.refreshEvery ?? lock.ttl / 3;
+  const everyMs = Math.max(1, Math.round(everySeconds * 1000));
+
+  let timer: ReturnType<typeof setInterval> | undefined;
+  let rejectLost: ((error: Error) => void) | undefined;
+  // Never resolves — it exists only to lose the race below, and only when the
+  // lock is gone. Its rejection is always handled, by that race.
+  const lost = new Promise<never>((_, reject) => {
+    rejectLost = reject;
+  });
+
+  const beat = async (): Promise<void> => {
+    if (await lock.refresh().catch(() => false)) return;
+
+    // Stop beating first: a lost lock stays lost, and retrying would only add
+    // driver round trips to a job that now has to stop.
+    if (timer) clearInterval(timer);
+    const error = new LockLostError(lock.key);
+    // The signal comes first so cooperative work sees the abort before the
+    // caller sees the throw — the callback may still be mid-await, and telling
+    // it to stop is the only leverage we have. It cannot be forced: work that
+    // ignores its signal runs on, outside the lock it believes it holds.
+    controller.abort(error);
+    rejectLost?.(error);
+  };
+
+  timer = setInterval(() => void beat(), everyMs);
+  // Without this the interval alone keeps the event loop alive, and a CLI or a
+  // dev-mode process quietly refuses to exit — a symptom with nothing pointing
+  // back to a lock helper.
+  timer.unref?.();
+
+  try {
+    const work = Promise.resolve().then(() => callback(lock, controller.signal));
+    // Losing the race leaves `work` rejecting with nobody listening; this marks
+    // it handled so a lost lock cannot also produce an unhandled rejection.
+    work.catch(() => {});
+    return await Promise.race([work, lost]);
+  } finally {
+    // Both exits, always: the success path, the throw path, and the lost-lock
+    // path that is a throw arriving from somewhere other than the callback.
+    clearInterval(timer);
+    await lock.release();
   }
 }

@@ -38,6 +38,17 @@ export class MemoryLockDriver implements LockDriver {
     return true;
   }
 
+  async extend(key: string, owner: string, ttlSeconds: number): Promise<boolean> {
+    const now = Date.now();
+    const existing = this._store.get(key);
+    // An expired record is not extendable even by its own owner: the lock is
+    // free, and anyone may have taken it in between. Re-acquiring is the honest
+    // way back, and it is what the caller does when this returns false.
+    if (!existing || existing.owner !== owner || now >= existing.expiresAt) return false;
+    existing.expiresAt = now + ttlSeconds * 1000;
+    return true;
+  }
+
   async release(key: string, owner: string): Promise<boolean> {
     const existing = this._store.get(key);
     if (!existing || existing.owner !== owner) return false;

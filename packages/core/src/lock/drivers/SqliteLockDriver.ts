@@ -59,6 +59,19 @@ export class SqliteLockDriver implements LockDriver {
     }
   }
 
+  async extend(key: string, owner: string, ttlSeconds: number): Promise<boolean> {
+    const now = Date.now();
+    // One statement, so the owner check and the write cannot be separated by
+    // another process's acquire. `expires_at > ?` refuses to revive a lapsed
+    // record, which someone else may already have taken over.
+    const result = this._db
+      .prepare(
+        "UPDATE zerotal_locks SET expires_at = ? WHERE key = ? AND owner = ? AND expires_at > ?",
+      )
+      .run(now + ttlSeconds * 1000, key, owner, now);
+    return result.changes > 0;
+  }
+
   async release(key: string, owner: string): Promise<boolean> {
     const result = this._db
       .prepare("DELETE FROM zerotal_locks WHERE key = ? AND owner = ?")

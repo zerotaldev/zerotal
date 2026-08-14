@@ -27,6 +27,17 @@ export interface LockDriver {
   /** Returns `true` if the lock is currently held (not expired). */
   exists(key: string): Promise<boolean>;
 
+  /**
+   * Push a held lock's deadline out to `ttlSeconds` from now. Owner-guarded:
+   * returns `false` when the key is free or held by someone else, so a holder
+   * that lost the lock learns about it rather than extending a stranger's.
+   *
+   * **Optional** so a driver written against 1.x still satisfies this interface.
+   * {@link ManagedLock.refresh} falls back to `acquire(key, owner, ttl)`, which
+   * is an owner-guarded refresh on all three built-in drivers.
+   */
+  extend?(key: string, owner: string, ttlSeconds: number): Promise<boolean>;
+
   /** Release background resources (timers, DB connections). */
   dispose?(): void;
 }

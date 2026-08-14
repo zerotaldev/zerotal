@@ -1,7 +1,13 @@
 import { currentApp } from "../../application/currentApp.ts";
 import { ZerotalError } from "../../errors/index.ts";
-import type { LockManager, ManagedLock, BlockOptions } from "../LockManager.ts";
-import { LockNotAcquiredError } from "../errors.ts";
+import type {
+  LockManager,
+  ManagedLock,
+  BlockOptions,
+  TryOptions,
+  LockedCallback,
+} from "../LockManager.ts";
+import { LockNotAcquiredError, LockLostError } from "../errors.ts";
 
 /**
  * Resolve the live LockManager from the application container on every call.
@@ -75,12 +81,20 @@ export class Lock {
    * @param key - Logical lock name.
    * @param ttlSeconds - Lock time-to-live in seconds.
    * @param callback - Critical section to run while the lock is held.
+   * @param options - Pass `{ refresh: true }` to hold the lock across work
+   *   longer than its TTL.
    * @returns The value returned by `callback`.
    * @throws {LockNotAcquiredError} Immediately, if the lock is busy.
+   * @throws {LockLostError} If refreshing was on and the lock was lost mid-run.
    * @category Acquiring
    */
-  static async try<T>(key: string, ttlSeconds: number, callback: () => Promise<T> | T): Promise<T> {
-    return _manager().try(key, ttlSeconds, callback);
+  static async try<T>(
+    key: string,
+    ttlSeconds: number,
+    callback: LockedCallback<T>,
+    options?: TryOptions,
+  ): Promise<T> {
+    return _manager().try(key, ttlSeconds, callback, options);
   }
 
   /**
@@ -98,7 +112,7 @@ export class Lock {
   static async block<T>(
     key: string,
     ttlSeconds: number,
-    callback: () => Promise<T> | T,
+    callback: LockedCallback<T>,
     options?: BlockOptions,
   ): Promise<T> {
     return _manager().block(key, ttlSeconds, callback, options);
@@ -111,4 +125,15 @@ export class Lock {
    * @category Acquiring
    */
   static readonly NotAcquired = LockNotAcquiredError;
+
+  /**
+   * The {@link LockLostError} class, for `err instanceof Lock.Lost`.
+   *
+   * Worth catching separately from {@link Lock.NotAcquired}: that one means the
+   * work never started, this one means it started and must not be trusted to
+   * have finished exclusively.
+   *
+   * @category Acquiring
+   */
+  static readonly Lost = LockLostError;
 }

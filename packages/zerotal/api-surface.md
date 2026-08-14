@@ -4489,18 +4489,27 @@ type StorageDisk = Pick<StorageDriver, 'url'> & {    put(path: string, content: 
 
 class Lock = {
   new (): Lock
-  static block: <T>(key: string, ttlSeconds: number, callback: () => Promise<T> | T, options?: BlockOptions) => Promise<T>
+  static block: <T>(key: string, ttlSeconds: number, callback: LockedCallback<T>, options?: BlockOptions) => Promise<T>
   static make: (key: string, ttlSeconds: number) => ManagedLock
+  static readonly Lost: typeof LockLostError
   static readonly NotAcquired: typeof LockNotAcquiredError
-  static try: <T>(key: string, ttlSeconds: number, callback: () => Promise<T> | T) => Promise<T>
+  static try: <T>(key: string, ttlSeconds: number, callback: LockedCallback<T>, options?: TryOptions) => Promise<T>
+}
+
+class LockLostError = {
+  new (key: string): LockLostError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly key: string
+  readonly status: number
 }
 
 class LockManager = {
   new (_driver: LockDriver): LockManager
-  block: <T>(key: string, ttlSeconds: number, callback: () => Promise<T> | T, options?: BlockOptions) => Promise<T>
+  block: <T>(key: string, ttlSeconds: number, callback: LockedCallback<T>, options?: BlockOptions) => Promise<T>
   dispose: () => void
   lock: (key: string, ttlSeconds: number) => ManagedLock
-  try: <T>(key: string, ttlSeconds: number, callback: () => Promise<T> | T) => Promise<T>
+  try: <T>(key: string, ttlSeconds: number, callback: LockedCallback<T>, options?: TryOptions) => Promise<T>
 }
 
 class LockNotAcquiredError = {
@@ -4536,25 +4545,30 @@ class ManagedLock = {
   new (_key: string, _ttl: number, _driver: LockDriver): ManagedLock
   acquire: () => Promise<boolean>
   block: (timeoutSeconds: number, retryDelayMs?: number) => Promise<void>
+  expiresAt: Date | undefined
   forceRelease: () => Promise<void>
   isAcquired: boolean
   key: string
+  refresh: (ttlSeconds?: number) => Promise<boolean>
   release: () => Promise<void>
+  ttl: number
 }
 
 class MemoryLockDriver = {
   new (): MemoryLockDriver
   acquire: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   exists: (key: string) => Promise<boolean>
+  extend: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   flush: () => void
   forceRelease: (key: string) => Promise<void>
   release: (key: string, owner: string) => Promise<boolean>
 }
 
 class RedisLockDriver = {
-  new (_prefix?: string): RedisLockDriver
+  new (_prefix?: string, client?: RedisLockClient): RedisLockDriver
   acquire: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   exists: (key: string) => Promise<boolean>
+  extend: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   forceRelease: (key: string) => Promise<void>
   release: (key: string, owner: string) => Promise<boolean>
 }
@@ -4564,6 +4578,7 @@ class SqliteLockDriver = {
   acquire: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   dispose: () => void
   exists: (key: string) => Promise<boolean>
+  extend: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   forceRelease: (key: string) => Promise<void>
   release: (key: string, owner: string) => Promise<boolean>
 }
@@ -4571,6 +4586,8 @@ class SqliteLockDriver = {
 function LockConfig = (options?: Partial<LockConfigShape>) => LockConfigShape
 
 interface BlockOptions = {
+  refresh?: boolean
+  refreshEvery?: number
   retryDelay?: number
   timeout?: number
 }
@@ -4585,9 +4602,19 @@ interface LockDriver = {
   acquire: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   dispose?: () => void
   exists: (key: string) => Promise<boolean>
+  extend?: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   forceRelease: (key: string) => Promise<void>
   release: (key: string, owner: string) => Promise<boolean>
 }
+
+interface RefreshOptions = {
+  refresh?: boolean
+  refreshEvery?: number
+}
+
+type LockedCallback = (lock: ManagedLock, signal: AbortSignal) => Promise<T> | T
+
+type TryOptions = RefreshOptions
 
 ## ./logger  `(./src/logger.ts)`
 
@@ -7027,6 +7054,7 @@ function SchedulerConfig = (options?: Partial<SchedulerConfigShape>) => Schedule
 interface OverlapLockOptions = {
   crossProcess?: boolean
   expiresAfterMinutes?: number
+  refresh?: boolean
 }
 
 interface RunLogConfig = {

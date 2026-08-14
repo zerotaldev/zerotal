@@ -38,13 +38,13 @@
  */
 
 export { LockManager, ManagedLock } from "./LockManager.ts";
-export type { BlockOptions } from "./LockManager.ts";
+export type { BlockOptions, TryOptions, RefreshOptions, LockedCallback } from "./LockManager.ts";
 
 export { Lock } from "./facades/Lock.ts";
 export { LockProvider } from "../provider/LockProvider.ts";
 export { LockConfig } from "./config.ts";
 export type { LockConfigShape } from "./config.ts";
-export { LockNotAcquiredError } from "./errors.ts";
+export { LockNotAcquiredError, LockLostError } from "./errors.ts";
 
 // Drivers — exported for custom driver registration and direct instantiation
 export type { LockDriver } from "./drivers/LockDriver.ts";

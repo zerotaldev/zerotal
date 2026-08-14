@@ -6,36 +6,36 @@
 ## .  `(./src/index.ts)`
 
 class AlwaysProp = {
-  new (value: unknown | PropFactory): AlwaysProp
-  append: (paths?: string | string[]) => AlwaysProp
-  deepMerge: () => AlwaysProp
+  new <T = unknown>(value: T | PropFactory<T>): AlwaysProp<T>
+  append: (paths?: string | string[]) => AlwaysProp<T>
+  deepMerge: () => AlwaysProp<T>
   isOnce: boolean
-  matchOn: (paths: string | string[]) => AlwaysProp
-  merge: () => AlwaysProp
+  matchOn: (paths: string | string[]) => AlwaysProp<T>
+  merge: () => AlwaysProp<T>
   mergeConfig: () => MergeConfig
-  once: (expiresAt?: number | null) => AlwaysProp
+  once: (expiresAt?: number | null) => AlwaysProp<T>
   onceExpiresAt: number | null
-  prepend: (paths?: string | string[]) => AlwaysProp
+  prepend: (paths?: string | string[]) => AlwaysProp<T>
   readonly ignoreFirstLoad: boolean
-  resolve: () => unknown | Promise<unknown>
+  resolve: () => T | Promise<T>
   shouldMerge: boolean
 }
 
 class DeferProp = {
-  new (callback: PropFactory, group?: string, rescue?: boolean): DeferProp
-  append: (paths?: string | string[]) => DeferProp
-  deepMerge: () => DeferProp
+  new <T = unknown>(callback: PropFactory<T>, group?: string, rescue?: boolean): DeferProp<T>
+  append: (paths?: string | string[]) => DeferProp<T>
+  deepMerge: () => DeferProp<T>
   isOnce: boolean
-  matchOn: (paths: string | string[]) => DeferProp
-  merge: () => DeferProp
+  matchOn: (paths: string | string[]) => DeferProp<T>
+  merge: () => DeferProp<T>
   mergeConfig: () => MergeConfig
-  once: (expiresAt?: number | null) => DeferProp
+  once: (expiresAt?: number | null) => DeferProp<T>
   onceExpiresAt: number | null
-  prepend: (paths?: string | string[]) => DeferProp
+  prepend: (paths?: string | string[]) => DeferProp<T>
   readonly group: string
   readonly ignoreFirstLoad: true
   readonly rescue: boolean
-  resolve: () => unknown | Promise<unknown>
+  resolve: () => T | Promise<T>
   shouldMerge: boolean
 }
 
@@ -125,34 +125,34 @@ class InvalidComponentError = {
 }
 
 class MergeProp = {
-  new (value: unknown | PropFactory): MergeProp
-  append: (paths?: string | string[]) => MergeProp
-  deepMerge: () => MergeProp
+  new <T = unknown>(value: T | PropFactory<T>): MergeProp<T>
+  append: (paths?: string | string[]) => MergeProp<T>
+  deepMerge: () => MergeProp<T>
   isOnce: boolean
-  matchOn: (paths: string | string[]) => MergeProp
-  merge: () => MergeProp
+  matchOn: (paths: string | string[]) => MergeProp<T>
+  merge: () => MergeProp<T>
   mergeConfig: () => MergeConfig
-  once: (expiresAt?: number | null) => MergeProp
+  once: (expiresAt?: number | null) => MergeProp<T>
   onceExpiresAt: number | null
-  prepend: (paths?: string | string[]) => MergeProp
+  prepend: (paths?: string | string[]) => MergeProp<T>
   readonly ignoreFirstLoad: boolean
-  resolve: () => unknown | Promise<unknown>
+  resolve: () => T | Promise<T>
   shouldMerge: boolean
 }
 
 class OptionalProp = {
-  new (callback: PropFactory): OptionalProp
-  append: (paths?: string | string[]) => OptionalProp
-  deepMerge: () => OptionalProp
+  new <T = unknown>(callback: PropFactory<T>): OptionalProp<T>
+  append: (paths?: string | string[]) => OptionalProp<T>
+  deepMerge: () => OptionalProp<T>
   isOnce: boolean
-  matchOn: (paths: string | string[]) => OptionalProp
-  merge: () => OptionalProp
+  matchOn: (paths: string | string[]) => OptionalProp<T>
+  merge: () => OptionalProp<T>
   mergeConfig: () => MergeConfig
-  once: (expiresAt?: number | null) => OptionalProp
+  once: (expiresAt?: number | null) => OptionalProp<T>
   onceExpiresAt: number | null
-  prepend: (paths?: string | string[]) => OptionalProp
+  prepend: (paths?: string | string[]) => OptionalProp<T>
   readonly ignoreFirstLoad: true
-  resolve: () => unknown | Promise<unknown>
+  resolve: () => T | Promise<T>
   shouldMerge: boolean
 }
 
@@ -170,13 +170,17 @@ class SsrHandler = {
   handle: (http: HttpContext) => Promise<void>
 }
 
-const Inertia = {    readonly render: (component: string, props?: Record<string, unknown>) => Promise<void>;    readonly stream: (component: string, props?: Record<string, unknown>) => Promise<void>;    readonly optional: (callback: PropFactory) => OptionalProp;    readonly lazy: (callback: PropFactory) => OptionalProp;    readonly always: (value: unknown | PropFactory) => AlwaysProp;    readonly defer: (callback: PropFactory, group?: string, options?: {        rescue?: boolean;    }) => DeferProp;    readonly merge: (value: unknown | PropFactory) => MergeProp;    readonly deepMerge: (value: unknown | PropFactory) => MergeProp;    readonly scroll: (value: PaginatorLike | PropFactory, options?: {        pageName?: string;        dataPath?: string;    }) => InfiniteScrollProp;    readonly share: {        (key: string, value: unknown): void;        (values: Record<string, unknown>): void;    };    readonly encryptHistory: (on?: boolean) => void;    readonly clearHistory: () => void;    readonly location: (url: string) => void;}
+const Inertia = {    readonly render: PageRenderer;    readonly stream: PageRenderer;    readonly optional: <T>(callback: PropFactory<T>) => OptionalProp<T>;    readonly lazy: <T>(callback: PropFactory<T>) => OptionalProp<T>;    readonly always: {        <T>(value: PropFactory<T>): AlwaysProp<T>;        <T>(value: T): AlwaysProp<T>;    };    readonly defer: <T>(callback: PropFactory<T>, group?: string, options?: {        rescue?: boolean;    }) => DeferProp<T>;    readonly merge: {        <T>(value: PropFactory<T>): MergeProp<T>;        <T>(value: T): MergeProp<T>;    };    readonly deepMerge: {        <T>(value: PropFactory<T>): MergeProp<T>;        <T>(value: T): MergeProp<T>;    };    readonly scroll: (value: PaginatorLike | PropFactory, options?: {        pageName?: string;        dataPath?: string;    }) => InfiniteScrollProp;    readonly share: {        (key: string, value: unknown): void;        (values: Record<string, unknown>): void;    };    readonly encryptHistory: (on?: boolean) => void;    readonly clearHistory: () => void;    readonly location: (url: string) => void;}
+
+const inertia = PageRenderer
+
+const inertiaStream = PageRenderer
 
 function _getHtmlTemplate = () => string
 
 function _setHtmlTemplate = (html: string) => void
 
-function always = (value: unknown | PropFactory) => AlwaysProp
+function always = {    <T>(value: PropFactory<T>): AlwaysProp<T>;    <T>(value: T): AlwaysProp<T>;}
 
 function assetVersion = () => string
 
@@ -184,9 +188,9 @@ function buildPageObject = (component: string, props: Record<string, unknown>) =
 
 function clearHistory = () => void
 
-function deepMerge = (value: unknown | PropFactory) => MergeProp
+function deepMerge = {    <T>(value: PropFactory<T>): MergeProp<T>;    <T>(value: T): MergeProp<T>;}
 
-function defer = (callback: PropFactory, group?: string, options?: {    rescue?: boolean;}) => DeferProp
+function defer = <T>(callback: PropFactory<T>, group?: string, options?: {    rescue?: boolean;}) => DeferProp<T>
 
 function detectVuePlugin = (cwd: string) => Promise<BunPlugin[]>
 
@@ -194,21 +198,17 @@ function encryptHistory = (on?: boolean) => void
 
 function generatePageRegistry = (cwd?: string, pagesDir?: string) => Promise<void>
 
-function inertia = (component: string, props?: Record<string, unknown>) => Promise<void>
-
 function InertiaConfig = (options?: Partial<InertiaConfigShape>) => InertiaConfigShape
 
-function inertiaRoute = (path: string, component: string, props?: Record<string, unknown> | MiddlewareClass[], middleware?: MiddlewareClass[]) => RouteRegistration
+function inertiaRoute = <N extends PageTarget>(path: string, component: N, props?: RenderProps<N> | MiddlewareClass[], middleware?: MiddlewareClass[]) => RouteRegistration
 
-function inertiaStream = (component: string, props?: Record<string, unknown>) => Promise<void>
-
-function lazy = (callback: PropFactory) => OptionalProp
+function lazy = <T>(callback: PropFactory<T>) => OptionalProp<T>
 
 function location = (url: string) => void
 
-function merge = (value: unknown | PropFactory) => MergeProp
+function merge = {    <T>(value: PropFactory<T>): MergeProp<T>;    <T>(value: T): MergeProp<T>;}
 
-function optional = (callback: PropFactory) => OptionalProp
+function optional = <T>(callback: PropFactory<T>) => OptionalProp<T>
 
 function resolveProps = (raw: Record<string, unknown>, headers: Headers, component: string) => Promise<ResolvedPage>
 
@@ -231,6 +231,8 @@ interface InertiaConfigShape = {
   ssrSecret: string
   version: string
 }
+
+interface InertiaPageRegistry = {}
 
 interface InertiaProviderOptions = {
   assetsUrl?: string
@@ -265,6 +267,11 @@ interface PageObject = {
   version: string
 }
 
+interface PageRenderer = {
+  <N extends PageTarget>(component: N, props?: Record<string, unknown> | undefined): Promise<void>
+  dynamic: (component: string, props?: Record<string, unknown>) => Promise<void>
+}
+
 interface PaginatorLike = {
   currentPage?: number
   data: unknown[]
@@ -293,4 +300,18 @@ interface ScrollConfig = {
   previousPage: number | null
 }
 
-type PropFactory = () => unknown | Promise<unknown>
+interface SharedProps = {}
+
+type PageName = never
+
+type PageTarget = string
+
+type PropFactory = () => T | Promise<T>
+
+type PropInput = T | (() => T | Promise<T>) | AlwaysProp<T> | MergeProp<T> | (T extends PaginatorLike ? InfiniteScrollProp : never) | (undefined extends T ? OptionalProp<T> | DeferProp<T> : never)
+
+type PropsOf = PageComponent<N> extends (props: infer Props, ...rest: any[]) => any ? Props : PageComponent<N> extends abstract new (props: infer Props, ...rest: any[]) => any ? Props : Record<string, unknown>
+
+type RenderArgs = [props?: Record<string, unknown>]
+
+type RenderProps = {    [x: string]: unknown;}

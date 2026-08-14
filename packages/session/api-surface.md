@@ -82,10 +82,10 @@ class SessionManager = {
   flash: (key: string, value: unknown) => void
   flush: () => void
   forget: (key: string) => void
-  get: (key: string) => unknown
+  get: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   has: (key: string) => boolean
   id: () => string
-  pull: (key: string) => unknown
+  pull: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   readonly _abandonedIds: string[]
   regenerate: () => void
   set: (key: string, value: unknown) => void

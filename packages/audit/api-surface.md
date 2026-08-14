@@ -14,7 +14,7 @@ class AuditLog = {
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
   static byActor: (actorId: number) => ScopeApplicator
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
@@ -185,7 +185,7 @@ interface AuditableOptions = {
 
 interface AuditConfigShape = {
   captureRequest?: boolean
-  driver: 'database' | 'null'
+  driver: 'null' | 'database'
   pruneKeep?: number
   table?: string
 }

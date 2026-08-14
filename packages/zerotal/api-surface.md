@@ -28,6 +28,7 @@ class Application = {
   bootDurationMs: number | undefined
   booted: boolean
   close: () => Promise<void>
+  declareWebSocketPath: (path: string) => Application
   defer: {    (token: keyof ContainerBindings, Provider: ProviderClass): Application;    (map: Partial<Record<keyof ContainerBindings, ProviderClass>>): Application;    (providers: DeferrableProviderClass[]): Application;}
   doctorChecks: readonly DoctorCheck[]
   enableDevWs: () => Application
@@ -48,6 +49,7 @@ class Application = {
   use: (middleware: PipeClass | PipeClass[]) => Application
   useConfig: (input: ConfigMap | ConfigLoader) => Application
   useOnce: (middlewareClass: PipeClass) => void
+  webSocketPaths: () => string[]
   withExceptionHandler: (Handler: new () => ExceptionHandler) => Application
   withUserResolver: (fn: (id: number) => Promise<AuthenticatedUser | null>) => Application
   withWebSocket: (handlers: WebSocketHandlers, upgradeData?: (req: Request, server?: unknown) => Record<string, unknown>, path?: string) => Application
@@ -363,7 +365,7 @@ class HttpContext = {
   subdomains: Record<string, string>
   t: (key: string, replacements?: Replacements, locale?: string) => string
   took: number
-  user?: AuthUser | undefined
+  user?: UserModel | undefined
   view: {    (markup: ViewMarkup, status?: number): void;    <P extends Record<string, unknown> = Record<string, never>>(component: (ctx: HttpContext, props: P) => ViewMarkup | Promise<ViewMarkup>, props?: P | undefined, status?: number): void | Promise<void>;}
   wantsJson: () => boolean
 }
@@ -453,13 +455,15 @@ class RedirectBuilder = {
   away: (url: string, status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
   back: (status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
   intended: (fallback?: string, status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
-  to: (name: string, params?: Record<string, string | number>, status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
+  to: <N extends RouteTarget>(name: N, params?: RouteParamsArg<N>, status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
 }
 
 class RequestContext = {
   new (): RequestContext
+  static forget: (key: string) => void
   static get: () => HttpContext
   static locale: () => string
+  static remember: <T>(key: string, factory: () => Promise<T> | T) => Promise<T>
   static request: () => Request
   static requestId: () => string
   static run: <T>(ctx: HttpContext, callback: () => T) => T
@@ -645,6 +649,8 @@ const Events = Emitter
 
 const FrameworkEvents = {    on<E extends object>(target: (new (...args: any[]) => E) | string, handler: Handler<E>): () => void;    emit<E extends object>(event: E): void;    clear(): void;    handlerCount(): number;}
 
+const route = RouteBuilder
+
 const Router = typeof _Router & _RouterMacros
 
 const Str = {    camelCase(value: string): string;    snakeCase(value: string): string;    slugify(value: string): string;    titleCase(value: string): string;    pascalCase(value: string): string;    capitalize(value: string): string;    lcfirst(value: string): string;    truncate(value: string, maxLength: number, suffix?: string): string;    isAlphanumeric(value: string): boolean;    padLeft(value: string, length: number, char?: string): string;    kebab(value: string): string;    squish(value: string): string;    finish(value: string, cap: string): string;    start(value: string, prefix: string): string;    after(value: string, needle: string): string;    before(value: string, needle: string): string;    afterLast(value: string, needle: string): string;    beforeLast(value: string, needle: string): string;    contains(value: string, substring: string): boolean;    random(length?: number): string;    replaceFirst(value: string, search: string, replace: string): string;    replaceLast(value: string, search: string, replace: string): string;    reverse(value: string): string;    words(value: string, maxWords: number, suffix?: string): string;    macro(name: string, fn: (...args: unknown[]) => unknown): void;}
@@ -709,7 +715,7 @@ function readCookie = (request: Request, name: string) => string | undefined
 
 function redirect = {    (url: string, status?: 301 | 302 | 303 | 307 | 308): ResponseBuilder;    (): RedirectBuilder;}
 
-function redirectTo = (name: string, params?: Record<string, string | number>, status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
+function redirectTo = <N extends RouteTarget>(name: N, params?: RouteParamsArg<N>, status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
 
 function registerAppScope = (installer: AppScopeInstaller) => void
 
@@ -722,8 +728,6 @@ function requireEnv = (key: string) => string
 function rescue = <T>(callback: () => Promise<T> | T, fallback: T | ((error: unknown) => T | Promise<T>)) => Promise<T>
 
 function rescueSync = <T>(callback: () => T, fallback: T | ((error: unknown) => T)) => T
-
-function route = (name: string, params?: Record<string, string | number>) => string
 
 function runDoctor = (app: Application, extraChecks?: DoctorCheck[]) => Promise<DoctorReportEntry[]>
 
@@ -791,6 +795,7 @@ interface ConcernDescriptor = {
 
 interface ConfigRegistry = {
   admin: AdminConfigShape
+  ai: AiConfigShape
   audit: AuditConfigShape
   auth: AuthConfigShape
   broadcasting: BroadcastConfigShape
@@ -816,8 +821,9 @@ interface ConfigRegistry = {
 
 interface ContainerBindings = {
   admin.panel: AdminPanelHost
+  ai: AiManager
   audit: Auditor
-  auth.userLoader: (id: number) => Promise<AuthUser | null>
+  auth.userLoader: (id: number) => Promise<UserModel | null>
   broadcast: BroadcastManager
   cache: CacheManager
   client: ApiClient<Partial<Record<`GET ${string}` | `POST ${string}` | `PUT ${string}` | `PATCH ${string}` | `DELETE ${string}`, RouteShape>>>
@@ -963,6 +969,11 @@ interface ResolvedDevProcess = {
   run?: (signal: AbortSignal) => Promise<void>
 }
 
+interface RouteBuilder = {
+  <N extends RouteTarget>(name: N, params?: RouteParamValues | undefined, query?: RouteQuery | undefined): string
+  dynamic: (name: string, params?: RouteParamValues, query?: RouteQuery) => string
+}
+
 interface RouteDefinition = {
   action: string
   bindings: Map<string, ModelBindingResolver>
@@ -1007,9 +1018,11 @@ interface RouteRegistration = {
   name: (routeName: string) => RouteRegistration
 }
 
+interface RouteRegistry = {}
+
 interface RouterMacros = {
   flow: (path: string, PageClass: PageClassWithMeta, middleware?: MiddlewareClass[]) => RouteRegistration
-  inertia: (path: string, component: string, props?: Record<string, unknown> | MiddlewareClass[], middleware?: MiddlewareClass[]) => RouteRegistration
+  inertia: <N extends PageTarget>(path: string, component: N, props?: RenderProps<N> | MiddlewareClass[], middleware?: MiddlewareClass[]) => RouteRegistration
   social: (prefix: string, controller: new (...args: unknown[]) => unknown) => void
 }
 
@@ -1100,7 +1113,27 @@ type ModelBindingResolver = (value: string, ctx: HttpContext) => Promise<unknown
 
 type NextFn = () => Promise<Response | void>
 
+type ParamsOf = P extends `${string}:${infer Name}/${infer Rest}` ? { [K in Name]: RouteParamValue; } & ParamsOf<`/${Rest}`> : P extends `${string}:${infer Name}` ? { [K in Name]: RouteParamValue; } : P extends `${string}*${string}` ? {    "*": RouteParamValue | readonly RouteParamValue[];} : Record<never, never>
+
+type RouteArgs = [params?: RouteParamValues, query?: RouteQuery]
+
 type RouteMiddleware = MiddlewareClass[] | RouteMethodMiddleware
+
+type RouteName = never
+
+type RouteParams = { [K in keyof ParamsOf<RoutePattern<N>>]: ParamsOf<RoutePattern<N>>[K]; }
+
+type RouteParamsArg = {    [x: string]: RouteParamValue | readonly RouteParamValue[];}
+
+type RouteParamValue = string | number
+
+type RouteParamValues = {    [x: string]: RouteParamValue | readonly RouteParamValue[];}
+
+type RoutePattern = N extends never ? RouteRegistry[N] extends string ? RouteRegistry[N] : string : string
+
+type RouteQuery = {    [x: string]: string | number | boolean | readonly (string | number | boolean)[] | null | undefined;}
+
+type RouteTarget = string
 
 type RoutingConfig = {    [x: string]: RoutingEntry;}
 
@@ -1170,7 +1203,7 @@ class AuthProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['hash', 'gate', 'two_factor']
-  static resolveUsing: (fn: (id: number) => Promise<AuthUser | null>) => void
+  static resolveUsing: (fn: (id: number) => Promise<UserModel | null>) => void
   devProcesses: () => DevProcessDefinition[]
   doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
@@ -1194,7 +1227,7 @@ class AuthUser = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
@@ -1611,7 +1644,7 @@ class Permission = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
@@ -1773,7 +1806,7 @@ class Role = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
@@ -3038,6 +3071,34 @@ type TokenSource = string | (() => string | null | undefined | Promise<string | 
 
 ## ./commands  `(./src/commands.ts)`
 
+class AssetsBuildCommand = {
+  new (): AssetsBuildCommand
+  static args: ArgDef[]
+  static commandName: string
+  static description: string
+  static flags: {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class CompileCommand = {
   new (): CompileCommand
   static args: ArgDef[]
@@ -3128,7 +3189,7 @@ class DoctorCommand = {
   static args: ArgDef[]
   static commandName: string
   static description: string
-  static flags: FlagDef[]
+  static flags: {    name: string;    type: 'string';    description: string;}[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter
@@ -3683,6 +3744,34 @@ class RouteListCommand = {
   write: (msg: string) => void
 }
 
+class RouteTypesCommand = {
+  new (): RouteTypesCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: FlagDef[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class ServeCommand = {
   new (): ServeCommand
   static aliases: string[]
@@ -3855,7 +3944,7 @@ class ConfigValidationError = {
   readonly status: number
 }
 
-function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;        loader?: Record<string, AssetLoaderKind>;    };    dev?: DevConfigShape;    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
+function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    allowedOrigins?: string[];    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;        loader?: Record<string, AssetLoaderKind>;    };    dev?: DevConfigShape;    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
 
 function configLoader = (dir?: string) => ConfigLoader
 
@@ -3868,6 +3957,7 @@ interface AppAssetsConfig = {
 }
 
 interface AppConfigShape = {
+  allowedOrigins: string[]
   assets?: AppAssetsConfig
   conventions: ConventionsConfig
   cors: AppCorsConfig
@@ -3927,7 +4017,7 @@ type ConfigIssueLevel = 'error' | 'warning'
 
 type ConfigMap = {    [x: string]: Record<string, unknown>;}
 
-type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.dev' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
+type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.driver' | 'lock.sqlite' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.dev' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.allowedOrigins' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
 
 type ConfigValidator = (value: unknown, ctx: ConfigValidationContext) => ConfigIssue[] | void
 
@@ -3941,10 +4031,10 @@ interface SessionContract = {
   flash: (key: string, value: unknown) => void
   flush: () => void
   forget: (key: string) => void
-  get: (key: string) => unknown
+  get: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   has: (key: string) => boolean
   id: () => string
-  pull: (key: string) => unknown
+  pull: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   regenerate: () => void
   set: (key: string, value: unknown) => void
 }
@@ -4001,6 +4091,8 @@ const DEV_RELOAD_CLIENT = string
 
 const SERVER_PROCESS_NAME = 'server'
 
+function bootBuildDecision = (outDirs: string[], env: string | undefined) => Promise<BootBuildDecision>
+
 function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
 
 function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>
@@ -4012,6 +4104,8 @@ function createDeck = (options: DeckOptions) => Deck
 function detectCssPlugins = (cwd: string) => Promise<BunPlugin[]>
 
 function isDevOrchestrated = (env?: Record<string, string | undefined>, argv?: readonly string[]) => boolean
+
+function isWritableDir = (dir: string) => Promise<boolean>
 
 function pruneBuildOutput = (outdir: string, outputs: readonly {    path: string;}[]) => Promise<string[]>
 
@@ -4027,6 +4121,11 @@ interface AssetBuildConfig = {
   minify: boolean
   outDir: string
   prefix: string
+}
+
+interface BootBuildDecision = {
+  build: boolean
+  reason?: string
 }
 
 interface BuildResult = {
@@ -4342,7 +4441,7 @@ class Uri = {
   new (parts: UriParts): Uri
   static current: () => Uri
   static of: (value: string | Uri) => Uri
-  static route: (name: string, params?: Record<string, string | number>) => Uri
+  static route: <N extends RouteTarget>(name: N, params?: RouteParamValues | undefined, query?: RouteQuery | undefined) => Uri
   static to: (path: string) => Uri
   fragment: () => string | undefined
   host: () => string | undefined
@@ -4458,7 +4557,7 @@ interface UrlGenerator = {
   is: (path: string) => boolean
   previous: (fallback?: string) => string
   query: (path: string, query: QueryInput, extra?: (string | number)[]) => string
-  route: (name: string, params?: Record<string, string | number>) => string
+  route: <N extends RouteTarget>(name: N, params?: RouteParamValues | undefined, query?: RouteQuery | undefined) => string
   secure: (path: string, extra?: (string | number)[]) => string
   setSecret: (secret: string) => void
   sign: (base: string, params?: Record<string, string>, expiresInMinutes?: number, secret?: string) => string
@@ -4816,7 +4915,7 @@ class MediaItem = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
@@ -5246,7 +5345,7 @@ class BaseModel = {
   static all: <T extends BaseModel>(this: ModelCtor<T>) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
@@ -5336,6 +5435,7 @@ class BaseModel = {
 
 class Blueprint = {
   new (): Blueprint
+  _pendingDrops: readonly string[]
   bigIncrements: (name?: string) => ColumnBuilder
   bigInteger: (name: string) => ColumnBuilder
   binary: (name: string) => ColumnBuilder
@@ -5461,30 +5561,30 @@ class EncryptedColumnError = {
 }
 
 class ForeignIdColumnBuilder = {
-  new (name: string, sqlType: string, _addFk: (col: string) => ForeignKeyBuilder): ForeignIdColumnBuilder
-  after: (_column: string) => ForeignIdColumnBuilder
-  alter: () => ForeignIdColumnBuilder
-  before: (_column: string) => ForeignIdColumnBuilder
-  change: () => ForeignIdColumnBuilder
-  check: (expression: string) => ColumnBuilder<'check'>
-  comment: (_text: string) => ForeignIdColumnBuilder
+  new <Locked extends string = never>(name: string, sqlType: string, _addFk: (col: string) => ForeignKeyBuilder): ForeignIdColumnBuilder<Locked>
+  after: (_column: string) => ForeignIdColumnBuilder<Locked>
+  alter: () => ForeignIdColumnBuilder<Locked>
+  before: (_column: string) => ForeignIdColumnBuilder<Locked>
+  change: () => ForeignIdColumnBuilder<Locked>
+  check: (expression: string) => 'check' extends Locked ? never : ColumnBuilder<'check' | Locked>
+  comment: (_text: string) => ForeignIdColumnBuilder<Locked>
   constrained: (table?: string, column?: string) => ForeignKeyBuilder
-  default: (value: unknown) => ColumnBuilder<'default'>
-  defaultTo: (value: unknown) => ColumnBuilder<'default'>
-  index: () => ColumnBuilder<'index'>
+  default: (value: unknown) => 'default' extends Locked ? never : ColumnBuilder<'default' | Locked>
+  defaultTo: (value: unknown) => 'default' extends Locked ? never : ColumnBuilder<'default' | Locked>
+  index: () => 'index' extends Locked ? never : ColumnBuilder<'index' | Locked>
   isAlter: boolean
   isPrimary: boolean
-  notNullable: () => ColumnBuilder<'nullability'>
-  nullable: () => ColumnBuilder<'nullability'>
-  primary: () => ColumnBuilder<'primary'>
+  notNullable: () => 'nullability' extends Locked ? never : ForeignIdColumnBuilder<Locked | 'nullability'>
+  nullable: () => 'nullability' extends Locked ? never : ForeignIdColumnBuilder<Locked | 'nullability'>
+  primary: () => 'primary' extends Locked ? never : ColumnBuilder<'primary' | Locked>
   readonly name: string
-  storedAs: (expression: string) => ColumnBuilder<'generated'>
+  storedAs: (expression: string) => 'generated' extends Locked ? never : ColumnBuilder<Locked | 'generated'>
   toColumnSQL: (dialect?: DialectName) => string
-  unique: () => ColumnBuilder<'unique'>
-  unsigned: () => ColumnBuilder<'unsigned'>
-  useCurrent: () => ColumnBuilder<'default'>
-  useCurrentOnUpdate: () => ForeignIdColumnBuilder
-  virtualAs: (expression: string) => ColumnBuilder<'generated'>
+  unique: () => 'unique' extends Locked ? never : ColumnBuilder<'unique' | Locked>
+  unsigned: () => 'unsigned' extends Locked ? never : ColumnBuilder<'unsigned' | Locked>
+  useCurrent: () => 'default' extends Locked ? never : ColumnBuilder<'default' | Locked>
+  useCurrentOnUpdate: () => ForeignIdColumnBuilder<Locked>
+  virtualAs: (expression: string) => 'generated' extends Locked ? never : ColumnBuilder<Locked | 'generated'>
   wantsIndex: boolean
 }
 
@@ -5557,7 +5657,7 @@ class Model = {
   static all: <T extends BaseModel>(this: ModelCtor<T>) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
@@ -5804,10 +5904,11 @@ class NPlusOneDetected = {
 }
 
 class NPlusOneError = {
-  new (fingerprint: string, count: number): NPlusOneError
+  new (fingerprint: string, count: number, distinctArgs?: number): NPlusOneError
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly count: number
+  readonly distinctArgs: number
   readonly fingerprint: string
   readonly status: number
 }
@@ -6158,7 +6259,7 @@ interface CastField = {
 }
 
 interface ColumnOptions = {
-  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
+  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
   default?: unknown
   enumValues?: Record<string, string | number>
   index?: boolean
@@ -6523,7 +6624,7 @@ type CastMapper = ((raw: unknown) => T) | (new (...args: never[]) => T)
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 
-type ColumnShorthand = 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'encrypted' | 'encrypted:json'
+type ColumnShorthand = 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'encrypted' | 'encrypted:json'
 
 type Constructor = new (...args: any[]) => T
 
@@ -7198,10 +7299,10 @@ class SessionManager = {
   flash: (key: string, value: unknown) => void
   flush: () => void
   forget: (key: string) => void
-  get: (key: string) => unknown
+  get: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   has: (key: string) => boolean
   id: () => string
-  pull: (key: string) => unknown
+  pull: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   readonly _abandonedIds: string[]
   regenerate: () => void
   set: (key: string, value: unknown) => void
@@ -7813,7 +7914,7 @@ class ArrayRule = {
   optional: () => ArrayRule<T>
   prohibitedIf: (field: string, value: unknown) => ArrayRule<T>
   prohibitedUnless: (field: string, value: unknown) => ArrayRule<T>
-  readonly _def: ArrayDef
+  readonly _def: ArrayDef<T['_def']>
   required: (message?: string) => ArrayRule<T>
   requiredIf: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => ArrayRule<T>
   requiredUnless: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => ArrayRule<T>
@@ -7958,7 +8059,7 @@ class NumberRule = {
 }
 
 class ObjectRule = {
-  new <S extends Schema>(shape: { [K in keyof S]: FieldRule; }): ObjectRule<S>
+  new <S extends Record<string, FieldRule>>(shape: S): ObjectRule<S>
   accepted: (message?: string) => ObjectRule<S>
   bail: () => ObjectRule<S>
   custom: (fn: CustomFn, message?: string) => ObjectRule<S>
@@ -7968,7 +8069,7 @@ class ObjectRule = {
   optional: () => ObjectRule<S>
   prohibitedIf: (field: string, value: unknown) => ObjectRule<S>
   prohibitedUnless: (field: string, value: unknown) => ObjectRule<S>
-  readonly _def: ObjectDef
+  readonly _def: ObjectDef<{ [K in keyof S]: S[K]['_def']; }>
   required: (message?: string) => ObjectRule<S>
   requiredIf: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => ObjectRule<S>
   requiredUnless: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => ObjectRule<S>
@@ -8026,7 +8127,7 @@ class RuleBuilder = {
   email: (message?: string) => StringRule
   file: () => FileRule
   number: () => NumberRule
-  object: <S extends Schema>(shape: { [K in keyof S]: FieldRule; }) => ObjectRule<S>
+  object: <S extends Record<string, FieldRule>>(shape: S) => ObjectRule<S>
   password: () => PasswordRule
   required: (message?: string) => StringRule
   string: () => StringRule
@@ -8151,9 +8252,9 @@ interface ValidatorConfigShape = {
   stopOnFirstFailure: boolean
 }
 
-type Infer = { [K in keyof S]: S[K]['nullable'] extends true ? InferFieldType<S[K]> | null : InferFieldType<S[K]>; }
+type Infer = { [K in keyof S]: InferField<S[K]>; }
 
-type InferFieldType = F['type'] extends 'string' ? string : F['type'] extends 'number' ? number : F['type'] extends 'boolean' ? boolean : F['type'] extends 'date' ? Date : unknown
+type InferFieldType = F['type'] extends 'string' ? string : F['type'] extends 'number' ? number : F['type'] extends 'boolean' ? boolean : F['type'] extends 'date' ? Date : F['type'] extends 'array' ? InferArrayType<F> : F['type'] extends 'object' ? InferObjectType<F> : unknown
 
 type Schema = {    [x: string]: FieldRuleDefinition;}
 

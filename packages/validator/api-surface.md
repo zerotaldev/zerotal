@@ -18,7 +18,7 @@ class ArrayRule = {
   optional: () => ArrayRule<T>
   prohibitedIf: (field: string, value: unknown) => ArrayRule<T>
   prohibitedUnless: (field: string, value: unknown) => ArrayRule<T>
-  readonly _def: ArrayDef
+  readonly _def: ArrayDef<T['_def']>
   required: (message?: string) => ArrayRule<T>
   requiredIf: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => ArrayRule<T>
   requiredUnless: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => ArrayRule<T>
@@ -163,7 +163,7 @@ class NumberRule = {
 }
 
 class ObjectRule = {
-  new <S extends Schema>(shape: { [K in keyof S]: FieldRule; }): ObjectRule<S>
+  new <S extends Record<string, FieldRule>>(shape: S): ObjectRule<S>
   accepted: (message?: string) => ObjectRule<S>
   bail: () => ObjectRule<S>
   custom: (fn: CustomFn, message?: string) => ObjectRule<S>
@@ -173,7 +173,7 @@ class ObjectRule = {
   optional: () => ObjectRule<S>
   prohibitedIf: (field: string, value: unknown) => ObjectRule<S>
   prohibitedUnless: (field: string, value: unknown) => ObjectRule<S>
-  readonly _def: ObjectDef
+  readonly _def: ObjectDef<{ [K in keyof S]: S[K]['_def']; }>
   required: (message?: string) => ObjectRule<S>
   requiredIf: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => ObjectRule<S>
   requiredUnless: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => ObjectRule<S>
@@ -231,7 +231,7 @@ class RuleBuilder = {
   email: (message?: string) => StringRule
   file: () => FileRule
   number: () => NumberRule
-  object: <S extends Schema>(shape: { [K in keyof S]: FieldRule; }) => ObjectRule<S>
+  object: <S extends Record<string, FieldRule>>(shape: S) => ObjectRule<S>
   password: () => PasswordRule
   required: (message?: string) => StringRule
   string: () => StringRule
@@ -356,9 +356,9 @@ interface ValidatorConfigShape = {
   stopOnFirstFailure: boolean
 }
 
-type Infer = { [K in keyof S]: S[K]['nullable'] extends true ? InferFieldType<S[K]> | null : InferFieldType<S[K]>; }
+type Infer = { [K in keyof S]: InferField<S[K]>; }
 
-type InferFieldType = F['type'] extends 'string' ? string : F['type'] extends 'number' ? number : F['type'] extends 'boolean' ? boolean : F['type'] extends 'date' ? Date : unknown
+type InferFieldType = F['type'] extends 'string' ? string : F['type'] extends 'number' ? number : F['type'] extends 'boolean' ? boolean : F['type'] extends 'date' ? Date : F['type'] extends 'array' ? InferArrayType<F> : F['type'] extends 'object' ? InferObjectType<F> : unknown
 
 type Schema = {    [x: string]: FieldRuleDefinition;}
 

@@ -21,7 +21,7 @@ class BaseModel = {
   static all: <T extends BaseModel>(this: ModelCtor<T>) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
@@ -111,6 +111,7 @@ class BaseModel = {
 
 class Blueprint = {
   new (): Blueprint
+  _pendingDrops: readonly string[]
   bigIncrements: (name?: string) => ColumnBuilder
   bigInteger: (name: string) => ColumnBuilder
   binary: (name: string) => ColumnBuilder
@@ -236,30 +237,30 @@ class EncryptedColumnError = {
 }
 
 class ForeignIdColumnBuilder = {
-  new (name: string, sqlType: string, _addFk: (col: string) => ForeignKeyBuilder): ForeignIdColumnBuilder
-  after: (_column: string) => ForeignIdColumnBuilder
-  alter: () => ForeignIdColumnBuilder
-  before: (_column: string) => ForeignIdColumnBuilder
-  change: () => ForeignIdColumnBuilder
-  check: (expression: string) => ColumnBuilder<'check'>
-  comment: (_text: string) => ForeignIdColumnBuilder
+  new <Locked extends string = never>(name: string, sqlType: string, _addFk: (col: string) => ForeignKeyBuilder): ForeignIdColumnBuilder<Locked>
+  after: (_column: string) => ForeignIdColumnBuilder<Locked>
+  alter: () => ForeignIdColumnBuilder<Locked>
+  before: (_column: string) => ForeignIdColumnBuilder<Locked>
+  change: () => ForeignIdColumnBuilder<Locked>
+  check: (expression: string) => 'check' extends Locked ? never : ColumnBuilder<'check' | Locked>
+  comment: (_text: string) => ForeignIdColumnBuilder<Locked>
   constrained: (table?: string, column?: string) => ForeignKeyBuilder
-  default: (value: unknown) => ColumnBuilder<'default'>
-  defaultTo: (value: unknown) => ColumnBuilder<'default'>
-  index: () => ColumnBuilder<'index'>
+  default: (value: unknown) => 'default' extends Locked ? never : ColumnBuilder<'default' | Locked>
+  defaultTo: (value: unknown) => 'default' extends Locked ? never : ColumnBuilder<'default' | Locked>
+  index: () => 'index' extends Locked ? never : ColumnBuilder<'index' | Locked>
   isAlter: boolean
   isPrimary: boolean
-  notNullable: () => ColumnBuilder<'nullability'>
-  nullable: () => ColumnBuilder<'nullability'>
-  primary: () => ColumnBuilder<'primary'>
+  notNullable: () => 'nullability' extends Locked ? never : ForeignIdColumnBuilder<Locked | 'nullability'>
+  nullable: () => 'nullability' extends Locked ? never : ForeignIdColumnBuilder<Locked | 'nullability'>
+  primary: () => 'primary' extends Locked ? never : ColumnBuilder<'primary' | Locked>
   readonly name: string
-  storedAs: (expression: string) => ColumnBuilder<'generated'>
+  storedAs: (expression: string) => 'generated' extends Locked ? never : ColumnBuilder<Locked | 'generated'>
   toColumnSQL: (dialect?: DialectName) => string
-  unique: () => ColumnBuilder<'unique'>
-  unsigned: () => ColumnBuilder<'unsigned'>
-  useCurrent: () => ColumnBuilder<'default'>
-  useCurrentOnUpdate: () => ForeignIdColumnBuilder
-  virtualAs: (expression: string) => ColumnBuilder<'generated'>
+  unique: () => 'unique' extends Locked ? never : ColumnBuilder<'unique' | Locked>
+  unsigned: () => 'unsigned' extends Locked ? never : ColumnBuilder<'unsigned' | Locked>
+  useCurrent: () => 'default' extends Locked ? never : ColumnBuilder<'default' | Locked>
+  useCurrentOnUpdate: () => ForeignIdColumnBuilder<Locked>
+  virtualAs: (expression: string) => 'generated' extends Locked ? never : ColumnBuilder<Locked | 'generated'>
   wantsIndex: boolean
 }
 
@@ -332,7 +333,7 @@ class Model = {
   static all: <T extends BaseModel>(this: ModelCtor<T>) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: ModelCtor<T>, records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: ModelCtor<T>) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: ModelCtor<T> & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
@@ -579,10 +580,11 @@ class NPlusOneDetected = {
 }
 
 class NPlusOneError = {
-  new (fingerprint: string, count: number): NPlusOneError
+  new (fingerprint: string, count: number, distinctArgs?: number): NPlusOneError
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly count: number
+  readonly distinctArgs: number
   readonly fingerprint: string
   readonly status: number
 }
@@ -933,7 +935,7 @@ interface CastField = {
 }
 
 interface ColumnOptions = {
-  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
+  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
   default?: unknown
   enumValues?: Record<string, string | number>
   index?: boolean
@@ -1298,7 +1300,7 @@ type CastMapper = ((raw: unknown) => T) | (new (...args: never[]) => T)
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 
-type ColumnShorthand = 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'encrypted' | 'encrypted:json'
+type ColumnShorthand = 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'encrypted' | 'encrypted:json'
 
 type Constructor = new (...args: any[]) => T
 
@@ -1549,6 +1551,34 @@ class MigrateGenerateCommand = {
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'string';    description: string;    default: string;}[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
+class MigrateRefreshCommand = {
+  new (): MigrateRefreshCommand
+  static args: ArgDef[]
+  static commandName: string
+  static description: string
+  static flags: FlagDef[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter

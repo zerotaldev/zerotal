@@ -53,7 +53,7 @@ class AuthProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['hash', 'gate', 'two_factor']
-  static resolveUsing: (fn: (id: number) => Promise<AuthUser | null>) => void
+  static resolveUsing: (fn: (id: number) => Promise<UserModel | null>) => void
   devProcesses: () => DevProcessDefinition[]
   doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
@@ -77,7 +77,7 @@ class AuthUser = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
   static create: <T extends BaseModel, F extends string = string>(this: (typeof BaseModel & (new () => T)) & {    fillable?: readonly F[] | undefined;}, data: FillablePayload<T, F>) => Promise<T>
@@ -494,7 +494,7 @@ class Permission = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>
@@ -656,7 +656,7 @@ class Role = {
   static all: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<T[]>
   static appends: string[]
   static bulkInsert: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<number>
-  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'json' | 'integer' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
+  static casts?: Record<string, 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined>
   static clearCache: () => void
   static connection?: string
   static count: <T extends BaseModel>(this: typeof BaseModel & (new () => T)) => Promise<number>

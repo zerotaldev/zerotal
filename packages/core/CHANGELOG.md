@@ -137,6 +137,14 @@ follows the Zerotal monorepo's unified versioning.
   the files and the one-line fix. (`Application.routedFiles` is new, so the check — and
   anything else — can see what the routing groups actually load.)
 
+### Changed
+
+- **`SessionContract.get` and `pull` take an optional `<T>`.** The contract's own
+  docblock said higher-level surfaces layer a generic on top, but `ctx.session` _is_
+  typed as the contract — so `ctx.session.get<number>(k)` was a compile error while
+  `ctx.flashed<T>(k)` on the same object was not. `<T>` defaults to `unknown`, so the
+  read-then-narrow form is unchanged.
+
 ### Fixed
 
 - **The memory lock driver refreshes on re-acquire.** `ManagedLock.acquire()` documents

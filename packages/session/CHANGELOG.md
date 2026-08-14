@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`get` and `pull` take an optional `<T>`.** `SessionManager` implements
+  `SessionContract`, and `ctx.session` _is_ typed as that contract — so
+  `ctx.session.get<number>("attempts")` was a compile error while
+  `ctx.flashed<T>(k)` on the same object was not, and the docs documented the
+  form that did not exist. `<T>` defaults to `unknown`, so the read-then-narrow
+  form is unchanged and nothing that compiled before stops compiling.
+
 ## [1.0.3] — 2026-08-07
 
 ### Changed

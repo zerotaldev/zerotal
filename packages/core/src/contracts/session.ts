@@ -24,17 +24,32 @@ export interface SessionContract {
   /**
    * Read the value stored under `key`, or `undefined` if absent.
    *
-   * Returns `unknown` — the caller asserts the stored shape. Higher-level
-   * surfaces (the `Session` facade, `ctx.session` helpers) layer a generic
-   * `<T>` cast on top.
+   * Defaults to `unknown`, so the safe form — read, then narrow — still works
+   * and is still the honest one for anything that came off the wire. The
+   * optional `<T>` is the caller asserting a shape they control, and it lives
+   * here rather than only on the facade because `ctx.session` is typed as this
+   * contract: without it, `ctx.session.get<number>(k)` was a compile error while
+   * `ctx.flashed<T>(k)` on the same object was not.
+   *
+   * Two overloads rather than one defaulted parameter: `T = unknown` would make
+   * the return `T | undefined`, which is *not* the same type as `unknown` at a
+   * call site TypeScript has to resolve an overload against — enough to break
+   * existing `expect(session.get(k))` assertions. The un-parameterised form
+   * therefore keeps its exact original signature.
+   *
+   * @example
+   * const issuedAt = ctx.session.get<number>(SESSION_ISSUED_AT);
+   * const raw = ctx.session.get(SOMETHING_EXTERNAL);   // still exactly `unknown`
    */
   get(key: string): unknown;
+  get<T>(key: string): T | undefined;
 
   /**
    * Read the value under `key` and remove it in one step ("read once").
    * Returns the stored value, or `undefined` if absent.
    */
   pull(key: string): unknown;
+  pull<T>(key: string): T | undefined;
 
   /**
    * Store `value` under `key`, overwriting any existing entry.

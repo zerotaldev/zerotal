@@ -66,8 +66,13 @@ export class SessionManager implements SessionContract {
 
   /**
    * Read the value stored under `key`, or `undefined` if absent.
+   *
+   * `<T>` defaults to `unknown`, so the read-then-narrow form is unchanged; the
+   * type parameter is the caller asserting a shape they own.
    * @category Reading
    */
+  get(key: string): unknown;
+  get<T>(key: string): T | undefined;
   get(key: string): unknown {
     return this._data[key];
   }
@@ -78,6 +83,8 @@ export class SessionManager implements SessionContract {
    * @returns The stored value, or `undefined` if absent.
    * @category Flash data
    */
+  pull(key: string): unknown;
+  pull<T>(key: string): T | undefined;
   pull(key: string): unknown {
     const value = this._data[key];
     delete this._data[key];

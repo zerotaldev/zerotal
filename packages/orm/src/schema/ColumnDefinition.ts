@@ -362,13 +362,47 @@ export class ColumnBuilder<Locked extends string = never> {
  *   table.foreignId('author_id').constrained('users', 'uuid');  // → users.uuid
  *   table.foreignId('user_id').nullable().constrained().nullOnDelete();
  */
-export class ForeignIdColumnBuilder extends ColumnBuilder {
+export class ForeignIdColumnBuilder<Locked extends string = never> extends ColumnBuilder<Locked> {
   constructor(
     name: string,
     sqlType: string,
     private readonly _addFk: (col: string) => ForeignKeyBuilder,
   ) {
     super(name, sqlType);
+  }
+
+  /**
+   * Allow NULL, keeping `.constrained()` reachable.
+   *
+   * The base `nullable()` returns `ColumnBuilder`, which drops the subclass — so
+   * the documented `foreignId('user_id').nullable().constrained()` did not
+   * compile, and a nullable foreign key is the commonest kind there is. These
+   * two overrides re-declare the return as this builder while keeping the
+   * phantom lock, so `.nullable().notNullable()` is still a compile error.
+   *
+   * @locked `nullability` — shared with `notNullable()`.
+   * @category Nullability & defaults
+   */
+  override nullable(): "nullability" extends Locked
+    ? never
+    : ForeignIdColumnBuilder<Locked | "nullability"> {
+    super.nullable();
+    // `as any` per this file's own convention (see the header note): TypeScript
+    // cannot reduce a deferred conditional inside a generic body.
+    return this as any;
+  }
+
+  /**
+   * Enforce NOT NULL explicitly, keeping `.constrained()` reachable.
+   *
+   * @locked `nullability` — shared with `nullable()`.
+   * @category Nullability & defaults
+   */
+  override notNullable(): "nullability" extends Locked
+    ? never
+    : ForeignIdColumnBuilder<Locked | "nullability"> {
+    super.notNullable();
+    return this as any;
   }
 
   /**

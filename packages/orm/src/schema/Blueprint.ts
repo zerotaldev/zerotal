@@ -649,6 +649,19 @@ export class Blueprint {
   }
 
   /**
+   * The columns this blueprint will drop.
+   *
+   * Read by {@link Schema.table} so it can refuse an impossible drop on SQLite
+   * *before* running any statement, rather than after the earlier ones have
+   * already applied.
+   *
+   * @internal
+   */
+  get _pendingDrops(): readonly string[] {
+    return this._drops;
+  }
+
+  /**
    * Rename a column (`ALTER TABLE … RENAME COLUMN from TO to`).
    * @category Table modifiers
    */

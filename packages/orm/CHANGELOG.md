@@ -34,6 +34,31 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **A `Date` in a query-builder write is no longer silently discarded.**
+  `update({ read_at: new Date() })` bound the `Date` object straight through; SQLite
+  dropped it and **reported no error**, so a "mark all as read" feature shipped as a
+  latent no-op whose source read correctly. The asymmetry made it easy to write, too —
+  `model.save()` applies casts, so the identical value through a model worked. Dates
+  and `Carbon` instances are now serialised at the single point every bind passes
+  through, dialect-aware (MySQL DATETIME rejects ISO 8601's `T`/`Z`), which covers
+  `update`, `insert`, `where` and every builder at once. The comparison path had
+  already learned this lesson separately; now there is one place it lives.
+
+- **`foreignId(...).nullable().constrained()` type-checks.** `nullable()` returned
+  `ColumnBuilder`, so the chain left `ForeignIdColumnBuilder` and `.constrained()` was
+  gone — the form the class's own docblock documents, and the first one anyone reaches
+  for, since a nullable foreign key is the commonest kind. The two modifiers now
+  preserve the subclass while keeping the `nullability` lock, so
+  `.nullable().notNullable()` is still a compile error.
+
+- **SQLite refuses an impossible `dropColumn` before applying anything.** SQLite cannot
+  drop a column a foreign key still names, and it says so _after_ every earlier
+  statement in the same `Schema.table()` block has run — the difference between a
+  migration that did nothing and one that has to be unpicked by hand. A `PRAGMA
+foreign_key_list` check now runs first and throws a message naming the column, the
+  table it references, and the table-rebuild way out. The rebuild itself is still not
+  implemented; this makes its absence safe rather than expensive.
+
 - **Altering a Postgres column no longer silently drops its NOT NULL and DEFAULT.**
   The regexes that split a column definition into `ALTER COLUMN` sub-commands
   carried literal backspace characters (0x08) where `\b` word boundaries were

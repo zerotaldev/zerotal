@@ -28,6 +28,54 @@ async function query<T = Record<string, unknown>>(sql: string, params: unknown[]
   return conn<T>(tpl, ...params);
 }
 
+/**
+ * Throw if a column this blueprint drops is named by a foreign key on the table.
+ *
+ * SQLite has no way to drop an FK constraint through `ALTER TABLE`, so while the
+ * constraint names the column the column cannot go — the engine answers
+ * `unknown column "x" in foreign key definition`, and it answers *after* every
+ * earlier statement in the block has run. The standard way out is SQLite's own
+ * 12-step table rebuild; until that exists here, failing before the
+ * first statement is the difference between a migration that did nothing and
+ * one that has to be unpicked by hand.
+ *
+ * The message names the constraint and the way out, because "rebuild the table"
+ * is not obvious from the engine's own error.
+ */
+async function _assertDroppableOnSqlite(table: string, bp: Blueprint): Promise<void> {
+  const drops = bp._pendingDrops;
+  if (drops.length === 0) return;
+
+  // `PRAGMA foreign_key_list` takes no bind parameters, and the table name here
+  // comes from the migration's own source rather than from a request.
+  const fks = await query<{ id: number; from: string; table: string }>(
+    `PRAGMA foreign_key_list(${table})`,
+    [],
+  );
+  if (fks.length === 0) return;
+
+  const blocked = drops.filter((column) =>
+    fks.some((fk) => String(fk.from).toLowerCase() === column.toLowerCase()),
+  );
+  if (blocked.length === 0) return;
+
+  const referenced = blocked
+    .map((column) => {
+      const fk = fks.find((f) => String(f.from).toLowerCase() === column.toLowerCase());
+      return `'${column}' (references ${fk?.table ?? "another table"})`;
+    })
+    .join(", ");
+
+  throw new Error(
+    `[Zerotal ORM] SQLite cannot drop ${referenced} from '${table}' while a foreign key ` +
+      `names the column — the constraint has to go first, and SQLite cannot drop one through ` +
+      `ALTER TABLE.\n\n` +
+      `Rebuild the table instead: create a replacement with the columns you want, copy the ` +
+      `rows across, drop the original, and rename. Nothing has been applied — this migration ` +
+      `stopped before its first statement, so the schema is exactly as it was.`,
+  );
+}
+
 // ── Schema facade ─────────────────────────────────────────────────────────────
 
 /**
@@ -96,7 +144,19 @@ export const Schema = {
   async table(name: string, callback: (bp: Blueprint) => void): Promise<void> {
     const bp = new Blueprint();
     callback(bp);
-    for (const sql of bp.toAlterSQL(name, _getDialect())) {
+    const dialect = _getDialect();
+
+    // Refuse before the first statement, not in the middle of the list.
+    //
+    // SQLite cannot drop a column a foreign key still names, and the error it
+    // raises — `unknown column "x" in foreign key definition` — arrives *after*
+    // every earlier statement in the same `Schema.table()` block has run. That
+    // is the difference between a migration that does nothing and one that has
+    // to be unpicked by hand. The check costs a single PRAGMA on the only path
+    // that can hit it.
+    if (dialect === "sqlite") await _assertDroppableOnSqlite(name, bp);
+
+    for (const sql of bp.toAlterSQL(name, dialect)) {
       await ddl(sql);
     }
   },

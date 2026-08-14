@@ -217,6 +217,32 @@ function _getCachedTemplate(strings: string[]): TemplateStringsArray {
 }
 
 /**
+ * Turn a JS value into something the driver can actually bind.
+ *
+ * Only dates need this, and they need it badly. A `Date` handed to Bun's SQLite
+ * driver as a bind parameter does not land: `update({ read_at: new Date() })`
+ * left the column NULL and **reported no error**, so a "mark all as read"
+ * feature shipped as a latent no-op that read correctly in the source. The
+ * asymmetry made it easy to write, too — `model.save()` applies casts, so the
+ * identical value through a model worked.
+ *
+ * The comparison path already learned this (see `ModelQueryBuilder._bindValue`:
+ * a `Date` in a `where` used to match zero rows). Doing it here covers every
+ * bind on every builder — `DB.table()` writes included — from one place, so the
+ * next path someone adds cannot reintroduce it.
+ *
+ * Dialect-aware because MySQL DATETIME rejects ISO 8601's `T`/`Z`; SQLite and
+ * PostgreSQL take it as-is.
+ */
+function _bindable(value: unknown, dialect: Dialect): unknown {
+  const date = value instanceof Carbon ? value.toDate() : value;
+  if (!(date instanceof Date)) return value;
+  return dialect === "mysql"
+    ? date.toISOString().replace("T", " ").slice(0, 19)
+    : date.toISOString();
+}
+
+/**
  * @internal Execute compiled segments on `conn` with prepared-template
  * interning and QueryExecuted telemetry. Shared by `QueryBuilder._run` and
  * the BaseModel write paths so every query — builder reads and model writes
@@ -230,6 +256,7 @@ export async function _runSegments<T = Record<string, unknown>>(
   const strings: string[] = [];
   const values: unknown[] = [];
   let current = "";
+  const dialect = dialectFor(conn);
 
   for (const seg of segs) {
     if (typeof seg === "string") {
@@ -237,7 +264,7 @@ export async function _runSegments<T = Record<string, unknown>>(
     } else {
       strings.push(current);
       current = "";
-      values.push(seg.val);
+      values.push(_bindable(seg.val, dialect));
     }
   }
   strings.push(current);
@@ -245,7 +272,11 @@ export async function _runSegments<T = Record<string, unknown>>(
   const cacheKey = strings.join("\x00");
   const tpl = _getCachedTemplate(strings);
   const ctx = RequestContext.tryGet();
-  if (trackNPlusOne) trackQuery(ctx, cacheKey);
+  // Bindings go through too: without them the detector groups a six-month
+  // reporting loop — identical SQL, a different `period` each time — with a
+  // genuine per-row lookup, and sends you hunting for a relation to eager-load
+  // that does not exist.
+  if (trackNPlusOne) trackQuery(ctx, cacheKey, values);
 
   const startMs = Date.now();
   const rows = await conn<T>(tpl, ...values);

@@ -395,6 +395,26 @@ Two consequences worth knowing:
 - **Slots are set at mount, not reactive.** They reflect the parent's state at the moment the child mounts. If the parent later re-renders, the existing child island is preserved (its DOM and snapshot are kept), so the slot HTML does not change underneath it. For a value that must track the parent live, pass it as a `@reactive` prop instead of as slot markup.
 - **Prefer plain markup in slots.** Interactive `onClick={this.method}` handlers inside a slot bind to the _parent's_ actions (the slot was rendered in the parent's scope), which is usually what you want for a footer button. Nesting another _stateful child component_ inside a slot is not supported — embed it in the child's own `render()` instead.
 
+### `key` in a list
+
+Give every child rendered inside a `.map()` a `key` tied to the row's own identity:
+
+```tsx
+{
+  this.settings.map((s) => <SettingRow key={`setting-${s.id}`} settingKey={s.key} />);
+}
+```
+
+This is a correctness requirement, not an optimisation, and it is worth understanding why.
+
+A child's `data-flow-id` is how the client morph pairs the incoming markup with the island already on the page — and a parent re-render deliberately emits an already-mounted child as an **empty stub**, on the understanding that the pairing will preserve the child's live DOM. When two renders disagree about which child owns an id, that stub is what lands in the page.
+
+Without a `key`, the id is derived from the child's seed props (`@reactive` and `@modelable` props are excluded, because those exist to change without remounting). That is stable enough for the common case: remove an item from the middle of a list and the rows around it keep their islands. But two siblings whose props are identical are, as far as the framework can see, the same child — they share an id, and therefore share DOM and state. Flow logs a warning the first time it sees that, in development only.
+
+None of this is visible from the server. SSR, snapshot assertions and `FlowTest.mount(...).call(...)` all render the full child every time, because they never take the already-mounted branch — only a real browser applying a real WebSocket patch does. So the guard is the `key`, not the test suite.
+
+Keys are sanitised to `[a-zA-Z0-9_-]`, so dots are stripped and `a.b` collides with `ab`.
+
 ### Lazy, deferred, and streamed loading
 
 ```tsx

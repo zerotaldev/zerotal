@@ -136,6 +136,99 @@ function _attrJson(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/'/g, "&#39;").replace(/</g, "&lt;");
 }
 
+// ── Keyless child identity ───────────────────────────────────────────────────
+
+/** JSON with object keys in a stable order, so `{a,b}` and `{b,a}` hash alike. */
+function _stableJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(_stableJson).join(",")}]`;
+  const entries = Object.keys(value as Record<string, unknown>)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${_stableJson((value as Record<string, unknown>)[k])}`);
+  return `{${entries.join(",")}}`;
+}
+
+/**
+ * FNV-1a, 32-bit, as fixed-width hex.
+ *
+ * Fixed width is the point: the occurrence counter is appended straight after
+ * it, so a variable-length hash would make `<hash>1` and `<hash>10` ambiguous.
+ * Not cryptographic — a collision costs two children sharing an id, the same
+ * cost as the occurrence index they replace.
+ */
+function _fnv1a(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+function _isProduction(): boolean {
+  return (Bun.env["APP_ENV"] ?? Bun.env["NODE_ENV"]) === "production";
+}
+
+/** Classes already warned about, so a hundred-row list logs once. */
+const _warnedKeyless = new Set<string>();
+
+function _warnKeylessChild(className: string): void {
+  if (_warnedKeyless.has(className)) return;
+  _warnedKeyless.add(className);
+  console.warn(
+    `[Zerotal Flow] <${className}> is rendered more than once with identical props and no \`key\`. ` +
+      `Two children with the same id share one island: the second inherits the first's DOM and ` +
+      `state. Pass a key tied to the row's own identity — child(${className}, { key: item.id }).`,
+  );
+}
+
+/** Reset the once-per-class warning set. Tests. @internal */
+export function _resetKeylessWarnings(): void {
+  _warnedKeyless.clear();
+}
+
+/**
+ * The id suffix for a child rendered without an explicit `key`.
+ *
+ * `<hash of the seed props><occurrence within that hash>`. The hash is a fixed
+ * eight characters so the counter appended after it is unambiguous, and it is
+ * computed from the props that *identify* the child rather than the ones that
+ * update it — @reactive and @modelable props exist to change without remounting,
+ * and folding them in would trade a shifted-list bug for a child that resets on
+ * every parent update.
+ *
+ * A module function rather than a method: `Component` is extended by mixins that
+ * export anonymous classes, and a `private` member on one of those is a
+ * declaration error (TS4094).
+ *
+ * @internal
+ */
+function _autoChildKey(
+  childIds: readonly string[],
+  base: string,
+  props: Record<string, unknown>,
+  reactiveKeys: ReadonlySet<string>,
+  modelableKeys: ReadonlySet<string>,
+  className: string,
+): string {
+  const identity: Record<string, unknown> = {};
+  for (const key of Object.keys(props)) {
+    if (reactiveKeys.has(key) || modelableKeys.has(key)) continue;
+    identity[key] = props[key];
+  }
+
+  const hash = _fnv1a(_stableJson(identity));
+  const prefix = `${base}${hash}`;
+  const occurrence = childIds.filter((id) => id.startsWith(prefix)).length;
+
+  // Only the genuinely ambiguous case warns. A keyless child whose props differ
+  // from its siblings is now content-addressed and safe, so warning there would
+  // be noise; two siblings the framework cannot tell apart is the residual risk.
+  if (occurrence > 0 && !_isProduction()) _warnKeylessChild(className);
+
+  return `${hash}${occurrence}`;
+}
+
 // ── Internal effect bags ──────────────────────────────────────────────────────
 
 /**
@@ -1282,8 +1375,14 @@ export abstract class Component {
    *
    * Children are islands: a parent re-render does NOT re-render existing
    * children (their DOM and state are preserved on the client), and a child
-   * update never touches the parent. Use `key` when embedding the same
-   * component class multiple times (e.g. in a loop).
+   * update never touches the parent.
+   *
+   * **Pass a `key` for anything rendered in a loop.** Without one the id is
+   * derived from the child's seed props, which is stable enough that a row
+   * keeps its island when the list shifts — but two siblings the props cannot
+   * tell apart still share an id, and sharing an id means sharing DOM and
+   * state. A key tied to the row's own identity (`key: item.id`) removes the
+   * question. Keys are sanitised to `[a-zA-Z0-9_-]`, so `a.b` and `ab` collide.
    *
    * `props` are assigned to the child instance before `onMount()` runs.
    *
@@ -1328,19 +1427,6 @@ export abstract class Component {
   ): Promise<HtmlNode> {
     const name = ChildClass.name;
     const base = `${this._flowId}-${name.toLowerCase()}-`;
-    // Deterministic id: explicit key, or occurrence index within this render.
-    const keyPart =
-      opts.key !== undefined
-        ? String(opts.key).replace(/[^a-zA-Z0-9_-]/g, "")
-        : String(this._childIds.filter((id) => id.startsWith(base)).length);
-    const childId = `${base}${keyPart}`;
-
-    this._childIds.push(childId);
-
-    // Lazy-imported to keep Component.ts free of heavy static deps at class-load time.
-    const { dehydrate } = await import("./dehydrate.ts");
-    const { registerComponent } = await import("./registry.ts");
-    registerComponent(ChildClass as never, this._flowPath);
 
     // ── Reactive / modelable bindings (Tier 1) ───────────────────────────────
     // `data-flow-props` carries the current value of each @reactive prop so the
@@ -1351,6 +1437,37 @@ export abstract class Component {
     const reactiveKeys = getReactiveProps(childProto);
     const modelableKeys = getModelableProps(childProto);
     const givenProps = (opts.props ?? {}) as Record<string, unknown>;
+
+    // Deterministic id: an explicit key, or the child's seed props plus an
+    // occurrence counter.
+    //
+    // A bare occurrence index is *positional* identity, and position is not
+    // identity: remove the first item of a list and every row below it inherits
+    // the id its neighbour had. Because a hydrated parent emits an already-known
+    // child as an empty stub — on the understanding that the client morph will
+    // recognise the pairing — every row then adopts the previous row's live DOM,
+    // and the last one is left blank. Nothing warns, and no server-side test can
+    // see it: SSR and `FlowTest` render the full child every time.
+    //
+    // Folding the seed props into the id makes the pairing content-addressed, so
+    // a shifted row simply fails to match and is rendered in full — re-mounted
+    // rather than crossed with its neighbour. @reactive and @modelable props are
+    // excluded deliberately: those exist to change without remounting the child,
+    // and hashing them would trade this bug for a child that resets on every
+    // update. The counter still disambiguates genuinely identical siblings.
+    const keyPart =
+      opts.key !== undefined
+        ? String(opts.key).replace(/[^a-zA-Z0-9_-]/g, "")
+        : _autoChildKey(this._childIds, base, givenProps, reactiveKeys, modelableKeys, name);
+    const childId = `${base}${keyPart}`;
+
+    this._childIds.push(childId);
+
+    // Lazy-imported to keep Component.ts free of heavy static deps at class-load time.
+    const { dehydrate } = await import("./dehydrate.ts");
+    const { registerComponent } = await import("./registry.ts");
+    registerComponent(ChildClass as never, this._flowPath);
+
     let bindAttrs = "";
     if (reactiveKeys.size) {
       const propsObj: Record<string, unknown> = {};

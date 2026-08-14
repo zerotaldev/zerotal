@@ -11,6 +11,28 @@ change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A keyless child in a list is no longer identified by its position.** The id was
+  `<parentId>-<name>-<occurrence index>`, and an index is _position_, not identity:
+  remove an item from a list and every row below it inherits the id its neighbour had.
+  Because a hydrated parent emits an already-known child as an **empty stub** — on the
+  understanding that the client morph will recognise the pairing — every row then
+  adopted the previous row's live DOM and the last was left blank. Nothing warned, and
+  nothing server-side could see it: SSR, snapshot assertions and `FlowTest` all render
+  the full child every time, because they never take the already-mounted branch.
+
+  The id is now derived from the child's **seed props** plus an occurrence counter, so
+  the pairing is content-addressed and a shifted row is rendered in full rather than
+  crossed with its neighbour. `@reactive` and `@modelable` props are deliberately
+  excluded — those exist to change _without_ remounting the child, and hashing them
+  would trade this bug for a child that resets on every parent update.
+
+  Two siblings whose props are identical are still, as far as the framework can see,
+  the same child. Flow now logs a warning the first time it sees that in development,
+  naming the class and the fix. `key` remains the answer, and the docs say so where
+  `child()` is documented.
+
 ### Added
 
 - **`<ErrorBoundary>` — a failing child costs that child, not the page.** A nested

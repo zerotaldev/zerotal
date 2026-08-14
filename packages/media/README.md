@@ -7,6 +7,9 @@ images without installing a native module.
 
 Part of the [Zerotal](../../README.md) framework. Requires **Bun ≥ 1.3.14**.
 
+**Maturity: `stable`** — anything importable without an `@internal` marker keeps
+its shape for the rest of the 1.x line.
+
 ## Installation
 
 ```bash

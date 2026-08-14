@@ -4,9 +4,45 @@ All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
 follows the Zerotal monorepo's unified versioning.
 
-**Maturity: `beta`**
+**Maturity: `stable`** — the public API follows SemVer strictly: anything
+importable without an `@internal` marker keeps its shape for the rest of the 1.x
+line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
+
+### Changed
+
+- **`@zerotal/media` is `stable`.** The blocker was never the feature set — it was
+  that the default driver could not centre-crop, so freezing `ImageDriver` would
+  have frozen the workaround with it. `fit: "cover"` on `BunImageDriver` removed
+  that, and nothing reopened the promotion afterwards, which is the only reason
+  this package was still beta.
+
+  Two things had to happen first, and both are the promotion rather than
+  paperwork around it:
+
+  - **The surface was triaged.** It listed 79 exports and carried exactly one
+    `@internal` marker — plumbing that had leaked out of a module because
+    something else in the package needed it. Collection resolution, retention,
+    conversion dispatch, source resolvers, disk resolution, schema provisioning
+    and the config defaults are now marked `@internal`. Narrowing a surface after
+    `stable` is itself a breaking change, so an export that shipped stable by
+    accident would have been stuck for the rest of 1.x.
+  - **What survived is documented.** All 47 promised exports appear in
+    `docs/media.md`, and `bun run docs:coverage` now fails CI if that stops being
+    true. A SemVer promise over a surface nobody wrote down is not a promise
+    anyone can use.
+
+  Nothing is removed and nothing is renamed: an `@internal` export still imports
+  and still works. It is a statement about what the guarantee covers.
+
+- **`ImageDriver` is frozen, and its growth rule is written down.** It is the one
+  type in this package a third party implements, so a new _required_ member would
+  break code this repository cannot see. New members arrive optional, with the
+  package supplying the fallback; `ImageManipulation` may gain optional fields;
+  `ImageResult` and `ImageMetadata` may not gain required ones, because drivers
+  produce them. Buffers rather than streams stays: media is read from and written
+  to a storage disk, and both hand over whole objects.
 
 ### Added
 

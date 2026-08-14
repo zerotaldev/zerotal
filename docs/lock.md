@@ -187,15 +187,100 @@ Two mechanisms keep locks safe across crashes and races:
   expired and another process re-acquired it, your release is a guarded no-op —
   you can't free someone else's lock.
 
-> **Danger** — Choose a TTL longer than the work. If the callback runs longer
-> than the TTL, the lock expires _while you're still working_, a second worker
-> can acquire it, and you lose mutual exclusion. Set the TTL above your worst-case
-> duration (and add headroom). When you genuinely can't bound the duration, use a
-> short TTL with a manual [`ManagedLock`](#lockmake-manual-handle) and re-acquire
-> periodically.
+> **Danger** — A lock that is not refreshed expires _while you're still working_
+> if the callback outlives its TTL, and a second worker can acquire it. Either
+> size the TTL above your worst-case duration, or — better — refresh it, which is
+> what the next section is about.
 
 The owner guard also means **`Lock.try` / `Lock.block` release automatically** even
 when the callback throws — the `finally` runs `release()`, which is owner-checked.
+
+## Long-running work
+
+Sizing a TTL forces an unpleasant trade. Too short and the lock evaporates mid-job;
+too long and a crashed holder blocks the key for however long you guessed. Neither
+number is knowable in advance, because the TTL is being asked to answer two
+different questions at once.
+
+Refreshing separates them. Pass `refresh: true` and the lock is extended in the
+background for as long as the callback runs:
+
+```typescript
+await Lock.block(
+  "report:monthly",
+  60,
+  async (lock, signal) => {
+    await buildReport({ signal }); // may take an hour
+  },
+  { refresh: true },
+);
+```
+
+The TTL now means only **how long after a crash before someone else may take
+over** — a decision, rather than a guess. Sixty seconds is a reasonable answer
+whether the job takes a minute or a day.
+
+Refreshing happens every `refreshEvery` seconds, defaulting to a third of the TTL
+so a single missed beat is survivable.
+
+### When the lock is lost anyway
+
+A refresh can fail — the process stalled long enough for the TTL to lapse, and
+another holder took the key. That is not something to paper over: the work in
+flight is no longer exclusive, and carrying on would mean two holders both
+believing they are the only one.
+
+So the callback's `AbortSignal` is aborted and `LockLostError` is thrown:
+
+```typescript
+try {
+  await Lock.block("report:monthly", 60, run, { refresh: true });
+} catch (err) {
+  if (err instanceof Lock.Lost) {
+    // Started, but cannot be trusted to have finished exclusively.
+    return;
+  }
+  throw err;
+}
+```
+
+Both callback arguments are additive — an existing zero-argument callback is
+still valid, and nothing written before refreshing existed needs to change.
+
+> **The signal is a request, not a guarantee.** Work that ignores it keeps
+> running, outside the lock it thinks it holds. If a job can do damage after
+> losing exclusivity, it has to check `signal.aborted` between steps — nothing
+> can stop it from the outside.
+
+### Refreshing by hand
+
+A manual [`ManagedLock`](#lockmake-manual-handle) exposes the same thing directly,
+for flows that span steps rather than sitting inside one callback:
+
+```typescript
+const lock = Lock.make("import:batch", 60);
+if (await lock.acquire()) {
+  try {
+    for (const chunk of chunks) {
+      if (!(await lock.refresh())) throw new Error("lost the import lock");
+      await process(chunk);
+    }
+  } finally {
+    await lock.release();
+  }
+}
+```
+
+`refresh()` returns `false` when the lock is gone, and clears `isAcquired` so it
+stops claiming otherwise. `lock.expiresAt` is a **client-side estimate** from the
+last acquire or refresh — useful for deciding when to refresh next, not for
+deciding whether you still hold the lock. Only the driver knows that, and asking
+it is what `refresh()` does.
+
+> **Custom drivers.** `extend` is optional on the `LockDriver` contract, so a
+> driver written before this existed still compiles. Refreshing falls back to
+> `acquire(key, owner, ttl)`, which is an owner-guarded refresh on all three
+> built-in drivers.
 
 ## Common patterns
 

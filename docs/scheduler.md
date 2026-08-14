@@ -338,10 +338,24 @@ withoutOverlapping = { expiresAfterMinutes: 30 }; // cross-process (default)
 // withoutOverlapping = { crossProcess: false };        // in-process guard only
 ```
 
-The lock auto-expires after `expiresAfterMinutes` (default 24h — a safety net so a
-crashed worker can't deadlock the key). With no lock driver registered it degrades
-to the in-process guard. A skipped tick emits a `TaskSkipped` event with reason
-`"overlap"` (in-process) or `"lock"` (cross-process).
+With no lock driver registered it degrades to the in-process guard. A skipped tick
+emits a `TaskSkipped` event with reason `"overlap"` (in-process) or `"lock"`
+(cross-process).
+
+**`expiresAfterMinutes` is a recovery time, not a duration budget.** The lock is
+refreshed while the task runs — see
+[Long-running work](/docs/lock#long-running-work) — so it only has to outlive a
+missed heartbeat. It answers "how long after this host dies before another may
+take the task over", and defaults to 5 minutes.
+
+That is a change in meaning worth knowing if you set it before: it used to have to
+cover the longest the task might ever run, which is why it defaulted to 24 hours
+and why a crashed scheduler could block a task until the next afternoon. A
+long-running task no longer needs a long value here — set one only if you want a
+crash to take _longer_ to recover from.
+
+Pass `{ refresh: false }` for the old behaviour, where the task must finish inside
+`expiresAfterMinutes` or lose its lock.
 
 ## Capturing output
 

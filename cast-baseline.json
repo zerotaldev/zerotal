@@ -14,6 +14,9 @@
     "packages/admin/src/provider/AdminProvider.ts": 1,
     "packages/admin/src/support/ability.ts": 1,
     "packages/admin/src/testing.ts": 3,
+    "packages/ai/src/AiFake.ts": 1,
+    "packages/ai/src/monitor.ts": 1,
+    "packages/ai/src/observability.ts": 2,
     "packages/audit/src/Auditable.ts": 3,
     "packages/audit/src/AuditLog.ts": 1,
     "packages/audit/src/AuditObserver.ts": 2,
@@ -156,5 +159,5 @@
     "packages/validator/src/FormRequest.ts": 2,
     "packages/validator/src/validate.ts": 2
   },
-  "updatedAt": "2026-08-10T18:53:25.657Z"
+  "updatedAt": "2026-08-14T16:09:39.593Z"
 }

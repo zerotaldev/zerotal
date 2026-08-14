@@ -12,8 +12,8 @@ export interface FlowConfigShape {
    */
   cspSafe: boolean;
   /**
-   * Global middleware re-applied on every WebSocket update (Livewire-style
-   * persistent middleware). Entries are matched against the app's global
+   * Global middleware re-applied on every WebSocket update (persistent
+   * middleware). Entries are matched against the app's global
    * pipeline by class reference or by class name.
    *
    * Route middleware always re-runs and does not need to be listed here.

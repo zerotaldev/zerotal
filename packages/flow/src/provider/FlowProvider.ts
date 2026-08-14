@@ -97,7 +97,7 @@ export function _runtimeJs(): string | null {
   return _runtimeBundle;
 }
 
-// ── Rate limiter for HMAC failures (Livewire pattern) ─────────────────────────
+// ── Rate limiter for HMAC failures ───────────────────────────────────────────
 
 const _checksumFailures = new Map<string, { count: number; since: number }>();
 const CHECKSUM_MAX = 10;
@@ -260,7 +260,7 @@ async function _handleFlowMessage(ws: FlowBunWs, raw: string, deps: FlowWsDeps):
   // with no user at all, so every action on an authenticated page is rejected
   // as somebody else's.
 
-  // ── Persistent middleware (Livewire-style) ──────────────────────────────────
+  // ── Persistent middleware ───────────────────────────────────────────────────
   const pagePath = frame.snapshot.memo.path;
   const middleware = [
     ...deps.globalMiddleware().filter(_isPersistentMiddleware),
@@ -785,7 +785,7 @@ async function _dispatchFrame(
     ws.send(JSON.stringify({ type: "flash", component: canonicalId, ...f }));
   }
 
-  // Dispatch cross-component events (to/self targeting mirrors Livewire's dispatch()->to()/->self()).
+  // Dispatch cross-component events (to/self targeting).
   for (const event of effects.events) {
     ws.send(
       JSON.stringify({
@@ -922,8 +922,8 @@ export class FlowProvider extends ServiceProvider {
   }
 
   /**
-   * Global middleware re-applied on every WebSocket update (Livewire-style
-   * persistent middleware). Matched against the app's global pipeline by
+   * Global middleware re-applied on every WebSocket update. Matched against the
+   * app's global pipeline by
    * class reference or class name. Route middleware always re-runs and does
    * not need to be listed here.
    */

@@ -277,7 +277,7 @@ const _loadingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const LOADING_DELAY_MS = 200;
 
 // A `live` text input debounces its per-keystroke sync by default, so fast typing doesn't fire
-// a WebSocket $set on every character (matching Livewire's `wire:model.live` default). Discrete
+// a WebSocket $set on every character. Discrete
 // controls — checkbox, radio, select, range, date, colour — send immediately (a deliberate pick,
 // not a stream of keystrokes). The default binding (no `live`) is deferred and never affected.
 const MODEL_DEBOUNCE_MS = 150;
@@ -2394,7 +2394,7 @@ function _linkActive(href: string, path: string, exact = false): boolean {
 function _updateCurrentLinks(): void {
   const path = window.location.pathname;
 
-  // Auto data-current on every navigate link matching the URL (Livewire behavior).
+  // Auto data-current on every navigate link matching the URL.
   // Style with `class="data-current:font-bold"` or `[data-current] {}`. Opt out
   // per-link with `flow:current.ignore` (the <Link current={false}> prop), or force it
   // always-on with `flow:current.force` (the <Link current={true}> prop) so the link stays
@@ -3505,7 +3505,7 @@ function _isWritable(comp: FlowComponent, key: string): boolean {
  * Register $flow and $errors Alpine magic helpers.
  * Called from index.ts with the Alpine instance before Alpine.start().
  *
- * $flow mirrors Livewire's $wire API:
+ * The $flow client API:
  *
  *   $flow.method(args)         — call an @expose method
  *   $flow.prop                 — read a reactive property

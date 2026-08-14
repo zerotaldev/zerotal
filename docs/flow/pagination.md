@@ -217,7 +217,7 @@ export class PostsPage extends Component.using(Pagination) {
 }
 ```
 
-That is the whole component. `render()` is `async`, so the query runs there and re-runs on every round-trip — the same shape as Livewire's `#[Computed]` paginator, and with the same trade-off: one query per render. Hold the result in a `@locked` field and load it in `onMount()` instead when the query is expensive and you'd rather re-run it only on demand (`this.refresh()`).
+That is the whole component. `render()` is `async`, so the query runs there and re-runs on every round-trip, with the trade-off that implies: one query per render. Hold the result in a `@locked` field and load it in `onMount()` instead when the query is expensive and you'd rather re-run it only on demand (`this.refresh()`).
 
 Outside a component, `paginate()` reads `?page=` from the query string — what a controller wants. The mixin points it at the component's own page instead, which is what makes it work over WebSocket, where there is no URL to read.
 

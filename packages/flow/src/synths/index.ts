@@ -5,7 +5,7 @@
 //   - convert it to a JSON-safe primitive + metadata object
 //   - reconstruct the original value from that primitive + metadata
 //
-// Pattern lifted directly from Livewire v3's synthesizer system.
+// The synthesizer pattern: one registered handler per non-JSON type.
 
 /**
  * A synthesizer ("synth") teaches flow how to send a non-JSON type across the
@@ -19,7 +19,7 @@
  * match's {@link dehydrate} produces the stored data and its {@link key} is
  * written to `meta.s`. On the way back, {@link key} selects the synth whose
  * {@link hydrate} reconstructs the value. `hydrate` may be async (e.g. a model
- * synth re-fetches by id). The pattern is lifted from Livewire v3's synthesizers.
+ * synth re-fetches by id).
  *
  * @typeParam T - The live value type this synth handles.
  */

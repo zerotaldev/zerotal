@@ -265,6 +265,37 @@ import { ErrorMessage } from "@zerotal/flow";
 <ErrorMessage for={this.errors.email} class="text-sm text-red-500" />
 ```
 
+### ErrorBoundary
+
+Contains a failure in a nested component so it costs that component rather than the page. Without
+one, a child that throws while mounting or rendering takes the whole response with it — one broken
+widget blanks the dashboard.
+
+```tsx
+import { ErrorBoundary } from "@zerotal/flow";
+
+<ErrorBoundary fallback={<p class="text-sm text-red-600">Sales data unavailable.</p>}>
+  <SalesReport />
+</ErrorBoundary>;
+```
+
+`fallback` may be a function, which receives the thrown error. `onError` reports it (for logging or
+an error tracker) without changing what renders:
+
+```tsx
+<ErrorBoundary fallback={(e) => <p>{(e as Error).message}</p>} onError={(e) => Log.error(e)}>
+  <RiskyWidget />
+</ErrorBoundary>
+```
+
+Boundaries nest, and the innermost one wins. Siblings are independent: one failing widget does not
+affect the other.
+
+> **What it covers is child components.** Inline JSX in the same `render()` is evaluated before the
+> boundary is called, so a throw there cannot be intercepted — move the risky work into a child
+> component. Containment is also opt-in: a child _outside_ any boundary still fails the page, so
+> real bugs surface instead of rendering as blank space forever.
+
 ## Data display
 
 ### Table

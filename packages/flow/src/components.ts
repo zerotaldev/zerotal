@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Native Flow components — the built-in library of PascalCase function
  * components used inside a `Component`'s `render()`. Each one compiles to
  * ordinary HTML elements plus Flow/Alpine directives, so you use them like
@@ -11,7 +11,14 @@
  * ```
  */
 
-import { jsx, _resolveReactiveName, _resolveBindName, _injectedBindKey } from "./jsx-runtime.ts";
+import {
+  jsx,
+  _resolveReactiveName,
+  _resolveBindName,
+  _injectedBindKey,
+  _renderChild,
+  _protectThunks,
+} from "./jsx-runtime.ts";
 import type { HtmlNode } from "./jsx-runtime.ts";
 import { jsLiteral } from "./utils.ts";
 
@@ -936,8 +943,7 @@ export interface PagerProps {
  * @remarks
  * Pass `params` to preserve other query state (search term, per-page, …). `hover`
  * prefetches each page; `prevLabel`/`nextLabel` and the class props override the
- * defaults. This is the links UI — the Flow equivalent of Livewire's
- * `$paginator->links()` view.
+ * defaults. This is the links UI for a paginator.
  *
  * @example
  * ```tsx
@@ -1471,4 +1477,75 @@ export function Drawer(props: DrawerProps): HtmlNode {
   // `contents` wrapper creates no box, so the fixed backdrop/panel aren't blocked
   // and nothing intercepts clicks when closed (both are display:none via x-show).
   return jsx("div", { ...rest, class: "contents", children: [backdrop, jsx("div", panelOut)] });
+}
+
+// ── <ErrorBoundary> ───────────────────────────────────────────────────────────
+/** Props for {@link ErrorBoundary}: the protected `children` and what to show instead on failure. */
+export interface ErrorBoundaryProps {
+  /** Markup to render when a child fails. A function receives the thrown error. */
+  fallback?: HtmlNode | ((error: unknown) => HtmlNode);
+  /** Called server-side when a child fails, for logging or reporting. */
+  onError?: (error: unknown) => void;
+  /** Wrapper element. Defaults to `"div"`. */
+  tag?: string;
+  class?: string;
+  children?: unknown;
+  [key: string]: unknown;
+}
+
+/**
+ * Contains a failure in a nested `<Component />` so it costs that component
+ * rather than the page.
+ *
+ * @remarks
+ * Without a boundary, a child component that throws while mounting or rendering
+ * takes the whole response with it — one broken widget blanks the dashboard.
+ * Wrapped, the child is replaced by `fallback` and everything around it renders.
+ *
+ * What it covers is child *components*. Inline JSX in the same `render()` is evaluated before
+ * this component is ever called, so a throw there cannot be intercepted here —
+ * move the risky work into a child component, which is where it belongs anyway.
+ * Boundaries nest, and the innermost one wins.
+ *
+ * The failure is reported through `onError` and logged; it is contained, not
+ * hidden.
+ *
+ * @example
+ * ```tsx
+ * <ErrorBoundary fallback={<p class="text-sm text-red-600">Sales data unavailable.</p>}>
+ *   <SalesReport />
+ * </ErrorBoundary>
+ * ```
+ *
+ * @category Feedback
+ */
+export function ErrorBoundary(props: ErrorBoundaryProps): HtmlNode {
+  const { fallback, onError, tag, class: cls, children, ...rest } = props;
+
+  // Children are already rendered, and their child-component thunks already
+  // queued but not yet run, so the tokens sitting in this string are exactly the
+  // pending children this boundary is responsible for.
+  const inner = _renderChild(children);
+
+  _protectThunks(inner, (error) => {
+    try {
+      onError?.(error);
+    } catch {
+      // A reporting hook that throws must not replace the original failure with
+      // a less useful one.
+    }
+    console.error("[Flow] A component inside <ErrorBoundary> failed to render:", error);
+
+    if (typeof fallback === "function") return fallback(error).html;
+    if (fallback) return fallback.html;
+    return (
+      '<div data-flow-boundary-error role="alert" class="rounded border border-red-300 ' +
+      'bg-red-50 p-3 text-sm text-red-700">Something went wrong loading this section.</div>'
+    );
+  });
+
+  const out: Record<string, unknown> = { ...rest, children: { html: inner } };
+  out["data-flow-boundary"] = true;
+  if (cls) out["class"] = cls;
+  return jsx(tag ?? "div", out);
 }

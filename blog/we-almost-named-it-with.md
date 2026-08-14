@@ -56,7 +56,7 @@ firstOrFail  latest  oldest  orderBy  paginate  query  where  whereIn
 updateOrCreate  upsert  …
 ```
 
-That is the query builder, forwarded onto the model — and `with` is the one conspicuous hole in it. If you have written Laravel, you already know why that hole matters: `User::with('posts')` is one of the most-used statics in that entire framework. Zerotal's query builder has `.with()` for eager loading today; the static shorthand on the model is the obvious future addition, and the forwarder family is already built right up to its edge.
+That is the query builder, forwarded onto the model — and `with` is the one conspicuous hole in it. Anyone arriving from a PHP ORM already knows why that hole matters: `User::with('posts')` is one of the most-used statics there is. Zerotal's query builder has `.with()` for eager loading today; the static shorthand on the model is the obvious future addition, and the forwarder family is already built right up to its edge.
 
 Spending `with` on mixin composition would have cost two things, permanently:
 
@@ -65,7 +65,7 @@ Spending `with` on mixin composition would have cost two things, permanently:
 
 A method name on a base class is not just a label — it is a budget line. Once spent, the word is gone from every future API discussion, and the good words are scarce.
 
-`using` costs nothing. It collides with no shipped member (we checked, mechanically). It survives TypeScript's own `using` declarations — `using` became a contextual keyword in TS 5.2 for resource management, and _contextual_ is the operative word: as a member name it parses and infers normally, which we verified before committing rather than discovering later. And for the audience this framework courts, it maps onto a mental model they already own: PHP's `use SoftDeletes;` inside a Laravel model is precisely the operation being performed.
+`using` costs nothing. It collides with no shipped member (we checked, mechanically). It survives TypeScript's own `using` declarations — `using` became a contextual keyword in TS 5.2 for resource management, and _contextual_ is the operative word: as a member name it parses and infers normally, which we verified before committing rather than discovering later. And for the audience this framework courts, it maps onto a mental model they already own: PHP's `use SoftDeletes;` inside a model class is precisely the operation being performed.
 
 ```ts
 class User extends Model.using(SoftDeletes, Roles) {}

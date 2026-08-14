@@ -25,7 +25,7 @@ export interface PathGenerator {
  * media/<uuid>/responsive/640.webp
  * ```
  *
- * Keyed on `uuid` rather than the numeric `id` that Laravel's media library
+ * Keyed on `uuid` rather than the numeric `id` a media library normally
  * uses. These paths end up in public URLs, and a sequential id in a public URL
  * discloses how many rows the table has — plus it lets anyone walk the range.
  * The uuid costs nothing and leaks nothing.

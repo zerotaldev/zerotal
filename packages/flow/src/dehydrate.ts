@@ -73,7 +73,7 @@ function currentSubject(): string | undefined {
 
 // ── Signing payload ───────────────────────────────────────────────────────────
 // children and listeners are excluded from signing:
-//   - children: Livewire pattern — ids are derived server-side, never trusted from client
+//   - children: ids are derived server-side, never trusted from the client
 //   - listeners: server-derived from class decorators, cannot meaningfully be tampered
 //     with (@on methods are still validated against @expose allowlist on every call)
 
@@ -155,7 +155,7 @@ export function dehydrate(
       : undefined;
 
   // Children collected during the render that preceded this dehydrate call.
-  // Excluded from HMAC (Livewire pattern).
+  // Excluded from HMAC — see the signing-payload note above.
   const snapshotMemo: Snapshot["memo"] = {
     ...memo,
     children: [...page._childIds],

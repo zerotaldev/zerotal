@@ -1,7 +1,7 @@
 /**
  * Two names that read as the obvious ones but did not exist.
  *
- * `Schema.alter` is what Laravel and Knex call this, and `table.datetime` matches the
+ * `Schema.alter` is what most schema builders call this, and `table.datetime` matches the
  * lowercase column *type* string (`type: "datetime"`) while the builder method is
  * camelCase. Neither was a type error — the blueprint callback is loosely typed — so both
  * failed as a `TypeError` at run time, *after* any earlier statements in the same

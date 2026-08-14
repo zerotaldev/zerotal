@@ -205,6 +205,8 @@ function Drawer = (props: DrawerProps) => HtmlNode
 
 function Dropdown = (props: DropdownProps) => HtmlNode
 
+function ErrorBoundary = (props: ErrorBoundaryProps) => HtmlNode
+
 function ErrorMessage = (props: ErrorProps) => HtmlNode
 
 function Errors = (props?: ErrorsProps) => HtmlNode
@@ -462,6 +464,15 @@ interface DurableStore = {
   delete: (key: string) => Promise<void> | void
   get: (key: string) => Promise<Snapshot | undefined> | Snapshot | undefined
   set: (key: string, value: Snapshot, ttlMs?: number) => Promise<void> | void
+}
+
+interface ErrorBoundaryProps = {
+  [key: string]: unknown
+  children?: unknown
+  class?: string
+  fallback?: HtmlNode | ((error: unknown) => HtmlNode)
+  onError?: (error: unknown) => void
+  tag?: string
 }
 
 interface ErrorFrame = {

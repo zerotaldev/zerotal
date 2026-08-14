@@ -564,7 +564,7 @@ export abstract class Component {
    * HTTP render and every subsequent WebSocket round-trip — after state is restored
    * (round-trips) or `@url`/`@session` seeded (initial), but before `onMount()` /
    * `onHydrate()`, property updates, and the action. Use for setup that must run on
-   * every request. (Livewire `boot()`.) Receives the route {@link HttpContext} — note that on
+   * every request. Receives the route {@link HttpContext} — note that on
    * WebSocket round-trips the URL is the stored route pattern, so raw `ctx.params` are
    * only populated on the initial GET; prefer `onMount()` for reading bound models.
    *
@@ -576,7 +576,7 @@ export abstract class Component {
    * Called at the beginning of every SUBSEQUENT (WebSocket) request, right after the
    * component is rebuilt from its snapshot — never on the initial render (use
    * `onMount()` for that). Ideal for re-deriving non-persisted/protected state from
-   * restored properties. (Livewire `hydrate()`.)
+   * restored properties.
    *
    * @category Lifecycle
    */
@@ -585,7 +585,6 @@ export abstract class Component {
   /**
    * Called at the END of every request, just before the component is serialised into
    * its snapshot. Use to normalise state back into a serialisable shape.
-   * (Livewire `dehydrate()`.)
    *
    * @category Lifecycle
    */
@@ -595,7 +594,7 @@ export abstract class Component {
    * Called BEFORE a client-driven property update is applied (a `value`/`checked`
    * input or `$flow.$set`). Throw to reject the update. Only fires for writable
    * (`@expose`) properties. For a single property, define `onUpdating<Prop>(value, key?)`
-   * — e.g. `onUpdatingEmail()`. (Livewire `updating()`.)
+   * — e.g. `onUpdatingEmail()`.
    *
    * @param prop  the property about to change
    * @param value the incoming value
@@ -608,7 +607,7 @@ export abstract class Component {
   /**
    * Called AFTER a client-driven property update is applied. For a single property,
    * define `onUpdated<Prop>(value, key?)` — e.g. `onUpdatedUsername()` to normalise a
-   * value such as lower-casing. (Livewire `updated()`.)
+   * value such as lower-casing.
    *
    * @category Lifecycle
    */
@@ -616,14 +615,14 @@ export abstract class Component {
   async onUpdated(_prop: string, _value: unknown, _key?: string): Promise<void> {}
 
   /**
-   * Called BEFORE `render()` runs. (Livewire `rendering()`.)
+   * Called BEFORE `render()` runs.
    *
    * @category Lifecycle
    */
   async onRendering(): Promise<void> {}
 
   /**
-   * Called AFTER `render()` produces this component's HTML. (Livewire `rendered()`.)
+   * Called AFTER `render()` produces this component's HTML.
    * @param html the rendered HTML for this component
    * @category Lifecycle
    */
@@ -633,7 +632,7 @@ export abstract class Component {
   /**
    * Called when an action throws an unhandled error. Flow catches the error and
    * still re-renders; override to customise (log, swallow, re-flash). The default
-   * flashes the message. (Livewire `exception()`.)
+   * flashes the message.
    *
    * @param error  the error thrown by the action.
    * @category Errors
@@ -857,7 +856,7 @@ export abstract class Component {
   }
 
   /**
-   * Redirect to a named route, mirroring Livewire's `redirectRoute('profile', ['id' => 1])`.
+   * Redirect to a named route.
    * Route params fill `:segment` placeholders; any extra keys become query-string params.
    *
    * @example
@@ -879,10 +878,10 @@ export abstract class Component {
   }
 
   /**
-   * Redirect the user back to where they were headed before being intercepted — Livewire's
-   * `redirectIntended('/default/url')`. Reads (and clears) the `intended_url` stored in the
-   * session by `AuthMiddleware`, falling back to `fallback` when none is stored or the stored
-   * URL is cross-origin (open-redirect guard).
+   * Redirect the user back to where they were headed before being intercepted. Reads
+   * (and clears) the `intended_url` stored in the session by `AuthMiddleware`, falling
+   * back to `fallback` when none is stored or the stored URL is cross-origin
+   * (open-redirect guard).
    *
    * @example
    * if (await Auth.attempt(creds)) return this.redirectIntended("/dashboard");
@@ -1044,8 +1043,8 @@ export abstract class Component {
   }
 
   /**
-   * @internal Real-time validation of a SINGLE field against its `@validate` rule (Livewire's
-   * live validation). Sets or clears `this._errors[field]` without throwing, so it can run on
+   * @internal Real-time validation of a SINGLE field against its `@validate` rule.
+   * Sets or clears `this._errors[field]` without throwing, so it can run on
    * every client update. No-op for fields without a `@validate` rule.
    */
   async _validateField(field: string): Promise<void> {
@@ -1118,7 +1117,7 @@ export abstract class Component {
 
   /**
    * Dispatch an event ONLY to components of a given class name (skips all others
-   * listening for the same event). Mirrors Livewire's `dispatch()->to(...)`.
+   * listening for the same event).
    *
    * @example
    * this.dispatchTo('Dashboard', 'post-created', { id: post.id });
@@ -1137,7 +1136,6 @@ export abstract class Component {
 
   /**
    * Dispatch an event only to THIS component (it won't bubble to others).
-   * Mirrors Livewire's `dispatch()->self()`.
    *
    * @example
    * this.dispatchSelf('refresh');
@@ -1374,7 +1372,7 @@ export abstract class Component {
 
     // Parent re-render over WS: children that already exist client-side are
     // emitted as stubs — the client morph skips nested roots, so the child's live
-    // DOM and state are preserved (Livewire pattern). The stub still carries
+    // DOM and state are preserved. The stub still carries
     // data-flow-props so reactive/modelable updates reach the existing child.
     if (this._isHydrated && this._prevChildIds.includes(childId)) {
       return {
@@ -1529,7 +1527,7 @@ export abstract class Component {
     this.$set(key, value);
     await this._emitUpdateHook("onUpdated", key, value, arrayKey);
 
-    // Real-time validation (Livewire-style): if this field carries a `@validate` rule, validate
+    // Real-time validation: if this field carries a `@validate` rule, validate
     // just it now and set/clear its error. The changed value reaches here from `flow:model.live` /
     // `.blur` syncs (and dirty-field batches), so errors appear/clear as the user edits — the
     // refreshed `_errors` bag is sent to the client in this round-trip's patch. Never throws.

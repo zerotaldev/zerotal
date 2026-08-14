@@ -3,8 +3,7 @@
 > Attach files to models — collections, image conversions, responsive images, and ordering.
 
 Associate uploads with any model, store them on any disk, and generate derived
-images without installing a native module. Zerotal's answer to
-`spatie/laravel-medialibrary`.
+images without installing a native module.
 
 Part of the [Zerotal](../../README.md) framework. Requires **Bun ≥ 1.3.14**.
 

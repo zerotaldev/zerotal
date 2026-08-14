@@ -72,7 +72,6 @@
     "reactive",
     "ssr",
     "websocket",
-    "livewire",
     "server-driven"
   ],
   "repository": {

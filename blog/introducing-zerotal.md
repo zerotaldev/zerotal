@@ -96,9 +96,9 @@ Now, count what’s missing: No `PostModule` or `container.register(Post)`. No D
 
 It just works. `Post.create()` automatically refuses attributes not listed in `fillable`, preventing mass-assignment vulnerabilities. `paginate()` returns rich metadata and URL helpers, not just raw data. `redirect()` knows about your session's flash bag. This isn’t wiring you did; it’s intelligence built into the framework.
 
-## The Power of Laravel, Reimagined in TypeScript
+## A Decade of Full-Stack Conventions, Reimagined in TypeScript
 
-If you've ever shipped a project with Laravel or Django, the mental model transfers almost one-to-one: service providers, Active Record models, form requests, queues, and policies. These conventions made teams productive for a decade, and they were never the problem.
+If you've ever shipped a project on a batteries-included framework in PHP or Python, the mental model transfers almost one-to-one: service providers, Active Record models, form requests, queues, and policies. These conventions made teams productive for a decade, and they were never the problem.
 
 The problem, for a team whose front end is React or Vue, was the context switch. You’d write validation rules twice. You’d describe the same model shape twice. You’d name the routes twice, in two different languages, and pray the two halves stayed in sync.
 

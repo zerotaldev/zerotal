@@ -415,7 +415,7 @@ function _memoizeGetter(orig: () => unknown, name: string): () => unknown {
  * @remarks
  * A computed getter is not serialized and is not client-writable; it renders as static
  * server-produced text. The result is memoized for the duration of a single render pass
- * (Livewire-style per-request caching): an expensive getter read several times in one template
+ * — an expensive getter read several times in one template
  * runs once. The cache is scoped to the active render (see `_renderFlowPage`), so reads
  * outside rendering always recompute and never go stale. Apply only to a getter — a field-style
  * decorator on it is rejected; conversely `@computed` on a non-getter is a TypeScript error.
@@ -671,7 +671,7 @@ export function resolveSharedChannel(channel: SharedChannel, instance: object): 
 // A child-component prop the PARENT can push new values into on every re-render.
 // Included in the snapshot and client-writable (so the framework can deliver
 // parent updates), and re-emitted by the parent so the child re-renders when the
-// bound value changes. Mirrors Livewire's #[Reactive].
+// bound value changes.
 
 /**
  * Marks a child-component prop as reactive — the parent re-pushes new values into it on every
@@ -680,8 +680,8 @@ export function resolveSharedChannel(channel: SharedChannel, instance: object): 
  * @remarks
  * The prop is included in the snapshot and is client-writable (so the framework can deliver the
  * parent's updates), and the parent re-emits it so the child re-renders when the bound value
- * changes. This is a one-way parent→child binding; use `@modelable` for two-way. Mirrors
- * Livewire's `#[Reactive]`. Applies to a field only.
+ * changes. This is a one-way parent→child binding; use `@modelable` for two-way.
+ * Applies to a field only.
  *
  * @example
  * ```tsx
@@ -700,8 +700,8 @@ export const reactive = _fieldDecorator((proto, name) => {
 
 // ── @modelable ────────────────────────────────────────────────────────────────
 // A reactive prop that ALSO syncs back to the parent: `value={this.x}` on a child
-// component binds the parent's `x` to the child's modelable prop both ways. Mirrors
-// Livewire's #[Modelable]. A modelable prop is implicitly reactive.
+// component binds the parent's `x` to the child's modelable prop both ways.
+// A modelable prop is implicitly reactive.
 
 /**
  * Marks a child-component prop as two-way bound to the parent (parent↔child).
@@ -709,8 +709,8 @@ export const reactive = _fieldDecorator((proto, name) => {
  * @remarks
  * A modelable prop is reactive (the parent pushes new values in on re-render) AND syncs back:
  * `value={this.x}` on a child component binds the parent's `x` to the child's modelable prop in
- * both directions. A modelable prop is implicitly reactive (it registers as both). Mirrors
- * Livewire's `#[Modelable]`. Applies to a field only.
+ * both directions. A modelable prop is implicitly reactive (it registers as both).
+ * Applies to a field only.
  *
  * @example
  * ```tsx

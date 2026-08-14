@@ -269,9 +269,25 @@ function escapeAttr(s: string): string {
 // (e.g. two simultaneous GET requests each awaiting DB calls) cannot
 // cross-contaminate their page reference or child-thunk lists.
 
+/**
+ * How a failed child render is rendered instead of propagating.
+ *
+ * Installed by `<ErrorBoundary>` onto the thunks whose tokens appear in its
+ * children — see `_protectThunks`.
+ */
+export interface _ThunkBoundary {
+  fallback: (error: unknown) => string;
+}
+
+interface _Thunk {
+  token: string;
+  run: () => Promise<HtmlNode>;
+  boundary?: _ThunkBoundary;
+}
+
 interface _RenderCtx {
   page: Record<string, unknown>;
-  thunks: Array<{ token: string; run: () => Promise<HtmlNode> }>;
+  thunks: _Thunk[];
   seq: number;
   /**
    * Per-render random suffix on the child-placeholder token.
@@ -441,9 +457,17 @@ export async function _renderFlowPage(
       try {
         const node = await render();
         let html = node.html;
-        for (const { token, run } of ctx.thunks) {
-          const childNode = await run();
-          html = html.split(token).join(childNode.html);
+        for (const { token, run, boundary } of ctx.thunks) {
+          let childHtml: string;
+          try {
+            childHtml = (await run()).html;
+          } catch (error) {
+            // Unprotected children still take the page down — a boundary is the
+            // opt-in, and swallowing errors by default would hide real bugs.
+            if (!boundary) throw error;
+            childHtml = boundary.fallback(error);
+          }
+          html = html.split(token).join(childHtml);
         }
         return html;
       } finally {
@@ -760,6 +784,42 @@ function toFlowHtmlAttr(k: string): string {
   if (!k.startsWith("flow:")) return k;
   const local = k.slice("flow:".length);
   return "flow:" + local.replace(/-/g, ".");
+}
+
+/**
+ * Render a JSX child to its HTML string, escaping anything that is not already
+ * an {@link HtmlNode}.
+ *
+ * @internal Exported for built-in components that need their children as markup
+ * before the wrapper element is built — `<ErrorBoundary>` inspects the result
+ * for child tokens, `<SectionContent>` publishes it elsewhere entirely.
+ */
+export function _renderChild(child: unknown): string {
+  return renderChild(child);
+}
+
+/**
+ * Route failures of the child components in `html` through `fallback`.
+ *
+ * `jsx()` has already queued a thunk for every `<Component />` encountered while
+ * building `html`, but none of them have run yet — they resolve after the parent
+ * render finishes. Matching on the tokens embedded in `html` is therefore enough
+ * to say which pending children sit inside this boundary, without the boundary
+ * needing to be told about them.
+ *
+ * A thunk already claimed by an inner boundary keeps it, so the nearest boundary
+ * wins.
+ *
+ * @internal
+ */
+export function _protectThunks(html: string, fallback: (error: unknown) => string): void {
+  const ctx = _getRenderCtx();
+  if (!ctx) return;
+  for (const thunk of ctx.thunks) {
+    if (thunk.boundary === undefined && html.includes(thunk.token)) {
+      thunk.boundary = { fallback };
+    }
+  }
 }
 
 function renderChild(child: unknown): string {

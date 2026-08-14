@@ -128,8 +128,7 @@ export function paginate<T>(items: T[], page = 1, perPage = 15): Paginator<T> {
 
 // ── Pagination mixin ──────────────────────────────────────────────────────────
 //
-// The TypeScript equivalent of Livewire's `WithPagination` trait: compose it onto a
-// component to add a URL-synced `page` plus page-navigation methods (`nextPage`,
+// A mixin: compose it onto a component to add a URL-synced `page` plus page-navigation methods (`nextPage`,
 // `previousPage`, `gotoPage`, `resetPage`), WITHOUT putting any of that on
 // the base Component.
 //
@@ -147,12 +146,12 @@ export function paginate<T>(items: T[], page = 1, perPage = 15): Paginator<T> {
 // applied here register on the mixin's prototype, which the component's prototype-chain
 // walk already traverses — so it "just works".
 //
-// Named paginators (Livewire's `pageName`): every nav method accepts an optional page
+// Named paginators: every nav method accepts an optional page
 // name so a single page can drive more than one independent paginator —
 // `this.nextPage("invoices")`, `Invoice.paginate(10, undefined, "invoices")`. The default
 // paginator ("page") is the URL-synced one; named paginators live in the snapshot.
 //
-// Optional update hooks fire around a page change, mirroring Livewire — define any of
+// Optional update hooks fire around a page change — define any of
 // `updatingPage(page, name)` / `updatedPage(page, name)` (default paginator) or the
 // generic `updatingPaginators(page, name)` / `updatedPaginators(page, name)`.
 
@@ -174,8 +173,7 @@ interface PaginationHooks {
 const DEFAULT_PAGE = "page";
 
 /**
- * Component mixin that adds URL-synced pagination state and navigation actions —
- * flow's equivalent of Livewire's `WithPagination` trait.
+ * Component mixin that adds URL-synced pagination state and navigation actions.
  *
  * @remarks
  * Composing this onto a component adds:
@@ -221,7 +219,7 @@ export function Pagination<TBase extends AbstractComponentCtor>(Base: TBase) {
     /** Current page of the default paginator, synced to the `?page=` query string. */
     @expose @url page = 1;
 
-    /** Current page of each NAMED paginator (Livewire `pageName`), keyed by name. Snapshot-only. */
+    /** Current page of each NAMED paginator, keyed by name. Snapshot-only. */
     @expose paginators: Record<string, number> = {};
 
     /**

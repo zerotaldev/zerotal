@@ -105,6 +105,7 @@ export {
   Alert,
   Table,
   Drawer,
+  ErrorBoundary,
 } from "./components.ts";
 export type {
   LinkProps,
@@ -126,6 +127,7 @@ export type {
   TableProps,
   TableColumn,
   DrawerProps,
+  ErrorBoundaryProps,
 } from "./components.ts";
 
 // Headless (unstyled, accessible) primitives — data-* state, Tailwind-friendly.

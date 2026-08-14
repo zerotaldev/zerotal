@@ -1,6 +1,6 @@
 // ── FileUploads mixin ─────────────────────────────────────────────────────────
 //
-// The TypeScript equivalent of Livewire's `WithFileUploads` trait. File uploads work
+// A mixin that adds server-side upload management. File uploads work
 // like any other input: a `<FileUpload>` / file `<input flow:model>` POSTs the bytes to
 // `/__flow/upload` (over HTTP), shows live progress, then `$set`s a signed reference
 // that the base Component resolves into a `TemporaryUploadedFile` (signature verified).
@@ -29,8 +29,7 @@ import { expose } from "../decorators.ts";
 type AbstractComponentCtor = abstract new (...args: any[]) => Component;
 
 /**
- * Component mixin that adds server-side file-upload management — flow's
- * equivalent of Livewire's `WithFileUploads` trait.
+ * Component mixin that adds server-side file-upload management.
  *
  * @remarks
  * Uploading itself needs no mixin: a `<FileUpload>` / file `<input flow:model>`
@@ -72,7 +71,7 @@ type AbstractComponentCtor = abstract new (...args: any[]) => Component;
 export function FileUploads<TBase extends AbstractComponentCtor>(Base: TBase) {
   abstract class WithUploads extends Base {
     /**
-     * Remove a pending upload (Livewire's `removeUpload`). For a single-file property it
+     * Remove a pending upload. For a single-file property it
      * clears it (null); for a multiple-file array it removes the item at `index`, or all
      * when `index` is omitted.
      *

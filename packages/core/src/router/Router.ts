@@ -1101,7 +1101,7 @@ export class Router {
    *
    * Lets framework packages re-run a route's middleware outside the normal
    * HTTP pipeline — e.g. @zerotal/flow re-applies the original page route's
-   * middleware on every WebSocket update (Livewire-style persistent middleware).
+   * middleware on every WebSocket update (persistent middleware).
    *
    * @example
    * const middleware = Router.middlewareFor('GET', '/dashboard');

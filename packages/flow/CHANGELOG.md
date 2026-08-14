@@ -13,6 +13,29 @@ change.
 
 ### Added
 
+- **`<ErrorBoundary>` — a failing child costs that child, not the page.** A nested
+  component that threw while mounting or rendering took the whole response with it: one
+  broken widget blanked the dashboard, and the only defence was to make every child
+  defensive from the inside. Wrapped, the child is replaced and everything around it
+  renders:
+
+  ```tsx
+  <ErrorBoundary fallback={<p class="text-sm text-red-600">Sales data unavailable.</p>}>
+    <SalesReport />
+  </ErrorBoundary>
+  ```
+
+  `fallback` may be a function, which receives the thrown error; `onError` reports it to a
+  log or a tracker without changing what renders. Boundaries nest and the innermost one
+  wins, and siblings are independent — one failing widget does not affect the other.
+
+  What it covers is child _components_.
+  Inline JSX in the same `render()` is evaluated before the boundary is ever called, so a
+  throw there cannot be intercepted here — move the risky work into a child component,
+  which is where it belongs anyway. Containment is opt-in for the same reason: a child
+  outside every boundary still fails the page, so a real bug surfaces instead of rendering
+  as blank space forever.
+
 - **`@zerotal/flow/browser` — drive a real browser against a running app.** The suite
   had 568 tests and could not fail the way production fails: `FlowTest` calls actions
   directly, so it never renders an attribute the client must find, never dispatches a
@@ -270,7 +293,7 @@ _First public release._
 ### Changed
 
 - **Loading indicators wait out a short delay by default (no flash on fast actions).** `showOnLoading`, `hideOnLoading`, `loadingClass`, and `<Loading>` now reveal only after ~200ms in flight, so an action that finishes inside that window shows nothing — no spinner flash. `loadingAttr` (e.g. `loadingAttr="disabled"`) stays **immediate**, so a submit button still guards against a double-click even on a sub-100ms action. Previously only the opt-in `<Loading delay>` / `flow:loading.delay` was delayed; `delay` is now the default and kept for back-compat. Cleared instantly on resolve, so a just-over-threshold action barely blips.
-- **`live` text inputs debounce their server sync (~150ms) by default.** A `live` text/textarea input no longer fires a WebSocket `$set` on every keystroke — it debounces ~150ms (matching Livewire's `wire:model.live`), so real-time validation and reactive server state update when you pause, not per character. Discrete controls (checkbox, radio, `<select>`, range) still sync immediately. The DOM and client-reactive bindings update on every keystroke regardless; only the server round-trip waits, and no value is ever lost (local state is current and any action flushes the full snapshot).
+- **`live` text inputs debounce their server sync (~150ms) by default.** A `live` text/textarea input no longer fires a WebSocket `$set` on every keystroke — it debounces ~150ms, so real-time validation and reactive server state update when you pause, not per character. Discrete controls (checkbox, radio, `<select>`, range) still sync immediately. The DOM and client-reactive bindings update on every keystroke regardless; only the server round-trip waits, and no value is ever lost (local state is current and any action flushes the full snapshot).
 - **WebSocket actions serialize per component.** At most one action per component is in flight; the next waits for the previous patch to apply. Required by delta transport (deltas are order-dependent — a pipelined patch computed against a stale base would corrupt the client snapshot and trip the invalid-request rate limit). Offline replay runs through the same serial queue; a 15s ack timeout prevents wedging.
 
 ### Fixed

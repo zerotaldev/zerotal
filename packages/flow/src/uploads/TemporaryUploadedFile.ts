@@ -82,7 +82,7 @@ async function disk(name?: string): Promise<Disk> {
 }
 
 /**
- * A Livewire-style temporary uploaded file — the server-side handle a component
+ * A temporary uploaded file — the server-side handle a component
  * receives for a pending upload before it's promoted to permanent storage.
  *
  * @remarks

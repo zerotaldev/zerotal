@@ -104,7 +104,7 @@ export const Schema = {
   /**
    * Alias of {@link Schema.table}, for modifying an existing table.
    *
-   * `alter` is the name Laravel and Knex use, so it is the first thing reached for — and
+   * `alter` is the name most schema builders use, so it is the first thing reached for — and
    * because the blueprint callback is loosely typed, `Schema.alter(...)` was not a type
    * error, only a `TypeError` at run time. A migration that fails there has already run
    * whatever statements preceded it, leaving the schema half-changed, which is a worse

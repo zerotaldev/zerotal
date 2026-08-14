@@ -1,6 +1,6 @@
 // ── Client-side component state model ────────────────────────────────────────
 //
-// Mirrors Livewire v3's three-copy state model:
+// A three-copy state model:
 //   canonical  — last confirmed server state (used for diffing)
 //   ephemeral  — current local state (may have unsent mutations from flow:model)
 //   reactive   — Alpine.reactive(ephemeral) — what DOM expressions read

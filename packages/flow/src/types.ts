@@ -18,7 +18,7 @@ export type SnapshotData = Record<string, SnapshotTuple>;
 
 /**
  * Metadata for a child Component component embedded inside a parent's render output.
- * Stored in memo.children (excluded from HMAC signing — same as Livewire).
+ * Stored in memo.children (excluded from HMAC signing).
  * @category Snapshot
  */
 export interface ChildMemo {

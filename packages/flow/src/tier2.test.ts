@@ -154,7 +154,7 @@ describe("Pagination mixin", () => {
     expect(p.pageFor()).toBe(4);
   });
 
-  it("tracks named paginators independently of the default (Livewire pageName)", () => {
+  it("tracks named paginators independently of the default", () => {
     const p = new PaginatedPage();
     p.nextPage(); // default → 2
     p.nextPage("invoices"); // invoices → 2

@@ -31,7 +31,7 @@ import {
  *
  * Middleware attached here (or via an enclosing Router.group()) runs on the
  * initial page load AND is re-applied on every WebSocket update for this page
- * (Livewire-style persistent middleware).
+ * (persistent middleware).
  *
  * @example
  * import { Router } from '@zerotal/core';

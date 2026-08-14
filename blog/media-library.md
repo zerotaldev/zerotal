@@ -123,7 +123,7 @@ disk.assertExistsMatching(/^media\/[0-9a-f-]+\/original\.png$/);
 
 ## The lineage, acknowledged
 
-If you are arriving from Laravel and thinking "this is `spatie/laravel-medialibrary`" — yes. That package spent a decade proving what the right API for model media looks like, and `@zerotal/media` follows its shape deliberately: collections declared on the model, a fluent adder, conversions, responsive images, fallbacks. What Zerotal adds is the ground it stands on: a boot-provisioned schema instead of published migrations, byte-sniffed acceptance by default, and an image pipeline that needs no native extension to start.
+If the shape looks familiar, it should. It is the one a decade of model-media libraries converged on, and `@zerotal/media` follows it deliberately: collections declared on the model, a fluent adder, conversions, responsive images, fallbacks. What Zerotal adds is the ground it stands on: a boot-provisioned schema instead of published migrations, byte-sniffed acceptance by default, and an image pipeline that needs no native extension to start.
 
 ## Try it
 

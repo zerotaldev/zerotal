@@ -34,9 +34,8 @@ function ownedQuery(self: MediaHost): ModelQueryBuilder<MediaItem> {
  * Adds media handling to a model.
  *
  * Compose it with `Model.using(...)` and declare the collections the model
- * owns in a static `mediaCollections` field. Zerotal's equivalent of Laravel's
- * `HasMedia` interface plus `InteractsWithMedia` trait, in one piece — named for
- * how it reads at the call site: `Model.using(Media)`.
+ * owns in a static `mediaCollections` field. The interface and the behaviour are
+ * one piece here, named for how it reads at the call site: `Model.using(Media)`.
  *
  * ## Deleting
  *

@@ -6701,8 +6701,10 @@ class Job = {
   _chain: SerializedJob[] | undefined
   batchId: string | undefined
   className: string
+  debounceKey: () => string
   handle: () => Promise<void>
   payload: () => Record<string, unknown>
+  readonly debounce?: number
   readonly maxAttempts: number
   readonly queue: string
   readonly retryDelay: number
@@ -6731,6 +6733,13 @@ class PendingBatch = {
 
 class QueueBatchingUnsupportedError = {
   new (): QueueBatchingUnsupportedError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class QueueDebounceUnsupportedError = {
+  new (className: string, driver: string): QueueDebounceUnsupportedError
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
@@ -6825,6 +6834,7 @@ class RedisDriver = {
   listFailed: (queue?: string) => Promise<FailedRecord[]>
   pop: (queue?: string) => Promise<JobRecord | null>
   push: (record: Omit<JobRecord, 'id' | 'createdAt'>) => Promise<void>
+  pushDebounced: (record: Omit<JobRecord, 'id' | 'createdAt'>, key: string) => Promise<void>
   retry: (record: JobRecord) => Promise<void>
   size: (queue?: string) => Promise<number>
 }
@@ -6842,6 +6852,7 @@ class SqliteDriver = {
   listPending: (queue?: string, limit?: number, offset?: number) => Promise<JobRecord[]>
   pop: (queue?: string) => Promise<JobRecord | null>
   push: (record: Omit<JobRecord, 'id' | 'createdAt'>) => Promise<void>
+  pushDebounced: (record: Omit<JobRecord, 'id' | 'createdAt'>, key: string) => Promise<void>
   queues: () => Promise<{    queue: string;    pending: number;}[]>
   recordBatchJobComplete: (batchId: string) => Promise<BatchStatus>
   recordBatchJobFailed: (batchId: string, jobId: number) => Promise<BatchStatus>
@@ -6904,6 +6915,7 @@ interface JobRecord = {
   batchId?: string | undefined
   className: string
   createdAt: string
+  debounceKey?: string | undefined
   id: number
   maxAttempts: number
   payload: string
@@ -6931,6 +6943,7 @@ interface QueueDriver = {
   listPending?: (queue?: string, limit?: number, offset?: number) => Promise<JobRecord[]>
   pop: (queue?: string) => Promise<JobRecord | null>
   push: (record: Omit<JobRecord, 'id' | 'createdAt'>) => Promise<void>
+  pushDebounced?: (record: Omit<JobRecord, 'id' | 'createdAt'>, key: string) => Promise<void>
   queues?: () => Promise<{    queue: string;    pending: number;}[]>
   recordBatchJobComplete?: (batchId: string) => Promise<BatchStatus>
   recordBatchJobFailed?: (batchId: string, jobId: number) => Promise<BatchStatus>

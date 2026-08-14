@@ -1,5 +1,5 @@
 import { ServiceProvider } from "@zerotal/core";
-import type { AppEnvironment } from "@zerotal/core";
+import type { AppEnvironment, DevProcessDefinition } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { _getConnection } from "@zerotal/orm";
 import { QueueManager } from "../QueueManager.ts";
@@ -28,6 +28,33 @@ export class QueueProvider extends ServiceProvider {
   private _workerInterval: ReturnType<typeof setInterval> | undefined = undefined;
   private _workerPool: WorkerPool | undefined = undefined;
   private _disposeObservability: (() => void) | undefined = undefined;
+
+  /**
+   * The worker that `bun zt dev` runs beside the server.
+   *
+   * Two conditions, and both are about not putting a tab on screen that has
+   * nothing to do. The `sync` driver runs every dispatched job inline on the
+   * request, so a worker would poll an empty queue forever; and an in-process
+   * `workers` pool means the server thread is already draining the queue, so a
+   * second consumer is duplicated work rather than more of it.
+   */
+  override devProcesses(): DevProcessDefinition[] {
+    return [
+      {
+        name: "queue",
+        command: "queue:work",
+        enabled: () => {
+          const config = this.app.container.makeSync("config") as ConfigManager;
+          const driver = config.get<string>("queue.driver", "sqlite");
+          const workers = config.get<number>("queue.workers", 0);
+          return driver !== "sync" && (workers ?? 0) === 0;
+        },
+        // A worker that exits cleanly has been told to stop; one that crashes
+        // has not, and the developer wants it back.
+        restart: "on-failure",
+      },
+    ];
+  }
 
   override onRegister(): void {
     // Refuse a production boot on structural queue misconfiguration (unknown

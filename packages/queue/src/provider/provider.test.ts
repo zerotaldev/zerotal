@@ -261,3 +261,45 @@ describe("QueueProvider.onBooted()", () => {
     }
   });
 });
+
+// ── devProcesses() ────────────────────────────────────────────────────────────
+
+describe("QueueProvider.devProcesses()", () => {
+  /** Resolve the definition's `enabled` the way the registry does. */
+  async function enabled(cfg: Record<string, unknown>): Promise<boolean> {
+    const provider = new QueueProvider(makeApp(cfg));
+    const [definition] = provider.devProcesses();
+    const flag = definition!.enabled;
+    return typeof flag === "function" ? await flag() : (flag ?? true);
+  }
+
+  it("registers one worker, named so --only=queue reads naturally", () => {
+    const definitions = new QueueProvider(makeApp()).devProcesses();
+
+    expect(definitions).toHaveLength(1);
+    expect(definitions[0]!.name).toBe("queue");
+    expect(definitions[0]!.command).toBe("queue:work");
+  });
+
+  it("restarts a worker that crashed but not one that was told to stop", () => {
+    expect(new QueueProvider(makeApp()).devProcesses()[0]!.restart).toBe("on-failure");
+  });
+
+  it("runs by default — the sqlite driver with no worker pool", async () => {
+    expect(await enabled({})).toBe(true);
+  });
+
+  it("stays out of the deck under the sync driver", async () => {
+    // `sync` runs every job inline on the request, so the worker would poll an
+    // empty queue forever and the tab would only ever be noise.
+    expect(await enabled({ "queue.driver": "sync" })).toBe(false);
+  });
+
+  it("stays out of the deck when the server already drains the queue", async () => {
+    expect(await enabled({ "queue.workers": 2 })).toBe(false);
+  });
+
+  it("runs for redis", async () => {
+    expect(await enabled({ "queue.driver": "redis" })).toBe(true);
+  });
+});

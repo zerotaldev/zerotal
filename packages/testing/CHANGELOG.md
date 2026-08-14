@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`createTestApp()` no longer un-adopts the app it just adopted.** The shared-app
+  path called `adoptAsCurrent()` and then `resetTestState()`, which calls
+  `Application._resetInstance()` — precisely what the adoption existed to undo. The
+  second test file in a process was handed an app whose scope had been torn down, and
+  the first facade it touched threw `E_FACADE_BEFORE_BOOT`. What made it expensive is
+  that each file passed _in isolation_, so the failure attached to whichever file
+  happened to sort second and read as a bug in that file. Reset, then adopt — the same
+  order the fresh-app path already used.
+
 ## [1.1.0] — 2026-08-08
 
 ### Fixed

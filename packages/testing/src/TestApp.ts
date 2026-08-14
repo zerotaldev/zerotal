@@ -597,10 +597,16 @@ export async function createTestApp(
     const booted = await bootstrap();
     const existing = _sharedApps.get(booted);
     if (existing) {
-      // Re-adopt: an earlier file's close() reset the app scope even though the app
-      // itself is still running, so facades need pointing back at it.
-      booted.adoptAsCurrent();
+      // Order is load-bearing, and it was wrong: `resetTestState()` calls
+      // `Application._resetInstance()`, which is precisely what `adoptAsCurrent()`
+      // exists to undo. Adopting first meant the second test file in a process was
+      // handed an app whose scope had just been torn down, and the first facade it
+      // touched threw E_FACADE_BEFORE_BOOT — while each file passed in isolation,
+      // so the failure looked like a bug in whichever file happened to sort second.
+      //
+      // Reset, then adopt. Same order as the fresh-app path below.
       resetTestState();
+      booted.adoptAsCurrent();
       return existing;
     }
   }

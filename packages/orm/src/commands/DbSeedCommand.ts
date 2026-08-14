@@ -1,5 +1,5 @@
 import { Command } from "@zerotal/core";
-import type { Seeder } from "../seeding/Seeder.ts";
+import { runSeeders } from "./_runSeeders.ts";
 
 /**
  * Runs the application's database seeders (`bun zt db:seed`).
@@ -21,51 +21,23 @@ export class DbSeedCommand extends Command {
   static needsApp = true;
 
   async run(): Promise<void> {
-    const cwd = process.cwd();
-    const seederPath = `${cwd}/database/seeders/DatabaseSeeder.ts`;
+    this.section("Database Seeding");
+    const outcome = await runSeeders();
 
-    const file = Bun.file(seederPath);
-    if (!(await file.exists())) {
-      // Fall back to legacy index.ts seeder format
-      const legacyPath = `${cwd}/database/seeders/index.ts`;
-      if (await Bun.file(legacyPath).exists()) {
-        try {
-          const mod = await import(legacyPath);
-          const seed = mod.default as (() => Promise<void>) | undefined;
-          if (!seed) {
-            this.error("Seeder index must export a default async function.");
-            return;
-          }
-          await seed();
-          this.info("Database seeded.");
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          this.error(`Failed to run seeders: ${msg}`);
-        }
+    switch (outcome.status) {
+      case "seeded":
+        this.info("Database seeded successfully.");
         return;
-      }
-
-      this.error(`Seeder not found: ${seederPath}`);
-      this.dim("Create it with: bun zerotal.ts make:seeder DatabaseSeeder");
-      return;
-    }
-
-    try {
-      const mod = await import(seederPath);
-      const SeederClass = (mod.DatabaseSeeder ?? mod.default) as (new () => Seeder) | undefined;
-
-      if (!SeederClass) {
-        this.error("DatabaseSeeder not found as a named or default export.");
+      case "missing":
+        this.error(`Seeder not found: ${outcome.path}`);
+        this.dim("Create it with: bun zerotal.ts make:seeder DatabaseSeeder");
         return;
-      }
-
-      this.section("Database Seeding");
-      const seeder = new SeederClass();
-      await seeder.run();
-      this.info("Database seeded successfully.");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.error(`Failed to run seeders: ${msg}`);
+      case "invalid":
+        this.error(outcome.message);
+        return;
+      case "failed":
+        this.error(`Failed to run seeders: ${outcome.message}`);
+        return;
     }
   }
 }

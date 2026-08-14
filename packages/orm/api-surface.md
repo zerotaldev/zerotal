@@ -1490,7 +1490,7 @@ class MigrateCommand = {
   static args: ArgDef[]
   static commandName: string
   static description: string
-  static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static flags: FlagDef[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter

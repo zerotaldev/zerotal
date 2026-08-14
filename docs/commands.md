@@ -202,15 +202,17 @@ can gate a deploy.
 
 ### Database
 
-| Command                   | Description                                                    |
-| ------------------------- | -------------------------------------------------------------- |
-| `bun zt migrate`          | Run all pending migrations                                     |
-| `bun zt migrate --fresh`  | Drop all tables, then re-run everything from scratch           |
-| `bun zt migrate:rollback` | Roll back the most recent migration batch                      |
-| `bun zt migrate:fresh`    | Alias: drop all tables and re-run all migrations               |
-| `bun zt migrate:status`   | Show the status (run / pending / batch) of each migration file |
-| `bun zt migrate:generate` | Auto-generate a migration from model schema changes            |
-| `bun zt db:seed`          | Run all seeders from `database/seeders/`                       |
+| Command                       | Description                                                    |
+| ----------------------------- | -------------------------------------------------------------- |
+| `bun zt migrate`              | Run all pending migrations                                     |
+| `bun zt migrate --fresh`      | Drop all tables, then re-run everything from scratch           |
+| `bun zt migrate --seed`       | Run migrations, then run the seeders                           |
+| `bun zt migrate:rollback`     | Roll back the most recent migration batch                      |
+| `bun zt migrate:fresh`        | Alias: drop all tables and re-run all migrations               |
+| `bun zt migrate:fresh --seed` | Rebuild the schema from scratch, then run the seeders          |
+| `bun zt migrate:status`       | Show the status (run / pending / batch) of each migration file |
+| `bun zt migrate:generate`     | Auto-generate a migration from model schema changes            |
+| `bun zt db:seed`              | Run all seeders from `database/seeders/`                       |
 
 > **Danger** — `migrate --fresh` and `migrate:fresh` drop every table before
 > re-running migrations. Never run them against a production database.

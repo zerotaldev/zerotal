@@ -84,6 +84,20 @@ bun zt migrate:status
 `migrate --fresh` and the standalone `migrate:fresh` command do the same thing:
 roll everything back, then re-run from scratch.
 
+Add `--seed` to repopulate afterwards, which is usually why the database was wiped
+in the first place:
+
+```bash
+bun zt migrate:fresh --seed        # rebuild the schema, then run the seeders
+bun zt migrate --fresh --seed      # the same thing
+bun zt migrate --seed              # apply pending migrations, then seed
+```
+
+`--seed` runs the same seeders as `bun zt db:seed`. If seeding fails, the command
+says so but does not fail: the migrations above already committed, and reporting
+otherwise would suggest they need repeating when only the seeders do — fix the
+seeder and run `bun zt db:seed`.
+
 Migrations run in filename order. The `make:migration` numeric prefix keeps them
 ordered automatically (`001_…`, `002_…`); see [Migration file naming](#migration-file-naming).
 

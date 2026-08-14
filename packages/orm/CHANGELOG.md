@@ -8,6 +8,30 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`--seed` on `migrate` and `migrate:fresh`.** Wiping a database and repopulating it is
+  one thought, and it took two commands — `bun zt migrate:fresh && bun zt db:seed` — with
+  the second easy to forget and nothing to remind you. The flag closes that:
+
+  ```bash
+  bun zt migrate:fresh --seed        # rebuild the schema, then seed it
+  bun zt migrate --fresh --seed      # the same thing
+  bun zt migrate --seed              # apply pending migrations, then seed
+  ```
+
+  `migrate --seed` seeds even when nothing was pending, because topping up an
+  already-current dev database is a normal reason to run it.
+
+  A seeding failure is reported but does not fail the command. The migrations above have
+  already committed by then, and exiting non-zero would suggest the whole operation needs
+  repeating when only the seeders do — so the output says the schema was rebuilt and
+  points at `bun zt db:seed` for the retry.
+
+  The seeder-loading logic is now shared with `db:seed` rather than duplicated, so all
+  three commands accept the same shapes: a class-based `DatabaseSeeder` (named or default
+  export) and the legacy `database/seeders/index.ts` default function.
+
 ### Fixed
 
 - **Altering a Postgres column no longer silently drops its NOT NULL and DEFAULT.**

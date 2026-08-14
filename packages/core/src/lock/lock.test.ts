@@ -59,6 +59,20 @@ describe("MemoryLockDriver", () => {
     expect(await driver.acquire("key", "owner-1", 10)).toBe(true);
   });
 
+  it("re-acquiring by the same owner moves the deadline", async () => {
+    // Returning `true` without extending is the shape of the original bug: the
+    // caller is told the refresh worked, then loses the lock on the original
+    // schedule anyway. Asserting the *deadline* rather than the return value is
+    // the only way to tell those two apart.
+    await driver.acquire("key", "owner-1", 0.05);
+    await Bun.sleep(30);
+    await driver.acquire("key", "owner-1", 10);
+    await Bun.sleep(40);
+
+    expect(await driver.exists("key")).toBe(true);
+    expect(await driver.acquire("key", "owner-2", 10)).toBe(false);
+  });
+
   it("expired locks can be re-acquired by a new owner", async () => {
     await driver.acquire("key", "owner-1", 0.001); // 1ms TTL
     await Bun.sleep(5);

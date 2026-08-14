@@ -22,7 +22,16 @@ export class MemoryLockDriver implements LockDriver {
     const existing = this._store.get(key);
 
     if (existing && now < existing.expiresAt) {
-      return existing.owner === owner; // re-entrant for same owner
+      if (existing.owner !== owner) return false;
+      // Re-acquiring by the same owner pushes the deadline out. This used to
+      // return `true` without touching `expiresAt`, so the default driver — the
+      // one every app gets until it configures another — was the only one of the
+      // three that did not honour what `ManagedLock.acquire()` documents. Redis
+      // re-`expire`s and SQLite `UPDATE`s; a caller re-acquiring to stay alive
+      // was silently refused an extension here, and found out when the lock
+      // expired underneath them.
+      existing.expiresAt = now + ttlSeconds * 1000;
+      return true;
     }
 
     this._store.set(key, { owner, expiresAt: now + ttlSeconds * 1000 });

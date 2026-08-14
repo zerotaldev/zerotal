@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@tailwindcss/typography": "latest",
+    "@zerotal/ai": "workspace:*",
     "@zerotal/auth": "workspace:*",
     "@zerotal/orm": "workspace:*",
     "@zerotal/session": "workspace:*",

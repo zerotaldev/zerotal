@@ -24,6 +24,7 @@
       "name": "@zerotal/docs",
       "dependencies": {
         "@tailwindcss/typography": "latest",
+        "@zerotal/ai": "workspace:*",
         "@zerotal/auth": "workspace:*",
         "@zerotal/broadcasting": "workspace:*",
         "@zerotal/devtools": "workspace:*",
@@ -66,6 +67,24 @@
         "@zerotal/auth",
         "@zerotal/orm",
         "@zerotal/queue",
+      ],
+    },
+    "packages/ai": {
+      "name": "@zerotal/ai",
+      "version": "1.4.0",
+      "dependencies": {
+        "@zerotal/core": "workspace:*",
+        "@zerotal/queue": "workspace:*",
+        "@zerotal/validator": "workspace:*",
+      },
+      "devDependencies": {
+        "typescript": "^5.8.0",
+      },
+      "peerDependencies": {
+        "@anthropic-ai/sdk": ">=0.70.0",
+      },
+      "optionalPeers": [
+        "@anthropic-ai/sdk",
       ],
     },
     "packages/audit": {
@@ -631,6 +650,8 @@
     "@vue/shared": ["@vue/shared@3.1.5", "", {}, "sha512-oJ4F3TnvpXaQwZJNF3ZK+kLPHKarDmJjJ6jyzVNDKH9md1dptjC7lWR//jrGuLdek/U6iltWxqAnYOu8gCiOvA=="],
 
     "@zerotal/admin": ["@zerotal/admin@workspace:packages/admin"],
+
+    "@zerotal/ai": ["@zerotal/ai@workspace:packages/ai"],
 
     "@zerotal/audit": ["@zerotal/audit@workspace:packages/audit"],
 

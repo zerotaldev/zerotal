@@ -23,6 +23,12 @@ const DEMOS: { href: string; title: string; blurb: string }[] = [
       "An async @task streams a field's writes to the browser as they happen — the AI-answer / live-log primitive — with a loading state and $flow.cancel().",
   },
   {
+    href: "/showcase/flow/ai-chat",
+    title: "AI chat",
+    blurb:
+      "A streaming chat page with zero client JavaScript — no /api/chat route, no EventSource. The tokens are a server-side loop writing a field, and Cancel aborts the generation itself.",
+  },
+  {
     href: "/showcase/flow/forms",
     title: "Forms & real-time validation",
     blurb:

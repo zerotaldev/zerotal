@@ -49,6 +49,13 @@ const CARDS: { title: string; slug: string; desc: string; icon: string }[] = [
     icon: `<svg class="w-5 h-5 text-voltage-700 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="3.5" r="2"/><circle cx="3" cy="16" r="2"/><circle cx="17" cy="16" r="2"/><line x1="8.27" y1="5.08" x2="4.73" y2="14.08"/><line x1="11.73" y1="5.08" x2="15.27" y2="14.08"/><line x1="5" y1="16" x2="15" y2="16"/></svg>`,
   },
   {
+    title: "AI",
+    slug: "ai",
+    desc: "Streaming, structured output, typed tools",
+    // Chat bubble with a spark inside — generation, not messaging
+    icon: `<svg class="w-5 h-5 text-voltage-700 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 12a3.5 3.5 0 0 1-3.5 3.5H9l-4 3v-3h-.5A3.5 3.5 0 0 1 1 12V6a3.5 3.5 0 0 1 3.5-3.5H15A3.5 3.5 0 0 1 18.5 6z"/><path d="M9.75 5.5l1 2.75 2.75 1-2.75 1-1 2.75-1-2.75L6 9.25l2.75-1z"/></svg>`,
+  },
+  {
     title: "Flow",
     slug: "flow",
     desc: "Server-driven reactive components",

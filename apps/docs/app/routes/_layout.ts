@@ -237,6 +237,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
           { label: "References", slug: "admin/references" },
         ],
       },
+      { label: "AI", slug: "ai" },
       { label: "Monitor", slug: "monitor" },
       { label: "Multi-tenancy", slug: "tenancy" },
       { label: "Telemetry", slug: "telemetry" },

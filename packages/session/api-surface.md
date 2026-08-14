@@ -107,6 +107,7 @@ class SessionProvider = {
   static priority?: number
   static provides: readonly ['session.driver', 'session']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

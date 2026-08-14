@@ -104,6 +104,7 @@ class FlowProvider = {
   static provides?: readonly (keyof ContainerBindings)[]
   static registerSynth: (synth: Synth) => void
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

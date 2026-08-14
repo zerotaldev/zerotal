@@ -174,6 +174,7 @@ class AdminProvider = {
   static priority?: number
   static provides: readonly ['admin.panel']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

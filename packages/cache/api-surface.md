@@ -45,6 +45,7 @@ class CacheProvider = {
   static priority?: number
   static provides: readonly ['cache']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

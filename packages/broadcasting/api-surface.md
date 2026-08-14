@@ -83,6 +83,7 @@ class BroadcastProvider = {
   static priority?: number
   static provides: readonly ['broadcast']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

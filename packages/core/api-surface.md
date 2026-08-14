@@ -542,6 +542,7 @@ class ServiceProvider = {
   static priority?: number
   static provides?: readonly (keyof ContainerBindings)[]
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -2847,6 +2848,7 @@ class LockProvider = {
   static priority?: number
   static provides: readonly ['lock']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -2959,6 +2961,7 @@ class LogProvider = {
   static priority?: number
   static provides: readonly ['log']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -3224,6 +3227,7 @@ class StorageProvider = {
   static priority?: number
   static provides: readonly ['storage']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

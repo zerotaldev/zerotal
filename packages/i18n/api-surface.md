@@ -32,6 +32,7 @@ class I18nProvider = {
   static priority?: number
   static provides: readonly ['i18n']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

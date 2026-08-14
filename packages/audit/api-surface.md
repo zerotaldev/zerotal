@@ -143,6 +143,7 @@ class AuditProvider = {
   static priority?: number
   static provides: readonly ['audit']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

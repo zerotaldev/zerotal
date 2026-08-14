@@ -542,6 +542,7 @@ class ServiceProvider = {
   static priority?: number
   static provides?: readonly (keyof ContainerBindings)[]
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -1171,6 +1172,7 @@ class AuthProvider = {
   static provides: readonly ['hash', 'gate', 'two_factor']
   static resolveUsing: (fn: (id: number) => Promise<AuthUser | null>) => void
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -1901,6 +1903,7 @@ class SocialProvider = {
   static priority?: number
   static provides: readonly ['social']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -2405,6 +2408,7 @@ class CacheProvider = {
   static priority?: number
   static provides: readonly ['cache']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -2802,6 +2806,7 @@ class ClientProvider = {
   static priority?: number
   static provides: readonly ['client']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -4513,6 +4518,7 @@ class LockProvider = {
   static priority?: number
   static provides: readonly ['lock']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -4625,6 +4631,7 @@ class LogProvider = {
   static priority?: number
   static provides: readonly ['log']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -4922,6 +4929,7 @@ class MediaProvider = {
   static priority?: number
   static provides: readonly ['media']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -5404,6 +5412,7 @@ class DatabaseProvider = {
   static priority?: number
   static provides: readonly ['db']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -6657,6 +6666,7 @@ class QueueProvider = {
   static priority?: number
   static provides: readonly ['queue']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -6964,6 +6974,7 @@ class SchedulerProvider = {
   static priority?: number
   static provides: readonly ['scheduler']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -7184,6 +7195,7 @@ class SessionProvider = {
   static priority?: number
   static provides: readonly ['session.driver', 'session']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -7363,6 +7375,7 @@ class StorageProvider = {
   static priority?: number
   static provides: readonly ['storage']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

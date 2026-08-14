@@ -145,6 +145,7 @@ class SchedulerProvider = {
   static priority?: number
   static provides: readonly ['scheduler']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

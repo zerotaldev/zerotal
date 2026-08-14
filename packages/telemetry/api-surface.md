@@ -61,6 +61,7 @@ class TelemetryProvider = {
   static priority?: number
   static provides: readonly ['telemetry']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

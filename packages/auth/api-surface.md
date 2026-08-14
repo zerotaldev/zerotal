@@ -55,6 +55,7 @@ class AuthProvider = {
   static provides: readonly ['hash', 'gate', 'two_factor']
   static resolveUsing: (fn: (id: number) => Promise<AuthUser | null>) => void
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -785,6 +786,7 @@ class SocialProvider = {
   static priority?: number
   static provides: readonly ['social']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

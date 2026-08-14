@@ -94,7 +94,7 @@ export { ServiceProvider } from "./provider/ServiceProvider.ts";
 export type { AppEnvironment } from "./provider/ServiceProvider.ts";
 export type { ConcernDescriptor, ConcernContext } from "./conventions/ConventionLoader.ts";
 
-// Doctor (`zt doctor`; providers contribute checks via app.registerDoctorCheck())
+// Doctor (`zt doctor`; providers contribute checks via doctorChecks() or app.registerDoctorCheck())
 export { runDoctor, builtinDoctorChecks } from "./doctor/AppDoctor.ts";
 export type { DoctorCheck, DoctorCheckResult, DoctorReportEntry } from "./doctor/AppDoctor.ts";
 

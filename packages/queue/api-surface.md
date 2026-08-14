@@ -127,6 +127,7 @@ class QueueProvider = {
   static priority?: number
   static provides: readonly ['queue']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

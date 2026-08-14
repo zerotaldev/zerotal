@@ -33,6 +33,8 @@ function fakeApp(
     bound?: string[];
     routedFiles?: string[];
     doctorChecks?: DoctorCheck[];
+    /** Providers whose `doctorChecks()` the doctor should ask. */
+    _activeProviders?: Array<{ doctorChecks?: () => DoctorCheck[] }>;
   } = {},
 ): Application {
   return {
@@ -45,6 +47,9 @@ function fakeApp(
     },
     routedFiles: options.routedFiles ?? [],
     doctorChecks: options.doctorChecks ?? [],
+    // Deliberately left undefined when not supplied: `runDoctor` has to cope
+    // with an app that predates the hook, and this is where that is exercised.
+    ...(options._activeProviders ? { _activeProviders: options._activeProviders } : {}),
   } as unknown as Application;
 }
 
@@ -153,5 +158,30 @@ describe("runDoctor", () => {
     const entry = report.find((e) => e.check.id === "broken")!;
     expect(entry.result.status).toBe("fail");
     expect(entry.result.message).toContain("kaput");
+  });
+  it("includes checks a provider declares with doctorChecks()", async () => {
+    // The declarative counterpart to registerDoctorCheck(): same report, but
+    // the package lists its checks next to its other contributions.
+    const provider = {
+      doctorChecks: () => [
+        { id: "declared", label: "Declared", run: () => ({ status: "ok", message: "healthy" }) },
+      ],
+    };
+    const report = await runDoctor(fakeApp({ _activeProviders: [provider] }));
+    const entry = report.find((e) => e.check.id === "declared");
+    expect(entry?.result.message).toBe("healthy");
+  });
+
+  it("ignores a provider whose doctorChecks() throws", async () => {
+    // A broken contribution is not a finding about the app being checked, and
+    // the doctor is what the user actually ran.
+    const provider = {
+      doctorChecks: () => {
+        throw new Error("provider is broken");
+      },
+    };
+    const report = await runDoctor(fakeApp({ _activeProviders: [provider] }));
+    expect(report.length).toBeGreaterThan(0);
+    expect(report.every((e) => !e.result.message.includes("provider is broken"))).toBe(true);
   });
 });

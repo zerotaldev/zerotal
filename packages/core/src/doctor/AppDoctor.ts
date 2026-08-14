@@ -201,7 +201,22 @@ export async function runDoctor(
   app: Application,
   extraChecks: DoctorCheck[] = [],
 ): Promise<DoctorReportEntry[]> {
-  const checks = [...builtinDoctorChecks, ...app.doctorChecks, ...extraChecks];
+  // Three sources, one list. `registerDoctorCheck()` is imperative and runs in
+  // `onRegister()`; `doctorChecks()` is declarative and is asked of a booted
+  // provider, which is the shape a package author already knows from
+  // `replContext()` and `devProcesses()`. A provider whose method throws
+  // contributes nothing rather than failing the doctor for every other package.
+  const declared: DoctorCheck[] = [];
+  for (const provider of app._activeProviders ?? []) {
+    try {
+      declared.push(...(provider.doctorChecks?.() ?? []));
+    } catch {
+      // Deliberately silent: a broken contribution is not a finding about the
+      // app being checked, and the doctor is what the user ran.
+    }
+  }
+
+  const checks = [...builtinDoctorChecks, ...app.doctorChecks, ...declared, ...extraChecks];
   const report: DoctorReportEntry[] = [];
   for (const check of checks) {
     let result: DoctorCheckResult;

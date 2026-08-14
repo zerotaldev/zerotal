@@ -6,6 +6,7 @@ import type { Application } from "../application/Application.ts";
 import type { ContainerBindings } from "../container/types.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import type { DevProcessDefinition } from "../dev/DevProcess.ts";
+import type { DoctorCheck } from "../doctor/AppDoctor.ts";
 
 /** The runtime modes a provider can declare it participates in. */
 export type AppEnvironment = "web" | "console" | "worker" | "test" | "repl";
@@ -98,6 +99,26 @@ export abstract class ServiceProvider {
    * }
    */
   devProcesses(): DevProcessDefinition[] {
+    return [];
+  }
+
+  /**
+   * Checks this package contributes to `bun zt doctor`.
+   *
+   * The declarative counterpart to `app.registerDoctorCheck()`: same checks,
+   * same report, but asked of the provider rather than pushed from inside
+   * `onRegister()`. Prefer this — it keeps a package's checks next to its other
+   * contributions and readable without tracing a registration call.
+   *
+   * Keep findings machine-readable. `zt doctor` is what an agent runs as the
+   * last step of a task, and "looks fine to me" is not a result it can act on.
+   *
+   * @example
+   * override doctorChecks() {
+   *   return [{ id: "queue-driver", label: "Queue", run: () => ({ status: "ok", message: "sqlite" }) }];
+   * }
+   */
+  doctorChecks(): DoctorCheck[] {
     return [];
   }
 }

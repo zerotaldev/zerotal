@@ -59,6 +59,7 @@ class ClientProvider = {
   static priority?: number
   static provides: readonly ['client']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

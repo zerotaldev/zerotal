@@ -20,6 +20,7 @@ class DevtoolsProvider = {
   static priority?: number
   static provides: readonly []
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

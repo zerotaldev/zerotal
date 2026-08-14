@@ -22,6 +22,7 @@ class MonitorProvider = {
   static priority?: number
   static provides: readonly ['monitor', 'monitor.store', 'monitor.panel']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

@@ -98,6 +98,7 @@ class TenancyProvider = {
   static provides: readonly ['tenancy']
   static withConfig: (config: TenancyConfigShape) => typeof TenancyProvider
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

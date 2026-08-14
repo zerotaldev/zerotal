@@ -77,6 +77,7 @@ class InertiaProvider = {
   static priority?: number
   static provides?: readonly (keyof ContainerBindings)[]
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

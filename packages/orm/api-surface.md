@@ -214,6 +214,7 @@ class DatabaseProvider = {
   static priority?: number
   static provides: readonly ['db']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

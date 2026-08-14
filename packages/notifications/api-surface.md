@@ -210,6 +210,7 @@ class NotificationProvider = {
   static priority?: number
   static provides: readonly ['notifications']
   devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

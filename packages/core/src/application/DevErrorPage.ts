@@ -4,6 +4,8 @@
  * stack trace, source context, and request details.
  */
 import type { HttpContext } from "../pipeline/HttpContext.ts";
+import { _diagnoseError } from "./diagnostics.ts";
+import type { ErrorDiagnosis } from "./diagnostics.ts";
 import { devSurfacesEnabled } from "../support/env.ts";
 
 // ── HTTP error page (4xx / production 5xx) ────────────────────────────────────
@@ -236,6 +238,34 @@ function shortPath(full: string): string {
  * with its parsed stack trace, source context, and request details. Never
  * served in production.
  */
+/**
+ * The diagnosis panel, above the stack because that is where the answer is.
+ *
+ * The button posts the token it was given and replaces its own label with the
+ * outcome. On success the page reloads, because the point is to get back to what
+ * the developer was actually doing — and a failure says so in place rather than
+ * navigating away from the error that prompted it.
+ */
+function renderDiagnosis(d: ErrorDiagnosis): string {
+  const items = d.items?.length
+    ? `<ul class="dx-items">${d.items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`
+    : "";
+  const action = d.action
+    ? `<div class="dx-actions">
+         <button class="dx-btn" id="dxRun"
+           data-url="${esc(d.action.url)}" data-token="${esc(d.action.token)}"
+           data-pending="${esc(d.action.pendingLabel ?? "Working…")}">${esc(d.action.label)}</button>
+         <span class="dx-status" id="dxStatus"></span>
+       </div>`
+    : "";
+  return `<div class="dx">
+  <div class="dx-title">${esc(d.title)}</div>
+  <div class="dx-detail">${esc(d.detail)}</div>
+  ${items}
+  ${action}
+</div>`;
+}
+
 export async function renderDevErrorPage(err: unknown, ctx?: HttpContext): Promise<Response> {
   const error = err instanceof Error ? err : new Error(String(err));
   const errClass = error.constructor?.name || "Error";
@@ -258,6 +288,11 @@ export async function renderDevErrorPage(err: unknown, ctx?: HttpContext): Promi
         .filter(([k]) => !["cookie"].includes(k))
         .map(([k, v]) => ({ k, v }))
     : [];
+
+  // Runs before the page is assembled so a diagnosis can lead, above the stack.
+  // The stack for this error class is usually all framework frames — the answer
+  // is never in it, which is the whole reason this panel exists.
+  const diagnosis = await _diagnoseError(error, ctx);
 
   const appFrames = ctxFrames.filter((f) => f.isApp);
   const vendorFrames = ctxFrames.filter((f) => !f.isApp);
@@ -327,6 +362,19 @@ table.info td{padding:5px 12px;vertical-align:top;border-bottom:1px solid #f1f5f
 table.info td:first-child{width:200px;color:#64748b;font-weight:500;white-space:nowrap}
 table.info td:last-child{font-family:monospace;color:#1e293b;word-break:break-all}
 
+/* ── Diagnosis ── */
+.dx{background:#fffbeb;border-bottom:1px solid #fde68a;padding:20px 32px}
+.dx-title{font-size:15px;font-weight:700;color:#92400e;margin-bottom:6px}
+.dx-detail{font-size:13px;color:#78350f;line-height:1.65;max-width:900px}
+.dx-items{margin:12px 0 0;padding-left:18px;font-family:monospace;font-size:12px;color:#78350f}
+.dx-items li{margin:3px 0}
+.dx-actions{margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dx-btn{padding:8px 16px;background:#92400e;border:0;border-radius:6px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.dx-btn:hover{opacity:.9}
+.dx-btn:disabled{opacity:.55;cursor:default}
+.dx-status{font-size:12px;color:#78350f}
+.dx-status.bad{color:#b91c1c;font-family:monospace}
+
 /* ── Footer ── */
 .footer{padding:12px 20px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;display:flex;gap:16px}
 </style>
@@ -351,6 +399,8 @@ table.info td:last-child{font-family:monospace;color:#1e293b;word-break:break-al
     </button>
   </div>
 </div>
+
+${diagnosis ? renderDiagnosis(diagnosis) : ""}
 
 <!-- Body: frames + code -->
 <div class="body">
@@ -458,6 +508,38 @@ table.info td:last-child{font-family:monospace;color:#1e293b;word-break:break-al
 
 <script>
 const ctxData = ${JSON.stringify(ctxFrames.map((f) => f.file + ":" + f.line))};
+
+// The diagnosis button, when one was offered. Attached by id rather than inline
+// so the panel's markup carries no script, and disabled while in flight so a
+// double click cannot run the action twice.
+(function () {
+  const btn = document.getElementById('dxRun');
+  if (!btn) return;
+  const status = document.getElementById('dxStatus');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = btn.dataset.pending;
+    status.className = 'dx-status';
+    status.textContent = '';
+    try {
+      const res = await fetch(btn.dataset.url, {
+        method: 'POST',
+        headers: { 'X-Zerotal-Diagnosis-Token': btn.dataset.token },
+      });
+      const body = await res.text();
+      if (!res.ok) throw new Error(body || ('HTTP ' + res.status));
+      status.textContent = body || 'Done. Reloading…';
+      // Back to what the developer was actually doing.
+      location.reload();
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = original;
+      status.className = 'dx-status bad';
+      status.textContent = String(e && e.message ? e.message : e);
+    }
+  });
+})();
 
 const _errorMd = ${JSON.stringify({
     errClass,

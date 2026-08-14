@@ -170,6 +170,11 @@ export {
   type SameSite,
 } from "./support/cookie.ts";
 export { isDevSurfaceAllowed, devSurfacesEnabled } from "./support/env.ts";
+// Development-error-page diagnoses. A package that owns an error class registers
+// a diagnoser so the overlay can say what to do about it — see `@zerotal/orm`,
+// which turns "no such table" into the list of migrations that have not run.
+export { registerErrorDiagnoser } from "./application/diagnostics.ts";
+export type { ErrorDiagnoser, ErrorDiagnosis, DiagnosisAction } from "./application/diagnostics.ts";
 export { fluent, Fluent } from "./helpers/fluent.ts";
 export { collect, Collection } from "./helpers/Collection.ts";
 export {

@@ -108,6 +108,13 @@ const KERNEL_EXPORTS = [
   "redirect",
   "redirectTo",
   "registerAppScope",
+  // Deliberate. A package that owns an error class registers a diagnoser so the
+  // dev error page can say what to do about it, and the registration happens in
+  // a provider's `onRegister()` — the same place as `registerFileRouteResolver`
+  // below, and the same family as `runDoctor`, which is already here. Putting it
+  // behind a subpath would mean every provider importing a second entry point to
+  // contribute one function.
+  "registerErrorDiagnoser",
   "registerFileRouteResolver",
   "request",
   "requireEnv",

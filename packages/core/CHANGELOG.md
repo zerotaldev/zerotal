@@ -10,6 +10,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **The development error page can now say what to do, not just what broke.**
+  `no such table: assets` is exact about the failure and useless about the cause:
+  every frame in its stack is inside the SQL driver, because that is where the
+  error surfaced rather than where it came from.
+
+  `registerErrorDiagnoser()` lets the package that owns an error class contribute
+  a diagnosis — a title, a paragraph, supporting specifics, and optionally a
+  button — rendered above the stack. `@zerotal/orm` registers the first one; see
+  its changelog. Diagnosers run in order, the first match wins, and one that
+  throws is skipped rather than replacing a real stack trace with a stack trace
+  about the diagnoser.
+
+  A diagnosis with an `action` changes server state from a page rendered by a
+  GET, so the type carries the values and the _endpoint_ owns the safety. That is
+  stated on the type, because the alternative is each implementor rediscovering
+  it.
+
 - **Typed route names — `bun zt route:types`.** The command boots the app, reads the
   routes it registered, and writes `types/routes.generated.ts`: a name → URL pattern map
   plus a one-line `RouteRegistry` augmentation. With it, `route("psots.show")` and

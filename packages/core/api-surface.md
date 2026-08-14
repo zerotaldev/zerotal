@@ -719,6 +719,8 @@ function redirectTo = <N extends RouteTarget>(name: N, params?: RouteParamsArg<N
 
 function registerAppScope = (installer: AppScopeInstaller) => void
 
+function registerErrorDiagnoser = (diagnoser: ErrorDiagnoser) => void
+
 function registerFileRouteResolver = (resolver: FileRouteResolver) => void
 
 function request = {    (): HttpContext;    <T = string>(key: string, fallback?: T): T | undefined;}
@@ -892,6 +894,13 @@ interface DevProcessDefinition = {
   run?: (signal: AbortSignal) => Promise<void>
 }
 
+interface DiagnosisAction = {
+  label: string
+  pendingLabel?: string
+  token: string
+  url: string
+}
+
 interface DoctorCheck = {
   id: string
   label: string
@@ -907,6 +916,13 @@ interface DoctorCheckResult = {
 interface DoctorReportEntry = {
   check: DoctorCheck
   result: DoctorCheckResult
+}
+
+interface ErrorDiagnosis = {
+  action?: DiagnosisAction
+  detail: string
+  items?: string[]
+  title: string
 }
 
 interface FileRouteContext = {
@@ -1088,6 +1104,8 @@ type ControllerResponse = void | ResponseBuilder | MarkdownBuilder
 type CurrentPageResolver = (pageName: string) => number | undefined
 
 type DevProcessColor = 'cyan' | 'magenta' | 'yellow' | 'green' | 'blue' | 'red'
+
+type ErrorDiagnoser = (error: Error, ctx?: HttpContext) => ErrorDiagnosis | null | Promise<ErrorDiagnosis | null>
 
 type Factory = (container: Container) => T | Promise<T>
 

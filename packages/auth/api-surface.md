@@ -54,6 +54,7 @@ class AuthProvider = {
   static priority?: number
   static provides: readonly ['hash', 'gate', 'two_factor']
   static resolveUsing: (fn: (id: number) => Promise<AuthUser | null>) => void
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -783,6 +784,7 @@ class SocialProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['social']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

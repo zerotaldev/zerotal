@@ -82,6 +82,7 @@ class BroadcastProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['broadcast']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

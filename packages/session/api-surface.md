@@ -106,6 +106,7 @@ class SessionProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['session.driver', 'session']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

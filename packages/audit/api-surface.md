@@ -142,6 +142,7 @@ class AuditProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['audit']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

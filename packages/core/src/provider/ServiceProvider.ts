@@ -5,6 +5,7 @@
 import type { Application } from "../application/Application.ts";
 import type { ContainerBindings } from "../container/types.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
+import type { DevProcessDefinition } from "../dev/DevProcess.ts";
 
 /** The runtime modes a provider can declare it participates in. */
 export type AppEnvironment = "web" | "console" | "worker" | "test" | "repl";
@@ -80,5 +81,23 @@ export abstract class ServiceProvider {
    */
   replContext(): Record<string, unknown> {
     return {};
+  }
+
+  /**
+   * Long-running processes to run beside the server under `bun zt dev`.
+   *
+   * A package that ships a companion process — a queue worker, a listener, a
+   * watcher — declares it here and it appears as its own tab in the deck,
+   * individually restartable, without the developer running a second terminal.
+   *
+   * Called once on a booted app, so it may read config.
+   *
+   * @example
+   * override devProcesses() {
+   *   return [{ name: "queue", command: "queue:work", enabled: () => this._hasQueue() }];
+   * }
+   */
+  devProcesses(): DevProcessDefinition[] {
+    return [];
   }
 }

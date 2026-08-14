@@ -9,6 +9,20 @@
  * @packageDocumentation
  */
 export { registerDevBuildHook } from "./DevBuildHook.ts";
+// The dev-process registry and its runners. The definition *types* are on the
+// main barrel (a provider's `devProcesses()` signature needs to name them);
+// everything that runs them is here, with the rest of the dev-server wiring.
+export { collectDevProcesses } from "./DevProcess.ts";
+export { DevSupervisor } from "./DevSupervisor.ts";
+export type {
+  DevChild,
+  DevSpawnFn,
+  DevProcessState,
+  DevProcessStatus,
+  DevSupervisorOptions,
+} from "./DevSupervisor.ts";
+export { createDeck, StreamDeck, TabsDeck } from "./DevDeck.ts";
+export type { Deck, DeckOptions } from "./DevDeck.ts";
 export type { BuildHookFn, BuildResult } from "./DevBuildHook.ts";
 export { DevReloadMiddleware, registerDevHtmlSnippet } from "./DevReloadMiddleware.ts";
 export type { DevHtmlSnippet } from "./DevReloadMiddleware.ts";

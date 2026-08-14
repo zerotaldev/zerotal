@@ -126,6 +126,7 @@ class QueueProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['queue']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

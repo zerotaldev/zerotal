@@ -173,6 +173,7 @@ class AdminProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['admin.panel']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

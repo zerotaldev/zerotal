@@ -44,6 +44,7 @@ class CacheProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['cache']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

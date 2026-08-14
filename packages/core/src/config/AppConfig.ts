@@ -5,6 +5,7 @@
  */
 import { deepMerge } from "../support/deepMerge.ts";
 import type { HealthConfigShape } from "../health/Health.ts";
+import type { DevConfigShape } from "../dev/DevProcess.ts";
 
 /** TLS certificate and key paths that enable HTTPS when provided. */
 export interface AppTlsConfig {
@@ -194,6 +195,25 @@ export interface AppConfigShape {
   /** Front-end asset bundling, built on `serve`. Omitted means no asset build. */
   assets?: AppAssetsConfig;
 
+  // ── Dev mode ──────────────────────────────────────────────────────────────
+  /**
+   * Extra processes for `bun zt dev`, and names to drop.
+   *
+   * App entries are registered after every provider's, so reusing a provider's
+   * name replaces it rather than adding a second tab — which is how an app swaps
+   * out, say, the queue worker for its own. `disable` removes by name whoever
+   * registered it.
+   *
+   * @example
+   * ```ts
+   * dev: {
+   *   processes: [{ name: "stripe", command: ["stripe", "listen", "--forward-to", "localhost:3000"] }],
+   *   disable: ["queue"],
+   * }
+   * ```
+   */
+  dev?: DevConfigShape;
+
   // ── Conventions ───────────────────────────────────────────────────────────
   /** Auto-discovery settings (enabled + per-concern paths). */
   conventions: ConventionsConfig;
@@ -244,6 +264,7 @@ export function AppConfig(options: {
     minify?: boolean;
     loader?: Record<string, AssetLoaderKind>;
   };
+  dev?: DevConfigShape;
   conventions?: { enabled?: boolean; paths?: Partial<ConventionsConfig["paths"]> };
 }): AppConfigShape {
   // Resolve env-derived defaults, then deep-merge the caller's overrides so partial nested

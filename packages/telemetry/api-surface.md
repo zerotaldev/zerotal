@@ -60,6 +60,7 @@ class TelemetryProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['telemetry']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

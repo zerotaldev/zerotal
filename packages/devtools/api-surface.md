@@ -19,6 +19,7 @@ class DevtoolsProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly []
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

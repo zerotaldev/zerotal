@@ -98,6 +98,16 @@ export type { ConcernDescriptor, ConcernContext } from "./conventions/Convention
 export { runDoctor, builtinDoctorChecks } from "./doctor/AppDoctor.ts";
 export type { DoctorCheck, DoctorCheckResult, DoctorReportEntry } from "./doctor/AppDoctor.ts";
 
+// Dev processes (`zt dev`; providers contribute them via devProcesses()).
+// Types only: naming the return type of `devProcesses()` needs them, but
+// `collectDevProcesses` is the runner's own wiring and lives on `/dev`.
+export type {
+  DevProcessDefinition,
+  DevProcessColor,
+  ResolvedDevProcess,
+  DevConfigShape,
+} from "./dev/DevProcess.ts";
+
 // Errors
 export {
   ZerotalError,

@@ -209,6 +209,7 @@ class NotificationProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['notifications']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

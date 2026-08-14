@@ -213,6 +213,7 @@ class DatabaseProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['db']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

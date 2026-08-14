@@ -58,6 +58,7 @@ class ClientProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['client']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

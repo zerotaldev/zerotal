@@ -21,6 +21,7 @@ class MonitorProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['monitor', 'monitor.store', 'monitor.panel']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

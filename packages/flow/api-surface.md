@@ -103,6 +103,7 @@ class FlowProvider = {
   static priority?: number
   static provides?: readonly (keyof ContainerBindings)[]
   static registerSynth: (synth: Synth) => void
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

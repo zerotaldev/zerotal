@@ -541,6 +541,7 @@ class ServiceProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides?: readonly (keyof ContainerBindings)[]
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -868,6 +869,22 @@ interface CorsOptions = {
   origin?: string | string[] | ((origin: string) => boolean)
 }
 
+interface DevConfigShape = {
+  disable?: string[]
+  processes?: DevProcessDefinition[]
+}
+
+interface DevProcessDefinition = {
+  after?: 'server' | 'none'
+  color?: DevProcessColor
+  command?: string | string[] | (() => string[])
+  enabled?: boolean | (() => boolean | Promise<boolean>)
+  label?: string
+  name: string
+  restart?: 'always' | 'on-failure' | 'never'
+  run?: (signal: AbortSignal) => Promise<void>
+}
+
 interface DoctorCheck = {
   id: string
   label: string
@@ -932,6 +949,17 @@ interface QueuedListener = {
 
 interface RequestIPProvider = {
   requestIP: (req: Request) => {    address: string;    family: string;    port: number;} | null
+}
+
+interface ResolvedDevProcess = {
+  after: 'server' | 'none'
+  argv?: string[]
+  color: DevProcessColor
+  label: string
+  name: string
+  registrant: string
+  restart: 'always' | 'on-failure' | 'never'
+  run?: (signal: AbortSignal) => Promise<void>
 }
 
 interface RouteDefinition = {
@@ -1045,6 +1073,8 @@ type ControllerResponse = void | ResponseBuilder | MarkdownBuilder
 
 type CurrentPageResolver = (pageName: string) => number | undefined
 
+type DevProcessColor = 'cyan' | 'magenta' | 'yellow' | 'green' | 'blue' | 'red'
+
 type Factory = (container: Container) => T | Promise<T>
 
 type FileHandler = (ctx: HttpContext) => void | Response | Promise<void | Response>
@@ -1140,6 +1170,7 @@ class AuthProvider = {
   static priority?: number
   static provides: readonly ['hash', 'gate', 'two_factor']
   static resolveUsing: (fn: (id: number) => Promise<AuthUser | null>) => void
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -1869,6 +1900,7 @@ class SocialProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['social']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -2372,6 +2404,7 @@ class CacheProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['cache']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -2768,6 +2801,7 @@ class ClientProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['client']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -3787,7 +3821,7 @@ class ConfigValidationError = {
   readonly status: number
 }
 
-function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;        loader?: Record<string, AssetLoaderKind>;    };    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
+function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;        loader?: Record<string, AssetLoaderKind>;    };    dev?: DevConfigShape;    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
 
 function configLoader = (dir?: string) => ConfigLoader
 
@@ -3804,6 +3838,7 @@ interface AppConfigShape = {
   conventions: ConventionsConfig
   cors: AppCorsConfig
   debug: boolean
+  dev?: DevConfigShape
   env: string
   health: boolean | HealthConfigShape
   http3: boolean
@@ -3858,7 +3893,7 @@ type ConfigIssueLevel = 'error' | 'warning'
 
 type ConfigMap = {    [x: string]: Record<string, unknown>;}
 
-type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
+type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.port' | 'app.dev' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
 
 type ConfigValidator = (value: unknown, ctx: ConfigValidationContext) => ConfigIssue[] | void
 
@@ -3894,11 +3929,42 @@ class DevReloadMiddleware = {
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
 }
 
+class DevSupervisor = {
+  new (options: DevSupervisorOptions): DevSupervisor
+  definitions: () => ResolvedDevProcess[]
+  restart: (name: string) => Promise<void>
+  start: (definitions: ResolvedDevProcess[]) => void
+  statuses: () => DevProcessStatus[]
+  stopAll: () => Promise<void>
+}
+
+class StreamDeck = {
+  new (_writer: OutputWriter, _color: boolean): StreamDeck
+  line: (name: string, text: string, stream: 'stdout' | 'stderr') => void
+  notice: (text: string) => void
+  start: (statuses: DevProcessStatus[]) => void
+  state: (status: DevProcessStatus) => void
+  stop: () => void
+}
+
+class TabsDeck = {
+  new (_options: DeckOptions, _stdout: DeckStdout, _stdin: DeckStdin): TabsDeck
+  line: (name: string, text: string, stream: 'stdout' | 'stderr') => void
+  notice: (text: string) => void
+  start: (statuses: DevProcessStatus[]) => void
+  state: (status: DevProcessStatus) => void
+  stop: () => void
+}
+
 const DEV_RELOAD_CLIENT = string
 
 function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
 
 function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>
+
+function collectDevProcesses = (app: ProviderHost, config?: ConfigReader) => Promise<ResolvedDevProcess[]>
+
+function createDeck = (options: DeckOptions) => Deck
 
 function detectCssPlugins = (cwd: string) => Promise<BunPlugin[]>
 
@@ -3924,9 +3990,56 @@ interface BuildResult = {
   success: boolean
 }
 
+interface Deck = {
+  line: (name: string, text: string, stream: 'stdout' | 'stderr') => void
+  notice: (text: string) => void
+  start: (statuses: DevProcessStatus[]) => void
+  state: (status: DevProcessStatus) => void
+  stop: () => void
+}
+
+interface DeckOptions = {
+  mode?: 'tabs' | 'stream'
+  onQuit: () => void
+  onRestart: (name: string) => void
+  stdin?: DeckStdin
+  stdout?: DeckStdout
+  writer: OutputWriter
+}
+
+interface DevChild = {
+  kill: (signal?: number | NodeJS.Signals) => void
+  readonly exited: Promise<number>
+  readonly stderr: ReadableStream<Uint8Array<ArrayBufferLike>> | null
+  readonly stdout: ReadableStream<Uint8Array<ArrayBufferLike>> | null
+}
+
+interface DevProcessStatus = {
+  attempts: number
+  color: DevProcessColor
+  exitCode?: number
+  label: string
+  name: string
+  state: DevProcessState
+}
+
+interface DevSupervisorOptions = {
+  backoffMs?: number[]
+  cwd: string
+  env?: Record<string, string | undefined>
+  healthyAfterMs?: number
+  onLine?: (name: string, line: string, stream: 'stdout' | 'stderr') => void
+  onState?: (status: DevProcessStatus) => void
+  spawn?: DevSpawnFn
+}
+
 type BuildHookFn = () => Promise<BuildResult>
 
 type DevHtmlSnippet = (ctx: HttpContext) => string
+
+type DevProcessState = 'starting' | 'running' | 'restarting' | 'exited' | 'parked'
+
+type DevSpawnFn = (argv: string[], options: {    cwd: string;    env: Record<string, string | undefined>;}) => DevChild
 
 ## ./env  `(./src/env.ts)`
 
@@ -4311,7 +4424,7 @@ interface WebContext = {
   view: (markup: string | {    toString(): string;}, status?: number) => void
 }
 
-type AnsiColor = 'red' | 'green' | 'yellow' | 'blue' | 'cyan' | 'dim'
+type AnsiColor = 'cyan' | 'yellow' | 'green' | 'blue' | 'red' | 'dim'
 
 type Channel = 'web' | 'json' | 'cli'
 
@@ -4351,6 +4464,7 @@ class LockProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['lock']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -4462,6 +4576,7 @@ class LogProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['log']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -4758,6 +4873,7 @@ class MediaProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['media']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -5239,6 +5355,7 @@ class DatabaseProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['db']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -6491,6 +6608,7 @@ class QueueProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['queue']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -6797,6 +6915,7 @@ class SchedulerProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['scheduler']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -7016,6 +7135,7 @@ class SessionProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['session.driver', 'session']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void
@@ -7194,6 +7314,7 @@ class StorageProvider = {
   static environments: AppEnvironment[]
   static priority?: number
   static provides: readonly ['storage']
+  devProcesses: () => DevProcessDefinition[]
   onBooted: () => Promise<void>
   onBooting: () => Promise<void>
   onRegister: () => void

@@ -8,6 +8,22 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`withoutOverlapping`'s cross-process lock defaults to 5 minutes, not 24 hours.** The
+  lock could not be extended, so its TTL had to cover the longest the task might ever run
+  — and a scheduler that died mid-run therefore blocked that task for a full day. The lock
+  is now heartbeated while the task runs, so the TTL only has to outlive a missed beat.
+
+  `expiresAfterMinutes` keeps working and **changes meaning**: it is now "how long after a
+  crash before another host may take this task over", not "how long the task may take". A
+  long-running task no longer needs a long value; set one only if you want a crash to be
+  slower to recover from. `{ refresh: false }` restores the old behaviour.
+
+  A failed heartbeat does not kill the run. It is logged and the handle dropped — the task
+  is already in flight, and stopping it half-finished because another host may now also be
+  running does not un-overlap anything, it just adds a second failure.
+
 ### Added
 
 - **Durable run history.** Every completed execution (success or failure) is appended to

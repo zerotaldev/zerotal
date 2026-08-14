@@ -198,6 +198,7 @@ function SchedulerConfig = (options?: Partial<SchedulerConfigShape>) => Schedule
 interface OverlapLockOptions = {
   crossProcess?: boolean
   expiresAfterMinutes?: number
+  refresh?: boolean
 }
 
 interface RunLogConfig = {

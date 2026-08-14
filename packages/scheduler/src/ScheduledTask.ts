@@ -48,8 +48,31 @@ export interface OverlapLockOptions {
    */
   crossProcess?: boolean;
 
-  /** Lock TTL safety net, in minutes, so a crashed run can't deadlock the key. Default: 1440 (24h). */
+  /**
+   * **How long after a crash before another host may take the task over**, in
+   * minutes. Default: 5.
+   *
+   * This used to mean "how long the task might possibly run", which is why it
+   * defaulted to a day: the lock could not be extended, so the TTL had to cover
+   * the worst case, and a scheduler that died mid-run blocked that task until
+   * the next afternoon. The lock is now heartbeated while the task runs, so the
+   * TTL only has to outlive one missed heartbeat — and the number you are
+   * choosing is a recovery time rather than a guess about duration.
+   *
+   * A long-running task no longer needs a long value here. Set one only if you
+   * want a crash to be *slower* to recover from, which is rarely what anyone
+   * wants.
+   */
   expiresAfterMinutes?: number;
+
+  /**
+   * Heartbeat the lock for as long as the task runs. Default: `true`.
+   *
+   * Turning it off restores the old behaviour, where the task must finish
+   * inside {@link expiresAfterMinutes} or lose its lock — and where you must
+   * therefore size that value for the worst case.
+   */
+  refresh?: boolean;
 }
 
 export class ScheduledTask {
@@ -85,8 +108,15 @@ export class ScheduledTask {
   private _emailOutputTo: string | undefined = undefined;
 
   private _crossProcess: boolean = false;
-  private _lockTtlMs: number = 24 * 60 * 60 * 1000;
+  /**
+   * Minutes, not a day. The lock is heartbeated while the task runs, so this is
+   * the window in which a crashed scheduler still holds the key — not a bound on
+   * how long the task may take.
+   */
+  private _lockTtlMs: number = 5 * 60 * 1000;
+  private _lockRefresh: boolean = true;
   private _lockHandle: ManagedLock | undefined = undefined;
+  private _lockHeartbeat: ReturnType<typeof setInterval> | undefined = undefined;
 
   static outputMailer: OutputMailer | undefined = undefined;
 
@@ -126,6 +156,7 @@ export class ScheduledTask {
   withoutOverlapping(options?: OverlapLockOptions): this {
     this._skipIfStillRunning = true;
     this._crossProcess = options?.crossProcess ?? true;
+    this._lockRefresh = options?.refresh ?? true;
     if (options?.expiresAfterMinutes !== undefined) {
       this._lockTtlMs = Math.max(1, options.expiresAfterMinutes) * 60 * 1000;
     }
@@ -278,11 +309,62 @@ export class ScheduledTask {
     const ttlSeconds = Math.max(1, Math.ceil(this._lockTtlMs / 1000));
     const handle = manager.lock(`schedule:${this._name}`, ttlSeconds);
     const acquired = await handle.acquire();
-    if (acquired) this._lockHandle = handle;
-    return acquired;
+    if (!acquired) return false;
+
+    this._lockHandle = handle;
+    if (this._lockRefresh) this._startHeartbeat(handle, ttlSeconds);
+    return true;
+  }
+
+  /**
+   * Keep the overlap lock alive while the task runs.
+   *
+   * A third of the TTL, so one missed beat is survivable. A failed refresh is
+   * *not* escalated: the run is already in flight, and killing a half-finished
+   * task because another host may now also be running it does not make the
+   * overlap un-happen — it just adds a second failure. It is logged, the handle
+   * is dropped so the release cannot touch a lock we no longer own, and the task
+   * is left to finish.
+   */
+  private _startHeartbeat(handle: ManagedLock, ttlSeconds: number): void {
+    // A third of the TTL, floored only low enough to stop a pathological TTL
+    // spinning. The floor must never approach the interval itself: at 1000ms it
+    // made every TTL of three seconds or less refresh at the moment of expiry —
+    // a heartbeat that reliably lost the race it existed to win.
+    const everyMs = Math.max(50, Math.floor((ttlSeconds * 1000) / 3));
+    const timer = setInterval(() => {
+      void handle.refresh().then(
+        (ok) => {
+          if (ok) return;
+          frameworkLog("scheduler").warn(
+            `Lost the overlap lock for "${this._name}" — another host may now run it too.`,
+            { task: this._name },
+          );
+          this._stopHeartbeat();
+          this._lockHandle = undefined;
+        },
+        () => {
+          /* transient driver error — the next beat tries again */
+        },
+      );
+    }, everyMs);
+    // The scheduler outlives any one task, but a CLI or a dev-mode process that
+    // stops mid-run must still be able to exit.
+    timer.unref?.();
+    this._lockHeartbeat = timer;
+  }
+
+  private _stopHeartbeat(): void {
+    if (this._lockHeartbeat) {
+      clearInterval(this._lockHeartbeat);
+      this._lockHeartbeat = undefined;
+    }
   }
 
   private async _releaseLock(): Promise<void> {
+    // Stopped first and unconditionally: a beat that fires after the release
+    // would re-acquire the key this task has just finished with.
+    this._stopHeartbeat();
     if (this._lockHandle) {
       await this._lockHandle.release();
       this._lockHandle = undefined;

@@ -13,6 +13,21 @@ class TestableTask extends ScheduledTask {
   release(): Promise<void> {
     return (this as unknown as { _releaseLock(): Promise<void> })._releaseLock();
   }
+  lockTtlMs(): number {
+    return (this as unknown as { _lockTtlMs: number })._lockTtlMs;
+  }
+  /**
+   * Set a sub-minute TTL, which the public API deliberately will not.
+   *
+   * `expiresAfterMinutes` clamps to a minimum of one minute — sensible for a
+   * scheduler, useless for a test that wants to watch a lock lapse. Going
+   * through the field keeps the production floor intact while letting these
+   * cases run in seconds instead of minutes.
+   */
+  setLockTtlMs(ms: number): this {
+    (this as unknown as { _lockTtlMs: number })._lockTtlMs = ms;
+    return this;
+  }
 }
 
 afterEach(() => {
@@ -197,4 +212,70 @@ describe("withoutOverlapping() — cross-process lock", () => {
     expect(await a.acquire()).toBe(true);
     expect(await b.acquire()).toBe(true);
   });
+
+  it("defaults the lock TTL to minutes rather than a day", () => {
+    // The old default was 24h, because the lock could not be extended and the
+    // TTL had to cover the longest run anyone might ever schedule. A crashed
+    // scheduler then blocked that task until the next afternoon.
+    const task = new TestableTask("ttl", "* * * * *", async () => {}).withoutOverlapping();
+
+    expect(task.lockTtlMs()).toBe(5 * 60 * 1000);
+    expect(task.lockTtlMs()).toBeLessThan(60 * 60 * 1000);
+  });
+
+  it("keeps a short lock alive across a run longer than its TTL", async () => {
+    // The payoff: a 1-second TTL and a job that runs for three. A second host
+    // must still be locked out at the end, which it would not be without the
+    // heartbeat — the lock would have lapsed twice over.
+    ScheduledTask.lockManager = new LockManager(new MemoryLockDriver());
+
+    const holder = new TestableTask("longjob", "* * * * *", async () => {})
+      .withoutOverlapping()
+      .setLockTtlMs(1_000);
+
+    expect(await holder.acquire()).toBe(true);
+    await Bun.sleep(3_000);
+
+    const other = new TestableTask("longjob", "* * * * *", async () => {}).withoutOverlapping();
+    expect(await other.acquire()).toBe(false);
+
+    await holder.release();
+    expect(await other.acquire()).toBe(true);
+    await other.release();
+  }, 15_000);
+
+  it("lets the lock lapse when refreshing is turned off", async () => {
+    // The old behaviour, still available: without a heartbeat the TTL is a hard
+    // deadline and a slower job loses its lock.
+    ScheduledTask.lockManager = new LockManager(new MemoryLockDriver());
+
+    const holder = new TestableTask("nobeat", "* * * * *", async () => {})
+      .withoutOverlapping({ refresh: false })
+      .setLockTtlMs(1_000);
+
+    expect(await holder.acquire()).toBe(true);
+    await Bun.sleep(1_500);
+
+    const other = new TestableTask("nobeat", "* * * * *", async () => {}).withoutOverlapping();
+    expect(await other.acquire()).toBe(true);
+    await other.release();
+    await holder.release();
+  }, 15_000);
+
+  it("stops the heartbeat when the lock is released", async () => {
+    // A beat firing after the release would re-acquire the key the task just
+    // finished with, and nothing would ever free it.
+    const driver = new MemoryLockDriver();
+    ScheduledTask.lockManager = new LockManager(driver);
+
+    const task = new TestableTask("beatstop", "* * * * *", async () => {})
+      .withoutOverlapping()
+      .setLockTtlMs(1_000);
+
+    await task.acquire();
+    await task.release();
+    await Bun.sleep(800);
+
+    expect(await driver.exists("schedule:beatstop")).toBe(false);
+  }, 15_000);
 });

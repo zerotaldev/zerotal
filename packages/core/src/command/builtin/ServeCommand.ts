@@ -6,6 +6,7 @@ import { Command } from "../Command.ts";
 import type { FlagDef } from "../Command.ts";
 import { hasDevBuildHooks, runDevBuildHooks } from "../../dev/DevBuildHook.ts";
 import { buildConfiguredAssets, type AssetBuildConfig } from "../../dev/CssPlugins.ts";
+import { bootBuildDecision } from "../../dev/bootBuild.ts";
 import { collectDevProcesses, type ResolvedDevProcess } from "../../dev/DevProcess.ts";
 import { startDevMode, SERVER_PROCESS_NAME } from "../../dev/startDevMode.ts";
 import type { ConfigManager } from "../../config/ConfigManager.ts";
@@ -414,8 +415,29 @@ export class ServeCommand extends Command {
     }
   }
 
+  /** The resolved `app.env`, or undefined when the config store is unavailable. */
+  private _appEnv(): string | undefined {
+    try {
+      const config = (this.app as Application).container.makeSync("config") as ConfigManager;
+      return config.get("app.env") as string | undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Bundle the configured assets, reporting any build failure (non-fatal — the server still starts). */
   private async _buildAssets(assets: AssetBuildConfig): Promise<void> {
+    // A production deployment that built its assets ahead of time and locked the tree
+    // down is doing the right thing; rebuilding at boot would only fail. See bootBuild.ts.
+    const decision = await bootBuildDecision(
+      [`${process.cwd()}/${assets.outDir}`],
+      (this._appEnv() ?? Bun.env["APP_ENV"]) as string | undefined,
+    );
+    if (!decision.build) {
+      this.info(decision.reason ?? "Skipping the boot-time asset build.");
+      return;
+    }
+
     const entries = Array.isArray(assets.entrypoint)
       ? assets.entrypoint.join(", ")
       : assets.entrypoint;

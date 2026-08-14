@@ -33,6 +33,10 @@ export { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
 export { detectCssPlugins, buildCssBundle, buildJsBundle } from "./CssPlugins.ts";
 export type { AssetBuildConfig } from "./CssPlugins.ts";
 export { pruneBuildOutput } from "./BuildOutput.ts";
+// Lets `serve` and any view provider agree on whether to build at boot, so a hardened
+// production unit with a read-only output directory logs a line instead of restart-looping.
+export { bootBuildDecision, isWritableDir } from "./bootBuild.ts";
+export type { BootBuildDecision } from "./bootBuild.ts";
 // Lets a view provider skip its own boot-time build when the orchestrator is
 // already driving builds through the hook above.
 export { isDevOrchestrated } from "../support/env.ts";

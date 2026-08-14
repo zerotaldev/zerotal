@@ -23,6 +23,10 @@ follows the Zerotal monorepo's unified versioning.
   It is now a first-class field, filled from `url`, and unions rather than replaces: an
   app naming a second origin does not mean "and stop trusting my own public URL".
 
+- **`bun zt assets:build`** — build every bundle the app declares as a release step:
+  `app.assets` entrypoints plus Flow's conventional `resources/css/app.css` and
+  `resources/js/app.js`. `css:build` only ever covered the first half of that.
+
 - **`RequestContext.remember(key, factory)`** — run something at most once per request.
   The N+1 detector says a query ran too many times; when the answer is the same every
   time, the fix is to ask once, and every app that hits it rebuilds this by hand. Two
@@ -161,6 +165,18 @@ follows the Zerotal monorepo's unified versioning.
   anything else — can see what the routing groups actually load.)
 
 ### Changed
+
+- **`serve` no longer rebuilds assets at boot in production when the output directory is
+  read-only.** Rebuilding on start is right in development and load-bearing for the wrong
+  reason in production: it makes the server process require write access to its own output
+  tree, so a properly hardened unit (`ProtectSystem=strict` with a tight `ReadWritePaths`)
+  fails at startup with `Read-only file system: writing chunk "./app.css"` and
+  restart-loops — with the logs blaming the filesystem rather than the boot-time build that
+  made it a problem.
+
+  A read-only output directory is now read as what it is: a deployment that built its
+  assets ahead of time and locked the tree down. It serves what it shipped and logs one
+  line. Everywhere else, and anywhere the directory is writable, behaviour is unchanged.
 
 - **`SessionContract.get` and `pull` take an optional `<T>`.** The contract's own
   docblock said higher-level surfaces layer a generic on top, but `ctx.session` _is_

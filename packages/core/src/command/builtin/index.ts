@@ -51,5 +51,6 @@ export { RouteListCommand } from "./RouteListCommand.ts";
 export { DoctorCommand } from "./DoctorCommand.ts";
 export { MakeProviderCommand } from "./MakeProviderCommand.ts";
 export { CssBuildCommand } from "./CssBuildCommand.ts";
+export { AssetsBuildCommand } from "./AssetsBuildCommand.ts";
 export { LintPackagesCommand } from "./LintPackagesCommand.ts";
 export { MakePackageCommand } from "./MakePackageCommand.ts";

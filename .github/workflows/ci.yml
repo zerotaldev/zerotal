@@ -111,6 +111,22 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      # FlowBrowser drives a headless Chrome. The runner image ships one, but Bun's
+      # auto-detection is what actually has to find it, so the path is pinned here
+      # and the step fails loudly when there is none — a browser suite that skips
+      # itself in CI reports green for exactly the failures it exists to catch.
+      - name: Locate a browser for FlowBrowser
+        run: |
+          for candidate in "$CHROME_BIN" /usr/bin/google-chrome /usr/bin/google-chrome-stable /usr/bin/chromium-browser /usr/bin/chromium; do
+            if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+              echo "BUN_CHROME_PATH=$candidate" >> "$GITHUB_ENV"
+              echo "using $candidate"
+              exit 0
+            fi
+          done
+          echo "::error::No Chrome/Chromium on the runner — FlowBrowser's suite would skip."
+          exit 1
+
       - name: Test
         run: bun run test
 

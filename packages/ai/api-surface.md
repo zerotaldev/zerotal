@@ -89,8 +89,10 @@ class AiGenerationJob = {
   _chain: SerializedJob[] | undefined
   batchId: string | undefined
   className: string
+  debounceKey: () => string
   handle: () => Promise<void>
   payload: () => Record<string, unknown>
+  readonly debounce?: number
   readonly maxAttempts: number
   readonly queue: string
   readonly retryDelay: number

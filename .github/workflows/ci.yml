@@ -76,6 +76,14 @@ jobs:
       - name: Component docs
         run: bun run docs:components:check
 
+      # A `stable` maturity is a promise about every export, and a promise over a
+      # surface nobody wrote down is not one anyone can use. Baseline-and-ratchet
+      # rather than a wall: today's gap is recorded, a regression fails, and the
+      # number only moves down. A gate demanding a clean sweep on the day it lands
+      # either blocks the release or gets switched off.
+      - name: Docs coverage
+        run: bun run docs:coverage
+
       # types/routes.generated.ts is what makes `route()` type-checked, and it is
       # only correct if it is regenerated when routes change. `zt dev` refreshes it,
       # but a route added in an editor-only session (or by a provider) would ship

@@ -23,6 +23,8 @@
     "docs:api": "bun run scripts/api/build-api-docs.ts",
     "docs:components": "bun run scripts/generate-docs.ts",
     "docs:components:check": "bun run scripts/generate-docs.ts --check",
+    "docs:coverage": "bun run scripts/docs-coverage.ts",
+    "docs:coverage:update": "bun run scripts/docs-coverage.ts --update",
     "docs:api:watch": "bun run scripts/api/collect-entrypoints.ts && bunx typedoc --options typedoc.json --watch"
   },
   "dependencies": {

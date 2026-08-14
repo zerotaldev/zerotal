@@ -14,6 +14,7 @@ export function setPathGenerator(generator: PathGenerator): void {
 }
 
 /** The path generator currently in force. */
+/** @internal — reads the active generator; `setPathGenerator` is the public seam. */
 export function pathGenerator(): PathGenerator {
   return _pathGenerator;
 }

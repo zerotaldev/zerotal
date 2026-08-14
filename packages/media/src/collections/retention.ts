@@ -13,6 +13,8 @@ import type { CollectionDefinition } from "../types.ts";
  *
  * @param justAdded - The item that triggered the trim; never removed, even if
  *   its sort position would otherwise put it outside the window.
+ *
+ * @internal — `single` / `onlyKeepLatest` enforcement, run by MediaAdder.
  */
 export async function applyRetentionRules(
   modelType: string,

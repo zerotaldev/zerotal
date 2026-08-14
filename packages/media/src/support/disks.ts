@@ -33,6 +33,8 @@ export function setDiskResolver(resolver: DiskResolver | null): void {
  * empty string is looked up literally and throws `DiskNotConfiguredError`. Media
  * config uses `""` to mean "inherit the default", so every lookup goes through
  * here rather than reaching for `Storage.disk()` directly.
+ *
+ * @internal — disk resolution.
  */
 export function diskFor(name?: string | null): StorageDriver {
   const trimmed = name?.trim();
@@ -65,6 +67,8 @@ export function setDefaultDiskName(name: string | null): void {
  *
  * Falls back to `""` when there is no app or no storage config to ask — the read
  * path treats that as "the default", which is the best answer available.
+ *
+ * @internal — disk resolution.
  */
 export function defaultDiskName(): string {
   if (_defaultName !== null) return _defaultName;

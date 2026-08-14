@@ -12,6 +12,8 @@ import { Schema } from "@zerotal/orm";
  *
  * Mirrors `auditSchemaConcern`, and exists for the same reason: the alternative
  * is an app that boots cleanly and then fails on its first upload, in production.
+ *
+ * @internal — registered by MediaProvider so the `media` table provisions itself.
  */
 export const mediaSchemaConcern: ConcernDescriptor = {
   name: "media-schema",

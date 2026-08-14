@@ -3,6 +3,7 @@ import { MediaError } from "./errors.ts";
 import { diskFor } from "./support/disks.ts";
 
 /** A file's bytes plus the name it arrived under. */
+/** @internal — source-resolution plumbing. */
 export interface ResolvedSource {
   bytes: Uint8Array;
   /** Original filename, used to derive the default media name. */
@@ -10,6 +11,7 @@ export interface ResolvedSource {
 }
 
 /** Anything that can be resolved to bytes on demand. */
+/** @internal — source-resolution plumbing. */
 export type SourceResolver = () => Promise<ResolvedSource>;
 
 /** Things `addMedia()` accepts directly. */
@@ -21,6 +23,8 @@ export type MediaSource = UploadedFile | File | Blob | Uint8Array | ArrayBuffer;
  * Resolution is deferred so a rule that can reject on metadata alone — a
  * collection that accepts only PDFs, say — does not have to buffer the file
  * first.
+ *
+ * @internal — source resolution; apps pass a `MediaSource` to `addMedia*`.
  */
 export function fromValue(source: MediaSource, fileName?: string): SourceResolver {
   if (source instanceof UploadedFile) {
@@ -66,6 +70,8 @@ export function fromValue(source: MediaSource, fileName?: string): SourceResolve
  *   often enough that downloading whatever arrives is how one request exhausts the
  *   heap; the limit is checked against `Content-Length` first and again against
  *   what actually arrived, since the header is a claim.
+ *
+ * @internal — source resolution; apps pass a `MediaSource` to `addMedia*`.
  */
 export function fromUrl(url: string, maxBytes: number): SourceResolver {
   return async () => {
@@ -108,6 +114,7 @@ export function fromUrl(url: string, maxBytes: number): SourceResolver {
 }
 
 /** Read a file already sitting on one of the app's storage disks. */
+/** @internal — source resolution; apps pass a `MediaSource` to `addMedia*`. */
 export function fromDisk(path: string, disk?: string): SourceResolver {
   return async () => {
     const bytes = await diskFor(disk).getBuffer(path);
@@ -119,6 +126,7 @@ export function fromDisk(path: string, disk?: string): SourceResolver {
 }
 
 /** Read a file from the local filesystem. */
+/** @internal — source resolution; apps pass a `MediaSource` to `addMedia*`. */
 export function fromPath(path: string): SourceResolver {
   return async () => {
     const file = Bun.file(path);

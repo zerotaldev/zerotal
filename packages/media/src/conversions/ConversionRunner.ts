@@ -47,6 +47,8 @@ export function partitionConversions(
  * and its row already exists, so a codec that chokes on one file should cost
  * that file its thumbnail, not the upload. Failures are collected and returned
  * rather than thrown.
+ *
+ * @internal — the conversion engine, constructed by MediaProvider.
  */
 export class ConversionRunner {
   constructor(

@@ -21,6 +21,7 @@ export function setConversionDispatcher(dispatcher: ConversionDispatcher | null)
 }
 
 /** Whether conversions can currently be deferred. */
+/** @internal — queue-bridge wiring. */
 export function isQueueAvailable(): boolean {
   return _dispatcher !== null;
 }
@@ -31,6 +32,8 @@ export function isQueueAvailable(): boolean {
  * A no-op when nothing is installed — callers check {@link isQueueAvailable}
  * first and run inline instead, so this is only reached if a queue disappeared
  * between the check and the dispatch.
+ *
+ * @internal — queue-bridge wiring.
  */
 export async function dispatchConversions(mediaId: number, conversions: string[]): Promise<void> {
   if (_dispatcher === null) return;

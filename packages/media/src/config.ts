@@ -77,6 +77,7 @@ export function MediaConfig(options: Partial<MediaConfigShape> = {}): MediaConfi
 }
 
 /** The defaults, for tests and for resolving config in DB-less runtimes. */
+/** @internal — the defaults `MediaConfig()` merges onto. */
 export function mediaDefaults(): MediaConfigShape {
   return { ...defaults, responsiveWidths: [...defaults.responsiveWidths] };
 }

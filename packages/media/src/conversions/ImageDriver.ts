@@ -45,6 +45,27 @@ export interface ImageMetadata {
  *
  * Keeping both behind one interface is also what makes `Bun.Image` — which is
  * young — a safe thing to depend on: if its API moves, one file changes.
+ *
+ * ## How this interface may grow
+ *
+ * This is the one type in the package a third-party implements, so a new
+ * **required** member is a breaking change for code this repository cannot see.
+ * The policy, decided when the package was promoted to `stable`:
+ *
+ * - **New members arrive optional**, and the package supplies the fallback —
+ *   the same way `supportsCrop` lets a driver decline `fit: "cover"` instead of
+ *   failing at conversion time. A capability nobody implements must degrade to
+ *   the behaviour drivers already have.
+ * - **{@link ImageManipulation} may gain optional fields** (a background colour,
+ *   a device-pixel-ratio multiplier, EXIF stripping). Drivers ignore what they
+ *   do not understand, so this stays additive — but a field that *changes*
+ *   existing output is a new field, never a new default.
+ * - **{@link ImageResult} and {@link ImageMetadata} may not gain required
+ *   fields**, because drivers produce them. Optional only.
+ *
+ * Buffers rather than streams is deliberate and does not change: media is read
+ * from and written to a storage disk, both of which hand over whole objects, so
+ * a streaming seam here would only re-buffer at each end.
  */
 export interface ImageDriver {
   /** Name used in error messages. */

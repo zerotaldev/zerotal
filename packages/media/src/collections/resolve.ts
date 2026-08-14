@@ -2,6 +2,7 @@ import { UnknownCollectionError } from "../errors.ts";
 import type { CollectionDefinition, MediaCollections } from "../types.ts";
 
 /** A model class that may declare media collections. */
+/** @internal — the structural shape `resolveCollection` reads off a model. */
 export interface CollectionHost {
   name: string;
   mediaCollections?: MediaCollections;
@@ -16,6 +17,8 @@ export interface CollectionHost {
  *
  * @throws {UnknownCollectionError} when the model declares no such collection —
  *   listing the ones it does declare, because the mistake is nearly always a typo.
+ *
+ * @internal — collection lookup; apps declare `mediaCollections` and never call this.
  */
 export function resolveCollection(host: CollectionHost, name: string): CollectionDefinition {
   const declared = host.mediaCollections ?? {};
@@ -29,11 +32,13 @@ export function resolveCollection(host: CollectionHost, name: string): Collectio
 }
 
 /** Whether a model declares a collection under `name`. */
+/** @internal — collection lookup; apps declare `mediaCollections` and never call this. */
 export function hasCollection(host: CollectionHost, name: string): boolean {
   return (host.mediaCollections ?? {})[name] !== undefined;
 }
 
 /** Every collection name the model declares. */
+/** @internal — collection lookup; apps declare `mediaCollections` and never call this. */
 export function collectionNames(host: CollectionHost): string[] {
   return Object.keys(host.mediaCollections ?? {});
 }

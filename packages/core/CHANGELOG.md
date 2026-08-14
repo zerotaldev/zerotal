@@ -10,6 +10,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`RequestContext.remember(key, factory)`** — run something at most once per request.
+  The N+1 detector says a query ran too many times; when the answer is the same every
+  time, the fix is to ask once, and every app that hits it rebuilds this by hand. Two
+  behaviours are the whole point and are the ones a hand-rolled version gets wrong: the
+  **promise** is cached rather than the resolved value (cache after the `await` and a
+  `Promise.all` of ten readers all miss), and a **rejected promise is evicted** (leave
+  it in and one transient failure poisons every later read in the same request).
+  Outside a request it is a pass-through — a queue worker has no request to scope to.
+  `RequestContext.forget(key)` drops a value when a write invalidates an earlier read.
+
 - **Refreshable locks — a lock can now be held across work longer than its TTL.** Sizing
   a TTL was a trade with no good answer: too short and the lock evaporates mid-job, too
   long and a crashed holder blocks the key for however long you guessed. The number was

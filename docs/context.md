@@ -408,6 +408,39 @@ middleware); call `request()` anywhere else. Code that also runs **outside** a
 request — a service shared with CLI commands or queue workers — uses
 `HttpContext.tryGet()`, which returns `undefined` instead of throwing.
 
+## Asking once per request
+
+`RequestContext.remember(key, factory)` runs `factory` at most once per request
+for a given key and hands every later caller the same answer:
+
+```typescript
+import { RequestContext } from "zerotal";
+
+const settings = await RequestContext.remember(`household:${id}:settings`, () =>
+  Settings.query().where("household_id", id).first(),
+);
+```
+
+This is the other half of the [N+1 detector](/docs/database#n1-detection): the
+detector tells you a query ran too many times, and when the answer is the same
+every time, "ask once" is the fix rather than eager loading.
+
+Two behaviours are deliberate, and both are the ones a hand-rolled version
+usually gets wrong:
+
+- **The promise is cached, not the resolved value.** Cache after the `await` and
+  a `Promise.all` of ten readers all miss — none has resolved when the others
+  look. Caching the promise makes the first caller's in-flight work the answer
+  for the other nine.
+- **A rejected promise is evicted.** Otherwise one transient failure poisons
+  every later read in the same request, including the retry.
+
+Outside a request it is a pass-through. A queue worker has no request to scope
+to, and quietly sharing a value across jobs would be worse than not caching.
+
+`RequestContext.forget(key)` drops a value when a write invalidates a read taken
+earlier in the same request.
+
 ## Testing
 
 `HttpContext.fake()` builds a context without a live server — perfect for unit

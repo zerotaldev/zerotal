@@ -88,4 +88,64 @@ export class RequestContext {
   static transaction(): TransactionContext | undefined {
     return this.tryGet()?._transaction;
   }
+
+  // ── Per-request memoisation ───────────────────────────────────────────
+
+  /**
+   * Run `factory` at most once per request for a given `key`, and hand every
+   * later caller the same answer.
+   *
+   * The N+1 detector tells you a query ran too many times; the fix is almost
+   * always "ask once per request", and this is that. Outside a request it is a
+   * pass-through — a queue worker or a CLI command has no request to scope to,
+   * and silently sharing a value across jobs would be worse than not caching.
+   *
+   * Two details are the whole point, and both were learned the expensive way by
+   * everyone who hand-rolls this:
+   *
+   * - **The promise is cached, not the resolved value.** Cache after the
+   *   `await` and a `Promise.all` of ten readers all miss, because none of them
+   *   has resolved when the others look. Caching the promise makes the first
+   *   caller's in-flight work the answer for the other nine.
+   * - **A rejected promise is evicted.** Leave it in and one transient failure
+   *   poisons every later read in the same request, including the retry.
+   *
+   * @param key - Unique within the request. Include the arguments: `user:${id}`.
+   * @param factory - Runs on the first call for this key.
+   *
+   * @example
+   * const settings = await RequestContext.remember(
+   *   `household:${id}:settings`,
+   *   () => Settings.query().where("household_id", id).first(),
+   * );
+   */
+  static async remember<T>(key: string, factory: () => Promise<T> | T): Promise<T> {
+    const ctx = this.tryGet();
+    if (!ctx) return factory();
+
+    const cacheKey = `memo:${key}`;
+    const hit = ctx.getInternal<Promise<T>>(cacheKey);
+    if (hit) return hit;
+
+    // Store the promise synchronously, before the first await — that is what
+    // makes concurrent callers share one round trip instead of racing.
+    const pending = (async () => factory())();
+    ctx.setInternal(cacheKey, pending);
+
+    try {
+      return await pending;
+    } catch (error) {
+      ctx.deleteInternal(cacheKey);
+      throw error;
+    }
+  }
+
+  /**
+   * Drop a memoised value so the next {@link remember} recomputes it.
+   *
+   * For the case a write invalidates a read taken earlier in the same request.
+   */
+  static forget(key: string): void {
+    this.tryGet()?.deleteInternal(`memo:${key}`);
+  }
 }

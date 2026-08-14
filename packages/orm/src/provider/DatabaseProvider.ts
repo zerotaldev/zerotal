@@ -199,6 +199,12 @@ export class DatabaseProvider extends ServiceProvider {
     runner.registerLazy("migrate:fresh", () =>
       import("../commands/MigrateFreshCommand.ts").then((m) => m.MigrateFreshCommand),
     );
+    // Same command, the name it has elsewhere. Nothing otherwise pushes anyone to
+    // exercise their `down()` methods, and a rollback nobody has run is a
+    // rollback that does not work.
+    runner.registerLazy("migrate:refresh", () =>
+      import("../commands/MigrateRefreshCommand.ts").then((m) => m.MigrateRefreshCommand),
+    );
     runner.registerLazy("migrate:status", () =>
       import("../commands/MigrateStatusCommand.ts").then((m) => m.MigrateStatusCommand),
     );

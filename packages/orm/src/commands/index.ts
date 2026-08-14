@@ -22,6 +22,7 @@ export { MigrateCommand } from "./MigrateCommand.ts";
 export { MigrateRollbackCommand } from "./MigrateRollbackCommand.ts";
 export { MigrateStatusCommand } from "./MigrateStatusCommand.ts";
 export { MigrateFreshCommand } from "./MigrateFreshCommand.ts";
+export { MigrateRefreshCommand } from "./MigrateRefreshCommand.ts";
 export { MakeMigrationCommand } from "./MakeMigrationCommand.ts";
 export { MigrateGenerateCommand } from "./MigrateGenerateCommand.ts";
 export { MakeModelCommand } from "./MakeModelCommand.ts";

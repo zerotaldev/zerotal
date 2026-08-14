@@ -308,7 +308,19 @@ const fresh = await DB.onPrimary().table("posts").where("id", post.id).first<Pos
 
 Automatically enabled outside production (the `onBooted` hook turns on `warn` mode with a
 threshold of 5). When the same SQL shape fires more than 5 times in one request, Zerotal logs a
-warning naming the relation to eager-load.
+warning.
+
+The detector reads the **bindings**, not just the SQL text, because the same SQL repeated is
+two different bugs with two different fixes:
+
+| What it saw                       | What it means                      | What it tells you                                                            |
+| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| Same SQL, **different** arguments | A per-row lookup — the classic N+1 | Eager-load the relation, or collapse it into `whereIn`                       |
+| Same SQL, **same** arguments      | The same answer fetched repeatedly | Ask once: [`RequestContext.remember`](/docs/context#asking-once-per-request) |
+
+Without the bindings the two are indistinguishable, and a legitimate loop over six months —
+identical SQL, a different `period` each time — got sent hunting for a relation to eager-load
+that did not exist. `NPlusOneError.distinctArgs` carries the count if you want to branch on it.
 
 ### Configuring the detector
 

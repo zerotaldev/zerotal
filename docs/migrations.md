@@ -81,8 +81,10 @@ bun zt migrate:rollback
 bun zt migrate:status
 ```
 
-`migrate --fresh` and the standalone `migrate:fresh` command do the same thing:
-roll everything back, then re-run from scratch.
+`migrate --fresh`, `migrate:fresh` and `migrate:refresh` all do the same thing:
+roll everything back through each migration's `down()`, then re-run from scratch.
+`migrate:refresh` exists because that is the name the command has elsewhere,
+and a command you reach for and don't find is a `down()` you never exercise.
 
 Add `--seed` to repopulate afterwards, which is usually why the database was wiped
 in the first place:
@@ -107,8 +109,9 @@ ordered automatically (`001_…`, `002_…`); see [Migration file naming](#migra
 ### Which command do I use?
 
 - **`migrate`** — day-to-day: apply the migrations that haven't run yet.
-- **`migrate --fresh` / `migrate:fresh`** — local resets: throw the schema away and
-  rebuild it. Destroys all data.
+- **`migrate --fresh` / `migrate:fresh` / `migrate:refresh`** — local resets: throw the
+  schema away and rebuild it. Destroys all data. Because they run every `down()` on the
+  way, they are also the cheapest way to find out that a rollback is broken.
 - **`migrate:rollback`** — undo the last batch you ran (calls each migration's `down()`).
 - **`migrate:status`** — inspect what has and hasn't run before deciding.
 

@@ -10,6 +10,10 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`migrate:refresh`** — the same command as `migrate:fresh`, under the name it has
+  elsewhere. Nothing otherwise pushes anyone to run their `down()` methods, and a
+  rollback nobody has exercised is a rollback that does not work.
+
 - **`--seed` on `migrate` and `migrate:fresh`.** Wiping a database and repopulating it is
   one thought, and it took two commands — `bun zt migrate:fresh && bun zt db:seed` — with
   the second easy to forget and nothing to remind you. The flag closes that:
@@ -31,6 +35,17 @@ follows the Zerotal monorepo's unified versioning.
   The seeder-loading logic is now shared with `db:seed` rather than duplicated, so all
   three commands accept the same shapes: a class-based `DatabaseSeeder` (named or default
   export) and the legacy `database/seeders/index.ts` default function.
+
+### Changed
+
+- **The N+1 detector reads the bindings, not just the SQL text.** Grouping by SQL alone
+  made a legitimate loop over six months — identical SQL, a different `period` each
+  time — indistinguishable from a per-row lookup, so it told you to eager-load a
+  relation that does not exist. The warning now says which of the two it found: _same
+  SQL, different arguments_ points at eager loading or `whereIn`; _same SQL, same
+  arguments_ points at `RequestContext.remember()`, because there is nothing to
+  eager-load when the answer never changes. `NPlusOneError.distinctArgs` carries the
+  count.
 
 ### Fixed
 

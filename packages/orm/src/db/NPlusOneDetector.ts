@@ -25,15 +25,36 @@ import { NPlusOneDetected } from "../events.ts";
 export class NPlusOneError extends ZerotalError {
   readonly fingerprint: string;
   readonly count: number;
+  /**
+   * How many distinct argument tuples the shape ran with.
+   *
+   * The difference between the two diagnoses. `1` means the same query with the
+   * same arguments ran N times — nothing to eager-load, the answer is to ask
+   * once. Anything higher is the classic per-row lookup.
+   */
+  readonly distinctArgs: number;
 
-  constructor(fingerprint: string, count: number) {
+  constructor(fingerprint: string, count: number, distinctArgs = 0) {
     const sql = fingerprint.replaceAll("\x00", "?");
+    // Sending someone to look for a relation to eager-load, when the query is
+    // the *same* one repeated with the *same* arguments, wastes the time the
+    // warning was supposed to save. Say which of the two this is.
+    const diagnosis =
+      distinctArgs === 1
+        ? `with the same arguments every time. That is not a per-row lookup — nothing to\n` +
+          `eager-load — it is the same answer fetched repeatedly.\n\n` +
+          `Fix: ask once per request.\n` +
+          `  const rows = await RequestContext.remember('key', () => …);\n`
+        : `with ${distinctArgs > 0 ? `${distinctArgs} different argument sets` : "varying arguments"}. ` +
+          `This is the classic N+1 access pattern.\n\n` +
+          `Fix: load the relation eagerly using .with('relation') on your query,\n` +
+          `call await model.load('relation') before the loop, or collapse the loop\n` +
+          `into a single .whereIn(...).\n`;
+
     super(
       `NPlusOneError: The query\n\n` +
         `  ${sql}\n\n` +
-        `was executed ${count} times in a single request. This is an N+1 query.\n\n` +
-        `Fix: load the relation eagerly using .with('relation') on your query,\n` +
-        `or call await model.load('relation') before the loop.\n\n` +
+        `was executed ${count} times in a single request, ${diagnosis}\n` +
         `To suppress for a specific table or pattern:\n` +
         `  DB.allowNPlusOne('table_name')           // permanent\n` +
         `  DB.allowNPlusOne('table_name', { once: true })  // this request only\n\n` +
@@ -43,13 +64,30 @@ export class NPlusOneError extends ZerotalError {
     );
     this.fingerprint = fingerprint;
     this.count = count;
+    this.distinctArgs = distinctArgs;
   }
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-/** Per-request query-shape hit counts. Keyed by the HttpContext object. */
-const _counts = new WeakMap<object, Map<string, number>>();
+/** What one query shape did during one request. */
+interface ShapeStats {
+  count: number;
+  /**
+   * Distinct argument tuples seen, capped.
+   *
+   * Capped because a genuine 500-iteration loop would otherwise hold 500 keys
+   * for the life of the request to answer a question — "is this one argument or
+   * many?" — that a handful already settles.
+   */
+  args: Set<string>;
+}
+
+/** How many distinct argument tuples to remember per shape before giving up counting. */
+const _ARG_SAMPLE_CAP = 32;
+
+/** Per-request query-shape stats. Keyed by the HttpContext object. */
+const _counts = new WeakMap<object, Map<string, ShapeStats>>();
 
 /** Once-per-request suppressions. Cleared automatically when the context is GC'd. */
 const _onceSuppressed = new WeakMap<object, Set<string>>();
@@ -126,8 +164,18 @@ export function _resetNPlusOne(): void {
 
 // ── Core tracking ─────────────────────────────────────────────────────────────
 
-/** @internal — called by QueryBuilder._run() on every query execution. */
-export function trackQuery(ctx: object | null | undefined, fingerprint: string): void {
+/**
+ * @internal — called by QueryBuilder._run() on every query execution.
+ *
+ * @param values - The bound parameters. Optional so older call sites still
+ *   compile; without them the detector cannot tell a per-row lookup from the
+ *   same read repeated, and says so less precisely.
+ */
+export function trackQuery(
+  ctx: object | null | undefined,
+  fingerprint: string,
+  values?: readonly unknown[],
+): void {
   if (!ctx) return;
 
   // Honour explicit opt-in or auto-enable in local/development only
@@ -158,19 +206,49 @@ export function trackQuery(ctx: object | null | undefined, fingerprint: string):
   // Count this fingerprint for the current request
   if (!_counts.has(ctx)) _counts.set(ctx, new Map());
   const map = _counts.get(ctx)!;
-  const count = (map.get(fingerprint) ?? 0) + 1;
-  map.set(fingerprint, count);
+  const stats = map.get(fingerprint) ?? { count: 0, args: new Set<string>() };
+  stats.count++;
+  if (values !== undefined && stats.args.size < _ARG_SAMPLE_CAP) {
+    stats.args.add(_argKey(values));
+  }
+  map.set(fingerprint, stats);
 
-  if (count >= _threshold) {
+  if (stats.count >= _threshold) {
     // Only fire once (at exactly the threshold), not on every subsequent hit
-    if (count > _threshold) return;
+    if (stats.count > _threshold) return;
 
-    const err = new NPlusOneError(fingerprint, count);
-    FrameworkEvents.emit(new NPlusOneDetected(fingerprint, count, ctx ?? undefined));
+    const err = new NPlusOneError(fingerprint, stats.count, stats.args.size);
+    FrameworkEvents.emit(new NPlusOneDetected(fingerprint, stats.count, ctx ?? undefined));
     if (_mode === "throw") {
       throw err;
     } else {
       console.warn(`\n[Zerotal ORM] ${err.message}\n`);
     }
+  }
+}
+
+/**
+ * A comparable key for one call's bound parameters.
+ *
+ * Only ever compared against other keys for the same SQL shape, so it needs to
+ * separate arguments rather than describe them. A value JSON cannot represent
+ * degrades to its `String()` form, which is enough to tell two calls apart.
+ */
+function _argKey(values: readonly unknown[]): string {
+  let key = "";
+  for (const value of values) {
+    if (value instanceof Date) key += `d${value.getTime()}|`;
+    else if (value === null || value === undefined) key += "∅|";
+    else if (typeof value === "object") key += `${_safeJson(value)}|`;
+    else key += `${String(value)}|`;
+  }
+  return key;
+}
+
+function _safeJson(value: object): string {
+  try {
+    return JSON.stringify(value) ?? "?";
+  } catch {
+    return "?";
   }
 }

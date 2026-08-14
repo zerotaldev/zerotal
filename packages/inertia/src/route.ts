@@ -1,6 +1,7 @@
 import { Router } from "@zerotal/core";
 import type { MiddlewareClass, RouteRegistration } from "@zerotal/core";
 import { inertia } from "./inertia.ts";
+import type { PageTarget, RenderProps } from "./pages.ts";
 
 /**
  * Register a GET route that renders an Inertia page directly — no controller
@@ -22,10 +23,10 @@ import { inertia } from "./inertia.ts";
  * Router.inertia('/admin', 'Admin/Dashboard', [AuthMiddleware]);
  * ```
  */
-export function inertiaRoute(
+export function inertiaRoute<N extends PageTarget>(
   path: string,
-  component: string,
-  props?: Record<string, unknown> | MiddlewareClass[],
+  component: N,
+  props?: RenderProps<N> | MiddlewareClass[],
   middleware: MiddlewareClass[] = [],
 ): RouteRegistration {
   let resolvedProps: Record<string, unknown> = {};
@@ -34,12 +35,15 @@ export function inertiaRoute(
   if (Array.isArray(props)) {
     resolvedMiddleware = props; // shorthand: Router.inertia('/x', 'X', [AuthMiddleware])
   } else if (props) {
-    resolvedProps = props;
+    resolvedProps = props as Record<string, unknown>;
   }
 
   const handler = class InertiaRouteHandler {
     async handle(): Promise<void> {
-      await inertia(component, resolvedProps);
+      // Props were checked against the component above; the runtime call takes
+      // the erased bag, which `RenderProps<N>` cannot be proven to be while `N`
+      // is still a type variable.
+      await inertia.dynamic(component, resolvedProps);
     }
   };
 

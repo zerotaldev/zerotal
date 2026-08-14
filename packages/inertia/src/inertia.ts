@@ -9,6 +9,35 @@ import { readHistoryFlags } from "./historyState.ts";
 import { allSharedKeys } from "./share.ts";
 import { resolvePageModule, renderInertiaPage } from "./ssr/renderPage.ts";
 import type { PageObject } from "./types.ts";
+import type { PageTarget, RenderArgs } from "./pages.ts";
+
+/**
+ * A page-render helper — {@link inertia} and {@link inertiaStream} — with the
+ * `dynamic` escape hatch beside its checked call signature.
+ */
+export interface PageRenderer {
+  /**
+   * Render page `component` with props checked against that page's component.
+   *
+   * @param component - Page component name/path relative to the pages dir, without extension.
+   * @param args - Props for the page; omit when the page requires none.
+   */
+  <N extends PageTarget>(component: N, ...args: RenderArgs<N>): Promise<void>;
+
+  /**
+   * Render a page whose name isn't known at compile time — an error page chosen
+   * by status code, a component name from config or the database.
+   *
+   * A separate function rather than a `string` overload: an overload that
+   * accepts every string is matched by every string, which would make the
+   * checked signature decorative. This one is greppable and says what it is
+   * giving up.
+   *
+   * @param component - Page component name, resolved at runtime.
+   * @param props - Props for the page, unchecked.
+   */
+  dynamic(component: string, props?: Record<string, unknown>): Promise<void>;
+}
 
 /**
  * Build the full Inertia page object for the current request: merges shared props, runs the v3
@@ -147,7 +176,7 @@ function _devBustAssets(html: string): string {
  * Reach it from a controller via `Inertia.stream(...)`.
  *
  * @param component - Page component name (path relative to the pages dir, no extension), e.g. `"Posts/Show"`.
- * @param props - Props passed to the page; may include prop wrappers (`optional`/`defer`/`merge`/…).
+ * @param args - Props passed to the page; may include prop wrappers (`optional`/`defer`/`merge`/…). Checked against the page component's own props, like {@link inertia}.
  * @throws {@link InertiaTemplateNotLoadedError} When the HTML template has not been loaded (InertiaProvider not registered).
  * @throws {@link InvalidComponentError} When the component name contains path-traversal sequences.
  *
@@ -159,10 +188,16 @@ function _devBustAssets(html: string): string {
  * }
  * ```
  */
-export async function inertiaStream(
-  component: string,
-  props: Record<string, unknown> = {},
-): Promise<void> {
+export const inertiaStream: PageRenderer = Object.assign(
+  <N extends PageTarget>(component: N, ...args: RenderArgs<N>): Promise<void> =>
+    _inertiaStream(component, (args[0] ?? {}) as Record<string, unknown>),
+  {
+    dynamic: (component: string, props: Record<string, unknown> = {}): Promise<void> =>
+      _inertiaStream(component, props),
+  },
+);
+
+async function _inertiaStream(component: string, props: Record<string, unknown>): Promise<void> {
   const ctx = RequestContext.get();
 
   if (!_htmlTemplate) {
@@ -290,8 +325,16 @@ export async function inertiaStream(
  * For streaming SSR (better TTFB) use {@link inertiaStream} instead; to force a
  * full-page/external redirect use {@link location}.
  *
+ * @remarks
+ * Both arguments are type-checked against the generated page registry
+ * (`resources/js/pages.generated.ts`): the component name must be a page that
+ * exists, and the props are checked against the props that page's component
+ * declares, with `optional`/`defer`/`merge` wrappers unwrapped. Shared props
+ * are optional — the framework merges them in. Until the registry is rebuilt,
+ * any name and any props compile, as before.
+ *
  * @param component - Page component name/path relative to the pages dir, without extension (e.g. `"Users/Index"`).
- * @param props - Props for the page. Values may be plain data or prop wrappers (`optional`/`defer`/`merge`/`scroll`/…). Defaults to `{}`.
+ * @param args - Props for the page. Values may be plain data, a factory, or prop wrappers (`optional`/`defer`/`merge`/`scroll`/…). Omit when the page needs none.
  * @returns A promise that resolves once `ctx.response` has been set (no value).
  * @throws {@link InertiaTemplateNotLoadedError} On a full-page load when the HTML template has not been loaded (InertiaProvider not registered).
  *
@@ -304,10 +347,16 @@ export async function inertiaStream(
  * }
  * ```
  */
-export async function inertia(
-  component: string,
-  props: Record<string, unknown> = {},
-): Promise<void> {
+export const inertia: PageRenderer = Object.assign(
+  <N extends PageTarget>(component: N, ...args: RenderArgs<N>): Promise<void> =>
+    _inertia(component, (args[0] ?? {}) as Record<string, unknown>),
+  {
+    dynamic: (component: string, props: Record<string, unknown> = {}): Promise<void> =>
+      _inertia(component, props),
+  },
+);
+
+async function _inertia(component: string, props: Record<string, unknown>): Promise<void> {
   const ctx = RequestContext.get();
   const isInertiaRequest = ctx.request.headers.get("X-Inertia") === "true";
 

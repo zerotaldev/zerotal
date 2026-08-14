@@ -10,6 +10,52 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **Typed pages: `Inertia.render(component, props)` is checked against the page component.**
+  The name must be a page that exists — a renamed or misspelled component was a runtime
+  500 before, the kind that reaches production because the route it lives on is the one
+  nobody clicked — and the props are checked against the props that component declares.
+
+  Nothing new is annotated to make this work. `resources/js/pages.generated.ts` already
+  holds an `import()` thunk per page, and an `import()` thunk carries the module's full
+  type; the file's `Record<string, () => Promise<{ default: unknown }>>` annotation was
+  throwing all of it away — widening every page name to `string` and every default export
+  to `unknown`, which is precisely what typed props need. It is now written with
+  `satisfies`: same constraint enforced, types kept, nothing changed at runtime. One
+  type-only `declare module` line in that same file hands them to the server, which keeps
+  the server's only view of the client component graph in exactly one place.
+
+  The check runs in the cheap direction: the **component** declares its props (which a
+  React component does anyway) and the **controller** is checked against them.
+
+  Three details worth knowing:
+
+  - **Wrappers are unwrapped, and carry their payload.** A prop accepts its value, a
+    factory, or a wrapper — and `merge(() => [1, 2])` for a `Post[]` prop is an error.
+  - **`optional()` and `defer()` are rejected on a required prop.** They are absent on
+    first paint by definition, so a component typing such a prop as required is wrong
+    about its own contract; a type that accepted it would launder that bug into something
+    the compiler had signed off on. Declare the prop `?`.
+  - **Shared props are never required.** `auth`/`flash`/`errors`/`old` are merged in, so a
+    page declaring one does not force every controller to pass it. Declare your own
+    `Inertia.share()` keys on the `SharedProps` interface and they behave the same way.
+
+  Vue pages are checked by **name** only: a `.vue` SFC resolves through a
+  `declare module '*.vue'` shim whose default export is `DefineComponent<{}, {}, any>`, so
+  its props are invisible to TypeScript without `vue-tsc` in the typecheck path. Those
+  pages accept any props rather than failing on a shape nobody can see — documented rather
+  than silently degraded.
+
+- **`Inertia.render.dynamic(name, props)` / `inertia.dynamic()`** — render a page whose
+  name is only known at runtime (an error page chosen by status code, a component from
+  config), with no checking. A separate function rather than a `string` overload: an
+  overload that accepts every string is matched by every string, which would make the
+  checked signature decorative. `inertiaStream.dynamic()` is its streaming counterpart.
+
+- **The prop wrappers are generic.** `optional`, `lazy`, `always`, `defer`, `merge` and
+  `deepMerge` carry what they resolve to (`defer(() => stats())` is a `DeferProp<Stats>`),
+  which is what lets the wrapper be checked against the prop it fills. Existing calls are
+  unaffected — the parameter defaults to `unknown`.
+
 - **Tests for `PrecognitionMiddleware`.** A precognitive request validates a form
   without running the controller's side effects, answering 204 or 422 instead of the
   real response — so those answers must never be confused with real ones by a cache.

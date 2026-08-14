@@ -655,7 +655,12 @@ describe("generatePageRegistry()", () => {
     const content = await Bun.file(`${dir}/resources/js/pages.generated.ts`).text();
 
     expect(content).toContain("  Dashboard: () =>"); // bare identifier — no quotes
-    expect(content.endsWith("};\n")).toBe(true); // trailing newline
+    // `satisfies`, not an annotation: the annotation widened every page name to
+    // `string` and every default export to `unknown`, which is exactly what
+    // typed props need back.
+    expect(content).toContain("} satisfies Record<string, () => Promise<{ default: unknown }>>;");
+    expect(content).toContain('declare module "@zerotal/inertia"');
+    expect(content.endsWith("}\n")).toBe(true); // trailing newline
     await rm(dir, { recursive: true, force: true });
   });
 });

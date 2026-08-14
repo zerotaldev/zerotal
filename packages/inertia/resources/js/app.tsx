@@ -11,7 +11,10 @@ createInertiaApp({
   // Dynamic import thunks enable per-page code splitting.
   // Bun only loads the chunk for the current page — not all 150 pages.
   resolve: async (name: string) => {
-    const thunk = pages[name];
+    // `pages` is keyed by literal page name (it is written with `satisfies`, so
+    // the server can check `Inertia.render("Users/Index", …)` against it). The
+    // name Inertia hands us is a runtime string, so this one lookup widens it.
+    const thunk = (pages as Record<string, () => Promise<unknown>>)[name];
     if (!thunk) {
       throw new Error(
         `[Zerotal Inertia] Page not found: "${name}". Run: bun zerotal.ts inertia:build`,

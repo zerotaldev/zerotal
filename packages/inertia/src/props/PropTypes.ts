@@ -8,8 +8,14 @@
  * Optional/Always/Defer/Merge prop wrappers, adapted to TypeScript.
  */
 
-/** A prop value: a concrete value, or a (possibly async) factory evaluated on demand. */
-export type PropFactory = () => unknown | Promise<unknown>;
+/**
+ * A prop value: a concrete value, or a (possibly async) factory evaluated on demand.
+ *
+ * Generic so a wrapper can carry what it will resolve to — that is what lets
+ * `Inertia.render` check `defer(() => stats())` against the `stats` prop the
+ * page component declares, instead of checking that *something* was passed.
+ */
+export type PropFactory<T = unknown> = () => T | Promise<T>;
 
 /** Resolved merge configuration contributed by a mergeable prop. */
 export interface MergeConfig {
@@ -120,12 +126,12 @@ export abstract class InertiaProp {
  *
  * @category Props
  */
-export class OptionalProp extends InertiaProp {
+export class OptionalProp<T = unknown> extends InertiaProp {
   override readonly ignoreFirstLoad = true;
-  constructor(private readonly callback: PropFactory) {
+  constructor(private readonly callback: PropFactory<T>) {
     super();
   }
-  resolve(): unknown | Promise<unknown> {
+  resolve(): T | Promise<T> {
     return this.callback();
   }
 }
@@ -136,12 +142,12 @@ export class OptionalProp extends InertiaProp {
  *
  * @category Props
  */
-export class AlwaysProp extends InertiaProp {
-  constructor(private readonly value: unknown | PropFactory) {
+export class AlwaysProp<T = unknown> extends InertiaProp {
+  constructor(private readonly value: T | PropFactory<T>) {
     super();
   }
-  resolve(): unknown | Promise<unknown> {
-    return typeof this.value === "function" ? (this.value as PropFactory)() : this.value;
+  resolve(): T | Promise<T> {
+    return typeof this.value === "function" ? (this.value as PropFactory<T>)() : this.value;
   }
 }
 
@@ -152,16 +158,16 @@ export class AlwaysProp extends InertiaProp {
  *
  * @category Props
  */
-export class DeferProp extends InertiaProp {
+export class DeferProp<T = unknown> extends InertiaProp {
   override readonly ignoreFirstLoad = true;
   constructor(
-    private readonly callback: PropFactory,
+    private readonly callback: PropFactory<T>,
     readonly group: string = "default",
     readonly rescue: boolean = false,
   ) {
     super();
   }
-  resolve(): unknown | Promise<unknown> {
+  resolve(): T | Promise<T> {
     return this.callback();
   }
 }
@@ -172,13 +178,13 @@ export class DeferProp extends InertiaProp {
  *
  * @category Props
  */
-export class MergeProp extends InertiaProp {
-  constructor(private readonly value: unknown | PropFactory) {
+export class MergeProp<T = unknown> extends InertiaProp {
+  constructor(private readonly value: T | PropFactory<T>) {
     super();
     this._merge = true;
   }
-  resolve(): unknown | Promise<unknown> {
-    return typeof this.value === "function" ? (this.value as PropFactory)() : this.value;
+  resolve(): T | Promise<T> {
+    return typeof this.value === "function" ? (this.value as PropFactory<T>)() : this.value;
   }
 }
 
@@ -256,7 +262,7 @@ export class InfiniteScrollProp extends InertiaProp {
  * });
  * ```
  */
-export function optional(callback: PropFactory): OptionalProp {
+export function optional<T>(callback: PropFactory<T>): OptionalProp<T> {
   return new OptionalProp(callback);
 }
 
@@ -267,7 +273,7 @@ export function optional(callback: PropFactory): OptionalProp {
  * @returns An {@link OptionalProp} wrapper.
  * @category Props
  */
-export function lazy(callback: PropFactory): OptionalProp {
+export function lazy<T>(callback: PropFactory<T>): OptionalProp<T> {
   return new OptionalProp(callback);
 }
 
@@ -279,7 +285,12 @@ export function lazy(callback: PropFactory): OptionalProp {
  * @returns An {@link AlwaysProp} wrapper.
  * @category Props
  */
-export function always(value: unknown | PropFactory): AlwaysProp {
+// Two overloads, not one `T | PropFactory<T>` parameter: given a callback, a
+// single union parameter lets TypeScript infer `T` as the callback itself, and
+// the wrapper would then advertise a function where the page expects data.
+export function always<T>(value: PropFactory<T>): AlwaysProp<T>;
+export function always<T>(value: T): AlwaysProp<T>;
+export function always<T>(value: T | PropFactory<T>): AlwaysProp<T> {
   return new AlwaysProp(value);
 }
 
@@ -302,11 +313,11 @@ export function always(value: unknown | PropFactory): AlwaysProp {
  * });
  * ```
  */
-export function defer(
-  callback: PropFactory,
+export function defer<T>(
+  callback: PropFactory<T>,
   group = "default",
   options: { rescue?: boolean } = {},
-): DeferProp {
+): DeferProp<T> {
   return new DeferProp(callback, group, options.rescue ?? false);
 }
 
@@ -323,7 +334,9 @@ export function defer(
  * return inertia('Feed', { posts: merge(() => Post.paginate(15, page)) });
  * ```
  */
-export function merge(value: unknown | PropFactory): MergeProp {
+export function merge<T>(value: PropFactory<T>): MergeProp<T>;
+export function merge<T>(value: T): MergeProp<T>;
+export function merge<T>(value: T | PropFactory<T>): MergeProp<T> {
   return new MergeProp(value);
 }
 
@@ -335,7 +348,9 @@ export function merge(value: unknown | PropFactory): MergeProp {
  * @returns A {@link MergeProp} wrapper configured for deep merging.
  * @category Props
  */
-export function deepMerge(value: unknown | PropFactory): MergeProp {
+export function deepMerge<T>(value: PropFactory<T>): MergeProp<T>;
+export function deepMerge<T>(value: T): MergeProp<T>;
+export function deepMerge<T>(value: T | PropFactory<T>): MergeProp<T> {
   return new MergeProp(value).deepMerge();
 }
 

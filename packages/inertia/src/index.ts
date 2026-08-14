@@ -50,12 +50,25 @@ export {
   _setHtmlTemplate,
   _getHtmlTemplate,
 } from "./inertia.ts";
+export type { PageRenderer } from "./inertia.ts";
 export { InertiaProvider } from "./provider/InertiaProvider.ts";
 export { InertiaMiddleware } from "./middleware/InertiaMiddleware.ts";
 export { PrecognitionMiddleware } from "./middleware/PrecognitionMiddleware.ts";
 export { sharedProps } from "./SharedProps.ts";
 export { assetVersion, setAssetVersion } from "./version.ts";
 export { generatePageRegistry } from "./PageRegistry.ts";
+// The typed page registry: `InertiaPageRegistry` is what `pages.generated.ts`
+// augments, `SharedProps` is what the app declares for `Inertia.share()`.
+export type {
+  InertiaPageRegistry,
+  SharedProps,
+  PageName,
+  PageTarget,
+  PropsOf,
+  PropInput,
+  RenderProps,
+  RenderArgs,
+} from "./pages.ts";
 export { detectVuePlugin } from "./vuePlugin.ts";
 export type { PageObject, InertiaProviderOptions } from "./types.ts";
 

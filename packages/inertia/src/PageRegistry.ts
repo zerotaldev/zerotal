@@ -85,9 +85,23 @@ export async function generatePageRegistry(
     "// Bun.build with splitting:true creates one .js chunk per page.",
     "// Converting to static imports will bundle ALL pages into app.js.",
     "",
-    "export const pages: Record<string, () => Promise<{ default: unknown }>> = {",
+    // `satisfies`, not `: Record<string, …>`. The annotation checked the shape and
+    // then threw away everything else the thunks knew — the page names widened to
+    // `string` and every default export to `unknown`, which is precisely what
+    // typed props need. `satisfies` enforces the same constraint and keeps the
+    // types. Nothing changes at runtime.
+    "export const pages = {",
     ...thunks,
-    "};",
+    "} satisfies Record<string, () => Promise<{ default: unknown }>>;",
+    "",
+    "// Type-only: lets a controller's `Inertia.render(name, props)` be checked",
+    "// against the props each page component declares. Erased at runtime — and",
+    "// it is the ONLY place the server side touches the client component graph.",
+    'declare module "@zerotal/inertia" {',
+    "  interface InertiaPageRegistry {",
+    "    pages: typeof pages;",
+    "  }",
+    "}",
     // Trailing newline: the file is written on every dev rebuild, and without it
     // a formatter in the app would rewrite it right back, forever.
     "",

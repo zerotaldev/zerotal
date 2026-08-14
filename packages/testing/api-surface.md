@@ -291,6 +291,69 @@ type SessionDecoder = (response: Response) => Promise<Record<string, unknown> | 
 
 type TestFormValue = string | number | boolean | Blob | File | TestFileInput | null | undefined
 
+## ./browser  `(./src/browser.ts)`
+
+class BrowserPage = {
+  new (view: Bun.WebView, report: TransportReport, timeout: number): BrowserPage
+  attribute: (selector: string, name: string) => Promise<string | null>
+  click: (selector: string) => Promise<BrowserPage>
+  close: () => void
+  connection: () => Promise<string | null>
+  count: (selector: string) => Promise<number>
+  evaluate: <T = unknown>(expression: string) => Promise<T>
+  html: (selector: string) => Promise<string | null>
+  press: (key: string) => Promise<BrowserPage>
+  socketUpgraded: () => boolean
+  text: (selector: string) => Promise<string | null>
+  transport: () => TransportReport
+  type: (selector: string, text: string) => Promise<BrowserPage>
+  url: () => Promise<string>
+  waitFor: (expression: string, timeout?: number) => Promise<BrowserPage>
+  waitForConnection: (timeout?: number) => Promise<BrowserPage>
+  waitForCount: (selector: string, n: number, timeout?: number) => Promise<BrowserPage>
+  waitForPatch: (timeout?: number) => Promise<BrowserPage>
+}
+
+class FlowBrowser = {
+  new (app: TestApp, timeout: number): FlowBrowser
+  static availability: () => Promise<BrowserAvailability>
+  static serve: (bootstrap: () => Application | Promise<Application>, options?: FlowBrowserOptions) => Promise<FlowBrowser>
+  port: number
+  stop: () => Promise<void>
+  url: string
+  visit: (path: string) => Promise<BrowserPage>
+}
+
+const CDP_URL_ENV = 'ZT_BROWSER_CDP_URL'
+
+function browserAvailability = () => Promise<BrowserAvailability>
+
+function browserRequired = () => boolean
+
+interface BrowserAvailability = {
+  available: boolean
+  mode: 'none' | 'spawn' | 'connect'
+  reason: string
+}
+
+interface FlowBrowserOptions = {
+  setup?: () => void
+  timeout?: number
+}
+
+interface ObservedFrame = {
+  direction: 'sent' | 'received'
+  payload: string
+}
+
+interface TransportReport = {
+  created: number
+  errored: boolean
+  frames: ObservedFrame[]
+  statuses: number[]
+  upgraded: number
+}
+
 ## ./preload  `(./src/preload.ts)`
 
 _(no exports)_

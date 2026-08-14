@@ -179,6 +179,80 @@ The `Queue` facade resolves the `queue` container binding (a `QueueManager`). Al
 dispatched jobs are persisted to the queue driver; they are processed by the
 worker loop, not the web request.
 
+## Debounced jobs
+
+A document saved eight times in a minute should rebuild its search index once, and the only rebuild anyone sees is the last one. Set `debounce` to a number of seconds and repeated dispatches collapse into a single run:
+
+```typescript
+export class ReindexDocument extends Job {
+  /** Run 30s after the last dispatch, not once per dispatch. */
+  override readonly debounce = 30;
+
+  constructor(private documentId: number) {
+    super();
+  }
+
+  override payload(): Record<string, unknown> {
+    return { documentId: this.documentId };
+  }
+
+  async handle(): Promise<void> {
+    await search.reindex(this.documentId);
+  }
+}
+```
+
+```typescript
+// Eight saves in quick succession…
+for (const _ of edits) await Queue.dispatch(new ReindexDocument(doc.id));
+// …one job, running 30s after the last one.
+```
+
+This is a **trailing** debounce, and the name is accurate: each dispatch pushes the run further out, and the job runs once, after the dispatches stop. The other behaviour that sometimes wears this word — the first dispatch runs and the rest are dropped within the window — is a different thing, and is not what this does. If you need that, dispatch once and rate-limit at the edge.
+
+### The last payload wins
+
+When eight dispatches collapse, the surviving job carries the **eighth** one's data. That is the whole premise: the earlier dispatches are stale, and running with the newest state is the point.
+
+### What counts as "the same job"
+
+By default, the class name plus the serialised payload. So `ReindexDocument(1)` and `ReindexDocument(2)` are different work and never collapse into each other — which is what makes the common case need no configuration.
+
+Override `debounceKey()` when two payloads mean the same work. A job carrying a timestamp or a request id is unique on every dispatch and would otherwise never collapse with anything:
+
+```typescript
+export class ReindexDocument extends Job {
+  override readonly debounce = 30;
+
+  override payload(): Record<string, unknown> {
+    return { documentId: this.documentId, requestedAt: Date.now() };
+  }
+
+  /** Ignore `requestedAt` — two requests for the same document are one job. */
+  override debounceKey(): string {
+    return `reindex:${this.documentId}`;
+  }
+}
+```
+
+The key lives in the queue's own backing store, so it is stable **across processes**. A debounce that only held inside one worker would appear to work in development and do nothing in production, where more than one process dispatches.
+
+### Driver support
+
+| Driver   | Debounce                                                           |
+| -------- | ------------------------------------------------------------------ |
+| `sqlite` | Yes — one `INSERT … ON CONFLICT` against a partial unique index    |
+| `redis`  | Yes — one `EVAL`, so two processes cannot both enqueue             |
+| `sync`   | Inert: every job runs inline, so there is no window to collapse in |
+
+Collapsing has to be **atomic**, or two processes dispatching at the same instant both find nothing pending and both enqueue — the exact failure the feature exists to prevent. A driver that cannot promise that throws `QueueDebounceUnsupportedError` (`E_QUEUE_DEBOUNCE_UNSUPPORTED`) rather than silently degrading to a per-process debounce, and the message names the driver and what to change.
+
+### A job already being worked is never collapsed into
+
+Once a worker has claimed a job, it is running, and the next dispatch is genuinely new work — it becomes its own pending job rather than trying to reschedule something already in flight. On `sqlite` the unique index covers only unreserved rows; on `redis` the key is released when the job is promoted to the ready list.
+
+This is the behaviour you want for the reindex case: a save that lands while the previous rebuild is running still gets a rebuild.
+
 ## Job batching
 
 Batch a set of jobs and react when they all finish. Batching uses the

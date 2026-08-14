@@ -11,6 +11,8 @@ const lists: Map<string, string[]> = new Map();
 const zsets: Map<string, Map<string, number>> = new Map();
 const sets: Map<string, Set<string>> = new Map();
 const counters: Map<string, number> = new Map();
+/** Hashes — the debounce index maps a key to the delayed member holding it. */
+const hashes: Map<string, Map<string, string>> = new Map();
 
 // Back-compat handle used by the assertions below to inspect ready lists.
 const mockRedisStore = lists;
@@ -20,6 +22,7 @@ function resetAll(): void {
   zsets.clear();
   sets.clear();
   counters.clear();
+  hashes.clear();
 }
 
 function zrangeByScore(key: string, min: number, max: number): string[] {
@@ -98,6 +101,12 @@ const fakeRedis = {
         if (!z) return 0;
         return z.delete(member) ? 1 : 0;
       }
+      case "HDEL": {
+        const [key, field] = args as [string, string];
+        const h = hashes.get(key);
+        if (!h) return 0;
+        return h.delete(field) ? 1 : 0;
+      }
       case "ZCARD": {
         const [key] = args as [string];
         return zsets.get(key)?.size ?? 0;
@@ -113,6 +122,29 @@ const fakeRedis = {
         return 1;
       }
       case "EVAL": {
+        const script = args[0] ?? "";
+
+        // The debounce upsert: HGET the key, ZREM whatever it pointed at, ZADD the
+        // new member, HSET the key to it. Modelled rather than stubbed, because the
+        // ZREM-returns-0 case (the member was already promoted) is the whole reason
+        // the script exists.
+        if (script.includes("HGET")) {
+          const delayedKey = args[2]!;
+          const debounceKey = args[3]!;
+          const key = args[4]!;
+          const score = args[5]!;
+          const member = args[6]!;
+          const h = hashes.get(debounceKey) ?? new Map<string, string>();
+          const prev = h.get(key);
+          const z = zsets.get(delayedKey) ?? new Map<string, number>();
+          if (prev !== undefined) z.delete(prev);
+          z.set(member, Number(score));
+          zsets.set(delayedKey, z);
+          h.set(key, member);
+          hashes.set(debounceKey, h);
+          return 1;
+        }
+
         // The driver's atomic claim, as the Lua actually behaves:
         //   RPOP KEYS[1] → attempts += 1 → ZADD KEYS[2] ARGV[1] v → return v.
         // The increment is *inside* the claim so the parked member carries it. A fake that
@@ -319,5 +351,68 @@ describe("RedisDriver — attempts survive a crashed worker", () => {
 
     const third = await driver.pop();
     expect(third!.attempts).toBe(3);
+  });
+});
+
+describe("RedisDriver.pushDebounced", () => {
+  const soon = (): number => Math.floor(Date.now() / 1000) + 30;
+
+  it("collapses repeated dispatches of the same key into one delayed job", async () => {
+    resetAll();
+    const driver = new RedisDriver("test:", { client: fakeRedis });
+
+    await driver.pushDebounced(makeRecord({ availableAt: soon() }) as never, "reindex:1");
+    await driver.pushDebounced(makeRecord({ availableAt: soon() }) as never, "reindex:1");
+    await driver.pushDebounced(makeRecord({ availableAt: soon() }) as never, "reindex:1");
+
+    expect(zsets.get("test:default:delayed")?.size).toBe(1);
+  });
+
+  it("keeps different keys apart", async () => {
+    resetAll();
+    const driver = new RedisDriver("test:", { client: fakeRedis });
+
+    await driver.pushDebounced(makeRecord({ availableAt: soon() }) as never, "reindex:1");
+    await driver.pushDebounced(makeRecord({ availableAt: soon() }) as never, "reindex:2");
+
+    expect(zsets.get("test:default:delayed")?.size).toBe(2);
+  });
+
+  it("pushes the run-at out and keeps the newest payload", async () => {
+    resetAll();
+    const driver = new RedisDriver("test:", { client: fakeRedis });
+
+    await driver.pushDebounced(
+      makeRecord({ availableAt: 1_000, payload: JSON.stringify({ n: 1 }) }) as never,
+      "k",
+    );
+    await driver.pushDebounced(
+      makeRecord({ availableAt: 2_000, payload: JSON.stringify({ n: 2 }) }) as never,
+      "k",
+    );
+
+    const entries = [...(zsets.get("test:default:delayed") ?? new Map()).entries()];
+    expect(entries).toHaveLength(1);
+    const [member, score] = entries[0] as [string, number];
+    expect(score).toBe(2_000);
+    expect(JSON.parse(JSON.parse(member).payload)).toEqual({ n: 2 });
+  });
+
+  it("releases the key once the job is promoted, so the next dispatch is new work", async () => {
+    resetAll();
+    const driver = new RedisDriver("test:", { client: fakeRedis });
+
+    // Due immediately, so the next pop() promotes it onto the ready list.
+    await driver.pushDebounced(
+      makeRecord({ availableAt: Math.floor(Date.now() / 1000) - 1 }) as never,
+      "reindex:1",
+    );
+    const claimed = await driver.pop();
+    expect(claimed).not.toBeNull();
+
+    // The mapping is gone, so this dispatches a fresh delayed job rather than
+    // trying to reschedule the one a worker just took.
+    await driver.pushDebounced(makeRecord({ availableAt: soon() }) as never, "reindex:1");
+    expect(zsets.get("test:default:delayed")?.size).toBe(1);
   });
 });

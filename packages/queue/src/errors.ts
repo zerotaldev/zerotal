@@ -40,3 +40,21 @@ export class QueueBatchingUnsupportedError extends QueueError {
     );
   }
 }
+
+/** Thrown when a job declares `debounce` on a driver that cannot collapse atomically. */
+export class QueueDebounceUnsupportedError extends QueueError {
+  constructor(className: string, driver: string) {
+    super(
+      `[Zerotal] ${className} declares debounce, but the ${driver} queue driver cannot ` +
+        `collapse dispatches atomically.
+` +
+        `Collapsing in this process instead would appear to work in development and do ` +
+        `nothing in production, where more than one worker dispatches — so this refuses ` +
+        `rather than degrading quietly.
+` +
+        `Fix: use the sqlite or redis driver, or remove \`debounce\` from ${className}.`,
+      "E_QUEUE_DEBOUNCE_UNSUPPORTED",
+      500,
+    );
+  }
+}

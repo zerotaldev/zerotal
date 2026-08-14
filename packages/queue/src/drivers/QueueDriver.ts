@@ -9,6 +9,8 @@ export interface JobRecord {
   availableAt: number;
   createdAt: string;
   batchId?: string | undefined;
+  /** Debounce identity, when the job declared one. See `Job.debounce`. */
+  debounceKey?: string | undefined;
 }
 
 /**
@@ -32,6 +34,21 @@ export interface FailedRecord {
 export interface QueueDriver {
   // ── Active queue ──────────────────────────────────────────────────────────
   push(record: Omit<JobRecord, "id" | "createdAt">): Promise<void>;
+  /**
+   * Enqueue, or push an already-pending job with the same `key` out to this
+   * record's `availableAt`, replacing its payload.
+   *
+   * Optional, because it is the one operation a backing store has to be able to
+   * do *atomically*: two processes dispatching at once must produce one pending
+   * job, not two. A driver that cannot promise that does not implement this, and
+   * `Job.debounce` refuses rather than silently degrading to a per-process
+   * debounce — which would appear to work in development and do nothing in
+   * production, where there is more than one worker.
+   *
+   * Only jobs not yet reserved are collapsed into: once a worker has claimed one,
+   * it is running, and the next dispatch is genuinely new work.
+   */
+  pushDebounced?(record: Omit<JobRecord, "id" | "createdAt">, key: string): Promise<void>;
   pop(queue?: string): Promise<JobRecord | null>;
   fail(record: JobRecord, error: string): Promise<void>;
   retry(record: JobRecord): Promise<void>;

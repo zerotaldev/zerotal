@@ -1,5 +1,9 @@
 import { randomUUIDv7 } from "bun";
-import { QueueShuttingDownError, QueueBatchingUnsupportedError } from "./errors.ts";
+import {
+  QueueShuttingDownError,
+  QueueBatchingUnsupportedError,
+  QueueDebounceUnsupportedError,
+} from "./errors.ts";
 import type { QueueDriver, JobRecord } from "./drivers/QueueDriver.ts";
 import type { Job } from "./Job.ts";
 import type { PendingBatch } from "./PendingBatch.ts";
@@ -115,16 +119,29 @@ export class QueueManager {
       payload["__chain"] = job._chain;
     }
 
-    await this._driver.push({
+    // A debounced job runs `debounce` seconds after the *last* dispatch, so each
+    // one sets the run-at forward from now; the driver collapses it into whatever
+    // is already pending under the same key.
+    const debounceSeconds = job.debounce;
+    const record = {
       queue: job.queue,
       className: job.className,
       payload: JSON.stringify(payload),
       attempts: 0,
       maxAttempts: job.maxAttempts,
       retryDelay: job.retryDelay,
-      availableAt: Math.floor(Date.now() / 1000),
+      availableAt: Math.floor(Date.now() / 1000) + (debounceSeconds ?? 0),
       batchId: job.batchId,
-    });
+    };
+
+    if (debounceSeconds !== undefined && debounceSeconds > 0 && !this._isSyncDriver()) {
+      if (!this._driver.pushDebounced) {
+        throw new QueueDebounceUnsupportedError(job.className, this._driverName());
+      }
+      await this._driver.pushDebounced(record, job.debounceKey());
+    } else {
+      await this._driver.push(record);
+    }
 
     _fireJobEvent(job.className, job.queue, "dispatched", 0);
 
@@ -423,5 +440,10 @@ export class QueueManager {
 
   private _isSyncDriver(): boolean {
     return this._driver instanceof SyncDriver;
+  }
+
+  /** The driver's class name, for an error that has to name what to change. */
+  private _driverName(): string {
+    return this._driver.constructor.name;
   }
 }

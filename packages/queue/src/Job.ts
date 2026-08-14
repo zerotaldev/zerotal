@@ -16,6 +16,59 @@ export abstract class Job {
   /** Set by Bus.chain() — remaining jobs to dispatch after this one succeeds. */
   _chain: SerializedJob[] | undefined = undefined;
 
+  /**
+   * Collapse repeated dispatches into a single run, `debounce` **seconds** after
+   * the last one. Unset (the default) dispatches immediately, as before.
+   *
+   * This is a **trailing** debounce, and the name is accurate: each dispatch
+   * pushes the run further out, and the job runs once, after the dispatches
+   * stop. It is the shape the problem has — a document saved eight times in a
+   * minute should rebuild its search index once, and the only rebuild anyone
+   * sees is the last one. A *leading* behaviour, where the first dispatch runs
+   * and the rest are dropped, is a different thing and is not this.
+   *
+   * **The last payload wins.** When eight dispatches collapse, the surviving
+   * job carries the eighth one's data, because the whole premise is that the
+   * earlier ones are stale.
+   *
+   * @example
+   * ```ts
+   * export class ReindexDocument extends Job {
+   *   override readonly debounce = 30;
+   *   constructor(private documentId: number) { super(); }
+   *   override payload() { return { documentId: this.documentId }; }
+   *   async handle() { await search.reindex(this.documentId); }
+   * }
+   * ```
+   */
+  readonly debounce?: number;
+
+  /**
+   * What counts as "the same job" for {@link debounce}.
+   *
+   * Defaults to the class name plus the serialised payload, so
+   * `ReindexDocument(1)` and `ReindexDocument(2)` are different work and do not
+   * collapse into each other — which is what makes the common case need no
+   * configuration at all.
+   *
+   * Override when two payloads mean the same work. A job carrying a timestamp,
+   * or a request id, is unique on every dispatch and would otherwise never
+   * collapse with anything:
+   *
+   * ```ts
+   * override debounceKey(): string {
+   *   return `reindex:${this.documentId}`;   // ignore the requestedAt field
+   * }
+   * ```
+   *
+   * The key is stored in the queue's own backing store, so it is stable across
+   * processes. A debounce that only held inside one worker would appear to work
+   * in development and do nothing in production, where there is more than one.
+   */
+  debounceKey(): string {
+    return `${this.className}:${JSON.stringify(this.payload())}`;
+  }
+
   /** The job's work — implement this in every subclass */
   abstract handle(): Promise<void>;
 

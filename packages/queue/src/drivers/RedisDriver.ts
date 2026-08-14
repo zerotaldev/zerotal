@@ -84,6 +84,10 @@ export class RedisDriver implements QueueDriver {
   private _failKey(queue: string): string {
     return `${this._prefix}${queue}:failed`;
   }
+  /** Hash: debounce key → the delayed-set member currently holding it. */
+  private _debounceKey(queue: string): string {
+    return `${this._prefix}${queue}:debounce`;
+  }
   /** Set of queue names seen by push() — lets flush() find every key family. */
   private _queuesKey(): string {
     return `${this._prefix}_queues`;
@@ -118,6 +122,47 @@ export class RedisDriver implements QueueDriver {
   }
 
   /**
+   * Collapse a dispatch into whatever is already pending under the same key.
+   *
+   * One EVAL, because the read ("is something pending?") and the write have to be
+   * one step: two processes dispatching at the same instant would otherwise both
+   * see nothing pending and both enqueue, which is the failure the whole feature
+   * exists to prevent.
+   *
+   * The hash maps key → the delayed-set member holding it. `ZREM` returning 0
+   * means that member is gone — already promoted to ready, or claimed — so the
+   * dispatch becomes a fresh job rather than collapsing into something running.
+   */
+  private static readonly _DEBOUNCE_LUA =
+    // KEYS: 1 delayed zset, 2 debounce hash. ARGV: 1 key, 2 score, 3 payload.
+    "local prev = redis.call('HGET', KEYS[2], ARGV[1]) " +
+    "if prev then redis.call('ZREM', KEYS[1], prev) end " +
+    "redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3]) " +
+    "redis.call('HSET', KEYS[2], ARGV[1], ARGV[3]) " +
+    "return 1";
+
+  async pushDebounced(record: Omit<JobRecord, "id" | "createdAt">, key: string): Promise<void> {
+    const redis = await this._redis();
+    const id = Number(await redis.incr(this._idKey()));
+    const payload = JSON.stringify({
+      ...record,
+      id,
+      createdAt: new Date().toISOString(),
+      debounceKey: key,
+    });
+    await redis.sadd(this._queuesKey(), record.queue);
+    await redis.send("EVAL", [
+      RedisDriver._DEBOUNCE_LUA,
+      "2",
+      this._delayedKey(record.queue),
+      this._debounceKey(record.queue),
+      key,
+      String(record.availableAt),
+      payload,
+    ]);
+  }
+
+  /**
    * Move every member of sorted set `from` with score ≤ `maxScore` onto the
    * ready list. `ZREM` returns 0 when another worker won the race for a
    * member, so each job is promoted exactly once even under concurrency.
@@ -129,7 +174,19 @@ export class RedisDriver implements QueueDriver {
     if (!due || due.length === 0) return;
     for (const member of due) {
       const removed = Number(await redis.send("ZREM", [from, member]));
-      if (removed === 1) await redis.lpush(this._key(queue), member);
+      if (removed !== 1) continue;
+      await redis.lpush(this._key(queue), member);
+      // The job is runnable now, so it no longer holds its debounce key — the
+      // next dispatch is new work rather than a reschedule of something a worker
+      // is about to pick up.
+      try {
+        const parsed = JSON.parse(member) as { debounceKey?: string };
+        if (parsed.debounceKey) {
+          await redis.send("HDEL", [this._debounceKey(queue), parsed.debounceKey]);
+        }
+      } catch {
+        // An unparseable member is already on the ready list; nothing to release.
+      }
     }
   }
 
@@ -238,6 +295,7 @@ export class RedisDriver implements QueueDriver {
       await redis.del(this._delayedKey(queue));
       await redis.del(this._reservedKey(queue));
       await redis.del(this._failKey(queue));
+      await redis.del(this._debounceKey(queue));
     }
     await redis.del(this._queuesKey());
     await redis.del(this._idKey());

@@ -14,6 +14,7 @@ type JobRow = {
   reserved_at: number | null;
   created_at: string;
   batch_id: string | null;
+  debounce_key: string | null;
 };
 
 type FailedRow = {
@@ -105,9 +106,25 @@ export class SqliteDriver implements QueueDriver {
     } catch {
       // Column already exists — safe to ignore.
     }
+    // Add debounce_key column to existing databases that predate this migration.
+    try {
+      await this._sql`ALTER TABLE zerotal_jobs ADD COLUMN debounce_key TEXT`;
+    } catch {
+      // Column already exists — safe to ignore.
+    }
     await this._sql`
       CREATE INDEX IF NOT EXISTS zerotal_jobs_pop_idx
       ON zerotal_jobs (queue, available_at, reserved_at)
+    `;
+    // The debounce upsert's conflict target, and the thing that makes it atomic:
+    // at most one *unreserved* pending job may hold a given key. Partial, so a
+    // job already claimed by a worker no longer occupies the key — the next
+    // dispatch is new work, not a collapse into something already running — and
+    // so the overwhelming majority of jobs, which set no key, are not indexed.
+    await this._sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS zerotal_jobs_debounce_idx
+      ON zerotal_jobs (debounce_key)
+      WHERE debounce_key IS NOT NULL AND reserved_at IS NULL
     `;
   }
 
@@ -121,6 +138,7 @@ export class SqliteDriver implements QueueDriver {
       maxAttempts: row.max_attempts,
       retryDelay: row.retry_delay,
       availableAt: row.available_at,
+      debounceKey: row.debounce_key ?? undefined,
       createdAt: row.created_at,
       batchId: row.batch_id ?? undefined,
     };
@@ -151,6 +169,35 @@ export class SqliteDriver implements QueueDriver {
         (${record.queue}, ${record.className}, ${record.payload},
          ${record.attempts}, ${record.maxAttempts}, ${record.retryDelay},
          ${record.availableAt}, ${now}, ${batchId})
+    `;
+  }
+
+  /**
+   * One statement, so two processes dispatching at once cannot both insert.
+   *
+   * `ON CONFLICT` targets the partial unique index on `debounce_key`, which only
+   * covers unreserved rows — so a dispatch collapses into a pending job and never
+   * into one a worker has already claimed. The update takes the *new* payload and
+   * run-at, because the point of collapsing is that the earlier dispatch is stale.
+   */
+  async pushDebounced(record: Omit<JobRecord, "id" | "createdAt">, key: string): Promise<void> {
+    await this._ready;
+    const now = new Date().toISOString();
+    const batchId = record.batchId ?? null;
+    await this._sql`
+      INSERT INTO zerotal_jobs
+        (queue, class_name, payload, attempts, max_attempts, retry_delay, available_at, created_at, batch_id, debounce_key)
+      VALUES
+        (${record.queue}, ${record.className}, ${record.payload},
+         ${record.attempts}, ${record.maxAttempts}, ${record.retryDelay},
+         ${record.availableAt}, ${now}, ${batchId}, ${key})
+      ON CONFLICT (debounce_key) WHERE debounce_key IS NOT NULL AND reserved_at IS NULL
+      DO UPDATE SET
+        available_at = excluded.available_at,
+        payload      = excluded.payload,
+        queue        = excluded.queue,
+        max_attempts = excluded.max_attempts,
+        retry_delay  = excluded.retry_delay
     `;
   }
 

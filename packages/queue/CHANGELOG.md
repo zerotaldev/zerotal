@@ -10,6 +10,34 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **Debounced jobs — `debounce` on a `Job` collapses repeated dispatches into one run.**
+  A document saved eight times in a minute rebuilt its search index eight times, seven
+  of them wasted, and the eighth was the only one whose result anybody saw.
+
+  It is a **trailing** debounce and the name is accurate: each dispatch pushes the run
+  further out, and the job runs once, after the dispatches stop. The surviving job
+  carries the **newest** payload, because the premise is that the earlier ones are stale.
+
+  The default key is the class name plus the serialised payload, so `ReindexDocument(1)`
+  and `ReindexDocument(2)` never collapse into each other and the common case needs no
+  configuration. Override `debounceKey()` when two payloads mean the same work — a job
+  carrying a timestamp is unique on every dispatch and would otherwise collapse with
+  nothing.
+
+  **The key lives in the queue's backing store, so it is stable across processes.**
+  Collapsing has to be atomic or two processes dispatching at the same instant both find
+  nothing pending and both enqueue, which is the failure the feature exists to prevent:
+  `sqlite` does it as one `INSERT … ON CONFLICT` against a partial unique index covering
+  only unreserved rows, `redis` as one `EVAL`. A driver that cannot promise atomicity
+  throws `E_QUEUE_DEBOUNCE_UNSUPPORTED` rather than degrading to a per-process debounce —
+  which would appear to work in development and do nothing in production.
+
+  A job a worker has already claimed is never collapsed into: it is running, so the next
+  dispatch is genuinely new work. `sync` ignores `debounce`, because every job runs inline
+  and there is no window for a second dispatch to arrive in.
+
+### Added
+
 - **The worker runs under `bun zt dev`, in its own tab.** An app with a queue needed
   a second terminal and the discipline to restart the right one after a change; now
   `QueueProvider` registers `queue:work` as a dev process and the runner supervises

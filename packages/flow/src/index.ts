@@ -106,6 +106,8 @@ export {
   Table,
   Drawer,
   ErrorBoundary,
+  SectionContent,
+  SectionOutlet,
 } from "./components.ts";
 export type {
   LinkProps,
@@ -128,6 +130,8 @@ export type {
   TableColumn,
   DrawerProps,
   ErrorBoundaryProps,
+  SectionContentProps,
+  SectionOutletProps,
 } from "./components.ts";
 
 // Headless (unstyled, accessible) primitives — data-* state, Tailwind-friendly.

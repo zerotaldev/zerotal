@@ -36,6 +36,32 @@ change.
   outside every boundary still fails the page, so a real bug surfaces instead of rendering
   as blank space forever.
 
+- **`<SectionContent>` / `<SectionOutlet>` — a page can fill a region the layout owns.**
+  Putting a page-specific button in the layout's toolbar meant threading it through every
+  component in between as props, or the layout knowing about every page that might
+  contribute. Sections invert that: the component that owns the content declares it, and
+  the layout declares a hole.
+
+  ```tsx
+  // In the layout
+  <SectionOutlet name="toolbar" />
+
+  // In any page — renders nothing here
+  <SectionContent name="toolbar">
+    <button onClick={this.publish}>Publish</button>
+  </SectionContent>
+  ```
+
+  Order does not matter. An outlet emits a token and is filled in a final pass over the
+  finished document rather than reading a store when it renders — which is what makes the
+  usual arrangement work at all, since the layout wraps a page that has already rendered.
+  Two components may publish to one name and their content accumulates in render order.
+  Outlet children are the default, used when nothing was published.
+
+  Sections resolve once per document render: a WebSocket patch re-renders a component, not
+  the layout, so content published during one does not reach an outlet outside the
+  component being patched.
+
 - **`@zerotal/flow/browser` — drive a real browser against a running app.** The suite
   had 568 tests and could not fail the way production fails: `FlowTest` calls actions
   directly, so it never renders an attribute the client must find, never dispatches a

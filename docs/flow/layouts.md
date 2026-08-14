@@ -143,6 +143,53 @@ override async render() {
 }
 ```
 
+## Sections
+
+A layout owns regions a page cannot reach. When a page needs to put something _there_ — a toolbar
+button, a breadcrumb trail, a heading — the alternatives are threading it through every component in
+between as props, or the layout knowing about every page that might contribute. Sections invert
+that: the component that owns the content declares it, and the layout declares a hole.
+
+```tsx
+// In the layout — declare the hole
+import { SectionOutlet } from "@zerotal/flow";
+
+<header class="flex items-center gap-2">
+  <h1>Admin</h1>
+  <SectionOutlet name="toolbar" />
+</header>;
+```
+
+```tsx
+// In any page — fill it
+import { SectionContent } from "@zerotal/flow";
+
+<SectionContent name="toolbar">
+  <button onClick={this.publish}>Publish</button>
+</SectionContent>;
+```
+
+`<SectionContent>` renders nothing where it appears. Children of `<SectionOutlet>` are the default,
+used when no page published anything:
+
+```tsx
+<SectionOutlet name="toolbar">
+  <span class="text-sm text-gray-500">No actions</span>
+</SectionOutlet>
+```
+
+Two components may publish to the same name; their content accumulates in render order rather than
+one replacing the other.
+
+**Order does not matter.** An outlet reserves its place and is filled after the page _and_ the
+layout have rendered — which is what makes the usual arrangement work at all, since the layout wraps
+a page that has already rendered.
+
+> **Sections resolve once per document render.** A WebSocket patch re-renders a component, not the
+> layout, so content published during one does not reach an outlet outside the component being
+> patched. Put values that change on interaction in the component that renders them, and use
+> sections for content that is settled by the time the page paints.
+
 ## Composing behaviour with mixins
 
 A layout wraps a page's _markup_. A mixin composes a page's _behaviour_ — page state, actions,

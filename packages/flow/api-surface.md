@@ -289,6 +289,10 @@ function renderless = (_fn: unknown, context: ClassMethodDecoratorContext) => vo
 
 function sanitizeUrl = (url: string) => string
 
+function SectionContent = (props: SectionContentProps) => HtmlNode
+
+function SectionOutlet = (props: SectionOutletProps) => HtmlNode
+
 function Select = (props: SelectProps) => HtmlNode
 
 function session = {    (value: unknown, context: ClassFieldDecoratorContext): void;    (opts?: SessionOptions): SessionDecorator;}
@@ -837,6 +841,16 @@ interface RedirectFrame = {
   sessionToken?: string
   type: 'redirect'
   url: string
+}
+
+interface SectionContentProps = {
+  children?: unknown
+  name: string
+}
+
+interface SectionOutletProps = {
+  children?: unknown
+  name: string
 }
 
 interface SelectOption = {

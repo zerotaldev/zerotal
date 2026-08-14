@@ -12,6 +12,7 @@ import { _renderFlowPage } from "./jsx-runtime.ts";
 import { populatePresence } from "./presence.ts";
 import { populateShared } from "./shared.ts";
 import { restoreDurable, persistDurable } from "./durable.ts";
+import { createSectionStore, runWithSections, resolveSections } from "./sections.ts";
 import type { HtmlNode } from "./jsx-runtime.ts";
 import { _runtimeJs } from "./provider/FlowProvider.ts";
 import { randomComponentId, toScriptJson } from "./utils.ts";
@@ -90,127 +91,140 @@ export function _layoutId(page: Component): string {
   return "l" + (hash >>> 0).toString(36);
 }
 
-function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
+/**
+ * Build the GET handler for a Flow page.
+ *
+ * @internal Exported so the document-assembly path — section resolution — can be
+ * driven directly in tests, without standing up a router and a server to reach
+ * it.
+ */
+export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
   return class FlowPageHandler {
     async handle(ctx: HttpContext): Promise<void> {
       const http = ctx;
       // Wrap the initial render: an onMount()/render() throw surfaces as the dev error overlay
       // (like an action throw) rather than a bare 500. Production rethrows → a normal 500 with no
       // stack leak.
+      // The section store is per-request and must stay active for the whole
+      // render: sections are published during the page render and read after the
+      // layout one.
+      const sections = createSectionStore();
+
       try {
-        const page = new PageClass() as Component;
-        const compId = randomComponentId(PageClass.name);
-        const compName = PageClass.name;
+        await runWithSections(sections, async () => {
+          const page = new PageClass() as Component;
+          const compId = randomComponentId(PageClass.name);
+          const compName = PageClass.name;
 
-        // Identity used by nested children (deterministic child ids) and by
-        // persistent middleware (children inherit the parent's route path).
-        page._flowId = compId;
-        page._flowPath = path;
+          // Identity used by nested children (deterministic child ids) and by
+          // persistent middleware (children inherit the parent's route path).
+          page._flowId = compId;
+          page._flowPath = path;
 
-        // Seed @url properties from the request's query string before onMount().
-        // This makes the page state reflect the URL on initial render.
-        _seedUrlProps(page, http.request);
+          // Seed @url properties from the request's query string before onMount().
+          // This makes the page state reflect the URL on initial render.
+          _seedUrlProps(page, http.request);
 
-        // Seed @session properties from the session (if SessionMiddleware is active).
-        _seedSessionProps(page, compName, http);
+          // Seed @session properties from the session (if SessionMiddleware is active).
+          _seedSessionProps(page, compName, http);
 
-        // Seed @param properties from the matched route segments — including resolved
-        // model bindings. Initial GET only; round-trips restore these from the snapshot.
-        _seedRouteParams(page, ctx);
+          // Seed @param properties from the matched route segments — including resolved
+          // model bindings. Initial GET only; round-trips restore these from the snapshot.
+          _seedRouteParams(page, ctx);
 
-        // boot() runs on every request (here: the initial render), before mount().
-        // Forward the request HttpContext so dynamic-segment pages can read route
-        // params and implicitly-bound models off `ctx.params` (e.g. `:account` ->
-        // Account at `ctx.params.account`) inside onBoot()/onMount().
-        await page.onBoot(ctx);
+          // boot() runs on every request (here: the initial render), before mount().
+          // Forward the request HttpContext so dynamic-segment pages can read route
+          // params and implicitly-bound models off `ctx.params` (e.g. `:account` ->
+          // Account at `ctx.params.account`) inside onBoot()/onMount().
+          await page.onBoot(ctx);
 
-        // Durable/resumable snapshots: if this component opted into `static durable` and a valid
-        // stored snapshot exists for this user/session + route, resume from it — restore state and
-        // run onHydrate (like a WS round-trip), skipping onMount. Otherwise mount fresh. A missing,
-        // tampered, or stale-key entry falls through to a normal mount. No-op unless opted in.
-        if (await restoreDurable(page, ctx)) {
-          await page.onHydrate();
-        } else {
-          await page.onMount(ctx);
-        }
+          // Durable/resumable snapshots: if this component opted into `static durable` and a valid
+          // stored snapshot exists for this user/session + route, resume from it — restore state and
+          // run onHydrate (like a WS round-trip), skipping onMount. Otherwise mount fresh. A missing,
+          // tampered, or stale-key entry falls through to a normal mount. No-op unless opted in.
+          if (await restoreDurable(page, ctx)) {
+            await page.onHydrate();
+          } else {
+            await page.onMount(ctx);
+          }
 
-        // Persist @session props back to session after onMount (captures any changes).
-        _persistSessionProps(page, compName, http);
+          // Persist @session props back to session after onMount (captures any changes).
+          _persistSessionProps(page, compName, http);
 
-        // A redirect() issued from onBoot()/onMount() short-circuits the initial render —
-        // the page never paints, the browser is sent straight on (e.g. a landing page that
-        // forwards "/" to "/dashboard", or a server-side auth bounce). Without this, the
-        // redirect was only honoured on WebSocket actions and silently ignored on first GET.
-        if (page._redirectUrl) {
-          http.redirect(page._redirectUrl, _redirectStatus(page._redirectStatus));
-          return;
-        }
+          // A redirect() issued from onBoot()/onMount() short-circuits the initial render —
+          // the page never paints, the browser is sent straight on (e.g. a landing page that
+          // forwards "/" to "/dashboard", or a server-side auth bounce). Without this, the
+          // redirect was only honoured on WebSocket actions and silently ignored on first GET.
+          if (page._redirectUrl) {
+            http.redirect(page._redirectUrl, _redirectStatus(page._redirectStatus));
+            return;
+          }
 
-        // Fill @presence member lists before the first paint (the client refreshes them on
-        // join/leave thereafter). No-op unless the component has @presence props.
-        await populatePresence(page);
+          // Fill @presence member lists before the first paint (the client refreshes them on
+          // join/leave thereafter). No-op unless the component has @presence props.
+          await populatePresence(page);
 
-        // Refill @shared props from the room store before the first paint (seeding the store
-        // with the default when the room is new). No-op unless the component has @shared props.
-        populateShared(page);
+          // Refill @shared props from the room store before the first paint (seeding the store
+          // with the default when the room is new). No-op unless the component has @shared props.
+          populateShared(page);
 
-        const innerHtml = await _renderFlowPage(page, () => page.render());
+          const innerHtml = await _renderFlowPage(page, () => page.render());
 
-        // dehydrate() hook runs at the end of the request, before serialisation.
-        await page.onDehydrate();
-        const snapshot = dehydrate(page, { id: compId, name: compName, path });
-        warnIfLarge(snapshot, compName);
+          // dehydrate() hook runs at the end of the request, before serialisation.
+          await page.onDehydrate();
+          const snapshot = dehydrate(page, { id: compId, name: compName, path });
+          warnIfLarge(snapshot, compName);
 
-        // Persist the durable snapshot (or clear it if clearDurable() was called). No-op unless
-        // the component opted into `static durable`.
-        await persistDurable(page, ctx, snapshot);
+          // Persist the durable snapshot (or clear it if clearDurable() was called). No-op unless
+          // the component opted into `static durable`.
+          await persistDurable(page, ctx, snapshot);
 
-        // toScriptJson, not JSON.stringify: the snapshot carries @expose/@locked values and
-        // @url props seeded from the query string, so it routinely holds attacker-controlled
-        // strings that would otherwise close the <script> island. See toScriptJson's docblock.
-        const snapshotJson = toScriptJson(snapshot);
+          // toScriptJson, not JSON.stringify: the snapshot carries @expose/@locked values and
+          // @url props seeded from the query string, so it routinely holds attacker-controlled
+          // strings that would otherwise close the <script> island. See toScriptJson's docblock.
+          const snapshotJson = toScriptJson(snapshot);
 
-        // The flow component root — always the same wrapper regardless of layout.
-        const flowRoot: HtmlNode = {
-          html: `<div data-flow-root x-data="{}" data-flow-id="${compId}" data-flow-name="${compName}">${innerHtml}</div>`,
-        };
+          // The flow component root — always the same wrapper regardless of layout.
+          const flowRoot: HtmlNode = {
+            html: `<div data-flow-root x-data="{}" data-flow-id="${compId}" data-flow-name="${compName}">${innerHtml}</div>`,
+          };
 
-        // Layout resolution. The JSX-native `layout(page)` instance hook wins; otherwise
-        // fall back to the legacy `static layout = SomeLayout` class. Both wrap the root in
-        // a [data-flow-layout] marker so the client navigate logic swaps only the
-        // [data-flow-root] on same-layout navigations (a full navigation otherwise).
-        let bodyContent: string;
-        let layoutHead = "";
+          // Layout resolution. The JSX-native `layout(page)` instance hook wins; otherwise
+          // fall back to the legacy `static layout = SomeLayout` class. Both wrap the root in
+          // a [data-flow-layout] marker so the client navigate logic swaps only the
+          // [data-flow-root] on same-layout navigations (a full navigation otherwise).
+          let bodyContent: string;
+          let layoutHead = "";
 
-        const wrapped = await page.layout(flowRoot);
-        const LayoutClass = (PageClass as PageClassWithLayout).layout;
+          const wrapped = await page.layout(flowRoot);
+          const LayoutClass = (PageClass as PageClassWithLayout).layout;
 
-        if (wrapped !== flowRoot) {
-          // JSX-native layout. If the layout component declared its own identity
-          // (data-flow-layout on its root), honour it — that's the robust way to keep the
-          // shell persistent across navigations, especially when the wrapper passes
-          // page-specific props. Otherwise fall back to a source-derived id, which matches
-          // for identical wrappers like `(page) => <AppLayout>{page}</AppLayout>`.
-          bodyContent = /\bdata-flow-layout\b/.test(wrapped.html)
-            ? wrapped.html
-            : `<div data-flow-layout="${_layoutId(page)}">${wrapped.html}</div>`;
-        } else if (LayoutClass) {
-          const layout = new LayoutClass();
-          const layoutNode = await layout.render(flowRoot);
-          bodyContent = `<div data-flow-layout="${LayoutClass.name}">${layoutNode.html}</div>`;
-          layoutHead = (LayoutClass as { head?: string }).head ?? "";
-        } else {
-          bodyContent = flowRoot.html;
-        }
+          if (wrapped !== flowRoot) {
+            // JSX-native layout. If the layout component declared its own identity
+            // (data-flow-layout on its root), honour it — that's the robust way to keep the
+            // shell persistent across navigations, especially when the wrapper passes
+            // page-specific props. Otherwise fall back to a source-derived id, which matches
+            // for identical wrappers like `(page) => <AppLayout>{page}</AppLayout>`.
+            bodyContent = /\bdata-flow-layout\b/.test(wrapped.html)
+              ? wrapped.html
+              : `<div data-flow-layout="${_layoutId(page)}">${wrapped.html}</div>`;
+          } else if (LayoutClass) {
+            const layout = new LayoutClass();
+            const layoutNode = await layout.render(flowRoot);
+            bodyContent = `<div data-flow-layout="${LayoutClass.name}">${layoutNode.html}</div>`;
+            layoutHead = (LayoutClass as { head?: string }).head ?? "";
+          } else {
+            bodyContent = flowRoot.html;
+          }
 
-        const titleTag = PageClass.title ? `<title>${PageClass.title}</title>` : "";
-        // Component head takes precedence; layout head provides global resources.
-        const headExtra = [PageClass.head ?? "", layoutHead].filter(Boolean).join("\n  ");
+          const titleTag = PageClass.title ? `<title>${PageClass.title}</title>` : "";
+          // Component head takes precedence; layout head provides global resources.
+          const headExtra = [PageClass.head ?? "", layoutHead].filter(Boolean).join("\n  ");
 
-        const runtimeSrc = _runtimeJs() ? "/__flow/runtime.js" : "";
-        const runtimeTag = runtimeSrc ? `<script src="${runtimeSrc}" defer></script>` : "";
+          const runtimeSrc = _runtimeJs() ? "/__flow/runtime.js" : "";
+          const runtimeTag = runtimeSrc ? `<script src="${runtimeSrc}" defer></script>` : "";
 
-        const html = `<!DOCTYPE html>
+          const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -226,7 +240,10 @@ function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
 </body>
 </html>`;
 
-        http.html(html);
+          // Outlets are filled only now: this is the first moment at which both the
+          // page and the layout have rendered, so every publication has happened.
+          http.html(resolveSections(html, sections));
+        });
       } catch (error) {
         // Only UNEXPECTED throws get the dev overlay. Intended HTTP errors — auth (401/403), 404,
         // validation, and redirects thrown as errors — carry a numeric `status` and must keep

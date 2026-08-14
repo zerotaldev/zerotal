@@ -20,6 +20,7 @@ import {
   _protectThunks,
 } from "./jsx-runtime.ts";
 import type { HtmlNode } from "./jsx-runtime.ts";
+import { publishSection, reserveSection } from "./sections.ts";
 import { jsLiteral } from "./utils.ts";
 
 // ── <Link> ────────────────────────────────────────────────────────────────
@@ -1548,4 +1549,76 @@ export function ErrorBoundary(props: ErrorBoundaryProps): HtmlNode {
   out["data-flow-boundary"] = true;
   if (cls) out["class"] = cls;
   return jsx(tag ?? "div", out);
+}
+
+// ── <SectionContent> / <SectionOutlet> ────────────────────────────────────────
+/** Props for {@link SectionContent}: the `name` to publish under, and the markup. */
+export interface SectionContentProps {
+  /** Section name. Must match a {@link SectionOutlet}. */
+  name: string;
+  children?: unknown;
+}
+
+/**
+ * Publish markup to a named section, rendered wherever the matching
+ * {@link SectionOutlet} sits — typically in the layout.
+ *
+ * @remarks
+ * This renders nothing where it appears. It is how a page reaches a region it
+ * does not own: a page-specific toolbar button, a breadcrumb trail, a title. The
+ * alternative is threading content through every component in between as props,
+ * or the layout knowing about every page that might contribute.
+ *
+ * Two components may publish to one name; their content accumulates in render
+ * order rather than one replacing the other.
+ *
+ * Sections resolve once per document render. A WebSocket patch re-renders a
+ * component, not the layout, so content published during one does not reach an
+ * outlet outside the component being patched.
+ *
+ * @example
+ * ```tsx
+ * <SectionContent name="toolbar">
+ *   <button onClick={this.publish}>Publish</button>
+ * </SectionContent>
+ * ```
+ *
+ * @category Layout
+ */
+export function SectionContent(props: SectionContentProps): HtmlNode {
+  publishSection(props.name, _renderChild(props.children));
+  return { html: "" };
+}
+
+/** Props for {@link SectionOutlet}: the `name` to render, plus optional default content. */
+export interface SectionOutletProps {
+  /** Section name. Must match a {@link SectionContent}. */
+  name: string;
+  /** Rendered when nothing was published to this section. */
+  children?: unknown;
+}
+
+/**
+ * Render whatever was published to a named section.
+ *
+ * @remarks
+ * Place it in a layout to give pages a hole to fill. Children are the default,
+ * used when no page published anything.
+ *
+ * Order does not matter: the outlet reserves its place and is filled after the
+ * page *and* the layout have rendered. That is what makes the usual arrangement
+ * work — outlet in the layout, content in the page it wraps — where reading a
+ * store at render time would always be too early.
+ *
+ * @example
+ * ```tsx
+ * <header class="flex gap-2">
+ *   <SectionOutlet name="toolbar" />
+ * </header>
+ * ```
+ *
+ * @category Layout
+ */
+export function SectionOutlet(props: SectionOutletProps): HtmlNode {
+  return { html: reserveSection(props.name, _renderChild(props.children)) };
 }

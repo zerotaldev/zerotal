@@ -234,6 +234,62 @@ Errors thrown inside `ctx.afterResponse()` callbacks are logged but never sent t
 the client — the response has already been delivered by the time these fire, so a
 failing callback can't crash the request.
 
+## The development error page, and diagnoses
+
+Outside production, an unhandled error renders a full-page overlay: the message, the stack split into application and framework frames, source context around the failing line, the request, and a **Copy for AI** button that puts the whole thing on the clipboard as Markdown.
+
+Some errors are exact about _what_ happened and useless about _what to do_. `no such table: assets` is the canonical one — the message is precise, and every frame in the stack is inside the SQL driver, because that is where the failure surfaced rather than where it came from. The answer is somewhere else entirely: you have migrations you have not run.
+
+So a package that owns an error class can contribute a **diagnosis**, rendered above the stack.
+
+### Missing tables and columns
+
+`@zerotal/orm` registers one. When a query fails because a table or column does not exist, the overlay checks the migration state and answers one of two ways:
+
+- **Migrations are pending** — it names them and offers a **Run migrations** button. Pressing it runs exactly what `bun zt migrate` would, then reloads the page.
+- **Nothing is pending** — it offers **no button**, because running every pending migration when there are none changes nothing and leaves you back where you started. Instead it says whether any migration on disk so much as mentions the missing name: if none does, the migration that would create it was probably never written.
+
+It works on SQLite, PostgreSQL and MySQL — matched on the driver's error code where there is one (`42P01`, `42703`, `1146`, `1054`) and on the message otherwise.
+
+> **The button exists only in development.** The endpoint behind it refuses unless [`devSurfacesEnabled()`](/docs/deployment) is true, and that gate **fails closed**: an unset `APP_ENV` does not qualify. The route is not even registered otherwise.
+>
+> It also requires a single-use token minted into the page, and passes the same origin check the WebSocket endpoints use. A dev server on `localhost:3000` is reachable by any site you have open in another tab, and "run every pending migration" is not something a random page should be able to trigger.
+
+### Writing your own
+
+`registerErrorDiagnoser` takes a function that either recognises an error or returns `null`. Register it from a provider's `onRegister()`:
+
+```typescript
+import { registerErrorDiagnoser } from "zerotal";
+
+registerErrorDiagnoser((error) => {
+  if (!/ECONNREFUSED .*:6379/.test(error.message)) return null;
+  return {
+    title: "Redis refused the connection.",
+    detail:
+      "The cache and queue drivers are both configured to use it. Start it with `docker compose up redis`, or switch `cache.driver` to `memory` while you work.",
+    items: ["cache.driver = redis", "queue.driver = redis"],
+  };
+});
+```
+
+The function is an `ErrorDiagnoser`, and what it returns is an `ErrorDiagnosis`.
+
+Diagnosers run in registration order and the **first** one to return a result wins, so recognise only errors you genuinely own — a diagnoser that claims an error it cannot explain replaces a real stack trace with a wrong answer. One that throws is skipped rather than taking the error page down with it.
+
+| Field    | Meaning                                                             |
+| -------- | ------------------------------------------------------------------- |
+| `title`  | One line: what is actually wrong.                                   |
+| `detail` | A short paragraph: why, and what to do.                             |
+| `items`  | Supporting specifics — file names, config keys. Rendered as a list. |
+| `action` | A button. See below.                                                |
+
+An `action` is a `DiagnosisAction`: a `label`, a same-origin `url` to `POST` to, a `token`, and an optional `pendingLabel`.
+
+> **An `action` changes server state from a page rendered by a GET.** Whoever registers the endpoint owns its safety, and the type only carries the values to the page. The endpoint must refuse outside development _on its own terms_ rather than trusting that the overlay is dev-only, require the token, and check the origin. If you cannot do all three, ship the diagnosis without a button — a `title` and `detail` that name the fix are most of the value.
+
+Offer a button only when you are confident it helps. A button that runs and changes nothing is worse than no button, because it teaches people not to trust the panel.
+
 ## References
 
 `ExceptionHandler` is the class you subclass; the named errors are exported from

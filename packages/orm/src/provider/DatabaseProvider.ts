@@ -1,5 +1,5 @@
 import type { SQLInstance } from "../db/sql-types.ts";
-import { ServiceProvider } from "@zerotal/core";
+import { ServiceProvider, registerErrorDiagnoser } from "@zerotal/core";
 import type { AppEnvironment } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { SQL } from "bun";
@@ -17,6 +17,12 @@ import { validateDatabaseConfig } from "../config.ts";
 import { autoMigrateConcern } from "../schema/autoMigrate.ts";
 import { registerImplicitBinding } from "../implicitBinding.ts";
 import { installOrmObservability } from "../observability.ts";
+import { diagnoseMissingRelation } from "../diagnostics/missingRelation.ts";
+import {
+  registerRunMigrationsEndpoint,
+  RUN_MIGRATIONS_PATH,
+  _mintDiagnosisToken,
+} from "../diagnostics/runMigrationsEndpoint.ts";
 
 // Extend the core container registry so 'db' is a typed binding.
 declare module "@zerotal/core" {
@@ -64,6 +70,19 @@ export class DatabaseProvider extends ServiceProvider {
     // model (opt out per model with `static implicitBinding = false`). Resolves lazily at
     // route-compile time, so model registration order doesn't matter.
     registerImplicitBinding();
+
+    // "no such table: assets" arrives with a stack that is entirely SQL-driver
+    // frames, so the overlay can name the failure and nothing else. This turns it
+    // into the list of migrations that have not run — and, when none are pending,
+    // says so instead of offering a button that would change nothing.
+    registerErrorDiagnoser((error) =>
+      diagnoseMissingRelation(error, {
+        endpoint: RUN_MIGRATIONS_PATH,
+        mintToken: _mintDiagnosisToken,
+      }),
+    );
+    // Registers nothing outside development. See the file for the three guards.
+    registerRunMigrationsEndpoint(() => this.app._allowedOrigins?.() ?? []);
 
     setConnectionResolver(() => {
       try {

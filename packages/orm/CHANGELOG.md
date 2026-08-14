@@ -10,6 +10,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **A missing table now offers to run the migration that would create it.**
+  When a query fails because a table or column does not exist, the development
+  error page reports which migrations have not run and offers to run them.
+  Detection is by driver error code where there is one — `42P01` / `42703` on
+  PostgreSQL, `1146` / `1054` on MySQL — and by message on SQLite, which has
+  none worth branching on.
+
+  **The half that matters is when it does _not_ offer the button.** With nothing
+  pending, running every migration changes nothing and leaves the developer back
+  where they started, so instead it says whether any migration on disk even
+  mentions the missing name — if none does, the migration was probably never
+  written, which is a different problem with a different fix.
+
+  The endpoint behind the button carries three guards, each checked on its own
+  rather than inferred from the overlay being dev-only: `devSurfacesEnabled()`
+  at request time (which **fails closed** — unlike `!isProdLike()`, an unset
+  `APP_ENV` does not qualify), a single-use token minted into the page, and the
+  same origin check the raw Flow endpoints use, since a raw route sits outside
+  CSRF middleware. Outside development the route is never registered at all.
+
 - **`migrate:refresh`** — the same command as `migrate:fresh`, under the name it has
   elsewhere. Nothing otherwise pushes anyone to run their `down()` methods, and a
   rollback nobody has exercised is a rollback that does not work.

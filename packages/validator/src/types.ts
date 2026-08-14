@@ -47,7 +47,38 @@ export type InferFieldType<F extends FieldRuleDefinition> = F["type"] extends "s
       ? boolean
       : F["type"] extends "date"
         ? Date
-        : unknown;
+        : F["type"] extends "array"
+          ? InferArrayType<F>
+          : F["type"] extends "object"
+            ? InferObjectType<F>
+            : unknown;
+
+/**
+ * `array` and `object` carry their contents on `children` / `shape`, so unlike the
+ * scalar rules their inferred type is not decided by `type` alone. `ArrayRule` and
+ * `ObjectRule` thread the item/shape definitions through those two fields (see
+ * `ArrayDef` / `ObjectDef`), which is what these two read back out.
+ *
+ * Both degrade rather than fail: a definition widened to bare `FieldRuleDefinition`
+ * has an optional `children`/`shape` that infers nothing, and falls back to the
+ * loosest honest type instead of `never`.
+ */
+type InferArrayType<F extends FieldRuleDefinition> = F extends {
+  children: infer C extends FieldRuleDefinition;
+}
+  ? InferField<C>[]
+  : unknown[];
+
+type InferObjectType<F extends FieldRuleDefinition> = F extends {
+  shape: infer Sh extends Record<string, FieldRuleDefinition>;
+}
+  ? { [K in keyof Sh]: InferField<Sh[K]> }
+  : Record<string, unknown>;
+
+/** One field's type, including its `nullable` widening. Shared by `Infer` and the nested inferers. */
+type InferField<F extends FieldRuleDefinition> = F["nullable"] extends true
+  ? InferFieldType<F> | null
+  : InferFieldType<F>;
 
 /**
  * Infer the validated TypeScript type from a Schema.
@@ -55,9 +86,7 @@ export type InferFieldType<F extends FieldRuleDefinition> = F["type"] extends "s
  * distinction is enforced at runtime only. Trade-off acknowledged in the plan.
  */
 export type Infer<S extends Schema> = {
-  [K in keyof S]: S[K]["nullable"] extends true
-    ? InferFieldType<S[K]> | null
-    : InferFieldType<S[K]>;
+  [K in keyof S]: InferField<S[K]>;
 };
 
 export type ValidationErrors = Record<string, string>;

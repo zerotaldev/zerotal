@@ -1,4 +1,4 @@
-import type { FieldRuleDefinition, Schema, CustomFn } from "./types.ts";
+import type { FieldRuleDefinition, CustomFn } from "./types.ts";
 import type { UniqueOptions } from "./dbRules.ts";
 
 // Narrow definition types — each class's _def has a literal 'type' field so
@@ -6,8 +6,17 @@ import type { UniqueOptions } from "./dbRules.ts";
 type StringDef = Omit<FieldRuleDefinition, "type"> & { type: "string" };
 type NumberDef = Omit<FieldRuleDefinition, "type"> & { type: "number" };
 type BooleanDef = Omit<FieldRuleDefinition, "type"> & { type: "boolean" };
-type ArrayDef = Omit<FieldRuleDefinition, "type"> & { type: "array" };
-type ObjectDef = Omit<FieldRuleDefinition, "type"> & { type: "object" };
+// array/object are the two whose inferred type depends on more than `type`, so their
+// defs keep the item/shape definitions in the type rather than widening them to the
+// optional `children`/`shape` on FieldRuleDefinition. Without this the item type is
+// erased and `Infer<>` can only say `unknown` for the whole array.
+type ArrayDef<C extends FieldRuleDefinition = FieldRuleDefinition> = Omit<
+  FieldRuleDefinition,
+  "type" | "children"
+> & { type: "array"; children: C };
+type ObjectDef<
+  Sh extends Record<string, FieldRuleDefinition> = Record<string, FieldRuleDefinition>,
+> = Omit<FieldRuleDefinition, "type" | "shape"> & { type: "object"; shape: Sh };
 
 type RuleEntry = { name: string; args: unknown[]; message?: string; fn?: CustomFn };
 
@@ -513,7 +522,7 @@ export class BooleanRule extends FieldRule {
 }
 
 export class ArrayRule<T extends FieldRule> extends FieldRule {
-  readonly _def: ArrayDef;
+  readonly _def: ArrayDef<T["_def"]>;
 
   constructor(item: T) {
     super();
@@ -544,10 +553,13 @@ export class ArrayRule<T extends FieldRule> extends FieldRule {
   }
 }
 
-export class ObjectRule<S extends Schema> extends FieldRule {
-  readonly _def: ObjectDef;
+// Generic over the *rules* passed in, not over the definitions they produce. The old
+// `S extends Schema` had no inference site — `{ [K in keyof S]: FieldRule }` mentions
+// S only in its keys — so S collapsed to its constraint and the shape was lost.
+export class ObjectRule<S extends Record<string, FieldRule>> extends FieldRule {
+  readonly _def: ObjectDef<{ [K in keyof S]: S[K]["_def"] }>;
 
-  constructor(shape: { [K in keyof S]: FieldRule }) {
+  constructor(shape: S) {
     super();
     const shapeRecord: Record<string, FieldRuleDefinition> = {};
     for (const [k, v] of Object.entries(shape)) {
@@ -559,7 +571,7 @@ export class ObjectRule<S extends Schema> extends FieldRule {
       nullable: false,
       defaultVal: undefined,
       rules: [],
-      shape: shapeRecord,
+      shape: shapeRecord as { [K in keyof S]: S[K]["_def"] },
     };
   }
 }

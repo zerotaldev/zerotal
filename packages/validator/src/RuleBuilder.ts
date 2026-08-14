@@ -9,7 +9,6 @@ import {
   PasswordRule,
 } from "./FieldRule.ts";
 import type { FieldRule } from "./FieldRule.ts";
-import type { Schema } from "./types.ts";
 
 export class RuleBuilder {
   /**
@@ -59,7 +58,7 @@ export class RuleBuilder {
     return new ArrayRule(item);
   }
 
-  object<S extends Schema>(shape: { [K in keyof S]: FieldRule }): ObjectRule<S> {
+  object<S extends Record<string, FieldRule>>(shape: S): ObjectRule<S> {
     return new ObjectRule<S>(shape);
   }
 }

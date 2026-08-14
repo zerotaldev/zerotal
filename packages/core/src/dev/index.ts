@@ -23,6 +23,9 @@ export type {
 } from "./DevSupervisor.ts";
 export { createDeck, StreamDeck, TabsDeck } from "./DevDeck.ts";
 export type { Deck, DeckOptions } from "./DevDeck.ts";
+export { startDevMode, SERVER_PROCESS_NAME } from "./startDevMode.ts";
+export { DevOrchestrator } from "./DevOrchestrator.ts";
+export type { DevOrchestratorHooks } from "./DevOrchestrator.ts";
 export type { BuildHookFn, BuildResult } from "./DevBuildHook.ts";
 export { DevReloadMiddleware, registerDevHtmlSnippet } from "./DevReloadMiddleware.ts";
 export type { DevHtmlSnippet } from "./DevReloadMiddleware.ts";

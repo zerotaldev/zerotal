@@ -1,11 +1,13 @@
-/**
+﻿/**
  * The `serve` command, which starts the HTTP server. Also drives dev mode: the
  * file-watching orchestrator (process 1) and the managed dev worker (process 2).
  */
 import { Command } from "../Command.ts";
-import { DevOrchestrator } from "../../dev/DevOrchestrator.ts";
+import type { FlagDef } from "../Command.ts";
 import { hasDevBuildHooks, runDevBuildHooks } from "../../dev/DevBuildHook.ts";
 import { buildConfiguredAssets, type AssetBuildConfig } from "../../dev/CssPlugins.ts";
+import { collectDevProcesses, type ResolvedDevProcess } from "../../dev/DevProcess.ts";
+import { startDevMode, SERVER_PROCESS_NAME } from "../../dev/startDevMode.ts";
 import type { ConfigManager } from "../../config/ConfigManager.ts";
 import type { Application } from "../../application/Application.ts";
 import * as DevWsServer from "../../dev/DevWsServer.ts";
@@ -34,36 +36,36 @@ export class ServeCommand extends Command {
   static description = "Start the HTTP server";
   static needsApp = true;
 
-  static flags = [
+  static flags: FlagDef[] = [
     {
       name: "port",
       short: "p",
-      type: "number" as const,
+      type: "number",
       description: "Port to listen on",
       default: 3000,
     },
     {
       name: "dev",
-      type: "boolean" as const,
+      type: "boolean",
       description: "Start in dev mode with file watching, auto-rebuild, and browser reload",
       default: false,
     },
     {
       name: "force",
-      type: "boolean" as const,
+      type: "boolean",
       description: "If the port is busy, stop the process holding it",
       default: false,
     },
     {
       name: "auto-port",
-      type: "boolean" as const,
+      type: "boolean",
       description: "If the port is busy, start on the next free port",
       default: false,
     },
     // Internal flag — spawned by DevOrchestrator; not shown in help
     {
       name: "dev-worker",
-      type: "boolean" as const,
+      type: "boolean",
       description: "Internal: run as the managed server process under DevOrchestrator",
       default: false,
     },
@@ -72,48 +74,22 @@ export class ServeCommand extends Command {
   async run(): Promise<void> {
     const isDev = this.flags["dev"] as boolean;
     const isWorker = this.flags["dev-worker"] as boolean;
-    const port = await this._resolvePort(this.flags["port"] as number, isWorker);
-    const assets = this._assetsConfig();
 
     // ── DEV ORCHESTRATOR (Process 1) ────────────────────────────────────────
     // Spawns and manages the server child process, watches files, drives builds.
+    //
+    // Handled before the port is resolved, because in dev mode the port is not
+    // always needed: `--list` starts nothing, and `--only=queue` starts no
+    // server. Resolving first turns either into a prompt about killing whatever
+    // holds port 3000 — or a hard failure with no TTY — over a port that was
+    // never going to be bound.
     if (isDev) {
-      this._announce("dev", port);
-
-      // Every view package (Inertia/Flow) that registered a build routine gets
-      // run on each change; otherwise synthesise one from `app.assets` so
-      // configured assets rebuild on change.
-      let buildHook: (() => Promise<{ success: boolean; logs?: unknown[] }>) | undefined =
-        hasDevBuildHooks() ? runDevBuildHooks : undefined;
-      if (!buildHook && assets) {
-        buildHook = (): Promise<{ success: boolean; logs?: unknown[] }> =>
-          buildConfiguredAssets(assets, process.cwd());
-      }
-
-      if (!buildHook) {
-        // No Inertia (or no frontend build configured). Fall back to simple
-        // bun --watch restart so the developer still gets auto-reload.
-        console.warn("  [zerotal:dev] no build hook registered — falling back to bun --watch");
-        const subprocess = Bun.spawn(
-          ["bun", "--watch", Bun.main, "serve", "--port", String(port)],
-          {
-            stdin: "inherit",
-            stdout: "inherit",
-            stderr: "inherit",
-            // The port is already settled here, and each --watch restart races
-            // the socket the previous run is still letting go of. Without this
-            // the child would re-prompt on every save.
-            env: { ...Bun.env, [PORT_RESOLVED_ENV_VAR]: "1" },
-          },
-        );
-        await subprocess.exited;
-        return;
-      }
-
-      const orchestrator = new DevOrchestrator(port, process.cwd(), buildHook);
-      await orchestrator.start();
+      await this._runDevMode();
       return;
     }
+
+    const port = await this._resolvePort(this.flags["port"] as number, isWorker);
+    const assets = this._assetsConfig();
 
     // ── DEV WORKER (Process 2) ──────────────────────────────────────────────
     // Normal server start, but:
@@ -145,6 +121,162 @@ export class ServeCommand extends Command {
     await (this.app as Application).start(port);
     this._announce("serve", port);
     await new Promise<never>(() => {});
+  }
+
+  // ── Dev mode ───────────────────────────────────────────────────────────────
+
+  /**
+   * Everything `--dev` does, shared verbatim with `bun zt dev`.
+   *
+   * `protected` rather than private because {@link DevCommand} is this command
+   * with a richer flag set — keeping one body is what stops the two from
+   * disagreeing about what dev mode is.
+   */
+  protected async _runDevMode(): Promise<void> {
+    const processes = await this._devProcesses();
+
+    if (this.flags["list"]) {
+      this._listDevProcesses(processes);
+      return;
+    }
+
+    // Item C: the cache is keyed on file mtime and size, which a same-size edit
+    // that preserves mtime slips past. This is the escape hatch for that, and
+    // for the "I don't believe the cache" moment every cache eventually causes.
+    if (this.flags["force-build"]) {
+      (Bun.env as Record<string, string>)["ZT_NO_BUILD_CACHE"] = "1";
+    }
+
+    const wantsServer = processes.some((entry) => entry.name === SERVER_PROCESS_NAME);
+    const assets = this._assetsConfig();
+
+    if (!wantsServer) {
+      // `--only=queue`, say. No port to bind and no assets to build — just the
+      // supervisor and the deck, so a busy port is nobody's problem.
+      await startDevMode({
+        port: 0,
+        cwd: process.cwd(),
+        processes,
+        writer: this._writer,
+        deckMode: this.flags["stream"] ? "stream" : undefined,
+      });
+      return;
+    }
+
+    const port = await this._resolvePort(this.flags["port"] as number, false);
+    this._announce("dev", port);
+
+    // Every view package (Inertia/Flow) that registered a build routine gets
+    // run on each change; otherwise synthesise one from `app.assets` so
+    // configured assets rebuild on change.
+    let buildHook: (() => Promise<{ success: boolean; logs?: unknown[] }>) | undefined =
+      hasDevBuildHooks() ? runDevBuildHooks : undefined;
+    if (!buildHook && assets) {
+      buildHook = (): Promise<{ success: boolean; logs?: unknown[] }> =>
+        buildConfiguredAssets(assets, process.cwd());
+    }
+
+    if (!buildHook) {
+      // No Inertia (or no frontend build configured). Fall back to simple
+      // bun --watch restart so the developer still gets auto-reload.
+      //
+      // Deliberately keeps the terminal to itself: `bun --watch` needs stdin,
+      // and a deck drawn over a process we are not supervising would show tabs
+      // that no key could restart.
+      this.warn("  [zerotal:dev] no build hook registered — falling back to bun --watch");
+      if (processes.some((entry) => entry.name !== SERVER_PROCESS_NAME)) {
+        this.dim("  [zerotal:dev] dev processes are not supervised on this path.");
+      }
+      const subprocess = Bun.spawn(["bun", "--watch", Bun.main, "serve", "--port", String(port)], {
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+        // The port is already settled here, and each --watch restart races
+        // the socket the previous run is still letting go of. Without this
+        // the child would re-prompt on every save.
+        env: { ...Bun.env, [PORT_RESOLVED_ENV_VAR]: "1" },
+      });
+      await subprocess.exited;
+      return;
+    }
+
+    await startDevMode({
+      port,
+      cwd: process.cwd(),
+      build: buildHook,
+      processes,
+      writer: this._writer,
+      deckMode: this.flags["stream"] ? "stream" : undefined,
+    });
+  }
+
+  /**
+   * What dev mode should run, after `--only` / `--without`.
+   *
+   * The server is prepended as an ordinary entry so the two filters need no
+   * special case for it — `--only=queue` really does mean "just the queue", and
+   * says so by leaving the server out of the list rather than by ignoring you.
+   */
+  protected async _devProcesses(): Promise<ResolvedDevProcess[]> {
+    const app = this.app as Application;
+    const server: ResolvedDevProcess = {
+      name: SERVER_PROCESS_NAME,
+      label: SERVER_PROCESS_NAME,
+      color: "green",
+      restart: "on-failure",
+      after: "none",
+      registrant: "@zerotal/core",
+    };
+
+    let contributed: ResolvedDevProcess[] = [];
+    try {
+      contributed = await collectDevProcesses(app, this._config());
+    } catch (error) {
+      // A badly-formed definition names its registrant. Reporting and carrying
+      // on beats refusing to start the server over another package's typo.
+      this.error(`  ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    const only = _names(this.flags["only"]);
+    const without = _names(this.flags["without"]);
+
+    return [server, ...contributed].filter((entry) => {
+      if (only.length > 0 && !only.includes(entry.name)) return false;
+      return !without.includes(entry.name);
+    });
+  }
+
+  /** `--list`: what would run, and who asked for it. */
+  private _listDevProcesses(processes: ResolvedDevProcess[]): void {
+    this.section("Dev processes");
+    if (processes.length === 0) {
+      this.dim("  Nothing to run — every process was filtered out.");
+      return;
+    }
+    for (const entry of processes) {
+      const command = entry.run
+        ? "(in-process)"
+        : (entry.argv?.join(" ") ?? "(managed by the orchestrator)");
+      this.line(`  ${entry.name}`);
+      this.table(
+        [
+          ["command", command],
+          ["registered by", entry.registrant],
+          ["restart", entry.restart],
+          ["after", entry.after],
+        ],
+        4,
+      );
+    }
+  }
+
+  /** The config manager, or undefined when the app has none bound. */
+  private _config(): { get<T>(key: string, fallback?: T): T | undefined } | undefined {
+    try {
+      return (this.app as Application).container.makeSync("config") as ConfigManager;
+    } catch {
+      return undefined;
+    }
   }
 
   // ── Private ────────────────────────────────────────────────────────────────
@@ -312,6 +444,15 @@ export class ServeCommand extends Command {
     // If stdin closes (the orchestrator died), exit cleanly.
     readline.on("close", () => process.exit(0));
   }
+}
+
+/** Split a `--only` / `--without` value into names. Absent means "no filter". */
+function _names(flag: unknown): string[] {
+  if (typeof flag !== "string") return [];
+  return flag
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
 }
 
 /** `" by bun.exe (pid 1234)"`, or `""` when the holder could not be identified. */

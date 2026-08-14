@@ -54,6 +54,7 @@ export function basePath(...segments: string[]): string {
  * | Command              | APP_ENV   |
  * |----------------------|-----------|
  * | serve / start / s    | web       |
+ * | dev / d              | web       |
  * | worker / queue:work  | worker    |
  * | anything else        | console   |
  *
@@ -71,9 +72,17 @@ export function setAppEnv(command?: string): void {
   const current = Bun.env["APP_ENV"];
   const environment = Bun.env as Record<string, string>;
 
-  if (["serve", "start", "s"].includes(normalizedCommand)) {
+  if (["serve", "start", "s", "dev", "d"].includes(normalizedCommand)) {
     // Always force web mode for the HTTP server — deployment-env names like
     // "local" or "production" must not leave the app in console mode.
+    //
+    // `dev` belongs here with `serve`, and the reason is not cosmetic. Dev mode's
+    // process 1 boots the app purely to ask its providers what to run, and a
+    // provider is only asked if `static environments` includes the env it booted
+    // under. Falling through to "console" below would silently drop every
+    // web-only provider — no error, no empty tab, just a process that never
+    // appears — and would make `zt dev` and `serve --dev` disagree about what
+    // dev mode consists of.
     if (!current || !_RUNTIME_MODES.has(current.toLowerCase())) {
       environment["APP_ENV"] = "web";
     }

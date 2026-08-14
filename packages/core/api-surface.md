@@ -1423,6 +1423,35 @@ class CssBuildCommand = {
   write: (msg: string) => void
 }
 
+class DevCommand = {
+  new (): DevCommand
+  static aliases: string[]
+  static args: ArgDef[]
+  static commandName: string
+  static description: string
+  static flags: FlagDef[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class DoctorCommand = {
   new (): DoctorCommand
   static args: ArgDef[]
@@ -1989,7 +2018,7 @@ class ServeCommand = {
   static args: ArgDef[]
   static commandName: string
   static description: string
-  static flags: ({    name: string;    short: string;    type: 'number';    description: string;    default: number;} | {    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;})[]
+  static flags: FlagDef[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter
@@ -2018,7 +2047,7 @@ class StartCommand = {
   static args: ArgDef[]
   static commandName: string
   static description: string
-  static flags: ({    name: string;    short: string;    type: 'number';    description: string;    default: number;} | {    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;})[]
+  static flags: FlagDef[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter
@@ -2227,7 +2256,7 @@ type ConfigIssueLevel = 'error' | 'warning'
 
 type ConfigMap = {    [x: string]: Record<string, unknown>;}
 
-type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.port' | 'app.dev' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
+type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.sqlite' | 'lock.driver' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.dev' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
 
 type ConfigValidator = (value: unknown, ctx: ConfigValidationContext) => ConfigIssue[] | void
 
@@ -2254,6 +2283,13 @@ interface TransactionContext = {
 }
 
 ## ./dev  `(./src/dev/index.ts)`
+
+class DevOrchestrator = {
+  new (_port: number, _cwd: string, _build: BuildHookFn, _hooks?: DevOrchestratorHooks): DevOrchestrator
+  restartServer: () => Promise<void>
+  shutdown: (watcher?: {    close(): void;}) => Promise<never>
+  start: () => Promise<void>
+}
 
 class DevReloadMiddleware = {
   new (): DevReloadMiddleware
@@ -2292,6 +2328,8 @@ class TabsDeck = {
 
 const DEV_RELOAD_CLIENT = string
 
+const SERVER_PROCESS_NAME = 'server'
+
 function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
 
 function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>
@@ -2309,6 +2347,8 @@ function pruneBuildOutput = (outdir: string, outputs: readonly {    path: string
 function registerDevBuildHook = (name: string, fn: BuildHookFn) => void
 
 function registerDevHtmlSnippet = (name: string, fn: DevHtmlSnippet) => void
+
+function startDevMode = (options: StartDevModeOptions) => Promise<void>
 
 interface AssetBuildConfig = {
   entrypoint: string | string[]
@@ -2346,6 +2386,14 @@ interface DevChild = {
   readonly exited: Promise<number>
   readonly stderr: ReadableStream<Uint8Array<ArrayBufferLike>> | null
   readonly stdout: ReadableStream<Uint8Array<ArrayBufferLike>> | null
+}
+
+interface DevOrchestratorHooks = {
+  onCleanup?: () => void | Promise<void>
+  onNotice?: (text: string, level: 'info' | 'warn' | 'error') => void
+  onServerLine?: (line: string, stream: 'stdout' | 'stderr') => void
+  onServerReady?: () => void | Promise<void>
+  onServerState?: (state: 'starting' | 'running' | 'restarting' | 'parked') => void
 }
 
 interface DevProcessStatus = {

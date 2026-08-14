@@ -322,6 +322,7 @@ export class CommandRunner {
 
     const {
       ServeCommand,
+      DevCommand,
       ReplCommand,
       WorkerCommand,
       CompileCommand,
@@ -351,6 +352,11 @@ export class CommandRunner {
 
     // ServeCommand is always registered — usable from any environment.
     this.register(ServeCommand);
+
+    // So is `dev`, and it has to be: `setAppEnv("dev")` boots process 1 as `web`
+    // so that web-only providers are asked for their dev processes, which puts
+    // the command itself on the wrong side of the `!== "web"` gate below.
+    this.register(DevCommand);
 
     // reload + status are always available — they talk to the running server,
     // not the app itself, so they don't need an application instance.

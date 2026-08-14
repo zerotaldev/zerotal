@@ -25,6 +25,7 @@
  * @packageDocumentation
  */
 export { ServeCommand } from "./ServeCommand.ts";
+export { DevCommand } from "./DevCommand.ts";
 export { ReplCommand } from "./ReplCommand.ts";
 export { StartCommand } from "./StartCommand.ts";
 export { WorkerCommand } from "./WorkerCommand.ts";

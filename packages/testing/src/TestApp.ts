@@ -590,25 +590,30 @@ export async function createTestApp(
   // already-started server is not idempotent — so those callers always get a fresh
   // app and own its teardown, exactly as before.
   //
-  // Only probe once an app exists: on the first call `bootstrap()` has real side
-  // effects (Application.create + provider registration) and must run after the
-  // reset below, not before it.
+  // Reset BEFORE probing, not after. `bootstrap()` may be evaluating its module for
+  // the first time, and the scaffolded bootstrap builds its Application at module
+  // scope — so probing first calls `Application.create()` while the previous file's
+  // app is still installed, and it throws "An application already exists in this
+  // process" before sharing is ever considered. Whether an app is still installed
+  // depends on which file happened to run before this one, which is why this passed
+  // on one machine and failed on the CI runner with the same code.
+  //
+  // Resetting first is safe on both paths: `resetTestState()` calls
+  // `Application._resetInstance()`, and every path below re-adopts — the shared one
+  // here, the fresh one after its own reset. Adopting before the reset is what is
+  // unsafe: it hands back an app whose scope has just been torn down, and the first
+  // facade to touch it throws E_FACADE_BEFORE_BOOT.
   if (!setup && _sharedApps.size > 0) {
+    resetTestState();
     const booted = await bootstrap();
     const existing = _sharedApps.get(booted);
     if (existing) {
-      // Order is load-bearing, and it was wrong: `resetTestState()` calls
-      // `Application._resetInstance()`, which is precisely what `adoptAsCurrent()`
-      // exists to undo. Adopting first meant the second test file in a process was
-      // handed an app whose scope had just been torn down, and the first facade it
-      // touched threw E_FACADE_BEFORE_BOOT — while each file passed in isolation,
-      // so the failure looked like a bug in whichever file happened to sort second.
-      //
-      // Reset, then adopt. Same order as the fresh-app path below.
-      resetTestState();
       booted.adoptAsCurrent();
       return existing;
     }
+    // Not a shared app after all. Fall through — the module is cached now, so the
+    // bootstrap below returns this same instance rather than creating a second one,
+    // and the `adoptAsCurrent()` there reinstalls the scope this reset tore down.
   }
 
   resetTestState();

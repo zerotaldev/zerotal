@@ -3,8 +3,6 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Component, _resetKeylessWarnings } from "./Component.ts";
 import type { HtmlNode } from "./jsx-runtime.ts";
 import { expose, reactive } from "./decorators.ts";
-// TEMP DIAGNOSTIC — remove with the fix.
-import { getReactiveProps, getModelableProps } from "./decorators.ts";
 
 /**
  * A keyless child's id must be content-addressed, not positional.
@@ -120,14 +118,6 @@ describe("keyless child ids", () => {
     const at7 = await idsFor(async (p) => {
       await p.child(Counter, { props: { count: 7 } });
     });
-    // TEMP DIAGNOSTIC — remove with the fix. Says whether the drain registered
-    // `count` as reactive by the time `child()` asked, which is the difference
-    // between a registration bug and an id-derivation bug.
-    console.log(
-      `DIAG2 reactive(Counter)=${JSON.stringify([...getReactiveProps(Counter.prototype)])} ` +
-        `modelable(Counter)=${JSON.stringify([...getModelableProps(Counter.prototype)])} ` +
-        `ownKeys=${JSON.stringify(Object.keys(new Counter()).slice(-3))}`,
-    );
     expect(at7).toEqual(at0);
   });
 

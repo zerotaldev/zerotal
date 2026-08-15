@@ -46,6 +46,25 @@ falling back to HTTP requests` was the same line whether the handshake was block
 
 ### Fixed
 
+- **A decorator could be registered against the wrong component.** Field decorators
+  cannot see their own class, so each registration is buffered in the decorator body
+  and matched to a class later. The match searched the whole buffer by field name, and
+  a component that declares a field and is never rendered leaves its entry buffered for
+  the life of the process — so an unrelated component with a field of the same name
+  could claim it, receive a decorator it never asked for, and never receive its own.
+  `page`, `count` and `open` are declared in a lot of files.
+
+  Two things were wrong. The search now runs per declaring class rather than across
+  one flat buffer, and a class is matched on the fields it **declares** rather than
+  every field on an instance — a subclass inherits its mixin's fields, so a leftover
+  block from another application of that mixin used to out-score the subclass's own.
+
+  It surfaced as `@reactive` failing to register: the prop was then folded into the
+  child's id, so every parent-pushed change remounted the child instead of updating it
+  in place — the exact thing `@reactive` exists to prevent. Whether it happened
+  depended on which modules had loaded first, which is why it reproduced on one machine
+  and not another.
+
 - **A keyless child in a list is no longer identified by its position.** The id was
   `<parentId>-<name>-<occurrence index>`, and an index is _position_, not identity:
   remove an item from a list and every row below it inherits the id its neighbour had.

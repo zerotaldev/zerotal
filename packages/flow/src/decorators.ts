@@ -189,13 +189,26 @@ function _scanChain(startProto: object | null): void {
 interface PendingField {
   name: string;
   apply: (proto: object) => void;
+  /**
+   * `context.metadata` — one object per **file**, not per class (Bun shares it across
+   * every class defined in the same module). It is the only link back to where a
+   * buffered entry came from, because `Symbol.metadata` never reaches the class, so
+   * there is nothing to read at drain time.
+   *
+   * It is enough for the case that matters: a class may only claim registrations
+   * enqueued by its own file. Without it, a component that declares `count` and is
+   * never read leaves that entry in the buffer forever, and the next class in a
+   * *different* file with an own field called `count` claims it — silently getting
+   * the wrong decorator, and never getting its own.
+   */
+  group: object | undefined;
 }
 const _pendingFields: PendingField[] = [];
 const _drainedProtos = new WeakSet<object>();
 
 /** Enqueue a field registration captured (with the correct name) in the decorator body. */
-function _enqueueField(name: string, apply: (proto: object) => void): void {
-  _pendingFields.push({ name, apply });
+function _enqueueField(name: string, apply: (proto: object) => void, group?: object): void {
+  _pendingFields.push({ name, apply, group });
 }
 
 /**
@@ -205,6 +218,11 @@ function _enqueueField(name: string, apply: (proto: object) => void): void {
  * entries whose names map to STRICTLY INCREASING positions in that order. A class's field
  * decorators run consecutively at definition time (including a subclass's mixin-supplied fields)
  * and in declaration order, so its block is exactly such a run.
+ *
+ * The search is scoped to one FILE's entries at a time, newest first — see
+ * {@link PendingField.group}. Scanning the whole buffer let a class claim a same-named
+ * entry left behind by an unrelated file, which is invisible: it gets the wrong
+ * decorator and never gets its own.
  *
  * The strictly-increasing constraint is what makes this robust when two classes share field
  * names AND their blocks are adjacent in the buffer (e.g. AddTransactionModal and TransferModal
@@ -222,40 +240,109 @@ function _drainFields(ctor: unknown): void {
   _drainedProtos.add(proto); // mark first to stay re-entrancy-safe during the probe
   if (_pendingFields.length === 0) return;
 
+  // The fields THIS class declares — not the ones it inherits. Instance fields all
+  // land on the instance whoever declared them, so `Object.keys(new Derived())` also
+  // lists the base's; subtracting the base's own probe leaves this class's block.
+  //
+  // The difference is load-bearing, not tidiness. `PaginatedPage extends
+  // Pagination(Component)` inherits `page`, so an undrained `[page, page]` group left
+  // by *another* `Pagination(...)` application matched it — and being two entries long
+  // it beat `PaginatedPage`'s own one-entry `[rows]`. The subclass silently ended up
+  // with the mixin's decorators and none of its own.
+  //
+  // If the base cannot be constructed without arguments there is nothing to subtract,
+  // and the full key set is the same answer this used to give.
   let ownIndex: Map<string, number>;
   try {
     const keys = Object.keys(new (ctor as new () => object)());
-    ownIndex = new Map(keys.map((k, i) => [k, i]));
+    const base = Object.getPrototypeOf(ctor) as unknown;
+    let inherited: Set<string> | undefined;
+    if (typeof base === "function" && base !== Function.prototype) {
+      try {
+        inherited = new Set(Object.keys(new (base as new () => object)()));
+      } catch {
+        inherited = undefined;
+      }
+    }
+    const declared = inherited ? keys.filter((k) => !inherited.has(k)) : keys;
+    ownIndex = new Map(declared.map((k, i) => [k, i]));
   } catch {
     return; // not constructible without args — nothing we can match
   }
 
-  // Longest contiguous run whose names map to strictly-increasing declaration-order indices
-  // (equal allowed only for an identical repeated name — multiple decorators on one field).
-  let bestStart = -1;
-  let bestLen = 0;
+  // Match within one class's entries at a time — see {@link PendingField.group}.
+  //
+  // Scanning the buffer as one flat list let a class claim a same-named entry left
+  // behind by an unrelated class, and that is invisible when it happens: the class
+  // silently gets the wrong decorator and never gets its own. It is not
+  // hypothetical — a component that declares a field and is never read leaves its
+  // entry buffered for the life of the process, and names like `count`, `open` and
+  // `page` are declared all over a codebase.
+  //
+  // Groups are keyed by identity rather than by adjacency, because a class's entries
+  // need not be contiguous: an import evaluated part-way through a module interleaves
+  // another file's.
+  const groups: object[] = [];
+  const byGroup = new Map<object, number[]>();
+  const NO_GROUP = {}; // stand-in key, so entries without metadata still group together
   for (let i = 0; i < _pendingFields.length; i++) {
-    if (!ownIndex.has(_pendingFields[i]!.name)) continue;
-    let last = -1;
-    let lastName = "";
-    let j = i;
-    while (j < _pendingFields.length) {
-      const name = _pendingFields[j]!.name;
-      const idx = ownIndex.get(name);
-      if (idx === undefined) break;
-      if (idx < last || (idx === last && name !== lastName)) break;
-      last = idx;
-      lastName = name;
-      j++;
+    const key = _pendingFields[i]!.group ?? NO_GROUP;
+    let list = byGroup.get(key);
+    if (!list) {
+      list = [];
+      byGroup.set(key, list);
+      groups.push(key);
     }
-    if (j - i > bestLen) {
-      bestLen = j - i;
-      bestStart = i;
+    list.push(i);
+  }
+
+  // Best run across every group, NOT the first group that matches anything. A class
+  // whose own group is a two-field block must beat an unrelated group that happens to
+  // share one of those names, and only the length says so. Ties go to the most
+  // recently enqueued group: a class is drained after its own definition, so among
+  // equal candidates the newest is the one that just defined it, and older equals are
+  // leftovers by construction.
+  let bestIdxs: number[] | null = null;
+  let bestLen = 0;
+  let bestGroup = -1;
+  for (let g = 0; g < groups.length; g++) {
+    const idxs = byGroup.get(groups[g]!)!;
+
+    // Longest contiguous run whose names map to strictly-increasing declaration-order
+    // indices (equal allowed only for an identical repeated name — multiple decorators
+    // on one field). "Contiguous" is within this group's entries.
+    for (let i = 0; i < idxs.length; i++) {
+      if (!ownIndex.has(_pendingFields[idxs[i]!]!.name)) continue;
+      let last = -1;
+      let lastName = "";
+      let j = i;
+      while (j < idxs.length) {
+        const name = _pendingFields[idxs[j]!]!.name;
+        const idx = ownIndex.get(name);
+        if (idx === undefined) break;
+        if (idx < last || (idx === last && name !== lastName)) break;
+        last = idx;
+        lastName = name;
+        j++;
+      }
+      // Longer always wins. On a tie, a LATER group wins (newest definition), but an
+      // earlier run within the SAME group is kept — which is the previous behaviour.
+      const len = j - i;
+      if (len > bestLen || (len === bestLen && len > 0 && g > bestGroup)) {
+        bestLen = len;
+        bestIdxs = idxs.slice(i, j);
+        bestGroup = g;
+      }
     }
   }
-  if (bestStart === -1) return;
-  const claimed = _pendingFields.splice(bestStart, bestLen);
-  for (const e of claimed) e.apply(proto);
+  if (!bestIdxs || bestLen === 0) return;
+
+  // Apply, then remove the claimed entries. Removal is by descending buffer index so
+  // the earlier positions stay valid while splicing.
+  for (const bufIdx of bestIdxs) _pendingFields[bufIdx]!.apply(proto);
+  for (let k = bestIdxs.length - 1; k >= 0; k--) {
+    _pendingFields.splice(bestIdxs[k]!, 1);
+  }
 }
 
 /** Drain via an instance or a prototype before reading. */
@@ -291,7 +378,7 @@ function _fieldDecorator(
   return (_value, context) => {
     const name = String(context.name);
     _assertField(name, context);
-    _enqueueField(name, (proto) => register(proto, name));
+    _enqueueField(name, (proto) => register(proto, name), context.metadata);
   };
 }
 
@@ -512,7 +599,7 @@ export function expose(_value: unknown, context: ExposeContext): void {
   }
   if (context.kind === "field") {
     // Field: capture in the body and enqueue (see _fieldDecorator / _drainFields).
-    _enqueueField(name, (proto) => _register(_exposedProps, proto, name));
+    _enqueueField(name, (proto) => _register(_exposedProps, proto, name), context.metadata);
     return;
   }
   // Method: tag the function so `_scanProto` finds it on the DECLARING prototype (see header);

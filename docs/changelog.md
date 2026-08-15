@@ -109,6 +109,14 @@ from a local machine to a deployed box.
 
 ### Fixed
 
+- **Flow: a decorator could be registered against the wrong component.** Field decorators cannot
+  see their own class, so each registration is buffered and matched to a class afterwards — and
+  the match searched one flat buffer by field name. A component that declares a field and is never
+  rendered leaves its entry there for the life of the process, so an unrelated component with a
+  field of the same name could claim it and never receive its own. It showed up as `@reactive`
+  silently failing to register, which remounts the child on every parent-pushed change rather than
+  updating it in place. Matching is now per declaring class, and on the fields a class declares
+  rather than everything on an instance.
 - **Flow: a keyless child in a list was identified by its position.** Reordering a list without
   keys reused the wrong DOM node, so state attached to a row followed the position rather than
   the row.

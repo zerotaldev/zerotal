@@ -4,6 +4,17 @@ import { Container } from "../container/Container.ts";
 import type { Pipe, NextFn } from "../pipeline/types.ts";
 import { HttpContext } from "../pipeline/HttpContext.ts";
 
+// `Router.compile()` returns, per path, either a method table or a pre-built static
+// `Response` (the fast path for files it can serve without a handler). Every test
+// below wants the method table, so narrow once here rather than at each call site.
+type Compiled = ReturnType<typeof Router.compile>;
+type MethodTable = Exclude<Compiled[string], Response>;
+
+function methods(compiled: Compiled, path: string): MethodTable | undefined {
+  const entry = compiled[path];
+  return entry instanceof Response ? undefined : entry;
+}
+
 // ── Test controller helpers ───────────────────────────────────────────────
 
 class TestController {
@@ -102,8 +113,8 @@ describe("Router — compile()", () => {
     const compiled = Router.compile(new Container());
 
     expect(compiled["/users"]).toBeDefined();
-    expect(typeof compiled["/users"]?.["GET"]).toBe("function");
-    expect(typeof compiled["/users"]?.["POST"]).toBe("function");
+    expect(typeof methods(compiled, "/users")?.["GET"]).toBe("function");
+    expect(typeof methods(compiled, "/users")?.["POST"]).toBe("function");
   });
 
   it("returns an empty object when no routes are registered", () => {
@@ -121,10 +132,10 @@ describe("Router — compile()", () => {
     const compiled = Router.compile(new Container());
 
     // /items has both GET and POST; /items/:id has DELETE
-    expect(typeof compiled["/items"]?.["GET"]).toBe("function");
-    expect(typeof compiled["/items"]?.["POST"]).toBe("function");
-    expect(compiled["/items"]?.["DELETE"]).toBeUndefined();
-    expect(typeof compiled["/items/:id"]?.["DELETE"]).toBe("function");
+    expect(typeof methods(compiled, "/items")?.["GET"]).toBe("function");
+    expect(typeof methods(compiled, "/items")?.["POST"]).toBe("function");
+    expect(methods(compiled, "/items")?.["DELETE"]).toBeUndefined();
+    expect(typeof methods(compiled, "/items/:id")?.["DELETE"]).toBe("function");
   });
 });
 
@@ -137,7 +148,7 @@ describe("Router — request handling", () => {
     Router.get("/users", TestController, "index");
 
     const compiled = Router.compile(new Container());
-    const handler = compiled["/users"]!["GET"]!;
+    const handler = methods(compiled, "/users")!["GET"]!;
 
     const response = await handler(new Request("http://localhost/users"));
 
@@ -173,7 +184,7 @@ describe("Router — request handling", () => {
 
     Router.get("/track", TrackController, "index", [TrackMiddleware]);
     const compiled = Router.compile(new Container());
-    const handler = compiled["/track"]!["GET"]!;
+    const handler = methods(compiled, "/track")!["GET"]!;
 
     await handler(new Request("http://localhost/track"));
 
@@ -193,7 +204,9 @@ describe("Router — request handling", () => {
     expect(route?.controller.name).toBe("Route<GET /ping>");
 
     const compiled = Router.compile(new Container());
-    const response = await compiled["/ping"]?.["GET"]!(new Request("http://localhost/ping"));
+    const response = await methods(compiled, "/ping")?.["GET"]!(
+      new Request("http://localhost/ping"),
+    );
     expect(response!.status).toBe(200);
     expect(await response!.text()).toBe("pong");
   });
@@ -203,7 +216,7 @@ describe("Router — request handling", () => {
     Router.post("/echo", () => new Response("created", { status: 201 }));
 
     const compiled = Router.compile(new Container());
-    const response = await compiled["/echo"]?.["POST"]!(
+    const response = await methods(compiled, "/echo")?.["POST"]!(
       new Request("http://localhost/echo", { method: "POST" }),
     );
     expect(response!.status).toBe(201);
@@ -219,7 +232,7 @@ describe("Router — request handling", () => {
     const compiled = Router.compile(new Container());
     const req = new Request("http://localhost/items/42");
     (req as { params?: Record<string, string> }).params = { id: "42" };
-    const response = await compiled["/items/:id"]?.["GET"]!(req);
+    const response = await methods(compiled, "/items/:id")?.["GET"]!(req);
     expect(await response!.text()).toBe("42");
   });
 
@@ -247,7 +260,7 @@ describe("Router — request handling", () => {
     expect(route?.middleware).toEqual([TrackMiddleware]);
 
     const compiled = Router.compile(new Container());
-    await compiled["/guarded"]?.["GET"]!(new Request("http://localhost/guarded"));
+    await methods(compiled, "/guarded")?.["GET"]!(new Request("http://localhost/guarded"));
     expect(log).toEqual(["middleware", "handler"]);
   });
 
@@ -363,7 +376,7 @@ describe("Router — request handling", () => {
 
     Router.get("/order", OrderController, "index", [RouteMiddleware]);
     const compiled = Router.compile(new Container(), [GlobalMiddleware]);
-    const handler = compiled["/order"]!["GET"]!;
+    const handler = methods(compiled, "/order")!["GET"]!;
 
     await handler(new Request("http://localhost/order"));
 
@@ -639,7 +652,7 @@ describe("Router.static()", () => {
 
   it("does not add a compiled route for static directories", () => {
     Router.static("/files", "./public");
-    const compiled = Router.compile();
+    const compiled = Router.compile(new Container());
     expect(compiled["/files/*"]).toBeUndefined();
   });
 
@@ -658,9 +671,9 @@ describe("Router.markdown()", () => {
 
   it("registers a markdown directory", () => {
     Router.markdown("/docs", "./docs");
-    const compiled = Router.compile();
+    const compiled = Router.compile(new Container());
     expect(compiled["/docs/*"]).toBeDefined();
-    expect(typeof compiled["/docs/*"]!["GET"]).toBe("function");
+    expect(typeof methods(compiled, "/docs/*")!["GET"]).toBe("function");
   });
 
   it("compiled markdown handler serves an existing .md file", async () => {
@@ -672,8 +685,8 @@ describe("Router.markdown()", () => {
     await writeFile(join(dir, "hello.md"), "# Hello\nWorld");
 
     Router.markdown("/docs", dir, { title: "Docs" });
-    const compiled = Router.compile();
-    const handler = compiled["/docs/*"]!["GET"]!;
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/docs/*")!["GET"]!;
     const req = new Request("http://localhost/docs/hello");
     const res = await (handler as (req: Request) => Promise<Response>)(req);
     expect(res.status).toBe(200);
@@ -693,8 +706,8 @@ describe("Router.markdown()", () => {
     await writeFile(join(dir, "guide", "index.md"), "# Guide Index");
 
     Router.markdown("/docs", dir);
-    const compiled = Router.compile();
-    const handler = compiled["/docs/*"]!["GET"]!;
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/docs/*")!["GET"]!;
     const req = new Request("http://localhost/docs/guide");
     const res = await (handler as (req: Request) => Promise<Response>)(req);
     expect(res.status).toBe(200);
@@ -711,8 +724,8 @@ describe("Router.markdown()", () => {
     await mkdir(dir, { recursive: true });
 
     Router.markdown("/docs", dir);
-    const compiled = Router.compile();
-    const handler = compiled["/docs/*"]!["GET"]!;
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/docs/*")!["GET"]!;
     const req = new Request("http://localhost/docs/nope");
     const res = await (handler as (req: Request) => Promise<Response>)(req);
     expect(res.status).toBe(404);
@@ -729,15 +742,15 @@ describe("Router.raw()", () => {
 
   it("registers a raw handler that bypasses middleware", () => {
     Router.raw("GET", "/__ping", () => new Response("pong"));
-    const compiled = Router.compile();
+    const compiled = Router.compile(new Container());
     expect(compiled["/__ping"]).toBeDefined();
-    expect(typeof compiled["/__ping"]!["GET"]).toBe("function");
+    expect(typeof methods(compiled, "/__ping")!["GET"]).toBe("function");
   });
 
   it("compiled raw handler returns the response", async () => {
     Router.raw("POST", "/__echo", (req) => new Response(`echo:${req.method}`));
-    const compiled = Router.compile();
-    const handler = compiled["/__echo"]!["POST"]!;
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/__echo")!["POST"]!;
     const res = await (handler as (req: Request) => Promise<Response>)(
       new Request("http://localhost/__echo", { method: "POST" }),
     );

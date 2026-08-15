@@ -4,6 +4,17 @@ import type { ModelClass } from "./Route.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { Container } from "../container/Container.ts";
 
+// `Router.compile()` returns, per path, either a method table or a pre-built static
+// `Response` (the fast path for files it can serve without a handler). Every test
+// below wants the method table, so narrow once here rather than at each call site.
+type Compiled = ReturnType<typeof Router.compile>;
+type MethodTable = Exclude<Compiled[string], Response>;
+
+function methods(compiled: Compiled, path: string): MethodTable | undefined {
+  const entry = compiled[path];
+  return entry instanceof Response ? undefined : entry;
+}
+
 // ── Fake models ───────────────────────────────────────────────────────────────
 
 class FakeUser {
@@ -114,7 +125,7 @@ describe("route-model binding — .bind()", () => {
     );
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/users/:user"]!["GET"]!;
+    const handler = methods(compiled, "/users/:user")!["GET"]!;
 
     const res = await handler(fakeRequest("/users/1", { user: "42" }));
     const body = (await res.json()) as { id: number; name: string };
@@ -129,7 +140,7 @@ describe("route-model binding — .bind()", () => {
     );
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/users/:user"]!["GET"]!;
+    const handler = methods(compiled, "/users/:user")!["GET"]!;
 
     const res = await handler(fakeRequest("/users/999", { user: "999" }));
     expect(res.status).toBe(404);
@@ -142,7 +153,7 @@ describe("route-model binding — .bind()", () => {
     );
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/profile"]!["GET"]!;
+    const handler = methods(compiled, "/profile")!["GET"]!;
 
     // No 'user' param — resolution is skipped, no error
     const res = await handler(fakeRequest("/profile", {}));
@@ -167,7 +178,7 @@ describe("RouteRegistration.bind() — per-route binding", () => {
     );
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/posts/:post"]!["GET"]!;
+    const handler = methods(compiled, "/posts/:post")!["GET"]!;
 
     const res = await handler(fakeRequest("/posts/7", { post: "7" }));
     const body = (await res.json()) as { id: number; slug: string };
@@ -187,7 +198,7 @@ describe("RouteRegistration.bind() — per-route binding", () => {
     });
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/users/:user"]!["GET"]!;
+    const handler = methods(compiled, "/users/:user")!["GET"]!;
 
     const res = await handler(fakeRequest("/users/5", { user: "5" }));
     const body = (await res.json()) as { id: number; name: string };
@@ -203,7 +214,7 @@ describe("RouteRegistration.bind() — per-route binding", () => {
     );
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/posts/:post"]!["GET"]!;
+    const handler = methods(compiled, "/posts/:post")!["GET"]!;
 
     const res = await handler(fakeRequest("/posts/hello-world", { post: "hello-world" }));
     const body = (await res.json()) as { id: number; slug: string };
@@ -217,7 +228,7 @@ describe("RouteRegistration.bind() — per-route binding", () => {
     });
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/posts/:post"]!["GET"]!;
+    const handler = methods(compiled, "/posts/:post")!["GET"]!;
 
     const res = await handler(fakeRequest("/posts/missing", { post: "missing" }));
     expect(res.status).toBe(404);
@@ -229,7 +240,7 @@ describe("RouteRegistration.bind() — per-route binding", () => {
       .bind("post", FakePost as unknown as ModelClass);
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/users/:user/posts/:post"]!["GET"]!;
+    const handler = methods(compiled, "/users/:user/posts/:post")!["GET"]!;
 
     const res = await handler(fakeRequest("/users/1/posts/2", { user: "1", post: "2" }));
     const body = (await res.json()) as { userId: number; postId: number };
@@ -245,7 +256,7 @@ describe("ctx.model() — accessor", () => {
     Router.get("/items/:id", TestController, "show");
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/items/:id"]!["GET"]!;
+    const handler = methods(compiled, "/items/:id")!["GET"]!;
 
     // No binding registered — controller calls ctx.model('user') which should throw
     const res = await handler(fakeRequest("/items/1", { id: "1" }));
@@ -259,7 +270,7 @@ describe("ctx.model() — accessor", () => {
     );
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/users/:user"]!["GET"]!;
+    const handler = methods(compiled, "/users/:user")!["GET"]!;
 
     const res = await handler(fakeRequest("/users/7", { user: "7" }));
     const body = (await res.json()) as { id: number; name: string };
@@ -271,7 +282,7 @@ describe("ctx.model() — accessor", () => {
     Router.get("/items/:tab", BindedController, "rawParam");
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/items/:tab"]!["GET"]!;
+    const handler = methods(compiled, "/items/:tab")!["GET"]!;
 
     const res = await handler(fakeRequest("/items/details", { tab: "details" }));
     const body = (await res.json()) as { tab: string };
@@ -285,7 +296,7 @@ describe("ctx.model() — accessor", () => {
     );
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/posts/:post"]!["GET"]!;
+    const handler = methods(compiled, "/posts/:post")!["GET"]!;
 
     const res = await handler(fakeRequest("/posts/3", { post: "3" }));
     const body = (await res.json()) as { id: number; slug: string };
@@ -299,7 +310,7 @@ describe("ctx.model() — accessor", () => {
       .bind("post", FakePost as unknown as ModelClass);
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/users/:user/posts/:post"]!["GET"]!;
+    const handler = methods(compiled, "/users/:user/posts/:post")!["GET"]!;
 
     const res = await handler(fakeRequest("/users/1/posts/2", { user: "1", post: "2" }));
     const body = (await res.json()) as { userId: number; postId: number };
@@ -314,7 +325,7 @@ describe("ctx.model() — accessor", () => {
     );
 
     const compiled = Router.compile(makeContainer(), []);
-    const handler = compiled["/posts/:post"]!["GET"]!;
+    const handler = methods(compiled, "/posts/:post")!["GET"]!;
 
     const res = await handler(fakeRequest("/posts/5", { post: "5", tab: "comments" }));
     const body = (await res.json()) as { postId: number; tab: string };

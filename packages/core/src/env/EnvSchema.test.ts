@@ -3,8 +3,12 @@ import { EnvSchema, EnvSchemaError, t } from "./index.ts";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-/** Shorthand: define a schema against a custom env object. */
-function parse<S extends Record<string, ReturnType<typeof t.string>>>(
+/**
+ * Shorthand: define a schema against a custom env object. The bound is whatever
+ * `define()` itself accepts — pinning it to `t.string()` would leave every
+ * `t.number()` / `t.boolean()` case below inferring the wrong `Def`.
+ */
+function parse<S extends Parameters<typeof EnvSchema.define>[0]>(
   schema: S,
   env: Record<string, string | undefined>,
 ) {

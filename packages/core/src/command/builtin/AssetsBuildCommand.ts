@@ -80,10 +80,12 @@ export class AssetsBuildCommand extends Command {
       this.info("No frontend bundles configured — nothing to build.");
       return;
     }
+    // Throw rather than `process.exit(1)`. The runner turns a throw into exit 1, so
+    // the CLI behaves identically — but a caller composing this through
+    // `callInProcess` gets a failed step it can report on, instead of having the
+    // whole process killed mid-pipeline with its buffered output never flushed.
     if (failed > 0) {
-      this.error(`${failed} bundle(s) failed, ${built} succeeded.`);
-      process.exit(1);
-      return;
+      throw new Error(`${failed} bundle(s) failed, ${built} succeeded.`);
     }
     this.info(`Built ${built} bundle(s).`);
   }

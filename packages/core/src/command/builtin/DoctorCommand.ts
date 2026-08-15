@@ -27,11 +27,7 @@ export class DoctorCommand extends Command {
 
   async run(): Promise<void> {
     const app = this.app as Application | undefined;
-    if (!app) {
-      this.error("doctor needs a booted application.");
-      process.exit(1);
-      return;
-    }
+    if (!app) throw new Error("doctor needs a booted application.");
 
     const report = await runDoctor(app);
     this.section("Doctor");
@@ -42,9 +38,12 @@ export class DoctorCommand extends Command {
     const warns = report.filter((e) => e.result.status === "warn").length;
     const fails = report.filter((e) => e.result.status === "fail").length + probeFailures;
     this.newLine();
+    // Throw rather than `process.exit(1)` — same exit code from the CLI (the runner
+    // converts it), but composable. Exiting here killed any caller running the
+    // doctor through `callInProcess` before its buffered report could be flushed,
+    // so the failure arrived with no output explaining it.
     if (fails > 0) {
-      this.error(`${fails} failing, ${warns} warning(s), ${report.length} check(s).`);
-      process.exit(1);
+      throw new Error(`${fails} failing, ${warns} warning(s), ${report.length} check(s).`);
     } else if (warns > 0) {
       this.warn(`${warns} warning(s), ${report.length} check(s).`);
     } else {

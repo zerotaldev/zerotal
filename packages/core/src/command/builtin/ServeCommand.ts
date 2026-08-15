@@ -24,6 +24,7 @@ import {
   type PortOwner,
 } from "../../support/port.ts";
 import { localNetworkAddress } from "../../support/network.ts";
+import { ZEROTAL_VERSION } from "../../support/version.ts";
 import { createInterface } from "node:readline";
 
 /**
@@ -319,7 +320,11 @@ export class ServeCommand extends Command {
     const network = localNetworkAddress();
 
     this.newLine();
-    this.line(`  Zerotal  ›  ${mode}`);
+    // The version is here because a running server holds the framework it booted
+    // with: an upgrade installed in another terminal is invisible until a full
+    // restart, and without this line there is nothing on screen to tell you which
+    // one you are looking at.
+    this.line(`  Zerotal v${ZEROTAL_VERSION}  ›  ${mode}`);
     this.newLine();
     this._route("Local", `http://localhost:${port}`);
     this._route(

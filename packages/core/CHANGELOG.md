@@ -8,6 +8,31 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.3] — 2026-08-15
+
+### Added
+
+- **`serve --dev` says when the framework on disk is no longer the framework running.** A
+  running dev server holds the code it imported at boot: `bun add zerotal@latest` in another
+  terminal rewrites `node_modules` and nothing else, and a save restarts only the _worker_,
+  which re-executes your app against that same in-memory framework. So an upgrade taken
+  mid-session appears to do nothing — the fix is installed, the symptom persists, and the
+  reasonable conclusion is that the fix does not work.
+
+  The supervisor now compares the version it booted with against the one installed, on each
+  restart, and says which is which:
+
+  ```text
+  [zerotal:dev] ⚠  framework upgraded on disk: running v1.6.2, installed v1.6.3
+  [zerotal:dev]    restart the dev server to pick it up (a save will not).
+  ```
+
+  Once per version, so a long session is not nagged, and silent where there is nothing to read
+  — a workspace checkout or a hoisted layout is not a finding.
+
+- **The dev banner carries the version** — `Zerotal v1.6.3 › dev`. There was previously
+  nothing on screen naming the framework a running server was actually executing.
+
 ## [1.6.2] — 2026-08-15
 
 ### Fixed

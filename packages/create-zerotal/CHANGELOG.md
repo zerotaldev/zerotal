@@ -8,6 +8,27 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.3] — 2026-08-15
+
+### Added
+
+- **The scaffolder says when it is not the published one.** `bun create zerotal` can serve a
+  copy cached from a previous run instead of fetching the current scaffolder, and a stale
+  scaffolder is worse than an old one: it stamps the dependency ranges *it* shipped with, so
+  the new project is created against versions that were current months ago — while the install
+  log shows today's framework resolving happily inside those ranges. Everything reads as
+  correct and the wrong packages are installed.
+
+  Observed with a cached 1.5.0, which pinned an Inertia major whose client-side DevTools hooks
+  do not exist, on a machine whose registry had 1.6.2. Nothing said so, because nothing was
+  looking.
+
+  The check now runs against the registry, and names the fix:
+  `bunx create-zerotal@latest <name>`. It costs no perceived time — the request goes out before
+  the banner and is read after the prompts — and it is advisory: an offline machine, a
+  firewalled registry and a slow network all mean "no answer", and no answer never stops
+  anyone creating an app.
+
 ## [1.6.1] — 2026-08-15
 
 ### Changed

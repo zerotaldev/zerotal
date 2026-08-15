@@ -24,6 +24,28 @@ Each version lists changes under three headings:
 Patch and minor releases are backward compatible. Before taking a **major** release,
 read its section here and apply each migration note.
 
+## 1.6.3 — 2026-08-15
+
+Two guards against the same failure: an upgrade sitting on disk while something older keeps
+running, with nothing on screen to say so.
+
+### Added
+
+- **`serve --dev` reports a framework upgrade it has not picked up.** A running dev server
+  holds the code it imported at boot, so `bun add zerotal@latest` in another terminal changes
+  `node_modules` and nothing else — a save restarts only the worker, against the same
+  in-memory framework. The upgrade therefore appears to do nothing. The supervisor now names
+  both versions and says to restart, and the dev banner carries the version it is running:
+  `Zerotal v1.6.3 › dev`.
+
+- **`create-zerotal` says when it is not the published scaffolder.** `bun create zerotal` can
+  serve a copy cached from an earlier run, and a stale scaffolder stamps the dependency ranges
+  _it_ shipped with — so a brand-new project is created against versions that are no longer
+  current, while the install log shows today's framework resolving inside those ranges. It now
+  checks the registry and names the fix: `bunx create-zerotal@latest <name>`. Advisory only —
+  offline, firewalled and slow all mean "no answer", and no answer never stops anyone creating
+  an app.
+
 ## 1.6.2 — 2026-08-15
 
 ### Fixed

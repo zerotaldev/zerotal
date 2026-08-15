@@ -10,8 +10,18 @@
 import { resolve } from 'node:path';
 import { printBanner, ask, choose, log, info, warn, step, dim, c } from './prompts.ts';
 import { scaffold, install, type Template, type Database } from './scaffold.ts';
+import { newerScaffolderVersion } from './staleness.ts';
+
+/** This scaffolder's own version, read from the manifest that ships beside it. */
+const ZT_SELF_VERSION: string = (
+  (await Bun.file(new URL('../package.json', import.meta.url)).json()) as { version: string }
+).version;
 
 async function main(): Promise<void> {
+  // Started before the banner and awaited after the prompts, so the check costs
+  // no perceived time at all — the answer arrives while a human is reading.
+  const newerScaffolder = newerScaffolderVersion(ZT_SELF_VERSION);
+
   printBanner();
 
   // ── Project name ────────────────────────────────────────────────────────────
@@ -89,6 +99,19 @@ async function main(): Promise<void> {
 
   // ── Scaffold ────────────────────────────────────────────────────────────────
   log('');
+
+  // Answered by now: the request went out before the first prompt, and the
+  // prompts take human time. Said before anything is written, so re-running with
+  // the current scaffolder costs nothing but a Ctrl-C.
+  const newer = await newerScaffolder;
+  if (newer) {
+    warn(`This scaffolder is ${ZT_SELF_VERSION}; ${newer} is published.`);
+    dim(`A cached copy stamps the dependency ranges it shipped with, so a new`);
+    dim(`project can be created against versions that are no longer current.`);
+    dim(`${c.bold}bunx create-zerotal@latest ${name}${c.reset}${c.gray} always fetches the published one.`);
+    log('');
+  }
+
   step(`Scaffolding ${c.bold}${name}${c.reset} (${template})…`);
 
   await scaffold({ name, template, db, target });

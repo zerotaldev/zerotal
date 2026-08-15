@@ -6,6 +6,7 @@ import { watch } from "node:fs";
 import type { BuildHookFn } from "./DevBuildHook.ts";
 import { DEV_WORKER_ENV_VAR } from "../support/env.ts";
 import { requestGracefulStop } from "./devShutdown.ts";
+import { ZEROTAL_VERSION, installedCoreVersion } from "../support/version.ts";
 
 /**
  * How the orchestrator reports to whatever is presenting dev mode.
@@ -81,6 +82,8 @@ export class DevOrchestrator {
    * queues a single follow-up instead of running in parallel.
    */
   private _restartInFlight: Promise<void> | null = null;
+  /** The installed version already warned about, so one upgrade warns once. */
+  private _warnedVersion: string | null = null;
   private _restartQueued = false;
 
   /**
@@ -282,9 +285,35 @@ export class DevOrchestrator {
     // browser refetches the updated CSS.
     await this._runBuild();
 
+    this._warnIfFrameworkUpgradedUnderneath();
+
     // Stop before spawning, always: the old server owns the port until it exits.
     await this._stopChild();
     await this._spawnServerWithRetry();
+  }
+
+  /**
+   * Say so when the framework on disk is no longer the framework running.
+   *
+   * A `bun add zerotal@latest` in another terminal changes `node_modules` and
+   * nothing else: this process holds the code it imported at boot, and a restart
+   * only re-executes the *app* against that same in-memory framework. So the
+   * upgrade appears to have no effect — the fix is installed, the symptom
+   * persists, and the obvious conclusion is that the fix does not work.
+   *
+   * Checked on restart rather than at boot, because that is when it can have
+   * become true, and warned once per version so a long session is not nagged.
+   */
+  private _warnIfFrameworkUpgradedUnderneath(): void {
+    const onDisk = installedCoreVersion(this._cwd);
+    if (onDisk === null || onDisk === ZEROTAL_VERSION || onDisk === this._warnedVersion) return;
+
+    this._warnedVersion = onDisk;
+    this._say(
+      `  [zerotal:dev] ⚠  framework upgraded on disk: running v${ZEROTAL_VERSION}, installed v${onDisk}`,
+      "warn",
+    );
+    this._say("  [zerotal:dev]    restart the dev server to pick it up (a save will not).", "warn");
   }
 
   /** Stop the running server and wait for it to actually exit, releasing the port. */

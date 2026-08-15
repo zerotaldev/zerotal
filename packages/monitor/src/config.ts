@@ -7,7 +7,7 @@
  *     auth: (user) => user?.role === "admin",
  *   });
  */
-import { deepMerge, isDevSurfaceAllowed } from "@zerotal/core";
+import { deepMerge, devSurfacesEnabled } from "@zerotal/core";
 import type { RetentionMode } from "./store/MonitorDb.ts";
 import type { AlertThresholds } from "./alerting.ts";
 
@@ -129,7 +129,7 @@ export interface ResolvedMonitorConfig extends MonitorConfigShape {
 // documented `APP_ENV=production` deploy would otherwise expose the panel.
 // Only explicitly non-prod envs get open-by-default access; everything else
 // (unset, staging, production) must supply an explicit `auth` predicate.
-const defaultAuthOpen = (): boolean => isDevSurfaceAllowed(Bun.env["APP_ENV"] ?? "");
+const defaultAuthOpen = (): boolean => devSurfacesEnabled();
 
 const defaults: ResolvedMonitorConfig = {
   path: "/monitor",

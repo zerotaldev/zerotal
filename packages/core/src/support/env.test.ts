@@ -1,17 +1,40 @@
 import { describe, it, expect, afterEach } from "bun:test";
-import { isProdLike, isDevSurfaceAllowed, devSurfacesEnabled, DEV_WORKER_ENV_VAR } from "./env.ts";
+import {
+  isProdLike,
+  isDevSurfaceAllowed,
+  devSurfacesEnabled,
+  deployEnv,
+  DEV_WORKER_ENV_VAR,
+  DEPLOY_ENV_VAR,
+} from "./env.ts";
+import { setAppEnv } from "../helpers/index.ts";
 
 const env = Bun.env as Record<string, string | undefined>;
-const saved = { appEnv: env["APP_ENV"], devWorker: env[DEV_WORKER_ENV_VAR] };
+const saved = {
+  appEnv: env["APP_ENV"],
+  devWorker: env[DEV_WORKER_ENV_VAR],
+  deployEnv: env[DEPLOY_ENV_VAR],
+};
 
-function setEnv(appEnv: string | undefined, devWorker: string | undefined): void {
+/**
+ * Pin the whole env surface these predicates read — including {@link DEPLOY_ENV_VAR},
+ * which `setAppEnv()` writes. Leaving it out let a value set by another test file
+ * leak in and decide the answer, because `devSurfacesEnabled()` prefers it.
+ */
+function setEnv(
+  appEnv: string | undefined,
+  devWorker: string | undefined,
+  deploy?: string | undefined,
+): void {
   if (appEnv === undefined) delete env["APP_ENV"];
   else env["APP_ENV"] = appEnv;
   if (devWorker === undefined) delete env[DEV_WORKER_ENV_VAR];
   else env[DEV_WORKER_ENV_VAR] = devWorker;
+  if (deploy === undefined) delete env[DEPLOY_ENV_VAR];
+  else env[DEPLOY_ENV_VAR] = deploy;
 }
 
-afterEach(() => setEnv(saved.appEnv, saved.devWorker));
+afterEach(() => setEnv(saved.appEnv, saved.devWorker, saved.deployEnv));
 
 describe("isProdLike()", () => {
   it("accepts the production-like names, case-insensitively", () => {
@@ -64,6 +87,25 @@ describe("devSurfacesEnabled()", () => {
 
   it('ignores a dev-worker flag that is not exactly "1"', () => {
     setEnv("production", "true");
+    expect(devSurfacesEnabled()).toBe(false);
+  });
+
+  it("survives setAppEnv() replacing APP_ENV with the runtime mode", () => {
+    // The bug this exists for: a scaffolded app with APP_ENV=development in its
+    // `.env` ran `zt serve`, setAppEnv() rewrote APP_ENV to "web", and every dev
+    // surface read that and switched itself off — devtools never appeared, and a
+    // plain `serve` rendered production error pages in development.
+    setEnv("development", undefined);
+    setAppEnv("serve");
+    expect(env["APP_ENV"]).toBe("web");
+    expect(deployEnv()).toBe("development");
+    expect(devSurfacesEnabled()).toBe(true);
+  });
+
+  it("still fails closed once setAppEnv() has run on a production deploy", () => {
+    setEnv("production", undefined);
+    setAppEnv("serve");
+    expect(deployEnv()).toBe("production");
     expect(devSurfacesEnabled()).toBe(false);
   });
 });

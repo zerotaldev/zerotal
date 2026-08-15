@@ -1,4 +1,4 @@
-import { BaseMiddleware, isDevSurfaceAllowed } from "@zerotal/core";
+import { BaseMiddleware, devSurfacesEnabled } from "@zerotal/core";
 import type { NextFn, HttpContext } from "@zerotal/core";
 
 /**
@@ -19,7 +19,9 @@ export class AdminGuardMiddleware extends BaseMiddleware {
   protected options = {};
 
   async handle(_http: HttpContext, next: NextFn): Promise<Response | void> {
-    if (isDevSurfaceAllowed(Bun.env["APP_ENV"] ?? "")) return next();
+    // `devSurfacesEnabled()` — `APP_ENV` holds the runtime mode by now, so reading it
+    // directly asked whether "web" is a development environment and always said no.
+    if (devSurfacesEnabled()) return next();
     return new Response(
       "Admin panel is not accessible: no authentication is configured.\n" +
         "Set `middleware` in config/admin.ts to a real auth guard before exposing it.\n",

@@ -101,7 +101,11 @@ export function deployEnv(): string {
  */
 export function devSurfacesEnabled(): boolean {
   if (Bun.env[DEV_WORKER_ENV_VAR] === "1") return true;
-  return isDevSurfaceAllowed(Bun.env["APP_ENV"] ?? "");
+  // `deployEnv()`, not `Bun.env["APP_ENV"]` — by the time anything asks, `setAppEnv()`
+  // has replaced that with the runtime mode, and `isDevSurfaceAllowed("web")` is false.
+  // An app with `APP_ENV=development` in its `.env` was therefore getting production
+  // error pages from a plain `zt serve`.
+  return isDevSurfaceAllowed(deployEnv());
 }
 
 /**

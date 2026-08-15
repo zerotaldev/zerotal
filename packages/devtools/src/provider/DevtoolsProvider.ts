@@ -1,6 +1,6 @@
 import {
   ServiceProvider,
-  isDevSurfaceAllowed,
+  devSurfacesEnabled,
   type AppEnvironment,
   type HttpContext,
 } from "@zerotal/core";
@@ -71,10 +71,16 @@ export class DevtoolsProvider extends ServiceProvider {
   private _stopStream: (() => void) | null = null;
 
   override async onBooting(): Promise<void> {
-    const env = Bun.env["APP_ENV"] ?? "";
-    // Fail closed: only activate for explicitly non-prod envs. An unset or
-    // `staging` APP_ENV must NOT expose the unauthenticated trace inspector.
-    if (!isDevSurfaceAllowed(env)) return;
+    // Fail closed: only activate for explicitly non-prod environments. An unset or
+    // `staging` deployment must NOT expose the unauthenticated trace inspector.
+    //
+    // `devSurfacesEnabled()` rather than reading `APP_ENV` here, for two reasons, and
+    // together they meant devtools never activated at all:
+    //   - by the time a provider boots, `setAppEnv()` has replaced `APP_ENV` with the
+    //     runtime mode, so this was asking whether `"web"` is a development environment;
+    //   - it is the only dev gate that did not honour `ZT_DEV`, which is what the dev
+    //     orchestrator sets on the server it supervises — so `zt dev` did not help either.
+    if (!devSurfacesEnabled()) return;
     this._active = true;
 
     const config = this._config();

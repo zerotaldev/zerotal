@@ -79,10 +79,11 @@ export function setAppEnv(command?: string): void {
   // quietly answering no — including the weak-`APP_KEY` refusal and the ORM's
   // N+1 detector. `deployEnv()` reads this back; see {@link DEPLOY_ENV_VAR}.
   //
-  // `??=` so the first caller wins: a re-entrant `setAppEnv` (dev mode boots the
-  // app twice) must not stamp the runtime mode over the real deployment name.
+  // The guard is what protects a re-entrant call: `current` is only ever written
+  // when it is a genuine deployment name, so a second `setAppEnv` — which sees the
+  // runtime mode this one just wrote — cannot stamp `"web"` over `"production"`.
   if (current && !_RUNTIME_MODES.has(current.toLowerCase())) {
-    environment[DEPLOY_ENV_VAR] ??= current;
+    environment[DEPLOY_ENV_VAR] = current;
   }
 
   if (["serve", "start", "s", "dev", "d"].includes(normalizedCommand)) {

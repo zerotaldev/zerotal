@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-08-15
+
+### Fixed
+
+- **The development bypass never applied.** `AdminGuardMiddleware` and the `ability` helper
+  both read `APP_ENV` to decide whether this was a development environment — but by the time
+  either runs, `setAppEnv()` has replaced it with the runtime mode. So the panel refused
+  access in development exactly as it does in production, which is not what either was
+  written to do. Both ask `devSurfacesEnabled()` now, and both still fail closed anywhere
+  that is not explicitly a development environment.
+
 ## [1.5.0] — 2026-08-15
 
 ### Changed

@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-08-15
+
+### Fixed
+
+- **Every development-only surface switched itself off under `zt serve`.**
+  `devSurfacesEnabled()` asked `Bun.env["APP_ENV"]` whether this was a development
+  environment — but `setAppEnv()` replaces that with the runtime mode before the app is
+  created, so it was asking whether `"web"` is development. The answer is no. An app with
+  `APP_ENV=development` in its `.env` therefore got **production error pages** from a plain
+  `bun zt serve`: no stack trace, no dev overlay.
+
+  It reads `deployEnv()` now, which is where the deployment name survives. Production and
+  staging are unaffected — both still fail closed, and an unset value still fails closed.
+
+  This is the third instance of one mistake. The weak-`APP_KEY` refusal and the ORM's N+1
+  detector had exactly the same bug, both fixed in 1.5.0. Reading `APP_ENV` to decide
+  anything about the _deployment_ is wrong once the app has booted; `deployEnv()` is the
+  answer.
+
 ## [1.5.0] — 2026-08-15
 
 ### Added

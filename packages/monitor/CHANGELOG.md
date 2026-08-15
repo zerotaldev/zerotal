@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-08-15
+
+### Fixed
+
+- **Open-by-default access in development never applied.** The predicate read `APP_ENV`,
+  which holds the runtime mode once the app has booted, so the panel demanded an explicit
+  `auth` predicate even on a developer's machine. It asks `devSurfacesEnabled()` now — and
+  still requires one anywhere that is not explicitly a development environment.
+
 ## [1.5.0] — 2026-08-15
 
 ### Added

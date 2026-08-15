@@ -20,7 +20,7 @@
  * put a page in the sidebar, but it cannot put one in front of a production user
  * who has no authorization configured.
  */
-import { tryCurrentApp, isDevSurfaceAllowed } from "@zerotal/core";
+import { tryCurrentApp, devSurfacesEnabled } from "@zerotal/core";
 
 /**
  * The slice of `@zerotal/auth`'s `GateService` the panel uses. Declared locally
@@ -69,5 +69,5 @@ export async function resolveAbility(
     return false;
   }
 
-  return isDevSurfaceAllowed(Bun.env["APP_ENV"] ?? "");
+  return devSurfacesEnabled();
 }

@@ -24,6 +24,23 @@ Each version lists changes under three headings:
 Patch and minor releases are backward compatible. Before taking a **major** release,
 read its section here and apply each migration note.
 
+## 1.5.1 — 2026-08-15
+
+### Fixed
+
+- **Development surfaces were switching themselves off.** A scaffolded app with
+  `APP_ENV=development` in its `.env` got **production error pages** from `bun zt serve`, and
+  **DevTools never appeared at all** — in any app, in any mode. The admin panel's development
+  bypass and the monitor's open-by-default access were dead for the same reason.
+
+  All of them asked `APP_ENV` whether this was a development environment, but `setAppEnv()`
+  replaces that variable with the runtime mode (`web`, `console`, `worker`) before the app is
+  created — so the question being asked was whether `"web"` is development. They read the
+  preserved deployment name now. Production and staging are unaffected: every one of these
+  gates still fails closed, and an unset environment still fails closed.
+
+  If you upgrade and suddenly see the DevTools panel, that is the fix, not a new feature.
+
 ## 1.5.0 — 2026-08-15
 
 The largest release of the 1.x line: a new package, three features, a batch of

@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-08-15
+
+### Fixed
+
+- **DevTools never activated.** The panel was missing from every app, in every mode,
+  however the environment was configured.
+
+  `DevtoolsProvider` gated itself on `isDevSurfaceAllowed(Bun.env["APP_ENV"])`, which fails
+  twice over. `APP_ENV` holds the _runtime mode_ by the time a provider boots — `setAppEnv()`
+  replaced it — so the check was asking whether `"web"` is a development environment. And it
+  was the one dev gate that did not honour `ZT_DEV`, the flag the dev orchestrator sets on
+  the server it supervises, so `zt dev` did not rescue it either.
+
+  It asks `devSurfacesEnabled()` now, which reads the preserved deployment name and honours
+  `ZT_DEV`. Still fails closed: an unset, `staging` or `production` deployment does not get
+  the unauthenticated trace inspector.
+
 ## [1.5.0] — 2026-08-15
 
 ### Changed

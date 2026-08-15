@@ -9,6 +9,8 @@ import { Command } from "./Command.ts";
 import type { ArgDef, FlagDef } from "./Command.ts";
 import { BufferWriter } from "./OutputWriter.ts";
 import { FrameworkEvents, CommandRan } from "../events/FrameworkEvents.ts";
+import { makeDeployCommand } from "./builtin/DeployCommand.ts";
+import { DEFAULT_DEPLOY_TARGETS } from "../config/DeployConfig.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -304,6 +306,18 @@ export class CommandRunner {
     for (const alias of aliases) this._registry.set(alias, thunk);
   }
 
+  /**
+   * Whether a command is registered, without resolving it.
+   *
+   * Lets a caller compose a pipeline out of whatever this app actually has —
+   * `zt deploy:<env>` skips `inertia:build` in an app with no Inertia rather than
+   * failing on it. Deliberately does not resolve the lazy thunk: asking whether a
+   * step exists should not import the package that provides it.
+   */
+  has(name: string): boolean {
+    return this._registry.has(name);
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
 
   /**
@@ -400,12 +414,39 @@ export class CommandRunner {
         MakePackageCommand,
       ]);
 
+      // One `deploy:<target>` per environment this app releases to. Console-only,
+      // like the other release commands — a running web server has no business
+      // migrating a database.
+      this._registerDeployTargets();
+
       // `make:command` generates into `app/commands/`; the runner reads the same
       // directory, so a generated command is runnable without registering a provider.
       // App commands land last, after the built-ins, so a name collision resolves in
       // the app's favour.
       await this._discoverAppCommands();
     }
+  }
+
+  /**
+   * Register `deploy:<target>` for each target in `config/deploy.ts`, or for
+   * `production` and `staging` when the app declares none.
+   *
+   * Runs after `boot()` has loaded config, so the targets are readable here for the
+   * same reason `_discoverAppCommands` can read the conventions block.
+   */
+  private _registerDeployTargets(): void {
+    let targets = DEFAULT_DEPLOY_TARGETS;
+    try {
+      const config = this._app.container.makeSync("config") as {
+        get(key: string, fallback?: unknown): unknown;
+      };
+      const declared = config.get("deploy.targets", undefined) as
+        Record<string, unknown> | undefined;
+      if (declared && Object.keys(declared).length > 0) targets = declared as typeof targets;
+    } catch {
+      /* no config store — the defaults are the answer */
+    }
+    for (const target of Object.keys(targets)) this.register(makeDeployCommand(target));
   }
 
   /**

@@ -12,6 +12,68 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`bun zt deploy:<env>` — a release that refuses to finish when something is wrong.**
+  The pieces already existed: `zt doctor` finds silent misconfigurations, config
+  validators refuse an insecure production boot, `assets:build` builds a release,
+  `migrate` applies the schema. What was missing was an order, and the order is the
+  value: **everything that can refuse runs before anything that mutates.** A bad
+  origin list stops the deploy while the old release is still serving, instead of
+  after the migration has run and the new process is live and inert.
+
+  Four phases — preflight (this really is that environment; every config validator
+  re-run with production semantics; `doctor`), build, migrate, verify. It exits
+  non-zero and **does not restart your service**: systemd or your container runtime
+  owns process lifecycle, and this gives it a gate to restart behind.
+
+  Every environment gets its own command. `production` and `staging` exist without
+  configuration; `config/deploy.ts` declares more, each with an optional public URL
+  and its own step list. The target name is checked against the deployment the
+  process was actually started as, so `deploy:production` on a staging box stops on
+  the first line rather than migrating the wrong database.
+
+  `--dry-run` prints the plan, `--skip-migrations` releases without touching the
+  schema, `--probe` runs a real WebSocket handshake against the deployed site.
+
+- **Two new `doctor` checks, for the two settings nothing was watching.**
+  `app.cors.origin: "*"` lets any website read this app's responses out of a
+  visitor's browser — and it was what every scaffolded app shipped with, because the
+  templates set it while the framework's own default was the safe empty list.
+  `app.secureHeaders.secure` gates HSTS, defaults to false, and had no production
+  detection anywhere, so a deployment that never set it sent no
+  `Strict-Transport-Security` at all. Both fail on a production-like deployment and
+  stay quiet locally.
+
+### Fixed
+
+- **A weak `APP_KEY` never actually refused a production boot.** The check asked
+  `isProdLike(Bun.env["APP_ENV"])` — but `setAppEnv()` overwrites that variable with
+  the runtime mode (`web`/`console`/`worker`) before the app is created, so the
+  answer was always "no" and the refusal this code exists for had never once fired.
+
+  `APP_ENV` carries two meanings and the second destroys the first. `setAppEnv()`
+  now preserves the deployment name, and `deployEnv()` reads it back. Prefer it to
+  `Bun.env["APP_ENV"]` for any production decision.
+
+- **`staging` was production for some purposes and not others.** `isProdLike`
+  accepted it — so config validation refused an insecure staging boot — while
+  `App.isProduction()`, the doctor, the boot-build policy and the asset-minify
+  default all excluded it. A staging box therefore got production-grade config
+  refusal alongside unminified assets and a boot-time asset build, which is the one
+  environment where the read-only restart loop was still reachable. All of them now
+  agree.
+
+- **`app.secureHeaders` could not be configured beyond `frameOptions`.** The
+  middleware reads the whole block and layers it over its defaults, so every option
+  had always worked — but only `frameOptions` was declared on the type, which made
+  the rest a type error to write down. `secure` is the one that mattered: HSTS is
+  emitted only when it is true, so an app had no supported way to turn HSTS on.
+
+- **`assets:build` and `doctor` killed the process instead of failing.** Both called
+  `process.exit(1)` directly, so composing either through `callInProcess` ended the
+  caller — and in the doctor's case its buffered report was never flushed, so the
+  failure arrived with nothing explaining it. Both throw now; the CLI exit code is
+  unchanged.
+
 - **The development error page can now say what to do, not just what broke.**
   `no such table: assets` is exact about the failure and useless about the cause:
   every frame in its stack is inside the SQL driver, because that is where the

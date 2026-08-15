@@ -21,6 +21,7 @@ import type { HealthConfigShape } from "../health/Health.ts";
  */
 export interface ConfigRegistry {
   app: AppConfigShape;
+  deploy: import("./DeployConfig.ts").DeployConfigShape;
   health: HealthConfigShape;
   lock: import("../lock/config.ts").LockConfigShape;
   logging: import("../logger/config.ts").LoggingConfigShape;

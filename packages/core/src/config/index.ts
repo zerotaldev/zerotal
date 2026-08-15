@@ -36,6 +36,8 @@ export type {
   AppAssetsConfig,
   AssetLoaderKind,
 } from "./AppConfig.ts";
+export { DeployConfig, DEFAULT_DEPLOY_STEPS, DEFAULT_DEPLOY_TARGETS } from "./DeployConfig.ts";
+export type { DeployConfigShape, DeployTarget } from "./DeployConfig.ts";
 export type { ConfigRegistry, ConfigPath, ConfigValue } from "./registry.ts";
 export { ConfigValidationError } from "./validation.ts";
 export type {

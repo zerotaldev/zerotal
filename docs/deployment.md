@@ -13,21 +13,94 @@ If a reverse proxy sits in front of it — and in most deployments one does — 
 [Behind a reverse proxy](#behind-a-reverse-proxy) before you launch. A proxied app has
 one failure mode that a green test suite cannot see.
 
+## `bun zt deploy:<env>`
+
+One command runs the release and refuses to finish it when something is wrong:
+
+```bash
+# on the box, with that environment's variables loaded
+APP_ENV=production bun zt deploy:production
+```
+
+It runs four phases, and **everything that can refuse runs before anything that
+mutates** — a bad origin list stops the deploy while the old release is still
+serving, rather than after the migration has run:
+
+| Phase     | What it does                                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Preflight | Checks this process really is that environment, re-runs every config validator with production semantics, then runs `zt doctor` |
+| Build     | `assets:build`, and `inertia:build --production` if the app has Inertia                                                         |
+| Migrate   | `migrate` — skip with `--skip-migrations`                                                                                       |
+| Verify    | `zt doctor` again, now that the schema has one story                                                                            |
+
+It exits non-zero on any failure and **does not restart your service**. That is
+deliberate: systemd, your container runtime or your deploy script owns process
+lifecycle, and this gives it a gate to restart behind.
+
+```bash
+bun zt deploy:production --dry-run          # print the plan, run none of it
+bun zt deploy:production --skip-migrations  # release without touching the schema
+bun zt deploy:production --probe=https://example.com  # real handshake at the end
+```
+
+Every environment gets its own command. `production` and `staging` exist by default;
+declare more — or give one a URL and its own steps — in `config/deploy.ts`:
+
+```ts
+import { DeployConfig } from "zerotal/config";
+
+export default DeployConfig({
+  targets: {
+    production: { url: "https://example.com" },
+    staging: { url: "https://staging.example.com" },
+  },
+});
+```
+
+The target name is checked against the deployment this process was started as, so
+`deploy:production` on a staging box stops on the first line instead of migrating
+the wrong database.
+
+Each entry is a `DeployTarget`:
+
+| Field   | Meaning                                                                                                                                                                                                                                  |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`   | The public URL in this environment. What `--probe` handshakes against when given no URL of its own.                                                                                                                                      |
+| `steps` | Override the release steps. Defaults to `DEFAULT_DEPLOY_STEPS` — `assets:build`, `inertia:build`, `migrate`. Each names a `zt` command, and one that is not registered is skipped, so an app without Inertia simply has no Inertia step. |
+
+Omit the file entirely and you get `DEFAULT_DEPLOY_TARGETS`: `production` and
+`staging`, both with the default steps.
+
+> **Note** — `deploy:<env>` runs **where the app runs**, with that environment's
+> variables. It does not reach another machine over SSH. Run it on the box, or in
+> the container build, as the step before the restart.
+
 ## Production checklist
+
+The command above automates most of this. The list is what it runs, and what it
+cannot do for you.
 
 1. **`APP_ENV=production`** — disables dev-only behavior (N+1 warnings, verbose
    errors, auto-`synchronize`) and normalizes to the `web` runtime mode.
+   `staging` counts as production for all of it.
 2. **Set a strong `APP_KEY`** — required for encryption, signed URLs, and sessions.
    Generate one with `bun zt key:generate` and store it as a secret.
 3. **Set `APP_URL` to the public URL** — the origin browsers actually reach the app on.
    Endpoints that bypass the middleware pipeline are checked against it.
 4. **Point `DATABASE_URL`** at your production database.
-5. **Run migrations** — never rely on auto-`synchronize` in production (it's
+5. **Set `app.secureHeaders.secure: true`** once you serve over HTTPS, or no
+   `Strict-Transport-Security` header is sent at all.
+6. **Name your CORS origins** — `app.cors.origin: "*"` lets any site read this app's
+   responses out of a visitor's browser.
+7. **Run migrations** — never rely on auto-`synchronize` in production (it's
    hard-off there); ship migration files instead.
-6. **Build frontend assets** as a release step, not at boot.
-7. **Start the server**, and a **worker** if you use queues/scheduling.
-8. **Run `bun zt doctor`** against the release, then `bun zt doctor --url=…` against the
-   deployed site.
+8. **Build frontend assets** as a release step, not at boot.
+9. **Start the server**, and a **worker** if you use queues/scheduling.
+10. **Run `bun zt doctor --url=…`** against the deployed site once it is live — the
+    one check that cannot run before the cutover.
+
+Items 1–8 are what `deploy:<env>` checks or does. Starting the process and probing
+the live site are yours.
 
 ## Environment
 

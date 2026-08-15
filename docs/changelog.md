@@ -33,6 +33,20 @@ is `experimental`** (`@zerotal/ai`); none is `beta`.
 
 ### Added
 
+- **`bun zt deploy:<env>` — a release that refuses to finish when something is wrong.**
+  Four phases, ordered so that **everything that can refuse runs before anything that
+  mutates**: preflight (is this really that environment, would this config refuse a
+  production boot, does `zt doctor` pass), build, migrate, verify. It exits non-zero and
+  does not restart your service — systemd or your container runtime owns that, and this
+  gives it a gate to restart behind. Every environment gets its own command;
+  `production` and `staging` exist without configuration, and `config/deploy.ts` declares
+  more. The target name is checked against the deployment the process was started as, so
+  `deploy:production` on a staging box stops before it migrates the wrong database.
+  `--dry-run`, `--skip-migrations` and `--probe` are there. See
+  [Deployment](/docs/deployment).
+- **`zt doctor` checks CORS and HSTS.** `app.cors.origin: "*"` lets any site read your
+  responses out of a visitor's browser; `app.secureHeaders.secure` gates HSTS and
+  defaults to off. Both now fail on a production-like deployment.
 - **`@zerotal/ai` — a typed agent loop, shipping `experimental`.** One loop shared by every
   driver, so switching models is a config change rather than a rewrite. A `pause_turn` is
   resumed rather than mistaken for an answer; a refusal is a typed outcome checked before
@@ -132,6 +146,16 @@ from a local machine to a deployed box.
   drivers are held to one parity suite.
 - **`serve --dev` built a Flow app's bundles three times on every start**, and dev asset builds
   are now skipped when nothing changed.
+- **A weak `APP_KEY` never refused a production boot**, and **N+1 detection ran in
+  production**. Both asked `Bun.env.APP_ENV` whether this was production — but that
+  variable holds the runtime mode (`web`, `console`, `worker`) by the time anything
+  reads it, so both always got "no". The deployment name is now preserved and read
+  back through `deployEnv()`.
+- **`staging` was production for some things and not others** — config validation
+  refused an insecure staging boot, while assets went out unminified and were rebuilt
+  at boot, which is exactly the combination that restart-loops on a hardened unit.
+- **`app.secureHeaders` only allowed `frameOptions` to be configured**, so there was
+  no supported way to turn HSTS on. Every option the middleware reads is now typed.
 - **`setAppEnv("dev")` resolved to `console` rather than `web`.**
 
 ## 1.4.0 — 2026-08-10

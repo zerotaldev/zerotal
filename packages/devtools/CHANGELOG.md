@@ -8,6 +8,28 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.2] — 2026-08-15
+
+### Fixed
+
+- **The panel's event stream was abandoned rather than closed on shutdown**, so the browser
+  was left holding a truncated chunked response and logged
+  `GET /__zerotal/devtools/sse net::ERR_INCOMPLETE_CHUNKED_ENCODING` — under `serve --dev`,
+  on every save. Nothing was broken by it (`EventSource` reconnects on its own), but a
+  devtools panel that fills the console with network errors is working against its own
+  purpose. Shutdown now closes each open stream, which writes the terminating chunk and
+  ends the request the way a reader expects.
+
+  On Windows the fix needed [`@zerotal/core`](../core/CHANGELOG.md)'s side too — a worker
+  that is terminated outright never reaches this code.
+
+### Added
+
+- **A heartbeat on the event stream.** A comment frame every 25 seconds, which readers
+  ignore. Without one an idle stream can be dropped by an intermediary with nothing written
+  for either end to notice it by, and the panel goes on reporting a connection it no longer
+  has. The timer is unref'd, so it never holds a process open.
+
 ## [1.5.1] — 2026-08-15
 
 ### Fixed

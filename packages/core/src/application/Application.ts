@@ -9,6 +9,7 @@ import { ServiceProvider } from "../provider/ServiceProvider.ts";
 import type { AuthenticatedUser } from "../auth/AuthenticatedUser.ts";
 import * as DevWsServer from "../dev/DevWsServer.ts";
 import { DevReloadMiddleware, setDevReloadClientActive } from "../dev/DevReloadMiddleware.ts";
+import { onGracefulStopRequest } from "../dev/devShutdown.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { Pipeline } from "../pipeline/Pipeline.ts";
 import { ExceptionHandler } from "./ExceptionHandler.ts";
@@ -1519,6 +1520,11 @@ export class Application {
     for (const signal of ["SIGTERM", "SIGINT"] as const) {
       process.on(signal, () => void this.stop());
     }
+
+    // Windows cannot deliver either of those to a child, so `serve --dev` asks
+    // over IPC instead and this is the ear for it. Silent anywhere there is no
+    // supervisor on the other end.
+    onGracefulStopRequest(() => void this.stop());
 
     process.on("SIGUSR2", () => void this._reloadRoutes());
   }

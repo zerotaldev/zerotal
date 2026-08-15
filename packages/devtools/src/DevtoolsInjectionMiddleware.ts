@@ -49,9 +49,9 @@ export interface DevtoolsInjectionOptions {
 const _sseClients = new Set<ReadableStreamDefaultController<Uint8Array>>();
 const _enc = new TextEncoder();
 
-function _ssePublish(data: unknown): void {
+function _ssePublishRaw(frame: string): void {
   if (_sseClients.size === 0) return;
-  const chunk = _enc.encode(`data: ${JSON.stringify(data)}\n\n`);
+  const chunk = _enc.encode(frame);
   for (const ctrl of _sseClients) {
     try {
       ctrl.enqueue(chunk);
@@ -61,22 +61,61 @@ function _ssePublish(data: unknown): void {
   }
 }
 
+function _ssePublish(data: unknown): void {
+  _ssePublishRaw(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+/**
+ * End every open stream, in an order the browser recognises as an ending.
+ *
+ * Dropping the set is not enough: the response body is a chunked stream, so a
+ * process that exits with one half-written leaves the browser holding a
+ * truncated body and logging `ERR_INCOMPLETE_CHUNKED_ENCODING`. Under
+ * `serve --dev` that is every save. Closing the controller writes the
+ * terminating chunk, and `EventSource` then reconnects on its own timer without
+ * an error in the console.
+ */
+function _sseCloseAll(): void {
+  for (const ctrl of _sseClients) {
+    try {
+      ctrl.close();
+    } catch {
+      // Already closed or errored — the stream is over either way.
+    }
+  }
+  _sseClients.clear();
+}
+
+/** How often to write a comment frame keeping an idle stream alive. */
+const SSE_HEARTBEAT_MS = 25_000;
+
 /**
  * Bridge the trace store to connected panels. Called by {@link DevtoolsProvider}
  * on boot rather than at module scope — subscribing on import would tie the
  * stream to whichever store existed at import time, before the provider has
  * built the one the app's config asks for.
  *
- * @returns A disposer that unsubscribes and drops connected clients.
+ * @returns A disposer that unsubscribes and closes connected clients.
  */
 export function startDevtoolsStream(): () => void {
   const unsubscribe = traceStore().subscribe((trace) => {
     if (trace === null) _ssePublish({ type: "clear" });
     else _ssePublish({ type: "trace", data: trace });
   });
+
+  // A comment frame, which SSE readers ignore. Without it a stream that goes
+  // quiet can be dropped by an intermediary with nothing written to notice it
+  // by, and the panel keeps reporting a connection it no longer has. Unref'd so
+  // it never holds the process open.
+  const heartbeat = setInterval(() => {
+    _ssePublishRaw(":\n\n");
+  }, SSE_HEARTBEAT_MS);
+  heartbeat.unref?.();
+
   return () => {
     unsubscribe();
-    _sseClients.clear();
+    clearInterval(heartbeat);
+    _sseCloseAll();
   };
 }
 

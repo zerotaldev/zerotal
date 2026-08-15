@@ -4,7 +4,7 @@ import { HttpContext, RequestContext, FrameworkEvents, RequestHandled } from "@z
 import { preventNPlusOne, installOrmObservability } from "@zerotal/orm";
 import { _resetNPlusOne } from "../../orm/src/db/NPlusOneDetector.ts";
 import { TraceStore, traceStore, _setTraceStore } from "./TraceStore.ts";
-import { DevtoolsInjectionMiddleware } from "./DevtoolsInjectionMiddleware.ts";
+import { DevtoolsInjectionMiddleware, startDevtoolsStream } from "./DevtoolsInjectionMiddleware.ts";
 import {
   startDevtoolsTracing,
   stopDevtoolsTracing,
@@ -376,6 +376,35 @@ describe("DevtoolsInjectionMiddleware — API routes", () => {
     const ctx = await runInjection("http://localhost/__zerotal/devtools/sse");
     expect(ctx.response?.headers.get("content-type")).toContain("text/event-stream");
     await ctx.response!.body?.cancel();
+  });
+
+  it("closes open streams when the app stops, rather than abandoning them", async () => {
+    // The body is chunked, so a process that exits with one half-written leaves
+    // the browser holding a truncated response and logging
+    // ERR_INCOMPLETE_CHUNKED_ENCODING — under `serve --dev` that is every save.
+    // Closing writes the terminating chunk, so the reader sees an ending and
+    // EventSource reconnects quietly.
+    const stop = startDevtoolsStream();
+    const ctx = await runInjection("http://localhost/__zerotal/devtools/sse");
+    const reader = ctx.response!.body!.getReader();
+
+    const opening = await reader.read();
+    expect(opening.done).toBe(false);
+
+    stop();
+
+    // Bounded, because the failure mode is a read that never resolves — an
+    // abandoned stream leaves the reader waiting forever, which would hang the
+    // suite rather than fail it.
+    const ended = await Promise.race([
+      (async () => {
+        let done = opening.done;
+        while (!done) done = (await reader.read()).done;
+        return "closed";
+      })(),
+      Bun.sleep(500).then(() => "still open"),
+    ]);
+    expect(ended).toBe("closed");
   });
 
   it("passes regular requests through to next()", async () => {

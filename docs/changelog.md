@@ -24,6 +24,22 @@ Each version lists changes under three headings:
 Patch and minor releases are backward compatible. Before taking a **major** release,
 read its section here and apply each migration note.
 
+## 1.6.2 — 2026-08-15
+
+### Fixed
+
+- **`serve --dev` now stops its worker on Windows instead of killing it.** Restarting sent
+  `SIGTERM`, which Windows has no way to deliver — there the call terminates the process
+  where it stands, so on every save no provider drained, no open response was finished and
+  no database handle was closed. The supervisor asks over an IPC channel now and only kills
+  if that goes unanswered. Nothing changes on macOS or Linux beyond the mechanism.
+
+- **The devtools panel no longer fills the console with network errors.** Its event stream
+  was abandoned on shutdown rather than closed, leaving the browser with a truncated
+  response and a `net::ERR_INCOMPLETE_CHUNKED_ENCODING` for every reload. The stream is
+  closed properly now, and a heartbeat keeps an idle one from being dropped with nothing
+  written for either end to notice by.
+
 ## 1.6.1 — 2026-08-15
 
 ### Fixed

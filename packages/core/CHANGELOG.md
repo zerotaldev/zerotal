@@ -8,7 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
-## [1.6.1] — 2026-08-15
+## [1.6.2] — 2026-08-15
+
+### Fixed
+
+- **`serve --dev` killed its worker outright on Windows instead of stopping it.** A restart
+  sent `SIGTERM`, but Windows has no POSIX signals: there that call is `TerminateProcess`, so
+  the worker died mid-instruction. No provider ran `onStopping`, no open response was
+  finished, no database handle was closed — on every save, since that is how the dev server
+  reloads. The visible symptom was a console full of `ERR_INCOMPLETE_CHUNKED_ENCODING` from
+  the devtools event stream, which is just what a chunked response looks like when the
+  process writing it stops existing.
+
+  The supervisor now **asks** over an IPC channel and kills only if the request goes
+  unanswered within a second. POSIX behaviour is unchanged in substance — the worker runs the
+  same `stop()` either way — and Windows gets the orderly shutdown it never had. Verified
+  across a real hot restart: before, an open stream ended in a connection reset with the
+  worker never draining; after, the stream ends cleanly and the worker logs its stop.
+
+  A supervisor that cannot open a channel falls straight through to the signal path, so
+  nothing waits out the grace period for a chance it never had.
 
 ### Added
 

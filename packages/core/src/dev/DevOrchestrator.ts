@@ -5,6 +5,7 @@
 import { watch } from "node:fs";
 import type { BuildHookFn } from "./DevBuildHook.ts";
 import { DEV_WORKER_ENV_VAR } from "../support/env.ts";
+import { requestGracefulStop } from "./devShutdown.ts";
 
 /**
  * How the orchestrator reports to whatever is presenting dev mode.
@@ -156,6 +157,9 @@ export class DevOrchestrator {
         stdin: "pipe",
         stdout: routed ? "pipe" : "inherit",
         stderr: routed ? "pipe" : "inherit",
+        // Opens the channel `_stopChild` asks over. Nothing is sent the other
+        // way, but Bun only gives the parent a `send` when a handler is present.
+        ipc: () => {},
         cwd: this._cwd,
         env: {
           ...Bun.env,
@@ -288,6 +292,11 @@ export class DevOrchestrator {
     const child = this._child;
     this._child = null;
     if (!child) return;
+
+    // Ask first. On Windows a signal cannot reach the worker at all — it is
+    // terminated where it stands, with open responses left half-written — and
+    // asking is the only way it ever drains its providers. See devShutdown.ts.
+    if (await requestGracefulStop(child)) return;
 
     child.kill("SIGTERM");
     const forceKill = setTimeout(() => child.kill("SIGKILL"), 1_500);

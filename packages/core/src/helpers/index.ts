@@ -22,7 +22,7 @@
  */
 import { join } from "node:path";
 import { ConfigError } from "../errors/ConfigError.ts";
-import { DEPLOY_ENV_VAR } from "../support/env.ts";
+import { DEPLOY_ENV_VAR, RUNTIME_MODES as _RUNTIME_MODES } from "../support/env.ts";
 
 // ── basePath() ────────────────────────────────────────────────────────────────
 
@@ -65,9 +65,6 @@ export function basePath(...segments: string[]): string {
  * setAppEnv(process.argv[2]);
  * const { default: app } = await import('./bootstrap/app.ts');
  */
-/** Runtime-mode values that Application understands natively — never remapped. */
-const _RUNTIME_MODES = new Set(["web", "worker", "console", "test", "testing", "repl"]);
-
 export function setAppEnv(command?: string): void {
   const normalizedCommand = (command ?? "").toLowerCase();
   const current = Bun.env["APP_ENV"];

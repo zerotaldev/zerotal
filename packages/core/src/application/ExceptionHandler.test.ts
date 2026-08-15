@@ -168,19 +168,27 @@ describe("ExceptionHandler.defaultRender() — the serve --dev worker", () => {
   let savedAppEnv: string | undefined;
   let savedDevWorker: string | undefined;
 
+  let savedDeployEnv: string | undefined;
+
   beforeEach(() => {
     savedAppEnv = env["APP_ENV"];
     savedDevWorker = env["ZT_DEV"];
+    savedDeployEnv = env["ZT_APP_ENV"];
     // What the dev worker actually runs with: APP_ENV holds the runtime mode,
-    // so the deployment name the developer configured is long gone by now.
+    // so the deployment name the developer configured is long gone by now —
+    // including the copy `setAppEnv()` preserves, which is what makes the
+    // dev-worker flag the only thing keeping the stack trace visible.
     env["APP_ENV"] = "web";
     env["ZT_DEV"] = "1";
+    delete env["ZT_APP_ENV"];
   });
   afterEach(() => {
     if (savedAppEnv === undefined) delete env["APP_ENV"];
     else env["APP_ENV"] = savedAppEnv;
     if (savedDevWorker === undefined) delete env["ZT_DEV"];
     else env["ZT_DEV"] = savedDevWorker;
+    if (savedDeployEnv === undefined) delete env["ZT_APP_ENV"];
+    else env["ZT_APP_ENV"] = savedDeployEnv;
   });
 
   it("serves the stack-trace page to a browser instead of a bare 500", async () => {

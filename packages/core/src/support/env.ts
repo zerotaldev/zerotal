@@ -54,6 +54,22 @@ export const DEV_WORKER_ENV_VAR = "ZT_DEV";
 export const DEPLOY_ENV_VAR = "ZT_APP_ENV";
 
 /**
+ * The values of `APP_ENV` that name a runtime *mode* rather than a deployment.
+ * `setAppEnv()` writes these; {@link deployEnv} recognises them to know whether
+ * `APP_ENV` still holds the deployment name.
+ *
+ * @internal
+ */
+export const RUNTIME_MODES: ReadonlySet<string> = new Set([
+  "web",
+  "worker",
+  "console",
+  "test",
+  "testing",
+  "repl",
+]);
+
+/**
  * The deployment name this process was started with — `production`, `staging`,
  * `local`, whatever the operator set — as opposed to the runtime *mode*.
  *
@@ -72,7 +88,16 @@ export const DEPLOY_ENV_VAR = "ZT_APP_ENV";
  * @internal
  */
 export function deployEnv(): string {
-  return Bun.env[DEPLOY_ENV_VAR] ?? Bun.env["APP_ENV"] ?? "";
+  const current = Bun.env["APP_ENV"] ?? "";
+  // If `APP_ENV` still holds a deployment name, it has not been overwritten yet —
+  // or something set it deliberately since — so it is the freshest answer. Only
+  // once it holds a runtime mode is the preserved copy the better one.
+  //
+  // Preferring the preserved copy unconditionally made it sticky for the life of
+  // the process: anything that set `APP_ENV` afterwards was ignored, which is
+  // wrong in itself and which leaked between test files sharing one process.
+  if (current && !RUNTIME_MODES.has(current.toLowerCase())) return current;
+  return Bun.env[DEPLOY_ENV_VAR] ?? current;
 }
 
 /**

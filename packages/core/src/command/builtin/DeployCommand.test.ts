@@ -53,10 +53,21 @@ describe("makeDeployCommand", () => {
   });
 });
 
+/**
+ * What a real `zt deploy:<env>` run looks like to the process: `setAppEnv()` has put
+ * the runtime mode in `APP_ENV`, and the deployment name survives only in the
+ * preserved copy. Both have to be pinned — `deployEnv()` prefers `APP_ENV` while it
+ * still holds a deployment name, so leaving it to whatever the test runner set makes
+ * the result depend on which file ran first.
+ */
+function asDeployment(name: string): void {
+  const environment = Bun.env as Record<string, string>;
+  environment["APP_ENV"] = "console";
+  environment[DEPLOY_ENV_VAR] = name;
+}
+
 describe("deploy preflight", () => {
-  beforeEach(() => {
-    (Bun.env as Record<string, string>)[DEPLOY_ENV_VAR] = "staging";
-  });
+  beforeEach(() => asDeployment("staging"));
 
   it("refuses when the process is not the environment being deployed", async () => {
     // The failure this exists for: running the production pipeline on a staging box
@@ -73,7 +84,8 @@ describe("deploy preflight", () => {
   it("reads the deployment name, not the runtime mode APP_ENV was overwritten with", async () => {
     // `setAppEnv()` leaves APP_ENV as "console" for any CLI command. A pipeline that
     // trusted it would compare "console" against "staging" and refuse every deploy.
-    (Bun.env as Record<string, string>)["APP_ENV"] = "console";
+    // `asDeployment` in beforeEach already put it there; this asserts the consequence.
+    expect(Bun.env["APP_ENV"]).toBe("console");
     const { command } = build(
       "staging",
       { "dry-run": true },
@@ -84,9 +96,7 @@ describe("deploy preflight", () => {
 });
 
 describe("deploy --dry-run", () => {
-  beforeEach(() => {
-    (Bun.env as Record<string, string>)[DEPLOY_ENV_VAR] = "production";
-  });
+  beforeEach(() => asDeployment("production"));
 
   it("runs no steps and says so", async () => {
     const { command, writer } = build(

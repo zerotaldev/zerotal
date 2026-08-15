@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@zerotal/devtools": "{{zerotal_version}}",
-    "@inertiajs/react": "^2.0.0",
+    "@inertiajs/react": "^3.0.0",
     "@zerotal/inertia": "{{zerotal_version}}",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

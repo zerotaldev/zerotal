@@ -31,6 +31,31 @@ Follow-up requests are grouped with the navigation that caused them, so a page
 whose deferred props arrive in three later requests reads as one batch rather
 than four unrelated rows.
 
+### The client half needs Inertia 3
+
+Two independent halves feed the panel. The **server recorder** is this package,
+and it works on any supported Inertia version. The **client hooks** — visit
+options, prefetch-cache entries, and the grouping that tells a poll apart from a
+navigation — live in the Inertia adapter, and only in **version 3 or later**.
+
+On an older adapter the panel still fills with requests, but reports that the app
+is not running in dev mode and suggests starting a Vite dev server. That advice
+does not apply here — there is no Vite in a Zerotal app — and the fix is the
+adapter version:
+
+```bash
+# in your project root
+bun add @inertiajs/react@^3   # or @inertiajs/vue3@^3
+```
+
+Apps scaffolded from Zerotal 1.6.1 onwards already pin it. The React adapter
+requires React 19, which the template has always pinned.
+
+Nothing else is needed. The adapter's `dev` option defaults to `import.meta.env.DEV`,
+a Vite convention that Bun's bundler does not define on its own — so Zerotal
+defines it for every Inertia build, development and production alike. You do not
+set `dev` yourself, and there is no Vite server to run.
+
 ## Turning it on and off
 
 The recorder follows the same gate as the stack-trace error page: on when this

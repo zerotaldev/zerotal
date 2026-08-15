@@ -4166,6 +4166,8 @@ const SERVER_PROCESS_NAME = 'server'
 
 function bootBuildDecision = (outDirs: string[], env: string | undefined) => Promise<BootBuildDecision>
 
+function browserEnvDefines = (isProduction: boolean) => Record<string, string>
+
 function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
 
 function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>

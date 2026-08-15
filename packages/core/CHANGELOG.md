@@ -8,6 +8,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-08-15
+
+### Added
+
+- **`import.meta.env` is defined for bundled browser builds.** `DEV`, `PROD` and `MODE`,
+  set from whether the build is a production one. It is a Vite convention rather than a web
+  standard — `import.meta.env` is undefined in a browser module — but enough of the npm
+  ecosystem branches on it that a bundler leaving it alone ships code reading a property off
+  `undefined`. Bun leaves it alone, so Zerotal defines it.
+
+  `BASE_URL` and `SSR` are deliberately omitted: Zerotal has its own answers for both, and a
+  wrong value is worse than an absent one for a package that feature-detects.
+
 ## [1.6.0] — 2026-08-15
 
 ### Added

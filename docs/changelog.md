@@ -24,6 +24,28 @@ Each version lists changes under three headings:
 Patch and minor releases are backward compatible. Before taking a **major** release,
 read its section here and apply each migration note.
 
+## 1.6.1 — 2026-08-15
+
+### Fixed
+
+- **The Inertia DevTools panel said the app was not in dev mode**, and suggested starting a
+  Vite dev server — advice that cannot be followed in a Zerotal app. The cause was real
+  though: the Inertia adapter turns its client-side hooks on from a `dev` option that
+  defaults to `import.meta.env.DEV`, a Vite convention that Bun's bundler leaves alone, so
+  it survived into the bundle and evaluated to `false` on every build.
+
+  Zerotal now defines `import.meta.env` — `DEV`, `PROD` and `MODE` — for every bundled
+  browser build. Nothing to configure and no `dev` option to pass by hand; rebuild and the
+  panel works. See [Inertia DevTools](/docs/inertia/devtools).
+
+### Changed
+
+- **New React and Vue apps scaffold Inertia 3.** The panel's client half — visit options,
+  prefetch-cache entries, and the grouping that tells a poll apart from a navigation — exists
+  only in the version 3 adapters, and neither template needed a single edit to build against
+  it. Existing apps are unaffected; `bun add @inertiajs/react@^3` (or `@inertiajs/vue3@^3`)
+  is the whole upgrade if you want the client half.
+
 ## 1.6.0 — 2026-08-15
 
 ### Added

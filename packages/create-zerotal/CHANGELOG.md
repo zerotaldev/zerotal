@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-08-15
+
+### Changed
+
+- **The React and Vue templates scaffold Inertia 3.** The DevTools browser extension reads
+  client-side hooks — visit options, prefetch-cache entries, and the grouping that tells a
+  poll apart from a navigation — that exist only in the version 3 adapters. On 2.x the panel
+  fills with requests from the server recorder and then reports the app is not in dev mode,
+  which is true and unfixable without the bump.
+
+  Nothing in either template changed: both typecheck and build against 3.6.1 unmodified, and
+  the peer requirements were already met — the React template has always pinned React 19,
+  and Vue 3.5 satisfies the Vue adapter. Existing apps are unaffected; they pin their own
+  versions, and `bun add @inertiajs/react@^3` is the whole upgrade.
+
 ## [1.5.0] — 2026-08-15
 
 ### Changed

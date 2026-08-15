@@ -30,6 +30,7 @@ export type { BuildHookFn, BuildResult } from "./DevBuildHook.ts";
 export { DevReloadMiddleware, registerDevHtmlSnippet } from "./DevReloadMiddleware.ts";
 export type { DevHtmlSnippet } from "./DevReloadMiddleware.ts";
 export { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
+export { browserEnvDefines } from "./buildEnv.ts";
 export { detectCssPlugins, buildCssBundle, buildJsBundle } from "./CssPlugins.ts";
 export type { AssetBuildConfig } from "./CssPlugins.ts";
 export { pruneBuildOutput } from "./BuildOutput.ts";

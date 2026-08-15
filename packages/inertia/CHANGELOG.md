@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.1] — 2026-08-15
+
+### Fixed
+
+- **DevTools reported that the app was not in dev mode, and suggested starting a Vite
+  server.** The advice cannot be followed in a Zerotal app, and the cause was real: the
+  Inertia adapter enables its client-side hooks from a `dev` option whose default is
+  `import.meta.env.DEV` — a Vite convention. Bun's bundler leaves that expression alone, so
+  it survived into the bundle and evaluated to `false` on every build.
+
+  Zerotal now defines `import.meta.env` for every Inertia build, development and production
+  alike, so the adapter's own default resolves. Nothing to configure, and no `dev` option to
+  pass by hand.
+
+  The subtlety worth recording: the adapter writes `import.meta.env?.DEV`, optional-chained
+  — which is why an undefined `import.meta.env` yields `false` rather than throwing, and why
+  a bundler define keyed on `import.meta.env.DEV` **does not match it**. The whole object has
+  to be replaced, not the member. A test pins that, because the member form compiles to a
+  perfectly clean no-op.
+
 ## [1.6.0] — 2026-08-15
 
 ### Added

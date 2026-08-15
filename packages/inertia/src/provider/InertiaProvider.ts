@@ -1,5 +1,10 @@
 import { ServiceProvider, Router, ConfigError, ThrottleMiddleware } from "@zerotal/core";
-import { registerDevBuildHook, pruneBuildOutput, DEV_RELOAD_CLIENT } from "@zerotal/core/dev";
+import {
+  registerDevBuildHook,
+  pruneBuildOutput,
+  browserEnvDefines,
+  DEV_RELOAD_CLIENT,
+} from "@zerotal/core/dev";
 import type { AppEnvironment } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { _setHtmlTemplate, _setPagesDir } from "../inertia.ts";
@@ -123,6 +128,10 @@ export class InertiaProvider extends ServiceProvider {
         splitting: true,
         minify: false,
         sourcemap: "external",
+        // This hook only ever runs under the dev orchestrator, so the build is a
+        // development one by construction — which is what turns on the Inertia
+        // client hooks the DevTools extension reads.
+        define: browserEnvDefines(false),
         ...(plugins.length > 0 ? { plugins } : {}),
       });
 

@@ -1,5 +1,5 @@
 import { Command } from "@zerotal/core";
-import { pruneBuildOutput } from "@zerotal/core/dev";
+import { pruneBuildOutput, browserEnvDefines } from "@zerotal/core/dev";
 import { generatePageRegistry } from "../PageRegistry.ts";
 import { detectCssPlugins } from "../css.ts";
 import { detectVuePlugin } from "../vuePlugin.ts";
@@ -55,6 +55,11 @@ export class InertiaBuildCommand extends Command {
       splitting: true, // REQUIRED: creates per-page chunks from dynamic imports
       minify: isProd,
       sourcemap: isProd ? "none" : "external",
+      // `createInertiaApp()`'s `dev` option defaults to `import.meta.env.DEV`, which
+      // Bun leaves in the bundle — so without this the client hooks the DevTools
+      // extension reads are never enabled, and the panel tells you to start a Vite
+      // server that a Zerotal app does not have.
+      define: browserEnvDefines(isProd),
       ...(plugins.length > 0 ? { plugins } : {}),
     });
 

@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@inertiajs/vue3": "^2.0.0",
+    "@inertiajs/vue3": "^3.0.0",
     "@zerotal/inertia": "{{zerotal_version}}",
     "vue": "^3.5.0",
     "zerotal": "{{zerotal_version}}"

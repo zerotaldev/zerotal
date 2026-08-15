@@ -1,5 +1,5 @@
 import type { SQLInstance } from "../db/sql-types.ts";
-import { ServiceProvider, registerErrorDiagnoser } from "@zerotal/core";
+import { ServiceProvider, registerErrorDiagnoser, isProdLike, deployEnv } from "@zerotal/core";
 import type { AppEnvironment } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { SQL } from "bun";
@@ -199,8 +199,12 @@ export class DatabaseProvider extends ServiceProvider {
 
     // N+1 query detection — enabled outside production. Previously activated by
     // the devtools provider; owned here so devtools needs no ORM import.
-    const env = Bun.env.APP_ENV ?? "";
-    if (env !== "production" && env !== "prod") {
+    //
+    // `deployEnv()`, not `Bun.env.APP_ENV`: the latter holds the runtime mode by
+    // the time a provider boots (`setAppEnv()` overwrote it), so this read was
+    // `"web"` and the detector was installed in production too — wrapping every
+    // query on a live app to warn about something nobody was there to read.
+    if (!isProdLike(deployEnv())) {
       preventNPlusOne({ threshold: 5, mode: "warn" });
     }
 

@@ -13,8 +13,12 @@
  * suppressed. Accepts `"production"`, `"prod"`, and `"staging"`,
  * case-insensitively.
  *
+ * Pass {@link deployEnv}, not `Bun.env["APP_ENV"]` — after `setAppEnv()` the latter
+ * holds a runtime mode, and `isProdLike("web")` is `false` for every deployment.
+ *
+ * @internal
  * @example
- * if (!isProdLike(Bun.env["APP_ENV"] ?? "")) return renderDevErrorPage(error);
+ * if (!isProdLike(deployEnv())) return renderDevErrorPage(error);
  */
 export function isProdLike(env: string): boolean {
   const normalized = env.trim().toLowerCase();
@@ -44,6 +48,34 @@ export function isDevSurfaceAllowed(env: string): boolean {
 export const DEV_WORKER_ENV_VAR = "ZT_DEV";
 
 /**
+ * Where `setAppEnv()` parks the deployment name before overwriting `APP_ENV`.
+ * @internal
+ */
+export const DEPLOY_ENV_VAR = "ZT_APP_ENV";
+
+/**
+ * The deployment name this process was started with — `production`, `staging`,
+ * `local`, whatever the operator set — as opposed to the runtime *mode*.
+ *
+ * `APP_ENV` carries both meanings, and the second one destroys the first:
+ * `setAppEnv()` overwrites it with `web` / `console` / `worker` before the app
+ * boots, so a gate that asks `isProdLike(Bun.env["APP_ENV"])` after startup is
+ * asking whether `"web"` is production and always getting no. That was not
+ * theoretical — it silently disabled the weak-`APP_KEY` refusal and left the
+ * ORM's N+1 detector wrapping every query in production.
+ *
+ * `setAppEnv()` now preserves the original value, and this reads it back. Prefer
+ * it to `Bun.env["APP_ENV"]` for **any** production decision. Config is an
+ * equally correct source where it is available (`config("app.env")`), but this
+ * works before config is loaded and in processes that have none.
+ *
+ * @internal
+ */
+export function deployEnv(): string {
+  return Bun.env[DEPLOY_ENV_VAR] ?? Bun.env["APP_ENV"] ?? "";
+}
+
+/**
  * Whether *this process* may expose dev-only surfaces — the stack-trace error
  * page, the trace inspector, an open monitor panel.
  *
@@ -56,7 +88,9 @@ export const DEV_WORKER_ENV_VAR = "ZT_DEV";
  *     construction. This is the case that carries dev mode, because `APP_ENV`
  *     cannot: `setAppEnv()` overwrites it with a *runtime mode* (`web`,
  *     `worker`, `console`) before the app boots, so by the time any gate reads
- *     it, whatever deployment name the developer configured is gone.
+ *     `APP_ENV` it holds the mode rather than the deployment name. (The name
+ *     itself is not lost — `setAppEnv()` parks it, and {@link deployEnv} reads
+ *     it back. What is lost is the ability to learn it from `APP_ENV`.)
  *
  *   - `APP_ENV` still names an explicitly non-production environment. This
  *     covers processes started outside the CLI — the test harness, and any

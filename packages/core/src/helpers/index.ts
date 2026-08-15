@@ -22,6 +22,7 @@
  */
 import { join } from "node:path";
 import { ConfigError } from "../errors/ConfigError.ts";
+import { DEPLOY_ENV_VAR } from "../support/env.ts";
 
 // ── basePath() ────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,18 @@ export function setAppEnv(command?: string): void {
   const normalizedCommand = (command ?? "").toLowerCase();
   const current = Bun.env["APP_ENV"];
   const environment = Bun.env as Record<string, string>;
+
+  // Preserve the deployment name before it is overwritten. Every branch below
+  // replaces `APP_ENV` with a runtime mode, which is why six different gates that
+  // asked "is this production?" of `Bun.env["APP_ENV"]` were reading `"web"` and
+  // quietly answering no — including the weak-`APP_KEY` refusal and the ORM's
+  // N+1 detector. `deployEnv()` reads this back; see {@link DEPLOY_ENV_VAR}.
+  //
+  // `??=` so the first caller wins: a re-entrant `setAppEnv` (dev mode boots the
+  // app twice) must not stamp the runtime mode over the real deployment name.
+  if (current && !_RUNTIME_MODES.has(current.toLowerCase())) {
+    environment[DEPLOY_ENV_VAR] ??= current;
+  }
 
   if (["serve", "start", "s", "dev", "d"].includes(normalizedCommand)) {
     // Always force web mode for the HTTP server — deployment-env names like

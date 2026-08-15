@@ -20,6 +20,7 @@ import { currentApp } from "../../application/currentApp.ts";
 import type { Container } from "../../container/Container.ts";
 import type { BindingToken, ContainerBindings, Factory } from "../../container/types.ts";
 import { ContainerLockedError } from "../../errors/ContainerErrors.ts";
+import { isProdLike } from "../../support/env.ts";
 
 /**
  * Return the live container, throwing {@link ContainerLockedError} when the
@@ -64,9 +65,16 @@ export const App = {
     return currentApp().environment;
   },
 
-  /** Whether the configured `app.env` is a production environment. */
+  /**
+   * Whether the configured `app.env` is a production-like environment —
+   * `production`, `prod`, or `staging`.
+   *
+   * `staging` counts. A staging box is a deployed box: it serves real traffic over
+   * a real network with real credentials, and every reason to suppress a stack
+   * trace or a debug surface in production applies to it identically.
+   */
   isProduction(): boolean {
-    return ["production", "prod"].includes(_appEnv());
+    return isProdLike(_appEnv());
   },
 
   /** Whether the configured `app.env` is a local/development environment. */

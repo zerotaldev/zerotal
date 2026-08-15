@@ -21,6 +21,7 @@
  * behaviour is exactly as before.
  */
 import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { isProdLike } from "../support/env.ts";
 
 /** What to do about a boot-time asset build, and why. */
 export interface BootBuildDecision {
@@ -28,11 +29,6 @@ export interface BootBuildDecision {
   build: boolean;
   /** Single-line explanation of a skip, worth logging. Absent when building. */
   reason?: string;
-}
-
-/** Deployment names that mean "this is serving real traffic". Mirrors `AppConfigShape.env`. */
-function _isProduction(env: string | undefined): boolean {
-  return env === "production" || env === "prod";
 }
 
 /**
@@ -77,7 +73,11 @@ export async function bootBuildDecision(
   outDirs: string[],
   env: string | undefined,
 ): Promise<BootBuildDecision> {
-  if (!_isProduction(env)) return { build: true };
+  // `isProdLike` — so `staging` gets the same treatment. A staging box is hardened
+  // like a production one, and used to build at boot regardless of whether its output
+  // directory was writable: the one environment where the read-only crash was still
+  // reachable.
+  if (!isProdLike(env ?? "")) return { build: true };
 
   const unwritable: string[] = [];
   for (const dir of outDirs) {

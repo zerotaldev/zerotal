@@ -33,14 +33,24 @@ describe("isWritableDir", () => {
 });
 
 describe("bootBuildDecision", () => {
-  it("always builds outside production", async () => {
-    for (const env of ["development", "staging", "test", undefined]) {
+  it("always builds outside a production-like deployment", async () => {
+    for (const env of ["development", "test", "local", undefined]) {
       expect(await bootBuildDecision([join(root, "public")], env)).toEqual({ build: true });
     }
   });
 
   it("builds in production when the output directory is writable", async () => {
     expect(await bootBuildDecision([join(root, "public")], "production")).toEqual({ build: true });
+  });
+
+  it("treats staging as production-like", async () => {
+    // A staging box is hardened like a production one. It used to build at boot
+    // regardless of whether its output directory was writable — the one remaining
+    // environment where the read-only restart loop was still reachable.
+    await Bun.write(join(root, "blocker"), "");
+    const decision = await bootBuildDecision([join(root, "blocker/public")], "staging");
+    expect(decision.build).toBe(false);
+    expect(decision.reason).toContain("not writable");
   });
 
   it("skips, with a reason, when production output is read-only", async () => {

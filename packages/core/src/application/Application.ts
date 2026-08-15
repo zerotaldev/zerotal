@@ -38,7 +38,7 @@ import { NotFoundError } from "../errors/HttpError.ts";
 import type { ContainerBindings } from "../container/types.ts";
 import { dispatchRequest } from "../router/RouteHandler.ts";
 import type { ProviderHooks } from "../router/RouteHandler.ts";
-import { isProdLike } from "../support/env.ts";
+import { isProdLike, deployEnv } from "../support/env.ts";
 import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { runBootDoctor } from "./BootDoctor.ts";
 import { runConfigValidators } from "../config/validation.ts";
@@ -343,8 +343,19 @@ export class Application {
   _userResolver: ((id: number) => Promise<AuthenticatedUser | null>) | undefined = undefined;
   /** Convention descriptors contributed by providers (models, observers, policies, …). */
   private _concerns: ConcernDescriptor[] = [];
-  /** Namespace validators contributed by providers; run once at boot (see {@link registerConfigValidator}). */
-  private _configValidators: RegisteredConfigValidator[] = [];
+  /**
+   * Namespace validators contributed by providers; run once at boot (see
+   * {@link registerConfigValidator}).
+   *
+   * Readable, not private, so `zt deploy:<env>` can re-run them against the target
+   * environment before a release. Boot already ran them — but on a machine that is
+   * not the deployment, where `isProduction` was false and every finding was a
+   * warning. Re-running them with production semantics is how a deploy reports the
+   * problems that would otherwise refuse the boot after the cutover.
+   *
+   * @internal
+   */
+  readonly _configValidators: RegisteredConfigValidator[] = [];
   /** Bootstrap container-registration callbacks queued via `bind()`; run during boot(). */
   private _bindCallbacks: Array<(container: Container) => void> = [];
   /** Doctor checks contributed by providers (see {@link registerDoctorCheck}). */
@@ -1089,10 +1100,16 @@ export class Application {
 
     // Fail loud on a weak APP_KEY: in a production-like deployment a short key is
     // a refuse-to-boot error; elsewhere (bar the test harness) it's a warning.
+    //
+    // `deployEnv()`, not `Bun.env["APP_ENV"]`. `setAppEnv()` overwrites that
+    // variable with the runtime mode (`web`/`console`/`worker`) before the app is
+    // created, so this read was always `"web"` under the CLI — meaning a weak key
+    // in production only ever warned, and the refusal this block exists for had
+    // never once fired.
     if (this._env !== "test") {
       const _keyWarning = appKeyStrengthWarning(Bun.env["APP_KEY"]);
       if (_keyWarning) {
-        if (isProdLike(Bun.env["APP_ENV"] ?? "")) throw new Error(_keyWarning);
+        if (isProdLike(deployEnv())) throw new Error(_keyWarning);
         console.warn(_keyWarning);
       }
     }

@@ -10,6 +10,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [1.5.0] — 2026-08-15
 
+### Fixed
+
+- **N+1 detection was running in production.** The gate read `Bun.env.APP_ENV`, which
+  by the time a provider boots holds the runtime mode (`web`) rather than the
+  deployment name — `setAppEnv()` overwrote it. So the check that exists to help in
+  development was wrapping every query on live apps, to warn about something nobody
+  was there to read. It now asks `deployEnv()`, which is what the deployment name
+  survives in.
+
 ### Added
 
 - **A missing table now offers to run the migration that would create it.**

@@ -4,6 +4,7 @@
  * defaults, conventions), with sensible defaults applied over caller overrides.
  */
 import { deepMerge } from "../support/deepMerge.ts";
+import { isProdLike } from "../support/env.ts";
 import type { HealthConfigShape } from "../health/Health.ts";
 import type { DevConfigShape } from "../dev/DevProcess.ts";
 
@@ -47,9 +48,32 @@ export interface AppThrottleConfig {
   windowSeconds: number;
 }
 
-/** App-level security-header defaults (consumed by `SecureHeadersMiddleware`). */
+/**
+ * App-level security-header defaults (consumed by `SecureHeadersMiddleware`).
+ *
+ * The middleware reads this whole block and layers it over its own defaults, so
+ * every one of its options has always worked here — but only `frameOptions` was
+ * declared, which made the rest a type error to write down. `secure` is the one
+ * that matters: HSTS is emitted only when it is true, so an app that could not
+ * name it in config had no supported way to turn HSTS on.
+ */
 export interface AppSecureHeadersConfig {
   frameOptions: "DENY" | "SAMEORIGIN";
+  /**
+   * Enable HSTS (and the `Secure` flag on the XSRF-TOKEN cookie). Defaults to
+   * `false` — turn it on for any deployment served over HTTPS.
+   */
+  secure?: boolean;
+  /** `Strict-Transport-Security` max-age in seconds. Defaults to one year. */
+  hstsMaxAge?: number;
+  /** Include `includeSubDomains` in the HSTS header. Defaults to `true`. */
+  hstsIncludeSubDomains?: boolean;
+  /** Set the HSTS `preload` directive. Only with the domain registered. Defaults to `false`. */
+  hstsPreload?: boolean;
+  /** `Content-Security-Policy` value. Omitted by default. */
+  contentSecurityPolicy?: string;
+  /** `Referrer-Policy` value. Defaults to `strict-origin-when-cross-origin`. */
+  referrerPolicy?: string;
 }
 
 /**
@@ -349,7 +373,9 @@ export function AppConfig(options: {
   // Normalise the optional `assets` block: fill outDir/prefix/minify defaults
   // only when the app actually declares an asset entrypoint.
   if (options.assets) {
-    const isProduction = resolved.env === "production" || resolved.env === "prod";
+    // `isProdLike`, so `staging` minifies too. This runs at config-load time, where
+    // `resolved.env` is still the deployment name rather than the runtime mode.
+    const isProduction = isProdLike(resolved.env);
     resolved.assets = {
       entrypoint: options.assets.entrypoint,
       outDir: options.assets.outDir ?? "public",

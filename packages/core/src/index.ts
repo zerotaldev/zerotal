@@ -172,6 +172,10 @@ export {
   type SameSite,
 } from "./support/cookie.ts";
 export { isDevSurfaceAllowed, devSurfacesEnabled } from "./support/env.ts";
+// The deployment name (`production`/`staging`/…) as opposed to the runtime mode.
+// Shared with first-party packages that gate behaviour on it — `APP_ENV` cannot be
+// read directly for this after `setAppEnv()`.
+export { isProdLike, deployEnv } from "./support/env.ts";
 // Development-error-page diagnoses. A package that owns an error class registers
 // a diagnoser so the overlay can say what to do about it — see `@zerotal/orm`,
 // which turns "no such table" into the list of migrations that have not run.

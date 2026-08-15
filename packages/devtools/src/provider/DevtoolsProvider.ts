@@ -107,13 +107,13 @@ export class DevtoolsProvider extends ServiceProvider {
     // no package's spans ever reached the panel in a real app.
     this.app.container.value("devtools.trace", traceSink);
 
-    this.app.useOnce(DevtoolsInjectionMiddleware as never);
+    this.app.useOnce(DevtoolsInjectionMiddleware);
 
     // Auto-inject the in-page panel into HTML responses via the core dev
     // injector — no `DevTools.start()` needed in the app's own bundle. Also
     // register the injector so this works under a plain `serve` (not only
     // `serve --dev-worker`, where Application.enableDevWs() already adds it).
-    this.app.useOnce(DevReloadMiddleware as never);
+    this.app.useOnce(DevReloadMiddleware);
     registerDevHtmlSnippet("zerotal-devtools", (ctx: HttpContext) =>
       ctx.url.pathname.startsWith("/__zerotal")
         ? "" // don't inject the panel into the devtools' own pages

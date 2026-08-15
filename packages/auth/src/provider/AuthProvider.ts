@@ -109,11 +109,11 @@ export class AuthProvider extends ServiceProvider {
     this.app.container.value("auth.userLoader", resolver);
     // Populate ctx.user on every request (never blocks). Guarding a route is a
     // separate, opt-in concern — see AuthMiddleware.
-    this.app.useOnce(PersistUserMiddleware as never);
+    this.app.useOnce(PersistUserMiddleware);
     // Persistent "remember me": runs after PersistUserMiddleware, so it only
     // re-authenticates from the cookie when the session had no user. It also
     // flushes the remember cookie queued by Auth.login/logout.
-    this.app.useOnce(RememberMeMiddleware as never);
+    this.app.useOnce(RememberMeMiddleware);
 
     // Pre-resolve auth singletons so their facades (Gate, Hash, etc.) are
     // available via makeSync() in any provider's onBooted(). onBooting() runs

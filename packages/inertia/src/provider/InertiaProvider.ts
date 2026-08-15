@@ -12,6 +12,10 @@ import { detectCssPlugins } from "../css.ts";
 import { detectVuePlugin, registerVueRuntimeLoader } from "../vuePlugin.ts";
 import { InertiaMiddleware } from "../middleware/InertiaMiddleware.ts";
 import { inertiaRoute } from "../route.ts";
+import { InertiaDevtoolsMiddleware } from "../devtools/middleware.ts";
+import { devtoolsEnabled, devtoolsSettings } from "../devtools/enabled.ts";
+import { registerDevtoolsApi } from "../devtools/api.ts";
+import { setMaxEntries } from "../devtools/store.ts";
 
 export class InertiaProvider extends ServiceProvider {
   static override environments: AppEnvironment[] = ["web", "console", "test"];
@@ -22,7 +26,18 @@ export class InertiaProvider extends ServiceProvider {
   }
 
   override async onBooting(): Promise<void> {
-    this.app.useOnce(InertiaMiddleware as never);
+    this.app.useOnce(InertiaMiddleware);
+
+    // DevTools recorder. Registered before InertiaMiddleware runs its response
+    // rewrites so the status it records is the one the client actually sees
+    // (302→303, and the version-mismatch 409, both happen in there). Nothing is
+    // registered at all when the recorder is off, so a production process has
+    // no read API to probe.
+    if (devtoolsEnabled()) {
+      setMaxEntries(devtoolsSettings().maxEntries);
+      this.app.useOnce(InertiaDevtoolsMiddleware);
+      registerDevtoolsApi();
+    }
 
     const config = this.app.container.makeSync("config") as ConfigManager;
 

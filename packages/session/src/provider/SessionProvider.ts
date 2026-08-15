@@ -77,7 +77,7 @@ export class SessionProvider extends ServiceProvider {
   override async onBooting(): Promise<void> {
     // Auto-register SessionMiddleware so the session is available on every request.
     // useOnce() prevents double-registration if the user also calls .use([SessionMiddleware]).
-    this.app.useOnce(SessionMiddleware as never);
+    this.app.useOnce(SessionMiddleware);
   }
 
   /**

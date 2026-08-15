@@ -101,7 +101,7 @@ export class TenancyProvider extends ServiceProvider {
     // (Auth.user(), model queries, cache, storage). It is lenient — routes that *require* a
     // tenant opt into EnsureTenancyMiddleware. Registered after AuthProvider's
     // PersistUserMiddleware (its onBooting runs first) so AuthResolver can read `http.user`.
-    this.app.useOnce(TenancyMiddleware as never);
+    this.app.useOnce(TenancyMiddleware);
     for (const cls of _pendingTenantable) {
       registerTenantScoping(cls);
     }

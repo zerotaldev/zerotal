@@ -49,6 +49,6 @@ export class I18nProvider extends ServiceProvider {
     const translator = (await this.app.container.make("i18n")) as Translator;
     const config = await this._resolveConfig();
     LocaleMiddleware.configure(translator, config);
-    this.app.useOnce(LocaleMiddleware as never);
+    this.app.useOnce(LocaleMiddleware);
   }
 }

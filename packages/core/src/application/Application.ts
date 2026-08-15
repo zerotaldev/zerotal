@@ -157,7 +157,14 @@ type DeferrableProviderClass = ProviderClass & {
   provides: readonly (keyof ContainerBindings)[];
 };
 type Environment = "web" | "console" | "worker" | "test" | "repl";
-type PipeClass = new (...args: unknown[]) => Pipe<HttpContext>;
+// `args: any[]`, the codebase's standard constructor shape — the same reasoning
+// `container/types.ts` already writes down for `ClassToken`: `unknown[]` fails
+// constructor-parameter contravariance at the call site, so any middleware class
+// with a typed constructor is rejected. Every provider that registers one worked
+// around it the same way, `useOnce(Middleware)`, eleven times across eight
+// packages — a cast the framework was asking for rather than one anybody wanted.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- middleware classes carry their own constructor shapes
+type PipeClass = new (...args: any[]) => Pipe<HttpContext>;
 
 /** Options form for `Application.create({ ... })`. */
 export interface CreateOptions {
@@ -452,6 +459,7 @@ export class Application {
       );
     }
 
+    // eslint-disable-next-line no-restricted-syntax -- runtime mode is exactly what Application.create() wants; _normaliseEnv maps deployment names onto it
     const rawEnv = options.env ?? Bun.env["APP_ENV"] ?? "web";
     const resolvedEnv: Environment = _normaliseEnv(rawEnv);
 
@@ -861,7 +869,7 @@ export class Application {
     // Inject the live-reload client (and any registered dev snippets) into HTML
     // responses, so auto-reload works for every view layer, not just Inertia.
     setDevReloadClientActive(true);
-    this.useOnce(DevReloadMiddleware as never);
+    this.useOnce(DevReloadMiddleware);
     return this;
   }
 
@@ -1055,7 +1063,7 @@ export class Application {
     // elsewhere it warns. Skipped in the test harness to keep output clean.
     if (this._env !== "test" && this._configValidators.length > 0) {
       const configManager = this.container.makeSync("config") as ConfigManager;
-      const appEnv = configManager.get<string>("app.env", Bun.env["APP_ENV"] ?? "development");
+      const appEnv = configManager.get<string>("app.env", deployEnv() || "development");
       runConfigValidators(this._configValidators, configManager, isProdLike(appEnv));
     }
 

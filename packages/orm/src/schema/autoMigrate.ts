@@ -1,4 +1,5 @@
 import type { ConcernDescriptor } from "@zerotal/core";
+import { isProdLike, deployEnv } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { ModelInspector, columnDbName } from "./ModelInspector.ts";
 import { SchemaDiffer, type DiffResult } from "./SchemaDiffer.ts";
@@ -147,9 +148,12 @@ export const autoMigrateConcern: ConcernDescriptor = {
   name: "auto-migrate",
   order: 100,
   async run(ctx) {
-    // Hard-off in production. `ctx.env` is the runtime mode (web/console/…), so the
-    // deployment name is read from APP_ENV directly.
-    if (Bun.env.APP_ENV === "production") return;
+    // Hard-off on any deployed environment. Both `ctx.env` AND `APP_ENV` hold the
+    // runtime mode by now — the comment that used to sit here claimed APP_ENV still
+    // carried the deployment name, which is exactly the mistake. This guard never
+    // fired under `zt serve`, so the only thing between a production database and
+    // boot-time schema sync was the config default.
+    if (isProdLike(deployEnv())) return;
     const config = ctx.resolve<ConfigManager>("config");
     const { enabled, disruptive } = resolveSyncOptions(config?.get("database.synchronize"));
     if (!enabled) return;

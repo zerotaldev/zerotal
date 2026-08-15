@@ -1,6 +1,7 @@
 import { ServiceProvider } from "./ServiceProvider.ts";
 import type { AppEnvironment } from "./ServiceProvider.ts";
 import { FrameworkEvents } from "../events/FrameworkEvents.ts";
+import { deployEnv } from "../support/env.ts";
 import type {
   // Application lifecycle
   AppBooted,
@@ -60,7 +61,7 @@ export class LogProvider extends ServiceProvider {
       const cfg = (await c.make("config")) as { get<T>(path: string): T | undefined };
       const logging = cfg.get<LoggingConfigShape>("logging") ?? _defaultConfig();
       const appName = cfg.get<string>("app.name");
-      const appEnv = cfg.get<string>("app.env") ?? Bun.env["APP_ENV"];
+      const appEnv = cfg.get<string>("app.env") ?? deployEnv();
 
       return new LogManager(logging, { app: appName, env: appEnv });
     });
@@ -75,7 +76,7 @@ export class LogProvider extends ServiceProvider {
       get<T>(path: string): T | undefined;
     };
     const requests = cfg.get<LoggingConfigShape>("logging")?.requests ?? true;
-    if (requests) this.app.useOnce(LoggerMiddleware as never);
+    if (requests) this.app.useOnce(LoggerMiddleware);
   }
 
   override async onBooted(): Promise<void> {

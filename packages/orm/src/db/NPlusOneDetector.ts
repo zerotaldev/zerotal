@@ -1,4 +1,5 @@
 import { ZerotalError, FrameworkEvents } from "@zerotal/core";
+import { isProdLike, deployEnv } from "@zerotal/core";
 import { NPlusOneDetected } from "../events.ts";
 
 // ── N+1 Query Detector ────────────────────────────────────────────────────────
@@ -180,13 +181,12 @@ export function trackQuery(
 
   // Honour explicit opt-in or auto-enable in local/development only
   if (!_forced) {
-    const env = (typeof Bun !== "undefined" ? Bun.env["APP_ENV"] : undefined) ?? "";
+    const env = deployEnv();
     if (env !== "local" && env !== "development" && env !== "dev") return;
   }
 
   // Production always off
-  const env = (typeof Bun !== "undefined" ? Bun.env["APP_ENV"] : undefined) ?? "";
-  if (env === "production" || env === "prod") return;
+  if (isProdLike(deployEnv())) return;
 
   // Only watch SELECTs — the N+1 problem is purely about reads
   if (!fingerprint.trimStart().toLowerCase().startsWith("select")) return;

@@ -64,13 +64,49 @@ export default tseslint.config(
       // Empty interfaces are this codebase's augmentation seams (FlowEvents,
       // ContextRegistry, AuthenticatableUser, …) — apps merge members into them.
       "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "always" }],
+
+      // `APP_ENV` means two things and the second destroys the first: it is the
+      // deployment name an operator sets, and it is the runtime mode `setAppEnv()`
+      // overwrites it with before the app boots. Reading it to answer "is this
+      // production?" therefore asks whether "web" is production, and gets no.
+      //
+      // That mistake shipped fourteen times across seven packages before anyone
+      // went looking: a weak APP_KEY never refused a boot, N+1 detection ran in
+      // production, the Flow client bundle was never minified, auto-synchronize
+      // was not hard-off, `forceState()` worked on live data, env-scoped schedules
+      // never ran, and every dev surface — DevTools included — switched itself off.
+      // Each was found separately. This rule is so the fifteenth is found here.
+      //
+      // Use `deployEnv()` for the deployment name, or `config("app.env")` where the
+      // config store is available. Reading `APP_ENV` for the *runtime mode* is
+      // legitimate — disable this rule on the line and say which you mean.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[object.object.name='Bun'][object.property.name='env'][property.value='APP_ENV']",
+          message:
+            'Bun.env["APP_ENV"] holds the runtime mode after setAppEnv(). Use deployEnv() for the deployment name, or config("app.env"). If you genuinely want the runtime mode, disable this rule on the line with a reason.',
+        },
+        {
+          selector:
+            "MemberExpression[object.object.name='Bun'][object.property.name='env'][property.name='APP_ENV']",
+          message:
+            'Bun.env.APP_ENV holds the runtime mode after setAppEnv(). Use deployEnv() for the deployment name, or config("app.env"). If you genuinely want the runtime mode, disable this rule on the line with a reason.',
+        },
+      ],
     },
   },
 
   // ── Tests, scripts, and example apps: relax `any` entirely ──────────────────
   {
     files: ["**/*.test.ts", "scripts/**", "apps/**"],
-    rules: { "@typescript-eslint/no-explicit-any": "off" },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      // A test setting `APP_ENV` is constructing a scenario, not asking a question —
+      // pinning the variable is precisely how you reproduce "what the server sees".
+      "no-restricted-syntax": "off",
+    },
   },
 
   // ── Client-side bundles run in the browser (window/document/CustomEvent…) ────

@@ -14,6 +14,7 @@ import {
   resolveSharedChannel,
 } from "./decorators.ts";
 import { ZerotalError, safeEqual, hmacHex, RequestContext } from "@zerotal/core";
+import { isProdLike, deployEnv } from "@zerotal/core";
 
 // ── Stable JSON stringify ─────────────────────────────────────────────────────
 // Keys are sorted so the HMAC is deterministic regardless of insertion order.
@@ -316,8 +317,7 @@ export function applySnapshotDelta(prev: Snapshot, delta: SnapshotDelta): Snapsh
 const SNAPSHOT_WARN_BYTES = 100 * 1024; // 100 KB
 
 export function warnIfLarge(snapshot: Snapshot, name: string): void {
-  const env = Bun.env["APP_ENV"] ?? "development";
-  if (env === "production" || env === "prod") return;
+  if (isProdLike(deployEnv())) return;
 
   // Buffer.byteLength is a native call that avoids allocating a typed array.
   const size = Buffer.byteLength(JSON.stringify(snapshot), "utf8");

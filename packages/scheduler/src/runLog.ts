@@ -71,6 +71,7 @@ export function resolveRunLogConfig(app: Application): RunLogConfig {
     /* config not resolvable — use the defaults */
   }
   return {
+    // eslint-disable-next-line no-restricted-syntax -- asks about the test runtime mode, not the deployment
     enabled: raw.enabled ?? Bun.env["APP_ENV"] !== "test",
     path: raw.path ?? DEFAULT_RUN_LOG_PATH,
     keep: Math.max(1, raw.keep ?? DEFAULT_RUN_LOG_KEEP),

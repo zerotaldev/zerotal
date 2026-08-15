@@ -88,6 +88,7 @@ export const RUNTIME_MODES: ReadonlySet<string> = new Set([
  * @internal
  */
 export function deployEnv(): string {
+  // eslint-disable-next-line no-restricted-syntax -- this IS deployEnv — it decides whether APP_ENV still holds the deployment name
   const current = Bun.env["APP_ENV"] ?? "";
   // If `APP_ENV` still holds a deployment name, it has not been overwritten yet —
   // or something set it deliberately since — so it is the freshest answer. Only

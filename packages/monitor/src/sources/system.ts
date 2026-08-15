@@ -7,6 +7,7 @@
 import { cpus, loadavg, totalmem, freemem } from "node:os";
 import { readFileSync } from "node:fs";
 import { currentApp } from "@zerotal/core";
+import { deployEnv } from "@zerotal/core";
 import { httpMetrics } from "@zerotal/core/metrics";
 import { ZEROTAL_VERSION_TAG } from "../version.ts";
 import type { Gauge, SystemMeta } from "../store/types.ts";
@@ -142,7 +143,7 @@ export function systemMeta(opts: {
     zerotal: opts.zerotal ?? ZEROTAL_VERSION_TAG,
     region: opts.region ?? process.env.FLY_REGION ?? process.env.AWS_REGION ?? "local",
     deploy: opts.deploy ?? process.env.DEPLOY_SHA?.slice(0, 7) ?? "dev",
-    environment: process.env.APP_ENV ?? process.env.NODE_ENV ?? "development",
+    environment: deployEnv() || process.env.NODE_ENV || "development",
   };
 }
 

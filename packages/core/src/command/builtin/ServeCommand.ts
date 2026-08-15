@@ -7,6 +7,7 @@ import type { FlagDef } from "../Command.ts";
 import { hasDevBuildHooks, runDevBuildHooks } from "../../dev/DevBuildHook.ts";
 import { buildConfiguredAssets, type AssetBuildConfig } from "../../dev/CssPlugins.ts";
 import { bootBuildDecision } from "../../dev/bootBuild.ts";
+import { deployEnv } from "../../support/env.ts";
 import { collectDevProcesses, type ResolvedDevProcess } from "../../dev/DevProcess.ts";
 import { startDevMode, SERVER_PROCESS_NAME } from "../../dev/startDevMode.ts";
 import type { ConfigManager } from "../../config/ConfigManager.ts";
@@ -456,7 +457,7 @@ export class ServeCommand extends Command {
     // down is doing the right thing; rebuilding at boot would only fail. See bootBuild.ts.
     const decision = await bootBuildDecision(
       [`${process.cwd()}/${assets.outDir}`],
-      (this._appEnv() ?? Bun.env["APP_ENV"]) as string | undefined,
+      (this._appEnv() ?? deployEnv()) as string | undefined,
     );
     if (!decision.build) {
       this.info(decision.reason ?? "Skipping the boot-time asset build.");

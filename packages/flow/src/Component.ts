@@ -30,6 +30,7 @@ import { _validateEventPayload } from "./events.ts";
 import type { FlowEvents, EventName, EventArgs } from "./events.ts";
 import { route, request, safeRedirectPath, HttpContext } from "@zerotal/core";
 import type { RouteParamValues, RouteParamsArg, RouteTarget } from "@zerotal/core";
+import { isProdLike, deployEnv } from "@zerotal/core";
 
 /**
  * Convert the validator's one-message-per-field result (`Record<string, string>`) into
@@ -167,7 +168,9 @@ function _fnv1a(input: string): string {
 }
 
 function _isProduction(): boolean {
-  return (Bun.env["APP_ENV"] ?? Bun.env["NODE_ENV"]) === "production";
+  // `deployEnv()`, not `APP_ENV` — the latter holds the runtime mode once the app
+  // has booted, so this answered "no" on every production server.
+  return isProdLike(deployEnv()) || Bun.env["NODE_ENV"] === "production";
 }
 
 /** Classes already warned about, so a hundred-row list logs once. */

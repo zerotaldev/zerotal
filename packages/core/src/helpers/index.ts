@@ -67,6 +67,7 @@ export function basePath(...segments: string[]): string {
  */
 export function setAppEnv(command?: string): void {
   const normalizedCommand = (command ?? "").toLowerCase();
+  // eslint-disable-next-line no-restricted-syntax -- this IS setAppEnv — reading the pre-overwrite value is the whole job
   const current = Bun.env["APP_ENV"];
   const environment = Bun.env as Record<string, string>;
 

@@ -21,6 +21,7 @@ export const DEFAULT_LOG_RETENTION_DAYS = 14;
  * A test that wants the trail asks for it explicitly.
  */
 function _fileDefault(): FileSinkConfig {
+  // eslint-disable-next-line no-restricted-syntax -- asks about the test/testing runtime modes, not the deployment
   const env = (Bun.env["APP_ENV"] ?? "").trim().toLowerCase();
   if (env === "test" || env === "testing") return false;
   return { path: DEFAULT_LOG_PATH, days: DEFAULT_LOG_RETENTION_DAYS };

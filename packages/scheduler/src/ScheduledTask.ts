@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { FrameworkEvents } from "@zerotal/core";
+import { deployEnv } from "@zerotal/core";
 import { TaskRan, TaskFailed, TaskSkipped } from "./events.ts";
 import type { LockManager, ManagedLock } from "@zerotal/core/lock";
 import { CronExpression } from "./CronExpression.ts";
@@ -259,7 +260,9 @@ export class ScheduledTask {
   }
 
   private _currentEnv(): string {
-    return Bun.env["APP_ENV"] ?? Bun.env["NODE_ENV"] ?? "development";
+    // `deployEnv()`: reading APP_ENV returned the runtime mode, so a task scoped
+    // with `.environments(["production"])` never matched and silently never ran.
+    return deployEnv() || Bun.env["NODE_ENV"] || "development";
   }
 
   private _passesEnvironment(): boolean {

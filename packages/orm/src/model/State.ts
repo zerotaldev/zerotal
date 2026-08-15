@@ -19,6 +19,7 @@
 //     @column() status!: keyof typeof States;
 //   }
 
+import { isProdLike, deployEnv } from "@zerotal/core";
 import { StateError } from "../errors/index.ts";
 import { currentOrmContext } from "./OrmContext.ts";
 import type { Constructor } from "./mixins.ts";
@@ -278,7 +279,7 @@ export function State<TBase extends Constructor>(Base: TBase) {
      * @throws {Error} when called with `APP_ENV=production`.
      */
     async forceState(state: string): Promise<this> {
-      if (Bun.env["APP_ENV"] === "production") {
+      if (isProdLike(deployEnv())) {
         throw new Error("forceState() cannot be called in production (APP_ENV=production).");
       }
       const field = (this.constructor as unknown as StateModelClass).stateField;

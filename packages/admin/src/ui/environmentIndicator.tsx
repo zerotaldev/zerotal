@@ -6,6 +6,7 @@
 // admin panel ecosystem grows a plugin for exactly this.
 
 import type { HtmlNode } from "@zerotal/flow";
+import { deployEnv } from "@zerotal/core";
 import type { RenderHook } from "../renderHooks.ts";
 
 export interface EnvironmentIndicatorOptions {
@@ -41,7 +42,12 @@ export function environmentIndicator(options: EnvironmentIndicatorOptions = {}):
   const tones = { ...DEFAULT_TONES, ...(options.tones ?? {}) };
 
   return (): HtmlNode | null => {
-    const env = (options.environment ?? Bun.env["APP_ENV"] ?? "").trim();
+    // `deployEnv()` — `APP_ENV` holds the runtime mode by the time a page renders, so
+    // this badge read "web": never in the quiet list, so it showed on every screen
+    // including local, and its `staging` tone could never fire. The one mistake this
+    // component exists to prevent is editing production believing it is staging, and
+    // a badge that always says the same wrong word prevents nothing.
+    const env = (options.environment ?? deployEnv()).trim();
     if (!env || quiet.has(env.toLowerCase())) return null;
 
     const tone = tones[env.toLowerCase()] ?? "bg-amber-500 text-black";

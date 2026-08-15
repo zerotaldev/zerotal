@@ -346,6 +346,7 @@ export function AppConfig(options: {
   // overrides (e.g. `conventions.paths.models`) keep every other default in place.
   const defaults: AppConfigShape = {
     name: "Zerotal App",
+    // eslint-disable-next-line no-restricted-syntax -- config is loaded before setAppEnv() runs, so APP_ENV still holds the deployment name here
     env: Bun.env["APP_ENV"] ?? "development",
     key: Bun.env["APP_KEY"] ?? "",
     debug: Bun.env["APP_DEBUG"] !== "false",

@@ -11,6 +11,28 @@ change.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-15
+
+### Added
+
+- **`$route()` in Alpine expressions.** Build a URL by route name in the browser, from the
+  same table the server rendered with:
+
+  ```html
+  <a :href="$route('posts.show', { slug: post.slug })">Read</a>
+  ```
+
+  Nothing to install and nothing to wire up. Inertia apps hand `route()` their table by
+  static import, but `/__flow/runtime.js` is built by the framework rather than by your app,
+  so it cannot import a file that lives in the application. The runtime handler serialises
+  `Router.namedRoutes` onto the bundle it serves instead — at serve time, not at build time,
+  because the bundle is built in `onBooting()` when providers registered after Flow have not
+  added their routes yet. The bundle is already `no-store`, so there is no cache to
+  invalidate and nothing is added to any page's HTML.
+
+  Same helper as the server's `route()`, sharing one URL builder, so a link built in an
+  Alpine expression and one built in JSX cannot disagree about encoding.
+
 ## [1.5.0] — 2026-08-15
 
 ### Changed — BREAKING

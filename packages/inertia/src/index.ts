@@ -43,6 +43,13 @@ import "./augment.ts";
 
 export { inertiaRoute } from "./route.ts";
 
+// `route()` for pages — the browser/SSR helper from `@zerotal/core/routes`,
+// re-exported so a page component imports it from the package it already uses.
+// Note the two are different things: `inertiaRoute()` above *registers* a page
+// route on the server, `route()` *generates a URL* for one.
+export { route, defineRoutes, hasRoute, resetRoutes } from "@zerotal/core/routes";
+export type { RouteTable } from "@zerotal/core/routes";
+
 export {
   inertia,
   inertiaStream,
@@ -106,7 +113,16 @@ export { location } from "./location.ts";
 
 // Config factory
 export { InertiaConfig } from "./config.ts";
-export type { InertiaConfigShape } from "./config.ts";
+export type { InertiaConfigShape, InertiaDevtoolsConfig } from "./config.ts";
+
+// ── DevTools ─────────────────────────────────────────────────────────────────
+// Server-side recorder for the Inertia DevTools browser extension. InertiaProvider
+// wires all of this up when the recorder is enabled; an app needs none of it
+// unless it is registering the recorder itself.
+export { InertiaDevtoolsMiddleware } from "./devtools/middleware.ts";
+export { devtoolsEnabled } from "./devtools/enabled.ts";
+export { DEVTOOLS_API_PREFIX } from "./devtools/types.ts";
+export type { DevtoolsEntry } from "./devtools/types.ts";
 
 // SSR handler (for direct use or testing)
 export { SsrHandler } from "./SsrHandler.ts";

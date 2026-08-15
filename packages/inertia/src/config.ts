@@ -44,6 +44,56 @@ export interface InertiaConfigShape {
    * per request via `Inertia.encryptHistory()` / `clearHistory()`. Default: false.
    */
   encryptHistory: boolean;
+  /** DevTools recorder settings. See {@link InertiaDevtoolsConfig}. */
+  devtools: InertiaDevtoolsConfig;
+}
+
+/**
+ * Server-side recorder for the Inertia DevTools browser extension.
+ *
+ * Off unless this process already exposes dev surfaces (`devSurfacesEnabled()` —
+ * the same gate as the stack-trace error page). The recorder holds resolved
+ * props and request headers in memory and serves them over an unauthenticated
+ * local endpoint, so it has to fail closed: a production deploy that sets no
+ * `APP_ENV` records nothing and registers no routes.
+ *
+ * @see https://inertiajs.com/docs/v3/advanced/devtools
+ */
+export interface InertiaDevtoolsConfig {
+  /**
+   * Turn the recorder on or off explicitly. `null` (the default) follows
+   * `devSurfacesEnabled()`, which is what `INERTIA_DEVTOOLS_ENABLED` sets when
+   * present. Setting `true` here enables it even in production — do that only
+   * behind {@link InertiaDevtoolsConfig.gate}.
+   */
+  enabled: boolean | null;
+  /** How many entries to keep before the oldest is dropped. Default: 200. */
+  maxEntries: number;
+  /**
+   * Extra prop/body key patterns to redact, on top of the built-in list
+   * (`password`, `token`, `secret`, …). Matched as case-insensitive substrings.
+   */
+  redact: string[];
+  /**
+   * Extra header names to redact, on top of the built-in list (`authorization`,
+   * `cookie`, …). Matched case-insensitively.
+   */
+  redactHeaders: string[];
+  /**
+   * Path prefixes that are never recorded. The DevTools read API excludes
+   * itself regardless; this is for the health checks, metrics scrapes, and
+   * dashboards that would otherwise bury the timeline in noise.
+   */
+  except: string[];
+  /**
+   * Authorisation for the read API when the recorder runs outside a dev
+   * process. Receives the request; return `true` to allow.
+   *
+   * Never consulted while `devSurfacesEnabled()` is true, so a developer cannot
+   * lock themselves out of their own machine — which is also why enabling the
+   * recorder in production without setting this is refused at boot.
+   */
+  gate: ((request: Request) => boolean | Promise<boolean>) | null;
 }
 
 /** Default directory (relative to the project root) for Inertia page components. */
@@ -57,7 +107,25 @@ const defaults: InertiaConfigShape = {
   ssr: false,
   ssrSecret: "",
   encryptHistory: false,
+  devtools: {
+    // `null`, not `false`: the recorder follows the process's dev-surface gate
+    // unless an app overrides it, so it is on for `zt dev` and off in
+    // production without anyone configuring anything.
+    enabled: _envFlag("INERTIA_DEVTOOLS_ENABLED"),
+    maxEntries: 200,
+    redact: [],
+    redactHeaders: [],
+    except: [],
+    gate: null,
+  },
 };
+
+/** Read a tri-state boolean env var: unset stays `null` so the dev-surface gate decides. */
+function _envFlag(name: string): boolean | null {
+  const raw = Bun.env[name];
+  if (raw === undefined || raw === "") return null;
+  return !["0", "false", "off", "no"].includes(raw.toLowerCase());
+}
 
 /**
  * Create a typed Inertia configuration object with defaults.

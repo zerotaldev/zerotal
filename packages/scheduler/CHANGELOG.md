@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-15
+
+### Fixed
+
+- **Environment-scoped tasks never ran.** `.environments(["production"])` compared against
+  `APP_ENV`, which holds the runtime mode (`web`, `worker`, `console`) once the app has
+  booted — so a task restricted to any deployment matched nothing and was skipped silently,
+  every time. It reads `deployEnv()` now.
+
 ## [1.5.0] — 2026-08-15
 
 ### Changed

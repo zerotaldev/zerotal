@@ -7,6 +7,7 @@ import { assetVersion } from "./version.ts";
 import { resolveProps } from "./props/resolveProps.ts";
 import { readHistoryFlags } from "./historyState.ts";
 import { allSharedKeys } from "./share.ts";
+import { recordPage } from "./devtools/recorder.ts";
 import { resolvePageModule, renderInertiaPage } from "./ssr/renderPage.ts";
 import type { PageObject } from "./types.ts";
 import type { PageTarget, RenderArgs } from "./pages.ts";
@@ -75,6 +76,10 @@ export async function buildPageObject(
 
   const sharedPresent = allSharedKeys().filter((k) => k in resolved.props);
   if (sharedPresent.length) page.sharedProps = sharedPresent;
+
+  // The only point that sees the raw wrappers and the resolved values together;
+  // a no-op unless the DevTools recorder opened a recording for this request.
+  recordPage(component, merged, resolved.props, resolved.rescuedProps);
 
   const history = readHistoryFlags();
   if (history.encryptHistory) page.encryptHistory = true;

@@ -8,6 +8,77 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-15
+
+### Added
+
+- **`route()` in the browser — `@zerotal/core/routes`.** The typed `route()` helper now has a
+  browser twin. Hand it the table `bun zt route:types` already generates, once, at your
+  entry point:
+
+  ```ts
+  import { defineRoutes } from "zerotal/routes";
+  import { ROUTES } from "../../types/routes.generated";
+
+  defineRoutes(ROUTES);
+  ```
+
+  and `route("posts.show", { slug })` works in a component exactly as it does in a
+  controller. The table is a build-time constant, so it costs one static import, ships
+  nothing per response, and needs no fetch before the first link renders. `hasRoute(name)`
+  answers the conditional-link question without a try/catch, and `resetRoutes()` clears the
+  table for tests.
+
+  The two helpers are one implementation, not two that agree today. Everything a caller can
+  observe — param encoding, catch-all handling, which mistakes throw and what they say —
+  moved into a shared builder; only the table lookup differs (the live router on the server,
+  the generated map in the browser). Both are typed as the same `RouteBuilder` interface, and
+  both read the same `RouteRegistry`, so a name that type-checks in a controller type-checks
+  in a component and a missing `:param` fails the build on either side. A parity test asserts
+  the two produce byte-identical URLs and identical error messages.
+
+  The entry point is browser-safe by construction: it imports nothing that touches `Bun`,
+  the container, or request state.
+
+### Fixed
+
+- **Ten more places asked `APP_ENV` a question it cannot answer.** 1.5.0 and 1.5.1 each
+  fixed the instances that had been noticed; this is the audit of every remaining reader,
+  and it found more than either. `APP_ENV` holds the runtime mode once `setAppEnv()` has
+  run, so any check comparing it against a deployment name was asking whether `"web"` is
+  production. In core and its packages that meant:
+
+  - **auto-`synchronize` was never hard-off in production**, so the only thing between a
+    production database and boot-time schema sync was the config default. The comment above
+    the guard claimed `APP_ENV` still held the deployment name, which is precisely the
+    mistake;
+  - **the Flow client bundle was never minified in production**, shipping ~183 KB
+    unminified to every visitor;
+  - **`forceState()`** did not refuse to run on live data despite the throw written for it;
+  - **environment-scoped scheduled tasks never matched**, so `.environments(["production"])`
+    silently never ran;
+  - the N+1 detector's own gate, the monitor's reported environment, the admin environment
+    badge, the large-snapshot warning, and four config-first reads whose fallback was the
+    runtime mode.
+
+  All of them read `deployEnv()` now. Everything still fails closed: production, staging and
+  an unset environment behave exactly as before.
+
+- **`useOnce()` demanded a cast from every caller.** `PipeClass` used `unknown[]` for its
+  constructor arguments, which fails parameter contravariance for any middleware class with
+  a typed constructor — so all eight packages that register middleware wrote
+  `useOnce(Middleware as never)`, twelve times over. It uses the codebase's standard
+  `any[]` constructor shape now, the same reasoning `container/types.ts` already documented
+  for container tokens, and all twelve casts are gone.
+
+### Changed
+
+- **Reading `Bun.env["APP_ENV"]` directly is now a lint error.** Fourteen instances of one
+  mistake across seven packages were each found separately; the rule is so the fifteenth is
+  found by CI. Tests are exempt — pinning the variable is how a test reproduces what a
+  server sees — and the handful of genuine runtime-mode reads carry an inline disable saying
+  which of the two meanings they want.
+
 ## [1.5.1] — 2026-08-15
 
 ### Fixed

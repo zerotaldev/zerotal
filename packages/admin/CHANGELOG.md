@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-15
+
+### Fixed
+
+- **The environment badge showed on every screen, and always said the same thing.** It read
+  `APP_ENV`, which holds the runtime mode once the app has booted — so it rendered `web`,
+  which is in nobody's quiet list, and its `staging` tone could never fire. A badge whose
+  whole purpose is preventing "I thought this was staging" was displaying the same wrong word
+  in every environment. It reads `deployEnv()` now, so local stays quiet and staging is
+  visibly staging.
+
 ## [1.5.1] — 2026-08-15
 
 ### Fixed

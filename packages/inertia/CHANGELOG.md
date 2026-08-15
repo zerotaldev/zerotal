@@ -8,6 +8,41 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-15
+
+### Added
+
+- **Inertia DevTools support.** Zerotal now implements the server half of the
+  [Inertia DevTools protocol](https://inertiajs.com/docs/v3/advanced/devtools-protocol), so the
+  browser extension shows a timeline of every request: the component that rendered, the route
+  that matched by name, every prop tagged with the wrapper that produced it (`defer` and its
+  group, `optional`, `always`, `merge` and its direction, `once`, `scroll`, and which props came
+  from `share()`), the resolved values, headers, status, and server time. Follow-up requests are
+  grouped with the navigation that caused them, so a page whose deferred props arrive in three
+  later requests reads as one batch.
+
+  On in development, off everywhere else — it follows `devSurfacesEnabled()`, the same gate as the
+  stack-trace error page, so a production deploy records nothing and registers no endpoints.
+  `INERTIA_DEVTOOLS_ENABLED` or `inertia.devtools.enabled` overrides it.
+
+  Sensitive values are redacted **before** an entry is stored rather than when it is served, so a
+  withheld value is never written down: any key containing `password`, `token`, `secret`, and the
+  rest of the built-in list, plus the `authorization` and `cookie` headers. Matching is a
+  case-insensitive substring, so `password` also covers `password_confirmation`. Uploads are
+  summarised instead of inlined, and a prop graph with a cycle records `[Circular]` rather than
+  failing the request. Add your own patterns with `devtools.redact` / `devtools.redactHeaders`.
+
+  Entries live in a bounded in-memory ring (`devtools.maxEntries`, default 200) in the process
+  that recorded them — no disk IO on the request path, no pruning job, and nothing to leak from a
+  directory later. `devtools.except` keeps chosen paths out of the timeline; the read API always
+  excludes itself. Enabling the recorder outside a development process requires a `devtools.gate`,
+  and without one the read API refuses every request rather than defaulting to open.
+
+- **`route()` for pages.** `route`, `defineRoutes`, and `hasRoute` are re-exported from this
+  package, so a page component imports the URL helper from the package it already uses. See
+  `@zerotal/core`'s entry for the full feature. Note that `inertiaRoute()` is a different thing:
+  it **registers** a page route on the server, where `route()` **generates a URL** for one.
+
 ## [1.5.0] — 2026-08-15
 
 ### Added

@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-15
+
+### Fixed
+
+- **System info reported the runtime mode as the environment.** The panel showed `web`
+  rather than `production` or `staging`, because it read `APP_ENV` after `setAppEnv()`
+  had overwritten it. It reads `deployEnv()` now.
+
 ## [1.5.1] — 2026-08-15
 
 ### Fixed

@@ -8,6 +8,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-15
+
+### Fixed
+
+- **Auto-`synchronize` was never hard-off in production.** The guard compared
+  `APP_ENV` against `"production"`, but `setAppEnv()` replaces that with the runtime
+  mode before the app boots — so it read `"web"` and never fired. The only thing standing
+  between a production database and boot-time schema sync was the config default in
+  `config/database.ts`. It reads `deployEnv()` now, and covers `staging` too.
+
+- **`forceState()` did not refuse to run in production.** Its throw exists so a
+  state-machine escape hatch cannot be used on live data; the same `APP_ENV` comparison
+  meant it never triggered.
+
+- **The N+1 detector's own environment gate never matched**, so the detector returned early
+  even in development. (The provider-level gate that installs it was fixed in 1.5.0; this is
+  the second gate inside the detector itself.)
+
 ## [1.5.0] — 2026-08-15
 
 ### Fixed

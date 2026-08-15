@@ -1,6 +1,6 @@
 {
   "name": "zerotal",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "license": "MIT",
   "maturity": "stable",
   "private": false,
@@ -32,6 +32,7 @@
     "./metrics": "./src/metrics.ts",
     "./orm": "./src/orm.ts",
     "./queue": "./src/queue.ts",
+    "./routes": "./src/routes.ts",
     "./scheduler": "./src/scheduler.ts",
     "./security": "./src/security.ts",
     "./session": "./src/session.ts",

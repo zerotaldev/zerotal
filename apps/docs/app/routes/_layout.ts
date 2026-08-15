@@ -106,6 +106,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { label: "Props", slug: "inertia/props" },
       { label: "Middleware & Versioning", slug: "inertia/middleware" },
       { label: "Server-Side Rendering", slug: "inertia/ssr" },
+      { label: "DevTools", slug: "inertia/devtools" },
       { label: "CLI & Build", slug: "inertia/build" },
       { label: "References", slug: "inertia/references" },
     ],

@@ -3274,6 +3274,18 @@ interface HttpMetricsSnapshot = {
   total: number
 }
 
+## ./routes  `(./src/router/routes.ts)`
+
+const route = RouteBuilder
+
+function defineRoutes = (table: RouteTable) => void
+
+function hasRoute = (name: string) => boolean
+
+function resetRoutes = () => void
+
+type RouteTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>
+
 ## ./security  `(./src/security/index.ts)`
 
 class CryptKeyMissingError = {

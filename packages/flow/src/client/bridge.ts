@@ -34,6 +34,7 @@ import { confirmDialog, type ConfirmDialogOptions } from "./confirm.ts";
 import { showErrorOverlay } from "./errorOverlay.ts";
 import { applyAppend, applyRemove, type OptOp } from "./optimistic.ts";
 import { clientStore } from "../store.ts";
+import { route } from "@zerotal/core/routes";
 import { URL_ATTRIBUTES, sanitizeUrl } from "../urlSafety.ts";
 import {
   recordFrame as _recordTimelineFrame,
@@ -3659,6 +3660,12 @@ export function registerFlowMagic(alpine: AlpineType): void {
         // $store — the "flow" Alpine store (app-wide, client-only UI state). It's a real Alpine
         // store, so reads inside a binding track and writes re-render with no round-trip. Declare
         // its shape with defineStore(); see store.ts.
+        // $route('posts.show', { slug }) — the same helper the server renders
+        // with, so a link built in an Alpine expression and one built in JSX
+        // resolve identically. The table is installed from window.__zerotalRoutes
+        // by the bundle entry (see installClientRoutes).
+        if (key === "$route") return route;
+
         if (key === "$store") return clientStore();
 
         // $dispatch('event', {data}) — fire an event to every component on the page

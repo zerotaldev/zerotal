@@ -39,6 +39,14 @@ class DeferProp = {
   shouldMerge: boolean
 }
 
+class InertiaDevtoolsMiddleware = {
+  new (): InertiaDevtoolsMiddleware
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  afterResponse?: (ctx: HttpContext) => Promise<void>
+  handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
+  onError?: (ctx: HttpContext, error: Error) => Promise<void>
+}
+
 class InertiaError = {
   new (message: string, code?: string, status?: number, context?: Record<string, unknown>): InertiaError
   readonly code: string
@@ -170,11 +178,15 @@ class SsrHandler = {
   handle: (http: HttpContext) => Promise<void>
 }
 
+const DEVTOOLS_API_PREFIX = '/_inertia/devtools'
+
 const Inertia = {    readonly render: PageRenderer;    readonly stream: PageRenderer;    readonly optional: <T>(callback: PropFactory<T>) => OptionalProp<T>;    readonly lazy: <T>(callback: PropFactory<T>) => OptionalProp<T>;    readonly always: {        <T>(value: PropFactory<T>): AlwaysProp<T>;        <T>(value: T): AlwaysProp<T>;    };    readonly defer: <T>(callback: PropFactory<T>, group?: string, options?: {        rescue?: boolean;    }) => DeferProp<T>;    readonly merge: {        <T>(value: PropFactory<T>): MergeProp<T>;        <T>(value: T): MergeProp<T>;    };    readonly deepMerge: {        <T>(value: PropFactory<T>): MergeProp<T>;        <T>(value: T): MergeProp<T>;    };    readonly scroll: (value: PaginatorLike | PropFactory, options?: {        pageName?: string;        dataPath?: string;    }) => InfiniteScrollProp;    readonly share: {        (key: string, value: unknown): void;        (values: Record<string, unknown>): void;    };    readonly encryptHistory: (on?: boolean) => void;    readonly clearHistory: () => void;    readonly location: (url: string) => void;}
 
 const inertia = PageRenderer
 
 const inertiaStream = PageRenderer
+
+const route = RouteBuilder
 
 function _getHtmlTemplate = () => string
 
@@ -192,11 +204,17 @@ function deepMerge = {    <T>(value: PropFactory<T>): MergeProp<T>;    <T>(value
 
 function defer = <T>(callback: PropFactory<T>, group?: string, options?: {    rescue?: boolean;}) => DeferProp<T>
 
+function defineRoutes = (table: RouteTable) => void
+
 function detectVuePlugin = (cwd: string) => Promise<BunPlugin[]>
+
+function devtoolsEnabled = () => boolean
 
 function encryptHistory = (on?: boolean) => void
 
 function generatePageRegistry = (cwd?: string, pagesDir?: string) => Promise<void>
+
+function hasRoute = (name: string) => boolean
 
 function InertiaConfig = (options?: Partial<InertiaConfigShape>) => InertiaConfigShape
 
@@ -210,6 +228,8 @@ function merge = {    <T>(value: PropFactory<T>): MergeProp<T>;    <T>(value: T)
 
 function optional = <T>(callback: PropFactory<T>) => OptionalProp<T>
 
+function resetRoutes = () => void
+
 function resolveProps = (raw: Record<string, unknown>, headers: Headers, component: string) => Promise<ResolvedPage>
 
 function scroll = (value: PaginatorLike | PropFactory, options?: {    pageName?: string;    dataPath?: string;}) => InfiniteScrollProp
@@ -222,14 +242,34 @@ function share = {    (key: string, value: unknown): void;    (values: Record<st
 
 function sharedProps = () => Record<string, unknown>
 
+interface DevtoolsEntry = {
+  __meta: {    id: string;    method: string;    url: string;    status: number;    requestType: DevtoolsRequestType;    component: string | null;    timestamp: string;    utime: number;    tabUuid: string | null;    batchId: string | null;    serverTimingMs: number | null;    redirectLocation?: string | null;    visitId?: string | null;}
+  componentPath: string | null
+  http: {    requestHeaders: Record<string, string>;    responseHeaders: Record<string, string>;    requestBody: BodyCapture;    responseBody: BodyCapture;}
+  propValues?: Record<string, unknown>
+  props: Record<string, PropMeta>
+  renderSource: SourceLocation | null
+  route: RouteInfo
+}
+
 interface InertiaConfigShape = {
   assetsUrl: string
+  devtools: InertiaDevtoolsConfig
   encryptHistory: boolean
   htmlTemplate: string
   pagesDir: string
   ssr: boolean
   ssrSecret: string
   version: string
+}
+
+interface InertiaDevtoolsConfig = {
+  enabled: boolean | null
+  except: string[]
+  gate: ((request: Request) => boolean | Promise<boolean>) | null
+  maxEntries: number
+  redact: string[]
+  redactHeaders: string[]
 }
 
 interface InertiaPageRegistry = {}
@@ -315,3 +355,5 @@ type PropsOf = PageComponent<N> extends (props: infer Props, ...rest: any[]) => 
 type RenderArgs = [props?: Record<string, unknown>]
 
 type RenderProps = {    [x: string]: unknown;}
+
+type RouteTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>

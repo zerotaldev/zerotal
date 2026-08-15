@@ -24,6 +24,60 @@ Each version lists changes under three headings:
 Patch and minor releases are backward compatible. Before taking a **major** release,
 read its section here and apply each migration note.
 
+## 1.6.0 — 2026-08-15
+
+### Added
+
+- **`route()` works in the browser.** The typed helper now has a twin at `zerotal/routes`.
+  Hand it the table `bun zt route:types` already generates, once, at your entry point, and
+  `route("posts.show", { slug })` works in a component exactly as it does in a controller.
+  `hasRoute(name)` answers the conditional-link question without a try/catch.
+
+  The two are one implementation, not two that agree today: param encoding, catch-all
+  handling and every error message live in a shared builder, and only the table lookup
+  differs — the live router on the server, the generated map in the browser. A parity test
+  asserts they emit byte-identical URLs and identical error text. See
+  [Routing](/docs/routing).
+
+- **`$route()` in Flow's Alpine expressions** — `<a :href="$route('posts.show', { slug })">`,
+  with nothing to install. Inertia apps import their table; `/__flow/runtime.js` is built by
+  the framework rather than your app, so the runtime handler serialises the table onto the
+  bundle it serves instead. Same builder as the server, so a link written in an Alpine
+  expression and one written in JSX cannot disagree about encoding.
+
+- **Inertia DevTools.** A server-side recorder for the Inertia DevTools browser extension:
+  requests, resolved props, and which wrapper produced each one. Off unless the process
+  already exposes dev surfaces — the same gate as the stack-trace error page — and an app
+  that enables it without saying who may read it gets a 403 rather than an open endpoint.
+  Redaction runs before storage, so a withheld value is never written down. See
+  [Inertia DevTools](/docs/inertia/devtools).
+
+### Fixed
+
+- **Ten more places asked `APP_ENV` a question it cannot answer**, found by auditing every
+  reader rather than waiting for the next report. `APP_ENV` holds the runtime mode once the
+  app has booted, so a check comparing it against a deployment name was asking whether
+  `"web"` is production. The consequences were real:
+
+  - **auto-`synchronize` was never hard-off in production** — the only thing between a
+    production database and boot-time schema sync was the config default;
+  - **the Flow client bundle was never minified in production**, shipping ~183 KB
+    unminified to every visitor;
+  - **`forceState()`** did not refuse to run on live data;
+  - **environment-scoped scheduled tasks never ran** — `.environments(["production"])`
+    matched nothing, silently;
+  - the admin environment badge showed `web` on every screen, so the one mistake it exists
+    to prevent — editing production believing it is staging — was exactly what it could not
+    prevent.
+
+  All read the deployment name now, and every one still fails closed. Reading `APP_ENV`
+  directly is a lint error from this release, because fourteen instances of one mistake
+  across seven packages were each found separately.
+
+- **`useOnce()` no longer demands a cast.** Registering middleware from a provider required
+  `useOnce(Middleware as never)` in all eight packages that do it — a cast the framework was
+  asking for. Twelve of them are gone, and the casting-debt baseline came down with them.
+
 ## 1.5.1 — 2026-08-15
 
 ### Fixed

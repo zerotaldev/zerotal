@@ -253,6 +253,7 @@ res.assertHeader("X-Inertia-Location");
 | [Props](/docs/inertia/props)                        | Pass data to a page — eager, lazy, deferred, and merged props, plus the shared props every page receives. |
 | [Middleware & Versioning](/docs/inertia/middleware) | The Inertia middleware, asset versioning, and forcing a full reload after a deploy.                       |
 | [Server-Side Rendering](/docs/inertia/ssr)          | Render the first paint on the server, and what changes when you do.                                       |
+| [DevTools](/docs/inertia/devtools)                  | Record each request's component, props, and timing for the Inertia DevTools extension.                    |
 | [CLI & Build](/docs/inertia/build)                  | The page registry, the bundler pipeline, and building for production.                                     |
 | [Reference](/docs/inertia/references)               | Every helper, prop type, and config key in one table.                                                     |
 

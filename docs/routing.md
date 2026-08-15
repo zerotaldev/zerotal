@@ -486,6 +486,63 @@ the checked signature above decorative.
 Typed names flow through the helpers built on `route()` too — `redirect().to()`,
 `Url.route()`, `Uri.route()`, and Flow's `redirectRoute()`.
 
+### route() in the browser
+
+The server's `route()` reads the live router, which only exists in the server
+process. In a browser bundle, import it from `zerotal/routes` instead and
+hand it the generated table once, at your entry point:
+
+```typescript
+// resources/js/app.js
+import { defineRoutes } from "zerotal/routes";
+import { ROUTES } from "../../types/routes.generated";
+
+defineRoutes(ROUTES);
+```
+
+From there the call is the one you already know:
+
+```typescript
+import { route } from "zerotal/routes";
+
+route("posts.show", { slug }); // → '/posts/hello'
+route("posts.index", {}, { page: 2 }); // → '/posts?page=2'
+```
+
+Same names, same params, same errors. Both helpers are typed as one
+`RouteBuilder` interface and share one URL builder, so a link rendered on the
+server and the same call made in a component cannot disagree about encoding — and
+because `types/routes.generated.ts` augments the one registry, a name that
+type-checks in a controller type-checks in a component.
+
+`defineRoutes()` takes the generated `ROUTES` object or any `RouteTable`
+(a name → pattern map). Calling it again replaces the table, which is what makes
+hot reload work. `resetRoutes()` clears it again, for tests that assert on the
+unconfigured error.
+
+If your app renders through SSR, call `defineRoutes()` in the SSR entry too — the
+page components run in both processes.
+
+For a link that only exists when some package is installed, ask first rather than
+catching a throw:
+
+```typescript
+import { hasRoute, route } from "zerotal/routes";
+
+{hasRoute("admin.index") && <a href={route("admin.index")}>Admin</a>}
+```
+
+**In Flow**, the table arrives on its own. `/__flow/runtime.js` is built by the
+framework rather than by your app, so it cannot import your generated file;
+Flow serialises the table onto the runtime it serves instead, and exposes the
+helper to Alpine expressions as `$route`:
+
+```html
+<a :href="$route('posts.show', { slug: post.slug })">Read</a>
+```
+
+Nothing to install, and the names are the same ones the server rendered with.
+
 ## File-based routing
 
 Map a directory tree to routes: each file under the routes directory becomes an

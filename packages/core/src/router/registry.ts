@@ -121,3 +121,45 @@ export type RouteArgs<N extends string> = [RouteName] extends [never]
       // any literal, so a static route would quietly swallow `{ page: 2 }`.
       [params?: Record<string, never>, query?: RouteQuery]
     : [params: RouteParams<N>, query?: RouteQuery];
+
+/**
+ * The `route()` helper: a checked call signature plus its `dynamic` escape hatch.
+ *
+ * Declared here, next to the types it is built from, because `route()` is
+ * implemented twice — once on the server against `Router.namedRoutes`, once in
+ * the browser against the generated `ROUTES` table. Both are typed as this
+ * interface, so the two call sites cannot drift apart in what they accept: a
+ * component that renders on the server and hydrates in the browser sees one
+ * signature either way.
+ *
+ * @category Naming & URLs
+ */
+export interface RouteBuilder {
+  /**
+   * Generate a URL for a named route, substituting `:param` segments.
+   *
+   * @param name - The registered route name, e.g. `'posts.show'`.
+   * @param args - `params` (one value per `:param`; a catch-all takes the `"*"` key and accepts an array of segments) then optional `query` values.
+   * @throws {Error} when the route name is unknown, a required `:param` is missing, or a param key matches no segment.
+   */
+  <N extends RouteTarget>(name: N, ...args: RouteArgs<N>): string;
+
+  /**
+   * Build a URL for a route name that isn't known at compile time — a name from
+   * config, a database row, or a package that registers routes conditionally.
+   *
+   * The escape hatch is a separate function rather than an overload on purpose:
+   * an overload taking `string` is matched by every string, which would let
+   * every typo through the front door. This one is greppable, and reads as the
+   * exception it is.
+   *
+   * @param name - The route name, resolved at runtime.
+   * @param params - One value per `:param` in the pattern.
+   * @param query - Optional query-string values.
+   * @throws {Error} on the same conditions as `route()` — an unknown name still throws.
+   *
+   * @example
+   * route.dynamic(config('app.home_route'), { id })
+   */
+  dynamic(name: string, params?: RouteParamValues, query?: RouteQuery): string;
+}

@@ -19,6 +19,7 @@ import { installFlowObservability } from "../observability.ts";
 import { DEFAULT_PERSISTENT_MIDDLEWARE } from "../config.ts";
 import type { AppEnvironment, Container, MiddlewareClass, NextFn } from "@zerotal/core";
 import type { WebSocketHandlers } from "@zerotal/core";
+import { isProdLike, deployEnv } from "@zerotal/core";
 import type { CallFrame, Snapshot } from "../types.ts";
 import { getPage, getAllowedMethods, getRenderlessMethods, BUILTIN_ACTIONS } from "../registry.ts";
 import {
@@ -43,6 +44,21 @@ import { makeSignedRef } from "../uploads/TemporaryUploadedFile.ts";
 import { isAllowedOrigin } from "@zerotal/core/http";
 
 // ── In-memory runtime.js bundle (built once at boot) ─────────────────────────
+
+/**
+ * The `window.__zerotalRoutes = {...}` line prepended to the served runtime
+ * bundle, which `installClientRoutes()` reads back on load.
+ *
+ * Served as JavaScript, not embedded in HTML, so the `</script>` hazard the
+ * state island guards against does not apply here — this response is never
+ * parsed as markup. Plain `JSON.stringify` is enough.
+ *
+ * @internal exported for tests.
+ */
+export function _routeTablePrelude(): string {
+  const table = Object.fromEntries(Router.namedRoutes);
+  return `window.__zerotalRoutes=${JSON.stringify(table)};\n`;
+}
 
 /** True when this process is the `serve --dev-worker` (dev fast refresh gates on it). */
 const _isDevWorker = Bun.argv.includes("--dev-worker");
@@ -998,7 +1014,9 @@ export class FlowProvider extends ServiceProvider {
       const result = await Bun.build({
         entrypoints: [entry],
         target: "browser",
-        minify: Bun.env["APP_ENV"] === "production",
+        // `deployEnv()` — comparing APP_ENV ran the check against the runtime mode
+        // ("web"), so the client bundle shipped UNMINIFIED to every production visitor.
+        minify: isProdLike(deployEnv()),
         format: "esm",
       });
 
@@ -1023,7 +1041,13 @@ export class FlowProvider extends ServiceProvider {
             });
             return;
           }
-          http.response = new Response(_runtimeBundle, {
+          // Prepend the named-route table so `$route(...)` resolves the same
+          // names the server renders with. Serialised here rather than baked
+          // into the bundle because the bundle is built in onBooting(), before
+          // providers registered after Flow have added their routes; this
+          // handler runs per request, so the table is complete. `no-store`
+          // above means there is no cached copy to go stale.
+          http.response = new Response(`${_routeTablePrelude()}${_runtimeBundle}`, {
             status: 200,
             headers: {
               "Content-Type": "text/javascript; charset=utf-8",
@@ -1292,7 +1316,7 @@ export class FlowProvider extends ServiceProvider {
     // unit into a restart loop. See @zerotal/core/dev/bootBuild.ts.
     const decision = await bootBuildDecision(
       [...(cssExists ? [cssOutdir] : []), ...(jsExists ? [jsOutdir] : [])],
-      config.safe<string>("app.env", Bun.env["APP_ENV"] ?? "development"),
+      config.safe<string>("app.env", deployEnv() || "development"),
     );
     if (!decision.build) {
       console.info(`[Flow] ${decision.reason}`);

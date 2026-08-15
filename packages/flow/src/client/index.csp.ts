@@ -20,6 +20,10 @@ import { initBridge, registerFlowMagic, setCspMode } from "./bridge.ts";
 import { registerHeadless } from "./headless.ts";
 import { installCspEvaluator } from "./cspAdapter.ts";
 import { initClientStore } from "../store.ts";
+import { installClientRoutes } from "./routes.ts";
+
+// Install the route table before anything can evaluate a `$route(...)` binding.
+installClientRoutes();
 
 (window as unknown as Record<string, unknown>).Alpine = Alpine;
 

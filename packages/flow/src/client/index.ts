@@ -21,6 +21,10 @@ import resize from "@alpinejs/resize";
 import { initBridge, registerFlowMagic } from "./bridge.ts";
 import { registerHeadless } from "./headless.ts";
 import { initClientStore } from "../store.ts";
+import { installClientRoutes } from "./routes.ts";
+
+// Install the route table before anything can evaluate a `$route(...)` binding.
+installClientRoutes();
 
 // Expose Alpine on window so FlowComponent and third-party Alpine plugins
 // can access it via window.Alpine (standard Alpine convention).

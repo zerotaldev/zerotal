@@ -1,3 +1,5 @@
+import type { ClassRef } from "../../support/classRef.ts";
+
 /** Discriminator for every relation kind the ORM supports. */
 export type RelationType =
   | "hasMany"
@@ -70,7 +72,7 @@ export type RelationDefinition = RelationMetadata;
  * relation (property) name. Populated by the relation decorators at class-definition
  * time and consulted by {@link ModelQueryBuilder} when resolving a relation.
  */
-export const relationRegistry = new Map<Function, Map<string, RelationMetadata>>();
+export const relationRegistry = new Map<ClassRef, Map<string, RelationMetadata>>();
 
 // ── Pivot collection ─────────────────────────────────────────────────────────
 

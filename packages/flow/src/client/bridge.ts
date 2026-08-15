@@ -1915,16 +1915,6 @@ function _focusFirstError(comp: FlowComponent): void {
   if (invalid) (invalid as HTMLElement).focus();
 }
 
-// Local copy by design: this file ships to browsers as part of the client
-// bundle and cannot import server-side @zerotal/core helpers.
-function debounce<T extends unknown[]>(fn: (...args: T) => void, ms: number): (...args: T) => void {
-  let timer: ReturnType<typeof setTimeout>;
-  return (...args: T) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  };
-}
-
 /**
  * Find the nearest ancestor carrying `flow:<event>`, with or without modifiers.
  *

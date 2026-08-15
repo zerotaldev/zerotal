@@ -12,6 +12,7 @@
  * helper that reads a property off a hydrated instance must derive the same
  * name hydration produced.
  */
+import type { ClassRef } from "./classRef.ts";
 
 // DB schemas are static: the same names appear on every row. Caching the regex
 // result turns thousands of executions into Map lookups after the first query.
@@ -51,12 +52,12 @@ export function toSnakeColumn(s: string): string {
  * `Function.prototype` (not a falsy `.name`) so anonymous mixin classes are
  * still visited. Shared by cast collection and global-scope merging.
  */
-export function ctorChain(ctor: Function): Function[] {
-  const chain: Function[] = [];
-  let current: Function | null = ctor;
+export function ctorChain(ctor: ClassRef): ClassRef[] {
+  const chain: ClassRef[] = [];
+  let current: ClassRef | null = ctor;
   while (current && current !== Function.prototype) {
     chain.unshift(current);
-    current = Object.getPrototypeOf(current) as Function | null;
+    current = Object.getPrototypeOf(current) as ClassRef | null;
   }
   return chain;
 }

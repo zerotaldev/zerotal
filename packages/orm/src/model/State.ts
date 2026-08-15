@@ -22,6 +22,7 @@
 import { StateError } from "../errors/index.ts";
 import { currentOrmContext } from "./OrmContext.ts";
 import type { Constructor } from "./mixins.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ export type TransitionCallback<T> = (
 // ── Callback registry (execution-scoped on the OrmContext) ────────────────────
 
 /** @internal Register or retrieve transition callbacks for a model class. */
-function _getCallbacks(ModelClass: Function, state: string): TransitionCallback<unknown>[] {
+function _getCallbacks(ModelClass: ClassRef, state: string): TransitionCallback<unknown>[] {
   const reg = currentOrmContext().transitionCallbacks;
   if (!reg.has(ModelClass)) reg.set(ModelClass, new Map());
   const map = reg.get(ModelClass)!;
@@ -169,7 +170,7 @@ export function State<TBase extends Constructor>(Base: TBase) {
       toState: string,
       callback: TransitionCallback<T>,
     ): void {
-      _getCallbacks(this as unknown as Function, toState).push(
+      _getCallbacks(this as unknown as ClassRef, toState).push(
         callback as TransitionCallback<unknown>,
       );
     }
@@ -260,7 +261,7 @@ export function State<TBase extends Constructor>(Base: TBase) {
       await (this as unknown as { save(): Promise<unknown> }).save();
 
       // Fire registered transition callbacks.
-      const map = currentOrmContext().transitionCallbacks.get(this.constructor as Function);
+      const map = currentOrmContext().transitionCallbacks.get(this.constructor as ClassRef);
       const meta = { from: currentState, to: newState };
       const toFns = (map?.get(newState) ?? []) as TransitionCallback<unknown>[];
       const anyFns = (map?.get("*") ?? []) as TransitionCallback<unknown>[];

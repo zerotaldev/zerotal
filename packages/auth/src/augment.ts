@@ -1,4 +1,3 @@
-import type { AuthUser } from "./AuthUser.ts";
 import type { UserModel } from "./facades/Auth.ts";
 import type { Policy } from "./Policy.ts";
 import type { GateService } from "./GateService.ts";

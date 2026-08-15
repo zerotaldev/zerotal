@@ -1046,7 +1046,6 @@ describe("Bus constructor", () => {
 // ── WorkerPool ────────────────────────────────────────────────────────────────
 
 import { WorkerPool } from "./WorkerPool.ts";
-import type { WorkerResult } from "./WorkerPool.ts";
 
 describe("WorkerPool — terminate before start", () => {
   it("terminate() with empty pool resolves immediately", async () => {

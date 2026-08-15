@@ -16,6 +16,7 @@
  */
 
 import type { BindingToken } from "./types.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 /**
  * Module-level registry: constructor → ordered dependency tokens.
@@ -23,7 +24,7 @@ import type { BindingToken } from "./types.ts";
  * @internal Populated by {@link inject} and read by the container during
  * auto-wiring; not part of the public API.
  */
-export const injectRegistry = new Map<Function, BindingToken[]>();
+export const injectRegistry = new Map<ClassRef, BindingToken[]>();
 
 /**
  * Mark a class for auto-wiring by the container, declaring its constructor

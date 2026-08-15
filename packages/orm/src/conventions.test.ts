@@ -4,6 +4,7 @@ import { BaseModel, _setModelEventDispatcher } from "./model/BaseModel.ts";
 import { column } from "./model/decorators/column.ts";
 import { registerModel, columnsFor, modelByName } from "./model/decorators/_metadata.ts";
 import { HookRegistry } from "./model/hooks/HookRegistry.ts";
+import type { ClassRef } from "./support/classRef.ts";
 
 describe("convention: registerModel (no @table)", () => {
   it("claims columns by probe and indexes the model by name", () => {
@@ -15,11 +16,11 @@ describe("convention: registerModel (no @table)", () => {
     const W = Widget as unknown as { table?: string };
     if (!W.table) W.table = tableNameFor(Widget.name); // mirrors the models concern
 
-    const cols = columnsFor(Widget as unknown as Function)!;
+    const cols = columnsFor(Widget as unknown as ClassRef)!;
     expect(cols.get("name")?.type).toBe("string");
     expect(cols.get("size")?.type).toBe("number");
     expect(W.table).toBe("widgets");
-    expect(modelByName("Widget")).toBe(Widget as unknown as Function);
+    expect(modelByName("Widget")).toBe(Widget as unknown as ClassRef);
   });
 });
 
@@ -38,7 +39,7 @@ describe("convention: dispatchesEvents bridge", () => {
     _setModelEventDispatcher((e) => captured.push(e));
 
     const inst = new Order();
-    await HookRegistry.run(Order as unknown as Function, "afterCreate", inst);
+    await HookRegistry.run(Order as unknown as ClassRef, "afterCreate", inst);
 
     expect(captured.length).toBe(1);
     expect(captured[0]).toBeInstanceOf(OrderPlaced);
@@ -56,7 +57,7 @@ describe("convention: dispatchesEvents bridge", () => {
 
     const captured: object[] = [];
     _setModelEventDispatcher((e) => captured.push(e));
-    await HookRegistry.run(Thing as unknown as Function, "afterUpdate", new Thing());
+    await HookRegistry.run(Thing as unknown as ClassRef, "afterUpdate", new Thing());
 
     expect(captured.length).toBe(0);
     _setModelEventDispatcher(undefined);

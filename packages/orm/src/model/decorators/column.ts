@@ -7,6 +7,7 @@ import {
   columnsFor,
   reactiveColumnsFor,
 } from "./_metadata.ts";
+import type { ClassRef } from "../../support/classRef.ts";
 
 // Re-exported here for the public API — populated at class-definition time via @table.
 export { columnRegistry };
@@ -331,9 +332,9 @@ export function column(
  * @internal
  */
 export function installReactiveAccessors(instance: object): void {
-  const reactive = reactiveColumnsFor(instance.constructor as Function);
+  const reactive = reactiveColumnsFor(instance.constructor as ClassRef);
   if (!reactive.length) return;
-  const cols = columnsFor(instance.constructor as Function);
+  const cols = columnsFor(instance.constructor as ClassRef);
   for (const name of reactive) {
     const desc = Object.getOwnPropertyDescriptor(instance, name);
     if (desc && typeof desc.get === "function") continue; // already installed

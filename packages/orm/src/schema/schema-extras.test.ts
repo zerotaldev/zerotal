@@ -659,23 +659,25 @@ describe("SchemaInspector (SQLite)", () => {
 
 describe("ModelInspector", () => {
   it("fromClass() returns null for class with no @column decorators", () => {
-    class NoColumns {}
-    (NoColumns as unknown as Record<string, unknown>)["table"] = "no_cols";
+    class NoColumns {
+      static table = "no_cols";
+    }
     expect(ModelInspector.fromClass(NoColumns)).toBeNull();
   });
 
   it("fromClass() returns null for class with no static table", () => {
-    function WithCols() {}
+    class WithCols {}
     columnRegistry.set(WithCols, new Map([["name", { type: "string" }]]));
     expect(ModelInspector.fromClass(WithCols)).toBeNull();
   });
 
   it("fromClass() returns correct schema for a class with @column and static table", () => {
-    function MyModel() {}
-    (MyModel as unknown as Record<string, unknown>)["table"] = "my_models";
-    (MyModel as unknown as Record<string, unknown>)["primaryKey"] = "id";
-    (MyModel as unknown as Record<string, unknown>)["timestamps"] = true;
-    (MyModel as unknown as Record<string, unknown>)["softDeletes"] = false;
+    class MyModel {
+      static table = "my_models";
+      static primaryKey = "id";
+      static timestamps = true;
+      static softDeletes = false;
+    }
     columnRegistry.set(
       MyModel,
       new Map([
@@ -694,8 +696,9 @@ describe("ModelInspector", () => {
   });
 
   it("fromClass() uses defaults when optional static fields are absent", () => {
-    function MinModel() {}
-    (MinModel as unknown as Record<string, unknown>)["table"] = "min_models";
+    class MinModel {
+      static table = "min_models";
+    }
     columnRegistry.set(MinModel, new Map([["x", { type: "number" }]]));
     const schema = ModelInspector.fromClass(MinModel);
     expect(schema!.primaryKey).toBe("id");
@@ -704,8 +707,9 @@ describe("ModelInspector", () => {
   });
 
   it("all() includes schemas for registered classes with table", () => {
-    function AModel() {}
-    (AModel as unknown as Record<string, unknown>)["table"] = "a_models";
+    class AModel {
+      static table = "a_models";
+    }
     columnRegistry.set(AModel, new Map([["col", { type: "string" }]]));
     const schemas = ModelInspector.all();
     expect(schemas.some((s) => s.table === "a_models")).toBe(true);

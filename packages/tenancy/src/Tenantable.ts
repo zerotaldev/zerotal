@@ -35,6 +35,7 @@ import { TenantContext } from "./TenantContext.ts";
 import { _globalScopeRegistry, ModelQueryBuilder as MQB, HookRegistry } from "@zerotal/orm";
 import type { ModelQueryBuilder } from "@zerotal/orm";
 import type { BaseModel } from "@zerotal/orm";
+import type { ClassRef } from "@zerotal/core";
 
 const SCOPE_NAME = "__tenant__";
 const DEFAULT_COLUMN = "tenant_id";
@@ -52,7 +53,7 @@ function _tenantColumn(ctor: unknown): string {
  * module-load; `TenancyProvider.onBooted()` drains it once the ORM context is live.
  * After boot, new classes are registered immediately via `_markTenantProviderBooted()`.
  */
-export const _pendingTenantable = new Set<Function>();
+export const _pendingTenantable = new Set<ClassRef>();
 let _tenantProviderBooted = false;
 export function _markTenantProviderBooted(): void {
   _tenantProviderBooted = true;
@@ -62,7 +63,7 @@ export function _markTenantProviderBooted(): void {
  * Wire the global query scope and beforeCreate hook onto a model class.
  * Called by `TenancyProvider.onBooted()` for each `Tenantable`-composed class.
  */
-export function registerTenantScoping(cls: Function): void {
+export function registerTenantScoping(cls: ClassRef): void {
   // ── 1. Global query scope ────────────────────────────────────────────────
   const registry = _globalScopeRegistry();
   let scopes = registry.get(cls as unknown as typeof BaseModel);

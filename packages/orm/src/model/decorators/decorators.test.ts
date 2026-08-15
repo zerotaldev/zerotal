@@ -24,10 +24,11 @@ import { morphToMany } from "./morphToMany.ts";
 import { morphedByMany } from "./morphedByMany.ts";
 import { hasManyThrough } from "./hasManyThrough.ts";
 import { hasOneThrough } from "./hasOneThrough.ts";
+import type { ClassRef } from "../../support/classRef.ts";
 class Related {}
 
 /** Relation metadata registered for a class field, loosely typed. */
-function relMeta(Cls: Function, field: string): Record<string, unknown> {
+function relMeta(Cls: ClassRef, field: string): Record<string, unknown> {
   return relationsFor(Cls).get(field) as unknown as Record<string, unknown>;
 }
 

@@ -246,7 +246,7 @@ export class Container {
 
     if (!binding) {
       throw new BindingNotFoundError(
-        typeof canonical === "function" ? (canonical as Function).name : String(canonical),
+        typeof canonical === "function" ? canonical.name : String(canonical),
       );
     }
 
@@ -353,7 +353,7 @@ export class Container {
     }
 
     throw new BindingNotFoundError(
-      typeof canonical === "function" ? (canonical as Function).name : String(canonical),
+      typeof canonical === "function" ? canonical.name : String(canonical),
     );
   }
 
@@ -442,7 +442,7 @@ export class Container {
   private _guardCycle(token: unknown, _chain: readonly unknown[]): readonly unknown[] {
     if (_chain.includes(token)) {
       const errorChain = [..._chain, token].map((entry) =>
-        typeof entry === "function" ? (entry as Function).name : String(entry),
+        typeof entry === "function" ? entry.name : String(entry),
       );
       throw new CircularDependencyError(errorChain);
     }

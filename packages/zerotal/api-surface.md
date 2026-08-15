@@ -1095,6 +1095,8 @@ type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 
 type BindingToken = keyof ContainerBindings | ClassToken<T> | AbstractToken<T>
 
+type ClassRef = abstract new (...args: never[]) => unknown
+
 type ContextKey = never
 
 type ContextValue = ContextRegistry[K]
@@ -5621,9 +5623,9 @@ class ForeignKeyBuilder = {
 
 class HookRegistry = {
   new (): HookRegistry
-  static onAfterRun: ((ModelClass: Function, hook: HookName, model: unknown) => void) | undefined
-  static register: <T>(ModelClass: Function, hook: HookName, fn: HookFn<T>) => void
-  static run: <T>(ModelClass: Function, hook: HookName, model: T) => Promise<void>
+  static onAfterRun: ((ModelClass: ClassRef, hook: HookName, model: unknown) => void) | undefined
+  static register: <T>(ModelClass: ClassRef, hook: HookName, fn: HookFn<T>) => void
+  static run: <T>(ModelClass: ClassRef, hook: HookName, model: T) => Promise<void>
 }
 
 class JsonCast = {
@@ -5933,11 +5935,11 @@ class NPlusOneError = {
 
 class OrmContext = {
   new (): OrmContext
-  globalScopes: Map<Function, Map<string, unknown>>
-  hooks: Map<Function, Map<string, unknown[]>>
+  globalScopes: Map<ClassRef, Map<string, unknown>>
+  hooks: Map<ClassRef, Map<string, unknown[]>>
   namedConnections: Map<string, SQLInstance>
   overrideConnection: SQLInstance | null
-  transitionCallbacks: Map<Function, Map<string, unknown[]>>
+  transitionCallbacks: Map<ClassRef, Map<string, unknown[]>>
 }
 
 class PostgresDialect = {
@@ -6130,15 +6132,15 @@ class UnsupportedDialectError = {
   readonly status: number
 }
 
-const columnRegistry = Map<Function, Map<string, ColumnOptions>>
+const columnRegistry = Map<ClassRef, Map<string, ColumnOptions>>
 
 const DB = {    table(tableName: string): QueryBuilder;    raw<T = Record<string, unknown>>(sql: TemplateStringsArray | string, ...rest: unknown[]): Promise<T[]>;    transaction<T>(callback: (tx?: SQLInstance) => Promise<T>, attempts?: number): Promise<T>;    beginTransaction(): Promise<ManualTransaction>;    onPrimary(): {        table(name: string): QueryBuilder;    };    currentTx(): unknown | undefined;    advisoryLock<T>(key: number, callback: () => Promise<T>): Promise<T>;    preventNPlusOne(options?: NPlusOneOptions): void;    allowNPlusOne(pattern: string, options?: {        once?: boolean;    }): void;}
 
-const ModelInspector = {    load(pattern: string, cwd?: string): Promise<void>;    all(): ModelSchema[];    fromClass(ctor: Function): ModelSchema | null;}
+const ModelInspector = {    load(pattern: string, cwd?: string): Promise<void>;    all(): ModelSchema[];    fromClass(ctor: ClassRef): ModelSchema | null;}
 
-const modelsByName = Map<string, Function>
+const modelsByName = Map<string, ClassRef>
 
-const relationRegistry = Map<Function, Map<string, RelationMetadata>>
+const relationRegistry = Map<ClassRef, Map<string, RelationMetadata>>
 
 const Schema = {    create(table: string, callback: (bp: Blueprint) => void): Promise<void>;    createIfNotExists(table: string, callback: (bp: Blueprint) => void): Promise<void>;    table(name: string, callback: (bp: Blueprint) => void): Promise<void>;    alter(name: string, callback: (bp: Blueprint) => void): Promise<void>;    drop(table: string): Promise<void>;    dropIfExists(table: string): Promise<void>;    rename(from: string, to: string): Promise<void>;    hasTable(table: string): Promise<boolean>;    hasColumn(table: string, column: string): Promise<boolean>;}
 
@@ -6160,7 +6162,7 @@ function _getDialect = () => 'sqlite' | 'postgres' | 'mysql'
 
 function _getModelConnection = () => SQLInstance
 
-function _globalScopeRegistry = () => Map<Function, Map<string, GlobalScopeCallback>>
+function _globalScopeRegistry = () => Map<ClassRef, Map<string, GlobalScopeCallback>>
 
 function _normaliseSqliteUrl = (raw: string) => string
 
@@ -6186,7 +6188,7 @@ function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_va
 
 function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
 
-function columnsFor = (ctor: Function) => Map<string, ColumnOptions> | null
+function columnsFor = (ctor: ClassRef) => Map<string, ColumnOptions> | null
 
 function createReadWriteRouter = (primary: SQLInstance, replicas: SQLInstance[]) => SQLInstance
 
@@ -6214,7 +6216,7 @@ function json = <T = unknown>(mapper?: CastMapper<T>) => JsonCast<T>
 
 function manyToMany = (related: () => unknown, options: ManyToManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
-function modelByName = (name: string) => Function | undefined
+function modelByName = (name: string) => ClassRef | undefined
 
 function modelForParam = (paramName: string) => ImplicitModel | undefined
 
@@ -6232,13 +6234,13 @@ function objectOf = <T = unknown>(mapper?: CastMapper<T>) => JsonCast<T>
 
 function preventNPlusOne = (options?: NPlusOneOptions) => void
 
-function registerColumn = (ctor: Function, name: string, options: ColumnOptions) => void
+function registerColumn = (ctor: ClassRef, name: string, options: ColumnOptions) => void
 
 function registerConnectionResolver = (fn: ContextConnectionResolver | null) => void
 
 function registerImplicitBinding = () => void
 
-function registerModel = (ctor: Function) => void
+function registerModel = (ctor: ClassRef) => void
 
 function registerModelConnection = (name: string, conn: SQLInstance, dialect?: Dialect) => void
 
@@ -6621,7 +6623,7 @@ interface SynchronizeOptions = {
 }
 
 interface TableDecoratorBuilder = {
-  (target: Function, context?: unknown): void
+  (target: ClassRef, context?: unknown): void
   primaryKey: (key: string) => TableDecoratorBuilder
   withTimestamps: () => TableDecoratorBuilder
   withoutTimestamps: () => TableDecoratorBuilder
@@ -6639,6 +6641,8 @@ interface TransitionContext = {
 }
 
 type CastMapper = ((raw: unknown) => T) | (new (...args: never[]) => T)
+
+type ClassRef = abstract new (...args: never[]) => unknown
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 

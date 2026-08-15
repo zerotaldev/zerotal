@@ -3,6 +3,7 @@ import { tableNameFor } from "@zerotal/core";
 import { BaseModel } from "./model/BaseModel.ts";
 import { registerModel, modelByName } from "./model/decorators/_metadata.ts";
 import { frameworkLog } from "@zerotal/core/logger";
+import type { ClassRef } from "./support/classRef.ts";
 
 function isModelClass(v: unknown): boolean {
   return (
@@ -26,7 +27,7 @@ export const modelsConcern: ConcernDescriptor = {
     for (const exported of Object.values(mod)) {
       if (!isModelClass(exported)) continue;
       const Model = exported as unknown as { name: string; table?: string };
-      registerModel(Model as unknown as Function);
+      registerModel(Model as unknown as ClassRef);
       // Convention table name — explicit @table / static table always wins.
       if (!Model.table) Model.table = tableNameFor(Model.name);
     }

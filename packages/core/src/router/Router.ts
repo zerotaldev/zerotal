@@ -43,7 +43,8 @@ import {
  * The `Route` export from '@zerotal/core' is typed as `typeof Router & RouterMacros`
  * so every declared macro is callable as a static method.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intentional augmentation target: external packages merge macros in via `declare module`.
+// Intentionally empty: it is an augmentation target, and external packages merge
+// their macros in via `declare module`.
 export interface RouterMacros {}
 
 // ── Handler wrappers ──────────────────────────────────────────────────────────

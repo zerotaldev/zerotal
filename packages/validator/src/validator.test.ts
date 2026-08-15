@@ -6,6 +6,7 @@ import { ValidatorFacade } from "./facades/Validator.ts";
 import { ValidationRedirectError, ValidationJsonError } from "./ValidationError.ts";
 import { ValidatorConfig } from "./config.ts";
 import { registerDbRuleRunner, runDbRule, _resetDbRuleRunner } from "./dbRules.ts";
+import { FormRequest } from "./FormRequest.ts";
 
 const rules = new RuleBuilder();
 
@@ -1383,18 +1384,21 @@ describe("dbRules", () => {
 // ── FormRequest.macro() / base rules() ───────────────────────────────────────
 
 describe("FormRequest — macro() and base rules()", () => {
-  const { FormRequest } = require("./FormRequest.ts");
+  // FormRequest is abstract but declares no abstract members: the base `rules()`
+  // exists and throws. A bare subclass is what an app writes before it overrides
+  // anything, so it is also what these two tests need.
+  class BareRequest extends FormRequest {}
 
   it("macro() attaches a method to FormRequest.prototype", () => {
     FormRequest.macro("testHelper", function () {
       return 42;
     });
-    const inst = new FormRequest();
+    const inst = new BareRequest();
     expect((inst as any).testHelper()).toBe(42);
   });
 
   it("base rules() throws not-implemented", () => {
-    const inst = new FormRequest();
+    const inst = new BareRequest();
     expect(() => inst.rules({} as any)).toThrow("not implemented");
   });
 });
@@ -1402,7 +1406,6 @@ describe("FormRequest — macro() and base rules()", () => {
 // ── validate() HTTP helper ────────────────────────────────────────────────────
 
 import { validate } from "./validate.ts";
-import { ValidationRedirectError, ValidationJsonError } from "./ValidationError.ts";
 
 function makeCtx(opts: {
   method?: string;

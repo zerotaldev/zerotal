@@ -1095,6 +1095,8 @@ type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 
 type BindingToken = keyof ContainerBindings | ClassToken<T> | AbstractToken<T>
 
+type ClassRef = abstract new (...args: never[]) => unknown
+
 type ContextKey = never
 
 type ContextValue = ContextRegistry[K]

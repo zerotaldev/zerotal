@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { BaseModel, columnRegistry } from "@zerotal/orm";
 import { Cast, json, objectOf, arrayOf } from "./Cast.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 class Address {
   street = "";
@@ -65,7 +66,7 @@ class Widget extends BaseModel {
   static override table = "cast_widgets";
 }
 columnRegistry.set(
-  Widget as unknown as Function,
+  Widget as unknown as ClassRef,
   new Map<string, any>([
     ["id", { primary: true }],
     ["scaled", { cast: new Factor(3) }],

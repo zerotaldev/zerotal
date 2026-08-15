@@ -3,6 +3,7 @@ import type { ColumnOptions } from "../model/decorators/column.ts";
 import { columnRegistry, columnsFor } from "../model/decorators/_metadata.ts";
 import { ctorChain } from "../support/identifiers.ts";
 import { isEncryptedCast } from "../casts/encrypted.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 // ── Model schema descriptor ───────────────────────────────────────────────────
 
@@ -50,7 +51,7 @@ export function columnDbName(name: string): string {
  * declared on `User` appear in `AdminUser`'s schema without needing to be
  * re-declared.
  */
-function collectColumns(ctor: Function): Map<string, ColumnOptions> | null {
+function collectColumns(ctor: ClassRef): Map<string, ColumnOptions> | null {
   // columnsFor walks the prototype chain (child overrides parent) and mirrors each
   // class's metadata into columnRegistry on first read.
   return columnsFor(ctor);
@@ -147,7 +148,7 @@ export const ModelInspector = {
    * Returns null if the class has no `static table` or no `@column()` fields
    * anywhere in its prototype chain.
    */
-  fromClass(ctor: Function): ModelSchema | null {
+  fromClass(ctor: ClassRef): ModelSchema | null {
     const M = ctor as unknown as Record<string, unknown>;
     const table = M["table"] as string | undefined;
     if (!table) return null;

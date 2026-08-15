@@ -82,6 +82,19 @@ const COLS_CLASS = [
 ];
 const SPAN_CLASS = ["", "", "sm:col-span-2", "sm:col-span-3", "sm:col-span-4"];
 
+/**
+ * The pivot object a BelongsToMany relation method returns when called without
+ * eager-loading. Reached by name off a model instance, so the methods are
+ * optional: the page checks each one before calling it, and a relation that is
+ * not many-to-many has none of them.
+ */
+interface PivotProxy {
+  attach?: (id: unknown) => unknown;
+  detach?: (id: unknown) => unknown;
+  get?: () => unknown;
+  all?: () => unknown;
+}
+
 export class RecordViewPage extends Component {
   static layout = AdminLayout;
   /** Set by each generated subclass. */
@@ -459,9 +472,7 @@ export class RecordViewPage extends Component {
   @expose attachDraft: Record<string, string> = {};
 
   /** Resolve a parent model *instance* and its relation object by method name. */
-  private async _relation(
-    relationName: string,
-  ): Promise<{ attach?: Function; detach?: Function; get?: Function; all?: Function } | null> {
+  private async _relation(relationName: string): Promise<PivotProxy | null> {
     const model = this._resource.model as unknown as {
       find?: (id: unknown) => Promise<Record<string, unknown> | null>;
     };
@@ -469,12 +480,7 @@ export class RecordViewPage extends Component {
     const parent = (await model.find(this.recordId)) as Record<string, unknown> | null;
     const fn = parent && (parent as Record<string, unknown>)[relationName];
     if (typeof fn !== "function") return null;
-    return (fn as () => unknown).call(parent) as {
-      attach?: Function;
-      detach?: Function;
-      get?: Function;
-      all?: Function;
-    };
+    return (fn as () => unknown).call(parent) as PivotProxy;
   }
 
   /** Load the rows currently attached through a BelongsToMany relation. */

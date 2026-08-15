@@ -1088,7 +1088,7 @@ export function jsx(
       // Emitted as flow:{event} so the bridge detects the $flow prefix and
       // evaluates it via Alpine instead of sending a WebSocket action.
       if (typeof target === "function" && !target.name && k.startsWith("on")) {
-        const body = _clientExprFromFn(target as Function);
+        const body = _clientExprFromFn(target);
         const event = k.slice(2).toLowerCase();
         const base = `flow:${event}`;
         const attr = modifiers ? `${base}.${modifiers}` : base;

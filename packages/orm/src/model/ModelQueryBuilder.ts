@@ -22,11 +22,12 @@ import type { BaseModel } from "./BaseModel.ts";
 import { type ColumnOptions } from "./decorators/column.ts";
 import { columnsFor, relationsFor } from "./decorators/_metadata.ts";
 import { currentOrmContext } from "./OrmContext.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 type StringCast = "datetime" | "array" | "json" | "date" | "boolean" | "integer" | "float";
 type CastOption = ColumnOptions["cast"];
 
-function _getCasts(ctor: Function): Record<string, CastOption> {
+function _getCasts(ctor: ClassRef): Record<string, CastOption> {
   const merged: Record<string, CastOption> = {};
   const colReg = columnsFor(ctor);
   // Mirrors getCasts() in BaseModel: `static encryptable` resolves to casts, and an
@@ -274,9 +275,9 @@ function _createPivotCollection<T extends BaseModel>(
 // BaseModel as a type only — no cycle.
 
 export type GlobalScopeCallback = (qb: ModelQueryBuilder<BaseModel>) => void;
-export function _globalScopeRegistry(): Map<Function, Map<string, GlobalScopeCallback>> {
+export function _globalScopeRegistry(): Map<ClassRef, Map<string, GlobalScopeCallback>> {
   return currentOrmContext().globalScopes as unknown as Map<
-    Function,
+    ClassRef,
     Map<string, GlobalScopeCallback>
   >;
 }
@@ -1248,8 +1249,8 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
 
     const rawKey = column.split(".").pop() ?? column;
     const camelKey = rawKey.includes("_") ? _toCamel(rawKey) : rawKey;
-    const casts = _getCasts(this._ModelClass as unknown as Function);
-    const colMeta = columnsFor(this._ModelClass as unknown as Function)?.get(camelKey);
+    const casts = _getCasts(this._ModelClass as unknown as ClassRef);
+    const colMeta = columnsFor(this._ModelClass as unknown as ClassRef)?.get(camelKey);
     const castOpt = casts[rawKey] ?? casts[camelKey] ?? colMeta?.cast;
     const colType = colMeta?.type;
 
@@ -1323,9 +1324,9 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
       if (spec.children.length > 0 && related.length > 0) {
         if (meta.type === "morphTo") {
           // Mixed related classes — group by constructor and recurse per group.
-          const groups = new Map<Function, BaseModel[]>();
+          const groups = new Map<ClassRef, BaseModel[]>();
           for (const r of related) {
-            const ctor = r.constructor as Function;
+            const ctor = r.constructor as ClassRef;
             if (!groups.has(ctor)) groups.set(ctor, []);
             groups.get(ctor)!.push(r);
           }

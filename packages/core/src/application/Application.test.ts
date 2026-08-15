@@ -800,7 +800,11 @@ describe("Application._buildWsConfig()", () => {
     app.enableDevWs();
     app.withWebSocket(broadcastHandlers as never);
 
-    type WsCfg = { open: Function; message: Function; close: Function };
+    type WsCfg = {
+      open: (ws: unknown) => void;
+      message: (ws: unknown, message: unknown) => void;
+      close: (ws: unknown, code: number, reason: string) => void;
+    };
     const cfg = (app as unknown as { _buildWsConfig(): WsCfg })._buildWsConfig()!;
 
     const devWs = { data: { _dev: true }, send: () => {} };
@@ -836,21 +840,25 @@ describe("Application.boot() — config discovery and conventions", () => {
     const app = Application.create({ env: "test" });
     app.useConfig({ app: { name: "TestApp" } });
     await app.boot();
-    const { ConfigManager } = await import("../config/ConfigManager.ts");
-    const cfg = app.container.makeSync("config") as InstanceType<typeof ConfigManager>;
+    const cfg = app.container.makeSync(
+      "config",
+    ) as import("../config/ConfigManager.ts").ConfigManager;
     expect(cfg.get("app.name")).toBe("TestApp");
   });
 });
 
 // ── bootAsWorker() ────────────────────────────────────────────────────────────
 
+/** What `bootAsWorker()` registers with `process.on` — the tests fire it with no arguments. */
+type SignalHandler = (...args: never[]) => unknown;
+
 describe("Application.bootAsWorker()", () => {
   let savedProcessOn: typeof process.on;
-  const signalHandlers: Record<string, Function> = {};
+  const signalHandlers: Record<string, SignalHandler> = {};
 
   beforeEach(() => {
     savedProcessOn = process.on.bind(process);
-    (process as unknown as Record<string, unknown>).on = (event: string, fn: Function) => {
+    (process as unknown as Record<string, unknown>).on = (event: string, fn: SignalHandler) => {
       signalHandlers[event] = fn;
       return process;
     };

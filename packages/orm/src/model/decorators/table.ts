@@ -1,4 +1,5 @@
 import { drainPendingMembers } from "./_metadata.ts";
+import type { ClassRef } from "../../support/classRef.ts";
 
 /**
  * Options object accepted as the second argument to `@table()`.
@@ -50,7 +51,7 @@ interface TableConfig {
  */
 export interface TableDecoratorBuilder {
   /** Apply the decorator to a class constructor (called automatically by TS). */
-  (target: Function, context?: unknown): void;
+  (target: ClassRef, context?: unknown): void;
 
   /** Enable automatic `created_at` / `updated_at` management. Default: on. */
   withTimestamps(): TableDecoratorBuilder;
@@ -92,7 +93,7 @@ export function table(tableName: string, options: TableOptions = {}): TableDecor
     primaryKey: options.primaryKey ?? "id",
   };
 
-  function apply(target: Function, _context?: unknown): void {
+  function apply(target: ClassRef, _context?: unknown): void {
     // Drain the @column / @relation registrations queued while this class's members were
     // decorated. @table is the definition-time anchor that owns this — see _metadata.ts.
     drainPendingMembers(target);

@@ -46,6 +46,7 @@ import {
 import { TransactionContext } from "../db/TransactionContext.ts";
 import type { InsertPayload, UpdatePayload, FillablePayload } from "./payload.ts";
 import type { WhereOperator, OrderDirection } from "../db/types.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 let _dialect: "sqlite" | "postgres" | "mysql" = "sqlite";
 
@@ -233,13 +234,13 @@ type StringCast =
   | `decimal:${number}`;
 type CastOption = ColumnOptions["cast"];
 
-function getCasts(ctor: Function): Record<string, CastOption> {
+function getCasts(ctor: ClassRef): Record<string, CastOption> {
   const merged: Record<string, CastOption> = {};
-  const chain: Function[] = [];
-  let current: Function | null = ctor;
+  const chain: ClassRef[] = [];
+  let current: ClassRef | null = ctor;
   while (current && current !== Function.prototype) {
     chain.push(current);
-    current = Object.getPrototypeOf(current) as Function | null;
+    current = Object.getPrototypeOf(current) as ClassRef | null;
   }
   chain.reverse();
   // `static encryptable` first, so an explicit cast on the same column still wins —
@@ -426,7 +427,7 @@ type ModelCtor<T extends BaseModel> = typeof BaseModel & { new (): T };
  * (`Roles(Permissions(Base))`), where each relation lives on a different
  * class in the chain.
  */
-function relNames(ctor: Function): Set<string> {
+function relNames(ctor: ClassRef): Set<string> {
   return new Set(relationsFor(ctor).keys());
 }
 
@@ -463,7 +464,7 @@ function* ownDataEntries(
  * (rare edge case: a model with zero @column decorators) so callers can fall back
  * to the old unrestricted behaviour.
  */
-function _allColumnKeys(cls: Function): Set<string> | null {
+function _allColumnKeys(cls: ClassRef): Set<string> | null {
   const cols = columnsFor(cls);
   return cols ? new Set(cols.keys()) : null;
 }
@@ -1524,8 +1525,8 @@ export class BaseModel {
     const ModelClass = this as unknown as typeof BaseModel;
     const conn = _resolveConn(ModelClass);
     const dialect = dialectFor(conn as unknown as object);
-    const casts = getCasts(ModelClass as unknown as Function);
-    const colReg = columnsFor(ModelClass as unknown as Function);
+    const casts = getCasts(ModelClass as unknown as ClassRef);
+    const colReg = columnsFor(ModelClass as unknown as ClassRef);
     const useTs = ModelClass.timestamps;
 
     const rows: Record<string, unknown>[] = _writeDialect.run(dialect, () => {
@@ -1610,8 +1611,8 @@ export class BaseModel {
   ): Promise<void> {
     const conn = _resolveConn(this);
     const dialect = dialectFor(conn as unknown as object);
-    const casts = getCasts(this as unknown as Function);
-    const colReg = columnsFor(this as unknown as Function);
+    const casts = getCasts(this as unknown as ClassRef);
+    const colReg = columnsFor(this as unknown as ClassRef);
 
     const row: Record<string, unknown> = _writeDialect.run(dialect, () => {
       const r: Record<string, unknown> = {};
@@ -1697,8 +1698,8 @@ export class BaseModel {
     const ModelClass = this.constructor as typeof BaseModel;
     const conn = _resolveConn(ModelClass);
     const dialect = dialectFor(conn as unknown as object);
-    const rels = relNames(ModelClass as unknown as Function);
-    const casts = getCasts(ModelClass as unknown as Function);
+    const rels = relNames(ModelClass as unknown as ClassRef);
+    const casts = getCasts(ModelClass as unknown as ClassRef);
 
     await HookRegistry.run(ModelClass, "beforeSave", this);
 
@@ -1730,8 +1731,8 @@ export class BaseModel {
       }
     }
 
-    const colReg = columnsFor(ModelClass as unknown as Function);
-    const colKeys = _allColumnKeys(ModelClass as unknown as Function);
+    const colReg = columnsFor(ModelClass as unknown as ClassRef);
+    const colKeys = _allColumnKeys(ModelClass as unknown as ClassRef);
 
     if (!this._exists) {
       // ── INSERT ──
@@ -1995,8 +1996,8 @@ export class BaseModel {
    */
   replicate(except?: string[]): this {
     const ModelClass = this.constructor as typeof BaseModel;
-    const rels = relNames(ModelClass as unknown as Function);
-    const colKeys = _allColumnKeys(ModelClass as unknown as Function);
+    const rels = relNames(ModelClass as unknown as ClassRef);
+    const colKeys = _allColumnKeys(ModelClass as unknown as ClassRef);
     const skip = new Set<string>([...SYSTEM_KEYS, ...(except ?? [])]);
     const inst = new (this.constructor as new () => this)();
     for (const [k, v] of ownDataEntries(this, skip, rels, colKeys)) {
@@ -2240,7 +2241,7 @@ export class BaseModel {
    * @category Relationships
    */
   associate(relation: string, model: BaseModel): this {
-    const meta = relationsFor(this.constructor).get(relation);
+    const meta = relationsFor(this.constructor as ClassRef).get(relation);
     if (!meta || meta.type !== "belongsTo") {
       throw new Error(
         `associate(): "${relation}" is not a belongsTo relation on ${this.constructor.name}`,
@@ -2267,7 +2268,7 @@ export class BaseModel {
    * @category Relationships
    */
   dissociate(relation: string): this {
-    const meta = relationsFor(this.constructor).get(relation);
+    const meta = relationsFor(this.constructor as ClassRef).get(relation);
     if (!meta || meta.type !== "belongsTo") {
       throw new Error(
         `dissociate(): "${relation}" is not a belongsTo relation on ${this.constructor.name}`,
@@ -2307,8 +2308,8 @@ export class BaseModel {
    */
   $dirty(): Record<string, unknown> {
     const ModelClass = this.constructor as typeof BaseModel;
-    const rels = relNames(ModelClass as unknown as Function);
-    const colKeys = _allColumnKeys(ModelClass as unknown as Function);
+    const rels = relNames(ModelClass as unknown as ClassRef);
+    const colKeys = _allColumnKeys(ModelClass as unknown as ClassRef);
     const out: Record<string, unknown> = {};
     for (const [key, val] of ownDataEntries(this, SYSTEM_KEYS, rels, colKeys)) {
       if (val !== this._original[key] || this._forcedDirty.has(key)) {
@@ -2499,8 +2500,8 @@ function _createLazyPivotProxy(
 function _applyRow(inst: BaseModel, row: Record<string, unknown>): void {
   const self = inst as unknown as Record<string, unknown>;
   const orig: Record<string, unknown> = {};
-  const ctor = inst.constructor;
-  const ModelClass = ctor as typeof BaseModel;
+  const ModelClass = inst.constructor as typeof BaseModel;
+  const ctor: ClassRef = ModelClass;
   const colReg = columnsFor(ctor);
   installReactiveAccessors(inst); // json/array reactiveCasts accessors (registered at decoration)
   const casts = getCasts(ctor);

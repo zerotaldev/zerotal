@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { currentOrmContext } from "../OrmContext.ts";
+import type { ClassRef } from "../../support/classRef.ts";
 
 /**
  * The set of model lifecycle points a hook can attach to. Each fires once per
@@ -19,8 +20,8 @@ export type HookName =
 
 type HookFn<T> = (model: T) => Promise<void> | void;
 
-function _registry(): Map<Function, Map<HookName, HookFn<unknown>[]>> {
-  return currentOrmContext().hooks as unknown as Map<Function, Map<HookName, HookFn<unknown>[]>>;
+function _registry(): Map<ClassRef, Map<HookName, HookFn<unknown>[]>> {
+  return currentOrmContext().hooks as unknown as Map<ClassRef, Map<HookName, HookFn<unknown>[]>>;
 }
 
 /**
@@ -56,7 +57,7 @@ export class HookRegistry {
    * Optional post-run callback, invoked after a hook's functions run (and only when hooks
    * are not suppressed). BaseModel sets this to dispatch model events (`dispatchesEvents`).
    */
-  static onAfterRun: ((ModelClass: Function, hook: HookName, model: unknown) => void) | undefined;
+  static onAfterRun: ((ModelClass: ClassRef, hook: HookName, model: unknown) => void) | undefined;
 
   /**
    * Append a hook callback for a model class at a given lifecycle point.
@@ -65,7 +66,7 @@ export class HookRegistry {
    * @param hook - Which lifecycle point to fire on.
    * @param fn - Callback receiving the model instance; may be async.
    */
-  static register<T>(ModelClass: Function, hook: HookName, fn: HookFn<T>): void {
+  static register<T>(ModelClass: ClassRef, hook: HookName, fn: HookFn<T>): void {
     const registry = _registry();
     if (!registry.has(ModelClass)) {
       registry.set(ModelClass, new Map());
@@ -84,15 +85,15 @@ export class HookRegistry {
    * @param hook - Which lifecycle point is firing.
    * @param model - The model instance passed to each callback.
    */
-  static async run<T>(ModelClass: Function, hook: HookName, model: T): Promise<void> {
+  static async run<T>(ModelClass: ClassRef, hook: HookName, model: T): Promise<void> {
     if (_suppressCtx.getStore()) return;
 
     // Walk the prototype chain to collect inherited hooks
-    const chain: Function[] = [];
-    let cur: Function | null = ModelClass;
+    const chain: ClassRef[] = [];
+    let cur: ClassRef | null = ModelClass;
     while (cur && cur !== Function.prototype) {
       chain.unshift(cur);
-      cur = Object.getPrototypeOf(cur) as Function | null;
+      cur = Object.getPrototypeOf(cur) as ClassRef | null;
     }
 
     const registry = _registry();

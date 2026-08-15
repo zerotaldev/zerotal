@@ -1,5 +1,6 @@
 import type { RelationMetadata } from "../relations/RelationRegistry.ts";
 import { enqueueMember, registerRelation } from "./_metadata.ts";
+import type { ClassRef } from "../../support/classRef.ts";
 
 /**
  * The single plumbing for every relation field decorator (standard TC39 decorators).
@@ -11,7 +12,7 @@ import { enqueueMember, registerRelation } from "./_metadata.ts";
  * with that class so morph/through values depending on the class name resolve correctly.
  */
 export function makeRelationDecorator(
-  metaFor: (ctor: Function, field: string) => RelationMetadata,
+  metaFor: (ctor: ClassRef, field: string) => RelationMetadata,
 ) {
   return function (_value: unknown, context: ClassFieldDecoratorContext): void {
     const name = String(context.name);

@@ -161,6 +161,8 @@ export {
 export { config } from "./helpers/config.ts";
 export { pluralize, singularize, snakeCase, camelCase, tableNameFor } from "./support/str.ts";
 export { deepMerge } from "./support/deepMerge.ts";
+// The type every class-keyed registry uses — a class rather than an instance.
+export type { ClassRef } from "./support/classRef.ts";
 export { safeEqual, sha256Hex, hmacHex } from "./support/crypto.ts";
 export {
   buildCookie,

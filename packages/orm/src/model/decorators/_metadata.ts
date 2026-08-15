@@ -18,19 +18,20 @@
 import { relationRegistry } from "../relations/RelationRegistry.ts";
 import type { RelationMetadata } from "../relations/RelationRegistry.ts";
 import type { ColumnOptions } from "./column.ts";
+import type { ClassRef } from "../../support/classRef.ts";
 
 /**
  * Per-class OWN column definitions. Readers walk the prototype chain to merge inherited.
  * @internal
  */
-export const columnRegistry = new Map<Function, Map<string, ColumnOptions>>();
+export const columnRegistry = new Map<ClassRef, Map<string, ColumnOptions>>();
 
 // ── Definition-time queue ─────────────────────────────────────────────────────
 
 interface PendingMember {
   /** Field name (captured correctly in the decorator body). */
   name: string;
-  apply: (ctor: Function) => void;
+  apply: (ctor: ClassRef) => void;
 }
 let _pending: PendingMember[] = [];
 
@@ -38,7 +39,7 @@ let _pending: PendingMember[] = [];
  * Enqueue a member registration from a decorator body (name captured correctly there).
  * @internal
  */
-export function enqueueMember(name: string, apply: (ctor: Function) => void): void {
+export function enqueueMember(name: string, apply: (ctor: ClassRef) => void): void {
   _pending.push({ name, apply });
 }
 
@@ -48,7 +49,7 @@ export function enqueueMember(name: string, apply: (ctor: Function) => void): vo
  * contains exactly that class's members and nothing else.
  * @internal
  */
-export function drainPendingMembers(ctor: Function): void {
+export function drainPendingMembers(ctor: ClassRef): void {
   if (_pending.length === 0) return;
   const batch = _pending;
   _pending = [];
@@ -63,7 +64,7 @@ export function drainPendingMembers(ctor: Function): void {
  * `static casts` map (seeded from the parent so a subclass extends rather than mutates it).
  * @internal
  */
-export function registerColumn(ctor: Function, name: string, options: ColumnOptions): void {
+export function registerColumn(ctor: ClassRef, name: string, options: ColumnOptions): void {
   let m = columnRegistry.get(ctor);
   if (!m) {
     m = new Map();
@@ -89,7 +90,7 @@ export function registerColumn(ctor: Function, name: string, options: ColumnOpti
  * Record relation metadata for `ctor`. Invoked from a drained decorator closure.
  * @internal
  */
-export function registerRelation(ctor: Function, name: string, meta: RelationMetadata): void {
+export function registerRelation(ctor: ClassRef, name: string, meta: RelationMetadata): void {
   let m = relationRegistry.get(ctor);
   if (!m) {
     m = new Map();
@@ -100,23 +101,23 @@ export function registerRelation(ctor: Function, name: string, meta: RelationMet
 
 // ── Convention registration (used by the auto-discovery loader) ───────────────
 
-const _registeredModels = new WeakSet<Function>();
+const _registeredModels = new WeakSet<ClassRef>();
 /**
  * class name → model class, for observer/policy association by name.
  * @internal
  */
-export const modelsByName = new Map<string, Function>();
+export const modelsByName = new Map<string, ClassRef>();
 
 /**
  * Look up a model class by its (unqualified) class name.
  * @internal
  */
-export function modelByName(name: string): Function | undefined {
+export function modelByName(name: string): ClassRef | undefined {
   return modelsByName.get(name);
 }
 
 /** Index a model class under its name. Called by @table's drain and by registerModel(). */
-function registerModelName(ctor: Function): void {
+function registerModelName(ctor: ClassRef): void {
   const name = (ctor as { name?: string }).name;
   if (name) modelsByName.set(name, ctor);
 }
@@ -136,7 +137,7 @@ function registerModelName(ctor: Function): void {
  * safe no-op on already-`@table`'d models.
  * @internal
  */
-export function registerModel(ctor: Function): void {
+export function registerModel(ctor: ClassRef): void {
   if (_registeredModels.has(ctor)) return;
   _registeredModels.add(ctor);
 
@@ -170,13 +171,13 @@ export function registerModel(ctor: Function): void {
  * Merged column definitions (own + inherited) for a class, or null if none.
  * @internal
  */
-export function columnsFor(ctor: Function): Map<string, ColumnOptions> | null {
+export function columnsFor(ctor: ClassRef): Map<string, ColumnOptions> | null {
   const merged = new Map<string, ColumnOptions>();
-  let cls: Function | null = ctor;
+  let cls: ClassRef | null = ctor;
   while (cls && cls !== Function.prototype) {
     const c = columnRegistry.get(cls);
     if (c) for (const [k, v] of c) if (!merged.has(k)) merged.set(k, v);
-    cls = Object.getPrototypeOf(cls) as Function | null;
+    cls = Object.getPrototypeOf(cls) as ClassRef | null;
   }
   return merged.size ? merged : null;
 }
@@ -185,13 +186,13 @@ export function columnsFor(ctor: Function): Map<string, ColumnOptions> | null {
  * Merged relation metadata (imperative mixins + @decorators, own + inherited).
  * @internal
  */
-export function relationsFor(ctor: Function): Map<string, RelationMetadata> {
+export function relationsFor(ctor: ClassRef): Map<string, RelationMetadata> {
   const merged = new Map<string, RelationMetadata>();
-  let cls: Function | null = ctor;
+  let cls: ClassRef | null = ctor;
   while (cls && cls !== Function.prototype) {
     const r = relationRegistry.get(cls);
     if (r) for (const [k, v] of r) if (!merged.has(k)) merged.set(k, v);
-    cls = Object.getPrototypeOf(cls) as Function | null;
+    cls = Object.getPrototypeOf(cls) as ClassRef | null;
   }
   return merged;
 }
@@ -200,7 +201,7 @@ export function relationsFor(ctor: Function): Map<string, RelationMetadata> {
  * Names of reactive (json/array cast) columns for a class (own + inherited).
  * @internal
  */
-export function reactiveColumnsFor(ctor: Function): string[] {
+export function reactiveColumnsFor(ctor: ClassRef): string[] {
   const cols = columnsFor(ctor);
   if (!cols) return [];
   const out: string[] = [];

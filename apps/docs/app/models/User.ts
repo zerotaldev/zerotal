@@ -16,6 +16,5 @@ export class User extends AuthUser {
 // Tell @zerotal/auth which model `Auth.user()` returns. The empty body is the
 // point: this augmentation exists to bind the type, not to add members.
 declare module "@zerotal/auth" {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface UserModel extends User {}
 }

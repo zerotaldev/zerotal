@@ -1,4 +1,5 @@
 import { HookRegistry, type HookName } from "./hooks/HookRegistry.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 /**
  * Observer interface — implement any subset of lifecycle methods to react to a
@@ -61,7 +62,7 @@ const _methodToHook: Record<keyof ModelObserver, HookName> = {
  * @param ObserverClass - An observer class (zero-arg constructor) implementing any subset of {@link ModelObserver}.
  * @internal
  */
-export function registerObserver<T>(ModelClass: Function, ObserverClass: ObserverClass<T>): void {
+export function registerObserver<T>(ModelClass: ClassRef, ObserverClass: ObserverClass<T>): void {
   const instance = new ObserverClass();
 
   for (const [method, hook] of Object.entries(_methodToHook) as [keyof ModelObserver, HookName][]) {

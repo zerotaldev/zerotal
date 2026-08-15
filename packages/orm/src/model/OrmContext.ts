@@ -25,11 +25,11 @@ export class OrmContext {
   /** Connections registered by name, selectable via `static connection`. */
   namedConnections = new Map<string, SQLInstance>();
   /** Per-model `onTransition` callbacks, keyed by target state (see the `State` mixin). */
-  transitionCallbacks = new Map<Function, Map<string, unknown[]>>();
+  transitionCallbacks = new Map<ClassRef, Map<string, unknown[]>>();
   /** Per-model registered global query scopes. */
-  globalScopes = new Map<Function, Map<string, unknown>>();
+  globalScopes = new Map<ClassRef, Map<string, unknown>>();
   /** Per-model lifecycle hooks. */
-  hooks = new Map<Function, Map<string, unknown[]>>();
+  hooks = new Map<ClassRef, Map<string, unknown[]>>();
 }
 
 let _ctx = new OrmContext();
@@ -58,6 +58,7 @@ export function resetOrmContext(): void {
 }
 
 import { registerAppScope } from "@zerotal/core";
+import type { ClassRef } from "../support/classRef.ts";
 
 let _appScopeRegistered = false;
 if (!_appScopeRegistered) {

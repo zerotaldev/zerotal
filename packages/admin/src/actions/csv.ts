@@ -45,7 +45,7 @@ export function toCsv(rows: Record<string, unknown>[], columns: Column[]): strin
  * newlines. Returns an empty array for empty input rather than a phantom row.
  */
 export function parseCsv(text: string): string[][] {
-  const source = text.replace(/^﻿/, ""); // strip a spreadsheet's byte-order mark
+  const source = text.replace(/^\uFEFF/, ""); // strip a spreadsheet's byte-order mark
   if (source.trim() === "") return [];
 
   const rows: string[][] = [];

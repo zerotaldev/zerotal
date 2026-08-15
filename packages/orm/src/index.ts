@@ -75,6 +75,9 @@ export { Model, BaseModel } from "./model/BaseModel.ts";
 // Mixin authoring types. Compose them onto a model with the `Model.using(...)` static —
 // `class User extends Model.using(Authenticatable, Roles)`.
 export type { Constructor, Mixin, Compose } from "./model/mixins.ts";
+// The type every metadata registry keys on — a model class rather than an instance.
+// Packages that register columns or relations from outside the ORM take it as a parameter.
+export type { ClassRef } from "./support/classRef.ts";
 // State-machine behaviour is an opt-in mixin — compose with `Model.using(State)`.
 export { State } from "./model/State.ts";
 // Soft deletes are opt-in — compose with `Model.using(SoftDeletes)`.

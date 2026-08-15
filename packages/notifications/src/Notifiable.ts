@@ -91,5 +91,5 @@ export function Notifiable<TBase extends Constructor>(Base: TBase) {
  * value (the mixin) and a type (the contract) — it merges with the function above. Extends the
  * base notifiable contract, so instances pass anywhere a notifiable is expected.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- the empty body is the point: it merges the name with the mixin function above
+// The empty body is the point: it merges the name with the mixin function above.
 export interface Notifiable extends NotifiableContract {}

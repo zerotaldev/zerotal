@@ -1,4 +1,4 @@
-import { RequestContext, ForbiddenError, FrameworkEvents } from "@zerotal/core";
+import { RequestContext, ForbiddenError, FrameworkEvents, type ClassRef } from "@zerotal/core";
 import { AuthorizationDenied } from "./events.ts";
 import type { AuthUser } from "./AuthUser.ts";
 import type { Policy } from "./Policy.ts";
@@ -33,7 +33,7 @@ type AbilityCallback = (user: UserArg, model?: unknown) => boolean;
  * Gate.via(PostPolicy).allows('update', post);
  */
 export class GateService {
-  private readonly _registry = new Map<Function, AnyPolicyClass>();
+  private readonly _registry = new Map<ClassRef, AnyPolicyClass>();
   private readonly _before: BeforeHook[] = [];
   private readonly _abilities = new Map<string, AbilityCallback>();
 
@@ -187,7 +187,7 @@ export class GateService {
     }
 
     if (model !== undefined) {
-      const ctor = model.constructor as Function;
+      const ctor = model.constructor as ClassRef;
       const PolicyClass = this._registry.get(ctor);
       if (PolicyClass) return this._callPolicy(PolicyClass, ability, model as never);
     }
@@ -258,7 +258,7 @@ export class GateService {
     }
 
     if (model !== undefined) {
-      const ctor = model.constructor as Function;
+      const ctor = model.constructor as ClassRef;
       const PolicyClass = this._registry.get(ctor);
       if (PolicyClass) return this._callPolicyAsync(PolicyClass, ability, model as never);
     }

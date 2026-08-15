@@ -47,6 +47,7 @@ import { unroutedRoutesWarning } from "../support/unroutedRoutes.ts";
 import type { DoctorCheck } from "../doctor/AppDoctor.ts";
 import { defaultApp, setDefaultApp } from "./currentApp.ts";
 import type { ConfigValidator, RegisteredConfigValidator } from "../config/validation.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 // ── Convention config discovery ───────────────────────────────────────────────
 
@@ -336,7 +337,7 @@ export class Application {
   /** Set by ServeCommand --dev-worker to enable the /__dev/ws HMR endpoint. */
   private _devWsEnabled = false;
   /** Tracks provider-auto-registered middleware to prevent double-registration. */
-  private readonly _autoMiddlewareSet = new Set<Function>();
+  private readonly _autoMiddlewareSet = new Set<ClassRef>();
   private _providerHooks: ProviderHooks | undefined = undefined;
   /** @internal The auth user-resolver registered via {@link withUserResolver}; called by AuthMiddleware. */
   _userResolver: ((id: number) => Promise<AuthenticatedUser | null>) | undefined = undefined;
@@ -750,7 +751,7 @@ export class Application {
     const hasSubclass = this._middleware.some(
       (registered) =>
         registered !== middlewareClass &&
-        registered.prototype instanceof (middlewareClass as Function),
+        registered.prototype instanceof (middlewareClass as ClassRef),
     );
     if (hasSubclass) return;
     this._autoMiddlewareSet.add(middlewareClass);

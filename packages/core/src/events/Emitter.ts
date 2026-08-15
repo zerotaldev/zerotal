@@ -4,6 +4,7 @@
  * (fire-and-forget), synchronously, or be deferred to a queue.
  */
 import { CallQueuedListener } from "./CallQueuedListener.ts";
+import type { ClassRef } from "../support/classRef.ts";
 
 type EventClass<T extends object> = new (...args: unknown[]) => T;
 type ListenerClass<T extends object> = new (...args: unknown[]) => {
@@ -56,7 +57,7 @@ export interface QueuedListener<T = any> {
  * ```
  */
 export class Emitter {
-  private _listeners = new Map<Function, ListenerClass<object>[]>();
+  private _listeners = new Map<ClassRef, ListenerClass<object>[]>();
   private _listenerByName = new Map<string, ListenerClass<object>>();
 
   // Holds the application so the emitter can resolve the queue manager lazily.
@@ -170,7 +171,7 @@ export class Emitter {
     // A snapshot, not the live array: a listener that registers another listener for the
     // same event otherwise extends the array being iterated. One emit ran handle() 100,000
     // times that way.
-    const listenerClasses = [...(this._listeners.get(event.constructor as Function) ?? [])];
+    const listenerClasses = [...(this._listeners.get(event.constructor as ClassRef) ?? [])];
 
     if (listenerClasses.length === 0) return;
 
@@ -229,7 +230,7 @@ export class Emitter {
     // A snapshot, not the live array: a listener that registers another listener for the
     // same event otherwise extends the array being iterated. One emit ran handle() 100,000
     // times that way.
-    const listenerClasses = [...(this._listeners.get(event.constructor as Function) ?? [])];
+    const listenerClasses = [...(this._listeners.get(event.constructor as ClassRef) ?? [])];
 
     for (const ListenerClass of listenerClasses) {
       const listener = new ListenerClass();

@@ -35,6 +35,7 @@ class Application = {
   environment: Environment
   fileBasedRouting: (config: string | FileRoutingConfig | (FileRoutingEntry & {    dir: string;})) => Application
   globalMiddleware: PipeClass[]
+  readonly _configValidators: RegisteredConfigValidator[]
   readonly container: Container
   readonly routerState: RouterState
   register: (providers: ProviderClass[]) => Application
@@ -181,6 +182,7 @@ class CommandRunner = {
   callInProcess: (argv: string[], parameters?: Record<string, string | boolean | number>) => Promise<{    code: number;    output: string;}>
   command: (definition: CommandDefinition, aliases?: string[]) => CommandClass
   discover: (dir: string) => Promise<string[]>
+  has: (name: string) => boolean
   register: (Cmd: CommandClass, aliases?: string[]) => void
   registerAll: (commandClasses: CommandClass[]) => void
   registerCommand: (definition: CommandDefinition, aliases?: string[]) => CommandClass
@@ -679,6 +681,8 @@ function data_get = (target: unknown, key: string, defaultValue?: unknown) => un
 
 function deepMerge = <T extends object>(base: T, override: Partial<T>) => T
 
+function deployEnv = () => string
+
 function devSurfacesEnabled = () => boolean
 
 function env = {    (key: string): string | undefined;    (key: string, fallback: string): string;    (key: string, fallback: boolean): boolean;    (key: string, fallback: number): number;}
@@ -694,6 +698,8 @@ function html = (markup: string | {    toString(): string;}, status?: number) =>
 function inject = (...tokens: BindingToken[]) => (target: new (...args: any[]) => unknown, _context: ClassDecoratorContext) => void
 
 function isDevSurfaceAllowed = (env: string) => boolean
+
+function isProdLike = (env: string) => boolean
 
 function json = (data: unknown, status?: number) => void
 
@@ -3175,6 +3181,35 @@ class CssBuildCommand = {
   write: (msg: string) => void
 }
 
+class DeployCommand = {
+  new (): DeployCommand
+  static args: ArgDef[]
+  static commandName: string
+  static description: string
+  static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'string';    description: string;    default?: never;})[]
+  static needsApp: boolean
+  static target: string
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class DevCommand = {
   new (): DevCommand
   static aliases: string[]
@@ -3936,6 +3971,8 @@ class WorkerCommand = {
   write: (msg: string) => void
 }
 
+function makeDeployCommand = (target: string) => DeployCommandClass
+
 ## ./config  `(./src/config-reexport.ts)`
 
 class ConfigLoader = {
@@ -3964,9 +4001,15 @@ class ConfigValidationError = {
   readonly status: number
 }
 
+const DEFAULT_DEPLOY_STEPS = readonly string[]
+
+const DEFAULT_DEPLOY_TARGETS = Record<string, DeployTarget>
+
 function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    allowedOrigins?: string[];    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;        loader?: Record<string, AssetLoaderKind>;    };    dev?: DevConfigShape;    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
 
 function configLoader = (dir?: string) => ConfigLoader
+
+function DeployConfig = (options?: Partial<DeployConfigShape>) => DeployConfigShape
 
 interface AppAssetsConfig = {
   entrypoint: string | string[]
@@ -4010,6 +4053,7 @@ interface ConfigIssue = {
 
 interface ConfigRegistry = {
   app: AppConfigShape
+  deploy: DeployConfigShape
   health: HealthConfigShape
   lock: LockConfigShape
   logging: LoggingConfigShape
@@ -4026,6 +4070,15 @@ interface ConventionsConfig = {
   paths: {    providers: string;    middleware: string;    models: string;    observers: string;    policies: string;    listeners: string;    events: string;    jobs: string;    schedules: string;    validators: string;    commands: string;}
 }
 
+interface DeployConfigShape = {
+  targets: Record<string, DeployTarget>
+}
+
+interface DeployTarget = {
+  steps?: readonly string[]
+  url?: string
+}
+
 interface RegisteredConfigValidator = {
   namespace: string
   validate: ConfigValidator
@@ -4037,7 +4090,7 @@ type ConfigIssueLevel = 'error' | 'warning'
 
 type ConfigMap = {    [x: string]: Record<string, unknown>;}
 
-type ConfigPath = 'lock' | 'app' | 'health' | 'logging' | 'lock.driver' | 'lock.sqlite' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.dev' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.allowedOrigins' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.frameOptions' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
+type ConfigPath = 'lock' | 'app' | 'deploy' | 'health' | 'logging' | 'lock.driver' | 'lock.sqlite' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.dev' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.allowedOrigins' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.referrerPolicy' | 'app.secureHeaders.frameOptions' | 'app.secureHeaders.secure' | 'app.secureHeaders.hstsMaxAge' | 'app.secureHeaders.hstsIncludeSubDomains' | 'app.secureHeaders.hstsPreload' | 'app.secureHeaders.contentSecurityPolicy' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'deploy.targets' | `deploy.targets.${string}` | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
 
 type ConfigValidator = (value: unknown, ctx: ConfigValidationContext) => ConfigIssue[] | void
 

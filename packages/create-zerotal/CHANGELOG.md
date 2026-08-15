@@ -12,6 +12,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Changed
 
+- **Scaffolded apps no longer default CORS to `"*"`.** Every template shipped
+  `cors: { origin: env("CORS_ORIGIN", "*") }`, so a new app opted out of the
+  framework's own safe default — an empty list, meaning same-origin — without ever
+  being asked. `"*"` lets any website read the app's responses out of a visitor's
+  browser, and it survived to production in anything that never set `CORS_ORIGIN`.
+  The default is now same-origin; name your origins when you need them.
+- **Templates declare `secureHeaders.secure`**, the setting that gates HSTS, so
+  turning it on for a deployment is a visible one-line change rather than a
+  discovery. `zt doctor` fails on a production-like deployment that leaves it off.
+
 - **The `api` template registers `StorageProvider`.** Its absence is invisible until the
   first upload: a `Storage.disk(...)` call usually sits behind auth, a permission check
   and a multipart parse, so every simpler probe returns 401/403 long before reaching the

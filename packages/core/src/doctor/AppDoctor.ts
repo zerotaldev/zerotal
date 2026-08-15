@@ -16,6 +16,7 @@ import type { Application } from "../application/Application.ts";
 import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { unroutedRoutesWarning } from "../support/unroutedRoutes.ts";
 import { isWritableDir } from "../dev/bootBuild.ts";
+import { isProdLike } from "../support/env.ts";
 
 /** One finding: ok is silent health, warn is worth reading, fail is broken now. */
 export interface DoctorCheckResult {
@@ -214,8 +215,7 @@ async function _existingFlowAssetDirs(): Promise<string[]> {
 }
 
 function _isProductionEnv(app: Application): boolean {
-  const env = _config(app, "app.env");
-  return env === "production" || env === "prod";
+  return isProdLike(String(_config(app, "app.env") ?? ""));
 }
 
 /** Whether a URL points at this machine — i.e. is not something a browser elsewhere can reach. */
@@ -300,10 +300,59 @@ const storageProviderCheck: DoctorCheck = {
   },
 };
 
+/**
+ * `cors.origin: "*"` tells every site on the internet it may read this app's
+ * responses from a browser. That is the right default for a public read-only API
+ * and wrong for everything else — and it is what every scaffolded app shipped with
+ * until 1.5.0, because the templates set it while the framework's own default was
+ * the safe empty list.
+ *
+ * Only a problem once deployed, so it fails on a production-like deployment and
+ * stays quiet locally, where `*` is what makes a second dev server work.
+ */
+const corsWildcardCheck: DoctorCheck = {
+  id: "cors-wildcard",
+  label: "CORS",
+  run(app) {
+    const origin = _config(app, "app.cors.origin");
+    const wildcard = origin === "*" || (Array.isArray(origin) && origin.some((o) => o === "*"));
+    if (!wildcard) return ok("no wildcard origin.");
+    if (!_isProductionEnv(app)) return ok('origin is "*" — fine outside a deployment.');
+    return fail(
+      'app.cors.origin is "*", so any website can read this app\'s responses from a ' +
+        "visitor's browser.",
+      "Set app.cors.origin to the origins that legitimately call this app, in config/app.ts.",
+    );
+  },
+};
+
+/**
+ * HSTS is emitted only when `app.secureHeaders.secure` is true, which defaults to
+ * false and has never had production auto-detection. A deployment that never set it
+ * serves no `Strict-Transport-Security` at all, so a visitor's first request each
+ * time stays downgradeable to plain HTTP.
+ */
+const secureHeadersCheck: DoctorCheck = {
+  id: "secure-headers",
+  label: "Secure headers",
+  run(app) {
+    const secure = _config(app, "app.secureHeaders.secure") === true;
+    if (secure) return ok("HSTS enabled.");
+    if (!_isProductionEnv(app)) return ok("HSTS off — expected outside a deployment.");
+    return fail(
+      "app.secureHeaders.secure is not true, so no Strict-Transport-Security header is " +
+        "sent and the first request of each visit can be downgraded to HTTP.",
+      "Set app.secureHeaders.secure: true in config/app.ts once the site is served over HTTPS.",
+    );
+  },
+};
+
 /** The core checks every app gets. */
 export const builtinDoctorChecks: DoctorCheck[] = [
   appKeyCheck,
   allowedOriginsCheck,
+  corsWildcardCheck,
+  secureHeadersCheck,
   bootAssetWriteCheck,
   syncVsMigrationsCheck,
   unroutedRoutesCheck,

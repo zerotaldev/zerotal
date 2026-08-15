@@ -6,9 +6,17 @@ export default AppConfig({
   url: env("APP_URL", "http://localhost:3000"),
   key: env("APP_KEY", "changeme-in-production"),
 
+  // Same-origin unless `CORS_ORIGIN` names somewhere else. This site is read from
+  // its own pages, so it needs nothing here — and `"*"` would let any website read
+  // its responses out of a visitor's browser.
   cors: {
-    origin: env("CORS_ORIGIN", "*"),
+    origin: env("CORS_ORIGIN", ""),
     credentials: false,
+  },
+
+  // HSTS. Off by default framework-wide, so a deployed site has to ask for it.
+  secureHeaders: {
+    secure: env("APP_SECURE", true),
   },
 
   throttle: {

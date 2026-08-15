@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-15
+
 ### Added
 
 - **The package.** `Ai.text()`, `Ai.stream()`, `Ai.object()`, `Ai.agent()`, and

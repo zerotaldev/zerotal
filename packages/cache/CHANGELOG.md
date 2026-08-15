@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-15
+
 ### Fixed
 
 - **Stampede protection survives a compute slower than 30 seconds.** `remember()`'s

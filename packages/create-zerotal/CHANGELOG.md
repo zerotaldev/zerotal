@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-15
+
 ### Changed
 
 - **The `api` template registers `StorageProvider`.** Its absence is invisible until the

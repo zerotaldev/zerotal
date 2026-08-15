@@ -10,6 +10,8 @@ line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-15
+
 ### Changed
 
 - **`@zerotal/media` is `stable`.** The blocker was never the feature set — it was

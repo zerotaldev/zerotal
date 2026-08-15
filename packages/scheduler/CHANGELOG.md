@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-15
+
 ### Changed
 
 - **`withoutOverlapping`'s cross-process lock defaults to 5 minutes, not 24 hours.** The

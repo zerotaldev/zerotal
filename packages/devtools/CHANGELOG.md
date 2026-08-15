@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-15
+
 ### Changed
 
 - **Maturity is now `stable`.** The public API is covered by the SemVer promise from

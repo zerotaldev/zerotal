@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-15
+
 ### Added
 
 - **`FlowBrowser` — drive a real page against a real server, inside `bun test`.**

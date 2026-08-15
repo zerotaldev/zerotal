@@ -24,6 +24,108 @@ Each version lists changes under three headings:
 Patch and minor releases are backward compatible. Before taking a **major** release,
 read its section here and apply each migration note.
 
+## 1.5.0 — 2026-08-15
+
+The largest release of the 1.x line: a new package, three features, a batch of
+production-hardening work that came out of a real deployment, and the last of the
+packages reaching `stable`. Of the 26 published packages, **25 are `stable` and one
+is `experimental`** (`@zerotal/ai`); none is `beta`.
+
+### Added
+
+- **`@zerotal/ai` — a typed agent loop, shipping `experimental`.** One loop shared by every
+  driver, so switching models is a config change rather than a rewrite. A `pause_turn` is
+  resumed rather than mistaken for an answer; a refusal is a typed outcome checked before
+  anything reads the content; schema translation decides what a provider can express instead
+  of hoping. Named agent runs take a refreshable lock, spend ceilings and prompt redaction are
+  first-class, and `AiFake` makes the whole thing testable without a network. It ships
+  `experimental` deliberately — the surface is expected to move inside 1.x, and the
+  [support policy](/docs/support-policy) says what that means. See [AI](/docs/ai).
+- **Typed route names — `bun zt route:types`.** The command boots the app, reads the routes it
+  actually registered, and writes `types/routes.generated.ts`. With it, `route("psots.show")` is
+  a compile error and `route("posts.show", {})` names the `slug` it wants. Params come from the
+  pattern, so adding a segment updates every call site. It boots rather than scanning `routes/`
+  because a route name comes from three places and only one of them is a file path. See
+  [Routing](/docs/routing).
+- **Typed Inertia pages.** `Inertia.render(component, props)` is checked against the page
+  component's own props, and the prop wrappers (`defer`, `optional`, `always`) are generic, so a
+  renamed or retyped prop fails at the render call rather than in the browser. See
+  [Inertia](/docs/inertia).
+- **The development error page can say what to do, not just what broke.** `no such table: assets`
+  is exact about the failure and useless about the cause — every frame in its stack sits inside
+  the SQL driver. `registerErrorDiagnoser()` lets the package that owns an error contribute a
+  diagnosis above the stack; `@zerotal/orm` registers the first one, turning a missing table into
+  the list of migrations that have not run, with a button to run them. See [Errors](/docs/errors).
+- **`bun zt dev` — the server and every companion process in one terminal**, with the Deck, a
+  tabbed dev UI that adds no dependency. The queue worker runs as its own tab. A service provider
+  contributes its own checks through `doctorChecks()`. See [Devtools](/docs/devtools).
+- **Flow: `<ErrorBoundary>`, `stream`, `<SectionContent>` / `<SectionOutlet>`, and `<Virtualize>`.**
+  A failing child now costs that child rather than the page; a slow child no longer holds up the
+  shell; a page can fill a region its layout owns; and a collection too large for the DOM gets a
+  scrolling window over it. `@zerotal/flow/browser` drives a real browser against a running app,
+  and a compiled-versus-runtime parity suite keeps the two renderers honest. See
+  [Flow](/docs/flow).
+- **ORM: `migrate:refresh`, and `--seed` on `migrate` / `migrate:fresh`.** See
+  [Migrations](/docs/migrations).
+- **Queue: debounced jobs.** `debounce` on a `Job` collapses repeated dispatches into one run.
+  See [Queue](/docs/queue).
+- **Scheduler: durable run history**, so the monitor panel survives a restart. See
+  [Scheduler](/docs/scheduler).
+- **Media: `allowEnlargement` on a conversion, and `@zerotal/media/testing`.** `ImageDriver` is
+  frozen, with its growth rule written down. See [Media](/docs/media).
+
+### Changed
+
+Most of this section is one body of work: the response to a Flow field report, hardening the path
+from a local machine to a deployed box.
+
+- **`app.allowedOrigins` is declared config and defaults to the origin of `app.url`.** The
+  common deployment no longer needs to configure it at all, and the setting is visible where the
+  rest of the app's URL configuration lives rather than being implied.
+- **`bun zt doctor --url=…` probes a deployed transport from the outside.** It reports what each
+  transport path actually answers over the wire, which is the question a failing WebSocket
+  upgrade in production actually raises. `Application.declareWebSocketPath()` / `webSocketPaths()`
+  let a package declare its own path so the probe covers it, and Flow declares `/__flow/ws` at
+  registration. See [Deployment](/docs/deployment).
+- **`serve` no longer rebuilds assets at boot in production**, and Flow no longer rebuilds its
+  CSS/JS bundles at boot, when the output directory is read-only. A read-only tree is normal for
+  a container image, and building at boot turned it into a crash. `bun zt assets:build` is the
+  explicit build step to run before deploying. See [Assets](/docs/assets).
+- **The Flow client says which transport failure it hit** rather than failing the same way for
+  every cause, and `data-flow-connection` is stamped on a page that connected normally — so
+  "is it live?" is answerable from the DOM.
+- **`route()` takes query values as a third argument** — `route(name, params, query)` — and
+  `route.dynamic(name, params?, query?)` covers a name that is not known at compile time.
+- **`ctx.user` is typed as `UserModel`**, the same interface `Auth.user()` returns.
+- **`SessionContract.get` and `pull` take an optional `<T>`.**
+- **`withoutOverlapping`'s cross-process lock defaults to 5 minutes, not 24 hours.** A worker
+  killed mid-run used to block its own schedule for the rest of the day.
+- **`app/commands/` is auto-discovered**, and boot warns about a `routes/` directory nothing
+  routes.
+- **Thirteen packages reached `stable`** — `admin`, `audit`, `broadcasting`, `devtools`, `flow`,
+  `flow-ui`, `i18n`, `inertia`, `media`, `monitor`, `notifications`, `telemetry` and `tenancy`
+  — each after documenting its remaining exports and marking its plumbing `@internal`. The
+  component reference now documents all 53 `flow-ui` components and cannot drift again.
+
+### Fixed
+
+- **Flow: a keyless child in a list was identified by its position.** Reordering a list without
+  keys reused the wrong DOM node, so state attached to a row followed the position rather than
+  the row.
+- **Flow: a client expression that writes an `@expose` prop now syncs to the server.**
+- **ORM: a `Date` in a query-builder write was silently discarded.**
+- **ORM: altering a Postgres column silently dropped its `NOT NULL` and `DEFAULT`**, and SQLite
+  now refuses an impossible `dropColumn` before applying anything rather than partway through.
+- **ORM: the N+1 detector reads the bindings, not just the SQL text**, so it stops missing
+  queries that differ only in their parameters.
+- **Cache: stampede protection survives a compute slower than 30 seconds.**
+- **Media: `fit: "cover"` works on the default driver**, `fit: "inside"` returns the dimensions
+  it promised, and `fit: "fill"` with a single dimension behaves as `inside`. Both shipped
+  drivers are held to one parity suite.
+- **`serve --dev` built a Flow app's bundles three times on every start**, and dev asset builds
+  are now skipped when nothing changed.
+- **`setAppEnv("dev")` resolved to `console` rather than `web`.**
+
 ## 1.4.0 — 2026-08-10
 
 ### Added

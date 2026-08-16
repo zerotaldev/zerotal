@@ -416,3 +416,26 @@ describe("DatabaseProvider.onRegister() — replica path", () => {
     expect(result).toBeDefined();
   });
 });
+
+describe("DatabaseProvider — environments", () => {
+  /**
+   * `worker` was missing until 1.7.1, and the consequence was total: `bun zt
+   * queue:work` could not boot. The queue's default driver is `sqlite`,
+   * `QueueProvider` *does* run in `worker`, and it asked for a connection this
+   * provider had not made — so the worker died on startup with "No database
+   * connection. Is DatabaseProvider registered?" while it plainly was.
+   */
+  it("runs in every mode, including worker", () => {
+    expect(DatabaseProvider.environments).toContain("worker");
+  });
+
+  it("covers every mode a job could run under", () => {
+    // Nine providers run in `worker` — queue, notifications, audit, media,
+    // tenancy, scheduler among them — and a job exists to do work with models.
+    // `as const` so each entry is an `AppEnvironment` rather than a widened
+    // `string`, which `toContain` will not accept against the typed array.
+    for (const mode of ["web", "console", "worker", "test"] as const) {
+      expect(DatabaseProvider.environments).toContain(mode);
+    }
+  });
+});

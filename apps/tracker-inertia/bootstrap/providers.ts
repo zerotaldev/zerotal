@@ -3,6 +3,8 @@ import { DatabaseProvider } from "zerotal/orm";
 import { StorageProvider } from "zerotal/storage";
 import { SessionProvider } from "zerotal/session";
 import { AuthProvider } from "zerotal/auth";
+import { QueueProvider } from "zerotal/queue";
+import { NotificationProvider } from "@zerotal/notifications";
 import { InertiaProvider } from "@zerotal/inertia";
 import { DevtoolsProvider } from "@zerotal/devtools";
 
@@ -26,6 +28,10 @@ const providers = [
   StorageProvider,
   SessionProvider,
   AuthProvider,
+  // Queue before notifications: `Notify.queue()` pushes onto the queue the
+  // former binds, and notifications' database channel needs the ORM above.
+  QueueProvider,
+  NotificationProvider,
   InertiaProvider,
   DevtoolsProvider,
 ];

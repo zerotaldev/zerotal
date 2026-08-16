@@ -51,8 +51,22 @@ declare module "@zerotal/core" {
  */
 export class DatabaseProvider extends ServiceProvider {
   static override provides = ["db"] as const;
+  /**
+   * Every mode, `worker` included.
+   *
+   * `worker` was missing until 1.7.1, which meant `bun zt queue:work` could not
+   * boot at all: the queue's own default driver is `sqlite`, `QueueProvider`
+   * does run in `worker`, and it asks for a connection this provider had not
+   * made — so the worker died on startup with "No database connection. Is
+   * DatabaseProvider registered?" while it plainly was.
+   *
+   * It was never only the queue. Nine providers run in `worker` — notifications,
+   * audit, media, tenancy, scheduler among them — and a job exists to do work
+   * with models. A worker without a database is a worker that cannot do the
+   * thing workers are for.
+   */
   // Use an explicit mutable array type to satisfy ServiceProvider's static property constraint.
-  static override environments: AppEnvironment[] = ["web", "console", "test", "repl"];
+  static override environments: AppEnvironment[] = ["web", "console", "worker", "test", "repl"];
 
   private _disposeObservability: (() => void) | undefined = undefined;
 

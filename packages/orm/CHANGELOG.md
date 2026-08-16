@@ -10,6 +10,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`DatabaseProvider` now runs in `worker`, so `zt queue:work` can boot.** It did not, and the
+  consequence was total rather than partial: `QueueProvider` _does_ run in `worker`, the
+  queue's own default driver is `sqlite`, and so the worker asked for a connection this
+  provider had not made and died on startup —
+
+  ```
+  error: [Zerotal ORM] No database connection. Is DatabaseProvider registered?
+  ```
+
+  — while it plainly was registered.
+
+  It was never only the queue. Nine providers run in `worker` — notifications, audit, media,
+  tenancy, scheduler among them — and a job exists to do work with models. `AuthProvider` and
+  `SessionProvider` are absent from `worker` correctly, having neither a request nor a
+  session; the ORM being absent was an oversight, dating to 1.0.2.
+
+  Found building the first cookbook app, whose first queued job could not run.
+
 - **Relation keys now accept the JS spelling, like every other identifier.** The convention is
   camelCase in the application and snake_case in the database, converted on the way through —
   and relation keys were the one place it did not happen. `@hasMany(() => Issue, { foreignKey:

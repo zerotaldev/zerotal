@@ -51,6 +51,7 @@
         "@inertiajs/react": "^3.0.0",
         "@zerotal/devtools": "workspace:*",
         "@zerotal/inertia": "workspace:*",
+        "@zerotal/notifications": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "zerotal": "workspace:*",

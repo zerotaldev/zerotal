@@ -4,6 +4,9 @@ import { AuthMiddleware, Gate } from "zerotal/auth";
 import type { Project } from "@app/models/Project.ts";
 import { Issue, ISSUE_PRIORITIES, ISSUE_STATUSES } from "@app/models/Issue.ts";
 import { User } from "@app/models/User.ts";
+import { Notify } from "@zerotal/notifications";
+import { IssueAssignedNotification } from "@app/notifications/IssueAssignedNotification.ts";
+import { Auth } from "zerotal/auth";
 import { UpdateIssueRequest } from "@app/requests/UpdateIssueRequest.ts";
 
 export const middleware = [AuthMiddleware];
@@ -58,8 +61,25 @@ export async function POST(http: HttpContext): Promise<void> {
   // together and cannot drift apart.
   const input = await UpdateIssueRequest.validate();
 
+  // Read before the write: "who was this assigned to a moment ago" is not a
+  // question the row can answer once it has been filled.
+  const previousAssignee = issue.assigneeId ?? null;
+
   issue.fillValidated(input);
   await issue.save();
+
+  // Feature 6. Only on a *change* to somebody, and never to yourself — nobody
+  // wants mail telling them they did the thing they just did.
+  const nextAssignee = issue.assigneeId ?? null;
+  const actor = Auth.user()!;
+  if (nextAssignee && nextAssignee !== previousAssignee && nextAssignee !== actor.id) {
+    const recipient = await User.find(nextAssignee);
+    if (recipient) {
+      // `queue`, not `send`: the mail leaves the request entirely and runs in a
+      // worker with no HTTP context, no session and no authenticated user.
+      await Notify.queue(recipient, new IssueAssignedNotification(issue, project.slug, actor.name));
+    }
+  }
 
   http.flash("success", "Issue updated.");
   http.redirect(`/projects/${project.slug}/issues/${issue.id}`, 303);

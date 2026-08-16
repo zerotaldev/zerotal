@@ -9,6 +9,8 @@ here with migration steps — but a minor release may still contain one.
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-08-16
+
 ### Fixed
 
 Faults that only appear once the surface is installed into a real app, found by installing

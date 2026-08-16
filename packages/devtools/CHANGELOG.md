@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-08-16
+
 ### Changed
 
 - **A request is a place, not twelve tabs.** The Requests strip carried fourteen tabs, twelve

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-08-16
+
 ### Fixed
 
 - **The dev deck would not scroll.** On the alternate screen a terminal has no scrollback of

@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-08-16
+
 ### Changed
 
 - **An action opens into its own tabs.** A frame's detail was a stack — Sent, then State,

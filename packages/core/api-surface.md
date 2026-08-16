@@ -35,6 +35,7 @@ class Application = {
   environment: Environment
   fileBasedRouting: (config: string | FileRoutingConfig | (FileRoutingEntry & {    dir: string;})) => Application
   globalMiddleware: PipeClass[]
+  providerReport: readonly ProviderReport[]
   readonly _configValidators: RegisteredConfigValidator[]
   readonly container: Container
   readonly routerState: RouterState
@@ -66,7 +67,7 @@ class BadRequestError = {
 
 class BaseMiddleware = {
   new <O extends object = object>(): BaseMiddleware<O>
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (ctx: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -240,7 +241,7 @@ class ContainerLockedError = {
 
 class CorsMiddleware = {
   new (options?: CorsOptions): CorsMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -255,6 +256,7 @@ class Emitter = {
   hasListeners: <T extends object>(eventClass: EventClass<T>) => boolean
   off: <T extends object>(eventClass: EventClass<T>, listenerClass: ListenerClass<T>) => void
   on: <T extends object>(eventClass: EventClass<T>, listenerClass: ListenerClass<T>) => void
+  registrations: () => Array<{    event: string;    listeners: string[];}>
   setBroadcaster: (fn: ((event: object) => void) | null) => void
 }
 
@@ -274,6 +276,7 @@ class EventFake = {
   hasListeners: <T extends object>(eventClass: new (...args: unknown[]) => T) => boolean
   off: <T extends object>(eventClass: new (...args: unknown[]) => T, listenerClass: new (...args: unknown[]) => {    handle(event: T): Promise<void> | void;    queue?: boolean | string;    maxAttempts?: number;    retryDelay?: number;}) => void
   on: <T extends object>(eventClass: new (...args: unknown[]) => T, listenerClass: new (...args: unknown[]) => {    handle(event: T): Promise<void> | void;    queue?: boolean | string;    maxAttempts?: number;    retryDelay?: number;}) => void
+  registrations: () => Array<{    event: string;    listeners: string[];}>
   restore: () => void
   setBroadcaster: (fn: ((event: object) => void) | null) => void
 }
@@ -475,12 +478,14 @@ class RequestContext = {
 }
 
 class RequestFailed = {
-  new (ctx: object, startMs: number, durationMs: number, error: string, status: number): RequestFailed
+  new (ctx: object, startMs: number, durationMs: number, error: string, status: number, type?: string | undefined, stack?: string | undefined): RequestFailed
   readonly ctx: object
   readonly durationMs: number
   readonly error: string
+  readonly stack?: string | undefined
   readonly startMs: number
   readonly status: number
+  readonly type?: string | undefined
 }
 
 class RequestHandled = {
@@ -535,7 +540,7 @@ class ScopedResolver = {
 
 class SecureHeadersMiddleware = {
   new (): SecureHeadersMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (_ctx: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -580,7 +585,7 @@ class TerminalWriter = {
 
 class ThrottleMiddleware = {
   new (options?: Partial<ThrottleOptions>): ThrottleMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -626,7 +631,7 @@ class WebhookMiddleware = {
   new (options?: Partial<WebhookOptions>): WebhookMiddleware
   static github: (secret: string) => WebhookMiddleware
   static stripe: (secret: string, toleranceSeconds?: number) => WebhookMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -649,7 +654,7 @@ const Config = ConfigManager
 
 const Events = Emitter
 
-const FrameworkEvents = {    on<E extends object>(target: (new (...args: any[]) => E) | string, handler: Handler<E>): () => void;    emit<E extends object>(event: E): void;    clear(): void;    handlerCount(): number;}
+const FrameworkEvents = {    on<E extends object>(target: (new (...args: any[]) => E) | string, handler: Handler<E>): () => void;    emit<E extends object>(event: E): void;    clear(): void;    handlerCount(): number;    subscriptions(): Array<{        event: string;        handlers: number;    }>;}
 
 const route = RouteBuilder
 
@@ -679,7 +684,7 @@ function currentPage = (pageName?: string) => number
 
 function data_get = (target: unknown, key: string, defaultValue?: unknown) => unknown
 
-function deepMerge = <T extends object>(base: T, override: Partial<T>) => T
+function deepMerge = <T extends object>(base: T, override: DeepPartial<T>) => T
 
 function deployEnv = () => string
 
@@ -804,6 +809,7 @@ interface ConcernDescriptor = {
 interface ConfigRegistry = {
   admin: AdminConfigShape
   ai: AiConfigShape
+  arch: ArchConfigShape
   audit: AuditConfigShape
   auth: AuthConfigShape
   broadcasting: BroadcastConfigShape
@@ -969,6 +975,12 @@ interface Pipe = {
   handle: (payload: T, next: NextFn) => Promise<Response | void>
 }
 
+interface ProviderReport = {
+  bindings: string[]
+  durationMs: number
+  name: string
+}
+
 interface QueuedListener = {
   handle: (event: T) => Promise<void> | void
   maxAttempts?: number
@@ -1110,6 +1122,8 @@ type ContextValue = ContextRegistry[K]
 type ControllerResponse = void | ResponseBuilder | MarkdownBuilder
 
 type CurrentPageResolver = (pageName: string) => number | undefined
+
+type DeepPartial = { [K in keyof T]?: (NonNullable<T[K]> extends _Atomic ? T[K] : NonNullable<T[K]> extends object ? DeepPartial<NonNullable<T[K]>> : T[K]) | undefined; }
 
 type DevProcessColor = 'cyan' | 'magenta' | 'yellow' | 'green' | 'blue' | 'red'
 
@@ -2457,7 +2471,7 @@ class DevOrchestrator = {
 
 class DevReloadMiddleware = {
   new (): DevReloadMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -2702,7 +2716,7 @@ function basePath = (...segments: string[]) => string
 
 function data_get = (target: unknown, key: string, defaultValue?: unknown) => unknown
 
-function deepMerge = <T extends object>(base: T, override: Partial<T>) => T
+function deepMerge = <T extends object>(base: T, override: DeepPartial<T>) => T
 
 function env = {    (key: string): string | undefined;    (key: string, fallback: string): string;    (key: string, fallback: boolean): boolean;    (key: string, fallback: number): number;}
 
@@ -3135,7 +3149,7 @@ class DailyChannel = {
 class LoggerMiddleware = {
   new (): LoggerMiddleware
   static setManager: (mgr: LogManager) => void
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -3314,6 +3328,17 @@ const Crypt = CryptManager
 
 const Hash = HashManager
 
+function redactGraph = (value: unknown, options: RedactGraphOptions) => unknown
+
+interface RedactGraphOptions = {
+  circular: string
+  flatten?: (value: unknown) => string | undefined
+  mask: string
+  maxDepth: number
+  sensitive: (key: string) => boolean
+  tooDeep: string
+}
+
 type HashAlgorithm = 'bcrypt' | 'argon2id' | 'argon2i' | 'argon2d'
 
 ## ./storage  `(./src/storage/index.ts)`
@@ -3409,7 +3434,7 @@ class StorageError = {
 
 class StorageFilesMiddleware = {
   new (): StorageFilesMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>

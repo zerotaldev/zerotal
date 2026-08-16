@@ -21,6 +21,7 @@ class EventFake = {
   hasListeners: <T extends object>(eventClass: new (...args: unknown[]) => T) => boolean
   off: <T extends object>(eventClass: new (...args: unknown[]) => T, listenerClass: new (...args: unknown[]) => {    handle(event: T): Promise<void> | void;    queue?: boolean | string;    maxAttempts?: number;    retryDelay?: number;}) => void
   on: <T extends object>(eventClass: new (...args: unknown[]) => T, listenerClass: new (...args: unknown[]) => {    handle(event: T): Promise<void> | void;    queue?: boolean | string;    maxAttempts?: number;    retryDelay?: number;}) => void
+  registrations: () => Array<{    event: string;    listeners: string[];}>
   restore: () => void
   setBroadcaster: (fn: ((event: object) => void) | null) => void
 }

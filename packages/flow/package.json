@@ -1,6 +1,6 @@
 {
   "name": "@zerotal/flow",
-  "version": "1.6.3",
+  "version": "1.7.0",
   "license": "MIT",
   "maturity": "stable",
   "private": false,
@@ -18,6 +18,7 @@
   },
   "files": [
     "CHANGELOG.md",
+    "api-surface.md",
     "src",
     "!src/**/*.test.ts",
     "!src/**/*.test.tsx",

@@ -7,7 +7,7 @@
 
 class DevtoolsInjectionMiddleware = {
   new (): DevtoolsInjectionMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -37,6 +37,7 @@ class DevtoolsProvider = {
 class TraceStore = {
   new (options?: TraceStoreOptions | number): TraceStore
   all: () => RequestTrace[]
+  capacity: number
   clear: () => void
   dispose: () => void
   persisting: boolean
@@ -52,7 +53,15 @@ function attributeBindings = (sql: string, count: number) => Array<string | unde
 
 function DevtoolsConfig = (options?: Partial<DevtoolsConfigShape>) => DevtoolsConfigShape
 
+function devtoolsEnabled = () => boolean
+
+function isSensitiveName = (name: string, options?: RedactionOptions) => boolean
+
 function redactBindings = (sql: string, bindings: unknown[], options?: RedactionOptions) => unknown[]
+
+function redactCacheKey = (key: string, options?: RedactionOptions) => string
+
+function redactValue = (value: unknown, options?: RedactionOptions) => unknown
 
 function startDevtoolsStream = () => () => void
 
@@ -76,7 +85,13 @@ interface CacheEntry = {
 
 interface DevtoolsConfigShape = {
   capacity: number
+  captureSource: boolean
   dbPath: string | null
+  editor: EditorName | null
+  editorPathMap: Record<string, string>
+  enabled: boolean | null
+  gate: DevtoolsGate | null
+  headers: string[]
   pruneHours: number
   redact: RedactionOptions
 }
@@ -88,6 +103,13 @@ interface DevtoolsPanelPlugin = {
   id: string
   render: (el: HTMLElement) => void
   title: string
+}
+
+interface ExceptionInfo = {
+  frames?: SourceLocation[]
+  message: string
+  status: number
+  type?: string
 }
 
 interface JobEntry = {
@@ -103,6 +125,7 @@ interface LogEntry = {
   args: string[]
   level: 'error' | 'info' | 'log' | 'warn' | 'debug'
   offsetMs: number
+  source?: SourceLocation
 }
 
 interface MailEntry = {
@@ -124,6 +147,7 @@ interface QuerySpan = {
   bindings: unknown[]
   durationMs: number
   rowCount: number
+  source?: SourceLocation
   sql: string
   startMs: number
 }
@@ -139,6 +163,7 @@ interface RequestTrace = {
   cache: CacheEntry[]
   channels: Record<string, TraceChannelEntry[]>
   durationMs: number
+  exception: ExceptionInfo | null
   headers: Record<string, string>
   id: string
   jobs: JobEntry[]
@@ -150,7 +175,9 @@ interface RequestTrace = {
   queries: QuerySpan[]
   queryParams: Record<string, string>
   requestId: string
+  responseHeaders: Record<string, string>
   route: RouteInfo | null
+  session: string[]
   startMs: number
   statusCode: number
   warnings: NPlusOneWarning[]
@@ -162,13 +189,26 @@ interface RouteInfo = {
   pattern: string
 }
 
+interface SourceLocation = {
+  column?: number
+  file: string
+  function?: string
+  line: number
+}
+
 interface TraceChannelDescriptor = {
   badge?: string
+  flags?: string[]
+  groupBy?: string
   id: string
   label: string
   meta?: string[]
   order?: number
+  render?: 'table' | 'rows' | 'tree' | 'kv' | 'grouped'
   title?: string
+  traceGroup?: string
+  treeBadge?: string
+  treeField?: string
   warn?: string
 }
 
@@ -193,11 +233,33 @@ interface TraceStoreOptions = {
   pruneHours?: number
 }
 
-## ./client  `(./src/client.ts)`
+type DevtoolsGate = (request: Request) => boolean | Promise<boolean>
+
+type EditorName = 'vscode' | 'vscode-insiders' | 'cursor' | 'windsurf' | 'zed' | 'webstorm'
+
+## ./client  `(./src/client/index.ts)`
 
 const DevTools = {    start(opts?: DevtoolsClientOptions): void;}
 
+const SLOW_MS = 300
+
+function buildPathTree = (paths: Array<[string, unknown]>) => Map<string, PathTreeNode>
+
+function facetsActive = (f: Facets) => boolean
+
+function foldTraceRows = (matches: Array<{    trace: RequestTrace;    index: number;}>, channels: TraceChannelDescriptor[], expanded: ReadonlySet<string>) => TraceRow[]
+
+function matchesFacets = (trace: RequestTrace, f: Facets) => boolean
+
 function matchesFilter = (trace: RequestTrace, query: string) => boolean
+
+function methodsPresent = (traces: RequestTrace[]) => string[]
+
+function noFacets = () => Facets
+
+function traceGroupKey = (trace: RequestTrace, channels: TraceChannelDescriptor[]) => string | null
+
+function traceMatches = (trace: RequestTrace, query: string, f: Facets) => boolean
 
 interface DevtoolsClientOptions = {
   endpoint?: string
@@ -210,4 +272,25 @@ interface DevtoolsPanelPlugin = {
   id: string
   render: (el: HTMLElement) => void
   title: string
+}
+
+interface Facets = {
+  errors: boolean
+  methods: string[]
+  nPlusOne: boolean
+  slow: boolean
+  statusClasses: string[]
+}
+
+interface PathTreeNode = {
+  attrs: Record<string, unknown> | null
+  children: Map<string, PathTreeNode>
+}
+
+interface TraceRow = {
+  child: boolean
+  groupKey?: string
+  groupSize?: number
+  index: number
+  trace: RequestTrace
 }

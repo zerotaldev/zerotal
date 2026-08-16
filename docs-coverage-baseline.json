@@ -1,14 +1,14 @@
 {
   "packages": {
     "@zerotal/admin": 121,
-    "@zerotal/ai": 63,
+    "@zerotal/ai": 62,
     "@zerotal/audit": 2,
     "@zerotal/auth": 58,
     "@zerotal/broadcasting": 16,
     "@zerotal/cache": 1,
     "@zerotal/client": 21,
     "@zerotal/core": 201,
-    "@zerotal/devtools": 9,
+    "@zerotal/devtools": 7,
     "@zerotal/flow": 96,
     "@zerotal/flow-ui": 106,
     "@zerotal/i18n": 2,
@@ -24,6 +24,6 @@
     "@zerotal/testing": 6,
     "@zerotal/validator": 9
   },
-  "total": 923,
-  "updatedAt": "2026-08-15T12:29:36.148Z"
+  "total": 920,
+  "updatedAt": "2026-08-15T19:35:23.315Z"
 }

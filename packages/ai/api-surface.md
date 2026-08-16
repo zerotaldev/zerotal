@@ -603,7 +603,7 @@ interface OpenAiConfigShape = {
   timeout: number
 }
 
-type AiConfigInput = {    default?: string;    drivers?: DeepPartial<{        anthropic?: AnthropicConfigShape;        openai?: OpenAiConfigShape;        ollama?: OllamaConfigShape;    }>;    embeddings?: DeepPartial<EmbeddingsConfigShape>;    limits?: DeepPartial<AiLimitsConfigShape>;    redact?: boolean;    agent?: DeepPartial<AiAgentConfigShape>;}
+type AiConfigInput = {    default?: string | undefined;    drivers?: DeepPartial<{        anthropic?: AnthropicConfigShape;        openai?: OpenAiConfigShape;        ollama?: OllamaConfigShape;    }> | undefined;    embeddings?: DeepPartial<EmbeddingsConfigShape> | undefined;    limits?: DeepPartial<AiLimitsConfigShape> | undefined;    redact?: boolean | undefined;    agent?: DeepPartial<AiAgentConfigShape> | undefined;}
 
 type AiEffort = 'max' | 'medium' | 'low' | 'high' | 'xhigh'
 

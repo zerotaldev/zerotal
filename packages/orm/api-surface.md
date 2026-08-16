@@ -323,6 +323,7 @@ class MigrationRunner = {
   run: (entries: MigrationEntry[]) => Promise<string[]>
   runFromDirectory: (dir: string) => Promise<string[]>
   status: (entries: MigrationEntry[]) => Promise<MigrationStatus[]>
+  willRollBackOnFailure: boolean
 }
 
 class Model = {
@@ -570,6 +571,7 @@ class MysqlDialect = {
   hasTableSql: (table: string) => DialectQuery
   readonly name: 'mysql'
   readonly supportsAdvisoryLocks: true
+  readonly supportsTransactionalDdl: false
 }
 
 class NPlusOneDetected = {
@@ -608,6 +610,7 @@ class PostgresDialect = {
   hasTableSql: (table: string) => DialectQuery
   readonly name: 'postgres'
   readonly supportsAdvisoryLocks: true
+  readonly supportsTransactionalDdl: true
 }
 
 class QueryBuilder = {
@@ -744,6 +747,7 @@ class SqliteDialect = {
   hasTableSql: (table: string) => DialectQuery
   readonly name: 'sqlite'
   readonly supportsAdvisoryLocks: false
+  readonly supportsTransactionalDdl: true
 }
 
 class StateError = {
@@ -1261,6 +1265,7 @@ interface SqlDialect = {
   hasTableSql: (table: string) => DialectQuery
   readonly name: DialectName
   readonly supportsAdvisoryLocks: boolean
+  readonly supportsTransactionalDdl: boolean
 }
 
 interface SQLInstance = {

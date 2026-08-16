@@ -9,7 +9,26 @@ follows SemVer strictly: anything importable without an `@internal` marker keeps
 shape for the rest of the 1.x line, and `api-surface.md` is diffed by CI on every
 change.
 
-## [Unreleased]
+## [1.7.0] — 2026-08-16
+
+### Fixed
+
+- **SPA navigation no longer orphans the outgoing page's snapshot.** The swap removed the
+  first `[id^="flow-state-"]` in document order, but a page-level snapshot is a direct child
+  of `<body>` while a child island's sits inside the body content — so on any page with an
+  island it removed the island's script and left the page's behind. Ids are random per
+  request, so the leftovers accumulated one per navigation for as long as the tab stayed
+  open. Now scoped to `body > script[id^="flow-state-"]`, and every match is removed, so a
+  session that has already leaked cleans itself up on the next navigation.
+
+### Removed
+
+- **`Component._skipMount`**, an `@internal` field that was written by `hydrate()` and
+  `restoreDurable()` and read by nothing. Mount-skipping is structural — the router branches
+  between `onHydrate()` and `onMount()` — and wiring the flag up would have been wrong:
+  `$refresh` and `$mount` deliberately re-run `onMount()` on a hydrated page. An inert flag
+  that reads as load-bearing is worse than none, so it is gone and the guarantee is pinned by
+  a test instead: mount runs exactly once across an initial render and any number of actions.
 
 ## [1.6.0] — 2026-08-15
 

@@ -6,7 +6,80 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
-## [Unreleased]
+## [1.7.0] — 2026-08-16
+
+### Fixed
+
+- **Security headers now cover static files.** Files under `public/` are handed to Bun as
+  pre-registered responses and served without entering JavaScript, so no middleware ran for
+  them — including `SecureHeadersMiddleware`, which the framework advertises as automatic.
+  Every asset went out with no `X-Content-Type-Options: nosniff`, which is precisely the
+  response class sniffing protection exists for. The header set is baked into the compiled
+  response at registration time, so Bun still serves the file natively; a header a mount
+  declares itself still wins.
+
+- **`BaseMiddleware.with()` type-checks its options.** `Opts` has a default computed from the
+  middleware class, but a type parameter in an argument position is inferred from the
+  _argument_ and only falls back to its default when inference finds nothing — so
+  `with({ … })` inferred `Opts` from the object literal and type-checked the literal against
+  itself. Every callback parameter arrived implicitly `any`, and a misspelled option was
+  accepted in silence. `NoInfer` on the parameter makes the middleware's own option type the
+  one that governs. It caught a real defect on the first run: `StorageProvider` was passing
+  an `unknown` where a `StorageManager` was expected.
+
+### Added
+
+- **`DeepPartial<T>`, and `deepMerge` accepts it.** `deepMerge` does a deep merge and
+  declared `override: Partial<T>`, which only makes the top level optional — so
+  `{ drivers: { anthropic: { apiKey } } }`, the commonest thing anyone writes in a config
+  file, was a type error against any shape whose nested block has other keys.
+  `@zerotal/ai` had already hit this and defined a private copy; that copy is now deleted and
+  the type is exported from the kernel. `BaseMiddleware.with()` takes it too, since it
+  deep-merges as well.
+
+- **`zt doctor --url` reports duplicated security headers.** A header the app sets and the
+  proxy also sets is invisible from inside the process. Conflicting values fail — browsers do
+  not agree which copy applies, so the control is enforced inconsistently — and identical
+  duplicates warn. `Permissions-Policy` and `Referrer-Policy` are deliberately not checked:
+  a comma is legitimate syntax there, and a probe that cried wolf on a correct header would
+  be switched off before it caught a real one.
+
+- **`RequestFailed` carries the error's class name and stack.** It had the message and the
+  status, which is enough to say a request failed and not enough to say anything about how.
+  A subscriber rendering a failure — the devtools Exception tab is the first — has nothing to
+  show without them, and by the time the event is emitted the error object is the only place
+  they exist. Both are optional trailing parameters, so nothing that constructs or reads the
+  event needs to change.
+
+- **`Application.providerReport`** — what each provider cost to boot and what it put in the
+  container, in boot order. `bootDurationMs` said the app took 240ms and nothing said which
+  provider spent it; the container listed a hundred bindings and nothing said who bound
+  them. Boot order is itself the third answer, since it decides who wins a contested
+  binding.
+
+  Provenance comes from diffing the container registry around each provider's hooks rather
+  than from the container recording a registrar — it keeps the cost at boot instead of on
+  every binding, and adds no mutable state to the container for a question only a debugging
+  tool asks. Async hooks are timed across their `await`, not up to it.
+
+- **`FrameworkEvents.subscriptions()` and `Emitter.registrations()`** — which events have
+  subscribers, and what reacts to them. The bus is the framework's nervous system and had
+  been entirely invisible: `handlerCount()` returned one number for the whole thing.
+
+- **`redactGraph` on the `@zerotal/core/security` subpath** — the object-graph redaction walk
+  that every recorder needs and that three packages had each written for themselves. Copy a
+  value, replace what a key name says is a secret, come back with something
+  `JSON.stringify` survives.
+
+  Shared because the hard parts are the same everywhere and are easy to get subtly wrong:
+  cycles (a model with a back-reference to its parent is ordinary, and `JSON.stringify`
+  throws on it), a depth bound (recording is on the request path), and values that read
+  better flat than walked (`Object.entries` on a `Date` or a `File` produces something worse
+  than useless).
+
+  It is not a policy. Callers bring their own markers and their own sensitivity predicate,
+  because those are not interchangeable — a debug panel's `‹redacted›` is a display choice,
+  while an adapter implementing a published wire protocol has its markers specified for it.
 
 ## [1.6.3] — 2026-08-15
 

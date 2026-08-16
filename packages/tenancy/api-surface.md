@@ -13,7 +13,7 @@ class AuthResolver = {
 
 class EnsureTenancyMiddleware = {
   new (): EnsureTenancyMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (_http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>

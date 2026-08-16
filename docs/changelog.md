@@ -24,6 +24,86 @@ Each version lists changes under three headings:
 Patch and minor releases are backward compatible. Before taking a **major** release,
 read its section here and apply each migration note.
 
+## 1.7.0 — 2026-08-16
+
+The agent surface, a DevTools panel that shows the framework and not just the last request,
+and the repayment of four things the 1.x line had promised without delivering.
+
+### Added
+
+- **`@zerotal/arch` — an MCP server that hands a coding agent the framework's own truth.**
+  Not a documentation search over prose about an API: `api_surface` returns the exact
+  TypeScript signature of every export, read from the version installed in your project and
+  diffed by CI on every change. Alongside it, `search_docs` over the documentation that
+  shipped with that same version, `routes` and `schema` read from the live router and the
+  models' own metadata, `logs`/`last_error` from the app's structured trail, `baselines`, and
+  `doctor` — the one an agent is meant to finish a task with, because every finding carries
+  its fix.
+
+  ```bash
+  bun add -d @zerotal/arch
+  bun zt arch:install          # writes .mcp.json, AGENTS.md, and a CLAUDE.md shim
+  ```
+
+  Re-running is safe: every generated region is marker-fenced, so `arch:update` on your next
+  upgrade replaces what it wrote and leaves anything you added around it alone. Ships `beta`.
+  See [Agent Surface](/docs/arch).
+
+- **DevTools grew an App section.** Every surface until now read the request stream — what one
+  request did. Six new tabs behind a **Requests | App** switch answer what the app _is_:
+  routes, resolved config with secrets masked, container bindings and which provider bound
+  each, provider boot cost, event listeners, and console commands with scheduled tasks. Every
+  location in the panel is now a link into your editor.
+
+- **Security headers cover static files.** Files under `public/` are handed to Bun as
+  pre-registered responses and served without entering JavaScript, so no middleware ever ran
+  for them — every asset went out with no `X-Content-Type-Options: nosniff`, the response
+  class sniffing protection exists for. The header set is baked into the compiled response, so
+  Bun still serves the file natively.
+
+- **`zt doctor --url` reports security headers sent twice.** A header your app sets and your
+  proxy also sets is invisible from inside the process. Conflicting values fail the check —
+  browsers do not agree which copy applies, so the control is enforced inconsistently —
+  and identical duplicates warn.
+
+- **`DeepPartial<T>`**, exported from the kernel. `deepMerge` does a deep merge and its
+  parameter said `Partial<T>`, which only makes the top level optional — so overriding one
+  field of a nested config block was a type error against a merge that handles it perfectly.
+
+### Fixed
+
+- **Migrations are now actually transactional.** The runner wrapped each `up()` in a
+  transaction and the docblock promised all-or-nothing, but the wrapper governed nothing:
+  `Schema` resolved the _global_ connection, so a migration's DDL ran on a pooled connection
+  and committed independently. On PostgreSQL, a migration failing on its third statement left
+  the first two behind and the `ROLLBACK` had nothing to undo. DDL now joins the enclosing
+  transaction, the tracking-table row is written inside it, and rollback carries the same
+  guarantee. MySQL has no transactional DDL, so the runner no longer opens one there and
+  `zt migrate` says so before it starts. See
+  [Migrations → What happens when a migration fails](/docs/migrations#what-happens-when-a-migration-fails).
+
+- **`BaseMiddleware.with()` type-checks its options.** Its options type was inferred from the
+  object literal it was handed rather than from the middleware class, so the literal was
+  checked against itself: every callback parameter arrived implicitly `any`, and a misspelled
+  option was accepted in silence.
+
+- **SPA navigation no longer leaks the outgoing page's state script.** The swap removed the
+  first `flow-state-*` element in document order, which on any page with a child island was
+  the island's, not the page's. The orphans accumulated one per navigation for as long as the
+  tab stayed open.
+
+### Changed
+
+- **DDL issued inside `DB.transaction()` now joins that transaction.** Previously
+  `Schema.create()` and friends resolved the global connection and committed separately. This
+  is the fix above, and it applies to any code — not only migrations — that issues DDL inside
+  a transaction.
+
+- **`Component._skipMount` is gone** (`@internal`). It was written by `hydrate()` and read by
+  nothing; mount-skipping is structural, and `$refresh`/`$mount` deliberately re-mount a
+  hydrated page, so honouring the flag would have broken both. `hooks.test.ts` pins the real
+  guarantee — mount runs exactly once per session.
+
 ## 1.6.3 — 2026-08-15
 
 Two guards against the same failure: an upgrade sitting on disk while something older keeps

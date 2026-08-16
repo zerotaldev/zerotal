@@ -7,7 +7,7 @@
 
 class AuthSessionMiddleware = {
   new (driver: SessionDriver, findUser: UserFinder): AuthSessionMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   static withDriver: (driver: SessionDriver) => new () => SessionMiddleware
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
@@ -24,7 +24,7 @@ class CookieDriver = {
 class CsrfMiddleware = {
   new (options?: CsrfOptions): CsrfMiddleware
   static token: (ctx?: HttpContext) => string | undefined
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -93,7 +93,7 @@ class SessionManager = {
 
 class SessionMiddleware = {
   new (driver?: SessionDriver): SessionMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   static withDriver: (driver: SessionDriver) => new () => SessionMiddleware
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>

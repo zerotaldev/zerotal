@@ -6,7 +6,20 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
-## [Unreleased]
+## [1.7.0] — 2026-08-16
+
+### Fixed
+
+- **`FakeSocialDriver.userFromToken()` accepts the token it is given.** The override dropped
+  the parameter, so a test swapping the fake in for a real driver could not call it the way
+  production code does — `fake.userFromToken(accessToken)` was a compile error against a
+  method that works perfectly at runtime. A fake has to be callable everywhere the thing it
+  replaces is.
+
+- **`SocialConfig()` accepts a partial driver block.** Every driver entry is
+  `OAuth2Config & Record<string, unknown>`, and the parameter was a shallow `Partial`, so
+  overriding one field of one provider demanded a complete entry for it. It now takes
+  `DeepPartial`, which is what the underlying merge has always done.
 
 ## [1.5.0] — 2026-08-15
 

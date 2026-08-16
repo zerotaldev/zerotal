@@ -6,7 +6,46 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
-## [Unreleased]
+## [1.7.0] — 2026-08-16
+
+### Fixed
+
+- **Migrations are now actually transactional.** The runner wrapped each `up()` in
+  `begin()` and the docblock promised all-or-nothing, but the wrapper governed nothing:
+  `Schema` resolved the _global_ connection, so the migration's DDL ran on a pooled
+  connection and committed independently of the transaction around it. On PostgreSQL a
+  migration that failed on its third statement left the first two behind, and the enclosing
+  `ROLLBACK` had nothing to undo.
+
+  Three changes close it. `Schema` resolves the enclosing transaction when there is one
+  (new `_getScopedDbConnection`), so DDL issued inside `DB.transaction()` joins it —
+  migrations included. The tracking-table insert moved _inside_ the transaction, because
+  recording after the commit leaves a window where the schema has moved and nothing says so,
+  and the next deploy re-runs the migration against a schema it already changed. And
+  rollback got the same treatment: a `down()` that fails part-way now undoes nothing rather
+  than leaving the schema and the tracking table disagreeing.
+
+  This was invisible to the test suite by construction — `new SQL(":memory:")` is a single
+  handle, so the "global" and transaction connections are the same object and DDL joined the
+  transaction by accident. The new tests use a fake that keeps them distinguishable.
+
+### Added
+
+- **`MigrationRunner.willRollBackOnFailure`** and `SqlDialect.supportsTransactionalDdl`.
+  MySQL and MariaDB implicitly commit on every DDL statement, so a transaction around a
+  migration there is a promise that cannot be kept — the runner no longer opens one, and
+  `bun zt migrate` warns before it starts rather than after something breaks. PostgreSQL
+  and SQLite report `true`.
+
+- **Two DevTools tabs the ORM already had the data for.** `ModelChanged`,
+  `TransactionCommitted` and `TransactionRolledBack` were on the framework event bus and went
+  nowhere: a request that wrote four rows and one that wrote none looked identical in the
+  panel, and a transaction that rolled back showed only as queries that appeared to succeed.
+
+  The observability bridge now declares a **Models** channel (grouped per model) and a
+  **Transactions** channel (marking a rollback as a warning, with its reason). Both are
+  declared as data, so DevTools ships no ORM-specific code — and both are skipped entirely
+  when DevTools is not installed, as every other bridge here is.
 
 ## [1.6.0] — 2026-08-15
 

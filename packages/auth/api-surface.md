@@ -26,7 +26,7 @@ class AppleDriver = {
 
 class AuthenticateSessionMiddleware = {
   new (): AuthenticateSessionMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -34,7 +34,7 @@ class AuthenticateSessionMiddleware = {
 
 class AuthMiddleware = {
   new (): AuthMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -172,7 +172,7 @@ class AuthUser = {
 
 class BasicAuthMiddleware = {
   new (): BasicAuthMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -182,7 +182,7 @@ class BearerTokenMiddleware = {
   new (): BearerTokenMiddleware
   static setLoader: (loader: TokenLoader) => void
   static setToucher: (toucher: TokenToucher) => void
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -190,7 +190,7 @@ class BearerTokenMiddleware = {
 
 class ConfirmPasswordMiddleware = {
   new (): ConfirmPasswordMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -246,7 +246,7 @@ class FakeSocialDriver = {
   setScopes: (scopes: string[]) => FakeSocialDriver
   stateless: () => FakeSocialDriver
   user: () => Promise<SocialUser>
-  userFromToken: () => Promise<SocialUser>
+  userFromToken: (_token?: string) => Promise<SocialUser>
   with: (params: Record<string, string>) => FakeSocialDriver
 }
 
@@ -305,7 +305,7 @@ class GoogleDriver = {
 
 class GuestMiddleware = {
   new (): GuestMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -321,7 +321,7 @@ class HashService = {
 
 class JwtGuardMiddleware = {
   new (): JwtGuardMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -591,7 +591,7 @@ class Permission = {
 
 class PersistUserMiddleware = {
   new (): PersistUserMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -615,7 +615,7 @@ class Registered = {
 
 class RememberMeMiddleware = {
   new (): RememberMeMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -633,7 +633,7 @@ class RequestGuard = {
 class RequirePermissionMiddleware = {
   new (...abilities: string[]): RequirePermissionMiddleware
   static for: (...abilities: string[]) => RequirePermissionMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -642,7 +642,7 @@ class RequirePermissionMiddleware = {
 class RequireRoleMiddleware = {
   new (...roles: string[]): RequireRoleMiddleware
   static for: (...roles: string[]) => RequireRoleMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -822,7 +822,7 @@ class TwitterDriver = {
 class TwoFactorMiddleware = {
   new (): TwoFactorMiddleware
   static challengeRoute: string
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -849,7 +849,7 @@ class UnknownSocialDriverError = {
 
 class ValidateSignatureMiddleware = {
   new (): ValidateSignatureMiddleware
-  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: Partial<Opts>) => new () => InstanceType<T>
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
   handle: (http: HttpContext, next: NextFn) => Promise<Response | void>
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
@@ -951,7 +951,7 @@ function rememberTokenMatches = (rawFromCookie: string, storedHash: string) => b
 
 function Roles = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): (Anonymous class);    prototype: Roles<any>.(Anonymous class);    withRoles: boolean;} & TBase
 
-function SocialConfig = (config?: Partial<SocialConfigShape>) => SocialConfigShape
+function SocialConfig = (config?: DeepPartial<SocialConfigShape>) => SocialConfigShape
 
 function tokenCan = (row: TokenRow, ability: string) => boolean
 

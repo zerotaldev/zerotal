@@ -1,6 +1,6 @@
 {
   "name": "zerotal",
-  "version": "1.6.3",
+  "version": "1.7.0",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -16,6 +16,8 @@
     "link:all": "bun run scripts/link-all.ts",
     "api:surface": "bun run scripts/api-surface.ts",
     "api:surface:check": "bun run scripts/api-surface.ts --check",
+    "arch:docs": "bun run scripts/arch-docs.ts",
+    "arch:docs:check": "bun run scripts/arch-docs.ts --check",
     "cast:check": "bun run scripts/cast-audit.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

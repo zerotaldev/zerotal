@@ -32,7 +32,6 @@ class Component = {
   _redirectStatus: number | null
   _redirectUrl: string | null
   _shouldRefresh: boolean
-  _skipMount: boolean
   _streamSender: ((ref: string, content: string, replace: boolean) => void) | null
   _taskSignal: AbortSignal | null
   _titleValue: string | null

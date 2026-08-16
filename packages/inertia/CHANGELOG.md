@@ -6,7 +6,35 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
-## [Unreleased]
+## [1.7.0] — 2026-08-16
+
+### Added
+
+- **The recorder now also feeds Zerotal's own DevTools panel.** Everything it resolves —
+  which prop came from which wrapper, what kind of request this was, which batch it belongs
+  to — went to the browser-extension read API and nowhere else. So a developer running the
+  in-page panel could not see a single prop, and a developer running the extension could not
+  see a single SQL query; the two halves described the same request and never met.
+
+  Entries are now also pushed onto an `inertia` channel when `@zerotal/devtools` is
+  installed, where the panel draws the prop map as a tree, badges each prop with the wrapper
+  that produced it, and folds a visit together with the deferred loads it triggered. Because
+  the entry is recorded against the same `HttpContext` the queries were, one row shows the
+  props **and** the SQL that produced them — with no key to match and no way for the two to
+  disagree about which request they describe.
+
+  Deliberately a fan-out and not a migration: `DevtoolsEntry` and `/_inertia/devtools` are a
+  published contract and keep serving the extension either way. Nor is devtools a new
+  dependency — the sink is resolved by container key through a local structural interface, so
+  this package imports `@zerotal/devtools` nowhere and does nothing at all when it is absent.
+
+### Changed
+
+- **`redactValue` runs `redactGraph` from `@zerotal/core/security`** rather than its own copy
+  of the same walk. The protocol markers (`[REDACTED]`, `[Circular]`, `[Max depth]`) and the
+  depth limit are unchanged — they are specified by the wire contract, not chosen here, so
+  only the traversal is shared. Its last two parameters (`seen`, `depth`) were internal
+  bookkeeping and are gone; no caller passed them.
 
 ## [1.6.1] — 2026-08-15
 

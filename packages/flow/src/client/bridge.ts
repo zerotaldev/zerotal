@@ -43,6 +43,11 @@ import {
   setTimelineApplier,
 } from "./timeline.ts";
 import * as _timeline from "./timeline.ts";
+import {
+  framePanes as _framePanes,
+  renderFramePanes as _renderFramePanes,
+  type FrameServerCost as _ServerCost,
+} from "./framePanes.ts";
 
 // CSP-safe mode: set by the CSP client entry. When on, bridge-managed bindings
 // use the eval-free evaluateCsp() instead of `new Function`.
@@ -1229,16 +1234,6 @@ interface _TraceLike {
   exception?: { message?: unknown } | null;
 }
 
-/** What the server did during one action, shown on the frame that action produced. */
-interface _ServerCost {
-  durationMs: number;
-  ip: string | null;
-  statusCode: number | null;
-  queries: Array<{ sql: string; durationMs: number | null; rowCount: number | null }>;
-  logs: Array<{ level: string; text: string }>;
-  error: string | null;
-}
-
 /**
  * Server cost per frame, accumulated as traces arrive.
  *
@@ -1293,138 +1288,14 @@ function _bindServerCost(
   }
 }
 
-/** A value as the detail rows show it — compact JSON, truncated rather than wrapped. */
-function _brief(value: unknown, max = 160): string {
-  let text: string;
-  try {
-    text = typeof value === "string" ? value : JSON.stringify(value);
-  } catch {
-    text = String(value);
-  }
-  if (text === undefined || text === null) text = String(value);
-  return text.length > max ? `${text.slice(0, max)}…` : text;
-}
-
-/**
- * The value out of a snapshot entry, which is stored as `[value, meta]`.
- *
- * A developer reading a state diff wants `1 → 2`, not `[1,{}] → [2,{}]`: the
- * second slot is the framework's own bookkeeping (casts and the like) and only
- * earns space when it holds something.
- */
-function _snapshotValue(entry: unknown): unknown {
-  if (!Array.isArray(entry) || entry.length === 0) return entry;
-  const [value, meta] = entry as [unknown, unknown];
-  const bare =
-    meta === undefined || meta === null || (_isPlainObject(meta) && !Object.keys(meta).length);
-  return bare ? value : { value, meta };
-}
-
-function _isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
 /** Which frames are expanded. Module state so a redraw does not collapse them. */
 const _expanded = new Set<number>();
 
 /** The trace of the last draw, so toggling a row can redraw without waiting for one. */
 let _lastTrace: _TraceLike | null = null;
 
-/** One `key  before → after` row per field the action changed. */
-function _renderStateDiff(
-  frame: _timeline.TimelineFrame,
-  frames: readonly _timeline.TimelineFrame[],
-): string {
-  if (!frame.changed.length) return "";
-  const prior = frames.filter((f) => f.compId === frame.compId && f.seq < frame.seq).pop();
-  const before = prior?.snapshot?.data as Record<string, unknown> | undefined;
-  const after = frame.snapshot?.data as Record<string, unknown> | undefined;
-
-  const rows = frame.changed
-    .map((key) => {
-      const from = before && key in before ? _brief(_snapshotValue(before[key]), 60) : "—";
-      const to = after && key in after ? _brief(_snapshotValue(after[key]), 60) : "—";
-      return (
-        `<div style="display:flex;gap:8px;align-items:baseline;padding:1px 0">` +
-        `<span style="min-width:120px;color:var(--cyan)">${_escapeHtml(key)}</span>` +
-        `<span class="dim">${_escapeHtml(from)}</span>` +
-        `<span class="dim">→</span>` +
-        `<span style="color:var(--green)">${_escapeHtml(to)}</span>` +
-        `</div>`
-      );
-    })
-    .join("");
-  return `<div style="margin-bottom:6px"><div class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">State</div>${rows}</div>`;
-}
-
-/** The call the browser made: its arguments, and any client writes flushed with it. */
-function _renderSent(frame: _timeline.TimelineFrame): string {
-  if (!frame.sent) return "";
-  const args = frame.sent.args.length
-    ? frame.sent.args.map((a) => _brief(a, 80)).join(", ")
-    : "no arguments";
-  const updates = frame.sent.updates ? Object.entries(frame.sent.updates) : [];
-  const updateRows = updates
-    .map(
-      ([k, v]) =>
-        `<div style="display:flex;gap:8px;padding:1px 0">` +
-        `<span style="min-width:120px;color:var(--cyan)">${_escapeHtml(k)}</span>` +
-        `<span class="dim">${_escapeHtml(_brief(v, 60))}</span></div>`,
-    )
-    .join("");
-  return (
-    `<div style="margin-bottom:6px">` +
-    `<div class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Sent</div>` +
-    `<div><span style="color:var(--purple)">${_escapeHtml(frame.action)}</span><span class="dim">(${_escapeHtml(args)})</span></div>` +
-    (updateRows
-      ? `<div class="dim" style="font-size:10px;margin:2px 0 1px">flushed with the call</div>${updateRows}`
-      : "") +
-    `</div>`
-  );
-}
-
-/** What the server did while handling the action — from its own devtools trace. */
-function _renderServer(seq: number): string {
-  const s = _frameCost.get(seq);
-  if (!s) {
-    // A client expression never leaves the browser; there is no server half to show.
-    return `<div class="dim" style="font-size:11px">Ran in the browser — nothing was sent to the server.</div>`;
-  }
-  const head =
-    `<div style="display:flex;gap:10px;flex-wrap:wrap">` +
-    `<span class="dim">${s.durationMs}ms</span>` +
-    (s.statusCode ? `<span class="dim">status ${s.statusCode}</span>` : "") +
-    (s.ip ? `<span class="dim">${_escapeHtml(s.ip)}</span>` : "") +
-    `<span class="dim">${s.queries.length} quer${s.queries.length === 1 ? "y" : "ies"}</span>` +
-    `</div>`;
-
-  const queries = s.queries
-    .map(
-      (q) =>
-        `<div style="display:flex;gap:8px;align-items:baseline;padding:1px 0">` +
-        `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escapeHtml(_brief(q.sql, 140))}</span>` +
-        `<span class="dim" style="font-size:10px">${q.durationMs ?? "—"}ms${q.rowCount === null ? "" : ` · ${q.rowCount} row${q.rowCount === 1 ? "" : "s"}`}</span>` +
-        `</div>`,
-    )
-    .join("");
-
-  const logs = s.logs
-    .map(
-      (l) =>
-        `<div style="padding:1px 0"><span class="dim" style="min-width:44px;display:inline-block">${_escapeHtml(l.level)}</span>${_escapeHtml(_brief(l.text, 140))}</div>`,
-    )
-    .join("");
-
-  return (
-    `<div style="margin-bottom:6px">` +
-    `<div class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Server</div>` +
-    head +
-    (s.error ? `<div class="red" style="margin-top:2px">${_escapeHtml(s.error)}</div>` : "") +
-    (queries ? `<div style="margin-top:3px">${queries}</div>` : "") +
-    (logs ? `<div style="margin-top:3px">${logs}</div>` : "") +
-    `</div>`
-  );
-}
+/** Which pane of a frame the reader last picked. See `activePane`. */
+let _framePref = "";
 
 /** Render the timeline into the Zerotal devtools content area (themed with its CSS vars/classes). */
 function _renderTimelineInto(el: HTMLElement, trace: _TraceLike | null = null): void {
@@ -1457,10 +1328,8 @@ function _renderTimelineInto(el: HTMLElement, trace: _TraceLike | null = null): 
             : "";
           const open = _expanded.has(f.seq);
           const detail = open
-            ? `<div style="padding:6px 8px 8px 38px;border-bottom:1px solid var(--bdr)">` +
-              _renderSent(f) +
-              _renderStateDiff(f, frames) +
-              _renderServer(f.seq) +
+            ? `<div class="hdetail" style="margin-left:26px">` +
+              _renderFramePanes(_framePanes(f, frames, _frameCost.get(f.seq) ?? null), _framePref) +
               `</div>`
             : "";
           return (
@@ -1489,6 +1358,15 @@ function _renderTimelineInto(el: HTMLElement, trace: _TraceLike | null = null): 
         _timeline.resumeLive(id);
       return;
     }
+    // A pane of the frame being read. First, since the strip sits inside the
+    // detail the row opened and a click there must not also rewind the page.
+    const pane = target.closest<HTMLElement>("[data-fsec]");
+    if (pane?.dataset["fsec"]) {
+      _framePref = pane.dataset["fsec"];
+      _renderTimelineInto(el, _lastTrace);
+      return;
+    }
+
     // Checked before the row, since the toggle sits inside it.
     const toggle = target.closest<HTMLElement>("[data-tl-exp]");
     if (toggle?.dataset["tlExp"]) {

@@ -13,6 +13,17 @@ change.
 
 ### Changed
 
+- **An action opens into its own tabs.** A frame's detail was a stack — Sent, then State,
+  then Server with the SQL buried under it. They are alternatives, not a sequence: you are
+  reading the arguments the click sent, _or_ the state it moved, _or_ the queries it ran. Now
+  a strip, matching the request rows: `Sent · State 2 · Server · Queries 3 · Logs 1`.
+
+  Queries and Logs are panes of their own, counted, so what an action cost the database is
+  one click from the frame rather than a list appended beneath a duration. Only the panes a
+  frame has appear, so the strip doubles as the summary, and which one you were reading is
+  kept as you step down the list — comparing the SQL of one action against the next should
+  not return you to the arguments each time.
+
 - **One Flow tab in DevTools, and its rows open.** The time-travel timeline registered itself
   as a tab called "Timeline", colliding with the panel's own Timeline tab, and sat apart from
   the Flow tab even though the frames and the actions are the same clicks seen from the two

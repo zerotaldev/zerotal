@@ -49,6 +49,10 @@ function skeleton(): string {
     `<input id="filter" class="finput" type="search" ` +
     `placeholder="Filter by path, method, status, or controller…">` +
     `<span class="dim" id="fcount"></span>` +
+    // Labelled rather than the bar's icon: this is where you are when you decide
+    // the history is in your way, and the icon at the far end of the status bar
+    // is not where you look for it.
+    `<button class="tbtn" data-action="clear" title="Discard every recorded request">Clear</button>` +
     `</div>` +
     `<div class="facets" id="facets"></div>` +
     `<div id="rowswrap">` +

@@ -38,6 +38,8 @@ export interface PersistedUi {
   section: Section;
   tab: string;
   appTab: string;
+  /** The view showing inside an open request. */
+  sectionTab: string;
   filter: string;
   facets: Facets;
   height: number;
@@ -87,6 +89,15 @@ export class Store {
   selected: RequestTrace | null = null;
   /** The request whose detail is open in the list, by trace id. */
   openTraceId: string | null = null;
+  /**
+   * Which view is showing inside the request you are reading.
+   *
+   * Kept across requests on purpose: someone comparing the queries of one
+   * request against the next wants the queries again, not to be returned to the
+   * top every time. Falls back to the first available when a request has nothing
+   * to show under it.
+   */
+  sectionTab = "";
   connected = false;
   /**
    * How many traces to keep. Replaced by the server's real capacity when the
@@ -153,6 +164,7 @@ export class Store {
     // the first, which is Live.
     this.tab = saved.tab === "queries" ? "live" : (saved.tab ?? "live");
     this.appTab = saved.appTab ?? "app:routes";
+    this.sectionTab = saved.sectionTab ?? "";
     this.filter = saved.filter ?? "";
     this.facets = { ...noFacets(), ...(saved.facets ?? {}) };
     this.height = Math.max(MIN_HEIGHT, saved.height ?? DEFAULT_HEIGHT);
@@ -177,6 +189,7 @@ export class Store {
       section: this.section,
       appTab: this.appTab,
       tab: this.tab,
+      sectionTab: this.sectionTab,
       filter: this.filter,
       facets: this.facets,
       height: this.height,
@@ -206,6 +219,14 @@ export class Store {
   /** The tab showing in the current section. */
   get activeTab(): string {
     return this.section === "app" ? this.appTab : this.tab;
+  }
+
+  /** Pick the view showing inside the open request. */
+  setSectionTab(id: string): void {
+    if (this.sectionTab === id) return;
+    this.sectionTab = id;
+    this.persist();
+    this.changed();
   }
 
   setTab(tab: string): void {

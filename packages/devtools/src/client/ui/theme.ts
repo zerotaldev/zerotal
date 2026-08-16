@@ -291,12 +291,24 @@ ${TOKENS}
   background: var(--childbg); border-bottom: 1px solid var(--bdr);
   border-left: 2px solid var(--purple);
 }
-.dsec + .dsec { border-top: 1px solid var(--bdr); }
-.dsec-h {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 12px 3px; font-size: 10px; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--muted);
+/* The request's own tab strip — alternatives, not a stack you scroll past. */
+.dsecs {
+  display: flex; gap: 2px; align-items: center; flex-wrap: wrap;
+  padding: 4px 10px; border-bottom: 1px solid var(--bdr); background: var(--surf);
 }
+.dsect {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: none; border: 0; border-radius: 3px; cursor: pointer;
+  padding: 3px 7px; font: inherit; font-size: 11px; color: var(--muted);
+}
+.dsect:hover { color: var(--text); background: var(--card); }
+.dsect.on { color: var(--text); background: var(--card); font-weight: 700; }
+.tbtn {
+  background: none; border: 1px solid var(--bdr); border-radius: 3px;
+  color: var(--muted); cursor: pointer; padding: 2px 8px; font: inherit; font-size: 11px;
+  flex-shrink: 0;
+}
+.tbtn:hover { color: var(--text); border-color: var(--muted); }
 .dsec-n {
   background: var(--card); color: var(--text); border-radius: 6px;
   padding: 0 5px; font-size: 10px; font-variant-numeric: tabular-nums;

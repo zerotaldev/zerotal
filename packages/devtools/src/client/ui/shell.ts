@@ -370,6 +370,20 @@ export function mountShell(opts: ShellOptions): void {
       return;
     }
 
+    // A view inside the request being read. Checked before the row, since the
+    // strip sits inside the detail the row opened.
+    const sec = target.closest("[data-sec]") as HTMLElement | null;
+    if (sec?.dataset["sec"]) {
+      store.setSectionTab(sec.dataset["sec"]);
+      return;
+    }
+
+    // The list carries its own Clear, beside the filter it belongs with.
+    if (target.closest('[data-action="clear"]')) {
+      transport.clear();
+      return;
+    }
+
     // Opening a request is the whole navigation now: its queries, logs, timeline
     // and channels are sections of it rather than tabs you go and find.
     const row = target.closest("[data-idx]") as HTMLElement | null;

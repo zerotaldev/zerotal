@@ -8,6 +8,37 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **A request is a place, not twelve tabs.** The Requests strip carried fourteen tabs, twelve
+  of which described a single request — Queries, Timeline, Logs, Request, Exception, Mail,
+  Cache, Jobs, and every channel. They were empty for most requests, they answered a question
+  you can only ask about a request you have already picked, and under about 1100px they
+  scrolled off the right edge with nothing to say they had.
+
+  Every view now declares a `scope`. A request-scoped one is drawn inside whichever request
+  you are reading, as that request's own small strip of tabs; a session-scoped one keeps its
+  place in the panel's strip, because it keeps reading as you move between requests. Nothing
+  is reimplemented — a `TabView` was already "draw this trace into this element", which is
+  exactly what a section is.
+
+  Only the views with something to say appear, so the strip doubles as the summary: a request
+  showing Queries, Logs and Exception has told you what happened before you click anything. A
+  view that counts nothing is skipped before it renders, and anything that comes back as its
+  own empty-state line is dropped after.
+
+  Requests is now **Live**, **All** and whatever plugins are installed. App is untouched —
+  Routes, Config, Container, Providers, Events and Commands describe the app rather than a
+  request, which is exactly why they are tabs.
+
+- **A Live view, first and default.** The newest request, already open. Opening the panel now
+  shows the page you are looking at instead of a heading you navigate away from, and it
+  follows: click something and it is showing what just happened. It ignores pinning on
+  purpose — pinning is how you hold still and read something older.
+
+- **Clear sits with the list it clears.** A labelled button beside the filter, rather than
+  only the icon at the far end of the status bar.
+
 ### Fixed
 
 - **Durations printed their whole float.** `fmt()` interpolated the number raw, so anything

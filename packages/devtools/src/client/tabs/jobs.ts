@@ -10,6 +10,7 @@ function icon(status: JobEntry["status"]): string {
 export const jobsTab: TabView = {
   id: "jobs",
   label: "Jobs",
+  scope: "request",
 
   badge: ({ trace }) =>
     trace

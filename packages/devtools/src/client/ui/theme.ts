@@ -280,6 +280,28 @@ ${TOKENS}
    rows are not positioned — that sent every swatch to the nearest positioned
    ancestor, leaving seven squares stacked above their own labels. */
 .tkey i { position: static; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 3px; vertical-align: middle; font-style: normal; }
+/* ── an open request ──────────────────────────────────────────────────────── */
+.lvhead {
+  display: flex; align-items: baseline; gap: 8px; padding: 7px 12px;
+  border-bottom: 1px solid var(--bdr); background: var(--surf);
+  position: sticky; top: 0; z-index: 1;
+}
+.hchev { width: 12px; flex-shrink: 0; color: var(--muted); text-align: center; }
+.hdetail {
+  background: var(--childbg); border-bottom: 1px solid var(--bdr);
+  border-left: 2px solid var(--purple);
+}
+.dsec + .dsec { border-top: 1px solid var(--bdr); }
+.dsec-h {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px 3px; font-size: 10px; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--muted);
+}
+.dsec-n {
+  background: var(--card); color: var(--text); border-radius: 6px;
+  padding: 0 5px; font-size: 10px; font-variant-numeric: tabular-nums;
+}
+.dsec-n.warn { background: var(--red); color: var(--bg); }
 /* ── generic channel rows ─────────────────────────────────────────────────── */
 .crow  { padding: 7px 12px; border-bottom: 1px solid var(--bdr); }
 .crow.warn { border-left: 3px solid var(--yellow); }

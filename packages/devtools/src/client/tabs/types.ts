@@ -12,6 +12,11 @@ export interface TabContext {
   /** The pinned or live trace, or null before any traffic. */
   trace: RequestTrace | null;
   store: Store;
+  /**
+   * The request-scoped views, for the list to render inside whichever request is
+   * open. Absent in a test that renders one tab on its own.
+   */
+  sections?: TabView[];
 }
 
 /** The count beside a tab's label, and whether it should read as a warning. */
@@ -23,6 +28,18 @@ export interface TabBadge {
 export interface TabView {
   id: string;
   label: string;
+  /**
+   * Whether this describes one request or the session.
+   *
+   * `"request"` is not a tab at all: it is a section of the request you opened
+   * in the list. Twelve of these in the strip is twelve tabs that are empty for
+   * most requests and answer a question you can only ask about a request you
+   * have already picked — so they are rendered inside its row instead, and only
+   * when they have something to say. `"session"` earns a tab, because it keeps
+   * reading while you move between requests: the list itself, and a plugin that
+   * owns live browser state.
+   */
+  scope: "request" | "session";
   /**
    * Show the live dot while connected. For the tab whose contents change on
    * their own rather than only when you pick a different request.

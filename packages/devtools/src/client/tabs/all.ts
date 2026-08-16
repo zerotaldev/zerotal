@@ -11,6 +11,8 @@ import { foldTraceRows, type TraceRow } from "../tree.ts";
 import { dCls, esc, fmt, scCls } from "../ui/format.ts";
 import { el, reconcile } from "../ui/render.ts";
 import type { TabContext, TabView } from "./types.ts";
+import type { RequestTrace } from "../../RequestTrace.ts";
+import { renderSections } from "./sections.ts";
 
 /**
  * Row height in pixels, which the stylesheet pins.
@@ -117,7 +119,14 @@ function rowKey(r: TraceRow): string {
   return `${r.trace.id}:${r.child ? "c" : "h"}`;
 }
 
-function rowHtml(r: TraceRow, selectedId: string | undefined): string {
+/** What the list draws: request rows, and the detail of whichever one is open. */
+type DrawItem = { kind: "row"; row: TraceRow } | { kind: "detail"; trace: RequestTrace };
+
+function itemKey(item: DrawItem): string {
+  return item.kind === "detail" ? `${item.trace.id}:d` : rowKey(item.row);
+}
+
+function rowHtml(r: TraceRow, selectedId: string | undefined, openId: string | null): string {
   const t = r.trace;
   const toggle = r.groupKey
     ? `<button class="gtog" data-group="${esc(r.groupKey)}" title="Requests in this batch">` +
@@ -126,6 +135,7 @@ function rowHtml(r: TraceRow, selectedId: string | undefined): string {
   return (
     `<div class="hrow${t.id === selectedId ? " cur" : ""}${t.exception ? " err" : ""}` +
     `${r.child ? " child" : ""}" data-idx="${r.index}">` +
+    `<span class="hchev">${t.id === openId ? "▾" : "▸"}</span>` +
     `<span class="meth ${t.method.toLowerCase()}">${esc(t.method)}</span>` +
     `<span class="hpath">${esc(t.path)}</span>` +
     // The message, not just the status: scanning a list for the request that
@@ -192,24 +202,46 @@ function draw(host: HTMLElement, ctx: TabContext): void {
   // which is what scrolls. The rows start below the sticky filter bar and the
   // facet strip, so the window is offset by the wrapper's position rather than
   // measured from zero.
-  const { first, count: take } = windowRange(
-    rows.length,
-    host.scrollTop,
-    host.clientHeight || 0,
-    wrap.offsetTop,
-  );
+  //
+  // Windowing is suspended while a request is open, because an open detail is a
+  // row of unknown height and every offset here is arithmetic on a fixed one.
+  // The store keeps 100 traces and the threshold is 200, so in practice this
+  // draws the same whole list it would have drawn anyway; the guard is for the
+  // correlated-group case that can fold more rows than traces.
+  const openId = store.openTraceId;
+  const { first, count: take } = openId
+    ? { first: 0, count: rows.length }
+    : windowRange(rows.length, host.scrollTop, host.clientHeight || 0, wrap.offsetTop);
   const slice = rows.slice(first, first + take);
 
   padTop.style.height = `${first * ROW_H}px`;
   padBot.style.height = `${Math.max(0, rows.length - first - take) * ROW_H}px`;
 
+  // The open request's detail rides in the list as its own item, so the
+  // reconciler keeps it across redraws — rebuilding it on every arriving request
+  // would collapse whatever the reader had scrolled to inside it.
+  const items: DrawItem[] = [];
+  for (const row of slice) {
+    items.push({ kind: "row", row });
+    if (openId && row.trace.id === openId && !row.child) {
+      items.push({ kind: "detail", trace: row.trace });
+    }
+  }
+
   const selectedId = store.selected?.id;
   reconcile(
     rowsHost,
-    slice,
-    rowKey,
-    (r) => {
-      const html = rowHtml(r, selectedId);
+    items,
+    itemKey,
+    (item) => {
+      if (item.kind === "detail") {
+        const node = document.createElement("div");
+        node.className = "hdetail";
+        renderSections(node, item.trace, ctx);
+        node.setAttribute("data-detail-rev", String(store.revision));
+        return node;
+      }
+      const html = rowHtml(item.row, selectedId, openId);
       const node = el(html);
       // Stamped on creation as well, so the very next update compares equal and
       // a row that has not changed is never rewritten.
@@ -220,13 +252,23 @@ function draw(host: HTMLElement, ctx: TabContext): void {
     // and the reconciler's job — keeping the *node* so scroll position and text
     // selection survive — is already done by the time this runs. The markup is
     // compared first, so a steady list generates no DOM writes at all.
-    (node, r) => {
-      const next = rowHtml(r, selectedId);
+    (node, item) => {
+      if (item.kind === "detail") {
+        // Redrawn only when the store actually moved. The sections below are
+        // whole tab renderers; running them on every keystroke in the filter box
+        // would be the most expensive thing in the panel.
+        const rev = String(store.revision);
+        if (node.getAttribute("data-detail-rev") === rev) return;
+        renderSections(node, item.trace, ctx);
+        node.setAttribute("data-detail-rev", rev);
+        return;
+      }
+      const next = rowHtml(item.row, selectedId, openId);
       if (node.getAttribute("data-html") === next) return;
       const fresh = el(next);
       node.className = fresh.className;
       node.replaceChildren(...Array.from(fresh.childNodes));
-      node.setAttribute("data-idx", String(r.index));
+      node.setAttribute("data-idx", String(item.row.index));
       node.setAttribute("data-html", next);
     },
   );
@@ -235,6 +277,7 @@ function draw(host: HTMLElement, ctx: TabContext): void {
 export const allTab: TabView = {
   id: "all",
   label: "All",
+  scope: "session",
   live: true,
   volatile: true,
   standsAlone: true,

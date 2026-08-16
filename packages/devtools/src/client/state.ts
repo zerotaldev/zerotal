@@ -85,6 +85,8 @@ export class Store {
   traces: RequestTrace[] = [];
   channels: TraceChannelDescriptor[] = [];
   selected: RequestTrace | null = null;
+  /** The request whose detail is open in the list, by trace id. */
+  openTraceId: string | null = null;
   connected = false;
   /**
    * How many traces to keep. Replaced by the server's real capacity when the
@@ -145,7 +147,11 @@ export class Store {
     const saved = loadUi();
     this.open = standalone || saved.open === true;
     this.section = saved.section === "app" ? "app" : "requests";
-    this.tab = saved.tab ?? "queries";
+    // Live by default: the panel opens on the request you are looking at rather
+    // than on a heading you then have to navigate away from. `queries` is no
+    // longer a tab at all — a persisted one from before this change falls back to
+    // the first, which is Live.
+    this.tab = saved.tab === "queries" ? "live" : (saved.tab ?? "live");
     this.appTab = saved.appTab ?? "app:routes";
     this.filter = saved.filter ?? "";
     this.facets = { ...noFacets(), ...(saved.facets ?? {}) };
@@ -248,13 +254,25 @@ export class Store {
   }
 
   /** Pin a trace and stop following the newest. */
-  select(trace: RequestTrace | null, { switchTab = false } = {}): void {
+  select(trace: RequestTrace | null): void {
     this.selected = trace;
     this.live = false;
     this.pending = 0;
-    if (switchTab && this.tab === "all") this.tab = "queries";
     this.persist();
     this.changed();
+  }
+
+  /**
+   * Open a request's detail in the list, or close it if it is already open.
+   *
+   * Opening pins as well, because the detail and the status bar have to agree
+   * about which request you are reading. One at a time: the detail is tall, and
+   * two open at once is a list you cannot scan.
+   */
+  toggleOpen(trace: RequestTrace | null): void {
+    if (!trace) return;
+    this.openTraceId = this.openTraceId === trace.id ? null : trace.id;
+    this.select(trace);
   }
 
   /** Follow the newest request again, clearing the backlog offer. */

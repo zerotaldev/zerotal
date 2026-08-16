@@ -29,6 +29,7 @@ function preview(m: MailEntry): string {
 export const mailTab: TabView = {
   id: "mail",
   label: "Mail",
+  scope: "request",
 
   badge: ({ trace }) => (trace ? { count: trace.mail?.length ?? 0 } : undefined),
 

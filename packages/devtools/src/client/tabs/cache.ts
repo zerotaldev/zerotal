@@ -13,6 +13,7 @@ function opClass(op: CacheEntry["op"]): string {
 export const cacheTab: TabView = {
   id: "cache",
   label: "Cache",
+  scope: "request",
 
   badge: ({ trace }) => (trace ? { count: trace.cache?.length ?? 0 } : undefined),
 

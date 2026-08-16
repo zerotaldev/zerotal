@@ -39,6 +39,7 @@ function section(title: string, pairs: Record<string, string>): string {
 export const requestTab: TabView = {
   id: "request",
   label: "Request",
+  scope: "request",
 
   render(host, { trace }) {
     const t = trace!;

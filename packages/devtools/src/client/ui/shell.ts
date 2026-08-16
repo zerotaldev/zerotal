@@ -66,21 +66,35 @@ export function mountShell(opts: ShellOptions): void {
   // Rebuilt per render because channels arrive over the wire and plugins register
   // whenever their own package is ready — the set is not known at start.
 
+  /** Every view the section showing can offer, before scope decides where it goes. */
+  function everyTab(): TabView[] {
+    if (store.section === "app") return APP_TABS;
+    return [...tabs, ...store.channels.map(channelTab), ...registry.panels.map(pluginTab)];
+  }
+
   /**
    * The tabs for the section showing.
    *
-   * Channels and plugins belong to the request stream — they are per-request
-   * data — so they only appear alongside it. The App section is a fixed six.
+   * Only the session-scoped ones. Everything that describes a single request —
+   * its queries, its logs, its channels — is a section of that request in the
+   * list rather than a tab of its own, so the strip is what you can look at
+   * rather than a dozen headings that are empty until you have picked something.
    */
   function allTabs(): TabView[] {
-    if (store.section === "app") return APP_TABS;
-    return [...tabs, ...store.channels.map(channelTab), ...registry.panels.map(pluginTab)];
+    return everyTab().filter((t) => t.scope === "session");
+  }
+
+  /** The views rendered inside whichever request is open. */
+  function requestTabs(): TabView[] {
+    return everyTab().filter((t) => t.scope === "request");
   }
 
   function pluginTab(p: DevtoolsRegistry["panels"][number]): TabView {
     return {
       id: `plugin:${p.id}`,
       label: p.title,
+      // Live browser state, which keeps reading as you move between requests.
+      scope: "session",
       // A plugin owns its data and its DOM; the panel cannot know when either
       // moved, so it redraws whenever anything else did and on explicit refresh.
       volatile: true,
@@ -106,7 +120,7 @@ export function mountShell(opts: ShellOptions): void {
   }
 
   function ctx(): TabContext {
-    return { trace: store.selected, store };
+    return { trace: store.selected, store, sections: requestTabs() };
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -356,8 +370,10 @@ export function mountShell(opts: ShellOptions): void {
       return;
     }
 
+    // Opening a request is the whole navigation now: its queries, logs, timeline
+    // and channels are sections of it rather than tabs you go and find.
     const row = target.closest("[data-idx]") as HTMLElement | null;
-    if (row) select(store.traces[Number(row.dataset["idx"])] ?? null);
+    if (row) store.toggleOpen(store.traces[Number(row.dataset["idx"])] ?? null);
   });
 
   content.addEventListener("input", (e: Event) => {
@@ -475,7 +491,7 @@ export function mountShell(opts: ShellOptions): void {
     if (!rows.length) return;
     const at = rows.findIndex((r) => r.trace.id === store.selected?.id);
     const next = at === -1 ? 0 : Math.min(rows.length - 1, Math.max(0, at + delta));
-    select(rows[next]!.trace, false);
+    select(rows[next]!.trace);
   }
 
   // Alt+D stays global — it is how you reach a panel that does not have focus.
@@ -499,9 +515,9 @@ export function mountShell(opts: ShellOptions): void {
     }
   }
 
-  function select(trace: RequestTrace | null, switchTab = true): void {
+  function select(trace: RequestTrace | null): void {
     if (!trace) return;
-    store.select(trace, { switchTab });
+    store.select(trace);
   }
 
   // ── Extension panels ────────────────────────────────────────────────────────

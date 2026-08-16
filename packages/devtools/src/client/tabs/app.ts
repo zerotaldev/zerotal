@@ -134,6 +134,7 @@ function appTab(
 ): TabView {
   return {
     id: `app:${id}`,
+    scope: "session",
     label,
     standsAlone: true,
     volatile: true,

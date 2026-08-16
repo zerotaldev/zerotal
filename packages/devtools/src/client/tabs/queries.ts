@@ -59,6 +59,7 @@ function queryRow(q: QuerySpan, peak: number, editor: EditorSettings): string {
 export const queriesTab: TabView = {
   id: "queries",
   label: "Queries",
+  scope: "request",
 
   badge: ({ trace }) =>
     trace

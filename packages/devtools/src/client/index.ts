@@ -21,6 +21,7 @@ import { collectClientMetrics, onceLoaded } from "./metrics.ts";
 import { connect } from "./transport.ts";
 import { mountShell } from "./ui/shell.ts";
 import { allTab } from "./tabs/all.ts";
+import { liveTab } from "./tabs/live.ts";
 import { cacheTab } from "./tabs/cache.ts";
 import { exceptionsTab } from "./tabs/exceptions.ts";
 import { jobsTab } from "./tabs/jobs.ts";
@@ -47,22 +48,26 @@ export interface DevtoolsClientOptions {
 }
 
 /**
- * The built-in tabs, in strip order.
+ * The built-in views, in strip order.
  *
- * The order is also the `1`–`9` keyboard order, so it is worth being deliberate
- * about: queries first because it is where a request explains itself, all last
- * because it is where you go to leave the request you are on.
+ * Only two of these are tabs. The rest are `scope: "request"` — sections of
+ * whichever request you are reading, in this order, rather than headings in a
+ * strip that are empty until you have picked something. Request leads because it
+ * says what the thing *was*; the exception comes next because if there is one it
+ * is why you opened the panel; then the work it did, and the waterfall last,
+ * being the summary of everything above it.
  */
 const BUILT_IN = [
-  queriesTab,
-  timelineTab,
-  logsTab,
+  liveTab,
+  allTab,
   requestTab,
   exceptionsTab,
+  queriesTab,
+  logsTab,
   mailTab,
   cacheTab,
   jobsTab,
-  allTab,
+  timelineTab,
 ];
 
 export const DevTools = {

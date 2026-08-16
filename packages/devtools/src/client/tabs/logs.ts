@@ -5,6 +5,7 @@ import type { TabView } from "./types.ts";
 export const logsTab: TabView = {
   id: "logs",
   label: "Logs",
+  scope: "request",
 
   badge: ({ trace }) => {
     const logs = trace?.logs ?? [];

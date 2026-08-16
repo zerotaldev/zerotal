@@ -10,7 +10,7 @@
  */
 import type { TraceChannelDescriptor, TraceChannelEntry } from "../../RequestTrace.ts";
 import { buildPathTree, type PathTreeNode } from "../tree.ts";
-import { chipFor, copyBtn, esc, fmtCell } from "../ui/format.ts";
+import { chipFor, copyBtn, esc, fmt, fmtCell } from "../ui/format.ts";
 import type { TabView } from "./types.ts";
 
 /** `key: value` spans for every field the descriptor named as meta. */
@@ -51,7 +51,7 @@ function asRows(rows: TraceChannelEntry[], c: TraceChannelDescriptor): string {
           `<div class="chead">` +
           (badge ? chipFor(badge, isWarn) : "") +
           flagChips(r, c.flags) +
-          `<span class="dim" style="font-size:10px">+${r.offsetMs}ms</span>` +
+          `<span class="dim" style="font-size:10px">+${fmt(r.offsetMs)}</span>` +
           copyBtn(JSON.stringify(r, null, 2), "Copy entry") +
           `</div>` +
           (title && title !== badge ? `<div class="cttl">${esc(title)}</div>` : "") +
@@ -90,7 +90,7 @@ function asTable(rows: TraceChannelEntry[], c: TraceChannelDescriptor): string {
                 `</td>`,
             )
             .join("") +
-          `<td class="dim">+${r.offsetMs}ms</td></tr>`
+          `<td class="dim">+${fmt(r.offsetMs)}</td></tr>`
         );
       })
       .join("") +
@@ -110,7 +110,7 @@ function asKv(rows: TraceChannelEntry[], c: TraceChannelDescriptor): string {
         .join("");
       return (
         `<div class="sec"><div class="stitle">` +
-        `${esc(heading || "Entry")} · +${r.offsetMs}ms` +
+        `${esc(heading || "Entry")} · +${fmt(r.offsetMs)}` +
         copyBtn(JSON.stringify(r, null, 2), "Copy entry") +
         `</div><table class="kv">${cells}</table></div>`
       );
@@ -230,6 +230,7 @@ export function channelTab(c: TraceChannelDescriptor): TabView {
   return {
     id: `channel:${c.id}`,
     label: c.label,
+    scope: "request",
 
     badge: ({ trace }) => {
       const rows = trace?.channels?.[c.id] ?? [];

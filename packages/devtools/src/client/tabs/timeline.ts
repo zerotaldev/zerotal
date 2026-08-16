@@ -55,6 +55,7 @@ const KEY: Array<[string, string]> = [
 export const timelineTab: TabView = {
   id: "timeline",
   label: "Timeline",
+  scope: "request",
 
   render(host, { trace, store }) {
     const t = trace!;

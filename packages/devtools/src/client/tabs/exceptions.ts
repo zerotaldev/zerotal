@@ -28,6 +28,7 @@ function isVendorFrame(file: string): boolean {
 export const exceptionsTab: TabView = {
   id: "exceptions",
   label: "Exception",
+  scope: "request",
 
   badge: ({ trace }) => (trace?.exception ? { count: "!", warn: true } : undefined),
 

@@ -59,6 +59,15 @@ packages/*/typedoc.json
 storage/logs/
 **/storage/logs/
 
+# …but not a test fixture's copy. A fixture is an input to a test, not runtime
+# data, and the rules above are broad enough to swallow one — which is how the
+# `logs` tool's fixtures were left untracked, passing locally where the files
+# existed and failing on a fresh CI checkout where they did not. Both lines are
+# needed: git cannot re-include a file whose parent directory is excluded, so the
+# directory has to be un-excluded first.
+!**/__fixtures__/**/storage/logs/
+!**/__fixtures__/**/storage/logs/**
+
 # Scratch storage roots created by test suites.
 .tmp-*storage*/
 

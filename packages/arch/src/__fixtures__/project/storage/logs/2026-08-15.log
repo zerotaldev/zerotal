@@ -1,0 +1,5 @@
+{"level":"info","channel":"app","message":"Application booted","timestamp":"2026-08-15T09:00:00.000Z","scope":"app"}
+{"level":"warn","channel":"app","message":"Cache driver fell back to memory","timestamp":"2026-08-15T09:00:01.000Z","scope":"cache"}
+not json at all
+{"level":"error","channel":"app","message":"Unhandled rejection in queue worker","timestamp":"2026-08-15T09:00:02.000Z","scope":"queue","context":{"job":"SendInvoice","attempt":3}}
+{"level":"debug","channel":"app","message":"Query took 4ms","timestamp":"2026-08-15T09:00:03.000Z","scope":"orm"}

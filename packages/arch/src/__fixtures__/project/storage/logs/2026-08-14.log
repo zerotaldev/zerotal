@@ -1,0 +1,3 @@
+{"level":"info","channel":"app","message":"Application booted","timestamp":"2026-08-14T09:00:00.000Z","scope":"app","context":{"durationMs":118}}
+{"level":"error","channel":"app","message":"Migration failed on users","timestamp":"2026-08-14T09:00:01.000Z","scope":"orm","context":{"table":"users"}}
+{"level":"info","channel":"app","message":"Listening on 3000","timestamp":"2026-08-14T09:00:02.000Z","scope":"http"}

@@ -493,8 +493,19 @@ export abstract class Component {
 
   // ── @internal: framework bookkeeping, not part of the developer API ──────────
 
-  /** Set to true by hydrate() so the framework skips calling onMount(). @internal */
-  _skipMount = false;
+  // `_skipMount` used to live here, declared as "set to true by hydrate() so the
+  // framework skips calling onMount()". Nothing ever read it. Mount-skipping is
+  // structural and always has been: the router branches between `onHydrate()`
+  // and `onMount()`, and the action dispatcher calls `onMount()` only when an
+  // action asks for it.
+  //
+  // It was removed rather than wired up because wiring it would have been wrong.
+  // `$refresh` and `$mount` deliberately re-run `onMount()` on a page that was
+  // hydrated — so a flag whose stated meaning is "this page has been hydrated,
+  // do not mount it" would have broken both the moment anyone honoured it. An
+  // inert flag that reads as load-bearing is worse than none: the next person
+  // building render modes would reach for it, find it does nothing, and ship a
+  // double-mount. `hooks.test.ts` pins the real guarantee instead.
 
   /** Populated by flash() — read by the WS handler to emit flash frames. @internal */
   _flashes: FlashMessage[] = [];

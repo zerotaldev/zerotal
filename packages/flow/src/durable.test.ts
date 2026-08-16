@@ -66,7 +66,9 @@ describe("durable snapshots", () => {
     expect(resumed).toBe(true);
     expect(p.step).toBe(3);
     expect(p.note).toBe("hello");
-    expect((p as unknown as { _skipMount?: boolean })._skipMount).toBe(true);
+    // `true` is the whole signal: the router branches on it and runs
+    // `onHydrate()` in place of `onMount()`. This used to assert a `_skipMount`
+    // flag the restore wrote and nothing read.
   });
 
   it("returns false (fresh mount) when there is no stored snapshot", async () => {

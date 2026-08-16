@@ -27,6 +27,7 @@ import { Application, Router } from "@zerotal/core";
 import { FlowProvider } from "../provider/FlowProvider.ts";
 import { FlowBrowser } from "./FlowBrowser.ts";
 import { CounterPage } from "./__fixtures__/CounterPage.tsx";
+import { NavAboutPage, NavHomePage } from "./__fixtures__/NavPages.tsx";
 
 /**
  * Browser work is slower than a unit test, so be explicit rather than inherit 5s —
@@ -42,6 +43,7 @@ const describeBrowser = hasBrowser ? describe : describe.skip;
 
 let app: Application;
 let url: string;
+let navUrl: string;
 
 beforeAll(async () => {
   if (!hasBrowser) return;
@@ -54,10 +56,13 @@ beforeAll(async () => {
   // is registered after boot and before the server starts serving it.
   await app.boot();
   Router.flow("/counter", CounterPage);
+  Router.flow("/nav/home", NavHomePage);
+  Router.flow("/nav/about", NavAboutPage);
   await app.start(0);
 
   const server = (app as unknown as { _static?: { port: number } })._static;
   url = `http://localhost:${server?.port}/counter`;
+  navUrl = `http://localhost:${server?.port}/nav/home`;
 }, T);
 
 afterAll(async () => {
@@ -146,6 +151,72 @@ describeBrowser("Flow bridge — real browser, real socket", () => {
         await page.click("#greet");
         await page.waitForText("#greeting", "Hello, Grace!", T);
         expect(await page.text("#count")).toBe("1");
+      } finally {
+        await page.close();
+      }
+    },
+    T,
+  );
+
+  /**
+   * SPA navigation used to orphan the outgoing page's snapshot.
+   *
+   * The swap removed the *first* `[id^="flow-state-"]` in document order. A
+   * page-level snapshot is a direct child of `<body>`, rendered after the body
+   * content, while a child island's sits inside that content — so on any page
+   * with an island the first match was the island's script, not the page's. The
+   * outgoing snapshot stayed behind, and because ids are random per request they
+   * accumulated one per navigation for as long as the tab stayed open.
+   *
+   * Only a browser can see this: it needs a real navigation, a real DOM, and a
+   * page that actually has an island. Counting is the assertion — a leak shows
+   * up as a number that grows.
+   */
+  it(
+    "leaves exactly one page-level snapshot behind after repeated SPA navigation",
+    async () => {
+      const page = await FlowBrowser.open(navUrl, { timeout: T });
+      const countPageLevel = (): Promise<number> =>
+        page.evaluate<number>(
+          `document.querySelectorAll('body > script[id^="flow-state-"]').length`,
+        );
+      try {
+        // The island's snapshot is nested inside the component root, so it is
+        // never a direct child of <body>. If this is not greater than one the
+        // fixture has stopped reproducing the shape the bug needs, and the rest
+        // of this test proves nothing.
+        const total = await page.evaluate<number>(
+          `document.querySelectorAll('script[id^="flow-state-"]').length`,
+        );
+        expect(total).toBeGreaterThan(1);
+        expect(await countPageLevel()).toBe(1);
+
+        // Mark the realm. `flow:navigate` falls back to a real browser
+        // navigation whenever the two pages do not share a layout, and a real
+        // navigation resets the document — so without this the test would pass
+        // no matter what the swap did, which is exactly how it first passed
+        // against the bug it was written for.
+        await page.evaluate(`(window.__navMarker = "kept")`);
+
+        await page.click("#to-about");
+        await page.waitForText("#page", "about", T);
+        expect(await page.evaluate<string | null>(`window.__navMarker ?? null`)).toBe("kept");
+        expect(await countPageLevel()).toBe(1);
+
+        await page.click("#to-home");
+        await page.waitForText("#page", "home", T);
+        expect(await countPageLevel()).toBe(1);
+
+        await page.click("#to-about");
+        await page.waitForText("#page", "about", T);
+        expect(await countPageLevel()).toBe(1);
+
+        // …and the one left is the live one: an action still round-trips, which
+        // it would not if the swap had kept the wrong script.
+        await page.click("#bump");
+        await page.waitForText("#count", "1", T);
+        expect(page.consoleErrors()).toEqual([]);
+        expect(page.pageErrors()).toEqual([]);
       } finally {
         await page.close();
       }

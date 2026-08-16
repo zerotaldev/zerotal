@@ -2684,7 +2684,21 @@ async function _navigateTo(href: string, options: NavigateOptions = {}): Promise
   // browser supports it, for a smooth cross-page animation; falls back to an
   // instant swap otherwise.
   const _swap = (): void => {
-    document.querySelector('[id^="flow-state-"]')?.remove();
+    // Page-level state scripts only: the server renders one as a direct child of
+    // <body>, after the body content, while every child island's script sits
+    // *inside* that content.
+    //
+    // This used to be `document.querySelector('[id^="flow-state-"]')`, which
+    // matches in document order — so on any page with an island it removed the
+    // first island's script and left the page's own behind. The outgoing
+    // snapshot was orphaned, and ids are random per request, so they accumulated
+    // one per navigation for as long as the tab stayed open.
+    //
+    // Removing *all* of them rather than just this page's also clears whatever a
+    // previously-buggy session left behind.
+    for (const stale of document.querySelectorAll('body > script[id^="flow-state-"]')) {
+      stale.remove();
+    }
     document.body.appendChild(incomingState.cloneNode(true));
     currentRoot.replaceWith(incomingClone);
     _cleanupDisconnected();

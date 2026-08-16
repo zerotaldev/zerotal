@@ -111,6 +111,35 @@ describe("lifecycle hooks — subsequent (action) request", () => {
     expect(log).not.toContain("mount");
     expect(t.page().count).toBe(1);
   });
+
+  /**
+   * The guarantee, stated once and directly: across a whole session, `onMount()`
+   * runs exactly one time.
+   *
+   * It is structural — the router branches between `onHydrate()` and
+   * `onMount()`, and the action dispatcher calls `onMount()` only for `$refresh`
+   * and `$mount`. There is no flag on the component saying "already mounted",
+   * and there deliberately isn't one: the two actions above re-mount a hydrated
+   * page on purpose, so any such flag would be wrong the moment it was honoured.
+   *
+   * This test exists because the structure is the only thing holding it. Anyone
+   * changing how a component decides to hydrate — render modes, in particular —
+   * breaks this before they break anything a user would notice, and a
+   * double-mount is a bug that shows up as duplicated side effects far from its
+   * cause.
+   */
+  it("runs mount exactly once across an initial render and several actions", async () => {
+    const t = await FlowTest.mount(HookPage);
+
+    await t.call("bump");
+    await t.update("count", 9);
+    await t.call("bump");
+
+    const mounts = t.page().log.filter((entry) => entry === "mount");
+    expect(mounts).toHaveLength(1);
+    // …and it was the very first thing after boot, not a later re-entry.
+    expect(t.page().log.indexOf("mount")).toBe(1);
+  });
 });
 
 describe("property update hooks", () => {

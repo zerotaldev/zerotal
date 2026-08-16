@@ -237,7 +237,8 @@ export async function restoreDurable(page: Component, ctx: HttpContext): Promise
   if (!key) return false;
   const stored = await _store.get(key);
   if (!stored || !verifySnapshot(stored)) return false;
-  (page as unknown as Record<string, unknown>)["_skipMount"] = true;
+  // Returning `true` is what skips the mount: the caller branches on it and runs
+  // `onHydrate()` instead. Nothing is marked on the page.
   await applySnapshotData(page, stored);
   return true;
 }

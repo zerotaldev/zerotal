@@ -206,9 +206,9 @@ export async function hydrate<T extends Component>(
   //    still someone else's state.
   assertSnapshotSubject(snapshot);
 
-  // 3. Fresh blank instance — constructor runs but onMount() is skipped.
+  // 3. Fresh blank instance. `onMount()` is not called here and the dispatcher
+  //    does not call it either — the skip is structural, not a flag on the page.
   const page = new PageClass();
-  (page as Record<string, unknown>)["_skipMount"] = true;
 
   // 4. Restore slots + each property (see applySnapshotData).
   await applySnapshotData(page, snapshot);

@@ -29,13 +29,20 @@ async function run(c: HttpContext, body: () => void | Promise<void> = () => {}):
   FrameworkEvents.emit(new RequestHandled(c, startMs, Date.now() - startMs));
 }
 
+// The inspector's endpoints are gated; a suite exercising them has to say it is
+// a development process. See `enabled.ts`.
+const priorEnv = Bun.env["APP_ENV"];
+
 beforeAll(() => {
+  Bun.env["APP_ENV"] = "development";
   // Memory-only: a test suite must not write a database into the package directory.
   _setTraceStore(new TraceStore({ dbPath: null }));
   startDevtoolsTracing();
 });
 
 afterAll(() => {
+  if (priorEnv === undefined) delete Bun.env["APP_ENV"];
+  else Bun.env["APP_ENV"] = priorEnv;
   stopDevtoolsTracing();
   _setTraceStore(null);
   FrameworkEvents.clear();
@@ -144,8 +151,43 @@ describe("recording channel entries", () => {
   });
 });
 
-describe("GET /api/channels", () => {
-  it("serves the declared descriptors", async () => {
+describe("presentation hints", () => {
+  // The panel picks a tree, a table, or a grouped list from these. They cross the
+  // wire as data like every other field on the descriptor, which is the whole
+  // reason a package can have a prop tree without shipping a renderer into
+  // devtools — so what matters here is that they survive the trip intact.
+
+  it("carries the render hints to the panel unchanged", async () => {
+    traceSink.channel({
+      id: "inertia",
+      label: "Inertia",
+      badge: "requestType",
+      render: "tree",
+      treeField: "propMeta",
+      treeBadge: "inertiaType",
+      flags: ["shared", "once"],
+      traceGroup: "batchId",
+    });
+
+    const c = ctx("http://localhost/__zerotal/devtools/api/channels");
+    const res = (await new DevtoolsInjectionMiddleware().handle(
+      c as never,
+      async () => undefined,
+    )) as Response;
+
+    const body = (await res.json()) as Array<Record<string, unknown>>;
+    expect(body[0]).toMatchObject({
+      id: "inertia",
+      render: "tree",
+      treeField: "propMeta",
+      treeBadge: "inertiaType",
+      flags: ["shared", "once"],
+      traceGroup: "batchId",
+    });
+  });
+
+  it("leaves a descriptor that declares none of them alone", async () => {
+    // The default is the flat row list every existing channel already gets.
     traceSink.channel({ id: "auth", label: "Auth", badge: "event", warn: "failed" });
 
     const c = ctx("http://localhost/__zerotal/devtools/api/channels");
@@ -154,10 +196,47 @@ describe("GET /api/channels", () => {
       async () => undefined,
     )) as Response;
 
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as Array<{ id: string; warn?: string }>;
+    const body = (await res.json()) as Array<{ id: string; warn?: string; render?: string }>;
     expect(body[0]!.id).toBe("auth");
     expect(body[0]!.warn).toBe("failed");
+    expect(body[0]!.render).toBeUndefined();
+  });
+});
+
+describe("one request, both halves", () => {
+  it("puts a channel entry and that request's queries on the same trace", async () => {
+    // The join Phase 2 exists for. Nothing matches a key: an entry recorded
+    // against the request context lands on that request's trace by construction,
+    // so "is this page slow because of the query or the deferred prop" is one
+    // view rather than two tools that cannot see each other.
+    const { SQL } = await import("bun");
+    const { QueryBuilder } = await import("@zerotal/orm");
+    const { installOrmObservability } = await import("@zerotal/orm");
+
+    const dispose = installOrmObservability({
+      container: { tryMake: (k: string) => (k === "devtools.trace" ? traceSink : undefined) },
+    } as never);
+    const db: SQLInstance = new SQL(":memory:");
+    await db`CREATE TABLE ch_posts (id INTEGER PRIMARY KEY)`;
+
+    traceSink.channel({ id: "inertia", label: "Inertia", render: "tree", treeField: "propMeta" });
+
+    const c = ctx("http://localhost/posts");
+    await run(c, async () => {
+      await new QueryBuilder("ch_posts", db).get();
+      traceSink.record(c, "inertia", {
+        component: "Posts/Index",
+        propMeta: { posts: { inertiaType: "defer" } },
+      });
+    });
+
+    const trace = traceStore().all()[0]!;
+    expect(trace.queries).toHaveLength(1);
+    expect(trace.channels["inertia"]).toHaveLength(1);
+    expect(trace.requestId).toBe(c.requestId);
+
+    await db.end();
+    dispose();
   });
 });
 

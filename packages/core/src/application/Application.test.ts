@@ -1125,3 +1125,84 @@ describe("Application._reloadRoutes()", () => {
     ).resolves.toBeUndefined();
   });
 });
+
+// ── Provider report ───────────────────────────────────────────────────────────
+
+describe("Application.providerReport", () => {
+  it("is empty before boot", () => {
+    // Nothing has run, so there is nothing to report — and reporting zeros for
+    // providers that have not booted would be a lie a reader would act on.
+    expect(Application.create({ env: "test" }).providerReport).toEqual([]);
+  });
+
+  it("lists providers in boot order", async () => {
+    // Order is itself an answer: it decides who wins a contested binding.
+    class First extends ServiceProvider {}
+    class Second extends ServiceProvider {}
+    const app = Application.create({ providers: [First, Second], env: "test" });
+    await app.boot();
+
+    const names = app.providerReport.map((p) => p.name);
+    expect(names.indexOf("First")).toBeLessThan(names.indexOf("Second"));
+    await app.stop({ exit: false });
+  });
+
+  it("attributes each binding to the provider that made it", async () => {
+    // The container lists a hundred bindings and nothing said who bound them.
+    class BindingProvider extends ServiceProvider {
+      override onRegister(): void {
+        this.app.container.value("report.token" as never, { ok: true } as never);
+      }
+    }
+    const app = Application.create({ providers: [BindingProvider], env: "test" });
+    await app.boot();
+
+    const row = app.providerReport.find((p) => p.name === "BindingProvider");
+    expect(row?.bindings).toContain("report.token");
+    await app.stop({ exit: false });
+  });
+
+  it("does not attribute a binding to a provider that did not make it", async () => {
+    class Binder extends ServiceProvider {
+      override onRegister(): void {
+        this.app.container.value("only.mine" as never, 1 as never);
+      }
+    }
+    class Bystander extends ServiceProvider {}
+    const app = Application.create({ providers: [Binder, Bystander], env: "test" });
+    await app.boot();
+
+    const bystander = app.providerReport.find((p) => p.name === "Bystander");
+    expect(bystander?.bindings).not.toContain("only.mine");
+    await app.stop({ exit: false });
+  });
+
+  it("times an async hook across its await, not up to it", async () => {
+    // Timing an async hook synchronously reports every `await` in it as free,
+    // which makes the slow provider look like the fast one.
+    class SlowProvider extends ServiceProvider {
+      override async onBooting(): Promise<void> {
+        await Bun.sleep(20);
+      }
+    }
+    const app = Application.create({ providers: [SlowProvider], env: "test" });
+    await app.boot();
+
+    const row = app.providerReport.find((p) => p.name === "SlowProvider");
+    expect(row?.durationMs).toBeGreaterThanOrEqual(15);
+    await app.stop({ exit: false });
+  });
+
+  it("reports one row per provider across all three phases", async () => {
+    class ThreePhase extends ServiceProvider {
+      override onRegister(): void {}
+      override async onBooting(): Promise<void> {}
+      override async onBooted(): Promise<void> {}
+    }
+    const app = Application.create({ providers: [ThreePhase], env: "test" });
+    await app.boot();
+
+    expect(app.providerReport.filter((p) => p.name === "ThreePhase")).toHaveLength(1);
+    await app.stop({ exit: false });
+  });
+});

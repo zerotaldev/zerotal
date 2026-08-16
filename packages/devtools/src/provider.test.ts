@@ -62,7 +62,10 @@ describe("DevtoolsProvider — teardown", () => {
       channel(d: { id: string; label: string }): void;
     };
     sink.channel({ id: "temp", label: "Temp" });
-    expect(traceChannels()).toHaveLength(1);
+    // By id, not by count: devtools declares its own `http` channel on boot, and
+    // a test that asserts a total is a test that breaks every time the framework
+    // grows a tab.
+    expect(traceChannels().map((c) => c.id)).toContain("temp");
 
     await app.stop({ exit: false });
 

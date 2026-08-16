@@ -1,8 +1,11 @@
 import { fileURLToPath } from "node:url";
 import type { NextFn, HttpContext } from "@zerotal/core";
-import { BaseMiddleware } from "@zerotal/core";
+import { BaseMiddleware, tryCurrentApp } from "@zerotal/core";
 import { traceStore } from "./TraceStore.ts";
 import { traceChannels } from "./tracing.ts";
+import { devtoolsAuthorized, devtoolsSettings } from "./enabled.ts";
+import { buildFrameworkMap } from "./map.ts";
+import { activityFeed } from "./activity.ts";
 
 // ── Injected browser client bundle ────────────────────────────────────────────
 // The in-page devtools panel is bundled for the browser on first request and
@@ -43,6 +46,9 @@ async function _buildDashboardJs(): Promise<string> {
 export interface DevtoolsInjectionOptions {
   // reserved for future use
 }
+
+/** Everything the inspector serves lives under here, and is gated as one thing. */
+const DEVTOOLS_PREFIX = "/__zerotal/devtools";
 
 // ── SSE subscribers ───────────────────────────────────────────────────────────
 
@@ -130,8 +136,32 @@ export class DevtoolsInjectionMiddleware extends BaseMiddleware<DevtoolsInjectio
   async handle(http: HttpContext, next: NextFn): Promise<Response | void> {
     const { pathname } = http.url;
 
+    // Everything under the prefix is one secret. The stream, the trace JSON, the
+    // dashboard, and the panel bundle all expose the same request data, so they
+    // are gated together and before anything is read — checking per endpoint is
+    // how one of them ends up ungated.
+    if (pathname.startsWith(DEVTOOLS_PREFIX)) {
+      if (!(await devtoolsAuthorized(http.request))) {
+        // 404, not 403: outside development the honest answer to an
+        // unauthenticated stranger is that there is nothing here.
+        return new Response("Not Found", { status: 404 });
+      }
+    }
+
     if (pathname === "/__zerotal/devtools/api/traces") {
       return Response.json(traceStore().all());
+    }
+
+    // The framework map: read fresh, never cached. The registries are small and
+    // static, and a cached map is one that disagrees with the app the moment a
+    // provider registers a route late.
+    if (pathname === "/__zerotal/devtools/api/map") {
+      const app = tryCurrentApp();
+      if (!app) return Response.json({ error: "No application in scope" }, { status: 503 });
+      return Response.json({
+        ...buildFrameworkMap(app, devtoolsSettings().redact),
+        activity: activityFeed(),
+      });
     }
 
     if (pathname === "/__zerotal/devtools/api/channels") {
@@ -149,15 +179,22 @@ export class DevtoolsInjectionMiddleware extends BaseMiddleware<DevtoolsInjectio
         start(c) {
           ctrl = c;
           _sseClients.add(ctrl);
-          // The opening frame carries the channel descriptors alongside the
-          // history, so a panel can render a package's tab on first paint
-          // instead of waiting for that package's next entry.
+          // The opening frame carries everything the panel needs at first paint
+          // rather than making it ask three more times: the channel descriptors,
+          // so a package's tab is there before that package's next entry; the
+          // store's capacity, so the list trims to the depth the app asked for;
+          // and the editor settings, so a `file:line` is a link on the first
+          // trace rather than the second.
+          const settings = devtoolsSettings();
           ctrl.enqueue(
             _enc.encode(
               `data: ${JSON.stringify({
                 type: "history",
                 data: traceStore().all(),
                 channels: traceChannels(),
+                capacity: traceStore().capacity,
+                editor: settings.editor,
+                editorPathMap: settings.editorPathMap,
               })}\n\n`,
             ),
           );

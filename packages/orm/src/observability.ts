@@ -8,7 +8,7 @@
  * observer packages — installing or removing an observer requires no change here.
  * When an observer is not installed its binding is absent and its wiring is skipped.
  */
-import { FrameworkEvents } from "@zerotal/core";
+import { FrameworkEvents, RequestContext } from "@zerotal/core";
 import type { Application } from "@zerotal/core";
 import {
   QueryExecuted,
@@ -54,6 +54,19 @@ interface DevtoolsSink {
     q: { sql: string; bindings: unknown[]; startMs: number; durationMs: number; rowCount: number },
   ): void;
   bufferWarning(ctx: object, w: { sql: string; count: number }): void;
+  channel(descriptor: {
+    id: string;
+    label: string;
+    badge?: string;
+    title?: string;
+    meta?: string[];
+    warn?: string;
+    order?: number;
+    render?: "rows" | "tree" | "table" | "kv" | "grouped";
+    groupBy?: string;
+    flags?: string[];
+  }): void;
+  record(ctx: object, channel: string, entry: Record<string, unknown>): void;
 }
 
 /** The subset of the logger this bridge calls (bound as `log`). */
@@ -162,6 +175,67 @@ export function installOrmObservability(app: Application): () => void {
       FrameworkEvents.on(NPlusOneDetected, (e) => {
         if (!e.ctx) return;
         trace.bufferWarning(e.ctx, { sql: e.fingerprint.replaceAll("\x00", "?"), count: e.count });
+      }),
+    );
+
+    // Two more tabs, declared as data. Both were already on the bus and neither
+    // had anywhere to go: a request that wrote four rows and a request that wrote
+    // none looked identical in the panel, and a transaction that rolled back
+    // showed only as queries that appeared to succeed.
+    //
+    // Rows rather than a table for models, because the interesting thing is *how
+    // many* per model, and the table view of a three-column feed is a worse
+    // version of the same three columns.
+    trace.channel({
+      id: "models",
+      label: "Models",
+      badge: "operation",
+      title: "model",
+      meta: ["table"],
+      order: 40,
+      render: "grouped",
+      groupBy: "model",
+    });
+    trace.channel({
+      id: "tx",
+      label: "Transactions",
+      badge: "outcome",
+      title: "txId",
+      meta: ["durationMs", "reason"],
+      warn: "rolledBack",
+      order: 45,
+    });
+
+    unsubs.push(
+      FrameworkEvents.on(ModelChanged, (e) => {
+        // `ModelChanged` carries no context — it rides the model hooks, which run
+        // wherever the write did — so the request is read from the ambient scope.
+        const ctx = RequestContext.tryGet();
+        if (ctx) {
+          trace.record(ctx, "models", {
+            model: e.model,
+            table: e.table,
+            operation: e.operation,
+          });
+        }
+      }),
+      FrameworkEvents.on(TransactionCommitted, (e) => {
+        if (!e.ctx) return;
+        trace.record(e.ctx, "tx", {
+          txId: e.txId,
+          outcome: "committed",
+          durationMs: e.durationMs,
+        });
+      }),
+      FrameworkEvents.on(TransactionRolledBack, (e) => {
+        if (!e.ctx) return;
+        trace.record(e.ctx, "tx", {
+          txId: e.txId,
+          outcome: "rolled back",
+          durationMs: e.durationMs,
+          rolledBack: true,
+          ...(e.reason ? { reason: e.reason } : {}),
+        });
       }),
     );
   }

@@ -34,7 +34,14 @@ async function run(c: HttpContext, body?: string, contentType = "text/html"): Pr
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
+// The inspector's endpoints are gated: outside a development process, and with
+// no `gate` configured, every one of them is a 404. That is the point of the
+// gate — and it means a suite exercising those endpoints has to say it is a
+// development process, which is what a developer's machine is.
+const priorEnv = Bun.env["APP_ENV"];
+
 beforeAll(() => {
+  Bun.env["APP_ENV"] = "development";
   // Memory-only: a suite must not write a SQLite file into the package
   // directory just by running.
   _setTraceStore(new TraceStore({ dbPath: null }));
@@ -44,6 +51,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  if (priorEnv === undefined) delete Bun.env["APP_ENV"];
+  else Bun.env["APP_ENV"] = priorEnv;
   _setTraceStore(null);
   stopDevtoolsTracing();
   _disposeOrmObservability?.();
@@ -90,6 +99,42 @@ describe("API routes", () => {
       return c.response;
     });
     expect(called).toBe(false);
+  });
+});
+
+// ── SSE opening frame ─────────────────────────────────────────────────────────
+
+describe("SSE opening frame", () => {
+  /** Read the first `data:` frame the stream writes, then drop the connection. */
+  async function openingFrame(): Promise<Record<string, unknown>> {
+    const c = ctx("http://localhost/__zerotal/devtools/sse");
+    const mw = new DevtoolsInjectionMiddleware();
+    const result = await mw.handle(c as never, async () => c.response);
+    if (result instanceof Response) c.response = result;
+
+    const reader = c.response!.body!.getReader();
+    const text = new TextDecoder().decode((await reader.read()).value);
+    await reader.cancel();
+    return JSON.parse(text.replace(/^data: /, "").trim()) as Record<string, unknown>;
+  }
+
+  it("carries the store's capacity, so the panel trims to the configured depth", async () => {
+    // The client used to cap its own list at a hardcoded 100, which silently
+    // undid `DevtoolsConfig({ capacity: 250 })` on the first request after load.
+    _setTraceStore(new TraceStore({ dbPath: null, capacity: 250 }));
+    try {
+      expect((await openingFrame())["capacity"]).toBe(250);
+    } finally {
+      _setTraceStore(new TraceStore({ dbPath: null }));
+    }
+  });
+
+  it("carries the history and the declared channels", async () => {
+    await run(ctx("http://localhost/before-connect"));
+    const frame = await openingFrame();
+    expect(frame["type"]).toBe("history");
+    expect(frame["data"]).toHaveLength(1);
+    expect(Array.isArray(frame["channels"])).toBe(true);
   });
 });
 

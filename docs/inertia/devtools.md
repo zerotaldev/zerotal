@@ -31,6 +31,19 @@ Follow-up requests are grouped with the navigation that caused them, so a page
 whose deferred props arrive in three later requests reads as one batch rather
 than four unrelated rows.
 
+### The same data, without the extension
+
+The recorder also feeds Zerotal's own [DevTools](/docs/devtools) panel, on an
+**Inertia** tab, whenever that package is installed. Nothing to configure and no
+extension to add — the entry is recorded against the same request as everything
+else, so one row shows the component and its prop tree _and_ the SQL that
+produced them. A visit and the deferred loads it triggers fold into one entry on
+that panel's All tab, keyed on the same batch the extension groups by.
+
+This is a fan-out, not a replacement: the read API below is a published contract
+and keeps serving the extension either way. Neither package depends on the other
+— the panel is found through the container, and its absence is the ordinary case.
+
 ### The client half needs Inertia 3
 
 Two independent halves feed the panel. The **server recorder** is this package,

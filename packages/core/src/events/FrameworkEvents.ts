@@ -133,6 +133,34 @@ export const FrameworkEvents = {
     for (const handlers of _byKind.values()) count += handlers.size;
     return count;
   },
+
+  /**
+   * Which events currently have subscribers, and how many each has.
+   *
+   * The bus is the framework's nervous system and has been invisible: "does
+   * anything actually listen to `ModelChanged`" was a question you answered by
+   * reading every package. Sorted by name so two calls are comparable.
+   *
+   * Class- and kind-keyed subscriptions are merged, because a subscriber that
+   * listened by string and one that imported the class are subscribed to the
+   * same event and a reader does not care which door they came through.
+   *
+   * @returns One row per event with at least one live handler.
+   * @category Subscription
+   */
+  subscriptions(): Array<{ event: string; handlers: number }> {
+    const counts = new Map<string, number>();
+    for (const [ctor, handlers] of _byClass) {
+      if (handlers.size)
+        counts.set(_kindOf(ctor), (counts.get(_kindOf(ctor)) ?? 0) + handlers.size);
+    }
+    for (const [kind, handlers] of _byKind) {
+      if (handlers.size) counts.set(kind, (counts.get(kind) ?? 0) + handlers.size);
+    }
+    return [...counts.entries()]
+      .map(([event, handlers]) => ({ event, handlers }))
+      .sort((a, b) => a.event.localeCompare(b.event));
+  },
 };
 
 // ── Framework event types ─────────────────────────────────────────────────────
@@ -218,6 +246,20 @@ export class RequestFailed {
     readonly durationMs: number,
     readonly error: string,
     readonly status: number,
+    /**
+     * The error's class name, when the failure was an `Error`.
+     *
+     * `message` alone cannot tell a `ValidationError` from a `TypeError`, and
+     * which one it was is usually the first thing you want to know.
+     */
+    readonly type?: string,
+    /**
+     * The raw `Error.stack`, for subscribers that render a trace.
+     *
+     * Carried as the unparsed string: the shape differs between runtimes, and
+     * this event should not be the thing that decides how a frame is spelled.
+     */
+    readonly stack?: string,
   ) {}
 }
 

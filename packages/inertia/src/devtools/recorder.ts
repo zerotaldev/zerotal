@@ -30,6 +30,7 @@ import {
   redactValue,
 } from "./redact.ts";
 import { putEntry } from "./store.ts";
+import { shareEntryWithDevtools } from "./observability.ts";
 import { DEVTOOLS_REQUEST_HEADERS, type BodyCapture } from "./types.ts";
 import type { DevtoolsEntry, DevtoolsRequestType, PropMeta } from "./types.ts";
 import { devtoolsSettings } from "./enabled.ts";
@@ -267,4 +268,10 @@ export function finishRecording(
   if (Object.keys(recording.propValues).length > 0) entry.propValues = recording.propValues;
 
   putEntry(entry);
+
+  // Fan out to the in-page panel as well, when one is installed. Recorded against
+  // the same context, so it lands on the same request trace as that request's SQL
+  // — no key to match, and no way for the two to disagree about which request
+  // they describe. A no-op when devtools is absent.
+  shareEntryWithDevtools(http, entry);
 }

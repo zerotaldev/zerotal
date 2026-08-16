@@ -271,6 +271,30 @@ export class Emitter {
   }
 
   /**
+   * Every event with a listener, and the listeners it has, by name.
+   *
+   * The wiring between an application's events and what reacts to them is
+   * spread across every provider that calls `listen()`, so "what happens when an
+   * order is placed" is a question you answer by searching. This is that map,
+   * and it is what the inspector's Events tab draws.
+   *
+   * Names rather than classes, because the answer is read by a human or crosses
+   * a wire — and a listener class is not serialisable either way.
+   *
+   * @returns One row per event with at least one listener, sorted by name.
+   * @category Subscription
+   */
+  registrations(): Array<{ event: string; listeners: string[] }> {
+    return [...this._listeners.entries()]
+      .filter(([, listeners]) => listeners.length > 0)
+      .map(([eventClass, listeners]) => ({
+        event: (eventClass as { name?: string }).name ?? String(eventClass),
+        listeners: listeners.map((listener) => listener.name),
+      }))
+      .sort((a, b) => a.event.localeCompare(b.event));
+  }
+
+  /**
    * Remove every registered listener.
    * @category Subscription
    */

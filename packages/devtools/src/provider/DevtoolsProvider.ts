@@ -4,6 +4,8 @@ import {
   type AppEnvironment,
   type HttpContext,
 } from "@zerotal/core";
+import { devtoolsEnabled } from "../enabled.ts";
+import { startActivityCapture, _resetActivity } from "../activity.ts";
 import { DevReloadMiddleware, registerDevHtmlSnippet } from "@zerotal/core/dev";
 import {
   DevtoolsInjectionMiddleware,
@@ -19,6 +21,8 @@ import {
   traceSink,
   _resetChannels,
   _setRedaction,
+  _setCaptureSource,
+  _setHeaderAllowlist,
   type TraceSink,
 } from "../tracing.ts";
 
@@ -69,6 +73,7 @@ export class DevtoolsProvider extends ServiceProvider {
   /** Set once the provider has activated, so teardown only undoes what it did. */
   private _active = false;
   private _stopStream: (() => void) | null = null;
+  private _stopActivity: (() => void) | null = null;
 
   override async onBooting(): Promise<void> {
     // Fail closed: only activate for explicitly non-prod environments. An unset or
@@ -80,7 +85,12 @@ export class DevtoolsProvider extends ServiceProvider {
     //     runtime mode, so this was asking whether `"web"` is a development environment;
     //   - it is the only dev gate that did not honour `ZT_DEV`, which is what the dev
     //     orchestrator sets on the server it supervises — so `zt dev` did not help either.
-    if (!devSurfacesEnabled()) return;
+    // `devtoolsEnabled()` rather than `devSurfacesEnabled()` directly: the app's
+    // `enabled` setting wins when it is set, which is what lets the inspector run
+    // on a shared staging box behind a `gate`. `null` — the default — still
+    // defers to the dev-surface gate, so nothing changes for anyone who has not
+    // asked for it.
+    if (!devtoolsEnabled()) return;
     this._active = true;
 
     const config = this._config();
@@ -96,6 +106,8 @@ export class DevtoolsProvider extends ServiceProvider {
       }),
     );
     _setRedaction(config.redact);
+    _setCaptureSource(config.captureSource);
+    _setHeaderAllowlist(config.headers);
 
     // Expose the trace sink so feature packages can contribute per-request spans
     // and declare their own channels. Bound in onBooting so it is available when
@@ -113,12 +125,19 @@ export class DevtoolsProvider extends ServiceProvider {
     // injector — no `DevTools.start()` needed in the app's own bundle. Also
     // register the injector so this works under a plain `serve` (not only
     // `serve --dev-worker`, where Application.enableDevWs() already adds it).
-    this.app.useOnce(DevReloadMiddleware);
-    registerDevHtmlSnippet("zerotal-devtools", (ctx: HttpContext) =>
-      ctx.url.pathname.startsWith("/__zerotal")
-        ? "" // don't inject the panel into the devtools' own pages
-        : `<script type="module" src="/__zerotal/devtools/client.js"></script>`,
-    );
+    //
+    // Only on a development machine. Auto-injection is a convenience for the
+    // person running the app; on a gated environment the snippet would go into
+    // every visitor's HTML and then 403 in their console, so there the way in is
+    // the dashboard at `/__zerotal/devtools`, which the gate answers for.
+    if (devSurfacesEnabled()) {
+      this.app.useOnce(DevReloadMiddleware);
+      registerDevHtmlSnippet("zerotal-devtools", (ctx: HttpContext) =>
+        ctx.url.pathname.startsWith("/__zerotal")
+          ? "" // don't inject the panel into the devtools' own pages
+          : `<script type="module" src="/__zerotal/devtools/client.js"></script>`,
+      );
+    }
   }
 
   override async onBooted(): Promise<void> {
@@ -128,6 +147,9 @@ export class DevtoolsProvider extends ServiceProvider {
     // devtools no longer imports @zerotal/orm — it only consumes FrameworkEvents.
     startDevtoolsTracing();
     startConsoleCapture();
+    // Console commands and scheduled tasks, which have no request to hang off
+    // and so appeared nowhere at all.
+    this._stopActivity = startActivityCapture();
     this._stopStream = startDevtoolsStream();
 
     process.stdout.write(
@@ -141,9 +163,12 @@ export class DevtoolsProvider extends ServiceProvider {
     if (!this._active) return;
     stopDevtoolsTracing();
     stopConsoleCapture();
+    this._stopActivity?.();
+    this._stopActivity = null;
     this._stopStream?.();
     this._stopStream = null;
     _resetChannels();
+    _resetActivity();
     // Flushes any pending batch and closes the database — without this a suite
     // that boots several apps leaves a handle and an hourly timer per app.
     _setTraceStore(null);

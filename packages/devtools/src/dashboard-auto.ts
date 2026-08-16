@@ -8,6 +8,6 @@
  * shadowed and never gained the plugin tabs the panel had. Sharing the renderer
  * means a tab added anywhere shows up in both.
  */
-import { DevTools } from "./client.ts";
+import { DevTools } from "./client/index.ts";
 
 DevTools.start({ mode: "standalone" });

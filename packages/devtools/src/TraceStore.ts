@@ -138,6 +138,18 @@ export class TraceStore {
     return this._db !== null;
   }
 
+  /**
+   * How many traces this store keeps.
+   *
+   * Read by the SSE stream so the panel can trim its own list to the same depth.
+   * The client used to cap at a hardcoded 100, so an app that configured a larger
+   * capacity got the full history in the opening frame and then silently lost
+   * everything past 100 as soon as the next request arrived.
+   */
+  get capacity(): number {
+    return this._capacity;
+  }
+
   // ── Persistence ───────────────────────────────────────────────────────
 
   /** Open the database and load history, once, on first use. */

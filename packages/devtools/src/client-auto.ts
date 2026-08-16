@@ -4,6 +4,6 @@
  * injected into dev HTML responses by the core dev injector — so apps get the
  * floating panel with no `DevTools.start()` call in their own bundle.
  */
-import { DevTools } from "./client.ts";
+import { DevTools } from "./client/index.ts";
 
 DevTools.start();

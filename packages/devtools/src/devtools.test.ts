@@ -1,8 +1,16 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from "bun:test";
 import type { Application } from "@zerotal/core";
-import { HttpContext, RequestContext, FrameworkEvents, RequestHandled } from "@zerotal/core";
+import {
+  HttpContext,
+  RequestContext,
+  FrameworkEvents,
+  RequestHandled,
+  RequestFailed,
+  OutgoingRequestCompleted,
+} from "@zerotal/core";
 import { preventNPlusOne, installOrmObservability } from "@zerotal/orm";
 import { _resetNPlusOne } from "../../orm/src/db/NPlusOneDetector.ts";
+import type { RequestTrace } from "./RequestTrace.ts";
 import { TraceStore, traceStore, _setTraceStore } from "./TraceStore.ts";
 import { DevtoolsInjectionMiddleware, startDevtoolsStream } from "./DevtoolsInjectionMiddleware.ts";
 import {
@@ -11,6 +19,7 @@ import {
   startConsoleCapture,
   stopConsoleCapture,
   traceSink,
+  _setHeaderAllowlist,
 } from "./tracing.ts";
 
 // The ORM contributes query/N+1 spans to the trace through the `devtools.trace`
@@ -48,7 +57,12 @@ async function runRequest(
 
 // ── Global setup ──────────────────────────────────────────────────────────────
 
+// The inspector's endpoints are gated; a suite exercising them has to say it is
+// a development process. See `enabled.ts`.
+const priorEnv = Bun.env["APP_ENV"];
+
 beforeAll(() => {
+  Bun.env["APP_ENV"] = "development";
   // Memory-only: a suite must not write a SQLite file into the package
   // directory just by running.
   _setTraceStore(new TraceStore({ dbPath: null }));
@@ -59,6 +73,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  if (priorEnv === undefined) delete Bun.env["APP_ENV"];
+  else Bun.env["APP_ENV"] = priorEnv;
   _setTraceStore(null);
   stopDevtoolsTracing();
   stopConsoleCapture();
@@ -202,6 +218,211 @@ describe("Request tracing via FrameworkEvents", () => {
     });
     FrameworkEvents.emit(new RequestHandled(ctx, startMs, Date.now() - startMs));
     expect(traceStore().all()).toHaveLength(0);
+  });
+});
+
+// ── Failed requests ───────────────────────────────────────────────────────────
+
+describe("Failed requests", () => {
+  /** Emit RequestFailed as the route dispatcher does when an error escapes. */
+  async function runFailure(url: string, message: string, status = 500): Promise<void> {
+    const ctx = fakeCtx(url);
+    const startMs = Date.now();
+    await RequestContext.run(ctx, async () => {
+      ctx.response = new Response("error", { status });
+    });
+    FrameworkEvents.emit(new RequestFailed(ctx, startMs, Date.now() - startMs, message, status));
+  }
+
+  it("records the error message, which used to be dropped on the floor", async () => {
+    await runFailure("http://localhost/boom", "Cannot read property 'id' of undefined");
+    const t = traceStore().all()[0]!;
+    expect(t.exception).toEqual({
+      message: "Cannot read property 'id' of undefined",
+      status: 500,
+    });
+  });
+
+  it("records the status the failure rendered as", async () => {
+    await runFailure("http://localhost/nope", "No query results for model [Post]", 404);
+    expect(traceStore().all()[0]!.exception?.status).toBe(404);
+  });
+
+  it("leaves exception null on a request that completed", async () => {
+    await runRequest("http://localhost/fine");
+    expect(traceStore().all()[0]!.exception).toBeNull();
+  });
+
+  it("skips internal paths on failure exactly as it does on success", async () => {
+    await runFailure("http://localhost/__zerotal/devtools/sse", "stream closed");
+    expect(traceStore().all()).toHaveLength(0);
+  });
+});
+
+// ── What Phase 4 added to the trace ───────────────────────────────────────────
+
+describe("Extended request capture", () => {
+  it("records response headers as well as request headers", async () => {
+    const ctx = fakeCtx("http://localhost/both-halves");
+    const startMs = Date.now();
+    await RequestContext.run(ctx, async () => {
+      ctx.response = new Response("ok", { headers: { "content-type": "text/plain" } });
+    });
+    FrameworkEvents.emit(new RequestHandled(ctx, startMs, Date.now() - startMs));
+
+    const t = traceStore().all()[0]!;
+    expect(t.responseHeaders["content-type"]).toContain("text/plain");
+  });
+
+  it("never records the credentials, whatever the allowlist says", async () => {
+    // `cookie` and `authorization` are the request itself, and this trace is
+    // written to disk for a day.
+    _setHeaderAllowlist(["*"]);
+    try {
+      const ctx = HttpContext.fake("http://localhost/creds", {
+        headers: { authorization: "Bearer sk-live", cookie: "sid=abc", "x-tenant": "acme" },
+      });
+      const startMs = Date.now();
+      await RequestContext.run(ctx, async () => {
+        ctx.response = new Response("ok");
+      });
+      FrameworkEvents.emit(new RequestHandled(ctx, startMs, Date.now() - startMs));
+
+      const t = traceStore().all()[0]!;
+      expect(t.headers["authorization"]).toBeUndefined();
+      expect(t.headers["cookie"]).toBeUndefined();
+      // …but the header you are actually debugging is now reachable.
+      expect(t.headers["x-tenant"]).toBe("acme");
+    } finally {
+      _setHeaderAllowlist([]);
+    }
+  });
+
+  it("keeps a custom header out until it is asked for", async () => {
+    const ctx = HttpContext.fake("http://localhost/custom", {
+      headers: { "x-tenant": "acme" },
+    });
+    const startMs = Date.now();
+    await RequestContext.run(ctx, async () => {
+      ctx.response = new Response("ok");
+    });
+    FrameworkEvents.emit(new RequestHandled(ctx, startMs, Date.now() - startMs));
+
+    expect(traceStore().all()[0]!.headers["x-tenant"]).toBeUndefined();
+  });
+
+  it("records session key names and no session values", async () => {
+    const ctx = fakeCtx("http://localhost/session");
+    (ctx as unknown as Record<string, unknown>)["session"] = {
+      _data: { user_id: 7, _token: "csrf-secret" },
+    };
+    const startMs = Date.now();
+    await RequestContext.run(ctx, async () => {
+      ctx.response = new Response("ok");
+    });
+    FrameworkEvents.emit(new RequestHandled(ctx, startMs, Date.now() - startMs));
+
+    const t = traceStore().all()[0]!;
+    expect(t.session).toEqual(["_token", "user_id"]);
+    expect(JSON.stringify(t)).not.toContain("csrf-secret");
+  });
+
+  it("has an empty session list when no session middleware is installed", async () => {
+    await runRequest("http://localhost/no-session");
+    expect(traceStore().all()[0]!.session).toEqual([]);
+  });
+
+  it("records the error type and its stack frames", async () => {
+    const ctx = fakeCtx("http://localhost/threw");
+    const startMs = Date.now();
+    await RequestContext.run(ctx, async () => {
+      ctx.response = new Response("error", { status: 500 });
+    });
+    const failure = new TypeError("Cannot read property 'id' of undefined");
+    FrameworkEvents.emit(
+      new RequestFailed(ctx, startMs, 1, failure.message, 500, failure.name, failure.stack),
+    );
+
+    const e = traceStore().all()[0]!.exception!;
+    expect(e.type).toBe("TypeError");
+    expect(e.frames?.length).toBeGreaterThan(0);
+    expect(e.frames![0]).toMatchObject({ file: expect.any(String), line: expect.any(Number) });
+  });
+
+  it("records an outgoing call against the request that made it", async () => {
+    await runRequest("http://localhost/calls-out", async () => {
+      FrameworkEvents.emit(
+        new OutgoingRequestCompleted(
+          "api.example.com",
+          "GET",
+          "https://api.example.com/v1",
+          200,
+          12,
+          true,
+        ),
+      );
+    });
+    const entry = traceStore().all()[0]!.channels["http"]![0]!;
+    expect(entry["host"]).toBe("api.example.com");
+    expect(entry["status"]).toBe(200);
+    expect(entry["failed"]).toBe(false);
+  });
+
+  it("drops an outgoing call made outside any request", async () => {
+    // A call from a scheduled task has no trace to belong to.
+    traceStore().clear();
+    FrameworkEvents.emit(
+      new OutgoingRequestCompleted("x.test", "GET", "https://x.test", 200, 1, true),
+    );
+    expect(traceStore().all()).toHaveLength(0);
+  });
+});
+
+// ── Redaction at the sink boundary ────────────────────────────────────────────
+
+describe("Redaction at the sink", () => {
+  // Redacting in a renderer would protect nothing: the unredacted copy is
+  // already in SQLite by the time a panel draws a row.
+
+  it("masks sensitive fields of a channel entry", async () => {
+    await runRequest("http://localhost/channel", async (ctx) => {
+      traceSink.record(ctx, "test", { user: "ada", api_key: "sk-live-secret" });
+    });
+    const entry = traceStore().all()[0]!.channels["test"]![0]!;
+    expect(entry["user"]).toBe("ada");
+    expect(entry["api_key"]).toBe("‹redacted›");
+  });
+
+  it("masks the tail of a sensitive cache key", async () => {
+    await runRequest("http://localhost/cache", async (ctx) => {
+      traceSink.bufferCache(ctx, { op: "hit", key: "session:abc123", durationMs: 1 });
+      traceSink.bufferCache(ctx, { op: "hit", key: "posts:page:2", durationMs: 1 });
+    });
+    const cache = traceStore().all()[0]!.cache;
+    expect(cache[0]!.key).toBe("session:‹redacted›");
+    expect(cache[1]!.key).toBe("posts:page:2");
+  });
+
+  it("masks sensitive fields of a logged object", async () => {
+    await runRequest("http://localhost/log-object", async () => {
+      console.log({ email: "ada@example.com", password_hash: "argon2id$…" });
+    });
+    const line = traceStore().all()[0]!.logs[0]!.args[0]!;
+    expect(line).toContain("ada@example.com");
+    expect(line).not.toContain("argon2id");
+    expect(line).toContain("‹redacted›");
+  });
+
+  it("captures a circular log argument instead of throwing out of console.log", async () => {
+    // JSON.stringify used to run on the raw argument, so `console.log(node)` on
+    // anything self-referential threw from inside the console patch.
+    const node: Record<string, unknown> = { name: "root" };
+    node["self"] = node;
+
+    await runRequest("http://localhost/log-cycle", async () => {
+      expect(() => console.log(node)).not.toThrow();
+    });
+    expect(traceStore().all()[0]!.logs[0]!.args[0]).toContain("circular");
   });
 });
 
@@ -449,7 +670,8 @@ describe("DevtoolsInjectionMiddleware — API routes", () => {
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
-function trace(id: string) {
+/** A complete trace, so the store is exercised against the shape it really holds. */
+function trace(id: string): RequestTrace {
   return {
     id,
     requestId: id,
@@ -458,7 +680,20 @@ function trace(id: string) {
     statusCode: 200,
     startMs: 0,
     durationMs: 1,
+    memory: 0,
+    queryParams: {},
+    headers: {},
+    responseHeaders: {},
+    session: [],
+    route: null,
+    auth: null,
+    exception: null,
     queries: [],
     warnings: [],
+    logs: [],
+    mail: [],
+    cache: [],
+    jobs: [],
+    channels: {},
   };
 }

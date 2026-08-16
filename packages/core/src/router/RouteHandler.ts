@@ -172,6 +172,11 @@ export async function dispatchRequest(
             durationMs,
             failure instanceof Error ? failure.message : String(failure),
             response!.status,
+            // The class name and the stack alongside the message. A subscriber
+            // rendering a failure has nothing to show without them, and by the
+            // time the event is emitted the error is the only place they exist.
+            failure instanceof Error ? failure.name : undefined,
+            failure instanceof Error ? failure.stack : undefined,
           ),
         );
       } else {

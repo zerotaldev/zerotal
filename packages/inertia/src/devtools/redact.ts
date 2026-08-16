@@ -6,7 +6,14 @@
  * cookie, the `Authorization` header, and whatever a login form just posted.
  * Redaction runs before an entry is stored, not when it is served: an entry that
  * was never written cannot leak from a store that is later exposed by mistake.
+ *
+ * The walk is `redactGraph` from `@zerotal/core/security`; the *markers* below
+ * are not ours to choose. `[REDACTED]`, `[Circular]` and `[Max depth]` are what
+ * the published protocol specifies, so sharing an implementation with the
+ * devtools panel — which spells them `‹redacted›` — means sharing the traversal
+ * and nothing else.
  */
+import { redactGraph } from "@zerotal/core/security";
 
 /** The marker the protocol uses for a value that was withheld. */
 export const REDACTED = "[REDACTED]";
@@ -85,45 +92,30 @@ export function redactHeaders(
  *
  * @param value - Any prop value.
  * @param patterns - Key patterns to withhold.
- * @param seen - Internal: the ancestor set for cycle detection.
- * @param depth - Internal: current depth, bounded to keep a deep graph from stalling the request.
  */
 export function redactValue(
   value: unknown,
   patterns: readonly string[] = DEFAULT_REDACTED_KEYS,
-  seen: WeakSet<object> = new WeakSet(),
-  depth = 0,
 ): unknown {
-  if (value === null || typeof value !== "object") return value;
+  return redactGraph(value, {
+    sensitive: (key) => isSensitiveKey(key, patterns),
+    mask: REDACTED,
+    circular: "[Circular]",
+    tooDeep: "[Max depth]",
+    // Bounded rather than unbounded: recording is on the request path, and a
+    // pathological object graph should slow nothing down. Thirteen because that
+    // is the depth this recorder has always stopped at.
+    maxDepth: 13,
+    flatten: _summarise,
+  });
+}
 
-  // Bounded rather than unbounded: recording is on the request path, and a
-  // pathological object graph should slow nothing down.
-  if (depth > 12) return "[Max depth]";
-
+/** Values that must not be inlined, rendered as a one-line summary instead. */
+function _summarise(value: unknown): string | undefined {
   if (value instanceof Date) return value.toISOString();
   if (value instanceof File) {
     return `[File: ${value.name}, ${value.size} bytes, ${value.type || "unknown"}]`;
   }
   if (value instanceof Blob) return `[Blob: ${value.size} bytes, ${value.type || "unknown"}]`;
-
-  if (seen.has(value)) return "[Circular]";
-  seen.add(value);
-
-  try {
-    if (Array.isArray(value)) {
-      return value.map((item) => redactValue(item, patterns, seen, depth + 1));
-    }
-
-    const out: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-      out[key] = isSensitiveKey(key, patterns)
-        ? REDACTED
-        : redactValue(entry, patterns, seen, depth + 1);
-    }
-    return out;
-  } finally {
-    // Released on the way out so a value that legitimately appears twice as a
-    // sibling is not mistaken for a cycle — only true ancestors count.
-    seen.delete(value);
-  }
+  return undefined;
 }

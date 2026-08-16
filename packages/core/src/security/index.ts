@@ -26,3 +26,9 @@ export type { HashAlgorithm } from "../hash/Hash.ts";
 // signing with no secret to manage, `Url.sign` / `Url.verify` on the http subpath is the
 // higher-level option.
 export { URLSigner } from "../crypt/URLSigner.ts";
+// The redaction walk every recorder needs and each had written for itself. Not a
+// policy — callers bring their own markers and their own sensitivity predicate,
+// because an adapter implementing a published protocol does not get to choose
+// its markers and a debug panel does.
+export { redactGraph } from "./redactGraph.ts";
+export type { RedactGraphOptions } from "./redactGraph.ts";

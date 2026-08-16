@@ -21,9 +21,13 @@ import { InertiaDevtoolsMiddleware } from "../devtools/middleware.ts";
 import { devtoolsEnabled, devtoolsSettings } from "../devtools/enabled.ts";
 import { registerDevtoolsApi } from "../devtools/api.ts";
 import { setMaxEntries } from "../devtools/store.ts";
+import { installInertiaObservability } from "../devtools/observability.ts";
 
 export class InertiaProvider extends ServiceProvider {
   static override environments: AppEnvironment[] = ["web", "console", "test"];
+
+  /** Detaches the devtools-panel fan-out. Null when there was nothing to attach. */
+  private _stopObservability: (() => void) | null = null;
 
   override onRegister(): void {
     // Make Router.inertia() available before routes load.
@@ -113,6 +117,14 @@ export class InertiaProvider extends ServiceProvider {
   }
 
   override async onBooted(): Promise<void> {
+    // Fan the recorder's entries out to the in-page devtools panel, when one is
+    // installed. In `onBooted` rather than `onBooting` because that is the first
+    // hook where every provider's bindings exist — `devtools.trace` is registered
+    // in DevtoolsProvider's `onBooting`, and provider order is the app's to choose.
+    if (devtoolsEnabled()) {
+      this._stopObservability = installInertiaObservability(this.app);
+    }
+
     // Register the dev build hook so DevOrchestrator (in @zerotal/core) can
     // trigger a full pages-manifest sync + asset rebuild without @zerotal/core
     // importing @zerotal/inertia (which would create a circular dependency).
@@ -159,6 +171,14 @@ export class InertiaProvider extends ServiceProvider {
           (m) => (m as { MakePageCommand: unknown }).MakePageCommand,
         ),
     );
+  }
+
+  override async onStopping(): Promise<void> {
+    // The bridge holds the previous app's sink in a module-local; a suite that
+    // boots several apps would otherwise leave one app's recorder writing into
+    // the trace store of an app that has already stopped.
+    this._stopObservability?.();
+    this._stopObservability = null;
   }
 }
 

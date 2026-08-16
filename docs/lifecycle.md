@@ -298,6 +298,30 @@ Boot and shutdown phases in order, and the per-request hook surface.
 | `onRequestProcessed()` | Per request, after pipeline  | Async, parallel     |
 | `onResponseSent()`     | Per request, after response  | Async, parallel     |
 
+### What booting cost
+
+`app.bootDurationMs` is the total. `app.providerReport` is the breakdown — one
+`ProviderReport` per provider, in boot order:
+
+```typescript
+for (const { name, durationMs, bindings } of app.providerReport) {
+  console.log(`${name} ${durationMs}ms, bound ${bindings.length}`);
+}
+```
+
+| Field        | Is                                                      |
+| ------------ | ------------------------------------------------------- |
+| `name`       | Provider class name. The array order is the boot order. |
+| `durationMs` | Wall-clock across all three boot hooks.                 |
+| `bindings`   | Container tokens this provider bound, as names.         |
+
+Boot order is worth reading on its own: it decides who wins a contested binding.
+And because `onBooted()` runs in parallel, these durations **overlap** — they do
+not sum to `bootDurationMs`, and the report says so rather than serialising the
+boot to produce a tidier number.
+
+[DevTools](/docs/devtools) draws this as its Providers and Container tabs.
+
 ## Next steps
 
 - [Providers](/docs/providers) — register and boot services.

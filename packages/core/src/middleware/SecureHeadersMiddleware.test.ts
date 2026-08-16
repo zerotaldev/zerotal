@@ -1,5 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { SecureHeadersMiddleware } from "./SecureHeadersMiddleware.ts";
+import type { SecureHeadersOptions } from "./SecureHeadersMiddleware.ts";
+import type { DeepPartial } from "../support/deepMerge.ts";
 import { HttpContext } from "../pipeline/HttpContext.ts";
 import { ScopedResolver } from "../container/ScopedResolver.ts";
 
@@ -20,9 +22,11 @@ async function run(
   return ctx;
 }
 
-// Shorthand: instantiate with options via .with() then run
+// Shorthand: instantiate with options via .with() then run.
+// Named directly rather than derived from `with` — it is a method, not a
+// constructor, so `ConstructorParameters` never described it.
 async function runWith(
-  opts: ConstructorParameters<typeof SecureHeadersMiddleware.with>[0],
+  opts: DeepPartial<SecureHeadersOptions>,
   ctx = makeCtx(),
 ): Promise<HttpContext> {
   return run(SecureHeadersMiddleware.with(opts), ctx);

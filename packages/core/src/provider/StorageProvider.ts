@@ -32,7 +32,10 @@ export class StorageProvider extends ServiceProvider {
   }
 
   override async onBooting(): Promise<void> {
-    const storage = await this.app.container.make("storage");
+    // Named explicitly: `make()` infers its type parameter from the token, and a
+    // plain string token infers nothing — so this used to arrive as `unknown`
+    // and reach `StorageFilesMiddleware.with({ storage })` unchecked.
+    const storage = await this.app.container.make<StorageManager>("storage");
 
     const config = this.app.container.makeSync("config") as ConfigManager;
     const storageCfg = config.get<ReturnType<typeof StorageConfig>>("storage", StorageConfig());

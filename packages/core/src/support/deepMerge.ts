@@ -45,6 +45,46 @@
 const _UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 /**
+ * Values {@link deepMerge} treats as atomic: replaced wholesale, never recursed
+ * into. Kept in step with `_isPlainObject` below — a type that recursed into an
+ * array would ask callers for `{ 0?: string }` where the function wants
+ * `string[]`.
+ */
+type _Atomic =
+  | readonly unknown[]
+  | Date
+  | RegExp
+  | Map<unknown, unknown>
+  | Set<unknown>
+  | ((...args: never[]) => unknown);
+
+/**
+ * Every key optional, all the way down — the shape {@link deepMerge} actually
+ * accepts.
+ *
+ * `Partial<T>` only makes the *top* level optional, so
+ * `{ drivers: { anthropic: { apiKey } } }` — the single most common thing anyone
+ * writes in a config file — was a type error against a shape whose `anthropic`
+ * has other keys, even though the merge handles it perfectly. `@zerotal/ai` hit
+ * this first and defined its own copy; this is that type, promoted so nothing
+ * has to define it again.
+ *
+ * The explicit `| undefined` is deliberate under `exactOptionalPropertyTypes`:
+ * `deepMerge` documents that an `undefined` override is skipped rather than
+ * blanking a default, so passing one explicitly has a defined meaning and
+ * should type-check.
+ */
+export type DeepPartial<T> = {
+  [K in keyof T]?:
+    | (NonNullable<T[K]> extends _Atomic
+        ? T[K]
+        : NonNullable<T[K]> extends object
+          ? DeepPartial<NonNullable<T[K]>>
+          : T[K])
+    | undefined;
+};
+
+/**
  * A *plain* object: a `{}`-style record whose prototype is `Object.prototype` or
  * `null`. Class instances, arrays, Dates, Maps, etc. are intentionally excluded so
  * deepMerge treats them as atomic values instead of recursing into them.
@@ -96,7 +136,7 @@ function _clone<T>(value: T): T {
  * deepMerge({ tags: ["a", "b"] }, { tags: ["c"] });
  * // → { tags: ["c"] }
  */
-export function deepMerge<T extends object>(base: T, override: Partial<T>): T {
+export function deepMerge<T extends object>(base: T, override: DeepPartial<T>): T {
   const result = _clone(base) as T;
   for (const key in override) {
     if (!Object.prototype.hasOwnProperty.call(override, key)) continue;
@@ -107,7 +147,7 @@ export function deepMerge<T extends object>(base: T, override: Partial<T>): T {
     if (_isPlainObject(overrideValue) && _isPlainObject(baseValue)) {
       (result as Record<string, unknown>)[key] = deepMerge(
         baseValue,
-        overrideValue as Partial<typeof baseValue>,
+        overrideValue as DeepPartial<typeof baseValue>,
       );
     } else {
       (result as Record<string, unknown>)[key] = _clone(overrideValue);

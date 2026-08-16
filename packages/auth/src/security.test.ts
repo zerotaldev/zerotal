@@ -32,9 +32,8 @@ describe("ValidateSignatureMiddleware", () => {
     const ctx = makeCtx(signed, SECRET);
     let nextCalled = false;
     const mw = new (ValidateSignatureMiddleware.with({ secret: SECRET }))();
-    await mw.handle(ctx as never, async (c) => {
+    await mw.handle(ctx as never, async () => {
       nextCalled = true;
-      return c;
     });
     expect(nextCalled).toBe(true);
   });
@@ -62,9 +61,8 @@ describe("ValidateSignatureMiddleware", () => {
     // no .with() — uses _resolveSecret from container; container returns SECRET so signature is valid
     const mw = new ValidateSignatureMiddleware();
     let nextCalled = false;
-    await mw.handle(ctx as never, async (c) => {
+    await mw.handle(ctx as never, async () => {
       nextCalled = true;
-      return c;
     });
     expect(nextCalled).toBe(true);
     expect(ctx.response).toBeUndefined();
@@ -259,15 +257,14 @@ describe("TwoFactorMiddleware", () => {
 
   it("throws UnauthorizedError when no user is present", async () => {
     const ctx = makeTfCtx({ user: null });
-    await expect(mw.handle(ctx as never, async (c) => c)).rejects.toThrow();
+    await expect(mw.handle(ctx as never, async () => {})).rejects.toThrow();
   });
 
   it("passes through when user has no 2FA secret", async () => {
     const ctx = makeTfCtx({ user: { id: 1 } });
     let passed = false;
-    await mw.handle(ctx as never, async (c) => {
+    await mw.handle(ctx as never, async () => {
       passed = true;
-      return c;
     });
     expect(passed).toBe(true);
   });
@@ -277,9 +274,8 @@ describe("TwoFactorMiddleware", () => {
       user: { id: 1, twoFactorSecret: "SECRET", twoFactorConfirmedAt: null },
     });
     let passed = false;
-    await mw.handle(ctx as never, async (c) => {
+    await mw.handle(ctx as never, async () => {
       passed = true;
-      return c;
     });
     expect(passed).toBe(true);
   });
@@ -290,9 +286,8 @@ describe("TwoFactorMiddleware", () => {
       sessionData: { two_factor_confirmed: true },
     });
     let passed = false;
-    await mw.handle(ctx as never, async (c) => {
+    await mw.handle(ctx as never, async () => {
       passed = true;
-      return c;
     });
     expect(passed).toBe(true);
   });
@@ -302,7 +297,7 @@ describe("TwoFactorMiddleware", () => {
       user: { id: 1, twoFactorSecret: "SECRET", twoFactorConfirmedAt: new Date() },
       sessionData: {}, // no two_factor_confirmed
     });
-    await mw.handle(ctx as never, async (c) => c);
+    await mw.handle(ctx as never, async () => {});
     expect(ctx.response?.status).toBe(302);
     expect(ctx.response?.headers.get("location")).toContain("/two-factor/challenge");
   });
@@ -337,16 +332,15 @@ describe("RequireRoleMiddleware", () => {
   it("throws UnauthorizedError when no user", async () => {
     const mw = new RequireRoleMiddleware("admin");
     const ctx = makeRoleCtx(null);
-    await expect(mw.handle(ctx as never, async (c) => c)).rejects.toThrow();
+    await expect(mw.handle(ctx as never, async () => {})).rejects.toThrow();
   });
 
   it("passes when the user has the role", async () => {
     const mw = new RequireRoleMiddleware("admin");
     const ctx = makeRoleCtx(userWithRoles(["admin"]));
     let passed = false;
-    await mw.handle(ctx as never, async (c) => {
+    await mw.handle(ctx as never, async () => {
       passed = true;
-      return c;
     });
     expect(passed).toBe(true);
   });
@@ -355,9 +349,8 @@ describe("RequireRoleMiddleware", () => {
     const mw = new RequireRoleMiddleware("admin", "editor");
     const ctx = makeRoleCtx(userWithRoles(["editor"]));
     let passed = false;
-    await mw.handle(ctx as never, async (c) => {
+    await mw.handle(ctx as never, async () => {
       passed = true;
-      return c;
     });
     expect(passed).toBe(true);
   });
@@ -365,13 +358,13 @@ describe("RequireRoleMiddleware", () => {
   it("throws ForbiddenError when role not granted", async () => {
     const mw = new RequireRoleMiddleware("admin");
     const ctx = makeRoleCtx(userWithRoles(["viewer"]));
-    await expect(mw.handle(ctx as never, async (c) => c)).rejects.toThrow();
+    await expect(mw.handle(ctx as never, async () => {})).rejects.toThrow();
   });
 
   it("throws ForbiddenError when the user model isn't Roles-composed", async () => {
     const mw = new RequireRoleMiddleware("admin");
     const ctx = makeRoleCtx({ id: 1 }); // no hasRole()
-    await expect(mw.handle(ctx as never, async (c) => c)).rejects.toThrow();
+    await expect(mw.handle(ctx as never, async () => {})).rejects.toThrow();
   });
 });
 

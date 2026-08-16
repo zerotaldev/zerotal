@@ -2,20 +2,61 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 
 // ── Mock @simplewebauthn/server before Passkeys.ts is loaded ─────────────────
 
-const _mockGenerateRegistrationOptions = mock(async (_opts: unknown) => ({
-  challenge: "fake-challenge",
-  rp: { name: "Test", id: "example.com" },
-}));
+/**
+ * What the mocked `@simplewebauthn/server` entry points return.
+ *
+ * Written out rather than left to inference: `mock()` fixes a mock's return type
+ * from the function it is created with, so every later `mockImplementation` had
+ * to return that exact shape — and each of these tests deliberately returns a
+ * different one. Naming the shapes is what lets a test return only the part it
+ * is about.
+ */
+interface RegistrationOptionsStub {
+  challenge: string;
+  rp?: { name: string; id: string };
+}
 
-const _mockVerifyRegistrationResponse = mock(async (_opts: unknown) => ({
-  verified: false,
-  registrationInfo: undefined,
-}));
+interface RegisteredCredentialStub {
+  credential: {
+    id: string;
+    publicKey: Uint8Array;
+    counter: number;
+    transports: string[] | null;
+  };
+  credentialDeviceType: string;
+  credentialBackedUp: boolean;
+}
 
-const _mockGenerateAuthenticationOptions = mock(async (_opts: unknown) => ({
-  challenge: "fake-auth-challenge",
-  allowCredentials: [],
-}));
+interface RegistrationVerificationStub {
+  verified: boolean;
+  registrationInfo?: RegisteredCredentialStub | undefined;
+}
+
+interface AuthenticationOptionsStub {
+  challenge: string;
+  allowCredentials?: unknown[];
+}
+
+const _mockGenerateRegistrationOptions = mock(
+  async (_opts: unknown): Promise<RegistrationOptionsStub> => ({
+    challenge: "fake-challenge",
+    rp: { name: "Test", id: "example.com" },
+  }),
+);
+
+const _mockVerifyRegistrationResponse = mock(
+  async (_opts: unknown): Promise<RegistrationVerificationStub> => ({
+    verified: false,
+    registrationInfo: undefined,
+  }),
+);
+
+const _mockGenerateAuthenticationOptions = mock(
+  async (_opts: unknown): Promise<AuthenticationOptionsStub> => ({
+    challenge: "fake-auth-challenge",
+    allowCredentials: [],
+  }),
+);
 
 const _mockVerifyAuthenticationResponse = mock(async (_opts: unknown) => ({
   verified: false,
@@ -32,6 +73,7 @@ mock.module("@simplewebauthn/server", () => ({
 // ── Import after mocks are registered ────────────────────────────────────────
 
 import { PasskeyService } from "./Passkeys.ts";
+import type { PasskeyCredential } from "./Passkeys.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -42,7 +84,7 @@ function makeOpts(overrides: Partial<ConstructorParameters<typeof PasskeyService
     origin: "https://example.com",
     findUserCredentials: mock(async (_userId: number) => []),
     findCredential: mock(async (_id: string) => null),
-    saveCredential: mock(async () => {}),
+    saveCredential: mock(async (_credential: Omit<PasskeyCredential, "id">) => {}),
     updateCounter: mock(async () => {}),
     ...overrides,
   };
@@ -197,7 +239,7 @@ describe("PasskeyService.verifyRegistration()", () => {
       },
     }));
 
-    const saveCredential = mock(async () => {});
+    const saveCredential = mock(async (_credential: Omit<PasskeyCredential, "id">) => {});
     const ctx = makeFakeCtx();
     const svc = new PasskeyService(makeOpts({ saveCredential }));
     const result = await svc.verifyRegistration(
@@ -211,9 +253,9 @@ describe("PasskeyService.verifyRegistration()", () => {
     expect(result).toBe("passkey.registered");
     expect(saveCredential).toHaveBeenCalledTimes(1);
     const [saved] = saveCredential.mock.calls[0]!;
-    expect((saved as any).user_id).toBe(1);
-    expect((saved as any).credential_id).toBe("cred-abc");
-    expect((saved as any).name).toBe("My Key");
+    expect(saved.user_id).toBe(1);
+    expect(saved.credential_id).toBe("cred-abc");
+    expect(saved.name).toBe("My Key");
   });
 
   it("sets session user_id on successful registration when not already set", async () => {

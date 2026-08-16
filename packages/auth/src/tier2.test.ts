@@ -255,26 +255,28 @@ describe("isPasswordCompromised", () => {
 
   it("returns true when the hash suffix appears in the range response", async () => {
     globalThis.fetch = (async () =>
-      new Response(`00000000000000000000000000000000000:1\r\n${SUFFIX}:42`)) as typeof fetch;
+      new Response(
+        `00000000000000000000000000000000000:1\r\n${SUFFIX}:42`,
+      )) as unknown as typeof fetch;
     expect(await isPasswordCompromised("password")).toBe(true);
   });
 
   it("respects the threshold", async () => {
-    globalThis.fetch = (async () => new Response(`${SUFFIX}:3`)) as typeof fetch;
+    globalThis.fetch = (async () => new Response(`${SUFFIX}:3`)) as unknown as typeof fetch;
     expect(await isPasswordCompromised("password", { threshold: 5 })).toBe(false);
     expect(await isPasswordCompromised("password", { threshold: 2 })).toBe(true);
   });
 
   it("returns false when the suffix is absent", async () => {
     globalThis.fetch = (async () =>
-      new Response(`FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:9`)) as typeof fetch;
+      new Response(`FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:9`)) as unknown as typeof fetch;
     expect(await isPasswordCompromised("password")).toBe(false);
   });
 
   it("fails open (false) on a network error", async () => {
     globalThis.fetch = (async () => {
       throw new Error("offline");
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     expect(await isPasswordCompromised("password")).toBe(false);
   });
 });
@@ -420,7 +422,7 @@ describe("Auth events", () => {
     const off = FrameworkEvents.on(EmailVerified, (e) => events.push(e));
 
     const u = new U();
-    (u as Record<string, unknown>)["id"] = 7;
+    Object.assign(u, { id: 7 });
     await u.markEmailAsVerified();
 
     expect(events).toHaveLength(1);

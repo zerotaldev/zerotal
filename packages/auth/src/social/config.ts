@@ -27,6 +27,7 @@
  */
 
 import { deepMerge } from "@zerotal/core";
+import type { DeepPartial } from "@zerotal/core";
 import type { ConfigValidator, ConfigIssue } from "@zerotal/core/config";
 import type { OAuth2Config, AppleOAuth2Config } from "./types.ts";
 
@@ -53,7 +54,10 @@ export type SocialConfigShape = {
 // keeps this factory on the one canonical merge and returns a fresh, isolated copy.
 const defaults: SocialConfigShape = {};
 
-export function SocialConfig(config: Partial<SocialConfigShape> = {}): SocialConfigShape {
+// `DeepPartial` rather than `Partial`, because that is what the merge accepts:
+// every driver block is `OAuth2Config & Record<string, unknown>`, so a shallow
+// `Partial` demanded a complete driver entry to override one field of it.
+export function SocialConfig(config: DeepPartial<SocialConfigShape> = {}): SocialConfigShape {
   return deepMerge(defaults, config);
 }
 

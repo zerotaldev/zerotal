@@ -82,8 +82,15 @@ export class FakeSocialDriver extends OAuth2Driver {
     return { ...this._user };
   }
 
-  /** Return the canned profile (a copy) without hitting the provider. */
-  override async userFromToken(): Promise<SocialUser> {
+  /**
+   * Return the canned profile (a copy) without hitting the provider.
+   *
+   * The parameter is declared even though it is unused: a fake has to be
+   * callable everywhere the real driver is, and an override that drops the
+   * argument makes `fake.userFromToken(accessToken)` a compile error while the
+   * line it replaces in production code is fine.
+   */
+  override async userFromToken(_token?: string): Promise<SocialUser> {
     return { ...this._user };
   }
 }

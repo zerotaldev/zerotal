@@ -1,4 +1,5 @@
 import { deepMerge } from "@zerotal/core";
+import type { DeepPartial } from "@zerotal/core";
 import { AiConfigError } from "./errors.ts";
 import type {
   AiConfigShape,
@@ -8,20 +9,6 @@ import type {
   OpenAiConfigShape,
 } from "./types.ts";
 import { modelRejectsSampling } from "./pricing.ts";
-
-/**
- * Recursively-optional view of the config, so callers override only what they
- * care about.
- *
- * `NonNullable` before the `extends object` test is load-bearing: every driver
- * block is already optional, so `AnthropicConfigShape | undefined` does not
- * extend `object` and the recursion would stop one level too early — leaving
- * `{ drivers: { anthropic: { apiKey } } }`, the single most common thing anyone
- * writes in `config/ai.ts`, a type error.
- */
-type DeepPartial<T> = {
-  [K in keyof T]?: NonNullable<T[K]> extends object ? DeepPartial<NonNullable<T[K]>> : T[K];
-};
 
 /**
  * What {@link AiConfig} accepts — every key optional, all the way down. The

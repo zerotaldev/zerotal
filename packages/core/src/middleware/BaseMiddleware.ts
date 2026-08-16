@@ -8,6 +8,7 @@ import type { HttpContext } from "../pipeline/HttpContext.ts";
 // Canonical implementation now lives in support/deepMerge.ts; re-exported here so existing
 // `import { deepMerge } from "./BaseMiddleware.ts"` call sites keep working.
 import { deepMerge } from "../support/deepMerge.ts";
+import type { DeepPartial } from "../support/deepMerge.ts";
 
 export { deepMerge };
 
@@ -44,13 +45,23 @@ export abstract class BaseMiddleware<O extends object = object> implements Pipe<
   /**
    * Returns a zero-arg subclass with the given options deep-merged on top of
    * the subclass defaults, usable directly in app.use([...]).
+   *
+   * `NoInfer` on the parameter is what makes this type-check at all. `Opts` has
+   * a default computed from the middleware class, but a type parameter that
+   * appears in an argument position is inferred from the *argument* first and
+   * only falls back to its default when inference finds nothing — so
+   * `Middleware.with({ resolve: (claims) => … })` used to infer `Opts` from the
+   * object literal it was handed, which meant the literal type-checked against
+   * itself. Every callback parameter arrived implicitly `any`, and a misspelled
+   * option was accepted in silence. Blocking inference makes the middleware's
+   * own option type the one that governs.
    */
   static with<
     // 1. Constrain T to be a concrete class (not abstract) that extends BaseMiddleware
     T extends new (...args: any[]) => BaseMiddleware<any>,
     // 2. Dynamically infer the specific options type (U) from that concrete class
     Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object,
-  >(this: T, options: Partial<Opts>): new () => InstanceType<T> {
+  >(this: T, options: DeepPartial<NoInfer<Opts>>): new () => InstanceType<T> {
     const configured = class extends (this as any) {
       constructor() {
         super();

@@ -237,6 +237,34 @@ deepMerge(
 // → { smtp: { host: 'mail.example.com', port: 1025, secure: false } }
 ```
 
+### `DeepPartial<T>` — the shape an override may take
+
+`deepMerge` accepts a `DeepPartial<T>`: every key optional, all the way down. A plain
+`Partial<T>` only makes the _top_ level optional, which would make the commonest override
+anyone writes a type error:
+
+```typescript
+// in a config factory
+import { deepMerge } from "zerotal";
+import type { DeepPartial } from "zerotal";
+
+interface MailConfigShape {
+  smtp: { host: string; port: number; secure: boolean };
+}
+
+// Overriding one field of a nested block, without restating the others.
+const override: DeepPartial<MailConfigShape> = { smtp: { host: "mail.example.com" } };
+```
+
+Arrays, `Date`s, `Map`s, `Set`s and functions are left whole rather than made partial,
+matching the merge itself — those replace wholesale, so asking for a partial of one would
+describe something `deepMerge` never does. An explicit `undefined` is allowed too, because
+the merge documents it as _skipped_ rather than blanking a default.
+
+Write your own config factory's parameter as `Partial<XConfigShape>` when the shape is
+flat, and `DeepPartial<XConfigShape>` when it nests — both satisfy the package linter's
+`config-partial` rule.
+
 ### Arrays replace — they do not merge
 
 An array in the override replaces the base array entirely. It is **never**

@@ -91,9 +91,9 @@ describe("PersistUserMiddleware", () => {
   it("sets ctx.user when session has user_id and loader is registered", async () => {
     const middleware = new PersistUserMiddleware();
     const ctx = fakeCtx({ user_id: 42 }, async (id) => ({ id }));
-    const next = async (c: typeof ctx) => c;
+    const next = async () => {};
 
-    await middleware.handle(ctx as any, next as any);
+    await middleware.handle(ctx as any, next);
 
     expect(ctx.user).toBeDefined();
     expect(ctx.user?.id).toBe(42);
@@ -102,11 +102,11 @@ describe("PersistUserMiddleware", () => {
   it("throws when user_id in session but no loader is registered", async () => {
     const middleware = new PersistUserMiddleware();
     const ctx = fakeCtx({ user_id: 42 }); // no loader
-    const next = async (c: typeof ctx) => c;
+    const next = async () => {};
 
     let threw = false;
     try {
-      await middleware.handle(ctx as any, next as any);
+      await middleware.handle(ctx as any, next);
     } catch (err) {
       threw = true;
       expect((err as Error).message).toContain("auth.userLoader");
@@ -117,9 +117,9 @@ describe("PersistUserMiddleware", () => {
   it("leaves ctx.user undefined when no user_id in session", async () => {
     const middleware = new PersistUserMiddleware();
     const ctx = fakeCtx({});
-    const next = async (c: typeof ctx) => c;
+    const next = async () => {};
 
-    await middleware.handle(ctx as any, next as any);
+    await middleware.handle(ctx as any, next);
 
     expect(ctx.user).toBeUndefined();
   });
@@ -128,12 +128,11 @@ describe("PersistUserMiddleware", () => {
     const middleware = new PersistUserMiddleware();
     const ctx = fakeCtx({ user_id: 1 }, async (id) => ({ id }));
     let nextCalled = false;
-    const next = async (c: typeof ctx) => {
+    const next = async () => {
       nextCalled = true;
-      return c;
     };
 
-    await middleware.handle(ctx as any, next as any);
+    await middleware.handle(ctx as any, next);
 
     expect(nextCalled).toBe(true);
   });
@@ -146,9 +145,9 @@ describe("PersistUserMiddleware", () => {
     }
     const middleware = new StalePersistUserMiddleware();
     const ctx = fakeCtx({ user_id: 99 });
-    const next = async (c: typeof ctx) => c;
+    const next = async () => {};
 
-    await middleware.handle(ctx as any, next as any);
+    await middleware.handle(ctx as any, next);
 
     expect(ctx.user).toBeUndefined();
     expect(ctx.session.has("user_id")).toBe(false);
@@ -240,8 +239,7 @@ describe("Authenticatable", () => {
   it("AuthUser carries the brand and the auth contract", () => {
     expect(isAuthenticatable(AuthUser)).toBe(true);
     const u = new AuthUser();
-    (u as Record<string, unknown>)["id"] = 7;
-    (u as Record<string, unknown>)["password"] = "hashed";
+    Object.assign(u, { id: 7, password: "hashed" });
     expect(u.getAuthId()).toBe(7);
     expect(u.getAuthPassword()).toBe("hashed");
   });
@@ -250,7 +248,7 @@ describe("Authenticatable", () => {
     class User extends Model.using(Authenticatable) {}
     expect(isAuthenticatable(User)).toBe(true);
     const u = new User();
-    (u as Record<string, unknown>)["id"] = 3;
+    Object.assign(u, { id: 3 });
     expect(u.getAuthId()).toBe(3);
     expect(u.getAuthPassword()).toBeNull(); // passwordless until set
   });
@@ -320,12 +318,11 @@ describe("GuestMiddleware", () => {
       response: undefined as Response | undefined,
     };
     let nextCalled = false;
-    const next = async (c: typeof ctx) => {
+    const next = async () => {
       nextCalled = true;
-      return c;
     };
 
-    await middleware.handle(ctx as any, next as any);
+    await middleware.handle(ctx as any, next);
 
     expect(nextCalled).toBe(true);
     expect(ctx.response).toBeUndefined();
@@ -343,7 +340,7 @@ describe("GuestMiddleware", () => {
       return ctx.response;
     };
 
-    const result = await middleware.handle(ctx as any, next as any);
+    const result = await middleware.handle(ctx as any, next);
     if (result instanceof Response) ctx.response = result;
 
     expect(nextCalled).toBe(false);
@@ -368,7 +365,7 @@ function makeCtx(token?: string): HttpContext {
   const headers = new Headers();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const req = new Request("http://localhost/", { headers });
-  return new HttpContext(req, new ScopedResolver(new Container(), new Map()));
+  return new HttpContext(req, new ScopedResolver(new Container()));
 }
 
 describe("createToken()", () => {
@@ -440,20 +437,20 @@ describe("BearerTokenMiddleware", () => {
     BearerTokenMiddleware.setLoader(async (hash) => (hash === row.token ? fullRow : null));
 
     const ctx = makeCtx(plaintext);
-    await new BearerTokenMiddleware().handle(ctx, async (c) => c);
+    await new BearerTokenMiddleware().handle(ctx, async () => {});
     expect(ctx.user?.id).toBe(42);
   });
 
   it("leaves ctx.user undefined for an invalid token", async () => {
     BearerTokenMiddleware.setLoader(async () => null);
     const ctx = makeCtx("invalid-token");
-    await new BearerTokenMiddleware().handle(ctx, async (c) => c);
+    await new BearerTokenMiddleware().handle(ctx, async () => {});
     expect(ctx.user).toBeUndefined();
   });
 
   it("leaves ctx.user undefined when no Authorization header", async () => {
     const ctx = makeCtx();
-    await new BearerTokenMiddleware().handle(ctx, async (c) => c);
+    await new BearerTokenMiddleware().handle(ctx, async () => {});
     expect(ctx.user).toBeUndefined();
   });
 
@@ -466,7 +463,7 @@ describe("BearerTokenMiddleware", () => {
     const fullRow: TokenRow = { ...row, id: 1, created_at: "", updated_at: "" };
     BearerTokenMiddleware.setLoader(async () => fullRow);
     const ctx = makeCtx("any-token");
-    await new BearerTokenMiddleware().handle(ctx, async (c) => c);
+    await new BearerTokenMiddleware().handle(ctx, async () => {});
     expect(ctx.user).toBeUndefined();
   });
 });
@@ -616,10 +613,13 @@ describe("PasswordBroker.prune()", () => {
     });
 
     await captureBroker.prune();
-    expect(prunedCutoff).toBeInstanceOf(Date);
+    // Read through a local: the assignment happens inside a callback, so control
+    // flow narrows `prunedCutoff` to its initialiser at every later use.
+    const cutoff: Date | null = prunedCutoff;
+    expect(cutoff).toBeInstanceOf(Date);
     // The cutoff should be roughly `now - 60 minutes`
     const expectedMs = Date.now() - 60 * 60 * 1000;
-    expect(Math.abs((prunedCutoff as Date).getTime() - expectedMs)).toBeLessThan(2000);
+    expect(Math.abs(cutoff!.getTime() - expectedMs)).toBeLessThan(2000);
   });
 
   it("broker instance prune() does not throw", async () => {

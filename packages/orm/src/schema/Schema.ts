@@ -1,4 +1,4 @@
-import { _getDbConnection } from "../db/DB.ts";
+import { _getScopedDbConnection } from "../db/DB.ts";
 import { _getDialect } from "../model/BaseModel.ts";
 import { getDialect } from "../db/dialects/index.ts";
 import { Blueprint } from "./Blueprint.ts";
@@ -11,7 +11,10 @@ import { Blueprint } from "./Blueprint.ts";
  * Bun SQL tagged-template function without interpolating anything.
  */
 async function ddl(sql: string): Promise<void> {
-  const conn = _getDbConnection();
+  // Scoped, not global: DDL issued inside a transaction has to run *on* that
+  // transaction or it commits independently of it — which is what made the
+  // migration runner's `begin()` wrapper decorative.
+  const conn = _getScopedDbConnection();
   const strings = [sql];
   const tpl = Object.assign(strings, { raw: strings }) as TemplateStringsArray;
   await conn(tpl);
@@ -22,7 +25,9 @@ async function ddl(sql: string): Promise<void> {
  * We need this for parameterised introspection queries (hasTable, hasColumn).
  */
 async function query<T = Record<string, unknown>>(sql: string, params: unknown[]): Promise<T[]> {
-  const conn = _getDbConnection();
+  // Same connection as `ddl()` above: `hasTable()` inside a transaction must see
+  // the tables that transaction has created, which a pooled connection cannot.
+  const conn = _getScopedDbConnection();
   const parts = sql.split("?");
   const tpl = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
   return conn<T>(tpl, ...params);

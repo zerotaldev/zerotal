@@ -59,6 +59,23 @@ export interface SqlDialect {
   /** Whether the engine supports application-level advisory locks. */
   readonly supportsAdvisoryLocks: boolean;
 
+  /**
+   * Whether DDL participates in transactions — so a failed migration can be
+   * rolled back and leave nothing behind.
+   *
+   * PostgreSQL and SQLite: yes. `CREATE TABLE` inside a transaction is undone by
+   * `ROLLBACK` like any other statement, which is what lets the migration runner
+   * promise all-or-nothing.
+   *
+   * MySQL and MariaDB: **no**. Every DDL statement causes an implicit commit, so
+   * `BEGIN; CREATE TABLE …; ROLLBACK;` leaves the table behind — the `ROLLBACK`
+   * has nothing left to undo. (MySQL 8.0's "atomic DDL" makes each *individual*
+   * statement crash-safe; it does not put them in your transaction.) A runner
+   * that wrapped MySQL DDL in a transaction anyway would report a rollback that
+   * did not happen, which is worse than not offering one.
+   */
+  readonly supportsTransactionalDdl: boolean;
+
   /** Statement acquiring an advisory lock (blocking), or null when unsupported. */
   advisoryLockSql(key: number): DialectQuery | null;
 

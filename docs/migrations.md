@@ -115,6 +115,27 @@ ordered automatically (`001_…`, `002_…`); see [Migration file naming](#migra
 - **`migrate:rollback`** — undo the last batch you ran (calls each migration's `down()`).
 - **`migrate:status`** — inspect what has and hasn't run before deciding.
 
+### What happens when a migration fails
+
+On **PostgreSQL and SQLite**, each migration and its tracking-table row are written in one
+transaction. A migration that throws half way leaves nothing behind — not the tables it
+managed to create, and not a record claiming it ran. Fix the file and run `migrate` again;
+the schema is exactly as it was. Migrations that committed before the failure stay
+committed, so a retry only has the failure left to deal with.
+
+This is what makes [`zt deploy:<env>`](/docs/deployment) safe to interrupt: the only two
+states a deploy can be caught in are _not applied_ and _applied and recorded_.
+
+> **Warning** — **MySQL and MariaDB have no transactional DDL.** Every DDL statement
+> implicitly commits, so a migration that fails on its third `ALTER` leaves the first two
+> applied and cannot be rolled back — the engine has nothing left to undo. `bun zt migrate`
+> says so before it starts. Keep migrations small so a failure is easy to unpick by hand,
+> and take a backup before running them against production.
+
+Rollback carries the same guarantee in reverse: a `down()` that fails part-way undoes
+nothing and keeps the migration recorded as applied, rather than leaving the schema and the
+tracking table disagreeing.
+
 ## Auto-generating from models
 
 Zerotal can diff your `@column()` declarations against the live schema and generate

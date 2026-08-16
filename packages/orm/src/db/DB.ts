@@ -65,6 +65,31 @@ export function _getDbConnection(): SQLInstance {
   return conn;
 }
 
+/**
+ * The connection statements at this call site must run on: the enclosing
+ * transaction if there is one, otherwise the ordinary connection.
+ *
+ * `_getDbConnection()` deliberately does not do this — it answers "what is the
+ * app's connection", which is what a migration command needs when it is *opening*
+ * a transaction. This answers "where does my SQL go", which is what anything
+ * running inside one needs.
+ *
+ * The distinction is not academic. `Schema` used the first, so DDL issued inside
+ * `DB.transaction()` — including every migration, which the runner wraps —
+ * executed on a pooled connection outside the transaction and committed on its
+ * own. The wrapper was decorative, and a migration that failed half way left the
+ * half it had done behind.
+ */
+export function _getScopedDbConnection(): SQLInstance {
+  const conn =
+    TransactionContext.getStore() ??
+    (RequestContext.tryGet()?._transaction as SQLInstance | undefined) ??
+    _fromContainer();
+  if (!conn)
+    throw new Error("[Zerotal ORM] No database connection. Is DatabaseProvider registered?");
+  return conn;
+}
+
 /** Alias used by migration command helpers. */
 export function _getConnection(): SQLInstance {
   return _getDbConnection();

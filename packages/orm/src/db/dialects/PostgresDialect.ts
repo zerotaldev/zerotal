@@ -8,6 +8,9 @@ export class PostgresDialect implements SqlDialect {
   readonly name = "postgres" as const;
   readonly supportsAdvisoryLocks = true;
 
+  // Full transactional DDL: CREATE/ALTER/DROP roll back like any other statement.
+  readonly supportsTransactionalDdl = true;
+
   hasTableSql(table: string): DialectQuery {
     return {
       sql: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?`,

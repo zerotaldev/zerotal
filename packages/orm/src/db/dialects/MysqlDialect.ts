@@ -8,6 +8,10 @@ export class MysqlDialect implements SqlDialect {
   readonly name = "mysql" as const;
   readonly supportsAdvisoryLocks = true;
 
+  // Every DDL statement implicitly commits, so a migration that fails part-way
+  // through cannot be undone. Stated here rather than discovered in production.
+  readonly supportsTransactionalDdl = false;
+
   hasTableSql(table: string): DialectQuery {
     return {
       sql:

@@ -363,3 +363,100 @@ describe("rollback with a missing migration file", () => {
     await expect(runner.reset([])).rejects.toThrow(/no migration file found for/);
   });
 });
+
+// ── All-or-nothing ────────────────────────────────────────────────────────────
+
+/**
+ * The guarantee `zt deploy:<env>` rests on: a migration that fails part-way
+ * leaves nothing behind — not the statements that succeeded, and not a row
+ * claiming it ran.
+ *
+ * The earlier error-handling tests use a migration that throws before touching
+ * the schema, so they never exercised the case that matters. These do the damage
+ * first and then fail, which is what a real migration does when its third
+ * `ALTER` hits a constraint the second one violated.
+ */
+describe("MigrationRunner — a failed migration leaves nothing behind", () => {
+  /** Creates a table, then fails. The table must not survive. */
+  class HalfApplied extends Migration {
+    async up() {
+      await Schema.create("half_a", (table) => table.increments("id"));
+      await Schema.create("half_b", (table) => table.increments("id"));
+      throw new Error("failed after two tables");
+    }
+    async down() {}
+  }
+
+  it("rolls back the DDL the migration had already run", async () => {
+    const entries = [{ name: "010_half", migration: new HalfApplied() }];
+    await expect(runner.run(entries)).rejects.toBeInstanceOf(MigrationError);
+
+    // Without a real transaction around `up()`, both of these exist — and the
+    // next `migrate` re-runs the migration against a schema it already changed,
+    // failing on "table already exists" instead of on the original error.
+    expect(await Schema.hasTable("half_a")).toBe(false);
+    expect(await Schema.hasTable("half_b")).toBe(false);
+  });
+
+  it("records nothing for it", async () => {
+    const entries = [{ name: "010_half", migration: new HalfApplied() }];
+    await expect(runner.run(entries)).rejects.toBeInstanceOf(MigrationError);
+    expect(await runner.pending(entries)).toEqual(["010_half"]);
+  });
+
+  it("keeps the migrations that committed before it", async () => {
+    const entries = [
+      { name: "001_alpha", migration: new CreateAlpha() },
+      { name: "010_half", migration: new HalfApplied() },
+    ];
+    await expect(runner.run(entries)).rejects.toBeInstanceOf(MigrationError);
+
+    // Per-migration transactions, not one for the whole run: alpha succeeded and
+    // stays, so a retry has only the failure left to deal with.
+    expect(await Schema.hasTable("alpha")).toBe(true);
+    expect(await runner.pending(entries)).toEqual(["010_half"]);
+  });
+
+  it("leaves the schema exactly where a retry can pick it up", async () => {
+    const broken = [{ name: "010_half", migration: new HalfApplied() }];
+    await expect(runner.run(broken)).rejects.toBeInstanceOf(MigrationError);
+
+    // The same name, now with a migration that works — which is what fixing the
+    // file and re-running amounts to.
+    const fixed = [{ name: "010_half", migration: new CreateAlpha() }];
+    expect(await runner.run(fixed)).toEqual(["010_half"]);
+    expect(await Schema.hasTable("alpha")).toBe(true);
+  });
+});
+
+describe("MigrationRunner — a failed rollback leaves nothing behind", () => {
+  class DropsThenFails extends Migration {
+    async up() {
+      await Schema.create("keep_a", (table) => table.increments("id"));
+      await Schema.create("keep_b", (table) => table.increments("id"));
+    }
+    async down() {
+      await Schema.dropIfExists("keep_b");
+      throw new Error("failed after dropping one table");
+    }
+  }
+
+  it("restores what down() had already dropped, and keeps the record", async () => {
+    const entries = [{ name: "011_drops", migration: new DropsThenFails() }];
+    await runner.run(entries);
+    await expect(runner.rollback(entries)).rejects.toThrow(/failed after dropping/);
+
+    // A half-undone rollback is the worse half of the same bug: the schema has
+    // moved and the tracking table still says the migration is applied, so
+    // nothing will ever try to undo the rest.
+    expect(await Schema.hasTable("keep_a")).toBe(true);
+    expect(await Schema.hasTable("keep_b")).toBe(true);
+    expect((await runner.status(entries))[0]?.ran).toBe(true);
+  });
+});
+
+describe("MigrationRunner — willRollBackOnFailure", () => {
+  it("is true on SQLite, which has transactional DDL", () => {
+    expect(runner.willRollBackOnFailure).toBe(true);
+  });
+});

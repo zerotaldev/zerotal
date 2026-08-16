@@ -51,6 +51,20 @@ export class MigrateCommand extends Command {
 
     const runner = new MigrationRunner({ connection: _getConnection() });
 
+    // Said before anything runs, not after something breaks. On an engine with
+    // transactional DDL a failed migration leaves nothing behind; on MySQL every
+    // DDL statement implicitly commits, so a migration that fails half way leaves
+    // the half it did — and the operator needs to know which world they are in
+    // while they still have the option of taking a backup.
+    if (!runner.willRollBackOnFailure && entries.length > 0) {
+      this.warn(
+        "This database does not support transactional DDL, so a migration that fails " +
+          "part-way will leave the statements that already succeeded in place.",
+      );
+      this.dim("  Keep migrations small, and take a backup before running them in production.");
+      this.newLine();
+    }
+
     if (fresh) {
       await runner.reset(entries);
     }

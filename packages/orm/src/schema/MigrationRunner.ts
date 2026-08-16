@@ -7,6 +7,7 @@ import { FrameworkEvents } from "@zerotal/core";
 import { MigrationRan } from "../events.ts";
 import { dialectFor } from "../db/QueryBuilder.ts";
 import { getDialect } from "../db/dialects/index.ts";
+import { TransactionContext } from "../db/TransactionContext.ts";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -42,10 +43,36 @@ interface MigrationRow {
  *
  * Applied migrations are recorded in a tracking table (default `"migrations"`) by
  * name and batch, so re-runs skip already-applied entries and rollbacks can undo a
- * whole batch. Each `up()` runs inside its own transaction; a failure rolls that
- * migration back and surfaces as a {@link MigrationError} without affecting
- * already-committed migrations. Every run/rollback emits a `MigrationRan`
- * framework event (success or failure) for observability.
+ * whole batch. Every run/rollback emits a `MigrationRan` framework event (success
+ * or failure) for observability.
+ *
+ * ## The all-or-nothing guarantee
+ *
+ * On an engine with transactional DDL — PostgreSQL and SQLite — each migration and
+ * its tracking-table row are written in **one transaction**. A migration that
+ * throws half way leaves nothing behind: not the tables it managed to create, and
+ * not a row claiming it ran. That is what makes `zt deploy:<env>` safe to retry,
+ * because the only two states a deploy can be interrupted in are "not applied" and
+ * "applied and recorded".
+ *
+ * Three things had to be true for that to hold, and none of them were:
+ *
+ * 1. **The migration's statements must run on the transaction.** `Schema` resolved
+ *    the *global* connection, so DDL inside the runner's `begin()` executed on a
+ *    pooled connection and committed independently. The wrapper was decorative.
+ * 2. **The tracking insert must be inside it.** Recording after the commit leaves
+ *    a window where the schema has moved and the record says otherwise — the
+ *    migration runs a second time on the next deploy, against a schema it has
+ *    already changed.
+ * 3. **The engine must actually support it.** MySQL implicitly commits on DDL, so
+ *    a transaction there is a promise that cannot be kept.
+ *
+ * ## MySQL
+ *
+ * No transactional DDL, so migrations run unwrapped and a failure leaves the
+ * statements that already succeeded in place. `willRollBackOnFailure` reports
+ * this, and `zt migrate` says so before it starts rather than after it breaks.
+ * Keeping each migration small is the only mitigation the engine allows.
  *
  * @example
  * ```ts
@@ -68,6 +95,49 @@ export class MigrationRunner {
   }
 
   /**
+   * Whether a failed migration will be rolled back on this connection's engine.
+   *
+   * `false` on MySQL/MariaDB, where DDL implicitly commits. Callers surface this
+   * before running anything — a developer who knows a failure will leave a
+   * half-applied schema writes smaller migrations and takes a backup first.
+   */
+  get willRollBackOnFailure(): boolean {
+    return getDialect(dialectFor(this._conn)).supportsTransactionalDdl;
+  }
+
+  /**
+   * Run `work` inside a transaction, or directly when the engine cannot roll DDL
+   * back.
+   *
+   * The transaction connection is published on {@link TransactionContext}, which
+   * is what `Schema` (and anything else the migration touches) resolves through.
+   * Without that the statements run on a pooled connection and commit on their
+   * own, which is precisely the bug this method exists to close — so the ALS is
+   * not an optimisation here, it is the entire mechanism.
+   */
+  private async _atomically(work: () => Promise<void>): Promise<void> {
+    if (!this.willRollBackOnFailure) {
+      await work();
+      return;
+    }
+    await this._conn.begin(async (tx: SQLInstance) => {
+      await TransactionContext.run(tx, work);
+    });
+  }
+
+  /**
+   * The connection this runner's own statements go to: the open transaction when
+   * there is one, otherwise the connection it was constructed with.
+   *
+   * The tracking-table writes need this as much as the migration does. An INSERT
+   * that went to the pool while the DDL went to the transaction would record a
+   * migration the transaction could still roll back.
+   */
+  private _active(): SQLInstance {
+    return TransactionContext.getStore() ?? this._conn;
+  }
+
+  /**
    * Run all pending migrations from the provided list.
    *
    * - Skips any entry whose name is already in the migrations table.
@@ -85,10 +155,13 @@ export class MigrationRunner {
     for (const entry of pendingEntries) {
       const start = performance.now();
       try {
-        // Each migration runs in its own transaction so a failure rolls back
-        // that migration's DDL without affecting already-committed ones.
-        await this._conn.begin(async () => {
+        // The migration and its tracking row in one transaction. Recording after
+        // the commit would leave a window where the schema has moved and nothing
+        // says so — and the next deploy would run this migration again, against a
+        // schema it has already changed.
+        await this._atomically(async () => {
           await entry.migration.up();
+          await this._record(entry.name, batch);
         });
       } catch (err) {
         const cause = err instanceof Error ? err : new Error(String(err));
@@ -106,7 +179,6 @@ export class MigrationRunner {
       FrameworkEvents.emit(
         new MigrationRan(entry.name, "up", Math.round(performance.now() - start), true),
       );
-      await this._record(entry.name, batch);
       executed.push(entry.name);
     }
 
@@ -151,7 +223,12 @@ export class MigrationRunner {
     for (const entry of toRollback) {
       const start = performance.now();
       try {
-        await entry.migration.down();
+        // Same guarantee in reverse: a `down()` that fails half way leaves neither
+        // a partly-undone schema nor a deleted record claiming it was undone.
+        await this._atomically(async () => {
+          await entry.migration.down();
+          await this._deleteRecord(entry.name);
+        });
       } catch (err) {
         const cause = err instanceof Error ? err : new Error(String(err));
         FrameworkEvents.emit(
@@ -168,7 +245,6 @@ export class MigrationRunner {
       FrameworkEvents.emit(
         new MigrationRan(entry.name, "down", Math.round(performance.now() - start), true),
       );
-      await this._deleteRecord(entry.name);
       rolledBack.push(entry.name);
     }
 
@@ -300,7 +376,7 @@ export class MigrationRunner {
     const tpl = Object.assign(strings, {
       raw: strings,
     }) as TemplateStringsArray;
-    await this._conn(tpl);
+    await this._active()(tpl);
   }
 
   /** SELECT with no bound parameters. */
@@ -312,14 +388,14 @@ export class MigrationRunner {
   private async _selectParam<T>(sql: string, value: unknown): Promise<T[]> {
     const parts = sql.split("?");
     const tpl = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
-    return this._conn<T>(tpl, value);
+    return this._active()<T>(tpl, value);
   }
 
   /** DML with N bound parameters. */
   private async _exec(sql: string, ...values: unknown[]): Promise<void> {
     const parts = sql.split("?");
     const tpl = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
-    await this._conn(tpl, ...values);
+    await this._active()(tpl, ...values);
   }
 
   private async _exec0<T>(sql: string): Promise<T[]> {
@@ -327,7 +403,7 @@ export class MigrationRunner {
     const tpl = Object.assign(strings, {
       raw: strings,
     }) as TemplateStringsArray;
-    return this._conn<T>(tpl);
+    return this._active()<T>(tpl);
   }
 
   private async _loadDirectory(dir: string): Promise<MigrationEntry[]> {

@@ -8,6 +8,10 @@ export class SqliteDialect implements SqlDialect {
   readonly name = "sqlite" as const;
   readonly supportsAdvisoryLocks = false;
 
+  // Transactional DDL, same as PostgreSQL — the schema lives in the same b-tree
+  // as the data and is written under the same transaction.
+  readonly supportsTransactionalDdl = true;
+
   hasTableSql(table: string): DialectQuery {
     return {
       sql: `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,

@@ -10,7 +10,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
-Both found by wiring DevTools into this repo's own `apps/docs` and driving it in a browser.
+- **The dev deck would not scroll.** On the alternate screen a terminal has no scrollback of
+  its own, so the wheel and the scrollbar had nothing to move and the deck read as frozen —
+  from the moment tabs mode starts, every way of looking at an older line has to come from
+  the deck itself, and only Page Up/Down did.
+
+  It now asks the terminal to send the wheel as cursor keys (`?1007h`, released again on
+  exit) and handles `↑`/`↓` and Home/End. Deliberately not mouse tracking, which would give
+  real wheel events at the price of the terminal's own text selection.
+
+  Two things had to change underneath. A read from stdin is not one key: a wheel tick arrives
+  as the same arrow repeated once per line, all in one chunk, and two fast keystrokes arrive
+  together — so a chunk is split into keys and the frame painted once at the end. And a card
+  that has been scrolled up now holds its place: `scroll` counts up from the newest line, so a
+  busy process used to drag the window down by a line for every line it printed, sliding the
+  text somebody had stopped to read off the top while they read it. A card pinned to the
+  bottom still follows its output, which is the one that should.
+
+Both of the next two were found by wiring DevTools into this repo's own `apps/docs` and
+driving it in a browser.
 
 - **`Router.raw()` responses carried no security headers.** A raw route opts out of the
   _request_ pipeline — CSRF on a transport endpoint, session resolution on a relay — and was

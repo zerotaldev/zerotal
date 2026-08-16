@@ -210,23 +210,32 @@ running, restarting, or has given up:
 ─────────────────────────────────────────────────
  GET / 200 4ms
  GET /posts 200 11ms
- 1-9 tab · ←/→ cycle · r restart · c clear · / search · t time · s stream · q quit
+ 1-9 tab · ←/→ cycle · ↑/↓ scroll · r restart · c clear · / search · t time · s stream · q quit
 ```
 
-| Key           | Does                                                             |
-| ------------- | ---------------------------------------------------------------- |
-| `1`–`9`       | Select that tab                                                  |
-| `←` `→` `Tab` | Cycle through tabs                                               |
-| `r`           | Restart the focused process                                      |
-| `c`           | Clear the focused tab's output                                   |
-| `/`           | Search within the focused tab (`Enter` keeps it, `Esc` drops it) |
-| `t`           | Toggle per-line timestamps                                       |
-| `s`           | Switch to stream mode                                            |
-| `PgUp` `PgDn` | Scroll the focused tab                                           |
-| `q`           | Quit — stops every process and restores your shell               |
+| Key           | Does                                                              |
+| ------------- | ----------------------------------------------------------------- |
+| `1`–`9`       | Select that tab                                                   |
+| `←` `→` `Tab` | Cycle through tabs                                                |
+| `↑` `↓`       | Scroll the focused tab a line at a time — as does the mouse wheel |
+| `PgUp` `PgDn` | Scroll it a screen at a time                                      |
+| `Home` `End`  | Jump to the oldest line, or back to the newest                    |
+| `r`           | Restart the focused process                                       |
+| `c`           | Clear the focused tab's output                                    |
+| `/`           | Search within the focused tab (`Enter` keeps it, `Esc` drops it)  |
+| `t`           | Toggle per-line timestamps                                        |
+| `s`           | Switch to stream mode                                             |
+| `q`           | Quit — stops every process and restores your shell                |
 
 Scrollback belongs to the deck rather than to your terminal, which is what makes
 per-tab history and search possible. It keeps the last 5,000 lines per process.
+Your terminal's own scrollbar does nothing while the deck is up — it has no
+history to move, because the deck holds it all. Use the keys above (or the
+wheel, which the terminal sends the deck as `↑`/`↓`).
+
+Scrolling up parks the view where you left it: the process behind the tab keeps
+printing, but what you stopped to read stays on screen until you scroll back
+down to the newest line.
 
 **A process that dies never takes the server with it.** It restarts on its own —
 three times, backing off between attempts — and if it still will not start, that

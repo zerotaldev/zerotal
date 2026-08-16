@@ -389,6 +389,97 @@ describe("tabs mode — keys", () => {
     m.deck.stop();
   });
 
+  it("scrolls a line at a time with the arrows", () => {
+    // 24 rows is 21 lines of body, so line 30 is off the top until it is not.
+    const m = mounted(["server"]);
+    for (let i = 1; i <= 30; i++) m.deck.line("server", `line ${i}`, "stdout");
+
+    m.tty.type("\x1b[A");
+    m.writer.chunks.length = 0;
+    m.tty.type("\x1b[A");
+    expect(m.writer.all()).toContain("line 28");
+    expect(m.writer.all()).not.toContain("line 30");
+
+    m.writer.chunks.length = 0;
+    m.tty.type("\x1b[B");
+    m.tty.type("\x1b[B");
+    expect(m.writer.all()).toContain("line 30");
+    m.deck.stop();
+  });
+
+  it("scrolls on a wheel tick, which arrives as several arrows in one read", () => {
+    // The terminal sends one cursor key per line scrolled, all in a single
+    // chunk. Matching the chunk against a key would scroll by nothing at all.
+    const m = mounted(["server"]);
+    for (let i = 1; i <= 30; i++) m.deck.line("server", `line ${i}`, "stdout");
+    m.writer.chunks.length = 0;
+
+    m.tty.type("\x1b[A\x1b[A\x1b[A");
+
+    expect(m.writer.all()).toContain("line 27");
+    expect(m.writer.all()).not.toContain("line 28");
+    // One tick, one frame — not one frame per line of the tick.
+    expect(m.writer.chunks).toHaveLength(1);
+    m.deck.stop();
+  });
+
+  it("takes SS3 arrows too, the ones application cursor mode sends", () => {
+    const m = mounted(["a", "b", "c"]);
+
+    m.tty.type("\x1bOC");
+    m.tty.type("r");
+
+    expect(m.restarted).toEqual(["b"]);
+    m.deck.stop();
+  });
+
+  it("asks the terminal to send the wheel as cursor keys, and stops asking", () => {
+    const m = mounted();
+    expect(m.writer.all()).toContain("\x1b[?1007h");
+
+    m.writer.chunks.length = 0;
+    m.deck.stop();
+    expect(m.writer.all()).toContain("\x1b[?1007l");
+  });
+
+  it("keeps a scrolled-up view on the same lines as output keeps arriving", () => {
+    const m = mounted(["server"]);
+    for (let i = 1; i <= 30; i++) m.deck.line("server", `line ${i}`, "stdout");
+    m.tty.type("\x1b[5~"); // page up, off the bottom
+
+    m.writer.chunks.length = 0;
+    for (let i = 31; i <= 40; i++) m.deck.line("server", `line ${i}`, "stdout");
+    m.tty.type("t"); // force a synchronous paint
+    m.tty.type("t");
+
+    // Whatever was on screen when the user stopped is still on screen: without
+    // the anchor these ten lines would have pushed it off the top.
+    expect(m.writer.all()).toContain("line 9");
+    expect(m.writer.all()).not.toContain("line 31");
+    m.deck.stop();
+  });
+
+  it("still follows the newest line when it was never scrolled", () => {
+    const m = mounted(["server"]);
+    m.deck.line("server", "first", "stdout");
+    m.writer.chunks.length = 0;
+
+    m.deck.line("server", "newest", "stdout");
+    m.tty.type("1");
+
+    expect(m.writer.all()).toContain("newest");
+    m.deck.stop();
+  });
+
+  it("types two fast keystrokes as two keys, not one unknown one", () => {
+    const m = mounted(["a", "b", "c"]);
+
+    m.tty.type("3r");
+
+    expect(m.restarted).toEqual(["c"]);
+    m.deck.stop();
+  });
+
   it("hands the terminal back when switching to stream mode", () => {
     const m = mounted();
     m.tty.type("s");

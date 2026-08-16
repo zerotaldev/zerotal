@@ -19,10 +19,19 @@
  * ## The terminal must survive us
  *
  * Raw mode plus the alternate screen left on is the classic TUI bug: the shell
- * comes back with no echo, no line editing, and no scrollback. The restore is
+ * comes back with no echo, no line editing, and no shell scrollback. The restore is
  * therefore registered *before* raw mode is entered, and it runs on every exit
  * path there is — `q`, a signal, and an uncaught throw. It is also idempotent,
  * because several of those can happen at once.
+ *
+ * ## Scrolling is ours to do
+ *
+ * The alternate screen has no scrollback of its own, so the terminal's scrollbar
+ * and wheel have nothing to move: from the moment tabs mode starts, every way of
+ * looking at an older line has to come from here. Each card keeps its own buffer
+ * and its own position in it, the wheel arrives as cursor keys, and a card that
+ * has been scrolled up holds its place while the process behind it keeps
+ * printing.
  */
 import type { OutputWriter } from "../command/OutputWriter.ts";
 import type { DevProcessColor } from "./DevProcess.ts";
@@ -184,7 +193,7 @@ export class TabsDeck implements Deck {
   private _restored = false;
   private _stream: StreamDeck | undefined;
 
-  private readonly _onData = (chunk: Buffer | string): void => this._key(chunk.toString());
+  private readonly _onData = (chunk: Buffer | string): void => this._input(chunk.toString());
   private readonly _onResize = (): void => this._paint();
   private readonly _onExit = (): void => this.stop();
 
@@ -207,7 +216,7 @@ export class TabsDeck implements Deck {
     process.on("uncaughtException", this._onExit);
     process.on("unhandledRejection", this._onExit);
 
-    this._write(ALT_SCREEN_ON + CURSOR_HIDE);
+    this._write(ALT_SCREEN_ON + CURSOR_HIDE + ALT_SCROLL_ON);
     this._stdin.setRawMode?.(true);
     this._stdin.resume?.();
     this._stdin.on?.("data", this._onData);
@@ -224,6 +233,7 @@ export class TabsDeck implements Deck {
     const body = stream === "stderr" ? _paint(text, "red") : text;
     card.lines.push(`${stamp} ${body}`);
     if (card.lines.length > SCROLLBACK) card.lines.shift();
+    this._anchor(card, body);
 
     // A tab the user is not looking at still buffers; only the visible one costs
     // a repaint. In stream mode every line prints regardless of focus.
@@ -271,26 +281,38 @@ export class TabsDeck implements Deck {
     }
     this._stdin.pause?.();
     if (this._repaintTimer) clearTimeout(this._repaintTimer);
-    this._write(CURSOR_SHOW + ALT_SCREEN_OFF);
+    this._write(ALT_SCROLL_OFF + CURSOR_SHOW + ALT_SCREEN_OFF);
   }
 
   // ── Input ──────────────────────────────────────────────────────────────────
 
-  private _key(sequence: string): void {
-    if (this._searching) {
-      this._searchKey(sequence);
-      return;
-    }
+  /**
+   * One read from stdin, which is not the same thing as one key.
+   *
+   * A wheel tick arrives as the same arrow sequence repeated as many times as
+   * there are lines to scroll, all in a single read, and two fast keystrokes
+   * arrive together — so a chunk is split into keys first and the frame is
+   * painted once at the end rather than once per key.
+   */
+  private _input(chunk: string): void {
+    let dirty = false;
+    for (const key of _keys(chunk)) dirty = this._key(key) || dirty;
+    if (dirty) this._paint();
+  }
+
+  /** Handle one key. Returns whether the frame needs repainting. */
+  private _key(sequence: string): boolean {
+    if (this._searching) return this._searchKey(sequence);
 
     switch (sequence) {
       case "q":
       case "\x03": // Ctrl-C — the deck owns the terminal, so it owns the quit.
         this._options.onQuit();
-        return;
+        return false;
       case "r": {
         const card = this._cards[this._focused];
         if (card) this._options.onRestart(card.status.name);
-        return;
+        return false;
       }
       case "c": {
         const card = this._cards[this._focused];
@@ -306,7 +328,7 @@ export class TabsDeck implements Deck {
         break;
       case "s":
         this._toggleStream();
-        return;
+        return false;
       case "t":
         this._timestamps = !this._timestamps;
         break;
@@ -317,22 +339,39 @@ export class TabsDeck implements Deck {
       case ARROW_LEFT:
         this._focus(this._focused - 1);
         break;
+      // The wheel is these two: in the alternate screen a terminal has no
+      // scrollback to move, so it sends the cursor keys instead (which is what
+      // `ALT_SCROLL_ON` asks for). Ignoring them is what makes the deck look
+      // like a terminal that will not scroll.
+      case ARROW_UP:
+        this._scroll(1);
+        break;
+      case ARROW_DOWN:
+        this._scroll(-1);
+        break;
       case PAGE_UP:
         this._scroll(this._bodyHeight());
         break;
       case PAGE_DOWN:
         this._scroll(-this._bodyHeight());
         break;
+      case HOME:
+        this._scroll(Number.MAX_SAFE_INTEGER);
+        break;
+      case END:
+        this._scroll(-Number.MAX_SAFE_INTEGER);
+        break;
       default: {
         if (sequence >= "1" && sequence <= "9") this._focus(Number(sequence) - 1);
-        else return;
+        else return false;
       }
     }
 
-    this._paint();
+    return true;
   }
 
-  private _searchKey(sequence: string): void {
+  /** Handle one key while the search box has the keyboard. Always repaints. */
+  private _searchKey(sequence: string): boolean {
     if (sequence === "\r" || sequence === "\n" || sequence === "\x1b") {
       // Enter keeps the filter and hands the keyboard back; Escape drops it.
       this._searching = false;
@@ -348,7 +387,7 @@ export class TabsDeck implements Deck {
 
     const card = this._cards[this._focused];
     if (card) card.scroll = 0;
-    this._paint();
+    return true;
   }
 
   private _focus(index: number): void {
@@ -361,9 +400,34 @@ export class TabsDeck implements Deck {
   private _scroll(by: number): void {
     const card = this._cards[this._focused];
     if (!card) return;
-    const total = this._visibleLines(card).length;
-    const max = Math.max(0, total - this._bodyHeight());
+    const max = Math.max(0, this._visibleLines(card).length - this._bodyHeight());
     card.scroll = Math.min(max, Math.max(0, card.scroll + by));
+  }
+
+  /**
+   * Hold a scrolled-up view on the lines it was left on.
+   *
+   * `scroll` counts lines up from the newest, so a busy process would otherwise
+   * drag the window down by one line for every line it printed and the text
+   * somebody stopped to read would slide off the top while they read it. A card
+   * pinned to the bottom (`scroll === 0`) is left alone — that one *should*
+   * follow the output.
+   */
+  private _anchor(card: Card, appended: string): void {
+    if (card.scroll === 0) return;
+    // Only the focused card is ever filtered — `_focus()` clears the search —
+    // so only there can an arriving line be invisible and move nothing.
+    const needle = this._cards[this._focused] === card ? this._search.toLowerCase() : "";
+    const visible = !needle || appended.toLowerCase().includes(needle);
+    // Unfiltered, the count is the buffer's own — worth the branch, because this
+    // runs once per line of output and the buffer holds thousands.
+    const total = needle ? this._visibleLines(card).length : card.lines.length;
+    // Clamped even when nothing was added: at the scrollback cap every new line
+    // evicts an old one, and without this the view would walk off the top.
+    card.scroll = Math.min(
+      card.scroll + (visible ? 1 : 0),
+      Math.max(0, total - this._bodyHeight()),
+    );
   }
 
   /**
@@ -384,7 +448,7 @@ export class TabsDeck implements Deck {
       return;
     }
     this._stream = undefined as StreamDeck | undefined;
-    this._write(ALT_SCREEN_ON + CURSOR_HIDE);
+    this._write(ALT_SCREEN_ON + CURSOR_HIDE + ALT_SCROLL_ON);
     this._stdin.setRawMode?.(true);
     this._paint();
   }
@@ -453,7 +517,7 @@ export class TabsDeck implements Deck {
     const scrolled = card && card.scroll > 0 ? `  ↑${card.scroll}` : "";
     const filtered = this._search ? `  /${this._search}` : "";
     const keys =
-      "1-9 tab · ←/→ cycle · r restart · c clear · / search · t time · s stream · q quit";
+      "1-9 tab · ←/→ cycle · ↑/↓ scroll · r restart · c clear · / search · t time · s stream · q quit";
     return _fit(_paint(keys + filtered + scrolled, "dim"), width);
   }
 
@@ -486,10 +550,70 @@ const CURSOR_HOME = "\x1b[H";
 const CLEAR_LINE = "\x1b[K";
 const CLEAR_BELOW = "\x1b[J";
 
+/**
+ * Alternate scroll: ask the terminal to send cursor keys when the wheel turns.
+ *
+ * On the alternate screen there is no scrollback for the wheel to move, so
+ * without this the wheel does nothing at all and the deck reads as frozen.
+ * Most terminals do it by default, some do not, and asking costs one sequence.
+ * Deliberately *not* mouse tracking (`?1000h` and friends), which would hand us
+ * real wheel events at the price of the terminal's own text selection.
+ */
+const ALT_SCROLL_ON = "\x1b[?1007h";
+const ALT_SCROLL_OFF = "\x1b[?1007l";
+
+const ARROW_UP = "\x1b[A";
+const ARROW_DOWN = "\x1b[B";
 const ARROW_LEFT = "\x1b[D";
 const ARROW_RIGHT = "\x1b[C";
 const PAGE_UP = "\x1b[5~";
 const PAGE_DOWN = "\x1b[6~";
+const HOME = "\x1b[H";
+const END = "\x1b[F";
+
+/** A CSI sequence ends at the first byte in this range; everything before is parameters. */
+const _CSI_END = /[@-~]/;
+
+/**
+ * Split one read from stdin into individual key presses.
+ *
+ * SS3 arrows (`ESC O A`, what a terminal in application cursor mode sends) are
+ * rewritten to their CSI spelling so the switch upstairs only has to know one
+ * form of each key, and text is walked by code point so that an emoji typed
+ * into the search box stays one key rather than two broken halves.
+ */
+function _keys(chunk: string): string[] {
+  const out: string[] = [];
+  let at = 0;
+
+  while (at < chunk.length) {
+    if (chunk[at] !== "\x1b") {
+      const point = String.fromCodePoint(chunk.codePointAt(at)!);
+      out.push(point);
+      at += point.length;
+      continue;
+    }
+
+    const next = chunk[at + 1];
+    if (next === "[") {
+      let end = at + 2;
+      while (end < chunk.length && !_CSI_END.test(chunk[end]!)) end++;
+      // A sequence cut off by the end of the read is passed through whole
+      // rather than split into an Escape and some letters, which is what would
+      // type `[` and `A` into the search box.
+      out.push(chunk.slice(at, end + 1));
+      at = end + 1;
+    } else if (next === "O" && at + 2 < chunk.length) {
+      out.push(`\x1b[${chunk[at + 2]}`);
+      at += 3;
+    } else {
+      out.push("\x1b"); // A bare Escape — the key, not the start of anything.
+      at += 1;
+    }
+  }
+
+  return out;
+}
 
 const STATE_GLYPH: Record<DevProcessStatus["state"], string> = {
   starting: "◌",

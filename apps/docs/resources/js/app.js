@@ -539,3 +539,10 @@ document.addEventListener("keydown", (e) => {
 
 // ── Run on first load ─────────────────────────────────────────────────────────
 initPage();
+
+// ── DevTools ──────────────────────────────────────────────────────────────────
+// The panel the framework ships, running against the framework's own docs site.
+// The server half is gated on the environment, so in production the endpoints
+// are absent and this connects to nothing. Alt+D toggles it.
+import { DevTools } from "@zerotal/devtools/client";
+DevTools.start();

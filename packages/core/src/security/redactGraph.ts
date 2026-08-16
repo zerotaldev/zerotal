@@ -89,7 +89,16 @@ function _walk(
     }
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(object as Record<string, unknown>)) {
-      out[key] = options.sensitive(key) ? options.mask : _walk(item, options, depth + 1, seen);
+      // A boolean is never a secret. It has two possible values, so masking one
+      // conceals nothing a reader could not guess — while destroying the answer
+      // they came for. Names are matched by substring, so this is not
+      // hypothetical: `cors.credentials` contains "credential" and came back as
+      // `‹redacted›` on the DevTools Config tab, hiding whether credentialed
+      // CORS was on. That is a security setting a reader is checking *because*
+      // it matters.
+      const maskable = typeof item !== "boolean";
+      out[key] =
+        maskable && options.sensitive(key) ? options.mask : _walk(item, options, depth + 1, seen);
     }
     return out;
   } finally {

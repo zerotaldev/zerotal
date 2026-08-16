@@ -81,6 +81,40 @@ function _wrapFileHandler(fn: FileHandler, debugName: string): ControllerClass {
 type AnyRouteHandler = RouteHandler<any>;
 
 type RouteHandlerFn = (req: Request, server?: unknown) => Response | Promise<Response>;
+
+/**
+ * Wrap a raw handler so its response carries the security headers, without
+ * touching any the handler set for itself.
+ *
+ * Add-if-absent rather than `withHeaders`, which overwrites: a raw route is the
+ * one place a handler is fully in charge of its own response, and a transport
+ * endpoint that deliberately sets `X-Frame-Options` for its own reasons must
+ * keep it. The response is only reconstructed when something is actually
+ * missing, so a handler that already set everything pays nothing — and
+ * reconstruction is required rather than optional when it happens, because a
+ * `Response.redirect()` has an immutable headers guard that throws on `set`.
+ */
+function _withSecurityDefaults(
+  handler: RouteHandlerFn,
+  defaults: Record<string, string>,
+): RouteHandlerFn {
+  const names = Object.keys(defaults);
+  if (names.length === 0) return handler;
+
+  return async (req, server) => {
+    const response = await handler(req, server);
+    const missing = names.filter((name) => !response.headers.has(name));
+    if (missing.length === 0) return response;
+
+    const merged = new Headers(response.headers);
+    for (const name of missing) merged.set(name, defaults[name]!);
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: merged,
+    });
+  };
+}
 /**
  * A path entry is either a method-keyed map of handlers, or a bare static
  * `Response` (Bun.serve serves the latter at zero JS cost per request).
@@ -1077,12 +1111,24 @@ export class Router {
 
     // Raw routes bypass the middleware pipeline entirely — added last so they
     // take precedence over any same-path pipeline routes.
+    //
+    // Bypassing the pipeline also bypasses `SecureHeadersMiddleware`, and that is
+    // not what anyone opts out for: `Router.raw()` exists to skip *request*
+    // handling — CSRF on a transport endpoint, session resolution on a relay —
+    // not to opt a response out of the headers the framework advertises as
+    // automatic. This framework's own documentation site serves every `/docs/*`
+    // page from a raw route, and every one of them went out with no
+    // `X-Content-Type-Options: nosniff`.
+    //
+    // Computed once here rather than per request: raw routes include Flow's
+    // action endpoint, which is as hot as anything in the app.
+    const rawDefaults = staticSecurityHeaders();
     for (const [key, handler] of _s().rawRoutes) {
       const spaceIndex = key.indexOf(" ");
       const method = key.slice(0, spaceIndex) as HttpMethod;
       const path = key.slice(spaceIndex + 1);
       const rawMap = (compiled[path] ??= {}) as Record<string, RouteHandlerFn>;
-      rawMap[method] = handler;
+      rawMap[method] = _withSecurityDefaults(handler, rawDefaults);
     }
 
     return compiled;

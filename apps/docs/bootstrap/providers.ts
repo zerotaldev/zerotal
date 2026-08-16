@@ -5,6 +5,7 @@ import { AuthProvider } from "zerotal/auth";
 import { FlowProvider } from "@zerotal/flow";
 import { AiProvider } from "@zerotal/ai";
 import { ArchProvider } from "@zerotal/arch";
+import { DevtoolsProvider } from "@zerotal/devtools";
 
 // Order matters: posts come from the database, the session carries the signed-in
 // author across requests, and auth reads it. FlowProvider powers both the
@@ -19,4 +20,7 @@ export default [
   FlowProvider,
   AiProvider,
   ArchProvider,
+  // Web-only and short-circuited in production; it registers its own injection
+  // middleware, so nothing goes in `.use([…])`.
+  DevtoolsProvider,
 ];

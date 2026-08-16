@@ -942,3 +942,75 @@ describe("Router.view() — handler invocation (covers _wrapFileHandler.handle)"
     expect(ctx.response).toBeDefined();
   });
 });
+
+// ── Raw routes ────────────────────────────────────────────────────────────────
+
+describe("Router.raw() — security headers", () => {
+  beforeEach(() => Router.reset());
+
+  /**
+   * `Router.raw()` opts out of the *request* pipeline — CSRF on a transport
+   * endpoint, session resolution on a relay. It was also opting the response out
+   * of the headers the framework advertises as automatic. This framework's own
+   * documentation site serves every `/docs/*` page from a raw route, and every
+   * one went out with no `X-Content-Type-Options: nosniff`.
+   */
+  it("adds the security headers a raw handler would otherwise skip", async () => {
+    Router.raw("GET", "/__internal/ping", () => new Response("pong"));
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/__internal/ping")!["GET"]!;
+
+    const response = await (handler as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/__internal/ping"),
+    );
+    expect(await response.text()).toBe("pong");
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(response.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
+  });
+
+  it("leaves a header the handler set for itself alone", async () => {
+    // Add-if-absent, not overwrite: a raw route is the one place a handler owns
+    // its whole response, and an endpoint that deliberately allows framing has a
+    // reason the framework cannot see.
+    Router.raw(
+      "GET",
+      "/__internal/embed",
+      () => new Response("ok", { headers: { "X-Frame-Options": "ALLOWALL" } }),
+    );
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/__internal/embed")!["GET"]!;
+
+    const response = await (handler as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/__internal/embed"),
+    );
+    expect(response.headers.get("X-Frame-Options")).toBe("ALLOWALL");
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  it("survives a response whose headers cannot be mutated in place", async () => {
+    // `Response.redirect()` has an immutable headers guard — `set` throws on it,
+    // which is why the wrapper reconstructs rather than mutating.
+    Router.raw("GET", "/__internal/go", () => Response.redirect("http://localhost/", 302));
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/__internal/go")!["GET"]!;
+
+    const response = await (handler as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/__internal/go"),
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("http://localhost/");
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  it("preserves the status and body it was given", async () => {
+    Router.raw("GET", "/__internal/missing", () => new Response("nope", { status: 404 }));
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/__internal/missing")!["GET"]!;
+
+    const response = await (handler as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/__internal/missing"),
+    );
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("nope");
+  });
+});

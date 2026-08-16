@@ -6,6 +6,36 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
+## [Unreleased]
+
+### Fixed
+
+Both found by wiring DevTools into this repo's own `apps/docs` and driving it in a browser.
+
+- **`Router.raw()` responses carried no security headers.** A raw route opts out of the
+  _request_ pipeline — CSRF on a transport endpoint, session resolution on a relay — and was
+  silently opting its response out of `SecureHeadersMiddleware` too. This framework's own
+  documentation site serves every `/docs/*` page from a raw route, so every page of it went
+  out with no `X-Content-Type-Options: nosniff`, no `X-Frame-Options`, no
+  `Referrer-Policy` and no `Permissions-Policy`. In production the reverse proxy happened
+  to add two of them, which is why nothing had noticed.
+
+  The header set is now applied to raw responses at compile time, **add-if-absent** rather
+  than overwrite: a raw route is the one place a handler owns its whole response, and an
+  endpoint that deliberately allows framing has a reason the framework cannot see. The
+  response is only reconstructed when something is missing, so the hot path — Flow's action
+  endpoint is a raw route — pays nothing when it already has them.
+
+  This is the third surface in the same family, after the pipeline and static files. Any
+  path that answers a request without running middleware needs the same treatment.
+
+- **`redactGraph` masked booleans.** Sensitivity is judged by key name, by substring, so
+  `cors.credentials` matched "credential" and the DevTools Config tab reported
+  `‹redacted›` where the answer was `false`. A boolean has two possible values: masking one
+  conceals nothing a reader could not guess, and hides the security setting they opened the
+  tab to check. Booleans now pass through; numbers still mask, since a number can be a PIN
+  or an account. The helper also gained the test file it shipped without.
+
 ## [1.7.0] — 2026-08-16
 
 ### Fixed

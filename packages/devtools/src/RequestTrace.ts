@@ -141,6 +141,16 @@ export interface TraceChannelDescriptor {
   warn?: string;
   /** Sort order among channel tabs. Lower sorts first. Defaults to 100. */
   order?: number;
+  /**
+   * Record the entries on the trace but give them no tab of their own.
+   *
+   * For a package that renders this data somewhere better than a generic row
+   * list — its own plugin panel, say — while still wanting it on the persisted
+   * trace. Flow declares its actions this way: the numbers belong on the trace,
+   * but they read as one line on a time-travel frame rather than as a tab
+   * repeating what the trace header already says.
+   */
+  hidden?: boolean;
 
   // ── Presentation hints ──────────────────────────────────────────────────────
   //

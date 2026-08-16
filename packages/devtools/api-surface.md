@@ -101,7 +101,7 @@ interface DevtoolsInjectionOptions = {}
 interface DevtoolsPanelPlugin = {
   badge?: () => number | string | undefined
   id: string
-  render: (el: HTMLElement) => void
+  render: (el: HTMLElement, context?: DevtoolsPanelContext) => void
   title: string
 }
 
@@ -200,6 +200,7 @@ interface TraceChannelDescriptor = {
   badge?: string
   flags?: string[]
   groupBy?: string
+  hidden?: boolean
   id: string
   label: string
   meta?: string[]
@@ -271,7 +272,7 @@ interface DevtoolsClientOptions = {
 interface DevtoolsPanelPlugin = {
   badge?: () => number | string | undefined
   id: string
-  render: (el: HTMLElement) => void
+  render: (el: HTMLElement, context?: DevtoolsPanelContext) => void
   title: string
 }
 

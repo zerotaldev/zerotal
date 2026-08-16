@@ -91,7 +91,7 @@ export function mountShell(opts: ShellOptions): void {
       },
       render(el) {
         try {
-          p.render(el);
+          p.render(el, { trace: store.selected });
         } catch {
           // A broken extension tab must not take the panel with it.
           el.innerHTML = '<p class="empty">Panel error</p>';

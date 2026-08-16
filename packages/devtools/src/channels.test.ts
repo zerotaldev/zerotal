@@ -75,6 +75,21 @@ describe("channel registry", () => {
     expect(traceChannels().map((c) => c.label)).toEqual(["Mike", "Zulu"]);
   });
 
+  it("gives a hidden channel no tab, while still recording its entries", async () => {
+    // For a package that renders the data itself — Flow prints its actions on the
+    // time-travel frame they produced rather than in a tab that would repeat what
+    // the trace header already says. The numbers still belong on the trace.
+    traceSink.channel({ id: "flow", label: "Flow", badge: "component", hidden: true });
+    traceSink.channel({ id: "auth", label: "Auth" });
+
+    expect(traceChannels().map((c) => c.id)).toEqual(["auth"]);
+
+    const c = ctx("http://localhost/counter");
+    await run(c, () => traceSink.record(c, "flow", { component: "Counter", action: "increment" }));
+
+    expect(traceStore().all()[0]!.channels["flow"]).toHaveLength(1);
+  });
+
   it("re-declaring an id replaces it rather than duplicating the tab", () => {
     traceSink.channel({ id: "auth", label: "Auth" });
     traceSink.channel({ id: "auth", label: "Authentication" });

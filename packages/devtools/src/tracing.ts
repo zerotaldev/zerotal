@@ -94,11 +94,16 @@ export function _bufPush<T>(map: WeakMap<object, T[]>, ctx: object, item: T): vo
 
 const _channels = new Map<string, TraceChannelDescriptor>();
 
-/** Every channel declared so far, in display order. */
+/**
+ * Every channel that wants a tab, in display order.
+ *
+ * A `hidden` channel is left out: its entries are still recorded and still reach
+ * the panel on the trace, but whatever renders them is not this generic row list.
+ */
 export function traceChannels(): TraceChannelDescriptor[] {
-  return [...(_channels.values() as Iterable<TraceChannelDescriptor>)].sort(
-    (a, b) => (a.order ?? 100) - (b.order ?? 100) || a.label.localeCompare(b.label),
-  );
+  return [...(_channels.values() as Iterable<TraceChannelDescriptor>)]
+    .filter((c) => !c.hidden)
+    .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.label.localeCompare(b.label));
 }
 
 /** @internal — drop every declared channel (provider teardown, tests). */

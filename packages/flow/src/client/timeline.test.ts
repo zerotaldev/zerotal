@@ -55,6 +55,31 @@ describe("timeline core", () => {
     expect(getFrames().length).toBe(0);
   });
 
+  it("keeps the call that produced a frame, and omits it where there was none", () => {
+    // The devtools Flow tab shows "what was sent" beside "what changed", and the
+    // arguments are known only at dispatch — a frame that did not record them can
+    // never recover them. A mount had no call, and must not claim one.
+    setTimelineEnabled(true);
+    const mount = recordFrame({
+      compId: "a",
+      compName: "A",
+      action: "mount",
+      snapshot: snap("a", { count: 0 }),
+      html: "<i>0</i>",
+    });
+    const acted = recordFrame({
+      compId: "a",
+      compName: "A",
+      action: "addTo",
+      snapshot: snap("a", { count: 5 }),
+      html: "<i>5</i>",
+      sent: { args: [5], updates: { note: "typed" } },
+    });
+
+    expect(mount!.sent).toBeUndefined();
+    expect(acted!.sent).toEqual({ args: [5], updates: { note: "typed" } });
+  });
+
   it("records frames with monotonic seq and per-component changed diff", () => {
     setTimelineEnabled(true);
     recordFrame({

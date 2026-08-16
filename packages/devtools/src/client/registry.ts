@@ -12,6 +12,23 @@
  * has a shipped consumer, so it survived the client rewrite unchanged.
  */
 
+import type { RequestTrace } from "../RequestTrace.ts";
+
+/**
+ * What the panel knows when it asks a plugin to draw.
+ *
+ * A plugin owns live browser state, which is why it renders itself rather than
+ * declaring a channel. But the same events usually have a server half recorded
+ * against a trace, and a plugin that cannot reach it has to either duplicate the
+ * measurement client-side or show half the story in a tab of its own. Flow's
+ * time-travel frames and its server actions are the case in point: the same
+ * clicks, once from each end.
+ */
+export interface DevtoolsPanelContext {
+  /** The trace selected in the request list, or `null` when none is. */
+  trace: RequestTrace | null;
+}
+
 /** A panel another package contributes as a tab in the Zerotal devtools. */
 export interface DevtoolsPanelPlugin {
   /** Unique id — the tab is addressed internally as `plugin:<id>`. */
@@ -20,8 +37,13 @@ export interface DevtoolsPanelPlugin {
   title: string;
   /** Optional badge value (e.g. a count); a falsy return hides the badge. */
   badge?: () => number | string | undefined;
-  /** Render the panel's content into `el` (the shared, persistent content area). */
-  render: (el: HTMLElement) => void;
+  /**
+   * Render the panel's content into `el` (the shared, persistent content area).
+   *
+   * `context` is optional so a plugin written against the one-argument form keeps
+   * working untouched — it simply ignores an argument it never declared.
+   */
+  render: (el: HTMLElement, context?: DevtoolsPanelContext) => void;
 }
 
 export interface DevtoolsRegistry {

@@ -44,6 +44,7 @@ interface DevtoolsSink {
     meta?: string[];
     warn?: string;
     order?: number;
+    hidden?: boolean;
   }): void;
   record(ctx: object, channel: string, entry: Record<string, unknown>): void;
   /**
@@ -140,6 +141,12 @@ export function installFlowObservability(app: Application): () => void {
 
   const trace = _observer<DevtoolsSink>(app, "devtools.trace");
   if (trace) {
+    // Recorded on the trace, but with no tab of its own: Flow's client panel is
+    // the better home for it. A time-travel frame already names the component,
+    // the action and the fields it changed, so a separate tab could only repeat
+    // that beside a duration the trace header already shows — and the frames and
+    // the actions are the same clicks seen from the two ends. The panel reads
+    // these entries off the trace and prints them on the frame they belong to.
     trace.channel({
       id: "flow",
       label: "Flow",
@@ -148,6 +155,7 @@ export function installFlowObservability(app: Application): () => void {
       meta: ["durationMs", "ip"],
       warn: "failed",
       order: 20,
+      hidden: true,
     });
 
     unsubs.push(

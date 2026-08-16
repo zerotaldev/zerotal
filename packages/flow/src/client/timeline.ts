@@ -27,6 +27,16 @@ export interface TimelineFrame {
   /** The component's outer HTML at this frame, for DOM restore on a jump. */
   html: string | null;
   ts: number;
+  /**
+   * What the browser sent to produce this frame — absent for a mount, and for a
+   * frame produced by anything other than a dispatched action.
+   *
+   * Kept so the panel can answer "what did this click actually send" without the
+   * developer reading the socket. `updates` is the batch of client-side writes
+   * flushed alongside the call, which is why a field can differ between frames
+   * without appearing in `args`.
+   */
+  sent?: { args: unknown[]; updates?: Record<string, unknown> };
 }
 
 const MAX_FRAMES = 250;
@@ -87,6 +97,7 @@ export function recordFrame(input: {
   action: string;
   snapshot: Snapshot;
   html: string | null;
+  sent?: { args: unknown[]; updates?: Record<string, unknown> };
 }): TimelineFrame | null {
   if (!_enabled) return null;
   const changed = computeChanged(_lastDataByComp.get(input.compId), input.snapshot.data);
@@ -100,6 +111,7 @@ export function recordFrame(input: {
     changed,
     html: input.html,
     ts: Date.now(),
+    ...(input.sent ? { sent: input.sent } : {}),
   };
   _frames.push(frame);
   if (_frames.length > MAX_FRAMES) _frames.shift();

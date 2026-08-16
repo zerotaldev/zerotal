@@ -11,6 +11,23 @@ change.
 
 ## [Unreleased]
 
+### Changed
+
+- **One Flow tab in DevTools, and its rows open.** The time-travel timeline registered itself
+  as a tab called "Timeline", colliding with the panel's own Timeline tab, and sat apart from
+  the Flow tab even though the frames and the actions are the same clicks seen from the two
+  ends. They are now one tab, titled `Flow`.
+
+  Each frame expands to what that action actually did — the call and its arguments, the
+  fields it changed as `before → after`, and the server's own half: duration, status, client
+  IP, the queries it ran and the lines it logged, read off that action's devtools trace. A
+  frame that never left the browser says so rather than showing an empty server section.
+  Rewinding is unchanged: the row still time-travels, and the disclosure has its own hit area
+  so reading what happened does not also rewind the page you are reading it from.
+
+  Flow's action entries are recorded on the trace as before, now `hidden` so they no longer
+  claim a tab that repeated what the trace header already said.
+
 ### Fixed
 
 - **The DevTools Flow tab shows Flow actions.** It could not show any, ever: the tab

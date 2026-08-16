@@ -10,6 +10,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **A contributed panel can read the selected trace.** `DevtoolsPanelPlugin.render` now
+  receives a second `context` argument carrying the trace selected in the request list. A
+  plugin exists because it owns live browser state, but the same events usually have a
+  server half recorded against a trace, and a plugin that could not reach it had to either
+  measure again client-side or show half the story in a tab of its own. `@zerotal/flow`'s
+  time-travel frames now print what each action cost on the server. The argument is
+  optional, so a plugin written against the one-argument form is untouched.
+
+- **`hidden` on a channel descriptor.** Records the entries on the trace but gives them no
+  tab, for a package that renders the data somewhere better than a generic row list. Flow
+  declares its actions this way now that its own panel prints them on the frame they belong
+  to.
+
 - **`TraceSink.finalise` — a trace for work that never was an HTTP request.** The sink let
   a package buffer against a context but gave it no way to say that context was finished,
   and a trace was only ever built from core's `RequestHandled` / `RequestFailed`. Anything

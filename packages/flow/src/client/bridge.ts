@@ -712,14 +712,19 @@ function _sendCall(
       .then(
         () =>
           new Promise<void>((resolve) => {
+            const updates = fixedUpdates ?? _pendingUpdates(comp);
             const frame = {
               type: "call",
               component: compId,
               method,
               args,
-              updates: fixedUpdates ?? _pendingUpdates(comp),
+              updates,
               snapshot: comp.snapshot,
             };
+            // Here is where the client writes riding along with this call are
+            // finally resolved, so it is the only place the panel can learn them.
+            const pending = _pendingActionByComp.get(compId);
+            if (pending && pending.method === method) pending.updates = updates;
             // Safety net: never wedge the queue if a patch is dropped (server crash / HTTP error).
             const armSafetyNet = (): void => {
               setTimeout(() => {
@@ -1186,9 +1191,10 @@ function _enableTimeline(): void {
   if (dt && typeof dt.register === "function") {
     dt.register({
       id: "flow-timeline",
-      title: "Timeline",
+      title: "Flow",
       badge: () => _timeline.getFrames().length || undefined,
-      render: (el: HTMLElement) => _renderTimelineInto(el),
+      render: (el: HTMLElement, context?: { trace?: _TraceLike | null }) =>
+        _renderTimelineInto(el, context?.trace ?? null),
     });
     _timeline.onTimelineChange(() => dt.refresh("flow-timeline"));
   } else {
@@ -1207,9 +1213,224 @@ interface _DevtoolsRegistryLike {
   refresh(id?: string): void;
 }
 
+/**
+ * The half of a devtools trace this panel reads.
+ *
+ * Structural rather than imported: Flow depends on no observer package, and an
+ * app without devtools installed simply never passes one. Every field is optional
+ * for the same reason — this is a shape read from another package's data.
+ */
+interface _TraceLike {
+  statusCode?: number;
+  durationMs?: number;
+  channels?: Record<string, Array<Record<string, unknown>>>;
+  queries?: Array<{ sql?: unknown; durationMs?: unknown; rowCount?: unknown }>;
+  logs?: Array<{ level?: unknown; args?: unknown }>;
+  exception?: { message?: unknown } | null;
+}
+
+/** What the server did during one action, shown on the frame that action produced. */
+interface _ServerCost {
+  durationMs: number;
+  ip: string | null;
+  statusCode: number | null;
+  queries: Array<{ sql: string; durationMs: number | null; rowCount: number | null }>;
+  logs: Array<{ level: string; text: string }>;
+  error: string | null;
+}
+
+/**
+ * Server cost per frame, accumulated as traces arrive.
+ *
+ * A trace carries one action, and the panel follows the newest — so each render
+ * can bind at most the frame that just happened. Keeping what earlier renders
+ * bound is what lets a frame from four clicks ago still show what it cost, rather
+ * than only ever the selected one being annotated.
+ */
+const _frameCost = new Map<number, _ServerCost>();
+
+/** Attach the selected trace's action to the frame it produced, once. */
+function _bindServerCost(
+  trace: _TraceLike | null,
+  frames: readonly _timeline.TimelineFrame[],
+): void {
+  for (const entry of trace?.channels?.["flow"] ?? []) {
+    const component = entry["component"];
+    const action = entry["action"];
+    const durationMs = entry["durationMs"];
+    if (typeof component !== "string" || typeof action !== "string") continue;
+    if (typeof durationMs !== "number") continue;
+
+    // The newest matching frame that has no cost yet: an action produces its
+    // frame before the trace reaches the panel, and re-rendering the same trace
+    // must not walk the binding back through older frames of the same name.
+    for (let i = frames.length - 1; i >= 0; i--) {
+      const frame = frames[i]!;
+      if (frame.compId !== component || frame.action !== action) continue;
+      if (_frameCost.has(frame.seq)) break;
+      const ip = entry["ip"];
+      _frameCost.set(frame.seq, {
+        durationMs,
+        ip: typeof ip === "string" ? ip : null,
+        statusCode: typeof trace?.statusCode === "number" ? trace.statusCode : null,
+        // One action is one trace, so the whole trace is this action's server half.
+        queries: (trace?.queries ?? []).map((q) => ({
+          sql: String(q.sql ?? ""),
+          durationMs: typeof q.durationMs === "number" ? q.durationMs : null,
+          rowCount: typeof q.rowCount === "number" ? q.rowCount : null,
+        })),
+        logs: (trace?.logs ?? []).map((l) => ({
+          level: String(l.level ?? "log"),
+          text: Array.isArray(l.args) ? l.args.map((a) => String(a)).join(" ") : "",
+        })),
+        error:
+          trace?.exception && typeof trace.exception.message === "string"
+            ? trace.exception.message
+            : null,
+      });
+      break;
+    }
+  }
+}
+
+/** A value as the detail rows show it — compact JSON, truncated rather than wrapped. */
+function _brief(value: unknown, max = 160): string {
+  let text: string;
+  try {
+    text = typeof value === "string" ? value : JSON.stringify(value);
+  } catch {
+    text = String(value);
+  }
+  if (text === undefined || text === null) text = String(value);
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+/**
+ * The value out of a snapshot entry, which is stored as `[value, meta]`.
+ *
+ * A developer reading a state diff wants `1 → 2`, not `[1,{}] → [2,{}]`: the
+ * second slot is the framework's own bookkeeping (casts and the like) and only
+ * earns space when it holds something.
+ */
+function _snapshotValue(entry: unknown): unknown {
+  if (!Array.isArray(entry) || entry.length === 0) return entry;
+  const [value, meta] = entry as [unknown, unknown];
+  const bare =
+    meta === undefined || meta === null || (_isPlainObject(meta) && !Object.keys(meta).length);
+  return bare ? value : { value, meta };
+}
+
+function _isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Which frames are expanded. Module state so a redraw does not collapse them. */
+const _expanded = new Set<number>();
+
+/** The trace of the last draw, so toggling a row can redraw without waiting for one. */
+let _lastTrace: _TraceLike | null = null;
+
+/** One `key  before → after` row per field the action changed. */
+function _renderStateDiff(
+  frame: _timeline.TimelineFrame,
+  frames: readonly _timeline.TimelineFrame[],
+): string {
+  if (!frame.changed.length) return "";
+  const prior = frames.filter((f) => f.compId === frame.compId && f.seq < frame.seq).pop();
+  const before = prior?.snapshot?.data as Record<string, unknown> | undefined;
+  const after = frame.snapshot?.data as Record<string, unknown> | undefined;
+
+  const rows = frame.changed
+    .map((key) => {
+      const from = before && key in before ? _brief(_snapshotValue(before[key]), 60) : "—";
+      const to = after && key in after ? _brief(_snapshotValue(after[key]), 60) : "—";
+      return (
+        `<div style="display:flex;gap:8px;align-items:baseline;padding:1px 0">` +
+        `<span style="min-width:120px;color:var(--cyan)">${_escapeHtml(key)}</span>` +
+        `<span class="dim">${_escapeHtml(from)}</span>` +
+        `<span class="dim">→</span>` +
+        `<span style="color:var(--green)">${_escapeHtml(to)}</span>` +
+        `</div>`
+      );
+    })
+    .join("");
+  return `<div style="margin-bottom:6px"><div class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">State</div>${rows}</div>`;
+}
+
+/** The call the browser made: its arguments, and any client writes flushed with it. */
+function _renderSent(frame: _timeline.TimelineFrame): string {
+  if (!frame.sent) return "";
+  const args = frame.sent.args.length
+    ? frame.sent.args.map((a) => _brief(a, 80)).join(", ")
+    : "no arguments";
+  const updates = frame.sent.updates ? Object.entries(frame.sent.updates) : [];
+  const updateRows = updates
+    .map(
+      ([k, v]) =>
+        `<div style="display:flex;gap:8px;padding:1px 0">` +
+        `<span style="min-width:120px;color:var(--cyan)">${_escapeHtml(k)}</span>` +
+        `<span class="dim">${_escapeHtml(_brief(v, 60))}</span></div>`,
+    )
+    .join("");
+  return (
+    `<div style="margin-bottom:6px">` +
+    `<div class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Sent</div>` +
+    `<div><span style="color:var(--purple)">${_escapeHtml(frame.action)}</span><span class="dim">(${_escapeHtml(args)})</span></div>` +
+    (updateRows
+      ? `<div class="dim" style="font-size:10px;margin:2px 0 1px">flushed with the call</div>${updateRows}`
+      : "") +
+    `</div>`
+  );
+}
+
+/** What the server did while handling the action — from its own devtools trace. */
+function _renderServer(seq: number): string {
+  const s = _frameCost.get(seq);
+  if (!s) {
+    // A client expression never leaves the browser; there is no server half to show.
+    return `<div class="dim" style="font-size:11px">Ran in the browser — nothing was sent to the server.</div>`;
+  }
+  const head =
+    `<div style="display:flex;gap:10px;flex-wrap:wrap">` +
+    `<span class="dim">${s.durationMs}ms</span>` +
+    (s.statusCode ? `<span class="dim">status ${s.statusCode}</span>` : "") +
+    (s.ip ? `<span class="dim">${_escapeHtml(s.ip)}</span>` : "") +
+    `<span class="dim">${s.queries.length} quer${s.queries.length === 1 ? "y" : "ies"}</span>` +
+    `</div>`;
+
+  const queries = s.queries
+    .map(
+      (q) =>
+        `<div style="display:flex;gap:8px;align-items:baseline;padding:1px 0">` +
+        `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escapeHtml(_brief(q.sql, 140))}</span>` +
+        `<span class="dim" style="font-size:10px">${q.durationMs ?? "—"}ms${q.rowCount === null ? "" : ` · ${q.rowCount} row${q.rowCount === 1 ? "" : "s"}`}</span>` +
+        `</div>`,
+    )
+    .join("");
+
+  const logs = s.logs
+    .map(
+      (l) =>
+        `<div style="padding:1px 0"><span class="dim" style="min-width:44px;display:inline-block">${_escapeHtml(l.level)}</span>${_escapeHtml(_brief(l.text, 140))}</div>`,
+    )
+    .join("");
+
+  return (
+    `<div style="margin-bottom:6px">` +
+    `<div class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Server</div>` +
+    head +
+    (s.error ? `<div class="red" style="margin-top:2px">${_escapeHtml(s.error)}</div>` : "") +
+    (queries ? `<div style="margin-top:3px">${queries}</div>` : "") +
+    (logs ? `<div style="margin-top:3px">${logs}</div>` : "") +
+    `</div>`
+  );
+}
+
 /** Render the timeline into the Zerotal devtools content area (themed with its CSS vars/classes). */
-function _renderTimelineInto(el: HTMLElement): void {
+function _renderTimelineInto(el: HTMLElement, trace: _TraceLike | null = null): void {
   const frames = _timeline.getFrames();
+  _lastTrace = trace;
+  _bindServerCost(trace, frames);
   const compIds = [...new Set(frames.map((f) => f.compId))];
   const curSeqs = new Set(compIds.map((id) => _timeline.currentSeq(id)));
   const rewound = compIds.some((id) => !_timeline.isLive(id));
@@ -1228,13 +1449,32 @@ function _renderTimelineInto(el: HTMLElement): void {
           const cur = curSeqs.has(f.seq);
           const changed = f.changed.length ? f.changed.join(", ") : "—";
           const time = new Date(f.ts).toLocaleTimeString();
+          // A frame with no cost ran entirely in the browser — a client expression
+          // never reached the server, and saying nothing is the honest rendering.
+          const cost = _frameCost.get(f.seq);
+          const server = cost
+            ? `<span class="dim" style="font-size:10px">server ${cost.durationMs}ms${cost.queries.length ? ` · ${cost.queries.length}q` : ""}</span>`
+            : "";
+          const open = _expanded.has(f.seq);
+          const detail = open
+            ? `<div style="padding:6px 8px 8px 38px;border-bottom:1px solid var(--bdr)">` +
+              _renderSent(f) +
+              _renderStateDiff(f, frames) +
+              _renderServer(f.seq) +
+              `</div>`
+            : "";
           return (
             `<div class="qrow" data-tl-seq="${f.seq}" style="cursor:pointer;display:flex;gap:8px;align-items:baseline${cur ? ";background:var(--card)" : ""}">` +
+            // Its own hit area: the row time-travels, and expanding to read what
+            // happened must not also rewind the page you are reading it from.
+            `<span data-tl-exp="${f.seq}" title="${open ? "Collapse" : "What this action did"}" style="min-width:12px;cursor:pointer;user-select:none">${open ? "▾" : "▸"}</span>` +
             `<span class="dim" style="min-width:30px">#${f.seq}</span>` +
             `<span style="color:var(--purple);font-weight:700">${_escapeHtml(f.action)}</span>` +
             `<span class="dim" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escapeHtml(f.compName)} · ${_escapeHtml(changed)}</span>` +
+            server +
             `<span class="dim" style="font-size:10px">${time}</span>` +
-            `</div>`
+            `</div>` +
+            detail
           );
         })
         .join("")
@@ -1247,6 +1487,15 @@ function _renderTimelineInto(el: HTMLElement): void {
     if (target.closest("[data-tl-live]")) {
       for (const id of new Set(_timeline.getFrames().map((f) => f.compId)))
         _timeline.resumeLive(id);
+      return;
+    }
+    // Checked before the row, since the toggle sits inside it.
+    const toggle = target.closest<HTMLElement>("[data-tl-exp]");
+    if (toggle?.dataset["tlExp"]) {
+      const seq = Number(toggle.dataset["tlExp"]);
+      if (_expanded.has(seq)) _expanded.delete(seq);
+      else _expanded.add(seq);
+      _renderTimelineInto(el, _lastTrace);
       return;
     }
     const row = target.closest<HTMLElement>("[data-tl-seq]");
@@ -1515,12 +1764,21 @@ async function _handleServerFrame(
     // Time-travel: record this applied patch as a timeline frame (final patches only — mid-@task
     // partials would flood the timeline). No-op unless recording is enabled (dev).
     if (!frame.partial && isTimelineEnabled()) {
+      const dispatched = _takeLastDispatch(component);
       _recordTimelineFrame({
         compId: component,
         compName: comp.name,
-        action: _takeLastAction(component),
+        action: dispatched.action,
         snapshot: comp.snapshot,
         html: comp.rootEl.outerHTML,
+        ...(dispatched.sent
+          ? {
+              sent: {
+                args: dispatched.sent.args,
+                ...(dispatched.sent.updates ? { updates: dispatched.sent.updates } : {}),
+              },
+            }
+          : {}),
       });
     }
 
@@ -2055,20 +2313,29 @@ function _reapplyOptOps(comp: FlowComponent): void {
   }
 }
 
-// Time-travel: remember the method a component last dispatched, so the patch it produces is
-// labelled with that action name in the timeline. Consumed (and cleared) when the patch lands.
-const _pendingActionByComp = new Map<string, string>();
-function _takeLastAction(compId: string): string {
-  const a = _pendingActionByComp.get(compId);
+// Time-travel: remember what a component last dispatched, so the patch it produces is labelled
+// with that action name in the timeline — and so the panel can show the call that caused it.
+// Consumed (and cleared) when the patch lands.
+interface _PendingDispatch {
+  method: string;
+  args: unknown[];
+  /** Filled in by `_sendCall`, which is where the batch of client writes is resolved. */
+  updates?: Record<string, unknown>;
+}
+const _pendingActionByComp = new Map<string, _PendingDispatch>();
+
+function _takeLastDispatch(compId: string): { action: string; sent?: _PendingDispatch } {
+  const d = _pendingActionByComp.get(compId);
   _pendingActionByComp.delete(compId);
-  return a ?? "action";
+  if (!d) return { action: "action" };
+  return { action: d.method, sent: d };
 }
 
 function _callAction(comp: FlowComponent, method: string, args: unknown[]): void {
   _countActionDispatch(comp);
   _setActionError(comp, false); // retrying clears any prior failed state
   _setLoading(comp, true, method);
-  if (isTimelineEnabled()) _pendingActionByComp.set(comp.id, method);
+  if (isTimelineEnabled()) _pendingActionByComp.set(comp.id, { method, args });
   _dispatchFrame(comp, method, args);
 }
 

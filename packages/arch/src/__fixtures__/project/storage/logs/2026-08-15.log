@@ -1,5 +1,5 @@
-{"level":"info","channel":"app","message":"Application booted","timestamp":"2026-08-15T09:00:00.000Z","scope":"app"}
+{"level":"info","channel":"app","message":"Application booted","timestamp":"2026-08-15T09:00:00.000Z","scope":"app","hostname":"box","pid":1234}
 {"level":"warn","channel":"app","message":"Cache driver fell back to memory","timestamp":"2026-08-15T09:00:01.000Z","scope":"cache"}
 not json at all
-{"level":"error","channel":"app","message":"Unhandled rejection in queue worker","timestamp":"2026-08-15T09:00:02.000Z","scope":"queue","context":{"job":"SendInvoice","attempt":3}}
+{"level":"error","channel":"app","message":"Unhandled error","timestamp":"2026-08-15T09:00:02.000Z","scope":"app","requestId":"req-abc-123","error":"NotFoundError: Not Found","stack":"NotFoundError: Not Found\n    at renderNotFound (Application.ts:1601:38)\n    at handle (Application.ts:1607:45)","context":{"job":"SendInvoice","attempt":3},"hostname":"box","pid":1234,"app":"Demo","env":"local"}
 {"level":"debug","channel":"app","message":"Query took 4ms","timestamp":"2026-08-15T09:00:03.000Z","scope":"orm"}

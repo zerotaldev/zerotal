@@ -58,6 +58,15 @@ export interface BaselineReading {
   total: number;
   /** Per-package or per-file detail, when the baseline records it. */
   breakdown?: Record<string, number>;
+  /**
+   * What the number does not cover, when the baseline exempts something.
+   *
+   * The cast baseline ratchets per file but exempts designated boundary
+   * modules, so its ceiling is smaller than the count `cast:check` prints — and
+   * a reader who saw only the ceiling would take the command's larger number for
+   * a regression it is not.
+   */
+  note?: string;
   updatedAt?: string;
 }
 
@@ -95,6 +104,24 @@ function readBreakdown(document: Record<string, unknown>): Record<string, number
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+/**
+ * What a baseline's ceiling leaves out.
+ *
+ * The cast baseline lists `boundaries` — files exempt from the per-file ratchet
+ * — so its recorded ceiling is smaller than the count `cast:check` reports.
+ * Without saying so, a reader comparing the two numbers sees a regression that
+ * is not there.
+ */
+function exemptionNote(document: Record<string, unknown>): string | undefined {
+  const boundaries = document["boundaries"];
+  if (!Array.isArray(boundaries) || boundaries.length === 0) return undefined;
+  const count = boundaries.length;
+  return (
+    `Excludes ${count} boundary module${count === 1 ? "" : "s"} exempt from the ratchet, so ` +
+    `the command reports a larger total: ${boundaries.join(", ")}.`
+  );
+}
+
 async function readBaselines(root: string): Promise<BaselineReading[]> {
   const readings: BaselineReading[] = [];
 
@@ -107,12 +134,14 @@ async function readBaselines(root: string): Promise<BaselineReading[]> {
       if (total === undefined) continue;
       const breakdown = readBreakdown(document);
       const updatedAt = document["updatedAt"];
+      const note = exemptionNote(document);
       readings.push({
         name: ratchet.name,
         file: ratchet.file,
         command: ratchet.command,
         total,
         ...(breakdown !== undefined ? { breakdown } : {}),
+        ...(note !== undefined ? { note } : {}),
         ...(typeof updatedAt === "string" ? { updatedAt } : {}),
       });
     } catch {
@@ -189,10 +218,10 @@ export function baselinesTool(ctx: ToolContext): ArchTool {
       const sections: string[] = [];
 
       if (baselines.length > 0) {
-        const rows = baselines.map(
-          (reading) =>
-            `  ${reading.name.padEnd(18)}${String(reading.total).padStart(6)}   ${reading.command}`,
-        );
+        const rows = baselines.flatMap((reading) => {
+          const row = `  ${reading.name.padEnd(18)}${String(reading.total).padStart(6)}   ${reading.command}`;
+          return reading.note ? [row, `      note: ${reading.note}`] : [row];
+        });
         sections.push(`Ratchets — these numbers may go down, never up:\n\n${rows.join("\n")}`);
       } else {
         sections.push("This project records no baselines.");

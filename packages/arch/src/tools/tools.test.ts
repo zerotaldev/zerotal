@@ -250,14 +250,47 @@ describe("logs", () => {
   });
 
   it("filters by message", async () => {
-    const outcome = await call(toolNamed("logs", context()), { contains: "queue worker" });
+    const outcome = await call(toolNamed("logs", context()), { contains: "unhandled" });
     expect(outcome.data).toMatchObject({ total: 1 });
-    expect(outcome.text).toContain("Unhandled rejection");
+    expect(outcome.text).toContain("Unhandled error");
   });
 
   it("renders structured context beside the message", async () => {
-    const outcome = await call(toolNamed("logs", context()), { contains: "queue worker" });
+    const outcome = await call(toolNamed("logs", context()), { contains: "unhandled" });
     expect(outcome.text).toContain('"job":"SendInvoice"');
+  });
+
+  /**
+   * The framework logs an exception's class in `error` and its trace in `stack`,
+   * neither of which this tool used to read — so an error arrived as the bare
+   * "Unhandled error" that wraps it, which says nothing at all.
+   */
+  it("surfaces the exception and the request it belongs to", async () => {
+    const outcome = await call(toolNamed("logs", context()), { level: "error" });
+    expect(outcome.text).toContain("error: NotFoundError: Not Found");
+    expect(outcome.text).toContain("request: req-abc-123");
+  });
+
+  it("keeps every field the logger wrote, including ones it has never heard of", async () => {
+    const outcome = await call(toolNamed("logs", context()), { level: "error" });
+    const data = outcome.data as {
+      entries: Array<{ message: string; fields: Record<string, unknown> }>;
+    };
+    // Found by message, not by index: entries come back oldest-first across
+    // day-files, so index 0 is the older error from the previous day.
+    const entry = data.entries.find((e) => e.message === "Unhandled error");
+    expect(entry?.fields["error"]).toBe("NotFoundError: Not Found");
+    expect(entry?.fields["stack"]).toContain("renderNotFound");
+    // …but not the per-process constants, which cost tokens and say nothing.
+    expect(entry?.fields["hostname"]).toBeUndefined();
+    expect(entry?.fields["pid"]).toBeUndefined();
+  });
+
+  it("leaves the stack out of a multi-entry listing", async () => {
+    // A trace on each of two hundred entries buries the sequence the caller
+    // asked to see under its own detail.
+    const outcome = await call(toolNamed("logs", context()), { level: "error" });
+    expect(outcome.text).not.toContain("at renderNotFound");
   });
 
   it("reads across day-files to fill the limit", async () => {
@@ -280,8 +313,17 @@ describe("logs", () => {
 describe("last_error", () => {
   it("returns the newest error, not the newest entry", async () => {
     const outcome = await call(toolNamed("last_error", context()));
-    expect(outcome.text).toContain("Unhandled rejection in queue worker");
+    expect(outcome.text).toContain("Unhandled error");
     expect(outcome.data).toMatchObject({ found: true });
+  });
+
+  it("includes the stack, which is the whole reason to call it", async () => {
+    // The one place a trace belongs: a single entry, asked for by name, where
+    // "why did it fail" is the question and the trace is the answer.
+    const outcome = await call(toolNamed("last_error", context()));
+    expect(outcome.text).toContain("error: NotFoundError: Not Found");
+    expect(outcome.text).toContain("at renderNotFound");
+    expect(outcome.text).toContain("request: req-abc-123");
   });
 });
 
@@ -530,5 +572,26 @@ describe("a workspace's symlinked node_modules", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("baselines — a ceiling that excludes something says so", () => {
+  it("notes boundary modules, so the command's larger total is not read as a regression", async () => {
+    // The cast baseline ratchets per file but exempts designated boundary
+    // modules, so its recorded ceiling is smaller than the count `cast:check`
+    // prints. Reported bare, the difference looks like debt that appeared
+    // between reading the number and running the command.
+    const outcome = await call(toolNamed("baselines", context()));
+    const data = outcome.data as { baselines: Array<{ name: string; note?: string }> };
+    const casts = data.baselines.find((b) => b.name === "casts");
+    expect(casts?.note).toContain("boundary module");
+    expect(casts?.note).toContain("serialization.ts");
+    expect(outcome.text).toContain("note:");
+  });
+
+  it("says nothing about exemptions where there are none", async () => {
+    const outcome = await call(toolNamed("baselines", context()));
+    const data = outcome.data as { baselines: Array<{ name: string; note?: string }> };
+    expect(data.baselines.find((b) => b.name === "lint")?.note).toBeUndefined();
   });
 });

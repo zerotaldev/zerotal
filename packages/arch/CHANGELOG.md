@@ -11,8 +11,22 @@ here with migration steps — but a minor release may still contain one.
 
 ### Fixed
 
-Three faults that only appear once the surface is installed into a real app, found by
-installing it into this repo's own `apps/docs`.
+Faults that only appear once the surface is installed into a real app, found by installing
+it into this repo's own `apps/docs` and calling every tool.
+
+- **`last_error` dropped the error.** The framework logs an exception's class in `error`,
+  its trace in `stack` and the request it belongs to in `requestId`. The parser named the
+  six fields it knew about and discarded the rest, so the tool whose entire job is saying
+  _why_ something failed returned the generic `"Unhandled error"` that wraps the real one —
+  a line that says nothing. Entries now carry every field the logger wrote, and
+  `last_error` renders the exception, the request id and the trace. `logs` shows the first
+  two but not the trace: a stack on each of two hundred entries buries the sequence the
+  caller asked for.
+
+- **`baselines` reported a ceiling smaller than the command's count, without saying so.**
+  The cast baseline ratchets per file and exempts designated boundary modules, so it reads
+  455 where `cast:check` prints 466. A reader comparing the two saw debt that had appeared
+  between them. The reading now carries a `note` naming the exempt modules.
 
 - **Packages in a workspace were invisible.** `node_modules/@zerotal/*` is a symlink in
   every workspace — this monorepo, `bun link`, any app developed against a checkout — and

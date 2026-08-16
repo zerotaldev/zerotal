@@ -32,7 +32,36 @@ export interface LogEntry {
   channel?: string;
   scope?: string;
   context?: unknown;
+  /**
+   * Every other field on the line — `error`, `stack`, `requestId`, and whatever
+   * a package writes.
+   *
+   * Carried wholesale rather than enumerated. Naming the six fields this tool
+   * knew about meant an error entry arrived as its bare message: the framework
+   * logs the exception class in `error` and the trace in `stack`, and
+   * `last_error` — whose entire job is saying *why* something failed — reported
+   * "Unhandled error" and dropped both. A tool that lists the fields it
+   * understands will always lag the logger; passing the rest through cannot.
+   */
+  fields: Record<string, unknown>;
 }
+
+/**
+ * Fields identical on every line from a process, so worth nothing in a report
+ * and not free — this output goes into a context window.
+ */
+const AMBIENT = new Set([
+  "level",
+  "message",
+  "timestamp",
+  "channel",
+  "scope",
+  "context",
+  "app",
+  "env",
+  "hostname",
+  "pid",
+]);
 
 // ── Reading ───────────────────────────────────────────────────────────────────
 
@@ -71,6 +100,12 @@ export async function readTail(path: string): Promise<LogEntry[]> {
       if (typeof parsed !== "object" || parsed === null) continue;
       const record = parsed as Record<string, unknown>;
       if (typeof record["message"] !== "string") continue;
+
+      const fields: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(record)) {
+        if (!AMBIENT.has(key) && value !== undefined) fields[key] = value;
+      }
+
       entries.push({
         level: typeof record["level"] === "string" ? record["level"] : "info",
         message: record["message"],
@@ -78,6 +113,7 @@ export async function readTail(path: string): Promise<LogEntry[]> {
         ...(typeof record["channel"] === "string" ? { channel: record["channel"] } : {}),
         ...(typeof record["scope"] === "string" ? { scope: record["scope"] } : {}),
         ...(record["context"] !== undefined ? { context: record["context"] } : {}),
+        fields,
       });
     } catch {
       /* a truncated or hand-edited line is skipped, not fatal */
@@ -129,11 +165,37 @@ function clampLimit(raw: unknown): number {
   return Math.min(MAX_LIMIT, Math.max(1, Math.floor(raw)));
 }
 
-function renderEntry(entry: LogEntry): string {
+/**
+ * Render one entry.
+ *
+ * `stack` is included only when asked for. `last_error` returns a single entry
+ * and the trace is the answer; `logs` can return two hundred, and a trace on
+ * each would bury the sequence the caller asked to see under its own detail.
+ */
+function renderEntry(entry: LogEntry, options: { stack?: boolean } = {}): string {
   const scope = entry.scope ? ` [${entry.scope}]` : "";
-  const head = `${entry.timestamp} ${entry.level.toUpperCase()}${scope} ${entry.message}`;
-  if (entry.context === undefined) return head;
-  return `${head}\n    ${JSON.stringify(entry.context)}`;
+  const lines = [`${entry.timestamp} ${entry.level.toUpperCase()}${scope} ${entry.message}`];
+
+  const { error, stack, requestId, ...rest } = entry.fields as {
+    error?: unknown;
+    stack?: unknown;
+    requestId?: unknown;
+  } & Record<string, unknown>;
+
+  // The exception first: for an error entry it is the thing being reported, and
+  // `message` is often only the generic "Unhandled error" wrapping it.
+  if (typeof error === "string" && error !== entry.message) lines.push(`    error: ${error}`);
+  if (typeof requestId === "string") lines.push(`    request: ${requestId}`);
+  if (entry.context !== undefined) lines.push(`    ${JSON.stringify(entry.context)}`);
+
+  const extra = Object.entries(rest).filter(([, value]) => value !== undefined);
+  if (extra.length > 0) lines.push(`    ${JSON.stringify(Object.fromEntries(extra))}`);
+
+  if (options.stack && typeof stack === "string") {
+    lines.push(...stack.split("\n").map((line) => `    ${line.trim()}`));
+  }
+
+  return lines.join("\n");
 }
 
 const noTrail = (dir: string): string =>
@@ -202,7 +264,7 @@ export function logsTool(ctx: ToolContext): ArchTool {
       }
 
       return {
-        text: entries.map(renderEntry).join("\n"),
+        text: entries.map((entry) => renderEntry(entry)).join("\n"),
         data: { total: entries.length, entries },
       };
     },
@@ -244,7 +306,8 @@ export function lastErrorTool(ctx: ToolContext): ArchTool {
         };
       }
 
-      return { text: renderEntry(entry), data: { found: true, entry } };
+      // The trace is the answer here, so it is included.
+      return { text: renderEntry(entry, { stack: true }), data: { found: true, entry } };
     },
   };
 }
@@ -259,7 +322,14 @@ function entrySchema(): Record<string, unknown> {
       channel: { type: "string" },
       scope: { type: "string" },
       context: {},
+      fields: {
+        type: "object",
+        description:
+          "Everything else the logger recorded on this line — `error` and `stack` on an " +
+          "exception, `requestId` to correlate it with a request, and whatever a package adds.",
+        additionalProperties: true,
+      },
     },
-    required: ["level", "message", "timestamp"],
+    required: ["level", "message", "timestamp", "fields"],
   };
 }

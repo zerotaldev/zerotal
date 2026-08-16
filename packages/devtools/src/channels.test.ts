@@ -240,6 +240,85 @@ describe("one request, both halves", () => {
   });
 });
 
+describe("finalising a context no request lifecycle will finalise", () => {
+  // The Flow tab's bug, and it was never only the Flow tab. A Flow action arrives
+  // over the WebSocket and runs against its own HttpContext, so `RequestHandled`
+  // never fires for it — and a trace is only ever built from that event. Every
+  // entry an action recorded therefore buffered and was dropped unread: the tab
+  // reported "no flow activity" for apps whose every interaction is an action, and
+  // the queries those actions ran appeared on no trace at all.
+
+  it("turns a context nothing else will claim into a trace", () => {
+    const c = ctx("http://localhost/showcase/flow/counter");
+    traceSink.record(c, "flow", { component: "Counter", action: "increment" });
+
+    // The state the bug left everything in: recorded, and going nowhere.
+    expect(traceStore().all()).toHaveLength(0);
+
+    traceSink.finalise(c, { startMs: Date.now() - 12, durationMs: 12, method: "FLOW" });
+
+    const trace = traceStore().all()[0]!;
+    expect(trace.path).toBe("/showcase/flow/counter");
+    expect(trace.channels["flow"]).toHaveLength(1);
+    expect(trace.channels["flow"]![0]!["action"]).toBe("increment");
+  });
+
+  it("carries everything else buffered against it, not just the channel row", () => {
+    const c = ctx("http://localhost/showcase/flow/counter");
+    traceSink.bufferQuery(c, {
+      sql: "select * from counters",
+      bindings: [],
+      startMs: Date.now(),
+      durationMs: 2,
+      rowCount: 1,
+    });
+
+    traceSink.finalise(c, { startMs: Date.now(), durationMs: 4, method: "FLOW" });
+
+    expect(traceStore().all()[0]!.queries).toHaveLength(1);
+  });
+
+  it("labels the trace with the caller's method, the request being synthetic", () => {
+    const c = ctx("http://localhost/showcase/flow/counter");
+    traceSink.finalise(c, { startMs: Date.now(), durationMs: 1, method: "FLOW" });
+
+    // Not `GET`: the action would otherwise read as a second load of its own page.
+    expect(traceStore().all()[0]!.method).toBe("FLOW");
+  });
+
+  it("falls back to the request's own method when the caller names none", () => {
+    const c = ctx("http://localhost/jobs/run");
+    traceSink.finalise(c, { startMs: Date.now(), durationMs: 1 });
+
+    expect(traceStore().all()[0]!.method).toBe("GET");
+  });
+
+  it("finalises a context once, whichever claims it first", async () => {
+    const c = ctx("http://localhost/showcase/flow/counter");
+    traceSink.record(c, "flow", { component: "Counter" });
+    traceSink.finalise(c, { startMs: Date.now(), durationMs: 5, method: "FLOW" });
+
+    // The second claim finds the buffers already drained, so without the guard it
+    // would push a duplicate trace carrying none of the evidence.
+    await run(c);
+
+    const traces = traceStore().all();
+    expect(traces).toHaveLength(1);
+    expect(traces[0]!.method).toBe("FLOW");
+    expect(traces[0]!.channels["flow"]).toHaveLength(1);
+  });
+
+  it("drops an internal path here too", () => {
+    traceSink.finalise(ctx("http://localhost/__flow/ws"), {
+      startMs: Date.now(),
+      durationMs: 1,
+      method: "FLOW",
+    });
+
+    expect(traceStore().all()).toHaveLength(0);
+  });
+});
+
 describe("the trace's own fields", () => {
   it("reports heap in use rather than a hardcoded zero", async () => {
     // `memory` was documented and rendered in three places while always being 0.

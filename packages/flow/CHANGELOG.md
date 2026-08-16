@@ -9,6 +9,28 @@ follows SemVer strictly: anything importable without an `@internal` marker keeps
 shape for the rest of the 1.x line, and `api-surface.md` is diffed by CI on every
 change.
 
+## [Unreleased]
+
+### Fixed
+
+- **The DevTools Flow tab shows Flow actions.** It could not show any, ever: the tab
+  reported "No flow activity during this request" on every page of an app whose every
+  interaction is a Flow action.
+
+  An action arrives over the WebSocket and runs against its own `HttpContext`, and the
+  bridge recorded its entry against that context — correctly. But DevTools builds a trace
+  from core's `RequestHandled` / `RequestFailed`, and a socket action fires neither, so
+  that context became no trace and everything buffered against it was dropped unread. Not
+  only the Flow entry: the queries an action ran, its logs, its N+1 warnings. For a Flow
+  app that is the entire interactive half of the application, invisible in the one tool
+  built to see it.
+
+  The bridge now finalises the action's context itself, through the new
+  `TraceSink.finalise` in `@zerotal/devtools`. An action appears in the request list
+  labelled `FLOW` rather than as a second `GET` of the page it ran on, carrying the same
+  queries, logs and timings any request does. Found by wiring DevTools into this repo's
+  own `apps/docs` and driving a real action in a browser.
+
 ## [1.7.0] — 2026-08-16
 
 ### Fixed

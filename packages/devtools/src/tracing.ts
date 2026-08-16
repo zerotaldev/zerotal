@@ -164,6 +164,25 @@ export interface TraceSink {
    * picks up the entries already buffered for the request in flight.
    */
   record(ctx: object, channel: string, entry: Record<string, unknown>): void;
+  /**
+   * Turn a context into a trace, for work that never was an HTTP request.
+   *
+   * Traces are normally finalised from core's `RequestHandled` / `RequestFailed`,
+   * which covers everything the HTTP kernel serves and nothing else. A Flow action
+   * arrives over a WebSocket and runs against its own `HttpContext` — as do queue
+   * jobs and scheduled tasks — so no HTTP lifecycle event ever fires for it, and
+   * without this call everything buffered against that context (its channel rows,
+   * but equally its queries, its logs, its N+1 warnings) accumulated and was
+   * dropped unread. The Flow tab could then only ever report "no flow activity",
+   * which is exactly what it did.
+   *
+   * `method` labels the trace in the request list, because the underlying request
+   * is synthetic: Flow passes `FLOW` so an action is not read as a second `GET` of
+   * the page it acted on.
+   *
+   * Finalising happens once per context; a second call for the same one is ignored.
+   */
+  finalise(ctx: object, meta: { startMs: number; durationMs: number; method?: string }): void;
   bufferQuery(ctx: object, q: QuerySpan): void;
   bufferWarning(ctx: object, w: NPlusOneWarning): void;
   bufferMail(ctx: object, m: Omit<MailEntry, "offsetMs">): void;
@@ -185,6 +204,9 @@ export const traceSink: TraceSink = {
       entry: redactValue(entry, _redaction) as Record<string, unknown>,
       absMs: Date.now(),
     });
+  },
+  finalise(ctx: object, meta: { startMs: number; durationMs: number; method?: string }): void {
+    _finaliseTrace(ctx as HttpContext, meta.startMs, meta.durationMs, null, meta.method);
   },
   bufferQuery(ctx: object, q: QuerySpan): void {
     // The call site is captured here rather than at the emit site because here
@@ -303,6 +325,7 @@ function _buildTrace(
   startMs: number,
   durationMs: number,
   exception: ExceptionInfo | null,
+  method?: string,
 ): RequestTrace {
   const queryParams: Record<string, string> = {};
   ctx.url.searchParams.forEach((v, k) => {
@@ -335,7 +358,7 @@ function _buildTrace(
   return {
     id: crypto.randomUUID().slice(0, 12),
     requestId: ctx.requestId,
-    method: ctx.request.method.toUpperCase(),
+    method: (method ?? ctx.request.method).toUpperCase(),
     path: ctx.url.pathname,
     statusCode: ctx.response?.status ?? 0,
     startMs,
@@ -437,20 +460,35 @@ export function startDevtoolsTracing(): void {
   });
 }
 
+/**
+ * Contexts already turned into a trace.
+ *
+ * One trace per context, enforced here rather than trusted: the HTTP lifecycle
+ * finalises exactly once, but a context that finalises *itself* — a Flow action,
+ * a queue job — could also be claimed by something else, and the second call
+ * would push a duplicate carrying none of the evidence, since the first cleaned
+ * the buffers out. Weak so it holds no context alive.
+ */
+const _finalised = new WeakSet<object>();
+
 /** Merge buffered events into a trace and push it to the store (once per request). */
 function _finaliseTrace(
   ctx: HttpContext,
   startMs: number,
   durationMs: number,
   exception: ExceptionInfo | null,
+  method?: string,
 ): void {
+  if (_finalised.has(ctx)) return;
+  _finalised.add(ctx);
+
   // Internal framework paths are noise — skip them
   if (_isInternal(ctx.url.pathname)) {
     _cleanupBuffers(ctx);
     return;
   }
 
-  const trace = _buildTrace(ctx, startMs, durationMs, exception);
+  const trace = _buildTrace(ctx, startMs, durationMs, exception, method);
   _cleanupBuffers(ctx);
   traceStore().push(trace);
 }

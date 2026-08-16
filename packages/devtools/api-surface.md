@@ -224,6 +224,7 @@ interface TraceSink = {
   bufferQuery: (ctx: object, q: QuerySpan) => void
   bufferWarning: (ctx: object, w: NPlusOneWarning) => void
   channel: (descriptor: TraceChannelDescriptor) => void
+  finalise: (ctx: object, meta: {    startMs: number;    durationMs: number;    method?: string;}) => void
   record: (ctx: object, channel: string, entry: Record<string, unknown>) => void
 }
 

@@ -46,6 +46,12 @@ interface DevtoolsSink {
     order?: number;
   }): void;
   record(ctx: object, channel: string, entry: Record<string, unknown>): void;
+  /**
+   * Optional because it postdates the sink: a project can pin a devtools older
+   * than this Flow, and an action that goes untraced is a worse panel, not a
+   * crashed one.
+   */
+  finalise?(ctx: object, meta: { startMs: number; durationMs: number; method?: string }): void;
 }
 
 // Framework/asset noise the panel shouldn't chart as realtime traffic.
@@ -147,7 +153,12 @@ export function installFlowObservability(app: Application): () => void {
     unsubs.push(
       FrameworkEvents.on(FlowActionHandled, (e) => {
         // An action round-trips over the WebSocket against its own HttpContext,
-        // so it buffers against that context and lands on that action's trace.
+        // so it buffers against that context — and then has to finalise that
+        // context itself. Devtools builds traces from core's request lifecycle,
+        // and a WebSocket action fires none of it, so for as long as this call
+        // was missing every action buffered its evidence and dropped it: the Flow
+        // tab reported "no flow activity" for apps whose every interaction is a
+        // Flow action, and the queries those actions ran showed up nowhere.
         if (!e.ctx) return;
         if (IGNORE_PREFIXES.some((p) => _rawPath(e.ctx as object).startsWith(p))) return;
         trace.record(e.ctx as object, "flow", {
@@ -156,6 +167,14 @@ export function installFlowObservability(app: Application): () => void {
           durationMs: Math.round(e.durationMs),
           ip: e.ip,
           ...(e.ok ? {} : { failed: true }),
+        });
+        // The synthetic request behind an action is a GET of the page the action
+        // ran on, so labelling it `FLOW` is what keeps it from reading as a second
+        // page load in the request list.
+        trace.finalise?.(e.ctx as object, {
+          startMs: Date.now() - e.durationMs,
+          durationMs: e.durationMs,
+          method: "FLOW",
         });
       }),
     );

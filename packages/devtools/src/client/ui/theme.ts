@@ -60,6 +60,10 @@ ${TOKENS}
 .meth.post   { color: var(--cyan);   }
 .meth.put, .meth.patch { color: var(--yellow); }
 .meth.delete { color: var(--red);    }
+/* Not an HTTP method: a Flow action, which arrives over the socket against a
+   synthetic GET of its own page. Its own colour so the list does not read as two
+   loads of that page. */
+.meth.flow   { color: var(--purple); }
 .bpath { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .sc   { font-weight: 700; font-size: 11px; flex-shrink: 0; }
 .sc.ok    { color: var(--green);  }

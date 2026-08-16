@@ -6,6 +6,26 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
+## [Unreleased]
+
+### Added
+
+- **`TraceSink.finalise` — a trace for work that never was an HTTP request.** The sink let
+  a package buffer against a context but gave it no way to say that context was finished,
+  and a trace was only ever built from core's `RequestHandled` / `RequestFailed`. Anything
+  running against its own context outside the HTTP lifecycle therefore buffered its
+  evidence and dropped it: a Flow action over the WebSocket, and by the same mechanism a
+  queue job or a scheduled task.
+
+  `finalise(ctx, { startMs, durationMs, method })` builds the trace and pushes it. `method`
+  labels a synthetic request in the list — `@zerotal/flow` passes `FLOW`, which gets its own
+  colour so an action does not read as a second `GET` of the page it ran on. Finalising is
+  once per context, whichever claims it first, so a context that finalises itself can never
+  push a duplicate carrying none of the evidence.
+
+  Found by wiring DevTools into this repo's own `apps/docs`: the Flow tab could only ever
+  report "No flow activity during this request".
+
 ## [1.7.0] — 2026-08-16
 
 ### Added

@@ -19,6 +19,7 @@ import {
   traceMatches,
   SLOW_MS,
 } from "./index.ts";
+import { fmt } from "./ui/format.ts";
 import type { Facets, PathTreeNode } from "./index.ts";
 // By path: the All tab's own mechanics are internal, and a same-package test
 // reaching for them is not a reason to widen what the package promises.
@@ -439,5 +440,39 @@ describe("windowRange", () => {
 
   it("never asks for a negative offset", () => {
     expect(windowRange(5000, -50, 400, 60).first).toBe(0);
+  });
+});
+
+describe("fmt", () => {
+  // Both ends of this were wrong at once. A duration measured with
+  // performance.now() was interpolated raw, so the always-visible status bar read
+  // `3.6370999999926426ms`; a duration a caller had already rounded read `0ms`
+  // for a query that plainly took time. Precision has to follow magnitude.
+
+  it("does not print the whole float a high-resolution timer produced", () => {
+    expect(fmt(3.6370999999926426)).toBe("3.6ms");
+    expect(fmt(2.2338999999992666)).toBe("2.2ms");
+  });
+
+  it("keeps the digits that matter below a millisecond", () => {
+    expect(fmt(0.42)).toBe("0.42ms");
+    expect(fmt(0.4)).toBe("0.4ms");
+  });
+
+  it("drops the decimal once it stops carrying information", () => {
+    expect(fmt(142.6)).toBe("143ms");
+    expect(fmt(30)).toBe("30ms");
+    expect(fmt(3)).toBe("3ms");
+  });
+
+  it("switches to seconds, and keeps a zero honest", () => {
+    expect(fmt(1400)).toBe("1.4s");
+    expect(fmt(12_500)).toBe("12.5s");
+    expect(fmt(0)).toBe("0ms");
+  });
+
+  it("says nothing rather than NaNms when there is no measurement", () => {
+    expect(fmt(Number.NaN)).toBe("—");
+    expect(fmt(-1)).toBe("—");
   });
 });

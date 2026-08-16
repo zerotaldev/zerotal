@@ -132,6 +132,23 @@ export function mountShell(opts: ShellOptions): void {
   function applyTheme(): void {
     wrap.classList.toggle("light", isLightTheme(store.theme));
     if (!standalone) panel.style.height = `${store.height}px`;
+    reserveSpace();
+  }
+
+  /**
+   * Give the host page back the strip the panel covers.
+   *
+   * The panel is fixed to the bottom of the viewport, so without this the last
+   * 32px of a page — or the panel's full height when open — is behind it and
+   * cannot be scrolled to. The value is written as a custom property as well as
+   * the padding, so an app that would rather move something else of its own can
+   * read `--zt-dt-height` instead.
+   */
+  function reserveSpace(): void {
+    if (standalone) return;
+    const height = wrap.getBoundingClientRect().height;
+    document.documentElement.style.setProperty("--zt-dt-height", `${height}px`);
+    document.body.style.paddingBottom = `${height}px`;
   }
 
   function renderBar(): void {
@@ -391,6 +408,7 @@ export function mountShell(opts: ShellOptions): void {
       // Leave the host page a strip of itself: a panel dragged to full height is
       // one you cannot get out of by dragging.
       panel.style.height = `${Math.max(MIN_HEIGHT, Math.min(next, window.innerHeight - 60))}px`;
+      reserveSpace();
     };
     const up = (): void => {
       grip.classList.remove("dragging");
@@ -474,6 +492,7 @@ export function mountShell(opts: ShellOptions): void {
     if (standalone) return; // nothing to collapse into
     store.setOpen(!store.open);
     panel.style.display = store.open ? "flex" : "none";
+    reserveSpace();
     if (store.open) {
       wrap.focus({ preventScroll: true });
       renderContent(true);

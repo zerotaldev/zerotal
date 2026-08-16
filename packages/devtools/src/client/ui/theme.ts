@@ -13,14 +13,17 @@
 const TOKENS = `
 #wrap {
   --bg: #1a1b26; --surf: #24283b; --card: #2f3452; --bdr: #3b4261;
-  --text: #c0caf5; --muted: #565f89; --purple: #7aa2f7;
+  /* --muted carries labels, hints and every inactive tab. At the palette's own
+     #565f89 that is 2.35:1 on --surf — below AA for text of any size, and this
+     is 10–11px text. Lifted until it clears 4.5:1 while staying recessive. */
+  --text: #c0caf5; --muted: #8790bd; --purple: #7aa2f7;
   --green: #9ece6a; --yellow: #e0af68; --red: #f7768e;
   --cyan: #7dcfff; --orange: #ff9e64;
   --childbg: rgba(0,0,0,.15);
 }
 #wrap.light {
   --bg: #f4f4f8; --surf: #e8e9f0; --card: #dcdee8; --bdr: #c0c4d4;
-  --text: #343b58; --muted: #6b7192; --purple: #34548a;
+  --text: #343b58; --muted: #565c7d; --purple: #34548a;
   --green: #33635c; --yellow: #8f5e15; --red: #c64343;
   --cyan: #0f4b6e; --orange: #965027;
   --childbg: rgba(0,0,0,.05);
@@ -35,7 +38,18 @@ ${TOKENS}
   color: var(--text);
 }
 #wrap:focus { outline: none; }
-#wrap:focus-visible { outline: none; }
+/* The container itself takes focus on open and should not draw a ring for it.
+   Anything a person actually tabs to must — the panel used to suppress focus
+   everywhere, which left keyboard navigation invisible. */
+#wrap :focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: -2px;
+  border-radius: 2px;
+}
+/* Numbers line up only if the digits are the same width. Durations sit in a
+   right-aligned column, and proportional digits are what made its left edge
+   ragged from row to row. */
+.num, .dur, .meth, .stat .sval, .tlbl { font-variant-numeric: tabular-nums; }
 /* ── utility colours ──────────────────────────────────────────────────────── */
 .green  { color: var(--green);  }
 .yellow { color: var(--yellow); }
@@ -261,7 +275,11 @@ ${TOKENS}
 .tmark.chan  { background: var(--yellow); }
 .ttxt  { flex: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
 .tkey  { display: flex; gap: 10px; flex-wrap: wrap; padding: 6px 12px; font-size: 10px; color: var(--muted); }
-.tkey i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 3px; vertical-align: middle; font-style: normal; }
+/* position:static undoes .tmark, which the legend swatch reuses for its colour.
+   .tmark is absolutely positioned for the waterfall, and in the legend — whose
+   rows are not positioned — that sent every swatch to the nearest positioned
+   ancestor, leaving seven squares stacked above their own labels. */
+.tkey i { position: static; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 3px; vertical-align: middle; font-style: normal; }
 /* ── generic channel rows ─────────────────────────────────────────────────── */
 .crow  { padding: 7px 12px; border-bottom: 1px solid var(--bdr); }
 .crow.warn { border-left: 3px solid var(--yellow); }

@@ -27,9 +27,28 @@ export function esc(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ESCAPES[c]!);
 }
 
-/** A duration, in the largest unit that stays readable. */
+/** Drop the trailing zeros a fixed-precision number leaves behind: `3.0` → `3`. */
+function _trim(text: string): string {
+  return text.includes(".") ? text.replace(/0+$/, "").replace(/\.$/, "") : text;
+}
+
+/**
+ * A duration, at a precision worth reading.
+ *
+ * Precision scales with magnitude, because the interesting digits move: at 400ms
+ * nobody cares about the decimal, and at 0.4ms the decimal is the whole number.
+ * Both ends were wrong before. This interpolated the value raw, so anything
+ * measured with `performance.now()` printed its full float — the status bar read
+ * `3.6370999999926426ms` — while anything a caller had already rounded printed
+ * `0ms` for a query that plainly took time.
+ */
 export function fmt(ms: number): string {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  if (ms === 0) return "0ms";
+  if (ms >= 1000) return `${_trim((ms / 1000).toFixed(2))}s`;
+  if (ms >= 100) return `${Math.round(ms)}ms`;
+  if (ms >= 1) return `${_trim(ms.toFixed(1))}ms`;
+  return `${_trim(ms.toFixed(2))}ms`;
 }
 
 /** A byte count as KB or MB. */

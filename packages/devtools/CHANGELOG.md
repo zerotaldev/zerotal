@@ -8,6 +8,32 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Durations printed their whole float.** `fmt()` interpolated the number raw, so anything
+  measured with `performance.now()` — every Flow action, in the always-visible status bar —
+  read `3.6370999999926426ms`, while anything a caller had already rounded read `0ms` for a
+  query that plainly took time. Precision now follows magnitude: `0.42ms`, `3.6ms`, `143ms`,
+  `1.4s`. Numeric cells also use tabular figures, which is what made the request list's
+  right-aligned column ragged.
+
+- **Timeline legend swatches floated away from their labels.** The legend reuses `.tmark` for
+  its colour, and `.tmark` is absolutely positioned for the waterfall — so in the legend,
+  whose rows are not positioned, all seven squares escaped to the nearest positioned ancestor
+  and stacked above their own text.
+
+- **The panel covered the bottom of the page.** It is fixed to the viewport and reserved no
+  space, so the last strip of any page — 32px collapsed, the panel's full height open — could
+  not be scrolled to. The host page now gets matching bottom padding, updated on toggle and
+  resize, and `--zt-dt-height` is published on `<html>` for an app that would rather move
+  something of its own.
+
+- **Muted text failed WCAG AA, and focus was invisible.** `--muted` sat at 2.35:1 on the tab
+  strip — below AA for text of any size, and this is 10–11px text. It now measures 4.69:1 on
+  the strip and 5.50:1 on the status bar in dark, 5.38:1 in light. `:focus-visible` was
+  suppressed panel-wide, leaving keyboard navigation with no indicator at all; focusable
+  controls now draw a ring.
+
 ### Added
 
 - **A contributed panel can read the selected trace.** `DevtoolsPanelPlugin.render` now

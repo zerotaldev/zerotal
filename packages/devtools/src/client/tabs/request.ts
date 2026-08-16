@@ -11,7 +11,7 @@
  * survive the redirect, is the user id set" are all answered by the keys, and the
  * values are the request's real state.
  */
-import { copyBtn, esc, scCls } from "../ui/format.ts";
+import { copyBtn, esc } from "../ui/format.ts";
 import type { TabView } from "./types.ts";
 
 function kvTable(pairs: Record<string, string>): string {
@@ -48,12 +48,11 @@ export const requestTab: TabView = {
     const responseHeaders = t.responseHeaders ?? {};
     const session = t.session ?? [];
 
-    const statusLine =
-      `<div class="rcard">` +
-      `<span class="meth ${t.method.toLowerCase()}">${esc(t.method)}</span> ` +
-      `<b>${esc(t.path)}</b> ` +
-      `<span class="sc ${scCls(t.statusCode)}">${t.statusCode || "—"}</span>` +
-      `</div>`;
+    // No status line here. This view was once a tab of its own and had to say
+    // which request it was describing; it is now a section of that request, and
+    // whatever opened it — the row in the list, the header in Live — has already
+    // said the method, the path and the status directly above. Repeating them
+    // read as a second heading competing with the real one.
 
     const sessionKeys = session.length
       ? `<div class="chips">` +
@@ -63,7 +62,6 @@ export const requestTab: TabView = {
         `No session on this request — or no session middleware installed</p>`;
 
     host.innerHTML =
-      statusLine +
       section("Query Params", params) +
       section("Request Headers", headers) +
       section("Response Headers", responseHeaders) +

@@ -36,6 +36,11 @@ follows the Zerotal monorepo's unified versioning.
   follows: click something and it is showing what just happened. It ignores pinning on
   purpose — pinning is how you hold still and read something older.
 
+- **A request states its identity once.** The Request view opened with the method, path and
+  status — right for a tab that had to say which request it was describing, pure repetition
+  for a section sitting directly under the row that just said it, where it read as a second
+  heading competing with the real one.
+
 - **Clear sits with the list it clears.** A labelled button beside the filter, rather than
   only the icon at the far end of the status bar.
 

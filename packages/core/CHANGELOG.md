@@ -12,6 +12,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`Router.raw()` did not answer `HEAD`.** The pipeline derives a `HEAD` handler from every
+  `GET` — its own docblock notes that not doing so gives "every uptime monitor,
+  load-balancer probe, CDN origin check and `curl -I`" a 404 — and the raw path was left out
+  of it. So `curl -I` against a raw route answered 404 while the `GET` beside it answered 200. This framework's own site serves `/docs/*` and `/blog` from raw routes, so every link
+  checker and uptime probe aimed at the documentation was told the page did not exist.
+
+  Derived from the wrapped handler rather than the bare one, so the security headers below
+  ride along and a `HEAD` cannot answer with fewer than the `GET` it mirrors. A `HEAD` the
+  app registered itself still wins. Third gap in the same family, after the headers and
+  static files: any path that answers a request without running the pipeline needs whatever
+  the pipeline was doing for it.
+
 - **The dev deck would not scroll.** On the alternate screen a terminal has no scrollback of
   its own, so the wheel and the scrollbar had nothing to move and the deck read as frozen —
   from the moment tabs mode starts, every way of looking at an older line has to come from

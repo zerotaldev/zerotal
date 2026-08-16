@@ -945,6 +945,65 @@ describe("Router.view() — handler invocation (covers _wrapFileHandler.handle)"
 
 // ── Raw routes ────────────────────────────────────────────────────────────────
 
+describe("Router.raw() — HEAD", () => {
+  beforeEach(() => Router.reset());
+
+  /**
+   * The pipeline derives `HEAD` from `GET`; the raw path did not, so `curl -I`
+   * against a raw route answered 404 while the `GET` beside it answered 200.
+   * Caught on this framework's own site: `/docs/*` and `/blog` are raw routes,
+   * so every link checker and uptime probe aimed at them was told the page did
+   * not exist. Same family as the missing security headers — a raw route is
+   * still a route.
+   */
+  it("answers HEAD for a raw GET route", async () => {
+    Router.raw("GET", "/__internal/doc", () => new Response("<html>doc</html>", { status: 200 }));
+    const compiled = Router.compile(new Container());
+    const head = methods(compiled, "/__internal/doc")!["HEAD"];
+
+    expect(head).toBeDefined();
+    const response = await (head as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/__internal/doc", { method: "HEAD" }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("");
+    expect(response.headers.get("Content-Length")).toBe("16");
+  });
+
+  it("carries the security headers onto the derived HEAD", async () => {
+    // Derived from the wrapped handler, not the bare one, or a HEAD would answer
+    // with fewer headers than the GET it is supposed to mirror.
+    Router.raw("GET", "/__internal/doc", () => new Response("ok"));
+    const compiled = Router.compile(new Container());
+    const head = methods(compiled, "/__internal/doc")!["HEAD"]!;
+
+    const response = await (head as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/__internal/doc", { method: "HEAD" }),
+    );
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(response.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+  });
+
+  it("derives nothing for a raw route that is not a GET", async () => {
+    Router.raw("POST", "/__internal/hook", () => new Response("ok"));
+    const compiled = Router.compile(new Container());
+
+    expect(methods(compiled, "/__internal/hook")!["HEAD"]).toBeUndefined();
+  });
+
+  it("leaves a HEAD the app registered for itself alone", async () => {
+    Router.raw("GET", "/__internal/doc", () => new Response("body"));
+    Router.raw("HEAD" as never, "/__internal/doc", () => new Response(null, { status: 204 }));
+    const compiled = Router.compile(new Container());
+    const head = methods(compiled, "/__internal/doc")!["HEAD"]!;
+
+    const response = await (head as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/__internal/doc", { method: "HEAD" }),
+    );
+    expect(response.status).toBe(204);
+  });
+});
+
 describe("Router.raw() — security headers", () => {
   beforeEach(() => Router.reset());
 

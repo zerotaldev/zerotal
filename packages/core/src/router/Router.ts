@@ -1129,6 +1129,13 @@ export class Router {
       const path = key.slice(spaceIndex + 1);
       const rawMap = (compiled[path] ??= {}) as Record<string, RouteHandlerFn>;
       rawMap[method] = _withSecurityDefaults(handler, rawDefaults);
+      // And `HEAD`, for the same reason the pipeline derives it — a raw route is
+      // still a route, and `curl -I` against one answered 404 while the `GET`
+      // beside it answered 200. This site's own `/docs/*` and `/blog` are raw,
+      // so every link checker and uptime probe pointed at them was told the page
+      // did not exist. Derived from the wrapped handler, so the headers above
+      // ride along.
+      if (method === "GET") rawMap["HEAD"] ??= _headFrom(rawMap[method]!);
     }
 
     return compiled;

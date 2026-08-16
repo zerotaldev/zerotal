@@ -27,7 +27,10 @@ import {
 import { builtinConcerns } from "../conventions/builtinConcerns.ts";
 import { ConfigManager } from "../config/ConfigManager.ts";
 import { DEFAULT_MAX_REQUEST_BODY_SIZE } from "../config/AppConfig.ts";
-import { SecureHeadersMiddleware } from "../middleware/SecureHeadersMiddleware.ts";
+import {
+  SecureHeadersMiddleware,
+  staticSecurityHeaders,
+} from "../middleware/SecureHeadersMiddleware.ts";
 import { isAllowedOrigin, allowedOriginsFrom } from "../http/originGuard.ts";
 import { rescueSync } from "../helpers/index.ts";
 import { configureAssets, setAssetVersion, assetVersion } from "../assets/assets.ts";
@@ -237,10 +240,13 @@ export async function _lazyStaticResponse(
     const relative = pathname.slice(trimmedPrefix.length).replace(/^\//, "");
     const file = Bun.file(`${rootDir}/${relative}`);
     if (await file.exists()) {
-      return new Response(
-        file as unknown as BodyInit,
-        options?.headers ? { headers: options.headers } : undefined,
-      );
+      // The same headers Bun's native static routes carry (see Router.compile).
+      // This path returns before the pipeline runs, so without it a file served
+      // lazily — every file under the dev worker — would be the one response in
+      // the app with no security headers on it.
+      return new Response(file as unknown as BodyInit, {
+        headers: { ...staticSecurityHeaders(), ...options?.headers },
+      });
     }
   }
   return undefined;
@@ -259,6 +265,39 @@ export interface WebSocketHandlers {
  * restores the previous state when the application is reset.
  */
 export type AppScopeInstaller = () => () => void;
+
+/**
+ * What one provider cost to boot, and what it contributed.
+ *
+ * @see Application.providerReport
+ */
+export interface ProviderReport {
+  /** Provider class name. The array is in boot order. */
+  name: string;
+  /**
+   * Wall-clock milliseconds across all three lifecycle hooks.
+   *
+   * `onBooted` runs concurrently across providers, so these do not sum to the
+   * application's boot time — they overlap, and the report reports that rather
+   * than serialising the boot to produce a tidier number.
+   */
+  durationMs: number;
+  /** Container tokens this provider bound, as names. */
+  bindings: string[];
+}
+
+/**
+ * A container token as a readable name.
+ *
+ * Tokens are class constructors or plain strings; the map keys are neither
+ * sorted nor serialisable as they stand, and a reader wants `CacheManager`, not
+ * `[class CacheManager]`.
+ */
+function _tokenName(token: unknown): string {
+  if (typeof token === "string") return token;
+  if (typeof token === "function") return token.name || "‹anonymous›";
+  return String(token);
+}
 
 const _appScopeInstallers: AppScopeInstaller[] = [];
 
@@ -318,6 +357,8 @@ export class Application {
   _env: Environment = "web";
   private _booted = false;
   private _bootDurationMs: number | undefined = undefined;
+  /** Per-provider boot cost and container provenance; see {@link providerReport}. */
+  private _providerReport: ProviderReport[] = [];
   private _static?: ReturnType<typeof Bun.serve>;
   private _configMap: Record<string, Record<string, unknown>> | undefined = undefined;
   /** Tracks where config came from, to reject conflicting overrides via useConfig(). */
@@ -607,6 +648,60 @@ export class Application {
    */
   get bootDurationMs(): number | undefined {
     return this._bootDurationMs;
+  }
+
+  /**
+   * What each provider cost to boot, and what it put in the container.
+   *
+   * `bootDurationMs` says the app took 240ms and nothing said which provider
+   * spent it; the container lists a hundred bindings and nothing said who bound
+   * them. Both are answered here, in boot order — which is itself the answer to
+   * a third question, since provider order decides who wins a contested binding.
+   *
+   * Empty until `boot()` runs. Populated in every environment: it costs one
+   * `performance.now()` pair and one registry diff per provider at boot, and a
+   * report that only exists in development is one you cannot ask for when a
+   * staging boot is the slow one.
+   *
+   * @category Lifecycle
+   */
+  get providerReport(): readonly ProviderReport[] {
+    return this._providerReport;
+  }
+
+  /**
+   * Time one provider lifecycle hook and attribute anything it bound.
+   *
+   * Accumulates across the three phases, so a provider that binds in
+   * `onRegister` and spends its time in `onBooting` reads as one row.
+   */
+  private _recordProviderWork<T>(provider: ServiceProvider, work: () => T): T {
+    const name = provider.constructor.name;
+    let row = this._providerReport.find((entry) => entry.name === name);
+    if (!row) {
+      row = { name, durationMs: 0, bindings: [] };
+      this._providerReport.push(row);
+    }
+    const before = new Set(this.container.registry.keys());
+    const started = performance.now();
+    const finish = (): T => {
+      row!.durationMs = Math.round((row!.durationMs + performance.now() - started) * 100) / 100;
+      for (const token of this.container.registry.keys()) {
+        if (!before.has(token)) row!.bindings.push(_tokenName(token));
+      }
+      return undefined as T;
+    };
+    const result = work();
+    // An async hook is only finished when its promise is — timing it
+    // synchronously would report every `await` in it as free.
+    if (result instanceof Promise) {
+      return result.then((value: unknown) => {
+        finish();
+        return value;
+      }) as T;
+    }
+    finish();
+    return result;
   }
 
   /**
@@ -1056,7 +1151,15 @@ export class Application {
     for (const callback of this._bindCallbacks) callback(this.container);
 
     // Phase 1 — synchronous, binds into container.
-    for (const provider of this._activeProviders) provider.onRegister();
+    //
+    // Timed, and the container is diffed around each provider, so the inspector
+    // can answer "who bound `cache`, and what did booting it cost". Provenance
+    // by diff rather than by having the container record a registrar: it keeps
+    // the cost at boot instead of on every binding, and adds no mutable state to
+    // the container for a question only a debugging tool asks.
+    for (const provider of this._activeProviders) {
+      this._recordProviderWork(provider, () => provider.onRegister());
+    }
 
     // Config validation — providers have registered their namespace validators
     // in onRegister; run them before anything boots. In a production-like
@@ -1069,10 +1172,20 @@ export class Application {
     }
 
     // Phase 2 — sequential in registration order.
-    for (const provider of this._activeProviders) await provider.onBooting();
+    for (const provider of this._activeProviders) {
+      await this._recordProviderWork(provider, () => provider.onBooting());
+    }
 
     // Phase 3 — async, all providers have finished booting.
-    await Promise.all(this._activeProviders.map((provider) => provider.onBooted()));
+    //
+    // These run concurrently, so the recorded durations overlap and do not sum
+    // to the phase. That is the truth about this phase and the report says so
+    // rather than serialising the boot to make a tidier number.
+    await Promise.all(
+      this._activeProviders.map((provider) =>
+        this._recordProviderWork(provider, () => provider.onBooted()),
+      ),
+    );
 
     // Ensure config and events are resolved so makeSync() works below.
     await this.container.make("config");

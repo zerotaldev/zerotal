@@ -30,6 +30,7 @@ import { compileDomain, matchDomain, setRequestSubdomains } from "./domain.ts";
 import type { ProviderHooks } from "./RouteHandler.ts";
 import { tryCurrentApp } from "../application/currentApp.ts";
 import { frameworkLog } from "../logger/frameworkLog.ts";
+import { staticSecurityHeaders } from "../middleware/SecureHeadersMiddleware.ts";
 import {
   markdownExtractTitle,
   markdownPage,
@@ -1026,14 +1027,19 @@ export class Router {
         continue;
       }
       const basePrefix = prefix.replace(/\/$/, "");
+      // Static files are handed to Bun as native `Response(Bun.file)` routes and
+      // answered without entering JavaScript, so `SecureHeadersMiddleware` — and
+      // the whole pipeline — never runs for them. The headers are therefore
+      // baked in here instead. Anything the dir declared wins: a caller who set
+      // an explicit `X-Frame-Options` for one mount meant it.
+      const headers = { ...staticSecurityHeaders(), ...options?.headers };
       let registered = 0;
       for (const relativePath of files) {
         const urlPath = `${basePrefix}/${relativePath.replace(/\\/g, "/")}`.replace(/\/+/g, "/");
         if (compiled[urlPath]) continue;
-        const headers = options?.headers;
         compiled[urlPath] = new Response(
           Bun.file(`${rootDir}/${relativePath}`) as unknown as BodyInit,
-          headers ? { headers } : undefined,
+          { headers },
         );
         registered++;
       }

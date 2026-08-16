@@ -102,6 +102,25 @@ cannot do for you.
 Items 1–8 are what `deploy:<env>` checks or does. Starting the process and probing
 the live site are yours.
 
+### What `--url` sees that nothing else can
+
+`bun zt doctor` on its own reads the app from the inside, where the app is right about
+itself. `--url` fetches the deployed site back through whatever proxy is in front of it,
+and reports two things only that round trip can show:
+
+- **The WebSocket transport**, handshaked as a browser would. A proxy that gates or never
+  forwards the upgrade leaves the app healthy from the inside — the HTML renders, the logs
+  are quiet — while every action in the browser silently does nothing.
+- **Security headers sent twice.** A header the app sets and the proxy also sets is
+  invisible from inside the process. `X-Frame-Options: DENY` from the proxy plus
+  `SAMEORIGIN` from the app is a real deployment this found, and browsers do not agree on
+  which one applies — a control enforced inconsistently, which is worse than one that is
+  simply missing, because it looks configured. Conflicting values fail; identical
+  duplicates warn.
+
+The fix for a duplicate is always the same shape: pick one place — `app.secureHeaders` in
+`config/app.ts`, or the proxy — and remove the other.
+
 ## Environment
 
 Set configuration through environment variables (not a committed `.env`). At minimum:

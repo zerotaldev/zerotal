@@ -2,15 +2,18 @@
  * `bun zt doctor` — run every static sanity check against this app and print
  * the findings with their fixes. Exits 1 when anything is broken outright.
  *
- * With `--url`, it also probes the deployed app's WebSocket transport from the outside,
- * through whatever proxy is in front of it. That is the only way to see the failures that
- * leave the app healthy from the inside and inert in the browser.
+ * With `--url`, it also reads the deployed app from the outside, through whatever proxy is
+ * in front of it — the only way to see two classes of failure. The WebSocket transport,
+ * which a proxy can gate or drop while leaving the app healthy from the inside and inert in
+ * the browser. And security headers sent twice, because a header the app sets and the proxy
+ * also sets is invisible from in here: the app's own view is the value it wrote.
  */
 import { Command } from "../Command.ts";
 import type { Application } from "../../application/Application.ts";
 import { runDoctor } from "../../doctor/AppDoctor.ts";
 import type { DoctorReportEntry } from "../../doctor/AppDoctor.ts";
 import { probeTransport } from "../../doctor/TransportProbe.ts";
+import { probeHeaders } from "../../doctor/HeaderProbe.ts";
 
 export class DoctorCommand extends Command {
   static override commandName = "doctor";
@@ -21,7 +24,8 @@ export class DoctorCommand extends Command {
       name: "url",
       type: "string" as const,
       description:
-        "Also probe the deployed app's WebSocket transport at this public URL, as a browser would",
+        "Also read the deployed app at this public URL: handshake its WebSocket transport " +
+        "as a browser would, and report security headers the response carries twice",
     },
   ];
 
@@ -34,9 +38,13 @@ export class DoctorCommand extends Command {
     for (const entry of report) this._print(entry);
 
     const probeFailures = await this._probeTransport(app);
+    const headerFindings = await this._probeHeaders();
 
-    const warns = report.filter((e) => e.result.status === "warn").length;
-    const fails = report.filter((e) => e.result.status === "fail").length + probeFailures;
+    const warns = report.filter((e) => e.result.status === "warn").length + headerFindings.warnings;
+    const fails =
+      report.filter((e) => e.result.status === "fail").length +
+      probeFailures +
+      headerFindings.failures;
     this.newLine();
     // Throw rather than `process.exit(1)` — same exit code from the CLI (the runner
     // converts it), but composable. Exiting here killed any caller running the
@@ -84,6 +92,45 @@ export class DoctorCommand extends Command {
       if (result.fix) this.line(`    fix: ${result.fix}`);
     }
     return failures;
+  }
+
+  /**
+   * Report security headers the deployed response carries more than once.
+   *
+   * Only reachable from outside: the app's own view of a header is the value it
+   * wrote, which is correct as far as it goes — the proxy's copy is invisible
+   * from in here. Conflicting values count as failures because a control that
+   * different browsers apply differently is not a control; identical duplicates
+   * are a warning, because they are a conflict waiting for someone to edit one
+   * side.
+   */
+  private async _probeHeaders(): Promise<{ failures: number; warnings: number }> {
+    const url = this.flags["url"] as string | undefined;
+    if (!url) return { failures: 0, warnings: 0 };
+
+    const findings = await probeHeaders(url);
+    this.newLine();
+    this.section("Response headers");
+
+    if (findings.length === 0) {
+      this.line("✓ No duplicated security headers.");
+      return { failures: 0, warnings: 0 };
+    }
+
+    let failures = 0;
+    let warnings = 0;
+    for (const finding of findings) {
+      const line = `${finding.conflicting ? "✗" : "!"} ${finding.header} — ${finding.message}`;
+      if (finding.conflicting) {
+        this.error(line);
+        failures++;
+      } else {
+        this.warn(line);
+        warnings++;
+      }
+      if (finding.fix) this.line(`    fix: ${finding.fix}`);
+    }
+    return { failures, warnings };
   }
 
   private _print({ check, result }: DoctorReportEntry): void {

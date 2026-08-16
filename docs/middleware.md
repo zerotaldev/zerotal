@@ -339,6 +339,21 @@ import { SecureHeadersMiddleware } from "zerotal";
 app.use([SecureHeadersMiddleware]);
 ```
 
+It is registered for you as kernel middleware, so an app gets these headers
+without asking. Configure them under `app.secureHeaders` in `config/app.ts` — see
+[Configuration](/docs/config-system).
+
+**Static files get the same headers**, even though no middleware runs for them.
+Files under `public/` are handed to Bun as pre-registered responses and served
+without entering JavaScript, so the pipeline never sees them; the header set is
+baked into those responses at registration time instead. A per-directory header
+passed to `Router.static()` still wins, so a mount that is deliberately
+embeddable stays that way.
+
+> **Tip** — Run [`bun zt doctor --url=…`](/docs/deployment) after deploying. A
+> header your app sets and your proxy also sets is invisible from inside the
+> process, and browsers disagree about which copy applies.
+
 ### WebhookMiddleware
 
 Verifies HMAC-SHA256 signatures on incoming webhook requests:

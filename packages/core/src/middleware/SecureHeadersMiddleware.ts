@@ -94,34 +94,65 @@ export class SecureHeadersMiddleware extends BaseMiddleware<SecureHeadersOptions
   async handle(_ctx: HttpContext, next: NextFn): Promise<Response | void> {
     const response = await next();
     if (!response) return;
-
-    const secure: Record<string, string> = {
-      // Always-on security headers
-      "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": this.options.referrerPolicy ?? "strict-origin-when-cross-origin",
-    };
-
-    const frameOptions = this.options.frameOptions ?? "SAMEORIGIN";
-    if (frameOptions) secure["X-Frame-Options"] = frameOptions;
-
-    const permissionsPolicy = this.options.permissionsPolicy ?? DEFAULT_PERMISSIONS_POLICY;
-    if (permissionsPolicy) secure["Permissions-Policy"] = permissionsPolicy;
-
-    if (this.options.contentSecurityPolicy) {
-      secure["Content-Security-Policy"] = this.options.contentSecurityPolicy;
-    }
-
-    // HSTS only over HTTPS — emitting it on HTTP can lock users out
-    if (this.options.secure) {
-      const maxAge = this.options.hstsMaxAge ?? 31_536_000;
-      if (maxAge > 0) {
-        const parts = [`max-age=${maxAge}`];
-        if (this.options.hstsIncludeSubDomains !== false) parts.push("includeSubDomains");
-        if (this.options.hstsPreload) parts.push("preload");
-        secure["Strict-Transport-Security"] = parts.join("; ");
-      }
-    }
-
-    return withHeaders(response, secure);
+    return withHeaders(response, securityHeaders(this.options));
   }
+}
+
+/**
+ * The headers this middleware adds, as a plain object.
+ *
+ * Separated from `handle()` because the middleware is not the only thing that
+ * has to send them. Static files are registered with Bun as native
+ * `Response(Bun.file)` routes and are answered without ever entering JavaScript,
+ * so the pipeline — and therefore this middleware — never runs for them. That
+ * left `/css/app.css` served with no `X-Content-Type-Options: nosniff`, which is
+ * precisely the kind of response sniffing protection exists for, while the
+ * framework advertised the header as automatic. {@link Router.static} calls this
+ * so the same set is attached at registration time and Bun still serves the file
+ * natively.
+ *
+ * @param options - Resolved secure-header options, usually `app.secureHeaders`.
+ * @returns Header name → value. Never includes HSTS unless `secure` is set.
+ */
+export function securityHeaders(options: SecureHeadersOptions): Record<string, string> {
+  const secure: Record<string, string> = {
+    // Always-on security headers
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": options.referrerPolicy ?? "strict-origin-when-cross-origin",
+  };
+
+  const frameOptions = options.frameOptions ?? "SAMEORIGIN";
+  if (frameOptions) secure["X-Frame-Options"] = frameOptions;
+
+  const permissionsPolicy = options.permissionsPolicy ?? DEFAULT_PERMISSIONS_POLICY;
+  if (permissionsPolicy) secure["Permissions-Policy"] = permissionsPolicy;
+
+  if (options.contentSecurityPolicy) {
+    secure["Content-Security-Policy"] = options.contentSecurityPolicy;
+  }
+
+  // HSTS only over HTTPS — emitting it on HTTP can lock users out
+  if (options.secure) {
+    const maxAge = options.hstsMaxAge ?? 31_536_000;
+    if (maxAge > 0) {
+      const parts = [`max-age=${maxAge}`];
+      if (options.hstsIncludeSubDomains !== false) parts.push("includeSubDomains");
+      if (options.hstsPreload) parts.push("preload");
+      secure["Strict-Transport-Security"] = parts.join("; ");
+    }
+  }
+
+  return secure;
+}
+
+/**
+ * The security headers a static file should carry, read from `app.secureHeaders`.
+ *
+ * A separate entry point from {@link securityHeaders} so the caller does not
+ * have to reach for the config facade itself, and so the fallback is stated in
+ * one place: an app with no `app.secureHeaders` block still gets the baseline,
+ * which is the whole point of the defaults.
+ */
+export function staticSecurityHeaders(): Record<string, string> {
+  return securityHeaders(config.safe("app.secureHeaders", {} as SecureHeadersOptions));
 }

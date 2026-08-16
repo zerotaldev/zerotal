@@ -662,6 +662,61 @@ describe("Router.static()", () => {
     expect(Router.staticDirs).toHaveLength(2);
     expect(Router.staticDirs[1]).toEqual({ prefix: "/uploads", rootDir: "./storage/uploads" });
   });
+
+  /**
+   * Static files are registered with Bun as bare `Response` objects and answered
+   * without entering JavaScript, so no middleware runs for them — including
+   * `SecureHeadersMiddleware`, which the framework advertises as automatic. That
+   * left every asset served with no `X-Content-Type-Options: nosniff`, which is
+   * exactly the response class sniffing protection is for. The headers are baked
+   * into the compiled `Response` instead.
+   */
+  it("bakes the security headers into every compiled static file response", async () => {
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { writeFile, mkdir, rm } = await import("node:fs/promises");
+    const dir = join(tmpdir(), `zerotal-static-${Date.now()}`);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "app.css"), "body{color:red}");
+
+    Router.static("/css", dir);
+    const compiled = Router.compile(new Container());
+    const response = compiled["/css/app.css"];
+
+    expect(response).toBeInstanceOf(Response);
+    const headers = (response as Response).headers;
+    expect(headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+    expect(headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
+    expect(headers.get("Permissions-Policy")).toBeTruthy();
+
+    await rm(dir, { recursive: true, force: true });
+    Router.reset();
+  });
+
+  it("lets a directory's own headers win over the security defaults", async () => {
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { writeFile, mkdir, rm } = await import("node:fs/promises");
+    const dir = join(tmpdir(), `zerotal-static-hdr-${Date.now()}`);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "embed.js"), "export default 1;");
+
+    // A mount that is deliberately embeddable — the caller meant it.
+    Router.static("/embed", dir, {
+      headers: { "X-Frame-Options": "ALLOWALL", "Cache-Control": "no-cache" },
+    });
+    const compiled = Router.compile(new Container());
+    const headers = (compiled["/embed/embed.js"] as Response).headers;
+
+    expect(headers.get("X-Frame-Options")).toBe("ALLOWALL");
+    expect(headers.get("Cache-Control")).toBe("no-cache");
+    // …and the ones it did not speak to are still there.
+    expect(headers.get("X-Content-Type-Options")).toBe("nosniff");
+
+    await rm(dir, { recursive: true, force: true });
+    Router.reset();
+  });
 });
 
 // ── Router.markdown() ────────────────────────────────────────────────────────

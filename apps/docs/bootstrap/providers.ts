@@ -4,11 +4,13 @@ import { SessionProvider } from "zerotal/session";
 import { AuthProvider } from "zerotal/auth";
 import { FlowProvider } from "@zerotal/flow";
 import { AiProvider } from "@zerotal/ai";
+import { ArchProvider } from "@zerotal/arch";
 
 // Order matters: posts come from the database, the session carries the signed-in
 // author across requests, and auth reads it. FlowProvider powers both the
 // showcase pages and the authoring UI at /admin; AiProvider backs the streaming
-// chat demo at /showcase/flow/ai-chat.
+// chat demo at /showcase/flow/ai-chat. ArchProvider is console-only — it adds the
+// agent-surface commands and contributes nothing to a request.
 export default [
   LogProvider,
   DatabaseProvider,
@@ -16,4 +18,5 @@ export default [
   AuthProvider,
   FlowProvider,
   AiProvider,
+  ArchProvider,
 ];

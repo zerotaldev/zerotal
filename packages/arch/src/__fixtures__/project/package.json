@@ -1,0 +1,10 @@
+{
+  "name": "fixture-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint:ci": "bun run scripts/lint.ts"
+  }
+}

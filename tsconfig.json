@@ -20,6 +20,7 @@
   "files": [],
   "references": [
     { "path": "./packages/admin" },
+    { "path": "./packages/arch" },
     { "path": "./packages/audit" },
     { "path": "./packages/auth" },
     { "path": "./packages/broadcasting" },

@@ -204,6 +204,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { label: "i18n", slug: "i18n" },
       { label: "Health", slug: "health" },
       { label: "Devtools", slug: "devtools" },
+      { label: "Agent Surface", slug: "arch" },
     ],
   },
   {

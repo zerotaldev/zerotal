@@ -9,8 +9,17 @@ tsconfig.tsbuildinfo
 packages/create-zerotal
 **/__test_migrations__
 
+# Test fixtures are inputs to parsers — reformatting one changes what is being
+# tested. ESLint ignores them for the same reason.
+**/__fixtures__
+
 # Auto-generated public-API surface snapshots (see scripts/api-surface.ts)
 packages/*/api-surface.md
+
+# Documentation vendored into the agent surface (see scripts/arch-docs.ts).
+# A byte-for-byte copy of docs/ — formatting it here would make `arch:docs:check`
+# fail against the source it was copied from.
+packages/arch/docs
 
 # Generated cast-audit baseline (see scripts/cast-audit.ts)
 cast-baseline.json

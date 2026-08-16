@@ -1,0 +1,60 @@
+{
+  "name": "@zerotal/arch",
+  "version": "1.7.0",
+  "license": "MIT",
+  "maturity": "beta",
+  "private": false,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mcp": "./src/mcp/index.ts"
+  },
+  "bin": {
+    "zerotal-arch": "./src/bin/mcp.ts"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "api-surface.md",
+    "docs",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/*.spec.ts",
+    "!src/**/__fixtures__/**"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zerotal/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "@zerotal/orm": "workspace:*"
+  },
+  "description": "The Zerotal agent surface — an MCP server that hands coding agents the framework's machine-readable truth: exact API signatures, live routes and schema, version-matched docs, and `zt doctor`.",
+  "keywords": [
+    "zerotal",
+    "bun",
+    "typescript",
+    "framework",
+    "mcp",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zerotaldev/zerotal.git",
+    "directory": "packages/arch"
+  },
+  "homepage": "https://github.com/zerotaldev/zerotal/tree/main/packages/arch#readme",
+  "bugs": "https://github.com/zerotaldev/zerotal/issues"
+}

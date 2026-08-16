@@ -70,6 +70,13 @@ jobs:
       - name: API surface
         run: bun run api:surface:check
 
+      # `docs/` lives at the repo root and ships in no package, so the agent
+      # surface vendors a copy — that copy is what `search_docs` answers from in
+      # an installed app. Unverified, it would drift and start describing an API
+      # the app is not running, which is worse than having no search at all.
+      - name: Vendored docs corpus
+        run: bun run arch:docs:check
+
       # The component reference is generated from the flow-ui registry + doc specs.
       # Without this gate a new component ships undocumented and nothing complains,
       # which is how the page came to cover 20 of 53.

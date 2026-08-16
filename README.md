@@ -87,12 +87,13 @@ Each package has its own README with installation, setup, and usage examples —
 
 ### Tooling
 
-| Package                                     | Description                                              |
-| ------------------------------------------- | -------------------------------------------------------- |
-| [`@zerotal/admin`](packages/admin)          | Admin panel with resource management and field types     |
-| [`@zerotal/devtools`](packages/devtools)    | Development tools panel, request tracing                 |
-| [`@zerotal/testing`](packages/testing)      | Test helpers, model factories, fakes, database utilities |
-| [`create-zerotal`](packages/create-zerotal) | `bun create zerotal` scaffolding CLI                     |
+| Package                                     | Description                                                                               |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [`@zerotal/admin`](packages/admin)          | Admin panel with resource management and field types                                      |
+| [`@zerotal/devtools`](packages/devtools)    | Development tools panel, request tracing                                                  |
+| [`@zerotal/arch`](packages/arch)            | Agent surface — an MCP server exposing the API surface, routes, schema, docs and `doctor` |
+| [`@zerotal/testing`](packages/testing)      | Test helpers, model factories, fakes, database utilities                                  |
+| [`create-zerotal`](packages/create-zerotal) | `bun create zerotal` scaffolding CLI                                                      |
 
 ---
 

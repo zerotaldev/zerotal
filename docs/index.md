@@ -38,6 +38,8 @@ cd my-app && bun dev
 | Understand how the framework boots | [The Application](/docs/application) · [Lifecycle](/docs/lifecycle) · [Container](/docs/container) · [Providers](/docs/providers)                 |
 | Test what you built                | [Testing](/docs/testing) · [HTTP Tests](/docs/testing/http) · [Database Tests](/docs/testing/database)                                            |
 | See what's running in production   | [Logger](/docs/logger) · [Monitor](/docs/monitor) · [Telemetry](/docs/telemetry) · [Health](/docs/health)                                         |
+| Debug what it just did             | [DevTools](/docs/devtools) · [Errors](/docs/errors)                                                                                               |
+| Work with a coding agent           | [Agent Surface](/docs/arch)                                                                                                                       |
 | Ship it                            | [Deployment](/docs/deployment) · [Commands](/docs/commands)                                                                                       |
 
 ## Choosing a frontend

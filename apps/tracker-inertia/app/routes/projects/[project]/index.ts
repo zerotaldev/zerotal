@@ -2,9 +2,9 @@ import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
 import { AuthMiddleware } from "zerotal/auth";
 import type { Project } from "@app/models/Project.ts";
-import { Issue, ISSUE_PRIORITIES, ISSUE_STATUSES } from "@app/models/Issue.ts";
+import { Issue, ISSUE_PRIORITIES, ISSUE_SORTS, ISSUE_STATUSES } from "@app/models/Issue.ts";
 import { User } from "@app/models/User.ts";
-import { issueListQuery, issueRow, type IssueFilters } from "@app/support/issues.ts";
+import { issueRow, type IssueFilters } from "@app/support/issues.ts";
 
 export const middleware = [AuthMiddleware];
 
@@ -25,7 +25,21 @@ export const GET = async (http: HttpContext) => {
   const project = http.params.project as unknown as Project;
   const filters = readFilters(http);
 
-  const paginated = await issueListQuery(project.id, filters).paginate(PER_PAGE, filters.page);
+  // Every narrowing decision is a scope on the model, so the three builds cannot
+  // disagree about what "high priority, open, sorted by title" selects.
+  const paginated = await Issue.query()
+    .where("project_id", project.id)
+    .with("author")
+    .with("assignee")
+    .with("labels")
+    .withScopes((s) => {
+      s.search(filters.q);
+      s.withStatus(filters.status);
+      s.withPriority(filters.priority);
+      s.assignedTo(filters.assignee);
+      s.sorted(filters.sort);
+    })
+    .paginate(PER_PAGE, filters.page);
 
   // Assignees for the filter dropdown: only people who actually hold an issue
   // here, so the list cannot offer a filter that returns nothing.
@@ -88,7 +102,7 @@ function readFilters(http: HttpContext): IssueFilters {
     status: one("status", ISSUE_STATUSES),
     priority: one("priority", ISSUE_PRIORITIES),
     assignee: assignee && /^\d+$/.test(assignee) ? Number(assignee) : null,
-    sort: one("sort", ["newest", "oldest", "priority", "title"] as const) ?? "newest",
+    sort: one("sort", ISSUE_SORTS) ?? "newest",
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
   };
 }

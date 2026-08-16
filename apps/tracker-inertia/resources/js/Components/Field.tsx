@@ -123,3 +123,36 @@ export function TextAreaField({
     </Shell>
   );
 }
+
+export function SelectField({
+  label,
+  error,
+  hint,
+  className,
+  children,
+  ...rest
+}: FieldProps & ComponentProps<"select">) {
+  const id = useId();
+  const controlId = rest.id ?? `${id}-control`;
+
+  return (
+    <Shell
+      label={label}
+      error={error}
+      hint={hint}
+      controlId={controlId}
+      errorId={`${id}-error`}
+      hintId={`${id}-hint`}
+    >
+      <select
+        {...rest}
+        id={controlId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+        className={cn(CONTROL, error ? "border-destructive" : "border-input", className)}
+      >
+        {children}
+      </select>
+    </Shell>
+  );
+}

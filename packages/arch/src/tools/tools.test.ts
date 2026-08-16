@@ -180,8 +180,10 @@ describe("parsePage", () => {
 });
 
 describe("terms", () => {
-  it("drops one-character noise and de-duplicates", () => {
-    expect(terms("Route model binding a route")).toEqual(["route", "model", "binding"]);
+  it("drops one-character noise, de-duplicates, and stems", () => {
+    // "binding" → "bind" so it meets "bind"/"binds" in the corpus halfway; the
+    // index is tokenised through exactly the same function.
+    expect(terms("Route model binding a route")).toEqual(["route", "model", "bind"]);
   });
 });
 
@@ -593,5 +595,75 @@ describe("baselines — a ceiling that excludes something says so", () => {
     const outcome = await call(toolNamed("baselines", context()));
     const data = outcome.data as { baselines: Array<{ name: string; note?: string }> };
     expect(data.baselines.find((b) => b.name === "lint")?.note).toBeUndefined();
+  });
+});
+
+// ── Ranking ───────────────────────────────────────────────────────────────────
+
+/**
+ * The properties that make `search_docs` usable, each pinned because each was
+ * missing and each cost the top-1 result on real questions.
+ */
+describe("search_docs ranking", () => {
+  /** A long page that mentions everything once — the shape of `components.md`. */
+  const sprawling = parsePage(
+    "components.md",
+    "---\ntitle: Components\n---\n\n## All components\n\n" +
+      ["email", "mail", "test", "queue", "cache", "route", "middleware", "schema"]
+        .flatMap((word) => Array.from({ length: 4 }, () => `The ${word} component preview.`))
+        .join("\n") +
+      "\n" +
+      "Filler prose. ".repeat(400),
+  );
+
+  const focused = parsePage(
+    "notifications.md",
+    "---\ntitle: Notifications\ndescription: Send email and other notifications.\n---\n\n" +
+      "## Sending mail\n\nUse a notification to send an email.\n",
+  );
+
+  it("does not let a long page win by mentioning everything once", () => {
+    // Unnormalised term counts put the sprawling page first for every one of
+    // these, above the page actually about the subject.
+    const hits = search([sprawling, focused], "send an email", 3);
+    expect(hits[0]?.title).toBe("Notifications");
+  });
+
+  it("scores a title match above a passing body mention", () => {
+    const hits = search([sprawling, focused], "notifications", 3);
+    expect(hits[0]?.title).toBe("Notifications");
+  });
+
+  it("matches a query's singular against the corpus's plural, and back", () => {
+    const page = parsePage("orm.md", "---\ntitle: ORM\n---\n\n## Soft deletes\n\nDeleting rows.\n");
+    expect(search([page], "soft delete", 3)).toHaveLength(1);
+    expect(search([page], "testing", 3)).toHaveLength(0);
+
+    const testing = parsePage("testing.md", "---\ntitle: Testing\n---\n\n## Write a test\n\nGo.\n");
+    // "test" ↔ "testing" was the single biggest remaining miss before stemming.
+    expect(search([testing], "test", 3)).toHaveLength(1);
+  });
+
+  it("finds a hyphenated or dotted term by either of its parts", () => {
+    const page = parsePage(
+      "lifecycle.md",
+      "---\ntitle: Lifecycle\n---\n\n## soft-delete pruning\n\nUses Bun.sql underneath.\n",
+    );
+    expect(search([page], "soft", 3)).toHaveLength(1);
+    expect(search([page], "sql", 3)).toHaveLength(1);
+    // …and still by the whole compound.
+    expect(search([page], "soft-delete", 3)).toHaveLength(1);
+  });
+
+  it("ignores question words that carry no signal", () => {
+    expect(terms("how do I write a test")).not.toContain("how");
+    expect(terms("how do I write a test")).toContain("test");
+    // A query that is nothing but stop words still has to search for something.
+    expect(terms("how do you").length).toBeGreaterThan(0);
+  });
+
+  it("keeps words that only look like noise", () => {
+    // `set`, `get` and `use` are API vocabulary here, not filler.
+    for (const word of ["set", "get", "use"]) expect(terms(word)).toContain(word);
   });
 });

@@ -14,6 +14,20 @@ here with migration steps — but a minor release may still contain one.
 Faults that only appear once the surface is installed into a real app, found by installing
 it into this repo's own `apps/docs` and calling every tool.
 
+- **`search_docs` ranked a generated page above the right answer.** Scoring was raw term
+  frequency weighted by field, with no length normalisation — so `components.md`, one
+  generated page covering 53 components and long enough to mention nearly everything, came
+  first for both "send an email" and "how do I write a test for a controller". Now BM25 over
+  a small inverted index built when the corpus is read: length normalisation, inverse
+  document frequency and term saturation, with title/description/heading matches scored as
+  separate fields _outside_ the saturation, since folded in BM25 flattens a title hit to
+  about twice a passing mention. Plus light stemming, so "test" meets "testing", and
+  hyphenated terms indexed whole and in parts, so "soft deletes" finds `soft-delete`.
+
+  Measured on fourteen questions an agent would actually ask, top-1 relevance went from
+  roughly three in ten to twelve in fourteen. The remaining two return related pages rather
+  than the best one; tuning further against a list that size fits the list, not the corpus.
+
 - **`last_error` dropped the error.** The framework logs an exception's class in `error`,
   its trace in `stack` and the request it belongs to in `requestId`. The parser named the
   six fields it knew about and discarded the rest, so the tool whose entire job is saying

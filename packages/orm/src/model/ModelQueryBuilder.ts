@@ -813,26 +813,36 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
       );
     }
 
+    // Relation keys carry the *JS* spelling — `@hasMany(Issue, { foreignKey:
+    // "projectId" })` — because that is the convention everywhere else: camelCase
+    // in the application, snake_case in the database, converted on the way
+    // through. `_column()` does that conversion, but it is an override on
+    // *this* class and the subquery below is a plain `QueryBuilder`, so nothing
+    // was converting these. The result was a correct-looking decorator emitting
+    // `no such column: issues.projectId`, with the error naming a column rather
+    // than the relation that produced it.
+    const col = (table: string, key: string): string => `${table}.${_toSnakeColumn(key)}`;
+
     if (meta.type === "manyToMany") {
       const relTable = Related.table;
       sub = new QueryBuilder(meta.pivotTable!, this._sql)
         .join(
           relTable,
-          `${relTable}.${Related.primaryKey}`,
+          col(relTable, Related.primaryKey),
           "=",
-          `${meta.pivotTable}.${meta.pivotRelatedKey}`,
+          col(meta.pivotTable!, meta.pivotRelatedKey!),
         )
-        .whereColumn(`${meta.pivotTable}.${meta.pivotForeignKey}`, `${main}.${meta.localKey}`);
+        .whereColumn(col(meta.pivotTable!, meta.pivotForeignKey!), col(main, meta.localKey!));
       if (Related.softDeletes) sub.whereNull(`${relTable}.deleted_at`);
     } else {
       const relTable = Related.table;
       sub = new QueryBuilder(relTable, this._sql);
       if (meta.type === "belongsTo") {
-        sub.whereColumn(`${relTable}.${meta.localKey}`, `${main}.${meta.foreignKey}`);
+        sub.whereColumn(col(relTable, meta.localKey!), col(main, meta.foreignKey!));
       } else {
-        sub.whereColumn(`${relTable}.${meta.foreignKey}`, `${main}.${meta.localKey}`);
+        sub.whereColumn(col(relTable, meta.foreignKey!), col(main, meta.localKey!));
         if (meta.type === "morphMany" || meta.type === "morphOne") {
-          sub.where(`${relTable}.${meta.morphTypeColumn}`, this._ModelClass.name);
+          sub.where(col(relTable, meta.morphTypeColumn!), this._ModelClass.name);
         }
       }
       if (Related.softDeletes) sub.whereNull(`${relTable}.deleted_at`);

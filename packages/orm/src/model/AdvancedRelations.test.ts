@@ -168,3 +168,68 @@ describe("pivot enrichment", () => {
     expect(row[0].created_at).not.toBeNull();
   });
 });
+
+// ── Relation keys in the JS spelling ─────────────────────────────────────────
+
+/**
+ * The convention is camelCase in the application, snake_case in the database,
+ * converted on the way through. Relation keys were the one place that did not
+ * happen: `_relationSubquery` builds a plain `QueryBuilder`, and the `_column()`
+ * hook that converts is an override on `ModelQueryBuilder`, so a `foreignKey`
+ * written the way every other identifier is written produced
+ * `no such column: comments.articleId` — with the error naming a column rather
+ * than the relation that made it.
+ */
+@table("articles")
+class CamelArticle extends BaseModel {
+  title!: string;
+  @hasMany(() => CamelComment, { foreignKey: "articleId" }) comments!: HasMany<CamelComment>;
+}
+
+@table("comments")
+class CamelComment extends BaseModel {
+  articleId!: number;
+  body!: string;
+  @belongsTo(() => CamelArticle, { foreignKey: "articleId" }) article!: BelongsTo<CamelArticle>;
+}
+
+describe("relation keys accept the JS spelling", () => {
+  beforeEach(async () => {
+    const a = await CamelArticle.create({ title: "Apollo" } as never);
+    const b = await CamelArticle.create({ title: "Gemini" } as never);
+    await CamelComment.create({ articleId: a.id, body: "one" } as never);
+    await CamelComment.create({ articleId: a.id, body: "two" } as never);
+    await CamelComment.create({ articleId: b.id, body: "three" } as never);
+  });
+
+  it("counts a hasMany declared with a camelCase foreignKey", async () => {
+    const rows = (await CamelArticle.query()
+      .withCount("comments")
+      .orderBy("title")
+      .get()) as never as Array<{
+      title: string;
+      commentsCount: number;
+    }>;
+
+    expect(rows.map((r) => r.title)).toEqual(["Apollo", "Gemini"]);
+    expect(rows.map((r) => Number(r.commentsCount))).toEqual([2, 1]);
+  });
+
+  it("filters by a relation declared with a camelCase foreignKey", async () => {
+    const withTwo = await CamelArticle.query()
+      .whereHas("comments", (q) => q.where("body", "two"))
+      .get();
+
+    expect(withTwo).toHaveLength(1);
+    expect(withTwo[0]!.title).toBe("Apollo");
+  });
+
+  it("still accepts the snake_case spelling, which existing apps ship", async () => {
+    // `apps/docs` and the decorator docblocks both use it; widening the accepted
+    // form must not narrow it.
+    const rows = (await CamelArticle.query().withCount("comments").get()) as never as Array<{
+      commentsCount: number;
+    }>;
+    expect(rows.every((r) => Number.isFinite(Number(r.commentsCount)))).toBe(true);
+  });
+});

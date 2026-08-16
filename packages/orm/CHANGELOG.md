@@ -6,6 +6,25 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
+## [Unreleased]
+
+### Fixed
+
+- **Relation keys now accept the JS spelling, like every other identifier.** The convention is
+  camelCase in the application and snake_case in the database, converted on the way through —
+  and relation keys were the one place it did not happen. `@hasMany(() => Issue, { foreignKey:
+"projectId" })` type-checked and then emitted `no such column: issues.projectId`, with the
+  error naming a column rather than the relation that produced it.
+
+  `_relationSubquery()` builds its subquery with a plain `QueryBuilder`, and the `_column()`
+  hook that converts is an override on `ModelQueryBuilder`, so nothing was converting these.
+  The keys are now converted where they are qualified, which covers `withCount`, `withSum`,
+  `has`/`whereHas` and `withExists` for `hasMany`, `belongsTo`, `manyToMany` and the morph
+  relations. Both spellings resolve to the column, so apps already passing `project_id` are
+  unaffected.
+
+  Found building the first cookbook app, where a project list would not count its issues.
+
 ## [1.7.0] — 2026-08-16
 
 ### Fixed

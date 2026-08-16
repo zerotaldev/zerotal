@@ -18,6 +18,8 @@ export const ROUTES = {
   profile: "/profile",
   "profile.password.store": "/profile/password",
   "profile.store": "/profile",
+  projects: "/projects",
+  "projects.show": "/projects/:project",
   register: "/register",
   "register.store": "/register",
   "reset-password": "/reset-password",

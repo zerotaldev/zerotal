@@ -54,6 +54,21 @@ export const DEV_WORKER_ENV_VAR = "ZT_DEV";
 export const DEPLOY_ENV_VAR = "ZT_APP_ENV";
 
 /**
+ * Environment variable holding the *runtime mode* — `web`, `worker`, `console`.
+ *
+ * Separate from `APP_ENV`, which holds the deployment name, because they answer
+ * different questions and one variable cannot hold both. It used to try: every
+ * boot overwrote `APP_ENV` with the mode, so `APP_ENV=production` read back as
+ * `"console"` inside a CLI command and a guard written `if (env("APP_ENV") ===
+ * "production") refuse()` was inert exactly where destructive commands live.
+ *
+ * Written by `setAppEnv()`; read through {@link runtimeMode}. Settable by hand to
+ * force a mode — `APP_TYPE=web bun zt.ts something` — which is what the dev
+ * orchestrator does for the server it supervises.
+ */
+export const RUNTIME_MODE_VAR = "APP_TYPE";
+
+/**
  * The values of `APP_ENV` that name a runtime *mode* rather than a deployment.
  * `setAppEnv()` writes these; {@link deployEnv} recognises them to know whether
  * `APP_ENV` still holds the deployment name.
@@ -73,17 +88,18 @@ export const RUNTIME_MODES: ReadonlySet<string> = new Set([
  * The deployment name this process was started with — `production`, `staging`,
  * `local`, whatever the operator set — as opposed to the runtime *mode*.
  *
- * `APP_ENV` carries both meanings, and the second one destroys the first:
- * `setAppEnv()` overwrites it with `web` / `console` / `worker` before the app
- * boots, so a gate that asks `isProdLike(Bun.env["APP_ENV"])` after startup is
+ * `APP_ENV` used to carry both meanings, and the second destroyed the first:
+ * `setAppEnv()` overwrote it with `web` / `console` / `worker` before the app
+ * booted, so a gate asking `isProdLike(Bun.env["APP_ENV"])` after startup was
  * asking whether `"web"` is production and always getting no. That was not
  * theoretical — it silently disabled the weak-`APP_KEY` refusal and left the
- * ORM's N+1 detector wrapping every query in production.
+ * ORM's N+1 detector wrapping every query in production, and it later made
+ * `env("APP_ENV")` return `"console"` inside a seeder.
  *
- * `setAppEnv()` now preserves the original value, and this reads it back. Prefer
- * it to `Bun.env["APP_ENV"]` for **any** production decision. Config is an
- * equally correct source where it is available (`config("app.env")`), but this
- * works before config is loaded and in processes that have none.
+ * The mode now lives in its own variable ({@link RUNTIME_MODE_VAR}) and `APP_ENV`
+ * is left alone, so this is usually just a read of it. The runtime-mode branch
+ * below stays for a process started by an older launcher, or one where somebody
+ * still exports `APP_ENV=web` by hand.
  *
  * @internal
  */
@@ -99,6 +115,30 @@ export function deployEnv(): string {
   // wrong in itself and which leaked between test files sharing one process.
   if (current && !RUNTIME_MODES.has(current.toLowerCase())) return current;
   return Bun.env[DEPLOY_ENV_VAR] ?? current;
+}
+
+/**
+ * How this process is running — `web`, `worker`, or `console`.
+ *
+ * The other half of what `APP_ENV` used to mean. Providers are filtered on it
+ * (`static environments = ["console"]`), which is why getting it wrong is not a
+ * cosmetic problem: a provider is simply never asked to register, with no error
+ * and nothing missing from the logs.
+ *
+ * `fallback` is what an unset environment means, and it differs by caller:
+ * `setAppEnv()` treats a process that never declared itself as a script
+ * (`console`), while `Application.create()` has always treated one as a server
+ * (`web`) — an app constructed directly, in a test or a script, expects its
+ * web providers to register.
+ */
+export function runtimeMode(fallback = "console"): string {
+  const mode = (Bun.env[RUNTIME_MODE_VAR] ?? "").toLowerCase();
+  if (RUNTIME_MODES.has(mode)) return mode;
+
+  // A process started by an older launcher, which put the mode in `APP_ENV`.
+  // eslint-disable-next-line no-restricted-syntax -- reading the legacy location is the fallback's entire job
+  const legacy = (Bun.env["APP_ENV"] ?? "").toLowerCase();
+  return RUNTIME_MODES.has(legacy) ? legacy : fallback;
 }
 
 /**

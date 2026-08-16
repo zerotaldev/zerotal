@@ -1,4 +1,4 @@
-import { deployEnv, env } from "zerotal";
+import { env } from "zerotal";
 import { Seeder } from "zerotal/orm";
 import { Hash } from "zerotal/auth";
 import { User } from "@app/models/User.ts";
@@ -28,11 +28,10 @@ const INSECURE_DEFAULT = "password";
 function seedPassword(): string {
   const password = env("SEED_PASSWORD", "");
   if (password) return password;
-  // `deployEnv()`, not `env("APP_ENV")`. The framework overwrites APP_ENV with the
-  // *runtime mode* at boot — inside a console command it reads "console", not the
-  // "development" this project's .env sets. A guard written the obvious way is a
-  // guard that never fires, which for a seeder is the wrong direction to fail in.
-  const where = deployEnv();
+  // The obvious spelling, and it is now the correct one: `APP_ENV` holds the
+  // deployment name in every process, and the runtime mode lives in `APP_TYPE`.
+  // Before 1.7.1 this read "console" inside a seeder and the guard never fired.
+  const where = env("APP_ENV", "local");
   if (where !== "local" && where !== "development") {
     throw new Error(
       "Refusing to seed accounts with the default password outside local development. " +

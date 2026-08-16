@@ -22,7 +22,11 @@
  */
 import { join } from "node:path";
 import { ConfigError } from "../errors/ConfigError.ts";
-import { DEPLOY_ENV_VAR, RUNTIME_MODES as _RUNTIME_MODES } from "../support/env.ts";
+import {
+  DEPLOY_ENV_VAR,
+  RUNTIME_MODES as _RUNTIME_MODES,
+  RUNTIME_MODE_VAR as _RUNTIME_MODE_VAR,
+} from "../support/env.ts";
 
 // ── basePath() ────────────────────────────────────────────────────────────────
 
@@ -46,13 +50,19 @@ export function basePath(...segments: string[]): string {
 // ── setAppEnv() ───────────────────────────────────────────────────────────────
 
 /**
- * Set `APP_ENV` from the CLI command name — call this in `zerotal.ts` BEFORE
- * the dynamic import of `bootstrap/app.ts` so `Application.create()` sees
- * the correct environment.
+ * Set `APP_TYPE` — the runtime mode — from the CLI command name. Call it in
+ * `zerotal.ts` BEFORE the dynamic import of `bootstrap/app.ts`, so
+ * `Application.create()` sees the mode it should boot providers for.
  *
- * If `APP_ENV` is already set (e.g. from `.env` or the shell), this is a no-op.
+ * **`APP_ENV` is not touched.** That variable holds the deployment name the
+ * operator set, and it is what answers "is this production?". The two used to
+ * share one variable and the mode won, so `APP_ENV=production` read back as
+ * `"console"` in every CLI command — see {@link RUNTIME_MODE_VAR}.
  *
- * | Command              | APP_ENV   |
+ * An `APP_TYPE` already in the environment wins over the command, which is how
+ * the dev orchestrator boots a supervised server as `web`.
+ *
+ * | Command              | APP_TYPE  |
  * |----------------------|-----------|
  * | serve / start / s    | web       |
  * | dev / d              | web       |
@@ -71,41 +81,46 @@ export function setAppEnv(command?: string): void {
   const current = Bun.env["APP_ENV"];
   const environment = Bun.env as Record<string, string>;
 
-  // Preserve the deployment name before it is overwritten. Every branch below
-  // replaces `APP_ENV` with a runtime mode, which is why six different gates that
-  // asked "is this production?" of `Bun.env["APP_ENV"]` were reading `"web"` and
-  // quietly answering no — including the weak-`APP_KEY` refusal and the ORM's
-  // N+1 detector. `deployEnv()` reads this back; see {@link DEPLOY_ENV_VAR}.
+  // `APP_ENV` is left alone. It holds the deployment name the operator set —
+  // `production`, `staging`, `local` — and it is the only place that answers
+  // "is this production?". This function used to overwrite it with the runtime
+  // mode, which is why six gates asking that question of `Bun.env["APP_ENV"]`
+  // read `"web"` and quietly answered no, including the weak-`APP_KEY` refusal
+  // and the ORM's N+1 detector; a preserved copy patched those, and then
+  // `env("APP_ENV")` still returned `"console"` inside a seeder, because the
+  // copy was only ever read through `deployEnv()`.
   //
-  // The guard is what protects a re-entrant call: `current` is only ever written
-  // when it is a genuine deployment name, so a second `setAppEnv` — which sees the
-  // runtime mode this one just wrote — cannot stamp `"web"` over `"production"`.
+  // Two questions, two variables. The mode goes to `APP_TYPE`.
   if (current && !_RUNTIME_MODES.has(current.toLowerCase())) {
+    // Still mirrored, for anything already reading the preserved copy.
     environment[DEPLOY_ENV_VAR] = current;
   }
 
+  // Deliberately no attempt to "migrate" a legacy `APP_ENV=web` into `APP_TYPE`
+  // and put a deployment name back. `RUNTIME_MODES` contains `test` — which
+  // `zt test` sets as a *deployment* name — so the two sets overlap and any
+  // rewrite here would eventually clobber the one thing this change exists to
+  // protect. `runtimeMode()` reads the legacy location instead, where a wrong
+  // guess costs a mode rather than an environment.
+
+  // An explicit `APP_TYPE` wins: it is how the dev orchestrator tells the server
+  // it supervises to boot as `web` regardless of the command that started it.
+  const explicit = environment[_RUNTIME_MODE_VAR];
+  if (explicit && _RUNTIME_MODES.has(explicit.toLowerCase())) return;
+
   if (["serve", "start", "s", "dev", "d"].includes(normalizedCommand)) {
-    // Always force web mode for the HTTP server — deployment-env names like
-    // "local" or "production" must not leave the app in console mode.
-    //
     // `dev` belongs here with `serve`, and the reason is not cosmetic. Dev mode's
     // process 1 boots the app purely to ask its providers what to run, and a
-    // provider is only asked if `static environments` includes the env it booted
+    // provider is only asked if `static environments` includes the mode it booted
     // under. Falling through to "console" below would silently drop every
     // web-only provider — no error, no empty tab, just a process that never
     // appears — and would make `zt dev` and `serve --dev` disagree about what
     // dev mode consists of.
-    if (!current || !_RUNTIME_MODES.has(current.toLowerCase())) {
-      environment["APP_ENV"] = "web";
-    }
+    environment[_RUNTIME_MODE_VAR] = "web";
   } else if (["worker", "queue:work"].includes(normalizedCommand)) {
-    if (!current || !_RUNTIME_MODES.has(current.toLowerCase())) {
-      environment["APP_ENV"] = "worker";
-    }
-  } else if (!current || !_RUNTIME_MODES.has(current.toLowerCase())) {
-    // Mirror the serve/worker branches: a deployment-env name like "local" or
-    // "production" must not leave the app in web mode for a CLI command.
-    environment["APP_ENV"] = "console";
+    environment[_RUNTIME_MODE_VAR] = "worker";
+  } else {
+    environment[_RUNTIME_MODE_VAR] = "console";
   }
 }
 

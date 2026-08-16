@@ -42,7 +42,7 @@ import { NotFoundError } from "../errors/HttpError.ts";
 import type { ContainerBindings } from "../container/types.ts";
 import { dispatchRequest } from "../router/RouteHandler.ts";
 import type { ProviderHooks } from "../router/RouteHandler.ts";
-import { isProdLike, deployEnv } from "../support/env.ts";
+import { isProdLike, deployEnv, runtimeMode } from "../support/env.ts";
 import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { runBootDoctor } from "./BootDoctor.ts";
 import { runConfigValidators } from "../config/validation.ts";
@@ -501,8 +501,12 @@ export class Application {
       );
     }
 
-    // eslint-disable-next-line no-restricted-syntax -- runtime mode is exactly what Application.create() wants; _normaliseEnv maps deployment names onto it
-    const rawEnv = options.env ?? Bun.env["APP_ENV"] ?? "web";
+    // The runtime mode, which is what provider filtering is keyed on. Reading
+    // `APP_ENV` here used to be right only because `setAppEnv()` had overwritten
+    // it with the mode; now the mode has its own variable and this asks for it
+    // directly. `_normaliseEnv` still maps a deployment name onto a mode, for an
+    // explicit `options.env`.
+    const rawEnv = options.env ?? runtimeMode("web");
     const resolvedEnv: Environment = _normaliseEnv(rawEnv);
 
     const app = new Application();

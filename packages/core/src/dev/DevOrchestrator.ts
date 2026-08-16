@@ -166,7 +166,7 @@ export class DevOrchestrator {
         cwd: this._cwd,
         env: {
           ...Bun.env,
-          APP_ENV: "web",
+          APP_TYPE: "web",
           // Mark the worker as developer-supervised. APP_ENV above is the
           // runtime mode, not a deployment name, so it cannot carry this —
           // without the flag the worker looks production-like to every

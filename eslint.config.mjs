@@ -65,10 +65,15 @@ export default tseslint.config(
       // ContextRegistry, AuthenticatableUser, …) — apps merge members into them.
       "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "always" }],
 
-      // `APP_ENV` means two things and the second destroys the first: it is the
-      // deployment name an operator sets, and it is the runtime mode `setAppEnv()`
-      // overwrites it with before the app boots. Reading it to answer "is this
-      // production?" therefore asks whether "web" is production, and gets no.
+      // `APP_ENV` used to mean two things and the second destroyed the first: the
+      // deployment name an operator sets, and the runtime mode `setAppEnv()`
+      // overwrote it with before the app booted. Reading it to answer "is this
+      // production?" therefore asked whether "web" is production, and got no.
+      //
+      // Split in 1.7.1 — the mode lives in `APP_TYPE` now — so `APP_ENV` is
+      // trustworthy again. The rule stays because a *raw* read still bypasses the
+      // fallbacks that cope with a process started by an older launcher, and
+      // because the history below is what it cost to learn.
       //
       // That mistake shipped fourteen times across seven packages before anyone
       // went looking: a weak APP_KEY never refused a boot, N+1 detection ran in
@@ -86,13 +91,13 @@ export default tseslint.config(
           selector:
             "MemberExpression[object.object.name='Bun'][object.property.name='env'][property.value='APP_ENV']",
           message:
-            'Bun.env["APP_ENV"] holds the runtime mode after setAppEnv(). Use deployEnv() for the deployment name, or config("app.env"). If you genuinely want the runtime mode, disable this rule on the line with a reason.',
+            'APP_ENV holds the deployment name; the runtime mode is APP_TYPE. Read the mode with runtimeMode(), and prefer deployEnv() or config("app.env") for the deployment name — both cope with a process started by an older launcher. If you genuinely want the raw variable, disable this rule on the line with a reason.',
         },
         {
           selector:
             "MemberExpression[object.object.name='Bun'][object.property.name='env'][property.name='APP_ENV']",
           message:
-            'Bun.env.APP_ENV holds the runtime mode after setAppEnv(). Use deployEnv() for the deployment name, or config("app.env"). If you genuinely want the runtime mode, disable this rule on the line with a reason.',
+            'APP_ENV holds the deployment name; the runtime mode is APP_TYPE. Read the mode with runtimeMode(), and prefer deployEnv() or config("app.env") for the deployment name. If you genuinely want the raw variable, disable this rule on the line with a reason.',
         },
       ],
     },

@@ -210,111 +210,92 @@ describe("fluent()", () => {
 import { setAppEnv, env, requireEnv } from "./index.ts";
 
 describe("setAppEnv()", () => {
-  function withoutAppEnv(fn: () => void) {
-    const saved = Bun.env["APP_ENV"];
-    delete (Bun.env as Record<string, string | undefined>)["APP_ENV"];
+  /**
+   * The contract changed in 1.7.1: `setAppEnv` writes the runtime mode to
+   * `APP_TYPE` and never touches `APP_ENV`, which holds the deployment name.
+   * They used to share one variable and the mode won, so `APP_ENV=production`
+   * read back as `"console"` in every CLI command — and a guard written
+   * `if (env("APP_ENV") === "production") refuse()` was inert exactly where
+   * destructive commands live.
+   */
+  function isolated(fn: () => void) {
+    const bag = Bun.env as Record<string, string | undefined>;
+    const saved = { env: bag["APP_ENV"], type: bag["APP_TYPE"], preserved: bag["ZT_APP_ENV"] };
+    delete bag["APP_ENV"];
+    delete bag["APP_TYPE"];
+    delete bag["ZT_APP_ENV"];
     try {
       fn();
     } finally {
-      if (saved !== undefined) (Bun.env as Record<string, string>)["APP_ENV"] = saved;
-      else delete (Bun.env as Record<string, string | undefined>)["APP_ENV"];
+      for (const [key, value] of [
+        ["APP_ENV", saved.env],
+        ["APP_TYPE", saved.type],
+        ["ZT_APP_ENV", saved.preserved],
+      ] as const) {
+        if (value !== undefined) bag[key] = value;
+        else delete bag[key];
+      }
     }
   }
 
-  it('sets APP_ENV to "web" for "serve"', () => {
-    withoutAppEnv(() => {
-      setAppEnv("serve");
-      expect(Bun.env["APP_ENV"]).toBe("web");
+  const modeFor = (command: string | undefined): string | undefined => {
+    setAppEnv(command);
+    return Bun.env["APP_TYPE"];
+  };
+
+  it('sets APP_TYPE to "web" for the server commands', () => {
+    for (const command of ["serve", "start", "s", "dev", "d"]) {
+      isolated(() => expect(modeFor(command)).toBe("web"));
+    }
+  });
+
+  it('sets APP_TYPE to "worker" for the worker commands', () => {
+    for (const command of ["worker", "queue:work"]) {
+      isolated(() => expect(modeFor(command)).toBe("worker"));
+    }
+  });
+
+  it('sets APP_TYPE to "console" for anything else, including no command', () => {
+    isolated(() => expect(modeFor("migrate")).toBe("console"));
+    isolated(() => expect(modeFor(undefined)).toBe("console"));
+  });
+
+  it("never touches APP_ENV, whatever the command", () => {
+    // The whole point. A deployment name survives every command.
+    for (const command of ["serve", "worker", "migrate", "db:seed"]) {
+      isolated(() => {
+        (Bun.env as Record<string, string>)["APP_ENV"] = "production";
+        setAppEnv(command);
+        expect(Bun.env["APP_ENV"]).toBe("production");
+      });
+    }
+  });
+
+  it("reads the deployment name back through env() inside a console command", () => {
+    // The reproduction from the seeder that found this: the documented variable,
+    // read the documented way, after the framework has started.
+    isolated(() => {
+      (Bun.env as Record<string, string>)["APP_ENV"] = "development";
+      setAppEnv("db:seed");
+      expect(env("APP_ENV", "(unset)")).toBe("development");
+      expect(Bun.env["APP_TYPE"]).toBe("console");
     });
   });
 
-  it('sets APP_ENV to "web" for "start"', () => {
-    withoutAppEnv(() => {
-      setAppEnv("start");
-      expect(Bun.env["APP_ENV"]).toBe("web");
-    });
-  });
-
-  it('sets APP_ENV to "web" for "s"', () => {
-    withoutAppEnv(() => {
-      setAppEnv("s");
-      expect(Bun.env["APP_ENV"]).toBe("web");
-    });
-  });
-
-  it('sets APP_ENV to "worker" for "worker"', () => {
-    withoutAppEnv(() => {
-      setAppEnv("worker");
-      expect(Bun.env["APP_ENV"]).toBe("worker");
-    });
-  });
-
-  it('sets APP_ENV to "worker" for "queue:work"', () => {
-    withoutAppEnv(() => {
-      setAppEnv("queue:work");
-      expect(Bun.env["APP_ENV"]).toBe("worker");
-    });
-  });
-
-  it('sets APP_ENV to "console" for unknown commands', () => {
-    withoutAppEnv(() => {
-      setAppEnv("migrate");
-      expect(Bun.env["APP_ENV"]).toBe("console");
-    });
-  });
-
-  it("is a no-op when APP_ENV is already a runtime mode", () => {
-    withoutAppEnv(() => {
-      (Bun.env as Record<string, string>)["APP_ENV"] = "testing";
-      setAppEnv("serve");
-      expect(Bun.env["APP_ENV"]).toBe("testing");
-    });
-  });
-
-  it('overrides deployment-env name "local" to "web" for serve', () => {
-    withoutAppEnv(() => {
-      (Bun.env as Record<string, string>)["APP_ENV"] = "local";
-      setAppEnv("serve");
-      expect(Bun.env["APP_ENV"]).toBe("web");
-    });
-  });
-
-  it('overrides deployment-env name "production" to "web" for serve', () => {
-    withoutAppEnv(() => {
-      (Bun.env as Record<string, string>)["APP_ENV"] = "production";
-      setAppEnv("serve");
-      expect(Bun.env["APP_ENV"]).toBe("web");
-    });
-  });
-
-  it('overrides deployment-env name "local" to "worker" for worker command', () => {
-    withoutAppEnv(() => {
-      (Bun.env as Record<string, string>)["APP_ENV"] = "local";
-      setAppEnv("worker");
-      expect(Bun.env["APP_ENV"]).toBe("worker");
-    });
-  });
-
-  it('remaps deployment-env name "local" to "console" for CLI commands', () => {
-    withoutAppEnv(() => {
-      (Bun.env as Record<string, string>)["APP_ENV"] = "local";
+  it("lets an explicit APP_TYPE win over the command", () => {
+    // How the dev orchestrator boots the server it supervises as `web`.
+    isolated(() => {
+      (Bun.env as Record<string, string>)["APP_TYPE"] = "web";
       setAppEnv("route:list");
-      expect(Bun.env["APP_ENV"]).toBe("console");
+      expect(Bun.env["APP_TYPE"]).toBe("web");
     });
   });
 
-  it("preserves an explicit runtime mode for CLI commands", () => {
-    withoutAppEnv(() => {
-      (Bun.env as Record<string, string>)["APP_ENV"] = "repl";
-      setAppEnv("route:list");
-      expect(Bun.env["APP_ENV"]).toBe("repl");
-    });
-  });
-
-  it('defaults to "console" when command is undefined', () => {
-    withoutAppEnv(() => {
-      setAppEnv(undefined);
-      expect(Bun.env["APP_ENV"]).toBe("console");
+  it("mirrors a deployment name to the preserved copy, for anything still reading it", () => {
+    isolated(() => {
+      (Bun.env as Record<string, string>)["APP_ENV"] = "staging";
+      setAppEnv("serve");
+      expect(Bun.env["ZT_APP_ENV"]).toBe("staging");
     });
   });
 });

@@ -10,6 +10,35 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [1.7.1] — 2026-08-16
 
+### Changed
+
+- **`APP_ENV` is the deployment name; the runtime mode moved to `APP_TYPE`.** They shared one
+  variable and the mode won: `setAppEnv()` overwrote `APP_ENV` with `web` / `worker` /
+  `console` at boot, so an app whose `.env` said `APP_ENV=development` read `"console"` back
+  from `env("APP_ENV")` inside every CLI command.
+
+  The dangerous direction is the one nobody hits in development. A guard written the obvious
+  way —
+
+  ```ts
+  if (env("APP_ENV") === "production") refuseToWipe();
+  ```
+
+  — was **inert in every console command**, which is exactly where destructive commands live.
+  1.7.0 patched the framework's own gates by parking a copy that `deployEnv()` read back, but
+  application code reading the documented variable the documented way still got the mode.
+
+  Two questions, two variables. `setAppEnv()` no longer touches `APP_ENV` at all and writes
+  the mode to `APP_TYPE`; `runtimeMode()` reads it, and falls back to the legacy location so a
+  process started by an older launcher still boots the right providers. An explicit
+  `APP_TYPE` wins over the command, which is how `serve --dev` boots its supervised server as
+  `web`. `deployEnv()` and `config("app.env")` are unchanged and still correct.
+
+  No action needed in an app unless it sets `APP_ENV=web` by hand to force web mode — that
+  still works, and `APP_TYPE=web` is the spelling to move to.
+
+  Found seeding the first cookbook app, where a guard fired that should not have.
+
 ### Fixed
 
 - **`Router.raw()` did not answer `HEAD`.** The pipeline derives a `HEAD` handler from every

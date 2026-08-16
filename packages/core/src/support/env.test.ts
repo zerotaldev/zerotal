@@ -90,14 +90,17 @@ describe("devSurfacesEnabled()", () => {
     expect(devSurfacesEnabled()).toBe(false);
   });
 
-  it("survives setAppEnv() replacing APP_ENV with the runtime mode", () => {
-    // The bug this exists for: a scaffolded app with APP_ENV=development in its
-    // `.env` ran `zt serve`, setAppEnv() rewrote APP_ENV to "web", and every dev
-    // surface read that and switched itself off — devtools never appeared, and a
-    // plain `serve` rendered production error pages in development.
+  it("leaves APP_ENV alone across setAppEnv(), so the deployment name is readable", () => {
+    // The bug this exists for, in two parts. First: a scaffolded app with
+    // APP_ENV=development ran `zt serve`, setAppEnv() rewrote APP_ENV to "web",
+    // and every dev surface read that and switched itself off. That was patched
+    // by preserving a copy. Second, and why the variable is now split: the copy
+    // was only reachable through deployEnv(), so `env("APP_ENV")` in a seeder
+    // still returned the mode.
     setEnv("development", undefined);
     setAppEnv("serve");
-    expect(env["APP_ENV"]).toBe("web");
+    expect(env["APP_ENV"]).toBe("development");
+    expect(env["APP_TYPE"]).toBe("web");
     expect(deployEnv()).toBe("development");
     expect(devSurfacesEnabled()).toBe(true);
   });

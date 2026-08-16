@@ -109,6 +109,20 @@ export default tseslint.config(
     },
   },
 
+  // ── Scaffolded apps lint under someone else's config ────────────────────────
+  //
+  // `apps/**` is what `create-zerotal` emits, and it is written to be clean under
+  // typescript-eslint's *recommended* set — which is what a new project gets.
+  // This repo's config is deliberately more permissive in places (it allows
+  // `interface X extends Y {}` via `no-empty-object-type`'s `allowInterfaces`),
+  // so a suppression the template needs out there reads as dead in here.
+  // Reporting it would push us to delete a comment that is load-bearing for every
+  // user who is not us.
+  {
+    files: ["apps/**/*.{ts,tsx}"],
+    linterOptions: { reportUnusedDisableDirectives: "off" },
+  },
+
   // ── Client-side bundles run in the browser (window/document/CustomEvent…) ────
   {
     files: ["packages/*/src/client/**", "packages/flow/src/**"],

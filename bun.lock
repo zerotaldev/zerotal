@@ -44,9 +44,29 @@
         "@types/node": "^26.0.0",
       },
     },
+    "apps/tracker-inertia": {
+      "name": "tracker-inertia",
+      "version": "0.0.1",
+      "dependencies": {
+        "@inertiajs/react": "^3.0.0",
+        "@zerotal/devtools": "workspace:*",
+        "@zerotal/inertia": "workspace:*",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "zerotal": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.14",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "bun-plugin-tailwind": "latest",
+        "tailwindcss": "^4.0.0",
+        "typescript": "^5.8.0",
+      },
+    },
     "packages/admin": {
       "name": "@zerotal/admin",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/cache": "workspace:*",
         "@zerotal/core": "workspace:*",
@@ -72,7 +92,7 @@
     },
     "packages/ai": {
       "name": "@zerotal/ai",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/queue": "workspace:*",
@@ -90,7 +110,7 @@
     },
     "packages/arch": {
       "name": "@zerotal/arch",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "bin": {
         "zerotal-arch": "./src/bin/mcp.ts",
       },
@@ -104,7 +124,7 @@
     },
     "packages/audit": {
       "name": "@zerotal/audit",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -115,7 +135,7 @@
     },
     "packages/auth": {
       "name": "@zerotal/auth",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@simplewebauthn/server": "^13.1.0",
         "@zerotal/cache": "workspace:*",
@@ -129,7 +149,7 @@
     },
     "packages/broadcasting": {
       "name": "@zerotal/broadcasting",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -139,7 +159,7 @@
     },
     "packages/cache": {
       "name": "@zerotal/cache",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -149,7 +169,7 @@
     },
     "packages/client": {
       "name": "@zerotal/client",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -159,7 +179,7 @@
     },
     "packages/core": {
       "name": "@zerotal/core",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@js-temporal/polyfill": "^0.5.1",
       },
@@ -169,7 +189,7 @@
     },
     "packages/create-zerotal": {
       "name": "create-zerotal",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "bin": {
         "create-zerotal": "./src/index.ts",
       },
@@ -179,7 +199,7 @@
     },
     "packages/devtools": {
       "name": "@zerotal/devtools",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -190,7 +210,7 @@
     },
     "packages/flow": {
       "name": "@zerotal/flow",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@alpinejs/anchor": "^3.14.9",
         "@alpinejs/collapse": "^3.14.9",
@@ -219,7 +239,7 @@
     },
     "packages/flow-ui": {
       "name": "@zerotal/flow-ui",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/flow": "workspace:*",
@@ -233,7 +253,7 @@
     },
     "packages/i18n": {
       "name": "@zerotal/i18n",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -243,7 +263,7 @@
     },
     "packages/inertia": {
       "name": "@zerotal/inertia",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -253,8 +273,8 @@
         "typescript": "^5.8.0",
       },
       "peerDependencies": {
-        "@inertiajs/react": "^1 || ^2",
-        "@inertiajs/vue3": "^1 || ^2",
+        "@inertiajs/react": "^1 || ^2 || ^3",
+        "@inertiajs/vue3": "^1 || ^2 || ^3",
         "react": "^18 || ^19",
         "react-dom": "^18 || ^19",
         "vue": "^3",
@@ -269,7 +289,7 @@
     },
     "packages/media": {
       "name": "@zerotal/media",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -290,7 +310,7 @@
     },
     "packages/monitor": {
       "name": "@zerotal/monitor",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/flow": "workspace:*",
@@ -314,7 +334,7 @@
     },
     "packages/notifications": {
       "name": "@zerotal/notifications",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -327,7 +347,7 @@
     },
     "packages/orm": {
       "name": "@zerotal/orm",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/validator": "workspace:*",
@@ -338,7 +358,7 @@
     },
     "packages/queue": {
       "name": "@zerotal/queue",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -349,7 +369,7 @@
     },
     "packages/scheduler": {
       "name": "@zerotal/scheduler",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -359,7 +379,7 @@
     },
     "packages/session": {
       "name": "@zerotal/session",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -369,7 +389,7 @@
     },
     "packages/telemetry": {
       "name": "@zerotal/telemetry",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -379,7 +399,7 @@
     },
     "packages/tenancy": {
       "name": "@zerotal/tenancy",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -390,7 +410,7 @@
     },
     "packages/testing": {
       "name": "@zerotal/testing",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/notifications": "workspace:*",
@@ -404,7 +424,7 @@
     },
     "packages/validator": {
       "name": "@zerotal/validator",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -414,7 +434,7 @@
     },
     "packages/zerotal": {
       "name": "zerotal",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "dependencies": {
         "@zerotal/auth": "workspace:*",
         "@zerotal/cache": "workspace:*",
@@ -538,6 +558,16 @@
 
     "@img/sharp-win32-x64": ["@img/sharp-win32-x64@0.34.5", "", { "os": "win32", "cpu": "x64" }, "sha512-+29YMsqY2/9eFEiW93eqWnuLcWcufowXewwSNIT6UwZdUUCrM3oFjMWH/Z6/TMmb4hlFenmfAVbpWeup2jryCw=="],
 
+    "@inertiajs/core": ["@inertiajs/core@3.6.1", "", { "dependencies": { "@jridgewell/trace-mapping": "^0.3.31", "es-toolkit": "^1.33.0", "laravel-precognition": "^2.0.0" }, "peerDependencies": { "axios": "^1.15.2" }, "optionalPeers": ["axios"] }, "sha512-h6+qqkKfpcoZvxWENy/F5yyiD00PIm8lK+ruQkt6HGk4d3N0LMS9GeUbWVQ4+TDZzIxP/vQLurPktnYvDhYeew=="],
+
+    "@inertiajs/react": ["@inertiajs/react@3.6.1", "", { "dependencies": { "@inertiajs/core": "3.6.1", "es-toolkit": "^1.33.0", "laravel-precognition": "^2.0.0" }, "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" } }, "sha512-z5TJIj80TmLqhJE6FD6RwfmbcYPFuMT63orrXayLW084yYAKLye4i9aeeCt6+mDxC1hMMP16Uf68ePiLtl0saA=="],
+
+    "@jridgewell/resolve-uri": ["@jridgewell/resolve-uri@3.1.2", "", {}, "sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw=="],
+
+    "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
+
+    "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
     "@js-temporal/polyfill": ["@js-temporal/polyfill@0.5.1", "", { "dependencies": { "jsbi": "^4.3.0" } }, "sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ=="],
 
     "@levischuck/tiny-cbor": ["@levischuck/tiny-cbor@0.2.11", "", {}, "sha512-llBRm4dT4Z89aRsm6u2oEZ8tfwL/2l6BwpZ7JcyieouniDECM5AqNgr/y08zalEIvW3RSK4upYyybDcmjXqAow=="],
@@ -637,6 +667,10 @@
     "@types/json-schema": ["@types/json-schema@7.0.15", "", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
 
     "@types/node": ["@types/node@26.1.2", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-Vu4a5UFA9rIIFJ7rB/Vaafh9lrCQszopTCx6KjFboXTGQbPNasehVR5TEiithSDGyd1DEiUByggTZsg8jukeIg=="],
+
+    "@types/react": ["@types/react@19.2.18", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-AnzbBERsrLKtk2XSfTbYRLjQPdy116Sty4q+T+Bp3IC4l6jNBvreVPAHmpq9qhXQM7CXZPjLVmGMw9sy+hxQ3w=="],
+
+    "@types/react-dom": ["@types/react-dom@19.2.4", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-Bsc+QHgp+P/F02XDzNCY9jnZNCUuLki36KT7VKrTXXLdHf+vHMNZnW1rVu5DNW/rCK+fya3DATySbLM4yhtKUw=="],
 
     "@types/unist": ["@types/unist@3.0.3", "", {}, "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q=="],
 
@@ -758,6 +792,8 @@
 
     "cssesc": ["cssesc@3.0.0", "", { "bin": { "cssesc": "bin/cssesc" } }, "sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg=="],
 
+    "csstype": ["csstype@3.2.3", "", {}, "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ=="],
+
     "debug": ["debug@4.4.3", "", { "dependencies": { "ms": "^2.1.3" } }, "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA=="],
 
     "deep-is": ["deep-is@0.1.4", "", {}, "sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ=="],
@@ -765,6 +801,8 @@
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
     "entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
+
+    "es-toolkit": ["es-toolkit@1.50.0", "", {}, "sha512-OyZKhUVvEep9ITEiwHn8GKnMRQIVqoSIX7WnRbkWgJkllCujilqP2rD0u979tkl8wqyc8ICwlc1UBVv/Sl1G6w=="],
 
     "escape-string-regexp": ["escape-string-regexp@4.0.0", "", {}, "sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA=="],
 
@@ -833,6 +871,8 @@
     "json-stable-stringify-without-jsonify": ["json-stable-stringify-without-jsonify@1.0.1", "", {}, "sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw=="],
 
     "keyv": ["keyv@4.5.4", "", { "dependencies": { "json-buffer": "3.0.1" } }, "sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw=="],
+
+    "laravel-precognition": ["laravel-precognition@2.0.0", "", { "dependencies": { "es-toolkit": "^1.32.0" }, "peerDependencies": { "axios": "^1.4.0" }, "optionalPeers": ["axios"] }, "sha512-dmA4HGc9m+TsVNsJs9/XQBI8u6j7coilN+qKkBuhuXQzH3HypwS/c5dFQ4UqUGjBbcxIM7zdk91kM/SRZwIvWQ=="],
 
     "levn": ["levn@0.4.1", "", { "dependencies": { "prelude-ls": "^1.2.1", "type-check": "~0.4.0" } }, "sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ=="],
 
@@ -913,6 +953,8 @@
     "tailwindcss": ["tailwindcss@4.3.3", "", {}, "sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ=="],
 
     "tinyglobby": ["tinyglobby@0.2.17", "", { "dependencies": { "fdir": "^6.5.0", "picomatch": "^4.0.4" } }, "sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g=="],
+
+    "tracker-inertia": ["tracker-inertia@workspace:apps/tracker-inertia"],
 
     "ts-api-utils": ["ts-api-utils@2.5.0", "", { "peerDependencies": { "typescript": ">=4.8.4" } }, "sha512-OJ/ibxhPlqrMM0UiNHJ/0CKQkoKF243/AEmplt3qpRgkW8VG7IfOS41h7V8TjITqdByHzrjcS/2si+y4lIh8NA=="],
 

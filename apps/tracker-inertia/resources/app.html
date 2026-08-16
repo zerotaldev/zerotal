@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>tracker-inertia</title>
+
+    <link rel="icon" href="/zt.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#191922" media="(prefers-color-scheme: dark)" />
+
+    <!--
+      Resolve the theme before the first paint. Without this the page renders in
+      light mode for a frame and then flips, which is very visible on a dark
+      background. Kept inline and synchronous on purpose — a deferred script is
+      already too late. The storage key matches the one @zerotal/flow-ui uses, so
+      an app and its admin panel stay on the same theme.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("zerotal-theme");
+          var dark = stored
+            ? stored === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.toggle("dark", dark);
+        } catch (e) {
+          /* private mode / storage disabled — fall through to light */
+        }
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/assets/app.css" />
+    <script type="module" src="/assets/app.js"></script>
+  </head>
+  <body>
+    <!-- @inertia -->
+  </body>
+</html>

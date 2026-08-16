@@ -6,6 +6,19 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
+## [Unreleased]
+
+## [1.7.1] — 2026-08-16
+
+### Fixed
+
+- **The `@inertiajs/*` peer range excluded v3.** This package advertises "full Inertia v3
+  protocol support" and `create-zerotal`'s React and Vue templates install `^3.0.0`, but the
+  peer range read `^1 || ^2` — so following our own documentation, with our own scaffolder,
+  produced a peer-dependency warning, and a stricter installer than Bun would have refused
+  outright. Widened to `^1 || ^2 || ^3`. Found while scaffolding the first Inertia cookbook
+  app, which resolved `@inertiajs/react@3.6.1`.
+
 ## [1.7.0] — 2026-08-16
 
 ### Added

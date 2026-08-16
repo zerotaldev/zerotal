@@ -39,8 +39,8 @@
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19",
     "vue": "^3",
-    "@inertiajs/react": "^1 || ^2",
-    "@inertiajs/vue3": "^1 || ^2"
+    "@inertiajs/react": "^1 || ^2 || ^3",
+    "@inertiajs/vue3": "^1 || ^2 || ^3"
   },
   "peerDependenciesMeta": {
     "react": {

@@ -482,3 +482,53 @@ describe("findApp", () => {
     expect(await findApp(FIXTURE_ROOT)).toBeUndefined();
   });
 });
+
+// ── Workspace layouts ─────────────────────────────────────────────────────────
+
+/**
+ * `node_modules/@zerotal/*` is a symlink in every workspace — this monorepo,
+ * `bun link`, any app developed against a checkout — and `Bun.Glob` will not
+ * descend into one, `followSymlinks` or not.
+ *
+ * That is not a corner case: it is how a framework contributor's own app is laid
+ * out, and it made `installedPackages()` return nothing for `apps/docs`, which
+ * has seventeen. `app_info` reported an empty package list and `arch:install`
+ * wrote generic guidance with none of the per-package sections that are the
+ * whole reason it is composed rather than canned.
+ *
+ * The fixture builds the symlink for real, because a fixture of ordinary
+ * directories is precisely what failed to catch this.
+ */
+describe("a workspace's symlinked node_modules", () => {
+  it("finds packages a glob would walk straight past", async () => {
+    const { mkdtemp, mkdir, symlink, rm, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+
+    const dir = await mkdtemp(join(tmpdir(), "zerotal-workspace-"));
+    try {
+      // A real package directory, outside node_modules…
+      const real = join(dir, "packages", "orm");
+      await mkdir(real, { recursive: true });
+      await writeFile(
+        join(real, "package.json"),
+        JSON.stringify({ name: "@zerotal/orm", version: "1.7.0", maturity: "stable" }),
+      );
+
+      // …reached through a symlink, exactly as `bun install` lays it out.
+      await mkdir(join(dir, "node_modules", "@zerotal"), { recursive: true });
+      try {
+        await symlink(real, join(dir, "node_modules", "@zerotal", "orm"), "junction");
+      } catch {
+        return; // no permission to create links on this machine — nothing to assert
+      }
+
+      const { installedPackages } = await import("../probe/topics.ts");
+      const found = await installedPackages(dir);
+      expect(found.map((p) => p.name)).toEqual(["@zerotal/orm"]);
+      expect(found[0]?.maturity).toBe("stable");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

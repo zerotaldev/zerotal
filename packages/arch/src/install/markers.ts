@@ -25,9 +25,18 @@ export type BlockOutcome =
   /** The markers are damaged; nothing was written. */
   | { status: "conflict"; reason: string };
 
-/** Wrap generated content in its markers. */
+/**
+ * Wrap generated content in its markers.
+ *
+ * The blank lines either side are not cosmetic. In Markdown, text on the line
+ * immediately after an HTML comment is parsed as part of that raw-HTML block, so
+ * `@AGENTS.md` pressed against the opening marker stops being a paragraph — and
+ * every formatter, including the `prettier --check` a Zerotal project already
+ * runs, inserts them. A generator whose output fails the project's own format
+ * gate is a generator nobody can run twice.
+ */
 export function fence(content: string): string {
-  return `${BLOCK_START}\n${content.trim()}\n${BLOCK_END}`;
+  return `${BLOCK_START}\n\n${content.trim()}\n\n${BLOCK_END}`;
 }
 
 /**

@@ -262,12 +262,27 @@ function readConfig(app: Application, key: string): unknown {
  * heard of.
  */
 export async function installedPackages(root = process.cwd()): Promise<InstalledPackage[]> {
-  const found: InstalledPackage[] = [];
-  const glob = new Bun.Glob("node_modules/{zerotal,@zerotal/*}/package.json");
+  const { readdir } = await import("node:fs/promises");
 
-  for await (const file of glob.scan({ cwd: root, onlyFiles: true })) {
+  // Listed with `readdir`, not matched with a glob. In a workspace — this
+  // monorepo, `bun link`, any app developed against a checkout — every
+  // `node_modules/@zerotal/*` is a symlink to the package directory, and glob
+  // traversal does not descend into one even with `followSymlinks`. It returned
+  // zero packages for `apps/docs`, which has seventeen. `readdir` lists the link
+  // itself and `Bun.file` follows it, so both layouts read the same.
+  const candidates = [`${root}/node_modules/zerotal`];
+  try {
+    for (const name of await readdir(`${root}/node_modules/@zerotal`)) {
+      candidates.push(`${root}/node_modules/@zerotal/${name}`);
+    }
+  } catch {
+    /* no scoped packages installed here */
+  }
+
+  const found: InstalledPackage[] = [];
+  for (const dir of candidates) {
     try {
-      const manifest = (await Bun.file(`${root}/${file}`).json()) as Record<string, unknown>;
+      const manifest = (await Bun.file(`${dir}/package.json`).json()) as Record<string, unknown>;
       const name = manifest["name"];
       const version = manifest["version"];
       if (typeof name !== "string" || typeof version !== "string") continue;

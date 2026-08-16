@@ -21,9 +21,25 @@ describe("applyBlock", () => {
   it("creates a file with the preamble above the block", () => {
     const outcome = applyBlock(undefined, "generated", "# Title\n\nSome prose.");
     expect(outcome.status).toBe("created");
+    // Blank lines inside the markers: Markdown parses text pressed against an
+    // HTML comment as part of that raw-HTML block, and every formatter adds them
+    // anyway — so the generator emits what `prettier --check` would.
     expect(outcome.status !== "conflict" && outcome.text).toBe(
-      `# Title\n\nSome prose.\n\n${BLOCK_START}\ngenerated\n${BLOCK_END}\n`,
+      `# Title\n\nSome prose.\n\n${BLOCK_START}\n\ngenerated\n\n${BLOCK_END}\n`,
     );
+  });
+
+  it("separates the markers from the content with blank lines", () => {
+    // The regression this guards: `arch:install` wrote files that failed the
+    // `prettier --check .` the project it had just installed into already runs.
+    // Markdown parses text pressed against an HTML comment as part of that
+    // raw-HTML block, so this is correctness before it is formatting — and
+    // `apps/docs/AGENTS.md` is committed, which puts the real formatter on it.
+    const lines = fence("generated").split("\n");
+    expect(lines[0]).toBe(BLOCK_START);
+    expect(lines[1]).toBe("");
+    expect(lines[lines.length - 2]).toBe("");
+    expect(lines[lines.length - 1]).toBe(BLOCK_END);
   });
 
   it("appends to an existing file rather than displacing what is already there", () => {
@@ -285,5 +301,28 @@ describe("a second install", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("applyMcpConfig — idempotence is semantic, not textual", () => {
+  it("leaves a differently-formatted but equivalent config exactly as it found it", () => {
+    // What a formatter produces: the one-element array on a single line, where
+    // `JSON.stringify(…, 2)` would expand it. Rewriting this file would be
+    // undone by the next `prettier --write`, and re-done by the next
+    // `arch:update` — two commands that both report doing nothing, ping-ponging
+    // a tracked file between them.
+    const formatted =
+      '{\n  "mcpServers": {\n    "zerotal": {\n      "command": "bun",\n' +
+      '      "args": ["node_modules/@zerotal/arch/src/bin/mcp.ts"]\n    }\n  }\n}\n';
+
+    const outcome = applyMcpConfig(formatted, "zerotal", CLAUDE_TARGET);
+    expect(outcome.status).toBe("unchanged");
+    expect(outcome.status !== "conflict" && outcome.text).toBe(formatted);
+  });
+
+  it("still updates when the entry genuinely differs", () => {
+    const stale =
+      '{\n  "mcpServers": {\n    "zerotal": { "command": "node", "args": ["old.js"] }\n  }\n}\n';
+    expect(applyMcpConfig(stale, "zerotal", CLAUDE_TARGET).status).toBe("updated");
   });
 });

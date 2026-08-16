@@ -106,23 +106,46 @@ export async function findSurfaceFile(
   return undefined;
 }
 
-/** Every package whose snapshot this project can serve, for the "did you mean" list. */
+/**
+ * Every package whose snapshot this project can serve, for the "did you mean" list.
+ *
+ * `node_modules` is listed rather than globbed: in a workspace each
+ * `@zerotal/*` entry is a symlink to the package directory, and glob traversal
+ * does not descend into one — so the suggestion list came back empty in exactly
+ * the layout a framework contributor works in. `packages/` is a real tree and is
+ * globbed as before.
+ */
 async function availablePackages(root: string): Promise<string[]> {
+  const { readdir } = await import("node:fs/promises");
   const names = new Set<string>();
-  for (const pattern of [
-    "node_modules/{zerotal,@zerotal/*}/api-surface.md",
-    "packages/*/api-surface.md",
-  ]) {
-    try {
-      for await (const file of new Bun.Glob(pattern).scan({ cwd: root, onlyFiles: true })) {
-        const parts = file.split(/[\\/]/);
-        const dir = parts[parts.length - 2] ?? "";
-        names.add(dir === "zerotal" ? "zerotal" : `@zerotal/${dir}`);
-      }
-    } catch {
-      /* a pattern that matches nothing contributes nothing */
+
+  const linked = [`${root}/node_modules/zerotal`];
+  try {
+    for (const name of await readdir(`${root}/node_modules/@zerotal`)) {
+      linked.push(`${root}/node_modules/@zerotal/${name}`);
     }
+  } catch {
+    /* nothing installed under the scope */
   }
+  for (const dir of linked) {
+    if (!(await Bun.file(`${dir}/api-surface.md`).exists())) continue;
+    const base = dir.split(/[\\/]/).pop() ?? "";
+    names.add(base === "zerotal" ? "zerotal" : `@zerotal/${base}`);
+  }
+
+  try {
+    for await (const file of new Bun.Glob("packages/*/api-surface.md").scan({
+      cwd: root,
+      onlyFiles: true,
+    })) {
+      const parts = file.split(/[\\/]/);
+      const dir = parts[parts.length - 2] ?? "";
+      names.add(dir === "zerotal" ? "zerotal" : `@zerotal/${dir}`);
+    }
+  } catch {
+    /* a pattern that matches nothing contributes nothing */
+  }
+
   return [...names].sort();
 }
 

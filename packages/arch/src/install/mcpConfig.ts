@@ -70,10 +70,22 @@ export function applyMcpConfig(
       : {};
 
   servers[name] = serverEntry();
-  const text = JSON.stringify({ ...document, [target.key]: servers }, null, 2) + "\n";
+  const next = { ...document, [target.key]: servers };
+  const text = JSON.stringify(next, null, 2) + "\n";
 
   if (isNew) return { status: "created", text };
-  return text === existing ? { status: "unchanged", text } : { status: "updated", text };
+
+  // Compared as data, not as text. `JSON.stringify(…, 2)` expands a one-element
+  // array across three lines where a formatter collapses it, and a project's
+  // formatter settings are its own business — so a textual comparison made
+  // `arch:update` rewrite a file it had no change to make to, and the next
+  // `prettier --write` put it back. That ping-pong shows up as a dirty working
+  // tree after running two commands that both claim to be no-ops.
+  //
+  // Semantic equality ends it: when the config already says what it should, the
+  // file is returned exactly as it was found, in whatever shape its owner keeps it.
+  if (Bun.deepEquals(document, next)) return { status: "unchanged", text: existing };
+  return { status: "updated", text };
 }
 
 function describe(error: unknown): string {

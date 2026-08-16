@@ -7,6 +7,33 @@ All notable changes to this package are documented here. The format is
 **Maturity: beta.** The API is close to final and breaking changes are rare, called out
 here with migration steps — but a minor release may still contain one.
 
+## [Unreleased]
+
+### Fixed
+
+Three faults that only appear once the surface is installed into a real app, found by
+installing it into this repo's own `apps/docs`.
+
+- **Packages in a workspace were invisible.** `node_modules/@zerotal/*` is a symlink in
+  every workspace — this monorepo, `bun link`, any app developed against a checkout — and
+  `Bun.Glob` will not descend into one, `followSymlinks` or not. `installedPackages()`
+  returned nothing for an app with seventeen packages, so `app_info` reported an empty list
+  and `arch:install` wrote generic guidance with none of the per-package sections that are
+  the reason it is composed rather than canned. Listed with `readdir` now, which sees the
+  link, and read through `Bun.file`, which follows it.
+
+- **The generated Markdown failed the formatter.** `arch:install` wrote files that did not
+  pass the `prettier --check .` the project it had just installed into already runs. The
+  markers now sit on their own lines with blank lines around them — which is correctness
+  before it is formatting, since Markdown parses text pressed against an HTML comment as
+  part of that raw-HTML block.
+
+- **`arch:update` fought the formatter over `.mcp.json`.** `JSON.stringify(…, 2)` expands a
+  one-element array where a formatter collapses it, so the command rewrote a file it had no
+  change to make to, and the next `prettier --write` put it back. Idempotence is now
+  measured on the parsed data: when the config already says what it should, the file is
+  returned exactly as it was found, in whatever shape its owner keeps it.
+
 ## [1.7.0] — 2026-08-16
 
 ### Added

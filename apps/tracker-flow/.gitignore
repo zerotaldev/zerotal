@@ -1,0 +1,13 @@
+node_modules/
+.zerotal/
+*.sqlite
+.env
+public/assets/
+
+# Built by `bun zt assets:build` from resources/. Regenerated on every build, so
+# committing them means a diff on every asset change and a stale bundle whenever
+# somebody forgets. `zt.svg` stays — it is a source asset, not an output.
+public/app.js
+public/app.js.map
+public/app.css
+public/css/

@@ -81,6 +81,6 @@ export async function POST(http: HttpContext): Promise<void> {
     }
   }
 
-  http.flash("success", "Issue updated.");
+  http.flash("success", __("Issue updated."));
   http.redirect(`/projects/${project.slug}/issues/${issue.id}`, 303);
 }

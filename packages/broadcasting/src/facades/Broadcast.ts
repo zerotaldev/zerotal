@@ -58,7 +58,7 @@ export class Broadcast {
    *   return user.canJoin(roomId) ? { id: user.id, name: user.name } : null;
    * });
    */
-  static channel(pattern: string, callback: ChannelCallback): void {
+  static channel<User = unknown>(pattern: string, callback: ChannelCallback<User>): void {
     channelRegistry.register(pattern, callback);
   }
 

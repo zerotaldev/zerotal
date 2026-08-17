@@ -1,3 +1,4 @@
+import { tryCurrentApp } from "@zerotal/core";
 import {
   resolveAddress,
   type AddressInput,
@@ -5,6 +6,35 @@ import {
   type MailAttachment,
   type MailPayload,
 } from "../drivers/MailDriver.ts";
+
+/**
+ * Make an action URL absolute.
+ *
+ * A browser resolves `/projects/4` against the page it is on. An email client
+ * has no page, so a root-relative href in a delivered message is simply dead —
+ * and this is the one place the base URL cannot be left to the caller, because
+ * the caller is usually a queue job with no request to read an origin from.
+ *
+ * `config.app.url` is the origin the app already declares for exactly this.
+ * Resolution happens at render rather than in `action()` so a message can still
+ * be constructed outside an application — a unit test, or a driver being
+ * exercised on its own — where it is returned untouched.
+ *
+ * Anything already absolute is left alone, `mailto:` and `tel:` included.
+ */
+function _absoluteUrl(url: string): string {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith("//")) return url;
+
+  const base = tryCurrentApp()?.container.tryMake("config")?.get<string>("app.url");
+  if (!base) return url;
+
+  try {
+    return new URL(url, base).toString();
+  } catch {
+    // A base that is not a URL is a config error, not this message's problem.
+    return url;
+  }
+}
 
 /** Inline text styling applied to a whole line or to a single run within a line. */
 export interface TextStyle {
@@ -302,7 +332,7 @@ export class MailMessage {
     for (const l of this._introLines) parts.push(this._paragraph(l));
     if (this._actionText && this._actionUrl) {
       parts.push(
-        `<p style="margin:24px 0"><a href="${escapeHtml(this._actionUrl)}" ` +
+        `<p style="margin:24px 0"><a href="${escapeHtml(_absoluteUrl(this._actionUrl))}" ` +
           `style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;` +
           `padding:12px 20px;border-radius:8px;font-size:14px;font-weight:600">${escapeHtml(this._actionText)}</a></p>`,
       );
@@ -330,7 +360,8 @@ export class MailMessage {
   private _renderText(): string {
     const parts: string[] = [this._lineText(this._greeting ?? [{ text: "Hello," }])];
     for (const l of this._introLines) parts.push(this._lineText(l));
-    if (this._actionText && this._actionUrl) parts.push(`${this._actionText}: ${this._actionUrl}`);
+    if (this._actionText && this._actionUrl)
+      parts.push(`${this._actionText}: ${_absoluteUrl(this._actionUrl)}`);
     for (const l of this._outroLines) parts.push(this._lineText(l));
     parts.push(this._lineText(this._salutation ?? [{ text: "Regards," }]));
     return parts.join("\n\n");

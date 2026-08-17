@@ -27,11 +27,11 @@ export async function POST(http: HttpContext): Promise<void> {
   const ok = await passwordReset.reset({ email, token, password });
 
   if (!ok) {
-    http.flash("error", "This reset link is invalid or has expired.");
+    http.flash("error", __("This reset link is invalid or has expired."));
     http.redirect(`/reset-password?token=${token}&email=${encodeURIComponent(email)}`, 303);
     return;
   }
 
-  http.flash("success", "Your password has been updated. Sign in with it below.");
+  http.flash("success", __("Your password has been updated. Sign in with it below."));
   http.redirect("/login", 303);
 }

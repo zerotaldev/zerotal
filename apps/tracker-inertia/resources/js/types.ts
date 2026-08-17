@@ -13,6 +13,12 @@ export interface SharedProps {
   errors: Record<string, string>;
   /** Submitted input from a failed `validate()`, so a form can repopulate itself. */
   old: Record<string, unknown>;
+  /** The resolved locale for this request, shared by `bootstrap/app.ts`. */
+  locale: string;
+  /** That locale's message catalog, so the interface can translate in the browser. */
+  messages: Record<string, unknown>;
+  /** Every language the app ships a catalog for, for the guest-facing picker. */
+  locales: { code: string; name: string }[];
   [key: string]: unknown;
 }
 

@@ -5,6 +5,7 @@ import { loadCatalogs } from "../loadCatalogs.ts";
 import { LocaleMiddleware } from "../LocaleMiddleware.ts";
 import { I18nConfig } from "../config.ts";
 import type { I18nConfigShape } from "../config.ts";
+import { __ } from "../facades/Lang.ts";
 import "../augment.ts";
 
 /**
@@ -50,5 +51,15 @@ export class I18nProvider extends ServiceProvider {
     const config = await this._resolveConfig();
     LocaleMiddleware.configure(translator, config);
     this.app.useOnce(LocaleMiddleware);
+
+    // `__()` without an import, for every route, view, job and notification in
+    // the app. Installed here rather than at module load because it is only
+    // honest once there is a translator behind it: a global that resolves
+    // against an unbound container would answer every string with itself, which
+    // reads as "not translated yet" rather than as "i18n is not installed".
+    //
+    // The declaration that makes it type-check lives in `augment.ts`, beside the
+    // `HttpContext` one, since both are the same kind of ambient promise.
+    (globalThis as { __?: typeof __ }).__ = __;
   }
 }

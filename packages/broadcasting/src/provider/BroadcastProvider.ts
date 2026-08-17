@@ -19,11 +19,21 @@ declare module "@zerotal/core" {
   }
 }
 
+/** Where channel rules live when `config.broadcasting.channels` says nothing. */
+const DEFAULT_CHANNELS_PATH = "routes/channels.ts";
+
+/** POSIX `/…` and Windows `C:\…` both, since this joins a path by hand. */
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path);
+}
+
 export class BroadcastProvider extends ServiceProvider {
   static override provides = ["broadcast"] as const;
   static override environments: AppEnvironment[] = ["web", "worker", "test", "console"];
 
   private _redisDriver: RedisBroadcastDriver | undefined;
+  /** Resolved in `onRegister`, read in `onBooting`, so config is read once. */
+  private _channelsPath = DEFAULT_CHANNELS_PATH;
 
   override onRegister(): void {
     // Refuse a production boot when the configured driver is missing the
@@ -36,6 +46,7 @@ export class BroadcastProvider extends ServiceProvider {
     const configManager = this.app.container.tryMake("config") as ConfigManager | null;
     const raw = configManager?.get<Partial<BroadcastConfigShape>>("broadcasting") ?? {};
     const cfg = BroadcastConfig(raw);
+    this._channelsPath = cfg.channels ?? DEFAULT_CHANNELS_PATH;
 
     let manager: BroadcastManager;
 
@@ -104,11 +115,15 @@ export class BroadcastProvider extends ServiceProvider {
    * rules register before the first `/broadcasting/auth` request. Missing file is fine.
    */
   private async _loadChannelRoutes(): Promise<void> {
-    const path = `${process.cwd()}/routes/channels.ts`;
+    const configured = this._channelsPath;
+    // Absolute stays as given; relative resolves from the project root, so an app
+    // that keeps its routes under `app/routes` can point at
+    // `app/routes/channels.ts` instead of growing a second `routes/` directory.
+    const path = isAbsolutePath(configured) ? configured : `${process.cwd()}/${configured}`;
     try {
       if (await Bun.file(path).exists()) await import(path);
     } catch (err) {
-      frameworkLog("broadcast").error("Failed to load routes/channels.ts", undefined, err);
+      frameworkLog("broadcast").error(`Failed to load ${configured}`, undefined, err);
     }
   }
 

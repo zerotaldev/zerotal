@@ -31,6 +31,19 @@ export interface BroadcastConfigShape {
     appKey: string;
     appSecret: string;
   };
+  /**
+   * Where the `Broadcast.channel(...)` authorization rules live, relative to the
+   * project root (or absolute).
+   *
+   * Defaults to `routes/channels.ts`. Set it when the app keeps its routes
+   * somewhere else — an app that scaffolded its HTTP routes into `app/routes`
+   * would otherwise grow a second, unrelated `routes/` directory holding one
+   * file.
+   *
+   * @example
+   * channels: "app/routes/channels.ts"
+   */
+  channels?: string;
 }
 
 const defaults: BroadcastConfigShape = {

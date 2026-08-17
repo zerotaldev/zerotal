@@ -9,8 +9,8 @@ import type { SharedProps } from "../types";
  *
  * A route calls `http.flash("success", "…")` before redirecting; the flash
  * survives exactly one request, `@zerotal/inertia` merges it into every page's
- * props, and this component turns it into a toast. Rendered once in AppLayout,
- * so no page has to think about it.
+ * props, and this component turns it into a toast. Rendered once per layout
+ * shell, so no page has to think about it.
  */
 
 interface Toast {
@@ -66,7 +66,7 @@ export default function FlashToasts() {
           <p className="flex-1 text-sm text-card-foreground">{toast.message}</p>
           <button
             type="button"
-            aria-label="Dismiss"
+            aria-label={__("Dismiss")}
             onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
             className="shrink-0 rounded text-muted-foreground transition-colors hover:text-foreground"
           >

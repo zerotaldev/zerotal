@@ -21,8 +21,19 @@ export interface PresenceMemberData {
  * - Presence channel: return a member-data object to authorize + publish presence, or
  *   `false`/`null`/`undefined` to deny.
  */
-export type ChannelCallback = (
-  user: unknown,
+/**
+ * `User` is a type parameter so a rule can annotate the user it expects:
+ *
+ * ```ts
+ * Broadcast.channel("orders.[orderId]", (user: User, orderId: string) => …);
+ * ```
+ *
+ * infers `User` from the callback rather than failing against a fixed `unknown`.
+ * The default keeps every existing rule — and the registry's own storage, which
+ * cannot know the app's user model — working unchanged.
+ */
+export type ChannelCallback<User = unknown> = (
+  user: User,
   ...params: string[]
 ) =>
   | boolean
@@ -77,9 +88,11 @@ export class ChannelRegistry {
    * @example
    * registry.register("orders.[orderId]", (user, orderId) => user.id === ownerOf(orderId));
    */
-  register(pattern: string, callback: ChannelCallback): void {
+  register<User = unknown>(pattern: string, callback: ChannelCallback<User>): void {
     const { regex, paramNames } = compileChannelPattern(pattern);
-    this._channels.push({ pattern, regex, paramNames, callback });
+    // Stored as the unknown-user form: the registry calls every rule with whatever
+    // the auth middleware produced, which it has no way to type.
+    this._channels.push({ pattern, regex, paramNames, callback: callback as ChannelCallback });
   }
 
   /** Registered channel patterns (for `channel:list` / introspection). */

@@ -6,8 +6,8 @@
 // Converting to static imports will bundle ALL pages into app.js.
 
 export const pages = {
-  about: () => import("./pages/about.tsx"),
-  contact: () => import("./pages/contact.tsx"),
+  activity: () => import("./pages/activity.tsx"),
+  dashboard: () => import("./pages/dashboard.tsx"),
   error: () => import("./pages/error.tsx"),
   "forgot-password": () => import("./pages/forgot-password.tsx"),
   home: () => import("./pages/home.tsx"),
@@ -15,6 +15,7 @@ export const pages = {
   profile: () => import("./pages/profile.tsx"),
   register: () => import("./pages/register.tsx"),
   "reset-password": () => import("./pages/reset-password.tsx"),
+  "projects/board": () => import("./pages/projects/board.tsx"),
   "projects/index": () => import("./pages/projects/index.tsx"),
   "projects/show": () => import("./pages/projects/show.tsx"),
   "issues/form": () => import("./pages/issues/form.tsx"),

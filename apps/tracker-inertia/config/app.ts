@@ -2,7 +2,7 @@ import { env, requireEnv } from "zerotal";
 import { AppConfig } from "zerotal/config";
 
 export default AppConfig({
-  name: "tracker-inertia",
+  name: "Tracker",
   url: env("APP_URL", "http://localhost:3000"),
   /**
    * The APP_KEY is used for encryption and should be set to a random 32

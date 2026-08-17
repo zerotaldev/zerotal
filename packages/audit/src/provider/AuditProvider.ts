@@ -56,6 +56,19 @@ export class AuditProvider extends ServiceProvider {
   }
 
   /**
+   * Resolve the `audit` singleton before anything reaches for it synchronously.
+   *
+   * `onBooted` drains the `Auditable` registry through `registerAudit`, which
+   * calls `container.makeSync("audit")` — and a lazy singleton is not resolved
+   * merely because boot has progressed. Without this the first app to compose
+   * `Auditable` into a model dies on startup with "Singleton 'audit' has not
+   * been resolved yet", which is the container telling us to do exactly this.
+   */
+  override async onBooting(): Promise<void> {
+    await this.app.container.make("audit");
+  }
+
+  /**
    * After boot: drain the `Auditable` registry.
    * Models composed with `Auditable(Base)` are wired to the live Auditor here
    * rather than at import time, so the container is guaranteed ready.

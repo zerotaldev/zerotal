@@ -1,3 +1,4 @@
+import type { ServerWebSocket } from "bun";
 import { safeEqual, hmacHex } from "@zerotal/core";
 import { BroadcastManager, _isValidChannel } from "./BroadcastManager.ts";
 import type { PresenceMember } from "./BroadcastManager.ts";

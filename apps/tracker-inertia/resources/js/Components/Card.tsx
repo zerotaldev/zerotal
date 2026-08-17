@@ -2,11 +2,14 @@ import type { ComponentProps } from "react";
 import { cn } from "../lib/cn";
 
 /**
- * The app's surface primitive — a hairline border with a faint inner highlight
- * (see the `surface` utility in resources/css/app.css) instead of a drop shadow.
+ * The app's surface primitive — white on the page's off-white ground, with a
+ * hairline border and no shadow.
  *
- * Pass `interactive` for cards that are links or buttons: it adds a hover lift
- * and a border tint so the affordance is obvious without a shadow.
+ * The tonal step between `--card` and `--background` is what separates a card
+ * from the page, so a shadow would be saying the same thing twice. `interactive`
+ * adds the hover treatment for cards that are themselves links: the border
+ * darkens and a very slight shadow appears, which is enough of an affordance
+ * without moving anything.
  */
 export function Card({
   className,
@@ -16,13 +19,35 @@ export function Card({
   return (
     <div
       className={cn(
-        "surface rounded-xl",
+        "rounded-xl border border-border bg-card",
         interactive &&
-          "transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-primary/40",
+          "transition-[border-color,box-shadow] duration-150 hover:border-muted-foreground/30 hover:shadow-sm",
         className,
       )}
       {...rest}
     />
+  );
+}
+
+/**
+ * The heading block inside a card: a title, and optionally a line saying what
+ * the card is for.
+ *
+ * Same title/description relationship as {@link PageHeader}, one step down the
+ * type scale — which is what makes a settings page read as a single document
+ * rather than a stack of unrelated panels.
+ */
+export function CardHeader({
+  title,
+  description,
+  className,
+  ...rest
+}: Omit<ComponentProps<"div">, "title"> & { title: string; description?: string }) {
+  return (
+    <div className={cn(className)} {...rest}>
+      <h2 className="text-[0.9375rem] font-semibold text-card-foreground">{title}</h2>
+      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    </div>
   );
 }
 
@@ -31,7 +56,7 @@ export function CardIcon({ className, ...rest }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "grid size-10 place-items-center rounded-lg border border-border bg-accent text-accent-foreground",
+        "grid size-9 place-items-center rounded-md border border-border bg-muted text-muted-foreground",
         className,
       )}
       {...rest}

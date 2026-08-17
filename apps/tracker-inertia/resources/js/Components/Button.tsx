@@ -8,27 +8,33 @@ import { cn } from "../lib/cn";
  * `Button` renders a `<button>`; `ButtonLink` renders an Inertia `<Link>` with
  * identical styling, so a nav action and a form submit can't drift apart. Both
  * are built from {@link buttonClass}, which you can also apply to a bare `<a>`
- * for an external link.
+ * for an external link — that is what keeps the public page's calls to action
+ * and the dashboard's buttons the same object.
+ *
+ * There is one scale for the whole app and it tops out at 40px. A button is a
+ * control, not a banner.
  */
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
-export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap " +
-  "transition-[background-color,border-color,color,transform] duration-150 " +
-  "active:translate-y-px disabled:pointer-events-none disabled:opacity-55";
+  "inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap " +
+  "transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover",
-  secondary: "border border-border bg-card text-foreground hover:bg-muted",
+  primary: "bg-primary text-primary-foreground hover:bg-primary-hover",
+  secondary: "border border-input bg-card text-foreground hover:bg-muted",
   ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+  danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
 };
 
 const SIZES: Record<ButtonSize, string> = {
   sm: "h-8 px-3 text-sm",
-  md: "h-10 px-4 text-sm",
-  lg: "h-11 px-5 text-[0.95rem]",
+  md: "h-9 px-3.5 text-sm",
+  lg: "h-10 px-4 text-sm",
+  // Square, for a control whose whole label is its glyph. Pair with aria-label.
+  icon: "size-9",
 };
 
 export function buttonClass(

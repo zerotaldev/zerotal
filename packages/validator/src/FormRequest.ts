@@ -114,6 +114,30 @@ export abstract class FormRequest {
   }
 
   /**
+   * Normalise the raw body before the rules see it. Default: unchanged.
+   *
+   * This is where the shape of the *transport* gets reconciled with the shape of
+   * the rules. An HTML form has no way to say `null`: an unselected `<select>`
+   * posts `""`, so a `r.number().nullable()` field fails on the one input the
+   * browser can actually produce for "nothing". A client-side form can patch
+   * that up before it posts; a plain `<form method="post">` cannot, and a rule
+   * only reachable from a build with JavaScript is not a shared rule.
+   *
+   * Runs after `authorize()` and after the body is parsed, so it sees exactly
+   * what arrived. Return the object to validate — mutating and returning the
+   * argument is fine.
+   *
+   * @example
+   * override prepareForValidation(body: Record<string, unknown>) {
+   *   if (body["assigneeId"] === "") body["assigneeId"] = null;
+   *   return body;
+   * }
+   */
+  prepareForValidation(body: Record<string, unknown>): Record<string, unknown> {
+    return body;
+  }
+
+  /**
    * Attach a helper method to all FormRequest instances at runtime.
    * Designed for framework packages (e.g. @zerotal/auth) that expose
    * convenience methods like `this.user()` or `this.auth()`.
@@ -192,6 +216,10 @@ export abstract class FormRequest {
     for (const [key, rule] of Object.entries(fieldRules)) {
       schema[key] = rule._def;
     }
+
+    // The transport's shape reconciled with the rules' shape, before the rules
+    // run. See `prepareForValidation` for why an HTML form needs this at all.
+    body = instance.prepareForValidation(body);
 
     const result = await runValidationAsync(schema as Schema, body);
     const session = (ctx as unknown as { session?: SessionLike }).session;

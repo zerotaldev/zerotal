@@ -18,6 +18,9 @@ export { BroadcastFake } from "./BroadcastFake.ts";
 export { Broadcast } from "./facades/Broadcast.ts";
 export { BroadcastProvider } from "./provider/BroadcastProvider.ts";
 export { BroadcastConfig } from "./config.ts";
+// Exported so an app can cast an `env()`-derived driver to the literal union it
+// has to satisfy, the way `config/queue.ts` does with `QueueConfigShape`.
+export type { BroadcastConfigShape } from "./config.ts";
 export { channel, privateChannel, presenceChannel, isPrivateChannel } from "./Channel.ts";
 export { BroadcastingEvent, broadcastOnce } from "./BroadcastingEvent.ts";
 export { broadcastsModelEvents } from "./BroadcastsModelEvents.ts";

@@ -22,11 +22,11 @@ export async function POST(http: HttpContext): Promise<void> {
   if (!ok) {
     // One message for a wrong address and a wrong password alike. Saying which
     // was wrong would turn this form into a way to discover valid accounts.
-    http.flash("error", "Those credentials do not match our records.");
+    http.flash("error", __("Those credentials do not match our records."));
     http.redirect("/login", 303);
     return;
   }
 
-  http.flash("success", "Welcome back.");
+  http.flash("success", __("Welcome back."));
   http.redirect("/profile", 303);
 }

@@ -33,7 +33,7 @@ export async function POST(http: HttpContext): Promise<void> {
   issue.authorId = Auth.user()!.id;
   await issue.save();
 
-  http.flash("success", "Issue created.");
+  http.flash("success", __("Issue created."));
   http.redirect(`/projects/${project.slug}/issues/${issue.id}`, 303);
 }
 

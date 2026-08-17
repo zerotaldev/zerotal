@@ -17,7 +17,7 @@ export async function POST(http: HttpContext): Promise<void> {
   // Proving the current password is what stops a borrowed session from locking
   // the real owner out of their own account.
   if (!(await Hash.check(current_password, user.password))) {
-    http.flash("error", "Your current password is not correct.");
+    http.flash("error", __("Your current password is not correct."));
     http.redirect("/profile", 303);
     return;
   }
@@ -25,6 +25,6 @@ export async function POST(http: HttpContext): Promise<void> {
   user.password = await Hash.make(password);
   await user.save();
 
-  http.flash("success", "Password updated.");
+  http.flash("success", __("Password updated."));
   http.redirect("/profile", 303);
 }

@@ -4,6 +4,7 @@ import { AuthMiddleware, Gate } from "zerotal/auth";
 import type { Project } from "@app/models/Project.ts";
 import { Issue } from "@app/models/Issue.ts";
 import { Comment } from "@app/models/Comment.ts";
+import { Attachment } from "@app/models/Attachment.ts";
 
 export const middleware = [AuthMiddleware];
 
@@ -28,6 +29,12 @@ export const GET = async (http: HttpContext) => {
     .orderBy("created_at", "asc")
     .get();
 
+  const attachments = await Attachment.query()
+    .where("issue_id", bound.id)
+    .with("uploader")
+    .orderBy("created_at", "asc")
+    .get();
+
   return Inertia.render("issues/show", {
     project: { name: project.name, slug: project.slug },
     issue: {
@@ -47,6 +54,16 @@ export const GET = async (http: HttpContext) => {
       body: comment.body,
       author: comment.author ? { name: comment.author.name } : null,
       createdAt: comment.createdAt?.toISOString?.() ?? null,
+    })),
+    // `path` is deliberately absent: it is a storage key, and the page has no
+    // use for it — downloads go through the attachment's own route by id.
+    attachments: attachments.map((attachment) => ({
+      id: attachment.id,
+      name: attachment.originalName,
+      mime: attachment.mime,
+      size: attachment.size,
+      uploader: attachment.uploader ? { name: attachment.uploader.name } : null,
+      createdAt: attachment.createdAt?.toISOString?.() ?? null,
     })),
     // The page hides the edit affordance when this is false. The gate on the
     // route is what actually enforces it — this only stops the UI offering a

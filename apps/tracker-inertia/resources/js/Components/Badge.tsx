@@ -23,7 +23,20 @@ const STATUS: Record<string, string> = {
   cancelled: "bg-muted text-muted-foreground line-through",
 };
 
-const STATUS_LABEL: Record<string, string> = {
+/**
+ * Stored value → the English word for it.
+ *
+ * `in_progress` is a database enum, not a sentence, so it cannot be handed to
+ * `__()` directly. These maps are the one translation step that has to happen
+ * before translation: schema to English, then English to whatever the reader
+ * speaks. An unknown value falls through to itself, so a status added
+ * server-side renders as its raw name rather than vanishing.
+ *
+ * This replaces a `label === key` probe that used to ask the catalog whether it
+ * had heard of `status.done`. There is nothing left to probe: an untranslated
+ * string comes back as the English it started as.
+ */
+export const STATUS_LABEL: Record<string, string> = {
   backlog: "Backlog",
   todo: "Todo",
   in_progress: "In progress",
@@ -38,10 +51,17 @@ const PRIORITY: Record<string, string> = {
   low: "bg-muted text-muted-foreground",
 };
 
+const PRIORITY_LABEL: Record<string, string> = {
+  urgent: "Urgent",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
 export function StatusBadge({ status }: { status: string }) {
   return (
     <span className={cn(BASE, STATUS[status] ?? STATUS["backlog"])}>
-      {STATUS_LABEL[status] ?? status}
+      {__(STATUS_LABEL[status] ?? status)}
     </span>
   );
 }
@@ -50,10 +70,11 @@ export function PriorityBadge({ priority }: { priority: string }) {
   // Urgent and high get a dot as well as a colour — colour alone is not a signal
   // for everyone, and these are the two rows you are meant to notice.
   const loud = priority === "urgent" || priority === "high";
+
   return (
     <span className={cn(BASE, PRIORITY[priority] ?? PRIORITY["low"])}>
       {loud && <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />}
-      {priority[0]!.toUpperCase() + priority.slice(1)}
+      {__(PRIORITY_LABEL[priority] ?? priority)}
     </span>
   );
 }

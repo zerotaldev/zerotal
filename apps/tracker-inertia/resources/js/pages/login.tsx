@@ -1,10 +1,10 @@
 import type { FormEvent, ReactNode } from "react";
 import { Head, Link, useForm, usePage } from "@inertiajs/react";
-import AppLayout from "../Layouts/AppLayout";
+import AuthLayout from "../Layouts/AuthLayout";
 import { Button } from "../Components/Button";
-import { Card } from "../Components/Card";
 import { TextField } from "../Components/Field";
 import type { SharedProps } from "../types";
+import { endpoint } from "../lib/endpoint";
 
 interface Props {
   title: string;
@@ -12,8 +12,13 @@ interface Props {
 
 function Login({ title }: Props) {
   const { old } = usePage<SharedProps>().props;
-
-  const { data, setData, post, processing, errors } = useForm({
+  const {
+    data,
+    setData,
+    submit: submitForm,
+    processing,
+    errors,
+  } = useForm({
     email: typeof old["email"] === "string" ? old["email"] : "",
     password: "",
     remember: false,
@@ -21,72 +26,70 @@ function Login({ title }: Props) {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    post("/login");
+    const { url, method } = endpoint("login.store");
+    submitForm(method, url);
   }
 
   return (
     <>
       <Head title={title} />
 
-      <div className="mx-auto max-w-md">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">{title}</h1>
-          <p className="mt-2 text-muted-foreground">Enter your details to continue.</p>
-        </header>
+      <form onSubmit={submit} className="space-y-5">
+        <TextField
+          label={__("Email")}
+          type="email"
+          autoComplete="email"
+          value={data.email}
+          error={errors.email}
+          onChange={(e) => setData("email", e.target.value)}
+          required
+        />
 
-        <Card className="mt-8 p-6 sm:p-8">
-          <form onSubmit={submit} className="space-y-5">
-            <TextField
-              label="Email"
-              type="email"
-              autoComplete="email"
-              value={data.email}
-              error={errors.email}
-              onChange={(e) => setData("email", e.target.value)}
-              required
-            />
+        <TextField
+          label={__("Password")}
+          type="password"
+          autoComplete="current-password"
+          value={data.password}
+          error={errors.password}
+          onChange={(e) => setData("password", e.target.value)}
+          required
+        />
 
-            <TextField
-              label="Password"
-              type="password"
-              autoComplete="current-password"
-              value={data.password}
-              error={errors.password}
-              onChange={(e) => setData("password", e.target.value)}
-              required
-            />
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            className="rounded border-input"
+            checked={data.remember}
+            onChange={(e) => setData("remember", e.target.checked)}
+          />
+          {__("Remember me")}
+        </label>
 
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                className="rounded border-input"
-                checked={data.remember}
-                onChange={(e) => setData("remember", e.target.checked)}
-              />
-              Remember me
-            </label>
+        <Button type="submit" disabled={processing} className="w-full">
+          {processing ? __("Signing in…") : __("Sign in")}
+        </Button>
 
-            <Button type="submit" disabled={processing}>
-              {processing ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </Card>
-
-        <div className="mt-6 flex items-center justify-between text-sm">
-          <Link href="/forgot-password" className="text-accent hover:underline">
-            Forgot your password?
+        <p className="text-center text-sm">
+          <Link
+            href={route("forgot-password")}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {__("Forgot your password?")}
           </Link>
-          <Link href="/register" className="text-accent hover:underline">
-            Create an account
-          </Link>
-        </div>
-      </div>
+        </p>
+      </form>
     </>
   );
 }
 
 (Login as { layout?: (page: ReactNode) => ReactNode }).layout = (page) => (
-  <AppLayout>{page}</AppLayout>
+  <AuthLayout
+    title="Welcome back"
+    subtitle="Sign in to your Tracker account."
+    footer={{ text: "Don’t have an account?", link: "Create one", href: route("register") }}
+  >
+    {page}
+  </AuthLayout>
 );
 
 export default Login;

@@ -135,7 +135,17 @@ export function runValidation<S extends Schema>(
       continue;
     }
 
-    if (!isRequired && (value === undefined || value === null)) {
+    // Absent → skipped, which is what `optional()` means. An explicit `null` on
+    // a field that also declared `nullable()` is *not* absence: it is someone
+    // saying "clear this", and it falls through to the branch below so it
+    // reaches the output. Without this, `optional().nullable()` silently drops
+    // the null, `fill()` sees `undefined`, and "unassign" saves nothing while
+    // reporting success.
+    //
+    // `null` on a field that is optional but *not* nullable keeps the old
+    // behaviour — skipped rather than an error — so this widens what survives
+    // validation without newly rejecting anything.
+    if (!isRequired && (value === undefined || (value === null && !def.nullable))) {
       continue;
     }
 

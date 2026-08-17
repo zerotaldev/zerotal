@@ -12,9 +12,15 @@ protocol and exposes a familiar realtime-client API — no external client libra
 with the lightweight `ws` and `redis` drivers (no Pusher credentials needed). It's also a drop-in
 for `window.Echo`, so Flow's [`@on('echo:…')`](/docs/flow/events) listeners work against it.
 
+> **Import it from `@zerotal/client/Socket`, not the package root.** `Socket.ts` has no
+> dependencies, but the root entry also exports `ClientProvider` — server-side code that reaches
+> the CLI commands, one of which does `await import("bun")`. A browser bundler rejects that
+> outright, before tree-shaking can discard it. The subpath gives you the same class with
+> nothing else attached.
+
 ```ts
 // in your client code
-import { Socket } from "@zerotal/client";
+import { Socket } from "@zerotal/client/Socket";
 
 const socket = new Socket(); // ws(s)://<host>/app/ws (matches the `path` config)
 

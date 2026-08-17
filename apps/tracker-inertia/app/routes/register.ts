@@ -19,7 +19,7 @@ export async function POST(http: HttpContext): Promise<void> {
 
   const taken = await User.query().where("email", email).first();
   if (taken) {
-    http.flash("error", "That email is already registered.");
+    http.flash("error", __("That email is already registered."));
     http.redirect("/register", 303);
     return;
   }
@@ -38,11 +38,11 @@ export async function POST(http: HttpContext): Promise<void> {
   // /login — so the account is created and they land on a sign-in form with no
   // error shown anywhere. Say what happened instead of redirecting into it.
   if (!(await Auth.attempt({ email, password }))) {
-    http.flash("error", "Your account was created, but signing you in failed. Please sign in.");
+    http.flash("error", __("Your account was created, but signing you in failed. Please sign in."));
     http.redirect("/login", 303);
     return;
   }
 
-  http.flash("success", "Welcome aboard.");
+  http.flash("success", __("Welcome aboard."));
   http.redirect("/profile", 303);
 }

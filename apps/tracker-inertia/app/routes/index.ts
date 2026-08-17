@@ -1,11 +1,14 @@
 import { Inertia } from "@zerotal/inertia";
 
-// GET / — the landing page. Whatever this route passes as the second argument
-// arrives in resources/js/pages/home.tsx as React props.
+/**
+ * GET / — the public page.
+ *
+ * No props. The copy used to be passed from here as `title` and `message`, which
+ * meant two of the page's sentences were translated on the server while the rest
+ * were translated in the browser — and the two only agreed because nothing had
+ * yet changed language between them. The page owns its own copy now, and reads
+ * every line from the same catalog.
+ */
 export const GET = async () => {
-  return Inertia.render("home", {
-    title: "Everything in one TypeScript app",
-    message:
-      "Routes, pages, validation and data access share one language and one process — served by Bun.",
-  });
+  return Inertia.render("home", {});
 };

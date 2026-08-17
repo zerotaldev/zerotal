@@ -1,3 +1,4 @@
+import type { ServerWebSocket } from "bun";
 import { safeEqual, hmacHex } from "@zerotal/core";
 import { isPrivateChannel } from "./Channel.ts";
 import type { BroadcastEvent, WsConnectionData, ClientMessage, ChannelAuthFn } from "./types.ts";
@@ -290,8 +291,13 @@ export class BroadcastManager {
     channelData?: string,
   ): Promise<void> {
     const isPresence = channel.startsWith("presence-");
-    const deny = () =>
+    // Block body, not an expression body: `ServerWebSocket.send` returns a send
+    // status, and `return deny()` in a `Promise<void>` method would otherwise
+    // try to return that number. The status is not useful here — a client that
+    // failed to receive its own denial is already gone.
+    const deny = (): void => {
       ws.send(JSON.stringify({ event: "subscription_error", channel, message: "Unauthorized" }));
+    };
 
     if (isPresence) {
       // Two ways to authorize a presence subscription:

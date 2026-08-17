@@ -1,9 +1,9 @@
 import type { FormEvent, ReactNode } from "react";
 import { Head, useForm } from "@inertiajs/react";
-import AppLayout from "../Layouts/AppLayout";
+import AuthLayout from "../Layouts/AuthLayout";
 import { Button } from "../Components/Button";
-import { Card } from "../Components/Card";
 import { TextField } from "../Components/Field";
+import { endpoint } from "../lib/endpoint";
 
 interface Props {
   title: string;
@@ -15,7 +15,13 @@ interface Props {
 function ResetPassword({ title, token, email }: Props) {
   // Token and email ride along as hidden fields so the POST carries everything
   // the server needs to verify the link without trusting the session.
-  const { data, setData, post, processing, errors } = useForm({
+  const {
+    data,
+    setData,
+    submit: submitForm,
+    processing,
+    errors,
+  } = useForm({
     token,
     email,
     password: "",
@@ -24,57 +30,55 @@ function ResetPassword({ title, token, email }: Props) {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    post("/reset-password");
+    const { url, method } = endpoint("reset-password.store");
+    submitForm(method, url);
   }
 
   return (
     <>
       <Head title={title} />
 
-      <div className="mx-auto max-w-md">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">{title}</h1>
-          <p className="mt-2 text-muted-foreground">Resetting the password for {email}.</p>
-        </header>
+      <form onSubmit={submit} className="space-y-5">
+        <input type="hidden" value={data.token} />
+        <input type="hidden" value={data.email} />
 
-        <Card className="mt-8 p-6 sm:p-8">
-          <form onSubmit={submit} className="space-y-5">
-            <input type="hidden" value={data.token} />
-            <input type="hidden" value={data.email} />
+        <TextField
+          label={__("New password")}
+          type="password"
+          autoComplete="new-password"
+          hint={__("At least 8 characters.")}
+          value={data.password}
+          error={errors.password}
+          onChange={(e) => setData("password", e.target.value)}
+          required
+        />
 
-            <TextField
-              label="New password"
-              type="password"
-              autoComplete="new-password"
-              hint="At least 8 characters."
-              value={data.password}
-              error={errors.password}
-              onChange={(e) => setData("password", e.target.value)}
-              required
-            />
+        <TextField
+          label={__("Confirm password")}
+          type="password"
+          autoComplete="new-password"
+          value={data.password_confirmation}
+          error={errors.password_confirmation}
+          onChange={(e) => setData("password_confirmation", e.target.value)}
+          required
+        />
 
-            <TextField
-              label="Confirm password"
-              type="password"
-              autoComplete="new-password"
-              value={data.password_confirmation}
-              error={errors.password_confirmation}
-              onChange={(e) => setData("password_confirmation", e.target.value)}
-              required
-            />
-
-            <Button type="submit" disabled={processing}>
-              {processing ? "Updating…" : "Update password"}
-            </Button>
-          </form>
-        </Card>
-      </div>
+        <Button type="submit" disabled={processing} className="w-full">
+          {processing ? __("Updating…") : __("Update password")}
+        </Button>
+      </form>
     </>
   );
 }
 
 (ResetPassword as { layout?: (page: ReactNode) => ReactNode }).layout = (page) => (
-  <AppLayout>{page}</AppLayout>
+  <AuthLayout
+    title="Choose a new password"
+    subtitle="Then sign in with it."
+    footer={{ text: "Changed your mind?", link: "Back to sign in", href: route("login") }}
+  >
+    {page}
+  </AuthLayout>
 );
 
 export default ResetPassword;

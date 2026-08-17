@@ -79,6 +79,48 @@ describe("Translator — interpolation & pluralization", () => {
   });
 });
 
+describe("Translator — English source strings as keys", () => {
+  // No `en` catalog at all: English is the source language, so the key is the
+  // message and a catalog for it would only restate every string twice.
+  const sourceKeyed = () =>
+    new Translator({
+      catalogs: {
+        zu: {
+          Email: "I-imeyili",
+          "Signed out.": "Uphumile.",
+          "Hello, {name}!": "Sawubona, {name}!",
+          "{count} comment|{count} comments": "amazwana angu-{count}",
+        },
+      },
+      defaultLocale: "en",
+      fallbackLocale: "en",
+    });
+
+  it("renders the key itself when the source locale has no catalog", () => {
+    expect(sourceKeyed().translate("Email")).toBe("Email");
+  });
+  it("interpolates an untranslated key", () => {
+    expect(sourceKeyed().translate("Hello, {name}!", { name: "Alice" })).toBe("Hello, Alice!");
+  });
+  it("pluralizes an untranslated key", () => {
+    const t = sourceKeyed();
+    expect(t.translate("{count} comment|{count} comments", { count: 1 })).toBe("1 comment");
+    expect(t.translate("{count} comment|{count} comments", { count: 4 })).toBe("4 comments");
+  });
+  it("treats dots in a key as punctuation, not structure", () => {
+    // "Signed out." must not be split into a `Signed out` → `` path.
+    expect(sourceKeyed().translate("Signed out.", {}, "zu")).toBe("Uphumile.");
+  });
+  it("translates from a flat catalog keyed by the English string", () => {
+    const t = sourceKeyed();
+    expect(t.translate("Email", {}, "zu")).toBe("I-imeyili");
+    expect(t.translate("Hello, {name}!", { name: "Thandi" }, "zu")).toBe("Sawubona, Thandi!");
+  });
+  it("falls back to English for a string zu has not translated yet", () => {
+    expect(sourceKeyed().translate("Untranslated so far", {}, "zu")).toBe("Untranslated so far");
+  });
+});
+
 describe("I18nContext", () => {
   it("drives the translator default locale within run()", () => {
     const t = make();
@@ -143,7 +185,7 @@ describe("loadCatalogs", () => {
 });
 
 describe("LocaleMiddleware", () => {
-  it("sets ctx.locale + ctx.t and runs the chain inside the locale context", async () => {
+  it("sets ctx.locale + ctx.__ and runs the chain inside the locale context", async () => {
     LocaleMiddleware.configure(make(), I18nConfig({ supportedLocales: ["en", "fr"] }));
     const mw = new LocaleMiddleware();
     const ctx = HttpContext.fake("http://localhost/?lang=fr");
@@ -159,8 +201,8 @@ describe("LocaleMiddleware", () => {
     expect(ctx.response).toBe(sentinel);
     expect(ctx.locale).toBe("fr");
     expect(seenInside).toBe("fr");
-    expect(ctx.t("welcome.greeting", { name: "Z" })).toBe("Bonjour, Z !");
-    expect(ctx.t("welcome.greeting", { name: "Z" }, "en")).toBe("Hello, Z!");
+    expect(ctx.__("welcome.greeting", { name: "Z" })).toBe("Bonjour, Z !");
+    expect(ctx.__("welcome.greeting", { name: "Z" }, "en")).toBe("Hello, Z!");
   });
 });
 

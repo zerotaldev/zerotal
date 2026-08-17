@@ -5,9 +5,9 @@ import type { Translator } from "./Translator.ts";
 import type { I18nConfigShape } from "./config.ts";
 
 /**
- * Resolves the request locale, exposes `ctx.locale` + `ctx.t()`, and runs the
+ * Resolves the request locale, exposes `ctx.locale` + `ctx.__()`, and runs the
  * rest of the pipeline inside `I18nContext.run()` so the `Lang` facade and the
- * global `t()` helper see the right locale. Configured by I18nProvider via
+ * global `__()` helper see the right locale. Configured by I18nProvider via
  * `LocaleMiddleware.configure()` and registered with `app.useOnce()`.
  */
 export class LocaleMiddleware implements Pipe<HttpContext> {
@@ -26,7 +26,7 @@ export class LocaleMiddleware implements Pipe<HttpContext> {
 
     const locale = resolveLocale(http.request, config);
     http.locale = locale;
-    http.t = (key, replacements, loc) => translator.translate(key, replacements, loc ?? locale);
+    http.__ = (key, replacements, loc) => translator.translate(key, replacements, loc ?? locale);
 
     return I18nContext.run(locale, () => next());
   }

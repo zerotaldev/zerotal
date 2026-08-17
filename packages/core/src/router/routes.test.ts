@@ -25,6 +25,26 @@ describe("client route() — table installation", () => {
     expect(clientRoute("posts.show", { slug: "hello" })).toBe("/posts/hello");
   });
 
+  it("puts route() on globalThis, so call sites need no import", () => {
+    // The ambient `declare global` in routes.ts is a promise TypeScript cannot
+    // check: delete the assignment and every `route("home")` in every app still
+    // compiles, then throws at runtime. This is the assertion that catches that.
+    defineRoutes(TABLE);
+
+    expect(typeof globalThis.route).toBe("function");
+    expect(globalThis.route("posts.show", { slug: "hello" })).toBe("/posts/hello");
+    // The global is the export, not a copy that could resolve a stale table.
+    expect(globalThis.route).toBe(clientRoute);
+  });
+
+  it("installs the global only once the table behind it works", () => {
+    // A global that exists but throws "no route table" is worse than one that
+    // appears when it starts answering — the error would point at the call site
+    // rather than at the missing `defineRoutes()`.
+    defineRoutes({ "posts.index": "/articles" });
+    expect(globalThis.route("posts.index")).toBe("/articles");
+  });
+
   it("accepts a Map as well as the generated object", () => {
     defineRoutes(new Map([["posts.index", "/posts"]]));
     expect(clientRoute("posts.index")).toBe("/posts");

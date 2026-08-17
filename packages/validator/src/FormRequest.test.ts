@@ -246,6 +246,71 @@ describe("FormRequest.validate() — form-urlencoded body", () => {
   });
 });
 
+// ── prepareForValidation ──────────────────────────────────────────────────────
+
+/**
+ * The hook that reconciles what a browser can send with what the rules require.
+ *
+ * The case it exists for: an unselected `<select>` posts `""`, and HTML has no
+ * way to say `null`. Without the hook a `nullable()` number field is only
+ * satisfiable from a client that can rewrite the body before posting — which
+ * makes the rule unreachable from a plain `<form method="post">`.
+ */
+class NullableSelectRequest extends FormRequest {
+  override prepareForValidation(body: Record<string, unknown>) {
+    if (body["assigneeId"] === "") body["assigneeId"] = null;
+    return body;
+  }
+
+  rules(r: RuleBuilder) {
+    return { assigneeId: r.number().optional().nullable() };
+  }
+}
+
+const formCtx = (fd: FormData) =>
+  ({
+    request: {
+      method: "POST",
+      headers: {
+        get: (k: string) => (k === "Content-Type" ? "application/x-www-form-urlencoded" : null),
+      },
+      json: async () => ({}),
+      formData: async () => fd,
+    },
+    url: new URL("http://localhost/test"),
+    session: undefined as unknown,
+  }) as unknown as HttpContext;
+
+describe("FormRequest.prepareForValidation()", () => {
+  it("normalises the body before the rules run", async () => {
+    const fd = new FormData();
+    fd.append("assigneeId", "");
+
+    // Two bugs met here. Without the hook, `""` fails `number()` and the form
+    // bounces; and until `optional().nullable()` was fixed to let an explicit
+    // null through, the value arrived as `undefined` — which `fill()` reads as
+    // "leave this column", so "unassign" saved nothing and still said it had.
+    const data = await withCtx(formCtx(fd), () => NullableSelectRequest.validate());
+    expect((data as any).assigneeId).toBeNull();
+  });
+
+  it("leaves a real value alone", async () => {
+    const fd = new FormData();
+    fd.append("assigneeId", "7");
+
+    const data = await withCtx(formCtx(fd), () => NullableSelectRequest.validate());
+    expect((data as any).assigneeId).toBe(7);
+  });
+
+  it("defaults to identity, so an unhooked request is unaffected", async () => {
+    const fd = new FormData();
+    fd.append("name", "Alice");
+
+    const data = await withCtx(formCtx(fd), () => ShortFormRequest.validate());
+    expect((data as any).name).toBe("Alice");
+  });
+});
+
 // ── GET request — query param body merging ────────────────────────────────────
 
 describe("FormRequest.validate() — GET with query params", () => {

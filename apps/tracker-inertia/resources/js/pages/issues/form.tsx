@@ -1,7 +1,10 @@
+import type { ReactNode } from "react";
 import { Head, Link, useForm } from "@inertiajs/react";
-import TrackerLayout from "../../Layouts/TrackerLayout";
+import AppShell from "../../Layouts/AppShell";
+import PageHeader from "../../Components/PageHeader";
 import { SelectField, TextAreaField, TextField } from "../../Components/Field";
 import { Button } from "../../Components/Button";
+import { endpoint } from "../../lib/endpoint";
 
 interface Props {
   project: { name: string; slug: string };
@@ -44,33 +47,37 @@ export default function IssueForm({ project, issue, options }: Props) {
     assigneeId: issue?.assigneeId ?? "",
   });
 
-  const action = editing
-    ? `/projects/${project.slug}/issues/${issue.id}/edit`
-    : `/projects/${project.slug}/issues/new`;
+  const target = editing
+    ? endpoint("projects.issues.edit.store", { project: project.slug, issue: issue.id })
+    : endpoint("projects.issues.new.store", { project: project.slug });
 
   return (
     <>
       <Head title={editing ? `Edit #${issue.id}` : "New issue"} />
 
-      <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
-        <Link href="/projects" className="hover:text-foreground">
-          Projects
+      <nav aria-label={__("Breadcrumb")} className="mb-2 text-xs text-muted-foreground">
+        <Link href={route("projects")} className="transition-colors hover:text-foreground">
+          {__("Projects")}
         </Link>
         <span aria-hidden="true" className="px-1.5">
           /
         </span>
-        <Link href={`/projects/${project.slug}`} className="hover:text-foreground">
+        <Link
+          href={route("projects.show", { project: project.slug })}
+          className="transition-colors hover:text-foreground"
+        >
           {project.name}
         </Link>
         <span aria-hidden="true" className="px-1.5">
           /
         </span>
-        <span className="text-foreground">{editing ? `#${issue.id}` : "New issue"}</span>
+        <span className="text-foreground">{editing ? `#${issue.id}` : __("New issue")}</span>
       </nav>
 
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-        {editing ? "Edit issue" : "New issue"}
-      </h1>
+      <PageHeader
+        title={editing ? __("Edit issue") : __("New issue")}
+        description={editing ? __("Change the details and save.") : __("Describe what is wrong, and who should pick it up.")}
+      />
 
       <form
         // `post` for both, because the `view` build reaches this from a plain
@@ -92,32 +99,32 @@ export default function IssueForm({ project, issue, options }: Props) {
             assigneeId:
               data.assigneeId === "" || data.assigneeId == null ? null : Number(data.assigneeId),
           }));
-          form.post(action, { preserveScroll: true });
+          form.submit(target.method, target.url, { preserveScroll: true });
         }}
-        className="mt-6 max-w-2xl space-y-5 rounded-xl border border-border bg-card p-5"
+        className="mt-6 max-w-2xl space-y-5 rounded-xl border border-border bg-card p-5 sm:p-6"
       >
         <TextField
-          label="Title"
+          label={__("Title")}
           name="title"
           value={form.data.title}
           error={form.errors.title}
-          hint="Short and actionable — what is wrong, in one line."
+          hint={__("Short and actionable — what is wrong, in one line.")}
           onChange={(event) => form.setData("title", event.target.value)}
           autoFocus
         />
 
         <TextAreaField
-          label="Description"
+          label={__("Description")}
           name="body"
           value={form.data.body}
           error={form.errors.body}
-          hint="Markdown. What happens, and what you expected instead."
+          hint={__("Markdown. What happens, and what you expected instead.")}
           onChange={(event) => form.setData("body", event.target.value)}
         />
 
         <div className="grid gap-5 sm:grid-cols-3">
           <SelectField
-            label="Status"
+            label={__("Status")}
             name="status"
             value={form.data.status}
             error={form.errors.status}
@@ -131,7 +138,7 @@ export default function IssueForm({ project, issue, options }: Props) {
           </SelectField>
 
           <SelectField
-            label="Priority"
+            label={__("Priority")}
             name="priority"
             value={form.data.priority}
             error={form.errors.priority}
@@ -145,13 +152,13 @@ export default function IssueForm({ project, issue, options }: Props) {
           </SelectField>
 
           <SelectField
-            label="Assignee"
+            label={__("Assignee")}
             name="assigneeId"
             value={String(form.data.assigneeId ?? "")}
             error={form.errors.assigneeId}
             onChange={(event) => form.setData("assigneeId", event.target.value)}
           >
-            <option value="">Unassigned</option>
+            <option value="">{__("Unassigned")}</option>
             {options.assignees.map((person) => (
               <option key={person.id} value={person.id}>
                 {person.name}
@@ -162,15 +169,21 @@ export default function IssueForm({ project, issue, options }: Props) {
 
         <div className="flex items-center gap-3 border-t border-border pt-5">
           <Button type="submit" disabled={form.processing}>
-            {form.processing ? "Saving…" : editing ? "Save changes" : "Create issue"}
+            {form.processing
+              ? __("Saving…")
+              : editing
+                ? __("Save changes")
+                : __("Create issue")}
           </Button>
           <Link
             href={
-              editing ? `/projects/${project.slug}/issues/${issue.id}` : `/projects/${project.slug}`
+              editing
+                ? route("projects.issues.show", { project: project.slug, issue: issue.id })
+                : route("projects.show", { project: project.slug })
             }
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            Cancel
+            {__("Cancel")}
           </Link>
         </div>
       </form>
@@ -178,4 +191,4 @@ export default function IssueForm({ project, issue, options }: Props) {
   );
 }
 
-IssueForm.layout = (page: React.ReactNode) => <TrackerLayout>{page}</TrackerLayout>;
+IssueForm.layout = (page: ReactNode) => <AppShell>{page}</AppShell>;

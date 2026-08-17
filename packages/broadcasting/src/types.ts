@@ -1,3 +1,5 @@
+import type { ServerWebSocket } from "bun";
+
 // ── BroadcastEvent ────────────────────────────────────────────────────────────
 
 /**

@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Head, Link, router } from "@inertiajs/react";
-import TrackerLayout from "../../Layouts/TrackerLayout";
+import AppShell from "../../Layouts/AppShell";
+import PageHeader from "../../Components/PageHeader";
 import EmptyState from "../../Components/EmptyState";
-import Pagination, { type PageMeta } from "../../Components/Pagination";
+import { type PageMeta } from "../../Components/Pagination";
 import { LabelChip, PriorityBadge, StatusBadge } from "../../Components/Badge";
-import { ButtonLink } from "../../Components/Button";
+import { Button, ButtonLink } from "../../Components/Button";
+import { controlClass } from "../../Components/Field";
 import { cn } from "../../lib/cn";
 
 interface IssueRow {
@@ -53,6 +55,7 @@ interface Props {
  * page — and the caret in the search box — alone.
  */
 export default function ProjectShow({ project, issues, pagination, filters, options }: Props) {
+  const feed = useIssueFeed(issues, pagination, filters);
   const active =
     Boolean(filters.q) ||
     Boolean(filters.status) ||
@@ -63,96 +66,118 @@ export default function ProjectShow({ project, issues, pagination, filters, opti
     <>
       <Head title={project.name} />
 
-      <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
-        <Link href="/projects" className="hover:text-foreground">
-          Projects
-        </Link>
-        <span aria-hidden="true" className="px-1.5">
-          /
-        </span>
-        <span className="text-foreground">{project.name}</span>
-      </nav>
-
-      <div className="mt-2 flex items-end justify-between gap-4">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
-          {project.description && (
-            <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
+          <nav aria-label={__("Breadcrumb")} className="mb-2 text-xs text-muted-foreground">
+            <Link href={route("projects")} className="transition-colors hover:text-foreground">
+              {__("Projects")}
+            </Link>
+            <span aria-hidden="true" className="px-1.5">
+              /
+            </span>
+            <span className="text-foreground">{project.name}</span>
+          </nav>
+
+          <PageHeader
+            title={project.name}
+            {...(project.description ? { description: project.description } : {})}
+            actions={
+              <>
+                <ButtonLink
+                  href={route("projects.board.show", { project: project.slug })}
+                  variant="secondary"
+                >
+                  {__("Board")}
+                </ButtonLink>
+                <ButtonLink href={route("projects.issues.new.show", { project: project.slug })}>
+                  {__("New issue")}
+                </ButtonLink>
+              </>
+            }
+          />
+        </div>
+
+        <div className="rounded-xl border border-border bg-card">
+          <FilterBar filters={filters} options={options} active={active} />
+
+          {feed.items.length === 0 ? (
+            // Two different nothings. Which one decides what the reader should do
+            // next, so they do not share a sentence.
+            active ? (
+              <EmptyState
+                title={__("No issues match these filters")}
+                description={__("Nothing here fits the current search and filters. Clearing them will show the whole project.")}
+                action={
+                  <Link
+                    href={route("projects.show", { project: project.slug })}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    {__("Clear filters")}
+                  </Link>
+                }
+              />
+            ) : (
+              <EmptyState
+                title={__("No issues yet")}
+                description={__("This project has nothing tracked against it. The first issue is usually the one you just thought of.")}
+                action={
+                  <ButtonLink href={route("projects.issues.new.show", { project: project.slug })}>
+                    {__("Create issue")}
+                  </ButtonLink>
+                }
+              />
+            )
+          ) : (
+            <>
+              <ul className="divide-y divide-border">
+                {feed.items.map((issue) => (
+                  <li key={issue.id}>
+                    <Link
+                      href={route("projects.issues.show", {
+                        project: project.slug,
+                        issue: issue.id,
+                      })}
+                      className="flex items-start gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/60"
+                    >
+                      <span className="w-11 shrink-0 pt-0.5 text-xs text-muted-foreground tabular-nums">
+                        #{issue.id}
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-foreground">
+                          {issue.title}
+                        </span>
+                        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                          {issue.author && <span>{issue.author.name}</span>}
+                          {issue.labels.map((label) => (
+                            <LabelChip key={label.name} {...label} />
+                          ))}
+                        </span>
+                      </span>
+
+                      <span className="hidden shrink-0 items-center gap-2 sm:flex">
+                        <PriorityBadge priority={issue.priority} />
+                        <StatusBadge status={issue.status} />
+                      </span>
+
+                      <span className="hidden w-28 shrink-0 truncate text-right text-xs text-muted-foreground lg:block">
+                        {issue.assignee?.name ?? __("Unassigned")}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+
+              <FeedFooter
+                shown={feed.items.length}
+                total={pagination.total}
+                hasMore={feed.hasMore}
+                loading={feed.loading}
+                onLoadMore={feed.loadMore}
+              />
+            </>
           )}
         </div>
-        <ButtonLink href={`/projects/${project.slug}/issues/new`} size="sm">
-          New issue
-        </ButtonLink>
-      </div>
-
-      <div className="mt-6 rounded-xl border border-border bg-card">
-        <FilterBar filters={filters} options={options} active={active} />
-
-        {issues.length === 0 ? (
-          // Two different nothings. Which one decides what the reader should do
-          // next, so they do not share a sentence.
-          active ? (
-            <EmptyState
-              title="No issues match these filters"
-              description="Nothing here fits the current search and filters. Clearing them will show the whole project."
-              action={
-                <Link
-                  href={`/projects/${project.slug}`}
-                  className="text-sm font-medium text-primary hover:underline"
-                >
-                  Clear filters
-                </Link>
-              }
-            />
-          ) : (
-            <EmptyState
-              title="No issues yet"
-              description="This project has nothing tracked against it. The first issue is usually the one you just thought of."
-              action={
-                <ButtonLink href={`/projects/${project.slug}/issues/new`}>Create issue</ButtonLink>
-              }
-            />
-          )
-        ) : (
-          <>
-            <ul className="divide-y divide-border">
-              {issues.map((issue) => (
-                <li key={issue.id}>
-                  <Link
-                    href={`/projects/${project.slug}/issues/${issue.id}`}
-                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  >
-                    <span className="w-12 shrink-0 pt-0.5 text-xs text-muted-foreground tabular-nums">
-                      #{issue.id}
-                    </span>
-
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{issue.title}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        {issue.author && <span>{issue.author.name}</span>}
-                        {issue.labels.map((label) => (
-                          <LabelChip key={label.name} {...label} />
-                        ))}
-                      </span>
-                    </span>
-
-                    <span className="hidden shrink-0 items-center gap-2 sm:flex">
-                      <PriorityBadge priority={issue.priority} />
-                      <StatusBadge status={issue.status} />
-                    </span>
-
-                    <span className="hidden w-28 shrink-0 truncate text-right text-xs text-muted-foreground lg:block">
-                      {issue.assignee?.name ?? "Unassigned"}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <div className="border-t border-border">
-              <Pagination meta={pagination} />
-            </div>
-          </>
-        )}
       </div>
     </>
   );
@@ -212,30 +237,27 @@ function FilterBar({
     // disable comment, hence the note.
   }, [q]);
 
-  const select =
-    "h-8 rounded-md border border-input bg-card px-2 text-sm text-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 focus:outline-none";
-
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
       <label className="sr-only" htmlFor="issue-search">
-        Search issues
+        {__("Search issues")}
       </label>
       <input
         id="issue-search"
         type="search"
         value={q}
         onChange={(event) => setQ(event.target.value)}
-        placeholder="Search issues…"
-        className={cn(select, "min-w-0 flex-1 sm:min-w-64")}
+        placeholder={__("Search issues…")}
+        className={controlClass("min-w-0 flex-1 sm:min-w-64")}
       />
 
       <select
-        aria-label="Status"
+        aria-label={__("Status")}
         value={filters.status ?? ""}
         onChange={(event) => go({ status: event.target.value })}
-        className={select}
+        className={controlClass()}
       >
-        <option value="">All statuses</option>
+        <option value="">{__("All statuses")}</option>
         {options.statuses.map((status) => (
           <option key={status} value={status}>
             {status.replace("_", " ")}
@@ -244,12 +266,12 @@ function FilterBar({
       </select>
 
       <select
-        aria-label="Priority"
+        aria-label={__("Priority")}
         value={filters.priority ?? ""}
         onChange={(event) => go({ priority: event.target.value })}
-        className={select}
+        className={controlClass()}
       >
-        <option value="">All priorities</option>
+        <option value="">{__("All priorities")}</option>
         {options.priorities.map((priority) => (
           <option key={priority} value={priority}>
             {priority}
@@ -258,12 +280,12 @@ function FilterBar({
       </select>
 
       <select
-        aria-label="Assignee"
+        aria-label={__("Assignee")}
         value={filters.assignee ? String(filters.assignee) : ""}
         onChange={(event) => go({ assignee: event.target.value })}
-        className={select}
+        className={controlClass()}
       >
-        <option value="">Anyone</option>
+        <option value="">{__("Anyone")}</option>
         {options.assignees.map((person) => (
           <option key={person.id} value={person.id}>
             {person.name}
@@ -272,15 +294,15 @@ function FilterBar({
       </select>
 
       <select
-        aria-label="Sort"
+        aria-label={__("Sort")}
         value={filters.sort}
         onChange={(event) => go({ sort: event.target.value })}
-        className={select}
+        className={controlClass()}
       >
-        <option value="newest">Newest</option>
-        <option value="oldest">Oldest</option>
-        <option value="priority">Priority</option>
-        <option value="title">Title</option>
+        <option value="newest">{__("Newest")}</option>
+        <option value="oldest">{__("Oldest")}</option>
+        <option value="priority">{__("Priority")}</option>
+        <option value="title">{__("Title")}</option>
       </select>
 
       {active && (
@@ -290,13 +312,157 @@ function FilterBar({
             setQ("");
             go({ q: "", status: "", priority: "", assignee: "" });
           }}
-          className="h-8 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          className={cn(
+            "h-9 rounded-md px-2.5 text-sm text-muted-foreground",
+            "transition-colors duration-150 hover:bg-muted hover:text-foreground",
+          )}
         >
-          Clear
+          {__("Clear")}
         </button>
       )}
     </div>
   );
 }
 
-ProjectShow.layout = (page: React.ReactNode) => <TrackerLayout>{page}</TrackerLayout>;
+/**
+ * The issue feed — pages accumulated as the reader scrolls.
+ *
+ * The list is rendered from local state rather than straight from the prop,
+ * because a page of results is now an *addition* to what is on screen rather
+ * than a replacement for it. Two things can change that state and they mean
+ * opposite things:
+ *
+ *   a filter changed  → this is a different list. Replace.
+ *   a page loaded     → this is more of the same list. Append.
+ *
+ * The signature is every filter *except* `page`, which is exactly that
+ * distinction expressed as a value.
+ *
+ * `preserveUrl` keeps the address bar on the filters. Pagination is how the list
+ * is fetched, not what the reader is looking at, so putting `page=4` in the URL
+ * would make a reload return the fourth page alone — the middle of a list with
+ * no way back to its start. Filters stay the URL's truth; the page counter does
+ * not belong there.
+ *
+ * Arrivals are deduplicated by id: an issue created while someone is scrolling
+ * shifts every later row down a page, and the naive append shows the row that
+ * straddles the boundary twice.
+ */
+function useIssueFeed(served: IssueRow[], meta: PageMeta, filters: Filters) {
+  const signature = [
+    filters.q,
+    filters.status,
+    filters.priority,
+    filters.assignee,
+    filters.sort,
+  ].join("\u0000");
+
+  const [items, setItems] = useState(served);
+  const [page, setPage] = useState(meta.page);
+  const [loading, setLoading] = useState(false);
+  const currentSignature = useRef(signature);
+
+  useEffect(() => {
+    if (currentSignature.current === signature) return;
+    currentSignature.current = signature;
+    setItems(served);
+    setPage(meta.page);
+  }, [signature, served, meta.page]);
+
+  const hasMore = page < meta.lastPage;
+
+  const loadMore = useCallback(() => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("page", String(page + 1));
+
+    router.get(
+      `${url.pathname}${url.search}`,
+      {},
+      {
+        preserveState: true,
+        preserveScroll: true,
+        preserveUrl: true,
+        only: ["issues", "pagination"],
+        onSuccess: (visit) => {
+          const next = (visit.props as unknown as { issues?: IssueRow[] }).issues ?? [];
+          setItems((previous) => {
+            const seen = new Set(previous.map((issue) => issue.id));
+            return [...previous, ...next.filter((issue) => !seen.has(issue.id))];
+          });
+          setPage((n) => n + 1);
+        },
+        onFinish: () => setLoading(false),
+      },
+    );
+  }, [loading, hasMore, page]);
+
+  return { items, hasMore, loading, loadMore };
+}
+
+/**
+ * The end of the list: a sentinel, a button, and a count.
+ *
+ * The button is not a fallback — it is the control. An `IntersectionObserver`
+ * presses it when the end of the list comes into view, which is what makes the
+ * scrolling feel infinite, but a reader who cannot scroll a mouse wheel still
+ * has a real, focusable, labelled control to reach with Tab. Infinite scroll
+ * built only from the observer is a list that keyboard users cannot finish.
+ *
+ * The count is a live region because otherwise the page grows silently: nothing
+ * announces that twenty more rows arrived under a screen reader.
+ */
+function FeedFooter({
+  shown,
+  total,
+  hasMore,
+  loading,
+  onLoadMore,
+}: {
+  shown: number;
+  total: number;
+  hasMore: boolean;
+  loading: boolean;
+  onLoadMore: () => void;
+}) {
+  const sentinel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = sentinel.current;
+    // No sentinel to watch, nothing left to fetch, or a fetch already running —
+    // observing in any of those cases just re-fires the request that is in flight.
+    if (!node || !hasMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+      },
+      // Start fetching before the reader reaches the bottom, so the next rows are
+      // usually there by the time they would have noticed their absence.
+      { rootMargin: "400px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loading, onLoadMore]);
+
+  return (
+    <div className="flex flex-col items-center gap-3 border-t border-border px-4 py-5">
+      <div ref={sentinel} aria-hidden="true" className="h-px w-full" />
+
+      <p aria-live="polite" className="text-xs text-muted-foreground tabular-nums">
+        {hasMore ? __("Showing {shown} of {total}", { shown, total }) : __("All {total} loaded", { total })}
+      </p>
+
+      {hasMore && (
+        <Button variant="secondary" onClick={onLoadMore} disabled={loading}>
+          {loading ? __("Loading…") : __("Load more")}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+ProjectShow.layout = (page: ReactNode) => <AppShell>{page}</AppShell>;

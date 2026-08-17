@@ -49,6 +49,31 @@ import type {
 import { buildRouteUrl, unknownRouteError } from "./buildRoute.ts";
 
 /**
+ * Re-exported so a browser bundle can write its own typed wrappers.
+ *
+ * These live in `registry.ts`, which is reachable from the `@zerotal/core` root
+ * — and that root drags the CLI command modules into any bundle that imports it.
+ * A component building a helper around `route()` needs the types without the
+ * server, so they surface here, on the entry that is already browser-safe.
+ */
+export type { RouteArgs, RouteParamValues, RouteQuery, RouteTarget } from "./registry.ts";
+
+/**
+ * `route()` without an import.
+ *
+ * {@link defineRoutes} puts the builder on `globalThis`, and this is the
+ * declaration that lets a call site use it: a page writes `route("posts.show")`
+ * with no import line, typed exactly as the named export is — the same
+ * `RouteBuilder`, so an unknown name or a missing `:param` still fails the build.
+ *
+ * `var` rather than `const`, because only `var` in a `declare global` block
+ * creates a matching property on `globalThis` for the assignment to satisfy.
+ */
+declare global {
+  var route: RouteBuilder;
+}
+
+/**
  * The name → pattern map `route()` resolves against. A plain object is what
  * `types/routes.generated.ts` exports; a `Map` is accepted so a server-side
  * caller can pass `Router.namedRoutes` straight through.
@@ -73,6 +98,25 @@ let _table: ReadonlyMap<string, string> | null = null;
  */
 export function defineRoutes(table: RouteTable): void {
   _table = table instanceof Map ? table : new Map(Object.entries(table));
+  _installGlobal();
+}
+
+/**
+ * Put `route()` on `globalThis`, so nothing has to import it.
+ *
+ * This is the one function both processes already call — the server from
+ * `Application._installRouteTable()` at boot, a browser entry beside its
+ * generated `ROUTES` — which makes it the only place that can install the global
+ * for both without an app remembering to do it in two files.
+ *
+ * The table is installed first, deliberately: a global that exists but throws
+ * "no route table" is worse than one that appears at the same moment it works.
+ *
+ * `route` stays a named export. Removing it would break every existing import
+ * for no gain, and a test that wants a clean global can still reach for it.
+ */
+function _installGlobal(): void {
+  (globalThis as { route?: typeof route }).route = route;
 }
 
 /**
@@ -147,3 +191,74 @@ export const route: RouteBuilder = Object.assign(
 // compile time, so `import type { RouteName } from "@zerotal/core"` costs a
 // browser bundle nothing — and a second export path for the same names is a
 // second entry in every surface report, forever, for no runtime benefit.
+
+// ── Verb-aware routes ─────────────────────────────────────────────────────────
+
+/**
+ * Augmented by `types/routes.generated.ts` with the HTTP method of every named
+ * route, exactly as {@link RouteRegistry} is augmented with their patterns.
+ */
+export interface RouteMethodRegistry {}
+
+/** A name the generated table knows a verb for. */
+export type MethodedRouteName = Extract<keyof RouteMethodRegistry, string>;
+
+const methodTable = new Map<string, string>();
+
+/**
+ * Register the generated `METHODS` table.
+ *
+ * Called once at boot beside {@link defineRoutes}. Kept separate because the two
+ * tables have different audiences: a page that only builds links needs the
+ * patterns and never the verbs, and a bundler can then drop the verbs entirely.
+ */
+export function defineRouteMethods(table: Readonly<Record<string, string>>): void {
+  methodTable.clear();
+  for (const [name, method] of Object.entries(table)) methodTable.set(name, method);
+}
+
+/** The verb a named route answers on, or undefined when it was never registered. */
+export function routeMethod(name: string): string | undefined {
+  return methodTable.get(name);
+}
+
+/** A resolved endpoint: where to send a request, and how. */
+export interface RouteAction {
+  url: string;
+  method: string;
+}
+
+/**
+ * Resolve a named route to both its URL and its HTTP method.
+ *
+ * The pair is the point. A form that hardcodes a URL can still send the wrong
+ * verb, and the failure — a 404 or a 405 on submit — looks nothing like its
+ * cause. Taking both from one generated record means a route that changes verb
+ * changes it everywhere at once.
+ *
+ * Throws when the name has no registered verb. An earlier version defaulted to
+ * `GET`, and that default cost a real bug: a regenerated table came back empty,
+ * every `action()` reported `GET`, and a file upload submitted as a GET to its
+ * own store route and 404'd. The point of resolving a verb from a table is that
+ * a wrong verb becomes impossible — a silent fallback gives that away for a
+ * failure mode nobody reads, so this is loud instead.
+ *
+ * Use {@link route} for links, which need no verb.
+ *
+ * @example
+ * const submit = action("projects.issues.comments.store", { project: "apollo", issue: 4 });
+ * // → { url: "/projects/apollo/issues/4/comments", method: "POST" }
+ */
+export function action<N extends RouteTarget>(name: N, ...args: RouteArgs<N>): RouteAction {
+  const method = methodTable.get(name as string);
+  if (method === undefined) {
+    throw new Error(
+      `action("${String(name)}"): no HTTP method registered for this route. ` +
+        `On the server this is installed at boot, so an empty table means the route ` +
+        `is not registered. In a browser bundle, call defineRouteMethods(METHODS) ` +
+        `from types/routes.generated.ts at your entry point. ` +
+        `Use route() instead for links, which need no verb.`,
+    );
+  }
+  return { url: route(name, ...args), method };
+}

@@ -46,12 +46,21 @@ export class Translator {
   }
 
   /**
-   * Translate `key`. Missing keys return the key itself (so the UI degrades
-   * visibly rather than throwing).
+   * Translate `key`.
+   *
+   * An untranslated key falls through to *itself* — and then goes on to be
+   * pluralized and interpolated exactly like a catalog hit would be. That last
+   * part is what lets the source language skip having a catalog: write
+   * `translate('{count} comments', { count: 3 })` and English needs no `en.json`
+   * to answer with "3 comments", because the key already is the answer.
+   *
+   * The fallback is therefore never a broken-looking screen. A key nobody has
+   * translated renders as the English the developer typed, in a locale that has
+   * no entry for it, on the day the string is written.
    *
    * @example
-   * t.translate('welcome.greeting', { name: 'Alice' }, 'fr');
-   * t.translate('apples', { count: 2 }); // pipe-pluralized
+   * t.translate('Hello, {name}!', { name: 'Alice' }, 'fr');
+   * t.translate('{count} apple|{count} apples', { count: 2 }); // pipe-pluralized
    */
   translate(key: string, replacements: Replacements = {}, locale?: string): string {
     const loc = this._resolve(locale);
@@ -59,14 +68,23 @@ export class Translator {
     if (msg === undefined && loc !== this.fallbackLocale) {
       msg = this._lookup(key, this.fallbackLocale);
     }
-    if (msg === undefined) return key;
+    // The key is the source string, so it is a usable message on its own.
+    if (msg === undefined) msg = key;
     if (typeof replacements.count === "number") {
       msg = this._pluralize(msg, replacements.count);
     }
     return this._interpolate(msg, replacements);
   }
 
-  /** Look up a key as a flat dotted key first, then as a nested path. */
+  /**
+   * Look up a key flat first, then as a nested path.
+   *
+   * Flat has to come first, because an English key is a sentence: "Signed out."
+   * and "It costs $5. Really." both contain dots that are punctuation, not
+   * structure. Splitting those on `.` would send the lookup hunting for a
+   * `Signed out` object that no catalog has. Nested traversal stays as the
+   * second attempt so grouped catalogs keep resolving.
+   */
   private _lookup(key: string, locale: string): string | undefined {
     const cat = this.catalogs[locale];
     if (!cat) return undefined;

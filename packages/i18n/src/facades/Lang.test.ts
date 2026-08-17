@@ -1,8 +1,8 @@
 /**
- * The `Lang` facade and the `t()` global.
+ * The `Lang` facade and the `__()` global.
  *
  * `Translator` is covered thoroughly elsewhere, but nothing in an application
- * calls it directly — apps call `Lang.translate(...)` or `t(...)`, and those go
+ * calls it directly — apps call `Lang.translate(...)` or `__(...)`, and those go
  * through the container and the ambient locale context before they ever reach a
  * translator. That path was the untested one, which matters because its failure
  * mode is quiet: a facade resolving the wrong instance, or a helper that ignores
@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Application } from "@zerotal/core";
-import { Lang, t } from "./Lang.ts";
+import { Lang, __ } from "./Lang.ts";
 import { Translator } from "../Translator.ts";
 import { I18nContext } from "../I18nContext.ts";
 
@@ -58,43 +58,43 @@ describe("Lang facade", () => {
   });
 });
 
-describe("t() global", () => {
+describe("__() global", () => {
   it("delegates to the facade", () => {
-    expect(t("greeting", { name: "Bob" })).toBe("Hello, Bob!");
+    expect(__("greeting", { name: "Bob" })).toBe("Hello, Bob!");
   });
 
   it("passes replacements and an explicit locale through", () => {
-    expect(t("greeting", { name: "Bob" }, "fr")).toBe("Bonjour, Bob !");
+    expect(__("greeting", { name: "Bob" }, "fr")).toBe("Bonjour, Bob !");
   });
 
   it("returns the key unchanged when it is missing, rather than throwing", () => {
-    // A view calling t() on a key nobody added should render something inert.
-    expect(t("nope.not.here")).toBe("nope.not.here");
+    // A view calling __() on a key nobody added should render something inert.
+    expect(__("nope.not.here")).toBe("nope.not.here");
   });
 });
 
 describe("the ambient request locale", () => {
-  it("is what Lang and t() translate against inside a locale context", () => {
+  it("is what Lang and __() translate against inside a locale context", () => {
     // This is the whole point of the facade: a request that resolved `fr` should
-    // get French from a bare `t("plain")` with no locale argument anywhere.
+    // get French from a bare `__("plain")` with no locale argument anywhere.
     I18nContext.run("fr", () => {
-      expect(t("plain")).toBe("Simple");
+      expect(__("plain")).toBe("Simple");
       expect(Lang.translate("plain")).toBe("Simple");
     });
   });
 
   it("falls back to the default locale outside any context", () => {
-    expect(t("plain")).toBe("Plain");
+    expect(__("plain")).toBe("Plain");
   });
 
   it("does not leak the locale past the context", () => {
-    I18nContext.run("fr", () => t("plain"));
-    expect(t("plain")).toBe("Plain");
+    I18nContext.run("fr", () => __("plain"));
+    expect(__("plain")).toBe("Plain");
   });
 
   it("lets an explicit locale argument win over the ambient one", () => {
     I18nContext.run("fr", () => {
-      expect(t("plain", undefined, "en")).toBe("Plain");
+      expect(__("plain", undefined, "en")).toBe("Plain");
     });
   });
 });

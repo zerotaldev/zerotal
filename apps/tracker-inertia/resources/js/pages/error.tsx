@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Head } from "@inertiajs/react";
-import AppLayout from "../Layouts/AppLayout";
+import MarketingLayout from "../Layouts/MarketingLayout";
 import { ButtonLink, buttonClass } from "../Components/Button";
 import { DOCS_URL } from "../lib/site";
 
@@ -51,7 +51,6 @@ const FALLBACK = {
 
 function ErrorPage({ status }: Props) {
   const { title, body } = COPY[status] ?? FALLBACK;
-
   return (
     <>
       <Head title={`${status} — ${title}`} />
@@ -59,24 +58,26 @@ function ErrorPage({ status }: Props) {
       <section className="mx-auto max-w-lg py-10 text-center sm:py-20">
         <p
           aria-hidden="true"
-          className="bg-linear-to-b from-foreground to-primary bg-clip-text font-mono text-7xl font-bold text-transparent tabular-nums sm:text-8xl"
+          className="font-mono text-6xl font-semibold text-muted-foreground tabular-nums sm:text-7xl"
         >
           {status}
         </p>
 
-        <h1 className="mt-6 text-2xl font-bold tracking-tight text-balance sm:text-3xl">{title}</h1>
+        <h1 className="mt-6 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+          {title}
+        </h1>
 
         <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">{body}</p>
 
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <ButtonLink href="/">Back to home</ButtonLink>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <ButtonLink href="/">{__("Back to home")}</ButtonLink>
           <a
             href={DOCS_URL}
             target="_blank"
             rel="noreferrer"
             className={buttonClass("secondary", "md")}
           >
-            Read the docs
+            {__("Read the docs")}
           </a>
         </div>
       </section>
@@ -85,7 +86,7 @@ function ErrorPage({ status }: Props) {
 }
 
 (ErrorPage as { layout?: (page: ReactNode) => ReactNode }).layout = (page) => (
-  <AppLayout>{page}</AppLayout>
+  <MarketingLayout>{page}</MarketingLayout>
 );
 
 export default ErrorPage;

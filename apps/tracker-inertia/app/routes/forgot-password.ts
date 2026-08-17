@@ -19,6 +19,6 @@ export async function POST(http: HttpContext): Promise<void> {
 
   // The same answer whether or not that address has an account — reporting "no
   // such user" would make this form a way to enumerate registered addresses.
-  http.flash("success", "If that address has an account, a reset link is on its way.");
+  http.flash("success", __("If that address has an account, a reset link is on its way."));
   http.redirect("/forgot-password", 303);
 }

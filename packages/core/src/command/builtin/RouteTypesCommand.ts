@@ -34,6 +34,7 @@ export class RouteTypesCommand extends Command {
 
   async run(): Promise<void> {
     const check = this.flags["check"] as boolean;
+
     const result = await writeRouteTypes(Router.namedRoutes, { check });
 
     if (check) {

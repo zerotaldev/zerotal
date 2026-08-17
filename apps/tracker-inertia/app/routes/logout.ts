@@ -7,6 +7,6 @@ export const middleware = [AuthMiddleware];
 // that manages to make your browser fetch it.
 export async function POST(http: HttpContext): Promise<void> {
   await Auth.logout();
-  http.flash("success", "Signed out.");
+  http.flash("success", __("Signed out."));
   http.redirect("/login", 303);
 }

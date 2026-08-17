@@ -603,6 +603,21 @@ export async function createTestApp(
   // here, the fresh one after its own reset. Adopting before the reset is what is
   // unsafe: it hands back an app whose scope has just been torn down, and the first
   // facade to touch it throws E_FACADE_BEFORE_BOOT.
+  // Declare the runtime mode before anything boots.
+  //
+  // The suite runs under `zt test`, which is a console command, so `APP_TYPE`
+  // arrives as "console". Providers scoped to the test runtime are then filtered
+  // out before a single request is made — `SessionProvider` is `["web", "test"]`,
+  // so a test app had no session at all: flashed validation errors were
+  // unreadable and `assertInvalid()` reported "the response had none", blaming
+  // the app for a binding the harness had excluded. `actingAs()` failed for the
+  // same reason.
+  //
+  // Set rather than defaulted: calling `createTestApp` *is* the declaration that
+  // this process is a test, and the value it would otherwise inherit is the one
+  // that breaks it.
+  Bun.env["APP_TYPE"] = "test";
+
   if (!setup && _sharedApps.size > 0) {
     resetTestState();
     const booted = await bootstrap();

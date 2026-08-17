@@ -19,7 +19,6 @@ function isDark(): boolean {
 
 export default function ThemeToggle() {
   const [dark, setDark] = useState(isDark);
-
   const toggle = useCallback(() => {
     const next = !isDark();
     document.documentElement.classList.toggle("dark", next);
@@ -37,9 +36,9 @@ export default function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-pressed={dark}
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-      title={dark ? "Switch to light theme" : "Switch to dark theme"}
-      className="grid size-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      aria-label={dark ? __("Switch to light theme") : __("Switch to dark theme")}
+      title={dark ? __("Switch to light theme") : __("Switch to dark theme")}
+      className="grid size-9 place-items-center rounded-md border border-border bg-card text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
     >
       {dark ? <MoonIcon className="size-4.5" /> : <SunIcon className="size-4.5" />}
     </button>

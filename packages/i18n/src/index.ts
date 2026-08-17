@@ -12,7 +12,7 @@ export { I18nProvider } from "./provider/I18nProvider.ts";
 export { LocaleMiddleware } from "./LocaleMiddleware.ts";
 
 // Facade + helper
-export { Lang, t } from "./facades/Lang.ts";
+export { Lang, __ } from "./facades/Lang.ts";
 
 // Config
 export { I18nConfig } from "./config.ts";

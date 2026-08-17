@@ -7,8 +7,13 @@ import { cn } from "../lib/cn";
  * The point of these is the accessibility plumbing you would otherwise retype on
  * every form: the label is bound to the control by id, the error and hint are
  * announced via `aria-describedby`, and a failed field is marked `aria-invalid`
- * rather than only turning red. Pass `error={errors.email}` straight from
- * Inertia's shared `errors` prop.
+ * and given a message — never only a red border, which says nothing to a screen
+ * reader and little to anyone who cannot separate the two hues. Pass
+ * `error={errors.email}` straight from Inertia's shared `errors` prop.
+ *
+ * Every control in the app comes from this file, so a filter select on the issue
+ * list and an email box on the sign-in form are the same object at the same
+ * height.
  */
 
 interface FieldProps {
@@ -17,10 +22,22 @@ interface FieldProps {
   hint?: string | undefined;
 }
 
+/* The focus treatment is a ring rather than the global outline, and the control
+ * opts out of that outline so the two never draw at once.
+ *
+ * Width is deliberately absent: `cn` is a plain join rather than a class-aware
+ * merge, so baking `w-full` in here would leave any caller that wanted a
+ * different width emitting both and depending on Tailwind's output order to
+ * settle it. The labelled fields below add `w-full`; the toolbar controls size
+ * themselves. */
 const CONTROL =
-  "w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground shadow-sm " +
-  "transition-colors placeholder:text-muted-foreground focus:outline-none " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+  "rounded-md border bg-card px-3 text-sm text-foreground " +
+  "transition-[border-color,box-shadow] duration-150 placeholder:text-muted-foreground " +
+  "focus:border-ring focus:ring-2 focus:ring-ring/15 focus:outline-none focus-visible:outline-none " +
+  "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground";
+
+/** The labelled fields all span their column. */
+const FIELD_CONTROL = `w-full ${CONTROL}`;
 
 function Shell({
   label,
@@ -49,7 +66,7 @@ function Shell({
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-sm text-muted-foreground">
+        <p id={hintId} className="text-xs text-muted-foreground">
           {hint}
         </p>
       ) : null}
@@ -81,7 +98,12 @@ export function TextField({
         id={controlId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-        className={cn(CONTROL, error ? "border-destructive" : "border-input", className)}
+        className={cn(
+          FIELD_CONTROL,
+          "h-10",
+          error ? "border-destructive" : "border-input",
+          className,
+        )}
       />
     </Shell>
   );
@@ -114,8 +136,8 @@ export function TextAreaField({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
         className={cn(
-          CONTROL,
-          "resize-y",
+          FIELD_CONTROL,
+          "resize-y py-2",
           error ? "border-destructive" : "border-input",
           className,
         )}
@@ -149,10 +171,23 @@ export function SelectField({
         id={controlId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-        className={cn(CONTROL, error ? "border-destructive" : "border-input", className)}
+        className={cn(
+          FIELD_CONTROL,
+          "h-10",
+          error ? "border-destructive" : "border-input",
+          className,
+        )}
       >
         {children}
       </select>
     </Shell>
   );
 }
+
+/**
+ * The bare control class, for the places that need an input without a label
+ * block — the issue list's filter bar, where the label is the surrounding
+ * `aria-label` and the row is a toolbar rather than a form.
+ */
+export const controlClass = (className?: string): string =>
+  cn(CONTROL, "h-9 border-input", className);

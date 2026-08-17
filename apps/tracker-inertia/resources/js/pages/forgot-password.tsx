@@ -1,65 +1,54 @@
 import type { FormEvent, ReactNode } from "react";
-import { Head, Link, useForm } from "@inertiajs/react";
-import AppLayout from "../Layouts/AppLayout";
+import { Head, useForm } from "@inertiajs/react";
+import AuthLayout from "../Layouts/AuthLayout";
 import { Button } from "../Components/Button";
-import { Card } from "../Components/Card";
 import { TextField } from "../Components/Field";
+import { endpoint } from "../lib/endpoint";
 
 interface Props {
   title: string;
 }
 
 function ForgotPassword({ title }: Props) {
-  const { data, setData, post, processing, errors } = useForm({ email: "" });
-
+  const { data, setData, submit: submitForm, processing, errors } = useForm({ email: "" });
   function submit(event: FormEvent) {
     event.preventDefault();
-    post("/forgot-password");
+    const { url, method } = endpoint("forgot-password.store");
+    submitForm(method, url);
   }
 
   return (
     <>
       <Head title={title} />
 
-      <div className="mx-auto max-w-md">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight text-balance">{title}</h1>
-          <p className="mt-2 text-muted-foreground">
-            Give us the address you signed up with and we will send a link.
-          </p>
-        </header>
+      <form onSubmit={submit} className="space-y-5">
+        <TextField
+          label={__("Email")}
+          type="email"
+          autoComplete="email"
+          hint={__("In development the link is written to the server log rather than emailed.")}
+          value={data.email}
+          error={errors.email}
+          onChange={(e) => setData("email", e.target.value)}
+          required
+        />
 
-        <Card className="mt-8 p-6 sm:p-8">
-          <form onSubmit={submit} className="space-y-5">
-            <TextField
-              label="Email"
-              type="email"
-              autoComplete="email"
-              hint="In development the link is written to the server log rather than emailed."
-              value={data.email}
-              error={errors.email}
-              onChange={(e) => setData("email", e.target.value)}
-              required
-            />
-
-            <Button type="submit" disabled={processing}>
-              {processing ? "Sending…" : "Send reset link"}
-            </Button>
-          </form>
-        </Card>
-
-        <p className="mt-6 text-sm text-muted-foreground">
-          <Link href="/login" className="text-accent hover:underline">
-            Back to sign in
-          </Link>
-        </p>
-      </div>
+        <Button type="submit" disabled={processing} className="w-full">
+          {processing ? __("Sending…") : __("Send reset link")}
+        </Button>
+      </form>
     </>
   );
 }
 
 (ForgotPassword as { layout?: (page: ReactNode) => ReactNode }).layout = (page) => (
-  <AppLayout>{page}</AppLayout>
+  <AuthLayout
+    title="Reset your password"
+    subtitle="We will email you a link to set a new one."
+    footer={{ text: "Remembered it?", link: "Sign in", href: route("login") }}
+  >
+    {page}
+  </AuthLayout>
 );
 
 export default ForgotPassword;

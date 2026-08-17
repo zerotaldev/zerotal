@@ -36,7 +36,7 @@ export default function Pagination({ meta, className }: { meta: PageMeta; classN
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={__("Pagination")}
       className={cn("flex items-center justify-between gap-4 px-4 py-3", className)}
     >
       <p className="text-xs text-muted-foreground tabular-nums">
@@ -46,10 +46,10 @@ export default function Pagination({ meta, className }: { meta: PageMeta; classN
       <div className="flex items-center gap-1">
         {meta.page > 1 ? (
           <Link href={href(meta.page - 1)} className={cn(step, "hover:bg-muted")} rel="prev">
-            Previous
+            {__("Previous")}
           </Link>
         ) : (
-          <span className={cn(step, "text-muted-foreground/50")}>Previous</span>
+          <span className={cn(step, "text-muted-foreground/50")}>{__("Previous")}</span>
         )}
 
         {pages.map((page, index) =>
@@ -77,10 +77,10 @@ export default function Pagination({ meta, className }: { meta: PageMeta; classN
 
         {meta.page < meta.lastPage ? (
           <Link href={href(meta.page + 1)} className={cn(step, "hover:bg-muted")} rel="next">
-            Next
+            {__("Next")}
           </Link>
         ) : (
-          <span className={cn(step, "text-muted-foreground/50")}>Next</span>
+          <span className={cn(step, "text-muted-foreground/50")}>{__("Next")}</span>
         )}
       </div>
     </nav>

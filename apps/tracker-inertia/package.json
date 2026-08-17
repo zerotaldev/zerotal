@@ -13,7 +13,12 @@
   },
   "dependencies": {
     "@inertiajs/react": "^3.0.0",
+    "@zerotal/audit": "workspace:*",
+    "@zerotal/broadcasting": "workspace:*",
+    "@zerotal/cache": "workspace:*",
+    "@zerotal/client": "workspace:*",
     "@zerotal/devtools": "workspace:*",
+    "@zerotal/i18n": "workspace:*",
     "@zerotal/inertia": "workspace:*",
     "@zerotal/notifications": "workspace:*",
     "react": "^19.0.0",

@@ -122,14 +122,6 @@ export function ClockIcon(props: IconProps) {
   );
 }
 
-export function BoltIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="m13 2-9 12h7l-1 8 9-12h-7l1-8z" />
-    </Svg>
-  );
-}
-
 export function TerminalIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -139,11 +131,65 @@ export function TerminalIcon(props: IconProps) {
   );
 }
 
-export function MailIcon(props: IconProps) {
+/* ── Navigation and account ─────────────────────────────────────────────────── */
+
+/** A board with columns — the Projects section of the sidebar. */
+export function ProjectsIcon(props: IconProps) {
   return (
     <Svg {...props}>
-      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
-      <path d="m3 7 8.1 5.4a1.6 1.6 0 0 0 1.8 0L21 7" />
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M8.5 9v6M12 9v3.5M15.5 9v5" />
+    </Svg>
+  );
+}
+
+export function UserIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+    </Svg>
+  );
+}
+
+export function LogOutIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 4H6.5A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20H9" />
+      <path d="M13 12h8M17.5 8.5 21 12l-3.5 3.5" />
+    </Svg>
+  );
+}
+
+export function GlobeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.6 2.5 15.4 0 18M12 3c-2.5 2.6-2.5 15.4 0 18" />
+    </Svg>
+  );
+}
+
+export function ChartIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+    </Svg>
+  );
+}
+
+export function PaperclipIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 11.5 12.4 19a4.5 4.5 0 0 1-6.4-6.4l7.9-7.9a3 3 0 0 1 4.2 4.2l-7.9 7.9a1.5 1.5 0 0 1-2.1-2.1l7.2-7.2" />
+    </Svg>
+  );
+}
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m6 9 6 6 6-6" />
     </Svg>
   );
 }

@@ -14,6 +14,7 @@ import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { Pipeline } from "../pipeline/Pipeline.ts";
 import { ExceptionHandler } from "./ExceptionHandler.ts";
 import { Router, RouterState } from "../router/Router.ts";
+import { defineRouteMethods, defineRoutes } from "../router/routes.ts";
 import type { StaticOptions } from "../router/Router.ts";
 import { Health, resolveHealthConfig, checkHealthAccess } from "../health/Health.ts";
 import type { HealthConfigShape } from "../health/Health.ts";
@@ -1217,6 +1218,21 @@ export class Application {
       await this._loadFileRoutes();
     }
 
+    // Install the route table for `zerotal/routes`, now that every route is
+    // registered.
+    //
+    // That module is the standalone URL builder a browser bundle imports, so it
+    // cannot reach for `Router` itself — importing the router would drag the
+    // server into every client bundle. The dependency therefore points this way:
+    // the server, which already has both, pushes the table in.
+    //
+    // Without this, `route()` threw on the server for any app that renders its
+    // own markup — a `view` build produces every href and form action there —
+    // and the fix was a `defineRoutes()` call each app had to know to write.
+    // A browser entry still calls it; that is a different process with no router
+    // to read. See T24.
+    this._installRouteTable();
+
     // A routes/ directory nobody routed is a silent 404 for every path in it — the file
     // imports cleanly and registers nothing, which looks identical to a typo'd URL.
     this._warnUnroutedRoutesDir(process.cwd());
@@ -1268,6 +1284,23 @@ export class Application {
       this._routeGroups.map((g) => g.file),
     );
     if (warning) frameworkLog("app").warn(warning);
+  }
+
+  /**
+   * Hand the registered routes to the standalone `route()` builder.
+   *
+   * Name → pattern for the URLs, and name → verb for `action()`. `RouteDefinition`
+   * carries its own `name` beside `method`, so the pair comes from one record —
+   * a path join would be wrong, since `GET /login` and `POST /login` share a path.
+   */
+  private _installRouteTable(): void {
+    const methods = new Map<string, string>();
+    for (const definition of Router.routes.values()) {
+      if (definition.name) methods.set(definition.name, definition.method);
+    }
+
+    defineRoutes(Router.namedRoutes);
+    defineRouteMethods(Object.fromEntries(methods));
   }
 
   private async _loadFileRoutes(): Promise<void> {

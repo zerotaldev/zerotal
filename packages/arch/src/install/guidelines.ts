@@ -117,7 +117,11 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
   },
   {
     pkg: "@zerotal/i18n",
-    lines: ["**Translations.** `@zerotal/i18n`; message files live under `resources/lang/`."],
+    lines: [
+      "**Translations.** `@zerotal/i18n`; message files live under `resources/lang/`. " +
+        'Translate with `__("English sentence")` — the source string is the key, so there ' +
+        "is no catalog for the source language and no key to invent.",
+    ],
   },
   {
     pkg: "@zerotal/tenancy",

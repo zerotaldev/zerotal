@@ -157,13 +157,16 @@ export function apiSurfaceTool(ctx: ToolContext): ArchTool {
       "The exact public API of a Zerotal package: every export with its full TypeScript " +
       "signature, including class members and static properties. This is the mechanical " +
       "record CI diffs on every change, read from the version installed in this project — " +
-      "prefer it over recalling an API from memory. Pass `symbol` to narrow to one export.",
+      "prefer it over recalling an API from memory. Pass `symbol` alone to find an export " +
+      "when you do not know which package owns it; add `package` to narrow.",
     inputSchema: {
       type: "object",
       properties: {
         package: {
           type: "string",
-          description: 'Package name, with or without the scope — "core" or "@zerotal/core".',
+          description:
+            'Package name, with or without the scope — "core" or "@zerotal/core". ' +
+            "Omit to search every installed package.",
         },
         symbol: {
           type: "string",
@@ -171,7 +174,6 @@ export function apiSurfaceTool(ctx: ToolContext): ArchTool {
             "Only return exports whose name contains this, case-insensitively. Omit for all.",
         },
       },
-      required: ["package"],
       additionalProperties: false,
     },
     outputSchema: {
@@ -198,9 +200,23 @@ export function apiSurfaceTool(ctx: ToolContext): ArchTool {
     },
 
     async run(args): Promise<ToolOutcome> {
-      const requested = typeof args["package"] === "string" ? args["package"] : "";
-      if (requested.trim().length === 0) {
-        return { text: "`package` is required.", failed: true };
+      const requested = typeof args["package"] === "string" ? args["package"].trim() : "";
+      const filter = typeof args["symbol"] === "string" ? args["symbol"].toLowerCase() : undefined;
+
+      // No package named: search them all for the symbol.
+      //
+      // Requiring one assumed the caller already knew where an export lived,
+      // which is the opposite of the situation that sends someone here — you
+      // reach for this tool *because* you are unsure, and being made to guess a
+      // package first is how you end up guessing the signature instead.
+      if (requested.length === 0) {
+        if (filter === undefined || filter.length === 0) {
+          return {
+            text: "Pass `symbol` to search every package, or `package` to list one.",
+            failed: true,
+          };
+        }
+        return searchEverywhere(ctx.root, args["symbol"] as string, filter);
       }
 
       const found = await findSurfaceFile(ctx.root, requested);
@@ -215,7 +231,6 @@ export function apiSurfaceTool(ctx: ToolContext): ArchTool {
       }
 
       const all = parseSurface(await Bun.file(found.path).text());
-      const filter = typeof args["symbol"] === "string" ? args["symbol"].toLowerCase() : undefined;
       const entries =
         filter === undefined || filter.length === 0
           ? all
@@ -261,4 +276,61 @@ function render(pkg: string, entries: SurfaceEntry[], total: number): string {
   });
 
   return `${header}\n\n${sections.join("\n\n")}`;
+}
+
+/**
+ * Find a symbol without being told which package it lives in.
+ *
+ * The narrow form answers "what is the signature of X in package Y". This one
+ * answers "where is X, and what is its signature" — the question you actually
+ * have when an API you half-remember turns out not to exist. Matches are
+ * grouped by package so an ambiguous name shows every owner rather than the
+ * first.
+ */
+async function searchEverywhere(
+  root: string,
+  symbol: string,
+  filter: string,
+): Promise<ToolOutcome> {
+  const packages = await availablePackages(root);
+  const hits: { package: string; entries: SurfaceEntry[] }[] = [];
+
+  for (const name of packages) {
+    const found = await findSurfaceFile(root, name);
+    if (!found) continue;
+
+    // Signature as well as name. An export's name is the class — `Auth` — while
+    // the thing someone looks up is usually a member of it: `userOrNull`,
+    // `salutation`, `assertInvalid`. Matching names alone answers "is there an
+    // export called X", which is rarely the question; the question is "where is
+    // this method and what does it take".
+    const matched = parseSurface(await Bun.file(found.path).text()).filter(
+      (entry) =>
+        entry.name.toLowerCase().includes(filter) || entry.signature.toLowerCase().includes(filter),
+    );
+    if (matched.length > 0) hits.push({ package: found.scoped, entries: matched });
+  }
+
+  if (hits.length === 0) {
+    return {
+      text:
+        `No export matching "${symbol}" in any installed package.\n\n` +
+        `Searched: ${packages.join(", ")}`,
+      data: { package: "", total: 0, matched: 0, entries: [] },
+      failed: true,
+    };
+  }
+
+  const total = hits.reduce((n, hit) => n + hit.entries.length, 0);
+  const text = hits.map((hit) => render(hit.package, hit.entries, hit.entries.length)).join("\n\n");
+
+  return {
+    text: `${total} export(s) matching "${symbol}" across ${hits.length} package(s).\n\n${text}`,
+    data: {
+      package: hits.map((hit) => hit.package).join(", "),
+      total,
+      matched: total,
+      entries: hits.flatMap((hit) => hit.entries),
+    },
+  };
 }

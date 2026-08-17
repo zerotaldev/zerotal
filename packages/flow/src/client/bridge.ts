@@ -2964,6 +2964,32 @@ function _setupPrefetch(): void {
     },
     { passive: true },
   );
+
+  // `flow:navigate.down` — prefetch on pointer-down, with no dwell.
+  //
+  // The middle setting between "never" and "every link the pointer crosses".
+  // Hover prefetch is free speed on a handful of stable links and the opposite
+  // on a dense list: moving the pointer down a table of a hundred rows asks the
+  // server for a hundred pages, none of which anyone chose. Pointer-down fires
+  // once, on the link the reader has committed to, and still beats the click by
+  // however long the button stays held — around 100ms of ordinary human timing,
+  // which is most of a fast page render.
+  //
+  // `pointerdown` rather than `mousedown` so a touch lands here too, and it is
+  // passive because this never calls preventDefault — the click that follows is
+  // handled by the navigation listener as usual, and finds the page waiting in
+  // the cache.
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      const a = (e.target as Element).closest?.(
+        "a[flow\\:navigate\\.down]",
+      ) as HTMLAnchorElement | null;
+      const href = a ? sameOrigin(a) : null;
+      if (href) _prefetch(href);
+    },
+    { passive: true },
+  );
 }
 
 function _setupNavigationLinks(): void {

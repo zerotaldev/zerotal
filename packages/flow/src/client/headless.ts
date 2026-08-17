@@ -523,7 +523,13 @@ export function flowFileUpload(config: { name: string }) {
         this.error = e.detail.error ?? "Upload failed";
       }) as EventListener);
 
-      on("flow:upload-done", ((e: CustomEvent) => {
+      // `-finish`, not `-done`. The bridge dispatches `flow:upload-finish`
+      // (`_uploadFiles`) and the guide documents that name; this listener was the
+      // only place `flow:upload-done` appeared, and nothing has ever dispatched
+      // it. So the success path never ran: `uploading` stayed true after a
+      // perfectly good upload and the dropzone read "Uploading… 100%" forever,
+      // while the file itself had already been stored and bound.
+      on("flow:upload-finish", ((e: CustomEvent) => {
         if (e.detail.key !== this.name) return;
         this.uploading = false;
         this.progress = 100;

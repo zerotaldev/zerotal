@@ -11,6 +11,58 @@ change.
 
 ## [Unreleased]
 
+### Added
+
+- **`@on` can name a channel per instance.** A listener's channel is read off the *class*, so
+  a channel containing a record id could not be written at all. The guide showed
+  `@on("echo-private:issues.${this.issueId},CommentPosted")`, which is not interpolation —
+  it is a plain string, and the eleven characters `${this.issueId}` reached the browser
+  intact, subscribed to a channel nobody broadcasts to, and delivered nothing. No error, no
+  warning, no subscription: a live feature with this bug looks exactly like a live feature
+  that was never built.
+
+  `@on` now also accepts a resolver, the same shape `@presence` and `@shared` have always
+  taken and are resolved with four lines away in the same file:
+
+  ```ts
+  @on((self) => `echo-private:issues.${self.issue.id},CommentPosted`)
+  async onCommentPosted(payload: { comment: Comment }) { … }
+  ```
+
+  It is called with the component as the snapshot is built — after `onMount()`, so it can
+  read anything the component has loaded. A resolver that throws drops that one listener and
+  leaves the page rendering, because a page missing its live updates is degraded while a page
+  that 500s over an unnameable channel is gone. Static names are untouched.
+
+  Reach for the **narrowest** channel a reader is entitled to. A shared channel plus an
+  `if (payload.id !== this.id) return` in the handler looks equivalent and is not: the
+  broadcast still lands in every subscriber's browser, to be discarded after the fact.
+
+- **`<Link down>` — prefetch on pointer-down.** The choice was between prefetching on hover
+  and not prefetching at all, and on a dense list neither is right. Hover prefetch is free
+  speed on a handful of stable links — a navigation rail, a breadcrumb — but the pointer
+  crosses every row between where it is and where it is going, so scrolling a hundred-row
+  table asks the server for a hundred pages nobody chose.
+
+  `down` fires on `pointerdown` with no dwell: once, on the link the reader has committed to,
+  and still ahead of the click by however long the button is held. `pointerdown` rather than
+  `mousedown` so a touch lands there too, and it is passive — the click that follows is
+  handled as usual and finds the page already cached. `flow:navigate.down` as an attribute;
+  both may be set.
+
+### Fixed
+
+- **`<FileUpload>` never stopped saying "Uploading… 100%".** A successful upload left the
+  dropzone reporting progress forever. The bytes had gone up, the signed reference had come
+  back, and the bound property had been set — the only thing that failed was the component
+  admitting it, which meant the feature read as broken while working perfectly.
+
+  The bridge dispatches `flow:upload-finish` on success and the guide documents that name.
+  The component listened for `flow:upload-done`, which appeared nowhere else in the codebase
+  and has never been dispatched by anything. So `uploading` was set true on start and had no
+  path back to false. The component's own test covered start, progress and error, and skipped
+  success — which is how a one-word mismatch survived. It now covers it.
+
 ## [1.7.1] — 2026-08-16
 
 ### Changed

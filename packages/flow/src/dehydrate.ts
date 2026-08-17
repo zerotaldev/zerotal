@@ -8,6 +8,7 @@ import {
   getLockedProps,
   getUrlProps,
   getListeners,
+  resolveListeners,
   getPresenceProps,
   resolvePresenceChannel,
   getSharedProps,
@@ -124,9 +125,14 @@ export function dehydrate(
     data[key] = [serialized, meta];
   }
 
-  // Collect @on listeners for the client event router.
+  // Collect @on listeners for the client event router, resolving any registered as
+  // `(self) => name` against this instance — that is what lets an `echo:` channel carry
+  // a per-record id, since the decorator's argument is read off the class.
   // Excluded from HMAC signing (server-derived, can't usefully be tampered with).
-  const listenersMap = getListeners(page.constructor as { prototype: object });
+  const listenersMap = resolveListeners(
+    getListeners(page.constructor as { prototype: object }),
+    page,
+  );
   const listeners = listenersMap.size > 0 ? Object.fromEntries(listenersMap) : undefined;
 
   // Named slot HTML passed down by the parent. Signed (server-generated), and carried

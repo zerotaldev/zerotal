@@ -48,6 +48,22 @@ describe("<Link>", () => {
     expect(n.html).toContain('class="nav"');
   });
 
+  it("down prefetches on pointer-down instead of on hover", () => {
+    const n = Link({ href: "/posts/1", down: true, children: "One" });
+    expect(n.html).toContain("flow:navigate.down");
+    // The two are independent: asking for one must not imply the other, or a row
+    // in a list opting out of hover would quietly keep prefetching on hover.
+    expect(n.html).not.toContain("flow:navigate.hover");
+    // The prop is consumed, not passed through to the <a>.
+    expect(n.html).not.toContain(' down="');
+  });
+
+  it("hover and down can be combined", () => {
+    const n = Link({ href: "/x", hover: true, down: true, children: "X" });
+    expect(n.html).toContain("flow:navigate.hover");
+    expect(n.html).toContain("flow:navigate.down");
+  });
+
   it("current={true} forces the active state on (data-current) and persists it across navigation", () => {
     const n = Link({ href: "/x", current: true, children: "X" });
     expect(n.html).toContain("flow:current.force"); // runtime keeps data-current on this link

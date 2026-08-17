@@ -251,7 +251,7 @@ export class OrderDashboard extends Component {
     this.flash(`New order — $${payload.total}`, "success");
   }
 
-  @on("echo-private:orders.${this.branchId},OrderCancelled")
+  @on((self) => `echo-private:orders.${self.branchId},OrderCancelled`)
   async onOrderCancelled(payload: { id: number }): Promise<void> {
     this.recentOrders = this.recentOrders.filter((o) => o.id !== payload.id);
     this.orderCount   = Math.max(0, this.orderCount - 1);
@@ -285,6 +285,38 @@ export class OrderDashboard extends Component {
 | `echo:scores,.score.submitted`     | Custom `broadcastAs` name (leading dot) |
 
 The part before the comma is the channel name; the part after is the event name. For presence channels, `joining`, `leaving`, and `here` are the built-in presence event names.
+
+### Per-instance channels
+
+A channel that names a record — `issues.417`, `orders.8` — cannot be written as a string. The
+decorator's argument is read off the **class**, before any instance exists, so a template literal
+inside a plain string is not interpolated: `@on("echo-private:issues.${this.issueId},CommentPosted")`
+subscribes to a channel whose name contains those characters, and receives nothing.
+
+Pass a resolver instead. It is called with the component when the snapshot is built, exactly as
+[`@presence`](#presence--whos-here-multiplayer) and [`@shared`](#shared-state--everyone-converges-multiplayer)
+resolve theirs:
+
+```typescript
+export class IssuePage extends Component {
+  @locked issue!: Issue;
+  @locked comments: Comment[] = [];
+
+  @on((self) => `echo-private:issues.${self.issue.id},CommentPosted`)
+  async onCommentPosted(payload: { comment: Comment }): Promise<void> {
+    this.comments = [...this.comments, payload.comment];
+  }
+}
+```
+
+The resolver runs once per render, after `onMount()`, so it can read anything the component has
+loaded. If it throws — a field it reads is still null, say — that one listener is dropped and the
+page renders without it, rather than the render failing.
+
+Resolve the *narrowest* channel the reader is entitled to. A static `issues` channel with an
+`if (payload.issueId !== this.issue.id) return` in the handler looks equivalent and is not: the
+broadcast still reaches every subscriber's browser, so every reader receives every issue's
+comment bodies and discards them after the fact.
 
 ### Requirements
 

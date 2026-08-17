@@ -52,7 +52,7 @@ const _exposedMethods = new WeakMap<object, Set<string>>();
 const _lockedProps = new WeakMap<object, Set<string>>();
 const _renderlessMethods = new WeakMap<object, Set<string>>();
 const _validateRules = new WeakMap<object, Map<string, ValidateBuilder>>();
-const _onListeners = new WeakMap<object, Map<string, string>>();
+const _onListeners = new WeakMap<object, Map<ListenerName, string>>();
 const _urlProps = new WeakMap<object, Map<string, UrlOptions>>();
 /**
  * prop -> where its value comes from:
@@ -77,10 +77,10 @@ function _register(map: WeakMap<object, Set<string>>, proto: object, key: string
   s.add(key);
 }
 
-function _registerMap<V>(
-  map: WeakMap<object, Map<string, V>>,
+function _registerMap<V, K = string>(
+  map: WeakMap<object, Map<K, V>>,
   proto: object,
-  key: string,
+  key: K,
   value: V,
 ): void {
   let m = map.get(proto);
@@ -102,8 +102,11 @@ function _collect(map: WeakMap<object, Set<string>>, startProto: object): Set<st
   return result;
 }
 
-function _collectMap<V>(map: WeakMap<object, Map<string, V>>, startProto: object): Map<string, V> {
-  const result = new Map<string, V>();
+function _collectMap<V, K = string>(
+  map: WeakMap<object, Map<K, V>>,
+  startProto: object,
+): Map<K, V> {
+  const result = new Map<K, V>();
   let proto: object | null = startProto;
   while (proto && proto !== Object.prototype) {
     const m = map.get(proto);
@@ -131,7 +134,8 @@ interface MemberTag {
   renderless?: boolean;
   task?: boolean;
   computed?: boolean;
-  on?: string;
+  /** The event name, or a resolver over the instance — see {@link ListenerName}. */
+  on?: ListenerName;
 }
 
 // `unique symbol` (not a plain `symbol`) so the computed-key types below resolve.
@@ -433,9 +437,9 @@ export function getValidateRules(instance: object): Map<string, ValidateBuilder>
   _ensureDrained(instance);
   return _collectMap(_validateRules, Object.getPrototypeOf(instance) as object);
 }
-export function getListeners(PageClass: { prototype: object }): Map<string, string> {
+export function getListeners(PageClass: { prototype: object }): Map<ListenerName, string> {
   _scanChain(PageClass.prototype as object);
-  return _collectMap(_onListeners, PageClass.prototype as object);
+  return _collectMap<string, ListenerName>(_onListeners, PageClass.prototype as object);
 }
 export function getUrlProps(instance: object): Map<string, UrlOptions> {
   _ensureDrained(instance);
@@ -924,6 +928,28 @@ export function validate(
 // ── @on ───────────────────────────────────────────────────────────────────────
 
 /**
+ * What a `@on` listener listens to: a static event name, or a resolver called with the component
+ * instance to compute one — the same shape as {@link PresenceChannel} and {@link SharedChannel}.
+ *
+ * Use the resolver form for an `echo:` channel whose name contains a value only the instance
+ * knows. A template literal in a plain string cannot work: the decorator's argument is read off
+ * the class, long before any instance exists, so `"echo:issues.${this.id},E"` subscribes to a
+ * channel whose name contains those eleven characters.
+ *
+ * @example
+ * ```ts
+ * // Static — the channel is the same for every instance.
+ * @on("echo:orders,OrderPlaced")
+ *
+ * // Per-instance — one channel per issue.
+ * @on((self) => `echo-private:issues.${self.issue.id},CommentPosted`)
+ * ```
+ *
+ * @category Realtime
+ */
+export type ListenerName = LooseEventName | ((self: Record<string, any>) => string);
+
+/**
  * Binds a method as a cross-component (realtime) event listener. Auto-exposes the method.
  *
  * @remarks
@@ -952,7 +978,7 @@ export function validate(
  * @category Realtime
  */
 export function on(
-  eventName: LooseEventName,
+  eventName: ListenerName,
 ): (fn: unknown, context: ClassMethodDecoratorContext) => void {
   return (_fn: unknown, context: ClassMethodDecoratorContext): void => {
     // `@on` implies `@expose`; the tag carries the event name so the scan can rebuild the map.
@@ -964,6 +990,47 @@ export function on(
       _registerMap(_onListeners, proto, eventName, name);
     });
   };
+}
+
+/**
+ * The listener names a component actually subscribes to, resolved against `instance`.
+ *
+ * A static name passes through; a resolver is called with the component, so an
+ * `echo:` channel can carry a value only the instance knows — `issues.417` rather
+ * than the class-level `issues.:id`.
+ *
+ * This exists because the channel name reaches the browser through the snapshot,
+ * and the snapshot is built per instance. Registering `(self) => …` under the
+ * *class* and resolving here is the same split {@link presence} and {@link shared}
+ * already use; before it, a `@on("echo-private:issues.${this.issueId},…")`
+ * written the way the guide showed subscribed to a channel literally containing
+ * `${this.issueId}` — no error, no warning, and no events, because template
+ * syntax inside a plain string is just text.
+ *
+ * A resolver that throws is dropped rather than allowed to fail the render: a
+ * page whose live updates do not arrive is a degraded page, while a page that
+ * 500s because one channel could not be named is no page at all.
+ */
+export function resolveListeners(
+  listeners: Map<ListenerName, string>,
+  instance: object,
+): Map<string, string> {
+  const resolved = new Map<string, string>();
+
+  for (const [name, method] of listeners) {
+    if (typeof name !== "function") {
+      resolved.set(name, method);
+      continue;
+    }
+    try {
+      const channel = name(instance as Record<string, unknown>);
+      if (typeof channel === "string" && channel !== "") resolved.set(channel, method);
+    } catch {
+      /* an unresolvable channel is not subscribed to */
+    }
+  }
+
+  return resolved;
 }
 
 // ── @url ──────────────────────────────────────────────────────────────────────

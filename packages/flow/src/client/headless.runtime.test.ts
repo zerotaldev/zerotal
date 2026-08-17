@@ -324,6 +324,25 @@ describe("flowFileUpload", () => {
     expect(c.uploading).toBe(false);
     expect(c.error).toBe("too big");
 
+    // The success path — the one this block used to skip entirely, which is how
+    // the listener came to be bound to an event name (`flow:upload-done`) that
+    // nothing dispatches. A successful upload left `uploading` true forever and
+    // the dropzone stuck on "Uploading… 100%".
+    //
+    // The name here must stay in step with `_uploadFiles` in client/bridge.ts.
+    fire("flow:upload-start", { key: "photo", count: 1 });
+    expect(c.uploading).toBe(true);
+    fire("flow:upload-finish", { key: "photo" });
+    expect(c.uploading).toBe(false);
+    expect(c.progress).toBe(100);
+
+    // Another field finishing must not clear this one's indicator.
+    fire("flow:upload-start", { key: "photo", count: 1 });
+    fire("flow:upload-finish", { key: "other" });
+    expect(c.uploading).toBe(true);
+    fire("flow:upload-finish", { key: "photo" });
+    expect(c.uploading).toBe(false);
+
     const before = Object.values(listeners).reduce((n, a) => n + a.length, 0);
     expect(before).toBeGreaterThan(0);
     c.destroy();

@@ -28,6 +28,15 @@ import { jsLiteral } from "./utils.ts";
 export interface LinkProps {
   href: string;
   hover?: boolean;
+  /**
+   * Prefetch on pointer-down instead of on hover.
+   *
+   * The right choice for a row in a long list: hover prefetch fires for every
+   * link the pointer crosses on its way somewhere else, which on a dense table
+   * is a fetch per row nobody chose. Pointer-down fires once, on the one link
+   * the reader has committed to, and still lands ahead of the click.
+   */
+  down?: boolean;
   current?: boolean;
   exact?: boolean;
   preserveScroll?: boolean;
@@ -39,7 +48,8 @@ export interface LinkProps {
  * that you can override or refine per link.
  *
  * @remarks
- * `hover` prefetches the target on hover; `current` forces (`true`) or suppresses
+ * `hover` prefetches the target on hover and `down` on pointer-down (the one to reach
+ * for inside a long list); `current` forces (`true`) or suppresses
  * (`false`) the active state instead of deriving it from the URL; `exact` restricts
  * the automatic active state to an exact path match. Any other props pass through to
  * the `<a>`.
@@ -60,9 +70,10 @@ export interface LinkProps {
  * @category Navigation & data
  */
 export function Link(props: LinkProps & { children?: unknown }): HtmlNode {
-  const { href, hover, current, exact, preserveScroll, children, ...rest } = props;
+  const { href, hover, down, current, exact, preserveScroll, children, ...rest } = props;
   const out: Record<string, unknown> = { ...rest, href, navigate: true, children };
   if (hover) out["navigateHover"] = true;
+  if (down) out["navigateDown"] = true;
   if (preserveScroll) out["navigatePreserveScroll"] = true;
   // `current` overrides the automatic URL-based active state:
   //   false → never active (flow:current.ignore)

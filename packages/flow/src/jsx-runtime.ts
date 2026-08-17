@@ -59,6 +59,7 @@ interface FlowDirectives {
 
   navigate?: boolean;
   navigateHover?: boolean;
+  navigateDown?: boolean;
   navigatePreserveScroll?: boolean;
   current?: string;
   currentExact?: boolean;
@@ -738,6 +739,7 @@ const PULSE_PROP_MAP: Record<string, string> = {
   dirtyTarget: "flow:target",
   navigate: "flow:navigate",
   navigateHover: "flow:navigate.hover",
+  navigateDown: "flow:navigate.down",
   // One word on purpose: toFlowHtmlAttr() rewrites every `-` in a flow: attribute
   // to a `.`, so a hyphenated modifier would reach the DOM under a different name
   // here than the compiler emits.

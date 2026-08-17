@@ -189,6 +189,7 @@ export { renderless } from "./decorators.ts";
 export { task } from "./decorators.ts";
 export { validate } from "./decorators.ts";
 export { on } from "./decorators.ts";
+export type { ListenerName } from "./decorators.ts";
 export { url } from "./decorators.ts";
 export { param } from "./decorators.ts";
 export { session } from "./decorators.ts";

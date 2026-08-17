@@ -87,6 +87,7 @@ Visual loading indicators (`showOnLoading`, `hideOnLoading`, `loadingClass`) wai
 | ----------------- | --------------------------------------------------------- | ----------------------------------- |
 | `navigate`        | SPA navigation to `href`, layout stays mounted            | `flow:navigate`                     |
 | `navigate hover`  | Prefetch page on hover (~60ms debounce)                   | `flow:navigate flow:navigate.hover` |
+| `navigate down`   | Prefetch page on pointer-down (no dwell; dense lists)     | `flow:navigate flow:navigate.down`  |
 | `current={false}` | Disable automatic `data-current` attribute                | —                                   |
 | `exact`           | `data-current` only on an exact URL match (not sub-pages) | `flow:current.exact`                |
 

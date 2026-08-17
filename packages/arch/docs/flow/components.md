@@ -30,12 +30,27 @@ import { Link } from "@zerotal/flow";
 </Link>;
 
 {
+  /* Prefetch on pointer-down instead — for a row in a long list */
+}
+<Link href="/posts/42" down>
+  One post
+</Link>;
+
+{
   /* Disable automatic data-current (e.g. always-active home links) */
 }
 <Link href="/" current={false}>
   Home
 </Link>;
 ```
+
+Choose between `hover` and `down` by how many of the link there are. `hover` prefetches after a
+short dwell, which is free speed on a handful of stable links — a navigation rail, a breadcrumb.
+On a dense list it inverts: the pointer crosses every row between where it is and where it is
+going, so scrolling a hundred-row table asks the server for a hundred pages nobody chose. `down`
+fires on `pointerdown` instead — once, on the link the reader has committed to, and still ahead
+of the click by however long the button is held. Both may be set; the target is fetched once and
+cached either way.
 
 `data-current` matches by **prefix** — a link to `/posts` stays active on `/posts/42` — which is what you want for a section parent. For an index link that should be active only on its own exact URL (an "Overview" tab that shouldn't light up on the section's sub-pages), add `exact`:
 

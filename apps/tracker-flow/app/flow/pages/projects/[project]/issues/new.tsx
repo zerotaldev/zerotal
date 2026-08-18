@@ -1,6 +1,5 @@
 import { Head, expose, locked } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
-import type { HttpContext } from "zerotal";
 import { Auth, AuthMiddleware } from "zerotal/auth";
 import type { Project } from "@app/models/Project.ts";
 import { Issue } from "@app/models/Issue.ts";
@@ -26,33 +25,7 @@ export class NewIssuePage extends IssueFormPage {
 
   @locked project!: Project;
 
-  /**
-   * `:project` is read off the request rather than left to be seeded by name.
-   *
-   * Flow normally fills a `@locked` field whose name matches a route segment, and
-   * for a page that extends `Component` directly it does. For a page that extends
-   * a *decorated base* — this one and the edit form both extend `IssueFormPage` —
-   * it is order-dependent: the field decorators register lazily on first read
-   * (`_drainFields` in the framework's decorators.ts), the drain works out which
-   * fields a class declares itself by constructing it and subtracting its base's,
-   * and whichever page is rendered first in the process drains first. Request the
-   * edit form after any other page and `project` is simply never registered, so
-   * the seeding loop skips it and `render()` dies on `undefined.slug`.
-   *
-   * Reproduced deterministically: a bare `/dashboard` before `/…/edit` is enough,
-   * and constructing the class once beforehand makes it pass again. The
-   * assignment below is the fix that does not depend on the framework being
-   * fixed; the `@locked` declaration stays because it is what carries the value
-   * across socket round-trips, where there is no URL left to read.
-   */
-  override async onMount(ctx?: HttpContext): Promise<void> {
-    // Assigned only when the request actually carries the segment. `ctx.params`
-    // is empty on a socket round-trip — the context is rebuilt from the stored
-    // route *pattern*, and the value comes back from the snapshot instead — so an
-    // unconditional write here would erase it the first time `refresh()` ran.
-    const bound = ctx?.params?.["project"] as Project | undefined;
-    if (bound) this.project = bound;
-
+  override async onMount(): Promise<void> {
     await this.loadPeople();
   }
 

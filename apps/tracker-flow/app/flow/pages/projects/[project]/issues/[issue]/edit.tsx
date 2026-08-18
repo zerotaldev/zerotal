@@ -1,6 +1,5 @@
 import { Head, expose, locked } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
-import type { HttpContext } from "zerotal";
 import { Auth, AuthMiddleware, Gate } from "zerotal/auth";
 import { Notify } from "@zerotal/notifications";
 import type { Project } from "@app/models/Project.ts";
@@ -36,24 +35,7 @@ export class EditIssuePage extends IssueFormPage {
   @locked project!: Project;
   @locked issue!: Issue;
 
-  /**
-   * Both segments read off the request rather than left to be seeded by name.
-   *
-   * See the long note in `new.tsx`: a page extending a decorated base has its
-   * field decorators registered by a lazy, order-dependent drain, and this page
-   * is the one that actually broke — `/dashboard` followed by `/…/edit` is a 500
-   * on `this.project.slug`, while `/…/edit` first is a 200. Reading the params
-   * here removes the dependency entirely.
-   */
-  override async onMount(ctx?: HttpContext): Promise<void> {
-    // Guarded for the same reason as `new.tsx`: `ctx.params` is empty on a socket
-    // round-trip, and writing `undefined` over a hydrated model would break the
-    // page the moment anything called `refresh()`.
-    const boundProject = ctx?.params?.["project"] as Project | undefined;
-    const boundIssue = ctx?.params?.["issue"] as Issue | undefined;
-    if (boundProject) this.project = boundProject;
-    if (boundIssue) this.issue = boundIssue;
-
+  override async onMount(): Promise<void> {
     Gate.authorize("update", this.issue);
 
     await this.loadPeople();

@@ -63,6 +63,22 @@ change.
   path back to false. The component's own test covered start, progress and error, and skipped
   success — which is how a one-word mismatch survived. It now covers it.
 
+- **Sibling subclasses of one decorated base stole each other's fields.** Field decorators buffer
+  their registration and the buffer is matched to a class lazily, on the first read of that class's
+  registry. Matching took the longest run across **every** buffered group, so a class could claim —
+  and splice away — an entry belonging to a sibling whose group merely shared a name.
+
+  Given `NewPage { project }` and `EditPage { project, issue }` over a shared base, draining
+  `NewPage` first found `project` at the head of `EditPage`'s group, tied on length against its own
+  single entry, and — ties going to the newest group — took it. `EditPage` then drained to `issue`
+  alone; its `project` was never registered, route-param seeding skipped the field, and `render()`
+  died on `this.project.slug`. Whether the page worked depended on which sibling had been rendered
+  first in that process, which is what made it look flaky rather than broken.
+
+  Matching is now restricted to groups whose every name is a field the class declares, falling back
+  to the old behaviour when nothing is fully contained. A sibling's group is rejected by the names
+  it has that this class does not.
+
 - **The real-time validation example did not compile.** `docs/flow/decorators.md` showed
   `<input value={this.email} flow:model.live />`. That is the *emitted* directive, not the prop:
   the `.` in an attribute name is a parse error in TSX (`TS1003`), so anyone copying it got a
@@ -83,6 +99,10 @@ Four behaviours that were true but written down nowhere, each found by hitting i
   hook, so a localised app marks up its wrapper instead and the root element stays wrong.
 - **`<Tabs>` selection is client-only and its strip is not themeable** — no bindable prop, so no
   `?tab=`, no back button, and hardcoded gray/indigo that is invisible on a light surface.
+- **Flow and `zerotal/view` components do not interoperate** — the two JSX runtimes produce
+  different element types (`HtmlNode` vs `SafeHtml`), so a view `FC` in a Flow page is `TS2786`.
+- **`onSort` does not say which container took the drop** — the destination is encoded in which
+  method runs, so dragging between containers needs one action per container.
 
 Also: `sortGroupId` is annotated as inert. It is declared, mapped to `flow:sort:group-id`, and
 read by neither the runtime nor the compiler.

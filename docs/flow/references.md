@@ -178,6 +178,20 @@ override async render() {
 
 > A dynamic `sortItem={String(it.id)}` inside a `.map()` renders through the standard runtime (not the AOT fast path) — the drag behaviour is identical either way.
 
+> **The payload does not say which container took the drop.** The client reads `flow:sort` off the
+> container a child was dropped **into** and calls it `(key, index)` — so the destination is
+> encoded in *which method runs*, and nowhere else. For a single sortable list that is invisible.
+> For dragging **between** containers under one `sortGroup` it means one action per container:
+>
+> ```tsx
+> <ul onSort={this.dropInTodo} sortGroup="tasks">…</ul>
+> <ul onSort={this.dropInDone} sortGroup="tasks">…</ul>
+> ```
+>
+> An arrow (`onSort={(k, i) => this.move("todo", k, i)}`) cannot stand in, because the attribute's
+> value is used as a method *name* rather than evaluated. `onSort` accepts the name as a string,
+> so the handlers can come from a lookup table keyed by column, but they must be declared members.
+
 ### DOM utilities
 
 | You write         | Behaviour                                                    | Compiles to     |

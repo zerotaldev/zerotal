@@ -123,7 +123,11 @@ describe("globals", () => {
 
   test("__() translates without an import", () => {
     expect(typeof globalThis.__).toBe("function");
-    expect(__("Email", {}, "zu")).toBe("I-imeyili");
+    // Against the catalog, not a frozen phrasing — the same rule the i18n block
+    // below follows. Pinning the isiZulu wording here made re-translating a
+    // single string a test failure in an unrelated suite.
+    expect(__("Email", {}, "zu")).toBe(zu["Email"]);
+    expect(__("Email", {}, "zu")).not.toBe("Email");
   });
 
   test("the app's own routes are running on them", async () => {
@@ -174,8 +178,16 @@ describe("i18n", () => {
       string
     >;
 
-    // Untranslated: absent from the catalog, so `__()` returns its own argument.
-    expect(messages["Your current password is not correct."]).toBeUndefined();
+    // A sentence no catalog will ever carry, rather than a real string that
+    // happens to be untranslated today. Naming one of those made the test a
+    // tripwire on translating it: the catalog grew, the string gained an entry,
+    // and a test about *fallback* failed for having nothing left to fall back
+    // from.
+    const untranslated = "No catalog has this sentence, and none ever will.";
+    expect(zu[untranslated as keyof typeof zu]).toBeUndefined();
+    expect(messages[untranslated]).toBeUndefined();
+    // The key is its own answer — that is the fallback.
+    expect(__(untranslated, {}, "zu")).toBe(untranslated);
   });
 });
 

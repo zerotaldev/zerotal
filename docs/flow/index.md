@@ -135,6 +135,13 @@ component in the project is covered — the Flow scaffold already writes this:
 > runtime need a `/** @jsxImportSource … */` comment of their own — which is why
 > `make:flow` writes one into every class it generates.
 
+> **Note** — Flow components and `zerotal/view` components do not interoperate, and the failure
+> is a type error rather than a wrong render. The two JSX runtimes produce different element
+> types: a view `FC` returns `SafeHtml` (`{ value }`) and Flow's JSX expects `HtmlNode`
+> (`{ html }`), so using one inside the other is `TS2786: 'Box' cannot be used as a JSX
+> component`. A shared component library has to target one runtime; share class-name constants
+> or plain strings across the two instead of components.
+
 ### Your first component
 
 ```tsx

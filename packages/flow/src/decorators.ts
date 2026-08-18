@@ -306,11 +306,34 @@ function _drainFields(ctor: unknown): void {
   // recently enqueued group: a class is drained after its own definition, so among
   // equal candidates the newest is the one that just defined it, and older equals are
   // leftovers by construction.
+  //
+  // Restricted first to groups this class could plausibly own: every name in the
+  // group is a field this class DECLARES. A sibling's group is rejected by the
+  // names it has that this class does not.
+  //
+  // Length alone was not enough to separate siblings of one decorated base. Given
+  // `NewPage { project }` and `EditPage { project, issue }` over a shared base, a
+  // drain of NewPage scanned every group, found `project` at the head of EditPage's
+  // group, tied on length with its own single entry, and — ties going to the newest
+  // group — claimed EditPage's `project` and spliced it away. EditPage then drained
+  // to `issue` alone, its `project` never registered, and route-param seeding skipped
+  // the field: a 500 on `this.project.slug` that appeared only when the sibling
+  // rendered first. Containment separates them, because `issue` is not a field
+  // NewPage declares.
+  //
+  // Falls back to every group when nothing is fully contained, so partial matches —
+  // including entries buffered without metadata, which share one bucket — behave as
+  // they did.
+  const contained = groups.filter((key) =>
+    byGroup.get(key)!.every((i) => ownIndex.has(_pendingFields[i]!.name)),
+  );
+  const candidates = contained.length > 0 ? contained : groups;
+
   let bestIdxs: number[] | null = null;
   let bestLen = 0;
   let bestGroup = -1;
-  for (let g = 0; g < groups.length; g++) {
-    const idxs = byGroup.get(groups[g]!)!;
+  for (let g = 0; g < candidates.length; g++) {
+    const idxs = byGroup.get(candidates[g]!)!;
 
     // Longest contiguous run whose names map to strictly-increasing declaration-order
     // indices (equal allowed only for an identical repeated name — multiple decorators

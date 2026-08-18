@@ -386,7 +386,13 @@ describe("a session that dies under an open page", () => {
 
     const res = await app.post(
       "/projects/precognition/issues/new",
-      { title: "Written by a stranger", body: "", status: "backlog", priority: "medium", assigneeId: null },
+      {
+        title: "Written by a stranger",
+        body: "",
+        status: "backlog",
+        priority: "medium",
+        assigneeId: null,
+      },
       { "X-Inertia": "true" },
     );
 
@@ -397,5 +403,42 @@ describe("a session that dies under an open page", () => {
     // still created the record would be the same bug wearing a correct status.
     const { Issue } = await import("@app/models/Issue.ts");
     expect(await Issue.query().count()).toBe(before);
+  });
+});
+
+/**
+ * Feature 13 — what a broken URL looks like in this build.
+ *
+ * `inertia()` writes its HTML onto the context and the context carries a 200, so
+ * the handler re-wraps the body to put the real status back. That re-wrap is the
+ * whole test: a page that says "404" in its markup and answers 200 looks handled
+ * to every crawler, cache and uptime monitor that will ever see it.
+ */
+describe("error pages", () => {
+  test("an unknown URL renders the app's error page with a 404", async () => {
+    const res = await app.get("/no-such-page", { Accept: "text/html" });
+
+    expect(res.status).toBe(404);
+    // Rendered through Inertia, so the page object names the component.
+    expect(res.text()).toContain("error");
+  });
+
+  test("the status survives the re-wrap", async () => {
+    const res = await app.get("/no-such-page", { Accept: "text/html" });
+    expect(res.status).not.toBe(200);
+  });
+
+  test("an Inertia visit falls through to the adapter", async () => {
+    // A client-side visit expects the adapter's own handling; substituting a
+    // page object here would break the router mid-navigation.
+    const res = await app.get("/no-such-page", { "X-Inertia": "true", Accept: "text/html" });
+    expect(res.status).toBe(404);
+  });
+
+  test("an API client still gets JSON", async () => {
+    const res = await app.get("/no-such-page", { Accept: "application/json" });
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Content-Type") ?? "").toContain("application/json");
   });
 });

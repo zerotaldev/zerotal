@@ -257,8 +257,8 @@ describe("the board's sort wiring", () => {
       const t = await FlowTest.mount(BoardPage, { project });
 
       expect(t.html()).toContain('flow:sort="dropInBacklog"');
-    expect(t.html()).toContain('flow:sort="dropInTodo"');
-    expect(t.html()).toContain('flow:sort="dropInProgress"');
+      expect(t.html()).toContain('flow:sort="dropInTodo"');
+      expect(t.html()).toContain('flow:sort="dropInProgress"');
       expect(t.html()).toContain('flow:sort:group="issues"');
       expect(t.html()).toContain(`flow:sort:item="${issue.id}"`);
     });
@@ -331,7 +331,12 @@ describe("comments", () => {
       const before = t.page().comments.length;
 
       await t.call("onCommentPosted", {
-        comment: { id: 9999, body: "From another window.", author: { name: "Ada" }, createdAt: null },
+        comment: {
+          id: 9999,
+          body: "From another window.",
+          author: { name: "Ada" },
+          createdAt: null,
+        },
       });
 
       expect(t.page().comments.length).toBe(before + 1);
@@ -339,7 +344,12 @@ describe("comments", () => {
 
       // Delivered twice — a reconnect replay — must not double up.
       await t.call("onCommentPosted", {
-        comment: { id: 9999, body: "From another window.", author: { name: "Ada" }, createdAt: null },
+        comment: {
+          id: 9999,
+          body: "From another window.",
+          author: { name: "Ada" },
+          createdAt: null,
+        },
       });
       expect(t.page().comments.length).toBe(before + 1);
     });
@@ -563,7 +573,8 @@ describe("the issue list grows by scrolling", () => {
   test("the numbering follows the sort rather than the row", async () => {
     await asUser(author, async () => {
       const t = await FlowTest.mount(ProjectIssuesPage, { project: big });
-      const first = /w-11 shrink-0 pt-0\.5[^>]*>\s*1\s*<[\s\S]*?font-medium text-foreground">([^<]+)</;
+      const first =
+        /w-11 shrink-0 pt-0\.5[^>]*>\s*1\s*<[\s\S]*?font-medium text-foreground">([^<]+)</;
 
       const newestFirst = first.exec(t.html())?.[1];
       await t.update("sort", "oldest");
@@ -737,5 +748,101 @@ describe("signing in", () => {
       t.assertNotRedirected();
       expect(t.page().error).toContain("do not match");
     });
+  });
+});
+
+/**
+ * Feature 13 — what a broken URL and a broken request look like.
+ *
+ * The status is the part worth pinning. Both of the other builds render their
+ * error page by calling into the render layer, which writes a 200 onto the
+ * context, and both re-wrap the body to restore the real code — their handlers
+ * say so in a comment, which means it was wrong once. A page that says "404" in
+ * an `<h1>` and returns 200 is worse than the framework's default: it looks
+ * handled, and every crawler, cache and monitor believes it.
+ *
+ * This build renders a string rather than a component, deliberately — an error
+ * page that boots a component, compiles a template and opens a socket has
+ * several new ways to fail while reporting a failure.
+ */
+describe("error pages", () => {
+  test("an unknown URL is the app's own 404, with a 404 on it", async () => {
+    const res = await app.get("/no-such-page", { Accept: "text/html" });
+
+    expect(res.status).toBe(404);
+    expect(res.text()).toContain("No page here");
+    // The framework's default page, which this replaces.
+    expect(res.text()).not.toContain("Cannot GET");
+  });
+
+  test("the status is on the response, not only in the markup", async () => {
+    const res = await app.get("/no-such-page", { Accept: "text/html" });
+    expect(res.status).not.toBe(200);
+    expect(res.headers.get("Content-Type") ?? "").toContain("text/html");
+  });
+
+  test("an API client still gets JSON, not a page", async () => {
+    const res = await app.get("/no-such-page", { Accept: "application/json" });
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("Content-Type") ?? "").toContain("application/json");
+    expect(res.text()).not.toContain("<html");
+  });
+
+  test("the page carries no unescaped copy", async () => {
+    // The status is interpolated into the template; the copy is escaped at the
+    // point of interpolation, so a status that ever came from a URL cannot
+    // become markup.
+    const res = await app.get("/no-such-page", { Accept: "text/html" });
+    expect(res.text()).toContain("<!DOCTYPE html>");
+    expect(res.text()).toContain('lang="en"');
+  });
+});
+
+/**
+ * Feature 13's other half — the exception reaching DevTools.
+ *
+ * DevTools builds its request list from core's `RequestHandled` / `RequestFailed`,
+ * so an exception that the handler turns into a tidy page is the case worth
+ * checking: the request now *succeeds* from the router's point of view, and it
+ * would be easy for the failure to be swallowed along with it, leaving the one
+ * tool built to show you what broke showing a clean 403 and nothing else. That
+ * is the shape of the bug that made Flow actions invisible in DevTools in 1.7.1.
+ *
+ * A 404 on an unmatched route is deliberately *not* in here. Nothing throws —
+ * the router simply matched nothing and the handler rendered a page — so it
+ * arrives as `RequestHandled` with a 404 on it, which is the honest description.
+ * Asserting `RequestFailed` there was my mistake, not the framework's.
+ */
+describe("a thrown exception is observable", () => {
+  test("RequestFailed carries the status, the message and the type", async () => {
+    const { FrameworkEvents } = await import("@zerotal/core");
+    const seen: { status: number; error: string; type?: string | undefined }[] = [];
+
+    const off = FrameworkEvents.on("RequestFailed", (e: unknown) => {
+      const f = e as { status: number; error: string; type?: string };
+      seen.push({ status: f.status, error: f.error, type: f.type });
+    });
+
+    try {
+      // `Gate.authorize` inside the edit page's onMount throws for anyone but
+      // the author — a real exception, rendered as a real 403.
+      app.actingAs({ id: other.id });
+      const res = await app.get(`/projects/apollo/issues/${issue.id}/edit`, {
+        Accept: "text/html",
+      });
+      expect(res.status).toBe(403);
+
+      // The page rendered *and* the failure was reported. Both, or DevTools
+      // shows a request that looks fine.
+      const forbidden = seen.filter((s) => s.status === 403);
+      expect(forbidden.length).toBeGreaterThan(0);
+      expect(forbidden[0]!.error.length).toBeGreaterThan(0);
+      // The class name, because a message alone cannot tell an authorization
+      // failure from a TypeError, and which it was is the first thing you ask.
+      expect(forbidden[0]!.type).toBeTruthy();
+    } finally {
+      if (typeof off === "function") off();
+    }
   });
 });

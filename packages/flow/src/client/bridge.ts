@@ -1853,6 +1853,16 @@ function _syncModelInputs(comp: FlowComponent): void {
       el.checked = el.value === String(serverVal ?? "");
       return;
     }
+    // A file input's value belongs to the user agent: assigning anything but "" throws
+    // InvalidStateError, and that throw escapes the frame handler — the morph never runs
+    // and the action's ack never resolves, wedging the component's queue for good. The
+    // server side of the binding is an upload reference, not a filename, so there is
+    // nothing to write back; only the server *clearing* it is worth mirroring, so the
+    // same file can be picked again after a remove.
+    if (el instanceof HTMLInputElement && el.type === "file") {
+      if (serverVal === null || serverVal === undefined) el.value = "";
+      return;
+    }
     const str = String(serverVal ?? "");
     if (el.value !== str) el.value = str;
     // A draft-backed field the server just emptied (e.g. after a successful submit) → drop the draft.

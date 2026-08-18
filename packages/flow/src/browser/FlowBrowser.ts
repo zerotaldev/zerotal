@@ -76,8 +76,13 @@ export class FlowBrowser {
       // than on a sleep is what makes these tests deterministic: a slow boot
       // waits longer, and a bridge that never connects fails with a clear reason
       // instead of a mystery assertion further down.
+      //
+      // Guarded on `document.body` existing: the poll can land between a
+      // navigation committing and the body being parsed, and `null.getAttribute`
+      // throws out of `evaluate` rather than returning false — so the wait died
+      // with a TypeError instead of polling once more.
       await page.waitUntil(
-        `document.body.getAttribute("data-flow-connection") === "online"`,
+        `!!document.body && document.body.getAttribute("data-flow-connection") === "online"`,
         "Flow to connect its WebSocket",
         timeout,
       );
@@ -125,7 +130,7 @@ export class FlowBrowser {
 
     if (options.waitForConnection !== false) {
       await this.waitUntil(
-        `document.body.getAttribute("data-flow-connection") === "online"`,
+        `!!document.body && document.body.getAttribute("data-flow-connection") === "online"`,
         "Flow to connect its WebSocket",
         timeout,
       );

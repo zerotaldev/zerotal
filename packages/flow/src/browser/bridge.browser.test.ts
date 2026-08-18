@@ -28,6 +28,7 @@ import { FlowProvider } from "../provider/FlowProvider.ts";
 import { FlowBrowser } from "./FlowBrowser.ts";
 import { CounterPage } from "./__fixtures__/CounterPage.tsx";
 import { NavAboutPage, NavHomePage } from "./__fixtures__/NavPages.tsx";
+import { FileModelPage } from "./__fixtures__/FileModelPage.tsx";
 
 /**
  * Browser work is slower than a unit test, so be explicit rather than inherit 5s —
@@ -44,6 +45,7 @@ const describeBrowser = hasBrowser ? describe : describe.skip;
 let app: Application;
 let url: string;
 let navUrl: string;
+let fileUrl: string;
 
 beforeAll(async () => {
   if (!hasBrowser) return;
@@ -58,11 +60,13 @@ beforeAll(async () => {
   Router.flow("/counter", CounterPage);
   Router.flow("/nav/home", NavHomePage);
   Router.flow("/nav/about", NavAboutPage);
+  Router.flow("/file-model", FileModelPage);
   await app.start(0);
 
   const server = (app as unknown as { _static?: { port: number } })._static;
   url = `http://localhost:${server?.port}/counter`;
   navUrl = `http://localhost:${server?.port}/nav/home`;
+  fileUrl = `http://localhost:${server?.port}/file-model`;
 }, T);
 
 afterAll(async () => {
@@ -103,6 +107,37 @@ describeBrowser("Flow bridge — real browser, real socket", () => {
 
         // A refused action is reported *only* here (B15), so an empty console is
         // part of the assertion, not a nicety.
+        expect(page.consoleErrors()).toEqual([]);
+        expect(page.pageErrors()).toEqual([]);
+      } finally {
+        await page.close();
+      }
+    },
+    T,
+  );
+
+  it(
+    "a server value on a file-input binding is not written back, and the page keeps working",
+    async () => {
+      const page = await FlowBrowser.open(fileUrl, { timeout: T });
+      try {
+        // Put a non-empty value on the bound property. The patch that follows is
+        // where the bridge writes server state into bound inputs.
+        await page.click("#fill");
+        await page.waitForText("#stamp", "filled", T);
+
+        // The write-back must have skipped the file input rather than thrown:
+        // `InvalidStateError` here escaped the frame handler, so the morph never
+        // ran and the ack never resolved.
+        expect(page.pageErrors()).toEqual([]);
+        expect(await page.value("#doc")).toBe("");
+
+        // The queue survives. Without this the first failure looks cosmetic —
+        // the page renders fine and simply stops answering, which is the part
+        // that actually cost a day.
+        await page.click("#mark");
+        await page.waitForText("#stamp", "marked", T);
+
         expect(page.consoleErrors()).toEqual([]);
         expect(page.pageErrors()).toEqual([]);
       } finally {

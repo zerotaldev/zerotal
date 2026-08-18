@@ -34,7 +34,12 @@ export async function POST(http: HttpContext): Promise<void> {
   const { name, email, password } = await validate(http, (r) => ({
     name: r.string().trim().min(2).max(80),
     email: r.string().trim().email(),
-    password: r.string().min(8).confirmed(),
+    // The match is checked on the confirmation, not on the password.
+    // `confirmed()` here files the mismatch under `password`, so it rendered
+    // beneath the Password box while the Confirm box — which already has an
+    // error slot wired up in the form — could never show anything at all.
+    password: r.string().min(8),
+    password_confirmation: r.string().sameAs("password"),
   }));
 
   if (await User.query().where("email", email).first()) {

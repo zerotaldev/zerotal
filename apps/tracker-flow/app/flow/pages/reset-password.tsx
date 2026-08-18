@@ -16,8 +16,43 @@ export class ResetPasswordPage extends Component {
   @url token = "";
   @url email = "";
 
-  @expose @validate((r) => r.required().min(8).confirmed()) password = "";
-  @expose password_confirmation = "";
+  @expose @validate((r) => r.required().min(8)) password = "";
+
+  /**
+   * The match is checked on the *confirmation*, not on the password.
+   *
+   * `confirmed()` on `password` puts the mismatch under the Password field, and
+   * Flow validates a field the moment the client writes it — so typing a
+   * password raised "confirmation does not match" against a Confirm box the
+   * reader had not reached yet. Worse, it stayed: `_validateField` re-checks
+   * only the field that changed, and the confirmation carried no rules, so
+   * typing a perfectly matching confirmation cleared nothing. The form sat there
+   * insisting the passwords differed while they plainly did not.
+   *
+   * `sameAs` moves the rule to the field the reader can act on, and to the one
+   * they touch last — so it is first checked when there is finally something to
+   * check.
+   */
+  @expose @validate((r) => r.required().sameAs("password")) password_confirmation = "";
+
+  /**
+   * Editing the password re-opens the question the confirmation answered.
+   *
+   * Flow validates only the field that changed, so without this the mirror of
+   * the original bug appears: confirm correctly, then change the password, and
+   * the confirmation's "must match" verdict outlives the thing it described —
+   * either a stale error on a field the reader has not touched, or a stale
+   * *pass* on one that no longer matches.
+   *
+   * Cleared rather than re-validated, because re-validating would raise a
+   * mismatch against a password still being typed — which is the premature
+   * error this whole change is about. The next keystroke in the confirm box, or
+   * the submit, decides.
+   */
+  override async onUpdated(prop: string): Promise<void> {
+    if (prop === "password") this.resetValidation("password_confirmation");
+  }
+
   @expose error = "";
 
   @expose async reset(): Promise<void> {
@@ -59,6 +94,7 @@ export class ResetPasswordPage extends Component {
             <div class="space-y-1.5">
               <label class={LABEL} for="password_confirmation">{__("Confirm new password")}</label>
               <input id="password_confirmation" type="password" autocomplete="new-password" required class={FIELD} value={this.password_confirmation} />
+              <span error={this.errors.password_confirmation} class={ERROR} />
             </div>
 
             <button type="submit" class={`${PRIMARY} w-full`}>{__("Update password")}</button>

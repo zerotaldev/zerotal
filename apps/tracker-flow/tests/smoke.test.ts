@@ -21,6 +21,7 @@ import { Issue } from "@app/models/Issue.ts";
 import { Comment } from "@app/models/Comment.ts";
 import { Attachment } from "@app/models/Attachment.ts";
 import { LoginPage } from "../app/flow/pages/login.tsx";
+import { RegisterPage } from "../app/flow/pages/register.tsx";
 import { IssueDetailPage } from "../app/flow/pages/projects/[project]/issues/[issue]/index.tsx";
 import { NewIssuePage } from "../app/flow/pages/projects/[project]/issues/new.tsx";
 import { BoardPage } from "../app/flow/pages/projects/[project]/board.tsx";
@@ -844,5 +845,93 @@ describe("a thrown exception is observable", () => {
     } finally {
       if (typeof off === "function") off();
     }
+  });
+});
+
+/**
+ * Typing a password, in the order a person actually does it.
+ *
+ * `confirmed()` used to sit on `password`, which put the mismatch under the
+ * Password field — and Flow validates a field the moment the client writes it,
+ * so typing a password raised "confirmation does not match" against a Confirm
+ * box the reader had not reached. It then stayed: only the changed field is
+ * re-validated, and the confirmation carried no rules of its own, so typing a
+ * matching confirmation cleared nothing. The form insisted the passwords
+ * differed while they plainly did not, until submit.
+ */
+describe("the password confirmation", () => {
+  test("says nothing while the password is still being typed", async () => {
+    await asUser(null, async () => {
+      const t = await FlowTest.mount(RegisterPage);
+      await t.update("name", "Zephania Barnett");
+      await t.update("email", "zephania@example.com");
+
+      // The Confirm box is empty because the reader has not reached it.
+      await t.update("password", "hunter2hunter2");
+
+      // `errors.has()` rather than reading the field: `errors.<name>` is an
+      // ErrorField sentinel that is never undefined, so a truthiness check
+      // there is always true and a `String()` of it is "[object Object]".
+      expect(t.page().errors.has("password")).toBe(false);
+      expect(t.page().errors.has("password_confirmation")).toBe(false);
+    });
+  });
+
+  test("clears as soon as a matching confirmation is typed", async () => {
+    await asUser(null, async () => {
+      const t = await FlowTest.mount(RegisterPage);
+      await t.update("password", "hunter2hunter2");
+      await t.update("password_confirmation", "hunter2");
+      // Mismatched so far — and the complaint belongs to the field being typed.
+      expect(t.page().errors.has("password_confirmation")).toBe(true);
+
+      await t.update("password_confirmation", "hunter2hunter2");
+      expect(t.page().errors.has("password_confirmation")).toBe(false);
+      // The bug: this used to still be set, on the wrong field, forever.
+      expect(t.page().errors.has("password")).toBe(false);
+    });
+  });
+
+  test("does not outlive a change to the password it described", async () => {
+    await asUser(null, async () => {
+      const t = await FlowTest.mount(RegisterPage);
+      await t.update("password", "hunter2hunter2");
+      await t.update("password_confirmation", "hunter2hunter2");
+      expect(t.page().errors.has("password_confirmation")).toBe(false);
+
+      // Now change the password. The confirmation's verdict is stale either
+      // way — a pass that no longer holds — so it must not survive.
+      await t.update("password", "something-else-entirely");
+      expect(t.page().errors.has("password_confirmation")).toBe(false);
+    });
+  });
+
+  test("a real mismatch still stops the submit", async () => {
+    await asUser(null, async () => {
+      const t = await FlowTest.mount(RegisterPage);
+      await t.update("name", "Zephania Barnett");
+      await t.update("email", "mismatch@example.com");
+      await t.update("password", "hunter2hunter2");
+      await t.update("password_confirmation", "a-different-one");
+      await t.call("register");
+
+      // Refused, on the confirmation field, and no account created.
+      t.assertHasErrors("password_confirmation");
+      t.assertNotRedirected();
+      expect(await User.query().where("email", "mismatch@example.com").count()).toBe(0);
+    });
+  });
+
+  test("matching passwords register the account", async () => {
+    await asUser(null, async () => {
+      const t = await FlowTest.mount(RegisterPage);
+      await t.update("name", "Zephania Barnett");
+      await t.update("email", "zephania@example.com");
+      await t.update("password", "hunter2hunter2");
+      await t.update("password_confirmation", "hunter2hunter2");
+      await t.call("register");
+
+      expect(await User.query().where("email", "zephania@example.com").count()).toBe(1);
+    });
   });
 });

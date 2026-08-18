@@ -80,7 +80,9 @@ describe("auth", () => {
     );
 
     res.assertRedirect("/register");
-    res.assertInvalid(["password"]);
+    // On the confirmation, not the password: that is the field the reader can
+    // fix, and the only one whose error slot the form renders.
+    res.assertInvalid(["password_confirmation"]);
   });
 
   test("registers a visitor and signs them in", async () => {
@@ -440,5 +442,32 @@ describe("error pages", () => {
 
     expect(res.status).toBe(404);
     expect(res.headers.get("Content-Type") ?? "").toContain("application/json");
+  });
+});
+
+/**
+ * The mismatch belongs on the field the reader can fix.
+ *
+ * `confirmed()` files its error under `password`, so the message rendered
+ * beneath the Password box while the Confirm box — which has had an `error`
+ * prop wired to it all along — could never show anything. `sameAs` puts the
+ * verdict where the form was already prepared to display it.
+ */
+describe("password confirmation errors", () => {
+  test("a short password is still reported on the password field", async () => {
+    // Only the match moved; the length rule stays where it belongs.
+    const res = await app.post(
+      "/register",
+      {
+        name: "Zephania Barnett",
+        email: "short@example.com",
+        password: "short",
+        password_confirmation: "short",
+      },
+      { Referer: `${app.baseUrl}/register` },
+    );
+
+    res.assertInvalid(["password"]);
+    expect(await User.query().where("email", "short@example.com").count()).toBe(0);
   });
 });

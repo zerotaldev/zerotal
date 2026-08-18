@@ -1,4 +1,5 @@
 import type { Seeder } from "../seeding/Seeder.ts";
+import { DB, _getDbConnectionOverride } from "../db/DB.ts";
 
 /**
  * What running the app's seeders came to.
@@ -27,6 +28,30 @@ export type SeedOutcome =
  *
  * @internal
  */
+/**
+ * Run `body` inside a transaction when there is a database to have one on.
+ *
+ * A seeder is not obliged to touch the database — it may write fixtures to disk,
+ * prime a cache, or call an API — and an app that has not bound a connection
+ * should not fail to seed because of a transaction it never needed. So the
+ * wrapper is conditional: with a connection, the whole seed is atomic; without,
+ * `body` runs exactly as it used to.
+ */
+async function _inTransaction(body: () => Promise<void>): Promise<void> {
+  let connected = _getDbConnectionOverride() !== null;
+  if (!connected) {
+    // No override — ask the container, which throws when nothing is bound.
+    try {
+      const { _getConnection } = await import("../db/DB.ts");
+      connected = _getConnection() !== undefined;
+    } catch {
+      connected = false;
+    }
+  }
+  if (!connected) return body();
+  await DB.transaction(body);
+}
+
 export async function runSeeders(cwd: string = process.cwd()): Promise<SeedOutcome> {
   const seederPath = `${cwd}/database/seeders/DatabaseSeeder.ts`;
 
@@ -42,7 +67,9 @@ export async function runSeeders(cwd: string = process.cwd()): Promise<SeedOutco
       if (!seed) {
         return { status: "invalid", message: "Seeder index must export a default async function." };
       }
-      await seed();
+      await _inTransaction(async () => {
+        await seed();
+      });
       return { status: "seeded" };
     } catch (error) {
       return { status: "failed", message: error instanceof Error ? error.message : String(error) };
@@ -63,7 +90,20 @@ export async function runSeeders(cwd: string = process.cwd()): Promise<SeedOutco
       };
     }
 
-    await new SeederClass().run();
+    // One transaction around the whole seed.
+    //
+    // `Seeder.call()` has always wrapped *composed* seeders, so a DatabaseSeeder
+    // that delegates was atomic and one that does its work inline — which is
+    // most of them — was not. A failure halfway left its rows committed, so the
+    // obvious next move, running it again, died on a unique constraint and the
+    // only way out was `migrate:fresh`. Migrations became transactional in
+    // 1.7.0; this closes the asymmetry.
+    //
+    // Nesting is safe: `DB.transaction` opens a SAVEPOINT when one is already
+    // open, so an inner `call()` still rolls back independently.
+    await _inTransaction(async () => {
+      await new SeederClass().run();
+    });
     return { status: "seeded" };
   } catch (error) {
     return { status: "failed", message: error instanceof Error ? error.message : String(error) };

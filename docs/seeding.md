@@ -76,6 +76,13 @@ Create a `DatabaseSeeder` that coordinates all other seeders. Use `this.call()`
 to run child seeders — they execute in order inside a single transaction, so if
 any fails, every change rolls back atomically.
 
+`bun zt db:seed` wraps the whole run in a transaction too, so a seeder that does
+its work inline rather than delegating to `call()` is just as atomic. Nesting is
+fine: `call()` inside the outer transaction becomes a savepoint, and an inner
+failure still rolls back independently. Where there is no database connection
+bound at all — a seeder that writes fixtures to disk, say — the run is left
+alone rather than failing for want of a transaction it never needed.
+
 ```ts
 // database/seeders/DatabaseSeeder.ts
 import { Seeder, DB } from "@zerotal/orm";

@@ -99,3 +99,87 @@ describe("--seed flag wiring", () => {
     expect(MigrateCommand.flags.find((f) => f.name === "seed")!.default).toBe(false);
   });
 });
+
+/**
+ * A seeder that fails partway must leave nothing behind.
+ *
+ * `Seeder.call()` has always wrapped composed seeders in a transaction, but the
+ * top-level `DatabaseSeeder.run()` was invoked bare — and a seeder that does its
+ * work inline rather than delegating (which is most of them, including this
+ * repo's own cookbook seeders) got no atomicity at all. A failure halfway left
+ * its rows committed, so the obvious next move — run it again — died on a unique
+ * constraint, and the only recovery was `migrate:fresh`.
+ *
+ * Migrations gained transactional DDL in 1.7.0; this closes the asymmetry.
+ */
+
+/** Absolute path to the ORM's DB module — the temp-dir seeders import it by path. */
+const DB_MODULE = new URL("../db/DB.ts", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+
+describe("runSeeders() atomicity", () => {
+  it("rolls back rows written before a seeder throws", async () => {
+    const { SQL } = await import("bun");
+    const { _setDbConnection, DB } = await import("../db/DB.ts");
+
+    // In-memory, and the connection is set here rather than inside the seeder:
+    // a `:memory:` database lives and dies with its connection, so the seeder
+    // and this assertion have to be looking at the same one.
+    const db = new SQL(":memory:");
+    _setDbConnection(db);
+    await db`CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT UNIQUE)`;
+
+    writeSeeder(`
+      import { DB } from ${JSON.stringify(DB_MODULE)};
+      export class DatabaseSeeder {
+        async run() {
+          await DB.raw("INSERT INTO people (name) VALUES ('ada')");
+          // Fails after a successful write — the shape of a real seeder that
+          // trips a constraint or a typo on its fourth table.
+          throw new Error("seeder blew up");
+        }
+      }
+    `);
+
+    try {
+      const outcome = await runSeeders(root);
+      expect(outcome.status).toBe("failed");
+
+      const rows = (await db`SELECT name FROM people`) as { name: string }[];
+      // The row written before the throw must be gone. Without the surrounding
+      // transaction it is still there, and re-running the seeder then dies on
+      // the unique index — recovery being `migrate:fresh`.
+      expect(rows).toEqual([]);
+    } finally {
+      _setDbConnection(null);
+      await db.end();
+    }
+  });
+
+  it("commits everything when the seeder succeeds", async () => {
+    const { SQL } = await import("bun");
+    const { _setDbConnection } = await import("../db/DB.ts");
+
+    const db = new SQL(":memory:");
+    _setDbConnection(db);
+    await db`CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT UNIQUE)`;
+
+    writeSeeder(`
+      import { DB } from ${JSON.stringify(DB_MODULE)};
+      export class DatabaseSeeder {
+        async run() {
+          await DB.raw("INSERT INTO people (name) VALUES ('ada')");
+          await DB.raw("INSERT INTO people (name) VALUES ('grace')");
+        }
+      }
+    `);
+
+    try {
+      expect(await runSeeders(root)).toEqual({ status: "seeded" });
+      const rows = (await db`SELECT name FROM people ORDER BY name`) as { name: string }[];
+      expect(rows.map((r) => r.name)).toEqual(["ada", "grace"]);
+    } finally {
+      _setDbConnection(null);
+      await db.end();
+    }
+  });
+});

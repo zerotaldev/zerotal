@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import type { ServerWebSocket } from "bun";
 import { BroadcastManager } from "./BroadcastManager.ts";
 import { withApp } from "@zerotal/core";
 import { RedisBroadcastDriver } from "./RedisBroadcastDriver.ts";

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import type { ServerWebSocket } from "bun";
 import { BroadcastManager } from "./BroadcastManager.ts";
 import type { WsConnectionData } from "./types.ts";
 

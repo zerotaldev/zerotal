@@ -970,7 +970,7 @@ export function validate(
  *
  * @category Realtime
  */
-export type ListenerName = LooseEventName | ((self: Record<string, any>) => string);
+export type ListenerName = LooseEventName | ((self: Record<string, any>) => string); // eslint-disable-line @typescript-eslint/no-explicit-any -- `unknown` would break `self.issue.id`
 
 /**
  * Binds a method as a cross-component (realtime) event listener. Auto-exposes the method.

@@ -23,7 +23,7 @@ async function bundles(entry: string): Promise<{ ok: boolean; why: string }> {
     target: "browser",
     throw: false,
   });
-  return { ok: result.success, why: String(result.logs[0] ?? "").split("\n")[0] };
+  return { ok: result.success, why: String(result.logs[0] ?? "").split("\n")[0] ?? "" };
 }
 
 describe("the browser entry", () => {

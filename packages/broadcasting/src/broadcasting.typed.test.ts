@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import type { ServerWebSocket } from "bun";
 import { TypedBroadcastManager } from "./TypedBroadcastManager.ts";
 import { RedisBroadcastDriver } from "./RedisBroadcastDriver.ts";
 import type {

@@ -119,7 +119,7 @@ const DB_MODULE = new URL("../db/DB.ts", import.meta.url).pathname.replace(/^\/(
 describe("runSeeders() atomicity", () => {
   it("rolls back rows written before a seeder throws", async () => {
     const { SQL } = await import("bun");
-    const { _setDbConnection, DB } = await import("../db/DB.ts");
+    const { _setDbConnection } = await import("../db/DB.ts");
 
     // In-memory, and the connection is set here rather than inside the seeder:
     // a `:memory:` database lives and dies with its connection, so the seeder

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
+import type { ServerWebSocket } from "bun";
 import { createHmac } from "node:crypto";
 import { PusherCompatManager } from "./PusherCompatManager.ts";
 import type { WsConnectionData } from "./types.ts";

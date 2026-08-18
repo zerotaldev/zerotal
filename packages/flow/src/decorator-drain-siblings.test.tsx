@@ -23,7 +23,9 @@ async function html(): Promise<HtmlNode> {
 }
 
 abstract class FormBase extends Component {
-  @expose title = "";
+  // Not `title`: `Component.title()` is the document-title accessor, so a
+  // field of that name collides with it.
+  @expose subject = "";
   @expose body = "";
 }
 
@@ -53,7 +55,7 @@ describe("sibling subclasses of a decorated base", () => {
 
   it("the shared base's own fields still reach both", () => {
     const exposed = getExposedProps(new EditPage());
-    expect(exposed.has("title")).toBe(true);
+    expect(exposed.has("subject")).toBe(true);
     expect(exposed.has("body")).toBe(true);
   });
 });

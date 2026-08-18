@@ -1,4 +1,4 @@
-import { ZerotalError } from "@zerotal/core";
+import { ZerotalError } from "@zerotal/core/errors";
 
 /**
  * Thrown for any non-2xx HTTP response.

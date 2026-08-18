@@ -1,4 +1,4 @@
-import { deepMerge } from "@zerotal/core";
+import { deepMerge } from "@zerotal/core/helpers";
 import type { ApiClientConfig } from "./ApiClient.ts";
 
 export interface ClientConfigShape extends ApiClientConfig {

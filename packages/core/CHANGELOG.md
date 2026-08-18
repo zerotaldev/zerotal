@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`@zerotal/core/errors`** — a subpath for the error classes, so a module that can run in a
+  browser can import `ZerotalError` without reaching the root entry. The root re-exports
+  `CommandRunner`, which reaches the built-in CLI commands and `await import("bun")`, so a single
+  root import is enough to make a browser bundle fail at resolution. `@zerotal/core/helpers`
+  already covered `deepMerge` the same way.
+
+  The rule this makes workable: **core's root entry is server-only.** Anything that might be
+  bundled for a browser imports from a narrow subpath.
+
+
 ## [1.7.1] — 2026-08-16
 
 ### Changed

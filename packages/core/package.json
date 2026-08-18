@@ -11,6 +11,7 @@
     ".": "./src/index.ts",
     "./routes": "./src/router/routes.ts",
     "./contracts": "./src/contracts/index.ts",
+    "./errors": "./src/errors/index.ts",
     "./lock": "./src/lock/index.ts",
     "./logger": "./src/logger/index.ts",
     "./commands": "./src/command/builtin/index.ts",

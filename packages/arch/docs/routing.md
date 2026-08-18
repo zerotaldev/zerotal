@@ -488,9 +488,12 @@ Typed names flow through the helpers built on `route()` too — `redirect().to()
 
 ### route() in the browser
 
-The server's `route()` reads the live router, which only exists in the server
-process. In a browser bundle, import it from `zerotal/routes` instead and
-hand it the generated table once, at your entry point:
+`route()` works on the server with no setup: the application installs the table
+during boot, from the routes it just registered. That covers every URL your
+server renders — a `view` build's `href` attributes and form actions included.
+
+A browser bundle is a different process with no router to read, so there it needs
+the table handed to it once, at your entry point:
 
 ```typescript
 // resources/js/app.js
@@ -503,8 +506,6 @@ defineRoutes(ROUTES);
 From there the call is the one you already know:
 
 ```typescript
-import { route } from "zerotal/routes";
-
 route("posts.show", { slug }); // → '/posts/hello'
 route("posts.index", {}, { page: 2 }); // → '/posts?page=2'
 ```
@@ -515,10 +516,35 @@ server and the same call made in a component cannot disagree about encoding — 
 because `types/routes.generated.ts` augments the one registry, a name that
 type-checks in a controller type-checks in a component.
 
+### route() needs no import
+
+`defineRoutes()` also puts `route()` on `globalThis`, so a page, a component or a
+controller calls it with nothing at the top of the file:
+
+```tsx
+// no import line
+<a href={route("posts.show", { slug })}>{post.title}</a>
+```
+
+It is installed from `defineRoutes()` because that is the one function both
+processes already call — the server during boot, a browser entry beside its
+generated `ROUTES` — which means neither has to remember a second setup step. The
+table is installed before the global, so `route()` never exists in a state where
+calling it reports a missing table.
+
+The global is typed by an ambient declaration in `@zerotal/core/routes`, as the
+same `RouteBuilder` the named export is: an unknown route name or a missing
+`:param` still fails the build.
+
+> **Note** — `route` remains a named export. Importing it explicitly keeps
+> working, and is worth doing in a library that cannot assume an application has
+> booted.
+
 `defineRoutes()` takes the generated `ROUTES` object or any `RouteTable`
 (a name → pattern map). Calling it again replaces the table, which is what makes
-hot reload work. `resetRoutes()` clears it again, for tests that assert on the
-unconfigured error.
+hot reload work — and what lets a browser entry install its own copy without
+disturbing the server's. `resetRoutes()` clears it again, for tests that assert
+on the unconfigured error.
 
 If your app renders through SSR, call `defineRoutes()` in the SSR entry too — the
 page components run in both processes.
@@ -542,6 +568,51 @@ helper to Alpine expressions as `$route`:
 ```
 
 Nothing to install, and the names are the same ones the server rendered with.
+
+### Submitting to a route with action()
+
+`route()` gives you a URL. A form needs two things — where to send the request
+and how — and a URL alone leaves the second one to be typed out beside it:
+
+```typescript
+// The URL is generated; the verb is a guess that happens to be right today.
+form.post(route("posts.comments.store", { post: id }));
+```
+
+`bun zt route:types` also writes a `METHODS` table, so the verb can come from
+the same place the URL does. `action()` returns both:
+
+```typescript
+// resources/js/app.js
+import { defineRouteMethods, defineRoutes } from "zerotal/routes";
+import { METHODS, ROUTES } from "../../types/routes.generated";
+
+defineRoutes(ROUTES);
+defineRouteMethods(METHODS);
+```
+
+```typescript
+import { action } from "zerotal/routes";
+
+const endpoint = action("posts.comments.store", { post: id });
+// → { url: '/posts/42/comments', method: 'POST' }
+
+form.submit(endpoint.method.toLowerCase(), endpoint.url);
+```
+
+`action()` takes the same names and params as `route()` and reports the same
+compile errors, so switching a call over costs nothing. What it buys is that a
+route which changes verb changes every submission with it — the failure it
+prevents is a 405 on submit, which looks nothing like its cause when the URL in
+front of you is plainly correct.
+
+Two tables rather than one map of `{ url, method }` objects, for two reasons: it
+leaves `ROUTES` alone, so a generated file from an earlier version still works;
+and a bundle that only renders links never pulls the verbs in.
+
+`defineRouteMethods()` is optional. Without it `action()` still resolves the URL
+and reports `GET`, which is the right answer for a link-only bundle and a better
+one than throwing.
 
 ## File-based routing
 

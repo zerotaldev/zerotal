@@ -12,6 +12,14 @@ protocol and exposes a familiar realtime-client API — no external client libra
 with the lightweight `ws` and `redis` drivers (no Pusher credentials needed). It's also a drop-in
 for `window.Echo`, so Flow's [`@on('echo:…')`](/docs/flow/events) listeners work against it.
 
+> **The package root is fine to import in browser code.** It used to be a bundle error: the root
+> also exports `ClientProvider`, which reaches the CLI commands and `await import("bun")`, and a
+> browser bundler rejects that during resolution — before tree-shaking can discard the half you
+> did not want. `@zerotal/client` now resolves to a browser-safe entry under the `browser`
+> condition, so a bundler gets `Socket`, `ApiClient` and `CircuitBreaker` and none of the
+> server-side exports. `@zerotal/client/Socket` still works and is still the leanest import if
+> `Socket` is all you need.
+
 ```ts
 // in your client code
 import { Socket } from "@zerotal/client";

@@ -1,4 +1,4 @@
-import { ZerotalError } from "@zerotal/core";
+import { ZerotalError } from "@zerotal/core/errors";
 import { ApiClientError } from "./ApiClient.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

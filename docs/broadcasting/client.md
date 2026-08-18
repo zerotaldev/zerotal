@@ -12,15 +12,17 @@ protocol and exposes a familiar realtime-client API — no external client libra
 with the lightweight `ws` and `redis` drivers (no Pusher credentials needed). It's also a drop-in
 for `window.Echo`, so Flow's [`@on('echo:…')`](/docs/flow/events) listeners work against it.
 
-> **Import it from `@zerotal/client/Socket`, not the package root.** `Socket.ts` has no
-> dependencies, but the root entry also exports `ClientProvider` — server-side code that reaches
-> the CLI commands, one of which does `await import("bun")`. A browser bundler rejects that
-> outright, before tree-shaking can discard it. The subpath gives you the same class with
-> nothing else attached.
+> **The package root is fine to import in browser code.** It used to be a bundle error: the root
+> also exports `ClientProvider`, which reaches the CLI commands and `await import("bun")`, and a
+> browser bundler rejects that during resolution — before tree-shaking can discard the half you
+> did not want. `@zerotal/client` now resolves to a browser-safe entry under the `browser`
+> condition, so a bundler gets `Socket`, `ApiClient` and `CircuitBreaker` and none of the
+> server-side exports. `@zerotal/client/Socket` still works and is still the leanest import if
+> `Socket` is all you need.
 
 ```ts
 // in your client code
-import { Socket } from "@zerotal/client/Socket";
+import { Socket } from "@zerotal/client";
 
 const socket = new Socket(); // ws(s)://<host>/app/ws (matches the `path` config)
 

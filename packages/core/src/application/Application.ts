@@ -255,6 +255,8 @@ export async function _lazyStaticResponse(
 
 /** Minimal WebSocket handler shape accepted by Bun.serve(). */
 export interface WebSocketHandlers {
+  /** Seconds a connection may go quiet before Bun closes it. Bun's default is 10. */
+  idleTimeout?: number;
   open?(ws: unknown): void;
   message(ws: unknown, message: string | Uint8Array): void;
   close?(ws: unknown, code: number, reason: string): void;
@@ -1073,6 +1075,17 @@ export class Application {
     };
 
     return {
+      // Bun closes an idle WebSocket after 10 seconds by default, and the client
+      // pings every 30 — so a connection that is merely *quiet* was being cut
+      // before it ever had reason to speak, taking its channel subscriptions
+      // with it. Nothing surfaced: the page stayed rendered, the client kept its
+      // channel objects, and broadcasts simply stopped arriving for anyone who
+      // had been reading for more than ten seconds.
+      //
+      // 120s leaves room for four missed pings before a genuinely dead socket is
+      // reaped, which is the direction to err: a stale connection costs memory,
+      // a reaped live one costs the feature.
+      idleTimeout: 120,
       open: (ws: unknown) => {
         if ((ws as AnyWS).data._dev) {
           DevWsServer.open(ws as AnyWS);

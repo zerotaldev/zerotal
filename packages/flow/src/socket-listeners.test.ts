@@ -1,9 +1,9 @@
 import { describe, it, expect } from "bun:test";
-import { _parseEchoListener } from "./client/bridge.ts";
+import { _parseSocketListener } from "./client/bridge.ts";
 
-describe('echo listener parsing (@on("echo:…"))', () => {
+describe('socket listener parsing (@on("socket:…"))', () => {
   it("parses a public channel listener", () => {
-    expect(_parseEchoListener("echo:orders,OrderShipped")).toEqual({
+    expect(_parseSocketListener("socket:orders,OrderShipped")).toEqual({
       kind: "",
       channel: "orders",
       event: "OrderShipped",
@@ -11,12 +11,12 @@ describe('echo listener parsing (@on("echo:…"))', () => {
   });
 
   it("parses private and presence channels", () => {
-    expect(_parseEchoListener("echo-private:orders.5,OrderShipped")).toEqual({
+    expect(_parseSocketListener("socket-private:orders.5,OrderShipped")).toEqual({
       kind: "-private",
       channel: "orders.5",
       event: "OrderShipped",
     });
-    expect(_parseEchoListener("echo-presence:room,here")).toEqual({
+    expect(_parseSocketListener("socket-presence:room,here")).toEqual({
       kind: "-presence",
       channel: "room",
       event: "here",
@@ -24,7 +24,7 @@ describe('echo listener parsing (@on("echo:…"))', () => {
   });
 
   it("splits on the LAST comma so dotted channels survive", () => {
-    expect(_parseEchoListener("echo:teams.1.threads,MessageSent")).toEqual({
+    expect(_parseSocketListener("socket:teams.1.threads,MessageSent")).toEqual({
       kind: "",
       channel: "teams.1.threads",
       event: "MessageSent",
@@ -32,15 +32,15 @@ describe('echo listener parsing (@on("echo:…"))', () => {
   });
 
   it("supports a leading-dot custom broadcast name (broadcastAs)", () => {
-    expect(_parseEchoListener("echo:scores,.score.submitted")).toEqual({
+    expect(_parseSocketListener("socket:scores,.score.submitted")).toEqual({
       kind: "",
       channel: "scores",
       event: ".score.submitted",
     });
   });
 
-  it("returns null for non-echo listeners", () => {
-    expect(_parseEchoListener("post-created")).toBeNull();
-    expect(_parseEchoListener("echo:missing-event")).toBeNull(); // no comma
+  it("returns null for non-socket listeners", () => {
+    expect(_parseSocketListener("post-created")).toBeNull();
+    expect(_parseSocketListener("socket:missing-event")).toBeNull(); // no comma
   });
 });

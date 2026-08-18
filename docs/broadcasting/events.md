@@ -64,7 +64,7 @@ Broadcast.send(new OrderShipmentStatusUpdated(order));
 ```
 
 `broadcast(event).toOthers()` excludes the connection that triggered the request (read from the
-`X-Socket-ID` header your Echo client sends), so the user who just made an optimistic UI update
+`X-Socket-ID` header your Socket client sends), so the user who just made an optimistic UI update
 doesn't receive a duplicate.
 
 `broadcast()` returns a `PendingBroadcast` — a thenable that sends itself on the next
@@ -181,7 +181,7 @@ The wire event name defaults to `${ModelName}${Event}` (e.g. `OrderUpdated`) and
 
 ```ts
 // in your client code
-Echo.private(`orders.${id}`).listen("OrderUpdated", (e) => render(e.order));
+Socket.private(`orders.${id}`).listen("OrderUpdated", (e) => render(e.order));
 ```
 
 ## Next steps

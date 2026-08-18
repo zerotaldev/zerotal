@@ -4,7 +4,7 @@
 // broadcasting protocol (the `ws` / `redis` drivers) and exposes a familiar
 // realtime-client API — the same `channel()/private()/join()/leave()` +
 // `listen()/here()/joining()/leaving()` surface — so it works with `@zerotal/flow`'s
-// `@on('echo:…')` listeners with zero external dependencies.
+// `@on('socket:…')` listeners with zero external dependencies.
 //
 //   import { Socket } from "@zerotal/client";
 //
@@ -335,14 +335,14 @@ export class Socket {
     return this._subscribe(wire, () => new PresenceChannel(wire, this)) as PresenceChannel;
   }
 
-  /** Echo alias for {@link presence} (`window.Echo.join(...)`). */
+  /** Alias for {@link presence} (`window.Socket.join(...)`). */
   join(name: string): PresenceChannel {
     return this.presence(name);
   }
 
   /**
    * Leave a channel by its base name — unsubscribes the public, `private-`, and `presence-`
-   * variants (Echo's `leave()` semantics).
+   * variants, which is what `leave()` means here.
    */
   leave(name: string): void {
     this.leaveChannel(name);

@@ -358,7 +358,7 @@ export class BroadcastManager {
 
   private _unsubscribe(ws: WS, channel: string): void {
     this._subs.get(channel)?.delete(ws.data.id);
-    // Presence: an explicit leave (e.g. Echo.leave on a component teardown / SPA navigation) must
+    // Presence: an explicit leave (e.g. Socket.leave on a component teardown / SPA navigation) must
     // remove the member and notify the remaining subscribers — the same cleanup a full disconnect
     // does in handleClose. Without this, a member who navigated away lingers in others' "who's here"
     // until they close the tab.

@@ -9,8 +9,12 @@ description: Subscribe from the browser and react to events as they arrive.
 
 `@zerotal/client` ships a small, dependency-free `Socket` that speaks the native broadcast
 protocol and exposes a familiar realtime-client API — no external client library, and it works
-with the lightweight `ws` and `redis` drivers (no Pusher credentials needed). It's also a drop-in
-for `window.Echo`, so Flow's [`@on('echo:…')`](/docs/flow/events) listeners work against it.
+with the lightweight `ws` and `redis` drivers (no Pusher credentials needed).
+
+**Flow apps need none of this.** The client is bundled into `/__flow/runtime.js` and created the
+first time a page declares a [`@on('socket:…')`](/docs/flow/events) listener, so those listeners
+are live with no script of your own. Read on only if you want a configured client — a different
+host, your own auth endpoint — or if you are subscribing from code that is not a Flow component.
 
 > **The package root is fine to import in browser code.** It used to be a bundle error: the root
 > also exports `ClientProvider`, which reaches the CLI commands and `await import("bun")`, and a
@@ -42,8 +46,9 @@ socket
   .leaving((m) => removeOnline(m))
   .listen("Message", (e) => append(e));
 
-// Use it as Echo for Flow @on('echo:…') listeners:
-window.Echo = socket;
+// Only if you need Flow's listeners to use *this* client rather than the bundled
+// one — assign before the runtime loads and it is used as-is:
+window.Socket = socket;
 ```
 
 Private and presence channels are authorized with a **per-subscription HMAC signature** (the same

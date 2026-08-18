@@ -45,9 +45,9 @@ export type PusherPresenceResolver = (
  *  - Auth for private/presence channels uses HMAC-SHA256 signatures
  *
  * Auth flow:
- *  1. Echo calls POST /broadcasting/auth with socket_id + channel_name
+ *  1. The client calls POST /broadcasting/auth with socket_id + channel_name
  *  2. Server signs with `signAuth()` and returns `{auth: "key:sig"}`
- *  3. Echo includes `auth` in the pusher:subscribe message
+ *  3. The client includes `auth` in the pusher:subscribe message
  *  4. Manager verifies HMAC before allowing subscription
  *
  * @example

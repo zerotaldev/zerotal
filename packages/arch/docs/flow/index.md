@@ -570,6 +570,6 @@ Flow is a large surface. Each section below is its own page.
 - [Validator](/docs/validator) — the full rule chain behind `@validate` and `this.validate()`.
 - [Middleware](/docs/middleware) — write the guards you attach to Flow routes.
 - [Session](/docs/session) — the store behind `@session` and `SessionMiddleware`.
-- [Broadcasting](/docs/broadcasting) — drive `@on("echo:…")` real-time updates from the server.
+- [Broadcasting](/docs/broadcasting) — drive `@on("socket:…")` real-time updates from the server.
 - [Storage](/docs/storage) — configure the disks that file uploads write to.
 - [Testing](/docs/testing/index) — patterns for the `FlowTest` harness and the rest of the suite.

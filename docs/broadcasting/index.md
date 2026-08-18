@@ -50,7 +50,7 @@ The provider exposes one HTTP route and one WebSocket upgrade path:
 
 - `POST /broadcasting/auth` — the private/presence channel auth endpoint (a real `Router` route).
 - The WebSocket upgrade is served at the configured `path` (default `/app/ws`) via Bun's
-  WebSocket handler — it is _not_ a separate `Router` route. Pusher/Echo clients connect to
+  WebSocket handler — it is _not_ a separate `Router` route. Pusher/Socket clients connect to
   `ws://host/app/{appKey}`.
 
 ## Configuration

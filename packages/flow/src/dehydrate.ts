@@ -126,7 +126,7 @@ export function dehydrate(
   }
 
   // Collect @on listeners for the client event router, resolving any registered as
-  // `(self) => name` against this instance — that is what lets an `echo:` channel carry
+  // `(self) => name` against this instance — that is what lets a `socket:` channel carry
   // a per-record id, since the decorator's argument is read off the class.
   // Excluded from HMAC signing (server-derived, can't usefully be tampered with).
   const listenersMap = resolveListeners(

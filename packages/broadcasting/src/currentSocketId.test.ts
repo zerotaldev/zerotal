@@ -32,7 +32,7 @@ describe("currentSocketId", () => {
   });
 
   it("matches the header however the client cased it", () => {
-    // Echo sends `X-Socket-ID`; a hand-rolled client may send it lowercase.
+    // The client sends `X-Socket-ID`; a hand-rolled one may send it lowercase.
     expect(withRequest({ "x-socket-id": "abc.def" }, currentSocketId)).toBe("abc.def");
     expect(withRequest({ "X-SOCKET-ID": "ghi.jkl" }, currentSocketId)).toBe("ghi.jkl");
   });

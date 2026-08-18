@@ -122,7 +122,7 @@ the wire; a Pusher-protocol client surfaces them to your code under the `pusher:
 
 > **Note** — The native `ws`/`redis` drivers use the equivalent
 > `subscription_succeeded` / `presence:member_added` / `presence:member_removed` events; the
-> first-party `Socket` client maps them to Echo's `here`/`joining`/`leaving` callbacks for you.
+> first-party `Socket` client maps them to Socket's `here`/`joining`/`leaving` callbacks for you.
 
 ## Typed channels
 

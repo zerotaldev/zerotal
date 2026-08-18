@@ -13,7 +13,7 @@
 //     }
 //   }
 //
-// Unknown event names still work (a `string` fallback overload keeps `echo:…` broadcasts and
+// Unknown event names still work (a `string` fallback overload keeps `socket:…` broadcasts and
 // gradual adoption compiling), they're just untyped. Payloads are object shapes or `void`.
 
 /**
@@ -24,7 +24,7 @@
  *
  * @remarks
  * Payloads are object shapes or `void` (for events with no payload). Unknown event names still
- * compile (a `string` fallback keeps `echo:…` broadcasts and gradual adoption working); they are
+ * compile (a `string` fallback keeps `socket:…` broadcasts and gradual adoption working); they are
  * simply untyped.
  *
  * @example
@@ -64,7 +64,7 @@ export type EventPayload<K extends EventName> = FlowEvents[K];
  */
 export type EventArgs<P> = [P] extends [void] ? [] : [payload: P];
 
-/** An event name loosened to accept any string (autocomplete for known names, `echo:…` too). */
+/** An event name loosened to accept any string (autocomplete for known names, `socket:…` too). */
 export type LooseEventName = EventName | (string & {});
 
 // ── Optional runtime shape guards ──────────────────────────────────────────────

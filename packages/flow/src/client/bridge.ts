@@ -34,6 +34,11 @@ import { confirmDialog, type ConfirmDialogOptions } from "./confirm.ts";
 import { showErrorOverlay } from "./errorOverlay.ts";
 import { applyAppend, applyRemove, type OptOp } from "./optimistic.ts";
 import { clientStore } from "../store.ts";
+// The `/Socket` subpath, not the package root: the root also exports
+// `ClientProvider`, which reaches @zerotal/core's CLI modules — one of which
+// does `await import("bun")`, a hard error in a browser bundle before
+// tree-shaking can drop it.
+import { Socket as BundledSocket } from "@zerotal/client/Socket";
 import { route } from "@zerotal/core/routes";
 import { URL_ATTRIBUTES, sanitizeUrl } from "../urlSafety.ts";
 import {
@@ -3463,7 +3468,7 @@ function _scanComponents(): void {
     _setupPolling(comp);
     _setupIntersect(comp);
     _setupSort(comp);
-    _setupEchoListeners(comp);
+    _setupSocketListeners(comp);
     _setupPresence(comp);
     _setupShared(comp);
 
@@ -3529,7 +3534,7 @@ function _cleanupDisconnected(): void {
         obs.disconnect();
         _lazyObservers.delete(id);
       }
-      _teardownEchoListeners(id);
+      _teardownSocketListeners(id);
       _teardownPresence(id);
       _teardownShared(id);
       _optOps.delete(id);
@@ -3538,61 +3543,95 @@ function _cleanupDisconnected(): void {
   }
 }
 
-// ── Real-time @on('echo:…') listeners ─────────────────────────────────────────
+// ── Real-time @on('socket:…') listeners ───────────────────────────────────────
 //
-// A listener whose event name is `echo:CHANNEL,EVENT` (or echo-private: /
-// echo-presence:) subscribes to a broadcast channel via the global `window.Echo`
-// (the standard broadcast client the app configures). When the broadcast
+// A listener whose event name is `socket:CHANNEL,EVENT` (or socket-private: /
+// socket-presence:) subscribes to a broadcast channel. When the broadcast
 // arrives, the component's @on method runs server-side via a normal action frame —
-// so a broadcast updates the component exactly like any other event. No-op when
-// `window.Echo` is absent.
+// so a broadcast updates the component exactly like any other event.
+//
+// The client is bundled into this runtime and created on first use, so a page
+// that declares a listener is live without the app shipping any script. That is
+// not a convenience: these subscriptions used to be *silently inert* when the
+// global was missing — no error, no warning — so a live feature with no script
+// looked exactly like a live feature that was never written. An app that needs a
+// configured client (a different host, its own auth endpoint) still sets
+// `window.Socket` itself before the runtime loads, and that one wins.
 
-type EchoSub = { channel: string; kind: "" | "-private" | "-presence" };
-const _echoSubs = new Map<string, EchoSub[]>();
+/**
+ * The broadcast client: whatever the app published, or one made on demand.
+ *
+ * Constructed on first use rather than at load, so an app with no realtime
+ * feature never opens a second connection. `new Socket()` needs no arguments in
+ * a browser — it derives its URL from `location` and posts to
+ * `/broadcasting/auth` — which is exactly the wiring every app was writing by
+ * hand.
+ */
+function _socketClient(): SocketClient {
+  const w = window as unknown as { Socket?: SocketClient };
+  return (w.Socket ??= new BundledSocket() as unknown as SocketClient);
+}
 
-/** Parse `echo[-private|-presence]:channel,event` → parts, or null if not an echo listener. @internal */
-export function _parseEchoListener(
+/**
+ * The client, but only if one already exists.
+ *
+ * Teardown and whisper paths use this: creating a connection in order to leave a
+ * channel, or to whisper on a page that never joined one, would open a socket to
+ * do nothing with it.
+ */
+function _existingSocketClient(): SocketClient | undefined {
+  return (window as unknown as { Socket?: SocketClient }).Socket;
+}
+
+type SocketSub = { channel: string; kind: "" | "-private" | "-presence" };
+const _socketSubs = new Map<string, SocketSub[]>();
+
+/** Parse `socket[-private|-presence]:channel,event` → parts, or null if not a socket listener. @internal */
+export function _parseSocketListener(
   name: string,
-): { kind: EchoSub["kind"]; channel: string; event: string } | null {
-  const m = /^echo(-private|-presence)?:/.exec(name);
+): { kind: SocketSub["kind"]; channel: string; event: string } | null {
+  const m = /^socket(-private|-presence)?:/.exec(name);
   if (!m) return null;
-  const kind = (m[1] ?? "") as EchoSub["kind"];
+  const kind = (m[1] ?? "") as SocketSub["kind"];
   const rest = name.slice(m[0].length);
   const ci = rest.lastIndexOf(","); // split on the LAST comma (channels may contain dots, not commas)
   if (ci === -1) return null;
   return { kind, channel: rest.slice(0, ci), event: rest.slice(ci + 1) };
 }
 
-interface EchoChannel {
-  listen(event: string, cb: (payload: unknown) => void): EchoChannel;
-  here?(cb: (payload: unknown) => void): EchoChannel;
-  joining?(cb: (payload: unknown) => void): EchoChannel;
-  leaving?(cb: (payload: unknown) => void): EchoChannel;
+interface SocketChannel {
+  listen(event: string, cb: (payload: unknown) => void): SocketChannel;
+  here?(cb: (payload: unknown) => void): SocketChannel;
+  joining?(cb: (payload: unknown) => void): SocketChannel;
+  leaving?(cb: (payload: unknown) => void): SocketChannel;
 }
-interface EchoClient {
-  channel(name: string): EchoChannel;
-  private(name: string): EchoChannel;
-  join(name: string): EchoChannel;
+interface SocketClient {
+  channel(name: string): SocketChannel;
+  private(name: string): SocketChannel;
+  join(name: string): SocketChannel;
   leave(name: string): void;
 }
 
-function _setupEchoListeners(comp: FlowComponent): void {
-  const Echo = (window as unknown as { Echo?: EchoClient }).Echo;
+function _setupSocketListeners(comp: FlowComponent): void {
+  // The snapshot decides whether this page needs a connection at all — asking
+  // for the client first would open one on every page, including the ones with
+  // nothing to subscribe to.
   const listeners = comp.snapshot.memo.listeners;
-  if (!Echo || !listeners) return;
+  if (!listeners) return;
+  const client = _socketClient();
 
-  const subs: EchoSub[] = [];
+  const subs: SocketSub[] = [];
   for (const [name, method] of Object.entries(listeners)) {
-    const parsed = _parseEchoListener(name);
+    const parsed = _parseSocketListener(name);
     if (!parsed) continue;
     const { kind, channel, event } = parsed;
 
     const ch =
       kind === "-private"
-        ? Echo.private(channel)
+        ? client.private(channel)
         : kind === "-presence"
-          ? Echo.join(channel)
-          : Echo.channel(channel);
+          ? client.join(channel)
+          : client.channel(channel);
 
     const cb = (payload: unknown) => _callAction(comp, method, [payload]);
     // Presence sub-events (here/joining/leaving) use their own methods; everything
@@ -3604,43 +3643,43 @@ function _setupEchoListeners(comp: FlowComponent): void {
     }
     subs.push({ channel, kind });
   }
-  if (subs.length) _echoSubs.set(comp.id, subs);
+  if (subs.length) _socketSubs.set(comp.id, subs);
 }
 
-function _teardownEchoListeners(id: string): void {
-  const Echo = (window as unknown as { Echo?: EchoClient }).Echo;
-  const subs = _echoSubs.get(id);
-  if (Echo && subs)
+function _teardownSocketListeners(id: string): void {
+  const client = _existingSocketClient();
+  const subs = _socketSubs.get(id);
+  if (client && subs)
     for (const s of subs) {
       try {
-        Echo.leave(s.channel);
+        client.leave(s.channel);
       } catch {
         /* ignore */
       }
     }
-  _echoSubs.delete(id);
+  _socketSubs.delete(id);
 }
 
 // ── @presence channels ────────────────────────────────────────────────────────
 // A component with @presence props carries its resolved channel(s) in memo.presence.
 // Join each presence channel and, on here/joining/leaving, dispatch `$presence` so the
 // server refills the member list and re-renders. Cursors/ephemeral state ride the same
-// channel via Echo whispers (see _presenceChannelFor / whisper helpers below).
+// channel via client whispers (see _presenceChannelFor / whisper helpers below).
 
-interface PresenceEchoChannel extends EchoChannel {
-  whisper?(event: string, data: unknown): PresenceEchoChannel;
-  listenForWhisper?(event: string, cb: (data: unknown) => void): PresenceEchoChannel;
+interface PresenceSocketChannel extends SocketChannel {
+  whisper?(event: string, data: unknown): PresenceSocketChannel;
+  listenForWhisper?(event: string, cb: (data: unknown) => void): PresenceSocketChannel;
 }
 const _presenceChannels = new Map<string, string[]>(); // componentId → joined channels
 
 function _setupPresence(comp: FlowComponent): void {
-  const Echo = (window as unknown as { Echo?: EchoClient }).Echo;
   const presence = comp.snapshot.memo.presence;
-  if (!Echo || !presence || presence.length === 0) return;
+  if (!presence || presence.length === 0) return;
+  const client = _socketClient();
 
   const channels: string[] = [];
   for (const { channel } of presence) {
-    const ch = Echo.join(channel);
+    const ch = client.join(channel);
     const refresh = (): void => _callAction(comp, "$presence", []);
     ch.here?.(refresh);
     ch.joining?.(refresh);
@@ -3651,12 +3690,12 @@ function _setupPresence(comp: FlowComponent): void {
 }
 
 function _teardownPresence(id: string): void {
-  const Echo = (window as unknown as { Echo?: EchoClient }).Echo;
+  const client = _existingSocketClient();
   const channels = _presenceChannels.get(id);
-  if (Echo && channels)
+  if (client && channels)
     for (const c of channels) {
       try {
-        Echo.leave(c);
+        client.leave(c);
       } catch {
         /* ignore */
       }
@@ -3672,21 +3711,21 @@ function _presenceChannelFor(comp: FlowComponent): string | null {
 /**
  * Broadcast ephemeral state (e.g. a cursor position) to the other members of the
  * component's presence channel — client-only, never hits the server or the DB. Pair with
- * `onWhisper`. No-op without `window.Echo` or a presence channel.
+ * `onWhisper`. No-op without `window.client` or a presence channel.
  */
 function _whisper(comp: FlowComponent, event: string, data: unknown): void {
-  const Echo = (window as unknown as { Echo?: EchoClient }).Echo;
+  const client = _existingSocketClient();
   const channel = _presenceChannelFor(comp);
-  if (!Echo || !channel) return;
-  (Echo.join(channel) as PresenceEchoChannel).whisper?.(event, data);
+  if (!client || !channel) return;
+  (client.join(channel) as PresenceSocketChannel).whisper?.(event, data);
 }
 
 /** Listen for peers' whispers on the component's presence channel (e.g. cursor moves). */
 function _onWhisper(comp: FlowComponent, event: string, cb: (data: unknown) => void): void {
-  const Echo = (window as unknown as { Echo?: EchoClient }).Echo;
+  const client = _existingSocketClient();
   const channel = _presenceChannelFor(comp);
-  if (!Echo || !channel) return;
-  (Echo.join(channel) as PresenceEchoChannel).listenForWhisper?.(event, cb);
+  if (!client || !channel) return;
+  (client.join(channel) as PresenceSocketChannel).listenForWhisper?.(event, cb);
 }
 
 // ── @task cancellation ─────────────────────────────────────────────────────────
@@ -3714,32 +3753,32 @@ function _cancelTask(comp: FlowComponent): void {
 // A component with @shared props carries its resolved channel(s) in memo.shared. Join each
 // channel and, on the `flow:shared` broadcast, dispatch `$shared` so the server re-reads
 // the room store and re-renders — every subscriber converges to the same state. Shared and
-// presence channels are joined the same way (Echo.join), so one room channel can carry both.
+// presence channels are joined the same way (client.join), so one room channel can carry both.
 
 const SHARED_EVENT = "flow:shared";
 const _sharedChannels = new Map<string, string[]>(); // componentId → joined channels
 
 function _setupShared(comp: FlowComponent): void {
-  const Echo = (window as unknown as { Echo?: EchoClient }).Echo;
   const shared = comp.snapshot.memo.shared;
-  if (!Echo || !shared || shared.length === 0) return;
+  if (!shared || shared.length === 0) return;
+  const client = _socketClient();
 
   const channels: string[] = [];
   for (const { channel } of shared) {
     const converge = (): void => _callAction(comp, "$shared", []);
-    Echo.join(channel).listen(SHARED_EVENT, converge);
+    client.join(channel).listen(SHARED_EVENT, converge);
     channels.push(channel);
   }
   if (channels.length) _sharedChannels.set(comp.id, channels);
 }
 
 function _teardownShared(id: string): void {
-  const Echo = (window as unknown as { Echo?: EchoClient }).Echo;
+  const client = _existingSocketClient();
   const channels = _sharedChannels.get(id);
-  if (Echo && channels)
+  if (client && channels)
     for (const c of channels) {
       try {
-        Echo.leave(c);
+        client.leave(c);
       } catch {
         /* ignore */
       }

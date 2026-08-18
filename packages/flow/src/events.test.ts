@@ -42,10 +42,10 @@ describe("typed events", () => {
     expect(p._drainEffects().events).toEqual([{ name: "cart-cleared", data: {} }]);
   });
 
-  it("an unknown event name still works (untyped fallback — echo:/gradual adoption)", () => {
+  it("an unknown event name still works (untyped fallback — socket:/gradual adoption)", () => {
     const p = new Emitter();
-    p.dispatch("echo:orders,OrderPlaced", { any: "thing" });
-    expect(p._drainEffects().events[0]!.name).toBe("echo:orders,OrderPlaced");
+    p.dispatch("socket:orders,OrderPlaced", { any: "thing" });
+    expect(p._drainEffects().events[0]!.name).toBe("socket:orders,OrderPlaced");
   });
 
   it("dispatchTo / dispatchSelf carry the typed payload + targeting", () => {

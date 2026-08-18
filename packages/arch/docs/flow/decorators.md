@@ -293,15 +293,15 @@ async refreshUser(data: { userId: number }): Promise<void> {
 }
 
 // Listen for real-time WebSocket broadcasts (see Events doc for channel formats)
-@on("echo:orders,OrderPlaced")
+@on("socket:orders,OrderPlaced")
 async onOrderPlaced(payload: { id: number }): Promise<void> {
   this.orderCount++;
   this.flash("New order received!", "success");
 }
 
 // A channel naming a record needs a resolver — the string form is read off the
-// class, so `"echo:orders.${this.id},…"` would subscribe to that literal text.
-@on((self) => `echo-private:orders.${self.orderId},OrderCancelled`)
+// class, so `"socket:orders.${this.id},…"` would subscribe to that literal text.
+@on((self) => `socket-private:orders.${self.orderId},OrderCancelled`)
 async onOrderCancelled(payload: { id: number }): Promise<void> {
   this.orderCount--;
 }
@@ -396,8 +396,8 @@ See [Layouts & Composition](/docs/flow/layouts#two-way-props) for the full `@mod
 | `@expose method`                                | Callable from the browser via WebSocket                               |
 | `@expose @renderless method`                    | Callable from browser; skips re-render cycle                          |
 | `@on("event") method`                           | Listens for cross-component events (auto-exposed)                     |
-| `@on("echo:channel,Event") method`              | Listens for real-time server broadcasts                               |
-| `@on((self) => "echo:…") method`                | Same, with the channel resolved per instance (record ids)             |
+| `@on("socket:channel,Event") method`              | Listens for real-time server broadcasts                               |
+| `@on((self) => "socket:…") method`                | Same, with the channel resolved per instance (record ids)             |
 | `@reactive prop`                                | Child prop; parent re-pushes on change, child re-renders              |
 | `@modelable prop`                               | Two-way child prop; writes from child flow back to parent             |
 

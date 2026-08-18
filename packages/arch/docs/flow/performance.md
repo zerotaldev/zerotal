@@ -33,7 +33,7 @@ It's a graceful degrade, not a mode you configure. WebSocket reconnection keeps 
 
 - Each action is a request/response, with no server-pushed frames — so `@task`
   streaming arrives as one batched update rather than token by token.
-- Real-time `@on("echo:…")`, `@presence`, and `@shared` broadcasts are not
+- Real-time `@on("socket:…")`, `@presence`, and `@shared` broadcasts are not
   delivered, because those ride the separate broadcasting socket.
 
 Everything driven by your own actions still works. Nothing is sent over HTTP until the socket has actually failed; the happy path is unchanged.

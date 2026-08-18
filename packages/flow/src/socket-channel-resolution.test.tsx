@@ -2,9 +2,9 @@
 //
 // The channel a component subscribes to reaches the browser through
 // `snapshot.memo.listeners`, and the client hands it straight to
-// `Echo.private(channel)`. The decorator's argument, though, is read off the
+// `Socket.private(channel)`. The decorator's argument, though, is read off the
 // CLASS — so a template literal written inside a plain string
-// (`"echo-private:issues.${this.issueId},CommentPosted"`, as the guide showed)
+// (`"socket-private:issues.${this.issueId},CommentPosted"`, as the guide showed)
 // is not interpolation at all: it reaches the browser with those eleven
 // characters intact, subscribes to a channel nobody broadcasts to, and produces
 // no error, no warning and no events.
@@ -32,7 +32,7 @@ describe("@on channel resolution", () => {
     class IssuePage extends Component {
       @locked issueId = 42;
 
-      @on((self) => `echo-private:issues.${self["issueId"]},CommentPosted`)
+      @on((self) => `socket-private:issues.${self["issueId"]},CommentPosted`)
       async onComment(): Promise<void> {}
 
       override render = html;
@@ -41,7 +41,7 @@ describe("@on channel resolution", () => {
     const t = await FlowTest.mount(IssuePage);
 
     expect(t.snapshot()?.memo?.listeners).toEqual({
-      "echo-private:issues.42,CommentPosted": "onComment",
+      "socket-private:issues.42,CommentPosted": "onComment",
     });
   });
 
@@ -49,7 +49,7 @@ describe("@on channel resolution", () => {
     class IssuePage extends Component {
       @locked issueId = 0;
 
-      @on((self) => `echo-private:issues.${self["issueId"]},CommentPosted`)
+      @on((self) => `socket-private:issues.${self["issueId"]},CommentPosted`)
       async onComment(): Promise<void> {}
 
       override render = html;
@@ -59,16 +59,16 @@ describe("@on channel resolution", () => {
     const second = await FlowTest.mount(IssuePage, { issueId: 2 });
 
     expect(Object.keys(first.snapshot()?.memo?.listeners ?? {})).toEqual([
-      "echo-private:issues.1,CommentPosted",
+      "socket-private:issues.1,CommentPosted",
     ]);
     expect(Object.keys(second.snapshot()?.memo?.listeners ?? {})).toEqual([
-      "echo-private:issues.2,CommentPosted",
+      "socket-private:issues.2,CommentPosted",
     ]);
   });
 
   it("still passes a static name through untouched", async () => {
     class OrdersPage extends Component {
-      @on("echo:orders,OrderPlaced")
+      @on("socket:orders,OrderPlaced")
       async onOrder(): Promise<void> {}
 
       override render = html;
@@ -77,7 +77,7 @@ describe("@on channel resolution", () => {
     const t = await FlowTest.mount(OrdersPage);
 
     expect(t.snapshot()?.memo?.listeners).toEqual({
-      "echo:orders,OrderPlaced": "onOrder",
+      "socket:orders,OrderPlaced": "onOrder",
     });
   });
 
@@ -87,7 +87,7 @@ describe("@on channel resolution", () => {
 
       // Reads through a null — the shape of a resolver that runs before onMount
       // has filled the field it depends on.
-      @on((self) => `echo-private:issues.${(self["issue"] as { id: number }).id},E`)
+      @on((self) => `socket-private:issues.${(self["issue"] as { id: number }).id},E`)
       async onEvent(): Promise<void> {}
 
       override render = html;
@@ -103,7 +103,7 @@ describe("@on channel resolution", () => {
     class Page extends Component {
       @locked roomId = "7";
 
-      @on((self) => `echo-presence:room.${self["roomId"]},here`)
+      @on((self) => `socket-presence:room.${self["roomId"]},here`)
       async onHere(): Promise<void> {}
 
       override render = html;
@@ -115,7 +115,7 @@ describe("@on channel resolution", () => {
     await t.call("onHere");
 
     expect(t.snapshot()?.memo?.listeners).toEqual({
-      "echo-presence:room.7,here": "onHere",
+      "socket-presence:room.7,here": "onHere",
     });
   });
 });

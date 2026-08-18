@@ -178,7 +178,7 @@ async onPostCreated(data: EventPayload<"post-created">) {
 }
 ```
 
-Adoption is gradual and non-breaking: any event name **not** in the contract stays untyped (a plain optional-payload call), so existing events and `@on("echo:…")` broadcasts keep compiling — you type the ones you care about, when you care about them.
+Adoption is gradual and non-breaking: any event name **not** in the contract stays untyped (a plain optional-payload call), so existing events and `@on("socket:…")` broadcasts keep compiling — you type the ones you care about, when you care about them.
 
 **Runtime guard (optional).** The types cover your own dispatch sites at compile time. For a payload that arrives from an untrusted source — a client-originated dispatch — register a runtime guard; a violating payload then throws from `dispatch` instead of reaching listeners:
 
@@ -231,7 +231,9 @@ When a child component just needs to invoke a parent action, use `$flow.parent` 
 
 ## Real-time broadcasting
 
-Listen for server-broadcast events over WebSockets with `@on("echo:…")`. When a matching broadcast arrives, the listener method runs server-side exactly like any other action — the component re-renders live.
+Listen for server-broadcast events over WebSockets with `@on("socket:…")`. When a matching broadcast arrives, the listener method runs server-side exactly like any other action — the component re-renders live.
+
+The socket client is bundled into the Flow runtime and created the first time a page declares one of these listeners, so there is no script to add and nothing to publish on `window`. An app that needs a configured client — a different host, its own auth endpoint — assigns `window.Socket` before the runtime loads and that one is used instead. Pages with no such listener open no broadcast connection at all.
 
 ```typescript
 export class OrderDashboard extends Component {
@@ -243,7 +245,7 @@ export class OrderDashboard extends Component {
     this.recentOrders = await Order.query().orderBy("created_at", "desc").limit(5).get();
   }
 
-  @on("echo:orders,OrderPlaced")
+  @on("socket:orders,OrderPlaced")
   async onOrderPlaced(payload: { id: number; total: number }): Promise<void> {
     this.orderCount++;
     const order = await Order.findOrFail(payload.id);
@@ -251,7 +253,7 @@ export class OrderDashboard extends Component {
     this.flash(`New order — $${payload.total}`, "success");
   }
 
-  @on((self) => `echo-private:orders.${self.branchId},OrderCancelled`)
+  @on((self) => `socket-private:orders.${self.branchId},OrderCancelled`)
   async onOrderCancelled(payload: { id: number }): Promise<void> {
     this.recentOrders = this.recentOrders.filter((o) => o.id !== payload.id);
     this.orderCount   = Math.max(0, this.orderCount - 1);
@@ -276,13 +278,13 @@ export class OrderDashboard extends Component {
 
 | Format                             | Channel type                            |
 | ---------------------------------- | --------------------------------------- |
-| `echo:channel,Event`               | Public channel                          |
-| `echo-private:channel,Event`       | Private channel (requires auth)         |
-| `echo-presence:room,joining`       | Presence channel — member joined        |
-| `echo-presence:room,leaving`       | Presence channel — member left          |
-| `echo-presence:room,here`          | Presence channel — initial member list  |
-| `echo:teams.1.threads,MessageSent` | Dot-separated dynamic/nested channel    |
-| `echo:scores,.score.submitted`     | Custom `broadcastAs` name (leading dot) |
+| `socket:channel,Event`               | Public channel                          |
+| `socket-private:channel,Event`       | Private channel (requires auth)         |
+| `socket-presence:room,joining`       | Presence channel — member joined        |
+| `socket-presence:room,leaving`       | Presence channel — member left          |
+| `socket-presence:room,here`          | Presence channel — initial member list  |
+| `socket:teams.1.threads,MessageSent` | Dot-separated dynamic/nested channel    |
+| `socket:scores,.score.submitted`     | Custom `broadcastAs` name (leading dot) |
 
 The part before the comma is the channel name; the part after is the event name. For presence channels, `joining`, `leaving`, and `here` are the built-in presence event names.
 
@@ -290,7 +292,7 @@ The part before the comma is the channel name; the part after is the event name.
 
 A channel that names a record — `issues.417`, `orders.8` — cannot be written as a string. The
 decorator's argument is read off the **class**, before any instance exists, so a template literal
-inside a plain string is not interpolated: `@on("echo-private:issues.${this.issueId},CommentPosted")`
+inside a plain string is not interpolated: `@on("socket-private:issues.${this.issueId},CommentPosted")`
 subscribes to a channel whose name contains those characters, and receives nothing.
 
 Pass a resolver instead. It is called with the component when the snapshot is built, exactly as
@@ -302,7 +304,7 @@ export class IssuePage extends Component {
   @locked issue!: Issue;
   @locked comments: Comment[] = [];
 
-  @on((self) => `echo-private:issues.${self.issue.id},CommentPosted`)
+  @on((self) => `socket-private:issues.${self.issue.id},CommentPosted`)
   async onCommentPosted(payload: { comment: Comment }): Promise<void> {
     this.comments = [...this.comments, payload.comment];
   }
@@ -320,17 +322,17 @@ comment bodies and discards them after the fact.
 
 ### Requirements
 
-Broadcasting requires a global `window.Echo` client configured by your application — the first-party `@zerotal/client` `Socket`, or any compatible realtime client. Flow subscribes through it on component mount and unsubscribes on teardown.
+Broadcasting requires a global `window.Socket` client configured by your application — the first-party `@zerotal/client` `Socket`, or any compatible realtime client. Flow subscribes through it on component mount and unsubscribes on teardown.
 
-If `window.Echo` is not present, all `echo:` listeners are silently inert — no errors, no subscriptions attempted.
+If `window.Socket` is not present, all `socket:` listeners are silently inert — no errors, no subscriptions attempted.
 
 ```typescript
 // In your frontend bootstrap (app.ts or similar):
 import { Socket } from "@zerotal/client";
 
 // The first-party Socket speaks Zerotal's native broadcast protocol and is a
-// drop-in for `window.Echo` — no external client library or Pusher credentials.
-window.Echo = new Socket();
+// drop-in for `window.Socket` — no external client library or Pusher credentials.
+window.Socket = new Socket();
 ```
 
 ## Presence — who's here (multiplayer)
@@ -377,7 +379,7 @@ Broadcast.channel("board.[boardId]", (user, boardId) =>
 
 Whispers are client-only (they ride the presence channel directly), so they're instant and don't count as component round-trips.
 
-Like all `echo:` features, presence needs a `window.Echo` client configured (above). Without it, `@presence` props stay empty and whispers are inert — no errors.
+Like all `socket:` features, presence needs a `window.Socket` client configured (above). Without it, `@presence` props stay empty and whispers are inert — no errors.
 
 ## Shared state — everyone converges (multiplayer)
 
@@ -402,7 +404,7 @@ The mental model: a `@shared` prop is a **cache of a server-side room value**, n
 
 Like `@presence`, the channel is resolved on the server (signed in the snapshot, unforgeable) and the prop is server-controlled (`@locked`): clients render it but change it only through `@expose` actions. Authorize the channel in `routes/channels.ts` exactly as for presence.
 
-Broadcasting is an **optional peer**. With `window.Echo` and `BroadcastProvider` configured, changes fan out to every open window; without them, `@shared` still converges within a single window's own round-trips, because the room store is server-side either way. For multi-instance deployments, swap the in-process store for a shared backend with `setSharedStore(store)` (any `{ get, set, has }`), e.g. Redis-backed — the convergence logic is unchanged.
+Broadcasting is an **optional peer**. With `window.Socket` and `BroadcastProvider` configured, changes fan out to every open window; without them, `@shared` still converges within a single window's own round-trips, because the room store is server-side either way. For multi-instance deployments, swap the in-process store for a shared backend with `setSharedStore(store)` (any `{ get, set, has }`), e.g. Redis-backed — the convergence logic is unchanged.
 
 > v1 semantics are last-write-wins and server-authoritative; `@shared` props should hold plain, serializable data (arrays/objects), like snapshot state generally. The originating window also receives its own change broadcast as an idempotent no-op re-read (self-exclusion is a planned refinement).
 

@@ -954,18 +954,18 @@ export function validate(
  * What a `@on` listener listens to: a static event name, or a resolver called with the component
  * instance to compute one — the same shape as {@link PresenceChannel} and {@link SharedChannel}.
  *
- * Use the resolver form for an `echo:` channel whose name contains a value only the instance
+ * Use the resolver form for a `socket:` channel whose name contains a value only the instance
  * knows. A template literal in a plain string cannot work: the decorator's argument is read off
- * the class, long before any instance exists, so `"echo:issues.${this.id},E"` subscribes to a
+ * the class, long before any instance exists, so `"socket:issues.${this.id},E"` subscribes to a
  * channel whose name contains those eleven characters.
  *
  * @example
  * ```ts
  * // Static — the channel is the same for every instance.
- * @on("echo:orders,OrderPlaced")
+ * @on("socket:orders,OrderPlaced")
  *
  * // Per-instance — one channel per issue.
- * @on((self) => `echo-private:issues.${self.issue.id},CommentPosted`)
+ * @on((self) => `socket-private:issues.${self.issue.id},CommentPosted`)
  * ```
  *
  * @category Realtime
@@ -977,9 +977,9 @@ export type ListenerName = LooseEventName | ((self: Record<string, any>) => stri
  *
  * @remarks
  * When the named event is dispatched (via `dispatch` / `dispatchTo` / `dispatchSelf`, or an
- * `echo:…` broadcast), the decorated method is invoked with the event payload. The event name
+ * `socket:…` broadcast), the decorated method is invoked with the event payload. The event name
  * autocompletes to the known {@link FlowEvents} contract while still accepting any string (for
- * `echo:…` broadcasts and gradually-typed events). Annotate the handler's parameter with
+ * `socket:…` broadcasts and gradually-typed events). Annotate the handler's parameter with
  * `EventPayload<"name">` to type the payload against the same contract. Because it auto-exposes,
  * no separate `@expose` is needed. Applies to a method.
  *
@@ -1019,13 +1019,13 @@ export function on(
  * The listener names a component actually subscribes to, resolved against `instance`.
  *
  * A static name passes through; a resolver is called with the component, so an
- * `echo:` channel can carry a value only the instance knows — `issues.417` rather
+ * `socket:` channel can carry a value only the instance knows — `issues.417` rather
  * than the class-level `issues.:id`.
  *
  * This exists because the channel name reaches the browser through the snapshot,
  * and the snapshot is built per instance. Registering `(self) => …` under the
  * *class* and resolving here is the same split {@link presence} and {@link shared}
- * already use; before it, a `@on("echo-private:issues.${this.issueId},…")`
+ * already use; before it, a `@on("socket-private:issues.${this.issueId},…")`
  * written the way the guide showed subscribed to a channel literally containing
  * `${this.issueId}` — no error, no warning, and no events, because template
  * syntax inside a plain string is just text.

@@ -45,7 +45,7 @@ type ModelClassWithEvents<M> = (new (...args: never[]) => M) & {
  *   // optional: with: (order) => ({ id: order.id, status: order.status }),
  * });
  *
- * // Client: Echo.private(`orders.${id}`).listen("OrderUpdated", (e) => ...)
+ * // Client: Socket.private(`orders.${id}`).listen("OrderUpdated", (e) => ...)
  */
 export function broadcastsModelEvents<M extends object>(
   ModelClass: ModelClassWithEvents<M>,

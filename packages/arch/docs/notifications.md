@@ -530,7 +530,7 @@ The broadcast channel works like this:
 
   ```ts
   // in your frontend
-  Echo.private(`notifications.${userId}`).listen("notification", (n) => {
+  Socket.private(`notifications.${userId}`).listen("notification", (n) => {
     console.log(n.type, n);
   });
   ```

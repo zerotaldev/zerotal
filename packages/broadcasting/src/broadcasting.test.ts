@@ -528,7 +528,7 @@ describe("Presence channel — member tracking", () => {
     expect(manager.getMembers("presence-chat")).toHaveLength(2);
     s2.length = 0; // clear prior frames on ws2
 
-    // ws1 leaves via an explicit unsubscribe (Echo.leave on component teardown / SPA navigation).
+    // ws1 leaves via an explicit unsubscribe (Socket.leave on component teardown / SPA navigation).
     await manager.handleMessage(
       ws1,
       JSON.stringify({ event: "unsubscribe", channel: "presence-chat" }),

@@ -39,14 +39,13 @@ jobs:
         run: bun install --frozen-lockfile
 
       # Packages only, not `apps/*`. The gate exists to decide whether the tree is
-      # fit to publish, and the apps are not published — `apps/docs` is a website
-      # and the three tracker builds are a cookbook. They also cannot pass here:
-      # their tests read an app `.env` that is deliberately gitignored, and the
-      # browser tests among them drive a seeded dev database that no runner has.
-      # Letting them decide a release meant a tag could never ship, which is a
+      # fit to publish, and the apps are not published — `apps/docs` is a website.
+      # It also cannot pass here: its tests read an app `.env` that is deliberately
+      # gitignored, and its browser tests drive a seeded dev database that no runner
+      # has. Letting it decide a release meant a tag could never ship, which is a
       # gate answering a question nobody asked it.
       #
-      # CI (ci.yml) still runs the whole workspace, so the apps keep failing
+      # CI (ci.yml) still runs the whole workspace, so the app keeps failing
       # loudly where that is the right signal.
       - name: Typecheck
         run: bun run typecheck:packages

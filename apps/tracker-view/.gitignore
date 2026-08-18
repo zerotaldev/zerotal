@@ -1,5 +1,0 @@
-node_modules/
-.zerotal/
-*.sqlite
-.env
-public/assets/

@@ -3,8 +3,9 @@
 // It read `process.argv[2]` as the project name and asked for everything else
 // through `readline`. With no TTY — CI, an agent, a pipe — no line ever arrives,
 // so it did not error: it **hung**, holding the job open until something timed
-// it out. `tracker-inertia` in this repo was scaffolded by calling `scaffold()`
-// directly, bypassing the CLI, which is the workaround admitting the problem.
+// it out. The first Inertia app built on Zerotal was scaffolded by calling
+// `scaffold()` directly, bypassing the CLI, which is the workaround admitting
+// the problem.
 
 import { describe, it, expect } from 'bun:test';
 import { parseArgs, resolveOptions, helpText, TEMPLATES, DEFAULT_TEMPLATE } from './args.ts';

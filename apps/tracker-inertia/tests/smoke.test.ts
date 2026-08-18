@@ -349,3 +349,53 @@ describe("precognition", () => {
     expect(await issueCount()).toBe(before + 1);
   });
 });
+
+/**
+ * Feature 14 — the session dies under a page that is still open.
+ *
+ * Sign out in tab B, act in tab A. The page in tab A was rendered for somebody
+ * who is no longer signed in, so every request it makes from now on is made by a
+ * stranger. What matters is that the reader is *told*: a silent no-op is the
+ * worst outcome, because it is indistinguishable from the app being broken.
+ *
+ * This build gets it right for free, and the reason is worth recording — the
+ * Inertia client follows a redirect on an XHR, and `/login` is itself an Inertia
+ * page, so the dead session lands the reader on the sign-in screen with no
+ * special handling anywhere. The `flow` build had no such luck: its equivalent
+ * arrives over a socket, where a redirect is not a thing that exists, and the
+ * instruction the server sent was being ignored.
+ */
+describe("a session that dies under an open page", () => {
+  test("an Inertia visit to a guarded page is redirected to sign in", async () => {
+    app.actingAsGuest();
+    const res = await app.get("/projects", { "X-Inertia": "true" });
+
+    // 302 rather than a 409 + X-Inertia-Location: the client follows this and
+    // gets the login page object, because /login is an Inertia page too. The 409
+    // form is for leaving the SPA entirely, which signing out does not require.
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("/login");
+  });
+
+  test("a write with a dead session is refused and sent to sign in", async () => {
+    app.actingAsGuest();
+    const before = await (async () => {
+      const { Issue } = await import("@app/models/Issue.ts");
+      return Issue.query().count();
+    })();
+
+    const res = await app.post(
+      "/projects/precognition/issues/new",
+      { title: "Written by a stranger", body: "", status: "backlog", priority: "medium", assigneeId: null },
+      { "X-Inertia": "true" },
+    );
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("/login");
+
+    // The assertion that matters: the write did not happen. A redirect that
+    // still created the record would be the same bug wearing a correct status.
+    const { Issue } = await import("@app/models/Issue.ts");
+    expect(await Issue.query().count()).toBe(before);
+  });
+});

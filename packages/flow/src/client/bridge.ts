@@ -1059,6 +1059,32 @@ function _dispatchFlash(detail: Record<string, unknown>): void {
 // episode triggers at most one reload, while a later, genuine restart can recover again.
 const _EXPIRY_RELOAD_KEY = "flow:reloaded-for-expired-component";
 
+/**
+ * Why an error frame should be recovered by a reload, if it should.
+ *
+ * Pure and exported so the policy is testable without a DOM — the handler that
+ * calls it needs `window`, `sessionStorage` and a live component map.
+ *
+ * `reload` is set by the server when the snapshot no longer belongs to the
+ * session that is asking, which is what signing out in another tab looks like
+ * from here. The page's state belongs to who you *were*, so no patch can
+ * succeed and reloading is the only honest recovery — the fresh request meets
+ * auth middleware and lands wherever a signed-out visitor belongs.
+ *
+ * Both cases share the one-shot guard: a reload that does not fix the problem
+ * must not reload again.
+ */
+export function _reloadReasonFor(
+  frame: { message?: string; reload?: boolean },
+  alreadyReloaded: boolean,
+): "session-changed" | "unknown-component" | null {
+  if (alreadyReloaded) return null;
+  // The server's explicit instruction outranks any inference from the message.
+  if (frame.reload) return "session-changed";
+  if (frame.message === "Unknown component") return "unknown-component";
+  return null;
+}
+
 function _reloadedForExpiry(): boolean {
   try {
     return sessionStorage.getItem(_EXPIRY_RELOAD_KEY) === "1";
@@ -1563,6 +1589,7 @@ async function _handleServerFrame(
     dataRemoved?: string[];
     actionError?: boolean;
     dev?: boolean;
+    reload?: boolean;
   },
 ): Promise<void> {
   if (frame.type === "ready") {
@@ -1730,11 +1757,14 @@ async function _handleServerFrame(
     // fresh document re-renders and re-registers every component server-side, then
     // re-hydrates the client. A one-shot guard (cleared once patches flow again, below)
     // prevents a reload loop if the reload doesn't resolve it.
-    if (frame.message === "Unknown component" && !_reloadedForExpiry()) {
+    const reloadReason = _reloadReasonFor(frame, _reloadedForExpiry());
+    if (reloadReason) {
       _markReloadedForExpiry();
       console.warn(
-        `[Flow] Component "${frame.component}" is no longer registered on the server ` +
-          `(likely a server restart) — reloading the page to recover.`,
+        reloadReason === "session-changed"
+          ? `[Flow] ${frame.message ?? "The session changed"} — reloading the page.`
+          : `[Flow] Component "${frame.component}" is no longer registered on the server ` +
+              `(likely a server restart) — reloading the page to recover.`,
       );
       window.location.reload();
       return;

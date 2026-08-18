@@ -63,6 +63,20 @@ change.
   path back to false. The component's own test covered start, progress and error, and skipped
   success — which is how a one-word mismatch survived. It now covers it.
 
+- **Signing out in another tab left the first tab looking broken.** The server has always
+  handled this: `hydrate()` refuses a snapshot whose subject no longer matches the session, and
+  the provider answers with an error frame carrying `reload: true` and "Your session changed —
+  reload the page." The client never read the flag. It reloaded for a dev soft-refresh and for
+  the literal message `"Unknown component"`, then fell through to `console.error` — so the
+  instruction reached a console nobody had open.
+
+  What the reader saw was a button that did nothing. The page stayed on screen, still looking
+  signed in, the action silently rejected, and no way to discover otherwise but to reload by
+  hand. The frame is now honoured, guarded by the same one-shot that protects the other reload
+  paths, and the decision is a pure `_reloadReasonFor()` so it can be tested without a DOM.
+  Matching on the flag rather than the sentence, so rewording or translating the message cannot
+  turn the recovery off.
+
 - **Sibling subclasses of one decorated base stole each other's fields.** Field decorators buffer
   their registration and the buffer is matched to a class lazily, on the first read of that class's
   registry. Matching took the longest run across **every** buffered group, so a class could claim —

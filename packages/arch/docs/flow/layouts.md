@@ -143,6 +143,22 @@ override async render() {
 }
 ```
 
+### The document's `lang` is fixed
+
+Flow assembles the outer document itself and emits `<html lang="en">`, and a `Layout` has no hook to
+change it. `head` injects into `<head>`; the `<html>` attributes are not reachable from a layout.
+
+For a localised app, put `lang` (and any locale-dependent class) on the layout's own wrapper element.
+Both are valid on a `div` and apply to every descendant, so the *content* is correctly marked up —
+but the document still declares English to anything reading the root element, which is wrong for a
+screen reader announcing the page in the wrong voice:
+
+```tsx
+override render(slot: HtmlNode) {
+  return <div lang={activeLocale()}>{slot}</div>;
+}
+```
+
 ## Sections
 
 A layout owns regions a page cannot reach. When a page needs to put something _there_ — a toolbar

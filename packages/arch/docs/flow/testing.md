@@ -177,6 +177,38 @@ expect(page.user?.email).toBe("alice@example.com");
 expect(page.totalRevenue).toBe(450.0);
 ```
 
+## No request scope
+
+`FlowTest` drives the server-side pipeline but does **not** open a request context. There is no
+`RequestContext.run` inside it, so anything reaching for the request throws rather than
+returning empty:
+
+- `Auth.user()` → `E_UNAUTHORIZED`
+- `Auth.attempt()` / `Auth.login()` → `E_CONTEXT_OUTSIDE_REQUEST`
+- request-scoped pagination, and any facade that reads `RequestContext`
+
+That covers most actions on any page behind a sign-in, so open the scope yourself. `HttpContext.fake()`
+rather than an object literal cast to the type — it carries a real `Request`, which matters as soon
+as anything downstream reads a header (an audited model records the actor's IP, for one):
+
+```typescript
+import { RequestContext, HttpContext } from "@zerotal/core";
+
+function asUser<T>(user: User | null, fn: () => Promise<T>): Promise<T> {
+  const ctx = HttpContext.fake("http://localhost/");
+  if (user) ctx.user = user;
+  return RequestContext.run(ctx, fn);
+}
+
+await asUser(alice, async () => {
+  const t = await FlowTest.mount(IssuePage, { issue });
+  await t.call("postComment");
+});
+```
+
+`app.actingAs()` does not help here: it encodes a session cookie for `app.get()`, and `FlowTest`
+never makes a request to send it on.
+
 ## Testing with a database
 
 `FlowTest` does not set up or tear down a database — use your test suite's standard database helpers. With Bun, wrap tests in a transaction that rolls back after each test for full isolation:

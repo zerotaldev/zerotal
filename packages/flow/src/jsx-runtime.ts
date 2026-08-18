@@ -148,9 +148,20 @@ interface FlowDirectives {
   show?: any;
   showImportant?: boolean;
 
+  /**
+   * The reorder action, as a method reference or its name.
+   *
+   * Read off the container a child was **dropped into** and called `(key, index)`,
+   * so the destination is encoded in which method runs and nowhere in the payload.
+   * Dragging between containers therefore needs one action per container.
+   */
   onSort?: any;
   sortItem?: any;
   sortGroup?: string;
+  /**
+   * Emitted as `flow:sort:group-id`, and **currently read by nothing** — neither the
+   * client runtime nor the compiler looks for it. Setting it has no effect today.
+   */
   sortGroupId?: any;
   sortHandle?: boolean;
   sortIgnore?: boolean;

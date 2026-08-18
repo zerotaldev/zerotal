@@ -133,9 +133,13 @@ You can also pass rules directly to `this.validate()` — they override the deco
 
 ### Real-time validation
 
-When a `@validate` field is bound with `flow:model.live` (or `.blur`), each change is validated on
+When a `@validate` field is bound `live` (or `blur`), each change is validated on
 the server as it arrives. The field's error appears (and clears)
-as the user edits, with no action call and without affecting any other field:
+as the user edits, with no action call and without affecting any other field.
+
+> **Note** — `live` is the prop you write; `flow:model.live` is what it compiles to. The compiled
+> form is not writable in TSX: the `.` in an attribute name is a parse error (`TS1003`), so
+> copying it out of the emitted HTML into a component will not build.
 
 ```tsx
 @expose @validate((rule) => rule.required().email()) email = "";
@@ -143,7 +147,7 @@ as the user edits, with no action call and without affecting any other field:
 async render() {
   return (
     <div>
-      <input type="email" value={this.email} flow:model.live />
+      <input type="email" value={this.email} live />
       <span error={this.errors.email} />
     </div>
   );

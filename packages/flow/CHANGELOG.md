@@ -63,6 +63,30 @@ change.
   path back to false. The component's own test covered start, progress and error, and skipped
   success — which is how a one-word mismatch survived. It now covers it.
 
+- **The real-time validation example did not compile.** `docs/flow/decorators.md` showed
+  `<input value={this.email} flow:model.live />`. That is the *emitted* directive, not the prop:
+  the `.` in an attribute name is a parse error in TSX (`TS1003`), so anyone copying it got a
+  build failure on a line the guide had just handed them. The prop is `live`; the note now says
+  so, and says why the compiled form cannot be written by hand.
+
+### Documented
+
+Four behaviours that were true but written down nowhere, each found by hitting it:
+
+- **AOT compilation and `__()` are mutually exclusive** — a function call in a text child forces
+  the runtime fallback, so a translated app compiles no pages at all. Normally that is a speed
+  cost; under `cspSafe`, where every page must compile, it is a build failure. `performance.md`
+  now lists what blocks compilation and what to do about it.
+- **`FlowTest` opens no request scope**, so `Auth.user()` and `Auth.attempt()` throw and no
+  action behind a sign-in can be driven without wrapping it. `testing.md` carries the wrapper.
+- **A layout cannot set the document's `lang`** — Flow emits `<html lang="en">` and offers no
+  hook, so a localised app marks up its wrapper instead and the root element stays wrong.
+- **`<Tabs>` selection is client-only and its strip is not themeable** — no bindable prop, so no
+  `?tab=`, no back button, and hardcoded gray/indigo that is invisible on a light surface.
+
+Also: `sortGroupId` is annotated as inert. It is declared, mapped to `flow:sort:group-id`, and
+read by neither the runtime nor the compiler.
+
 ## [1.7.1] — 2026-08-16
 
 ### Changed

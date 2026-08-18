@@ -471,6 +471,14 @@ import { Tabs } from "@zerotal/flow";
 
 `<Tabs>` emits `role="tablist"` / `"tab"` / `"tabpanel"` with roving arrow-key navigation.
 
+> **Note** — selection is client-only and not addressable. The active tab lives in Alpine state,
+> always starts on the first item, and there is no prop to bind or read it, so `?tab=settings`
+> cannot be made to work and the back button does not step between panels. The tab strip's own
+> classes are fixed (`border-gray-800`, `text-white`, `border-indigo-500`); only the outer wrapper
+> takes `class`, so on a light surface the selected tab is white on white. For a tab set that has
+> to be linkable or has to match a design system, drive the panels from a `@url` property and
+> write the strip out — it is a dozen lines, and you keep both.
+
 ## File upload component
 
 ### FileUpload + FileUploads mixin

@@ -38,6 +38,32 @@ It's a graceful degrade, not a mode you configure. WebSocket reconnection keeps 
 
 Everything driven by your own actions still works. Nothing is sent over HTTP until the socket has actually failed; the happy path is unchanged.
 
+## What forces the runtime fallback
+
+Every page is AOT-compiled at boot where it can be. A page the compiler cannot handle still works —
+it renders through the standard runtime instead — and Flow logs a count at startup:
+
+```
+N of M Flow pages (75%) render through the runtime fallback instead of compiled output.
+```
+
+Set `ZT_FLOW_COMPILE_LOG=1` to print what blocks each page. The common causes:
+
+| Blocker | Fix |
+| --- | --- |
+| `render()` with more than one `return` | Build the branches into a variable and return once |
+| A function call in a text child — including **`__()`** | See below |
+| An imported child component in `render()` (`<Header/>`) | Inline it, or accept the fallback |
+| `class={someLocalConst}` or a numeric-literal attribute (`rows={3}`) | Use a literal string |
+
+**`__()` is the one that matters most.** A translated template is a function call in a text child,
+so a page that translates a single string falls off the fast path — which in an app where `__()`
+is the house style means every page. The cost is normally just speed, but it is not only speed
+under [`cspSafe`](/docs/flow/components#csp-safe-mode): there, every page **must** compile or the
+build fails, so an app using `__()` in its templates cannot run in CSP-safe mode today. If you need
+`cspSafe`, keep translation out of the template — resolve strings in the action or `onMount()` into
+`@locked` properties and render those.
+
 ## Interaction polish
 
 The perceived speed of a server-driven app comes from three things: never showing

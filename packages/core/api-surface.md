@@ -316,6 +316,7 @@ class HttpContext = {
   new <TParams extends Record<string, unknown> = Record<string, string>>(request: Request, container: ScopedResolver): HttpContext<TParams>
   static fake: (url?: string, init?: RequestInit, container?: ScopedResolver) => HttpContext
   static tryGet: () => HttpContext | undefined
+  __: (key: string, replacements?: Replacements, locale?: string) => string
   _afterResponseCallbacks: (() => Promise<void>)[]
   _pageResolver?: (pageName: string) => number | undefined
   _primeBody: (data: Record<string, unknown>) => void
@@ -368,7 +369,6 @@ class HttpContext = {
   string: (key: string, fallback?: string) => string | undefined
   subdomain: (name: string) => string | null
   subdomains: Record<string, string>
-  t: (key: string, replacements?: Replacements, locale?: string) => string
   took: number
   user?: UserModel | undefined
   view: {    (markup: ViewMarkup, status?: number): void;    <P extends Record<string, unknown> = Record<string, never>>(component: (ctx: HttpContext, props: P) => ViewMarkup | Promise<ViewMarkup>, props?: P | undefined, status?: number): void | Promise<void>;}
@@ -1101,6 +1101,7 @@ interface WebhookOptions = {
 interface WebSocketHandlers = {
   close?: (ws: unknown, code: number, reason: string) => void
   drain?: (ws: unknown) => void
+  idleTimeout?: number
   message: (ws: unknown, message: string | Uint8Array) => void
   open?: (ws: unknown) => void
 }
@@ -2649,6 +2650,207 @@ type FieldType = 'string' | 'number' | 'boolean' | 'url' | 'enum' | 'port'
 
 type InferDef = D extends Def<infer T> ? T : never
 
+## ./errors  `(./src/errors/index.ts)`
+
+class BadRequestError = {
+  new (message?: string): BadRequestError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class BindingNotFoundError = {
+  new (token: string): BindingNotFoundError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class BootCheckError = {
+  new (failures: BootCheckFailure[]): BootCheckError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly failures: BootCheckFailure[]
+  readonly status: number
+}
+
+class CircularDependencyError = {
+  new (chain: string[]): CircularDependencyError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ConfigError = {
+  new (message: string): ConfigError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ConfigValidationError = {
+  new (issues: Array<{ namespace: string; message: string; }>): ConfigValidationError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly issues: {    namespace: string;    message: string;}[]
+  readonly status: number
+}
+
+class ConflictError = {
+  new (message?: string): ConflictError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ContainerLockedError = {
+  new (method: string): ContainerLockedError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ContextOutsideRequestError = {
+  new (): ContextOutsideRequestError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class FacadeAccessedBeforeBootError = {
+  new (facadeKey: string): FacadeAccessedBeforeBootError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class FacadeBindingMissingError = {
+  new (facadeKey: string): FacadeBindingMissingError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ForbiddenError = {
+  new (message?: string): ForbiddenError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class GoneError = {
+  new (message?: string): GoneError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class HttpError = {
+  new (message: string, status: number, code?: string, headers?: Record<string, string>): HttpError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class MethodNotAllowedError = {
+  new (allowed?: string[], message?: string): MethodNotAllowedError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class NotFoundError = {
+  new (message?: string): NotFoundError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ScopedAfterFlushError = {
+  new (message: string): ScopedAfterFlushError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ScopedOutsideRequestError = {
+  new (message: string): ScopedOutsideRequestError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ServiceUnavailableError = {
+  new (reason?: string, retryAfter?: number): ServiceUnavailableError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly retryAfter?: number | undefined
+  readonly status: number
+}
+
+class SyncResolutionError = {
+  new (message: string): SyncResolutionError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class TooManyRequestsError = {
+  new (retryAfter?: number, message?: string): TooManyRequestsError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly retryAfter?: number | undefined
+  readonly status: number
+}
+
+class UnauthorizedError = {
+  new (message?: string): UnauthorizedError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class UnprocessableEntityError = {
+  new (message?: string): UnprocessableEntityError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+class ValidationError = {
+  new (message: string, errors: Record<string, string[]>): ValidationError
+  headers?: Record<string, string>
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly errors: Record<string, string[]>
+  readonly status: number
+}
+
+class ZerotalError = {
+  new (message: string, code: string, status?: number, context?: Record<string, unknown> | undefined): ZerotalError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
+interface BootCheckFailure = {
+  provider: string
+  reason: string
+  token: string
+}
+
 ## ./facades  `(./src/facade/facades/index.ts)`
 
 const App = {    readonly container: Container;    readonly instance: () => Application;    readonly environment: () => Application['environment'];    readonly isProduction: () => boolean;    readonly isLocal: () => boolean;    readonly make: <T>(token: BindingToken<T>, consumer?: unknown) => Promise<T>;    readonly makeSync: <T>(token: BindingToken<T>) => T;    readonly build: <T>(ctor: new (...args: unknown[]) => T) => Promise<T>;    readonly tryMake: <K extends keyof ContainerBindings>(token: K) => ContainerBindings[K] | undefined;    readonly bound: (token: BindingToken) => boolean;    readonly bind: <T>(token: BindingToken<T>, factory: Factory<T>) => Container;    readonly singleton: <T>(token: BindingToken<T>, factory: Factory<T>) => Container;    readonly scoped: <T>(token: BindingToken<T>, factory: Factory<T>) => Container;    readonly value: <T>(token: BindingToken<T>, instance: T) => Container;    readonly alias: (from: unknown, to: unknown) => Container;    readonly forget: (token: BindingToken) => boolean;}
@@ -3294,13 +3496,36 @@ interface HttpMetricsSnapshot = {
 
 const route = RouteBuilder
 
+function action = <N extends RouteTarget>(name: N, params?: RouteParamValues | undefined, query?: RouteQuery | undefined) => RouteAction
+
+function defineRouteMethods = (table: Readonly<Record<string, string>>) => void
+
 function defineRoutes = (table: RouteTable) => void
 
 function hasRoute = (name: string) => boolean
 
 function resetRoutes = () => void
 
+function routeMethod = (name: string) => string | undefined
+
+interface RouteAction = {
+  method: string
+  url: string
+}
+
+interface RouteMethodRegistry = {}
+
+type MethodedRouteName = never
+
+type RouteArgs = [params?: RouteParamValues, query?: RouteQuery]
+
+type RouteParamValues = {    [x: string]: RouteParamValue | readonly RouteParamValue[];}
+
+type RouteQuery = {    [x: string]: string | number | boolean | readonly (string | number | boolean)[] | null | undefined;}
+
 type RouteTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>
+
+type RouteTarget = string
 
 ## ./security  `(./src/security/index.ts)`
 

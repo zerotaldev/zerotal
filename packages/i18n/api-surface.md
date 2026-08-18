@@ -64,6 +64,8 @@ class Translator = {
 
 const Lang = Translator
 
+function __ = (key: string, replacements?: Replacements, locale?: string) => string
+
 function I18nConfig = (options?: Partial<I18nConfigShape>) => I18nConfigShape
 
 function loadCatalogs = (dir: string) => Promise<Catalogs>
@@ -71,8 +73,6 @@ function loadCatalogs = (dir: string) => Promise<Catalogs>
 function parseAcceptLanguage = (header: string | null) => string[]
 
 function resolveLocale = (request: Request, config: I18nConfigShape) => string
-
-function t = (key: string, replacements?: Replacements, locale?: string) => string
 
 interface I18nConfigShape = {
   catalogs?: Catalogs

@@ -16,7 +16,7 @@ class AnonymousBroadcast = {
 
 class Broadcast = {
   new (): Broadcast
-  static channel: (pattern: string, callback: ChannelCallback) => void
+  static channel: <User = unknown>(pattern: string, callback: ChannelCallback<User>) => void
   static channels: () => {    pattern: string;    paramNames: string[];}[]
   static fake: () => BroadcastFake
   static getMembers: (channel: string) => PresenceMember[]
@@ -109,7 +109,7 @@ class ChannelRegistry = {
   all: () => {    pattern: string;    paramNames: string[];}[]
   authorize: (channelName: string, user: unknown) => Promise<AuthorizeResult>
   clear: () => void
-  register: (pattern: string, callback: ChannelCallback) => void
+  register: <User = unknown>(pattern: string, callback: ChannelCallback<User>) => void
 }
 
 class MissingChannelParameterError = {
@@ -155,9 +155,9 @@ class RedisBroadcastDriver = {
   boot: () => Promise<void>
   connectionCount: () => number
   getMembers: (channel: string) => PresenceMember[]
-  handleClose: (ws: ServerWebSocket<WsConnectionData>) => void
-  handleMessage: (ws: ServerWebSocket<WsConnectionData>, raw: string | Uint8Array) => Promise<void>
-  handleOpen: (ws: ServerWebSocket<WsConnectionData>) => void
+  handleClose: (ws: Bun.ServerWebSocket<WsConnectionData>) => void
+  handleMessage: (ws: Bun.ServerWebSocket<WsConnectionData>, raw: string | Uint8Array) => Promise<void>
+  handleOpen: (ws: Bun.ServerWebSocket<WsConnectionData>) => void
   send: (event: BroadcastEvent, opts?: {    exceptSocketId?: string;}) => void
   setAuthSecret: (secret: string) => void
   signAuth: (socketId: string, channel: string, channelData?: string) => string
@@ -167,7 +167,7 @@ class RedisBroadcastDriver = {
   to: (channel: string, event: string, data?: unknown, opts?: {    exceptSocketId?: string;}) => void
   upgradeData: (req: Request) => Record<string, unknown>
   verifyAuth: (socketId: string, channel: string, auth: string, channelData?: string) => boolean
-  wsHandlers: {    open: (ws: ServerWebSocket<WsConnectionData>) => void;    message: (ws: ServerWebSocket<WsConnectionData>, msg: string | Uint8Array) => undefined;    close: (ws: ServerWebSocket<WsConnectionData>) => void;}
+  wsHandlers: {    open: (ws: Bun.ServerWebSocket<WsConnectionData>) => void;    message: (ws: Bun.ServerWebSocket<WsConnectionData>, msg: string | Uint8Array) => undefined;    close: (ws: Bun.ServerWebSocket<WsConnectionData>) => void;}
 }
 
 class TypedBroadcastManager = {
@@ -176,9 +176,9 @@ class TypedBroadcastManager = {
   authorizeWith: (fn: ChannelAuthFn) => void
   connectionCount: () => number
   getMembers: (channel: string) => PresenceMember[]
-  handleClose: (ws: ServerWebSocket<WsConnectionData>) => void
-  handleMessage: (ws: ServerWebSocket<WsConnectionData>, raw: string | Uint8Array) => Promise<void>
-  handleOpen: (ws: ServerWebSocket<WsConnectionData>) => void
+  handleClose: (ws: Bun.ServerWebSocket<WsConnectionData>) => void
+  handleMessage: (ws: Bun.ServerWebSocket<WsConnectionData>, raw: string | Uint8Array) => Promise<void>
+  handleOpen: (ws: Bun.ServerWebSocket<WsConnectionData>) => void
   send: (event: TypedBroadcastEvent<Channels, keyof Channels & string> | BroadcastEvent) => void
   setAuthSecret: (secret: string) => void
   signAuth: (socketId: string, channel: string, channelData?: string) => string
@@ -188,7 +188,7 @@ class TypedBroadcastManager = {
   toChannel: <Pattern extends ParameterizedChannels<Channels>, Ev extends EventsOf<Channels, Pattern>>(pattern: Pattern, params: ChannelParamRecord<Pattern>, event: Ev, data: PayloadOf<Channels, Pattern, Ev>) => void
   upgradeData: (req: Request) => Record<string, unknown>
   verifyAuth: (socketId: string, channel: string, auth: string, channelData?: string) => boolean
-  wsHandlers: {    open: (ws: ServerWebSocket<WsConnectionData>) => void;    message: (ws: ServerWebSocket<WsConnectionData>, msg: string | Uint8Array) => undefined;    close: (ws: ServerWebSocket<WsConnectionData>) => void;}
+  wsHandlers: {    open: (ws: Bun.ServerWebSocket<WsConnectionData>) => void;    message: (ws: Bun.ServerWebSocket<WsConnectionData>, msg: string | Uint8Array) => undefined;    close: (ws: Bun.ServerWebSocket<WsConnectionData>) => void;}
 }
 
 const channelRegistry = ChannelRegistry
@@ -210,6 +210,14 @@ function isPrivateChannel = (name: string) => boolean
 function presenceChannel = (name: string) => string
 
 function privateChannel = (name: string) => string
+
+interface BroadcastConfigShape = {
+  channels?: string
+  driver: 'null' | 'ws' | 'redis' | 'pusher'
+  path: string
+  pusher?: {    appKey: string;    appSecret: string;}
+  redis?: {    url: string;}
+}
 
 interface BroadcastEvent = {
   broadcastAs?: () => string
@@ -264,7 +272,7 @@ type BroadcastChannelMap = {    [x: string]: Record<string, object>;}
 
 type ChannelAuthFn = (channel: string, ws: ServerWebSocket<WsConnectionData>) => boolean | Promise<boolean>
 
-type ChannelCallback = (user: unknown, ...params: string[]) => boolean | PresenceMemberData | null | undefined | Promise<boolean | PresenceMemberData | null | undefined>
+type ChannelCallback = (user: User, ...params: string[]) => boolean | PresenceMemberData | null | undefined | Promise<boolean | PresenceMemberData | null | undefined>
 
 type ChannelParamRecord = [ChannelParams<Pattern>] extends [never] ? undefined : { [K in ChannelParams<Pattern>]: string | number; }
 

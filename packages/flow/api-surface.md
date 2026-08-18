@@ -258,7 +258,7 @@ function Loading = (props: LoadingProps) => HtmlNode
 
 function Modal = (props: ModalProps) => HtmlNode
 
-function on = (eventName: LooseEventName) => (fn: unknown, context: ClassMethodDecoratorContext) => void
+function on = (eventName: ListenerName) => (fn: unknown, context: ClassMethodDecoratorContext) => void
 
 function Pager = (props: PagerProps) => HtmlNode
 
@@ -709,6 +709,7 @@ interface LegendProps = {
 interface LinkProps = {
   [key: string]: unknown
   current?: boolean
+  down?: boolean
   exact?: boolean
   hover?: boolean
   href: string
@@ -1037,6 +1038,8 @@ type FlashLevel = 'success' | 'error' | 'warning' | 'info'
 type FlashPosition = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center'
 
 type HtmlNode = {    html: string;}
+
+type ListenerName = (string & {}) | ((self: Record<string, any>) => string)
 
 type Mixin = (Base: TIn) => TOut
 

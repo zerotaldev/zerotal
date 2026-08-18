@@ -316,6 +316,7 @@ class HttpContext = {
   new <TParams extends Record<string, unknown> = Record<string, string>>(request: Request, container: ScopedResolver): HttpContext<TParams>
   static fake: (url?: string, init?: RequestInit, container?: ScopedResolver) => HttpContext
   static tryGet: () => HttpContext | undefined
+  __: (key: string, replacements?: Replacements, locale?: string) => string
   _afterResponseCallbacks: (() => Promise<void>)[]
   _pageResolver?: (pageName: string) => number | undefined
   _primeBody: (data: Record<string, unknown>) => void
@@ -368,7 +369,6 @@ class HttpContext = {
   string: (key: string, fallback?: string) => string | undefined
   subdomain: (name: string) => string | null
   subdomains: Record<string, string>
-  t: (key: string, replacements?: Replacements, locale?: string) => string
   took: number
   user?: UserModel | undefined
   view: {    (markup: ViewMarkup, status?: number): void;    <P extends Record<string, unknown> = Record<string, never>>(component: (ctx: HttpContext, props: P) => ViewMarkup | Promise<ViewMarkup>, props?: P | undefined, status?: number): void | Promise<void>;}
@@ -1101,6 +1101,7 @@ interface WebhookOptions = {
 interface WebSocketHandlers = {
   close?: (ws: unknown, code: number, reason: string) => void
   drain?: (ws: unknown) => void
+  idleTimeout?: number
   message: (ws: unknown, message: string | Uint8Array) => void
   open?: (ws: unknown) => void
 }
@@ -7073,13 +7074,36 @@ type WorkerResult = {    success: true;} | {    success: false;    error: string
 
 const route = RouteBuilder
 
+function action = <N extends RouteTarget>(name: N, params?: RouteParamValues | undefined, query?: RouteQuery | undefined) => RouteAction
+
+function defineRouteMethods = (table: Readonly<Record<string, string>>) => void
+
 function defineRoutes = (table: RouteTable) => void
 
 function hasRoute = (name: string) => boolean
 
 function resetRoutes = () => void
 
+function routeMethod = (name: string) => string | undefined
+
+interface RouteAction = {
+  method: string
+  url: string
+}
+
+interface RouteMethodRegistry = {}
+
+type MethodedRouteName = never
+
+type RouteArgs = [params?: RouteParamValues, query?: RouteQuery]
+
+type RouteParamValues = {    [x: string]: RouteParamValue | readonly RouteParamValue[];}
+
+type RouteQuery = {    [x: string]: string | number | boolean | readonly (string | number | boolean)[] | null | undefined;}
+
 type RouteTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>
+
+type RouteTarget = string
 
 ## ./scheduler  `(./src/scheduler.ts)`
 
@@ -8159,6 +8183,7 @@ class FormRequest = {
   static macro: (name: string, fn: (this: FormRequest, ...args: unknown[]) => unknown) => void
   static validate: <T extends FormRequest>(this: new () => T) => Promise<Infer<ExtractDefs<ReturnType<T['rules']>>>>
   authorize: () => boolean | Promise<boolean>
+  prepareForValidation: (body: Record<string, unknown>) => Record<string, unknown>
   rules: (_r: RuleBuilder) => Record<string, FieldRule>
 }
 

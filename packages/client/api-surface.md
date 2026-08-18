@@ -289,6 +289,31 @@ type SocketState = 'error' | 'connecting' | 'connected' | 'disconnected' | 'reco
 
 type TokenSource = string | (() => string | null | undefined | Promise<string | null | undefined>)
 
+## ./provider  `(./src/provider/ClientProvider.ts)`
+
+class ClientProvider = {
+  new (app: Application): ClientProvider
+  static dependsOn?: (new (app: Application) => ServiceProvider)[]
+  static environments: AppEnvironment[]
+  static priority?: number
+  static provides: readonly ['client']
+  devProcesses: () => DevProcessDefinition[]
+  doctorChecks: () => DoctorCheck[]
+  onBooted: () => Promise<void>
+  onBooting: () => Promise<void>
+  onRegister: () => void
+  onRequestProcessed: (_ctx: HttpContext) => Promise<void>
+  onRequestReceived: (_ctx: HttpContext) => Promise<void>
+  onResponseSent: (_ctx: HttpContext) => Promise<void>
+  onStarted: () => Promise<void>
+  onStarting: () => Promise<void>
+  onStopped: () => Promise<void>
+  onStopping: () => Promise<void>
+  replContext: () => Record<string, unknown>
+}
+
+const Client = ApiClient<Partial<Record<`GET ${string}` | `POST ${string}` | `PUT ${string}` | `PATCH ${string}` | `DELETE ${string}`, RouteShape>>>
+
 ## ./Socket  `(./src/Socket.ts)`
 
 class Channel = {

@@ -130,6 +130,7 @@ class FormRequest = {
   static macro: (name: string, fn: (this: FormRequest, ...args: unknown[]) => unknown) => void
   static validate: <T extends FormRequest>(this: new () => T) => Promise<Infer<ExtractDefs<ReturnType<T['rules']>>>>
   authorize: () => boolean | Promise<boolean>
+  prepareForValidation: (body: Record<string, unknown>) => Record<string, unknown>
   rules: (_r: RuleBuilder) => Record<string, FieldRule>
 }
 

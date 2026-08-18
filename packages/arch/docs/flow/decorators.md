@@ -307,6 +307,8 @@ async onOrderCancelled(payload: { id: number }): Promise<void> {
 }
 ```
 
+Both forms are a `ListenerName`: the event string itself, or a resolver handed the component instance that returns one.
+
 See [Events & Broadcasting](/docs/flow/events) for dispatch methods, targeting, broadcasting, and native event integration.
 
 ## The @reactive decorator

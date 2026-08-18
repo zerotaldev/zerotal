@@ -486,6 +486,17 @@ the checked signature above decorative.
 Typed names flow through the helpers built on `route()` too — `redirect().to()`,
 `Url.route()`, `Uri.route()`, and Flow's `redirectRoute()`.
 
+The types that checking is built from are exported from `zerotal/routes`, for
+when you write a helper that forwards to `route()` rather than calling it
+directly:
+
+| Type               | What it holds                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `RouteTarget`      | The name a checked helper accepts: `RouteName` once the registry is generated, plain `string` before it.          |
+| `RouteArgs<N>`     | Everything `route()` takes after the name — params required only when the pattern has one, query always optional. |
+| `RouteParamValues` | The loose param bag the unchecked overload accepts.                                                               |
+| `RouteQuery`       | Query values. `null` and `undefined` entries drop out, and an array repeats the key.                              |
+
 ### route() in the browser
 
 `route()` works on the server with no setup: the application installs the table

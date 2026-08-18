@@ -7,14 +7,14 @@
     "@zerotal/broadcasting": 16,
     "@zerotal/cache": 1,
     "@zerotal/client": 21,
-    "@zerotal/core": 201,
+    "@zerotal/core": 196,
     "@zerotal/devtools": 7,
     "@zerotal/flow": 96,
     "@zerotal/flow-ui": 106,
     "@zerotal/i18n": 2,
     "@zerotal/inertia": 7,
     "@zerotal/monitor": 56,
-    "@zerotal/notifications": 10,
+    "@zerotal/notifications": 9,
     "@zerotal/orm": 98,
     "@zerotal/queue": 15,
     "@zerotal/scheduler": 14,
@@ -24,6 +24,6 @@
     "@zerotal/testing": 6,
     "@zerotal/validator": 9
   },
-  "total": 920,
-  "updatedAt": "2026-08-15T19:35:23.315Z"
+  "total": 914,
+  "updatedAt": "2026-08-18T17:02:11.178Z"
 }

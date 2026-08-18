@@ -197,10 +197,16 @@ export const route: RouteBuilder = Object.assign(
 /**
  * Augmented by `types/routes.generated.ts` with the HTTP method of every named
  * route, exactly as {@link RouteRegistry} is augmented with their patterns.
+ *
+ * @internal The generator writes the augmentation; an app never names this.
  */
 export interface RouteMethodRegistry {}
 
-/** A name the generated table knows a verb for. */
+/**
+ * A name the generated table knows a verb for.
+ *
+ * @internal Derived from {@link RouteMethodRegistry}, which the generator owns.
+ */
 export type MethodedRouteName = Extract<keyof RouteMethodRegistry, string>;
 
 const methodTable = new Map<string, string>();
@@ -217,7 +223,11 @@ export function defineRouteMethods(table: Readonly<Record<string, string>>): voi
   for (const [name, method] of Object.entries(table)) methodTable.set(name, method);
 }
 
-/** The verb a named route answers on, or undefined when it was never registered. */
+/**
+ * The verb a named route answers on, or undefined when it was never registered.
+ *
+ * @internal The read side of {@link defineRouteMethods}; apps call `action()`.
+ */
 export function routeMethod(name: string): string | undefined {
   return methodTable.get(name);
 }

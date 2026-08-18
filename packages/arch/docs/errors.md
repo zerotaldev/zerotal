@@ -77,6 +77,28 @@ The full set exported from `zerotal`:
 > and `ServiceUnavailableError(reason, retryAfter)` populate the `Allow` and
 > `Retry-After` response headers for you when you pass those arguments.
 
+## Errors the framework raises
+
+The errors above are the ones you throw. These the framework throws at you, and
+each is written to name the fix rather than only the symptom. Most surface at
+boot, before a request is ever served:
+
+| Class                        | `code`                       | Raised when                                                                                                                              |
+| ---------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `BootCheckError`             | `E_BOOT_CHECK_FAILED`        | The boot-time doctor found one or more wiring problems.                                                                                  |
+| `ConfigValidationError`      | `E_CONFIG_VALIDATION_FAILED` | Config validation refused a production boot, listing every fatal issue by namespace.                                                     |
+| `FacadeBindingMissingError`  | `E_FACADE_BEFORE_BOOT`       | A facade was used after boot but nothing provides its binding — almost always a `ServiceProvider` missing from `bootstrap/providers.ts`. |
+| `ContextOutsideRequestError` | `E_CONTEXT_OUTSIDE_REQUEST`  | `RequestContext` was read with no request in scope, such as from module-level code or a background task. Renders as a 500.               |
+
+`BootCheckError` carries the whole list rather than the first failure it hit. Its
+`failures` array holds one `BootCheckFailure` per culprit — the `token`, the
+`provider` that declared it in `static provides`, and the `reason` — so a single
+restart tells you everything there is to fix.
+
+These four are not re-exported from `zerotal`, because throwing them yourself is
+not the point. Catch one by class from `@zerotal/core/errors`, or match on `code`
+the way you would any other framework error.
+
 ## Custom exception classes
 
 Extend `ZerotalError` for domain errors, or `HttpError` for HTTP errors. The

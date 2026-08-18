@@ -8,6 +8,27 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A non-interactive mode, so the scaffolder can be scripted.** Every prompt now has a flag —
+  `--template`, `--db`, `--name` — plus `--yes` to take the defaults for anything unset,
+  `--no-install`, `--help` and `--version`. `bun create zerotal my-app` is unchanged.
+
+### Fixed
+
+- **With no TTY the scaffolder hung instead of failing.** It read `process.argv[2]` as the project
+  name and asked for everything else through `readline`, which waits for a line that never arrives
+  in CI, in a pipeline, or under an agent. So it did not error and did not exit — it held the job
+  open until something timed it out. The workaround in this repo was to bypass the CLI entirely and
+  call `scaffold()` directly, which is the shape of an admission.
+
+  It now detects the absent terminal and refuses, naming the flag that would have answered the
+  question, with a non-zero exit code. Unknown flags are refused too rather than dropped: silently
+  ignoring `--tempalte=api` means asking again for something the caller thought they had given,
+  which in CI is the hang all over again. A failed `bun install` also exits non-zero when there is
+  no terminal — a half-built project reported as a success is worse than one that stops.
+
+
 ## [1.6.3] — 2026-08-15
 
 ### Added

@@ -10,6 +10,7 @@
 import { resolve } from 'node:path';
 import { printBanner, ask, choose, log, info, warn, step, dim, c } from './prompts.ts';
 import { scaffold, install, type Template, type Database } from './scaffold.ts';
+import { parseArgs, resolveOptions, helpText, TEMPLATES, DATABASES } from './args.ts';
 import { newerScaffolderVersion } from './staleness.ts';
 
 /** This scaffolder's own version, read from the manifest that ships beside it. */
@@ -18,6 +19,28 @@ const ZT_SELF_VERSION: string = (
 ).version;
 
 async function main(): Promise<void> {
+  const args = parseArgs(process.argv.slice(2));
+
+  if (args.help) {
+    process.stdout.write(helpText() + '\n');
+    return;
+  }
+  if (args.version) {
+    process.stdout.write(ZT_SELF_VERSION + '\n');
+    return;
+  }
+
+  // Whether there is anybody to answer a question. Without this the prompts'
+  // readline waits on a line that never comes, so a scaffolder run in CI or by
+  // an agent did not fail — it hung until something killed it.
+  const interactive = Boolean(process.stdin.isTTY);
+  const plan = resolveOptions(args, interactive);
+  if (!plan.ok) {
+    process.stderr.write(`\x1b[31mError: ${plan.error}\x1b[0m\n\n${helpText()}\n`);
+    process.exit(1);
+  }
+  const asking = new Set(plan.askFor ?? []);
+
   // Started before the banner and awaited after the prompts, so the check costs
   // no perceived time at all — the answer arrives while a human is reading.
   const newerScaffolder = newerScaffolderVersion(ZT_SELF_VERSION);
@@ -25,9 +48,9 @@ async function main(): Promise<void> {
   printBanner();
 
   // ── Project name ────────────────────────────────────────────────────────────
-  const nameArg = process.argv[2]?.trim() ?? '';
-  const name    = nameArg
-    || await ask('Project name', 'my-zerotal-app');
+  const name = asking.has('name')
+    ? await ask('Project name', 'my-zerotal-app')
+    : plan.name!;
 
   const target = resolve(process.cwd(), name);
 
@@ -40,7 +63,9 @@ async function main(): Promise<void> {
 
   // ── Template ────────────────────────────────────────────────────────────────
   log('');
-  const template = await choose<Template>('Template', [
+  const template: Template = !asking.has('template')
+    ? plan.template!
+    : await choose<Template>('Template', [
     {
       value:       'api',
       label:       'API',
@@ -75,8 +100,8 @@ async function main(): Promise<void> {
 
   // ── Database ─────────────────────────────────────────────────────────────────
   // Only the API template ships a database config; minimal/flow have no DB.
-  let db: Database = 'sqlite';
-  if (template === 'api') {
+  let db: Database = plan.db ?? 'sqlite';
+  if (template === 'api' && asking.has('db')) {
     log('');
     db = await choose<Database>('Database', [
       {
@@ -118,13 +143,19 @@ async function main(): Promise<void> {
   info(`Project files created`);
 
   // ── Install ─────────────────────────────────────────────────────────────────
-  log('');
-  step('Installing dependencies…');
-  const ok = await install(target);
-  if (ok) {
-    info(`Dependencies installed`);
-  } else {
-    warn(`bun install failed — run it manually inside the project`);
+  if (plan.install !== false) {
+    log('');
+    step('Installing dependencies…');
+    const ok = await install(target);
+    if (ok) {
+      info(`Dependencies installed`);
+    } else {
+      warn(`bun install failed — run it manually inside the project`);
+      // A failed install is a broken project, and a script that carried on
+      // regardless would report success for one. A human has the message above
+      // and the directory in front of them; CI needs the exit code.
+      if (!interactive) process.exit(1);
+    }
   }
 
   // ── Done ─────────────────────────────────────────────────────────────────────

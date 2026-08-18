@@ -36,6 +36,31 @@ It writes a fresh `APP_KEY` into the generated `.env.example` for you (no manual
 generation needed). For Postgres/MySQL it reminds you to set `DATABASE_URL`
 before migrating.
 
+### Without a terminal — CI, scripts, agents
+
+Every prompt has a flag, and the scaffolder never asks a question when there is
+no TTY to answer it:
+
+```bash
+bunx create-zerotal my-app --template=api --db=postgres --no-install
+bunx create-zerotal my-app --yes            # take the defaults for anything unset
+bunx create-zerotal --help
+```
+
+| Flag | |
+| ---- | --- |
+| `-t`, `--template <name>` | `api`, `admin`, `flow`, `react`, `vue`, `minimal` |
+| `--db <name>` | `sqlite`, `postgres`, `mysql` — API template only |
+| `-y`, `--yes` | Take defaults for anything not given; never prompt |
+| `--no-install` | Skip `bun install` |
+| `-h`, `--help` | Usage |
+| `-v`, `--version` | The scaffolder's own version |
+
+An answer that is missing and cannot be asked for is an error naming the flag
+that would supply it, and the exit code is non-zero — so a pipeline fails where
+it used to wait. A failed `bun install` also exits non-zero when there is no
+terminal: a half-built project that reports success is worse than one that stops.
+
 ### Which template should I use?
 
 - **API** — JSON REST API with core, [ORM](/docs/orm), [auth](/docs/authentication),

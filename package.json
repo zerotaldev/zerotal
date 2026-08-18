@@ -6,6 +6,8 @@
   "scripts": {
     "test": "bun --filter='*' run test",
     "typecheck": "bun --filter='*' run typecheck",
+    "test:packages": "bun --filter='./packages/*' run test",
+    "typecheck:packages": "bun --filter='./packages/*' run typecheck",
     "typecheck:tests": "bun run scripts/typecheck-tests.ts",
     "dev": "bun --filter='*' run dev",
     "lint:packages": "bun run scripts/lint-packages.ts",

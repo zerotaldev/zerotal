@@ -8,6 +8,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`queue:work` listened on one hardcoded queue, so queued notifications were never sent.**
+  The `--queue` flag defaulted to the literal string `"default"` and the command never read
+  `queue.queues` — the key `QueueProvider`'s in-process pool has always used. A job may pin its
+  own queue, and `SendNotificationJob` sets `"notifications"`, so following both documented
+  steps — `Notify.queue(user, notification)`, then `bun zt queue:work` — put the mail on a queue
+  nobody was reading. Nothing errored. The job sat as pending forever and the worker reported
+  "Queue is empty."
+
+  With no `--queue`, the worker now drains every queue in `queue.queues`, falling back to
+  `["default"]`. The flag still overrides it and now accepts a comma-separated list
+  (`--queue=emails,reports`) in priority order, so one worker can take a subset without a second
+  process. `--once` stops at the first queue with a claimable job rather than taking one job per
+  queue, and the idle sleep is only taken when *no* queue had anything — sleeping after the first
+  empty one would leave a busy second queue waiting out the poll interval.
+
+
 ## [1.5.0] — 2026-08-15
 
 ### Added

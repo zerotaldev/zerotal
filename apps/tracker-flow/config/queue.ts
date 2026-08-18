@@ -15,10 +15,12 @@ export default QueueConfig({
   // example in docs/queue.md does not compile as written. See T10.
   driver: env("QUEUE_DRIVER", "sqlite") as QueueConfigShape["driver"],
   pollInterval: env("QUEUE_POLL_INTERVAL", 500),
-  // This list is read by the in-process worker pool, *not* by `zt queue:work` —
-  // that command takes a single `--queue` and defaults to "default". Since
-  // `SendNotificationJob` hardcodes the "notifications" queue, delivering a
-  // queued notification needs `zt queue:work --queue=notifications`. See T12.
+  // Read by the in-process worker pool *and* by `zt queue:work`, which drains
+  // every queue named here when no `--queue` is given. `SendNotificationJob`
+  // pins itself to "notifications", so listing it is what makes a queued
+  // notification arrive — `zt queue:work` on its own is enough. It was not:
+  // the command used to listen on "default" alone and the mail was queued and
+  // never sent. See T12.
   queues: ["default", "notifications"],
   workers: env("QUEUE_WORKERS", 0),
 });

@@ -326,10 +326,18 @@ The standard way to process jobs in production is a long-running worker process:
 
 ```bash
 # in your project root
-bun zt queue:work                  # process the 'default' queue
-bun zt queue:work --queue=emails   # process a specific queue
-bun zt queue:work --once           # process one job, then exit
+bun zt queue:work                        # process every queue in config.queues
+bun zt queue:work --queue=emails         # process one queue
+bun zt queue:work --queue=emails,reports # process several, in priority order
+bun zt queue:work --once                 # process one job, then exit
 ```
+
+With no `--queue`, the worker drains every queue listed in `queue.queues` — the
+same key the in-process pool reads — falling back to `["default"]`. That default
+matters more than it looks: a job may pin its own queue, and
+`SendNotificationJob` sets `"notifications"`. List the queues your jobs actually
+use, or the ones you leave out are queued by a documented call and drained by
+nobody.
 
 The worker polls continuously, retries failed jobs up to `maxAttempts`, and moves
 permanently-failed jobs to the `zerotal_failed_jobs` table.

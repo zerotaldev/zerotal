@@ -88,12 +88,22 @@ function makeManager(
   };
 }
 
-function makeApp(manager: ReturnType<typeof makeManager> | null) {
+function makeApp(
+  manager: ReturnType<typeof makeManager> | null,
+  // The app's own `queue.queues`. `queue:work` reads it when no --queue is
+  // given, the same key and default the in-process pool in QueueProvider uses.
+  queues: string[] = ["default"],
+) {
+  const config = {
+    get: <T,>(key: string, fallback: T): T =>
+      key === "queue.queues" ? (queues as unknown as T) : fallback,
+  };
   return {
     container: {
       tryMake: (key: string) => (key === "queue" ? manager : null),
       makeSync: (key: string) => {
         if (key === "queue") return manager;
+        if (key === "config") return config;
         throw new Error(`not bound: ${key}`);
       },
     },
@@ -406,5 +416,72 @@ describe("QueueRetryCommand", () => {
     });
     await run();
     expect(errors.some((l) => l.includes("No failed jobs"))).toBe(true);
+  });
+});
+
+// ── queue:work targets the app's configured queues ────────────────────────────
+//
+// The default was the literal string "default", and `config.queue.queues` was
+// read only by the in-process pool. A job that pins its own queue — as
+// `SendNotificationJob` does with "notifications" — was therefore queued by the
+// documented call and drained by nobody: `zt queue:work` sat on "default" and
+// the mail was never sent. No error, no warning, forever.
+
+describe("QueueWorkCommand queue selection", () => {
+  it("drains every configured queue when no --queue is given", async () => {
+    const manager = makeManager(makeDriver());
+    const cmd = new QueueWorkCommand();
+    const { run } = runCmd(cmd, {
+      flags: { once: true },
+      app: makeApp(manager, ["default", "notifications"]),
+    });
+
+    await run();
+
+    // Both, in config order — the regression is "notifications" never appearing.
+    expect(manager.processNextCalls).toEqual(["default", "notifications"]);
+  });
+
+  it("an explicit --queue overrides the config, and accepts a list", async () => {
+    const manager = makeManager(makeDriver());
+    const cmd = new QueueWorkCommand();
+    const { run } = runCmd(cmd, {
+      flags: { queue: "mail, reports ", once: true },
+      app: makeApp(manager, ["default", "notifications"]),
+    });
+
+    await run();
+
+    // Trimmed, in the order written, and the config is not consulted.
+    expect(manager.processNextCalls).toEqual(["mail", "reports"]);
+  });
+
+  it("--once stops at the first queue with a job, not one job per queue", async () => {
+    const manager = makeManager(makeDriver());
+    // First queue yields a job; the second must never be polled.
+    manager.processNext = async (q: string) => {
+      manager.processNextCalls.push(q);
+      return true as unknown as null;
+    };
+    const cmd = new QueueWorkCommand();
+    const { run, lines } = runCmd(cmd, {
+      flags: { once: true },
+      app: makeApp(manager, ["default", "notifications"]),
+    });
+
+    await run();
+
+    expect(manager.processNextCalls).toEqual(["default"]);
+    expect(lines.some((l) => l.includes("Processed 1 job"))).toBe(true);
+  });
+
+  it("falls back to \"default\" when the app configures no queues", async () => {
+    const manager = makeManager(makeDriver());
+    const cmd = new QueueWorkCommand();
+    const { run } = runCmd(cmd, { flags: { once: true }, app: makeApp(manager) });
+
+    await run();
+
+    expect(manager.processNextCalls).toEqual(["default"]);
   });
 });

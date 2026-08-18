@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`make:request` generates a file that compiles.** The stub imported `@zerotal/validator`,
+  which a scaffolded app does not depend on — it depends on the `zerotal` umbrella — so the
+  generated file failed to resolve until the import was changed by hand. It also annotated
+  `rules(): Record<string, FieldRule>`, the one thing `FormRequest`'s own docblock warns
+  against: `validate()` reads the narrow return type through `ReturnType<T['rules']>`, so the
+  annotation widened it back and every validated field arrived as `unknown`, silently, with a
+  cast somewhere downstream the first sign of it.
+
 ### Added
 
 - **`@zerotal/core/errors`** — a subpath for the error classes, so a module that can run in a

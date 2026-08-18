@@ -916,6 +916,17 @@ describe("MakeRequestCommand", () => {
     expect(out).toContain("StorePostRequest");
     expect(out).toContain("FormRequest");
     expect(out).toContain("rules(");
+
+    // A scaffolded app depends on the `zerotal` umbrella and not on the scoped
+    // package, so the scoped name resolves to nothing and the generated file
+    // does not compile.
+    expect(out).toContain("zerotal/validator");
+    expect(out).not.toContain("@zerotal/validator");
+
+    // `validate()` reads the narrow return type through `ReturnType<T['rules']>`.
+    // Annotating the override widens it back, and every validated field arrives
+    // as `unknown` — which is what `FormRequest`'s docblock warns against.
+    expect(out).not.toContain("Record<string, FieldRule>");
   });
 
   it("run() errors when file already exists", async () => {

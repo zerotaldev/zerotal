@@ -31,13 +31,23 @@ export class MakeRequestCommand extends Command {
   }
 }
 
+// Two things this stub deliberately does not do.
+//
+// It imports from `zerotal/validator`, not `@zerotal/validator`: a scaffolded app
+// depends on the umbrella, so the scoped name resolves to nothing and the file it
+// just generated does not compile.
+//
+// And it leaves `rules()` unannotated. `validate()` reads the narrow return type
+// through `ReturnType<T['rules']>`, so writing `Record<string, FieldRule>` there
+// widens it back and every validated field arrives as `unknown` — silently, with
+// the first sign a cast somewhere downstream. `FormRequest`'s own docblock says
+// so; the generator used to emit exactly what it warns against.
 function stub(name: string): string {
-  return `import { FormRequest } from '@zerotal/validator';
-import type { RuleBuilder }  from '@zerotal/validator';
-import type { FieldRule }    from '@zerotal/validator';
+  return `import { FormRequest } from 'zerotal/validator';
+import type { RuleBuilder } from 'zerotal/validator';
 
 export class ${name} extends FormRequest {
-  rules(r: RuleBuilder): Record<string, FieldRule> {
+  rules(r: RuleBuilder) {
     return {
       // example: title: r.string().min(3).max(255),
     };

@@ -477,7 +477,7 @@ describe("password confirmation errors", () => {
  *
  * The thread and the file list share a page and a channel, so the reader sees
  * both arrive the same way. This asserts the server half: the row is written and
- * the event goes out on the issue's private channel. The client half — the Echo
+ * the event goes out on the issue's private channel. The client half — the socket
  * listener that appends it — is exercised in the Flow build, whose listeners are
  * addressable from a test; here it is one `channel.listen` beside the comment's.
  */

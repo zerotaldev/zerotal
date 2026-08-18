@@ -321,8 +321,9 @@ describe("comments", () => {
       // no error, just a thread that never updates or one that receives other
       // people's issues.
       expect(t.snapshot()?.memo?.listeners).toEqual({
-        [`echo-private:issues.${issue.id},CommentPosted`]: "onCommentPosted",
-        [`echo-private:issues.${issue.id},AttachmentAdded`]: "onAttachmentAdded",
+        [`socket-private:issues.${issue.id},CommentPosted`]: "onCommentPosted",
+        [`socket-private:issues.${issue.id},AttachmentAdded`]: "onAttachmentAdded",
+        [`socket-private:issues.${issue.id},AttachmentRemoved`]: "onAttachmentRemoved",
       });
     });
   });
@@ -388,6 +389,35 @@ describe("comments", () => {
         },
       });
       expect(t.page().attachments.length).toBe(before + 1);
+    });
+  });
+
+  test("a file removed elsewhere leaves this list too", async () => {
+    await asUser(author, async () => {
+      const t = await FlowTest.mount(IssueDetailPage, { project, issue });
+
+      await t.call("onAttachmentAdded", {
+        attachment: {
+          id: 9998,
+          name: "doomed.pdf",
+          mime: "application/pdf",
+          size: 512,
+          uploader: { name: "Ada" },
+          createdAt: null,
+        },
+      });
+      t.assertSee("doomed.pdf");
+      const withFile = t.page().attachments.length;
+
+      await t.call("onAttachmentRemoved", { attachmentId: 9998 });
+
+      expect(t.page().attachments.length).toBe(withFile - 1);
+      t.assertDontSee("doomed.pdf");
+
+      // An id this page never held — a replay, or a file removed from an issue
+      // the reader has since navigated away from — changes nothing.
+      await t.call("onAttachmentRemoved", { attachmentId: 9998 });
+      expect(t.page().attachments.length).toBe(withFile - 1);
     });
   });
 

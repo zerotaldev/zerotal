@@ -1,7 +1,7 @@
 import { Component, Head, Link, expose, locked } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 import { Auth, AuthMiddleware, Gate } from "zerotal/auth";
-import type { Project } from "@app/models/Project.ts";
+import { Project } from "@app/models/Project.ts";
 import { Issue, ISSUE_STATUSES, type IssueStatus } from "@app/models/Issue.ts";
 import { UserLocaleMiddleware } from "@app/middleware/UserLocaleMiddleware.ts";
 import { AppLayout } from "../../../layouts/app.tsx";
@@ -67,6 +67,20 @@ interface Column {
 export class BoardPage extends Component {
   static layout = AppLayout;
   static title = "Board";
+
+  /**
+   * Model props travel as `<name>:<id>` and are re-fetched on the way back.
+   *
+   * Without it the snapshot can carry a plain object instead, and then every
+   * `Gate` call in an action denies: the policy is resolved from the model's
+   * class, a bare `Object` has none, and the gate fails closed. Nothing reports
+   * it — the page renders the control and the action quietly returns.
+   *
+   * It depends on what else the process has loaded, which is the worst part: a
+   * single test file passes and the same test fails in the full suite. Declaring
+   * the models is what makes it not depend on that.
+   */
+  static models = { Project };
 
   @locked project!: Project;
   @locked columns: Column[] = [];

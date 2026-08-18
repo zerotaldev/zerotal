@@ -49,7 +49,7 @@ export async function POST(http: HttpContext): Promise<void> {
   await attachment.save();
 
   // `toOthers()` excludes the connection that sent this request — the uploader's
-  // own browser is on this Echo channel and already has the row from the reload
+  // own browser is on this socket channel and already has the row from the reload
   // that follows the redirect, so including them would draw the file twice.
   broadcast(
     new AttachmentAdded(issue.id, {

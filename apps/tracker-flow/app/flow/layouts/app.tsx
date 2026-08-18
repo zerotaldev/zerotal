@@ -20,11 +20,11 @@ export class AppLayout extends Layout {
   // A getter rather than a static field, so `asset()` re-runs per request and
   // picks up the latest `?v=` token after a dev rebuild.
   //
-  // The `<script>` is here and not in the other two layouts because all it does
-  // is publish `window.Echo`, and the only page that subscribes is the issue
-  // thread — which is behind this shell. It is worth the line: Flow's `echo:`
-  // listeners are *silently inert* without it, so a live feature with no script
-  // looks exactly like a live feature that was never written.
+  // `/app.js` carries the stylesheet import and nothing else now. It used to
+  // publish `window.Socket` too, and that made this `<script>` load-bearing in a
+  // way nothing announced: Flow's `socket:` listeners were *silently inert*
+  // without it, so a live feature with no script looked exactly like a live
+  // feature that was never written. The runtime bundles the client itself now.
   static override get head(): string {
     return `
   <meta name="viewport" content="width=device-width, initial-scale=1">

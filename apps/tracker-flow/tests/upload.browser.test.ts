@@ -26,65 +26,12 @@
  */
 import { test, beforeAll, afterAll, expect } from "bun:test";
 import { FlowBrowser } from "@zerotal/flow/browser";
+import { BASE, startServer, stopServer, signIn, createIssue } from "./support/browser.ts";
 
 const maybe = FlowBrowser.available() ? test : test.skip;
-const BASE = "http://localhost:3009";
-let proc: ReturnType<typeof Bun.spawn> | null = null;
 
-beforeAll(async () => {
-  // Reuse a server already listening — lets the log be inspected out of band.
-  try {
-    if ((await fetch(BASE + "/login")).ok) return;
-  } catch {
-    /* start our own below */
-  }
-  proc = Bun.spawn(["bun", "zt.ts", "serve", "--port=3009"], {
-    cwd: import.meta.dir + "/..",
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  for (let i = 0; i < 60; i++) {
-    try {
-      if ((await fetch(BASE + "/login")).ok) return;
-    } catch {
-      /* not up yet */
-    }
-    await Bun.sleep(500);
-  }
-  throw new Error("server did not start");
-}, 60_000);
-
-afterAll(() => proc?.kill());
-
-/** The confirm control, by its action — the page is not in English. */
-const ATTACH_BTN =
-  "Array.from(document.querySelectorAll('button')).find(function(b){return b.getAttribute('flow:click')==='attachFile'})";
-
-
-/** Sign in and land on /projects. Each browser is its own session. */
-async function signIn(page: FlowBrowser): Promise<void> {
-  await page.fill("#email", "ada@example.com");
-  await page.fill("#password", "password");
-  await page.click('button[type="submit"]');
-  await page.waitUntil("location.pathname === '/projects'", "sign-in to land on /projects", 15000);
-}
-
-/** The href of any issue row in the seeded project. */
-async function anyIssueHref(page: FlowBrowser): Promise<string> {
-  await page.goto(BASE + "/projects/apollo");
-  await page.waitUntil(
-    "Array.from(document.querySelectorAll('a[href]')).some(function(a){" +
-      "var h=a.getAttribute('href')||'';var i=h.lastIndexOf('/issues/');" +
-      "return i!==-1 && /^[0-9]+$/.test(h.slice(i+8))})",
-    "the issue list to render a row",
-    15000,
-  );
-  return page.evaluate<string>(
-    "(function(){var a=Array.from(document.querySelectorAll('a[href]')).find(function(a){" +
-      "var h=a.getAttribute('href')||'';var i=h.lastIndexOf('/issues/');" +
-      "return i!==-1 && /^[0-9]+$/.test(h.slice(i+8))});return a?a.getAttribute('href'):''})()",
-  );
-}
+beforeAll(() => startServer(import.meta.dir + "/.."), 60_000);
+afterAll(() => stopServer());
 
 /** Hand `name` to the page's file input and fire the change the bridge listens for. */
 async function pickFile(page: FlowBrowser, name: string): Promise<void> {
@@ -101,32 +48,36 @@ async function pickFile(page: FlowBrowser, name: string): Promise<void> {
   );
 }
 
+/** The confirm control, by its action — the page is not in English. */
+const ATTACH_BTN =
+  "Array.from(document.querySelectorAll('button')).find(function(b){return b.getAttribute('flow:click')==='attachFile'})";
+
+
+/**
+ * Is `name` in the attachment *list*, as opposed to merely on the page?
+ *
+ * The dropzone prints the chosen filename the moment it is picked, so a plain
+ * text search says yes before anything has been attached at all — which made an
+ * earlier version of this test click nothing, assert nothing, and then blame the
+ * broadcast for a file that was never saved. A row with a download link is the
+ * thing that only exists once the server has it.
+ */
+const LISTED = (name: string): string =>
+  "Array.from(document.querySelectorAll('li')).some(function(l){" +
+  "return (l.textContent||'').indexOf(" +
+  JSON.stringify(name) +
+  ")!==-1 && !!l.querySelector('a[href*=\"/attachments/\"]')})";
+
 maybe(
   "picking a file uploads it, binds the reference, and saves",
   async () => {
     const page = await FlowBrowser.open(BASE + "/login");
     try {
-      await page.fill("#email", "ada@example.com");
-      await page.fill("#password", "password");
-      await page.click('button[type="submit"]');
-      await page.waitUntil(
-        "location.pathname === '/projects'",
-        "sign-in to land on /projects",
-        15000,
-      );
-
-      await page.goto(BASE + "/projects/apollo");
-      await page.waitUntil(
-        "Array.from(document.querySelectorAll('a[href]')).some(function(a){" + "var h=a.getAttribute('href')||'';var i=h.lastIndexOf('/issues/');" + "return i!==-1 && /^[0-9]+$/.test(h.slice(i+8))})",
-        "the issue list to render a row",
-        15000,
-      );
-      const href = await page.evaluate<string>(
-        "(function(){var out='';" + "Array.from(document.querySelectorAll('a[href]')).forEach(function(x){" + "var h=x.getAttribute('href')||'';var i=h.lastIndexOf('/issues/');" + "if(!out && i!==-1 && /^[0-9]+$/.test(h.slice(i+8))) out=h;});return out})()",
-      );
+      await signIn(page);
+      // Its own issue, so this test and the two-window one below cannot land on
+      // the same row and undo each other's work.
+      const href = await createIssue(page, "Upload fixture " + Date.now());
       expect(href).not.toBe("");
-
-      await page.goto(BASE + href);
       await page.waitUntil("!!document.querySelector('input[type=file]')", "the dropzone", 15000);
 
       // Record the upload lifecycle events and every socket frame the client
@@ -179,7 +130,7 @@ maybe(
       );
 
       await page.waitUntil(
-        "document.body.textContent.indexOf(" +
+        "!!document.body && document.body.textContent.indexOf(" +
           JSON.stringify(NAME) +
           ") !== -1 && document.querySelectorAll('a[href*=\"/attachments/\"]').length > 0",
         "the attachment to be saved and listed",
@@ -214,15 +165,10 @@ maybe(
     const reader = await FlowBrowser.open(BASE + "/login");
     try {
       await signIn(uploader);
-      const href = await anyIssueHref(uploader);
+      // Its own issue, authored by this user: the remove control is gated on
+      // that, and a shared row made this test fight the one beside it.
+      const href = await createIssue(uploader, "Live fixture " + Date.now());
       expect(href).not.toBe("");
-
-      await uploader.goto(BASE + href);
-      await uploader.waitUntil(
-        "!!document.querySelector('input[type=file]')",
-        "the uploader's dropzone",
-        15000,
-      );
 
       // The reader opens the same issue and then does nothing at all — no
       // navigation, no click. Anything that appears here arrived over the socket.
@@ -233,25 +179,69 @@ maybe(
         "the reader's page to settle",
         15000,
       );
+      // The listeners are declared in the snapshot, but nothing subscribes until
+      // the socket client exists — and it is loaded by a separate script, so a
+      // page that looks ready can still be deaf. Waiting for it here is what
+      // makes "the reader never saw it" mean the broadcast, not the bundle.
+      await reader.waitUntil("!!window.Socket", "the reader's socket client", 60000);
 
       const NAME = "live-" + Date.now() + ".txt";
       expect(
         await reader.evaluate<boolean>(
-          "document.body.textContent.indexOf(" + JSON.stringify(NAME) + ") !== -1",
+          "!!document.body && document.body.textContent.indexOf(" + JSON.stringify(NAME) + ") !== -1",
         ),
       ).toBe(false);
 
       await pickFile(uploader, NAME);
       await uploader.waitUntil("!!(" + ATTACH_BTN + ")", "the reference to bind", 15000);
+
+      // Clicks until the file is listed, rather than once. A single click is a
+      // single chance: if the frame is dropped the page looks identical, and the
+      // failure surfaces two waits later as "the reader never saw it" — pointing
+      // at the broadcast, which was never given anything to carry.
       await uploader.waitUntil(
-        "(function(){var b=" + ATTACH_BTN + ";if(!b)return false;b.click();return true})()",
-        "the confirm control to be clickable",
-        15000,
+        "(function(){if(" + LISTED(NAME) + ")return true;var b=" + ATTACH_BTN +
+          ";if(b)b.click();return false})()",
+        "the file to be listed in the uploader's own window",
+        30000,
       );
 
       await reader.waitUntil(
-        "document.body.textContent.indexOf(" + JSON.stringify(NAME) + ") !== -1",
+        LISTED(NAME),
         "the attachment to reach the second window over the socket",
+        20000,
+      );
+
+      // And the other direction. A list that grows live but shrinks only on
+      // reload leaves the reader a download link for a file that is gone, which
+      // is the worse of the two states — so the removal travels too.
+      // The row holding *this* file, not the first remove control on the page:
+      // the dev database keeps earlier runs' attachments, and clicking the first
+      // one deleted a stranger's file while the assertion waited for this one.
+      await uploader.waitUntil(
+        "(function(){var li=Array.from(document.querySelectorAll('li')).find(function(l){" +
+          "return (l.textContent||'').indexOf(" +
+          JSON.stringify(NAME) +
+          ")!==-1});if(!li)return false;" +
+          "var b=li.querySelector('button');if(!b)return false;" +
+          "window.__clicked=(b.getAttribute('flow:click')||'(no flow:click)');" +
+          "b.click();return true})()",
+        "the remove control on this file's row",
+        15000,
+      );
+
+      await Bun.sleep(4000);
+      console.log("[after remove] uploader has file:", await uploader.evaluate(
+        "!!document.body && document.body.textContent.indexOf(" + JSON.stringify(NAME) + ") !== -1"),
+        "| reader has file:", await reader.evaluate(
+        "!!document.body && document.body.textContent.indexOf(" + JSON.stringify(NAME) + ") !== -1"));
+      console.log("[clicked]", await uploader.evaluate("String(window.__clicked)"));
+      console.log("[uploader errors]", JSON.stringify(uploader.pageErrors()));
+      console.log("[uploader console]", JSON.stringify(uploader.consoleErrors()));
+
+      await reader.waitUntil(
+        "!(" + LISTED(NAME) + ")",
+        "the removal to reach the second window over the socket",
         20000,
       );
 

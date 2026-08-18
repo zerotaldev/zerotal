@@ -13,12 +13,13 @@ import type { HtmlNode, TemporaryUploadedFile } from "@zerotal/flow";
 import { Auth, AuthMiddleware, Gate } from "zerotal/auth";
 import { broadcast } from "@zerotal/broadcasting";
 import { Storage } from "zerotal/storage";
-import type { Project } from "@app/models/Project.ts";
+import { Project } from "@app/models/Project.ts";
 import { Issue } from "@app/models/Issue.ts";
 import { Comment } from "@app/models/Comment.ts";
 import { Attachment } from "@app/models/Attachment.ts";
 import { CommentPosted } from "@app/events/CommentPosted.ts";
 import { AttachmentAdded } from "@app/events/AttachmentAdded.ts";
+import { AttachmentRemoved } from "@app/events/AttachmentRemoved.ts";
 import { StoreCommentRequest } from "@app/requests/StoreCommentRequest.ts";
 import {
   ATTACHMENT_MAX_KB,
@@ -72,7 +73,7 @@ interface AttachmentRow {
  * The other reader's comment arrives the same way, over the private channel this
  * page subscribes to — see `onCommentPosted`. Building that turned up a
  * framework bug: `@on` read its channel name off the *class*, so the syntax the
- * guide showed (`"echo-private:issues.${this.issueId},CommentPosted"`) reached
+ * guide showed (`"socket-private:issues.${this.issueId},CommentPosted"`) reached
  * the browser with the placeholder intact and subscribed to a channel nobody
  * broadcasts to — silently, with no error and no events. `@on` now also takes a
  * resolver, like `@presence` and `@shared` next to it.
@@ -82,6 +83,21 @@ export class IssueDetailPage extends Component.using(FileUploads) {
   static title = "Issue";
 
   /** `:project` and `:issue` — the records, already resolved by the router. */
+
+  /**
+   * Model props travel as `<name>:<id>` and are re-fetched on the way back.
+   *
+   * Without it the snapshot can carry a plain object instead, and then every
+   * `Gate` call in an action denies: the policy is resolved from the model's
+   * class, a bare `Object` has none, and the gate fails closed. Nothing reports
+   * it — the page renders the control and the action quietly returns.
+   *
+   * It depends on what else the process has loaded, which is the worst part: a
+   * single test file passes and the same test fails in the full suite. Declaring
+   * the models is what makes it not depend on that.
+   */
+  static models = { Project, Issue };
+
   @locked project!: Project;
   @locked issue!: Issue;
 
@@ -221,7 +237,7 @@ export class IssueDetailPage extends Component.using(FileUploads) {
    * poster appends optimistically in `postComment`, and if their own broadcast
    * ever reaches them the row is already here.
    */
-  @on((self) => `echo-private:issues.${(self as IssueDetailPage).issue.id},CommentPosted`)
+  @on((self) => `socket-private:issues.${(self as IssueDetailPage).issue.id},CommentPosted`)
   async onCommentPosted(payload: { comment: CommentRow }): Promise<void> {
     if (this.comments.some((c) => c.id === payload.comment.id)) return;
     this.comments = [...this.comments, payload.comment];
@@ -235,7 +251,7 @@ export class IssueDetailPage extends Component.using(FileUploads) {
    * builds render attachments differently and the event serves both; narrowing
    * here is what lets it.
    */
-  @on((self) => `echo-private:issues.${(self as IssueDetailPage).issue.id},AttachmentAdded`)
+  @on((self) => `socket-private:issues.${(self as IssueDetailPage).issue.id},AttachmentAdded`)
   async onAttachmentAdded(payload: {
     attachment: { id: number; name: string; size: number; uploader: { name: string } | null };
   }): Promise<void> {
@@ -249,6 +265,18 @@ export class IssueDetailPage extends Component.using(FileUploads) {
         uploader: payload.attachment.uploader?.name ?? null,
       },
     ];
+  }
+
+  /**
+   * A file removed elsewhere leaves this list too.
+   *
+   * Unconditional: `filter` on an id that is not here is already a no-op, so a
+   * replayed delivery needs no guard of its own — unlike the two append paths,
+   * where a second delivery would draw the row twice.
+   */
+  @on((self) => `socket-private:issues.${(self as IssueDetailPage).issue.id},AttachmentRemoved`)
+  async onAttachmentRemoved(payload: { attachmentId: number }): Promise<void> {
+    this.attachments = this.attachments.filter((a) => a.id !== payload.attachmentId);
   }
 
   /**
@@ -336,7 +364,14 @@ export class IssueDetailPage extends Component.using(FileUploads) {
 
     await Storage.disk().delete(attachment.path);
     await attachment.delete();
-    await this.loadAttachments();
+
+    // Filtered rather than re-queried, matching the append in `attachFile`: the
+    // row that just went is the row to drop.
+    this.attachments = this.attachments.filter((a) => a.id !== id);
+
+    // Plain, not `.toOthers()` — see the note in `postComment`.
+    broadcast(new AttachmentRemoved(this.issue.id, id));
+
     this.flash(__("Attachment removed."));
   }
 

@@ -417,12 +417,21 @@ function useLiveIssue(
       if (!added) return;
       setAttachments((prev) => (prev.some((a) => a.id === added.id) ? prev : [...prev, added]));
     };
+    // No dedupe guard: filtering an id that is not here is already a no-op,
+    // unlike the two append paths where a replay would draw the row twice.
+    const onDetached = (event: unknown) => {
+      const removed = (event as { attachmentId?: number }).attachmentId;
+      if (typeof removed !== "number") return;
+      setAttachments((prev) => prev.filter((a) => a.id !== removed));
+    };
     channel.listen("CommentPosted", onPosted);
     channel.listen("AttachmentAdded", onAttached);
+    channel.listen("AttachmentRemoved", onDetached);
 
     return () => {
       channel.stopListening("CommentPosted", onPosted);
       channel.stopListening("AttachmentAdded", onAttached);
+      channel.stopListening("AttachmentRemoved", onDetached);
       // The channel itself is left subscribed: the socket is shared, and another
       // page mounting the same issue would have to re-authorize to get it back.
       offs.forEach((off) => off());

@@ -1214,6 +1214,54 @@ describe("FieldRule — optional() and nullable()", () => {
   });
 });
 
+// ── The empty string an HTML form sends for "no value" ─────────────────────
+
+describe("optional fields and the empty string", () => {
+  it("reads an empty string as absent for an optional number", () => {
+    // What every `<option value="">Unassigned</option>` posts.
+    const schema = { assignee: rules.number().optional()._def };
+    const r = runValidation(schema, { assignee: "" });
+    expect(r.success).toBe(true);
+    expect("assignee" in (r as any).data).toBe(false);
+  });
+
+  it("clears rather than skips when the field is nullable too", () => {
+    // Skipping would leave the previous assignee in place and report success.
+    const schema = { assignee: rules.number().optional().nullable()._def };
+    const r = runValidation(schema, { assignee: "" });
+    expect(r.success).toBe(true);
+    expect((r as any).data.assignee).toBeNull();
+  });
+
+  it("reads an empty string as absent for an optional date", () => {
+    const schema = { dueAt: rules.date().optional()._def };
+    const r = runValidation(schema, { dueAt: "" });
+    expect(r.success).toBe(true);
+    expect("dueAt" in (r as any).data).toBe(false);
+  });
+
+  it("leaves it alone for a string, where it may be the value someone meant", () => {
+    const schema = { bio: rules.string().optional()._def };
+    const r = runValidation(schema, { bio: "" });
+    expect(r.success).toBe(true);
+    expect((r as any).data.bio).toBe("");
+  });
+
+  it("still refuses an empty string on a required number", () => {
+    const schema = { qty: rules.number()._def };
+    const r = runValidation(schema, { qty: "" });
+    expect(r.success).toBe(false);
+    expect((r as any).errors.qty).toContain("required");
+  });
+
+  it("still refuses a non-numeric string on an optional number", () => {
+    // The widening is only about "", not about what a number accepts.
+    const schema = { qty: rules.number().optional()._def };
+    const r = runValidation(schema, { qty: "abc" });
+    expect(r.success).toBe(false);
+  });
+});
+
 // ── StringRule — uppercase() ──────────────────────────────────────────────────
 
 describe("StringRule.uppercase()", () => {

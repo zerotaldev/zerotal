@@ -8,6 +8,22 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **An optional `number` or `date` reads `""` as absence.** An HTML `<select>` has one way to
+  say "none" — `<option value="">` — and it sends the empty string. `r.number().optional()`
+  refused it, so a form with an optional assignee could not be submitted _without_ one: the
+  single case the field was optional for. The message named a field the reader never touched,
+  which is the part that made it expensive to find.
+
+  It is now read as no value. The field is skipped, or set to `null` when the rule is also
+  `nullable()` — because clearing is what that option means, and skipping would leave the
+  previous value in place while reporting success. This mirrors how an explicit `null` on a
+  `nullable()` field already behaves.
+
+  Narrow on purpose: `string` still keeps `""`, where it may be a value someone meant, and the
+  remaining types wait for a case that needs them. Nothing that validated before stops doing so.
+
 ## [1.5.0] — 2026-08-15
 
 ### Fixed

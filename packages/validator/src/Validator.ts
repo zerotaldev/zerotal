@@ -10,6 +10,12 @@ import type { UniqueOptions } from "./dbRules.ts";
 import { RULES } from "./stringRules.ts";
 
 /** Resolve whether a field is effectively required given its conditional modifiers. */
+/**
+ * Rule types for which the empty string cannot be a value, so an optional field
+ * handed `""` is a form saying "none" rather than data to check.
+ */
+const EMPTY_MEANS_ABSENT: ReadonlySet<FieldRuleDefinition["type"]> = new Set(["number", "date"]);
+
 function resolveRequired(def: FieldRuleDefinition, input: Record<string, unknown>): boolean {
   if (def.requiredIf !== undefined) {
     const cond = def.requiredIf;
@@ -124,11 +130,29 @@ export function runValidation<S extends Schema>(
       continue;
     }
 
+    const isRequired = resolveRequired(def, input);
+
+    // An HTML form has exactly one way to say "no value": the empty string. A
+    // `<select>`'s placeholder option sends it, and for a type that can never
+    // hold `""` — a number, a date — reading it as the literal text rather than
+    // as absence is what made an optional select unsubmittable in the one case
+    // it was optional for. The message named a field the reader never touched,
+    // which is the part that made it expensive to find.
+    //
+    // Narrow deliberately. `string` keeps `""`, where it may be a value someone
+    // meant; the remaining types wait for a case that needs them. Each is a
+    // widening when it comes — nothing that validated before stops doing so.
+    if (!isRequired && value === "" && EMPTY_MEANS_ABSENT.has(def.type)) {
+      // `nullable()` is the field saying it can be cleared, and clearing is what
+      // the placeholder option is for — so it reaches the output as null rather
+      // than being skipped, exactly as an explicit null does below. Skipping it
+      // would leave the previous value in place and report success.
+      value = def.nullable ? null : undefined;
+    }
+
     if ((value === undefined || value === null) && def.defaultVal !== undefined) {
       value = def.defaultVal;
     }
-
-    const isRequired = resolveRequired(def, input);
 
     if (isRequired && (value === undefined || value === null || value === "")) {
       errors[field] ??= def.requiredMessage ?? `The ${field} field is required.`;

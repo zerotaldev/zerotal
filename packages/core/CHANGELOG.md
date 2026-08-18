@@ -18,6 +18,25 @@ follows the Zerotal monorepo's unified versioning.
   annotation widened it back and every validated field arrived as `unknown`, silently, with a
   cast somewhere downstream the first sign of it.
 
+- **Every other `make:*` stub names a package the app has too.** The same fault ran through
+  nine generators: `make:command`, `make:controller`, `make:middleware` and `make:provider`
+  named `@zerotal/core`; `make:job` `@zerotal/queue`; `make:observer` `@zerotal/orm`;
+  `make:policy` `@zerotal/auth`; `make:test` `@zerotal/testing`. A scaffolded app depends on
+  none of them — it has the `zerotal` umbrella — so each wrote a file that did not resolve.
+  They now emit `zerotal` and its subpaths.
+
+  `make:resource` was worse: `Resource`, `ResourceCollection` and `PaginatedData` are not on
+  `@zerotal/core`'s root entry at all, so that stub was broken against the scoped name as
+  well. It emits `zerotal/http`, where they live.
+
+  `make:notification` keeps `@zerotal/notifications`: there is no umbrella subpath for it, and
+  the `api` template installs it directly.
+
+  A single test now runs all thirteen generators and fails on any import that is neither the
+  umbrella, a Bun/Node builtin, a relative path, nor one of the scoped packages a template
+  actually installs. Each generator's own test had only checked that the output mentioned the
+  class being made, which is why none of this showed.
+
 ### Added
 
 - **`@zerotal/core/errors`** — a subpath for the error classes, so a module that can run in a

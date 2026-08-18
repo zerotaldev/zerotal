@@ -14,8 +14,8 @@ export function toKebab(name: string): string {
 
 /** Source for a new CLI command class extending `Command`. */
 export function commandStub(name: string): string {
-  return `import { Command } from '@zerotal/core';
-import type { ArgDef, FlagDef } from '@zerotal/core';
+  return `import { Command } from 'zerotal';
+import type { ArgDef, FlagDef } from 'zerotal';
 
 export class ${name} extends Command {
   static commandName = '${toKebab(name)}';

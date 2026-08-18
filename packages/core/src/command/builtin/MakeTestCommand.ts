@@ -11,8 +11,8 @@ export function featureTestStub(name: string): string {
   // edit rather than one you have to rewrite.
   const resource = pluralize(subject.toLowerCase());
   return `import { describe, it, beforeAll, afterAll } from 'bun:test';
-import { migrateDatabase, refreshDatabase, assertDatabaseHas } from '@zerotal/testing';
-import type { TestApp } from '@zerotal/testing';
+import { migrateDatabase, refreshDatabase, assertDatabaseHas } from 'zerotal/testing';
+import type { TestApp } from 'zerotal/testing';
 import { createApp } from '../helpers.ts';
 
 let app: TestApp;

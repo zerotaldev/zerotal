@@ -27,7 +27,7 @@ export class MakeJobCommand extends Command {
     }
     await Bun.write(
       path,
-      `import { Job, JobRegistry } from '@zerotal/queue';
+      `import { Job, JobRegistry } from 'zerotal/queue';
 
 export class ${name} extends Job {
   readonly queue = 'default';

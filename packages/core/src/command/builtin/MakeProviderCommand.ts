@@ -6,7 +6,7 @@ import { Command } from "../Command.ts";
 import { registerProvider } from "../../build/codemod.ts";
 
 function providerStub(name: string): string {
-  return `import { ServiceProvider } from '@zerotal/core';
+  return `import { ServiceProvider } from 'zerotal';
 
 export class ${name} extends ServiceProvider {
   override onRegister(): void {

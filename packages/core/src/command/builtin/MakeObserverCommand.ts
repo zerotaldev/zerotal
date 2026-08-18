@@ -47,7 +47,7 @@ export class MakeObserverCommand extends Command {
 }
 
 function _stub(name: string, model: string): string {
-  return `import type { ModelObserver } from '@zerotal/orm';
+  return `import type { ModelObserver } from 'zerotal/orm';
 
 export class ${name} implements ModelObserver {
   creating(${model.toLowerCase()}: Record<string, unknown>): void {

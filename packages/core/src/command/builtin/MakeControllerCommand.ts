@@ -5,7 +5,7 @@ import { Command } from "../Command.ts";
 
 /** Source for a minimal controller with a single `index` action. */
 export function basicStub(name: string): string {
-  return `import type { HttpContext } from '@zerotal/core';
+  return `import type { HttpContext } from 'zerotal';
 
 export class ${name} {
   async index(ctx: HttpContext): Promise<void> {
@@ -17,7 +17,7 @@ export class ${name} {
 
 /** Source for a resourceful controller with full CRUD action stubs. */
 export function resourceStub(name: string): string {
-  return `import type { HttpContext } from '@zerotal/core';
+  return `import type { HttpContext } from 'zerotal';
 
 export class ${name} {
   async index(ctx: HttpContext): Promise<void> {

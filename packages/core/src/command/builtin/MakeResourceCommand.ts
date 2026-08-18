@@ -35,8 +35,8 @@ export class MakeResourceCommand extends Command {
 function _stub(name: string): string {
   const model = name.replace(/Resource$/, "");
   const snake = model.replace(/([A-Z])/g, (char, index) => (index ? "-" : "") + char.toLowerCase());
-  return `import { Resource, ResourceCollection } from '@zerotal/core';
-import type { PaginatedData } from '@zerotal/core';
+  return `import { Resource, ResourceCollection } from 'zerotal/http';
+import type { PaginatedData } from 'zerotal/http';
 
 export class ${name} extends Resource<${model}> {
   toArray(): Record<string, unknown> {

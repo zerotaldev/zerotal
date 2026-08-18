@@ -5,7 +5,7 @@ import { Command } from "../Command.ts";
 
 /** Source for a pass-through middleware class implementing `Pipe<HttpContext>`. */
 export function middlewareStub(name: string): string {
-  return `import type { HttpContext, Pipe, NextFn } from '@zerotal/core';
+  return `import type { HttpContext, Pipe, NextFn } from 'zerotal';
 
 export class ${name} implements Pipe<HttpContext> {
   async handle(ctx: HttpContext, next: NextFn): Promise<Response | void> {

@@ -41,7 +41,7 @@ export class MakePolicyCommand extends Command {
 
 /** Source for a new authorization policy class extending `Policy`. */
 export function policyStub(name: string, model: string): string {
-  return `import { Policy } from '@zerotal/auth';
+  return `import { Policy } from 'zerotal/auth';
 // import type { ${model} } from '../models/${model}.ts';
 // import type { User } from '../models/User.ts';
 

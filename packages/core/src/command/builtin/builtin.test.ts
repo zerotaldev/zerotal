@@ -147,7 +147,9 @@ describe("MakeTestCommand", () => {
     const stub = featureTestStub("PostTest");
 
     expect(stub).toContain("import { createApp } from '../helpers.ts'");
-    expect(stub).toContain("@zerotal/testing");
+    // The umbrella subpath, not the scoped package: no template installs the latter.
+    expect(stub).toContain("from 'zerotal/testing'");
+    expect(stub).not.toContain("@zerotal/testing");
     expect(stub).toContain("describe('Post'");
     expect(stub).toContain("res.assertOk()");
     expect(stub).toContain("afterAll(() => app.close())");
@@ -792,11 +794,12 @@ describe("MakePolicyCommand", () => {
     const stub = policyStub("PostPolicy", "Post");
     expect(stub).toContain("PostPolicy");
     expect(stub).toContain("extends Policy");
+    expect(stub).toContain("from 'zerotal/auth'");
     expect(stub).toContain("view(");
     expect(stub).toContain("create(");
     expect(stub).toContain("update(");
     expect(stub).toContain("delete(");
-    expect(stub).toContain("@zerotal/auth");
+    expect(stub).not.toContain("@zerotal/auth");
   });
 
   it("run() writes policy stub file", async () => {
@@ -1002,6 +1005,64 @@ describe("MakeResourceCommand", () => {
     await cmd.run();
     expect(errors.length).toBeGreaterThan(0);
   });
+});
+
+// ── Every make:* stub, against what a scaffolded app installs ───────────────
+
+describe("make:* stubs import only what a scaffolded app has", () => {
+  // A `create-zerotal` app depends on the `zerotal` umbrella plus a short list of
+  // scoped packages — never on `@zerotal/core`, `@zerotal/orm`, `@zerotal/auth`,
+  // `@zerotal/queue` or `@zerotal/testing`. Every generator that named one wrote a
+  // file that could not resolve, and nothing here noticed, because each generator's
+  // own test only asserted that the output mentioned the class it was making.
+  const INSTALLED_SCOPED = new Set([
+    "@zerotal/devtools",
+    "@zerotal/flow",
+    "@zerotal/admin",
+    "@zerotal/inertia",
+    "@zerotal/notifications",
+  ]);
+
+  const GENERATORS = [
+    ["make:command", MakeCommandCommand],
+    ["make:controller", MakeControllerCommand],
+    ["make:event", MakeEventCommand],
+    ["make:job", MakeJobCommand],
+    ["make:listener", MakeListenerCommand],
+    ["make:middleware", MakeMiddlewareCommand],
+    ["make:notification", MakeNotificationCommand],
+    ["make:observer", MakeObserverCommand],
+    ["make:policy", MakePolicyCommand],
+    ["make:provider", MakeProviderCommand],
+    ["make:request", MakeRequestCommand],
+    ["make:resource", MakeResourceCommand],
+    ["make:test", MakeTestCommand],
+  ] as const;
+
+  for (const [name, Cmd] of GENERATORS) {
+    it(`${name} names no package the templates leave out`, async () => {
+      mockFile(false);
+      const cmd = new (Cmd as any)();
+      cmd.args = { name: "Sample" };
+      cmd.flags = {};
+      cmd._writer = noop;
+      await cmd.run();
+
+      const emitted = Object.values(written);
+      expect(emitted.length).toBeGreaterThan(0);
+
+      for (const source of emitted) {
+        for (const m of source.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+          const spec = m[1]!;
+          // The app's own files, and Bun/Node builtins.
+          if (spec.startsWith(".") || spec.startsWith("bun:") || spec.startsWith("node:")) continue;
+          // The umbrella and its subpaths are always present.
+          if (spec === "zerotal" || spec.startsWith("zerotal/")) continue;
+          expect(INSTALLED_SCOPED.has(spec), `${name} emits an import of ${spec}`).toBe(true);
+        }
+      }
+    });
+  }
 });
 
 // ── RouteListCommand static ───────────────────────────────────────────────────

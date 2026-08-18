@@ -33,17 +33,33 @@ const maybe = FlowBrowser.available() ? test : test.skip;
 beforeAll(() => startServer(import.meta.dir + "/.."), 60_000);
 afterAll(() => stopServer());
 
-/** Hand `name` to the page's file input and fire the change the bridge listens for. */
+/**
+ * Hand `name` to the page's file input and fire the change the bridge listens for.
+ *
+ * Keeps going until an upload has actually started, because the patch that
+ * follows a Flow navigation morphs the dropzone and replaces the input — measured,
+ * not guessed: the element the file was handed to is gone by the time the upload
+ * finishes. Picking once and trusting it is a race the fixture loses occasionally
+ * and reports as "the reference never bound", which reads like a product bug.
+ *
+ * The dataset flag is per element, so a replaced input is picked again and an
+ * untouched one is left alone — no double upload.
+ */
 async function pickFile(page: FlowBrowser, name: string): Promise<void> {
+  await page.evaluate(
+    "(function(){if(window.__started)return;window.__started=false;" +
+      "window.addEventListener('flow:upload-start',function(){window.__started=true})})()",
+  );
   await page.waitUntil(
-    "(function(){var i=document.querySelector('input[type=file]');if(!i)return false;" +
-      "if(i.dataset.probeSent)return true;var d=new DataTransfer();" +
+    "(function(){if(window.__started)return true;" +
+      "var i=document.querySelector('input[type=file]');if(!i)return false;" +
+      "if(i.dataset.probeSent)return false;var d=new DataTransfer();" +
       "d.items.add(new File(['hello'],'" +
       name +
       "',{type:'text/plain'}));" +
       "i.files=d.files;i.dataset.probeSent='1';" +
-      "i.dispatchEvent(new Event('change',{bubbles:true}));return true})()",
-    "the file to be handed to the input",
+      "i.dispatchEvent(new Event('change',{bubbles:true}));return false})()",
+    "an upload to start from the file input",
     15000,
   );
 }

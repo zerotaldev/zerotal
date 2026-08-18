@@ -105,13 +105,5 @@ export async function createIssue(page: FlowBrowser, title: string): Promise<str
     "the new issue's detail page",
     20000,
   );
-  const href = await page.evaluate<string>("location.pathname");
-
-  // Reloaded rather than left on the page the redirect produced. That arrival is
-  // a Flow navigation, and this returns the issue to callers that then drive the
-  // dropzone — so a hard load keeps "did the upload bind" separate from "does a
-  // client-side navigation re-initialise the file input", which is a different
-  // question with its own answer.
-  await page.goto(BASE + href);
-  return href;
+  return page.evaluate<string>("location.pathname");
 }

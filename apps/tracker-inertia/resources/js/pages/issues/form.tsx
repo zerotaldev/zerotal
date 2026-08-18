@@ -5,6 +5,7 @@ import PageHeader from "../../Components/PageHeader";
 import { SelectField, TextAreaField, TextField } from "../../Components/Field";
 import { Button } from "../../Components/Button";
 import { endpoint } from "../../lib/endpoint";
+import { usePrecognition } from "../../lib/precognition";
 
 interface Props {
   project: { name: string; slug: string };
@@ -50,6 +51,47 @@ export default function IssueForm({ project, issue, options }: Props) {
   const target = editing
     ? endpoint("projects.issues.edit.store", { project: project.slug, issue: issue.id })
     : endpoint("projects.issues.new.store", { project: project.slug });
+
+  const precog = usePrecognition(target.url, target.method);
+
+  /**
+   * The body both paths send.
+   *
+   * Precognition is only worth anything if it validates the *same* request the
+   * submit will make. The `assigneeId` normalisation below is the one place the
+   * two could drift — send `""` to the live check and it reports "must be a
+   * number" on a field the reader left alone, for a submit that would have
+   * succeeded.
+   */
+  const payload = () => ({
+    ...form.data,
+    assigneeId:
+      form.data.assigneeId === "" || form.data.assigneeId == null
+        ? null
+        : Number(form.data.assigneeId),
+  });
+
+  /**
+   * Check one field when the reader leaves it.
+   *
+   * On blur rather than on each keystroke, and that is a judgement rather than a
+   * saving: the title rule is `min(3)`, so per-keystroke validation says "too
+   * short" while somebody types the first two characters of a valid title. A
+   * rule that is *going* to be satisfied should not be enforced mid-word. The
+   * `flow` build binds its title `live` for the same reason it can afford to —
+   * there the round trip is a frame on a socket that is already open.
+   *
+   * Skipped while a real submit is in flight: the submit's own errors are
+   * authoritative and land in `form.errors` a moment later.
+   */
+  const check = (field: string) => {
+    if (form.processing) return;
+    void precog.validate(field, payload());
+  };
+
+  /** Whichever error is current — the submit's if there is one, else the live check's. */
+  const errorFor = (field: keyof typeof form.errors) =>
+    form.errors[field] ?? precog.errors[field as string];
 
   return (
     <>
@@ -107,9 +149,20 @@ export default function IssueForm({ project, issue, options }: Props) {
           label={__("Title")}
           name="title"
           value={form.data.title}
-          error={form.errors.title}
-          hint={__("Short and actionable — what is wrong, in one line.")}
-          onChange={(event) => form.setData("title", event.target.value)}
+          error={errorFor("title")}
+          hint={
+            precog.validating === "title"
+              ? __("Checking…")
+              : __("Short and actionable — what is wrong, in one line.")
+          }
+          onChange={(event) => {
+            form.setData("title", event.target.value);
+            // Clear a stale live error as soon as the reader edits: leaving "too
+            // short" on screen while they fix it is the complaint people have
+            // about live validation, and it costs one call to avoid.
+            precog.clear("title");
+          }}
+          onBlur={() => check("title")}
           autoFocus
         />
 

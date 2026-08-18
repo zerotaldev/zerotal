@@ -221,3 +221,131 @@ describe("application shell", () => {
     app.actingAsGuest();
   });
 });
+
+/**
+ * Precognition — validating a form against the server's real rules without
+ * running the controller.
+ *
+ * The mechanism is entirely server-side and lives in `FormRequest.validate()`:
+ * a `Precognition: true` header makes it run the rules and then short-circuit,
+ * 204 for clean input and 422 for errors, before the handler's body executes.
+ * That last clause is the whole feature and the only part worth asserting hard —
+ * a "validation" endpoint that also creates the record is not validation.
+ *
+ * The rules come from `StoreIssueRequest`, which is the same object the real
+ * POST validates against and the same one the other two cookbook builds share.
+ * Nothing is defined twice for the live path.
+ */
+describe("precognition", () => {
+  let author: User;
+  let projectSlug: string;
+
+  beforeAll(async () => {
+    const { Project } = await import("@app/models/Project.ts");
+    author = await User.forceCreate({
+      name: "Precog Tester",
+      email: "precog@example.com",
+      password: await Hash.make("correct-horse-battery"),
+      role: "user",
+    });
+    const project = await Project.forceCreate({
+      name: "Precognition",
+      slug: "precognition",
+      description: "Fixture for the live-validation tests.",
+      ownerId: author.id,
+    });
+    projectSlug = project.slug;
+  });
+
+  /** How many issues the fixture project holds — the side-effect check. */
+  async function issueCount(): Promise<number> {
+    const { Issue } = await import("@app/models/Issue.ts");
+    const { Project } = await import("@app/models/Project.ts");
+    const project = await Project.query().where("slug", projectSlug).firstOrFail();
+    return Issue.query().where("project_id", project.id).count();
+  }
+
+  const valid = {
+    title: "A title long enough to satisfy the rule",
+    body: "",
+    status: "backlog",
+    priority: "medium",
+    assigneeId: "",
+  };
+
+  test("valid input answers 204 and creates nothing", async () => {
+    app.actingAs({ id: author.id });
+    const before = await issueCount();
+
+    const res = await app.post(`/projects/${projectSlug}/issues/new`, valid, {
+      Precognition: "true",
+    });
+
+    expect(res.status).toBe(204);
+    // The point of the feature: the rules ran, the handler did not.
+    expect(await issueCount()).toBe(before);
+  });
+
+  test("invalid input answers 422 with the field errors, and still creates nothing", async () => {
+    app.actingAs({ id: author.id });
+    const before = await issueCount();
+
+    const res = await app.post(
+      `/projects/${projectSlug}/issues/new`,
+      { ...valid, title: "no" },
+      { Precognition: "true" },
+    );
+
+    expect(res.status).toBe(422);
+    const errors = (res.json() as { errors?: Record<string, string> }).errors ?? {};
+    expect(Object.keys(errors)).toContain("title");
+    // The message itself, not just the key. `ValidationErrors` is
+    // `Record<string, string>` — one message per field, not an array — and a
+    // client that assumes the array shape renders `errors.title[0]`, which is
+    // the letter "T". Asserting the key alone passes either way and caught
+    // nothing.
+    expect(errors["title"]).toContain("at least 3");
+    expect(typeof errors["title"]).toBe("string");
+    expect(await issueCount()).toBe(before);
+  });
+
+  test("Precognition-Validate-Only narrows the errors to the named fields", async () => {
+    app.actingAs({ id: author.id });
+
+    // Two fields are wrong. The client validating the title on blur only wants
+    // to hear about the title — reporting the empty status as an error under a
+    // field the reader has not reached yet is how live validation becomes noise.
+    const res = await app.post(
+      `/projects/${projectSlug}/issues/new`,
+      { ...valid, title: "no", status: "not-a-status" },
+      { Precognition: "true", "Precognition-Validate-Only": "title" },
+    );
+
+    expect(res.status).toBe(422);
+    const errors = (res.json() as { errors?: Record<string, string[]> }).errors ?? {};
+    expect(Object.keys(errors)).toEqual(["title"]);
+  });
+
+  test("the response varies on Precognition, so no cache mixes the two", async () => {
+    app.actingAs({ id: author.id });
+    const res = await app.post(`/projects/${projectSlug}/issues/new`, valid, {
+      Precognition: "true",
+    });
+
+    expect(res.headers.get("Vary") ?? "").toContain("Precognition");
+  });
+
+  test("without the header the same endpoint really does create", async () => {
+    app.actingAs({ id: author.id });
+    const before = await issueCount();
+
+    // The control. Every assertion above is about something *not* happening, and
+    // an endpoint that is simply broken would pass all of them.
+    await app.post(`/projects/${projectSlug}/issues/new`, {
+      ...valid,
+      title: "This one is meant to be saved",
+    });
+
+    expect(await issueCount()).toBe(before + 1);
+  });
+});

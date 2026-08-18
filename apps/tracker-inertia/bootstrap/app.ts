@@ -1,6 +1,6 @@
 import { Application, basePath } from "zerotal";
 import { I18nContext, LocaleMiddleware } from "@zerotal/i18n";
-import { share } from "@zerotal/inertia";
+import { share, PrecognitionMiddleware } from "@zerotal/inertia";
 import { Auth } from "zerotal/auth";
 import providers from "./providers";
 import { LOCALE_NAMES, SUPPORTED_LOCALES } from "../config/i18n.ts";
@@ -70,7 +70,11 @@ const app = Application.create({ providers })
   // Every request resolves a locale before anything renders — including the
   // guest screens, which is the point: a sign-in page that ignores
   // Accept-Language has already lost the reader it was translated for.
-  .use([LocaleMiddleware])
+  // `PrecognitionMiddleware` alongside it: the validation short-circuit lives in
+  // `FormRequest.validate()` and works without this, but every precognitive
+  // response has to carry `Vary: Precognition` or a cache can hand a 204 "your
+  // input is fine" to a request that actually meant to create something.
+  .use([LocaleMiddleware, PrecognitionMiddleware])
   .fileBasedRouting({
     web: basePath("app/routes"),
   })

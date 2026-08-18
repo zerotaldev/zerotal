@@ -18,6 +18,7 @@ import { Issue } from "@app/models/Issue.ts";
 import { Comment } from "@app/models/Comment.ts";
 import { Attachment } from "@app/models/Attachment.ts";
 import { CommentPosted } from "@app/events/CommentPosted.ts";
+import { AttachmentAdded } from "@app/events/AttachmentAdded.ts";
 import { StoreCommentRequest } from "@app/requests/StoreCommentRequest.ts";
 import {
   ATTACHMENT_MAX_KB,
@@ -227,6 +228,30 @@ export class IssueDetailPage extends Component.using(FileUploads) {
   }
 
   /**
+   * The file list, live — the same subscription as the thread.
+   *
+   * The event carries more than this page draws (`mime`, `createdAt`), so the
+   * payload is mapped down to the row type rather than spread into it. The two
+   * builds render attachments differently and the event serves both; narrowing
+   * here is what lets it.
+   */
+  @on((self) => `echo-private:issues.${(self as IssueDetailPage).issue.id},AttachmentAdded`)
+  async onAttachmentAdded(payload: {
+    attachment: { id: number; name: string; size: number; uploader: { name: string } | null };
+  }): Promise<void> {
+    if (this.attachments.some((a) => a.id === payload.attachment.id)) return;
+    this.attachments = [
+      ...this.attachments,
+      {
+        id: payload.attachment.id,
+        originalName: payload.attachment.name,
+        size: payload.attachment.size,
+        uploader: payload.attachment.uploader?.name ?? null,
+      },
+    ];
+  }
+
+  /**
    * Attach a file — feature 8.
    *
    * The bytes reached `/__flow/upload` over HTTP before this action ran, so what
@@ -267,7 +292,33 @@ export class IssueDetailPage extends Component.using(FileUploads) {
     await attachment.save();
 
     this.file = null;
-    await this.loadAttachments();
+
+    const row: AttachmentRow = {
+      id: attachment.id,
+      originalName: attachment.originalName,
+      size: attachment.size,
+      uploader: Auth.user()!.name,
+    };
+
+    // Appended, not re-queried — the same trade `postComment` makes, and for the
+    // same reason: the row that was just written is the row being added, and
+    // `loadAttachments()` was a second SELECT to learn what we already know.
+    this.attachments = [...this.attachments, row];
+
+    // Plain, not `.toOthers()`: this page listens over Flow's socket, not Echo's,
+    // so there is no connection here for the broadcaster to exclude. See the note
+    // in `postComment`.
+    broadcast(
+      new AttachmentAdded(this.issue.id, {
+        id: attachment.id,
+        name: attachment.originalName,
+        mime: attachment.mime,
+        size: attachment.size,
+        uploader: { name: Auth.user()!.name },
+        createdAt: attachment.createdAt?.toISOString?.() ?? null,
+      }),
+    );
+
     this.flash(__("File attached."));
   }
 

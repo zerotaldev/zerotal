@@ -471,3 +471,56 @@ describe("password confirmation errors", () => {
     expect(await User.query().where("email", "short@example.com").count()).toBe(0);
   });
 });
+
+/**
+ * Attaching a file broadcasts — feature 8, carried live because feature 7 is.
+ *
+ * The thread and the file list share a page and a channel, so the reader sees
+ * both arrive the same way. This asserts the server half: the row is written and
+ * the event goes out on the issue's private channel. The client half — the Echo
+ * listener that appends it — is exercised in the Flow build, whose listeners are
+ * addressable from a test; here it is one `channel.listen` beside the comment's.
+ */
+describe("attachments broadcast", () => {
+  test("attaching a file writes the row and announces it on the issue channel", async () => {
+    const { Project } = await import("@app/models/Project.ts");
+    const { Issue } = await import("@app/models/Issue.ts");
+    const { Attachment } = await import("@app/models/Attachment.ts");
+    const { Broadcast } = await import("@zerotal/broadcasting");
+
+    const uploader = await User.forceCreate({
+      name: "Attach Tester",
+      email: "attach@example.com",
+      password: await Hash.make("correct-horse-battery"),
+      role: "user",
+    });
+    const project = await Project.forceCreate({
+      name: "Attachments",
+      slug: "attachments-live",
+      description: "Fixture for the broadcast test.",
+      ownerId: uploader.id,
+    });
+    const issue = await Issue.forceCreate({
+      projectId: project.id,
+      authorId: uploader.id,
+      title: "Needs a file",
+      body: "",
+      status: "backlog",
+      priority: "medium",
+    });
+
+    const fake = Broadcast.fake();
+    app.actingAs(uploader);
+
+    const res = await app.multipart(`/projects/${project.slug}/issues/${issue.id}/attachments`, {
+      file: { content: "hello", filename: "notes.txt", type: "text/plain" },
+    });
+
+    expect(res.status).toBe(303);
+    expect(await Attachment.query().where("issue_id", issue.id).count()).toBe(1);
+
+    // The channel is the same one the thread uses — one subscription per issue,
+    // one rule in channels.ts.
+    fake.assertBroadcast("AttachmentAdded", `private-issues.${issue.id}`);
+  });
+});

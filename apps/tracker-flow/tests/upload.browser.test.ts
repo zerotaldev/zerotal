@@ -60,6 +60,47 @@ afterAll(() => proc?.kill());
 const ATTACH_BTN =
   "Array.from(document.querySelectorAll('button')).find(function(b){return b.getAttribute('flow:click')==='attachFile'})";
 
+
+/** Sign in and land on /projects. Each browser is its own session. */
+async function signIn(page: FlowBrowser): Promise<void> {
+  await page.fill("#email", "ada@example.com");
+  await page.fill("#password", "password");
+  await page.click('button[type="submit"]');
+  await page.waitUntil("location.pathname === '/projects'", "sign-in to land on /projects", 15000);
+}
+
+/** The href of any issue row in the seeded project. */
+async function anyIssueHref(page: FlowBrowser): Promise<string> {
+  await page.goto(BASE + "/projects/apollo");
+  await page.waitUntil(
+    "Array.from(document.querySelectorAll('a[href]')).some(function(a){" +
+      "var h=a.getAttribute('href')||'';var i=h.lastIndexOf('/issues/');" +
+      "return i!==-1 && /^[0-9]+$/.test(h.slice(i+8))})",
+    "the issue list to render a row",
+    15000,
+  );
+  return page.evaluate<string>(
+    "(function(){var a=Array.from(document.querySelectorAll('a[href]')).find(function(a){" +
+      "var h=a.getAttribute('href')||'';var i=h.lastIndexOf('/issues/');" +
+      "return i!==-1 && /^[0-9]+$/.test(h.slice(i+8))});return a?a.getAttribute('href'):''})()",
+  );
+}
+
+/** Hand `name` to the page's file input and fire the change the bridge listens for. */
+async function pickFile(page: FlowBrowser, name: string): Promise<void> {
+  await page.waitUntil(
+    "(function(){var i=document.querySelector('input[type=file]');if(!i)return false;" +
+      "if(i.dataset.probeSent)return true;var d=new DataTransfer();" +
+      "d.items.add(new File(['hello'],'" +
+      name +
+      "',{type:'text/plain'}));" +
+      "i.files=d.files;i.dataset.probeSent='1';" +
+      "i.dispatchEvent(new Event('change',{bubbles:true}));return true})()",
+    "the file to be handed to the input",
+    15000,
+  );
+}
+
 maybe(
   "picking a file uploads it, binds the reference, and saves",
   async () => {
@@ -155,4 +196,71 @@ maybe(
     }
   },
   120_000,
+);
+
+/**
+ * The file list is live, like the thread beside it — features 7 and 8.
+ *
+ * Two browsers, two sessions, one issue. The uploader appends locally; the
+ * reader is told over the socket. Asserting from a second browser is the only
+ * way to see the broadcast half: in the uploader's own page an appended row and
+ * a broadcast row look identical, so a test with one window passes whether or
+ * not anything ever left the process.
+ */
+maybe(
+  "a file attached in one window appears in another without a reload",
+  async () => {
+    const uploader = await FlowBrowser.open(BASE + "/login");
+    const reader = await FlowBrowser.open(BASE + "/login");
+    try {
+      await signIn(uploader);
+      const href = await anyIssueHref(uploader);
+      expect(href).not.toBe("");
+
+      await uploader.goto(BASE + href);
+      await uploader.waitUntil(
+        "!!document.querySelector('input[type=file]')",
+        "the uploader's dropzone",
+        15000,
+      );
+
+      // The reader opens the same issue and then does nothing at all — no
+      // navigation, no click. Anything that appears here arrived over the socket.
+      await signIn(reader);
+      await reader.goto(BASE + href);
+      await reader.waitUntil(
+        "!!document.querySelector('input[type=file]')",
+        "the reader's page to settle",
+        15000,
+      );
+
+      const NAME = "live-" + Date.now() + ".txt";
+      expect(
+        await reader.evaluate<boolean>(
+          "document.body.textContent.indexOf(" + JSON.stringify(NAME) + ") !== -1",
+        ),
+      ).toBe(false);
+
+      await pickFile(uploader, NAME);
+      await uploader.waitUntil("!!(" + ATTACH_BTN + ")", "the reference to bind", 15000);
+      await uploader.waitUntil(
+        "(function(){var b=" + ATTACH_BTN + ";if(!b)return false;b.click();return true})()",
+        "the confirm control to be clickable",
+        15000,
+      );
+
+      await reader.waitUntil(
+        "document.body.textContent.indexOf(" + JSON.stringify(NAME) + ") !== -1",
+        "the attachment to reach the second window over the socket",
+        20000,
+      );
+
+      expect(reader.pageErrors()).toEqual([]);
+      expect(uploader.pageErrors()).toEqual([]);
+    } finally {
+      await reader.close();
+      await uploader.close();
+    }
+  },
+  180_000,
 );

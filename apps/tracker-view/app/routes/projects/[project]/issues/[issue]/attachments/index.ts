@@ -6,6 +6,8 @@ import type { Project } from "@app/models/Project.ts";
 import type { Issue } from "@app/models/Issue.ts";
 import { Attachment } from "@app/models/Attachment.ts";
 import { StoreAttachmentRequest } from "@app/requests/StoreAttachmentRequest.ts";
+import { broadcast } from "@zerotal/broadcasting";
+import { AttachmentAdded } from "@app/events/AttachmentAdded.ts";
 import { UserLocaleMiddleware } from "@app/middleware/UserLocaleMiddleware.ts";
 
 export const middleware = [AuthMiddleware, UserLocaleMiddleware];
@@ -46,6 +48,20 @@ export async function POST(http: HttpContext): Promise<void> {
   attachment.mime = upload.mimeType;
   attachment.size = upload.size;
   await attachment.save();
+
+  // Broadcast even though nothing in this build listens — the same reason
+  // `comments.ts` does. The event is the app's contract, not this page's, and a
+  // file attached here should reach a reader sitting in one of the socket builds.
+  broadcast(
+    new AttachmentAdded(issue.id, {
+      id: attachment.id,
+      name: attachment.originalName,
+      mime: attachment.mime,
+      size: attachment.size,
+      uploader: { name: uploader.name },
+      createdAt: attachment.createdAt?.toISOString?.() ?? null,
+    }),
+  ).toOthers();
 
   http.flash("success", __("File attached."));
   http.redirect(

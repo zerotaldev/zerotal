@@ -322,6 +322,7 @@ describe("comments", () => {
       // people's issues.
       expect(t.snapshot()?.memo?.listeners).toEqual({
         [`echo-private:issues.${issue.id},CommentPosted`]: "onCommentPosted",
+        [`echo-private:issues.${issue.id},AttachmentAdded`]: "onAttachmentAdded",
       });
     });
   });
@@ -353,6 +354,40 @@ describe("comments", () => {
         },
       });
       expect(t.page().comments.length).toBe(before + 1);
+    });
+  });
+
+  test("a file attached elsewhere appears without a reload", async () => {
+    await asUser(author, async () => {
+      const t = await FlowTest.mount(IssueDetailPage, { project, issue });
+      const before = t.page().attachments.length;
+
+      await t.call("onAttachmentAdded", {
+        attachment: {
+          id: 9999,
+          name: "from-another-window.pdf",
+          mime: "application/pdf",
+          size: 2048,
+          uploader: { name: "Ada" },
+          createdAt: null,
+        },
+      });
+
+      expect(t.page().attachments.length).toBe(before + 1);
+      t.assertSee("from-another-window.pdf");
+
+      // Delivered twice — a reconnect replay — must not double up.
+      await t.call("onAttachmentAdded", {
+        attachment: {
+          id: 9999,
+          name: "from-another-window.pdf",
+          mime: "application/pdf",
+          size: 2048,
+          uploader: { name: "Ada" },
+          createdAt: null,
+        },
+      });
+      expect(t.page().attachments.length).toBe(before + 1);
     });
   });
 

@@ -6,6 +6,8 @@ import type { Project } from "@app/models/Project.ts";
 import type { Issue } from "@app/models/Issue.ts";
 import { Attachment } from "@app/models/Attachment.ts";
 import { StoreAttachmentRequest } from "@app/requests/StoreAttachmentRequest.ts";
+import { broadcast } from "@zerotal/broadcasting";
+import { AttachmentAdded } from "@app/events/AttachmentAdded.ts";
 
 export const middleware = [AuthMiddleware];
 
@@ -45,6 +47,20 @@ export async function POST(http: HttpContext): Promise<void> {
   attachment.mime = upload.mimeType;
   attachment.size = upload.size;
   await attachment.save();
+
+  // `toOthers()` excludes the connection that sent this request — the uploader's
+  // own browser is on this Echo channel and already has the row from the reload
+  // that follows the redirect, so including them would draw the file twice.
+  broadcast(
+    new AttachmentAdded(issue.id, {
+      id: attachment.id,
+      name: attachment.originalName,
+      mime: attachment.mime,
+      size: attachment.size,
+      uploader: { name: uploader.name },
+      createdAt: attachment.createdAt?.toISOString?.() ?? null,
+    }),
+  ).toOthers();
 
   http.flash("success", __("File attached."));
   http.redirect(`/projects/${project.slug}/issues/${issue.id}`, 303);

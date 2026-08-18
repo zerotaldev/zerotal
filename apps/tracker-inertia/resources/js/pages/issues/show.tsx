@@ -77,7 +77,11 @@ interface Props {
  * they cannot disagree about who may edit.
  */
 export default function IssueShow({ project, issue, comments: served, attachments, can }: Props) {
-  const { comments, live } = useLiveComments(issue.id, served);
+  const { comments, attachments: liveAttachments, live } = useLiveIssue(
+    issue.id,
+    served,
+    attachments,
+  );
 
   return (
     <>
@@ -139,7 +143,7 @@ export default function IssueShow({ project, issue, comments: served, attachment
           </section>
 
           <Attachments
-            attachments={attachments}
+            attachments={liveAttachments}
             target={endpoint("projects.issues.attachments.store", {
               project: project.slug,
               issue: issue.id,
@@ -360,24 +364,34 @@ function Attachments({
 }
 
 /**
- * The thread, kept current from two sources — feature 7.
+ * The thread and the file list, kept current from two sources — features 7 and 8.
  *
- * The server's copy is the truth: every Inertia response carries the whole
- * thread, so a navigation or a redirect-back replaces local state outright
- * rather than merging into it. Between responses the socket fills the gap.
+ * The server's copy is the truth: every Inertia response carries both lists in
+ * full, so a navigation or a redirect-back replaces local state outright rather
+ * than merging into it. Between responses the socket fills the gap.
  *
  * Arrivals are deduplicated by id because the two sources overlap. `toOthers()`
- * on the server keeps the author's own comment off their socket, but a reconnect
+ * on the server keeps the author's own row off their socket, but a reconnect
  * re-subscribes and a redirect can land either side of a broadcast — so the
  * guard is what makes the ordering not matter.
+ *
+ * Both lists ride one subscription. They are one page to the reader, and a
+ * comment arriving live while a file needs a reload reads as the page being
+ * unreliable rather than as two features with different specs.
  */
-function useLiveComments(issueId: number, served: CommentRow[]) {
+function useLiveIssue(
+  issueId: number,
+  served: CommentRow[],
+  servedAttachments: AttachmentRow[],
+) {
   const [comments, setComments] = useState(served);
+  const [attachments, setAttachments] = useState(servedAttachments);
   const [live, setLive] = useState<SocketState>("connecting");
 
   // `served` is a fresh array on every Inertia response, so this resets the
-  // thread exactly when the server has re-sent it and at no other time.
+  // lists exactly when the server has re-sent them and at no other time.
   useEffect(() => setComments(served), [served]);
+  useEffect(() => setAttachments(servedAttachments), [servedAttachments]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -398,17 +412,24 @@ function useLiveComments(issueId: number, served: CommentRow[]) {
       if (!posted) return;
       setComments((prev) => (prev.some((c) => c.id === posted.id) ? prev : [...prev, posted]));
     };
+    const onAttached = (event: unknown) => {
+      const added = (event as { attachment?: AttachmentRow }).attachment;
+      if (!added) return;
+      setAttachments((prev) => (prev.some((a) => a.id === added.id) ? prev : [...prev, added]));
+    };
     channel.listen("CommentPosted", onPosted);
+    channel.listen("AttachmentAdded", onAttached);
 
     return () => {
       channel.stopListening("CommentPosted", onPosted);
+      channel.stopListening("AttachmentAdded", onAttached);
       // The channel itself is left subscribed: the socket is shared, and another
       // page mounting the same issue would have to re-authorize to get it back.
       offs.forEach((off) => off());
     };
   }, [issueId]);
 
-  return { comments, live };
+  return { comments, attachments, live };
 }
 
 /** Whether new comments will arrive without a reload. */

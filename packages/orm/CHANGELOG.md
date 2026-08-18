@@ -11,7 +11,7 @@ follows the Zerotal monorepo's unified versioning.
 ### Fixed
 
 - **A seeder that failed partway left its rows behind.** `Seeder.call()` has always wrapped
-  *composed* seeders in a transaction, so a `DatabaseSeeder` that delegates was atomic and one that
+  _composed_ seeders in a transaction, so a `DatabaseSeeder` that delegates was atomic and one that
   does its work inline — which is most of them — was not. A failure on the fourth table committed
   the first three, so the obvious next move, running it again, died on a unique constraint, and the
   only way out was `migrate:fresh`. Migrations became transactional in 1.7.0; this closes the
@@ -21,7 +21,6 @@ follows the Zerotal monorepo's unified versioning.
   is already open, so an inner `call()` still rolls back independently. The wrapper is skipped when
   no connection is bound, because a seeder is not obliged to touch the database and an app that has
   not configured one should not fail to seed over a transaction it never needed.
-
 
 ### Fixed
 

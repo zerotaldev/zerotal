@@ -19,7 +19,6 @@ follows the Zerotal monorepo's unified versioning.
   The rule this makes workable: **core's root entry is server-only.** Anything that might be
   bundled for a browser imports from a narrow subpath.
 
-
 ## [1.7.1] — 2026-08-16
 
 ### Changed

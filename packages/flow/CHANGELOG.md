@@ -13,7 +13,7 @@ change.
 
 ### Added
 
-- **`@on` can name a channel per instance.** A listener's channel is read off the *class*, so
+- **`@on` can name a channel per instance.** A listener's channel is read off the _class_, so
   a channel containing a record id could not be written at all. The guide showed
   `@on("echo-private:issues.${this.issueId},CommentPosted")`, which is not interpolation —
   it is a plain string, and the eleven characters `${this.issueId}` reached the browser
@@ -94,7 +94,7 @@ change.
   it has that this class does not.
 
 - **The real-time validation example did not compile.** `docs/flow/decorators.md` showed
-  `<input value={this.email} flow:model.live />`. That is the *emitted* directive, not the prop:
+  `<input value={this.email} flow:model.live />`. That is the _emitted_ directive, not the prop:
   the `.` in an attribute name is a parse error in TSX (`TS1003`), so anyone copying it got a
   build failure on a line the guide had just handed them. The prop is `live`; the note now says
   so, and says why the compiled form cannot be written by hand.

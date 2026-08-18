@@ -22,9 +22,8 @@ follows the Zerotal monorepo's unified versioning.
   `["default"]`. The flag still overrides it and now accepts a comma-separated list
   (`--queue=emails,reports`) in priority order, so one worker can take a subset without a second
   process. `--once` stops at the first queue with a claimable job rather than taking one job per
-  queue, and the idle sleep is only taken when *no* queue had anything — sleeping after the first
+  queue, and the idle sleep is only taken when _no_ queue had anything — sleeping after the first
   empty one would leave a busy second queue waiting out the poll interval.
-
 
 ## [1.5.0] — 2026-08-15
 

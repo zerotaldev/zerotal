@@ -95,7 +95,7 @@ function makeApp(
   queues: string[] = ["default"],
 ) {
   const config = {
-    get: <T,>(key: string, fallback: T): T =>
+    get: <T>(key: string, fallback: T): T =>
       key === "queue.queues" ? (queues as unknown as T) : fallback,
   };
   return {
@@ -475,7 +475,7 @@ describe("QueueWorkCommand queue selection", () => {
     expect(lines.some((l) => l.includes("Processed 1 job"))).toBe(true);
   });
 
-  it("falls back to \"default\" when the app configures no queues", async () => {
+  it('falls back to "default" when the app configures no queues', async () => {
     const manager = makeManager(makeDriver());
     const cmd = new QueueWorkCommand();
     const { run } = runCmd(cmd, { flags: { once: true }, app: makeApp(manager) });

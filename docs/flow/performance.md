@@ -49,12 +49,12 @@ N of M Flow pages (75%) render through the runtime fallback instead of compiled 
 
 Set `ZT_FLOW_COMPILE_LOG=1` to print what blocks each page. The common causes:
 
-| Blocker | Fix |
-| --- | --- |
-| `render()` with more than one `return` | Build the branches into a variable and return once |
-| A function call in a text child — including **`__()`** | See below |
-| An imported child component in `render()` (`<Header/>`) | Inline it, or accept the fallback |
-| `class={someLocalConst}` or a numeric-literal attribute (`rows={3}`) | Use a literal string |
+| Blocker                                                              | Fix                                                |
+| -------------------------------------------------------------------- | -------------------------------------------------- |
+| `render()` with more than one `return`                               | Build the branches into a variable and return once |
+| A function call in a text child — including **`__()`**               | See below                                          |
+| An imported child component in `render()` (`<Header/>`)              | Inline it, or accept the fallback                  |
+| `class={someLocalConst}` or a numeric-literal attribute (`rows={3}`) | Use a literal string                               |
 
 **`__()` is the one that matters most.** A translated template is a function call in a text child,
 so a page that translates a single string falls off the fast path — which in an app where `__()`

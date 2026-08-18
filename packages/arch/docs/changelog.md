@@ -50,7 +50,7 @@ saying so.
 - **Flow bundles the socket client into its runtime.** A page that declares a `socket:`
   listener is live with no script of your own. Flow apps own no bundle entry, so the contract
   used to be "publish `window.Socket` yourself" — and when you didn't, the listeners were
-  *silently inert*: no error, no warning, no subscription, so a live feature with no script
+  _silently inert_: no error, no warning, no subscription, so a live feature with no script
   looked exactly like a live feature that was never written. An app that needs a configured
   client still assigns `window.Socket` before the runtime loads and that one is used as-is; a
   page with no listeners opens no connection at all.
@@ -60,7 +60,7 @@ saying so.
 - **A patch no longer writes back into a file input.** A file input's `value` belongs to the
   user agent, and assigning anything but `""` throws `InvalidStateError`. The write was legal
   while the bound property was empty and threw on the very patch carrying an upload's result
-  — and the throw escaped the frame handler, so the DOM never updated *and* the action's ack
+  — and the throw escaped the frame handler, so the DOM never updated _and_ the action's ack
   never resolved. Since frames are chained per component, every later action queued behind a
   promise that would never settle: the page rendered correctly and ignored every click for
   the rest of its life.

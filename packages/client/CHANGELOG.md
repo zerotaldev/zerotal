@@ -11,10 +11,10 @@ follows the Zerotal monorepo's unified versioning.
 ### Fixed
 
 - **The documented import could not be bundled for a browser.** `import { Socket } from
-  "@zerotal/client"` — the line the broadcasting guide taught — failed with `Browser build cannot
-  import() Bun builtin: "bun"`. The root entry also exports `ClientProvider`, which extends core's
+"@zerotal/client"` — the line the broadcasting guide taught — failed with `Browser build cannot
+import() Bun builtin: "bun"`. The root entry also exports `ClientProvider`, which extends core's
   `ServiceProvider`, which reaches `CommandRunner`, which reaches the built-in CLI commands, one of
-  which does `await import("bun")`. That is a *resolution*-time error, so tree-shaking never got the
+  which does `await import("bun")`. That is a _resolution_-time error, so tree-shaking never got the
   chance to drop the half nobody in a browser wanted: one server-only export made the whole package
   unusable in the environment it exists for.
 
@@ -29,13 +29,12 @@ follows the Zerotal monorepo's unified versioning.
   browser entry re-exporting it from the barrel pulls the barrel back in — the first attempt at this
   fix did exactly that and bundled straight back into the same error. And the modules a browser can
   reach now import from narrow core subpaths (`@zerotal/core/errors`, `@zerotal/core/helpers`)
-  rather than the root, because importing *anything at all* from core's root is enough to poison a
+  rather than the root, because importing _anything at all_ from core's root is enough to poison a
   browser bundle.
 
   Guarded by a test that runs `Bun.build` with `target: "browser"` — no unit test can see this,
   since every module imports fine under Bun — plus one that holds the browser entry in step with
   the barrel, since two entry points means two places to remember to add an export to.
-
 
 ## [1.0.3] — 2026-08-07
 

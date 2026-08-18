@@ -47,14 +47,14 @@ bunx create-zerotal my-app --yes            # take the defaults for anything uns
 bunx create-zerotal --help
 ```
 
-| Flag | |
-| ---- | --- |
-| `-t`, `--template <name>` | `api`, `admin`, `flow`, `react`, `vue`, `minimal` |
-| `--db <name>` | `sqlite`, `postgres`, `mysql` — API template only |
-| `-y`, `--yes` | Take defaults for anything not given; never prompt |
-| `--no-install` | Skip `bun install` |
-| `-h`, `--help` | Usage |
-| `-v`, `--version` | The scaffolder's own version |
+| Flag                      |                                                    |
+| ------------------------- | -------------------------------------------------- |
+| `-t`, `--template <name>` | `api`, `admin`, `flow`, `react`, `vue`, `minimal`  |
+| `--db <name>`             | `sqlite`, `postgres`, `mysql` — API template only  |
+| `-y`, `--yes`             | Take defaults for anything not given; never prompt |
+| `--no-install`            | Skip `bun install`                                 |
+| `-h`, `--help`            | Usage                                              |
+| `-v`, `--version`         | The scaffolder's own version                       |
 
 An answer that is missing and cannot be asked for is an error naming the flag
 that would supply it, and the exit code is non-zero — so a pipeline fails where

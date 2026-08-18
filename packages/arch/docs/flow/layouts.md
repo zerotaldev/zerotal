@@ -149,7 +149,7 @@ Flow assembles the outer document itself and emits `<html lang="en">`, and a `La
 change it. `head` injects into `<head>`; the `<html>` attributes are not reachable from a layout.
 
 For a localised app, put `lang` (and any locale-dependent class) on the layout's own wrapper element.
-Both are valid on a `div` and apply to every descendant, so the *content* is correctly marked up —
+Both are valid on a `div` and apply to every descendant, so the _content_ is correctly marked up —
 but the document still declares English to anything reading the root element, which is wrong for a
 screen reader announcing the page in the wrong voice:
 

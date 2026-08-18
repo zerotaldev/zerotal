@@ -276,8 +276,8 @@ export class OrderDashboard extends Component {
 
 ### Channel name formats
 
-| Format                             | Channel type                            |
-| ---------------------------------- | --------------------------------------- |
+| Format                               | Channel type                            |
+| ------------------------------------ | --------------------------------------- |
 | `socket:channel,Event`               | Public channel                          |
 | `socket-private:channel,Event`       | Private channel (requires auth)         |
 | `socket-presence:room,joining`       | Presence channel — member joined        |
@@ -315,7 +315,7 @@ The resolver runs once per render, after `onMount()`, so it can read anything th
 loaded. If it throws — a field it reads is still null, say — that one listener is dropped and the
 page renders without it, rather than the render failing.
 
-Resolve the *narrowest* channel the reader is entitled to. A static `issues` channel with an
+Resolve the _narrowest_ channel the reader is entitled to. A static `issues` channel with an
 `if (payload.issueId !== this.issue.id) return` in the handler looks equivalent and is not: the
 broadcast still reaches every subscriber's browser, so every reader receives every issue's
 comment bodies and discards them after the fact.

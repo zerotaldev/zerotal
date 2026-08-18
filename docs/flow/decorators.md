@@ -396,8 +396,8 @@ See [Layouts & Composition](/docs/flow/layouts#two-way-props) for the full `@mod
 | `@expose method`                                | Callable from the browser via WebSocket                               |
 | `@expose @renderless method`                    | Callable from browser; skips re-render cycle                          |
 | `@on("event") method`                           | Listens for cross-component events (auto-exposed)                     |
-| `@on("socket:channel,Event") method`              | Listens for real-time server broadcasts                               |
-| `@on((self) => "socket:…") method`                | Same, with the channel resolved per instance (record ids)             |
+| `@on("socket:channel,Event") method`            | Listens for real-time server broadcasts                               |
+| `@on((self) => "socket:…") method`              | Same, with the channel resolved per instance (record ids)             |
 | `@reactive prop`                                | Child prop; parent re-pushes on change, child re-renders              |
 | `@modelable prop`                               | Two-way child prop; writes from child flow back to parent             |
 

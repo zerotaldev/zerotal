@@ -24,6 +24,52 @@ Each version lists changes under three headings:
 Patch and minor releases are backward compatible. Before taking a **major** release,
 read its section here and apply each migration note.
 
+## 1.7.2 — 2026-08-18
+
+Realtime that works without being wired up, and three ways a socket could go quiet without
+saying so.
+
+### Changed
+
+- **BREAKING — Flow's `@on` broadcast listeners use a `socket:` prefix.** `echo:`,
+  `echo-private:` and `echo-presence:` are now `socket:`, `socket-private:` and
+  `socket-presence:`; the browser global is `window.Socket`, not `window.Echo`. There is no
+  alias — an unrenamed listener never matches, and never subscribes.
+
+  ```diff
+  - @on("echo-private:issues.5,CommentPosted")
+  + @on("socket-private:issues.5,CommentPosted")
+  ```
+
+  Shipped in a patch release deliberately, on the judgement that the old prefix has no
+  meaningful use in the wild. If you are on it, the upgrade is a find-and-replace of `echo:`
+  → `socket:` in your `@on` listeners and `window.Echo` → `window.Socket` in any client code.
+
+### Added
+
+- **Flow bundles the socket client into its runtime.** A page that declares a `socket:`
+  listener is live with no script of your own. Flow apps own no bundle entry, so the contract
+  used to be "publish `window.Socket` yourself" — and when you didn't, the listeners were
+  *silently inert*: no error, no warning, no subscription, so a live feature with no script
+  looked exactly like a live feature that was never written. An app that needs a configured
+  client still assigns `window.Socket` before the runtime loads and that one is used as-is; a
+  page with no listeners opens no connection at all.
+
+### Fixed
+
+- **A patch no longer writes back into a file input.** A file input's `value` belongs to the
+  user agent, and assigning anything but `""` throws `InvalidStateError`. The write was legal
+  while the bound property was empty and threw on the very patch carrying an upload's result
+  — and the throw escaped the frame handler, so the DOM never updated *and* the action's ack
+  never resolved. Since frames are chained per component, every later action queued behind a
+  promise that would never settle: the page rendered correctly and ignored every click for
+  the rest of its life.
+
+- **WebSocket connections get an explicit 120s `idleTimeout`.** Bun closes an idle socket
+  after 10 seconds; the client pings every 30. A connection that was merely quiet got cut
+  before it had reason to speak, taking its channel subscriptions with it — so anyone who had
+  been reading a page for more than ten seconds silently stopped receiving broadcasts.
+
 ## 1.7.0 — 2026-08-16
 
 The agent surface, a DevTools panel that shows the framework and not just the last request,

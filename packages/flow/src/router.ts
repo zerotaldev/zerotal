@@ -9,6 +9,7 @@ import type { PageClassWithMeta } from "./registry.ts";
 import { registerPage } from "./registry.ts";
 import { dehydrate, warnIfLarge } from "./dehydrate.ts";
 import { _renderFlowPage } from "./jsx-runtime.ts";
+import { escapeHtml } from "@zerotal/core/helpers";
 import { populatePresence } from "./presence.ts";
 import { populateShared } from "./shared.ts";
 import { restoreDurable, persistDurable } from "./durable.ts";
@@ -220,7 +221,12 @@ export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
               bodyContent = flowRoot.html;
             }
 
-            const titleTag = PageClass.title ? `<title>${PageClass.title}</title>` : "";
+            // Through the component, not `PageClass.title` directly: `static title` may be a
+            // function of the component, and reading the raw static would render its source.
+            // Escaped because a resolved title can carry state — a search term reaching
+            // `<title>` unescaped is an injection, and the old direct interpolation had none.
+            const resolvedTitle = page._resolveTitle();
+            const titleTag = resolvedTitle ? `<title>${escapeHtml(resolvedTitle)}</title>` : "";
             // Component head takes precedence; layout head provides global resources.
             const headExtra = [PageClass.head ?? "", layoutHead].filter(Boolean).join("\n  ");
 

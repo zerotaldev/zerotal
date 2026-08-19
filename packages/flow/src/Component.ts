@@ -174,6 +174,31 @@ function _isProduction(): boolean {
 }
 
 /** Classes already warned about, so a hundred-row list logs once. */
+/**
+ * Encode one interpolated value as a JS literal for a client expression.
+ *
+ * The scripts are evaluated with `Alpine.evaluate(rootEl, script)`, so each value has to
+ * arrive as source text. JSON is a subset of JS expression syntax for every shape that
+ * survives `JSON.stringify`, which is what makes this exact rather than approximate — and it
+ * is what removes the old `@security` note from `client()`, where the caller built the string
+ * and owned the escaping.
+ *
+ * The cases JSON alone gets wrong are handled explicitly: `undefined` and functions stringify
+ * to nothing, `NaN` / `Infinity` become `null`, and `BigInt` throws.
+ */
+function _encodeClientValue(value: unknown): string {
+  if (value === undefined) return "undefined";
+  if (typeof value === "bigint") return `${value}n`;
+  if (typeof value === "number" && !Number.isFinite(value)) return String(value);
+
+  const json = JSON.stringify(value);
+  if (json === undefined) return "undefined"; // functions, symbols
+
+  // U+2028/U+2029 are legal inside a JSON string and legal in a JS string literal only since
+  // ES2019. Escaping them costs nothing and keeps the output safe in any JS context.
+  return json.replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+}
+
 const _warnedKeyless = new Set<string>();
 
 function _warnKeylessChild(className: string): void {
@@ -610,6 +635,26 @@ export abstract class Component {
    *
    * @category State & exposure
    */
+  /**
+   * The page's document title — a string, or a function of the component.
+   *
+   * ```ts
+   * static title = "Search";
+   * static title = (c: SearchPage) => (c.query ? `Search: ${c.query}` : "Search");
+   * ```
+   *
+   * Resolved on the server for every render and every patch, so the function form tracks
+   * state without the page doing anything: change `query` in an action and the tab title
+   * follows. Only the resolved string is ever sent to the browser.
+   *
+   * Declared here rather than left to convention. It was read structurally off the
+   * constructor, which meant no type, no autocomplete, and no entry in the API surface for
+   * something the docs already told people to write.
+   *
+   * @category Rendering
+   */
+  static title?: string | ((component: never) => string);
+
   static durable?: boolean | { ttl?: string; scope?: "user" | "session" };
 
   /** Set by {@link clearDurable}; the dispatcher deletes the durable entry after the request. @internal */
@@ -1026,10 +1071,42 @@ export abstract class Component {
    * this.client(`$refs.titleInput.focus()`);
    * this.client(`$el.querySelector('.toast').classList.add('visible')`);
    *
-   * @security Never interpolate unescaped user input into the expression string.
+   * @security Never interpolate unescaped user input into the expression string. Prefer the
+   *           {@link $} tagged template, which encodes interpolated values for you.
+   * @deprecated Use the `$` tagged template: ``this.$`$refs.titleInput.focus()` ``.
    * @category Actions
    */
   client(script: string): void {
+    this._clientScripts.push(script);
+  }
+
+  /**
+   * Run a client-side expression from a server action, interpolating values safely.
+   *
+   * A tagged template, so each `${…}` is encoded as a JS literal rather than concatenated
+   * into the source by the caller:
+   *
+   * ```ts
+   * this.$`console.log(${this.search})`;
+   * this.$`$refs.title.focus()`;
+   * this.$`$el.dataset.count = ${this.items.length}`;
+   * ```
+   *
+   * That is the whole reason it replaces {@link client}. Building the expression by hand meant
+   * the caller owned the escaping, and a value containing a quote — a name, a search term —
+   * produced either a syntax error or something worse.
+   *
+   * Runs in the component root's Alpine context after the action's DOM patch, exactly as
+   * {@link client} does: `$el`, `$refs` and the `$flow` magics are all in scope, and multiple
+   * calls execute in order after the single round trip.
+   *
+   * @category Actions
+   */
+  $(strings: TemplateStringsArray, ...values: unknown[]): void {
+    let script = strings[0] ?? "";
+    for (let i = 0; i < values.length; i++) {
+      script += _encodeClientValue(values[i]) + (strings[i + 1] ?? "");
+    }
     this._clientScripts.push(script);
   }
 
@@ -1045,6 +1122,10 @@ export abstract class Component {
    * @example
    * this.title(`Search: ${this.query}`);
    *
+   * @deprecated Declare `static title` instead — a string, or a function of the component,
+   *             which is resolved on every frame and so tracks state on its own. Holding the
+   *             name as an instance member also makes `title` unusable as component state,
+   *             which is the more common thing to want it for.
    * @category Actions
    */
   title(value: string): void;
@@ -1052,7 +1133,7 @@ export abstract class Component {
   // Implementation signature (hidden from the public API)
   title(value?: string): void | string {
     if (value === undefined) {
-      return this._titleValue ?? (this.constructor as { title?: string }).title ?? "";
+      return this._resolveTitle() ?? "";
     }
     this._titleValue = value;
   }
@@ -1734,6 +1815,25 @@ export abstract class Component {
 
   // ── Effect draining (called by WS handler after action) ──────────────────
 
+  /**
+   * The title to send with this frame: the imperative `title()` value if an action set one,
+   * otherwise `static title` resolved.
+   *
+   * `_titleValue` wins so the deprecated imperative path keeps working for the frame it was
+   * called in. The static is resolved on every frame rather than once, which is what makes
+   * the function form track state.
+   *
+   * @internal
+   */
+  _resolveTitle(): string | null {
+    if (this._titleValue !== null) return this._titleValue;
+    const declared = (this.constructor as { title?: unknown }).title;
+    if (typeof declared === "function") {
+      return String((declared as (c: unknown) => unknown)(this));
+    }
+    return typeof declared === "string" ? declared : null;
+  }
+
   /** @internal — read by the WS handler after action execution. */
   _drainEffects(): FlowEffects {
     const effects: FlowEffects = {
@@ -1744,7 +1844,7 @@ export abstract class Component {
       errors: this._errors,
       events: this._events.splice(0),
       downloads: this._downloads.splice(0),
-      title: this._titleValue,
+      title: this._resolveTitle(),
     };
     this._redirectUrl = null;
     this._redirectStatus = null;

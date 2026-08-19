@@ -195,10 +195,11 @@ The names in use:
 | Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child` `title`                                                      |
 | Actions & state   | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal`              |
 | Navigation        | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent`                                          |
-| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `client`                                                              |
+| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `client` `$`                                                          |
 | Misc              | `flash` `download` `clearDurable`                                                                                     |
 
-Anything beginning with `_` is also framework-internal, as is the static `durable`.
+Anything beginning with `_` is also framework-internal, as are the statics `durable`
+and `title`.
 
 If the natural name is taken, the usual fix is a more specific one — `headline`,
 `mediaTitle` — which often reads better than `title` did.

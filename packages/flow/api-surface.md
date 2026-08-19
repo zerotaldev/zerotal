@@ -9,7 +9,9 @@ class Component = {
   new (): Component
   static durable?: boolean | {    ttl?: string;    scope?: 'user' | 'session';}
   static readonly __isFlowPage: true
+  static title?: string | ((component: never) => string)
   static using: Compose
+  $: (strings: TemplateStringsArray, ...values: unknown[]) => void
   $refresh: () => void
   $set: (key: string, value: unknown) => void
   _applyClientUpdate: (key: string, value: unknown, arrayKey?: string) => Promise<void>
@@ -31,6 +33,7 @@ class Component = {
   _prevChildIds: string[]
   _redirectStatus: number | null
   _redirectUrl: string | null
+  _resolveTitle: () => string | null
   _shouldRefresh: boolean
   _streamSender: ((ref: string, content: string, replace: boolean) => void) | null
   _taskSignal: AbortSignal | null
@@ -761,7 +764,7 @@ interface PageClassWithMeta = {
   layout?: new () => Layout
   models?: Record<string, typeof BaseModel>
   name: string
-  title?: string
+  title?: string | ((component: never) => string)
 }
 
 interface PagerProps = {

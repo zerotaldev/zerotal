@@ -103,6 +103,21 @@ export default tseslint.config(
     },
   },
 
+  // ── A tagged template in statement position is how `$` is used ──────────────
+  //
+  // `this.$`$refs.title.focus()`` queues a client expression, so it is written as a
+  // statement and returns nothing. `no-unused-expressions` flags a bare tagged template
+  // by default, which would make the framework's own API unlintable in its own repo.
+  //
+  // Worth knowing for apps: typescript-eslint's *recommended* set enables this rule, and
+  // the templates ship no ESLint config, so a project that adds one will need the same
+  // option. That belongs in the `$` documentation.
+  {
+    rules: {
+      "@typescript-eslint/no-unused-expressions": ["error", { allowTaggedTemplates: true }],
+    },
+  },
+
   // ── Tests, scripts, and example apps: relax `any` entirely ──────────────────
   {
     files: ["**/*.test.ts", "scripts/**", "apps/**"],

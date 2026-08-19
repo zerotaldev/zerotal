@@ -100,6 +100,7 @@ class AdminPage = {
   static slug: string
   static title: string
   static using: Compose
+  $: (strings: TemplateStringsArray, ...values: unknown[]) => void
   $refresh: () => void
   $set: (key: string, value: unknown) => void
   _applyClientUpdate: (key: string, value: unknown, arrayKey?: string) => Promise<void>
@@ -121,6 +122,7 @@ class AdminPage = {
   _prevChildIds: string[]
   _redirectStatus: number | null
   _redirectUrl: string | null
+  _resolveTitle: () => string | null
   _shouldRefresh: boolean
   _streamSender: ((ref: string, content: string, replace: boolean) => void) | null
   _taskSignal: AbortSignal | null

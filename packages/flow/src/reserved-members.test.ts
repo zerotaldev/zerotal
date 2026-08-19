@@ -20,6 +20,7 @@ function reservedMembers(): string[] {
 }
 
 const DOCUMENTED = [
+  "$",
   "$refresh",
   "$set",
   "addError",

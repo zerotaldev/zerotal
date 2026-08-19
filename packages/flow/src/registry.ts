@@ -107,8 +107,12 @@ export { getRenderlessMethods };
 export interface PageClassWithMeta {
   new (): Component;
   name: string;
-  /** Sets the HTML <title> for this page. */
-  title?: string;
+  /**
+   * Sets the HTML `<title>` for this page — a string, or a function of the component
+   * instance. Resolve it with the component's `_resolveTitle()` rather than reading it
+   * directly, so both forms are handled in one place.
+   */
+  title?: string | ((component: never) => string);
   /** Raw HTML to inject into <head> for this page. */
   head?: string;
   /** Optional model associations for auto-registration. */

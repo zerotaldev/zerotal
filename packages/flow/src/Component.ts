@@ -22,6 +22,7 @@ import type { Schema, FieldRuleDefinition } from "@zerotal/validator";
 import type { ValidateBuilder } from "./decorators.ts";
 import { ValidationError } from "./validation.ts";
 import type { ValidationRules } from "./validation.ts";
+import { _applyWireValues, _isRegisteredModel } from "./synths/ModelSynth.ts";
 import { resolveUploadValue } from "./uploads/TemporaryUploadedFile.ts";
 import { toScriptJson } from "./utils.ts";
 import { _compose } from "./mixins.ts";
@@ -1730,6 +1731,21 @@ export abstract class Component {
       typeof value === "object"
     ) {
       (cur as { fill(v: Record<string, unknown>): void }).fill(value as Record<string, unknown>);
+      return;
+    }
+    // Model: same reasoning as the form above — fill the hydrated instance rather than
+    // replacing it with the plain object the client sent, so its class, methods and dirty
+    // tracking survive a `value={this.user.name}` edit. `_applyWireValues` keeps only
+    // `fillable` minus `hidden`, so a field the model never offered is ignored rather than
+    // written or thrown over.
+    if (
+      cur &&
+      typeof cur === "object" &&
+      _isRegisteredModel(cur) &&
+      value &&
+      typeof value === "object"
+    ) {
+      _applyWireValues(cur, value);
       return;
     }
     // Signed upload references become TemporaryUploadedFile instances (signature verified);

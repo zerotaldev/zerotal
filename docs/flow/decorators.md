@@ -42,6 +42,8 @@ Only `@expose` properties are two-way: the client can push updates back to the s
 
 Sent to the client for display, but the client cannot mutate it. Included in the snapshot so it survives WebSocket round-trips without re-loading from the database.
 
+An ORM model is the exception: only its id travels in the snapshot and the row is re-read on every round-trip, so what the page shows is always current. See [Models in Components](/docs/flow/models).
+
 A `value={this.x}` binding on a `@locked` property renders as a read-only display — not an editable field.
 
 Use `@locked` for data loaded in `onMount()` that the server controls: model results, user info, computed totals, child props from the parent:

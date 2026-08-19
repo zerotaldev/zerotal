@@ -126,7 +126,6 @@ class AdminPage = {
   _shouldRefresh: boolean
   _streamSender: ((ref: string, content: string, replace: boolean) => void) | null
   _taskSignal: AbortSignal | null
-  _titleValue: string | null
   _validateField: (field: string) => Promise<void>
   addError: (field: string, message: string) => void
   bind: (key: string, optionValue?: string) => Record<string, unknown>
@@ -164,7 +163,6 @@ class AdminPage = {
   signal: AbortSignal
   slot: (name?: string) => HtmlNode
   stream: (ref: string, content: string, opts?: {    replace?: boolean;}) => void
-  title: {    (): string;    (value: string): void;}
   validate: (rulesOrForm?: ValidationRules | {    __isFlowForm: true;    _validateToErrors(): Record<string, string[]>;}) => Promise<void>
 }
 

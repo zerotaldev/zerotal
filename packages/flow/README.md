@@ -114,7 +114,7 @@ All imported from `@zerotal/flow`.
 | `@reactive`                      | A child prop the parent re-pushes whenever it changes, re-rendering the child.                                             |
 | `@modelable`                     | A two-way child prop — writes from the child flow back up to the parent.                                                   |
 
-Action helpers available inside any exposed method include `this.flash()`, `this.redirect()`, `this.refresh()`, `this.title()`, `this.client()`, `this.download()`, `this.dispatch()`, `this.stream()`, and the `this.errors` proxy (`has`, `any`, `addError`, `resetValidation`). Lifecycle hooks: `setup`, `onBoot`, `onMount`, `onHydrate`, `onUpdating`/`onUpdated`, `onUpdate`, `onRendering`, `onRendered`, `onDehydrate`, `onError`.
+Action helpers available inside any exposed method include `this.flash()`, `this.redirect()`, `this.refresh()`, ``this.$`…` ``, `this.download()`, `this.dispatch()`, `this.stream()`, and the `this.errors` proxy (`has`, `any`, `addError`, `resetValidation`). Lifecycle hooks: `setup`, `onBoot`, `onMount`, `onHydrate`, `onUpdating`/`onUpdated`, `onUpdate`, `onRendering`, `onRendered`, `onDehydrate`, `onError`.
 
 ## Built-in components
 

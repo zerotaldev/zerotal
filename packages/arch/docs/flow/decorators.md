@@ -423,13 +423,13 @@ this.redirectIntended("/dashboard"); // back to where AuthMiddleware intercepted
 // Force onMount() to re-run this round-trip (useful for reloading stale data)
 this.refresh();
 
-// Update the document title in the browser tab
-this.title("Edit post — My App");
+// The document title is `static title` on the class, not an action — see Routing.
 
-// Run raw JavaScript in the browser after the DOM patch is applied
-this.client("$refs.titleInput.focus()");
-this.client("window.scrollTo({ top: 0, behavior: 'smooth' })");
-this.client(`$dispatch('toast', { message: 'Done!' })`);
+// Run JavaScript in the browser after the DOM patch is applied. `$` is a tagged
+// template, so interpolated values are encoded for you.
+this.$`$refs.titleInput.focus()`;
+this.$`window.scrollTo({ top: 0, behavior: 'smooth' })`;
+this.$`$dispatch('toast', { message: ${this.message} })`;
 
 // Trigger a file download in the browser
 this.download("report.csv", csvContent, "text/csv;charset=utf-8");

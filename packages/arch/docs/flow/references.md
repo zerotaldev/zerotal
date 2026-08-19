@@ -197,7 +197,7 @@ override async render() {
 | You write         | Behaviour                                                    | Compiles to     |
 | ----------------- | ------------------------------------------------------------ | --------------- |
 | `teleport="body"` | Move the element to a CSS selector target (modals, tooltips) | `flow:teleport` |
-| `ref="name"`      | Name this element as `$refs.name` for `this.client()` calls  | `x-ref`         |
+| `ref="name"`      | Name this element as `$refs.name` for ``this.$`…` `` scripts | `x-ref`         |
 
 ### Alpine plugins
 

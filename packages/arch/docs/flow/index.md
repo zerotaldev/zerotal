@@ -183,16 +183,19 @@ Router.flow("/counter", CounterPage);
 ### Reserved member names
 
 `Component` brings its own members, and a property of yours that collides with one is a
-type error. It is caught at compile time and the message is specific, but the name that
-trips people is `title` — an obvious field for a row representing a media item, a guide or
-a review, and taken by the page-title accessor.
+type error. It is caught at compile time and the message is specific, so the cost is the
+surprise rather than the failure — which is why the list is here.
+
+`title` used to be on it, and was the name that caught people most: an obvious field for a
+row representing a media item, a guide or a review. The document title is
+[`static title`](#the-page-title) now, so the instance name is yours.
 
 The names in use:
 
 | Group             | Names                                                                                                                 |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Lifecycle         | `onBoot` `onMount` `onHydrate` `onDehydrate` `onRendering` `onRendered` `onUpdate` `onUpdating` `onUpdated` `onError` |
-| Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child` `title`                                                      |
+| Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child`                                                              |
 | Actions & state   | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal`              |
 | Navigation        | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent`                                          |
 | Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `client` `$`                                                          |

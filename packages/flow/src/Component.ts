@@ -567,9 +567,6 @@ export abstract class Component {
   /** File downloads queued by download(). Sent as DownloadFrames. @internal */
   _downloads: Array<{ filename: string; content: string; mime: string }> = [];
 
-  /** Dynamic document.title set by title(). Included in the patch frame. @internal */
-  _titleValue: string | null = null;
-
   /** This component's id — set by the route handler (SSR) or the WS dispatcher. @internal */
   _flowId = "";
 
@@ -1108,34 +1105,6 @@ export abstract class Component {
       script += _encodeClientValue(values[i]) + (strings[i + 1] ?? "");
     }
     this._clientScripts.push(script);
-  }
-
-  /**
-   * Gets the current title value.
-   * @category Actions
-   */
-  title(): string;
-
-  /**
-   * Update `document.title` in the browser after this action completes.
-   *
-   * @example
-   * this.title(`Search: ${this.query}`);
-   *
-   * @deprecated Declare `static title` instead — a string, or a function of the component,
-   *             which is resolved on every frame and so tracks state on its own. Holding the
-   *             name as an instance member also makes `title` unusable as component state,
-   *             which is the more common thing to want it for.
-   * @category Actions
-   */
-  title(value: string): void;
-
-  // Implementation signature (hidden from the public API)
-  title(value?: string): void | string {
-    if (value === undefined) {
-      return this._resolveTitle() ?? "";
-    }
-    this._titleValue = value;
   }
 
   // ── Validation ────────────────────────────────────────────────────────────
@@ -1816,17 +1785,14 @@ export abstract class Component {
   // ── Effect draining (called by WS handler after action) ──────────────────
 
   /**
-   * The title to send with this frame: the imperative `title()` value if an action set one,
-   * otherwise `static title` resolved.
+   * The title to send with this frame — `static title` resolved against this component.
    *
-   * `_titleValue` wins so the deprecated imperative path keeps working for the frame it was
-   * called in. The static is resolved on every frame rather than once, which is what makes
-   * the function form track state.
+   * Resolved per frame rather than once, which is what lets the function form track state:
+   * change what it reads and the next patch carries the new title.
    *
    * @internal
    */
   _resolveTitle(): string | null {
-    if (this._titleValue !== null) return this._titleValue;
     const declared = (this.constructor as { title?: unknown }).title;
     if (typeof declared === "function") {
       return String((declared as (c: unknown) => unknown)(this));
@@ -1849,7 +1815,6 @@ export abstract class Component {
     this._redirectUrl = null;
     this._redirectStatus = null;
     this._shouldRefresh = false;
-    this._titleValue = null;
     // _errors intentionally NOT reset here: errors persist across actions so the
     // client continues showing field messages after e.g. a failed save that then
     // dispatches a flash. Call resetValidation() or a passing validate() to clear.

@@ -426,14 +426,26 @@ export class DashboardPage extends Component {
 }
 ```
 
-For per-action dynamic titles, use `this.title()` inside an action:
+### The page title
+
+`static title` takes a string, or a function of the component:
+
+```typescript
+static title = "Posts";
+static title = (c: PostPage) => `${c.post?.title ?? "Loading"} — My App`;
+```
+
+The function form is resolved on the server for every render and every patch, so a title
+that depends on state follows it without an action doing anything:
 
 ```typescript
 @expose async loadPost(slug: string): Promise<void> {
   this.post = await Post.where("slug", slug).firstOrFail();
-  this.title(`${this.post.title} — My App`);
+  // the title updates with it — nothing else to call
 }
 ```
+
+Only the resolved string is sent to the browser; the function stays on the server.
 
 For per-render `<head>` content (meta tags, OG tags), use `<Head>` inside `render()`:
 

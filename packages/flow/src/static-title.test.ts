@@ -65,26 +65,3 @@ describe("static title", () => {
     expect(c._drainEffects().title).toBe("Search: b");
   });
 });
-
-describe("the deprecated instance title()", () => {
-  it("still wins for the frame it was called in", () => {
-    const c = new Dynamic();
-    c.query = "iphone";
-    c.title("Explicit");
-    expect(c._drainEffects().title).toBe("Explicit");
-  });
-
-  it("falls back to the static on the next frame", () => {
-    const c = new Dynamic();
-    c.query = "iphone";
-    c.title("Explicit");
-    c._drainEffects();
-    expect(c._drainEffects().title).toBe("Search: iphone");
-  });
-
-  it("reads back the resolved static when called as a getter", () => {
-    const c = new Dynamic();
-    c.query = "iphone";
-    expect(c.title()).toBe("Search: iphone");
-  });
-});

@@ -1,9 +1,12 @@
 /**
  * `Component`'s own members are reserved: a page property that collides with one is a
  * type error. That is caught at compile time and the message is specific, so the cost is
- * not the failure but the surprise — `title` is an obvious name for a field on a row
- * representing a media item, a guide or a review, and it is taken by the page-title
- * accessor. There was no list to check.
+ * not the failure but the surprise, and there was no list to check.
+ *
+ * `title` was the name that kept catching people — an obvious field for a row representing
+ * a media item, a guide or a review, and taken by the page-title accessor. It is not
+ * reserved any more: the document title is `static title`, which lives on the class rather
+ * than the instance, so the instance name is the application's again.
  *
  * This pins the set so the documented list in docs/flow/index.md cannot drift silently:
  * adding a public member to the base class is a deliberate act that takes a name away
@@ -58,7 +61,6 @@ const DOCUMENTED = [
   "signal",
   "slot",
   "stream",
-  "title",
   "validate",
 ].sort();
 
@@ -69,8 +71,11 @@ describe("Component reserved member names", () => {
     expect(reservedMembers()).toEqual(DOCUMENTED);
   });
 
-  it("includes the one that actually catches people", () => {
-    expect(reservedMembers()).toContain("title");
+  it("no longer reserves title", () => {
+    // The name that caught people four times. `title` is a page's own data as often as it is
+    // the document title, so the document title moved to `static title` and the instance
+    // method went with it.
+    expect(reservedMembers()).not.toContain("title");
   });
 
   it("keeps framework internals underscore-prefixed", () => {

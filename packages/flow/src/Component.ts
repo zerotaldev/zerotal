@@ -7,7 +7,7 @@ import type {
   FlashActionStyle,
   FlashCallback,
 } from "./types.ts";
-import type { CurrentUrlOptions } from "./client/url.ts";
+import { buildUrlWithQuery, type CurrentUrlOptions } from "./client/url.ts";
 import {
   getExposedProps,
   getLockedProps,
@@ -347,19 +347,6 @@ export interface FlashBuilder {
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────────
-
-/**
- * Client-only URL helpers compile to `$flow.*` client expressions and never run on the
- * server. Reaching this means the call executed server-side — i.e. on a page the compiler
- * couldn't statically compile (so it fell back to the runtime renderer), or in a server action.
- */
-function _clientOnlyUrlHelper(method: string): never {
-  throw new Error(
-    `[Flow] this.${method}() is client-only — the compiler rewrites it to \`$flow.${method}\`. ` +
-      `It ran on the server, which means this page couldn't be statically compiled (e.g. it ` +
-      `uses a construct the AOT compiler bails on) or you called it from a server action.`,
-  );
-}
 
 /**
  * Base class for Flow pages — reactive server-side components rendered over a WebSocket.
@@ -1286,29 +1273,39 @@ export abstract class Component {
   // `$flow` is typed globally (see augment.ts); `$flow.store` is typed by `FlowStore`.
 
   /**
-   * Build a URL from the current one with merged query params — client-only. Use it in a
-   * JSX expression: `href={this.currentUrl({ query: this.q })}`, `class={this.currentUrl() === "/" ? "on" : ""}`,
-   * or `{this.currentUrl(...)}`. The compiler rewrites `this.currentUrl` → `$flow.currentUrl`
-   * so it runs on the client. It never runs on the server — hitting this throw means the call
-   * reached server code (e.g. a page the compiler couldn't statically compile, or a server action).
+   * Build a URL from the current one with merged query params. Listed params are added or
+   * updated, unlisted ones are preserved, and a `null` / `undefined` / `""` value removes one.
    *
-   * @throws {Error} when executed on the server (it is meant to be compiled to `$flow.currentUrl`).
+   * Works on both render paths, which is the point. Written in JSX —
+   * `href={this.currentUrl({ query: { page: 2 } })}` — the compiler rewrites it to
+   * `$flow.currentUrl` and it runs in the browser against `location.href`. Reached from server
+   * code it does the same work against the current request's URL, through the same pure
+   * {@link buildUrlWithQuery} helper, so the two paths cannot drift.
+   *
+   * It used to throw on the server, on the reasoning that the compiler always rewrote it. The
+   * compiler bails for reasons that have nothing to do with this call — one `__()` anywhere in
+   * the page is enough — and the page then renders through the runtime renderer, where this
+   * executes server-side. A translated page with a paginated link crashed.
+   *
    * @category Navigation & redirects
    */
-  currentUrl(_options?: CurrentUrlOptions): string {
-    return _clientOnlyUrlHelper("currentUrl");
+  currentUrl(options: CurrentUrlOptions = {}): string {
+    return buildUrlWithQuery(request().url.href, options);
   }
 
   /**
-   * Build the URL as {@link currentUrl} does, then SPA-navigate to it — client-only. Use it in a
-   * client handler: `onClick={() => this.navigateCurrent({ query: { page: 2 } })}`. The compiler
-   * rewrites it to `$flow.navigateCurrent`. To navigate from server code, return a `redirect()`.
+   * Build the URL as {@link currentUrl} does, then go to it.
    *
-   * @throws {Error} when executed on the server (it is meant to be compiled to `$flow.navigateCurrent`).
+   * In a JSX handler — `onClick={() => this.navigateCurrent({ query: { page: 2 } })}` — the
+   * compiler rewrites it to `$flow.navigateCurrent` and the browser SPA-navigates. Reached from
+   * server code it queues a redirect to the same URL: a different mechanism for the same
+   * intent, and the one the server has. See {@link currentUrl} for why both paths must work.
+   *
    * @category Navigation & redirects
    */
-  navigateCurrent(_options?: CurrentUrlOptions): Promise<void> {
-    return _clientOnlyUrlHelper("navigateCurrent");
+  navigateCurrent(options: CurrentUrlOptions = {}): Promise<void> {
+    this.redirect(buildUrlWithQuery(request().url.href, options));
+    return Promise.resolve();
   }
 
   // ── File downloads ────────────────────────────────────────────────────────

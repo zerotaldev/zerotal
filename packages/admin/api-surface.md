@@ -132,7 +132,7 @@ class AdminPage = {
   child: <C extends Component>(ChildClass: new () => C, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    stream?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>
   clearDurable: () => void
   client: (script: string) => void
-  currentUrl: (_options?: CurrentUrlOptions) => string
+  currentUrl: (options?: CurrentUrlOptions) => string
   dispatch: <K extends string>(name: K, ...args: K extends EventName ? EventArgs<FlowEvents[K]> : [payload?: Record<string, unknown>]) => void
   dispatchSelf: <K extends string>(name: K, ...args: K extends EventName ? EventArgs<FlowEvents[K]> : [payload?: Record<string, unknown>]) => void
   dispatchTo: <K extends string>(component: string, name: K, ...args: K extends EventName ? EventArgs<FlowEvents[K]> : [payload?: Record<string, unknown>]) => void
@@ -141,7 +141,7 @@ class AdminPage = {
   flash: (message: string, optionsOrLevel?: FlashLevel | FlashOptions) => FlashBuilder
   hasSlot: (name?: string) => boolean
   layout: (page: HtmlNode) => HtmlNode | Promise<HtmlNode>
-  navigateCurrent: (_options?: CurrentUrlOptions) => Promise<void>
+  navigateCurrent: (options?: CurrentUrlOptions) => Promise<void>
   onBoot: (_ctx?: HttpContext) => Promise<void>
   onDehydrate: () => Promise<void>
   onError: (error: Error) => Promise<void>

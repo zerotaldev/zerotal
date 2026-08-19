@@ -2900,12 +2900,32 @@ async function _navigateTo(href: string, options: NavigateOptions = {}): Promise
     // the animation ends at the right offset instead of sliding there.
     _applyScroll(scrollIntent, _hashOf(href));
   };
-  const _startVT = (document as unknown as { startViewTransition?: (cb: () => void) => unknown })
-    .startViewTransition;
+  // The return value is typed here rather than cast at the call site, so reading
+  // the transition's promises below costs no new assertion.
+  const _startVT = (
+    document as unknown as {
+      startViewTransition?: (cb: () => void) => {
+        ready?: Promise<unknown>;
+        finished?: Promise<unknown>;
+      };
+    }
+  ).startViewTransition;
   const _reduceMotion =
     typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (typeof _startVT === "function" && !_reduceMotion) _startVT.call(document, _swap);
-  else _swap(); // reduced-motion (or unsupported): swap instantly, no cross-page animation
+  if (typeof _startVT === "function" && !_reduceMotion) {
+    const _vt = _startVT.call(document, _swap);
+    // A navigation that starts while a transition is still running makes the
+    // browser skip the older one and reject its `ready` and `finished` promises
+    // with an AbortError. Nothing has gone wrong — the swap itself already ran
+    // inside the callback — but an unhandled rejection reaches `window.onerror`
+    // and whatever error tracker the app has wired to it. Clicking through links
+    // faster than the animation reported a stream of errors describing an
+    // animation the browser skipped on purpose.
+    void _vt?.ready?.catch(() => {});
+    void _vt?.finished?.catch(() => {});
+  } else {
+    _swap(); // reduced-motion (or unsupported): swap instantly, no cross-page animation
+  }
 
   if (push) _pushHistoryEntry(href);
   const incomingTitle = doc.querySelector("title");

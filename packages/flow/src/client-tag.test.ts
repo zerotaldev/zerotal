@@ -34,9 +34,7 @@ describe("the $ tagged template", () => {
 
   it("escapes a quote that would otherwise break the expression", () => {
     // The case that made `client()` dangerous.
-    expect(scriptFrom((c) => c.$`console.log(${'say "hi"'})`)).toBe(
-      'console.log("say \\"hi\\"")',
-    );
+    expect(scriptFrom((c) => c.$`console.log(${'say "hi"'})`)).toBe('console.log("say \\"hi\\"")');
   });
 
   it("escapes a backslash", () => {

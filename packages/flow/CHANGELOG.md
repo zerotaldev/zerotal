@@ -52,6 +52,20 @@ change.
 
 ### Fixed
 
+- **A bound password field silently discarded every keystroke.** The client-writable set was
+  `fillable` minus `hidden`, which conflates two allow-lists that answer different questions:
+  `fillable`/`guarded` govern what may be _written_, `visible`/`hidden` govern what may be
+  _shown_. A password is in both — fillable because a user sets it, hidden because the stored
+  hash must never reach a page — so subtracting made it unwritable, and
+  `<input type="password" value={this.user.password} blur />` accepted typing and dropped it
+  on arrival. `hidden` is no longer subtracted. It is still never _sent_: the hash does not
+  leave the server, and the field arrives empty as it should. A hidden value the client
+  supplied now survives until save, and one the _server_ produced is never echoed back.
+
+  A half-typed secret is also stripped from the [durable snapshot](/docs/flow/lifecycle)
+  before it is persisted — that store is written server-side after every request and may be
+  backed by Redis, which is no place for a password in progress.
+
 - **`<FileUpload>` never stopped saying "Uploading… 100%".** A successful upload left the
   dropzone reporting progress forever. The bytes had gone up, the signed reference had come
   back, and the bound property had been set — the only thing that failed was the component

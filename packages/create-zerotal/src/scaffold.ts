@@ -13,7 +13,7 @@ export type Template = 'minimal' | 'api' | 'admin' | 'flow' | 'react' | 'vue';
 // "^1.1.0" found for specifier "zerotal"` — the first thing anyone trying the
 // framework saw. `scaffold.test.ts` now asserts the two agree, so CI fails rather
 // than the user's install.
-export const ZT_VERSION = "^1.7.2";
+export const ZT_VERSION = "^1.7.3";
 
 export interface ScaffoldOptions {
   name:     string;

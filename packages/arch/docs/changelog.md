@@ -27,6 +27,59 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.7.3 — 2026-08-20
+
+Two fields that accepted input and threw it away, and a CI job that was testing nothing.
+
+### Fixed
+
+- **A boolean column could not hold a boolean on PostgreSQL.** `table.boolean()` compiled to
+  `INTEGER` on every engine — right for SQLite, which has no boolean type, and rejected by
+  PostgreSQL, which has a real one:
+
+  ```text
+  column "active" is of type integer but expression is of type boolean   (42804)
+  ```
+
+  Every insert of `true` failed, and so did every `where("active", true)`. The storage type
+  now comes from the dialect, as the auto-increment column already did. SQLite and MySQL are
+  unchanged — MySQL's `BOOLEAN` is a synonym for `TINYINT(1)` and `INTEGER` takes 0/1 either
+  way, so there was nothing broken there to fix.
+
+  **Existing PostgreSQL tables keep their integer columns.** New tables get `BOOLEAN`; a table
+  already created needs an `ALTER` if you want the column converted:
+
+  ```sql
+  ALTER TABLE posts ALTER COLUMN active TYPE boolean USING active <> 0;
+  ```
+
+- **A bound password field discarded every keystroke.** Flow's client-writable set was
+  `fillable` minus `hidden`, which conflates two allow-lists answering different questions:
+  `fillable` governs what may be _written_, `hidden` governs what may be _shown_. A password
+  is in both, so subtracting made it unwritable — `<input type="password"
+value={this.user.password} blur />` accepted typing and dropped it on arrival.
+
+  `hidden` is no longer subtracted. It is still never sent: the stored hash does not leave the
+  server and the field arrives empty. A hidden value **the client supplied** survives until
+  save; one **the server produced** is never echoed back, and a half-typed one is stripped
+  from the durable snapshot before it is persisted.
+
+### Changed
+
+- **The PostgreSQL CI job blocks merges.** It had been running the ORM suite beside a Postgres
+  container without connecting to it, so it reported success without testing anything. A smoke
+  suite now exercises schema DDL, identity columns, CRUD, type round-trips, row locks and
+  transaction rollback against a real PostgreSQL 16, and a failure fails the build. The
+  boolean defect above is what it found on its first real run.
+
+### Documented
+
+- **Flow pages take their model from the route, not from a query.** The docs opened every
+  model example by fetching the record in `onMount()`, which predates a route being able to
+  hand a component the record. `models.md` leads with the bound form; `lifecycle.md` no longer
+  presents the old id-plus-`onHydrate`-re-query as the correct pattern. The old shape still
+  works — it is simply two fields and a query doing what one field now does.
+
 ## 1.7.2 — 2026-08-18
 
 Realtime that works without being wired up, and three ways a socket could go quiet without

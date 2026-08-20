@@ -6,6 +6,7 @@ import { describe, it, expect, afterEach } from "bun:test";
 import { Icon } from "./Icon.tsx";
 import { registerIcons, resolveIcon, _resetIcons } from "../icons/loader.ts";
 import { isIconName } from "../icons/registry.ts";
+import type { IconName } from "../icons/registry.ts";
 
 afterEach(() => _resetIcons());
 
@@ -85,6 +86,54 @@ describe("<Icon>", () => {
     // to cope, because a name can arrive from a database column.
     const { html } = Icon({ name: "not-a-real-icon" as never });
     expect(html).toBe("");
+  });
+});
+
+describe("the hand-drawn icons", () => {
+  const DRAWN = ["passkey", "two-factor", "otp", "magic-link"] as const;
+
+  it.each(DRAWN)("%s resolves from the bundled set", (name) => {
+    expect(resolveIcon(name)).not.toBeNull();
+  });
+
+  it.each(DRAWN)("%s is drawn on the same 24×24 grid as the rest", (name) => {
+    const icon = resolveIcon(name)!;
+    expect(icon.width).toBe(24);
+    expect(icon.height).toBe(24);
+  });
+
+  it.each(DRAWN)("%s strokes rather than fills, like the set it sits in", (name) => {
+    // A hand-drawn body that fills would read as a solid blob beside 1,843
+    // outlines — the one way these can be wrong that no rendering test catches.
+    const { body } = resolveIcon(name)!;
+    expect(body).toContain('stroke="currentColor"');
+    expect(body).toContain('fill="none"');
+    expect(body).toContain('stroke-width="2"');
+  });
+
+  it.each(DRAWN)("%s is balanced markup", (name) => {
+    const { body } = resolveIcon(name)!;
+    const opens = (body.match(/<g[\s>]/g) ?? []).length;
+    const closes = (body.match(/<\/g>/g) ?? []).length;
+    expect(opens).toBe(closes);
+    // Self-closing children only — an unclosed <path> would swallow its siblings.
+    expect(body.replace(/<\/?g[^>]*>/g, "")).toMatch(/^(<(path|rect|circle)\b[^>]*\/>)+$/);
+  });
+
+  it.each(DRAWN)("%s keeps its geometry inside the viewBox", (name) => {
+    const { body } = resolveIcon(name)!;
+    // Every coordinate the bodies use is absolute and small; anything outside
+    // 0–24 would clip on render, which is invisible in a passing snapshot.
+    for (const n of body.match(/-?\d+(\.\d+)?/g) ?? []) {
+      expect(Math.abs(Number(n))).toBeLessThanOrEqual(24);
+    }
+  });
+
+  it("is what makes the names type-check", () => {
+    // `ShippedIconName` is derived from CUSTOM_ICONS' keys, so adding an icon
+    // widens the union with no second list to update. Compiles ⇒ derived.
+    const name: IconName = "passkey";
+    expect(resolveIcon(name)).not.toBeNull();
   });
 });
 

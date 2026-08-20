@@ -88,6 +88,26 @@ icon, not that anything answers to it. An icon that resolves to nothing renders
 nothing rather than throwing, because taking a page down over a missing glyph is
 the worse failure.
 
+## Drawn for the gaps
+
+Four names are drawn here rather than coming from the set, because the flows they
+label are ones Zerotal ships and the set has no icon for as a concept:
+
+| Name         | For                                                        |
+| ------------ | ---------------------------------------------------------- |
+| `passkey`    | WebAuthn sign-in — a fingerprint that ends in a key        |
+| `two-factor` | TOTP — a second device that has to agree                   |
+| `otp`        | An emailed one-time code, shaped like the input it goes in |
+| `magic-link` | Passwordless sign-in by link                               |
+
+The set has `key-round`, `fingerprint` and `shield-check` — the parts — and a login
+page needs the whole. They are drawn on the same 24×24 stroke grid, so they sit
+beside the other 2,060 without announcing themselves.
+
+Nearly everything else that looked missing was there under a name that reads
+differently: `git-branch` not `branch`, `file-json` not `json`, `paperclip` not
+`attachment`, `venetian-mask` for impersonation. Search before you draw.
+
 ## Your own icons
 
 A wordmark, a product glyph, a shape nobody has drawn: register it once, from a

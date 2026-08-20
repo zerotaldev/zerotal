@@ -102,7 +102,7 @@ type CustomIconName = never
 
 type GvaProps = VariantSelection<V> & {    class?: ClassValue;    className?: ClassValue;}
 
-type IconName = LucideIconName
+type IconName = LucideIconName | ShippedIconName
 
 value Accordion = unknown
 

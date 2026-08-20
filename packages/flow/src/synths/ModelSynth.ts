@@ -129,11 +129,16 @@ export function _deepToJson(value: unknown, seen = new WeakSet<object>()): unkno
 }
 
 /**
- * The fields a client may **write back**: **`fillable` minus `hidden`**.
+ * The fields a client may **write back**: `fillable`.
  *
- * Not the same as what the client is *shown* — see the synth's `dehydrate`, which sends the
- * model's own serialisation surface. Two questions, two allow-lists: `fillable`/`guarded`
- * govern writes, `visible`/`hidden` govern display, and this is the write half.
+ * `hidden` is not subtracted, because the two allow-lists answer different questions.
+ * `fillable`/`guarded` govern writes; `visible`/`hidden` govern display. A password is the
+ * case that makes the difference concrete: it is fillable because a user sets it, and hidden
+ * because the stored hash must never be shown. Subtracting made it unwritable too, which
+ * meant a bound password field silently did nothing.
+ *
+ * What keeps that safe is that a hidden field is never *sent* — see the synth's `dehydrate`
+ * and {@link _pendingSecrets}.
  *
  * `fillable` on its own is the wrong set. It is the mass-assignment allow-list — what a user
  * may *write* — and that is not the same as what may be *shown*. The ORM's own example is the
@@ -158,8 +163,7 @@ export function _writableFields(ModelClass: typeof BaseModel): readonly string[]
   const cached = _wireFieldCache.get(ModelClass);
   if (cached) return cached;
 
-  const hidden = new Set(ModelClass.hidden ?? []);
-  const fields = Object.freeze((ModelClass.fillable ?? []).filter((f) => !hidden.has(f)));
+  const fields = Object.freeze([...(ModelClass.fillable ?? [])]);
 
   _wireFieldCache.set(ModelClass, fields);
   return fields;
@@ -180,6 +184,37 @@ export function _isRegisteredModel(value: unknown): boolean {
     typeof (value as Record<string, unknown>)["constructor"] === "function" &&
     _modelClassToName.has((value as object).constructor as typeof BaseModel)
   );
+}
+
+/**
+ * Hidden fields whose current value came from the client, per model instance.
+ *
+ * A hidden column is never sent — that is the point of `hidden`, and the stored password hash
+ * has no business in a page. But a hidden column can still be *written*: a user typing a new
+ * password needs that value to survive until they save, and dropping it would mean the field
+ * silently emptied itself on the next interaction.
+ *
+ * The distinction that makes this safe is **who produced the value**. Echoing back something
+ * the client just typed tells it nothing it does not already have. Echoing a value the server
+ * computed — a generated token, a rotated secret — would be a disclosure, which is why this
+ * tracks what {@link _applyWireValues} actually applied rather than asking `$dirty()`, which
+ * cannot tell the two apart.
+ *
+ * @internal
+ */
+const _pendingSecrets = new WeakMap<object, Set<string>>();
+
+/** The hidden fields on `model` currently holding a client-supplied value. @internal */
+export function _pendingSecretKeys(model: object): readonly string[] {
+  return [...(_pendingSecrets.get(model) ?? [])];
+}
+
+/** Mark hidden fields as client-supplied, so they survive the next round-trip. @internal */
+export function _markPendingSecrets(model: object, keys: readonly string[]): void {
+  if (keys.length === 0) return;
+  const set = _pendingSecrets.get(model) ?? new Set<string>();
+  for (const k of keys) set.add(k);
+  _pendingSecrets.set(model, set);
 }
 
 /**
@@ -237,12 +272,20 @@ export function _applyWireValues(model: object, data: unknown): void {
     if (allowed.has(key)) incoming[key] = value;
   }
 
-  if (Object.keys(incoming).length > 0) {
-    // `fill` is typed `UpdatePayload<this>`, which cannot be expressed for a model this
-    // function only knows as `BaseModel`. The values are already filtered to the class's own
-    // `fillable`, so the assertion is narrower than it looks.
-    (model as unknown as { fill(v: Record<string, unknown>): unknown }).fill(incoming);
-  }
+  if (Object.keys(incoming).length === 0) return;
+
+  // `fill` is typed `UpdatePayload<this>`, which cannot be expressed for a model this
+  // function only knows as `BaseModel`. The values are already filtered to the class's own
+  // `fillable`, so the assertion is narrower than it looks.
+  (model as unknown as { fill(v: Record<string, unknown>): unknown }).fill(incoming);
+
+  // A hidden field the client just set has to travel back, or it empties itself on the next
+  // interaction. Recorded here, where we know the value came from the browser.
+  const hidden = new Set((model.constructor as typeof BaseModel).hidden ?? []);
+  _markPendingSecrets(
+    model,
+    Object.keys(incoming).filter((k) => hidden.has(k)),
+  );
 }
 
 registerSynth({
@@ -278,6 +321,15 @@ registerSynth({
       typeof toJson === "function"
         ? (_deepToJson(toJson.call(value)) as Record<string, unknown>)
         : { id: Reflect.get(value, "id") };
+
+    // Hidden fields the client itself supplied ride along, and say so in `meta` so the next
+    // hydrate keeps treating them as pending rather than as a read of the row. Nothing the
+    // *server* put there is echoed — only what came back through `updates`.
+    const pending = _pendingSecretKeys(value);
+    if (pending.length > 0) {
+      for (const key of pending) out[key] = Reflect.get(value, key);
+      meta["p"] = pending;
+    }
 
     return out;
   },
@@ -315,6 +367,12 @@ registerSynth({
     // Client *intent* arrives separately, in the frame's `updates` map, and is applied after
     // this through `_applyClientUpdate` — where `fillable` is enforced.
     _restoreSnapshotValues(model, data);
+
+    // Keep the marks across the round-trip, so a pending password survives more than one
+    // interaction rather than only the next.
+    const pending = meta["p"];
+    if (Array.isArray(pending)) _markPendingSecrets(model, pending as string[]);
+
     return model;
   },
 });

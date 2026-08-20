@@ -13,7 +13,7 @@
 import type { Component } from "./Component.ts";
 import type { Snapshot } from "./types.ts";
 import type { HttpContext } from "@zerotal/core";
-import { verifySnapshot, applySnapshotData } from "./dehydrate.ts";
+import { verifySnapshot, applySnapshotData, stripPendingSecrets } from "./dehydrate.ts";
 
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -221,7 +221,10 @@ export async function persistDurable(
     await _store.delete(key);
     return;
   }
-  await _store.set(key, snapshot, cfg.ttlMs);
+  // Never persist a hidden field the client is part-way through typing — see
+  // `stripPendingSecrets`. The wire may carry it back to the browser that produced it; a
+  // server-side store, possibly Redis, may not hold it.
+  await _store.set(key, stripPendingSecrets(snapshot), cfg.ttlMs);
 }
 
 /**

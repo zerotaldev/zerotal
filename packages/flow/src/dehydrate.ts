@@ -222,6 +222,49 @@ export async function hydrate<T extends Component>(
   return page;
 }
 
+/**
+ * A copy of `snapshot` with client-supplied hidden values removed, re-signed.
+ *
+ * A hidden field the user typed — a new password — rides in the snapshot so it survives until
+ * they save. That is fine on the wire, where it goes back to the browser that produced it,
+ * and wrong in the durable store, which writes the whole snapshot server-side after every
+ * request and may be backed by Redis. A half-typed password should not be waiting there for
+ * anyone, and resuming into one is not what durable is for.
+ *
+ * Re-signed rather than edited in place: the checksum covers `data`, so a strip without a
+ * fresh signature would produce a snapshot that fails its own verification on restore.
+ *
+ * @internal
+ */
+export function stripPendingSecrets(snapshot: Snapshot): Snapshot {
+  let touched = false;
+  const data: SnapshotData = {};
+
+  for (const [prop, [value, meta]] of Object.entries(snapshot.data)) {
+    const pending = meta["p"];
+    if (
+      !Array.isArray(pending) ||
+      pending.length === 0 ||
+      value === null ||
+      typeof value !== "object"
+    ) {
+      data[prop] = [value, meta];
+      continue;
+    }
+    touched = true;
+    const cleanValue: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+    for (const key of pending as string[]) delete cleanValue[key];
+    const cleanMeta = { ...meta };
+    delete cleanMeta["p"];
+    data[prop] = [cleanValue, cleanMeta];
+  }
+
+  if (!touched) return snapshot;
+
+  const stripped = { ...snapshot, data };
+  return { ...stripped, checksum: _sign(_signingPayload(stripped)) };
+}
+
 /** Verify a snapshot's HMAC against the current APP_KEY. Public so durable-snapshot
  *  restore can validate a stored snapshot before trusting it (a rotated key → false). */
 export function verifySnapshot(snapshot: Snapshot): boolean {

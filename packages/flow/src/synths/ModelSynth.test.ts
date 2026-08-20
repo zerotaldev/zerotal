@@ -5,7 +5,7 @@
 // Two questions, two allow-lists, and conflating them is the bug this file guards:
 //
 //   what may be SHOWN    → `toJSON()`, i.e. `visible` / `hidden`
-//   what may be WRITTEN  → `fillable` − `hidden`
+//   what may be WRITTEN  → `fillable` (hidden is not subtracted — a password is both)
 //
 // Using the writable set for both would make `@locked` pointless: a read-only display model
 // declares no `fillable`, so it would arrive as a bare id — and a prop that puts nothing on
@@ -13,6 +13,7 @@
 import { describe, it, expect } from "bun:test";
 import { serializeValue } from "./index.ts";
 import {
+  _pendingSecretKeys,
   _writableFields,
   _applyWireValues,
   _restoreSnapshotValues,
@@ -84,8 +85,11 @@ class Report {
 // already declares, so nothing has to be wired up per component.
 
 describe("_writableFields", () => {
-  it("is fillable minus hidden", () => {
-    expect(_writableFields(User as never)).toEqual(["name", "email"]);
+  it("is fillable — hidden is not subtracted", () => {
+    // The two allow-lists answer different questions. A password is fillable because a user
+    // sets it and hidden because the stored hash must never be shown; subtracting made it
+    // unwritable, so a bound password field silently did nothing.
+    expect(_writableFields(User as never)).toEqual(["name", "email", "password"]);
   });
 
   it("is empty when the model declares no fillable", () => {
@@ -137,10 +141,12 @@ describe("what the client may write back", () => {
     expect(u.filled).toBeNull();
   });
 
-  it("ignores a hidden field even though it is fillable", () => {
+  it("accepts a hidden field that is fillable", () => {
+    // Writable, because `hidden` is about display. It is never *sent* unless the client
+    // supplied it — see the pending-secret tests below.
     const u = new User();
     _applyWireValues(u, { password: "hunter2" });
-    expect(u.password).toBe("$2b$10$secret");
+    expect(u.password).toBe("hunter2");
   });
 
   it("cannot rewrite the identity", () => {
@@ -315,5 +321,45 @@ describe("nested relations", () => {
     const a = new Author() as Author & { self?: unknown };
     a.self = a;
     expect(() => serializeValue(a)).not.toThrow();
+  });
+});
+
+describe("a hidden field the client is typing", () => {
+  it("is not sent until the client supplies one", () => {
+    // The stored hash never leaves. That is what `hidden` is for.
+    const [data, meta] = serializeValue(new User());
+    expect(data).not.toHaveProperty("password");
+    expect(meta).not.toHaveProperty("p");
+  });
+
+  it("is writable — hidden governs display, not writes", () => {
+    // Subtracting `hidden` from the write set made a bound password field silently do
+    // nothing, which is worse than refusing it.
+    const u = new User();
+    _applyWireValues(u, { password: "hunter2" });
+    expect(u.password).toBe("hunter2");
+  });
+
+  it("travels back once the client has supplied it", () => {
+    // Echoing what the browser just typed tells it nothing it does not already have, and
+    // without this the field empties itself on the next interaction.
+    const u = new User();
+    _applyWireValues(u, { password: "hunter2" });
+
+    expect(_pendingSecretKeys(u)).toEqual(["password"]);
+    const [data, meta] = serializeValue(u);
+    expect((data as Record<string, unknown>)["password"]).toBe("hunter2");
+    expect((meta as Record<string, unknown>)["p"]).toEqual(["password"]);
+  });
+
+  it("does not echo a value the server produced", () => {
+    // A rotated secret or a generated token is not the client's to receive. Only what came
+    // back through an update is marked, which is why this tracks applied keys rather than
+    // asking `$dirty()`.
+    const u = new User();
+    u.password = "server-generated-token";
+    const [data, meta] = serializeValue(u);
+    expect(data).not.toHaveProperty("password");
+    expect(meta).not.toHaveProperty("p");
   });
 });

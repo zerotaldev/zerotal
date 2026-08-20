@@ -10,6 +10,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **A boolean column could not hold a boolean on PostgreSQL.** `table.boolean()` compiled to
+  `INTEGER` on every engine — correct on SQLite, which has no boolean type, and rejected outright
+  by PostgreSQL: `column "…" is of type integer but expression is of type boolean` (42804) on the
+  first insert, and again on any `where(column, true)`. `DEFAULT` clauses failed the same way, a
+  boolean default having been serialised to `1`. The storage type now comes from the dialect, as
+  the auto-increment column already did. SQLite and MySQL are unchanged; existing PostgreSQL
+  tables keep their integer columns until a migration alters them. Found by the new smoke suite
+  that runs the ORM against a real PostgreSQL in CI.
+
 - **A seeder that failed partway left its rows behind.** `Seeder.call()` has always wrapped
   _composed_ seeders in a transaction, so a `DatabaseSeeder` that delegates was atomic and one that
   does its work inline — which is most of them — was not. A failure on the fourth table committed

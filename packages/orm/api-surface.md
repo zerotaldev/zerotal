@@ -182,7 +182,7 @@ class Cast = {
 }
 
 class ColumnBuilder = {
-  new <Locked extends string = never>(name: string, _sqlType: string, isPrimary?: boolean, isAutoIncrement?: boolean): ColumnBuilder<Locked>
+  new <Locked extends string = never>(name: string, _sqlType: string, isPrimary?: boolean, isAutoIncrement?: boolean, _isBoolean?: boolean): ColumnBuilder<Locked>
   after: (_column: string) => ColumnBuilder<Locked>
   alter: () => ColumnBuilder<Locked>
   before: (_column: string) => ColumnBuilder<Locked>
@@ -566,9 +566,11 @@ class MysqlDialect = {
   advisoryLockSql: (key: number) => DialectQuery
   advisoryUnlockSql: (key: number) => DialectQuery
   autoIncrementColumn: (column: string) => string
+  booleanLiteral: (value: boolean) => string
   dateExpr: (part: DatePart, column: string) => string
   hasColumnSql: (table: string, column: string) => DialectQuery
   hasTableSql: (table: string) => DialectQuery
+  readonly booleanType: 'INTEGER'
   readonly name: 'mysql'
   readonly supportsAdvisoryLocks: true
   readonly supportsTransactionalDdl: false
@@ -605,9 +607,11 @@ class PostgresDialect = {
   advisoryLockSql: (key: number) => DialectQuery
   advisoryUnlockSql: (key: number) => DialectQuery
   autoIncrementColumn: (column: string) => string
+  booleanLiteral: (value: boolean) => string
   dateExpr: (part: DatePart, column: string) => string
   hasColumnSql: (table: string, column: string) => DialectQuery
   hasTableSql: (table: string) => DialectQuery
+  readonly booleanType: 'BOOLEAN'
   readonly name: 'postgres'
   readonly supportsAdvisoryLocks: true
   readonly supportsTransactionalDdl: true
@@ -742,9 +746,11 @@ class SqliteDialect = {
   advisoryLockSql: () => DialectQuery | null
   advisoryUnlockSql: () => DialectQuery | null
   autoIncrementColumn: (column: string) => string
+  booleanLiteral: (value: boolean) => string
   dateExpr: (part: DatePart, column: string) => string
   hasColumnSql: (table: string, column: string) => DialectQuery
   hasTableSql: (table: string) => DialectQuery
+  readonly booleanType: 'INTEGER'
   readonly name: 'sqlite'
   readonly supportsAdvisoryLocks: false
   readonly supportsTransactionalDdl: true
@@ -1260,9 +1266,11 @@ interface SqlDialect = {
   advisoryLockSql: (key: number) => DialectQuery | null
   advisoryUnlockSql: (key: number) => DialectQuery | null
   autoIncrementColumn: (column: string) => string
+  booleanLiteral: (value: boolean) => string
   dateExpr: (part: DatePart, column: string) => string
   hasColumnSql: (table: string, column: string) => DialectQuery
   hasTableSql: (table: string) => DialectQuery
+  readonly booleanType: string
   readonly name: DialectName
   readonly supportsAdvisoryLocks: boolean
   readonly supportsTransactionalDdl: boolean

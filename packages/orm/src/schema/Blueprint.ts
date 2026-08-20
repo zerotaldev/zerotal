@@ -314,12 +314,15 @@ export class Blueprint {
   // ── Boolean ───────────────────────────────────────────────────────────────
 
   /**
-   * Boolean column. Stored as `INTEGER` (0 / 1); JS booleans passed to
-   * {@link ColumnBuilder.default} serialise to `1` / `0`.
+   * Boolean column. The storage type is the engine's: `INTEGER` holding 0 / 1 on
+   * SQLite and MySQL, a real `BOOLEAN` on PostgreSQL — which rejects the integer
+   * form for both assignment and comparison, so emitting `INTEGER` everywhere
+   * built a column that would not take its own booleans. JS booleans passed to
+   * {@link ColumnBuilder.default} follow the same engine's spelling.
    * @category Column types
    */
   boolean(name: string): ColumnBuilder {
-    return this._add(new ColumnBuilder(name, "INTEGER"));
+    return this._add(new ColumnBuilder(name, "INTEGER", false, false, true));
   }
 
   // ── Date / time columns ───────────────────────────────────────────────────

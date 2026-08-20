@@ -51,6 +51,13 @@ export class MysqlDialect implements SqlDialect {
     return `${column} INT AUTO_INCREMENT PRIMARY KEY`;
   }
 
+  // MySQL BOOLEAN is a synonym for TINYINT(1) and INTEGER accepts 0/1 all the same.
+  readonly booleanType = "INTEGER";
+
+  booleanLiteral(value: boolean): string {
+    return value ? "1" : "0";
+  }
+
   advisoryLockSql(key: number): DialectQuery {
     return { sql: `SELECT GET_LOCK(?, -1)`, params: [`zerotal_lock_${key}`] };
   }

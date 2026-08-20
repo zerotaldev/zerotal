@@ -48,6 +48,13 @@ export class SqliteDialect implements SqlDialect {
     return `${column} INTEGER PRIMARY KEY AUTOINCREMENT`;
   }
 
+  // SQLite has no boolean type — 0/1 in an INTEGER is the storage class it uses.
+  readonly booleanType = "INTEGER";
+
+  booleanLiteral(value: boolean): string {
+    return value ? "1" : "0";
+  }
+
   advisoryLockSql(): DialectQuery | null {
     return null;
   }

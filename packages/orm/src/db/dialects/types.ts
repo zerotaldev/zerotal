@@ -56,6 +56,26 @@ export interface SqlDialect {
    */
   autoIncrementColumn(column: string): string;
 
+  /**
+   * The column type a portable `table.boolean()` compiles to.
+   *
+   * SQLite has no boolean type and stores 0/1 in an `INTEGER`, which is why the
+   * Blueprint emitted `INTEGER` for every engine. PostgreSQL has a real `boolean`
+   * and refuses to compare or assign one against an integer column, so a table
+   * built that way rejected its own booleans — `column "active" is of type integer
+   * but expression is of type boolean` (SQLSTATE 42804) on the first insert, and
+   * again on any `where("active", true)`. Nothing caught it because no test
+   * executed the DDL against a server; `postgres.smoke.test.ts` now does.
+   *
+   * MySQL keeps `INTEGER`: its `BOOLEAN` is a synonym for `TINYINT(1)` and it
+   * accepts 0/1 either way, so there is no defect there to fix and no reason to
+   * churn the DDL of an engine no CI job covers.
+   */
+  readonly booleanType: string;
+
+  /** A boolean as this engine spells it in a `DEFAULT` clause. */
+  booleanLiteral(value: boolean): string;
+
   /** Whether the engine supports application-level advisory locks. */
   readonly supportsAdvisoryLocks: boolean;
 

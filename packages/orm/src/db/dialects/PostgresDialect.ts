@@ -48,6 +48,12 @@ export class PostgresDialect implements SqlDialect {
     return `${column} INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY`;
   }
 
+  readonly booleanType = "BOOLEAN";
+
+  booleanLiteral(value: boolean): string {
+    return value ? "TRUE" : "FALSE";
+  }
+
   advisoryLockSql(key: number): DialectQuery {
     return { sql: `SELECT pg_advisory_lock(?)`, params: [key] };
   }

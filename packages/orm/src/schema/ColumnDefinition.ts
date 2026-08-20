@@ -64,6 +64,11 @@ export class ColumnBuilder<Locked extends string = never> {
     private _sqlType: string,
     isPrimary = false,
     isAutoIncrement = false,
+    /**
+     * Logically a boolean, whatever `_sqlType` says. The engine decides the
+     * storage type at compile time — see {@link SqlDialect.booleanType}.
+     */
+    private _isBoolean = false,
   ) {
     this._isPrimary = isPrimary;
     this._isAutoIncr = isAutoIncrement;
@@ -324,13 +329,16 @@ export class ColumnBuilder<Locked extends string = never> {
     // PostgreSQL a syntax error and against MySQL a 1064.
     if (this._isAutoIncr) return getDialect(dialect).autoIncrementColumn(this.name);
 
-    const parts: string[] = [`${this.name} ${this._sqlType}`];
+    // A boolean's storage type is the engine's to choose: SQLite stores 0/1 in an
+    // INTEGER, PostgreSQL has a real one and rejects the integer form outright.
+    const sqlType = this._isBoolean ? getDialect(dialect).booleanType : this._sqlType;
+    const parts: string[] = [`${this.name} ${sqlType}`];
 
     if (this._isPrimary) parts.push("PRIMARY KEY");
     if (!this._isNullable && !this._isPrimary) parts.push("NOT NULL");
 
     if (this._useCurrent) parts.push("DEFAULT CURRENT_TIMESTAMP");
-    else if (this._hasDefault) parts.push(`DEFAULT ${this._serializeDefault()}`);
+    else if (this._hasDefault) parts.push(`DEFAULT ${this._serializeDefault(dialect)}`);
 
     if (this._isUnique) parts.push("UNIQUE");
     if (this._check) parts.push(`CHECK (${this._check})`);
@@ -340,10 +348,11 @@ export class ColumnBuilder<Locked extends string = never> {
     return parts.join(" ");
   }
 
-  private _serializeDefault(): string {
+  private _serializeDefault(dialect: DialectName = "sqlite"): string {
     const v = this._default;
     if (v === null) return "NULL";
-    if (typeof v === "boolean") return v ? "1" : "0";
+    // `DEFAULT 1` on a PostgreSQL boolean column is the same 42804 the value itself hit.
+    if (typeof v === "boolean") return getDialect(dialect).booleanLiteral(v);
     if (typeof v === "string") return `'${v.replace(/'/g, "''")}'`;
     return String(v);
   }

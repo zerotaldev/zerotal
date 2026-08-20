@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.2] — 2026-08-18
+
 ### Fixed
 
 - **`queue:work` listened on one hardcoded queue, so queued notifications were never sent.**

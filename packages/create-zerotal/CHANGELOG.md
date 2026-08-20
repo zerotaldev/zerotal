@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.2] — 2026-08-18
+
 ### Added
 
 - **A non-interactive mode, so the scaffolder can be scripted.** Every prompt now has a flag —
@@ -27,7 +29,6 @@ follows the Zerotal monorepo's unified versioning.
   ignoring `--tempalte=api` means asking again for something the caller thought they had given,
   which in CI is the hang all over again. A failed `bun install` also exits non-zero when there is
   no terminal — a half-built project reported as a success is worse than one that stops.
-
 
 ## [1.6.3] — 2026-08-15
 

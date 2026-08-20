@@ -149,6 +149,24 @@ that keeps it complete.
 The same rule governs a page's own length: a section that has grown into a second
 subject is a sign it wants to be its own page, or to move to the one that owns it.
 
+## Changelogs
+
+Each package keeps its own `CHANGELOG.md`. Add what you changed under
+`## [Unreleased]` in the package you changed — that is where in-flight work
+belongs, and the entry travels with the code rather than being reconstructed later.
+
+Cutting a release moves those entries under the version, which is a step and not an
+automatic consequence:
+
+```bash
+bun run changelog:release 1.7.4
+```
+
+Skipping it is how `[Unreleased]` came to hold four releases of shipped work —
+`@zerotal/flow-ui`'s newest heading read `[1.5.0]` while 1.7.3 was on npm. Someone
+upgrading reads "Unreleased" and concludes none of it is in the version they are
+taking, when all of it is.
+
 ## Pull requests
 
 - Keep PRs focused — one logical change per PR.

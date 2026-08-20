@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.3] — 2026-08-20
+
 ### Fixed
 
 - **`make:request` generates a file that compiles.** The stub imported `@zerotal/validator`,
@@ -36,6 +38,8 @@ follows the Zerotal monorepo's unified versioning.
   umbrella, a Bun/Node builtin, a relative path, nor one of the scoped packages a template
   actually installs. Each generator's own test had only checked that the output mentioned the
   class being made, which is why none of this showed.
+
+## [1.7.2] — 2026-08-18
 
 ### Added
 

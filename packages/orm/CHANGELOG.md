@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.3] — 2026-08-20
+
 ### Fixed
 
 - **A boolean column could not hold a boolean on PostgreSQL.** `table.boolean()` compiled to
@@ -18,6 +20,10 @@ follows the Zerotal monorepo's unified versioning.
   the auto-increment column already did. SQLite and MySQL are unchanged; existing PostgreSQL
   tables keep their integer columns until a migration alters them. Found by the new smoke suite
   that runs the ORM against a real PostgreSQL in CI.
+
+## [1.7.2] — 2026-08-18
+
+### Fixed
 
 - **A seeder that failed partway left its rows behind.** `Seeder.call()` has always wrapped
   _composed_ seeders in a transaction, so a `DatabaseSeeder` that delegates was atomic and one that
@@ -30,8 +36,6 @@ follows the Zerotal monorepo's unified versioning.
   is already open, so an inner `call()` still rolls back independently. The wrapper is skipped when
   no connection is bound, because a seeder is not obliged to touch the database and an app that has
   not configured one should not fail to seed over a transaction it never needed.
-
-### Fixed
 
 - **`DatabaseProvider` now runs in `worker`, so `zt queue:work` can boot.** It did not, and the
   consequence was total rather than partial: `QueueProvider` _does_ run in `worker`, the
@@ -50,6 +54,10 @@ follows the Zerotal monorepo's unified versioning.
   session; the ORM being absent was an oversight, dating to 1.0.2.
 
   Found building the first cookbook app, whose first queued job could not run.
+
+## [1.7.1] — 2026-08-16
+
+### Fixed
 
 - **Relation keys now accept the JS spelling, like every other identifier.** The convention is
   camelCase in the application and snake_case in the database, converted on the way through —

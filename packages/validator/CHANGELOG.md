@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.3] — 2026-08-20
+
 ### Fixed
 
 - **An optional `number` or `date` reads `""` as absence.** An HTML `<select>` has one way to

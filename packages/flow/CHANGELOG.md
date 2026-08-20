@@ -11,6 +11,26 @@ change.
 
 ## [Unreleased]
 
+## [1.7.3] — 2026-08-20
+
+### Fixed
+
+- **A bound password field silently discarded every keystroke.** The client-writable set was
+  `fillable` minus `hidden`, which conflates two allow-lists that answer different questions:
+  `fillable`/`guarded` govern what may be _written_, `visible`/`hidden` govern what may be
+  _shown_. A password is in both — fillable because a user sets it, hidden because the stored
+  hash must never reach a page — so subtracting made it unwritable, and
+  `<input type="password" value={this.user.password} blur />` accepted typing and dropped it
+  on arrival. `hidden` is no longer subtracted. It is still never _sent_: the hash does not
+  leave the server, and the field arrives empty as it should. A hidden value the client
+  supplied now survives until save, and one the _server_ produced is never echoed back.
+
+  A half-typed secret is also stripped from the [durable snapshot](/docs/flow/lifecycle)
+  before it is persisted — that store is written server-side after every request and may be
+  backed by Redis, which is no place for a password in progress.
+
+## [1.7.2] — 2026-08-18
+
 ### Added
 
 - **`@on` can name a channel per instance.** A listener's channel is read off the _class_, so
@@ -51,20 +71,6 @@ change.
   both may be set.
 
 ### Fixed
-
-- **A bound password field silently discarded every keystroke.** The client-writable set was
-  `fillable` minus `hidden`, which conflates two allow-lists that answer different questions:
-  `fillable`/`guarded` govern what may be _written_, `visible`/`hidden` govern what may be
-  _shown_. A password is in both — fillable because a user sets it, hidden because the stored
-  hash must never reach a page — so subtracting made it unwritable, and
-  `<input type="password" value={this.user.password} blur />` accepted typing and dropped it
-  on arrival. `hidden` is no longer subtracted. It is still never _sent_: the hash does not
-  leave the server, and the field arrives empty as it should. A hidden value the client
-  supplied now survives until save, and one the _server_ produced is never echoed back.
-
-  A half-typed secret is also stripped from the [durable snapshot](/docs/flow/lifecycle)
-  before it is persisted — that store is written server-side after every request and may be
-  backed by Redis, which is no place for a password in progress.
 
 - **`<FileUpload>` never stopped saying "Uploading… 100%".** A successful upload left the
   dropzone reporting progress forever. The bytes had gone up, the signed reference had come
@@ -115,20 +121,23 @@ change.
 
 ### Documented
 
-Four behaviours that were true but written down nowhere, each found by hitting it:
-
 - **AOT compilation and `__()` are mutually exclusive** — a function call in a text child forces
   the runtime fallback, so a translated app compiles no pages at all. Normally that is a speed
   cost; under `cspSafe`, where every page must compile, it is a build failure. `performance.md`
   now lists what blocks compilation and what to do about it.
+
 - **`FlowTest` opens no request scope**, so `Auth.user()` and `Auth.attempt()` throw and no
   action behind a sign-in can be driven without wrapping it. `testing.md` carries the wrapper.
+
 - **A layout cannot set the document's `lang`** — Flow emits `<html lang="en">` and offers no
   hook, so a localised app marks up its wrapper instead and the root element stays wrong.
+
 - **`<Tabs>` selection is client-only and its strip is not themeable** — no bindable prop, so no
   `?tab=`, no back button, and hardcoded gray/indigo that is invisible on a light surface.
+
 - **Flow and `zerotal/view` components do not interoperate** — the two JSX runtimes produce
   different element types (`HtmlNode` vs `SafeHtml`), so a view `FC` in a Flow page is `TS2786`.
+
 - **`onSort` does not say which container took the drop** — the destination is encoded in which
   method runs, so dragging between containers needs one action per container.
 

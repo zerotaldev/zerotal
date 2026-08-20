@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.2] — 2026-08-18
+
 ### Fixed
 
 - **The documented import could not be bundled for a browser.** `import { Socket } from

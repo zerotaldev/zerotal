@@ -266,7 +266,7 @@ interface WsConnectionData = {
   userId?: string | number
 }
 
-type AuthorizeResult = {    matched: false;} | {    matched: true;    result: boolean | PresenceMemberData | null | undefined;}
+type AuthorizeResult = { matched: false } | { matched: true; result: boolean | PresenceMemberData | null | undefined }
 
 type BroadcastChannelMap = {    [x: string]: Record<string, object>;}
 

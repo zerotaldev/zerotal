@@ -42,6 +42,49 @@ const FUNCTION_STATICS = new Set([
   "toString",
 ]);
 
+/**
+ * A union type alias rendered in the order it was **written**, or null when the
+ * declaration is not a union.
+ *
+ * `checker.typeToString` orders union constituents by internal type id, and a
+ * string-literal type gets its id when the checker first interns it *anywhere in
+ * the program*. So adding an unrelated file can reshuffle a union in a package
+ * that did not change: `SpanKind` in `@zerotal/monitor` is declared
+ * `boot | middleware | controller | query | cache | http | view`, has not been
+ * touched since the first commit, and has been emitted in two different orders,
+ * neither of them that one. The snapshot then reports a diff nobody made, which
+ * is exactly the noise that teaches people to regenerate without reading.
+ *
+ * Source order is used rather than a sort because it carries intent — a severity
+ * runs `ok | warn | bad`, not `bad | ok | warn` — and it is stable by
+ * construction: the text only changes when someone edits it.
+ */
+function unionInSourceOrder(
+  checker: ts.TypeChecker,
+  decl: ts.Declaration | undefined,
+): string | null {
+  if (!decl || !ts.isTypeAliasDeclaration(decl) || !ts.isUnionTypeNode(decl.type)) return null;
+
+  // Each constituent as written, not as resolved. Resolving loses the names the
+  // author reached for — `ClassToken<T>` became `new (...args: any[]) => T` and
+  // `Record<string, unknown>` became `{ [x: string]: unknown; }` — which is a
+  // worse snapshot than the one this set out to stabilise. A named constituent
+  // that is itself exported has its own entry; one that is not was never
+  // expanded here before either.
+  return decl.type.types
+    .map((node) =>
+      node
+        .getText()
+        .replace(/\s+/g, " ")
+        // Match `UseSingleQuotesForStringLiteralType`, which every other line in
+        // the snapshot is rendered with — source text would otherwise make the
+        // unions the only double-quoted thing in the file.
+        .replace(/"([^"]*)"/g, "'$1'")
+        .trim(),
+    )
+    .join(" | ");
+}
+
 const TYPE_FLAGS =
   ts.TypeFormatFlags.NoTruncation |
   ts.TypeFormatFlags.UseSingleQuotesForStringLiteralType |
@@ -229,7 +272,9 @@ function renderExport(checker: ts.TypeChecker, exportName: string, symbol: ts.Sy
     signature = body ? `{\n${body}\n}` : "{}";
   } else if (kind === "type") {
     const type = checker.getDeclaredTypeOfSymbol(resolved);
-    signature = checker.typeToString(type, decl, TYPE_FLAGS | ts.TypeFormatFlags.InTypeAlias);
+    signature =
+      unionInSourceOrder(checker, decl) ??
+      checker.typeToString(type, decl, TYPE_FLAGS | ts.TypeFormatFlags.InTypeAlias);
   } else if (decl) {
     const type = checker.getTypeOfSymbolAtLocation(resolved, decl);
     signature = checker.typeToString(type, decl, TYPE_FLAGS);

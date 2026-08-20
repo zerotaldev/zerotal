@@ -298,13 +298,13 @@ interface WorkerPoolOptions = {
   size: number
 }
 
-type BatchStatus = 'failed' | 'pending' | 'complete'
+type BatchStatus = 'pending' | 'complete' | 'failed'
 
 type JobStatus = 'dispatched' | 'completed' | 'failed' | 'retried'
 
 type SerializedJob = {    className: string;    payload: Record<string, unknown>;}
 
-type WorkerResult = {    success: true;} | {    success: false;    error: string;}
+type WorkerResult = { success: true } | { success: false; error: string }
 
 ## ./commands  `(./src/commands/index.ts)`
 

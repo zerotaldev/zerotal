@@ -605,7 +605,7 @@ interface OpenAiConfigShape = {
 
 type AiConfigInput = {    default?: string | undefined;    drivers?: DeepPartial<{        anthropic?: AnthropicConfigShape;        openai?: OpenAiConfigShape;        ollama?: OllamaConfigShape;    }> | undefined;    embeddings?: DeepPartial<EmbeddingsConfigShape> | undefined;    limits?: DeepPartial<AiLimitsConfigShape> | undefined;    redact?: boolean | undefined;    agent?: DeepPartial<AiAgentConfigShape> | undefined;}
 
-type AiEffort = 'max' | 'medium' | 'low' | 'high' | 'xhigh'
+type AiEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 type AiProviderOptions = {    [x: string]: Record<string, unknown>;}
 
@@ -615,6 +615,6 @@ type AiRole = 'user' | 'assistant'
 
 type AiStopReason = 'end_turn' | 'max_tokens' | 'tool_use' | 'pause_turn' | 'refusal' | 'stop_sequence' | 'unknown'
 
-type AiStreamChunk = {    type: 'text';    text: string;} | {    type: 'thinking';    text: string;} | {    type: 'tool_call';    call: AiToolCall;} | {    type: 'done';    response: AiResponse;}
+type AiStreamChunk = { type: 'text'; text: string } | { type: 'thinking'; text: string } | { type: 'tool_call'; call: AiToolCall } | { type: 'done'; response: AiResponse }
 
 type SchemaInput = {    [x: string]: FieldRuleDefinition | FieldRule;}

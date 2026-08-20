@@ -1112,7 +1112,7 @@ type AppScopeInstaller = () => () => void
 
 type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 
-type BindingToken = keyof ContainerBindings | ClassToken<T> | AbstractToken<T>
+type BindingToken = ClassToken<T> | AbstractToken<T> | keyof ContainerBindings
 
 type ClassRef = abstract new (...args: never[]) => unknown
 
@@ -1140,7 +1140,7 @@ type FileRouteResolver = (ctx: FileRouteContext) => boolean
 
 type FileRoutingConfig = {    [x: string]: FileRoutingEntry;}
 
-type FileRoutingEntry = string | {    dir: string;    prefix?: string;    middleware?: MiddlewareInput;}
+type FileRoutingEntry = string | { dir: string; prefix?: string; middleware?: MiddlewareInput }
 
 type FlagDef = {    name: string;    short?: string;    type: 'string' | 'boolean' | 'number';    description?: string;    default?: unknown;}
 
@@ -1178,7 +1178,7 @@ type RouteTarget = string
 
 type RoutingConfig = {    [x: string]: RoutingEntry;}
 
-type RoutingEntry = string | {    file: string;    prefix?: string;    middleware?: MiddlewareInput;}
+type RoutingEntry = string | { file: string; prefix?: string; middleware?: MiddlewareInput }
 
 type SameSite = 'Strict' | 'Lax' | 'None'
 
@@ -3106,7 +3106,7 @@ type ResponseInterceptor = (ctx: ResponseContext) => ResponseContext | Promise<R
 
 type ResponseOf = `${Method} ${Path}` extends keyof Routes ? Routes[`${Method} ${Path}`] extends {    response: infer R;} ? R : unknown : unknown
 
-type SocketState = 'error' | 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
+type SocketState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error'
 
 type TokenSource = string | (() => string | null | undefined | Promise<string | null | undefined>)
 
@@ -4099,7 +4099,7 @@ interface RegisteredConfigValidator = {
   validate: ConfigValidator
 }
 
-type AssetLoaderKind = 'text' | 'file' | 'json' | 'dataurl' | 'base64' | 'toml'
+type AssetLoaderKind = 'file' | 'dataurl' | 'base64' | 'text' | 'json' | 'toml'
 
 type ConfigIssueLevel = 'error' | 'warning'
 
@@ -4316,7 +4316,7 @@ const t = {    readonly string: () => Def<string | undefined>;    readonly numbe
 
 type EnvOutput = { readonly [K in keyof S]: InferDef<S[K]>; }
 
-type FieldType = 'string' | 'number' | 'boolean' | 'url' | 'enum' | 'port'
+type FieldType = 'string' | 'number' | 'boolean' | 'enum' | 'url' | 'port'
 
 type InferDef = D extends Def<infer T> ? T : never
 
@@ -4666,7 +4666,7 @@ interface WebContext = {
   view: (markup: string | {    toString(): string;}, status?: number) => void
 }
 
-type AnsiColor = 'cyan' | 'yellow' | 'green' | 'blue' | 'red' | 'dim'
+type AnsiColor = 'red' | 'green' | 'yellow' | 'blue' | 'cyan' | 'dim'
 
 type Channel = 'web' | 'json' | 'cli'
 
@@ -4927,11 +4927,11 @@ interface LoggingConfigShape = {
   slowQueryMs?: number
 }
 
-type ChannelConfig = {    driver: 'console';    level?: LogLevel;    format?: 'json' | 'pretty';} | {    driver: 'single';    level?: LogLevel;    path: string;} | {    driver: 'daily';    level?: LogLevel;    path: string;    days?: number;} | {    driver: 'stack';    level?: LogLevel;    channels: string[];} | {    driver: 'null';}
+type ChannelConfig = { driver: 'console'; level?: LogLevel; format?: 'json' | 'pretty' } | { driver: 'single'; level?: LogLevel; path: string } | { driver: 'daily'; level?: LogLevel; path: string; days?: number } | { driver: 'stack'; level?: LogLevel; channels: string[] } | { driver: 'null' }
 
-type LogLevel = 'error' | 'info' | 'warn' | 'debug' | 'fatal'
+type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal'
 
-type TableData = Record<string, unknown> | readonly Record<string, unknown>[]
+type TableData = Record<string, unknown> | ReadonlyArray<Record<string, unknown>>
 
 ## ./media  `(./src/media.ts)`
 
@@ -5379,7 +5379,7 @@ interface ResponsiveImageSet = {
   placeholder?: string
 }
 
-type ConversionFit = 'fill' | 'inside' | 'cover'
+type ConversionFit = 'inside' | 'fill' | 'cover'
 
 type ConversionFormat = SafeConversionFormat | 'avif' | 'heic'
 
@@ -5387,7 +5387,7 @@ type ConversionMap = {    [x: string]: ConversionDefinition;}
 
 type MediaCollections = {    [x: string]: CollectionDefinition | (() => CollectionDefinition);}
 
-type MediaSource = ArrayBuffer | Blob | UploadedFile | File | Uint8Array<ArrayBufferLike>
+type MediaSource = UploadedFile | File | Blob | Uint8Array | ArrayBuffer
 
 type SafeConversionFormat = 'jpeg' | 'png' | 'webp'
 
@@ -6729,13 +6729,13 @@ type ClassRef = abstract new (...args: never[]) => unknown
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 
-type ColumnShorthand = 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'encrypted' | 'encrypted:json'
+type ColumnShorthand = 'string' | 'text' | 'integer' | 'number' | 'float' | 'boolean' | 'datetime' | 'date' | 'json' | 'array' | 'encrypted' | 'encrypted:json'
 
 type Constructor = new (...args: any[]) => T
 
 type ContextConnectionResolver = (ModelClass?: typeof BaseModel) => SQLInstance | null
 
-type DatePart = 'date' | 'time' | 'year' | 'month' | 'day'
+type DatePart = 'date' | 'time' | 'day' | 'month' | 'year'
 
 type DialectName = 'sqlite' | 'postgres' | 'mysql'
 
@@ -7070,13 +7070,13 @@ interface WorkerPoolOptions = {
   size: number
 }
 
-type BatchStatus = 'failed' | 'pending' | 'complete'
+type BatchStatus = 'pending' | 'complete' | 'failed'
 
 type JobStatus = 'dispatched' | 'completed' | 'failed' | 'retried'
 
 type SerializedJob = {    className: string;    payload: Record<string, unknown>;}
 
-type WorkerResult = {    success: true;} | {    success: false;    error: string;}
+type WorkerResult = { success: true } | { success: false; error: string }
 
 ## ./routes  `(./src/routes.ts)`
 
@@ -7382,7 +7382,7 @@ interface RedactGraphOptions = {
   tooDeep: string
 }
 
-type HashAlgorithm = 'bcrypt' | 'argon2id' | 'argon2i' | 'argon2d'
+type HashAlgorithm = 'argon2id' | 'argon2i' | 'argon2d' | 'bcrypt'
 
 ## ./session  `(./src/session.ts)`
 
@@ -8062,7 +8062,7 @@ type FakeFile = {    create(name: string, content?: string | Uint8Array, type?: 
 
 type SessionDecoder = (response: Response) => Promise<Record<string, unknown> | null>
 
-type TestFormValue = string | number | boolean | Blob | File | TestFileInput | null | undefined
+type TestFormValue = string | number | boolean | null | undefined | TestFileInput | File | Blob
 
 ## ./validator  `(./src/validator.ts)`
 

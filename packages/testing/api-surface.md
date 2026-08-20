@@ -290,7 +290,7 @@ type FakeFile = {    create(name: string, content?: string | Uint8Array, type?: 
 
 type SessionDecoder = (response: Response) => Promise<Record<string, unknown> | null>
 
-type TestFormValue = string | number | boolean | Blob | File | TestFileInput | null | undefined
+type TestFormValue = string | number | boolean | null | undefined | TestFileInput | File | Blob
 
 ## ./browser  `(./src/browser.ts)`
 

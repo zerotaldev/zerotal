@@ -285,7 +285,7 @@ type ResponseInterceptor = (ctx: ResponseContext) => ResponseContext | Promise<R
 
 type ResponseOf = `${Method} ${Path}` extends keyof Routes ? Routes[`${Method} ${Path}`] extends {    response: infer R;} ? R : unknown : unknown
 
-type SocketState = 'error' | 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
+type SocketState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error'
 
 type TokenSource = string | (() => string | null | undefined | Promise<string | null | undefined>)
 
@@ -389,4 +389,4 @@ interface SocketOptions = {
   url?: string
 }
 
-type SocketState = 'error' | 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
+type SocketState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error'

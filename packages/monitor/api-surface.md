@@ -676,9 +676,9 @@ type MonitorRange = 'live' | '1h' | '24h' | '7d'
 
 type MonitorRow = {    [x: string]: unknown;}
 
-type MonitorTone = 'default' | 'warn' | 'good' | 'bad'
+type MonitorTone = 'default' | 'good' | 'warn' | 'bad'
 
-type SpanKind = 'query' | 'cache' | 'middleware' | 'view' | 'http' | 'boot' | 'controller'
+type SpanKind = 'boot' | 'middleware' | 'controller' | 'query' | 'cache' | 'http' | 'view'
 
 type Tone = 'ok' | 'warn' | 'bad' | 'neutral'
 

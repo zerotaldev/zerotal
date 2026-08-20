@@ -154,6 +154,6 @@ interface TracerOptions = {
   rethrowExportErrors?: boolean
 }
 
-type SpanKind = 'client' | 'internal' | 'server' | 'producer' | 'consumer'
+type SpanKind = 'internal' | 'server' | 'client' | 'producer' | 'consumer'
 
-type SpanStatusCode = 'error' | 'ok' | 'unset'
+type SpanStatusCode = 'unset' | 'ok' | 'error'

@@ -1708,7 +1708,7 @@ interface WidgetContribution = {
   widget: DashboardWidget
 }
 
-type ActionColor = 'primary' | 'success' | 'muted' | 'destructive' | 'default'
+type ActionColor = 'default' | 'primary' | 'success' | 'muted' | 'destructive'
 
 type ActionHandler = (ctx: ActionContext) => void | Promise<void>
 
@@ -1720,9 +1720,9 @@ type AdminAuthorizer = (ability: string) => boolean | Promise<boolean>
 
 type AdminPageClass = typeof AdminPage & (new () => AdminPage)
 
-type BadgeTone = 'primary' | 'success' | 'muted' | 'destructive' | 'default'
+type BadgeTone = 'default' | 'primary' | 'success' | 'muted' | 'destructive'
 
-type CalloutTone = 'primary' | 'success' | 'destructive' | 'default' | 'warning'
+type CalloutTone = 'default' | 'primary' | 'success' | 'warning' | 'destructive'
 
 type CellAlign = 'start' | 'center' | 'end'
 
@@ -1738,11 +1738,11 @@ type Conjunction = 'and' | 'or'
 
 type ConsoleRow = {    [x: string]: unknown;}
 
-type ConstraintKind = 'number' | 'boolean' | 'text' | 'select' | 'date'
+type ConstraintKind = 'text' | 'number' | 'date' | 'boolean' | 'select'
 
 type DashboardWidget = StatsWidget | ChartWidget | TableWidget
 
-type EntryKind = 'text' | 'image' | 'color' | 'icon' | 'code' | 'keyValue' | 'repeatable'
+type EntryKind = 'text' | 'icon' | 'image' | 'color' | 'code' | 'keyValue' | 'repeatable'
 
 type EntrySize = 'sm' | 'base' | 'lg'
 
@@ -1754,13 +1754,13 @@ type FieldMode = 'create' | 'edit'
 
 type FieldPredicate = (data: Record<string, unknown>) => boolean
 
-type FieldType = 'number' | 'text' | 'toggle' | 'select' | 'color' | 'builder' | 'date' | 'code' | 'keyValue' | 'datetime' | 'email' | 'password' | 'url' | 'tel' | 'textarea' | 'checkbox' | 'radio' | 'checkboxList' | 'time' | 'hidden' | 'tags' | 'file' | 'media' | 'slider' | 'toggleButtons' | 'markdown' | 'richText' | 'repeater' | 'custom'
+type FieldType = 'text' | 'email' | 'password' | 'number' | 'url' | 'tel' | 'textarea' | 'select' | 'checkbox' | 'toggle' | 'radio' | 'checkboxList' | 'date' | 'datetime' | 'time' | 'color' | 'hidden' | 'tags' | 'keyValue' | 'file' | 'media' | 'slider' | 'toggleButtons' | 'code' | 'markdown' | 'richText' | 'repeater' | 'builder' | 'custom'
 
 type FilterApply = (query: AdminQuery, value: string) => AdminQuery
 
-type FilterType = 'text' | 'select' | 'ternary' | 'builder'
+type FilterType = 'select' | 'ternary' | 'builder' | 'text'
 
-type FormBlock = {    kind: 'section';    section: FormSection;} | {    kind: 'tabs';    tabs: FormTabs;} | {    kind: 'wizard';    wizard: Wizard;} | {    kind: 'split';    split: FormSplit;} | {    kind: 'callout';    callout: Callout;} | {    kind: 'prime';    prime: Prime;}
+type FormBlock = { kind: 'section'; section: FormSection } | { kind: 'tabs'; tabs: FormTabs } | { kind: 'wizard'; wizard: Wizard } | { kind: 'split'; split: FormSplit } | { kind: 'callout'; callout: Callout } | { kind: 'prime'; prime: Prime }
 
 type FormComponent = FormSection | FormTabs | Wizard | FormSplit | Callout | Prime | Field
 
@@ -1768,11 +1768,11 @@ type InfolistComponent = Section | Entry
 
 type PanelPageClass = new () => object
 
-type PrimeKind = 'text' | 'image' | 'html'
+type PrimeKind = 'text' | 'html' | 'image'
 
 type QueryModifier = (query: AdminQuery) => AdminQuery
 
-type QueryRule = {    type: 'rule';    constraint: string;    operator: string;    value?: string;} | {    type: 'group';    operator: Conjunction;    rules: QueryRule[];}
+type QueryRule = { type: 'rule'; constraint: string; operator: string; value?: string } | { type: 'group'; operator: Conjunction; rules: QueryRule[] }
 
 type RelationKind = 'hasMany' | 'belongsToMany'
 

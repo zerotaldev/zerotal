@@ -185,11 +185,11 @@ interface ToolContext = {
   root: string
 }
 
-type BlockOutcome = {    status: 'created';    text: string;} | {    status: 'updated';    text: string;} | {    status: 'unchanged';    text: string;} | {    status: 'conflict';    reason: string;}
+type BlockOutcome = { status: 'created'; text: string } | { status: 'updated'; text: string } | { status: 'unchanged'; text: string } | { status: 'conflict'; reason: string }
 
-type ConfigOutcome = {    status: 'created' | 'updated' | 'unchanged';    text: string;} | {    status: 'conflict';    reason: string;}
+type ConfigOutcome = { status: 'created' | 'updated' | 'unchanged'; text: string } | { status: 'conflict'; reason: string }
 
-type ProbeResult = {    ok: true;    data: unknown;} | {    ok: false;    message: string;}
+type ProbeResult = { ok: true; data: unknown } | { ok: false; message: string }
 
 type ProbeTopic = 'doctor' | 'routes' | 'schema' | 'app-info'
 
@@ -272,7 +272,7 @@ interface ToolOutcome = {
   text: string
 }
 
-type DecodedFrame = {    ok: true;    request: JsonRpcRequest;} | {    ok: false;    failure: JsonRpcFailure;}
+type DecodedFrame = { ok: true; request: JsonRpcRequest } | { ok: false; failure: JsonRpcFailure }
 
 type Era = 'modern' | 'legacy'
 

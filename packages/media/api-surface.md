@@ -449,7 +449,7 @@ interface ResponsiveImageSet = {
   placeholder?: string
 }
 
-type ConversionFit = 'fill' | 'inside' | 'cover'
+type ConversionFit = 'inside' | 'fill' | 'cover'
 
 type ConversionFormat = SafeConversionFormat | 'avif' | 'heic'
 
@@ -457,7 +457,7 @@ type ConversionMap = {    [x: string]: ConversionDefinition;}
 
 type MediaCollections = {    [x: string]: CollectionDefinition | (() => CollectionDefinition);}
 
-type MediaSource = ArrayBuffer | Blob | UploadedFile | File | Uint8Array<ArrayBufferLike>
+type MediaSource = UploadedFile | File | Blob | Uint8Array | ArrayBuffer
 
 type SafeConversionFormat = 'jpeg' | 'png' | 'webp'
 

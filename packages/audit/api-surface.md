@@ -225,8 +225,8 @@ interface AuditRecord = {
   user_agent: string | null
 }
 
-type AuditableRef = string | {    name: string;    auditType?: string;}
+type AuditableRef = string | { name: string; auditType?: string }
 
-type AuditEvent = string
+type AuditEvent = 'created' | 'updated' | 'deleted' | 'restored' | string
 
 type InstanceAuditPayload = {    url?: string | null;    tags?: Record<string, unknown> | null;    actor_type?: string | null;    actor_id?: number | null;    old_values?: Record<string, unknown> | null;    new_values?: Record<string, unknown> | null;    ip_address?: string | null;    user_agent?: string | null;}

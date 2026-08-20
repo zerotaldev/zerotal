@@ -1112,7 +1112,7 @@ type AppScopeInstaller = () => () => void
 
 type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 
-type BindingToken = keyof ContainerBindings | ClassToken<T> | AbstractToken<T>
+type BindingToken = ClassToken<T> | AbstractToken<T> | keyof ContainerBindings
 
 type ClassRef = abstract new (...args: never[]) => unknown
 
@@ -1140,7 +1140,7 @@ type FileRouteResolver = (ctx: FileRouteContext) => boolean
 
 type FileRoutingConfig = {    [x: string]: FileRoutingEntry;}
 
-type FileRoutingEntry = string | {    dir: string;    prefix?: string;    middleware?: MiddlewareInput;}
+type FileRoutingEntry = string | { dir: string; prefix?: string; middleware?: MiddlewareInput }
 
 type FlagDef = {    name: string;    short?: string;    type: 'string' | 'boolean' | 'number';    description?: string;    default?: unknown;}
 
@@ -1178,7 +1178,7 @@ type RouteTarget = string
 
 type RoutingConfig = {    [x: string]: RoutingEntry;}
 
-type RoutingEntry = string | {    file: string;    prefix?: string;    middleware?: MiddlewareInput;}
+type RoutingEntry = string | { file: string; prefix?: string; middleware?: MiddlewareInput }
 
 type SameSite = 'Strict' | 'Lax' | 'None'
 
@@ -2429,7 +2429,7 @@ interface RegisteredConfigValidator = {
   validate: ConfigValidator
 }
 
-type AssetLoaderKind = 'text' | 'file' | 'json' | 'dataurl' | 'base64' | 'toml'
+type AssetLoaderKind = 'file' | 'dataurl' | 'base64' | 'text' | 'json' | 'toml'
 
 type ConfigIssueLevel = 'error' | 'warning'
 
@@ -2646,7 +2646,7 @@ const t = {    readonly string: () => Def<string | undefined>;    readonly numbe
 
 type EnvOutput = { readonly [K in keyof S]: InferDef<S[K]>; }
 
-type FieldType = 'string' | 'number' | 'boolean' | 'url' | 'enum' | 'port'
+type FieldType = 'string' | 'number' | 'boolean' | 'enum' | 'url' | 'port'
 
 type InferDef = D extends Def<infer T> ? T : never
 
@@ -3197,7 +3197,7 @@ interface WebContext = {
   view: (markup: string | {    toString(): string;}, status?: number) => void
 }
 
-type AnsiColor = 'cyan' | 'yellow' | 'green' | 'blue' | 'red' | 'dim'
+type AnsiColor = 'red' | 'green' | 'yellow' | 'blue' | 'cyan' | 'dim'
 
 type Channel = 'web' | 'json' | 'cli'
 
@@ -3458,11 +3458,11 @@ interface LoggingConfigShape = {
   slowQueryMs?: number
 }
 
-type ChannelConfig = {    driver: 'console';    level?: LogLevel;    format?: 'json' | 'pretty';} | {    driver: 'single';    level?: LogLevel;    path: string;} | {    driver: 'daily';    level?: LogLevel;    path: string;    days?: number;} | {    driver: 'stack';    level?: LogLevel;    channels: string[];} | {    driver: 'null';}
+type ChannelConfig = { driver: 'console'; level?: LogLevel; format?: 'json' | 'pretty' } | { driver: 'single'; level?: LogLevel; path: string } | { driver: 'daily'; level?: LogLevel; path: string; days?: number } | { driver: 'stack'; level?: LogLevel; channels: string[] } | { driver: 'null' }
 
-type LogLevel = 'error' | 'info' | 'warn' | 'debug' | 'fatal'
+type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal'
 
-type TableData = Record<string, unknown> | readonly Record<string, unknown>[]
+type TableData = Record<string, unknown> | ReadonlyArray<Record<string, unknown>>
 
 ## ./macros/config  `(./src/macros/config.macro.ts)`
 
@@ -3564,7 +3564,7 @@ interface RedactGraphOptions = {
   tooDeep: string
 }
 
-type HashAlgorithm = 'bcrypt' | 'argon2id' | 'argon2i' | 'argon2d'
+type HashAlgorithm = 'argon2id' | 'argon2i' | 'argon2d' | 'bcrypt'
 
 ## ./storage  `(./src/storage/index.ts)`
 

@@ -1026,7 +1026,7 @@ interface VirtualizeProps = {
 
 type Constructor = abstract new (...args: any[]) => T
 
-type DurableOption = boolean | {    ttl?: string;    scope?: 'user' | 'session';}
+type DurableOption = boolean | { ttl?: string; scope?: 'user' | 'session' }
 
 type EventName = never
 
@@ -1040,7 +1040,7 @@ type FlashPosition = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' |
 
 type HtmlNode = {    html: string;}
 
-type ListenerName = (string & {}) | ((self: Record<string, any>) => string)
+type ListenerName = LooseEventName | ((self: Record<string, any>) => string)
 
 type Mixin = (Base: TIn) => TOut
 

@@ -1315,13 +1315,13 @@ type ClassRef = abstract new (...args: never[]) => unknown
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 
-type ColumnShorthand = 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'encrypted' | 'encrypted:json'
+type ColumnShorthand = 'string' | 'text' | 'integer' | 'number' | 'float' | 'boolean' | 'datetime' | 'date' | 'json' | 'array' | 'encrypted' | 'encrypted:json'
 
 type Constructor = new (...args: any[]) => T
 
 type ContextConnectionResolver = (ModelClass?: typeof BaseModel) => SQLInstance | null
 
-type DatePart = 'date' | 'time' | 'year' | 'month' | 'day'
+type DatePart = 'date' | 'time' | 'day' | 'month' | 'year'
 
 type DialectName = 'sqlite' | 'postgres' | 'mysql'
 

@@ -96,13 +96,13 @@ interface UtilEntry = {
   target: string
 }
 
-type ClassValue = string | number | bigint | boolean | ClassArray | ClassDictionary | null | undefined
+type ClassValue = ClassArray | ClassDictionary | string | number | bigint | null | boolean | undefined
 
 type CustomIconName = never
 
 type GvaProps = VariantSelection<V> & {    class?: ClassValue;    className?: ClassValue;}
 
-type IconName = LucideIconName | ShippedIconName
+type IconName = LucideIconName | ShippedIconName | BrandIconName | CustomIconName
 
 value Accordion = unknown
 

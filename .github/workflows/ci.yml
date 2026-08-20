@@ -141,6 +141,13 @@ jobs:
   # point DATABASE_URL at PostgreSQL. Dialect coverage was substring-matching mocks that
   # cannot catch invalid SQL — and two of the audit's findings were Postgres-fatal. This job
   # is allowed to fail while that gap is closed, so it reports without blocking.
+  #
+  # For its first two weeks this job closed none of that. It ran `bun test src/`, whose every
+  # connection is `new SQL(":memory:")` — so it stood a Postgres 16 container up beside a suite
+  # that never dialled it, and reported success 55 runs running. `postgres.smoke.test.ts` is the
+  # part that actually connects; `ZT_PG_URL` is what selects a server, and the reachability step
+  # below exists because that suite skips itself without one. `continue-on-error` stays until the
+  # smoke suite has a green history of its own, then it goes.
   postgres:
     name: ORM against PostgreSQL
     runs-on: ubuntu-latest
@@ -159,6 +166,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/zerotal_test
+      ZT_PG_URL: postgres://postgres:postgres@localhost:5432/zerotal_test
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
@@ -168,6 +176,24 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      # The smoke suite skips itself when ZT_PG_URL is unset or points at nothing, which in CI
+      # would report green for precisely the SQL this job exists to execute. Proving the round
+      # trip here — same URL the tests read — makes that skip impossible rather than unlikely.
+      # Same reasoning as the browser step above.
+      - name: Verify PostgreSQL is reachable
+        run: |
+          bun -e '
+            const { SQL } = require("bun");
+            const url = process.env.ZT_PG_URL;
+            if (!url) { console.error("::error::ZT_PG_URL is unset — the Postgres suite would skip."); process.exit(1); }
+            const db = new SQL(url);
+            const rows = await db`SELECT version()`;
+            console.log(rows[0].version);
+            await db.end();
+          '
+
+      # `src/` is the whole ORM suite: the SQLite bulk of it, plus postgres.smoke.test.ts,
+      # which reads ZT_PG_URL from the job env and is the only part that leaves the process.
       - name: ORM tests
         working-directory: packages/orm
         run: bun test src/

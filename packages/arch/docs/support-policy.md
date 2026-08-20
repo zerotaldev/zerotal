@@ -49,11 +49,11 @@ course?", so this is it:
 
 ## Databases
 
-| Database   | Status                                                                                                                                                                                           |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| SQLite     | Supported. The default; the full test suite runs against it on every merge.                                                                                                                      |
-| PostgreSQL | Supported, hardening. The ORM suite runs against a real Postgres in CI; remaining dialect gaps are being driven to zero before the job blocks merges.                                            |
-| MySQL      | Experimental. The ORM ships a MySQL dialect and the scaffolder can configure it, but no CI suite runs against a real MySQL server yet — treat it as unverified until it joins the tested matrix. |
+| Database   | Status                                                                                                                                                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SQLite     | Supported. The default; the full test suite runs against it on every merge.                                                                                                                                                                 |
+| PostgreSQL | Supported, hardening. The ORM ships a Postgres dialect and the SQL it emits is unit-tested, but no suite runs against a real Postgres server yet — treat it as verified in shape rather than in execution until it joins the tested matrix. |
+| MySQL      | Experimental. The ORM ships a MySQL dialect and the scaffolder can configure it, but no CI suite runs against a real MySQL server yet — treat it as unverified until it joins the tested matrix.                                            |
 
 Redis-backed drivers (cache, session, queue, broadcasting) build on
 `Bun.RedisClient` and are tested against the protocol surface it provides.

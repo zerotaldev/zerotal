@@ -542,7 +542,18 @@ initPage();
 
 // ── DevTools ──────────────────────────────────────────────────────────────────
 // The panel the framework ships, running against the framework's own docs site.
-// The server half is gated on the environment, so in production the endpoints
-// are absent and this connects to nothing. Alt+D toggles it.
+// Alt+D toggles it.
+//
+// This used to say the call was safe unconditionally because "the server half is
+// gated on the environment, so in production the endpoints are absent and this
+// connects to nothing". The first half was true and the conclusion was not:
+// `start()` mounted the panel before discovering there was nothing to connect to,
+// so zerotal.dev served a DevTools bar to every visitor, opening onto tabs that
+// read `Could not read the map — HTTP 404`.
+//
+// `start()` now probes for the routes and mounts only if they answer, so this line
+// is safe for the reason the comment originally claimed. Left unconditional on
+// purpose: it is the shape an app will naturally write, and the package has to be
+// the thing that holds.
 import { DevTools } from "@zerotal/devtools/client";
 DevTools.start();

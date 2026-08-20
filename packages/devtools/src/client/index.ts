@@ -78,27 +78,73 @@ export const DevTools = {
     const base = (opts.endpoint ?? "/__zerotal/devtools").replace(/\/$/, "");
     const standalone = opts.mode === "standalone";
 
-    const store = new Store(standalone, base);
-    const transport = connect(base, store);
+    const mount = (): void => {
+      const store = new Store(standalone, base);
+      const transport = connect(base, store);
 
-    // What the browser measured for this page load, read once after it settles.
-    // The panel reports server duration as though it were the user's experience;
-    // it is not, and this is the only place that knows the difference.
-    onceLoaded(() => {
-      store.clientMetrics = collectClientMetrics();
-      store.changed();
-    });
+      // What the browser measured for this page load, read once after it settles.
+      // The panel reports server duration as though it were the user's experience;
+      // it is not, and this is the only place that knows the difference.
+      onceLoaded(() => {
+        store.clientMetrics = collectClientMetrics();
+        store.changed();
+      });
 
-    mountShell({
-      base,
-      standalone,
-      mount: opts.mount ?? document.body,
-      store,
-      transport,
-      tabs: BUILT_IN,
+      mountShell({
+        base,
+        standalone,
+        mount: opts.mount ?? document.body,
+        store,
+        transport,
+        tabs: BUILT_IN,
+      });
+    };
+
+    // Mount nothing until the server half answers.
+    //
+    // The provider is gated on the environment, so in production the endpoints are
+    // absent — and the client took that to mean it could start anyway and simply
+    // connect to nothing. It could not: `mountShell` pinned the panel to the page
+    // regardless, so zerotal.dev served a floating DevTools bar to every visitor,
+    // opening onto tabs reading `Could not read the map — HTTP 404` because the
+    // routes behind them do not exist in production.
+    //
+    // Failing closed here rather than in each app's entry file is deliberate: an
+    // app that calls `start()` unconditionally — which the docs site did, with a
+    // comment explaining why that was safe — is covered without knowing to be.
+    void serverPresent(base).then((present) => {
+      if (!present) return;
+      if (document.getElementById("__zerotal_dt__")) return;
+      mount();
     });
   },
 };
+
+/**
+ * Whether the devtools routes exist on this origin.
+ *
+ * `api/channels` rather than `sse`: it answers and closes, where the stream stays
+ * open and would leave a connection hanging on every page load just to discover
+ * the panel should not be there. `no-store` so a 404 is not cached into a session
+ * that later starts a dev server on the same origin.
+ *
+ * Any failure — offline, blocked by CSP, a proxy returning HTML — is treated as
+ * absent. The panel is a development convenience, and the cost of guessing wrong
+ * is that a developer presses Alt+D twice; the cost of guessing wrong the other
+ * way is a debug surface on a production page.
+ */
+async function serverPresent(base: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${base}/api/channels`, {
+      method: "GET",
+      cache: "no-store",
+      headers: { accept: "application/json" },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 // ── Public surface ────────────────────────────────────────────────────────────
 //

@@ -92,42 +92,49 @@ describe("<Icon>", () => {
 describe("the hand-drawn icons", () => {
   const DRAWN = ["passkey", "two-factor", "otp", "magic-link"] as const;
 
-  it.each(DRAWN)("%s resolves from the bundled set", (name) => {
-    expect(resolveIcon(name)).not.toBeNull();
-  });
+  // A plain loop rather than `it.each`, which widens the tuple element to
+  // `unknown` — every callback would then need a cast to state what the array
+  // beside it already says.
+  for (const name of DRAWN) {
+    describe(name, () => {
+      it("resolves from the bundled set", () => {
+        expect(resolveIcon(name)).not.toBeNull();
+      });
 
-  it.each(DRAWN)("%s is drawn on the same 24×24 grid as the rest", (name) => {
-    const icon = resolveIcon(name)!;
-    expect(icon.width).toBe(24);
-    expect(icon.height).toBe(24);
-  });
+      it("is drawn on the same 24×24 grid as the rest", () => {
+        const icon = resolveIcon(name)!;
+        expect(icon.width).toBe(24);
+        expect(icon.height).toBe(24);
+      });
 
-  it.each(DRAWN)("%s strokes rather than fills, like the set it sits in", (name) => {
-    // A hand-drawn body that fills would read as a solid blob beside 1,843
-    // outlines — the one way these can be wrong that no rendering test catches.
-    const { body } = resolveIcon(name)!;
-    expect(body).toContain('stroke="currentColor"');
-    expect(body).toContain('fill="none"');
-    expect(body).toContain('stroke-width="2"');
-  });
+      it("strokes rather than fills, like the set it sits in", () => {
+        // A hand-drawn body that fills would read as a solid blob beside 1,843
+        // outlines — the one way these can be wrong that no render test catches.
+        const { body } = resolveIcon(name)!;
+        expect(body).toContain('stroke="currentColor"');
+        expect(body).toContain('fill="none"');
+        expect(body).toContain('stroke-width="2"');
+      });
 
-  it.each(DRAWN)("%s is balanced markup", (name) => {
-    const { body } = resolveIcon(name)!;
-    const opens = (body.match(/<g[\s>]/g) ?? []).length;
-    const closes = (body.match(/<\/g>/g) ?? []).length;
-    expect(opens).toBe(closes);
-    // Self-closing children only — an unclosed <path> would swallow its siblings.
-    expect(body.replace(/<\/?g[^>]*>/g, "")).toMatch(/^(<(path|rect|circle)\b[^>]*\/>)+$/);
-  });
+      it("is balanced markup", () => {
+        const { body } = resolveIcon(name)!;
+        const opens = (body.match(/<g[\s>]/g) ?? []).length;
+        const closes = (body.match(/<\/g>/g) ?? []).length;
+        expect(opens).toBe(closes);
+        // Self-closing children only — an unclosed <path> swallows its siblings.
+        expect(body.replace(/<\/?g[^>]*>/g, "")).toMatch(/^(<(path|rect|circle)\b[^>]*\/>)+$/);
+      });
 
-  it.each(DRAWN)("%s keeps its geometry inside the viewBox", (name) => {
-    const { body } = resolveIcon(name)!;
-    // Every coordinate the bodies use is absolute and small; anything outside
-    // 0–24 would clip on render, which is invisible in a passing snapshot.
-    for (const n of body.match(/-?\d+(\.\d+)?/g) ?? []) {
-      expect(Math.abs(Number(n))).toBeLessThanOrEqual(24);
-    }
-  });
+      it("keeps its geometry inside the viewBox", () => {
+        const { body } = resolveIcon(name)!;
+        // Every coordinate in these bodies is absolute and small; anything
+        // outside 0–24 clips on render, which a passing snapshot never shows.
+        for (const n of body.match(/-?\d+(\.\d+)?/g) ?? []) {
+          expect(Math.abs(Number(n))).toBeLessThanOrEqual(24);
+        }
+      });
+    });
+  }
 
   it("is what makes the names type-check", () => {
     // `ShippedIconName` is derived from CUSTOM_ICONS' keys, so adding an icon

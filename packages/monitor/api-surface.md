@@ -678,7 +678,7 @@ type MonitorRow = {    [x: string]: unknown;}
 
 type MonitorTone = 'default' | 'warn' | 'good' | 'bad'
 
-type SpanKind = 'query' | 'cache' | 'middleware' | 'http' | 'boot' | 'controller' | 'view'
+type SpanKind = 'query' | 'cache' | 'middleware' | 'view' | 'http' | 'boot' | 'controller'
 
 type Tone = 'ok' | 'warn' | 'bad' | 'neutral'
 

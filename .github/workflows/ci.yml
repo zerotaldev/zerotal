@@ -77,6 +77,14 @@ jobs:
       - name: Vendored docs corpus
         run: bun run arch:docs:check
 
+      # `<Icon name>` is a union generated from the vendored icon bodies, so the two
+      # drift apart the moment one is edited without the other — and the symptom is a
+      # compile error in somebody else's app. Offline on purpose: it compares the two
+      # files, never npm, so an upstream release does not redden a build that changed
+      # nothing. Upgrading the set is `bun run icons:sync`, reviewed as a diff.
+      - name: Icon names
+        run: bun run icons:check
+
       # The component reference is generated from the flow-ui registry + doc specs.
       # Without this gate a new component ships undocumented and nothing complains,
       # which is how the page came to cover 20 of 53.

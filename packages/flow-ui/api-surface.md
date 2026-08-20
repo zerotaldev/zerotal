@@ -50,9 +50,13 @@ function flowUiHead = (title?: string, theme?: FlowUiThemeConfig) => string
 
 function gva = <V extends VariantShape>(base: ClassValue, config?: GvaConfig<V>) => (props?: GvaProps<V>) => string
 
+function isIconName = (value: unknown) => value is IconName
+
 function Legend = (props: LegendProps) => HtmlNode
 
 function Listbox = (props: ListboxProps) => HtmlNode
+
+function registerIcons = (icons: Record<string, IconBody>) => void
 
 interface ComponentEntry = {
   description: string
@@ -63,6 +67,8 @@ interface ComponentEntry = {
   title: string
   utils: ('cn' | 'gva')[]
 }
+
+interface CustomIconRegistry = {}
 
 interface FlowUiThemeConfig = {
   cdn?: boolean
@@ -78,6 +84,12 @@ interface GvaConfig = {
   variants?: V
 }
 
+interface IconBody = {
+  body: string
+  height?: number
+  width?: number
+}
+
 interface UtilEntry = {
   name: string
   source: string
@@ -86,7 +98,11 @@ interface UtilEntry = {
 
 type ClassValue = string | number | bigint | boolean | ClassArray | ClassDictionary | null | undefined
 
+type CustomIconName = never
+
 type GvaProps = VariantSelection<V> & {    class?: ClassValue;    className?: ClassValue;}
+
+type IconName = LucideIconName
 
 value Accordion = unknown
 
@@ -251,6 +267,10 @@ value H4 = unknown
 value HoverCard = unknown
 
 value HoverCardProps = unknown
+
+value Icon = unknown
+
+value IconProps = unknown
 
 value Input = unknown
 

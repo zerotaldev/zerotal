@@ -8,6 +8,29 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`<Icon name="inbox" />` — 2,060 icons, bundled, typed by name.** The set ships inside this
+  package, so there is nothing to install and no generator to run: a fresh app gets
+  autocomplete over every name and a compile error on a typo (`Type '"inbxo"' is not
+assignable to type 'IconName'. Did you mean '"inbox"'?`). Rendered on the server as inline
+  SVG, so there is no icon font, no sprite, no request per glyph, and nothing for a strict CSP
+  to block.
+
+  Icons are sized in `em` and painted in `currentColor` — they inherit the text they sit in
+  until `class="size-5 text-red-600"` says otherwise. Decorative by default and hidden from
+  screen readers; `label` announces one that carries the meaning, which is the case for an icon
+  that is the only content of a button.
+
+  `registerIcons()` adds your own, and `CustomIconRegistry` declares them to the compiler. A
+  registered name shadows a bundled one, so substituting a drawing does not mean renaming every
+  call site. See [Icons](/docs/flow/icons).
+
+  The bundled set is [Lucide](https://lucide.dev), ISC-licensed — which is why it can be shipped
+  at all. Sets under stricter terms are deliberately not vendored: Font Awesome Free is CC BY
+  4.0 and would put an attribution obligation on every app installing Flow, and Pro may not be
+  redistributed at all. `registerIcons()` is the route for a set you are entitled to.
+
 ## [1.5.0] — 2026-08-15
 
 ### Added

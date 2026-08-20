@@ -29,3 +29,9 @@ cast-baseline.json
 **/public/assets/**
 **/public/css/**
 **/public/js/**
+
+# Vendored icon bodies and the name union generated from them (see scripts/sync-icons.ts).
+# Formatting either would fight the generator: `icons:check` compares generated output
+# byte-for-byte, so a prettier pass over it fails a gate that is otherwise green.
+packages/flow-ui/src/icons/lucide.json
+packages/flow-ui/src/icons/names.generated.ts

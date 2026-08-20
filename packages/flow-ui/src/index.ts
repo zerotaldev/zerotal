@@ -8,7 +8,7 @@
 // Provider (registers the flow:list / flow:add / flow:init CLI commands)
 export { FlowUiProvider } from "./provider/FlowUiProvider.ts";
 
-// Registry (the manifest behind `reno flow add`)
+// Registry (the manifest behind `bun zt flow:add`)
 export { COMPONENTS, UTILS, findComponent } from "./registry.ts";
 export type { ComponentEntry, UtilEntry } from "./registry.ts";
 
@@ -157,6 +157,12 @@ export { Spinner, spinnerVariants } from "./components/Spinner.tsx";
 export type { SpinnerProps } from "./components/Spinner.tsx";
 export { Empty } from "./components/Empty.tsx";
 export type { EmptyProps } from "./components/Empty.tsx";
+export { Icon } from "./components/Icon.tsx";
+export type { IconProps } from "./components/Icon.tsx";
+export { registerIcons } from "./icons/loader.ts";
+export type { IconBody } from "./icons/loader.ts";
+export { isIconName } from "./icons/registry.ts";
+export type { IconName, CustomIconName, CustomIconRegistry } from "./icons/registry.ts";
 export { Kbd, KbdMod } from "./components/Kbd.tsx";
 export type { KbdProps } from "./components/Kbd.tsx";
 

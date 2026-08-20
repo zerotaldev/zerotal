@@ -217,7 +217,15 @@ describe("BuildCache", () => {
     await cache.record((await build()).outputs);
 
     // Same byte count, different contents — caught by mtime, not size.
-    await write("resources/js/helper.ts", `export const helper = () => "HI";\n`);
+    const target = await write("resources/js/helper.ts", `export const helper = () => "HI";\n`);
+
+    // Move the mtime explicitly. `fingerprintTree` is `mtimeMs:size` by design, and
+    // the docblock there names this exact gap: a same-size edit that lands inside
+    // one mtime tick is invisible to it. Rewriting the file within the same tick is
+    // how this test failed under a loaded parallel run while passing on its own —
+    // the assertion was really about clock resolution, not about the cache.
+    const future = new Date(Date.now() + 10_000);
+    await utimes(target, future, future);
 
     expect(await BuildCache.for(keyFor(), root).isFresh()).toBe(false);
   });

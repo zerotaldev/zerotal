@@ -68,35 +68,53 @@ export const CUSTOM_ICONS = {
       "</g>",
   },
 
-  /** Two-factor authentication — a second device that has to agree. */
+  /**
+   * Two-factor authentication — a second device that has to agree.
+   *
+   * The phone is the set's own 14 × 20 body, not a narrowed one: at 10 wide it
+   * read as a remote control and broke the proportions of every device icon it
+   * would sit beside. Room for the check comes from opening the bottom-right
+   * corner instead, which is how `mail-check` makes room for the same mark.
+   */
   "two-factor": {
     body:
       `<g ${S}>` +
-      '<rect x="3" y="2" width="10" height="20" rx="2"/>' +
-      '<path d="M8 18h.01"/>' +
-      '<path d="m15 11 2.5 2.5L22 9"/>' +
+      '<path d="M19 13V4a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h5"/>' +
+      '<path d="M12 18h.01"/>' +
+      '<path d="m15 20 2 2 5-5"/>' +
       "</g>",
   },
 
-  /** A one-time code — the shape of the input it gets typed into. */
+  /**
+   * An emailed one-time code — the separate slots it gets typed into.
+   *
+   * One field with marks inside was the obvious drawing and collided with
+   * `rectangle-ellipsis`, which is the same rounded 20 × 12 frame carrying three
+   * dots. Three discrete boxes is the thing `rectangle-ellipsis` cannot be
+   * mistaken for, and it is what a code input actually looks like.
+   */
   otp: {
     body:
       `<g ${S}>` +
-      '<rect x="2" y="6" width="20" height="12" rx="2"/>' +
-      '<path d="M7 11v2"/>' +
-      '<path d="M11 11v2"/>' +
-      '<path d="M15 11v2"/>' +
-      '<path d="M19 11v2"/>' +
+      '<rect x="2" y="8" width="6" height="8" rx="1.5"/>' +
+      '<rect x="9" y="8" width="6" height="8" rx="1.5"/>' +
+      '<rect x="16" y="8" width="6" height="8" rx="1.5"/>' +
       "</g>",
   },
 
-  /** Passwordless sign-in by emailed link — an envelope with the spark on it. */
+  /**
+   * Passwordless sign-in by emailed link — an envelope with the spark on it.
+   *
+   * The star is drawn with quadratic curves pulling its waist in toward the
+   * centre, matching `sparkles`. The first attempt was straight-edged, which
+   * beside the set's concave star read as hand-cut.
+   */
   "magic-link": {
     body:
       `<g ${S}>` +
       '<path d="M18 9v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/>' +
       '<path d="m2 7 8 5 4-2.5"/>' +
-      '<path d="M19 2l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/>' +
+      '<path d="M19 1.5q.4 3.1 3.5 3.5-3.1.4-3.5 3.5-.4-3.1-3.5-3.5 3.1-.4 3.5-3.5z"/>' +
       "</g>",
   },
 } as const satisfies Record<string, IconBody>;

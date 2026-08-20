@@ -17,6 +17,7 @@
  */
 import type { LucideIconName } from "./names.generated.ts";
 import type { ShippedIconName } from "./custom.ts";
+import type { BrandIconName } from "./brands.generated.ts";
 
 /**
  * Icon names an application registered itself, filled by declaration merging.
@@ -49,7 +50,7 @@ export type CustomIconName = Extract<keyof CustomIconRegistry, string>;
  * remove. A name that genuinely is not known until runtime is not a literal at
  * all, and goes through {@link isIconName}, which says so at the call site.
  */
-export type IconName = LucideIconName | ShippedIconName | CustomIconName;
+export type IconName = LucideIconName | ShippedIconName | BrandIconName | CustomIconName;
 
 /**
  * Narrow an untrusted string to an icon name — a status field, a CMS column, a

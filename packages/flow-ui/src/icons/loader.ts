@@ -17,6 +17,7 @@
  */
 import { readFileSync } from "node:fs";
 import { CUSTOM_ICONS } from "./custom.ts";
+import { BRAND_ICONS } from "./brands.generated.ts";
 
 /** One icon: the markup inside the `<svg>`, and the box it was drawn in. */
 export interface IconBody {
@@ -81,15 +82,18 @@ export function registerIcons(icons: Record<string, IconBody>): void {
  * Resolve `name` to its body and viewBox, or `null` when nothing answers to it.
  *
  * Lookup order is runtime registrations, then the icons shipped alongside this
- * package, then the vendored set — most specific first, so an app can override a
- * glyph it does not like.
+ * package — hand-drawn, then brand marks — then the vendored set. Most specific
+ * first, so an app can override a glyph it does not like.
  */
 export function resolveIcon(name: string): ResolvedIcon | null {
   const s = set();
   const dw = s.width ?? 24;
   const dh = s.height ?? 24;
 
-  const own = _registered.get(name) ?? (CUSTOM_ICONS as Record<string, IconBody>)[name];
+  const own =
+    _registered.get(name) ??
+    (CUSTOM_ICONS as Record<string, IconBody>)[name] ??
+    (BRAND_ICONS as Record<string, IconBody>)[name];
   if (own) return { body: own.body, width: own.width ?? dw, height: own.height ?? dh };
 
   let key = name;

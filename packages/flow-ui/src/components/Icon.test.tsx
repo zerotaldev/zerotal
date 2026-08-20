@@ -144,6 +144,37 @@ describe("the hand-drawn icons", () => {
   });
 });
 
+describe("the brand marks", () => {
+  const BRANDS = ["brand-google", "brand-github", "brand-apple"] as const;
+
+  for (const name of BRANDS) {
+    it(`${name} resolves`, () => {
+      expect(resolveIcon(name)).not.toBeNull();
+    });
+  }
+
+  it("fills rather than strokes — a brand mark is a solid shape", () => {
+    // The opposite of the rule for the hand-drawn four. `<Icon>` sets no fill on
+    // the wrapper, so a brand body that omitted it would render as SVG's default
+    // black and ignore `currentColor` — invisible on a dark button.
+    for (const name of BRANDS) {
+      expect(resolveIcon(name)!.body).toContain('fill="currentColor"');
+    }
+  });
+
+  it("keeps Lucide's stroke github and apple reachable", () => {
+    // The `brand-` prefix exists so a page picks a style deliberately rather than
+    // having one silently shadow the other.
+    expect(resolveIcon("github")!.body).not.toBe(resolveIcon("brand-github")!.body);
+    expect(resolveIcon("apple")!.body).not.toBe(resolveIcon("brand-apple")!.body);
+  });
+
+  it("fills the gap that motivated this — Lucide has no google", () => {
+    expect(resolveIcon("google")).toBeNull();
+    expect(resolveIcon("brand-google")).not.toBeNull();
+  });
+});
+
 describe("registerIcons()", () => {
   it("adds an icon the bundled set does not have", () => {
     registerIcons({ "acme-wordmark": { body: '<path d="M0 0h24v24H0z"/>' } });

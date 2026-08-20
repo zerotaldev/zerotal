@@ -35,3 +35,4 @@ cast-baseline.json
 # byte-for-byte, so a prettier pass over it fails a gate that is otherwise green.
 packages/flow-ui/src/icons/lucide.json
 packages/flow-ui/src/icons/names.generated.ts
+packages/flow-ui/src/icons/brands.generated.ts

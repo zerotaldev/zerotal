@@ -93,12 +93,12 @@ the worse failure.
 Four names are drawn here rather than coming from the set, because the flows they
 label are ones Zerotal ships and the set has no icon for as a concept:
 
-| Name         | For                                                        |
-| ------------ | ---------------------------------------------------------- |
-| `passkey`    | WebAuthn sign-in — a fingerprint that ends in a key        |
-| `two-factor` | TOTP — a second device that has to agree                   |
-| `otp`        | An emailed one-time code, shaped like the input it goes in |
-| `magic-link` | Passwordless sign-in by link                               |
+| Name         | For                                                            |
+| ------------ | -------------------------------------------------------------- |
+| `passkey`    | WebAuthn sign-in — a fingerprint that ends in a key            |
+| `two-factor` | TOTP — a second device that has to agree                       |
+| `otp`        | An emailed one-time code — the separate slots it is typed into |
+| `magic-link` | Passwordless sign-in by link                                   |
 
 The set has `key-round`, `fingerprint` and `shield-check` — the parts — and a login
 page needs the whole. They are drawn on the same 24×24 stroke grid, so they sit
@@ -107,6 +107,34 @@ beside the other 2,060 without announcing themselves.
 Nearly everything else that looked missing was there under a name that reads
 differently: `git-branch` not `branch`, `file-json` not `json`, `paperclip` not
 `attachment`, `venetian-mask` for impersonation. Search before you draw.
+
+## Brand marks
+
+Three sign-in providers ship as brand marks, because `@zerotal/auth` has a code
+path for each and a sign-in button wants the provider's actual logo:
+
+```tsx
+<button><Icon name="brand-google" /> Continue with Google</button>
+<button><Icon name="brand-github" /> Continue with GitHub</button>
+<button><Icon name="brand-apple" /> Continue with Apple</button>
+```
+
+They come from [Simple Icons](https://simpleicons.org) (**CC0-1.0**, public
+domain), so the paths are the real ones rather than approximations — an
+approximated logo reads as a forgery, not as an icon.
+
+The `brand-` prefix is deliberate: the bundled set has its own stroke-style
+`github` and `apple`, and prefixing means neither silently shadows the other, so a
+page picks a style rather than inheriting one. There is no plain `google` — the
+set never had one, which is what made this worth doing.
+
+Unlike the rest, brand marks are **solid**: each body carries its own
+`fill="currentColor"`, so it still takes its colour from the text around it.
+
+> **CC0 covers copyright, not trademark.** The marks belong to their owners.
+> Labelling a sign-in button with one is nominative use and what brand guidelines
+> contemplate; using one as your own logo is not. For a provider not listed here,
+> `registerIcons()` keeps that decision — and its licence — yours.
 
 ## Your own icons
 

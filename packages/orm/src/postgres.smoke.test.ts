@@ -74,7 +74,9 @@ describePostgres("Blueprint DDL is SQL PostgreSQL accepts", () => {
       table.string("name");
       table.integer("score");
       table.boolean("active");
-      table.timestamp("made_at");
+      // Nullable because most of the inserts below omit it. Non-PK columns are NOT NULL
+      // by default, and Postgres enforces that where the SQLite suite never had to.
+      table.timestamp("made_at").nullable();
     });
 
     const columns = await SchemaInspector.columns("zt_smoke_widgets");

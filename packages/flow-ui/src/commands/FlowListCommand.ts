@@ -2,7 +2,7 @@ import { Command } from "@zerotal/core";
 import { COMPONENTS } from "../registry.ts";
 
 /**
- * List every component available to `reno flow add`.
+ * List every component available to `bun zt flow:add`.
  *
  * @example
  *   bun zt flow:list

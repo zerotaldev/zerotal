@@ -1,6 +1,6 @@
 // ── flow-ui component registry ───────────────────────────────────────────────
 //
-// The manifest behind `reno flow add`. It lists every
+// The manifest behind `bun zt flow:add`. It lists every
 // component, where its source lives, and which utils it needs — and it knows how
 // to resolve and transform that source so it can be COPIED into an app (the
 // "you own the code" model), not just imported.
@@ -30,7 +30,7 @@ export interface UtilEntry {
   target: string;
 }
 
-/** A component available to `reno flow add`. */
+/** A component available to `bun zt flow:add`. */
 export interface ComponentEntry {
   /** kebab-case id used on the CLI — e.g. `dropdown-menu`. */
   name: string;

@@ -154,7 +154,7 @@ jobs:
   # suite that never dialled it, and reported success 55 runs running. `continue-on-error`
   # was not what stood between this repo and a Postgres gate; nothing was being tested.
   #
-  # `postgres.smoke.test.ts` is the part that connects, `ZT_PG_URL` selects the server, and
+  # `server.smoke.test.ts` is the part that connects, `ZT_PG_URL` selects the server, and
   # the reachability step below exists because that suite skips itself without one. Its first
   # real run failed seven of nine on a single defect — `table.boolean()` emitting INTEGER,
   # which PostgreSQL will not take a boolean into. That is now fixed and the job blocks
@@ -202,8 +202,62 @@ jobs:
             await db.end();
           '
 
-      # `src/` is the whole ORM suite: the SQLite bulk of it, plus postgres.smoke.test.ts,
+      # `src/` is the whole ORM suite: the SQLite bulk of it, plus server.smoke.test.ts,
       # which reads ZT_PG_URL from the job env and is the only part that leaves the process.
+      - name: ORM tests
+        working-directory: packages/orm
+        run: bun test src/
+
+  # MySQL was documented as "experimental — no CI suite runs against a real MySQL server
+  # yet", and that was true for the same reason Postgres's job was hollow: nothing dialled
+  # out. `server.smoke.test.ts` is dialect-parameterised, so the same fifteen cases run here
+  # under `ZT_MYSQL_URL` — identity columns, type round-trips, constraint violations,
+  # `LOCK IN SHARE MODE` (where Postgres emits `FOR SHARE`), rollback and `ALTER`.
+  #
+  # `continue-on-error` while it earns a green history, which is the sequencing Postgres
+  # got: a gate that has never run is not evidence, and turning one on before it has passed
+  # once locks in whatever it happens to report. It comes off the same way that one did.
+  mysql:
+    name: ORM against MySQL
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: zerotal_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ZT_MYSQL_URL: mysql://root:root@127.0.0.1:3306/zerotal_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # Same reason as the Postgres step: the suite skips itself without a reachable
+      # server, and a skip in CI reports green for exactly what this job exists to run.
+      - name: Verify MySQL is reachable
+        run: |
+          bun -e '
+            const { SQL } = require("bun");
+            const url = process.env.ZT_MYSQL_URL;
+            if (!url) { console.error("::error::ZT_MYSQL_URL is unset — the MySQL suite would skip."); process.exit(1); }
+            const db = new SQL(url);
+            const rows = await db`SELECT VERSION() AS v`;
+            console.log(rows[0].v);
+            await db.end();
+          '
+
       - name: ORM tests
         working-directory: packages/orm
         run: bun test src/

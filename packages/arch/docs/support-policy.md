@@ -100,6 +100,21 @@ a contract, not a mood:
 - **experimental** — no compatibility promise. The API may change or the package
   may be absorbed into another in any release. Build on it with your eyes open.
 
+### A label below stable carries a review date
+
+An honest "experimental" is useful once and corrosive indefinitely: a package that
+has worn the label for a year is not being cautious, it is unowned. So each one
+below `stable` names the release by which it is reviewed, and the review has three
+outcomes — promote, keep with a new date and the reason, or withdraw.
+
+| Package         | Now            | Reviewed by |
+| --------------- | -------------- | ----------- |
+| `@zerotal/ai`   | `experimental` | **1.9.0**   |
+| `@zerotal/arch` | `beta`         | **1.9.0**   |
+
+Neither is in the `zerotal` meta-package and nothing `stable` depends on either,
+so the cost of the label falling due is ours and not yours.
+
 A package is never more mature than what it is built on: a stable package whose
 foundation can change under it is not stable, whatever its own label says. So
 `@zerotal/admin` and `@zerotal/monitor` cannot pass `@zerotal/flow`, and the

@@ -489,25 +489,21 @@ A dropzone bound to an `@expose` property. Choosing a file POSTs the bytes to `/
 import { Component, expose, FileUpload, FileUploads, TemporaryUploadedFile } from "@zerotal/flow";
 
 export class AvatarPage extends Component.using(FileUploads) {
+  @locked user!: User; // /users/:user/avatar — the record, already found
   @expose photo: TemporaryUploadedFile | null = null;
-  @locked photoUrl: string = "";
-
-  override async onMount() {
-    const user = await User.find(this.userId);
-    this.photoUrl = user?.avatarUrl ?? "";
-  }
 
   @expose async save(): Promise<void> {
     if (!this.photo) return;
     const path = await this.photo.store("avatars"); // moves to permanent storage
-    await User.query().where("id", this.userId).update({ avatarUrl: path });
+    this.user.avatarUrl = path;
+    await this.user.save();
     this.flash("Avatar updated.", "success");
   }
 
   override async render() {
     return (
       <div class="space-y-4">
-        {this.photoUrl && <img src={this.photoUrl} class="h-24 w-24 rounded-full" />}
+        {this.user.avatarUrl && <img src={this.user.avatarUrl} class="h-24 w-24 rounded-full" />}
 
         <FileUpload bind={this.photo} accept="image/*" maxSize="5mb" />
 

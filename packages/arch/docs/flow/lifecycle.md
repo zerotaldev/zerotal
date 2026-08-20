@@ -94,11 +94,19 @@ Avoid expensive database queries in `onBoot()` — it fires on every round-trip,
 
 Runs once on the initial `GET` render, then is skipped on all subsequent WebSocket updates. It's the primary place to load data for the page.
 
-It receives the route `HttpContext` — the same argument a controller action gets — so a page on a dynamic segment reads its [route-model binding](/docs/routing#route-model-binding) straight off `ctx.params` instead of querying for it:
+A page on a dynamic segment needs no code here for the record it is about. A field of the model's type is [filled from the segment](/docs/flow/routing#path-parameters) before `onMount()` runs, so the query, the id field, and the 404 all belong to the route:
 
 ```typescript
-override async onMount({ params: { post } }: HttpContext<{ post: Post }>) {
-  this.post = post; // resolved by the router; a missing record 404s before this runs
+export class PostPage extends Component {
+  @locked post!: Post; // /posts/:post — nothing to load
+}
+```
+
+What `onMount()` is for is everything the URL does not carry. It receives the route `HttpContext` — the same argument a controller action gets — which is where the signed-in user lives, and `ctx.params` is still there for a segment no field claimed:
+
+```typescript
+override async onMount({ user }: HttpContext) {
+  this.canEdit = user?.id === this.post.authorId;
 }
 ```
 
@@ -106,20 +114,22 @@ The context is passed to `onBoot()` too, but only the initial `GET` populates `c
 
 ```typescript
 override async onMount() {
-  const [posts, user] = await Promise.all([
+  const [posts, drafts] = await Promise.all([
     Post.query()
       .where("status", "published")
       .orderBy("created_at", "desc")
       .limit(20)
       .get(),
-    User.findOrFail(this.currentUserId),
+    Post.query().where("status", "draft").count(),
   ]);
 
-  this.posts = posts;
-  this.user  = user;
-  this.total = posts.length;
+  this.posts  = posts;
+  this.drafts = drafts;
+  this.total  = posts.length;
 }
 ```
+
+Lists and counts are what belongs here — the things no route resolved and no parent passed down.
 
 To force `onMount()` to re-run during a WebSocket action — for example after creating a new record and wanting to reload the list — call `this.refresh()` inside the action:
 
@@ -139,25 +149,30 @@ Runs on every WebSocket round-trip, immediately after state is restored from the
 
 ```typescript
 export class PostEditorPage extends Component {
-  @locked postId: number = 0; // persisted in snapshot
-  @transient post: Post | null = null; // NOT persisted — reset each round-trip
+  @expose post!: Post; // /posts/:post/edit — re-read from the row every round-trip
+  @transient wordCount = 0; // NOT persisted — derived again each time
 
   override async onHydrate() {
-    // Re-load the full Post model from the database using the persisted ID:
-    if (this.postId) {
-      this.post = await Post.findOrFail(this.postId);
-    }
+    await this.post.loadMissing(["author"]); // relations do not survive the round-trip
+    this.wordCount = this.post.body.split(/\s+/).length;
   }
 
   @expose async updateTitle(title: string): Promise<void> {
-    if (!this.post) return;
     await this.post.fill({ title }).save();
     this.flash("Title updated.");
   }
 }
 ```
 
-This is the correct pattern for holding live model instances on a component: persist only the ID in `@locked`, then re-query the model in `onHydrate()`. The model is always fresh from the database, never stale from a deserialized snapshot.
+> **This used to say to hold the id and re-query the model here.** A component could not hold a
+> model then, so `@locked postId` plus a `@transient post` re-fetched in `onHydrate()` was the
+> way to keep one fresh. It is no longer needed: a model held directly is [re-read from its row
+> on every round-trip](/docs/flow/models#freshness), which is the same guarantee with none of
+> the bookkeeping. The pattern still works — it is just two fields and a query doing what one
+> field now does.
+
+What is left for `onHydrate()` is the state a snapshot genuinely cannot carry: relations, which
+are not part of a re-read, and anything derived from them.
 
 ## Intercepting client writes
 

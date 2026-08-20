@@ -46,16 +46,15 @@ An ORM model is the exception: only its id travels in the snapshot and the row i
 
 A `value={this.x}` binding on a `@locked` property renders as a read-only display — not an editable field.
 
-Use `@locked` for data loaded in `onMount()` that the server controls: model results, user info, computed totals, child props from the parent:
+Use `@locked` for anything the server owns: a record the route resolved, results loaded in `onMount()`, computed totals, child props from the parent:
 
 ```tsx
 export class PostsPage extends Component {
+  @locked user!: User; // /users/:user — the record, already found
   @locked posts: Post[] = [];
-  @locked user: User | null = null;
   @locked total: number = 0;
 
   override async onMount() {
-    this.user = await User.findOrFail(this.userId);
     this.posts = await Post.query()
       .where("user_id", this.user.id)
       .where("status", "published")
@@ -67,7 +66,7 @@ export class PostsPage extends Component {
   override async render() {
     return (
       <div>
-        <h1>Posts by {this.user?.name}</h1>
+        <h1>Posts by {this.user.name}</h1>
         <p>{this.total} posts</p>
         <ul>
           {this.posts.map((p) => (
@@ -271,7 +270,8 @@ An `@expose`d method that runs on the server but **skips the re-render cycle**. 
 }
 
 @expose @renderless async archivePost(): Promise<void> {
-  await Post.where("id", this.postId).update({ status: "archived" });
+  this.post.status = "archived"; // this.post came from the route
+  await this.post.save();
   this.redirect("/posts");
 }
 ```

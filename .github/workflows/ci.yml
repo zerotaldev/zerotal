@@ -214,13 +214,12 @@ jobs:
   # under `ZT_MYSQL_URL` — identity columns, type round-trips, constraint violations,
   # `LOCK IN SHARE MODE` (where Postgres emits `FOR SHARE`), rollback and `ALTER`.
   #
-  # `continue-on-error` while it earns a green history, which is the sequencing Postgres
-  # got: a gate that has never run is not evidence, and turning one on before it has passed
-  # once locks in whatever it happens to report. It comes off the same way that one did.
+  # It blocks, on the same evidence Postgres's job produced: its first honest run failed on
+  # `table.string()` compiling to TEXT, which MySQL will not key without a prefix length —
+  # so `string("email").unique()` could not be created at all. Fixed, green after, gate on.
   mysql:
     name: ORM against MySQL
     runs-on: ubuntu-latest
-    continue-on-error: true
     services:
       mysql:
         image: mysql:8

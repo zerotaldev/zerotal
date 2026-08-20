@@ -52,6 +52,7 @@ Each package has its own README with installation, setup, and usage examples —
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [`@zerotal/core`](packages/core)           | IoC container, Application lifecycle, Router, HTTP pipeline, middleware, events, config, facades, JSX server views. Bundles three primitives as subpaths: distributed locks ([`@zerotal/core/lock`](docs/lock.md)), structured logging ([`@zerotal/core/logger`](docs/logger.md)), and file storage ([`@zerotal/core/storage`](docs/storage.md)) |
 | [`@zerotal/orm`](packages/orm)             | Active Record ORM on `Bun.sql` — models, migrations, QueryBuilder, relationships, soft deletes                                                                                                                                                                                                                                                   |
+| [`@zerotal/media`](packages/media)         | Attach files to models — media collections, image conversions, responsive images, and ordering, on any Zerotal storage disk                                                                                                                                                                                                                      |
 | [`@zerotal/validator`](packages/validator) | `FormRequest` class-based validation with a fluent `RuleBuilder`                                                                                                                                                                                                                                                                                 |
 | [`@zerotal/session`](packages/session)     | Cookie and Redis session drivers, CSRF protection, cookies                                                                                                                                                                                                                                                                                       |
 | [`@zerotal/auth`](packages/auth)           | Session auth, bearer tokens, Gate / policy authorization, password reset, roles & 2FA, WebAuthn, social / OAuth login (GitHub, Google, Apple)                                                                                                                                                                                                    |
@@ -76,24 +77,25 @@ Each package has its own README with installation, setup, and usage examples —
 
 ### Cross-cutting
 
-| Package                                    | Description                                                                                                                                               |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@zerotal/telemetry`](packages/telemetry) | OpenTelemetry-style distributed tracing and spans; bridges `FrameworkEvents` to OTLP                                                                      |
-| [`@zerotal/client`](packages/client)       | Type-safe **frontend/SPA** API client (route-map typed) with circuit breaker. For **server-to-server** outgoing requests use core's `Http` facade instead |
-| [`@zerotal/i18n`](packages/i18n)           | Internationalization and localization                                                                                                                     |
-| [`@zerotal/tenancy`](packages/tenancy)     | Multi-tenancy                                                                                                                                             |
-| [`@zerotal/audit`](packages/audit)         | Audit logging / activity log                                                                                                                              |
-| [`@zerotal/monitor`](packages/monitor)     | Health checks, metrics, and an application monitoring dashboard                                                                                           |
+| Package                                    | Description                                                                                                                                                                 |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@zerotal/telemetry`](packages/telemetry) | OpenTelemetry-style distributed tracing and spans; bridges `FrameworkEvents` to OTLP                                                                                        |
+| [`@zerotal/client`](packages/client)       | Type-safe **frontend/SPA** API client (route-map typed) with circuit breaker. For **server-to-server** outgoing requests use core's `Http` facade instead                   |
+| [`@zerotal/i18n`](packages/i18n)           | Internationalization and localization                                                                                                                                       |
+| [`@zerotal/tenancy`](packages/tenancy)     | Multi-tenancy                                                                                                                                                               |
+| [`@zerotal/audit`](packages/audit)         | Audit logging / activity log                                                                                                                                                |
+| [`@zerotal/monitor`](packages/monitor)     | Health checks, metrics, and an application monitoring dashboard                                                                                                             |
+| [`@zerotal/ai`](packages/ai)               | **Experimental** ([maturity](docs/support-policy.md#maturity-levels)) — provider-agnostic AI generation: text, streaming, structured output, typed tools, and an agent loop |
 
 ### Tooling
 
-| Package                                     | Description                                                                               |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [`@zerotal/admin`](packages/admin)          | Admin panel with resource management and field types                                      |
-| [`@zerotal/devtools`](packages/devtools)    | Development tools panel, request tracing                                                  |
-| [`@zerotal/arch`](packages/arch)            | Agent surface — an MCP server exposing the API surface, routes, schema, docs and `doctor` |
-| [`@zerotal/testing`](packages/testing)      | Test helpers, model factories, fakes, database utilities                                  |
-| [`create-zerotal`](packages/create-zerotal) | `bun create zerotal` scaffolding CLI                                                      |
+| Package                                     | Description                                                                                                                                              |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@zerotal/admin`](packages/admin)          | Admin panel with resource management and field types                                                                                                     |
+| [`@zerotal/devtools`](packages/devtools)    | Development tools panel, request tracing                                                                                                                 |
+| [`@zerotal/arch`](packages/arch)            | **Beta** ([maturity](docs/support-policy.md#maturity-levels)) — agent surface: an MCP server exposing the API surface, routes, schema, docs and `doctor` |
+| [`@zerotal/testing`](packages/testing)      | Test helpers, model factories, fakes, database utilities                                                                                                 |
+| [`create-zerotal`](packages/create-zerotal) | `bun create zerotal` scaffolding CLI                                                                                                                     |
 
 ---
 
@@ -602,9 +604,9 @@ bun run dev       # start dev server with hot reload
 
 > There is no build step — packages ship as source (see [Distribution](#distribution-packages-ship-as-typescript-source)).
 
-### Reference applications
+### Starting a new app
 
-Scaffold a fresh app with `bun create zerotal my-app` (choose a `minimal`, `flow`, `react`, or `vue` starter). The monorepo also ships full working apps under `apps/` that exercise the framework end-to-end — [`apps/reno`](apps/reno) (a Flow-based double-entry finance app) and [`apps/finos`](apps/finos) (Flow + Auth + ORM starter) are the best real-world references.
+Scaffold a fresh app with `bun create zerotal my-app` — the starters are `api` (the default), `admin`, `flow`, `react`, `vue`, and `minimal`. The monorepo itself ships no reference applications; `apps/` holds the documentation site only.
 
 ---
 

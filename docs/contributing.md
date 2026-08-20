@@ -8,7 +8,7 @@ description: Get the Zerotal monorepo running locally and pass the checks your c
 Zerotal is a Bun-native monorepo of composable packages. This guide covers getting the
 repo running locally, the project layout, and the checks your change needs to pass.
 
-> **Warning** — Bun ≥ 1.1 is required. Node.js is not supported; Zerotal uses `Bun.sql`, `Bun.CryptoHasher`, `Bun.build`, and other Bun-native APIs throughout.
+> **Warning** — Bun ≥ 1.3.14 is required. Node.js is not supported; Zerotal uses `Bun.sql`, `Bun.CryptoHasher`, `Bun.build`, and other Bun-native APIs throughout.
 
 ## Getting set up
 
@@ -32,7 +32,7 @@ packages/        # the framework — one directory per @zerotal/* package
   auth/  cache/  queue/  …  # feature packages
   testing/       #   factories, fakes, test app harness
   create-zerotal/ #   the `bun create zerotal` scaffolder
-apps/            # example apps used for end-to-end testing and the docs site
+apps/            # applications in this workspace
   docs/          #   this documentation site
 docs/            # the markdown documentation (what you're reading)
 ```

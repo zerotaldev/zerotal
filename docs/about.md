@@ -43,7 +43,7 @@ a theme.
 
 ### 1. Bun-native, source-only
 
-Zerotal runs **only on Bun** (≥ 1.1) and leans on Bun's APIs throughout — `Bun.sql`
+Zerotal runs **only on Bun** (≥ 1.3.14) and leans on Bun's APIs throughout — `Bun.sql`
 for the database, `Bun.CryptoHasher` for hashing, `Bun.build` for bundling. Because
 Bun runs and type-strips TypeScript natively, packages ship as **`.ts` source with no
 compiled `dist/`**. You always read real source and get accurate types; there's
@@ -660,9 +660,9 @@ The [README](../README.md) has a package-by-package table with links.
   scaffolding, migrations, the dev server, the worker, and tests all run through it.
 - **No build, ever.** `bun run dev` / `bun test` / `bun run typecheck`. No compile
   step to remember.
-- **Reference apps are the best teacher.** Full working apps under `apps/` exercise the
-  framework end-to-end — a Flow-based finance app and a Flow + Auth + ORM starter
-  are the most complete real-world examples. Read them alongside the docs.
+- **Starters are the fastest way in.** `bun create zerotal my-app` scaffolds a working
+  app from one of six starters — `api`, `admin`, `flow`, `react`, `vue`, or `minimal`.
+  Read the generated code alongside the docs.
 - **Conventions are documented, not magic.** When something "just works" (a model you
   never registered, a policy suddenly enforced), [Conventions](/docs/conventions)
   explains exactly what the framework discovered and why.

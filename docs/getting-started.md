@@ -11,7 +11,7 @@ provider.
 
 ## Requirements
 
-- **Bun** ≥ 1.1 — [install](https://bun.sh/docs/installation)
+- **Bun** ≥ 1.3.14 — [install](https://bun.sh/docs/installation)
 - A PostgreSQL, MySQL, or SQLite database (SQLite requires nothing extra)
 
 ## Create a new project

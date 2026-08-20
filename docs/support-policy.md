@@ -67,6 +67,14 @@ dependency order, from CI. Never mix versions across packages.
 - **Semantic versioning:** patch for fixes, minor for compatible features, major
   for breaking changes. The [Upgrade Guide](/docs/upgrade) describes the upgrade
   procedure; the [Release Notes](/docs/changelog) list what changed.
+- **One exception, while the 1.x line is young:** a breaking change may land in a
+  minor or a patch when leaving it in place would cost more than the migration
+  does. It is called out in the release notes as **BREAKING**, with the reason and
+  the migration steps, and it is never silent. Two have shipped so far — the
+  `ComponentWith` / `BaseModelWith` removal in 1.3.0 and Flow's `socket:` listener
+  prefix in 1.7.2. This carve-out is a consequence of the project's age, not a
+  standing policy; it will be withdrawn, with a version named here, once adoption
+  makes the cost of a break real.
 - **Provenance:** packages are published with npm provenance, so you can verify
   a tarball was built by this repository's release workflow rather than someone's
   laptop.

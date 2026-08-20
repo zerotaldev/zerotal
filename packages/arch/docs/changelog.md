@@ -17,12 +17,15 @@ summary across the suite.
 Each version lists changes under three headings:
 
 - **Added** — new features and APIs (safe to adopt incrementally).
-- **Changed** — behavior changes; **breaking** ones are called out explicitly and
-  appear only in major releases.
+- **Changed** — behavior changes; **breaking** ones are called out explicitly, in
+  bold, as **BREAKING**.
 - **Fixed** — bug fixes.
 
-Patch and minor releases are backward compatible. Before taking a **major** release,
-read its section here and apply each migration note.
+Breaking changes belong in major releases, and while the 1.x line is young they may
+also land in a minor or a patch — always labelled, always with migration steps. Read
+the section for every version you cross and apply its migration notes, not only the
+majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
+when that carve-out ends.
 
 ## 1.7.2 — 2026-08-18
 

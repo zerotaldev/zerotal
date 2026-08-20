@@ -5530,7 +5530,7 @@ class Blueprint = {
   bigInteger: (name: string) => ColumnBuilder
   binary: (name: string) => ColumnBuilder
   boolean: (name: string) => ColumnBuilder
-  char: (name: string, _length?: number) => ColumnBuilder
+  char: (name: string, length?: number) => ColumnBuilder
   date: (name: string) => ColumnBuilder
   dateTime: (name: string) => ColumnBuilder
   datetime: (name: string) => ColumnBuilder
@@ -5567,7 +5567,7 @@ class Blueprint = {
   smallInteger: (name: string) => ColumnBuilder
   softDeletes: (column?: string) => void
   spatialIndex: (columns: string | string[], name?: string) => Blueprint
-  string: (name: string, _length?: number) => ColumnBuilder
+  string: (name: string, length?: number) => ColumnBuilder
   text: (name: string) => ColumnBuilder
   time: (name: string) => ColumnBuilder
   timestamp: (name: string) => ColumnBuilder
@@ -5596,7 +5596,7 @@ class Cast = {
 }
 
 class ColumnBuilder = {
-  new <Locked extends string = never>(name: string, _sqlType: string, isPrimary?: boolean, isAutoIncrement?: boolean, _isBoolean?: boolean): ColumnBuilder<Locked>
+  new <Locked extends string = never>(name: string, _sqlType: string, isPrimary?: boolean, isAutoIncrement?: boolean, _isBoolean?: boolean, _stringLength?: number | undefined): ColumnBuilder<Locked>
   after: (_column: string) => ColumnBuilder<Locked>
   alter: () => ColumnBuilder<Locked>
   before: (_column: string) => ColumnBuilder<Locked>
@@ -5988,6 +5988,7 @@ class MysqlDialect = {
   readonly name: 'mysql'
   readonly supportsAdvisoryLocks: true
   readonly supportsTransactionalDdl: false
+  stringType: (length: number) => string
 }
 
 class NPlusOneDetected = {
@@ -6029,6 +6030,7 @@ class PostgresDialect = {
   readonly name: 'postgres'
   readonly supportsAdvisoryLocks: true
   readonly supportsTransactionalDdl: true
+  stringType: () => string
 }
 
 class QueryBuilder = {
@@ -6168,6 +6170,7 @@ class SqliteDialect = {
   readonly name: 'sqlite'
   readonly supportsAdvisoryLocks: false
   readonly supportsTransactionalDdl: true
+  stringType: () => string
 }
 
 class StateError = {
@@ -6688,6 +6691,7 @@ interface SqlDialect = {
   readonly name: DialectName
   readonly supportsAdvisoryLocks: boolean
   readonly supportsTransactionalDdl: boolean
+  stringType: (length: number) => string
 }
 
 interface SQLInstance = {

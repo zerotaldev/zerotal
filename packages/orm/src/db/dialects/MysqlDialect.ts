@@ -58,6 +58,12 @@ export class MysqlDialect implements SqlDialect {
     return value ? "1" : "0";
   }
 
+  // VARCHAR so the column can carry an index or a unique constraint; MySQL
+  // refuses to key a TEXT column without a prefix length.
+  stringType(length: number): string {
+    return `VARCHAR(${length})`;
+  }
+
   advisoryLockSql(key: number): DialectQuery {
     return { sql: `SELECT GET_LOCK(?, -1)`, params: [`zerotal_lock_${key}`] };
   }

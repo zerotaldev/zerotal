@@ -69,6 +69,11 @@ export class ColumnBuilder<Locked extends string = never> {
      * storage type at compile time — see {@link SqlDialect.booleanType}.
      */
     private _isBoolean = false,
+    /**
+     * Declared max length for a portable string column. The engine decides
+     * whether it matters — see {@link SqlDialect.stringType}.
+     */
+    private _stringLength?: number,
   ) {
     this._isPrimary = isPrimary;
     this._isAutoIncr = isAutoIncrement;
@@ -329,9 +334,15 @@ export class ColumnBuilder<Locked extends string = never> {
     // PostgreSQL a syntax error and against MySQL a 1064.
     if (this._isAutoIncr) return getDialect(dialect).autoIncrementColumn(this.name);
 
-    // A boolean's storage type is the engine's to choose: SQLite stores 0/1 in an
-    // INTEGER, PostgreSQL has a real one and rejects the integer form outright.
-    const sqlType = this._isBoolean ? getDialect(dialect).booleanType : this._sqlType;
+    // Storage type is the engine's to choose wherever the engines disagree:
+    // SQLite keeps 0/1 in an INTEGER where PostgreSQL has a real boolean, and
+    // MySQL needs a VARCHAR length before it will index a string at all.
+    const d = getDialect(dialect);
+    const sqlType = this._isBoolean
+      ? d.booleanType
+      : this._stringLength !== undefined
+        ? d.stringType(this._stringLength)
+        : this._sqlType;
     const parts: string[] = [`${this.name} ${sqlType}`];
 
     if (this._isPrimary) parts.push("PRIMARY KEY");

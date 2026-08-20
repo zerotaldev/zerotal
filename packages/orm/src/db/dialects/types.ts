@@ -76,6 +76,22 @@ export interface SqlDialect {
   /** A boolean as this engine spells it in a `DEFAULT` clause. */
   booleanLiteral(value: boolean): string;
 
+  /**
+   * The column type a portable `table.string(name, length)` compiles to.
+   *
+   * SQLite has one string type and ignores the length, so the Blueprint emitted
+   * `TEXT` for every engine and threw the length away. MySQL cannot index a TEXT
+   * column without a key length, so `table.string("name").unique()` — an email, a
+   * slug, any natural key — failed at `CREATE TABLE`:
+   *
+   *     BLOB/TEXT column 'name' used in key specification without a key length
+   *
+   * The length was already in the signature and already documented as accepted;
+   * it just had nowhere to go. PostgreSQL keeps `TEXT`, which it indexes happily
+   * and which is the idiomatic choice there.
+   */
+  stringType(length: number): string;
+
   /** Whether the engine supports application-level advisory locks. */
   readonly supportsAdvisoryLocks: boolean;
 

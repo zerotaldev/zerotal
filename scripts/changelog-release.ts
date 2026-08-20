@@ -9,7 +9,7 @@
  * ## Why this exists
  *
  * A release bumps 28 manifests and adds a section to `docs/changelog.md`, and until
- * now touched `packages/*​/CHANGELOG.md` not at all. So `[Unreleased]` accumulated
+ * now touched each package CHANGELOG not at all. So `[Unreleased]` accumulated
  * across releases: by 1.7.3, `@zerotal/flow` and `@zerotal/core` still had `[1.7.1]`
  * as their newest heading, `@zerotal/orm` `[1.7.0]`, `@zerotal/flow-ui` `[1.5.0]` —
  * four releases of shipped work filed under a heading that says it has not shipped.

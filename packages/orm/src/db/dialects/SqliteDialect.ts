@@ -55,6 +55,11 @@ export class SqliteDialect implements SqlDialect {
     return value ? "1" : "0";
   }
 
+  // SQLite has one string type and no length to honour.
+  stringType(): string {
+    return "TEXT";
+  }
+
   advisoryLockSql(): DialectQuery | null {
     return null;
   }

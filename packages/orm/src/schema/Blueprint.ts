@@ -202,19 +202,21 @@ export class Blueprint {
   /**
    * Variable-length string column (`VARCHAR`-style), stored as `TEXT`.
    * @param name - Column name.
-   * @param _length - Max length; accepted for multi-DB compatibility but ignored on SQLite.
+   * @param length - Max length. Ignored on SQLite and PostgreSQL, which have one
+   *   string type; on MySQL it becomes `VARCHAR(length)`, which is what lets the
+   *   column carry an index or a unique constraint.
    * @category Column types
    */
-  string(name: string, _length = 255): ColumnBuilder {
-    return this._add(new ColumnBuilder(name, "TEXT"));
+  string(name: string, length = 255): ColumnBuilder {
+    return this._add(new ColumnBuilder(name, "TEXT", false, false, false, length));
   }
 
   /**
    * Fixed-length `CHAR` column. Stored as `TEXT` on SQLite; `_length` is ignored.
    * @category Column types
    */
-  char(name: string, _length = 255): ColumnBuilder {
-    return this._add(new ColumnBuilder(name, "TEXT"));
+  char(name: string, length = 255): ColumnBuilder {
+    return this._add(new ColumnBuilder(name, "TEXT", false, false, false, length));
   }
 
   /**

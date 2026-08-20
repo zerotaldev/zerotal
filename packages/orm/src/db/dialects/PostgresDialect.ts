@@ -54,6 +54,11 @@ export class PostgresDialect implements SqlDialect {
     return value ? "TRUE" : "FALSE";
   }
 
+  // PostgreSQL indexes TEXT without a key length, so the portable type stands.
+  stringType(): string {
+    return "TEXT";
+  }
+
   advisoryLockSql(key: number): DialectQuery {
     return { sql: `SELECT pg_advisory_lock(?)`, params: [key] };
   }

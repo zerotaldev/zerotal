@@ -27,7 +27,15 @@ export * from "./errors.ts";
 // serve a subset, or add its own alongside them.
 export { archTools, vendoredDocsDir } from "./tools/index.ts";
 export type { ToolContext } from "./tools/index.ts";
+// Subprocess plumbing, not API. `_probe.ts` carries the underscore this repo uses
+// for a module nobody outside its package should reach for, nothing in the tree
+// imports these from here, and the export block above says why the tools and the
+// probe topics are public without ever saying why these are. Marked before the
+// stable promise attaches, because withdrawing them afterwards is a breaking
+// change made on behalf of a caller that does not exist.
+/** @internal */
 export { findApp, spawnProbe } from "./tools/_probe.ts";
+/** @internal */
 export type { ProbeResult, ProbeRunner, SpawnProbeOptions } from "./tools/_probe.ts";
 
 // The in-app reads, for anyone wanting them without the subprocess.

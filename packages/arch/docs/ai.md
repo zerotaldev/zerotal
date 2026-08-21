@@ -371,3 +371,110 @@ Nothing else is needed. Spend ceilings, redaction, telemetry, the lock, and the 
 loop all live above the driver, so a new provider is a translation layer and nothing
 more. `agent()` is optional on the interface and none of the built-in three implement
 it — they all run the same shared loop.
+
+## Reference
+
+Every exported name, grouped by the job it belongs to. The behaviour is in the
+sections above; this is the index.
+
+### Requests and responses
+
+| Name                | Description                                                                    |
+| ------------------- | ------------------------------------------------------------------------------ |
+| `AiRequest`         | What every generation call takes. `prompt` and `messages` are interchangeable. |
+| `AiResponse`        | A finished, non-streaming generation.                                          |
+| `AiStreamChunk`     | One event from a streaming generation.                                         |
+| `AiObjectResponse`  | A structured-output generation: the parsed value plus the usual accounting.    |
+| `AiMessage`         | One turn of a conversation.                                                    |
+| `AiRole`            | Who said it. Tool results ride inside a `user` turn, as the providers expect.  |
+| `AiUsage`           | Token accounting for one request. Fields a provider does not report stay 0.    |
+| `AiStopReason`      | Why generation stopped. `refusal` is a successful HTTP response, not an error. |
+| `AiEffort`          | How hard the model should work before answering. Mapped per-driver.            |
+| `AiProviderOptions` | Per-driver escape hatch, keyed by driver name and passed through untouched.    |
+| `AiEmbedRequest`    | A vector embedding request.                                                    |
+| `AiEmbedResponse`   | Embeddings, one vector per input, in input order.                              |
+
+### Tools and the agent loop
+
+| Name             | Description                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| `AiToolCall`     | A tool call the model asked for, lifted out of whatever block shape the provider used. |
+| `AiToolResult`   | The answer to one `AiToolCall`.                                                        |
+| `AiToolContext`  | What a tool handler is told about the turn that invoked it.                            |
+| `AiToolCalled`   | Emitted once per tool call inside an agent run.                                        |
+| `AiAgentRequest` | An agent run, plus the two things only the caller can decide.                          |
+| `AgentOptions`   | What the agent loop needs from the caller, beyond the request itself.                  |
+| `AiAgentResult`  | The result of running the agent loop to completion.                                    |
+| `AiAgentStep`    | One tool call and its result within an agent run.                                      |
+
+### Errors
+
+| Name                       | Description                                                                 |
+| -------------------------- | --------------------------------------------------------------------------- |
+| `AiError`                  | Base class for all `@zerotal/ai` errors.                                    |
+| `AiConfigError`            | Thrown at boot, or on first use, for a config combination that cannot work. |
+| `AiRequestError`           | Thrown for any other non-2xx from the provider, carrying its status.        |
+| `AiRateLimitError`         | Thrown when the provider rate-limits. The SDKs already retried.             |
+| `AiSpendLimitError`        | Thrown when a request would breach a configured spend ceiling.              |
+| `AiAgentLimitError`        | Thrown when the agent loop hits its step or resume ceiling.                 |
+| `AiCancelledError`         | Thrown when the caller's `AbortSignal` fired before the call finished.      |
+| `AiDriverUnavailableError` | Thrown when a driver's optional peer package is not installed.              |
+| `UnknownAiDriverError`     | Thrown for a driver name the manager does not know.                         |
+
+### Configuration
+
+| Name                    | Description                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `AiConfigInput`         | What `AiConfig()` accepts — every key optional, all the way down.             |
+| `AiConfigFromEnv`       | The zero-config fallback: an Anthropic driver built from `ANTHROPIC_API_KEY`. |
+| `AiLimitsConfigShape`   | Spend ceilings, enforced before the request leaves.                           |
+| `AiAgentConfigShape`    | How the agent loop behaves.                                                   |
+| `AnthropicConfigShape`  | Anthropic driver settings.                                                    |
+| `OpenAiConfigShape`     | OpenAI driver settings.                                                       |
+| `OllamaConfigShape`     | Ollama driver settings — a local server, so no key.                           |
+| `EmbeddingsConfigShape` | Embeddings are their own block with their own driver.                         |
+
+### Drivers and pricing
+
+| Name                     | Description                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `AnthropicDriver`        | The Anthropic driver.                                                        |
+| `OpenAiDriver`           | The OpenAI driver — Chat Completions over `fetch`, no SDK.                   |
+| `OllamaDriver`           | The Ollama driver — a local model server, so no API key and no billing.      |
+| `EmbeddingsDriver`       | What an embeddings provider implements.                                      |
+| `OpenAiEmbeddingsDriver` | OpenAI embeddings over `fetch`. No SDK, no dependency.                       |
+| `OllamaEmbeddingsDriver` | Ollama embeddings — a local server, so no key and no per-token cost.         |
+| `DriverStatus`           | What `zt ai:test` prints for one driver.                                     |
+| `ModelPrice`             | USD per million tokens.                                                      |
+| `modelPrice`             | The price for a model, or `undefined` when we have none.                     |
+| `estimateCost`           | Estimated USD for one request's usage. Returns 0 for an unpriced model.      |
+| `modelRejectsSampling`   | Whether a Claude model rejects `temperature` / `top_p` / `top_k` with a 400. |
+
+### Spend and statistics
+
+| Name                 | Description                                               |
+| -------------------- | --------------------------------------------------------- |
+| `spentToday`         | USD recorded so far today, in this process.               |
+| `resetSpend`         | Reset the ledger. Tests, and the `ai:spend --reset` path. |
+| `AiDelivery`         | One recorded generation.                                  |
+| `modelStats`         | Per-model roll-up over everything still in the buffer.    |
+| `ModelStat`          | Rolled-up figures for one model.                          |
+| `recentGenerations`  | The most recent generations, newest first.                |
+| `refusalRate`        | Share of recorded calls that the provider declined, 0–1.  |
+| `resetStats`         | Reset the buffer. Tests.                                  |
+| `CapturedGeneration` | One recorded call, as `AiFake` captures it.               |
+
+### Queued generation
+
+| Name             | Description                                  |
+| ---------------- | -------------------------------------------- |
+| `AiQueueOptions` | What `Ai.queue()` needs beyond the request.  |
+| `AiQueueHandler` | What a queued generation's handler receives. |
+
+### Structured-output schemas
+
+| Name              | Description                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| `SchemaInput`     | Either shape callers have on hand: the builder map, or the raw definitions. |
+| `toSchema`        | Normalise either input shape to raw definitions.                            |
+| `translateSchema` | Translate a validator schema into the JSON Schema the providers accept.     |

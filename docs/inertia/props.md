@@ -339,7 +339,7 @@ export default function Page() {
   return (
     <>
       {flash.success && <div className="toast">{flash.success}</div>}
-      {auth.user ? <span>{auth.user.name}</span> : <a href="/login">Sign in</a>}
+      {auth.user ? <span>{auth.user.name}</span> : <a href={route("login")}>Sign in</a>}
     </>
   );
 }

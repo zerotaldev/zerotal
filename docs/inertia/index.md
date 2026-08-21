@@ -162,7 +162,7 @@ export default function Dashboard({ posts, auth }: Props) {
       <h1>Dashboard</h1>
       {auth.user && <p>Welcome back, {auth.user.name}</p>}
       {posts.map((post) => (
-        <Link key={post.id} href={`/posts/${post.slug}`}>
+        <Link key={post.id} href={route("posts.show", { slug: post.slug })}>
           {post.title}
         </Link>
       ))}
@@ -175,6 +175,11 @@ Note `auth` is available without the controller passing it — see
 [Shared Props](/docs/inertia/props). Generate new pages with
 [`make:page`](/docs/inertia/build#generating-a-page) and bundle them with
 [`inertia:build`](/docs/inertia/build#building-assets).
+
+`route("posts.show", { slug })` builds the URL from the route's **name** rather than
+hard-coding the path, so renaming a route updates every link to it and a typo fails
+the build. Prefer it over a literal `href` anywhere you link — see
+[Building URLs](/docs/inertia/rendering#building-urls-with-route).
 
 ## Testing
 

@@ -147,6 +147,38 @@ array** directly as a shorthand. To use both, pass props third and middleware fo
 Router.inertia("/admin", "Admin/Dashboard", { title: "Admin" }, [AuthMiddleware]);
 ```
 
+## Building URLs with route()
+
+A hard-coded `href="/posts/hello"` is a string nothing checks. Rename the route and
+every link to it keeps compiling and starts 404ing — a bug that surfaces when
+someone clicks, not when someone builds.
+
+Name the route instead, and let the URL be derived:
+
+```tsx
+import { Link } from "@inertiajs/react";
+
+<Link href={route("posts.show", { slug: post.slug })}>{post.title}</Link>
+<Link href={route("posts.index", {}, { page: 2 })}>Next</Link>
+```
+
+No import for `route` — `defineRoutes()` installs it globally, and the names are
+checked against the same registry your controllers use, so `route("posts.shwo")`
+fails the build. [Routing](/docs/routing#route-in-the-browser) owns the mechanics:
+the generated table, wiring your entry point, typing, and `route.dynamic()` for a
+name only known at runtime.
+
+### One thing Inertia adds: define the routes in _both_ entries
+
+An Inertia page renders twice — once in the SSR process, once in the browser — so a
+component calling `route()` runs in both. A table defined in only one of them throws
+in the other: miss the SSR entry and `POST /__ssr` answers `500` with
+`[Inertia] SSR render failed` in the log, for a page the browser then renders
+perfectly well.
+
+Call `defineRoutes(ROUTES)` in your browser entry **and** in your
+[SSR entry](/docs/inertia/ssr). Same static import, same table.
+
 ## Redirects
 
 After a non-GET action (a form POST/PUT/DELETE), redirect as usual — return a 302 and

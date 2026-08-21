@@ -5,14 +5,46 @@ description: Call your HTTP API with full TypeScript inference of params, body, 
 
 # API Client
 
-A type-safe HTTP client bound to a route map. The TypeScript compiler infers
-request body types, path parameters, query parameters, and response shapes directly
-from the map — no casting required.
+A typed HTTP client bound to a **route map**. Describe an API's shape once and the
+compiler infers path params, query params, request bodies and response types at
+every call site — no casting, and a renamed endpoint is a build error.
 
-This is the **frontend/SPA** client for calling _your own_ typed API. For
-**server-to-server** outgoing HTTP from inside your app, reach for core's `Http`
-facade ([HTTP Client helpers](/docs/context)) instead — it's the fluent,
-fakeable, server-side HTTP client. Same protocol, different jobs.
+```ts
+const user = await api.get("/api/users/{id}", { id: 42 });
+//    ^? User — inferred from the route map, not asserted
+```
+
+## Where it runs
+
+Both sides, and the choice is about _how you get an instance_, not about where the
+code lives:
+
+| You are                                       | Use                                                                        |
+| --------------------------------------------- | -------------------------------------------------------------------------- |
+| In the browser, calling your own app's API    | `createApiClient<Routes>()` — one instance you own                         |
+| On the server — a controller, job, or command | `ClientProvider` + the `Client` facade, configured from `config/client.ts` |
+
+The provider is registered for `web`, `console`, `worker`, `test` and `repl`, so a
+queued job calling a third-party API uses the same client a page does.
+
+### How this differs from core's `Http`
+
+Both send HTTP requests from a server; they are not interchangeable, and the split
+is about **types, not sides**:
+
+- **This package** when the API has a shape worth describing — your own API, or a
+  third-party one you have typed. You get inference and a compile error when an
+  endpoint moves.
+- **Core's [`Http` facade](/docs/context)** for a one-off, untyped request — a
+  webhook, a health probe, an endpoint you call once. Fluent, fakeable in tests,
+  nothing to declare first.
+
+Reach for `Http` when writing the route map would cost more than the call is worth.
+
+> **This package also ships the realtime client.** `Socket`, `Channel` and
+> `PresenceChannel` — a dependency-free WebSocket client speaking Zerotal's native
+> broadcast protocol — live here too, and are documented where they are used:
+> [Broadcasting → Client](/docs/broadcasting/client).
 
 ## Getting Started
 
@@ -20,10 +52,6 @@ fakeable, server-side HTTP client. Same protocol, different jobs.
 # in your project root
 bun add @zerotal/client
 ```
-
-You can use the client two ways: create instances yourself with `createApiClient()`
-(typical for the browser/frontend), or register `ClientProvider` to resolve a shared,
-config-driven client from the container (typical for server-side and console code).
 
 ## Register the provider
 

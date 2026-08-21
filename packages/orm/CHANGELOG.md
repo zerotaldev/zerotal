@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A string column could not carry an index on MySQL.** `table.string()` compiled to `TEXT`
+  on every engine and discarded its `length` argument — the parameter existed and was
+  documented as "accepted for multi-DB compatibility", wired to nothing. MySQL refuses to key
+  a TEXT column without a prefix length, so `table.string("email").unique()` failed at
+  `CREATE TABLE`:
+
+  ```text
+  BLOB/TEXT column 'email' used in key specification without a key length
+  ```
+
+  Any natural key — an email, a slug — was unusable on MySQL, and `index()` the same. The
+  storage type now comes from the dialect, beside `booleanType` and `autoIncrementColumn`:
+  MySQL gets `VARCHAR(length)`, while SQLite and PostgreSQL keep `TEXT`, which PostgreSQL
+  indexes happily. `char()` had the identical bug and the identical fix.
+
+  Found by the new MySQL smoke suite on its first run against a real server.
+
 ## [1.7.3] — 2026-08-20
 
 ### Fixed

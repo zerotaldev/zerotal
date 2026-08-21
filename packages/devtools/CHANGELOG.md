@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The panel no longer mounts when there is no server half to talk to.** The provider is
+  gated on the environment, so in production the devtools routes are absent — and the client
+  read that as permission to start anyway and "connect to nothing". It did not connect to
+  nothing: `DevTools.start()` mounted the panel first and discovered the absence afterwards,
+  so an app calling it unconditionally served a floating DevTools bar to every visitor, its
+  tabs reading `Could not read the map — HTTP 404`. zerotal.dev did exactly this.
+
+  `start()` now probes `api/channels` and mounts only if it answers. Nothing is constructed
+  before that resolves — no shell, no shadow root, no `EventSource`, no listeners. Any
+  failure (404, offline, CSP, a proxy answering HTML) is read as absent: a missed panel costs
+  a developer one keystroke, and a stray one is a debug surface on a production page.
+
 ## [1.7.1] — 2026-08-16
 
 ### Changed

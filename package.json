@@ -18,6 +18,8 @@
     "link:all": "bun run scripts/link-all.ts",
     "api:surface": "bun run scripts/api-surface.ts",
     "api:surface:check": "bun run scripts/api-surface.ts --check",
+    "mcp:surface": "bun run scripts/mcp-surface.ts",
+    "mcp:surface:check": "bun run scripts/mcp-surface.ts --check",
     "arch:docs": "bun run scripts/arch-docs.ts",
     "arch:docs:check": "bun run scripts/arch-docs.ts --check",
     "icons:sync": "bun run scripts/sync-icons.ts",

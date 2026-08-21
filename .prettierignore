@@ -36,3 +36,8 @@ cast-baseline.json
 packages/flow-ui/src/icons/lucide.json
 packages/flow-ui/src/icons/names.generated.ts
 packages/flow-ui/src/icons/brands.generated.ts
+
+# The MCP tool contract snapshot (see scripts/mcp-surface.ts). Byte-compared by
+# `mcp:surface:check`, so a prettier pass over it fails a gate that is otherwise green —
+# the same reason the icon artifacts above are ignored.
+packages/arch/mcp-surface.md

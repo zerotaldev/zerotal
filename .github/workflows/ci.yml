@@ -70,6 +70,15 @@ jobs:
       - name: API surface
         run: bun run api:surface:check
 
+      # `api-surface.md` records the typed exports, and for the whole MCP tool system
+      # that is one line: `archTools = (ctx) => ArchTool[]`. Rename `search_docs`, drop a
+      # field from what `routes` returns, or make an argument required, and that line is
+      # byte-identical — the gate above passes and every configured agent client breaks.
+      # The names are runtime data, so nothing type-level can see them. This diffs the
+      # contract itself.
+      - name: MCP tool surface
+        run: bun run mcp:surface:check
+
       # `docs/` lives at the repo root and ships in no package, so the agent
       # surface vendors a copy — that copy is what `search_docs` answers from in
       # an installed app. Unverified, it would drift and start describing an API

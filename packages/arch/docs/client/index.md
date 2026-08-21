@@ -1,50 +1,58 @@
 ---
-title: API Client
-description: Call your HTTP API with full TypeScript inference of params, body, query, and response shapes.
+title: HTTP Client
+description: Call another service over HTTP from your app — typed against a route map, with retries, timeouts and a circuit breaker.
 ---
 
-# API Client
+# HTTP Client
 
-A typed HTTP client bound to a **route map**. Describe an API's shape once and the
-compiler infers path params, query params, request bodies and response types at
-every call site — no casting, and a renamed endpoint is a build error.
+Your application talking to somebody else's — a payment gateway, an internal
+service, a partner API. `@zerotal/client` sends those requests, and types them
+against a **route map** so the compiler knows the path params, query, body and
+response of every endpoint:
 
 ```ts
+const api = createApiClient<Routes>({ baseUrl: "https://api.example.com" });
+
 const user = await api.get("/api/users/{id}", { id: 42 });
 //    ^? User — inferred from the route map, not asserted
 ```
 
-## Where it runs
+Describe the API once and a renamed endpoint or a missing parameter becomes a build
+error rather than a 404 in production.
 
-Both sides, and the choice is about _how you get an instance_, not about where the
-code lives:
+> **Inference comes from the instance, not the facade.** `createApiClient<Routes>()`
+> is what binds the map. The container-bound `Client` facade below is typed against
+> the base route map, so it sends the same requests and gives you back `unknown`
+> rather than `User` — convenient for a quick call, not a substitute for a typed
+> instance.
 
-| You are                                       | Use                                                                        |
-| --------------------------------------------- | -------------------------------------------------------------------------- |
-| In the browser, calling your own app's API    | `createApiClient<Routes>()` — one instance you own                         |
-| On the server — a controller, job, or command | `ClientProvider` + the `Client` facade, configured from `config/client.ts` |
+## When to use this, and when to use `Http`
 
-The provider is registered for `web`, `console`, `worker`, `test` and `repl`, so a
-queued job calling a third-party API uses the same client a page does.
+Core ships an [`Http` facade](/docs/context) that also makes outbound requests, and
+the two are not interchangeable. The split is **how much you know about the API**:
 
-### How this differs from core's `Http`
-
-Both send HTTP requests from a server; they are not interchangeable, and the split
-is about **types, not sides**:
-
-- **This package** when the API has a shape worth describing — your own API, or a
-  third-party one you have typed. You get inference and a compile error when an
-  endpoint moves.
-- **Core's [`Http` facade](/docs/context)** for a one-off, untyped request — a
-  webhook, a health probe, an endpoint you call once. Fluent, fakeable in tests,
-  nothing to declare first.
+|                   |                                                                                                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **This package**  | An API you call repeatedly and can describe — your own service, a documented third-party one. You write a route map once and every call site is checked. |
+| **Core's `Http`** | A one-off, untyped request — a webhook, a health probe, an endpoint you hit once. Fluent and fakeable, with nothing to declare first.                    |
 
 Reach for `Http` when writing the route map would cost more than the call is worth.
+Reach for this when the same endpoints come up again and again, or when getting the
+shape wrong is expensive.
 
-> **This package also ships the realtime client.** `Socket`, `Channel` and
-> `PresenceChannel` — a dependency-free WebSocket client speaking Zerotal's native
-> broadcast protocol — live here too, and are documented where they are used:
+It also carries the resilience an outbound call needs: per-request timeouts,
+retries, and a [circuit breaker](/docs/client/resilience) that stops hammering a
+service that is already failing.
+
+> **Realtime lives elsewhere.** This package also ships `Socket`, `Channel` and
+> `PresenceChannel`, but they are a different job and documented where that job is:
 > [Broadcasting → Client](/docs/broadcasting/client).
+
+> **Using it in a browser bundle?** Importing `@zerotal/client` from browser-targeted
+> code resolves to a browser-safe entry — the same `createApiClient()` and
+> `ApiClient`, without `ClientProvider` and `ClientConfig`, which are server-only.
+> The import is the same either way; the pages that follow are written from the
+> server's side.
 
 ## Getting Started
 
@@ -118,8 +126,9 @@ export default ClientConfig({
 
 ## Create a client directly
 
-In the browser (or anywhere you want a standalone instance), build a client with
-`createApiClient<Routes>()`:
+This is the typed path, and the one to reach for when the API matters. Build the
+instance once — in a service, a job, or a module your controllers import — and share
+it:
 
 ```ts
 // app/api/client.ts

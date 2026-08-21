@@ -168,6 +168,53 @@ fails the build. [Routing](/docs/routing#route-in-the-browser) owns the mechanic
 the generated table, wiring your entry point, typing, and `route.dynamic()` for a
 name only known at runtime.
 
+### Forms submit to a name too
+
+A form's action is the same kind of string as a link's `href`, and gets the same
+treatment. `useForm()` and `router` both take a URL, so hand them one that was built
+from the route name:
+
+```tsx
+import { useForm, router } from "@inertiajs/react";
+
+export default function Edit({ post }: Props) {
+  const form = useForm({ title: post.title, body: post.body });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    form.put(route("posts.update", { slug: post.slug }));
+  };
+
+  const destroy = () => {
+    router.delete(route("posts.destroy", { slug: post.slug }));
+  };
+
+  return (
+    <form onSubmit={submit}>
+      <input value={form.data.title} onChange={(e) => form.setData("title", e.target.value)} />
+      {form.errors.title && <span>{form.errors.title}</span>}
+      <button disabled={form.processing}>Save</button>
+      <button type="button" onClick={destroy}>
+        Delete
+      </button>
+    </form>
+  );
+}
+```
+
+The names follow the same convention the router generates: a `POST` is
+`posts.store`, `PUT`/`PATCH` is `posts.update`, `DELETE` is `posts.destroy`. So the
+name in the component and the route the controller is mounted on cannot drift apart
+silently — change the URL and both ends move together.
+
+This matters more for a form than for a link. A broken link 404s where someone can
+see it; a form posting to a stale URL fails **after** the user has filled it in, and
+the data goes with it.
+
+Build the URL the same way for [Precognition](/docs/inertia/props#precognition), so
+live validation and the real submit cannot end up aimed at different routes — the
+failure there is a form that validates clean and then rejects on save.
+
 ### One thing Inertia adds: define the routes in _both_ entries
 
 An Inertia page renders twice — once in the SSR process, once in the browser — so a

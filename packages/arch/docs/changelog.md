@@ -27,6 +27,66 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.7.4 — 2026-08-21
+
+A debug panel that was reaching production, a column type MySQL would not index, and
+2,060 icons.
+
+### Fixed
+
+- **DevTools no longer appears on a production page.** The provider is gated on the
+  environment, so in production its routes are absent — and the browser client took that as
+  permission to start anyway and "connect to nothing". It did not: it mounted the panel first
+  and discovered the absence afterwards, so an app calling `DevTools.start()` unconditionally
+  served a floating DevTools bar to every visitor, its tabs reading
+  `Could not read the map — HTTP 404`.
+
+  `start()` now probes for the routes and builds nothing unless they answer — no shell, no
+  shadow root, no `EventSource`, no listeners. Any failure (404, offline, CSP) is read as
+  absent. **If your app calls `DevTools.start()`, take this release.**
+
+- **A string column could not carry an index on MySQL.** `table.string()` compiled to `TEXT`
+  on every engine and discarded its `length`, and MySQL refuses to key a TEXT column without
+  a prefix length — so `table.string("email").unique()` failed at `CREATE TABLE`. MySQL now
+  gets `VARCHAR(length)`; SQLite and PostgreSQL keep `TEXT`. `char()` had the same bug and the
+  same fix. Found by the new MySQL suite on its first run against a real server.
+
+### Added
+
+- **`<Icon name="inbox" />` — 2,060 icons, bundled, typed by name.** The set ships inside
+  `@zerotal/flow-ui`, so there is nothing to install and no generator to run: a fresh app gets
+  autocomplete over every name and a compile error on a typo. Rendered on the server as inline
+  SVG, so there is no icon font, no sprite, no request per glyph, and nothing for a strict CSP
+  to block. Four icons are drawn for sign-in flows the set has no name for — `passkey`,
+  `two-factor`, `otp`, `magic-link` — and three brand marks ship for the social-login providers
+  `@zerotal/auth` supports. See [Icons](/docs/flow/icons).
+
+- **The ORM suite runs against MySQL 8 in CI, and the job blocks merges.** The same smoke
+  suite that covers PostgreSQL — schema DDL and `ALTER`, identity columns, CRUD, type
+  round-trips, unique and NOT NULL enforcement, row locks, transaction rollback. MySQL moves
+  from _experimental_ to _supported, hardening_; see the
+  [Support Policy](/docs/support-policy).
+
+### Changed
+
+- **The starters link by route name.** Every hard-coded `href="/about"` in the React and Vue
+  templates now goes through `route()`, and the templates ship the generated route table so a
+  freshly scaffolded app type-checks before its first `zt dev`.
+
+### Documented
+
+- **The HTTP client guide is one page.** Eight pages became one, written from where the
+  package is used — your app calling somebody else's service — with straight URLs instead of
+  a route map threaded through every example. See [HTTP Client](/docs/client).
+
+- **`route()` in Inertia**, for links and for form submissions, including the one thing Inertia
+  adds: a page renders in two processes, so `defineRoutes()` has to run in the SSR entry too.
+  See [Building URLs](/docs/inertia/rendering#building-urls-with-route).
+
+- **Every package changelog has the release headings it was missing.** `[Unreleased]` had
+  accumulated four releases of shipped work — `@zerotal/flow-ui`'s newest heading read
+  `[1.5.0]` while 1.7.3 was on npm. Cutting a release now moves them.
+
 ## 1.7.3 — 2026-08-20
 
 Two fields that accepted input and threw it away, and a CI job that was testing nothing.

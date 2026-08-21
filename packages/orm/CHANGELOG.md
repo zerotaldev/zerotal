@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.4] — 2026-08-21
+
 ### Fixed
 
 - **A string column could not carry an index on MySQL.** `table.string()` compiled to `TEXT`

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.4] — 2026-08-21
+
 ### Fixed
 
 - **The panel no longer mounts when there is no server half to talk to.** The provider is

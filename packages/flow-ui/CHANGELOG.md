@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.7.4] — 2026-08-21
+
 ### Added
 
 - **`<Icon name="inbox" />` — 2,060 icons, bundled, typed by name.** The set ships inside this

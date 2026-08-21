@@ -171,19 +171,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { label: "Helpers", slug: "helpers" },
       { label: "Carbon", slug: "carbon" },
-      {
-        label: "HTTP Client",
-        slug: "client",
-        children: [
-          { label: "Requests", slug: "client/requests" },
-          { label: "Authentication", slug: "client/auth" },
-          { label: "Error Handling", slug: "client/errors" },
-          { label: "Resilience", slug: "client/resilience" },
-          { label: "File Transfers", slug: "client/files" },
-          { label: "Testing", slug: "client/testing" },
-          { label: "References", slug: "client/references" },
-        ],
-      },
+      { label: "HTTP Client", slug: "client" },
       { label: "Rate Limiting", slug: "rate-limiting" },
       { label: "Notifications & Mail", slug: "notifications" },
       { label: "Queue", slug: "queue" },

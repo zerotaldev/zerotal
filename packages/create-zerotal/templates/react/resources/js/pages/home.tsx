@@ -122,7 +122,7 @@ function Home({ title, message }: Props) {
         </p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <ButtonLink href="/about" size="lg">
+          <ButtonLink href={route("about")} size="lg">
             Take the tour
             <ArrowRightIcon className="size-4" />
           </ButtonLink>

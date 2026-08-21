@@ -41,7 +41,7 @@ const form = useForm({ email: "" });
     </Card>
 
     <p class="mt-6 text-sm text-muted-foreground">
-      <Link href="/login" class="text-accent hover:underline">Back to sign in</Link>
+      <Link :href="route('login')" class="text-accent hover:underline">Back to sign in</Link>
     </p>
   </div>
 </template>

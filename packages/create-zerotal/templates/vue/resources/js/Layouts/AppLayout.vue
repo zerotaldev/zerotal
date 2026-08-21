@@ -76,7 +76,7 @@ const navLink = (href: string): string =>
     <header class="sticky top-0 z-40 border-b border-border bg-background/75 backdrop-blur-md">
       <div :class="cn(CONTAINER, 'flex h-16 items-center justify-between gap-4')">
         <Link
-          href="/"
+          :href="route('home')"
           class="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight"
           :aria-label="`${APP_NAME} home`"
         >

@@ -1,7 +1,14 @@
 import { createInertiaApp, type ResolvedComponent } from "@inertiajs/react";
 import { createRoot } from "react-dom/client";
+import { defineRoutes } from "zerotal/routes";
 import { pages } from "./pages.generated.ts";
+import { ROUTES } from "../../types/routes.generated.ts";
 import "../css/app.css";
+
+// Hand the browser the route table so `route("about")` works in a component the way
+// it does in a controller. `defineRoutes` also installs `route()` globally, so pages
+// call it without an import. The table is regenerated on every `zt dev`.
+defineRoutes(ROUTES);
 
 createInertiaApp({
   // Suffix every `<Head title="…" />` with the app name, so a page only has to

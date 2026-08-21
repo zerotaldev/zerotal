@@ -71,7 +71,7 @@ const form = useForm({
 
     <p class="mt-6 text-sm text-muted-foreground">
       Already registered?
-      <Link href="/login" class="text-accent hover:underline">Sign in</Link>
+      <Link :href="route('login')" class="text-accent hover:underline">Sign in</Link>
     </p>
   </div>
 </template>

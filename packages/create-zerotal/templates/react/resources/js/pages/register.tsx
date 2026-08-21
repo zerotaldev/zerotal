@@ -85,7 +85,7 @@ function Register({ title }: Props) {
 
         <p className="mt-6 text-sm text-muted-foreground">
           Already registered?{" "}
-          <Link href="/login" className="text-accent hover:underline">
+          <Link href={route("login")} className="text-accent hover:underline">
             Sign in
           </Link>
         </p>

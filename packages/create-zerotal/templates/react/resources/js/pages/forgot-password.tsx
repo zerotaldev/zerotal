@@ -49,7 +49,7 @@ function ForgotPassword({ title }: Props) {
         </Card>
 
         <p className="mt-6 text-sm text-muted-foreground">
-          <Link href="/login" className="text-accent hover:underline">
+          <Link href={route("login")} className="text-accent hover:underline">
             Back to sign in
           </Link>
         </p>

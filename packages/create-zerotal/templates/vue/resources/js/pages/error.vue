@@ -40,7 +40,7 @@ const copy = computed(
     </h1>
     <p class="mt-4 text-lg leading-relaxed text-pretty text-muted-foreground">{{ copy.body }}</p>
 
-    <Link href="/" class="mt-8 inline-block">
+    <Link :href="route('home')" class="mt-8 inline-block">
       <Button>Back to start</Button>
     </Link>
   </div>

@@ -73,10 +73,10 @@ function Login({ title }: Props) {
         </Card>
 
         <div className="mt-6 flex items-center justify-between text-sm">
-          <Link href="/forgot-password" className="text-accent hover:underline">
+          <Link href={route("forgot-password")} className="text-accent hover:underline">
             Forgot your password?
           </Link>
-          <Link href="/register" className="text-accent hover:underline">
+          <Link href={route("register")} className="text-accent hover:underline">
             Create an account
           </Link>
         </div>

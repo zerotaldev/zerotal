@@ -69,7 +69,7 @@ function ErrorPage({ status }: Props) {
         <p className="mt-3 leading-relaxed text-pretty text-muted-foreground">{body}</p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <ButtonLink href="/">Back to home</ButtonLink>
+          <ButtonLink href={route("home")}>Back to home</ButtonLink>
           <a
             href={DOCS_URL}
             target="_blank"

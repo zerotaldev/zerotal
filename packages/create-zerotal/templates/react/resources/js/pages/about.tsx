@@ -129,7 +129,7 @@ function About({ title }: Props) {
             The contact page posts to a route, validates on the server, and comes back with either a
             flash message or the errors and your original input — no client-side state to reconcile.
           </p>
-          <ButtonLink href="/contact" className="mt-5">
+          <ButtonLink href={route("contact")} className="mt-5">
             Open the contact form
             <ArrowRightIcon className="size-4" />
           </ButtonLink>

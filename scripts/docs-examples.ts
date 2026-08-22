@@ -499,12 +499,22 @@ const STRUCTURAL = new Set([
   "TS2395", // Merged declaration must be all exported or all local — half a pair.
 ]);
 
-/** Whether `error` describes the block's shape rather than a defect in it. */
-function isStructural(error: string): boolean {
-  const code = error.slice(0, error.indexOf(" "));
+/**
+ * Whether `error` describes the block's shape rather than a defect in it.
+ *
+ * `code` is consulted for one case the error text cannot settle on its own.
+ * `this` at the top level of a module is `undefined` under `strict`, so a method
+ * body shown without its class — `this.info("Success")`, under a comment reading
+ * "inside a command's run()" — reports as `Object is possibly 'undefined'`. That
+ * is the block's shape, not a nullable value the page got wrong. The test is
+ * `this.` at column zero: inside a class or a function it would be indented.
+ */
+function isStructural(error: string, code: string): boolean {
   // TS1xxx is the parser and TS17xxx is the JSX parser; both describe a block that
   // does not parse, which is the plainest statement of "not a whole program".
-  return STRUCTURAL.has(code) || /^TS1(\d{3}|7\d{3})$/.test(code);
+  const id = error.slice(0, error.indexOf(" "));
+  if (STRUCTURAL.has(id) || /^TS1(\d{3}|7\d{3})$/.test(id)) return true;
+  return (id === "TS2532" || id === "TS2531") && /^this\./m.test(code);
 }
 
 /**
@@ -518,7 +528,7 @@ async function seed(blocks: Block[], failures: Map<Block, string>): Promise<numb
   const byFile = new Map<string, Block[]>();
   for (const b of blocks) {
     const error = failures.get(b);
-    if (!error || b.fragment || !isStructural(error)) continue;
+    if (!error || b.fragment || !isStructural(error, b.code)) continue;
     const list = byFile.get(b.file) ?? [];
     list.push(b);
     byFile.set(b.file, list);
@@ -561,7 +571,7 @@ const wholeFailures = await diagnose(whole);
 
 if (args.has("--seed")) {
   const marked = await seed(blocks, wholeFailures);
-  const real = [...wholeFailures].filter(([, e]) => !isStructural(e));
+  const real = [...wholeFailures].filter(([b, e]) => !isStructural(e, b.code));
   console.log(`Marked ${marked} block(s) as fragments.`);
   if (real.length) {
     console.log(`

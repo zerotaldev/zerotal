@@ -512,7 +512,7 @@ const posts = await Cache.remember("posts.recent", 60, () =>
   Post.query().orderBy("created_at", "desc").limit(10).get(),
 );
 
-await Cache.put("key", value, 300);
+await Cache.set("key", value, 300);
 await Cache.forget("key");
 
 // Tag-based invalidation

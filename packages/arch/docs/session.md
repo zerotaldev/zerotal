@@ -433,7 +433,7 @@ try {
 } catch (error) {
   if (error instanceof SessionCookieOverflowError) {
     // Keep a key in the session, the payload somewhere with room.
-    const id = await Cache.put(hugeObject);
+    const id = await Cache.set(hugeObject);
     http.session.put("reportId", id);
   } else throw error;
 }

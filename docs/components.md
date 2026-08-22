@@ -95,8 +95,9 @@ bun zt flow:init
 
 Components are written against design tokens — `bg-card`, `text-muted-foreground`, `border-input`, `bg-primary` — so _defining_ those tokens themes the whole kit at once. `theme.css` does that for a real Tailwind build. When you have no build step, `flowUiHead()` does the same job as a `<head>` payload: it loads the Tailwind Play CDN, configures it with the identical token mapping, and emits the palette inline.
 
-```ts
-import { Layout, flowUiHead } from "@zerotal/flow-ui";
+```ts fragment
+import { Layout } from "@zerotal/flow";
+import { flowUiHead } from "@zerotal/flow-ui";
 
 export class AppLayout extends Layout {
   static override get head() {

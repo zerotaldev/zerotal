@@ -158,7 +158,7 @@ For query string parameters (`/posts?page=2&search=typescript`), use the `@url` 
 
 Where `@url` syncs a reactive prop **to** the URL, `this.currentUrl()` and `this.navigateCurrent()` go the other way — they **build** a URL from the one you're on with some query params changed, for filter links and instant filtering. Both are client-only helpers (the compiler rewrites them to the client runtime), so they update without a server round-trip to start.
 
-```typescript
+```typescript fragment
 // Build a URL from the current one — returns a string, does NOT navigate.
 this.currentUrl({ query: { page: 3 } });
 //  /posts?search=ts&page=2   →   /posts?search=ts&page=3

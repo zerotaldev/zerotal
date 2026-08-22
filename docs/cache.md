@@ -45,7 +45,9 @@ import { CacheConfig } from "@zerotal/cache";
 import { env } from "zerotal";
 
 export default CacheConfig({
-  driver: env("CACHE_DRIVER", "sqlite"), // 'sqlite' | 'redis' | 'memory'
+  // One of 'sqlite' | 'redis' | 'memory', written literally: the field is that
+  // union and `env()` returns a plain string.
+  driver: "sqlite",
   prefix: env("CACHE_PREFIX", "zerotal:"), // prepended to every key
   ttl: env("CACHE_TTL", 3600), // default TTL in seconds (1 hour)
 

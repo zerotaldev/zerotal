@@ -113,7 +113,7 @@ Health.register(
 
 // Non-critical failures degrade the report without failing readiness.
 Health.register("cache", async () => {
-  await Cache.put("__health", "1", 5);
+  await Cache.set("__health", "1", 5);
   return { meta: { driver: "redis" } };
 });
 

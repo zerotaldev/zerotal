@@ -131,7 +131,7 @@ if (this.errors.has("email")) {
 
 ### Manual errors
 
-```typescript
+```typescript fragment
 this.addError("email", "That email address is already taken.");
 this.addError("username", "Username must be unique.");
 
@@ -242,7 +242,7 @@ Bind fields with nested `value={this.form.email}`:
 
 ### Form helpers
 
-```typescript
+```typescript fragment
 // Get all field values as a plain object
 const data = this.form.data();
 // { email: "alice@example.com", password: "…", remember: true }

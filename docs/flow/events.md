@@ -27,7 +27,7 @@ Call `this.dispatch()` inside any `@expose`d action. The event is delivered to a
 
 The second argument is the payload — any JSON-serialisable value. Omit it for events that carry no data:
 
-```typescript
+```typescript fragment
 this.dispatch("cart-cleared");
 ```
 
@@ -35,7 +35,7 @@ this.dispatch("cart-cleared");
 
 By default, `dispatch()` notifies every `@on` listener on the page. Use `dispatchTo` or `dispatchSelf` to narrow the target:
 
-```typescript
+```typescript fragment
 // Default: all @on("post-created") listeners on the page
 this.dispatch("post-created", { id });
 
@@ -158,7 +158,7 @@ declare module "@zerotal/flow" {
 
 Every `dispatch` / `dispatchTo` / `dispatchSelf` site is now checked against it — in server actions **and** client expressions, since they call the same typed method:
 
-```ts
+```ts fragment
 this.dispatch("post-created", { id: post.id, title: post.title }); // ✓
 this.dispatch("post-created", { id: post.id }); // ✗ missing `title`
 this.dispatch("post-created"); // ✗ payload required

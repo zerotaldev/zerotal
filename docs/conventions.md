@@ -181,9 +181,17 @@ Any `ServiceProvider` under `app/providers/` is registered automatically — you
 (`onRegister` → `onBooting` → `onBooted`), appended **after** the providers you registered
 explicitly (so framework providers boot first), and de-duplicated if also listed by hand.
 
-```typescript
+```typescript fragment
 // app/providers/AppServiceProvider.ts
 import { ServiceProvider } from "zerotal";
+
+// A string token is only valid once it is declared, which is what keeps
+// `make("billing")` typed at the call site. See Container for the full pattern.
+declare module "zerotal" {
+  interface ContainerBindings {
+    billing: Billing;
+  }
+}
 
 export class AppServiceProvider extends ServiceProvider {
   override onRegister() {
@@ -413,7 +421,7 @@ let you relocate any concern. Files starting with `_` and `*.test.ts` / `*.test.
 Discovery is extensible. A provider can contribute its own concern descriptor via
 `app.registerConcern(...)`:
 
-```typescript
+```typescript fragment
 // app/providers/AppServiceProvider.ts — inside onRegister/onBooting
 this.app.registerConcern({
   name: "validators",

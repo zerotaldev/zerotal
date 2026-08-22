@@ -409,7 +409,7 @@ See [Layouts & Composition](/docs/flow/layouts#two-way-props) for the full `@mod
 
 These helpers are available inside any `@expose`d method:
 
-```typescript
+```typescript fragment
 // Flash a toast notification to the browser
 this.flash("Saved successfully!"); // level defaults to "success"
 this.flash("Could not connect.", "error");

@@ -23,7 +23,7 @@
       "file": "docs/about.md",
       "heading": "Cache",
       "ordinal": 0,
-      "hash": "3bqlebdzcbzs"
+      "hash": "6oyicj8d02gt"
     },
     {
       "file": "docs/about.md",
@@ -1574,6 +1574,12 @@
       "hash": "2516yn93npdz"
     },
     {
+      "file": "docs/commands.md",
+      "heading": "Styled output & prompts",
+      "ordinal": 0,
+      "hash": "3kvc400zh0o0"
+    },
+    {
       "file": "docs/components.md",
       "heading": "Accordion usage",
       "ordinal": 0,
@@ -1906,6 +1912,12 @@
     {
       "file": "docs/components.md",
       "heading": "Without a build step",
+      "ordinal": 0,
+      "hash": "gqce1c7aef98"
+    },
+    {
+      "file": "docs/components.md",
+      "heading": "Without a build step",
       "ordinal": 1,
       "hash": "z7kx0p23skpz"
     },
@@ -1932,6 +1944,12 @@
       "heading": "Typed dot-paths",
       "ordinal": 1,
       "hash": "1pmxuf8hc180"
+    },
+    {
+      "file": "docs/container.md",
+      "heading": "Accessing the container",
+      "ordinal": 0,
+      "hash": "glapryt1wygt"
     },
     {
       "file": "docs/container.md",
@@ -1995,6 +2013,12 @@
     },
     {
       "file": "docs/container.md",
+      "heading": "Built-in facades",
+      "ordinal": 1,
+      "hash": "1npo7xhauisz"
+    },
+    {
+      "file": "docs/container.md",
       "heading": "Contextual bindings",
       "ordinal": 0,
       "hash": "1c0641e4olxk"
@@ -2031,6 +2055,18 @@
     },
     {
       "file": "docs/container.md",
+      "heading": "Scoped",
+      "ordinal": 0,
+      "hash": "3ar2t24y1vtt"
+    },
+    {
+      "file": "docs/container.md",
+      "heading": "Singleton",
+      "ordinal": 0,
+      "hash": "2abbq0hzqt8x"
+    },
+    {
+      "file": "docs/container.md",
       "heading": "Sync resolution — makeSync",
       "ordinal": 0,
       "hash": "5nsbkxutbu0m"
@@ -2052,6 +2088,18 @@
       "heading": "The App facade",
       "ordinal": 1,
       "hash": "2ywcf91gs02h"
+    },
+    {
+      "file": "docs/container.md",
+      "heading": "Transient",
+      "ordinal": 0,
+      "hash": "nyoucoop1o5t"
+    },
+    {
+      "file": "docs/container.md",
+      "heading": "Value",
+      "ordinal": 0,
+      "hash": "1t5j5ut5uyjv"
     },
     {
       "file": "docs/context.md",
@@ -2277,6 +2325,12 @@
     },
     {
       "file": "docs/conventions.md",
+      "heading": "Custom concerns",
+      "ordinal": 0,
+      "hash": "3ihpql9djo6q"
+    },
+    {
+      "file": "docs/conventions.md",
       "heading": "Events & listeners — app/events/, app/listeners/",
       "ordinal": 0,
       "hash": "34vrks8tws26"
@@ -2340,6 +2394,12 @@
       "heading": "Policies — app/policies/",
       "ordinal": 0,
       "hash": "3qa6xhvypy6g"
+    },
+    {
+      "file": "docs/conventions.md",
+      "heading": "Providers — app/providers/",
+      "ordinal": 0,
+      "hash": "3vp9yc6o4ntm"
     },
     {
       "file": "docs/conventions.md",
@@ -2859,6 +2919,12 @@
     },
     {
       "file": "docs/flow/decorators.md",
+      "heading": "Action helpers",
+      "ordinal": 0,
+      "hash": "22wwnjl0t6b3"
+    },
+    {
+      "file": "docs/flow/decorators.md",
       "heading": "Real-time validation",
       "ordinal": 0,
       "hash": "2l6yhxk7wwmr"
@@ -2967,6 +3033,12 @@
     },
     {
       "file": "docs/flow/events.md",
+      "heading": "Dispatching events from the server",
+      "ordinal": 1,
+      "hash": "3hixnjlt9al9"
+    },
+    {
+      "file": "docs/flow/events.md",
       "heading": "In a server action",
       "ordinal": 0,
       "hash": "1fbc9x2tr4wj"
@@ -3015,6 +3087,18 @@
     },
     {
       "file": "docs/flow/events.md",
+      "heading": "Targeting specific components",
+      "ordinal": 0,
+      "hash": "1fddr7g7vcld"
+    },
+    {
+      "file": "docs/flow/events.md",
+      "heading": "Type-safe events",
+      "ordinal": 1,
+      "hash": "3i3holljfals"
+    },
+    {
+      "file": "docs/flow/events.md",
       "heading": "Type-safe events",
       "ordinal": 2,
       "hash": "3lsu7s56d3ku"
@@ -3027,9 +3111,21 @@
     },
     {
       "file": "docs/flow/forms.md",
+      "heading": "Form helpers",
+      "ordinal": 0,
+      "hash": "2qt7i30kt1nq"
+    },
+    {
+      "file": "docs/flow/forms.md",
       "heading": "Form objects",
       "ordinal": 1,
       "hash": "28el2z0i7ox7"
+    },
+    {
+      "file": "docs/flow/forms.md",
+      "heading": "Manual errors",
+      "ordinal": 0,
+      "hash": "12nox1iy7mhe"
     },
     {
       "file": "docs/flow/forms.md",
@@ -3742,6 +3838,12 @@
     {
       "file": "docs/flow/routing.md",
       "heading": "Query-aware navigation",
+      "ordinal": 0,
+      "hash": "26asuq08yvc7"
+    },
+    {
+      "file": "docs/flow/routing.md",
+      "heading": "Query-aware navigation",
       "ordinal": 1,
       "hash": "syrfsuporqk4"
     },
@@ -3947,7 +4049,7 @@
       "file": "docs/health.md",
       "heading": "Registering checks",
       "ordinal": 0,
-      "hash": "1z47t462jcsq"
+      "hash": "25xxz4eopno1"
     },
     {
       "file": "docs/health.md",
@@ -6569,7 +6671,7 @@
       "file": "docs/session.md",
       "heading": "Errors",
       "ordinal": 0,
-      "hash": "wauhmst8qh6l"
+      "hash": "32fe3pu5fzrm"
     },
     {
       "file": "docs/session.md",
@@ -7444,76 +7546,10 @@
       "hash": "2c3nxlggy8ti"
     },
     {
-      "file": "docs/cache.md",
-      "heading": "Configuration",
-      "ordinal": 0,
-      "hash": "3fazxm3geine"
-    },
-    {
       "file": "docs/client/index.md",
       "heading": "Testing",
       "ordinal": 0,
       "hash": "2b1fxr4bdtod"
-    },
-    {
-      "file": "docs/commands.md",
-      "heading": "Styled output & prompts",
-      "ordinal": 0,
-      "hash": "3kvc400zh0o0"
-    },
-    {
-      "file": "docs/components.md",
-      "heading": "Without a build step",
-      "ordinal": 0,
-      "hash": "3c44rlcer9kt"
-    },
-    {
-      "file": "docs/container.md",
-      "heading": "Accessing the container",
-      "ordinal": 0,
-      "hash": "glapryt1wygt"
-    },
-    {
-      "file": "docs/container.md",
-      "heading": "Built-in facades",
-      "ordinal": 1,
-      "hash": "133ep6sqz32h"
-    },
-    {
-      "file": "docs/container.md",
-      "heading": "Scoped",
-      "ordinal": 0,
-      "hash": "3ar2t24y1vtt"
-    },
-    {
-      "file": "docs/container.md",
-      "heading": "Singleton",
-      "ordinal": 0,
-      "hash": "2abbq0hzqt8x"
-    },
-    {
-      "file": "docs/container.md",
-      "heading": "Transient",
-      "ordinal": 0,
-      "hash": "nyoucoop1o5t"
-    },
-    {
-      "file": "docs/container.md",
-      "heading": "Value",
-      "ordinal": 0,
-      "hash": "1t5j5ut5uyjv"
-    },
-    {
-      "file": "docs/conventions.md",
-      "heading": "Custom concerns",
-      "ordinal": 0,
-      "hash": "3ihpql9djo6q"
-    },
-    {
-      "file": "docs/conventions.md",
-      "heading": "Providers — app/providers/",
-      "ordinal": 0,
-      "hash": "2orq3nfx6h1f"
     },
     {
       "file": "docs/conventions.md",
@@ -7618,18 +7654,6 @@
       "hash": "3q7ihf2t82u9"
     },
     {
-      "file": "docs/flow/decorators.md",
-      "heading": "Action helpers",
-      "ordinal": 0,
-      "hash": "22wwnjl0t6b3"
-    },
-    {
-      "file": "docs/flow/events.md",
-      "heading": "Dispatching events from the server",
-      "ordinal": 1,
-      "hash": "3hixnjlt9al9"
-    },
-    {
       "file": "docs/flow/events.md",
       "heading": "Dispatching from the browser",
       "ordinal": 0,
@@ -7654,18 +7678,6 @@
       "hash": "pbrp1jyqzvyi"
     },
     {
-      "file": "docs/flow/events.md",
-      "heading": "Targeting specific components",
-      "ordinal": 0,
-      "hash": "1fddr7g7vcld"
-    },
-    {
-      "file": "docs/flow/events.md",
-      "heading": "Type-safe events",
-      "ordinal": 1,
-      "hash": "3i3holljfals"
-    },
-    {
       "file": "docs/flow/forms.md",
       "heading": "Checking errors in server code",
       "ordinal": 0,
@@ -7673,21 +7685,9 @@
     },
     {
       "file": "docs/flow/forms.md",
-      "heading": "Form helpers",
-      "ordinal": 0,
-      "hash": "2qt7i30kt1nq"
-    },
-    {
-      "file": "docs/flow/forms.md",
       "heading": "Form objects",
       "ordinal": 2,
       "hash": "1cw75no4m1sn"
-    },
-    {
-      "file": "docs/flow/forms.md",
-      "heading": "Manual errors",
-      "ordinal": 0,
-      "hash": "12nox1iy7mhe"
     },
     {
       "file": "docs/flow/icons.md",
@@ -7748,12 +7748,6 @@
       "heading": "Reactive lists & optimistic collections",
       "ordinal": 1,
       "hash": "p4c1xhh2rbno"
-    },
-    {
-      "file": "docs/flow/routing.md",
-      "heading": "Query-aware navigation",
-      "ordinal": 0,
-      "hash": "26asuq08yvc7"
     },
     {
       "file": "docs/health.md",

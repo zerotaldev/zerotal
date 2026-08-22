@@ -34,7 +34,7 @@ one line) and decoupling (a class depends on a `Mailer` contract, not on
 
 Inside a `ServiceProvider`, the container lives at `this.app.container`:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider method
 this.app.container.singleton(CacheManager, () => new CacheManager());
 const cache = await this.app.container.make(CacheManager);
@@ -97,7 +97,7 @@ Created once, then cached for the lifetime of the application. Every caller gets
 the same instance. The factory receives the container so it can resolve its own
 dependencies:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider's onRegister()
 this.app.container.singleton(CacheManager, async (c) => {
   const cfg = await c.make("config");
@@ -115,7 +115,7 @@ Created once per HTTP request and isolated between concurrent requests via
 `AsyncLocalStorage`. Resolving a scoped binding outside of a request context
 throws `ScopedOutsideRequestError`:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider's onRegister()
 this.app.container.scoped(UserSession, (c) => new UserSession());
 ```
@@ -124,7 +124,7 @@ this.app.container.scoped(UserSession, (c) => new UserSession());
 
 A fresh instance on every `make()`:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider's onRegister()
 this.app.container.bind(ReportGenerator, () => new ReportGenerator());
 ```
@@ -133,7 +133,7 @@ this.app.container.bind(ReportGenerator, () => new ReportGenerator());
 
 Bind a pre-built instance directly — no factory, no lazy construction:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider's onRegister()
 this.app.container.value("config", configObject);
 ```
@@ -560,12 +560,12 @@ await Artisan.call("migrate");
 Packages ship their own — for example `Cache` from `@zerotal/cache`, `Auth` from
 `@zerotal/auth`:
 
-```typescript
+```typescript fragment
 // in application code (after boot)
 import { Cache } from "@zerotal/cache";
 import { Auth } from "@zerotal/auth";
 
-await Cache.put("key", value, 300);
+await Cache.set("key", value, 300);
 Auth.check(); // → boolean
 Auth.user(); // → AuthenticatedUser (throws if guest)
 Auth.userOrNull(); // → AuthenticatedUser | undefined

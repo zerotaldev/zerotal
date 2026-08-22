@@ -124,7 +124,7 @@ returns the list of registered names.
 The `Command` base class provides coloured output helpers and interactive
 prompts. The prompts read from stdin and only work on a real TTY:
 
-```typescript
+```typescript fragment
 // inside a command's run()
 this.info("Success"); // green
 this.warn("Heads up"); // yellow

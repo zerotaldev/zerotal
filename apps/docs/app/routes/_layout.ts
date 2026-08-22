@@ -1,5 +1,6 @@
 import { escapeHtml as escHtml } from "zerotal/helpers";
 import { env } from "zerotal";
+import { asset } from "zerotal/assets";
 import { ZEROTAL_VERSION_SHORT } from "../version.ts";
 import {
   loadApiNav,
@@ -625,8 +626,8 @@ export function Layout({
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="/css/app.css">
-  <script src="/js/app.js" type="module"></script>
+  <link rel="stylesheet" href="${asset("/css/app.css")}">
+  <script src="${asset("/js/app.js")}" type="module"></script>
 </head>
 <body class="bg-cream text-ink antialiased selection:bg-voltage-100 selection:text-ink">
 

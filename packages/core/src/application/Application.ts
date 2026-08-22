@@ -34,7 +34,12 @@ import {
 } from "../middleware/SecureHeadersMiddleware.ts";
 import { isAllowedOrigin, allowedOriginsFrom } from "../http/originGuard.ts";
 import { rescueSync } from "../helpers/index.ts";
-import { configureAssets, setAssetVersion, assetVersion } from "../assets/assets.ts";
+import {
+  configureAssets,
+  setAssetVersion,
+  assetVersion,
+  deriveAssetVersion,
+} from "../assets/assets.ts";
 import { ConfigLoader, type ConfigMap } from "../config/ConfigLoader.ts";
 import { Emitter } from "../events/Emitter.ts";
 import { FrameworkEvents, AppBooted } from "../events/FrameworkEvents.ts";
@@ -1358,7 +1363,18 @@ export class Application {
       // each rebuild ships a fresh token over the reload channel (see ServeCommand).
       const isDevWorker = process.argv.includes("--dev-worker");
       configureAssets({ prefix: assets?.prefix ?? "/", dev: isDevWorker });
-      if (isDevWorker) setAssetVersion(Bun.env["ZT_ASSET_VERSION"] ?? "");
+
+      if (isDevWorker) {
+        setAssetVersion(Bun.env["ZT_ASSET_VERSION"] ?? "");
+      } else {
+        // Production gets a token too, derived from the built files. `assets:build`
+        // writes `app.js` under that name every deploy and the static handler sends
+        // no `Cache-Control`, so without this a returning visitor keeps the bundle
+        // their browser cached — through any number of deploys, while the server
+        // reports success. Derived rather than random so a restart that changed no
+        // assets does not invalidate every client's cache for nothing.
+        setAssetVersion(deriveAssetVersion(`${dir}/${assets?.outDir ?? "public"}`));
+      }
     }
 
     // Convention phase — discovers app/schedules (class-based), models, observers, jobs, etc.

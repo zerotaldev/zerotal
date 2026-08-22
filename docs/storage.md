@@ -145,6 +145,8 @@ guessing paths; a `404` tells them nothing.
 
 ```ts
 // in a controller
+import { Storage } from "zerotal/storage";
+
 const url = await Storage.disk("invoices").temporaryUrl("2026-q1.pdf", 900);
 // → /invoices/2026-q1.pdf?expires=1769990400&signature=…
 ```
@@ -281,6 +283,8 @@ const bytes = await Storage.disk().getBuffer("uploads/invoice.pdf");
 
 ```ts
 // in a service
+import { Storage } from "zerotal/storage";
+
 const exists = await Storage.disk().exists("avatars/alice.jpg"); // boolean
 ```
 
@@ -288,6 +292,8 @@ const exists = await Storage.disk().exists("avatars/alice.jpg"); // boolean
 
 ```ts
 // in a service
+import { Storage } from "zerotal/storage";
+
 await Storage.disk().delete("avatars/old.jpg");
 ```
 
@@ -299,6 +305,8 @@ Both operate within the same disk:
 
 ```ts
 // in a service
+import { Storage } from "zerotal/storage";
+
 // Copy
 await Storage.disk().copy("avatars/alice.jpg", "backups/alice-2026.jpg");
 
@@ -310,6 +318,8 @@ await Storage.disk().move("tmp/upload.jpg", "avatars/alice.jpg");
 
 ```ts
 // in a service
+import { Storage } from "zerotal/storage";
+
 const size = await Storage.disk().size("avatars/alice.jpg"); // bytes | null
 const modified = await Storage.disk().lastModified("avatars/alice.jpg"); // ms epoch | null
 ```
@@ -350,8 +360,10 @@ the panel's own 404, which looks like a broken upload and is not one.
 
 Branch instead of catching when a disk may legitimately have no URL:
 
-```ts
+```ts fragment
 // in a view
+import { Storage } from "zerotal/storage";
+
 const src = Storage.isServed("public") ? await Storage.publicUrl(path, { disk: "public" }) : null;
 ```
 

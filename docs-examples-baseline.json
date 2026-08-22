@@ -2451,6 +2451,12 @@
     },
     {
       "file": "docs/csrf.md",
+      "heading": "Manual fetch / classic forms",
+      "ordinal": 1,
+      "hash": "13zxr410j440"
+    },
+    {
+      "file": "docs/csrf.md",
       "heading": "Testing",
       "ordinal": 0,
       "hash": "3uvl2aw9g7z5"
@@ -6723,6 +6729,12 @@
     },
     {
       "file": "docs/session.md",
+      "heading": "CSRF protection",
+      "ordinal": 2,
+      "hash": "p9yb2l3xclgr"
+    },
+    {
+      "file": "docs/session.md",
       "heading": "Errors",
       "ordinal": 0,
       "hash": "32fe3pu5fzrm"
@@ -6858,6 +6870,12 @@
       "heading": "Writing a custom driver",
       "ordinal": 1,
       "hash": "1gdnknki890q"
+    },
+    {
+      "file": "docs/storage.md",
+      "heading": "`publicUrl()` — the one to reach for",
+      "ordinal": 1,
+      "hash": "3trstq1mt25k"
     },
     {
       "file": "docs/storage.md",
@@ -7618,12 +7636,6 @@
       "hash": "16is6nf5e2qi"
     },
     {
-      "file": "docs/csrf.md",
-      "heading": "Manual fetch / classic forms",
-      "ordinal": 1,
-      "hash": "13zxr410j440"
-    },
-    {
       "file": "docs/database.md",
       "heading": "Multiple database connections",
       "ordinal": 0,
@@ -7801,7 +7813,7 @@
       "file": "docs/health.md",
       "heading": "Configuration",
       "ordinal": 0,
-      "hash": "3l5k8k6ro9qt"
+      "hash": "ec21hqahzi9l"
     },
     {
       "file": "docs/lock.md",
@@ -7846,12 +7858,6 @@
       "hash": "1lhm6tjzsjvl"
     },
     {
-      "file": "docs/queue.md",
-      "heading": "Configuration",
-      "ordinal": 0,
-      "hash": "28m2l3jmgft9"
-    },
-    {
       "file": "docs/scheduler.md",
       "heading": "Capturing output",
       "ordinal": 1,
@@ -7862,18 +7868,6 @@
       "heading": "Basic usage",
       "ordinal": 0,
       "hash": "1dtjth36vlof"
-    },
-    {
-      "file": "docs/session.md",
-      "heading": "CSRF protection",
-      "ordinal": 2,
-      "hash": "p9yb2l3xclgr"
-    },
-    {
-      "file": "docs/session.md",
-      "heading": "Which driver should I use?",
-      "ordinal": 0,
-      "hash": "3f2l005xl35h"
     },
     {
       "file": "docs/social.md",
@@ -7889,39 +7883,9 @@
     },
     {
       "file": "docs/storage.md",
-      "heading": "`publicUrl()` — the one to reach for",
-      "ordinal": 1,
-      "hash": "2zvj7bdlz6t0"
-    },
-    {
-      "file": "docs/storage.md",
       "heading": "`url()` and `temporaryUrl()`",
       "ordinal": 0,
       "hash": "1gk7kbdpp63g"
-    },
-    {
-      "file": "docs/storage.md",
-      "heading": "Checking existence",
-      "ordinal": 0,
-      "hash": "xqsj59f8uj56"
-    },
-    {
-      "file": "docs/storage.md",
-      "heading": "Copying and moving",
-      "ordinal": 0,
-      "hash": "acoeim79vhwc"
-    },
-    {
-      "file": "docs/storage.md",
-      "heading": "Deleting files",
-      "ordinal": 0,
-      "hash": "2sp26u36syn9"
-    },
-    {
-      "file": "docs/storage.md",
-      "heading": "File metadata",
-      "ordinal": 0,
-      "hash": "l69azz2fxxdi"
     },
     {
       "file": "docs/storage.md",
@@ -7934,12 +7898,6 @@
       "heading": "Organising files by date",
       "ordinal": 0,
       "hash": "2haqlyu9dmgf"
-    },
-    {
-      "file": "docs/storage.md",
-      "heading": "Signed disks",
-      "ordinal": 0,
-      "hash": "1pbk5x1687a7"
     },
     {
       "file": "docs/tenancy.md",

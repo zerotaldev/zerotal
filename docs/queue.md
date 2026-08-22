@@ -56,7 +56,9 @@ import { QueueConfig } from "@zerotal/queue";
 import { env } from "zerotal";
 
 export default QueueConfig({
-  driver: env("QUEUE_DRIVER", "sqlite"),
+  // One of 'sqlite' | 'redis' | 'sync', written literally: the field is that union
+  // and `env()` returns a plain string.
+  driver: "sqlite",
   pollInterval: env("QUEUE_POLL_INTERVAL", 500),
   queues: ["default"],
   workers: env("QUEUE_WORKERS", 0),

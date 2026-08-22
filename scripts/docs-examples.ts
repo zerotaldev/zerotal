@@ -504,6 +504,9 @@ const STRUCTURAL = new Set([
   "TS2515", // Does not implement an inherited abstract member — a partial class.
   "TS2390", // Constructor implementation missing — signatures shown without a body.
   "TS2395", // Merged declaration must be all exported or all local — half a pair.
+  "TS2584", // Cannot find name `document` — a browser snippet, checked against a
+  // server lib on purpose. These examples are real client code; they are simply
+  // not Bun programs, which is the same thing every other entry here says.
 ]);
 
 /**

@@ -44,7 +44,11 @@ export default AppConfig({
   health: {
     enabled: true, // default: on outside production, off in production
     path: "/health", // default: '/health'
-    secret: env("HEALTH_KEY"), // required in production
+    // Spread rather than assigned, because `secret?: string` under
+    // `exactOptionalPropertyTypes` (which the templates set) will not take the
+    // `undefined` that `env()` returns when the variable is unset. The framework
+    // reads the field the same way.
+    ...(env("HEALTH_KEY") ? { secret: env("HEALTH_KEY") } : {}), // required in production
     showDetails: true, // false → bare { "status": "ok" }
   },
 });

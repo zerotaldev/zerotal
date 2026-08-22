@@ -228,7 +228,9 @@ import { SessionConfig } from "@zerotal/session";
 import { env } from "zerotal";
 
 export default SessionConfig({
-  driver: env("SESSION_DRIVER", "cookie"),
+  // One of 'cookie' | 'redis', written literally: the field is that union and
+  // `env()` returns a plain string.
+  driver: "cookie",
   // …
 });
 ```
@@ -279,7 +281,7 @@ it as a header:
 <meta name="csrf-token" content="${CsrfMiddleware.token()}" />
 ```
 
-```typescript
+```typescript fragment
 // in your client JS
 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
 

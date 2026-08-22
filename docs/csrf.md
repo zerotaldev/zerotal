@@ -99,7 +99,7 @@ Inertia.share({ csrf_token: () => CsrfMiddleware.token() });
 // <meta name="csrf-token" content="${CsrfMiddleware.token()}">
 ```
 
-```typescript
+```typescript fragment
 // client-side fetch
 await fetch("/posts", {
   method: "POST",

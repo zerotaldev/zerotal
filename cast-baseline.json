@@ -74,7 +74,7 @@
     "packages/core/src/view/jsx-runtime.ts": 3,
     "packages/devtools/src/TraceStore.ts": 1,
     "packages/flow-ui/src/commands/support.ts": 1,
-    "packages/flow/src/client/bridge.ts": 15,
+    "packages/flow/src/client/bridge.ts": 10,
     "packages/flow/src/client/cspEvaluator.ts": 3,
     "packages/flow/src/client/FlowComponent.ts": 1,
     "packages/flow/src/client/index.csp.ts": 5,
@@ -154,5 +154,5 @@
     "packages/validator/src/FormRequest.ts": 2,
     "packages/validator/src/validate.ts": 2
   },
-  "updatedAt": "2026-08-16T00:10:01.966Z"
+  "updatedAt": "2026-08-22T21:57:35.213Z"
 }

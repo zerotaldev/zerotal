@@ -268,7 +268,6 @@ function initPage(path = location.pathname) {
     // The panel covers the viewport at this width. Without this the page behind
     // it scrolls instead, which reads as the menu having broken the page.
     document.body.classList.toggle("overflow-hidden", open);
-    document.body.classList.toggle("md:overflow-auto", open);
   }
 
   const isOpen = () => btn?.getAttribute("aria-expanded") === "true";

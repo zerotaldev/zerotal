@@ -326,7 +326,7 @@ Broadcasting requires a global `window.Socket` client configured by your applica
 
 If `window.Socket` is not present, all `socket:` listeners are silently inert — no errors, no subscriptions attempted.
 
-```typescript
+```typescript fragment
 // In your frontend bootstrap (app.ts or similar):
 import { Socket } from "@zerotal/client";
 

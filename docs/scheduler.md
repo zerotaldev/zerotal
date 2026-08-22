@@ -100,7 +100,7 @@ export class SendDailyReports extends Schedule {
 Prefer the fluent frequency builder over a raw cron string when it reads better —
 override `frequency()` and return a configured task:
 
-```typescript
+```typescript fragment
 // app/schedules/WarmCache.ts
 import { Schedule, type SchedulerBuilder } from "@zerotal/scheduler";
 

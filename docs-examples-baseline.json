@@ -705,6 +705,12 @@
     },
     {
       "file": "docs/audit.md",
+      "heading": "Inspecting a record",
+      "ordinal": 0,
+      "hash": "38hox9dcifu8"
+    },
+    {
+      "file": "docs/audit.md",
       "heading": "Manual audit events",
       "ordinal": 0,
       "hash": "29wm9innsate"
@@ -3081,6 +3087,12 @@
     },
     {
       "file": "docs/flow/events.md",
+      "heading": "Requirements",
+      "ordinal": 0,
+      "hash": "pbrp1jyqzvyi"
+    },
+    {
+      "file": "docs/flow/events.md",
       "heading": "Shared state — everyone converges (multiplayer)",
       "ordinal": 0,
       "hash": "3db7e4211u8s"
@@ -4527,9 +4539,27 @@
     },
     {
       "file": "docs/lock.md",
+      "heading": "Long-running work",
+      "ordinal": 0,
+      "hash": "vrm1jfvow75w"
+    },
+    {
+      "file": "docs/lock.md",
       "heading": "Rate-limited report generation",
       "ordinal": 0,
       "hash": "339qnrzrlzj9"
+    },
+    {
+      "file": "docs/lock.md",
+      "heading": "Refreshing by hand",
+      "ordinal": 0,
+      "hash": "1jay30t8t2nq"
+    },
+    {
+      "file": "docs/lock.md",
+      "heading": "When the lock is lost anyway",
+      "ordinal": 0,
+      "hash": "2xnf02zs5alt"
     },
     {
       "file": "docs/logger.md",
@@ -4978,6 +5008,12 @@
     {
       "file": "docs/notifications.md",
       "heading": "Custom channels",
+      "ordinal": 0,
+      "hash": "189lndqavd0n"
+    },
+    {
+      "file": "docs/notifications.md",
+      "heading": "Custom channels",
       "ordinal": 1,
       "hash": "205hnduoxtlw"
     },
@@ -4998,6 +5034,12 @@
       "heading": "mail",
       "ordinal": 1,
       "hash": "3cwm2nv172cx"
+    },
+    {
+      "file": "docs/notifications.md",
+      "heading": "Queued notifications",
+      "ordinal": 0,
+      "hash": "josa1km89bkl"
     },
     {
       "file": "docs/notifications.md",
@@ -6579,6 +6621,12 @@
     },
     {
       "file": "docs/scheduler.md",
+      "heading": "Defining schedules",
+      "ordinal": 1,
+      "hash": "3f7veuhtx47n"
+    },
+    {
+      "file": "docs/scheduler.md",
       "heading": "Inline schedules",
       "ordinal": 0,
       "hash": "1mwxwdqe8nl9"
@@ -6990,6 +7038,18 @@
       "heading": "Register the provider",
       "ordinal": 0,
       "hash": "3qjn5mvsntsx"
+    },
+    {
+      "file": "docs/tenancy.md",
+      "heading": "Registering TenancyMiddleware",
+      "ordinal": 0,
+      "hash": "3kwpas0csdam"
+    },
+    {
+      "file": "docs/tenancy.md",
+      "heading": "Requiring a tenant on a route",
+      "ordinal": 0,
+      "hash": "2qz2oy4krfxn"
     },
     {
       "file": "docs/tenancy.md",
@@ -7522,12 +7582,6 @@
       "hash": "2f7s2hbqlmfs"
     },
     {
-      "file": "docs/audit.md",
-      "heading": "Inspecting a record",
-      "ordinal": 0,
-      "hash": "38hox9dcifu8"
-    },
-    {
       "file": "docs/broadcasting/channels.md",
       "heading": "Typed channels",
       "ordinal": 0,
@@ -7574,12 +7628,6 @@
       "heading": "Running it outside development",
       "ordinal": 2,
       "hash": "2dktn5mn2krh"
-    },
-    {
-      "file": "docs/email-verification.md",
-      "heading": "Getting Started",
-      "ordinal": 0,
-      "hash": "0094m2rfb75t"
     },
     {
       "file": "docs/flow/components.md",
@@ -7672,12 +7720,6 @@
       "hash": "31053be54mae"
     },
     {
-      "file": "docs/flow/events.md",
-      "heading": "Requirements",
-      "ordinal": 0,
-      "hash": "pbrp1jyqzvyi"
-    },
-    {
       "file": "docs/flow/forms.md",
       "heading": "Checking errors in server code",
       "ordinal": 0,
@@ -7756,58 +7798,16 @@
       "hash": "3l5k8k6ro9qt"
     },
     {
-      "file": "docs/health.md",
-      "heading": "Getting Started",
-      "ordinal": 0,
-      "hash": "2m0x605p9qzr"
-    },
-    {
-      "file": "docs/health.md",
-      "heading": "Testing",
-      "ordinal": 0,
-      "hash": "34abj5xy3jsl"
-    },
-    {
       "file": "docs/lock.md",
       "heading": "Custom drivers",
       "ordinal": 0,
       "hash": "cjorfdx7jkol"
     },
     {
-      "file": "docs/lock.md",
-      "heading": "Long-running work",
-      "ordinal": 0,
-      "hash": "vrm1jfvow75w"
-    },
-    {
-      "file": "docs/lock.md",
-      "heading": "Refreshing by hand",
-      "ordinal": 0,
-      "hash": "1jay30t8t2nq"
-    },
-    {
-      "file": "docs/lock.md",
-      "heading": "When the lock is lost anyway",
-      "ordinal": 0,
-      "hash": "2xnf02zs5alt"
-    },
-    {
       "file": "docs/monitor.md",
       "heading": "Configuration",
       "ordinal": 0,
       "hash": "3dxu17cs2ibr"
-    },
-    {
-      "file": "docs/notifications.md",
-      "heading": "Custom channels",
-      "ordinal": 0,
-      "hash": "189lndqavd0n"
-    },
-    {
-      "file": "docs/notifications.md",
-      "heading": "Queued notifications",
-      "ordinal": 0,
-      "hash": "josa1km89bkl"
     },
     {
       "file": "docs/orm/lifecycle.md",
@@ -7852,16 +7852,16 @@
       "hash": "3c9mjoaf822n"
     },
     {
-      "file": "docs/scheduler.md",
-      "heading": "Defining schedules",
-      "ordinal": 1,
-      "hash": "3f7veuhtx47n"
-    },
-    {
       "file": "docs/session.md",
       "heading": "Basic usage",
       "ordinal": 0,
       "hash": "1dtjth36vlof"
+    },
+    {
+      "file": "docs/session.md",
+      "heading": "CSRF protection",
+      "ordinal": 2,
+      "hash": "p9yb2l3xclgr"
     },
     {
       "file": "docs/session.md",
@@ -7952,24 +7952,6 @@
       "heading": "Custom resolver",
       "ordinal": 0,
       "hash": "2nenhqsg2m7x"
-    },
-    {
-      "file": "docs/tenancy.md",
-      "heading": "Global",
-      "ordinal": 0,
-      "hash": "kz85owainyn8"
-    },
-    {
-      "file": "docs/tenancy.md",
-      "heading": "Requiring a tenant on a route",
-      "ordinal": 0,
-      "hash": "3v8idun84m8f"
-    },
-    {
-      "file": "docs/tenancy.md",
-      "heading": "Route group only",
-      "ordinal": 0,
-      "hash": "6xq62o7y16zb"
     },
     {
       "file": "docs/upgrade.md",

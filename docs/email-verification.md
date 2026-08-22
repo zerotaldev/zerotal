@@ -18,7 +18,7 @@ in `@zerotal/core` signs the link, and `ValidateSignatureMiddleware` in
 `@zerotal/auth` checks it. There is no extra package and no extra table:
 
 ```typescript
-import { Url } from "zerotal";
+import { Url } from "zerotal/http";
 import { ValidateSignatureMiddleware } from "@zerotal/auth";
 ```
 

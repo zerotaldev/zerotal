@@ -205,7 +205,7 @@ different questions at once.
 Refreshing separates them. Pass `refresh: true` and the lock is extended in the
 background for as long as the callback runs:
 
-```typescript
+```typescript fragment
 await Lock.block(
   "report:monthly",
   60,
@@ -232,7 +232,7 @@ believing they are the only one.
 
 So the callback's `AbortSignal` is aborted and `LockLostError` is thrown:
 
-```typescript
+```typescript fragment
 try {
   await Lock.block("report:monthly", 60, run, { refresh: true });
 } catch (err) {
@@ -257,7 +257,7 @@ still valid, and nothing written before refreshing existed needs to change.
 A manual [`ManagedLock`](#lockmake-manual-handle) exposes the same thing directly,
 for flows that span steps rather than sitting inside one callback:
 
-```typescript
+```typescript fragment
 const lock = Lock.make("import:batch", 60);
 if (await lock.acquire()) {
   try {

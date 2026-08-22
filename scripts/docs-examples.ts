@@ -290,6 +290,13 @@ const TSCONFIG = {
     composite: false,
     incremental: false,
     sourceMap: false,
+    // No DOM. These examples are Bun server code, and the browser lib was
+    // answering for them: a block using `Storage.disk(...)` without an import
+    // resolved to `lib.dom`'s `Storage`, so a missing import was reported as
+    // "property 'disk' does not exist" — a defect in the page, apparently, rather
+    // than a line it left out. `Lock` and `Cache` are browser globals too, and
+    // three pages were being checked against the wrong ones.
+    lib: ["ESNext"],
     types: ["bun"],
     skipLibCheck: true,
     // `noUncheckedIndexedAccess` is right for framework source and wrong here: an

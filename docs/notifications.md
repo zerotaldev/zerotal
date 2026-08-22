@@ -554,7 +554,7 @@ The five built-in channels are registered the same way yours are, so adding a
 channel is not a special case. Register a factory under a name, and any
 notification can declare it:
 
-```ts
+```ts fragment
 // app/providers/DiscordChannelProvider.ts
 import type { NotificationChannel, Notifiable } from "@zerotal/notifications";
 
@@ -612,7 +612,7 @@ notification you queue.
 `app/notifications/` are found automatically. One that lives elsewhere must
 register itself:
 
-```ts
+```ts fragment
 // app/domain/billing/InvoiceOverdue.ts
 import { NotificationRegistry } from "@zerotal/notifications";
 

@@ -252,7 +252,7 @@ const logs = await user.auditLogs().orderBy("id", "desc").limit(25).get();
 
 ### Inspecting a record
 
-```ts
+```ts fragment
 // in a controller or service
 const entry = history[0];
 

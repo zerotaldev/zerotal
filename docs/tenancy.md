@@ -208,28 +208,21 @@ export class CookieResolver implements TenantResolver {
 
 `TenancyMiddleware` resolves the tenant and opens the [TenantContext](#tenantcontext-access-the-tenant-anywhere) boundary. Apply it globally or to specific route groups.
 
-### Global
+Registering `TenancyProvider` is the whole of it — the provider adds the resolving
+middleware to the global pipeline itself, so every request has a tenant boundary
+opened before it reaches a route:
 
-With `TenancyProvider` already registered, add the middleware to the global pipeline with `.use()` in `bootstrap/app.ts`:
-
-```typescript
+```typescript fragment
 // bootstrap/app.ts
-import { TenancyMiddleware } from "@zerotal/tenancy";
+import { TenancyProvider } from "@zerotal/tenancy";
 
-Application.create({ providers }).use([TenancyMiddleware]);
+Application.create({ providers: [TenancyProvider] });
 ```
 
-### Route group only
-
-```typescript
-// routes/web.ts
-import { TenancyMiddleware } from "@zerotal/tenancy";
-
-Router.group({ domain: "{tenant}.myapp.com" }, () => {
-  Router.get("/dashboard", DashboardController, "index");
-  Router.get("/settings", SettingsController, "index");
-}).use([TenancyMiddleware]);
-```
+`TenancyMiddleware` is deliberately not exported: there is no arrangement in which
+an app registers it by hand, and one registered twice would resolve the tenant
+twice. To _require_ a tenant on particular routes, reach for
+`EnsureTenancyMiddleware` below.
 
 The middleware throws an [error](/docs/errors) the framework's exception handler renders by content negotiation:
 
@@ -247,17 +240,18 @@ one. Use it on routes that make no sense without a tenant — it throws
 `TenantNotFoundError` when the context is empty rather than letting a query run
 unscoped:
 
-```typescript
+```typescript fragment
 // routes/web.ts
-import { TenancyMiddleware, EnsureTenancyMiddleware } from "@zerotal/tenancy";
+import { EnsureTenancyMiddleware } from "@zerotal/tenancy";
 
-Router.group({ middleware: [TenancyMiddleware, EnsureTenancyMiddleware] }, () => {
+Router.group({ middleware: [EnsureTenancyMiddleware] }, () => {
   Router.get("/billing", BillingController, "index");
 });
 ```
 
-Register it after `TenancyMiddleware`, never instead of it: on its own there is
-nothing to resolve, so every request fails.
+It runs after the global resolving middleware, which the provider has already
+registered, so by the time this asserts there is a tenant the attempt to find one
+has been made.
 
 ## ORM scoping — Tenantable
 

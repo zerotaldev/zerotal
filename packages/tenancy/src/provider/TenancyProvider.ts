@@ -4,14 +4,16 @@
  * 1. Binds the tenancy config to the container under the `'tenancy'` key.
  * 2. Configures TenancyMiddleware with the resolved config so it can resolve
  *    tenants without needing the container on every request.
+ * 3. Registers that middleware globally. Apps never do this themselves —
+ *    TenancyMiddleware is not exported, and one registered twice would resolve
+ *    the tenant twice. Gate individual routes with EnsureTenancyMiddleware.
  *
  * @example
  * // bootstrap/app.ts
  * import { TenancyProvider } from '@zerotal/tenancy';
  *
  * Application.create()
- *   .register([TenancyProvider, /* … *\/])
- *   .use([TenancyMiddleware]);   // or attach per-route-group
+ *   .register([TenancyProvider, /* … *\/]);
  */
 
 import { ServiceProvider } from "@zerotal/core";

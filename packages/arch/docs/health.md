@@ -19,7 +19,7 @@ Health checks are built into `@zerotal/core` — nothing to install and no
 provider to register. The endpoint is registered when the application starts:
 
 ```typescript
-import { Health } from "zerotal";
+import { Health } from "zerotal/health";
 ```
 
 ## Defaults
@@ -176,7 +176,7 @@ fails, since that is the case the endpoint exists for.
 ```typescript
 // tests/health/checks.test.ts
 import { test, expect, afterEach } from "bun:test";
-import { Health } from "zerotal";
+import { Health } from "zerotal/health";
 
 afterEach(() => Health.clear());
 
@@ -189,7 +189,12 @@ test("a failing critical check brings the report down", async () => {
     { critical: true },
   );
 
-  const report = await Health.run({ name: "app", version: "1.0.0", environment: "test" });
+  const report = await Health.run({
+    name: "app",
+    version: "1.0.0",
+    environment: "test",
+    uptime: 0, // required — seconds since boot, and a test has none worth reporting
+  });
 
   expect(report.status).toBe("down");
   expect(report.checks.database?.status).toBe("down");

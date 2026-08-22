@@ -13,6 +13,8 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.7.5] — 2026-08-22
+
 ### Changed
 
 - **`@zerotal/arch` is `stable`.** Reviewed ahead of its 1.9.0 date. The public API

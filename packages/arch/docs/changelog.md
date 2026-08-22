@@ -27,6 +27,84 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.7.5 — 2026-08-23
+
+Two bugs that shipped to every deployed app, a package promoted to `stable`, and
+the gates that would have caught both.
+
+### Changed
+
+- **`@zerotal/arch` is `stable`.** Reviewed ahead of its 1.9.0 date. The API follows
+  SemVer strictly from here, and that promise covers the **MCP tool contract** — tool
+  names, their arguments, and the shape of what they return. That is what an agent
+  client is configured against, and nothing type-level can see it: `archTools` has the
+  same signature however the tools are named. `mcp-surface.md` records all nine and CI
+  diffs it on every change. The protocol revision the server speaks is not covered; it
+  follows the protocol.
+
+- **INTERNAL — the writers behind `arch:install` are no longer public API.**
+  `detectAgents`, `applyMcpConfig`, `applyBlock`, `buildGuidelines` and the rest are
+  `@internal`: still exported, still working, no longer promised. Their only caller is
+  the install command, and freezing them would have committed the shape of `.mcp.json`
+  writing to the rest of the 1.x line on behalf of a caller who never arrived.
+
+- **INTERNAL — `api-surface.md` honours `@internal` across every package.** The
+  contract has always read "anything importable without an `@internal` marker keeps its
+  shape", and the generator did not read the tag — so symbols already marked internal
+  were recorded as though promised. 374 entries across 13 packages are omitted now,
+  every one verified marked. Nothing changes at runtime or in the types; the file
+  listing the promises now lists the promises.
+
+- **A modal locks the page behind it.** `<Modal>` and `<Drawer>` trapped focus
+  correctly while the page underneath kept scrolling, which on a phone reads as the
+  dialog having broken the page.
+
+- **Flow marks the active nav link for everyone.** `<Link navigate>` set
+  `data-current`, which styles a link, and nothing that announces it. It sets
+  `aria-current="page"` alongside now, so a screen reader can tell which of thirty nav
+  items is the current page.
+
+### Fixed
+
+- **Assets were cache-busted in development and not in production.** `asset()` appended
+  `?v=` only when a dev version was set, so every deployed Zerotal app served the
+  previous build's JavaScript and CSS to anyone with a warm cache — indefinitely, since
+  the URL never changed. The version is now derived from the built files themselves, so
+  it is stable across restarts and moves when the files do.
+
+- **DevTools mounted on production pages.** The provider is gated on the environment, so
+  the endpoints are absent outside development — and the client took that to mean it
+  could start anyway, pinning a floating panel to the page whose tabs read
+  `Could not read the map — HTTP 404`. It now mounts only when the server half says it
+  is there, via a `<meta>` the middleware writes, and makes no request at all on a
+  public hostname.
+
+- **Browser tests drove an unstyled site.** `Router.static("/", public)` is registered
+  only for the `web` environment, and a test app is not one — so every `FlowBrowser`
+  suite served pages without their stylesheet. Invisible to assertions that read text;
+  fatal for anything measuring layout.
+
+### Documented
+
+- **Every TypeScript example in the documentation is compiled against the real
+  packages**, on every pull request. 1,593 blocks. The gate found examples importing
+  symbols that do not exist (`currentUser`, `Layout` from the wrong package), calling
+  methods that were renamed (`Cache.put`), and configuring fields with `env()` where the
+  type is a literal union. Blocks deliberately written as fragments say so in their
+  fence and are recorded by key, so a new one is a deliberate act rather than a silent
+  exemption.
+
+- **A break cannot ship without a release note.** `api:surface:check` demands a
+  regenerated snapshot when an export changes and then goes quiet, so the changelog was
+  defended by remembering — and 1.7.3 shipped the removal of Flow's `this.title(…)` with
+  no BREAKING entry. That entry is now in 1.7.3's notes, the support policy counts three
+  breaks rather than two, and `breaking:check` reads the snapshot diff so the next one
+  cannot pass silently.
+
+- **A maturity label falls due.** The review release for a package below `stable` lives
+  in its `package.json` as `maturityReview`, and the package-conventions gate fails once
+  the version reaches it.
+
 ## 1.7.4 — 2026-08-21
 
 A debug panel that was reaching production, a column type MySQL would not index, and

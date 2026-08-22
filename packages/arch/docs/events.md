@@ -53,8 +53,9 @@ talks through the bus instead.
 
 ### API
 
-```typescript
-import { FrameworkEvents, QueryExecuted } from "zerotal";
+```typescript fragment
+import { FrameworkEvents } from "zerotal";
+import { QueryExecuted } from "@zerotal/orm";
 
 // Subscribe — returns an unsubscribe function.
 const off = FrameworkEvents.on(QueryExecuted, (event) => {

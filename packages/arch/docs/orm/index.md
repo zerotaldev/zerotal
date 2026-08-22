@@ -59,7 +59,9 @@ import { DatabaseConfig } from "@zerotal/orm";
 import { env } from "zerotal";
 
 export default DatabaseConfig({
-  driver: env("DB_DRIVER", "sqlite"), // 'sqlite' | 'postgres' | 'mysql'
+  // One of 'sqlite' | 'postgres' | 'mysql', written literally: the field is that
+  // union, and `env()` returns a plain string. Scaffolding writes your choice here.
+  driver: "sqlite",
   url: env("DATABASE_URL", "./database/db.sqlite"),
 
   // PostgreSQL:  'postgres://user:pass@localhost:5432/mydb'
@@ -101,7 +103,7 @@ export default DatabaseConfig({
 
 Every model is configured with the `@table()` decorator. It accepts a fluent chain or an options object — both styles are equivalent:
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 import { Model, column, table } from "@zerotal/orm";
 

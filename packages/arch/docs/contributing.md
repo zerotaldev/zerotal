@@ -149,6 +149,34 @@ that keeps it complete.
 The same rule governs a page's own length: a section that has grown into a second
 subject is a sign it wants to be its own page, or to move to the one that owns it.
 
+### Code examples are compiled
+
+Every TypeScript block in `docs/` is compiled against the real packages by
+`bun run docs:examples:check`, which CI runs on every pull request. An example that
+names a member the API no longer has fails the build rather than waiting for a reader
+to find it.
+
+Plenty of blocks are not whole programs on purpose — a class body, a set of columns,
+a method shown without the class around it. Say so in the fence:
+
+````text
+```ts fragment
+@column("string") name!: string;
+@column("boolean") active!: boolean;
+```
+````
+
+`fragment` works on `ts`, `tsx` and `typescript`, and readers never see it: a fence's
+info string carries only its first word into the rendered page. It is never guessed —
+a block is a fragment because you wrote that it is, and a run of
+`bun run docs:examples` records it so a new one is a deliberate change rather than a
+silent exemption.
+
+Two lists back that up. `fragments` in `docs-examples-baseline.json` are the
+intentional ones. `drift` is the other kind: a block that resolves every import and
+still fails, which means the page is wrong. Neither list may grow, and `drift` is
+meant to reach zero.
+
 ## Changelogs
 
 Each package keeps its own `CHANGELOG.md`. Add what you changed under

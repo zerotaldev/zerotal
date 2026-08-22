@@ -64,12 +64,23 @@ const DOCS = join(ROOT, "docs");
  * code, and this is a real application.
  */
 //
+// Buried several levels deep, because an example's relative imports resolve from
+// wherever the unit sits. `docs/routing.md` writes `../bootstrap/app.ts` meaning
+// the reader's app — and with the units one level under `apps/docs`, that found
+// the *documentation app's own* bootstrap and checked the page against it,
+// reporting a mismatch as though the example were wrong. The empty directories
+// above the units absorb `../`, `../../` and `../../../`, so those imports miss
+// as they should, while `node_modules` still resolves by walking up.
+//
 // Suffixed with the process id because two runs share nothing else: the first
 // thing a run does is delete this directory, so a second invocation started
 // while one is compiling erases its inputs mid-check and the results are
 // nonsense — fragments reported as compiling, drift reported as clean. Cheap to
 // make impossible rather than rare.
-const WORK = join(ROOT, "apps", "docs", `.docs-examples-${process.pid}`);
+const WORK = join(ROOT, "apps", "docs", `.docs-examples-${process.pid}`, "a", "b", "units");
+
+/** How far `WORK` sits below `apps/docs`, for the generated config's relative paths. */
+const WORK_DEPTH = 4;
 const BASELINE = join(ROOT, "docs-examples-baseline.json");
 
 /** Fence languages that hold TypeScript. Anything else is not this gate's business. */
@@ -261,14 +272,16 @@ async function workspacePaths(): Promise<Record<string, string[]>> {
       const file = resolveCondition(target);
       if (!file) continue;
       const specifier = sub === "." ? pkg.name : `${pkg.name}/${sub.replace(/^\.\//, "")}`;
-      paths[specifier] = [`../../../packages/${dir}/${file.replace(/^\.\//, "")}`];
+      paths[specifier] = [
+        "../".repeat(WORK_DEPTH + 2) + `packages/${dir}/${file.replace(/^\.\//, "")}`,
+      ];
     }
   }
   return paths;
 }
 
 const TSCONFIG = {
-  extends: "../tsconfig.json", // apps/docs/tsconfig.json
+  extends: "../".repeat(WORK_DEPTH) + "tsconfig.json", // apps/docs/tsconfig.json
   compilerOptions: {
     noEmit: true,
     emitDeclarationOnly: false,
@@ -318,7 +331,7 @@ async function runTsc(blocks: Block[]): Promise<Map<Block, string>> {
       ...TSCONFIG.compilerOptions,
       paths: {
         ...Object.fromEntries(
-          Object.entries(appPaths).map(([k, v]) => [k, v.map((t) => `../${t}`)]),
+          Object.entries(appPaths).map(([k, v]) => [k, v.map((t) => "../".repeat(WORK_DEPTH) + t)]),
         ),
         ...(await workspacePaths()),
       },

@@ -1022,7 +1022,7 @@ await new PostController().show(ctx);
 For full integration tests, boot the real app with `createTestApp()` from
 `@zerotal/testing` and exercise it over real requests:
 
-```typescript
+```typescript fragment
 // src/tests/PostTest.ts
 import { beforeAll, afterAll, it } from "bun:test";
 import { createTestApp, type TestApp } from "@zerotal/testing";

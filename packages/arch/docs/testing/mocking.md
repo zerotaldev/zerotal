@@ -231,9 +231,9 @@ Behaviour that depends on the passage of time — a token that expires in seven
 days, a reminder that only fires after 24 hours — has no way to be tested except
 by waiting. Freeze the clock instead:
 
-```typescript
+```typescript fragment
 // src/tests/InvitationTest.ts
-import { Carbon } from "zerotal";
+import { Carbon } from "zerotal/carbon";
 
 afterEach(() => Carbon.release());
 

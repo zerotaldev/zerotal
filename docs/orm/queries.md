@@ -16,7 +16,7 @@ fluent API is available on `DB.table()` for unmodelled tables (see
 
 ## Basic finders
 
-```typescript
+```typescript fragment
 // in a controller or service
 // By primary key — returns null if not found
 const user = await User.find(1);
@@ -132,7 +132,7 @@ await User.upsert(
 
 ## Convenience finders
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Find or create — returns the existing or newly-created instance
 const user = await User.firstOrCreate(
@@ -442,7 +442,7 @@ await Post.query().each(async (post) => {
 The builder compiles to SQL without executing, so you can inspect exactly what will
 run:
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Compiled SQL with `?` placeholders (no bindings)
 const sql = Post.query().where("status", "published").toSql();

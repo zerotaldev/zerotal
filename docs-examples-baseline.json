@@ -998,6 +998,12 @@
       "hash": "2e1vsyka0dn8"
     },
     {
+      "file": "docs/authentication.md",
+      "heading": "Wire the User model",
+      "ordinal": 2,
+      "hash": "sq2occozdgec"
+    },
+    {
       "file": "docs/authorization.md",
       "heading": "Assigning roles & permissions",
       "ordinal": 0,
@@ -2415,6 +2421,12 @@
     },
     {
       "file": "docs/database.md",
+      "heading": "Events emitted",
+      "ordinal": 0,
+      "hash": "tr4hqs2o1k8l"
+    },
+    {
+      "file": "docs/database.md",
       "heading": "Fluent builder",
       "ordinal": 0,
       "hash": "2vvmmkvlvf8n"
@@ -2676,6 +2688,12 @@
       "heading": "Validation errors",
       "ordinal": 0,
       "hash": "30awy7zxvifm"
+    },
+    {
+      "file": "docs/events.md",
+      "heading": "API",
+      "ordinal": 0,
+      "hash": "3qkoiry11syt"
     },
     {
       "file": "docs/events.md",
@@ -5086,6 +5104,12 @@
     {
       "file": "docs/orm/index.md",
       "heading": "@table decorator",
+      "ordinal": 0,
+      "hash": "3rkuq2scobtm"
+    },
+    {
+      "file": "docs/orm/index.md",
+      "heading": "@table decorator",
       "ordinal": 1,
       "hash": "1bt1d2673v41"
     },
@@ -5265,6 +5289,12 @@
     },
     {
       "file": "docs/orm/queries.md",
+      "heading": "Basic finders",
+      "ordinal": 0,
+      "hash": "oh7w1bwpo0ok"
+    },
+    {
+      "file": "docs/orm/queries.md",
       "heading": "Chunking and streaming",
       "ordinal": 0,
       "hash": "1jmr4zih6w47"
@@ -5283,6 +5313,12 @@
     },
     {
       "file": "docs/orm/queries.md",
+      "heading": "Convenience finders",
+      "ordinal": 0,
+      "hash": "3l6vlw03zr6w"
+    },
+    {
+      "file": "docs/orm/queries.md",
       "heading": "Create, update, delete",
       "ordinal": 0,
       "hash": "2uc931jvhfwo"
@@ -5298,6 +5334,12 @@
       "heading": "Cursor pagination",
       "ordinal": 0,
       "hash": "lveejsss6fsy"
+    },
+    {
+      "file": "docs/orm/queries.md",
+      "heading": "Debugging queries",
+      "ordinal": 0,
+      "hash": "1zps8sevfmcu"
     },
     {
       "file": "docs/orm/queries.md",
@@ -6375,6 +6417,12 @@
     },
     {
       "file": "docs/routing.md",
+      "heading": "Testing",
+      "ordinal": 1,
+      "hash": "221xk139tppj"
+    },
+    {
+      "file": "docs/routing.md",
       "heading": "The model owns its lookup",
       "ordinal": 0,
       "hash": "3ossupu5lcaw"
@@ -6970,6 +7018,12 @@
     {
       "file": "docs/testing/database.md",
       "heading": "refreshDatabase — suite-level rollback",
+      "ordinal": 0,
+      "hash": "2umwf9osxk8d"
+    },
+    {
+      "file": "docs/testing/database.md",
+      "heading": "refreshDatabase — suite-level rollback",
       "ordinal": 1,
       "hash": "1cq9rhn1v873"
     },
@@ -7026,6 +7080,12 @@
       "heading": "Authentication",
       "ordinal": 0,
       "hash": "k0vayj2xmkdf"
+    },
+    {
+      "file": "docs/testing/http.md",
+      "heading": "Booting the app",
+      "ordinal": 0,
+      "hash": "1lk34k3ohns6"
     },
     {
       "file": "docs/testing/http.md",
@@ -7089,6 +7149,12 @@
     },
     {
       "file": "docs/testing/index.md",
+      "heading": "A first test",
+      "ordinal": 0,
+      "hash": "3t930ogbqge6"
+    },
+    {
+      "file": "docs/testing/index.md",
       "heading": "Resetting framework state",
       "ordinal": 0,
       "hash": "8ok94it79067"
@@ -7134,6 +7200,12 @@
       "heading": "Storage",
       "ordinal": 0,
       "hash": "12tcq2ulnsdf"
+    },
+    {
+      "file": "docs/testing/mocking.md",
+      "heading": "Time",
+      "ordinal": 0,
+      "hash": "2qp165w60p47"
     },
     {
       "file": "docs/validator.md",
@@ -7457,27 +7529,9 @@
     },
     {
       "file": "docs/database.md",
-      "heading": "Configuration",
-      "ordinal": 0,
-      "hash": "2x90jj6dl3tl"
-    },
-    {
-      "file": "docs/database.md",
-      "heading": "Events emitted",
-      "ordinal": 0,
-      "hash": "3lxcl6mg4xva"
-    },
-    {
-      "file": "docs/database.md",
       "heading": "Multiple database connections",
       "ordinal": 0,
       "hash": "3ibiiy4zb6z7"
-    },
-    {
-      "file": "docs/database.md",
-      "heading": "Read/write replicas",
-      "ordinal": 0,
-      "hash": "yh4xacy3n2mi"
     },
     {
       "file": "docs/devtools.md",
@@ -7490,12 +7544,6 @@
       "heading": "Getting Started",
       "ordinal": 0,
       "hash": "0094m2rfb75t"
-    },
-    {
-      "file": "docs/events.md",
-      "heading": "API",
-      "ordinal": 0,
-      "hash": "215vbpgp4tbm"
     },
     {
       "file": "docs/flow/components.md",
@@ -7768,40 +7816,10 @@
       "hash": "josa1km89bkl"
     },
     {
-      "file": "docs/orm/index.md",
-      "heading": "@table decorator",
-      "ordinal": 0,
-      "hash": "3rkuq2scobtm"
-    },
-    {
-      "file": "docs/orm/index.md",
-      "heading": "Configuration",
-      "ordinal": 0,
-      "hash": "1ripg7l68ez6"
-    },
-    {
       "file": "docs/orm/lifecycle.md",
       "heading": "Transition guards",
       "ordinal": 0,
       "hash": "wyu1yo37i63f"
-    },
-    {
-      "file": "docs/orm/queries.md",
-      "heading": "Basic finders",
-      "ordinal": 0,
-      "hash": "oh7w1bwpo0ok"
-    },
-    {
-      "file": "docs/orm/queries.md",
-      "heading": "Convenience finders",
-      "ordinal": 0,
-      "hash": "3l6vlw03zr6w"
-    },
-    {
-      "file": "docs/orm/queries.md",
-      "heading": "Debugging queries",
-      "ordinal": 0,
-      "hash": "1zps8sevfmcu"
     },
     {
       "file": "docs/orm/queries.md",
@@ -7832,12 +7850,6 @@
       "heading": "Configuration",
       "ordinal": 0,
       "hash": "28m2l3jmgft9"
-    },
-    {
-      "file": "docs/routing.md",
-      "heading": "Testing",
-      "ordinal": 1,
-      "hash": "221xk139tppj"
     },
     {
       "file": "docs/scheduler.md",
@@ -7964,30 +7976,6 @@
       "heading": "Route group only",
       "ordinal": 0,
       "hash": "6xq62o7y16zb"
-    },
-    {
-      "file": "docs/testing/database.md",
-      "heading": "refreshDatabase — suite-level rollback",
-      "ordinal": 0,
-      "hash": "2umwf9osxk8d"
-    },
-    {
-      "file": "docs/testing/http.md",
-      "heading": "Booting the app",
-      "ordinal": 0,
-      "hash": "1lk34k3ohns6"
-    },
-    {
-      "file": "docs/testing/index.md",
-      "heading": "A first test",
-      "ordinal": 0,
-      "hash": "3t930ogbqge6"
-    },
-    {
-      "file": "docs/testing/mocking.md",
-      "heading": "Time",
-      "ordinal": 0,
-      "hash": "32rk23mqmpza"
     },
     {
       "file": "docs/upgrade.md",

@@ -56,7 +56,9 @@ import { env } from "zerotal";
 export default DatabaseConfig({
   driver: "postgres",
   url: env("DATABASE_URL", "./database/db.sqlite"),
-  replicas: [env("REPLICA_1_URL"), env("REPLICA_2_URL")],
+  // `env()` with no fallback is `string | undefined`, and an unset replica should
+  // drop out rather than become an empty connection string.
+  replicas: [env("REPLICA_1_URL"), env("REPLICA_2_URL")].filter((url) => url !== undefined),
 });
 ```
 
@@ -279,8 +281,10 @@ import { DatabaseConfig } from "@zerotal/orm";
 import { env } from "zerotal";
 
 export default DatabaseConfig({
-  url: env("DATABASE_URL"),
-  replicas: [env("REPLICA_1_URL"), env("REPLICA_2_URL")],
+  url: env("DATABASE_URL", "./database/db.sqlite"),
+  // `env()` with no fallback is `string | undefined`, and an unset replica should
+  // drop out rather than become an empty connection string.
+  replicas: [env("REPLICA_1_URL"), env("REPLICA_2_URL")].filter((url) => url !== undefined),
 });
 ```
 
@@ -435,9 +439,10 @@ from a service provider:
 For example, subscribe to `QueryExecuted` in a provider to surface slow queries in your
 logs — the handler receives the SQL, its bindings, and how long it took:
 
-```typescript
+```typescript fragment
 // in a service provider
-import { FrameworkEvents, QueryExecuted } from "zerotal";
+import { FrameworkEvents } from "zerotal";
+import { QueryExecuted } from "@zerotal/orm";
 
 // Log slow queries
 FrameworkEvents.on(QueryExecuted, (e) => {

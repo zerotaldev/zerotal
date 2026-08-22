@@ -149,7 +149,7 @@ building its own.
 `createTestApp()` boots your application, starts it on a random port, and returns a
 `TestApp` client. Pair it with a [factory](/docs/orm/factories) to arrange data:
 
-```typescript
+```typescript fragment
 // tests/Feature/PostTest.ts
 import { describe, it, beforeAll, afterAll } from "bun:test";
 import { createTestApp, migrateDatabase, type TestApp, assertDatabaseHas } from "@zerotal/testing";

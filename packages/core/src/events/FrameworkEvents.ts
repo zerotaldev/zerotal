@@ -35,7 +35,8 @@ function _kindOf(ctor: EventCtor): string {
  *
  * @example
  * ```ts
- * import { FrameworkEvents, QueryExecuted } from "@zerotal/core";
+ * import { FrameworkEvents } from "@zerotal/core";
+ * import { QueryExecuted } from "@zerotal/orm";
  *
  * // In a provider's onBooting(): watch every SQL query.
  * const off = FrameworkEvents.on(QueryExecuted, (e) => {

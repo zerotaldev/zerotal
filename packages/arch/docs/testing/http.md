@@ -28,7 +28,7 @@ import { createTestApp, type TestApp } from "@zerotal/testing";
 
 Boot the app once per suite and close it when the suite finishes:
 
-```typescript
+```typescript fragment
 // src/tests/PostTest.ts
 import { describe, it, beforeAll, afterAll } from "bun:test";
 import { createTestApp, type TestApp } from "@zerotal/testing";

@@ -92,7 +92,7 @@ Call it once inside a `describe` block. Every `it()` in that block runs inside a
 transaction that rolls back when the test ends, so each test starts from the same
 clean baseline:
 
-```typescript
+```typescript fragment
 // tests/Feature/UserTest.ts
 import { describe, it } from "bun:test";
 import { refreshDatabase, assertDatabaseHas, assertDatabaseMissing } from "@zerotal/testing";

@@ -96,7 +96,7 @@ export class User extends AuthUser {
 
 `AuthUser` provides `getAuthId()` (returns `this.id`) and `getAuthPassword()` (returns `this.password`). Make `Auth.user()` return your concrete type by augmenting `UserModel` once:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts (or any file imported at boot)
 import type { User } from "../app/models/User.ts";
 

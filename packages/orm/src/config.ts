@@ -19,11 +19,14 @@ export interface DatabaseConfigShape {
    * mutating queries (INSERT, UPDATE, DELETE, DDL) plus transactions to the
    * primary. No code changes are required in controllers or models.
    *
+   * `env()` with no fallback is `string | undefined`, so an unset replica has to
+   * drop out rather than widen the array — this field is `string[]`.
+   *
    * @example
    * replicas: [
    *   env('REPLICA_1_URL'),
    *   env('REPLICA_2_URL'),
-   * ]
+   * ].filter((url) => url !== undefined)
    */
   replicas?: string[];
   /**

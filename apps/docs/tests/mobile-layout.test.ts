@@ -60,7 +60,17 @@ describe.skipIf(!availability.available)("no horizontal overflow at 375px", () =
       // Kept as well, for the other shape of the bug: an element that overflows
       // without widening the viewport, which this would catch and the check above
       // would not.
-      expect(await page.horizontalOverflow()).toBe(0);
+      const overflow = await page.horizontalOverflow();
+      if (overflow > 0) {
+        // Name the offenders in the failure. A bare "204px" on a page of six
+        // thousand nodes tells whoever reads it nothing they can act on.
+        const worst = await page.overflowingElements();
+        throw new Error(
+          `${path} overflows by ${overflow}px at ${PHONE.width}px:
+  ${worst.join("
+  ")}`,
+        );
+      }
     });
   }
 });

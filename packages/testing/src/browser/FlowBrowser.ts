@@ -115,6 +115,33 @@ export class BrowserPage {
     );
   }
 
+  /**
+   * The elements sticking out past the right edge, widest first.
+   *
+   * A number alone says a page overflows by 204 pixels and leaves whoever reads
+   * the failure to work out by what — which on a page of six thousand nodes is
+   * the whole of the job. This names them.
+   */
+  async overflowingElements(limit = 5): Promise<string[]> {
+    return this.evaluate<string[]>(
+      "(() => {" +
+        "const edge = window.innerWidth; const out = [];" +
+        'for (const el of document.querySelectorAll("body *")) {' +
+        "const r = el.getBoundingClientRect();" +
+        "if (r.right <= edge + 1 || r.width === 0) continue;" +
+        'const id = el.id ? "#" + el.id : "";' +
+        'const cls = typeof el.className === "string" && el.className' +
+        ' ? "." + el.className.trim().split(/\s+/).slice(0, 3).join(".") : "";' +
+        "out.push({ s: el.tagName.toLowerCase() + id + cls, o: Math.round(r.right - edge) });" +
+        "}" +
+        "return out.sort((a, b) => b.o - a.o).slice(0, " +
+        limit +
+        ")" +
+        '.map((e) => e.s + " (+" + e.o + "px)");' +
+        "})()",
+    );
+  }
+
   /** `textContent` of the first match, trimmed. `null` when nothing matches. */
   async text(selector: string): Promise<string | null> {
     return this.evaluate<string | null>(

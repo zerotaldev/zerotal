@@ -1,6 +1,7 @@
 import { createTestApp, type TestApp } from "../TestApp.ts";
 import { backendOption, browserAvailability } from "./chrome.ts";
 import type { Application } from "@zerotal/core";
+import { Router } from "@zerotal/core";
 
 /**
  * Read a CDP event's params.
@@ -413,12 +414,30 @@ export class FlowBrowser {
     // `boot()`, inside `start()`. So a `setup` that calls `Router.flow(...)`
     // would find it undefined. `boot()` is idempotent and `start()` skips it
     // when already booted, so pulling it forward changes only the ordering.
-    const app = await createTestApp(async () => {
-      const application = await bootstrap();
-      application.adoptAsCurrent();
-      await application.boot();
-      return application;
-    }, options.setup);
+    const app = await createTestApp(
+      async () => {
+        const application = await bootstrap();
+        application.adoptAsCurrent();
+        await application.boot();
+        return application;
+      },
+      () => {
+        // Serve `public/`, which the framework mounts only for the `web`
+        // environment — and a test app is not one.
+        //
+        // Without this a browser suite drives an unstyled site: the stylesheet is
+        // built and present on disk and simply never served, so every `<pre>`
+        // loses its `overflow-x: auto` and the pages scroll sideways. A layout
+        // assertion then measures a page no user will ever see. It cost four CI
+        // round trips to find, because `zt serve` runs as `web` and every local
+        // reproduction served the file correctly.
+        //
+        // Registered before the caller's own `setup`, so a suite can still
+        // override the mount if it means to.
+        Router.static("/", `${process.cwd()}/public`);
+        options.setup?.();
+      },
+    );
     return new FlowBrowser(app, options.timeout ?? DEFAULT_TIMEOUT);
   }
 

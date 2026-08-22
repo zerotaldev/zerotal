@@ -111,8 +111,9 @@ outcomes — promote, keep with a new date and the reason, or withdraw.
 | ------------- | -------------- | ----------- |
 | `@zerotal/ai` | `experimental` | **1.9.0**   |
 
-`@zerotal/arch` held `beta` with the same date and was reviewed early, at 1.7.5:
-promoted to `stable`. Its surface was narrowed first — the writers behind
+`@zerotal/arch` held `beta` with the same date, was reviewed ahead of it, and is
+`stable` — the release that carried the promotion is the one its
+[changelog](/docs/changelog) names. Its surface was narrowed first — the writers behind
 `arch:install` are `@internal` now, because they had no caller outside the package
 and freezing them would have promised the shape of `.mcp.json` writing to nobody.
 

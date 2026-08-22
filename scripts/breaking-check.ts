@@ -42,8 +42,16 @@ const ROOT = join(import.meta.dir, "..");
 /** Lines in a surface snapshot that carry no API — headings, prose, blanks. */
 const NOT_AN_EXPORT = /^\s*$|^#|^<!--|^\s*\/\/|^\s*\*|^```/;
 
-/** The marker a release note uses for a break. Bold, because the changelog says so. */
-const BREAKING = "**BREAKING";
+/**
+ * How a release note marks a break.
+ *
+ * Two forms are in use and both are legitimate: 1.3.0 wrote a section heading,
+ * `### Changed — BREAKING`, and everything since has used an inline `**BREAKING`
+ * at the head of the entry. Accepting only the second would fail a change that
+ * followed the older precedent — a gate that rejects a note which exists teaches
+ * people to fight it rather than write it.
+ */
+const BREAKING = /^(?:#{2,4}.*BREAKING|.*\*\*BREAKING)/;
 
 function run(...args: string[]): string {
   const proc = Bun.spawnSync(["git", ...args], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
@@ -110,7 +118,49 @@ function notesABreak(base: string): boolean {
   const diff = run("diff", base, "HEAD", "--", "docs/changelog.md", "packages/*/CHANGELOG.md");
   return diff
     .split(/\r?\n/)
-    .some((line) => line.startsWith("+") && !line.startsWith("+++") && line.includes(BREAKING));
+    .some(
+      (line) => line.startsWith("+") && !line.startsWith("+++") && BREAKING.test(line.slice(1)),
+    );
+}
+
+/** Line split and paragraph break, named so an editor cannot eat the escape. */
+/** Named, because writing these inline is what kept breaking this file. */
+const NEWLINE = String.fromCharCode(10);
+const CARRIAGE_RETURN = String.fromCharCode(13);
+const SPLIT_LINES = new RegExp(CARRIAGE_RETURN + "?" + NEWLINE);
+const BLANK_LINE = NEWLINE + NEWLINE;
+
+// ── The policy's own list ─────────────────────────────────────────────────────
+
+/**
+ * Every version whose release notes carry a BREAKING entry.
+ *
+ * Derived from the changelog rather than maintained anywhere, because a count
+ * kept by hand is what went wrong: `docs/upgrade.md` said "two have shipped
+ * (1.3.0 and 1.7.2)" for as long as it took someone to notice, on the page whose
+ * entire job is telling a reader what to check before crossing a version.
+ */
+async function versionsWithBreaks(): Promise<string[]> {
+  const changelog = await Bun.file(join(ROOT, "docs", "changelog.md")).text();
+  const sections = changelog.split(/^## (?=\d+\.\d+\.\d+)/m).slice(1);
+
+  return sections
+    .filter((section) => section.split(SPLIT_LINES).some((line) => BREAKING.test(line)))
+    .map((section) => section.slice(0, section.search(/[^\d.]/)))
+    .sort();
+}
+
+/** The versions the support policy names as having shipped a break. */
+async function versionsPolicyNames(): Promise<string[]> {
+  const policy = await Bun.file(join(ROOT, "docs", "support-policy.md")).text();
+  // The carve-out paragraph — from the sentence that counts them to the blank
+  // line that ends it.
+  const start = policy.search(/\w+ have shipped so far/);
+  if (start === -1) return [];
+  const end = policy.indexOf(BLANK_LINE, start);
+  const paragraph = policy.slice(start, end === -1 ? undefined : end);
+
+  return [...new Set(paragraph.match(/\d+\.\d+\.\d+/g) ?? [])].sort();
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -118,6 +168,33 @@ function notesABreak(base: string): boolean {
 const base = baseRef();
 const maturity = await maturities();
 const stable = new Set([...maturity].filter(([, m]) => m === "stable").map(([dir]) => dir));
+
+// The policy names the breaks that have shipped; the changelog is where they are
+// recorded. One of those is derived from the other, so they cannot be allowed to
+// disagree — and they did, in the third document nobody thought to update.
+const recorded = await versionsWithBreaks();
+const named = await versionsPolicyNames();
+
+if (recorded.join() !== named.join()) {
+  console.error(
+    `
+✖ docs/support-policy.md and docs/changelog.md disagree about which versions broke:
+` +
+      `
+    changelog says:      ${recorded.join(", ") || "(none)"}` +
+      `
+    support policy says: ${named.join(", ") || "(none)"}
+` +
+      `
+  The changelog is the record; the policy summarises it. Update the policy's` +
+      `
+  carve-out paragraph to name exactly the versions above, and check whether` +
+      `
+  docs/upgrade.md repeats the list — it is not supposed to.
+`,
+  );
+  process.exit(1);
+}
 
 const gone = removals(base, stable);
 

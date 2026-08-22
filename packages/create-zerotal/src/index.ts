@@ -182,6 +182,14 @@ async function main(): Promise<void> {
     dim(`# then open http://localhost:3000/admin`);
   }
   log('');
+  // Discoverability without a dependency. `@zerotal/arch` exposes the app's own
+  // routes, schema and docs to a coding agent over MCP, and it is genuinely
+  // useful — but it is `beta`, and putting a beta package in every template would
+  // undercut the maturity rule the packages gate enforces. `arch:install` also
+  // writes `.mcp.json` and instruction files into the project, which is an
+  // opinion about someone's toolchain and should stay their choice.
+  log(`${c.gray}  Agent tooling (optional): bun add -d @zerotal/arch && bun zt arch:install${c.reset}`);
+  log('');
   log(`${c.gray}  Docs: https://zerotal.dev${c.reset}`);
   log('');
 }

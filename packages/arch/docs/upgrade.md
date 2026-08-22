@@ -18,7 +18,7 @@ version line:
 - **Major** (`X.y.z`) — breaking changes; read the version's section in the
   [Release Notes](/docs/changelog) before upgrading.
 
-> **Warning** — while the 1.x line is young, a breaking change may also land in a minor or a patch. It is always labelled **BREAKING** in the [Release Notes](/docs/changelog) with migration steps, and two have shipped so far (1.3.0 and 1.7.2). Read the notes for every version you cross, not only the majors. See [Releases and versioning](/docs/support-policy#releases-and-versioning) for when this carve-out ends.
+> **Warning** — while the 1.x line is young, a breaking change may also land in a minor or a patch. It is always labelled **BREAKING** in the [Release Notes](/docs/changelog) with migration steps. Read the notes for every version you cross, not only the majors. See [Releases and versioning](/docs/support-policy#releases-and-versioning) for which ones have shipped and when this carve-out ends.
 
 > **Warning** — always upgrade the `@zerotal/*` packages together. Mixing versions across core, ORM, and feature packages leads to type and runtime mismatches.
 

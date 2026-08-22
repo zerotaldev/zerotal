@@ -57,7 +57,7 @@ Put your inserts here — create records through your models or factories exactl
 would in application code. Because seeders run through the ORM, casts, hooks, and
 relationships all behave normally:
 
-```ts
+```ts fragment
 // database/seeders/UserSeeder.ts
 import { Seeder } from "@zerotal/orm";
 import { User } from "../../app/models/User.ts";
@@ -83,7 +83,7 @@ failure still rolls back independently. Where there is no database connection
 bound at all — a seeder that writes fixtures to disk, say — the run is left
 alone rather than failing for want of a transaction it never needed.
 
-```ts
+```ts fragment
 // database/seeders/DatabaseSeeder.ts
 import { Seeder, DB } from "@zerotal/orm";
 import { UserSeeder } from "./UserSeeder.ts";
@@ -133,7 +133,7 @@ yourself (`await new UserSeeder().run()`) to set up just the rows that test need
 [Factories](/docs/orm/factories) are the cleanest way to generate seed records.
 Define them once, then call them from a seeder's `run()`:
 
-```ts
+```ts fragment
 // database/seeders/PostSeeder.ts
 import { Seeder } from "@zerotal/orm";
 import { UserFactory } from "../factories/UserFactory.ts";
@@ -165,7 +165,7 @@ helper.
 Set your suite up once as described in [Testing](/docs/testing). A seeder is a
 class with a `run()` method, so testing one is just calling it:
 
-```typescript
+```typescript fragment
 // tests/seeders/RoleSeeder.test.ts
 import { test } from "bun:test";
 import { assertDatabaseCount, assertDatabaseHas } from "@zerotal/testing";
@@ -183,7 +183,7 @@ test("seeds the three baseline roles", async () => {
 a deploy runs on every release — must not double its rows. This is the failure
 seeders actually have:
 
-```typescript
+```typescript fragment
 // tests/seeders/RoleSeeder.test.ts
 test("running twice does not duplicate rows", async () => {
   await new RoleSeeder().run();
@@ -199,7 +199,7 @@ If that fails, the seeder needs `updateOrCreate` rather than `create`.
 seeder can assert the all-or-nothing behaviour directly — make a late child throw
 and check that the earlier one left nothing behind:
 
-```typescript
+```typescript fragment
 // tests/seeders/DatabaseSeeder.test.ts
 test("a failing child rolls the whole run back", async () => {
   await expect(new DatabaseSeeder().run()).rejects.toThrow();

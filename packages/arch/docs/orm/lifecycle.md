@@ -47,7 +47,7 @@ query     →  hydrate row → afterFind
 Run async callbacks before or after any persistence event. Register them once at
 boot (typically in a service provider's `onBooting()`):
 
-```typescript
+```typescript fragment
 // in a ServiceProvider.onBooting()
 import { HookRegistry } from "@zerotal/orm";
 
@@ -76,7 +76,7 @@ HookRegistry.register(Order, "beforeUpdate", async (order) => {
 
 The signature is:
 
-```typescript
+```typescript fragment
 HookRegistry.register<T>(ModelClass: Function, hook: HookName, fn: (model: T) => Promise<void> | void): void
 ```
 
@@ -108,7 +108,7 @@ names follow the event-tense convention (`creating`/`created`, `updating`/
 `updated`, `saving`/`saved`, `deleting`/`deleted`, `retrieved`) — implement only
 the ones you need:
 
-```typescript
+```typescript fragment
 // app/observers/UserObserver.ts
 import type { ModelObserver } from "@zerotal/orm";
 
@@ -135,7 +135,7 @@ export class UserObserver implements ModelObserver<User> {
 
 Register the observer once at boot:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider.onBooting()
 import { User } from "#app/models/User.ts";
 import { UserObserver } from "#app/observers/UserObserver.ts";
@@ -229,7 +229,7 @@ export class Subscription extends Model.using(State) {
 Register callbacks that fire after a successful transition. Call `onTransition` in
 a service provider's `onBooting()` so it runs once at startup:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider.onBooting()
 // Specific state
 Post.onTransition("published", async (post, { from }) => {
@@ -245,7 +245,7 @@ Post.onTransition("*", async (post, { from, to }) => {
 
 ### Using transitions
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Validates canTransitionTo, runs the guard, saves, then fires callbacks
 await post.transitionTo("review");
@@ -268,7 +268,7 @@ followed by any `"*"` wildcard callbacks.
 
 ### State machine in a controller
 
-```typescript
+```typescript fragment
 // app/controllers/PostController.ts
 import { StateError } from "@zerotal/orm";
 
@@ -295,7 +295,7 @@ observers — useful when consumers live in separate modules. See the
 [ORM index page](/docs/orm#bridging-model-events-to-the-app-event-bus) for the
 companion overview.
 
-```typescript
+```typescript fragment
 // app/events/PostEvents.ts
 export class PostCreated {
   constructor(public post: Post) {}
@@ -319,7 +319,7 @@ ORM runs standalone).
 
 Subscribe using the event bus anywhere in your application:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider or listener module
 import { Events } from "zerotal";
 
@@ -336,7 +336,7 @@ queries.
 
 ### Implementing pruning
 
-```typescript
+```typescript fragment
 // app/models/AuditLog.ts
 @table("audit_logs")
 export class AuditLog extends Model {
@@ -354,7 +354,7 @@ export class AuditLog extends Model {
 }
 ```
 
-```typescript
+```typescript fragment
 // in a scheduled task or REPL
 const removed = await AuditLog.prune(); // default chunk size: 1000
 const fewer = await AuditLog.prune(500); // custom chunk size
@@ -362,7 +362,7 @@ const fewer = await AuditLog.prune(500); // custom chunk size
 
 The signature is:
 
-```typescript
+```typescript fragment
 static prune(chunkSize = 1000): Promise<number>
 ```
 
@@ -372,7 +372,7 @@ method throws.
 
 ### Scheduling pruning
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts or a scheduler provider
 scheduler
   .job("prune-audit-logs", async () => {

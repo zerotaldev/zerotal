@@ -16,7 +16,7 @@ Marks a property or method as part of the public contract with the browser.
 - **On a property** — the value is included in the signed snapshot and synced to the client on every patch. The client can update it via a bound `value`/`checked` attribute or a client expression like `onClick={() => this.count++}`.
 - **On a method** — makes it callable from the browser over the WebSocket via event bindings like `onClick={this.save}`.
 
-```typescript
+```typescript fragment
 import { expose } from "@zerotal/flow";
 
 export class CounterPage extends Component {
@@ -48,7 +48,7 @@ A `value={this.x}` binding on a `@locked` property renders as a read-only displa
 
 Use `@locked` for anything the server owns: a record the route resolved, results loaded in `onMount()`, computed totals, child props from the parent:
 
-```tsx
+```tsx fragment
 export class PostsPage extends Component {
   @locked user!: User; // /users/:user — the record, already found
   @locked posts: Post[] = [];
@@ -87,7 +87,7 @@ with no arguments, and used for [real-time validation](#real-time-validation) on
 
 Combine with `@expose` for a property that is both two-way bound and validated:
 
-```typescript
+```typescript fragment
 @expose @validate((rule) => rule.required().email())              email:    string = "";
 @expose @validate((rule) => rule.required().min(8))               password: string = "";
 @expose @validate((rule) => rule.required().min(2).max(50))       name:     string = "";
@@ -102,7 +102,7 @@ Combine with `@expose` for a property that is both two-way bound and validated:
 
 The validation runs when you call `this.validate()` inside an action:
 
-```typescript
+```typescript fragment
 @expose async register(): Promise<void> {
   await this.validate(); // reads all @validate rules on the class
 
@@ -120,7 +120,7 @@ The validation runs when you call `this.validate()` inside an action:
 
 You can also pass rules directly to `this.validate()` — they override the decorator-based rules:
 
-```typescript
+```typescript fragment
 @expose async update(): Promise<void> {
   await this.validate({
     email:    (rule) => rule.required().email(),
@@ -142,7 +142,7 @@ as the user edits, with no action call and without affecting any other field.
 > form is not writable in TSX: the `.` in an attribute name is a parse error (`TS1003`), so
 > copying it out of the emitted HTML into a component will not build.
 
-```tsx
+```tsx fragment
 @expose @validate((rule) => rule.required().email()) email = "";
 
 async render() {
@@ -165,7 +165,7 @@ See [Forms & Validation](/docs/flow/forms) for the full validation rules referen
 
 Syncs a property to the browser URL query string. Initialised from the query string on the initial page load; updated in the URL on every patch. The URL becomes shareable and bookmark-friendly automatically:
 
-```typescript
+```typescript fragment
 // Page and search stay in the URL: /posts?page=2&search=TypeScript
 @url page:   number = 1;
 @url search: string = "";
@@ -189,14 +189,14 @@ Binds a property to the HTTP session, so the value survives a browser refresh. R
 
 The field reads and writes the session key of the same name — the same value a controller or another component sees:
 
-```typescript
+```typescript fragment
 @session userId: string = "";           // the session's `userId`
 @session preferredTheme: string = "light";
 ```
 
 Pass options to change the key, or to keep it to this component:
 
-```typescript
+```typescript fragment
 // Read a differently-named key
 @session({ key: "s" }) whatever: number = 0;
 
@@ -216,7 +216,7 @@ A `@session` field is **not** in the WebSocket snapshot: it is read from and wri
 
 A getter derived from other state. Not stored in the snapshot — recomputed on every render pass. The result is **memoized for the duration of a single render**, so an expensive getter read multiple times in the same template runs only once:
 
-```typescript
+```typescript fragment
 @computed get fullName(): string {
   return `${this.firstName} ${this.lastName}`;
 }
@@ -241,7 +241,7 @@ Use them freely in a template as a text child — `{this.fullName}` — where th
 
 Excludes a property from the snapshot entirely. Reset to its class-level default on every WebSocket round-trip. Use for ephemeral UI state that shouldn't persist between server calls:
 
-```typescript
+```typescript fragment
 @transient isUploading:   boolean = false;
 @transient dropzoneActive: boolean = false;
 @transient tempMessage:    string  = "";
@@ -254,7 +254,7 @@ The pattern: start an upload, set `this.isUploading = true`, send a response. On
 
 An `@expose`d method that runs on the server but **skips the re-render cycle**. Use for side-effects that don't change the UI: file downloads, external API calls, jobs that just need to fire:
 
-```typescript
+```typescript fragment
 @expose @renderless async exportCsv(): Promise<void> {
   const rows = await Report.all();
   const csv  = rows.map((r) => `${r.id},${r.name},${r.email}`).join("\n");
@@ -282,7 +282,7 @@ Because the render cycle is skipped, `@renderless` actions are faster and cheape
 
 Registers a method as a listener for cross-component events dispatched via `this.dispatch()`. The method is implicitly exposed — no separate `@expose` needed:
 
-```typescript
+```typescript fragment
 @on("post-created")
 async handlePostCreated(data: { id: number; title: string }): Promise<void> {
   this.posts = await Post.query().orderBy("created_at", "desc").limit(10).get();
@@ -319,7 +319,7 @@ For child components — marks a prop the parent can re-push whenever its value 
 
 Declare the reactive prop on the child:
 
-```tsx
+```tsx fragment
 export class PriceTag extends Component {
   @reactive currency = "USD";
   @reactive amount = 0;
@@ -339,7 +339,7 @@ export class PriceTag extends Component {
 
 Pass the prop from the parent:
 
-```tsx
+```tsx fragment
 // When this.currency changes, PriceTag re-renders automatically:
 <PriceTag currency={this.currency} amount={this.subtotal} />
 ```
@@ -350,7 +350,7 @@ Unlike `@locked`, `@reactive` props are **live** — the parent keeps them curre
 
 A reactive prop that **also syncs back to the parent** (two-way). The parent property and the child prop stay in lock-step. Use for reusable input/control components that need to write a value back to their parent:
 
-```tsx
+```tsx fragment
 export class StarRating extends Component {
   @modelable rating: number = 0; // two-way bound to parent
 
@@ -442,7 +442,7 @@ this.download("export.json", JSON.stringify(data, null, 2), "application/json");
 
 `this.errors` is a typed proxy over the validation error bag. It is populated by `this.validate()` and `this.addError()`.
 
-```tsx
+```tsx fragment
 // Check if any validation errors exist
 if (this.errors.any()) {
   return; // stop processing

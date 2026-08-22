@@ -60,7 +60,7 @@ streams the React output between the template's HTML prefix and suffix:
 
 Swap `inertia()` → `inertiaStream()` and `await` it — nothing else changes:
 
-```ts
+```ts fragment
 // app/controllers/PostController.ts
 import { inertiaStream } from "@zerotal/inertia";
 

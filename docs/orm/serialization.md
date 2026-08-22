@@ -11,7 +11,7 @@ Models serialize to plain JavaScript objects for API responses and `JSON.stringi
 
 Every `Model` has a `toJSON()` method. It returns a plain object you can pass straight to the `json()` response helper — and `JSON.stringify()` calls it for you automatically:
 
-```typescript
+```typescript fragment
 // in a controller
 import { json } from "zerotal";
 import { User } from "../models/User.ts";
@@ -56,7 +56,7 @@ user.toJSON();
 
 `visible` takes precedence over `hidden`. When set (non-empty), `toJSON()` includes **only** those keys:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @table("users")
 export class User extends Model {
@@ -71,7 +71,7 @@ Use `visible` for models that have many internal columns and you want to be expl
 
 Include the result of a getter method in `toJSON()`. The getter runs at serialization time:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @table("users")
 export class User extends Model {
@@ -97,7 +97,7 @@ user.toJSON();
 
 Adjust what a specific instance exposes without modifying the class definition. Each method mutates the instance and returns `this`, so they chain and can be passed straight to `json()`:
 
-```typescript
+```typescript fragment
 // in a controller
 // Temporarily hide additional fields for this response:
 json(user.makeHidden("email", "phone").toJSON());
@@ -124,7 +124,7 @@ json(user.makeHidden("password").makeVisible("phoneVerifiedAt").append("isVerifi
 - **Appended accessors included** — per `static appends` and any `append()` overrides.
 - **Loaded relations included** — nested models serialize via their own `toJSON()`.
 
-```typescript
+```typescript fragment
 // in a controller
 const post = await Post.query().with("author").findOrFail(1);
 
@@ -145,7 +145,7 @@ post.toJSON();
 
 When you have an array of models, call `toJSON()` on each item or rely on `JSON.stringify()`:
 
-```typescript
+```typescript fragment
 // in a controller
 const posts = await Post.query().where("status", "published").get();
 
@@ -160,7 +160,7 @@ json(posts);
 
 Hidden/visible lists apply per-model and do **not** propagate to nested relations. Each nested model serializes via its own class configuration:
 
-```typescript
+```typescript fragment
 // app/models/User.ts and app/models/Post.ts
 @table("users")
 export class User extends Model {
@@ -182,7 +182,7 @@ post.toJSON();
 
 For fine-grained, per-endpoint serialization, use API Resources instead of class-level `hidden`/`visible`. A `Resource` wraps a model in `this.resource` and lets you shape the output per route without touching the model class. By default the output is wrapped in a `{ data: ... }` envelope:
 
-```typescript
+```typescript fragment
 // app/resources/PostResource.ts
 import { Resource } from "zerotal/http";
 import type { Post } from "../models/Post.ts";
@@ -201,7 +201,7 @@ export class PostResource extends Resource<Post> {
 
 Build a single resource with `new PostResource(post)`, then `toJson()` for a plain object or `toResponse()` for a `Response`. Serialize a list with the static `collection()` helper, which takes the resource class first:
 
-```typescript
+```typescript fragment
 // in a controller
 import { json } from "zerotal";
 import { PostResource } from "../resources/PostResource.ts";

@@ -55,7 +55,7 @@ Register `CsrfMiddleware` **after** `SessionMiddleware` — it reads and writes 
 session. In production over HTTPS, set `secure: true` so the cookie carries the
 `Secure` flag:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { SessionMiddleware, CsrfMiddleware } from "@zerotal/session";
 
@@ -89,7 +89,7 @@ on every mutating request.
 Expose the token server-side and send it in the header (or a hidden field your
 handler reads). `CsrfMiddleware.token()` returns the current session's token:
 
-```typescript
+```typescript fragment
 // in an Inertia shared-props factory
 import { CsrfMiddleware } from "@zerotal/session";
 
@@ -140,7 +140,7 @@ is the rare feature whose test is mostly about proving a request **fails**.
 worth asserting by number — a `403` in this test means your authorization denied
 the request and CSRF never ran:
 
-```typescript
+```typescript fragment
 // tests/http/csrf.test.ts
 import { test } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -159,7 +159,7 @@ test("an unsafe request without a token is refused", async () => {
 that is the only request in the test, the middleware could be absent entirely and
 the suite would stay green:
 
-```typescript
+```typescript fragment
 // tests/http/csrf.test.ts
 test("GET is never challenged", async () => {
   (await app.get("/posts")).assertOk(); // passes with or without CSRF — not a CSRF test
@@ -169,7 +169,7 @@ test("GET is never challenged", async () => {
 To test the **success** path, seed the session with a token you choose and send
 the same value on the header the middleware reads:
 
-```typescript
+```typescript fragment
 // tests/http/csrf.test.ts
 const token = "test-csrf-token";
 

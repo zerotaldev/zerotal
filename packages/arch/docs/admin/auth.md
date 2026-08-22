@@ -9,7 +9,7 @@ Opt in with `Panel.auth({...})` (or `Panel.configure({ auth: {...} })`). The pag
 live behind the `@zerotal/admin/auth` subpath, so the `@zerotal/auth` dependency
 stays optional unless you enable them.
 
-```ts
+```ts fragment
 import { Panel } from "@zerotal/admin";
 
 Panel.auth({
@@ -52,7 +52,7 @@ left to your auth middleware — the rest of the flow ships here.
 
 The panel is public until you set guard middleware. A typical setup:
 
-```ts
+```ts fragment
 Panel.configure({ middleware: [AuthMiddleware, RequireRoleMiddleware.with("admin")] });
 Panel.auth({ enabled: true }); // login lives outside that guard automatically
 ```

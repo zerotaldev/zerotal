@@ -11,7 +11,7 @@ Paginate in the database with `Model.paginate(perPage)` — it returns the page 
 
 For arrays already held in memory, `paginate(items, page, perPage)` slices the data and returns a rich paginator object with metadata and a windowed page list:
 
-```typescript
+```typescript fragment
 import { paginate } from "@zerotal/flow";
 
 export class PostsPage extends Component {
@@ -89,7 +89,7 @@ export class PostsPage extends Component {
 
 `Pagination` is a class mixin that adds page state, URL sync, and navigation methods automatically. Compose it with [`Component.using(...)`](/docs/flow/layouts#composing-behaviour-with-mixins).
 
-```tsx
+```tsx fragment
 import { Component, Pagination, Pager } from "@zerotal/flow";
 
 export class PostsPage extends Component.using(Pagination) {
@@ -137,7 +137,7 @@ Optional update hooks fire around a page change: define any of `updatingPage(pag
 
 Always call `this.resetPage()` when a filter changes — otherwise the current page may exceed the new total and return an empty result set:
 
-```typescript
+```typescript fragment
 @url search = "";
 @url status = "all";
 
@@ -187,7 +187,7 @@ For large datasets, avoid loading all rows in `onMount()`. Paginate in the datab
 
 `Model.paginate(perPage)` returns the page the request is on. Compose the mixin, query in `render()`, and there is no page to pass, no state to hold, and nothing to refresh — a page change re-renders, and the re-render re-queries:
 
-```tsx
+```tsx fragment
 export class PostsPage extends Component.using(Pagination) {
   override async render() {
     const posts = await Post.paginate(10); // this component's page
@@ -223,14 +223,14 @@ Outside a component, `paginate()` reads `?page=` from the query string — what 
 
 Pass the page explicitly when it isn't the request's — a report job, a fixed first page, a second paginator driven by something other than the mixin:
 
-```typescript
+```typescript fragment
 const first = await Post.paginate(10, 1); // always page 1
 const invoices = await Invoice.paginate(10, undefined, "invoices"); // a named paginator
 ```
 
 The query builder takes the same arguments when you need to build the query up first. Keep the **result** on the component — it already carries the page, the total, the last page, and the URL helpers, so there is nothing to copy out of it:
 
-```typescript
+```typescript fragment
 export class PostsPage extends Component.using(Pagination) {
   @url search = "";
   @url status = "all";
@@ -291,7 +291,7 @@ The ORM's `.paginate()` issues two queries — a `COUNT(*)` for the total and a 
 
 Use the `<InfiniteScroll>` component to load more pages as the user scrolls down, without explicit page navigation:
 
-```tsx
+```tsx fragment
 import { InfiniteScroll } from "@zerotal/flow";
 
 export class FeedPage extends Component {
@@ -345,7 +345,7 @@ export class FeedPage extends Component {
 
 For very large tables where `OFFSET` pagination is slow, use cursor-based pagination via the ORM. The cursor encodes the last-seen row's sort key and is more efficient for deep pages:
 
-```typescript
+```typescript fragment
 export class ActivityPage extends Component {
   @url cursor: string | null = null;
   @locked items:    Activity[] = [];

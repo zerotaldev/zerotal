@@ -77,7 +77,7 @@ class User extends Model.using(Authenticatable, Permissions, Roles) {}
 - **Direct permissions only** (`Permissions(AuthUser)`) — no roles, e.g. API
   keys or service accounts.
 
-```typescript
+```typescript fragment
 // app/models/*.ts
 class User extends Roles(Permissions(AuthUser)) {} // roles + direct permissions
 class Team extends AuthUser.using(Roles) {} // roles only (permissions via roles)
@@ -86,7 +86,7 @@ class ApiKey extends AuthUser.using(Permissions) {} // direct permissions only
 
 Each mixin exposes a per-model static flag to toggle its eager loading:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 class User extends Roles(Permissions(AuthUser)) {
   static withRoles = true; // default — eager-load roles (+ their permissions)
@@ -124,7 +124,7 @@ every query **auto-eager-loads** its relations — roles (and each role's
 permissions) and direct permissions. That means `can()` / `hasRole()` resolve from
 memory with **no extra queries**, even across a whole collection (no N+1):
 
-```typescript
+```typescript fragment
 // in a controller
 const users = await User.query().get(); // roles + permissions already loaded
 for (const u of users) u.can("post.publish"); // synchronous, zero further queries
@@ -142,7 +142,7 @@ checks then read from memory.
 Names are auto-created the first time you use them. Writes are `await`-ed and
 refresh the in-memory memo automatically:
 
-```typescript
+```typescript fragment
 // in a controller / seeder
 import { Role } from "@zerotal/auth";
 
@@ -166,7 +166,7 @@ await user.givePermissionTo("billing.refund");
 Checks are **synchronous** — they read from the eager-loaded relations (on by
 default) or the per-instance memo:
 
-```typescript
+```typescript fragment
 // in a controller
 user.hasRole("editor"); // boolean (Roles mixin)
 user.hasAnyRole(["editor", "admin"]);
@@ -221,7 +221,7 @@ Two route-guard middleware enforce abilities and roles before the controller
 runs. Both throw `UnauthorizedError` (401) when the request is unauthenticated
 and `ForbiddenError` (403) when the user is authenticated but lacks access:
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { RequirePermissionMiddleware, RequireRoleMiddleware } from "@zerotal/auth";
 
@@ -257,7 +257,7 @@ Gate.authorize("post.publish"); // throws ForbiddenError if not
 
 In a model policy, defer to permissions:
 
-```typescript
+```typescript fragment
 // app/policies/PostPolicy.ts
 import { Policy } from "@zerotal/auth";
 
@@ -275,7 +275,7 @@ Gate.allows("update", post);
 Give a role unconditional access (super admin) with one line — it registers a
 before-hook that short-circuits every Gate check, including policies:
 
-```typescript
+```typescript fragment
 // app/providers/AppProvider.ts (boot)
 Gate.superAdmin(); // users with the 'super-admin' role bypass all checks
 Gate.superAdmin("owner"); // or name your own bypass role
@@ -283,7 +283,7 @@ Gate.superAdmin("owner"); // or name your own bypass role
 
 And on the `Auth` facade, `authorize` throws for the current user:
 
-```typescript
+```typescript fragment
 // in a controller
 Auth.authorize("post.publish"); // ForbiddenError if the current user can't
 ```
@@ -349,7 +349,7 @@ If you started with a simple `roles: string[]` column, move to relational by:
    json `roles` column.
 3. Backfill, reading the old values before you drop the column:
 
-```typescript
+```typescript fragment
 // database/seeders/BackfillRolesSeeder.ts
 for (const u of await User.query().get()) {
   const legacy = (u as any).roles ?? (u as any).role;
@@ -392,7 +392,7 @@ below assumes `createApp()` from your `tests/helpers.ts`.
 **A policy is a plain class**, so the cheapest and most valuable test needs no
 application at all:
 
-```typescript
+```typescript fragment
 // tests/policies/PostPolicy.test.ts
 import { test, expect } from "bun:test";
 import { PostPolicy } from "../../app/policies/PostPolicy.ts";
@@ -409,7 +409,7 @@ test("only the author may update a post", () => {
 **Roles and permissions are database rows**, so grant them in the test and check
 them the way a controller would:
 
-```typescript
+```typescript fragment
 // tests/authorization/roles.test.ts
 import { test, expect } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -430,7 +430,7 @@ test("an editor inherits the role's permissions", async () => {
 **A guarded route is checked through `actingAs()`** — `assertForbidden()` is the
 assertion that proves the gate is wired, not just defined:
 
-```typescript
+```typescript fragment
 // tests/http/posts.test.ts
 const res = await app.actingAs(stranger).delete("/posts/1");
 

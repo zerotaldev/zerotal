@@ -32,7 +32,7 @@ The package owns the `tenants` registry and the `tenant_members` pivot tables �
 
 Supply the config with `TenancyProvider.withConfig(...)`, then add the provider to the array in `bootstrap/providers.ts`:
 
-```typescript
+```typescript fragment
 // bootstrap/providers.ts
 import { TenancyProvider } from "@zerotal/tenancy";
 import tenancyConfig from "../config/tenancy.ts";
@@ -141,7 +141,7 @@ import { RouteParamResolver } from "@zerotal/tenancy";
 new RouteParamResolver({ param: "tenancy" }); // default param name
 ```
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 .fileBasedRouting({
   dir: basePath("app/routes"),
@@ -178,7 +178,7 @@ Requests with no authenticated user — login, signup, a public marketing page �
 resolve to `null` here, and with `strict: false` (the default) fall through to
 the default connection rather than failing.
 
-```typescript
+```typescript fragment
 // config/tenancy.ts — a non-default column
 new AuthResolver({ column: "organisationId" });
 ```
@@ -278,7 +278,7 @@ export class Project extends Model.using(Tenantable) {
 }
 ```
 
-```typescript
+```typescript fragment
 // in a controller — inside a TenancyMiddleware boundary (tenant id = 7):
 const projects = await Project.all();
 // → SELECT * FROM projects WHERE tenant_id = 7
@@ -312,14 +312,14 @@ export class Invoice extends Model.using(Tenantable) {
 
 ### Single query
 
-```typescript
+```typescript fragment
 // in an admin controller — load every project across all tenants:
 const all = await Project.query().withoutTenancy().get();
 ```
 
 `withoutTenancy()` removes only the tenant scope. To strip every global scope instead:
 
-```typescript
+```typescript fragment
 // in a controller
 const all = await Project.query().withoutGlobalScopes().get();
 ```
@@ -328,7 +328,7 @@ const all = await Project.query().withoutGlobalScopes().get();
 
 Wrap the work in a tenant boundary with `TenantContext.run()` (or `Tenant.run()` via the facade) to scope every query inside it to a specific tenant:
 
-```typescript
+```typescript fragment
 // app/jobs/SendReminders.ts
 import { TenantContext, Tenant } from "@zerotal/tenancy";
 
@@ -375,7 +375,7 @@ if (Tenant.check()) {
 
 Controllers also receive the resolved tenant directly on the request context:
 
-```typescript
+```typescript fragment
 // in a controller
 async index(ctx: HttpContext): Promise<void> {
   const tenant = (ctx as any).tenant as Tenant;
@@ -387,7 +387,7 @@ async index(ctx: HttpContext): Promise<void> {
 
 The package maintains a `tenant_members` pivot linking your authenticated [User](/docs/authentication) model to tenants, with an admin flag. `Tenancy.create()` makes the current user the first admin; `update()` and `delete()` are admin-gated (use the `force*` variants to bypass the check from trusted server code).
 
-```typescript
+```typescript fragment
 // in a controller
 import { Tenant } from "@zerotal/tenancy";
 
@@ -403,7 +403,7 @@ await Tenant.update({ name: "Acme Corp" }); // throws TenantForbiddenError unles
 
 `tenantDisk()` wraps any [storage](/docs/storage) disk and prefixes every path with `tenants/<slug>/` for the active tenant:
 
-```typescript
+```typescript fragment
 // in a controller — inside a tenant boundary (slug = 'acme')
 import { tenantDisk } from "@zerotal/tenancy";
 
@@ -422,7 +422,7 @@ await tenantDisk("s3").put("reports/q4.pdf", pdf);
 A key that tries to climb out of its tenant's folder is rejected with
 `TenantStoragePathError` before it reaches the driver:
 
-```typescript
+```typescript fragment
 await tenantDisk().put("../other-tenant/secrets.txt", buffer);
 // throws TenantStoragePathError
 ```
@@ -437,7 +437,7 @@ the exception handler renders it like any other.
 
 `tenantCache()` wraps the [cache](/docs/cache) and prefixes every key with `tenant:<slug>:`:
 
-```typescript
+```typescript fragment
 // in a controller — inside a tenant boundary (slug = 'acme')
 import { tenantCache } from "@zerotal/tenancy";
 
@@ -467,7 +467,7 @@ export default TenancyConfig({
 });
 ```
 
-```typescript
+```typescript fragment
 // in a controller — Project.all() automatically uses the active tenant's connection:
 const projects = await Project.all();
 ```
@@ -494,7 +494,7 @@ Set your suite up once as described in [Testing](/docs/testing). Tenancy has one
 test that matters more than all the others: **a tenant must not see another
 tenant's rows.** Write it first, and write it as a negative.
 
-```typescript
+```typescript fragment
 // tests/tenancy/isolation.test.ts
 import { test, expect } from "bun:test";
 import { Tenancy, TenantContext } from "@zerotal/tenancy";
@@ -523,7 +523,7 @@ when the query returns everything but that one title.
 broken resolver serves the wrong tenant's data correctly, which no isolation test
 catches:
 
-```typescript
+```typescript fragment
 // tests/tenancy/resolver.test.ts
 const res = await app.get("/dashboard", { Host: "acme.example.test" });
 
@@ -534,7 +534,7 @@ expect(res.json().tenant).toBe("acme");
 tenant and throws leaves it set, and the next test passes or fails for reasons
 that have nothing to do with it:
 
-```typescript
+```typescript fragment
 // tests/tenancy/isolation.test.ts
 afterEach(() => {
   expect(TenantContext.tryGet()).toBeUndefined(); // catches a leak at its source

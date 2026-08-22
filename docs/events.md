@@ -87,7 +87,7 @@ dispatch a queue job) from outside the handler.
 Subscribe in `onBooted`, keep the unsubscribe functions, and release them in
 `onStopping` so handlers never leak between boots or test suites:
 
-```typescript
+```typescript fragment
 import { ServiceProvider, FrameworkEvents, RequestFailed } from "zerotal";
 
 export class MetricsProvider extends ServiceProvider {
@@ -185,7 +185,7 @@ the emitting packages knowing you exist.
 Some events carry `ctx`; for those that do not (mail/cache/queue happen outside the
 HTTP frame of reference), resolve the current request lazily:
 
-```typescript
+```typescript fragment
 import { FrameworkEvents, RequestContext } from "zerotal";
 import { CacheQueried } from "@zerotal/cache";
 
@@ -204,7 +204,7 @@ app should react to. Events are plain classes; listeners are classes with a
 
 ### Define an event and a listener
 
-```typescript
+```typescript fragment
 // app/events/UserRegistered.ts
 export class UserRegistered {
   constructor(
@@ -227,7 +227,7 @@ export class SendWelcomeEmail {
 
 ### Register and emit
 
-```typescript
+```typescript fragment
 // usually a provider's onBooted(), or bootstrap code
 import { Events } from "zerotal";
 import { UserRegistered } from "./app/events/UserRegistered.ts";
@@ -266,7 +266,7 @@ You usually don't call `Events.on(...)` yourself. A listener placed in `app/list
 declares the event(s) it handles via `static listens`, and the framework binds it on the
 emitter at boot — no registration code required.
 
-```typescript
+```typescript fragment
 // app/listeners/SendWelcomeEmail.ts
 import { UserRegistered } from "../events/UserRegistered.ts";
 
@@ -284,7 +284,7 @@ export class SendWelcomeEmail {
 `static listens` accepts an array — the listener binds to each event and `handle()`
 receives whichever one fired:
 
-```typescript
+```typescript fragment
 // app/listeners/GrantWelcomeBonus.ts
 import { UserRegistered } from "../events/UserRegistered.ts";
 import { UserReactivated } from "../events/UserReactivated.ts";
@@ -309,7 +309,7 @@ job, so `emit()` returns without waiting for the work to finish. Set `queue` to 
 the default queue, or to a queue name. Two optional fields tune the retry behaviour of the
 dispatched job:
 
-```typescript
+```typescript fragment
 // app/listeners/SendWelcomeEmail.ts
 import { UserRegistered } from "../events/UserRegistered.ts";
 
@@ -360,7 +360,7 @@ authorization, and the client side.
 
 Both buses expose a reset so one test never leaks subscriptions into the next:
 
-```typescript
+```typescript fragment
 import { Events, FrameworkEvents } from "zerotal";
 
 // Remove every application listener

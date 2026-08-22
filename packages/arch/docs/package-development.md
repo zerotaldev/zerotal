@@ -86,7 +86,7 @@ Everything a consumer should import is re-exported from `index.ts`. Keep
 implementation files internal; export the manager, the provider, the config
 factory and its shape type, any facade, and the typed error vocabulary.
 
-```typescript
+```typescript fragment
 // packages/cache/src/index.ts
 export { CacheManager } from "./CacheManager.ts";
 export { CacheProvider } from "./provider/CacheProvider.ts";
@@ -106,7 +106,7 @@ The provider is the only thing the application boots. It binds your services int
 the container and registers any commands. It must live at `src/provider/` and
 declare both `static provides` and `static environments`.
 
-```typescript
+```typescript fragment
 // packages/cache/src/provider/CacheProvider.ts
 import { ServiceProvider } from "@zerotal/core";
 import type { AppEnvironment } from "@zerotal/core";
@@ -223,7 +223,7 @@ export function CacheConfig(options: Partial<CacheConfigShape> = {}): CacheConfi
 Register the namespace for **typed config dot-paths** by augmenting `ConfigRegistry`
 (the config analogue of `ContainerBindings`) at the bottom of `config.ts`:
 
-```typescript
+```typescript fragment
 // packages/cache/src/config.ts
 declare module "@zerotal/core" {
   interface ConfigRegistry {
@@ -291,7 +291,7 @@ import { createFacade } from "@zerotal/core";
 export const Cache = createFacade("cache");
 ```
 
-```typescript
+```typescript fragment
 function createFacade<K extends keyof ContainerBindings>(key: K): ContainerBindings[K];
 ```
 
@@ -309,7 +309,7 @@ consumers call `Router.flow(...)` as though it shipped with the router. Register
 it in `onRegister()` — that runs before route files load, so the method exists by
 the time an app calls it:
 
-```typescript
+```typescript fragment
 // packages/flow/src/FlowProvider.ts — inside onRegister():
 Router.macro("flow", flowRoute);
 ```
@@ -317,7 +317,7 @@ Router.macro("flow", flowRoute);
 The call is untyped on its own; augment the matching interface so consumers get
 completion and type-checking:
 
-```typescript
+```typescript fragment
 // packages/flow/src/types.ts
 declare module "@zerotal/core" {
   interface RouterMacros {
@@ -337,7 +337,7 @@ boot (the way `app/models` and `app/policies` do), contribute a **concern
 descriptor** from your provider's `onRegister()`. Core stays unaware of your
 package — discovery is push-based.
 
-```typescript
+```typescript fragment
 // packages/webhooks/src/provider/WebhooksProvider.ts
 import type { ConcernDescriptor } from "@zerotal/core";
 
@@ -375,7 +375,7 @@ declare it and `bun zt dev` runs it beside the server in its own tab. Otherwise
 every user of your package has to remember a second terminal, and there is no way
 for you to help them.
 
-```typescript
+```typescript fragment
 // packages/webhooks/src/provider/WebhooksProvider.ts
 import type { DevProcessDefinition } from "@zerotal/core";
 
@@ -427,7 +427,7 @@ user sees.
 `bun zt doctor` is what a developer (or an agent) runs to find out whether an app
 is wired correctly. Contribute the checks only your package can make:
 
-```typescript
+```typescript fragment
 // packages/webhooks/src/provider/WebhooksProvider.ts
 import type { DoctorCheck } from "@zerotal/core";
 
@@ -464,7 +464,7 @@ Every package must ship at least one `*.test.ts` file — the linter treats thei
 absence as a high-severity violation. Co-locate tests next to the code they cover
 (`CacheManager.test.ts` beside `CacheManager.ts`) and run them with `bun test`.
 
-```typescript
+```typescript fragment
 // packages/cache/src/config.test.ts
 import { test, expect } from "bun:test";
 import { CacheConfig } from "./config.ts";

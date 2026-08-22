@@ -113,7 +113,7 @@ registered. Both `ctx.session` and `Session` expose the same methods (see the
 
 ## Reading and writing
 
-```typescript
+```typescript fragment
 // in a controller
 import type { HttpContext } from "zerotal";
 
@@ -149,7 +149,7 @@ Flash stores a value for **one subsequent request only** — it is automatically
 swept after the next request. The canonical use case is POST-Redirect-GET status
 messages.
 
-```typescript
+```typescript fragment
 // in a controller — survives exactly one redirect
 ctx.session.flash("success", "Post created!");
 ctx.session.flash("errors", { title: ["Required"] });
@@ -164,7 +164,7 @@ Session.flash("success", "Post created!");
 
 Read on the next request:
 
-```typescript
+```typescript fragment
 // in a controller
 const msg = ctx.flashed<string>("success");
 const errors = ctx.flashed<Record<string, string[]>>("errors");
@@ -172,7 +172,7 @@ const errors = ctx.flashed<Record<string, string[]>>("errors");
 
 Full POST-Redirect-GET pattern:
 
-```typescript
+```typescript fragment
 // in a controller
 async store(ctx: HttpContext) {
   await Post.create(await ctx.body());
@@ -191,7 +191,7 @@ async index(ctx: HttpContext) {
 Always regenerate the session ID after a privilege change (login, logout, password
 change) to prevent session-fixation attacks:
 
-```typescript
+```typescript fragment
 // in a controller
 ctx.session.regenerate(); // issues a new session ID; data is preserved
 // or: Session.regenerate();
@@ -243,7 +243,7 @@ export default SessionConfig({
 Unlike `SessionMiddleware`, it is **not** auto-registered — add it after the session
 middleware, typically in the `web` middleware group:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts (or wherever you register middleware)
 import { SessionMiddleware, CsrfMiddleware } from "@zerotal/session";
 
@@ -326,7 +326,7 @@ session itself prefer the facade.
 reads `session.get("user_id")`, looks the user up with a callback you supply, and
 attaches the result to `ctx.user` for the rest of the request.
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { AuthSessionMiddleware, CookieDriver } from "@zerotal/session";
 import { env } from "zerotal";
@@ -346,7 +346,7 @@ app.use(
 Pre-seed session data with `withSession()`, then assert on the response with
 `assertSessionHas()`:
 
-```typescript
+```typescript fragment
 // in a test
 import { createTestApp } from "@zerotal/testing";
 
@@ -355,7 +355,7 @@ const res = await testApp.withSession({ locale: "fr", cart: [1, 2, 3] }).get("/c
 res.assertOk();
 ```
 
-```typescript
+```typescript fragment
 // in a test
 const res = await testApp.post("/locale", { locale: "fr" });
 
@@ -363,7 +363,7 @@ res.assertSessionHas("locale");
 res.assertSessionHas("locale", "fr");
 ```
 
-```typescript
+```typescript fragment
 // in a test — assert a flash key was written before a redirect
 const res = await testApp.actingAs(user).post("/posts", { title: "Hello" });
 
@@ -424,7 +424,7 @@ stores the whole session in the cookie itself, so putting a user object — or a
 flash message with a stack trace — into the session overflows a hard browser
 limit:
 
-```typescript
+```typescript fragment
 // in a controller
 import { SessionCookieOverflowError } from "@zerotal/session";
 

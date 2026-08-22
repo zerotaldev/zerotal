@@ -181,6 +181,13 @@ export function parsePage(path: string, raw: string): DocPage {
   };
 
   for (const line of body.split("\n")) {
+    // A fence delimiter is markup, and its info string is metadata about the
+    // block rather than anything the page says. Indexing them put the language
+    // name into every page that shows code — a search for "typescript" matched
+    // most of the corpus on the strength of its fences — and, once documentation
+    // examples grew a `fragment` marker, that word too.
+    if (/^\s*`{3,}/.test(line)) continue;
+
     const match = /^(#{1,3})\s+(.*)$/.exec(line);
     if (match) {
       flush();

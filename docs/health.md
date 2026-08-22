@@ -98,7 +98,7 @@ a built-in `runtime` probe (memory, Bun version, in-flight requests). It becomes
 a **readiness** probe as you register dependency checks against the `Health`
 registry exported from `zerotal`:
 
-```typescript
+```typescript fragment
 // in a bootstrap file (e.g. bootstrap/health.ts)
 import { Health } from "zerotal/health";
 
@@ -205,7 +205,7 @@ to do with it.
 design. A non-critical check that fails must leave the overall status up,
 otherwise a flaky cache probe takes your deployment out of the load balancer:
 
-```typescript
+```typescript fragment
 // tests/health/checks.test.ts
 test("a non-critical failure degrades without going down", async () => {
   Health.register("cache", async () => {
@@ -222,7 +222,7 @@ test("a non-critical failure degrades without going down", async () => {
 **The endpoint's access rules deserve their own test**, because a health endpoint
 that leaks internals is a reconnaissance gift:
 
-```typescript
+```typescript fragment
 // tests/http/health.test.ts
 const res = await app.get("/health");
 

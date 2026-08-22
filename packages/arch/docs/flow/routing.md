@@ -11,7 +11,7 @@ Flow pages are plain TypeScript classes. Register them as routes with `Router.fl
 
 `Router.flow(path, PageClass, middleware?)` registers a `Component` subclass as a `GET` route. The third argument accepts an array of middleware classes that run on the **initial GET and on every WebSocket update** — this is Flow's persistent middleware model (no separate "attach middleware per WS frame" step required).
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { Router } from "zerotal";
 import { DashboardPage } from "#app/flow/DashboardPage.tsx";
@@ -38,7 +38,7 @@ Router.flow("/admin", AdminPage, [RequireAuthMiddleware, RequireAdminMiddleware]
 
 Chain `.name()` to give a route a name for reverse URL generation:
 
-```typescript
+```typescript fragment
 Router.flow("/dashboard", DashboardPage, [RequireAuthMiddleware]).name("dashboard");
 Router.flow("/posts", PostsPage).name("posts.index");
 Router.flow("/posts/:slug", PostDetailPage).name("posts.show");
@@ -48,7 +48,7 @@ Router.flow("/posts/:slug", PostDetailPage).name("posts.show");
 
 Use `Router.group()` to share a prefix and/or middleware across several Flow routes:
 
-```typescript
+```typescript fragment
 Router.group({ prefix: "/app", middleware: [RequireAuthMiddleware] }, () => {
   Router.flow("/dashboard", DashboardPage); // /app/dashboard
   Router.flow("/profile", ProfilePage); // /app/profile
@@ -71,7 +71,7 @@ Middleware declared on the group is persistent: it re-runs on every WebSocket up
 
 When you call `.fileBasedRouting()` on `Application`, the framework scans the given directory and auto-registers any file that exports a `Component` subclass. No import required in a route file.
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { Application, basePath } from "zerotal";
 import providers from "./providers.ts";
@@ -114,7 +114,7 @@ app/flow/
 
 Export a `middleware` array from a file-route to attach middleware to that specific page:
 
-```typescript
+```typescript fragment
 // app/flow/admin/DashboardPage.tsx
 import { RequireAuthMiddleware } from "#app/middleware/RequireAuth.ts";
 import { RequireAdminMiddleware } from "#app/middleware/RequireAdmin.ts";
@@ -128,7 +128,7 @@ export class DashboardPage extends Component {
 
 Or use a `_middleware.ts` file in a directory to apply middleware to every file in that directory:
 
-```typescript
+```typescript fragment
 // app/flow/admin/_middleware.ts
 import { RequireAuthMiddleware } from "#app/middleware/RequireAuth.ts";
 import { RequireAdminMiddleware } from "#app/middleware/RequireAdmin.ts";
@@ -142,7 +142,7 @@ export const middleware = [RequireAuthMiddleware, RequireAdminMiddleware];
 
 For query string parameters (`/posts?page=2&search=typescript`), use the `@url` decorator. The field is filled from the URL on the first render, and stays in sync as the value changes:
 
-```typescript
+```typescript fragment
 @url page:   number = 1;
 @url search: string = "";
 @url status: string = "all";
@@ -175,7 +175,7 @@ The merge rules:
 
 **Use `currentUrl()` in a binding** — an attribute value or a text child. The compiler turns it into a reactive client binding, so the link always reflects the current URL:
 
-```tsx
+```tsx fragment
 // Pagination links that preserve the active search / filters
 <a href={this.currentUrl({ query: { page: this.page - 1 } })} flow:navigate>Previous</a>
 <a href={this.currentUrl({ query: { page: this.page + 1 } })} flow:navigate>Next</a>
@@ -183,7 +183,7 @@ The merge rules:
 
 **Use `navigateCurrent()` in a handler** — perfect for instant filters that navigate as the user picks:
 
-```tsx
+```tsx fragment
 <select onChange={(e) => this.navigateCurrent({ query: { status: e.target.value || null } })}>
   <option value="">All</option>
   <option value="active">Active</option>
@@ -199,7 +199,7 @@ down is the case where that's wrong — the user is looking at the control they
 just changed, and the results move out from under them. Pass `preserveScroll` to
 leave the viewport where it is:
 
-```tsx
+```tsx fragment
 <select
   onChange={(e) =>
     this.navigateCurrent({ query: { status: e.target.value || null }, preserveScroll: true })
@@ -217,12 +217,12 @@ Pagination is the opposite case: page 2 should start at the top, so leave it off
 
 Name a field after the segment and it arrives filled. `/posts/:post` names the `Post` model, so the page receives the loaded record — no query, and no lookup code:
 
-```typescript
+```typescript fragment
 // routes/web.ts — nothing to declare; :post is a Post
 Router.flow("/posts/:post", PostDetailPage);
 ```
 
-```typescript
+```typescript fragment
 export class PostDetailPage extends Component {
   @locked post!: Post; // :post — the record, already loaded
 
@@ -252,7 +252,7 @@ Only `@locked` and `@expose` fields are filled, and only from segments the route
 
 When the field's name differs from the segment, `@param` says where it comes from — either the segment's name, or the model:
 
-```typescript
+```typescript fragment
 export class PostDetailPage extends Component {
   @locked @param(Post) article!: Post; // whichever segment resolved to a Post
   @locked @param("post") alsoArticle!: Post; // or name the segment
@@ -266,7 +266,7 @@ Passing the model is the sturdier of the two — the field says what it wants an
 
 `onBoot()` and `onMount()` also receive the request itself — the same `HttpContext` a controller action gets — for anything the URL doesn't carry. It types `ctx.params` only, so the signed-in user is `{ user }`, not `params.user`:
 
-```typescript
+```typescript fragment
 override async onMount({ user }: HttpContext) {
   this.canEdit = user?.id === this.post.authorId;
 }
@@ -278,14 +278,14 @@ The argument is optional, because a component can also be created outside a requ
 
 A URL segment fills the **page**. `/posts/:post` gives the page its `post`; the components inside it get nothing from the URL, even if one of their fields happens to share the segment's name. If a child needs the post, the page hands it over:
 
-```tsx
+```tsx fragment
 // in the page's render()
 <PostCard post={this.post} compact />
 ```
 
 A prop lands on the field of the same name, before any hook runs:
 
-```typescript
+```typescript fragment
 export class PostCard extends Component {
   @locked post!: Post; // required — no default
   @locked compact = false; // optional — false when the page omits it
@@ -309,7 +309,7 @@ Mark props `@locked` (or `@expose`) so their values survive round-trips in the c
 
 Coerce string params to numbers with `ctx.integer()`:
 
-```typescript
+```typescript fragment
 override async onMount(ctx: HttpContext) {
   this.userId = ctx.integer("id") ?? 0;
 }
@@ -343,7 +343,7 @@ ctx.ip(); // string | null — client IP
 
 `@session` binds a field to a session key, so its value survives a browser refresh. Reads and writes go straight to the session; nothing is kept in the component's snapshot, so the browser never sees the value:
 
-```typescript
+```typescript fragment
 @session preferredTheme: string = "light";  // the session's `preferredTheme`
 @session lastVisitedTab: string = "overview";
 
@@ -359,7 +359,7 @@ Requires `SessionMiddleware` on the route. See [Decorators](/docs/flow/decorator
 
 For values that aren't a field on this component — a cart, a flash bag, anything you set elsewhere — use the [`Session`](/docs/session) facade. It resolves the in-flight request's session, so it works in any hook or action:
 
-```typescript
+```typescript fragment
 import { Session } from "@zerotal/session";
 
 override async onMount() {
@@ -381,7 +381,7 @@ Reach for `@session` when the value is a field on the component; reach for the f
 
 When `AuthMiddleware` (or your `RequireAuthMiddleware`) runs, it populates `ctx.user`. Access it via `request()`:
 
-```typescript
+```typescript fragment
 import { request } from "zerotal";
 
 export class ProfilePage extends Component {
@@ -410,7 +410,7 @@ Because `onBoot()` runs on every request (initial GET and WebSocket), the auth c
 
 Declare static properties on the page class to control the document `<title>`, inject `<head>` content, and attach a layout:
 
-```typescript
+```typescript fragment
 export class DashboardPage extends Component {
   // Sets <title>Dashboard</title> on the initial render
   static title = "Dashboard";
@@ -430,7 +430,7 @@ export class DashboardPage extends Component {
 
 `static title` takes a string, or a function of the component:
 
-```typescript
+```typescript fragment
 static title = "Posts";
 static title = (c: PostPage) => `${c.post?.title ?? "Loading"} — My App`;
 ```
@@ -438,7 +438,7 @@ static title = (c: PostPage) => `${c.post?.title ?? "Loading"} — My App`;
 The function form is resolved on the server for every render and every patch, so a title
 that depends on state follows it without an action doing anything:
 
-```typescript
+```typescript fragment
 @expose async loadPost(slug: string): Promise<void> {
   this.post = await Post.where("slug", slug).firstOrFail();
   // the title updates with it — nothing else to call
@@ -449,7 +449,7 @@ Only the resolved string is sent to the browser; the function stays on the serve
 
 For per-render `<head>` content (meta tags, OG tags), use `<Head>` inside `render()`:
 
-```tsx
+```tsx fragment
 import { Head } from "@zerotal/flow";
 
 override async render() {
@@ -470,7 +470,7 @@ override async render() {
 
 A fully wired page with a dynamic route param, auth, session, query string, and layout:
 
-```typescript
+```typescript fragment
 import { Component, expose, locked, url, session } from "@zerotal/flow";
 import { request } from "zerotal";
 import { RequireAuthMiddleware } from "#app/middleware/RequireAuth.ts";

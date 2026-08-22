@@ -11,7 +11,7 @@ live manager for an in-memory recorder, so the code under test broadcasts exactl
 as it normally would and the test inspects what came out — no Redis, no Pusher
 credentials, and no waiting on a socket.
 
-```ts
+```ts fragment
 // in a test
 import { Broadcast } from "@zerotal/broadcasting";
 
@@ -31,7 +31,7 @@ Broadcast.resetFake();
 `afterEach` — otherwise the first test to fake broadcasting silently mutes every
 test that follows it.
 
-```ts
+```ts fragment
 afterEach(() => Broadcast.resetFake());
 ```
 
@@ -76,7 +76,7 @@ Proving a broadcast did _not_ happen is often the more valuable test, because a
 stray broadcast reaches real users. Both negative assertions are worth reaching
 for:
 
-```ts
+```ts fragment
 it("does not broadcast when validation fails", async () => {
   const fake = Broadcast.fake();
 
@@ -102,7 +102,7 @@ no special handling — save the model and assert. The event name is whatever
 `broadcastAs()` returns and the payload whatever `broadcastWith()` builds, so
 asserting on both is what pins that mapping down:
 
-```ts
+```ts fragment
 const fake = Broadcast.fake();
 
 await Post.create({ title: "Hello" });
@@ -117,7 +117,7 @@ its socket id along. The fake records the broadcast either way, so a test that o
 asserts the event fired will pass whether or not `toOthers()` was used. To pin that
 behaviour down, read the recorded entries directly:
 
-```ts
+```ts fragment
 const [entry] = fake.recorded();
 expect(entry.event).toBe("PostUpdated");
 ```

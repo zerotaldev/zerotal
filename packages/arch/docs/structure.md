@@ -101,7 +101,7 @@ self-register on import. No manual wiring — see
 **`bootstrap/app.ts`** — the application singleton. Wires together exception
 handling, global middleware, and opt-in conventions:
 
-```ts
+```ts fragment
 // bootstrap/app.ts
 import { Application } from "zerotal";
 import { DevtoolsInjectionMiddleware } from "@zerotal/devtools";
@@ -158,7 +158,7 @@ with `Router.static('/assets', './public/assets')` in `routes/index.ts`.
 All explicit route registrations. This file runs after file-based routes are
 scanned, so explicit routes take precedence over file routes for the same path.
 
-```ts
+```ts fragment
 // routes/index.ts
 import { Router } from "zerotal";
 import { PostController } from "../app/controllers/PostController.ts";

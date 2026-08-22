@@ -46,7 +46,7 @@ Everything except `Broadcast.fake()` and `Social.fake()` is re-exported from
 `EventFake.install()` replaces the `events` binding, so emitted events are
 recorded and their listeners never run.
 
-```typescript
+```typescript fragment
 // src/tests/PostPublishTest.ts
 import { EventFake } from "@zerotal/testing";
 
@@ -80,7 +80,7 @@ search indexing, cache invalidation.
 `QueueFake.install()` replaces the `queue` binding so dispatched jobs are
 captured instead of persisted or executed.
 
-```typescript
+```typescript fragment
 // src/tests/PostPublishTest.ts
 import { QueueFake } from "@zerotal/testing"; // re-exported from @zerotal/queue
 
@@ -111,7 +111,7 @@ it("queues a job when a post is published", async () => {
 `Notify.send()` and `Notify.queue()` are captured as "sent". The `mail` channel
 runs through `Notify`, so faking notifications also covers email side effects.
 
-```typescript
+```typescript fragment
 // src/tests/InvoiceTest.ts
 import { NotificationFake } from "@zerotal/testing"; // re-exported from @zerotal/notifications
 import { Notify } from "@zerotal/notifications";
@@ -142,7 +142,7 @@ The `Broadcast` facade has its own recorder. Call `Broadcast.fake()` to install
 it and `Broadcast.resetFake()` to restore — the returned fake exposes the
 assertions:
 
-```typescript
+```typescript fragment
 // src/tests/PostBroadcastTest.ts
 import { Broadcast } from "@zerotal/broadcasting";
 
@@ -168,7 +168,7 @@ touches the filesystem, so each test starts empty by construction rather than by
 remembering to clean up — and a suite that forgets to clean up passes the second
 time for the wrong reason.
 
-```typescript
+```typescript fragment
 // src/tests/AvatarTest.ts
 import { Storage } from "zerotal/storage";
 import { fakeFile } from "@zerotal/testing";
@@ -201,7 +201,7 @@ it directly.
 client, so a test that exercises a service integration makes no real network
 call — and does not fail when that service is down or rate-limits you.
 
-```typescript
+```typescript fragment
 // src/tests/PaymentTest.ts
 import { Http } from "@zerotal/testing";
 

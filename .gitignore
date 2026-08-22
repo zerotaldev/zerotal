@@ -92,3 +92,4 @@ storage/logs/
 # reached the public repository before this rule existed. Everything under
 # .planning/ stays local; nothing in it is ever committed.
 .planning/
+apps/docs/.docs-examples-*/

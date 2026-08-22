@@ -91,7 +91,7 @@ export default LoggingConfig({
 
 ### The two sinks
 
-```ts
+```ts fragment
 // config/logging.ts
 export default LoggingConfig({
   console: { level: "info", format: "json" }, // or false
@@ -107,7 +107,7 @@ point: you decide what to _watch_ without deciding what to _keep_.
 Turning the file off is reasonable in a container that ships stdout to a
 collector:
 
-```ts
+```ts fragment
 // config/logging.ts
 export default LoggingConfig({ file: false });
 ```
@@ -117,7 +117,7 @@ export default LoggingConfig({ file: false });
 Channels are _extra_ destinations layered on top of the two sinks, for routing a
 subsystem somewhere specific:
 
-```ts
+```ts fragment
 // config/logging.ts
 export default LoggingConfig({
   channels: {
@@ -159,7 +159,7 @@ Each channel is a `{ driver: … }` entry under `channels`, discriminated by its
 
 The two sinks already cover the common case, so this is for the extras:
 
-```ts
+```ts fragment
 // config/logging.ts
 export default LoggingConfig({
   // Machine-readable terminal output in production, human-readable locally.
@@ -176,7 +176,7 @@ export default LoggingConfig({
 `Log` is a static proxy over the `LogManager` singleton. Use it anywhere —
 controllers, services, commands, event listeners:
 
-```ts
+```ts fragment
 // in a controller or service
 import { Log } from "zerotal/logger";
 
@@ -189,7 +189,7 @@ Log.fatal("Database unreachable", { host: dbHost }, err);
 
 Every level shares the same signature:
 
-```ts
+```ts fragment
 // signature — all five levels
 Log.info(message: string, context?: Record<string, unknown>, err?: unknown): void
 ```
@@ -202,7 +202,7 @@ Log.info(message: string, context?: Record<string, unknown>, err?: unknown): voi
 `Log.channel(name)` returns a `BoundLogger` that writes to the named channel
 instead of the configured default:
 
-```ts
+```ts fragment
 // in a controller or service
 import { Log } from "zerotal/logger";
 
@@ -219,7 +219,7 @@ This lets specific modules write to a dedicated channel without changing
 that merges `extra` into every entry. Useful in long-running jobs or to tag a
 group of log lines with a shared identifier:
 
-```ts
+```ts fragment
 // in a queue job
 import { Log } from "zerotal/logger";
 
@@ -304,7 +304,7 @@ Past three or four keys, inline context stops being readable — `{"compiled":0,
 is a wall the eye slides off. `table()` logs the same data and asks the console
 to draw it in columns:
 
-```ts
+```ts fragment
 Log.table("Compile summary", { compiled: 0, cached: 2, injected: 3, runtime: 8, ms: 124 });
 ```
 
@@ -322,7 +322,7 @@ Log.table("Compile summary", { compiled: 0, cached: 2, injected: 3, runtime: 8, 
 Pass a list of objects instead and each key becomes a column, with a header. A
 third argument sets the level, which defaults to `info`:
 
-```ts
+```ts fragment
 Log.table(
   "Pages rendering through the runtime",
   [
@@ -452,7 +452,7 @@ gives you a tap.
 **`LogManager.tap()` receives every entry** after enrichment and before it
 reaches a channel, and returns an unsubscribe function:
 
-```typescript
+```typescript fragment
 // tests/logging/AuditTrail.test.ts
 import { test, expect, afterEach } from "bun:test";
 import { LogManager, type LogEntry } from "zerotal/logger";
@@ -480,7 +480,7 @@ starts matching something from a different test.
 **Silence the logger in the suite** so a passing run stays readable. The `null`
 driver discards everything:
 
-```typescript
+```typescript fragment
 // tests/helpers.ts
 .useConfig({
   logging: { default: "null", channels: { null: { driver: "null" } } },

@@ -94,7 +94,7 @@ Dot-notation maps to the config file path and the key within it. `config('databa
 
 `config()` is type-aware. Each path resolves to the type declared in the owning package's `*ConfigShape`, with autocomplete on the path string:
 
-```typescript
+```typescript fragment
 // in application code
 config("app.name"); // string
 config("app.port"); // number
@@ -105,7 +105,7 @@ config.set("app.debug", "yes"); // type error: expected boolean
 
 This works exactly like the container's `ContainerBindings`: there's a `ConfigRegistry` interface that every config-owning package augments by namespace. Core registers `app` and `health`; each package registers its own next to its `*ConfigShape`:
 
-```typescript
+```typescript fragment
 // in a package's config registry declaration
 declare module "zerotal" {
   interface ConfigRegistry {
@@ -140,7 +140,7 @@ Because every file is loaded as a normal module, a config file may `import` and 
 
 ## Overriding config in tests
 
-```typescript
+```typescript fragment
 // in a test setup file
 import { config } from "zerotal";
 
@@ -227,7 +227,7 @@ SESSION_SECRET=super-secret
 
 Use `APP_ENV` to differentiate behaviour:
 
-```typescript
+```typescript fragment
 // in application code
 if (config("app.env") === "production") {
   // production-only logic

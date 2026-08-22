@@ -48,7 +48,7 @@ const admins = await User.query().where("role", "admin").get<User>();
 
 ## Create, update, delete
 
-```typescript
+```typescript fragment
 // in a controller or service
 // INSERT a single record
 const user = await User.create({ name: "Alice", email: "alice@example.com" });
@@ -81,7 +81,7 @@ export class Post extends Model.using(SoftDeletes) {
 }
 ```
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Soft delete — sets deleted_at; row hidden from default queries
 await post.delete();
@@ -108,7 +108,7 @@ await Post.onlyTrashed().get();
 `upsert` inserts a row, or updates the named columns when a conflict on `conflictKeys`
 occurs:
 
-```typescript
+```typescript fragment
 function upsert(
   data: InsertPayload<T>,
   conflictKeys: (keyof T & string)[],
@@ -116,7 +116,7 @@ function upsert(
 ): Promise<void>;
 ```
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Conflict on email → update name and role; omit updateCols to update every column
 await User.upsert(
@@ -161,7 +161,7 @@ const user = await User.findOrNew(1);
 
 ### Filtering
 
-```typescript
+```typescript fragment
 // in a controller or service
 Post.query()
   .where("status", "published")
@@ -184,7 +184,7 @@ Post.query()
 
 ### Selecting
 
-```typescript
+```typescript fragment
 // in a controller or service
 Post.query().select("id", "title", "slug").get();
 Post.query().selectRaw("COUNT(*) as total, MAX(score) as top").get();
@@ -193,14 +193,14 @@ Post.query().distinct().select("user_id").get();
 
 ### Ordering and limits
 
-```typescript
+```typescript fragment
 // in a controller or service
 Post.query().orderBy("published_at", "desc").orderBy("id", "asc").limit(10).offset(20).get();
 ```
 
 ### Joins
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Inner join
 Post.query()
@@ -228,7 +228,7 @@ Post.query()
 
 ### Grouping and aggregates
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Terminal aggregates — return a single value
 const total = await Post.query().where("status", "published").count();
@@ -250,7 +250,7 @@ await DB.table("posts")
 
 Load aggregate values alongside model instances without extra queries:
 
-```typescript
+```typescript fragment
 // in a controller or service
 const posts = await Post.query()
   .withCount("comments")
@@ -268,7 +268,7 @@ posts[0].commentsAvg_rating; // number | null
 
 ### Relation existence filtering
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Posts that have at least one comment
 Post.query().has("comments").get();
@@ -299,7 +299,7 @@ Post.query()
 
 Build queries dynamically based on optional inputs without branching `if` statements:
 
-```typescript
+```typescript fragment
 // in a controller
 const posts = await Post.query()
   .when(ctx.query("status"), (q, status) => q.where("status", status))
@@ -314,7 +314,7 @@ making it easy to chain optional filters.
 
 ### Pessimistic locking
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Exclusive write lock — SELECT … FOR UPDATE
 await DB.transaction(async (trx) => {
@@ -346,7 +346,7 @@ const post = await Post.query().where("id", postId).sharedLock().first();
 Classic page-number pagination. Best for small-to-medium tables where users jump to
 arbitrary pages:
 
-```typescript
+```typescript fragment
 // in a controller
 const page = await Post.query()
   .where("status", "published")
@@ -365,7 +365,7 @@ const page = await Post.query()
 Simple, performant pagination using the last-seen ID as a cursor. Stable against
 inserts/deletes between pages:
 
-```typescript
+```typescript fragment
 // in a controller
 const p1 = await Post.query().cursorPaginate({ limit: 20 });
 const p2 = await Post.query().cursorPaginate({ cursor: p1.nextCursor, limit: 20 });
@@ -379,7 +379,7 @@ const p2 = await Post.query().cursorPaginate({ cursor: p1.nextCursor, limit: 20 
 Scales to any table size. Uses an indexed column value as the cursor instead of an
 offset. The best choice for infinite scroll and large datasets:
 
-```typescript
+```typescript fragment
 // in a controller
 const p1 = await Post.query()
   .where("status", "published")
@@ -409,7 +409,7 @@ ordering.
 
 Use these for large datasets to avoid loading thousands of rows into memory at once:
 
-```typescript
+```typescript fragment
 // in a console command or job
 // Process in fixed-size batches
 await Post.query().chunk(100, async (posts) => {
@@ -465,7 +465,7 @@ Post.query().where("active", 1).dump().get();
 
 Clone a base query to reuse it with different conditions:
 
-```typescript
+```typescript fragment
 // in a controller or service
 const base = Post.query().where("active", 1);
 const admins = await base.clone().where("role", "admin").get();
@@ -476,7 +476,7 @@ const editors = await base.clone().where("role", "editor").get();
 
 ### Loading and refreshing
 
-```typescript
+```typescript fragment
 // in a controller or service
 // Reload a fresh copy from the database (returns a new instance, doesn't mutate)
 const fresh = await post.fresh();
@@ -503,7 +503,7 @@ await post.loadMax("comments", "score");
 
 Know which fields have changed since the last database read or save:
 
-```typescript
+```typescript fragment
 // in a controller or service
 post.name = "Changed";
 
@@ -534,7 +534,7 @@ post.markDirty("slug");
 
 ### Incrementing and touch
 
-```typescript
+```typescript fragment
 // in a controller or service
 await post.increment("views"); // +1
 await post.increment("views", 5); // +5
@@ -546,7 +546,7 @@ await post.touch();
 
 ### Comparison and copying
 
-```typescript
+```typescript fragment
 // in a controller or service
 // True if both are the same model class with the same primary key
 post.is(otherPost); // boolean
@@ -563,7 +563,7 @@ const copy = post.replicate(["slug", "viewCount"]);
 
 ### Saving without updating timestamps
 
-```typescript
+```typescript fragment
 // in a controller or service
 await User.withoutTimestamps(async () => {
   user.role = "admin";
@@ -599,7 +599,7 @@ Apply them via `withScopes()`. The callback receives a proxy whose methods invok
 scope in turn — call them as separate statements (the proxy methods return `void`, so
 they do not chain):
 
-```typescript
+```typescript fragment
 // in a controller
 const posts = await Post.query()
   .withScopes((s) => {
@@ -616,7 +616,7 @@ const posts = await Post.query()
 Global scopes are applied automatically to every query on the model. Register them in
 a [service provider's](/docs/providers) `onBooting()`:
 
-```typescript
+```typescript fragment
 // in AppServiceProvider.onBooting()
 Post.addGlobalScope("tenant", (q) => q.where("tenant_id", currentTenantId()));
 

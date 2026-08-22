@@ -167,7 +167,7 @@ generated `package.json` also gives you `bun start` (production serve) and
 
 Open `routes/index.ts` and add:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 import { Router } from "zerotal";
 import { PostController } from "../app/controllers/PostController.ts";
@@ -244,7 +244,7 @@ bun zt migrate
 
 Your model is ready to use:
 
-```typescript
+```typescript fragment
 // in a controller or service
 import { Post } from "../models/Post.ts";
 
@@ -262,7 +262,7 @@ Providers are where you wire up your own bindings. Scaffold one:
 bun zt make:provider AppServiceProvider
 ```
 
-```typescript
+```typescript fragment
 // app/providers/AppServiceProvider.ts
 import { ServiceProvider } from "zerotal";
 import { PaymentGateway } from "../services/PaymentGateway.ts";

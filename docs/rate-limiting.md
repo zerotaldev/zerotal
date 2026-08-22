@@ -38,7 +38,7 @@ import { ThrottleMiddleware } from "zerotal";
 Attach it directly with the static `.with(options)` factory, which returns a
 ready-to-use middleware class:
 
-```typescript
+```typescript fragment
 // in routes/web.ts (or wherever you register routes)
 import { ThrottleMiddleware } from "zerotal";
 
@@ -117,7 +117,7 @@ is the client IP.
 `RateLimiter.middleware(name)` returns the middleware instance for a registered
 limiter, ready to drop into a route or group:
 
-```typescript
+```typescript fragment
 // in routes/web.ts
 import { RateLimiter } from "zerotal";
 
@@ -133,7 +133,7 @@ Router.group({ prefix: "/api", middleware: [RateLimiter.middleware("api")] }, ()
 Check or clear a limiter imperatively — e.g. reset failed-login counts after a
 successful sign-in:
 
-```typescript
+```typescript fragment
 // in a controller
 import { RateLimiter } from "zerotal";
 
@@ -171,7 +171,7 @@ line for CLI requests.
 Set your suite up once as described in [Testing](/docs/testing). A rate limiter
 is only proven by the request that gets refused, so the test has to exhaust it.
 
-```typescript
+```typescript fragment
 // tests/http/throttle.test.ts
 import { test, expect } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -196,7 +196,7 @@ test("the sixth attempt in a minute is refused", async () => {
 reads to back off. A limiter that returns `429` without them still fails the
 clients it was meant to protect you from:
 
-```typescript
+```typescript fragment
 // tests/http/throttle.test.ts
 blocked.assertHeader("X-RateLimit-Limit", "5");
 blocked.assertHeader("X-RateLimit-Remaining", "0");
@@ -206,7 +206,7 @@ blocked.assertHeader("X-RateLimit-Remaining", "0");
 next in the same window. Give each test a distinct key — a different route, IP
 header, or user — rather than relying on ordering:
 
-```typescript
+```typescript fragment
 // tests/http/throttle.test.ts
 await app.post("/login", { email: "a@b.c" }, { "X-Forwarded-For": "10.0.0.7" });
 ```

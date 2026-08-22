@@ -23,7 +23,7 @@ Read an environment variable with an optional, type-coerced fallback. This is th
 canonical way to read env values — every config file uses it. The return type
 follows the fallback's type.
 
-```typescript
+```typescript fragment
 // config/app.ts
 env("APP_NAME", "Zerotal App"); // string
 env("APP_DEBUG", false); // boolean — coerces 'true' / '1'
@@ -36,7 +36,7 @@ env("APP_KEY"); // string | undefined — no fallback
 Read a variable that must exist. Throws a `ConfigError` at boot if it's missing —
 use it for secrets your app cannot run without.
 
-```typescript
+```typescript fragment
 // config/app.ts
 const key = requireEnv("APP_KEY"); // throws ConfigError if unset
 ```
@@ -47,7 +47,7 @@ Resolve a path relative to the project root (`process.cwd()`), regardless of whi
 file calls it. Use it when declaring route files so paths don't depend on the
 caller's directory.
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 Application.create({ providers })
   .routing({ web: basePath("routes/web.ts") })
@@ -61,7 +61,7 @@ managed `zt.ts`; you rarely call it yourself. `serve`/`start`/`s` → `web`,
 `worker`/`queue:work` → `worker`, anything else → `console`. A no-op if `APP_ENV`
 is already a valid runtime mode.
 
-```typescript
+```typescript fragment
 // zt.ts
 setAppEnv(process.argv[2]);
 const { default: app } = await import("./bootstrap/app.ts");
@@ -73,7 +73,7 @@ const { default: app } = await import("./bootstrap/app.ts");
 
 Read (and write) loaded configuration by dot-path, anywhere after boot.
 
-```typescript
+```typescript fragment
 // in a controller
 config("app.name"); // string — typed from the registered config shape
 config("app.port", 3000); // number — fallback must match the path's type
@@ -96,7 +96,7 @@ Reach the current request's `HttpContext` from anywhere in the async call chain 
 no thread-through required. With a key, it reads a single merged input value (route
 params, then parsed body, then query string).
 
-```typescript
+```typescript fragment
 // in a controller
 request(); // the HttpContext
 request("email"); // string | undefined — input named 'email'
@@ -114,7 +114,7 @@ request<number>("page", 1); // typed input with a fallback
 Run a side effect on a value and return the value unchanged — perfect for emitting
 an event or logging in the middle of a chain without breaking it.
 
-```typescript
+```typescript fragment
 // in a controller
 return tap(await User.create(data), (user) => Events.emit(new UserRegistered(user.id)));
 
@@ -128,7 +128,7 @@ return await tapAsync(await User.create(data), async (user) => {
 The sibling of `tap` — pass a value through a transformer and return the _result_.
 Use `pipe` when the value should change, `tap` when it shouldn't.
 
-```typescript
+```typescript fragment
 // in a controller
 const slug = pipe(post.title, (t) => t.toLowerCase().replace(/\s+/g, "-"));
 const hashed = await pipeAsync(password, (p) => Hash.make(p));
@@ -140,7 +140,7 @@ Run a callback and fall back to a value (or a function of the caught error) inst
 of throwing. `rescue` awaits; `rescueSync` is for hot paths that can't await
 (JSON parsing, attribute decoding).
 
-```typescript
+```typescript fragment
 // in a controller
 const price = await rescue(() => stripe.getPrice(id), 0);
 const user = await rescue(
@@ -160,7 +160,7 @@ Safely read a deeply nested value by dot-notation, returning a default when any
 segment is absent. Built for untyped JSON — webhooks, third-party API responses —
 where optional chaining gets unwieldy. Numeric segments index into arrays.
 
-```typescript
+```typescript fragment
 // in a webhook handler
 data_get(payload, "user.address.city"); // 'Cape Town' or undefined
 data_get(payload, "items.0.price", 0); // first item's price, or 0
@@ -171,7 +171,7 @@ data_get(payload, "items.0.price", 0); // first item's price, or 0
 `Str` is a namespace of pure string utilities. The common case-conversions are
 also exported individually (`camelCase`, `snakeCase`).
 
-```typescript
+```typescript fragment
 // in a controller
 Str.camelCase("user_id"); // 'userId'
 Str.snakeCase("userId"); // 'user_id'
@@ -270,7 +270,7 @@ flat, and `DeepPartial<XConfigShape>` when it nests — both satisfy the package
 An array in the override replaces the base array entirely. It is **never**
 concatenated, de-duplicated, or merged element-by-element:
 
-```typescript
+```typescript fragment
 // in a config factory
 deepMerge({ hosts: ["a", "b"] }, { hosts: ["c"] });
 // → { hosts: ['c'] }   (not ['a','b','c'], not ['c','b'])
@@ -301,7 +301,7 @@ matches how you want overrides to behave.
 Wrap any value to chain `.pipe()` transforms and `.tap()` side effects, then unwrap
 with `.get()`. Useful for readable builder-style code over a plain value.
 
-```typescript
+```typescript fragment
 // in a controller
 const user = fluent(await User.find(id))
   .tap((u) => log(`loaded ${u.email}`))
@@ -314,7 +314,7 @@ Wrap an array in a `Collection` for chainable, immutable transformations — `ma
 `filter`, `reduce`, `groupBy`, `pluck`, `sum`, `first`, `unique`, and more — a
 fluent collection pipeline.
 
-```typescript
+```typescript fragment
 // in a controller
 const topNames = collect(orders)
   .filter((o) => o.paid)
@@ -332,7 +332,7 @@ These build and send the HTTP response for the current request. The terminal
 helpers (`json`, `view`, `html`, `markdown`, `file`) set `ctx.response` directly;
 `redirect()` and `redirectTo()` return a chainable `ResponseBuilder`.
 
-```typescript
+```typescript fragment
 // in a controller
 import { json, view, html, markdown, redirect, redirectTo, abort } from "zerotal";
 
@@ -352,7 +352,7 @@ redirectTo("posts.show", { id }); // redirect to a named route
 `redirect()` and `redirect().back()` return a `ResponseBuilder` that lets you flash
 data and messages onto the redirect:
 
-```typescript
+```typescript fragment
 // in a controller
 return redirect("/posts").withSuccess("Post created.").with("highlight", post.id);
 
@@ -366,7 +366,7 @@ return redirect().back().withErrors({ title: "Title is required." });
 
 `abort()` throws a framework error that the exception handler renders:
 
-```typescript
+```typescript fragment
 // in a controller
 abort("Something went wrong."); // → 500 with a message
 abort(403, "You can't do that."); // status + message

@@ -79,7 +79,11 @@ export function renderComponentSection(entry: ComponentEntry, spec: DocSpec): st
 
   parts.push(`### ${entry.title} usage`);
   parts.push("");
-  parts.push("```tsx");
+  // `fragment`, because these snippets are sibling elements with no import above
+  // them — a shape chosen to show the component, not to compile. The token keeps
+  // `docs:examples:check` from reading a display choice as a broken example, and
+  // readers never see it: a fence carries only its first word into the page.
+  parts.push("```tsx fragment");
   parts.push(spec.code);
   parts.push("```");
   parts.push("");

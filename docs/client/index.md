@@ -10,7 +10,7 @@ looking up an address. `@zerotal/client` is the outbound HTTP client — a thin,
 expressive wrapper over `fetch` that adds what every real integration ends up
 needing anyway and that is tedious to get right by hand.
 
-```ts
+```ts fragment
 import { Client } from "@zerotal/client";
 
 const charge = await Client.post("https://api.stripe.com/v1/charges", {
@@ -71,7 +71,7 @@ otherwise. A 2xx returns; anything else throws, which [Errors](#errors) covers.
 
 ### Query parameters
 
-```ts
+```ts fragment
 await Client.get("https://api.example.com/v1/charges", undefined, {
   query: { limit: 25, status: "succeeded", created: { gte: 1_700_000_000 } },
 });
@@ -87,7 +87,7 @@ A plain object or array is JSON-encoded with the matching `Content-Type`. Anythi
 a raw string — passes straight through, so the runtime sets the header itself
 (including multipart boundaries):
 
-```ts
+```ts fragment
 // Form-encoded, which several gateways still require
 await Client.post(
   "https://api.example.com/v1/charges",
@@ -99,7 +99,7 @@ await Client.post(
 
 Per request, merged over the client's defaults:
 
-```ts
+```ts fragment
 await Client.post("https://api.example.com/v1/messages", payload, {
   headers: { "Idempotency-Key": crypto.randomUUID() },
 });
@@ -125,7 +125,7 @@ export default ClientConfig({
 A `token` may also be a function, including an async one, which is how credentials
 that expire are handled — it is resolved per request:
 
-```ts
+```ts fragment
 export default ClientConfig({
   token: async () => await currentAccessToken(),
 });
@@ -136,7 +136,7 @@ Change it at runtime with `setToken(token)`, or pass `null` to clear it. Its typ
 
 For an API that wants something other than a bearer token, set the header directly:
 
-```ts
+```ts fragment
 export default ClientConfig({
   headers: { "X-Api-Key": env("PARTNER_API_KEY", "") },
 });
@@ -147,7 +147,7 @@ export default ClientConfig({
 `onUnauthorized` receives the error and a `retry` function, so a token can be
 refreshed and the original request replayed once:
 
-```ts
+```ts fragment
 export default ClientConfig({
   onUnauthorized: async (error, retry) => retry({ Authorization: `Bearer ${await refresh()}` }),
 });
@@ -158,7 +158,7 @@ export default ClientConfig({
 There is no timeout by default, because the right one depends on the upstream. Set a
 default and override per request:
 
-```ts
+```ts fragment
 export default ClientConfig({ timeout: 10_000 });
 
 // This one is slow and we accept that
@@ -174,7 +174,7 @@ A network blip or a `503` is worth trying again; a `422` never is. `retry` retri
 idempotent requests on network errors, 5xx and 429 with exponential backoff, and
 honours a `Retry-After` header when the server sends one:
 
-```ts
+```ts fragment
 export default ClientConfig({ retry: 2 });
 
 await Client.post("https://api.example.com/v1/charges", body, { retry: false });
@@ -189,7 +189,7 @@ statuses qualify.
 
 A non-2xx throws `ApiClientError`, carrying what you need to decide what happened:
 
-```ts
+```ts fragment
 import { ApiClientError } from "@zerotal/client";
 
 try {
@@ -219,7 +219,7 @@ everything queued behind it. A `CircuitBreaker` stops after a threshold of
 consecutive failures, fails fast for a cooldown, then lets a single request through
 to test the water:
 
-```ts
+```ts fragment
 export default ClientConfig({
   circuitBreaker: { threshold: 5, cooldownMs: 30_000 },
 });
@@ -237,7 +237,7 @@ to the same upstream and should trip together.
 
 Upload with `FormData`; download by asking for the body you want:
 
-```ts
+```ts fragment
 const form = new FormData();
 form.append("file", Bun.file("./invoice.pdf"));
 await Client.post("https://api.example.com/v1/documents", form);
@@ -255,7 +255,7 @@ const pdf = await Client.get("https://api.example.com/v1/documents/doc_1", undef
 `onResponse` runs after every 2xx with the `ResponseContext`. Both take one function
 or an array:
 
-```ts
+```ts fragment
 export default ClientConfig({
   onRequest: (config) => {
     config.headers["X-Request-Id"] = crypto.randomUUID();

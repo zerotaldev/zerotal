@@ -65,7 +65,7 @@ export default AuthConfig({
 
 `AuthProvider` needs to know how to load a user from their session-stored ID. Call `AuthProvider.resolveUsing()` in `bootstrap/app.ts` **before** `Application.create()`:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { Application, basePath } from "zerotal";
 import { AuthProvider } from "@zerotal/auth";
@@ -119,7 +119,7 @@ On every request `PersistUserMiddleware` reads `user_id` from the session and po
 
 `Auth` reads the current user from async local storage — use it from controllers, services, or anywhere in the request tree:
 
-```typescript
+```typescript fragment
 // in a controller or service
 import { Auth } from "@zerotal/auth";
 
@@ -135,11 +135,11 @@ await Auth.logout(); // clear user_id from session, unset ctx.user
 
 `Auth.attempt()` rolls credential lookup, password verification, and login into one call:
 
-```typescript
+```typescript fragment
 function attempt(credentials: Credentials, remember?: boolean): Promise<boolean>;
 ```
 
-```typescript
+```typescript fragment
 // in a controller
 if (await Auth.attempt({ email, password })) {
   ctx.redirect("/dashboard", 303);
@@ -157,7 +157,7 @@ ctx.redirect("/login", 303);
 
 `AuthMiddleware` is the built-in guard — the inverse of `GuestMiddleware`. It lets authenticated requests through, returns `401` JSON for API clients, and redirects HTML guests to `/login` (saving the originating URL to the session as `intended_url`):
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { AuthMiddleware } from "@zerotal/auth";
 import { Router } from "zerotal";
@@ -171,7 +171,7 @@ Router.group({ prefix: "/app", middleware: [AuthMiddleware] }, () => {
 
 Override the redirect target, or also require a verified email:
 
-```typescript
+```typescript fragment
 // routes/web.ts
 AuthMiddleware.with({ redirectTo: "/sign-in" });
 AuthMiddleware.with({ mustVerifyEmail: true, verifyRedirectTo: "/confirm-email" });
@@ -189,7 +189,7 @@ AuthMiddleware.with({ mustVerifyEmail: true, verifyRedirectTo: "/confirm-email" 
 
 Redirects authenticated users away from login/register pages:
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { GuestMiddleware } from "@zerotal/auth";
 
@@ -214,7 +214,7 @@ endpoints — are handled by the guards covered in
 
 > **Note** — Password hashing is covered in [Encryption & Hashing](/docs/encryption); password reset in [Password Reset](/docs/password-reset).
 
-```typescript
+```typescript fragment
 // app/controllers/AuthController.ts
 import { Auth, Hash } from "@zerotal/auth";
 import type { HttpContext } from "zerotal";
@@ -284,7 +284,7 @@ export class AuthController {
 
 A "remember me" checkbox keeps a user signed in after their session expires. Pass `{ remember: true }` to `Auth.login()` (or as the second argument to `Auth.attempt()`) and the framework does the rest:
 
-```typescript
+```typescript fragment
 await Auth.login(user, { remember: true });
 // or
 await Auth.attempt({ email, password }, remember);
@@ -296,7 +296,7 @@ Only the hash is persisted, so a leaked database row can't be replayed as a vali
 
 When a request was restored from the cookie rather than an active session, `Auth.viaRemember()` returns `true`. Use it to demand a fresh login (or password confirmation) before sensitive actions:
 
-```typescript
+```typescript fragment
 if (Auth.viaRemember()) {
   return ctx.redirect("/confirm-password");
 }
@@ -306,7 +306,7 @@ if (Auth.viaRemember()) {
 
 To blunt credential-stuffing and brute-force attempts, throttle failed logins per identifier and IP. The shared `loginThrottle` limiter (5 attempts per 60 seconds by default) records misses, locks the pair out once the limit is reached, and emits a `Lockout` event you can hook for alerting:
 
-```typescript
+```typescript fragment
 import { Auth, loginThrottle } from "@zerotal/auth";
 
 async login(ctx: HttpContext) {
@@ -332,7 +332,7 @@ async login(ctx: HttpContext) {
 
 Tune the window with `new LoginRateLimiter({ maxAttempts, decaySeconds })` for a dedicated limiter, or listen for the lockout:
 
-```typescript
+```typescript fragment
 FrameworkEvents.on(Lockout, ({ identifier }) => {
   // notify the account owner, feed intrusion detection, etc.
 });
@@ -348,7 +348,7 @@ So that is when it happens. `Auth.attempt()` (and `attemptWhen`) compare the
 stored hash's algorithm against `auth.algorithm`, and on a mismatch re-hash the
 password the user just proved they know and persist it:
 
-```typescript
+```typescript fragment
 // config/auth.ts — raise the cost, and logins migrate themselves
 export default AuthConfig({
   algorithm: "argon2id",
@@ -366,7 +366,7 @@ an outage caused by a maintenance task.
 
 To drive a migration rather than wait for it, check the hash yourself:
 
-```typescript
+```typescript fragment
 // in a command or service
 import { Hash } from "zerotal/security";
 
@@ -385,7 +385,7 @@ if (Hash.needsRehash(user.password)) {
 
 Some actions — changing a password, deleting an account, viewing recovery codes — warrant re-entering the password even within an active session. Gate those routes with `ConfirmPasswordMiddleware`: it lets the request through if the user confirmed their password within the window (default 3 hours), otherwise it stores the intended URL and redirects to `/confirm-password` (or returns `423 Locked` for JSON).
 
-```typescript
+```typescript fragment
 Router.group({ middleware: [AuthMiddleware, ConfirmPasswordMiddleware] }, () => {
   Router.get("/settings/security", SecurityController, "show");
 });
@@ -393,7 +393,7 @@ Router.group({ middleware: [AuthMiddleware, ConfirmPasswordMiddleware] }, () => 
 
 Your confirm-password route verifies the password and records the confirmation:
 
-```typescript
+```typescript fragment
 async confirm(ctx: HttpContext) {
   const { password } = await ctx.body<{ password: string }>();
   if (await Auth.confirmPassword(password)) {
@@ -410,7 +410,7 @@ async confirm(ctx: HttpContext) {
 
 Let a user end their sessions on every _other_ device while staying signed in on the current one — typically offered after a password change. Attach `AuthenticateSessionMiddleware` to your authenticated routes; it binds each session to a snapshot of the user's password hash. Then call `Auth.logoutOtherDevices(currentPassword)`:
 
-```typescript
+```typescript fragment
 Router.group({ middleware: [AuthMiddleware, AuthenticateSessionMiddleware] }, () => {
   // ...the bulk of your authenticated routes
 });
@@ -427,7 +427,7 @@ It re-hashes the same password and persists it, so every other session's snapsho
 
 `isPasswordCompromised()` checks a password against the Have I Been Pwned breach corpus using the k-anonymity range API — only the first five characters of the SHA-1 hash ever leave the process. Use it during registration or password changes:
 
-```typescript
+```typescript fragment
 import { isPasswordCompromised } from "@zerotal/auth";
 
 if (await isPasswordCompromised(password)) {
@@ -458,7 +458,7 @@ the flow, which is the thing to decide first:
 
 `EmailOtpBroker` powers passwordless login by emailing a short numeric code. Like `PasswordBroker`, it's DB-agnostic via injected callbacks and stores only the code's hash.
 
-```typescript
+```typescript fragment
 const otp = new EmailOtpBroker({
   findCode: (email) => LoginCode.query().where("email", email).first(),
   storeCode: (email, hash, expiresAt) => LoginCode.upsert({ email, code: hash, expiresAt }),
@@ -504,7 +504,7 @@ way to discover who has registered.
 
 `MagicLinkBroker` generates signed, time-limited login URLs and establishes a session on verify.
 
-```typescript
+```typescript fragment
 // app/auth/magicLinks.ts
 import { MagicLinkBroker } from "@zerotal/auth";
 import { env } from "zerotal";
@@ -521,7 +521,7 @@ export const magicLinks = new MagicLinkBroker({
 });
 ```
 
-```typescript
+```typescript fragment
 // app/controllers/MagicLinkController.ts
 import { magicLinks } from "#app/auth/magicLinks.ts";
 import { MAGIC } from "@zerotal/auth";
@@ -558,7 +558,7 @@ export class MagicLinkController {
 
 Routes:
 
-```typescript
+```typescript fragment
 // routes/web.ts
 Router.post("/magic", MagicLinkController, "send");
 Router.get("/magic/verify", MagicLinkController, "verify");
@@ -594,7 +594,7 @@ JWTs when statelessness does.
 
 The top-level `Auth` facade is the default session-backed `web` guard. For separate auth schemes — most often a stateless API guard alongside the session UI — register a **request guard** with `Auth.viaRequest()` and reach it via `Auth.guard(name)`:
 
-```typescript
+```typescript fragment
 import { Auth, Jwt } from "@zerotal/auth";
 
 Auth.viaRequest("api", async (req) => {
@@ -647,7 +647,7 @@ only going into a foreign key or being compared against one.
 
 For quick internal endpoints, `BasicAuthMiddleware` authenticates straight from the `Authorization: Basic` header — no login page. It's stateless (sets `ctx.user` for the request only) and challenges with `401 WWW-Authenticate` when credentials are missing or wrong.
 
-```typescript
+```typescript fragment
 Router.get("/internal/metrics", MetricsController, "show", [BasicAuthMiddleware]);
 // Authenticate by a different column / realm:
 BasicAuthMiddleware.with({ field: "username", realm: "Admin" });
@@ -671,7 +671,7 @@ internal dashboard nobody wants to build a login page for.
 
 For stateless API or mobile clients, issue and verify HS256 JSON Web Tokens with the `Jwt` helper (no external dependency), and authenticate requests with `JwtGuardMiddleware`:
 
-```typescript
+```typescript fragment
 import { Jwt, JwtGuardMiddleware, AuthMiddleware } from "@zerotal/auth";
 
 // Issue on login:
@@ -698,7 +698,7 @@ For SPAs and mobile apps, issue personal access tokens instead of (or alongside)
 
 #### API token migration
 
-```typescript
+```typescript fragment
 // database/migrations/xxxx_create_personal_access_tokens.ts
 await Schema.create("personal_access_tokens", (table) => {
   table.increments("id");
@@ -715,7 +715,7 @@ await Schema.create("personal_access_tokens", (table) => {
 
 #### Issuing tokens
 
-```typescript
+```typescript fragment
 function createToken(options: {
   tokenableId: number;
   tokenableType?: string;
@@ -727,7 +727,7 @@ function createToken(options: {
 
 > **Danger** — The plain-text token is returned to the client exactly once and is never stored — only its SHA-256 hash lives in the database. If the user loses it, issue a new one.
 
-```typescript
+```typescript fragment
 // in a controller
 import { createToken } from "@zerotal/auth";
 import { DB } from "@zerotal/orm";
@@ -780,7 +780,7 @@ last-used tracking, since it adds a write to every authenticated request.
 
 Apply to API routes, and check abilities with `ctx.tokenCan()`:
 
-```typescript
+```typescript fragment
 // routes/api.ts
 Router.group({ prefix: "/api", middleware: [BearerTokenMiddleware] }, () => {
   Router.get("/me", UserController, "show");
@@ -802,7 +802,7 @@ the test client encodes a session through your app's own session driver and send
 a real cookie, so the request travels the same middleware path a browser's would
 and anything reading the current user sees the one you named.
 
-```typescript
+```typescript fragment
 // tests/http/auth.test.ts
 import { createTestApp } from "@zerotal/testing";
 import { UserFactory } from "../../database/factories/UserFactory.ts";
@@ -823,21 +823,21 @@ it("dashboard redirects guests to login", async () => {
 `actingAs` only needs an object carrying an `id`, so a full model is optional when
 the route reads nothing else:
 
-```typescript
+```typescript fragment
 const res = await testApp.actingAs({ id: 42 }).get("/profile");
 ```
 
 The acting user persists on the test client across requests — what you want inside
 one test, and a leak across several. Clear it between tests:
 
-```typescript
+```typescript fragment
 afterEach(() => testApp.actingAsGuest());
 ```
 
 `withSession(data)` seeds extra session values alongside the acting user, for
 routes that read something the real login flow would have put there:
 
-```typescript
+```typescript fragment
 const res = await testApp.actingAs(user).withSession({ locale: "fr" }).get("/profile");
 ```
 
@@ -852,7 +852,7 @@ the login flow itself rather than a route it protects.
 | `assertAuthenticatedAs(user)` | That specific user is — takes a model or id |
 | `assertGuest()`               | Nobody is                                   |
 
-```typescript
+```typescript fragment
 it("signs the user in on valid credentials", async () => {
   const user = await UserFactory.create({ password: await Hash.make("secret") });
 
@@ -878,7 +878,7 @@ test pass for the wrong reason:
 - **API routes** answer with a status — `assertUnauthorized()` for 401 (not signed
   in) and `assertForbidden()` for 403 (signed in, not permitted).
 
-```typescript
+```typescript fragment
 it("rejects an API request with no token", async () => {
   const res = await testApp.asJson().get("/api/orders");
   res.assertUnauthorized();
@@ -893,7 +893,7 @@ it("rejects a signed-in user without the ability", async () => {
 A failed login usually redirects back carrying validation errors rather than a
 status code, so assert on the errors:
 
-```typescript
+```typescript fragment
 it("login with wrong password redirects back", async () => {
   const user = await UserFactory.create({ password: await Hash.make("correct") });
 
@@ -910,7 +910,7 @@ A bearer guard reads a header rather than a cookie, so `actingAs` plays no part 
 issue a token and send it the way a client would. `createToken` returns the
 plain-text value once, which is the value the header carries:
 
-```typescript
+```typescript fragment
 import { createToken } from "@zerotal/auth";
 import { DB } from "@zerotal/orm";
 
@@ -933,7 +933,7 @@ it("serves the API with a valid token", async () => {
 By default the client hands back the redirect itself, which is what a login flow
 should assert on. When the page the user lands on is the point, ask for it:
 
-```typescript
+```typescript fragment
 const res = await testApp.followingRedirects().post("/login", { email, password });
 res.assertOk();
 res.assertSee("Welcome back");

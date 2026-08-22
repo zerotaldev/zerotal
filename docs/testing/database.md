@@ -30,7 +30,7 @@ import {
 A test needs tables before it needs rows. Build them by running the project's own
 [migrations](/docs/migrations) rather than by writing the schema a second time:
 
-```typescript
+```typescript fragment
 // tests/Feature/PostTest.ts
 import { migrateDatabase } from "@zerotal/testing";
 
@@ -46,7 +46,7 @@ until something fails for a reason that has nothing to do with the change you
 made. Running the migrations themselves means the schema under test is the schema
 that ships.
 
-```typescript
+```typescript fragment
 // signature
 function migrateDatabase(options?: MigrateDatabaseOptions): Promise<string[]>;
 ```
@@ -61,7 +61,7 @@ It returns the names of the migrations it applied, and is idempotent — a secon
 call applies nothing. `refreshDatabase({ migrate: true })` runs it for you, which
 is usually what you want:
 
-```typescript
+```typescript fragment
 // in a test file
 describe("Post", () => {
   refreshDatabase({ connection: db, migrate: true });
@@ -115,7 +115,7 @@ describe("User", () => {
 });
 ```
 
-```typescript
+```typescript fragment
 // signature
 function refreshDatabase(options?: RefreshDatabaseOptions): void;
 ```
@@ -137,7 +137,7 @@ fixtures), while each test's own writes happen inside the rolled-back transactio
 
 When you want rollback for a single test rather than a whole block, wrap the test body:
 
-```typescript
+```typescript fragment
 // in a test file
 import { withDatabase } from "@zerotal/testing";
 
@@ -150,7 +150,7 @@ it(
 ); // ← transaction rolled back here
 ```
 
-```typescript
+```typescript fragment
 // signature
 function withDatabase(fn: () => Promise<void>): () => Promise<void>;
 ```
@@ -201,7 +201,7 @@ await assertMissingFile("local", "uploads/old.jpg");
 Use [factories](/docs/orm/factories) to build the records a test acts on, and
 [seeders](/docs/seeding) for shared fixtures:
 
-```typescript
+```typescript fragment
 // in a test file
 import { UserFactory } from "../database/factories/UserFactory.ts";
 import { PostFactory } from "../database/factories/PostFactory.ts";

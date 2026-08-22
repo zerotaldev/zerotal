@@ -28,7 +28,7 @@ binds to and how a model resolves by something other than its primary key.
 
 The other way a model arrives is from a parent that already has it, as a prop:
 
-```tsx
+```tsx fragment
 <PostCard post={this.post} />
 ```
 
@@ -53,7 +53,7 @@ one it edits.** Both put the model on the client; only `@expose` accepts anythin
 The snapshot carries the model's **id** and the result of its `toJSON()` — the same
 serialisation your API responses use, honouring `visible`, `hidden` and `appends`.
 
-```ts
+```ts fragment
 @table("users")
 export class User extends BaseModel {
   static fillable = ["name", "email", "password"];
@@ -98,7 +98,7 @@ server error. To refuse a value loudly instead, or to vet one before it lands, t
 
 Bind to a field of an `@expose`d model and it is two-way:
 
-```tsx
+```tsx fragment
 export class EditProfile extends Component {
   @expose user!: User;
 
@@ -166,7 +166,7 @@ listed in the model's `hashable` — see [Password hashing](/docs/orm#password-h
 A relation that is loaded when the page renders travels with the model, through its own
 `toJSON()`. It does not survive the round-trip:
 
-```tsx
+```tsx fragment
 override async onMount(): Promise<void> {
   await this.post.loadMissing(["author"]); // this.post came from the route
 }
@@ -178,7 +178,7 @@ throws the ORM's guard: `Relation "author" was accessed on Post without eager lo
 
 Load what an action needs, where it needs it:
 
-```ts
+```ts fragment
 @expose async approve(): Promise<void> {
   await this.post.loadMissing(["author"]);
   this.post.approved = true;
@@ -192,7 +192,7 @@ When the page _displays_ the relation, load it once per round-trip in
 the case worth watching: a template reading `this.post.author.name` works on the first paint
 and throws on every interaction after it.
 
-```ts
+```ts fragment
 override async onHydrate(): Promise<void> {
   await this.post.loadMissing(["author"]);
 }
@@ -221,7 +221,7 @@ deleted — or soft-deleted — while a page holds it makes the next interaction
 patched, and the browser console carries the error. So follow a delete with a navigation
 rather than leaving the prop pointing at a row that is gone:
 
-```ts
+```ts fragment
 @expose async destroy(): Promise<void> {
   await this.post.delete();
   this.redirect("/posts");
@@ -232,7 +232,7 @@ rather than leaving the prop pointing at a row that is gone:
 
 An array of models is sent as ids and re-read with a single `whereIn` query:
 
-```tsx
+```tsx fragment
 @locked posts: Post[] = [];
 ```
 

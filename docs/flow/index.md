@@ -93,7 +93,7 @@ middleware is a `_middleware.ts` in the page tree. It stacks from the root down,
 covers every page beneath it, and — being route middleware — re-runs on every
 action with nothing else to configure:
 
-```typescript
+```typescript fragment
 // app/flow/pages/_middleware.ts
 import { TenantMiddleware } from "../../middleware/TenantMiddleware.ts";
 
@@ -107,7 +107,7 @@ guards the pages inside it without changing their URLs. See
 Reach for `persistentMiddleware` only when the middleware is genuinely **global** —
 registered app-wide with `Application.use()` because non-Flow routes need it too:
 
-```typescript
+```typescript fragment
 // app/providers/AppServiceProvider.ts — inside onRegister():
 FlowProvider.persistMiddleware(TenantMiddleware);
 ```
@@ -172,7 +172,7 @@ The distinction is the syntax: a named method reference is always a server actio
 
 Register the route:
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { Router } from "zerotal";
 import { CounterPage } from "./components/CounterPage.tsx";
@@ -254,7 +254,7 @@ A list with per-row actions needs to tell the server _which_ row. Write the call
 
 The arguments are evaluated **on the server, during the render** — where `row` exists — and travel with the action as `data-args`. Your action receives them as ordinary parameters:
 
-```ts
+```ts fragment
 @expose async archive(id: number) {
   await Enquiry.findOrFail(id).archive();
 }
@@ -280,7 +280,7 @@ By contrast, a handler pointing at a method you forgot to `@expose` **is** a har
 
 Bind an input by passing state straight to `value` (or `checked`). Flow wires up two-way binding when the property is `@expose`, and read-only reflection when it's `@locked`:
 
-```tsx
+```tsx fragment
 <input value={this.name} />                          {/* @expose → two-way    */}
 <input type="checkbox" checked={this.agree} />        {/* @expose → two-way    */}
 <input value={this.ownerName} />                      {/* @locked → read-only  */}
@@ -302,7 +302,7 @@ Each option renders with the shared `flow:model="type"`, its own `value`, and `c
 
 By default the value stays **local** — it updates the DOM instantly and is flushed to the server with your next action. Add `live` to sync to the server as you type, or `blur` to sync when the input loses focus:
 
-```tsx
+```tsx fragment
 <input value={this.draft} />            {/* local; flushed with the next action */}
 <input value={this.search} live />      {/* syncs to the server as you type      */}
 <input value={this.title}  blur />      {/* syncs to the server on blur          */}
@@ -312,20 +312,20 @@ By default the value stays **local** — it updates the DOM instantly and is flu
 
 Two more modifiers clean the value at the edge, so the server never sees a numeric string or stray whitespace and you write no coercion in `onUpdated`:
 
-```tsx
+```tsx fragment
 <input type="number" value={this.age} number />   {/* the bound value is a real number, not "42" */}
 <input value={this.name} trim />                   {/* whitespace stripped before it syncs */}
 ```
 
 Add `draft="key"` to keep an unsubmitted value across a reload or crash — it mirrors to `localStorage` and restores on mount (only when the field is empty, so server content always wins), then clears itself once the server empties the field after a successful submit. It's a client-side safety net; the server snapshot stays the authority:
 
-```tsx
+```tsx fragment
 <textarea value={this.body} draft="post-body" />   {/* survives a refresh until you submit */}
 ```
 
 And two focus helpers close the loop after a re-render, where focus is easily lost:
 
-```tsx
+```tsx fragment
 <input value={this.email} autoFocus />      {/* focus on mount (won't steal focus you've placed) */}
 <input value={this.email} focusOnError />   {/* after a failed submit, focus jumps to the first invalid field */}
 ```
@@ -336,7 +336,7 @@ And two focus helpers close the loop after a re-render, where focus is easily lo
 
 Pass a field off `this.errors` to the `error` prop and Flow renders that field's first validation message reactively — it appears when the field is invalid and clears when it's fixed:
 
-```tsx
+```tsx fragment
 <input value={this.email} />
 <span error={this.errors.email} class="text-red-500" />
 ```
@@ -347,7 +347,7 @@ No `errors.has(...)` checks, no manual show/hide.
 
 A `className`/`class` (or `style`, `href`, …) that depends on `@expose` or `@locked` state compiles to a reactive client binding, so it updates without a round-trip:
 
-```tsx
+```tsx fragment
 <span className={this.count > 10 ? "text-emerald-400" : "text-white"}>
   {this.count}
 </span>
@@ -361,7 +361,7 @@ A `className`/`class` (or `style`, `href`, …) that depends on `@expose` or `@l
 
 Use normal TypeScript control flow in `render()` — `.map()`, ternaries, and `&&` are all supported:
 
-```tsx
+```tsx fragment
 override async render() {
   return (
     <div>
@@ -389,7 +389,7 @@ Always provide a `key` when mapping over items — the morph algorithm uses it t
 
 Common interaction states are first-class props:
 
-```tsx
+```tsx fragment
 {/* Disable the button while the action is in flight */}
 <button onClick={this.save} loadingAttr="disabled">Save</button>
 
@@ -420,7 +420,7 @@ Common interaction states are first-class props:
 
 Add `transition` to animate the show/hide instead of an instant flip — a single prop covers **both** enter and leave (the leave half plain `show=` can't do, since the element would otherwise vanish before any animation runs):
 
-```tsx
+```tsx fragment
 <div show={this.modal} transition class="modal">…</div>                {/* default: fade */}
 <div show={this.menu}  transition="scale">…</div>                     {/* preset */}
 <aside show={this.drawer} transition="slide-right">…</aside>          {/* directional */}
@@ -446,7 +446,7 @@ The `flow:*` directives (`flow:click`, `flow:model`, `flow:show`, …) that the 
 
 A handful of client-only helpers — writing a prop and syncing it, toggling a boolean, calling a parent action, optimistic list mutations — don't belong to any one component and never run on the server. Rather than crowd the component class (and reserve common names like `set`, `on`, `watch`, `parent` that you might want for your own methods), they all live on a single global object, `$flow`. Framework helpers wear a `$`; the bare names stay yours.
 
-```tsx
+```tsx fragment
 <button onClick={() => $flow.set("open", true)}>Open</button>     {/* write + sync an @expose prop */}
 <button onClick={() => $flow.toggle("open")}>Toggle</button>
 <button onClick={() => $flow.parent.save()}>Save</button>          {/* call a parent action */}
@@ -508,7 +508,7 @@ A page that _reads_ `$flow.store` in a binding must be AOT-compilable — the co
 
 ### Full page example
 
-```tsx
+```tsx fragment
 import { Component, expose, locked, validate, url } from "@zerotal/flow";
 import type { Post } from "#app/models/Post.ts";
 

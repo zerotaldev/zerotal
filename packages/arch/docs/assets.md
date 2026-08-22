@@ -159,14 +159,14 @@ sufficient for most apps.
 
 Add `Router.static` to serve `public/` at the root:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.static("/", "public");
 ```
 
 Or target `public/css/` specifically:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.static("/css", "public/css");
 ```
@@ -242,7 +242,7 @@ public/
 runs as part of the JS build) and boots the Inertia client, resolving each page from
 the generated registry:
 
-```typescript
+```typescript fragment
 // resources/js/app.tsx (React)
 import { createInertiaApp, type ResolvedComponent } from "@inertiajs/react";
 import { createRoot } from "react-dom/client";
@@ -261,7 +261,7 @@ createInertiaApp({
 });
 ```
 
-```typescript
+```typescript fragment
 // resources/js/app.tsx (Vue)
 import { createInertiaApp } from "@inertiajs/vue3";
 import { createApp, h, type DefineComponent } from "vue";
@@ -393,7 +393,7 @@ the connections that need it most.
 
 Set a per-extension loader to emit them as separate files instead:
 
-```typescript
+```typescript fragment
 // config/app.ts
 export default AppConfig({
   assets: {
@@ -523,7 +523,7 @@ Bun's bundler understands CSS Modules out of the box. Import a `.module.css` fil
 use the generated class names — styles are scoped to the component, so names never
 collide across files:
 
-```tsx
+```tsx fragment
 // app/components/Button.tsx
 import styles from "./Button.module.css";
 
@@ -603,7 +603,7 @@ the asset is served, and that a deploy invalidates the old one.
 **Assert the page references the asset**, which catches a build config that
 silently stopped emitting it:
 
-```typescript
+```typescript fragment
 // tests/http/assets.test.ts
 import { test } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -621,7 +621,7 @@ test("the layout links the built stylesheet", async () => {
 **Assert it is actually served**, because a reference to a missing file is a
 `404` the page will not tell you about:
 
-```typescript
+```typescript fragment
 // tests/http/assets.test.ts
 const css = await app.get("/assets/app.css");
 
@@ -637,7 +637,7 @@ testing only one leaves the failure that actually reaches users uncovered.
 carries a `?v=` token that changes on rebuild; in production `ASSET_VERSION`
 drives the Inertia version header:
 
-```typescript
+```typescript fragment
 // tests/http/assets.test.ts
 test("asset URLs carry a version in dev", async () => {
   const res = await app.get("/");
@@ -662,7 +662,7 @@ one obvious job rather than scattering unrelated failures through the whole suit
 pinned down without a request at all. This is the cheapest place to catch a
 misconfigured CDN prefix:
 
-```typescript
+```typescript fragment
 // tests/unit/asset.test.ts
 import { asset } from "zerotal/assets";
 
@@ -679,7 +679,7 @@ Inertia apps carry an asset version on every page object, and a request whose
 bundle do a full reload after a deploy. That flow only fires when the version
 actually changes between builds, so it is worth one test:
 
-```typescript
+```typescript fragment
 // tests/http/assets.test.ts
 test("a stale bundle is told to reload", async () => {
   const res = await app.get("/dashboard", {

@@ -80,7 +80,7 @@ export default AuthConfig({
 
 2FA stores three columns on the user. Add a migration:
 
-```typescript
+```typescript fragment
 // database/migrations/003_add_two_factor_to_users.ts
 export default class AddTwoFactorToUsers extends Migration {
   async up(schema: Schema): Promise<void> {
@@ -102,7 +102,7 @@ export default class AddTwoFactorToUsers extends Migration {
 
 Then expose them on the model:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @(table("users").withTimestamps())
 export class User extends AuthUser {
@@ -124,7 +124,7 @@ Enrolment is a two-step flow: generate a secret and show its QR code, then verif
 the user's first code before persisting. `TwoFactor.verifyCode()` and
 `TwoFactor.generateRecoveryCodes()` are synchronous.
 
-```typescript
+```typescript fragment
 // app/controllers/TwoFactorController.ts
 import { TwoFactor } from "@zerotal/auth";
 
@@ -191,7 +191,7 @@ After login, the challenge controller verifies a TOTP code (falling back to a
 recovery code) and marks the session as confirmed. `verifyRecoveryCode()` returns
 the remaining codes synchronously so you can persist the consumed set:
 
-```typescript
+```typescript fragment
 // app/controllers/TwoFactorChallengeController.ts
 import { TwoFactor, TWO_FACTOR_SESSION_KEY } from "@zerotal/auth";
 
@@ -242,7 +242,7 @@ export class TwoFactorChallengeController extends Controller {
 Add `TwoFactorMiddleware` **after** `AuthMiddleware` in any group that should
 require 2FA:
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { AuthMiddleware, TwoFactorMiddleware } from "@zerotal/auth";
 
@@ -276,7 +276,7 @@ TwoFactorMiddleware.challengeRoute = "/auth/2fa";
 `getQrCodeSvg()` returns the scannable code as an inline `<svg>`, drawn in your
 process. Inline it — do not fetch it, and do not log it:
 
-```tsx
+```tsx fragment
 // in a Flow page
 const qr = TwoFactor.getQrCodeSvg(user.email, secret, { size: 220 });
 
@@ -303,14 +303,14 @@ anyone enrolling on the device that holds the authenticator needs another way in
 — the secret in readable blocks to type, or the `otpauth://` URI from
 `getQrCodeUrl()` as a link, which opens the authenticator app directly:
 
-```tsx
+```tsx fragment
 <a href={TwoFactor.getQrCodeUrl(user.email, secret)}>Open in my authenticator</a>
 ```
 
 To draw the code yourself — to a canvas, a PNG, or your own markup — `encodeQr()`
 returns the module matrix and `qrSvg()` renders one:
 
-```ts
+```ts fragment
 import { encodeQr } from "@zerotal/auth";
 
 const matrix = encodeQr(TwoFactor.getQrCodeUrl(user.email, secret));
@@ -359,7 +359,7 @@ test("a recovery code verifies once and is then consumed", () => {
 what an authenticator app would show, so the test exercises the TOTP path rather
 than working around it:
 
-```typescript
+```typescript fragment
 // tests/http/two-factor.test.ts
 import { test } from "bun:test";
 import { createApp } from "../helpers.ts";

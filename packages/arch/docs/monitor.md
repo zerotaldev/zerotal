@@ -136,7 +136,7 @@ Everything is driven by core's `FrameworkEvents` bus, the same synchronous subst
 
 For anything that does not flow through the bus — a deploy marker, or a third-party call you make without the `Http` client — the `Monitor` facade records it directly and takes precedence. Every `Monitor.*` call is a safe no-op until the provider boots, so you can call it from anywhere without guarding.
 
-```ts
+```ts fragment
 import { Monitor } from "@zerotal/monitor";
 
 Monitor.recordDeploy(gitSha);
@@ -187,7 +187,7 @@ export default MonitorConfig({
 
 The `auth` callback receives the authenticated user (or `undefined`) and returns whether to allow access. The default permits access only outside production, which is safe for local development but means **you must set an `auth` gate before deploying** — otherwise the panel, which exposes request payloads, user identities, and logs, is unreachable in production by default but wide open the moment you flip the environment. Gate it to an admin role:
 
-```ts
+```ts fragment
 auth: (user) => user?.role === "admin",
 ```
 
@@ -197,7 +197,7 @@ The same gate protects the JSON export route. The Prometheus endpoint is deliber
 
 The panel evaluates threshold alerts every fifteen seconds against the live snapshot. Out of the box it watches four signals: the 5xx error rate, p95 latency, total pending jobs across queues, and transaction rollbacks. Tune the limits through `alertThresholds`:
 
-```ts
+```ts fragment
 alertThresholds: { errorRatePct: 5, p95Ms: 2000, queuePending: 500, rolledBackInWindow: 10 },
 ```
 
@@ -205,7 +205,7 @@ Alerts are edge-triggered — each one fires once when it crosses its threshold 
 
 When an alert fires it is logged, recorded so the Alerts tab can show it with its full context, and dispatched. There are two ways to be paged. The simplest is a webhook — set `alertWebhook` to a Slack-compatible URL and each firing is POSTed as JSON, no extra dependency. For richer routing, register a handler and wire it to notifications, PagerDuty, or anything else:
 
-```ts
+```ts fragment
 import { onAlert } from "@zerotal/monitor";
 
 onAlert((alert) => {
@@ -268,7 +268,7 @@ The panel owns the shell, the time-range selector, the storage and the retention
 
 A section is _described_, not rendered. The contributor returns stats and tables; the panel draws them. That keeps the panel coherent no matter who contributed a section, and means the contributing package needs no JSX and no dependency on `@zerotal/monitor`:
 
-```ts
+```ts fragment
 // In a contributing provider's onBooting()
 interface MonitorHost {
   enabled(id: string): boolean;
@@ -311,7 +311,7 @@ This is the other half of how the recorders already work. A package writes its m
 
 To keep a contributor installed but drop its section, name it in `sections`:
 
-```ts
+```ts fragment
 // config/monitor.ts
 export default MonitorConfig({
   sections: { scheduler: false },

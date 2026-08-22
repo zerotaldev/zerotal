@@ -27,7 +27,7 @@ import type { HttpContext } from "zerotal";
 
 ## JSON
 
-```typescript
+```typescript fragment
 // in a controller
 ctx.json(data); // 200 OK  — Content-Type: application/json
 ctx.json(data, 201); // 201 Created
@@ -44,7 +44,7 @@ JSON-serialisable is accepted: plain objects, arrays, ORM models, `null`.
 `view()` accepts either pre-rendered markup, or a view component plus its props.
 It prepends `<!DOCTYPE html>` and sets `Content-Type: text/html`:
 
-```typescript
+```typescript fragment
 // in a controller
 import { WelcomePage } from "../../resources/views/WelcomePage.tsx";
 
@@ -69,7 +69,7 @@ once for the whole project, and already present in scaffolded apps. See the
 
 For htmx, Turbo Streams, or any partial render — no DOCTYPE prepended:
 
-```typescript
+```typescript fragment
 // in a controller
 ctx.html('<p class="alert">Saved!</p>');
 ctx.html(renderPartial(data), 200);
@@ -81,7 +81,7 @@ Render a Markdown string to a full HTML page using Bun's built-in
 `Bun.markdown.html()`. Tables, strikethrough, tasklists, autolinks, and heading
 IDs are enabled by default:
 
-```typescript
+```typescript fragment
 // in a controller
 const content = await Bun.file("./docs/guide.md").text();
 ctx.markdown(content);
@@ -93,7 +93,7 @@ falling back to `"Docs"`.
 
 ## Redirects
 
-```typescript
+```typescript fragment
 // in a controller
 ctx.redirect("/dashboard"); // 302 Found
 ctx.redirect("/dashboard", 303); // 303 See Other  ← use after POST/PUT
@@ -120,7 +120,7 @@ points to a different origin.
 
 Return a `Response` directly with the appropriate headers:
 
-```typescript
+```typescript fragment
 // in a controller
 const file = Bun.file("./exports/report.csv");
 
@@ -136,7 +136,7 @@ ctx.response = new Response(file as unknown as BodyInit, {
 
 Set `ctx.response` to any `Response` object — the pipeline sends it verbatim:
 
-```typescript
+```typescript fragment
 // in a controller
 ctx.response = new Response("pong", { status: 200 });
 
@@ -157,7 +157,7 @@ ctx.response = new Response(stream, {
 Every helper assigns a fresh `Response` to `ctx.response`. To add a header,
 rebuild it from the existing one:
 
-```typescript
+```typescript fragment
 // in a controller, after setting ctx.response via any helper
 const existing = ctx.response!;
 const headers = new Headers(existing.headers);
@@ -175,7 +175,7 @@ Flash a message and redirect in one step — the flashed value is available via
 `ctx.flashed()` on the next request. Flashing requires an active session
 (see [Session](/docs/session)) and silently no-ops without one:
 
-```typescript
+```typescript fragment
 // in a controller
 ctx.flash("success", "Post created!");
 ctx.redirect("/posts", 303);
@@ -190,7 +190,7 @@ redirects.
 Use `wantsJson()` (true when the client sends `Accept: application/json`) to
 respond differently based on what the client accepts:
 
-```typescript
+```typescript fragment
 // in a controller
 async destroy(ctx: HttpContext): Promise<void> {
   await post.delete();
@@ -211,7 +211,7 @@ the controller entirely with `Router.view()`. A static props object is evaluated
 once at registration; a factory function receives the `HttpContext` per request
 and may be async:
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { Router } from "zerotal";
 
@@ -244,7 +244,7 @@ sentence you would have written in a comment.
 **Assert the status by meaning, not by number**, so a failure says what went
 wrong rather than what integer it saw:
 
-```typescript
+```typescript fragment
 // tests/http/posts.test.ts
 import { test } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -268,7 +268,7 @@ reach for `assertStatus(n)` only when the code has no name.
 how a broken route passes. `assertRedirect` checks the `Location` header;
 `assertJson` parses the body:
 
-```typescript
+```typescript fragment
 // tests/http/posts.test.ts
 res.assertRedirect("/posts/hello"); // 3xx + Location
 res.assertJson({ id: 1, title: "Hello" }); // exact body match
@@ -283,7 +283,7 @@ field is added, which trains people to update tests without reading them.
 **Headers and cookies are part of the response contract** when a client depends
 on them:
 
-```typescript
+```typescript fragment
 // tests/http/downloads.test.ts
 res.assertHeader("Content-Type", "text/csv");
 res.assertHeader("Content-Disposition");

@@ -75,7 +75,7 @@ and without depending on `@zerotal/admin`.
 
 A contributing provider resolves the binding in its `onBooting` and pushes:
 
-```ts
+```ts fragment
 // packages/queue/src/admin.ts
 interface AdminHost {
   enabled(id: string): boolean;
@@ -117,7 +117,7 @@ JSX, no `@zerotal/flow` dependency and no build configuration. The panel owns
 the markup, which also means every console looks like the rest of the admin
 without trying to.
 
-```ts
+```ts fragment
 panel.console({
   slug: "jobs",
   title: "Jobs",
@@ -180,7 +180,7 @@ is read early enough.
 Application code can name the panel directly, so it doesn't need the container
 dance. Group a set of related contributions behind an `AdminPlugin`:
 
-```ts
+```ts fragment
 await Panel.plugin({
   id: "billing",
   install: (panel) => {

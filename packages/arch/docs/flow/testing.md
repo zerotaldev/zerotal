@@ -13,7 +13,7 @@ Import it from `@zerotal/flow/testing`.
 
 `FlowTest.mount()` drives the **initial GET** cycle: `onBoot → onMount → onRendering → render → onRendered → onDehydrate`. It returns a test handle you can use for assertions and further interactions:
 
-```typescript
+```typescript fragment
 import { FlowTest } from "@zerotal/flow/testing";
 import { CounterPage } from "#app/flow/CounterPage.tsx";
 
@@ -29,7 +29,7 @@ t.assertDontSee("Count: 1");
 
 Pass initial props to seed state before `onMount()` runs. Props are applied to the component instance before the lifecycle starts:
 
-```typescript
+```typescript fragment
 const t = await FlowTest.mount(PostsPage, { page: 2, search: "TypeScript" });
 
 expect(t.page().search).toBe("TypeScript");
@@ -43,7 +43,7 @@ This is equivalent to the component being navigated to with `?page=2&search=Type
 
 `t.call(method, ...args)` drives a **WebSocket action frame**: `onBoot → onHydrate → [onUpdating/onUpdated] → action → onUpdate → onRendering → render → onRendered → onDehydrate`.
 
-```typescript
+```typescript fragment
 await t.call("increment");
 expect(t.page().count).toBe(1);
 t.assertSee("Count: 1");
@@ -67,7 +67,7 @@ Any other error is passed to `onError()` — as in production — and then **ret
 
 When the error path is what you're testing, opt in with `tolerateErrors()`:
 
-```typescript
+```typescript fragment
 const t = (await FlowTest.mount(CheckoutPage)).tolerateErrors();
 await t.call("submit");
 
@@ -79,7 +79,7 @@ t.assertFlashed("error", "Payment failed");
 
 Three methods change a property between calls:
 
-```typescript
+```typescript fragment
 // set() — direct assignment, then re-renders; no hooks fire
 await t.set("draft", "Hello world");
 await t.set("page", 3);
@@ -98,7 +98,7 @@ await t.render(); // one render for both
 
 Use `set()` to put the component in a specific state for a test scenario. Use `update()` when you're testing that `onUpdating`/`onUpdated` hooks run correctly:
 
-```typescript
+```typescript fragment
 // Test that onUpdatedUsername normalises to lowercase
 const t = await FlowTest.mount(ProfilePage);
 await t.update("username", "ALICE");
@@ -108,7 +108,7 @@ expect(t.page().username).toBe("alice"); // hook lowercased it
 
 ## HTML assertions
 
-```typescript
+```typescript fragment
 t.assertSee("Published post"); // rendered HTML contains this string
 t.assertDontSee("Error"); // rendered HTML does NOT contain this string
 t.assertSee("<h1>Dashboard</h1>"); // can match HTML tags too
@@ -118,7 +118,7 @@ Both methods check `t.html()` — the raw rendered HTML string for this componen
 
 ## Validation assertions
 
-```typescript
+```typescript fragment
 await t.call("register"); // trigger a validation action
 
 t.assertHasErrors("email"); // field has at least one error
@@ -131,7 +131,7 @@ t.assertNoErrors(); // no validation errors at all
 
 ## Redirect assertions
 
-```typescript
+```typescript fragment
 await t.call("login");
 
 t.assertRedirectedTo("/dashboard"); // last action redirected to this URL
@@ -140,7 +140,7 @@ t.assertNotRedirected(); // last action did NOT redirect
 
 ## Flash assertions
 
-```typescript
+```typescript fragment
 await t.call("save");
 
 t.assertFlashed("success", "Saved."); // level + message substring
@@ -151,7 +151,7 @@ t.assertFlashed(); // any flash was emitted
 
 ## Event assertions
 
-```typescript
+```typescript fragment
 await t.call("createPost");
 
 t.assertDispatched("post-created"); // event was dispatched
@@ -160,7 +160,7 @@ t.assertDispatched("post-created", { id: 1 }); // event was dispatched with this
 
 ## Accessors
 
-```typescript
+```typescript fragment
 t.page(); // the Component instance — inspect properties and call methods directly
 t.html(); // the rendered HTML string from the last render
 t.errors(); // current error bag: Record<string, string[]>
@@ -170,7 +170,7 @@ t.snapshot(); // the serialised snapshot blob
 
 `t.page()` gives you the live component instance, so you can read any property:
 
-```typescript
+```typescript fragment
 const page = t.page();
 expect(page.posts.length).toBe(10);
 expect(page.user?.email).toBe("alice@example.com");
@@ -191,7 +191,7 @@ That covers most actions on any page behind a sign-in, so open the scope yoursel
 rather than an object literal cast to the type — it carries a real `Request`, which matters as soon
 as anything downstream reads a header (an audited model records the actor's IP, for one):
 
-```typescript
+```typescript fragment
 import { RequestContext, HttpContext } from "@zerotal/core";
 
 function asUser<T>(user: User | null, fn: () => Promise<T>): Promise<T> {
@@ -213,7 +213,7 @@ never makes a request to send it on.
 
 `FlowTest` does not set up or tear down a database — use your test suite's standard database helpers. With Bun, wrap tests in a transaction that rolls back after each test for full isolation:
 
-```typescript
+```typescript fragment
 // tests/flow/PostsPage.test.ts
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { FlowTest } from "@zerotal/flow/testing";
@@ -250,7 +250,7 @@ describe("PostsPage", () => {
 
 A complete example covering the common scenarios for a login page:
 
-```typescript
+```typescript fragment
 // tests/flow/LoginPage.test.ts
 import { describe, test, expect } from "bun:test";
 import { FlowTest } from "@zerotal/flow/testing";
@@ -314,7 +314,7 @@ describe("LoginPage", () => {
 
 To test that a component dispatches events and that `@on` listeners respond, mount each component separately and verify the dispatch effect:
 
-```typescript
+```typescript fragment
 test("dispatches post-created when saved", async () => {
   const editor = await FlowTest.mount(PostEditorPage);
   await t.set("title", "My post");
@@ -340,7 +340,7 @@ test("post list responds to post-created event", async () => {
 
 ## Testing redirects and navigation
 
-```typescript
+```typescript fragment
 test("redirects to the created post after save", async () => {
   const t = await FlowTest.mount(NewPostPage);
   await t.set("title", "Hello");
@@ -387,7 +387,7 @@ A page can pass every `FlowTest` assertion and still do nothing when a person cl
 over the DevTools Protocol — no Puppeteer or Playwright dependency — so the click is a
 real click and the round-trip is a real round-trip.
 
-```ts
+```ts fragment
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { Application, Router } from "zerotal";
 import { FlowProvider } from "@zerotal/flow";
@@ -433,7 +433,7 @@ A few things are deliberate and worth copying:
 - **Guard the suite with `FlowBrowser.available()`** so it skips where no browser is
   installed instead of failing:
 
-```ts
+```ts fragment
 const describeBrowser = FlowBrowser.available() ? describe : describe.skip;
 ```
 

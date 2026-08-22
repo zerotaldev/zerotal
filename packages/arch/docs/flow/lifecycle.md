@@ -46,7 +46,7 @@ GET /page  (initial render)            WebSocket action frame (subsequent)
 
 A child gets its data from its parent, not from the URL. Each prop lands on the field of the same name before `onBoot()` and `onMount()` run, so the field's initialiser is its default and a hook can use the value straight away:
 
-```typescript
+```typescript fragment
 export class CounterWidget extends Component {
   @locked label: string = "Count"; // ← <CounterWidget label="Views" />
   @locked step:  number = 1;       // ← defaults to 1 when the parent omits it
@@ -76,7 +76,7 @@ A child receives the request `HttpContext` in `onBoot(ctx)` / `onMount(ctx)` lik
 
 Runs on **every** request: the initial `GET` and every WebSocket update. Use it for setup that must be fresh on every round-trip — resolving the authenticated user from context, initialising i18n, wiring up per-request services:
 
-```typescript
+```typescript fragment
 import { request } from "zerotal";
 
 override async onBoot() {
@@ -96,7 +96,7 @@ Runs once on the initial `GET` render, then is skipped on all subsequent WebSock
 
 A page on a dynamic segment needs no code here for the record it is about. A field of the model's type is [filled from the segment](/docs/flow/routing#path-parameters) before `onMount()` runs, so the query, the id field, and the 404 all belong to the route:
 
-```typescript
+```typescript fragment
 export class PostPage extends Component {
   @locked post!: Post; // /posts/:post — nothing to load
 }
@@ -104,7 +104,7 @@ export class PostPage extends Component {
 
 What `onMount()` is for is everything the URL does not carry. It receives the route `HttpContext` — the same argument a controller action gets — which is where the signed-in user lives, and `ctx.params` is still there for a segment no field claimed:
 
-```typescript
+```typescript fragment
 override async onMount({ user }: HttpContext) {
   this.canEdit = user?.id === this.post.authorId;
 }
@@ -112,7 +112,7 @@ override async onMount({ user }: HttpContext) {
 
 The context is passed to `onBoot()` too, but only the initial `GET` populates `ctx.params` — see the [warning in Routing](/docs/flow/routing#path-parameters). The argument is optional because a component can also be mounted outside a request (in a test, for example).
 
-```typescript
+```typescript fragment
 override async onMount() {
   const [posts, drafts] = await Promise.all([
     Post.query()
@@ -133,7 +133,7 @@ Lists and counts are what belongs here — the things no route resolved and no p
 
 To force `onMount()` to re-run during a WebSocket action — for example after creating a new record and wanting to reload the list — call `this.refresh()` inside the action:
 
-```typescript
+```typescript fragment
 @expose async createPost(): Promise<void> {
   await Post.create({ title: this.title, body: this.body });
   this.title = "";
@@ -147,7 +147,7 @@ To force `onMount()` to re-run during a WebSocket action — for example after c
 
 Runs on every WebSocket round-trip, immediately after state is restored from the snapshot. Use it to re-derive transient or protected state that wasn't persisted in the snapshot:
 
-```typescript
+```typescript fragment
 export class PostEditorPage extends Component {
   @expose post!: Post; // /posts/:post/edit — re-read from the row every round-trip
   @transient wordCount = 0; // NOT persisted — derived again each time
@@ -178,7 +178,7 @@ are not part of a re-read, and anything derived from them.
 
 Fires **before** a client-written property value is applied to the component. Throw to reject the write — the value is discarded, an error is added, and the component re-renders:
 
-```typescript
+```typescript fragment
 override async onUpdating(prop: string, value: unknown, key?: string) {
   // Prevent role escalation
   if (prop === "role" && value === "super_admin") {
@@ -198,7 +198,7 @@ override async onUpdating(prop: string, value: unknown, key?: string) {
 
 Fires **after** a client-written property is applied. Use it to normalise values, enforce computed side-effects, or trigger cascading updates:
 
-```typescript
+```typescript fragment
 override async onUpdated(prop: string, value: unknown) {
   if (prop === "categoryId") {
     // When the category changes, reload the subcategories
@@ -212,7 +212,7 @@ override async onUpdated(prop: string, value: unknown) {
 
 Instead of branching on `prop` inside `onUpdating`/`onUpdated`, define a per-property method named `onUpdating<PropName>` or `onUpdated<PropName>` (Pascal-cased). Flow calls it automatically and keeps the generic fallback as a catch-all:
 
-```typescript
+```typescript fragment
 @expose username = "";
 @expose email    = "";
 @expose tags:    string[] = [];
@@ -243,7 +243,7 @@ The per-property form is cleaner and TypeScript-friendly: the parameter type mat
 
 Runs once after the invoked action completes, before the render cycle. Use it to apply cross-cutting logic that should happen after any action:
 
-```typescript
+```typescript fragment
 override async onUpdate() {
   // Always log the current state to the audit trail after any action:
   await AuditLog.create({
@@ -260,7 +260,7 @@ Unlike `onUpdated` (which fires per property, before the action), `onUpdate()` f
 
 Runs immediately before `render()` on every request (initial and WebSocket). Use it for template-level setup that shouldn't be in `render()` itself — resolving shared view data, picking a layout variant, etc.:
 
-```typescript
+```typescript fragment
 override async onRendering() {
   // Decide which layout variant to use based on the user's subscription
   if (this.user?.isPro) {
@@ -275,7 +275,7 @@ Avoid async database calls here unless truly necessary — `onMount()` and `onHy
 
 Receives the rendered HTML string. Use it to post-process the output, measure render time, or send the HTML to a cache:
 
-```typescript
+```typescript fragment
 override async onRendered(html: string) {
   // Log very long renders for investigation
   if (html.length > 100_000) {
@@ -293,7 +293,7 @@ The `html` parameter is the raw HTML of this component only — not the full pag
 
 Runs just before the component state is serialised into the snapshot at the end of every request. Use it to strip sensitive or ephemeral state that shouldn't be persisted:
 
-```typescript
+```typescript fragment
 override async onDehydrate() {
   // Never persist raw upload paths between round-trips
   this.tempUploadPath = null;
@@ -314,7 +314,7 @@ After `onDehydrate()`, the snapshot is signed and sent to the browser as an encr
 
 Called when an `@expose`d action throws an unhandled error. The default behaviour flashes the error message with level `"error"`. Override to log to an error tracker or display a custom message:
 
-```typescript
+```typescript fragment
 override async onError(error: Error) {
   // Log to your error tracker
   await Sentry.captureException(error, {
@@ -331,7 +331,7 @@ override async onError(error: Error) {
 
 If you want some errors to propagate normally and only handle specific types:
 
-```typescript
+```typescript fragment
 override async onError(error: Error) {
   if (error instanceof DatabaseConnectionError) {
     this.flash("Database is temporarily unavailable. Please try again.", "error");

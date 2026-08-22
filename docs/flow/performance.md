@@ -74,7 +74,7 @@ paying for a navigation you could have paid for during the hover. Flow has a sma
 
 `<Skeleton>` is a pulsing placeholder block — pure markup plus a bundled animation, so it needs no app CSS. Use it for the shape of content that hasn't loaded yet:
 
-```tsx
+```tsx fragment
 import { Skeleton } from "@zerotal/flow";
 
 <Skeleton height="1.5rem" width="60%" />     {/* one bar */}
@@ -84,7 +84,7 @@ import { Skeleton } from "@zerotal/flow";
 
 The most useful place is a lazy child's `placeholder()` — what shows while the component mounts on viewport entry — and inside a `<Loading>` region (`<Loading skeleton />` renders one for you):
 
-```tsx
+```tsx fragment
 export class ChartWidget extends Component {
   override placeholder() {
     return <Skeleton height="12rem" rounded="0.75rem" />;
@@ -101,7 +101,7 @@ Tune the tone with the `--flow-skeleton-color` CSS variable; the pulse respects 
 
 Because state is a server-authoritative snapshot, optimistic UI and its rollback are already built in. A client expression that changes a prop and then calls an action applies the change **instantly**; when the server responds, the authoritative snapshot reconciles the prop — so if the server **rejects** the change, it snaps back on its own. There is no separate optimistic library and no compensation code to write:
 
-```tsx
+```tsx fragment
 @expose liked = false;
 @expose confirmLike(): void { /* … persist … */ }
 
@@ -170,7 +170,7 @@ mirror image for deletes.
 
 Add `hover` to a `navigate` link and Flow fetches the target after a brief hover dwell (and on first touch on mobile), caching the HTML so the click swaps instantly instead of waiting on a cold request:
 
-```tsx
+```tsx fragment
 <a href="/posts" navigate hover>
   Posts
 </a>;
@@ -251,7 +251,7 @@ A multi-step form, a long editor, or any in-progress flow then resumes
 **exactly** — whether the user reloads the page, closes and reopens the tab, or
 switches device. Nothing is stored in the browser:
 
-```tsx
+```tsx fragment
 export class Wizard extends Component {
   static durable = true; // or { ttl: "1h", scope: "user" | "session" }
 

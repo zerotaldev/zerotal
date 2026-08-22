@@ -81,7 +81,7 @@ A job is a class that extends `Job` and implements `handle()`. Constructor
 arguments are the job's state — serialise them in `payload()` and restore them in
 a static `fromPayload()`:
 
-```typescript
+```typescript fragment
 // app/jobs/NotifyFollowersJob.ts
 import { Job, JobRegistry } from "@zerotal/queue";
 
@@ -126,7 +126,7 @@ JobRegistry.register(NotifyFollowersJob as never);
 
 A job with no constructor state needs only `handle()` plus the registration line:
 
-```typescript
+```typescript fragment
 // app/jobs/PruneDeletedContentJob.ts
 import { Job, JobRegistry } from "@zerotal/queue";
 
@@ -164,7 +164,7 @@ the `JobRegistry.register(...)` line — keep it at the bottom of each job file.
 
 ## Dispatching jobs
 
-```typescript
+```typescript fragment
 // in a controller
 import { Queue } from "@zerotal/queue";
 
@@ -183,7 +183,7 @@ worker loop, not the web request.
 
 A document saved eight times in a minute should rebuild its search index once, and the only rebuild anyone sees is the last one. Set `debounce` to a number of seconds and repeated dispatches collapse into a single run:
 
-```typescript
+```typescript fragment
 export class ReindexDocument extends Job {
   /** Run 30s after the last dispatch, not once per dispatch. */
   override readonly debounce = 30;
@@ -202,7 +202,7 @@ export class ReindexDocument extends Job {
 }
 ```
 
-```typescript
+```typescript fragment
 // Eight saves in quick succession…
 for (const _ of edits) await Queue.dispatch(new ReindexDocument(doc.id));
 // …one job, running 30s after the last one.
@@ -220,7 +220,7 @@ By default, the class name plus the serialised payload. So `ReindexDocument(1)` 
 
 Override `debounceKey()` when two payloads mean the same work. A job carrying a timestamp or a request id is unique on every dispatch and would otherwise never collapse with anything:
 
-```typescript
+```typescript fragment
 export class ReindexDocument extends Job {
   override readonly debounce = 30;
 
@@ -258,7 +258,7 @@ This is the behaviour you want for the reindex case: a save that lands while the
 Batch a set of jobs and react when they all finish. Batching uses the
 `zerotal_job_batches` table (auto-created by `SqliteDriver`).
 
-```typescript
+```typescript fragment
 // in a controller
 import { Bus } from "@zerotal/queue";
 
@@ -283,7 +283,7 @@ const batch = await Bus.batch(rows.map((row) => new ImportCsvRowJob(row)))
 
 `Bus.batch(...).dispatch()` resolves to a `Batch` instance:
 
-```typescript
+```typescript fragment
 // after .dispatch()
 batch.id; // UUID string
 batch.name; // label from .name()
@@ -304,7 +304,7 @@ batch.progress(); // 0.0 → 1.0
 Run jobs sequentially: each job dispatches the next one only after it succeeds. If
 any job fails, the rest of the chain is abandoned.
 
-```typescript
+```typescript fragment
 // in a controller
 import { Bus } from "@zerotal/queue";
 
@@ -437,7 +437,7 @@ which stops every thread. Any in-flight or queued work is resolved with
 `QueueFake` swaps the `queue` binding for a fake that captures dispatched jobs
 instead of running them, so you can assert on them:
 
-```typescript
+```typescript fragment
 // in a test
 import { QueueFake } from "@zerotal/queue";
 
@@ -530,7 +530,7 @@ while leaving unrelated failures alone.
 | `QueueShuttingDownError`        | `E_QUEUE_SHUTTING_DOWN`        | Dispatching during a graceful shutdown — the manager is draining. |
 | `QueueBatchingUnsupportedError` | `E_QUEUE_BATCHING_UNSUPPORTED` | Using batches on a driver that has no batch support.              |
 
-```typescript
+```typescript fragment
 // in a controller or service
 import { QueueError, QueueShuttingDownError } from "@zerotal/queue";
 

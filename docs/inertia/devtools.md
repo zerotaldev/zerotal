@@ -84,7 +84,7 @@ INERTIA_DEVTOOLS_ENABLED=true    # on — see the warning below
 
 Or configure it:
 
-```typescript
+```typescript fragment
 // config/inertia.ts
 import { InertiaConfig } from "zerotal/inertia";
 
@@ -129,7 +129,7 @@ Matching is a case-insensitive substring, so `password` also covers
 
 Add your own:
 
-```typescript
+```typescript fragment
 // config/inertia.ts
 export default InertiaConfig({
   devtools: {
@@ -148,7 +148,7 @@ request.
 The read API never records itself. Add anything else that would bury the
 timeline:
 
-```typescript
+```typescript fragment
 // config/inertia.ts
 export default InertiaConfig({
   devtools: { except: ["/health", "/metrics"] },
@@ -157,7 +157,7 @@ export default InertiaConfig({
 
 ### Gating a shared environment
 
-```typescript
+```typescript fragment
 // config/inertia.ts
 export default InertiaConfig({
   devtools: {

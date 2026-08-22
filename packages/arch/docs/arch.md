@@ -24,7 +24,7 @@ bun add -d @zerotal/arch
 
 Register the provider in `bootstrap/providers.ts`:
 
-```typescript
+```typescript fragment
 // bootstrap/providers.ts
 import { ArchProvider } from "@zerotal/arch";
 
@@ -189,7 +189,7 @@ The transport is exported separately from the tools, on the `@zerotal/arch/mcp` 
 A tool is a plain object with a schema and a `run`, so you can serve your own alongside
 these — or serve these over a transport of your own.
 
-```typescript
+```typescript fragment
 import { McpServer, serveStdio } from "@zerotal/arch/mcp";
 import { archTools, vendoredDocsDir, spawnProbe } from "@zerotal/arch";
 

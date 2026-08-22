@@ -66,7 +66,7 @@ export default CacheConfig({
 
 ## Basic operations
 
-```ts
+```ts fragment
 // in a controller or service
 import { Cache } from "@zerotal/cache";
 
@@ -93,13 +93,13 @@ await Cache.flush();
 
 `remember()` checks the cache and, on a miss, calls the factory, stores the result, and returns it. Under high concurrency, multiple callers for the same key coalesce — the factory runs exactly once:
 
-```ts
+```ts fragment
 function remember<T>(key: string, ttl: number, fn: () => Promise<T> | T): Promise<T>;
 ```
 
 > **Tip** — Reach for `remember()` instead of a manual `get`/`set` pair. It avoids the cache stampede where many requests miss at once and all hit the database.
 
-```ts
+```ts fragment
 // in a controller
 import { Cache } from "@zerotal/cache";
 import { Post } from "../app/models/Post.ts";
@@ -130,7 +130,7 @@ const stats = await Cache.remember(`user:${userId}:stats`, 60, async () => {
 
 Group related keys under named tags so you can invalidate them together. `Cache.tags()` returns a `TaggedCache` whose keys all share a tag prefix — useful when several cache entries depend on the same underlying data:
 
-```ts
+```ts fragment
 // in a controller
 import { Cache } from "@zerotal/cache";
 
@@ -156,7 +156,7 @@ await Cache.tags([`user:${userId}`]).flush();
 
 ### Tag-based invalidation in model hooks
 
-```ts
+```ts fragment
 // app/models/Post.ts — inside a lifecycle hook or observer
 async afterCreate(post: Post) {
   await Cache.tags(["posts"]).flush();
@@ -171,7 +171,7 @@ async afterUpdate(post: Post) {
 
 There is no multi-get primitive — batch with `Promise.all` to cut round-trips to the backend:
 
-```ts
+```ts fragment
 // in a controller
 import { Cache } from "@zerotal/cache";
 
@@ -211,7 +211,7 @@ await Promise.all([
 
 The `Cache` facade always uses the configured driver. To use a different driver for one use case, construct a `CacheManager` directly:
 
-```ts
+```ts fragment
 // in a service
 import { CacheManager, MemoryDriver } from "@zerotal/cache";
 
@@ -220,7 +220,7 @@ const local = new CacheManager(new MemoryDriver(), "req:", 30);
 await local.set("computed-total", total);
 ```
 
-```ts
+```ts fragment
 new CacheManager(driver: CacheDriver, prefix?: string, defaultTtl?: number)
 ```
 
@@ -230,7 +230,7 @@ new CacheManager(driver: CacheDriver, prefix?: string, defaultTtl?: number)
 
 `with()` needs a `CacheManager` instance — resolve the framework's bound manager from the container with `app.container.makeSync("cache")`:
 
-```ts
+```ts fragment
 // routes/api.ts
 import { IdempotencyMiddleware, CacheManager } from "@zerotal/cache";
 
@@ -283,7 +283,7 @@ A replayed response includes `Idempotency-Replay: true` so clients can distingui
 
 Pre-populate the cache at boot so the first real request is always fast. Call from a provider's `onStarted()`, which runs after the application has finished booting:
 
-```ts
+```ts fragment
 // bootstrap/providers/AppServiceProvider.ts
 import { ServiceProvider } from "zerotal";
 import { Cache } from "@zerotal/cache";
@@ -305,7 +305,7 @@ Use the `memory` driver in tests for speed and isolation — it never persists b
 
 To swap the cache for a single suite, rebind the `cache` singleton on the container before resolving the facade, then flush between tests to avoid bleed:
 
-```ts
+```ts fragment
 // in test setup
 import { Application } from "zerotal";
 import { Cache, CacheManager, MemoryDriver } from "@zerotal/cache";
@@ -354,7 +354,7 @@ Cache errors extend `CacheError`, which extends the framework's `ZerotalError`.
 | `CacheSerializationError`   | `E_CACHE_SERIALIZATION`   | A value cannot be serialised for storage.                    |
 | `CacheDeserializationError` | `E_CACHE_DESERIALIZATION` | A stored value cannot be read back — usually a shape change. |
 
-```typescript
+```typescript fragment
 // in a service
 import { CacheDeserializationError } from "@zerotal/cache";
 

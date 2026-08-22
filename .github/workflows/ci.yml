@@ -79,6 +79,20 @@ jobs:
       - name: MCP tool surface
         run: bun run mcp:surface:check
 
+      # Documentation drifts silently: a signature changes, the guide keeps the old
+      # call, and nothing complains until a reader copies it. This compiles every
+      # TypeScript block in docs/ against the real workspace types.
+      #
+      # Two keyed lists rather than a count, because a count lets one fragment be
+      # deleted and another introduced while the number holds. `fragments` are
+      # blocks deliberately written as a class body or a method without its class,
+      # marked `fragment` in their fence and never inferred. `drift` is the other
+      # kind — blocks that resolve everything and still fail, which is broken
+      # documentation and is recorded under that name so it reads as work
+      # outstanding rather than as intent. Neither list may grow.
+      - name: Documentation examples
+        run: bun run docs:examples:check
+
       # `docs/` lives at the repo root and ships in no package, so the agent
       # surface vendors a copy — that copy is what `search_docs` answers from in
       # an installed app. Unverified, it would drift and start describing an API

@@ -1,4 +1,4 @@
-﻿---
+---
 title: Commands
 description: Build and run CLI commands with bun zt, from generators to your own class- or closure-based commands.
 ---
@@ -72,7 +72,7 @@ signature's first token is the name; `{arg}` is required, `{arg?}` optional,
 `{arg=default}` has a default, `{--flag}` is a boolean flag, and `{--flag=}` /
 `{--flag=default}` is a string flag.
 
-```typescript
+```typescript fragment
 // in a service provider or bootstrap script
 const runner = app.container.tryMake("commands");
 
@@ -110,7 +110,7 @@ so it wins a name collision. The directory is configurable via
 
 To register a folder from somewhere else, call `discover()` yourself:
 
-```typescript
+```typescript fragment
 // in a service provider or bootstrap script
 await runner.discover("./vendor/acme/commands");
 ```
@@ -291,7 +291,7 @@ Dev processes
 Your app has the last word. `app.dev.disable` removes a process by name, and
 registering the same name again replaces it rather than adding a second tab:
 
-```ts
+```ts fragment
 // config/app.ts
 export default AppConfig({
   dev: {

@@ -25,7 +25,7 @@ import { Router, route } from "zerotal";
 
 Register a `GET` route to a controller action, or to an inline closure:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 import { Router } from "zerotal";
 
@@ -53,7 +53,7 @@ rules.
 
 ### HTTP verbs
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.get("/users", UserController, "index");
 Router.post("/users", UserController, "store");
@@ -64,7 +64,7 @@ Router.delete("/users/:id", UserController, "destroy");
 
 Each call returns a `RouteRegistration` you can chain:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.get("/posts/:slug", PostController, "show").name("posts.show").bind("post", Post);
 ```
@@ -73,7 +73,7 @@ Router.get("/posts/:slug", PostController, "show").name("posts.show").bind("post
 
 Pass middleware classes as the fourth argument:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.get("/dashboard", DashboardController, "index", [AuthMiddleware]);
 Router.post("/posts", PostController, "store", [AuthMiddleware, ThrottleMiddleware]);
@@ -102,7 +102,7 @@ Router.get("/posts/:slug", (ctx: HttpContext<{ slug: string }>) =>
 Middleware is passed as the **third** argument in closure form (there's no action
 name), and the returned `RouteRegistration` still chains `.name()` / `.bind()`:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.get("/admin", (ctx) => ctx.json({ ok: true }), [AuthMiddleware]);
 Router.get("/posts/:post", (ctx: HttpContext<{ post: Post }>) =>
@@ -118,7 +118,7 @@ Router.get("/posts/:post", (ctx: HttpContext<{ post: Post }>) =>
 
 `Router.resource()` registers all seven RESTful actions in one call:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.resource("posts", PostController);
 ```
@@ -138,7 +138,7 @@ are accepted.
 
 #### Filtering actions
 
-```typescript
+```typescript fragment
 // routes/index.ts
 // Register only these actions
 Router.resource("photos", PhotoController).only(["index", "show"]);
@@ -149,7 +149,7 @@ Router.resource("tags", TagController).except(["create", "edit"]);
 
 #### Resource middleware
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.resource("comments", CommentController, [AuthMiddleware]);
 ```
@@ -159,7 +159,7 @@ Router.resource("comments", CommentController, [AuthMiddleware]);
 Register a GET route that renders a `@zerotal/core` JSX component directly —
 no controller class needed for simple pages:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 import { AboutPage } from "../resources/views/AboutPage.tsx";
 import { DashboardPage } from "../resources/views/DashboardPage.tsx";
@@ -182,7 +182,7 @@ Router.view("/settings", SettingsPage, (ctx) => ({ user: ctx.user }), [AuthMiddl
 
 The route chains `.name()` and `.withLayout()`:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.view("/about", AboutPage).name("about").withLayout(AppLayout);
 ```
@@ -191,7 +191,7 @@ Router.view("/about", AboutPage).name("about").withLayout(AppLayout);
 
 Serve a local directory under a URL prefix:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.static("/assets", "./public/assets");
 Router.static("/uploads", "public/uploads");
@@ -211,7 +211,7 @@ is pre-registered at boot as a static `Response` (zero JS per request); pass
 
 Serve a directory of `.md` files as rendered HTML pages:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.markdown("/docs", "./docs");
 
@@ -232,7 +232,7 @@ Register a handler that receives the raw `Request` and bypasses the entire globa
 middleware pipeline — no `HttpContext`, no session, no auth. Useful for internal
 health checks or asset endpoints:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.raw("GET", "/__ping", () => new Response("pong"));
 Router.raw("GET", "/health", async () => {
@@ -252,7 +252,7 @@ Router.raw("GET", "/health", async () => {
 
 Added by the `@zerotal/flow` package:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 import { Router } from "zerotal";
 
@@ -267,7 +267,7 @@ See the [Flow](/docs/flow) guide for full details.
 Groups apply a shared prefix and/or middleware stack to a set of routes. Groups
 nest — prefix and middleware accumulate.
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.group({ prefix: "/api/v1" }, () => {
   Router.get("/users", UserController, "index");
@@ -276,7 +276,7 @@ Router.group({ prefix: "/api/v1" }, () => {
 });
 ```
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.group({ prefix: "/api/v1", middleware: AuthMiddleware }, () => {
   Router.resource("posts", PostController);
@@ -294,7 +294,7 @@ routes declared after it.
 Define a group of middleware classes under a string key, then reference it by
 name:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider or bootstrap
 Router.middlewareGroup("api", [ThrottleMiddleware, JsonMiddleware]);
 Router.middlewareGroup("web", [SessionMiddleware, CsrfMiddleware]);
@@ -316,7 +316,7 @@ it everywhere that group is used instead of requiring an edit at every call site
 
 ### Nested groups
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.group({ prefix: "/admin" }, () => {
   Router.group({ middleware: [AuthMiddleware, AdminMiddleware] }, () => {
@@ -345,7 +345,7 @@ group.
 The `domain` option scopes a group of routes to a specific host. Dynamic `:label`
 segments are captured and exposed on the context via `ctx.subdomains`.
 
-```typescript
+```typescript fragment
 // routes/index.ts
 import { Router } from "zerotal";
 
@@ -360,7 +360,7 @@ Router.group({ domain: ":tenant.app.com" }, () => {
 });
 ```
 
-```typescript
+```typescript fragment
 // app/controllers/DashboardController.ts
 class DashboardController {
   index(ctx: HttpContext) {
@@ -383,7 +383,7 @@ time.
 `@zerotal/tenancy`'s `SubdomainResolver` resolves the tenant _model_ from the same
 subdomain a domain group captures, so the two compose directly:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.group({ domain: ":tenant.app.com" }, () => {
   Router.get("/dashboard", DashboardController, "index");
@@ -397,7 +397,7 @@ Configuring the resolver is covered in [Multi-tenancy](/docs/tenancy).
 
 Assign a name and generate URLs from it:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.get("/posts/:slug", PostController, "show").name("posts.show");
 
@@ -436,7 +436,7 @@ route("docs.show", { "*": ["guides", "intro"] }); // → '/docs/guides/intro'
 Run `bun zt route:types` and the names above stop being strings the compiler has
 to take on faith:
 
-```typescript
+```typescript fragment
 route("psots.show", { slug }); // ✗ not assignable to RouteName
 route("posts.show"); // ✗ Expected 2 arguments, but got 1
 route("posts.show", {}); // ✗ Property 'slug' is missing
@@ -475,7 +475,7 @@ it always did — every name accepted, nothing checked.
 **When the name is not known at compile time** — read from config, chosen by a
 package — use the escape hatch, which does the same work with no checking:
 
-```typescript
+```typescript fragment
 route.dynamic(config("app.home_route"), { id });
 ```
 
@@ -506,7 +506,7 @@ server renders — a `view` build's `href` attributes and form actions included.
 A browser bundle is a different process with no router to read, so there it needs
 the table handed to it once, at your entry point:
 
-```typescript
+```typescript fragment
 // resources/js/app.js
 import { defineRoutes } from "zerotal/routes";
 import { ROUTES } from "../../types/routes.generated";
@@ -516,7 +516,7 @@ defineRoutes(ROUTES);
 
 From there the call is the one you already know:
 
-```typescript
+```typescript fragment
 route("posts.show", { slug }); // → '/posts/hello'
 route("posts.index", {}, { page: 2 }); // → '/posts?page=2'
 ```
@@ -532,7 +532,7 @@ type-checks in a controller type-checks in a component.
 `defineRoutes()` also puts `route()` on `globalThis`, so a page, a component or a
 controller calls it with nothing at the top of the file:
 
-```tsx
+```tsx fragment
 // no import line
 <a href={route("posts.show", { slug })}>{post.title}</a>
 ```
@@ -585,7 +585,7 @@ Nothing to install, and the names are the same ones the server rendered with.
 `route()` gives you a URL. A form needs two things — where to send the request
 and how — and a URL alone leaves the second one to be typed out beside it:
 
-```typescript
+```typescript fragment
 // The URL is generated; the verb is a guess that happens to be right today.
 form.post(route("posts.comments.store", { post: id }));
 ```
@@ -593,7 +593,7 @@ form.post(route("posts.comments.store", { post: id }));
 `bun zt route:types` also writes a `METHODS` table, so the verb can come from
 the same place the URL does. `action()` returns both:
 
-```typescript
+```typescript fragment
 // resources/js/app.js
 import { defineRouteMethods, defineRoutes } from "zerotal/routes";
 import { METHODS, ROUTES } from "../../types/routes.generated";
@@ -602,7 +602,7 @@ defineRoutes(ROUTES);
 defineRouteMethods(METHODS);
 ```
 
-```typescript
+```typescript fragment
 import { action } from "zerotal/routes";
 
 const endpoint = action("posts.comments.store", { post: id });
@@ -634,7 +634,7 @@ Opt in with `app.fileBasedRouting()` in `bootstrap/app.ts`, passing a map of
 named route groups (each `web`/`api` group brings its own default prefix and
 middleware) to directories:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { Application, basePath } from "zerotal";
 import providers from "./providers";
@@ -667,7 +667,7 @@ segment); `index` becomes the directory URL.
 
 A file may export handlers for one or more HTTP verbs:
 
-```typescript
+```typescript fragment
 // app/routes/users/[id].ts
 import type { HttpContext } from "zerotal";
 
@@ -725,7 +725,7 @@ Place a `_middleware.ts` file in any directory to protect all routes under it.
 The scanner walks from the root down to the file's directory and stacks
 middleware outermost-first:
 
-```typescript
+```typescript fragment
 // app/routes/api/v2/me/_middleware.ts
 import { RequireAuthMiddleware } from "../../../middleware/RequireAuthMiddleware.ts";
 
@@ -762,7 +762,7 @@ When `@zerotal/flow` is installed, the file scanner recognises Flow
 configuration. Verb handlers (`POST`, `DELETE`, etc.) in the same file still
 register normally alongside the page:
 
-```typescript
+```typescript fragment
 // app/flow/pages/(protected)/dashboard.tsx
 import type { HttpContext } from "zerotal";
 
@@ -789,7 +789,7 @@ route param whose name matches a model resolves to a loaded instance with no
 configuration. `:user` resolves via `User`, `:post` via `Post`, `:blogPost` via
 `BlogPost` (and a plural `:users` resolves to `User` too, via singularization).
 
-```typescript
+```typescript fragment
 // routes/index.ts — nothing to declare:
 Router.get("/users/:user", UserController, "show");
 
@@ -811,7 +811,7 @@ A model that resolves by something other than its primary key says so once, on t
 model, rather than at every route that mentions it. Declare
 `static resolveRouteBinding` and it is used wherever that model binds:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @table("users")
 export class User extends Model {
@@ -852,7 +852,7 @@ controller**. That ordering is a guarantee, not an implementation detail:
 
 Two static properties on the model control implicit binding:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @table("users")
 export class User extends Model {
@@ -879,7 +879,7 @@ There are exactly two ways to change how a param resolves, and they differ only 
 scope: put it on the **model** when it is how that model always resolves, or on the
 **route** when it belongs to that one route.
 
-```typescript
+```typescript fragment
 // in a controller — either way, it is already resolved
 async show(ctx: HttpContext) {
   const user = ctx.model<User>('user');  // no DB call needed here
@@ -894,7 +894,7 @@ controller runs.
 
 Overrides the model's own resolution for a single route:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.get("/posts/:post", PostController, "show").name("posts.show").bind("post", Post);
 
@@ -909,7 +909,7 @@ Router.get("/articles/:article", ArticleController, "show").bind("article", (val
 The resolved instance is available two ways — via `ctx.model()`, or on
 `ctx.params` under the param's name:
 
-```typescript
+```typescript fragment
 // in a controller — via ctx.model()
 async show(ctx: HttpContext) {
   const post = ctx.model<Post>('post');
@@ -945,7 +945,7 @@ keys — registering the same path twice overwrites the first.
 For resource routes, register literal paths **before** dynamic ones when there is
 a naming conflict:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 // Correct — /posts/create is matched before /posts/:slug
 Router.get("/posts/create", PostController, "showCreate");
@@ -994,7 +994,7 @@ Both forms boot the app, so a route a provider registers is included.
 
 ### Programmatic inspection
 
-```typescript
+```typescript fragment
 // anywhere after boot
 Router.routes; // ReadonlyMap<string, RouteDefinition>
 Router.namedRoutes; // ReadonlyMap<string, string>  (name → path)
@@ -1008,7 +1008,7 @@ Router.middlewareFor("GET", "/dashboard"); // MiddlewareClass[]
 Use `HttpContext.fake()` to unit-test controllers and route handlers without a
 running server:
 
-```typescript
+```typescript fragment
 // src/tests/PostController.test.ts
 import { HttpContext } from "zerotal";
 

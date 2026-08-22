@@ -159,7 +159,7 @@ Framework packages (`@zerotal/orm`, `@zerotal/auth`, `@zerotal/notifications`, �
 their own providers. List them in the **providers array** in
 `bootstrap/providers.ts` and pass that array to `Application.create({ providers })`:
 
-```typescript
+```typescript fragment
 // bootstrap/providers.ts
 import { DatabaseProvider } from "@zerotal/orm";
 import { AuthProvider } from "@zerotal/auth";
@@ -170,7 +170,7 @@ const providers = [DatabaseProvider, AuthProvider, AppServiceProvider];
 export default providers;
 ```
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { Application, basePath } from "zerotal";
 import providers from "./providers.ts";
@@ -190,7 +190,7 @@ A deferred provider boots lazily — only the first time one of its container
 bindings is resolved. This keeps cold-start fast when a service isn't used on
 every request.
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts — defer() is called on the app instance (and returns it)
 const app = Application.create({ providers });
 
@@ -216,7 +216,7 @@ config-driven wiring, middleware. But when you just need to register a binding o
 two, that's a lot of ceremony. For those cases, `bind()` lets you register
 straight from `bootstrap/app.ts`:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { Application, basePath } from "zerotal";
 import { Clock, SystemClock } from "../app/services/clock.ts";
@@ -249,7 +249,7 @@ Declare where your routes live; the application loads them at boot, after every
 provider has registered its middleware groups (so a route file can always
 reference `web`, `api`, or any provider-supplied group).
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 Application.create().routing({
   web: "./routes/web.ts",
@@ -262,7 +262,7 @@ middleware group, `api` mounts at `/api` with the `api` group. Any other group
 name must declare both `prefix` and `middleware` explicitly (or an error is thrown
 at boot):
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 .routing({
   web: "./routes/web.ts",
@@ -273,7 +273,7 @@ at boot):
 For directory-based routing, use `fileBasedRouting()` — same key semantics, but
 each value is a directory that's scanned for exported HTTP-method handlers:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 Application.create().fileBasedRouting({ web: "./app/routes" });
 ```
@@ -285,7 +285,7 @@ root regardless of the calling file.
 
 Register global middleware that runs on every request, in array order:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { CorsMiddleware, SecureHeadersMiddleware } from "zerotal";
 
@@ -296,7 +296,7 @@ The resolved pipeline runs provider-registered middleware first, then everything
 you added via `.use()`. You can read the final ordering back off the app instance
 (handy in a test or a diagnostic):
 
-```typescript
+```typescript fragment
 // in a test or diagnostic
 currentApp().globalMiddleware; // PipeClass[] in execution order
 ```
@@ -315,7 +315,7 @@ class to push it onto the global pipeline automatically. See
 These are the remaining configuration methods, all called on the app instance in
 `bootstrap/app.ts` (and all returning it, so they chain):
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { Handler } from "../app/exceptions/Handler.ts";
 
@@ -360,7 +360,7 @@ provider hooks through a fixed set of phases.
 5. **Started** — `Bun.serve()` is live; `onStarted()` fires. A health endpoint, a
    PID file, and `SIGTERM`/`SIGINT`/`SIGUSR2` handlers are installed.
 
-```typescript
+```typescript fragment
 // zt.ts (managed) ultimately does:
 const app = (await import("./bootstrap/app.ts")).default;
 await app.start(Number(env("PORT", 3000)));

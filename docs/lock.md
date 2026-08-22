@@ -90,7 +90,7 @@ The `Lock` facade resolves the live `LockManager` from the container on every
 call. `Lock.try` acquires once, runs your callback, and always releases — even if
 the callback throws:
 
-```ts
+```ts fragment
 // in a controller or service
 import { Lock } from "zerotal/lock";
 
@@ -111,7 +111,7 @@ crashes.
 Acquire once, run the callback, release. Throws `LockNotAcquiredError`
 immediately if the lock is already held:
 
-```ts
+```ts fragment
 // in a controller
 import { Lock, LockNotAcquiredError } from "zerotal/lock";
 
@@ -133,7 +133,7 @@ try {
 Wait up to `options.timeout` seconds for the lock to become free, then run the
 callback:
 
-```ts
+```ts fragment
 // in a service
 import { Lock } from "zerotal/lock";
 
@@ -158,7 +158,7 @@ For complex flows where you need explicit acquire/release control. `Lock.make`
 returns a `ManagedLock` but does **not** acquire it — call `.acquire()` or
 `.block()` yourself:
 
-```ts
+```ts fragment
 // in a service
 import { Lock } from "zerotal/lock";
 
@@ -286,7 +286,7 @@ it is what `refresh()` does.
 
 ### Idempotent job processing
 
-```ts
+```ts fragment
 // app/jobs/ProcessOrderJob.ts
 import { Lock } from "zerotal/lock";
 
@@ -304,7 +304,7 @@ export class ProcessOrderJob extends Job {
 
 ### Rate-limited report generation
 
-```ts
+```ts fragment
 // app/controllers/ReportController.ts
 import { Lock, LockNotAcquiredError } from "zerotal/lock";
 
@@ -341,7 +341,7 @@ Contention surfaces as a single typed error, `LockNotAcquiredError`:
 
 The `Lock` facade re-exports it as `Lock.NotAcquired` for terse catch blocks:
 
-```ts
+```ts fragment
 // in a controller
 import { Lock } from "zerotal/lock";
 
@@ -386,7 +386,7 @@ export class MyLockDriver implements LockDriver {
 Bind a `LockManager` built around it in a provider that runs **after**
 `LockProvider` (last write wins on the `"lock"` key):
 
-```ts
+```ts fragment
 // app/providers/AppServiceProvider.ts
 import { ServiceProvider } from "zerotal";
 import { LockManager } from "zerotal/lock";

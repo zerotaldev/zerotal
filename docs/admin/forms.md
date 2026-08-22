@@ -8,7 +8,7 @@ description: Build create and edit forms, and lay out the read-only view screen.
 `form()` returns fields (and layout components). An empty `form()` disables
 Create/Edit for the resource.
 
-```ts
+```ts fragment
 import {
   textInput, textarea, select, toggle, datePicker, fileUpload, richEditor,
   formSection, formTabs, formTab, wizard, wizardStep,
@@ -80,7 +80,7 @@ patch)` runs server-side and merges a patch into the form (e.g. derive a slug).
 `repeater` edits an array of objects sharing one sub-schema; `builder` edits an array
 of typed blocks. Rows can be added, removed, and reordered.
 
-```ts
+```ts fragment
 import { repeater, builder, builderBlock, textInput, textarea, fileUpload } from "@zerotal/admin";
 
 repeater("contacts").minItems(1).addActionLabel("Add contact").schema([
@@ -101,7 +101,7 @@ Repeaters serialize to `[{ ...fields }]`; builders to `[{ type, data }]`.
 `infolist()` describes the read-only detail page. Omit it to fall back to a section
 derived from `columns()`.
 
-```ts
+```ts fragment
 import { section, textEntry, iconEntry } from "@zerotal/admin";
 
 static infolist() {
@@ -136,7 +136,7 @@ usefully read as text:
 `repeatableEntry` is the read side of `repeater`: whatever the form wrote into a
 JSON column, this reads back in the same shape.
 
-```ts
+```ts fragment
 section("Line items").schema([
   repeatableEntry("lines")
     .placeholder("This order has no line items.")

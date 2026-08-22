@@ -96,7 +96,7 @@ Each provider entry accepts the following fields:
 The driver handles CSRF state, session storage, and code extraction. Your
 controller is a few lines per action — read the provider from `ctx.params`:
 
-```typescript
+```typescript fragment
 // app/controllers/SocialController.ts
 import { Social } from "@zerotal/auth";
 import type { HttpContext } from "zerotal";
@@ -148,7 +148,7 @@ mechanism used by `@zerotal/flow` (`Router.flow`) and `@zerotal/inertia`
 (`Router.inertia`). Once `SocialProvider` is in your bootstrap, the macro is
 available in every route file with no additional import:
 
-```typescript
+```typescript fragment
 // routes/auth.ts
 import { Router } from "zerotal";
 import { SocialController } from "../app/controllers/SocialController.ts";
@@ -162,7 +162,7 @@ Router.social("/auth", SocialController);
 
 Or register routes individually for full control:
 
-```typescript
+```typescript fragment
 // routes/auth.ts
 import { Router } from "zerotal";
 import { SocialController } from "../app/controllers/SocialController.ts";
@@ -196,7 +196,7 @@ call the provider's API on the user's behalf later.
 
 Default scopes: `read:user user:email`.
 
-```typescript
+```typescript fragment
 // config/social.ts
 github: {
   clientId:     env("GITHUB_CLIENT_ID", ""),
@@ -218,7 +218,7 @@ primary email before returning `SocialUser` — no extra code in your controller
 
 Default scopes: `openid profile email`.
 
-```typescript
+```typescript fragment
 // config/social.ts
 google: {
   clientId:     env("GOOGLE_CLIENT_ID", ""),
@@ -250,7 +250,7 @@ Sign in with Apple has three quirks — all handled internally by `AppleDriver`:
 credentials and the driver signs the JWT automatically using the Web Crypto API.
 No extra dependency needed:
 
-```typescript
+```typescript fragment
 // config/social.ts
 apple: {
   clientId:    'com.myapp.service',          // your Service ID
@@ -264,7 +264,7 @@ apple: {
 **Option B — pre-sign the JWT yourself** (e.g. with `apple-signin-auth`) and pass
 it as `clientSecret`. Useful if you rotate the JWT externally:
 
-```typescript
+```typescript fragment
 // config/social.ts
 apple: {
   clientId:     'com.myapp.service',
@@ -291,7 +291,7 @@ auto-registered from `config/social.ts` by their key — just supply credentials
 | `linkedin`  | `LinkedInDriver`  | `openid profile email`           | OpenID Connect userinfo (`sub` is the id).                           |
 | `gitlab`    | `GitLabDriver`    | `read_user`                      | Targets gitlab.com.                                                  |
 
-```typescript
+```typescript fragment
 // config/social.ts — same shape as github/google/apple
 discord: {
   clientId:     env("DISCORD_CLIENT_ID", ""),
@@ -310,7 +310,7 @@ Scopes can be set per-provider in `config/social.ts`, but you can also add or
 replace them fluently at redirect time. `.scopes()` merges with the configured /
 default scopes; `.setScopes()` replaces them outright:
 
-```typescript
+```typescript fragment
 // Ask for extra GitHub scopes on top of the defaults
 Social.driver("github").scopes(["repo", "read:org"]).redirect();
 
@@ -322,7 +322,7 @@ Use `.with()` to append provider-specific query parameters to the authorization
 URL. This is how you request a refresh token from Google — Google only returns one
 when you ask for offline access and force the consent screen:
 
-```typescript
+```typescript fragment
 Social.driver("google").with({ access_type: "offline", prompt: "consent" }).redirect();
 
 // On callback, socialUser.refreshToken is now populated.
@@ -337,7 +337,7 @@ If your client already holds an access token — for example a mobile app that r
 its own native OAuth SDK — skip the code exchange and fetch the profile directly
 with `userFromToken()`:
 
-```typescript
+```typescript fragment
 const socialUser = await Social.driver("github").userFromToken(accessToken);
 ```
 
@@ -350,7 +350,7 @@ When you're building an API backend for an SPA or mobile app, you may receive a
 raw `code` from the client without a session. Call `.stateless()` to skip CSRF
 state verification and pass the code directly to `.user()`:
 
-```typescript
+```typescript fragment
 // app/controllers/SocialApiController.ts — POST /auth/callback { provider, code }
 import { Social } from "@zerotal/auth";
 import type { HttpContext } from "zerotal";
@@ -386,7 +386,7 @@ async callback(ctx: HttpContext) {
 `user()` returns a canned profile. Build that profile with `fakeSocialUser()`,
 overriding only the fields your test cares about:
 
-```typescript
+```typescript fragment
 import { Social, fakeSocialUser } from "@zerotal/auth";
 
 test("logs a user in via GitHub", async () => {
@@ -445,7 +445,7 @@ export class TwitterDriver extends OAuth2Driver {
 Register it via the `Social` facade — typically in an `AppProvider`'s `onBooted`
 hook, since the `"social"` singleton is bound during `onRegister`:
 
-```typescript
+```typescript fragment
 // app/providers/AppProvider.ts
 import { ServiceProvider } from "zerotal";
 import { Social } from "@zerotal/auth";

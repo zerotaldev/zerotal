@@ -28,7 +28,7 @@ When you need to read or set a raw cookie directly, you work with the standard
 
 Cookies arrive in the request's `Cookie` header. Read and parse it from the context:
 
-```ts
+```ts fragment
 // in a controller
 import type { HttpContext } from "zerotal";
 
@@ -49,7 +49,7 @@ const theme = readCookie(ctx, "theme") ?? "light";
 Set the response with a `ctx` helper, then append a `Set-Cookie` header to it. Use
 `append` (not `set`) so multiple cookies can be sent in one response:
 
-```ts
+```ts fragment
 // in a controller
 ctx.json({ ok: true }); // assigns ctx.response
 
@@ -75,7 +75,7 @@ ctx.response!.headers.append(
 
 To **delete** a cookie, set it again with `Max-Age=0`:
 
-```ts
+```ts fragment
 // in a controller
 ctx.response!.headers.append("Set-Cookie", "theme=; Path=/; Max-Age=0");
 ```

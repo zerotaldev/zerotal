@@ -11,7 +11,7 @@ routes, and how redirects behave.
 
 ## The inertia helper
 
-```ts
+```ts fragment
 function inertia(component: PageName, props?: RenderProps): Promise<void>;
 ```
 
@@ -20,7 +20,7 @@ Call `inertia()` from any controller action. It reads the active request from
 it sets `ctx.response` as a side effect. It is **async** (it resolves lazy/deferred props), so it
 returns `Promise<void>` — always `return inertia(...)` (or `await` it):
 
-```ts
+```ts fragment
 // app/controllers/PostController.ts
 import type { HttpContext } from "zerotal";
 import { inertia } from "@zerotal/inertia";
@@ -61,7 +61,7 @@ action.
 Props can be more than plain values. Wrap them to make them lazy, optional, deferred, or mergeable —
 the foundation for partial reloads, "load more" lists, and deferred content:
 
-```ts
+```ts fragment
 // in a controller
 import { inertia, optional, defer, merge } from "@zerotal/inertia";
 
@@ -130,7 +130,7 @@ variants separately. The page object always includes the current `url` and asset
 For pages that need no controller logic (marketing pages, static dashboards), render
 straight from the route with the `Router.inertia()` macro (added by the package):
 
-```ts
+```ts fragment
 // routes/web.ts
 import { Router } from "zerotal";
 
@@ -142,7 +142,7 @@ Router.inertia("/admin", "Admin/Dashboard", [AuthMiddleware]); // middleware sho
 The third argument is polymorphic: pass a **props object**, or pass a **middleware
 array** directly as a shorthand. To use both, pass props third and middleware fourth:
 
-```ts
+```ts fragment
 // routes/web.ts
 Router.inertia("/admin", "Admin/Dashboard", { title: "Admin" }, [AuthMiddleware]);
 ```
@@ -155,7 +155,7 @@ someone clicks, not when someone builds.
 
 Name the route instead, and let the URL be derived:
 
-```tsx
+```tsx fragment
 import { Link } from "@inertiajs/react";
 
 <Link href={route("posts.show", { slug: post.slug })}>{post.title}</Link>
@@ -174,7 +174,7 @@ A form's action is the same kind of string as a link's `href`, and gets the same
 treatment. `useForm()` and `router` both take a URL, so hand them one that was built
 from the route name:
 
-```tsx
+```tsx fragment
 import { useForm, router } from "@inertiajs/react";
 
 export default function Edit({ post }: Props) {
@@ -232,7 +232,7 @@ After a non-GET action (a form POST/PUT/DELETE), redirect as usual — return a 
 [`InertiaMiddleware`](/docs/inertia/middleware) upgrades it to a **303** so the
 browser issues a GET on the target instead of replaying the form:
 
-```ts
+```ts fragment
 // in a controller
 async store(ctx: HttpContext): Promise<void> {
   const post = await Post.create(await ctx.body());
@@ -251,7 +251,7 @@ To send the browser to an external URL (or force a full-page visit), use `Inerti
 an Inertia request it returns a `409` + `X-Inertia-Location` so the client does a `window.location`
 visit; on a normal request it's a plain `302`:
 
-```ts
+```ts fragment
 // in a controller
 import { Inertia } from "@zerotal/inertia";
 

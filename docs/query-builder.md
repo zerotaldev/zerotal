@@ -53,7 +53,7 @@ just a description of a query until you `await` it.
 
 ## Selecting columns
 
-```typescript
+```typescript fragment
 // in a controller or service
 DB.table("posts").select("id", "title", "created_at");
 DB.table("posts").distinct().select("status");
@@ -65,7 +65,7 @@ so build it only from trusted constants.
 
 ## Where clauses
 
-```typescript
+```typescript fragment
 // in a controller or service
 DB.table("posts").where("status", "published"); // column = value
 DB.table("posts").where("views", ">", 1000); // explicit operator
@@ -106,7 +106,7 @@ parameterized.
 
 ## Joins
 
-```typescript
+```typescript fragment
 // in a controller or service
 DB.table("posts")
   .join("users", "posts.user_id", "=", "users.id")
@@ -122,7 +122,7 @@ alias, first, operator, second)`.
 
 ## Ordering, grouping, limits
 
-```typescript
+```typescript fragment
 // in a controller or service
 DB.table("posts").orderBy("created_at", "desc");
 DB.table("posts").orderByDesc("created_at"); // shorthand for the line above
@@ -145,7 +145,7 @@ clauses and optionally applies a fresh one.
 Apply clauses only when a condition is truthy — handy for optional filters without
 breaking the chain:
 
-```typescript
+```typescript fragment
 // in a controller or service
 DB.table("posts")
   .when(status, (q, value) => q.where("status", value))
@@ -157,7 +157,7 @@ The callback receives the builder and the (truthy) condition value.
 
 ## Retrieving results
 
-```typescript
+```typescript fragment
 // in a controller or service
 const rows = await DB.table("posts").where("status", "published").get();
 const row = await DB.table("posts").where("id", 1).first(); // first row or null
@@ -171,7 +171,7 @@ const has = await DB.table("posts").where("user_id", userId).exists(); // boolea
 
 Pass a row type to `get<T>()` / `first<T>()` for typed results:
 
-```typescript
+```typescript fragment
 // in a controller or service
 const rows = await DB.table("posts").get<{ id: number; title: string }>();
 ```
@@ -181,7 +181,7 @@ const rows = await DB.table("posts").get<{ id: number; title: string }>();
 
 ### Aggregates
 
-```typescript
+```typescript fragment
 // in a controller or service
 await DB.table("posts").count();
 await DB.table("posts").where("status", "published").sum("views");
@@ -197,7 +197,7 @@ For paged result sets, see [Pagination](/docs/pagination).
 For result sets too large to hold in memory, page through them instead of calling
 `get()`:
 
-```typescript
+```typescript fragment
 // in a command or job
 await DB.table("posts").chunk(500, async (rows, page) => {
   for (const row of rows) await archive(row);
@@ -215,7 +215,7 @@ for await (const row of DB.table("posts").lazy()) {
 
 ## Writing rows
 
-```typescript
+```typescript fragment
 // in a controller or service
 // INSERT
 await DB.table("post_tags").insert({ post_id: 1, tag_id: 3 });
@@ -242,7 +242,7 @@ one if none exists; it returns `true` when a row was inserted.
 
 Inside a [transaction](/docs/database#transactions), lock the selected rows:
 
-```typescript
+```typescript fragment
 // in a controller or service
 await DB.transaction(async (trx) => {
   const row = await trx.table("accounts").where("id", 1).lockForUpdate().first();
@@ -260,7 +260,7 @@ await DB.transaction(async (trx) => {
 
 ## Debugging
 
-```typescript
+```typescript fragment
 // in a controller or service
 DB.table("posts").where("status", "published").toSql(); // SQL with ? placeholders
 DB.table("posts").where("status", "published").toRawSql(); // values inlined (logging only)
@@ -282,7 +282,7 @@ The bread and butter of any index page or list endpoint. `when()` lets every fil
 be optional without a tangle of `if` statements, and `paginate()` returns the rows
 plus the page metadata in one call:
 
-```typescript
+```typescript fragment
 // in a controller — req.query holds the optional filters
 const posts = await DB.table("posts")
   .when(req.query.status, (q, status) => q.where("status", status))
@@ -301,7 +301,7 @@ For join tables and key/value rows, `updateOrInsert` avoids the "check then inse
 race — it updates the row matching the first argument, or inserts the two merged if
 none exists:
 
-```typescript
+```typescript fragment
 await DB.table("user_settings").updateOrInsert(
   { user_id: userId, key: "theme" }, // how to find the row
   { value: "dark" }, // what to set
@@ -313,7 +313,7 @@ await DB.table("user_settings").updateOrInsert(
 When you only need numbers, skip model hydration entirely and let the database do the
 aggregation:
 
-```typescript
+```typescript fragment
 const byAuthor = await DB.table("posts")
   .select("user_id")
   .selectRaw("COUNT(*) AS post_count")
@@ -329,7 +329,7 @@ const byAuthor = await DB.table("posts")
 Never load a big table with `get()`. Page through it with `chunkById`, which walks an
 incrementing key so concurrent inserts or deletes can't make it skip or repeat rows:
 
-```typescript
+```typescript fragment
 // in a command or job
 await DB.table("posts")
   .whereNull("slug")
@@ -347,7 +347,7 @@ await DB.table("posts")
 When exactly one row should match — looking a user up by email, say — `sole()` turns
 "zero or many matches" into a thrown error instead of a silent bug:
 
-```typescript
+```typescript fragment
 const user = await DB.table("users").where("email", email).sole();
 ```
 
@@ -383,7 +383,7 @@ silently dropped by a mis-chained `orWhere` — without needing rows to prove it
 **Assert the rows when the result is the point.** Arrange with factories and run
 the query for real:
 
-```typescript
+```typescript fragment
 // tests/queries/ActiveSubscribers.test.ts
 test("excludes users still in trial", async () => {
   await UserFactory.create({ status: "active", trialEndsAt: null });

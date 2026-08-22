@@ -51,7 +51,7 @@ register ──▶ Url.sign(/auth/verify?id&email, ttl) ──▶ email link
 
 Add a nullable `email_verified_at` column to your users table:
 
-```typescript
+```typescript fragment
 // database/migrations/002_add_email_verified_at.ts
 export default class AddEmailVerifiedAt extends Migration {
   async up(schema: Schema) {
@@ -140,7 +140,7 @@ The verify route is already guarded by `ValidateSignatureMiddleware`, so the
 controller can trust that the URL is intact — it only checks that the `id`/`email`
 pair still resolves to a real user:
 
-```typescript
+```typescript fragment
 // app/controllers/VerificationController.ts
 import { Auth } from "@zerotal/auth";
 import { Notify } from "@zerotal/notifications";
@@ -199,7 +199,7 @@ export class VerificationController {
 
 ## Routes
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { ValidateSignatureMiddleware } from "@zerotal/auth";
 import { RequireAuthMiddleware } from "#app/middleware/RequireAuth.ts";
@@ -220,7 +220,7 @@ Router.post("/auth/verify/resend", VerificationController, "resend", [RequireAut
 Call `Notify.queue()` at the end of your registration handler so the HTTP response
 returns immediately while delivery happens in the background:
 
-```typescript
+```typescript fragment
 // app/controllers/AuthController.ts
 import { Notify } from "@zerotal/notifications";
 import { VerifyEmailNotification } from "#app/notifications/VerifyEmailNotification.ts";
@@ -242,7 +242,7 @@ Write a `VerifiedMiddleware` once and apply it to routes that must only be
 accessible to verified users. It extends `BaseMiddleware` (from `zerotal`)
 and reads the current user via `Auth.userOrNull()`:
 
-```typescript
+```typescript fragment
 // app/middleware/Verified.ts
 import { BaseMiddleware } from "zerotal";
 import type { HttpContext, NextFn } from "zerotal";
@@ -273,7 +273,7 @@ export class VerifiedMiddleware extends BaseMiddleware {
 Apply it alongside `RequireAuthMiddleware` so unverified users are bounced to the
 notice page:
 
-```typescript
+```typescript fragment
 // routes/web.ts
 Router.group({ middleware: [RequireAuthMiddleware, VerifiedMiddleware] }, () => {
   Router.get("/dashboard", DashboardController, "index");
@@ -284,7 +284,7 @@ Router.group({ middleware: [RequireAuthMiddleware, VerifiedMiddleware] }, () => 
 
 ## Testing
 
-```typescript
+```typescript fragment
 // tests/email-verification.test.ts
 it("unverified user is redirected to notice page", async () => {
   const user = await UserFactory.create({ emailVerifiedAt: null });

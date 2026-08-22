@@ -131,7 +131,7 @@ my-app/
 `zt.ts` is the entry point for **everything** — `bun zt serve`, `migrate`, `test`,
 and every `make:*` generator run through it. It boots `bootstrap/app.ts`:
 
-```ts
+```ts fragment
 // bootstrap/app.ts
 import { Application } from "zerotal";
 import { Handler } from "../app/exceptions/Handler.ts";
@@ -166,7 +166,7 @@ Read [Request Lifecycle](/docs/lifecycle) for the exact sequence.
 Routes are registered by calling static `Router` methods at module load — map a path
 to a controller + action, or to an inline closure:
 
-```ts
+```ts fragment
 // routes/index.ts
 import { Router, view, type HttpContext } from "zerotal";
 import HomeController from "../app/controllers/HomeController.ts";
@@ -200,7 +200,7 @@ the app builder. Full details in [Routing](/docs/routing).
 Controllers are plain classes; the action receives the request `HttpContext` and
 dependencies resolve from the container:
 
-```ts
+```ts fragment
 // app/controllers/PostController.ts
 import type { HttpContext } from "zerotal";
 import Post from "../models/Post.ts";
@@ -233,7 +233,7 @@ e.g. `ctx: HttpContext<{ post: Post }>`. More in [Controllers](/docs/controllers
 Active Record–style models backed by `Bun.sql`. Columns and relationships are
 decorators; the table name is derived by convention (so `@table` is optional):
 
-```ts
+```ts fragment
 // app/models/Post.ts
 import { Model, table, column, hasMany, belongsTo } from "@zerotal/orm";
 
@@ -255,7 +255,7 @@ export default class Post extends Model {
 
 The fluent query builder and relationship loading:
 
-```ts
+```ts fragment
 // in a controller or service
 const posts = await Post.query()
   .withScopes((s) => s.published())
@@ -321,7 +321,7 @@ export class StorePostRequest extends FormRequest {
 }
 ```
 
-```ts
+```ts fragment
 // in a controller — reads the current HttpContext, returns typed data,
 // throws a 422 (JSON) or a redirect-back on failure.
 const data = await StorePostRequest.validate();
@@ -333,7 +333,7 @@ More rules and patterns in [Validation](/docs/validator).
 
 Session auth, bearer tokens, and policy-based authorization ship together:
 
-```ts
+```ts fragment
 // in a controller / service
 import { Auth, Gate, createToken } from "@zerotal/auth";
 
@@ -415,7 +415,7 @@ decorator and directive set.
 Build a React or Vue SPA with no separate API layer. Controllers return page
 responses; the Inertia client renders the matching component:
 
-```ts
+```ts fragment
 // app/controllers/DashboardController.ts
 import { inertia } from "@zerotal/inertia";
 import { Post } from "../models/Post.ts";
@@ -428,7 +428,7 @@ export class DashboardController {
 }
 ```
 
-```tsx
+```tsx fragment
 // resources/js/pages/Dashboard.tsx (React)
 import { Link } from "@inertiajs/react";
 
@@ -457,7 +457,7 @@ reloads, deferred props, SSR, and precognition. See [Inertia](/docs/inertia).
 Push slow work off the request. Jobs serialize to a plain payload so they survive the
 queue:
 
-```ts
+```ts fragment
 // app/jobs/SendWelcomeEmail.ts
 import { Job, JobRegistry } from "@zerotal/queue";
 import { User } from "../models/User.ts";
@@ -487,7 +487,7 @@ export class SendWelcomeEmail extends Job {
 JobRegistry.register(SendWelcomeEmail);
 ```
 
-```ts
+```ts fragment
 // dispatch from anywhere
 import { Queue, Bus } from "@zerotal/queue";
 
@@ -504,7 +504,7 @@ Run a worker with `bun zt queue:work`. There's also a
 
 ## Cache
 
-```ts
+```ts fragment
 // in a controller or service
 import { Cache } from "@zerotal/cache";
 
@@ -527,7 +527,7 @@ In-memory and Redis drivers, plus idempotency helpers. See [Cache](/docs/cache).
 One `Notification` class fans out across channels — mail, database, broadcast, Slack,
 SMS:
 
-```ts
+```ts fragment
 // app/notifications/InvoicePaid.ts
 import { Notification, MailMessage } from "@zerotal/notifications";
 
@@ -548,7 +548,7 @@ export class InvoicePaid extends Notification {
 }
 ```
 
-```ts
+```ts fragment
 // The User model mixes in Notifiable, which provides .notify()
 await user.notify(new InvoicePaid(invoice));
 ```
@@ -584,7 +584,7 @@ Generate or rotate the key with `bun zt key:generate`. Full system in
 
 First-class HTTP, database, and fake helpers:
 
-```ts
+```ts fragment
 // tests/posts.test.ts
 import { createTestApp, Factory, assertDatabaseHas } from "@zerotal/testing";
 import { NotificationFake } from "@zerotal/notifications";

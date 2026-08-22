@@ -7,7 +7,7 @@ description: Widgets, global search, the command palette, notifications, and the
 
 Register widgets with `Panel.widgets(...)`; they render on the dashboard.
 
-```ts
+```ts fragment
 import { Panel, statsWidget, stat, chartWidget, tableWidget } from "@zerotal/admin";
 
 Panel.widgets(
@@ -41,7 +41,7 @@ The dashboard answers "how is the business doing". A resource's own widgets
 answer "what is going on in _this_ list" — a pending count above the orders
 table, stock value above products:
 
-```ts
+```ts fragment
 export class OrderResource extends Resource {
   static override widgets() {
     return [
@@ -62,7 +62,7 @@ someone watching a queue actually wants.
 A dashboard on a second screen is stale the moment it renders. `.poll()` gives a
 widget an interval:
 
-```ts
+```ts fragment
 statsWidget(async () => [
   stat("Awaiting payment", await Order.query().where("status", "pending").count()),
 ]).poll("30s"),
@@ -85,7 +85,7 @@ page.
 The admin owns the bell + notifications page UI; your app supplies the data through a
 provider (the same split as relations — admin UI, app data):
 
-```ts
+```ts fragment
 import { Panel } from "@zerotal/admin";
 
 Panel.notifications({
@@ -124,7 +124,7 @@ notifications" depends on your auth and your schema. When both are the ordinary
 ones — `@zerotal/auth` for the user, `@zerotal/notifications`' `DatabaseChannel`
 for storage — there is a ready-made one:
 
-```ts
+```ts fragment
 import { databaseNotifications } from "@zerotal/admin";
 
 Panel.notifications(databaseNotifications());

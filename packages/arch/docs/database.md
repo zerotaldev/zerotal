@@ -98,7 +98,7 @@ Three styles, in order of preference:
 
 Pass a callback to `DB.transaction()`. Bun commits on resolve and rolls back on throw — you never call commit/rollback manually:
 
-```typescript
+```typescript fragment
 // in a controller or service
 import { DB } from "@zerotal/orm";
 
@@ -120,7 +120,7 @@ await DB.transaction(async (trx) => {
 
 All `Model` and `DB` queries made inside the callback automatically use the transaction connection via `AsyncLocalStorage` — you don't need to pass `trx` explicitly unless you're mixing raw `DB.table()` calls with model calls:
 
-```typescript
+```typescript fragment
 // in a service
 await DB.transaction(async () => {
   // These automatically use the transaction without passing trx:
@@ -136,7 +136,7 @@ await DB.transaction(async () => {
 
 Nested `DB.transaction()` calls automatically use SAVEPOINTs. An inner throw rolls back only the inner block, not the entire outer transaction:
 
-```typescript
+```typescript fragment
 // in a service
 await DB.transaction(async () => {
   await Order.create({ userId, total });
@@ -159,7 +159,7 @@ await DB.transaction(async () => {
 
 Pass the number of attempts as a second argument to retry automatically on deadlock or serialization failures:
 
-```typescript
+```typescript fragment
 // in a service
 await DB.transaction(async () => {
   // critical concurrent write
@@ -208,7 +208,7 @@ chain handles all four CRUD operations: call a read terminal like `get()` to fet
 rows, or a write method like `insert()`, `update()`, or `delete()` to change them.
 Values are always parameterised for you, so there's no injection risk:
 
-```typescript
+```typescript fragment
 // in a controller or service
 import { DB } from "@zerotal/orm";
 
@@ -237,7 +237,7 @@ Use when the query builder doesn't cover what you need.
 
 > **Danger** — Always parameterise values; never interpolate them directly into the SQL string. String interpolation opens a SQL injection hole.
 
-```typescript
+```typescript fragment
 // in a service
 import { DB } from "@zerotal/orm";
 
@@ -260,7 +260,7 @@ const [{ version }] = await DB.raw<{ version: string }>("SELECT version()");
 
 `whereJson` takes the column and a JSON path joined with `->`, then the value to match:
 
-```typescript
+```typescript fragment
 // in a service
 // Equivalent SQL: WHERE meta->>'notifications.email' = ?
 await DB.table("settings").whereJson("meta->notifications.email", true).get();
@@ -296,7 +296,7 @@ No model code changes needed. Routing is automatic:
 
 After a write, the replica may lag. Use `DB.onPrimary()` when you need to read the just-written data immediately:
 
-```typescript
+```typescript fragment
 // in a controller
 const post = await Post.create({ title: "Hello", userId });
 
@@ -327,7 +327,7 @@ that did not exist. `NPlusOneError.distinctArgs` carries the count if you want t
 Tune the detector once at boot. Lower the `threshold` to catch leaks sooner, and set
 `mode: "throw"` in CI so an N+1 query fails the test suite instead of just logging:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts — or a service provider
 DB.preventNPlusOne({
   threshold: 3, // warn after 3 repetitions instead of 5
@@ -341,7 +341,7 @@ Some repetition is intentional — a polling endpoint, an audit log — and you 
 the detector crying wolf. Call `allowNPlusOne` to silence a specific table, either for
 good or just for the current request:
 
-```typescript
+```typescript fragment
 // in a service provider or request handler
 // Suppress permanently for a table/pattern
 DB.allowNPlusOne("activity_logs");
@@ -373,7 +373,7 @@ With the connection registered, set `static connection` on any model that should
 there. From then on every query that model makes — reads, writes, pagination — is routed
 to that connection with no extra arguments:
 
-```typescript
+```typescript fragment
 // app/models/AnalyticsEvent.ts
 export class AnalyticsEvent extends Model {
   static connection = "analytics";
@@ -400,7 +400,7 @@ Connection resolution priority (highest to lowest):
 
 Use advisory locks for application-level mutual exclusion — e.g. preventing two workers from processing the same job simultaneously:
 
-```typescript
+```typescript fragment
 // in a job or worker
 import { DB } from "@zerotal/orm";
 

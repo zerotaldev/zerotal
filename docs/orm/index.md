@@ -143,7 +143,7 @@ Timestamps are **on by default**, so `@table("ledger")` alone still writes `crea
 `updated_at`. For an append-only table whose migration creates neither column, say so —
 otherwise the first save fails with `table ledger has no column named updated_at`:
 
-```typescript
+```typescript fragment
 @(table("ledger").withoutTimestamps())
 export class LedgerEntry extends Model {
   /* … */
@@ -173,7 +173,7 @@ export class LedgerEntry extends Model {
 
 Declare typed columns. Accepts a shorthand cast string or a full options object:
 
-```typescript
+```typescript fragment
 // in a model class body
 import { column } from "@zerotal/orm";
 
@@ -220,7 +220,7 @@ fails at the first `.diffForHumans()` or arithmetic.
 
 Declare constraints on the column and schema generation emits them, so `migrate:generate` produces a schema with the guarantees your application depends on rather than a bare set of columns:
 
-```typescript
+```typescript fragment
 @column({ unique: true }) idempotencyKey!: string;   // unique index
 @column({ index: true })  status!: string;           // plain index
 ```
@@ -233,7 +233,7 @@ Reusable model behaviour ships as **mixins** — soft deletes, state machines, t
 roles, permissions, notifications, tenancy, auditing. A model opts into the ones it wants with the
 `Model.using(...)` static, so a model that does not use a feature does not carry its API:
 
-```typescript
+```typescript fragment
 import { Model, SoftDeletes } from "@zerotal/orm";
 import { Authenticatable, Roles, Permissions } from "@zerotal/auth";
 
@@ -274,7 +274,7 @@ The mixins the framework ships:
 `using` composes onto whatever class you call it on, not onto `Model` specifically, so an
 app-level base model can carry its own configuration and still take mixins:
 
-```typescript
+```typescript fragment
 class AppModel extends Model {
   static override primaryKey = "uuid";
 }
@@ -324,7 +324,7 @@ in `ctx.body()`. To allow columns through, you opt in explicitly.
 Any attribute not permitted by the active list throws `MassAssignmentError` (it is
 **not** silently dropped), so a mistake surfaces loudly instead of quietly failing:
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 @table("posts")
 export class Post extends Model {
@@ -342,7 +342,7 @@ export class Post extends Model {
 
 Use the `Columns<T>` utility for compile-time safety against typos:
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 import type { Columns } from "@zerotal/orm";
 
@@ -353,7 +353,7 @@ static fillable: Columns<Post>[] = ["title", "body", "status"];
 Declare `fillable` as a literal tuple (`as const`) and `create()` narrows its payload to
 exactly those columns:
 
-```typescript
+```typescript fragment
 @table("customers")
 export class Customer extends Model {
   static fillable = ["name", "email"] as const;
@@ -378,7 +378,7 @@ mistake from a runtime `MassAssignmentError` to a compile error.
 For data you construct yourself (seeders, factories, framework-internal writes)
 the guard is just friction. Bypass it deliberately:
 
-```typescript
+```typescript fragment
 // Per call — skip the guard for one write:
 role.forceFill({ name, guard });
 await Role.forceCreate({ name, guard });
@@ -407,7 +407,7 @@ An explicit `fillable` / `guarded` list is always honoured, even under a global
 
 ### fill instance method
 
-```typescript
+```typescript fragment
 // in a controller
 post.fill({ title: "New title", body: "Updated body" }); // throws if a key isn't fillable
 await post.save();
@@ -421,7 +421,7 @@ await post.save();
 
 Fields listed in `hashable` are automatically hashed with `Bun.password.hash()` (bcrypt) before every `INSERT`, and on `UPDATE` only when the value has changed since the last load:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @table("users")
 export class User extends Model {
@@ -443,14 +443,14 @@ const ok = await Bun.password.verify(candidate, user.password);
 
 `dispatchesEvents` connects ORM lifecycle hooks to the application event bus without wiring every observer manually. Declare a map from lifecycle event names to event classes:
 
-```typescript
+```typescript fragment
 // app/events/UserCreated.ts
 export class UserCreated {
   constructor(public user: User) {}
 }
 ```
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @table("users")
 export class User extends Model {
@@ -466,7 +466,7 @@ export class User extends Model {
 
 Each event class is constructed with the model instance as its first argument and emitted on the container's event bus (a no-op when no bus is bound, so it's safe in standalone ORM use). Subscribe anywhere:
 
-```typescript
+```typescript fragment
 // app/listeners/sendWelcome.ts
 import { Events } from "zerotal";
 import { UserCreated } from "#app/events/UserCreated.ts";
@@ -506,7 +506,7 @@ export class Post extends Model {
 
 ## Full model example
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 import { Model, column, table, hasMany, belongsTo } from "@zerotal/orm";
 import type { Columns } from "@zerotal/orm";
@@ -557,7 +557,7 @@ worth knowing: `UserFactory.create()` writes the row without firing `creating`,
 jobs. A test asserting on a side-effect of creation therefore sees nothing —
 and reads as a bug in your observer rather than in the test.
 
-```typescript
+```typescript fragment
 // tests/models/User.test.ts
 import { test } from "bun:test";
 import { QueueFake } from "@zerotal/queue";
@@ -578,7 +578,7 @@ test("creating a user queues the welcome email", async () => {
 them against the model directly — it is faster and the failure points at the
 right line:
 
-```typescript
+```typescript fragment
 // tests/models/Post.test.ts
 import { test, expect } from "bun:test";
 import { PostFactory } from "../../database/factories/PostFactory.ts";
@@ -598,7 +598,7 @@ test("the published scope excludes drafts", async () => {
 ambiguous. Assert on both sides — gone from the normal query, present with
 `withTrashed()`:
 
-```typescript
+```typescript fragment
 // tests/models/Post.test.ts
 await post.delete();
 

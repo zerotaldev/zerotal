@@ -58,7 +58,7 @@ export class Post extends Model {
 `json` and `array` encode on write and parse on read, in both directions, so a value
 round-trips as the type you gave it — including a bare scalar:
 
-```typescript
+```typescript fragment
 setting.value = "62812345678"; // stored as "62812345678", read back as a string
 setting.value = "051001"; // a branch code keeps its leading zero
 setting.value = { plan: "pro" }; // objects and arrays as you would expect
@@ -79,7 +79,7 @@ was a numeric string may come back as a number; coerce on read where it matters.
 Reads and writes the value as a string with exactly `N` decimal places. Useful
 for currency, where you want to avoid floating-point drift:
 
-```typescript
+```typescript fragment
 // app/models/Product.ts
 @column({ type: "number", cast: "decimal:2" }) price!: string;
 // DB stores "9.99" — the model reads it back as the string "9.99".
@@ -94,7 +94,7 @@ for currency, where you want to avoid floating-point drift:
 Behaves like `'datetime'` on read (constructs a [Carbon](/docs/carbon)) and
 serializes to an ISO 8601 string on write:
 
-```typescript
+```typescript fragment
 // app/models/Booking.ts
 @column({ type: "datetime", cast: "immutable_datetime" }) lockedAt?: Carbon;
 
@@ -112,7 +112,7 @@ Stores and retrieves the raw enum value (the underlying string or number);
 TypeScript narrows the property type. The cast itself is a pass-through, so pair
 it with `enumValues` to document the enum:
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 enum Status {
   Draft     = "draft",
@@ -132,7 +132,7 @@ The column stores an opaque AES-256-GCM payload keyed by `APP_KEY`; the property
 holds the value you assigned. Nothing in between — your code, validation,
 `$dirty` — has to know:
 
-```typescript
+```typescript fragment
 // app/models/Client.ts
 @column("encrypted", { nullable: true }) idNumber?: string;
 
@@ -150,7 +150,7 @@ that ciphertext outgrows its plaintext.
 
 For several columns at once, list them instead — it means exactly the same thing:
 
-```typescript
+```typescript fragment
 class Client extends BaseModel {
   static encryptable = ["idNumber", "passportNumber"];
 }
@@ -195,7 +195,7 @@ one, and re-encrypt it on the next save, losing the original for good.
 Pass an object with `get` and `set` functions for complete control over
 serialization:
 
-```typescript
+```typescript fragment
 // app/models/Place.ts
 interface GeoPoint { lat: number; lng: number }
 
@@ -232,7 +232,7 @@ export class MoneyCast extends Cast<number> {
 }
 ```
 
-```typescript
+```typescript fragment
 // app/models/Invoice.ts
 import { column } from "@zerotal/orm";
 import { MoneyCast } from "../casts/MoneyCast.ts";
@@ -243,7 +243,7 @@ import { MoneyCast } from "../casts/MoneyCast.ts";
 For JSON columns the ORM ships ready-made helpers that optionally hydrate the
 parsed value into a class:
 
-```typescript
+```typescript fragment
 // app/models/Customer.ts
 import { column } from "@zerotal/orm";
 import { json, objectOf, arrayOf } from "@zerotal/orm";
@@ -263,7 +263,7 @@ import { Address } from "../value-objects/Address.ts";
 An alternative to `@column()` for columns you don't declare directly (e.g. from
 an external schema, a view, or a generated table):
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 @table("posts")
 export class Post extends Model {
@@ -300,7 +300,7 @@ does not mark the column dirty and won't be persisted on the next `save()`.
 Enable `reactiveCasts` to make `json` and `array` columns use a reactive proxy
 that tracks deep mutations:
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 @table("posts")
 export class Post extends Model {
@@ -318,7 +318,7 @@ await post.save(); // persists the updated meta
 
 Without `reactiveCasts`, replace the whole value to ensure dirty tracking:
 
-```typescript
+```typescript fragment
 // in a controller
 post.meta = { ...post.meta, views: (post.meta.views as number) + 1 };
 await post.save();

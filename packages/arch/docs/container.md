@@ -42,7 +42,7 @@ const cache = await this.app.container.make(CacheManager);
 
 Anywhere else, reach it through the application singleton:
 
-```typescript
+```typescript fragment
 // in application code outside a provider
 import { Application } from "zerotal";
 
@@ -142,7 +142,7 @@ this.app.container.value("config", configObject);
 
 Bindings are registered in a `ServiceProvider`'s `onRegister()`:
 
-```typescript
+```typescript fragment
 // app/providers/AppServiceProvider.ts
 import { ServiceProvider } from "zerotal";
 import { CacheManager } from "../services/CacheManager.ts";
@@ -197,7 +197,7 @@ can't register itself, and only reach for a provider when you need lifecycle hoo
 `App` is the canonical surface for application code — resolve from anywhere
 (pages, controllers, jobs) without importing `Application`:
 
-```typescript
+```typescript fragment
 // in a controller, page, or job
 import { App } from "zerotal";
 import { UsersService } from "@app/services/users-service.ts";
@@ -211,7 +211,7 @@ It also exposes registration (`bind`, `singleton`, `scoped`, `value`, `alias`,
 helpers (`environment()`, `isProduction()`, `isLocal()`). The `make()` and
 `app()` global helpers are shorthands:
 
-```typescript
+```typescript fragment
 // in application code
 import { make, app } from "zerotal";
 
@@ -225,7 +225,7 @@ const same = await app(UsersService); // = make(UsersService)
 Register bindings in `bootstrap/app.ts` without a provider. The callback runs at
 boot, before any provider's `onRegister()`, so providers can still override:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts — the callback receives the live container
 Application.create({ providers })
   .bind((container) => {
@@ -238,7 +238,7 @@ Application.create({ providers })
 This is the place for **interface → implementation** bindings, since a class
 can't register itself against a different token:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 Application.create({ providers }).bind((container) =>
   container.singleton(Mailer, () => new SendGridMailer(env("SENDGRID_KEY"))),
@@ -250,7 +250,7 @@ Application.create({ providers }).bind((container) =>
 Any class under `app/services/` is auto-discovered at boot. Declare its lifetime
 next to the class with a `static lifetime` flag and it's registered for you:
 
-```typescript
+```typescript fragment
 // app/services/users-service.ts
 @inject(Auth)
 export class UsersService {
@@ -288,7 +288,7 @@ binding at boot and the container hands each request its own instance.
 `make()` is the primary way to resolve a binding. It's async because factories
 may be async and deferred providers may need to boot first:
 
-```typescript
+```typescript fragment
 // in application code
 const cache = await container.make(CacheManager);
 const cfg = await container.make("config");
@@ -305,7 +305,7 @@ Anything else throws `SyncResolutionError`. This is what [facades](#facades) use
 internally — which is why providers pre-resolve (warm) their singleton in
 `onBooted()` before any facade call happens:
 
-```typescript
+```typescript fragment
 // in application code
 const cache = container.makeSync(CacheManager); // throws if not yet resolved
 ```
@@ -316,7 +316,7 @@ const cache = container.makeSync(CacheManager); // throws if not yet resolved
 instead of throwing when the token isn't registered. Useful for optional
 services that exist only in certain runtime modes:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider — CommandRunner is only bound in console mode
 const runner = container.tryMake("commandRunner");
 if (runner) runner.register(MyCommand);
@@ -334,7 +334,7 @@ Pass a class's dependency tokens straight to `@inject(...)`. The container
 resolves each token — recursively, and **in parallel** — before constructing the
 class:
 
-```typescript
+```typescript fragment
 // app/repositories/PostRepository.ts
 import { inject } from "zerotal";
 import { CacheManager } from "../services/CacheManager.ts";
@@ -351,7 +351,7 @@ export class PostRepository {
 
 No registration needed — the container auto-wires on first `make()`:
 
-```typescript
+```typescript fragment
 // in application code
 const repo = await container.make(PostRepository);
 ```
@@ -365,7 +365,7 @@ classes, or string keys from `ContainerBindings`.
 A token is the key the container resolves against — a class constructor, an
 abstract class, or a string key declared in `ContainerBindings`:
 
-```typescript
+```typescript fragment
 // in application code
 // Class token (most common)
 container.singleton(CacheManager, factory);
@@ -379,7 +379,7 @@ const cfg = await container.make("config");
 Packages extend the `ContainerBindings` interface via declaration merging so
 string tokens stay fully type-safe:
 
-```typescript
+```typescript fragment
 // in a package's types.ts
 declare module "zerotal" {
   interface ContainerBindings {
@@ -409,7 +409,7 @@ After construction, any [`resolving()`](#resolving-hooks) hooks for the token fi
 
 Hand a different implementation of the same dependency to different consumers:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider or bootstrap bind() callback
 // PostController gets the Redis cache; ReportController gets the file cache
 container.for(PostController).give(CacheDriver, () => new RedisCache());
@@ -434,7 +434,7 @@ of its `@inject` tokens.
 Bind one token as an alias for another. Resolving the alias returns the target's
 instance — handy for binding an interface/contract token to a concrete class:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider or bootstrap bind() callback
 container.alias(CacheContract, CacheManager);
 const cache = await container.make(CacheContract); // → the CacheManager singleton
@@ -448,7 +448,7 @@ alias cycles.
 Run a callback every time a token resolves — for post-construction setup without
 subclassing or wrapping the factory:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider or bootstrap bind() callback
 container.resolving(Logger, (logger) => {
   logger.setChannel("app");
@@ -463,7 +463,7 @@ instance is constructed.
 Register a provider so it boots only when one of its tokens is first resolved —
 keeping cold-start fast for services not used on every request:
 
-```typescript
+```typescript fragment
 // in a ServiceProvider or bootstrap bind() callback
 container.defer(SearchClient, SearchServiceProvider);
 ```
@@ -542,7 +542,7 @@ synchronously via `makeSync`. That's why providers pre-resolve their singleton i
 
 Core ships a few, importable from `zerotal`:
 
-```typescript
+```typescript fragment
 // in application code (after boot)
 import { Config, Events, Artisan } from "zerotal";
 
@@ -575,7 +575,7 @@ Auth.userOrNull(); // → AuthenticatedUser | undefined
 
 Build one with `createFacade<T>(token)`, passing the same token the provider binds:
 
-```typescript
+```typescript fragment
 // src/facades/Cache.ts
 import { createFacade } from "zerotal";
 import type { CacheManager } from "../CacheManager.ts";

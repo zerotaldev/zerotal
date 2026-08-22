@@ -89,7 +89,7 @@ export class StorePostRequest extends FormRequest {
 Call `validate()` as a static method on the class. It reads `HttpContext` from
 `AsyncLocalStorage` — no arguments needed.
 
-```typescript
+```typescript fragment
 // in a controller
 const data = await StorePostRequest.validate();
 
@@ -116,7 +116,7 @@ never need to catch them yourself.
 `authorize()` runs **before** validation. Returning `false` throws a
 `ForbiddenError` (403) without touching the request body.
 
-```typescript
+```typescript fragment
 // in a FormRequest subclass
 
 // Check the current user's role:
@@ -141,7 +141,7 @@ async authorize(): Promise<boolean> {
 Because `rules()` is an instance method, you have full access to `this.context`
 for rules that depend on the current user, route params, or session state:
 
-```typescript
+```typescript fragment
 // in a FormRequest subclass
 rules(r: RuleBuilder) {
   const userId = this.context.user?.id;
@@ -157,7 +157,7 @@ rules(r: RuleBuilder) {
 
 For simple one-off validation without a dedicated class:
 
-```typescript
+```typescript fragment
 // in a controller
 import { validate } from "@zerotal/validator";
 
@@ -180,7 +180,7 @@ For CLI commands, services, or background jobs — where there is no request to
 redirect and no response to throw — use the `Validator` facade. It returns a
 `{ success, data, errors }` outcome and never throws.
 
-```typescript
+```typescript fragment
 // in a command or service
 import { Validator } from "@zerotal/validator";
 
@@ -200,7 +200,7 @@ if (!result.success) {
 
 Start every rule chain with a type method on `RuleBuilder`:
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 const r = new RuleBuilder(); // or the `r` param in rules()
 
@@ -247,7 +247,7 @@ These are available on **every** rule type:
 
 ### Custom validator
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 username: r.string().custom(async (value) => {
   const taken = await User.findBy("username", value as string);
@@ -257,7 +257,7 @@ username: r.string().custom(async (value) => {
 
 ## String rules
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 r.string()
   .min(3) // minimum character length
@@ -292,7 +292,7 @@ r.string()
 
 ## Number rules
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 r.number()
   .min(0) // minimum value (inclusive)
@@ -305,7 +305,7 @@ r.number()
 
 ## Boolean rules
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 r.boolean()
   .accepted() // truthy — for "agree to terms" checkboxes
@@ -314,7 +314,7 @@ r.boolean()
 
 ## Date rules
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 r.date()
   .after("2026-01-01") // strictly after date
@@ -325,7 +325,7 @@ r.date()
 
 ## Array rules
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 r.array(r.string()) // array of strings
   .min(1) // minimum item count
@@ -340,7 +340,7 @@ r.array(r.object({ name: r.string(), age: r.number() }));
 
 ## Object rules
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 r.object({
   street: r.string(),
@@ -357,7 +357,7 @@ r.object({
 
 Validates `File` objects from `multipart/form-data` uploads:
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 avatar: r.file()
   .mimes(["jpg", "jpeg", "png", "webp"]) // allowed extensions
@@ -368,7 +368,7 @@ avatar: r.file()
 
 ## Password rules
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 r.password()
   .min(8) // minimum length (default: 8)
@@ -390,7 +390,7 @@ The third argument ignores a record on update — pass the current record's ID, 
 a `UniqueOptions` object (`{ ignoreId }`) for clarity. A fourth argument
 overrides the error message.
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 email: r.string().email().unique("users", "email");
 
@@ -403,7 +403,7 @@ email: r.string().email().unique("users", "email", { ignoreId: userId });
 
 ### exists — value must exist in the DB
 
-```typescript
+```typescript fragment
 // in a rules() method or factory
 userId: r.number().exists("users", "id");
 roleSlug: r.string().exists("roles", "slug");
@@ -450,7 +450,7 @@ back to the previous page.
 Errors and old input are stored in the [session](/docs/session) under the keys
 `'errors'` and `'old'`. Read them on the next request:
 
-```typescript
+```typescript fragment
 // in a controller
 const errors = ctx.flashed<Record<string, string[]>>("errors");
 const old = ctx.flashed<Record<string, unknown>>("old");
@@ -500,7 +500,7 @@ would not.
 **A `FormRequest` fails the HTTP request**, so test it through the route it
 guards. The status tells you which failure mode you got:
 
-```typescript
+```typescript fragment
 // tests/http/register.test.ts
 const res = await app.post("/register", { email: "not-an-email" });
 

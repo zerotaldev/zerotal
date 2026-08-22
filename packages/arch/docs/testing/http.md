@@ -45,7 +45,7 @@ afterAll(() => testApp.close());
 
 `createTestApp()` boots the app and starts it on an OS-assigned port (port `0`):
 
-```typescript
+```typescript fragment
 function createTestApp(
   bootstrap: () => Application | Promise<Application>,
   setup?: () => void,
@@ -82,7 +82,7 @@ call `closeSharedTestApps()`.
 
 ## Sending requests
 
-```typescript
+```typescript fragment
 // in a test
 await testApp.get("/path");
 await testApp.post("/path", body); // body serialized as JSON
@@ -104,7 +104,7 @@ A route meant for a browser should be tested the way a browser reaches it. A JSO
 redirect-back-with-errors branch of validation, the CSRF check, and any middleware
 that reads `application/x-www-form-urlencoded`.
 
-```typescript
+```typescript fragment
 // in a test
 const res = await testApp.postForm("/posts", { title: "Hello", published: true });
 
@@ -120,7 +120,7 @@ strings `"null"` and `"undefined"`.
 `multipart()` is the only way to exercise a route that reads an uploaded file.
 Build the attachments with `fakeFile`:
 
-```typescript
+```typescript fragment
 // in a test
 import { fakeFile } from "@zerotal/testing";
 
@@ -154,7 +154,7 @@ without a request, build one with `UploadedFile.fake('a.png', { type, size })`.
 
 ### Authentication
 
-```typescript
+```typescript fragment
 // in a test
 
 // Forge a signed session cookie so the request is treated as authenticated
@@ -173,7 +173,7 @@ any `user_id` already set by `actingAs()`.
 
 ### Headers and redirects
 
-```typescript
+```typescript fragment
 // in a test
 testApp.withHeaders({ "X-App-Version": "2" });
 testApp.withCookie("theme", "dark");
@@ -203,7 +203,7 @@ An exception inside a route is converted to a response before the test sees it,
 so the assertion reports `500` and the body is an error page. `withoutExceptionHandling()`
 hands you the original instead:
 
-```typescript
+```typescript fragment
 // in a test
 const res = await testApp.withoutExceptionHandling().get("/checkout");
 
@@ -226,7 +226,7 @@ into the test output. Call `withExceptionHandling()` to restore the default.
 Every request returns a `TestResponse`. Assertions are chainable and throw
 descriptive errors on failure.
 
-```typescript
+```typescript fragment
 // in a test
 
 // Status
@@ -300,7 +300,7 @@ A failed validation reaches the client two different ways: an API client gets
 flashed to the session. `assertInvalid` reads both, so the assertion is the same
 either way:
 
-```typescript
+```typescript fragment
 // in a test
 
 // API client
@@ -331,7 +331,7 @@ reporting the key as absent.
 
 Reading the body directly:
 
-```typescript
+```typescript fragment
 // in a test
 const data = res.json<{ id: number }>();
 const html = res.text();
@@ -343,7 +343,7 @@ const ok = res.ok; // boolean
 
 Skip HTTP entirely for fast, focused controller tests by faking the context:
 
-```typescript
+```typescript fragment
 // src/tests/PostControllerTest.ts
 import { HttpContext } from "zerotal";
 

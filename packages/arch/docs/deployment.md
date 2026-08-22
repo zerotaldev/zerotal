@@ -228,7 +228,7 @@ which behind a proxy is the loopback address it bound to (`http://127.0.0.1:3002
 the public URL the browser sends. So the public origin has to come from config, and it
 does: `AppConfig()` fills `app.allowedOrigins` from `url`.
 
-```ts
+```ts fragment
 // config/app.ts
 export default AppConfig({
   name: "My App",
@@ -240,7 +240,7 @@ Name additional origins only when a genuinely different host drives the app — 
 `app.example.com` calling `api.example.com`. What you pass is added to the URL's origin
 rather than replacing it:
 
-```ts
+```ts fragment
 // config/app.ts
 export default AppConfig({
   url: env("APP_URL"),

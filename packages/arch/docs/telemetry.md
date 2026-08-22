@@ -99,7 +99,7 @@ export default TelemetryConfig({
 `TelemetryProvider`; if no tracer is registered the callback still runs with a no-op
 span — no error is thrown, no import guard needed.
 
-```typescript
+```typescript fragment
 // in a service or controller
 import { withSpan } from "@zerotal/telemetry";
 
@@ -123,7 +123,7 @@ The span is automatically:
 
 Pass `kind` and initial `attributes` as a third options argument:
 
-```typescript
+```typescript fragment
 // in a service
 await withSpan(
   "http.outbound",
@@ -142,7 +142,7 @@ The `Span` passed to your callback is fluent — every mutator returns the span.
 
 Attribute values must be `string | number | boolean`.
 
-```typescript
+```typescript fragment
 // inside a withSpan() callback
 span.setAttribute("db.table", "orders"); // single
 span.setAttributes({ "db.rows": 5, "cache.hit": true }); // batch
@@ -153,7 +153,7 @@ span.setAttributes({ "db.rows": 5, "cache.hit": true }); // batch
 The default status is `'unset'`; the exporter treats it the same as `'ok'`.
 `setStatus()` accepts only `'ok'` or `'error'`:
 
-```typescript
+```typescript fragment
 // inside a withSpan() callback
 span.setStatus("ok");
 span.setStatus("error", "payment gateway timeout");
@@ -164,7 +164,7 @@ span.setStatus("error", "payment gateway timeout");
 Events are timestamped log lines attached to a span — useful for recording
 significant moments inside a long operation.
 
-```typescript
+```typescript fragment
 // inside a withSpan() callback
 span.addEvent("cache.miss");
 span.addEvent("db.query", { table: "orders", rows: 5 });
@@ -175,7 +175,7 @@ span.addEvent("db.query", { table: "orders", rows: 5 });
 `recordException()` adds an `exception` event carrying the error's type, message,
 and stack:
 
-```typescript
+```typescript fragment
 // inside a withSpan() callback
 try {
   await chargeCard(amount);
@@ -196,7 +196,7 @@ Child spans created inside a `withSpan()` callback automatically inherit the par
 trace ID and attach as children — no manual wiring. Context flows through the async
 call stack via `AsyncLocalStorage`.
 
-```typescript
+```typescript fragment
 // in a request handler
 await withSpan("handle-request", async () => {
   // These nested spans automatically become children:
@@ -242,7 +242,7 @@ tracing shows the same signal the panel does, with no extra instrumentation. Cor
 never depends on telemetry; telemetry subscribes to core. You can install the bridge
 manually onto any tracer:
 
-```typescript
+```typescript fragment
 import { installEventBridge } from "@zerotal/telemetry";
 
 const dispose = installEventBridge(tracer); // returns an unsubscribe fn
@@ -257,7 +257,7 @@ to trace work that _isn't_ already a framework event.
 request. Register it near the top of the middleware stack, after
 `LoggerMiddleware`:
 
-```typescript
+```typescript fragment
 // bootstrap/middleware.ts (or where the stack is declared)
 import { TelemetryMiddleware } from "@zerotal/telemetry";
 
@@ -282,7 +282,7 @@ A status of `500` or higher sets the span status to `error`. The span name defau
 to `"METHOD /pathname"` (e.g. `"GET /api/users"`). Override it with a custom
 function:
 
-```typescript
+```typescript fragment
 // where you register the middleware
 TelemetryMiddleware.with({
   spanName: (ctx) => `${ctx.request.method} ${ctx.params.route ?? ctx.url.pathname}`,
@@ -356,7 +356,7 @@ export default TelemetryConfig({
 For advanced scenarios — testing, multi-tracer setups, or libraries — create and
 use a `Tracer` instance directly instead of the global one.
 
-```typescript
+```typescript fragment
 // in a library or test
 import { Tracer, ConsoleExporter } from "@zerotal/telemetry";
 
@@ -377,7 +377,7 @@ await tracer.withSpan("my-op", async (span) => {
 Use `startSpan()` for fire-and-forget work, or when the span lifetime doesn't map
 neatly to a single async function. The caller owns the lifecycle:
 
-```typescript
+```typescript fragment
 // in a stream/queue worker
 const span = tracer.startSpan("stream-processor", { kind: "consumer" });
 span.setAttribute("queue", "orders");

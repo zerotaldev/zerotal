@@ -67,7 +67,7 @@ use the [`safe()` helper or `Raw` component](#embedding-raw-html).
 
 The runtime renders attributes from props with a few rules:
 
-```tsx
+```tsx fragment
 // in a component
 <input type="text" value={name} disabled={isLocked} required={false} data-id={42} />
 // → <input type="text" value="…" disabled data-id="42">
@@ -97,7 +97,7 @@ Children are rendered by type, which is the engine's security boundary:
 
 Two consequences worth remembering:
 
-```tsx
+```tsx fragment
 // in a component
 {
   user && <Welcome name={user.name} />;
@@ -123,7 +123,7 @@ Call `view()` from a controller action to set the response. It accepts any value
 whose `.toString()` returns HTML — a `SafeHtml` instance from JSX is the normal
 case:
 
-```tsx
+```tsx fragment
 // app/controllers/PostController.tsx
 import { view } from "zerotal";
 import type { HttpContext } from "zerotal";
@@ -159,7 +159,7 @@ export default function Welcome(ctx: HttpContext, { title }: { title: string }) 
 }
 ```
 
-```ts
+```ts fragment
 // routes/index.ts — the HttpContext is injected; you only pass the extra props
 import { Router } from "zerotal";
 import Welcome from "../resources/views/Welcome.tsx";
@@ -213,7 +213,7 @@ export function AppLayout({ title, children }: AppLayoutProps) {
 }
 ```
 
-```tsx
+```tsx fragment
 // resources/views/About.tsx
 import { defineLayout } from "zerotal/view";
 import { AppLayout } from "./layouts/AppLayout.tsx";
@@ -229,7 +229,7 @@ export const AboutPage = wrap<{ heading: string }>(({ heading }) => (
 ));
 ```
 
-```ts
+```ts fragment
 // routes/index.ts
 import { Router } from "zerotal";
 import { AboutPage } from "../resources/views/About.tsx";
@@ -246,7 +246,7 @@ directly with `Router.view()`. The third argument is the props — a **static
 object**, or a **per-request factory** that receives the `HttpContext` and may be
 async:
 
-```ts
+```ts fragment
 // routes/index.ts
 // Static props — evaluated once at registration (marketing / info pages):
 Router.view("/about", AboutPage, { title: "About Us" });
@@ -263,7 +263,7 @@ Router.view("/privacy", PrivacyPage);
 
 The returned registration is chainable:
 
-```ts
+```ts fragment
 // routes/index.ts
 Router.view("/terms", TermsPage)
   .name("terms") // name the route for url() generation
@@ -276,7 +276,7 @@ Under [file-based routing](/docs/routing), a page file's **default export**
 becomes a `GET` route automatically. The page is a function of `(http, params)`
 and may be async:
 
-```tsx
+```tsx fragment
 // app/views/posts/[slug].tsx  →  GET /posts/:slug
 import type { HttpContext } from "zerotal";
 import { Post } from "../../models/Post.ts";
@@ -311,7 +311,7 @@ export default definePage((http, params) => `<h1>Hello ${params.name}</h1>`);
 When you have pre-rendered markup (e.g. from a Markdown renderer) use `safe()` or
 `<Raw>` to bypass escaping:
 
-```tsx
+```tsx fragment
 // in a component
 import { safe, Raw } from "zerotal/view";
 
@@ -335,7 +335,7 @@ import { safe, Raw } from "zerotal/view";
 `esc()` escapes a value for use in raw string templates, where automatic JSX
 escaping isn't available:
 
-```ts
+```ts fragment
 // in a helper
 import { esc } from "zerotal/view";
 
@@ -367,7 +367,7 @@ function returning a node that stringifies, so most of it tests without a server
 **Render the component and assert on the string.** No request, no router, no
 browser:
 
-```typescript
+```typescript fragment
 // tests/views/PostCard.test.ts
 import { test, expect } from "bun:test";
 import { PostCard } from "../../resources/views/PostCard.tsx";
@@ -383,7 +383,7 @@ test("renders the title and author", () => {
 **Escaping is the test that matters.** Every view that renders user input has one
 job beyond looking right, and it is the job that becomes a security incident:
 
-```typescript
+```typescript fragment
 // tests/views/PostCard.test.ts
 test("escapes markup in user-supplied text", () => {
   const html = String(PostCard({ post: { title: "<script>alert(1)</script>" } }));
@@ -400,7 +400,7 @@ fails if someone later routes user input into it.
 **Through a route, assert the rendered text** rather than the markup around it.
 `assertSee` survives a class rename; a full-HTML comparison does not:
 
-```typescript
+```typescript fragment
 // tests/http/posts.test.ts
 const res = await app.get("/posts");
 

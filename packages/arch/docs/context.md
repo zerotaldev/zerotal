@@ -32,7 +32,7 @@ tests, build one with [`HttpContext.fake()`](#testing).
 Every method on the context is bound to its instance, so you can destructure
 exactly what a handler needs — methods included — without losing `this`:
 
-```typescript
+```typescript fragment
 // routes: Router.get('/posts/:post/:tab', PostController, 'show')
 
 async show({ view, params: { post, tab } }: HttpContext<{ post: Post; tab: string }>) {
@@ -55,7 +55,7 @@ instead (`async show(ctx: HttpContext)`) when you prefer `ctx.view(...)` /
 `ctx.params` is `Record<string, string>` — the raw matched segments. Pass a type
 argument to describe what the route resolves, including model bindings:
 
-```typescript
+```typescript fragment
 // raw params only — every value is a string
 async index(ctx: HttpContext) {
   const page = ctx.params.page; // string | undefined
@@ -81,7 +81,7 @@ name (and exposes it via `ctx.model<T>()`).
 Usually there is nothing to declare: a param whose name matches an auto-registered
 model binds on its own, so `:post` resolves through `Post` by primary key.
 
-```typescript
+```typescript fragment
 // routes/web.ts — :post is already bound to Post
 Router.get("/posts/:post", PostController, "show");
 
@@ -91,7 +91,7 @@ Router.get("/posts/:post", PostController, "show").bind("post", (slug) =>
 );
 ```
 
-```typescript
+```typescript fragment
 // in PostController — ctx.params.post is the resolved Post, not the raw id
 async show(ctx: HttpContext<{ post: Post }>) {
   return ctx.json(ctx.params.post);
@@ -114,7 +114,7 @@ custom resolvers, scoped bindings — lives in [Routing](/docs/routing).
 The scalar helpers check route params first, then the query string, and coerce to
 the type the method name promises. Each takes an optional fallback.
 
-```typescript
+```typescript fragment
 // in a controller
 ctx.query("page", "1"); // string | undefined — query string only
 ctx.string("sort", "asc"); // string | undefined — param then query
@@ -131,7 +131,7 @@ is absent, or the value is not a valid integer (`NaN`). Because parsing is base-
 validate with a [form request](/docs/validator) when you need to reject malformed
 input rather than coerce it.
 
-```typescript
+```typescript fragment
 // in a controller — GET /posts?page=3
 ctx.integer("page"); // 3
 ctx.integer("page", 1); // 3 (fallback unused)
@@ -147,7 +147,7 @@ of `'1'`, `'true'`, `'yes'`, or `'on'` (compared case-insensitively). Any other
 present value is `false`; an absent value returns the fallback, which defaults to
 `false`.
 
-```typescript
+```typescript fragment
 // in a controller
 ctx.boolean("active"); // ?active=true / ?active=1 / ?active=ON → true
 ctx.boolean("active"); // ?active=0 / ?active=no / ?active= → false
@@ -164,14 +164,14 @@ ctx.boolean("active", true); // absent → true (custom fallback)
 `body()` parses and caches the body (JSON, form-urlencoded, or multipart fields) so
 repeated calls are free, and returns `{}` on an absent or invalid body:
 
-```typescript
+```typescript fragment
 const data = await ctx.body<{ title: string; body: string }>();
 ```
 
 `input()` reads a single merged value in priority order — route params → cached
 body → query string — without awaiting:
 
-```typescript
+```typescript fragment
 ctx.input("id"); // route :id or ?id=
 ctx.input("q", "all"); // with fallback
 ```
@@ -183,7 +183,7 @@ ctx.input("q", "all"); // with fallback
 Read a header with `header()` (case-insensitive) or pull a Bearer token with
 `bearerToken()`:
 
-```typescript
+```typescript fragment
 ctx.header("x-forwarded-for"); // string | null
 ctx.bearerToken(); // string | null — strips the "Bearer " prefix
 ```
@@ -193,7 +193,7 @@ ctx.bearerToken(); // string | null — strips the "Bearer " prefix
 `file()` returns the first `UploadedFile` for a form field (or `null`); `files()`
 returns all of them. Both parse and cache the multipart body on first call.
 
-```typescript
+```typescript fragment
 const avatar = await ctx.file("avatar"); // UploadedFile | null
 const attachments = await ctx.files("attachments"); // UploadedFile[]
 ```
@@ -201,7 +201,7 @@ const attachments = await ctx.files("attachments"); // UploadedFile[]
 An `UploadedFile` describes the upload and knows how to persist itself. Validate
 before storing, then hand it a disk — `store()` returns the stored path:
 
-```typescript
+```typescript fragment
 // in a controller — single file
 const avatar = await ctx.file("avatar");
 
@@ -220,7 +220,7 @@ if (avatar) {
 }
 ```
 
-```typescript
+```typescript fragment
 // in a controller — multiple files
 for (const file of await ctx.files("attachments")) {
   await file.store("uploads", Storage.disk());
@@ -239,7 +239,7 @@ The response helpers set `ctx.response` for you and return nothing — they are
 terminal. You can also `return` a value from a controller; see
 [Responses](/docs/responses) for the full set.
 
-```typescript
+```typescript fragment
 ctx.json({ user }); // 200 application/json
 ctx.json({ errors }, 422); // custom status
 ctx.view(WelcomeView, { name }); // full HTML document (prepends <!DOCTYPE html>)
@@ -253,7 +253,7 @@ ctx.back(303); // same, with a 303 status
 `view()` accepts either pre-rendered markup, or a **view component plus its props**.
 A view component receives the request `HttpContext` first and your props second:
 
-```typescript
+```typescript fragment
 // resources/views/Welcome.tsx
 export default function Welcome(ctx: HttpContext, { title }: { title: string }) {
   return (
@@ -307,7 +307,7 @@ the pipeline, ordering, and registration.
 the matching record, and assigns it to `ctx.user`; `AuthMiddleware` reads it to guard
 routes. It is `undefined` for guests.
 
-```typescript
+```typescript fragment
 if (!ctx.user) throw new UnauthorizedError();
 return ctx.json({ email: ctx.user.email });
 ```
@@ -317,7 +317,7 @@ registered auth model — see [Authentication](/docs/authentication).
 
 ## Client IP
 
-```typescript
+```typescript fragment
 ctx.ip(); // string | null — socket-level IP from Bun's server.requestIP()
 ```
 
@@ -331,7 +331,7 @@ with `HttpContext.fake()`).
 
 ## URL & matching helpers
 
-```typescript
+```typescript fragment
 ctx.path(); // "/posts" — pathname only
 ctx.fullUrl(); // "https://app.test/posts?page=2"
 ctx.host(); // "app.test"
@@ -343,7 +343,7 @@ ctx.subdomains; // { tenant: "acme" }
 `isJson()` / `wantsJson()` inspect the `Content-Type` / `Accept` headers — handy in
 an exception handler, or anywhere one route serves both browsers and API clients:
 
-```typescript
+```typescript fragment
 // in a controller or middleware
 if (ctx.wantsJson()) {
   ctx.json({ message: "Unauthorized" }, 401);
@@ -358,13 +358,13 @@ Flash writes a value to the session for the **next** request only — ideal for
 post-redirect success and error messages. It requires `SessionMiddleware` and
 silently no-ops without it.
 
-```typescript
+```typescript fragment
 // before redirecting
 ctx.flash("success", "Post saved!");
 return ctx.redirect("/posts", 303);
 ```
 
-```typescript
+```typescript fragment
 // on the next request
 const msg = ctx.flashed<string>("success"); // 'Post saved!'
 ```
@@ -378,7 +378,7 @@ Register work to run **after** the response has been sent — fire-and-forget si
 effects that shouldn't delay the client. `afterResponse()` returns `this`, so calls
 chain.
 
-```typescript
+```typescript fragment
 ctx.afterResponse(async () => {
   await analytics.track(ctx.requestId, ctx.url.pathname);
 });
@@ -413,7 +413,7 @@ request — a service shared with CLI commands or queue workers — uses
 `RequestContext.remember(key, factory)` runs `factory` at most once per request
 for a given key and hands every later caller the same answer:
 
-```typescript
+```typescript fragment
 import { RequestContext } from "zerotal";
 
 const settings = await RequestContext.remember(`household:${id}:settings`, () =>
@@ -446,7 +446,7 @@ earlier in the same request.
 `HttpContext.fake()` builds a context without a live server — perfect for unit
 testing controllers and middleware:
 
-```typescript
+```typescript fragment
 const ctx = HttpContext.fake("http://localhost/posts?page=2", {
   method: "GET",
   headers: { Authorization: "Bearer token" },
@@ -459,7 +459,7 @@ expect(ctx.response?.status).toBe(200);
 Pass a `body` to exercise handlers that read one, and assign `ctx.params` directly
 when the handler expects route params a real match would have provided:
 
-```typescript
+```typescript fragment
 // in a test — a POST with a JSON body
 const ctx = HttpContext.fake("http://localhost/posts", {
   method: "POST",
@@ -477,7 +477,7 @@ See [Testing](/docs/testing) for the full harness, and
 
 ### `HttpContext<TParams>`
 
-```typescript
+```typescript fragment
 class HttpContext<TParams extends Record<string, unknown> = Record<string, string>> {
   constructor(request: Request, container: ScopedResolver);
 }

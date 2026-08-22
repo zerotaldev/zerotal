@@ -47,7 +47,7 @@ List / View / Create / Edit page per resource under the configured `path`.
 
 ## Quick start
 
-```ts
+```ts fragment
 // app/admin.ts
 import { Panel, Resource, text, textInput } from "@zerotal/admin";
 import { User } from "./models/User.ts";
@@ -88,7 +88,7 @@ Edit / View / Delete — and the form above on the Create and Edit pages.
 Configure the panel with `Panel.configure(...)` in `app/admin.ts`, or by exporting
 an `admin` config object the provider merges on boot.
 
-```ts
+```ts fragment
 Panel.configure({
   path: "/admin",
   brand: "Acme",

@@ -191,7 +191,7 @@ Additive sync leaves columns in place even after you delete them from a model, s
 database accumulates orphaned columns over time. To let Zerotal also **drop** columns that
 no model declares anymore, opt in explicitly with the object form:
 
-```typescript
+```typescript fragment
 // config/database.ts
 export default DatabaseConfig({
   url: env("DATABASE_URL", "./database/db.sqlite"),
@@ -222,7 +222,7 @@ connection. Call them from inside `up()` / `down()`.
 
 ### Creating tables
 
-```typescript
+```typescript fragment
 // inside a migration's up()
 await Schema.create("users", (table) => {
   table.increments("id"); // INTEGER PRIMARY KEY AUTOINCREMENT
@@ -244,7 +244,7 @@ await Schema.createIfNotExists("settings", (table) => {
 
 ### Modifying tables
 
-```typescript
+```typescript fragment
 // inside a migration's up()
 await Schema.table("users", (table) => {
   table.string("role").default("user"); // ADD COLUMN
@@ -257,7 +257,7 @@ await Schema.table("users", (table) => {
 
 ### Other Schema methods
 
-```typescript
+```typescript fragment
 // inside a migration
 await Schema.drop("users");
 await Schema.dropIfExists("temp_table");
@@ -310,7 +310,7 @@ column; SQL types reflect the SQLite mappings (other drivers use their native ty
 
 Chain modifiers on any column:
 
-```typescript
+```typescript fragment
 // inside a Blueprint callback
 t.string("bio").nullable();
 t.string("role").default("user");
@@ -336,7 +336,7 @@ t.dateTime("published_at").nullable().useCurrent();
 
 ## Indexes
 
-```typescript
+```typescript fragment
 // inside a migration's up()
 await Schema.create("posts", (table) => {
   table.increments("id");
@@ -363,7 +363,7 @@ await Schema.create("posts", (table) => {
 
 ## Foreign keys
 
-```typescript
+```typescript fragment
 // inside a migration's up()
 await Schema.create("comments", (table) => {
   table.increments("id");
@@ -379,7 +379,7 @@ await Schema.create("comments", (table) => {
 `foreignId()` is shorthand for an unsigned integer column; chain `.constrained()` to
 add the foreign-key constraint, inferring the referenced table from the column name:
 
-```typescript
+```typescript fragment
 // inside a Blueprint callback
 t.foreignId("user_id").constrained(); // references users.id
 t.foreignId("post_id").constrained("posts"); // explicit table
@@ -392,7 +392,7 @@ read more fluently.
 
 ## Soft deletes
 
-```typescript
+```typescript fragment
 // inside a Blueprint callback
 t.softDeletes(); // adds nullable deleted_at TEXT column
 t.softDeletes("removed_at"); // custom column name
@@ -403,7 +403,7 @@ non-null `deleted_at` are excluded from queries automatically.
 
 ## Pivot / join tables
 
-```typescript
+```typescript fragment
 // inside a migration's up()
 await Schema.create("post_tags", (table) => {
   table.integer("post_id");
@@ -418,7 +418,7 @@ await Schema.create("post_tags", (table) => {
 
 Check schema state before making changes to keep migrations idempotent:
 
-```typescript
+```typescript fragment
 // inside a migration
 async up(): Promise<void> {
   if (await Schema.hasColumn("users", "role")) return;
@@ -456,7 +456,7 @@ free coverage, and it is why a broken migration rarely reaches production.
 moment. A migration is only reversible if you have run it backwards at least
 once:
 
-```typescript
+```typescript fragment
 // tests/migrations/AddArchivedToPosts.test.ts
 import { test, expect } from "bun:test";
 import { Schema } from "@zerotal/orm";
@@ -480,7 +480,7 @@ second `up()` should either succeed or fail for a reason you have chosen.
 mistakes are unrecoverable. Arrange rows in the old shape, run the migration,
 assert the new shape:
 
-```typescript
+```typescript fragment
 // tests/migrations/BackfillSlugs.test.ts
 test("backfills a slug for every existing post", async () => {
   await DB.table("posts").insert({ title: "Hello World", slug: null });

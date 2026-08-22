@@ -116,7 +116,7 @@ a price with `registerModelPrice()`.
 
 ## Generating text
 
-```ts
+```ts fragment
 import { Ai } from "@zerotal/ai";
 
 // Just the text.
@@ -152,7 +152,7 @@ Reach for `effort` instead. It trades thoroughness against cost and latency:
 
 ### Streaming
 
-```ts
+```ts fragment
 for await (const chunk of Ai.stream({ prompt, signal })) {
   if (chunk.type === "text") process.stdout.write(chunk.text);
   if (chunk.type === "done") console.log(chunk.response.usage);
@@ -166,7 +166,7 @@ generation. See [Flow](/docs/flow) for streaming straight into a component.
 
 ### Structured output
 
-```ts
+```ts fragment
 const review = await Ai.object({ prompt: `Classify this review:\n\n${text}` }, (rule) => ({
   sentiment: rule.string().in(["positive", "neutral", "negative"]),
   summary: rule.string().max(140),
@@ -189,13 +189,13 @@ schema is defined, not when the request is sent.
 `strippedConstraints()` names exactly what the model will not see, if you want to
 check that a load-bearing constraint is visible to it:
 
-```ts
+```ts fragment
 strippedConstraints({ title: rule.string().min(3) }); // → ["title: min"]
 ```
 
 ## Tools and the agent loop
 
-```ts
+```ts fragment
 import { Ai, tool } from "@zerotal/ai";
 
 const lookupOrder = tool({
@@ -238,7 +238,7 @@ back and re-requests.
 
 ### Locking a run
 
-```ts
+```ts fragment
 await Ai.agent({
   prompt: "Refund order 4821 if it shipped over 30 days ago.",
   tools: [lookupOrder, issueRefund],
@@ -264,7 +264,7 @@ checking crashes on a response the API considers fine.
 
 This package checks the stop reason first and raises a typed error:
 
-```ts
+```ts fragment
 import { AiRefusedError } from "@zerotal/ai";
 
 try {
@@ -283,7 +283,7 @@ with `drivers.anthropic.fallbacks: false`.
 
 ## Embeddings
 
-```ts
+```ts fragment
 const { embeddings } = await Ai.embed(["first chunk", "second chunk"]);
 ```
 
@@ -294,7 +294,7 @@ One vector per input, in input order.
 A queued generation is serialized, so its completion handler is registered by **name**
 — a closure cannot survive the trip to a worker process:
 
-```ts
+```ts fragment
 // in a service provider's onBooted(), so the worker registers it too
 Ai.onGenerated("summarize-ticket", async (response, meta) => {
   await Ticket.query().where("id", meta.ticketId).update({ summary: response.text });
@@ -313,7 +313,7 @@ in-process where its tools are.
 `AiFake` replaces the container binding and answers from a script. No API key, no
 network, no flakiness:
 
-```ts
+```ts fragment
 import { AiFake } from "@zerotal/ai";
 
 const ai = AiFake.install();
@@ -361,7 +361,7 @@ suffix, a gateway that rewrites the base URL.
 Implement `AiDriver` — `text`, `stream`, `object`, `countTokens`, `verify` — and
 register it:
 
-```ts
+```ts fragment
 // in a service provider's onBooted()
 const ai = app.container.makeSync("ai");
 ai.extend("bedrock", () => new BedrockDriver(config));

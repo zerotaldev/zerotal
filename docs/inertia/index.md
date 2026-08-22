@@ -128,7 +128,7 @@ object and root `<div>` are injected on every response:
 
 A controller action calls `inertia(component, props)`:
 
-```ts
+```ts fragment
 // app/controllers/DashboardController.ts
 import type { HttpContext } from "zerotal";
 import { inertia } from "@zerotal/inertia";
@@ -147,7 +147,7 @@ argument** — and sets the response as a side effect, so the action returns
 `Promise<void>`. The component name (`"Dashboard"`) maps to
 `resources/js/pages/Dashboard.tsx`.
 
-```tsx
+```tsx fragment
 // resources/js/pages/Dashboard.tsx
 import { Link } from "@inertiajs/react";
 
@@ -191,7 +191,7 @@ one it wants.
 is the assertion you want in almost every route test — it checks the component
 and its props without parsing markup:
 
-```typescript
+```typescript fragment
 // tests/http/dashboard.test.ts
 import { test } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -211,7 +211,7 @@ test("the dashboard renders with its stats", async () => {
 embedded in a `data-page` attribute — right for asserting the first paint, wrong
 for asserting props:
 
-```typescript
+```typescript fragment
 // tests/http/dashboard.test.ts
 const res = await app.actingAs(user).get("/dashboard");
 
@@ -222,7 +222,7 @@ res.assertHeader("Vary", "X-Inertia"); // the response varies by that header
 **Test partial reloads by the props they omit.** A partial reload that quietly
 returns everything is a performance bug no page-level assertion catches:
 
-```typescript
+```typescript fragment
 // tests/http/dashboard.test.ts
 const res = await app.actingAs(user).get("/dashboard", {
   "X-Inertia": "true",
@@ -238,7 +238,7 @@ expect(page.props.notifications).toBeUndefined(); // excluded, as asked
 **A version mismatch is a `409`, not an error.** It tells the client to reload so
 it picks up new assets — worth a test if you set `ASSET_VERSION` on deploy:
 
-```typescript
+```typescript fragment
 // tests/http/dashboard.test.ts
 const res = await app.get("/dashboard", { "X-Inertia": "true", "X-Inertia-Version": "stale" });
 

@@ -18,7 +18,7 @@ Scaffold one with the generator, which writes `app/admin/<Name>Resource.ts`:
 bun zt make:admin-resource Post
 ```
 
-```ts
+```ts fragment
 class PostResource extends Resource {
   static model = Post;
 
@@ -71,7 +71,7 @@ class PostResource extends Resource {
 A resource does nothing until the panel knows about it. Register it where the panel
 is configured:
 
-```ts
+```ts fragment
 Panel.register(PostResource);
 ```
 
@@ -93,7 +93,7 @@ any of its links changing.
 Override `can(ability, record?)` to gate the built-in actions. Abilities used by the
 presets: `create`, `update`, `delete`, `restore`, `forceDelete`.
 
-```ts
+```ts fragment
 static can(ability: string, record?: AdminRecord) {
   return Gate.allows(ability, record ?? this.model);
 }

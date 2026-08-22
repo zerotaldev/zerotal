@@ -59,7 +59,7 @@ rules and signs the result with the app's `APP_KEY`, and the client echoes the s
 or other headers via `auth.headers`, or set `authEndpoint: false` to skip the fetch and rely on
 connection-level authorization instead:
 
-```ts
+```ts fragment
 // in your client code
 const socket = new Socket({
   auth: { headers: { "X-CSRF-TOKEN": csrf } }, // sent on POST /broadcasting/auth
@@ -76,7 +76,7 @@ client.
 The server is also Pusher-protocol compatible, so the reference
 [pusher-js](https://github.com/pusher/pusher-js) client works unchanged:
 
-```ts
+```ts fragment
 // in your client code
 import Pusher from "pusher-js";
 

@@ -35,7 +35,7 @@ export class Profile extends Model {
 }
 ```
 
-```typescript
+```typescript fragment
 // in a controller
 const user = await User.query().with("profile").findOrFail(1);
 const profile = user.profile; // Profile — no extra query
@@ -52,7 +52,7 @@ Both `@hasOne` and `@belongsTo` accept a `localKey` (defaults to `"id"`) to over
 
 A `User` has many `Post`s. The foreign key (`user_id`) lives on the `posts` table:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @table("users")
 export class User extends Model {
@@ -69,7 +69,7 @@ export class Post extends Model {
 }
 ```
 
-```typescript
+```typescript fragment
 // in a controller
 const user = await User.query().with("posts").findOrFail(1);
 user.posts; // Post[]
@@ -84,7 +84,7 @@ const users = await User.query()
 
 Set or clear a `belongsTo` foreign key without having to know the parent's ID directly:
 
-```typescript
+```typescript fragment
 // in a controller
 post.associate("author", user); // sets post.userId = user.id
 await post.save();
@@ -121,7 +121,7 @@ export class Tag extends Model {
 
 ### Pivot operations
 
-```typescript
+```typescript fragment
 // in a controller
 // Attach one or multiple tags
 await post.tags.attach(tagId);
@@ -144,7 +144,7 @@ await post.tags.toggle(tagId);
 
 If the pivot table has additional columns, declare them with `withPivot`:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 @manyToMany(() => Role, {
   pivotTable: "user_roles",
@@ -155,7 +155,7 @@ If the pivot table has additional columns, declare them with `withPivot`:
 roles!: ManyToMany<Role>;
 ```
 
-```typescript
+```typescript fragment
 // in a controller — attach with extra pivot data
 await user.roles.attach(roleId, { assigned_by: adminId, assigned_at: new Date() });
 ```
@@ -166,7 +166,7 @@ await user.roles.attach(roleId, { assigned_by: adminId, assigned_at: new Date() 
 
 Access distant models through an intermediate model. A `Country` has many `Post`s through `User`s:
 
-```typescript
+```typescript fragment
 // app/models/Country.ts
 import { hasManyThrough, hasOneThrough } from "@zerotal/orm";
 
@@ -188,7 +188,7 @@ export class Country extends Model {
 }
 ```
 
-```typescript
+```typescript fragment
 // in a controller
 const country = await Country.query().with("posts").findOrFail(1);
 country.posts; // Post[] — no manual JOIN required
@@ -202,7 +202,7 @@ Polymorphic relationships let a single model belong to multiple other models usi
 
 A `Comment` can belong to either a `Post` or a `Video`:
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 import {
   morphMany,
@@ -243,7 +243,7 @@ The `morphName` (`"commentable"`) determines the `commentable_type` and `comment
 
 > **Warning** — Renaming a `morphMap` key without migrating existing `*_type` rows will break every stored polymorphic association. Keep the keys stable — changing one requires a data migration.
 
-```typescript
+```typescript fragment
 // in a controller
 // Eager load polymorphic relations
 const posts = await Post.query().with("comments").get();
@@ -257,7 +257,7 @@ comment.commentable; // Post | Video
 
 Share a tagging system across multiple model types through a single `taggables` pivot:
 
-```typescript
+```typescript fragment
 // app/models/Post.ts
 import { morphToMany, morphedByMany, type ManyToMany } from "@zerotal/orm";
 
@@ -300,7 +300,7 @@ Always prefer eager loading over lazy loading in loops — it prevents N+1 queri
 
 > **Tip** — Reach for `.with()` whenever you access a relation across a collection; lazy-loading inside a loop fires one query per row.
 
-```typescript
+```typescript fragment
 // in a controller
 // Single relation
 const posts = await Post.query().with("author").get();
@@ -330,7 +330,7 @@ counted[0].commentsCount; // number
 
 When you already have a model instance and realise you need a relation:
 
-```typescript
+```typescript fragment
 // in a controller
 const post = await Post.findOrFail(1);
 
@@ -345,7 +345,7 @@ await post.loadMissing(["author"]);
 
 Filter a parent model based on whether its relation exists, without loading the related rows:
 
-```typescript
+```typescript fragment
 // in a controller
 // Posts that have at least one comment
 Post.query().has("comments").get();

@@ -43,7 +43,7 @@ chose, not the six months you browsed to find it.
 
 In practice that means most components bind rather than call:
 
-```tsx
+```tsx fragment
 <Slider bind={this.volume} showValue />        {/* live while dragging, synced on release */}
 <ToggleGroup bind={this.view} options={…} />   {/* presses instantly, syncs after */}
 <DatePicker bind={this.due} />                 {/* months page client-side, day syncs once */}
@@ -107,7 +107,7 @@ export class AppLayout extends Layout {
 
 Re-brand by passing `tokensCss`; it is appended after the defaults, so overriding one variable recolours everything that reads it:
 
-```ts
+```ts fragment
 flowUiHead("Acme", {
   tokensCss: `
     :root { --primary: 21 90% 48%; --ring: 21 90% 48%; }
@@ -255,7 +255,7 @@ Or import directly from the package: `import { Button } from "@zerotal/flow-ui";
 
 ### Button usage
 
-```tsx
+```tsx fragment
 <Button onClick={this.save}>Save</Button>
 <Button variant="secondary">Secondary</Button>
 <Button variant="destructive">Delete</Button>
@@ -298,7 +298,7 @@ Or import directly from the package: `import { Badge } from "@zerotal/flow-ui";`
 
 ### Badge usage
 
-```tsx
+```tsx fragment
 <Badge>New</Badge>
 <Badge variant="secondary">Beta</Badge>
 <Badge variant="destructive">Overdue</Badge>
@@ -337,7 +337,7 @@ Or import directly from the package: `import { Card } from "@zerotal/flow-ui";`
 
 ### Card usage
 
-```tsx
+```tsx fragment
 <Card>
   <CardHeader>
     <CardTitle>Create project</CardTitle>
@@ -382,7 +382,7 @@ Or import directly from the package: `import { Input } from "@zerotal/flow-ui";`
 
 ### Input usage
 
-```tsx
+```tsx fragment
 <Field label="Email">
   <Input value={this.form.email} placeholder="you@example.com" />
 </Field>
@@ -421,7 +421,7 @@ Or import directly from the package: `import { Textarea } from "@zerotal/flow-ui
 
 ### Textarea usage
 
-```tsx
+```tsx fragment
 <Textarea value={this.form.bio} placeholder="Tell us about yourself" rows={4} />
 ```
 
@@ -457,7 +457,7 @@ Or import directly from the package: `import { Label } from "@zerotal/flow-ui";`
 
 ### Label usage
 
-```tsx
+```tsx fragment
 <Label for="email">Email</Label>
 ```
 
@@ -493,7 +493,7 @@ Or import directly from the package: `import { Separator } from "@zerotal/flow-u
 
 ### Separator usage
 
-```tsx
+```tsx fragment
 <Separator />
 <Separator orientation="vertical" class="h-6" />
 ```
@@ -530,7 +530,7 @@ Or import directly from the package: `import { Skeleton } from "@zerotal/flow-ui
 
 ### Skeleton usage
 
-```tsx
+```tsx fragment
 <Skeleton class="h-12 w-12 rounded-full" />
 <Skeleton class="h-4 w-48" />
 ```
@@ -566,7 +566,7 @@ Or import directly from the package: `import { Avatar } from "@zerotal/flow-ui";
 
 ### Avatar usage
 
-```tsx
+```tsx fragment
 <Avatar src={user.avatarUrl} alt={user.name} fallback="AL" />
 <Avatar fallback="GH" />
 ```
@@ -604,7 +604,7 @@ Or import directly from the package: `import { Switch } from "@zerotal/flow-ui";
 
 ### Switch usage
 
-```tsx
+```tsx fragment
 <Switch bind={this.notifications} />
 ```
 
@@ -640,7 +640,7 @@ Or import directly from the package: `import { Checkbox } from "@zerotal/flow-ui
 
 ### Checkbox usage
 
-```tsx
+```tsx fragment
 <Checkbox bind={this.agree} />
 ```
 
@@ -676,7 +676,7 @@ Or import directly from the package: `import { Select } from "@zerotal/flow-ui";
 
 ### Select usage
 
-```tsx
+```tsx fragment
 <Select bind={this.country} options={[{ label: "Canada", value: "ca" }]} />
 ```
 
@@ -713,7 +713,7 @@ Or import directly from the package: `import { RadioGroup } from "@zerotal/flow-
 
 ### RadioGroup usage
 
-```tsx
+```tsx fragment
 <RadioGroup bind={this.plan} options={[{ label: "Pro", value: "pro" }]} />
 ```
 
@@ -750,7 +750,7 @@ Or import directly from the package: `import { Dialog } from "@zerotal/flow-ui";
 
 ### Dialog usage
 
-```tsx
+```tsx fragment
 <Button onClick={() => (this.open = true)}>Edit profile</Button>
 
 <Dialog show={this.open} title="Edit profile" description="Make changes here.">
@@ -795,7 +795,7 @@ Or import directly from the package: `import { Sheet } from "@zerotal/flow-ui";`
 
 ### Sheet usage
 
-```tsx
+```tsx fragment
 <Button onClick={() => (this.open = true)}>Open</Button>
 
 <Sheet show={this.open} side="right" title="Edit profile">…</Sheet>
@@ -834,7 +834,7 @@ Or import directly from the package: `import { DropdownMenu } from "@zerotal/flo
 
 ### DropdownMenu usage
 
-```tsx
+```tsx fragment
 <DropdownMenu label="Options">
   <DropdownMenuLabel>My account</DropdownMenuLabel>
   <DropdownMenuItem onClick={this.profile}>Profile</DropdownMenuItem>
@@ -877,7 +877,7 @@ Or import directly from the package: `import { Tabs } from "@zerotal/flow-ui";`
 
 ### Tabs usage
 
-```tsx
+```tsx fragment
 <Tabs
   items={[
     { label: "Account", content: <AccountForm /> },
@@ -918,7 +918,7 @@ Or import directly from the package: `import { Alert } from "@zerotal/flow-ui";`
 
 ### Alert usage
 
-```tsx
+```tsx fragment
 <Alert title="Heads up!">You can add components to your app.</Alert>
 <Alert variant="destructive" title="Error">Something went wrong.</Alert>
 ```
@@ -956,7 +956,7 @@ Or import directly from the package: `import { Tooltip } from "@zerotal/flow-ui"
 
 ### Tooltip usage
 
-```tsx
+```tsx fragment
 <Tooltip content="Add to library">
   <Button size="icon">+</Button>
 </Tooltip>
@@ -994,7 +994,7 @@ Or import directly from the package: `import { Table } from "@zerotal/flow-ui";`
 
 ### Table usage
 
-```tsx
+```tsx fragment
 <Table
   columns={[
     { key: "name", label: "Name", sortable: true },
@@ -1040,7 +1040,7 @@ Or import directly from the package: `import { Popover } from "@zerotal/flow-ui"
 
 ### Popover usage
 
-```tsx
+```tsx fragment
 <Popover trigger={<Button variant="outline">Options</Button>}>
   <p class="text-sm">Anything at all.</p>
 </Popover>
@@ -1085,7 +1085,7 @@ Or import directly from the package: `import { HoverCard } from "@zerotal/flow-u
 
 ### HoverCard usage
 
-```tsx
+```tsx fragment
 <HoverCard trigger={<a href="/users/1">@ada</a>}>
   <p class="text-sm font-medium">Ada Mokoena</p>
 </HoverCard>
@@ -1125,7 +1125,7 @@ Or import directly from the package: `import { AlertDialog } from "@zerotal/flow
 
 ### AlertDialog usage
 
-```tsx
+```tsx fragment
 <AlertDialog
   show={this.confirming}
   title="Delete this product?"
@@ -1170,7 +1170,7 @@ Or import directly from the package: `import { Command } from "@zerotal/flow-ui"
 
 ### Command usage
 
-```tsx
+```tsx fragment
 <Command
   items={[
     { label: "Products", href: "/admin/products", group: "Go to" },
@@ -1213,7 +1213,7 @@ Or import directly from the package: `import { ContextMenu } from "@zerotal/flow
 
 ### ContextMenu usage
 
-```tsx
+```tsx fragment
 <ContextMenu
   items={[
     { label: "Open", action: "$flow.open(id)" },
@@ -1257,7 +1257,7 @@ Or import directly from the package: `import { Menubar } from "@zerotal/flow-ui"
 
 ### Menubar usage
 
-```tsx
+```tsx fragment
 <Menubar
   menus={[
     { label: "File", items: [{ label: "New", shortcut: "⌘N" }] },
@@ -1298,7 +1298,7 @@ Or import directly from the package: `import { NavigationMenu } from "@zerotal/f
 
 ### NavigationMenu usage
 
-```tsx
+```tsx fragment
 <NavigationMenu
   items={[
     { label: "Docs", href: "/docs" },
@@ -1339,7 +1339,7 @@ Or import directly from the package: `import { Sidebar } from "@zerotal/flow-ui"
 
 ### Sidebar usage
 
-```tsx
+```tsx fragment
 <Sidebar
   brand="Zerotal"
   tagline="Back office"
@@ -1382,7 +1382,7 @@ Or import directly from the package: `import { Breadcrumb } from "@zerotal/flow-
 
 ### Breadcrumb usage
 
-```tsx
+```tsx fragment
 <Breadcrumb
   items={[
     { label: "Dashboard", href: "/admin" },
@@ -1425,7 +1425,7 @@ Or import directly from the package: `import { Pagination } from "@zerotal/flow-
 
 ### Pagination usage
 
-```tsx
+```tsx fragment
 <Pagination
   page={p.page}
   lastPage={p.lastPage}
@@ -1470,7 +1470,7 @@ Or import directly from the package: `import { Field } from "@zerotal/flow-ui";`
 
 ### Field usage
 
-```tsx
+```tsx fragment
 <Field label="Email" description="We never share it." error={errors.email} required>
   <Input type="email" flow:model="form.email" />
 </Field>
@@ -1511,7 +1511,7 @@ Or import directly from the package: `import { InputGroup } from "@zerotal/flow-
 
 ### InputGroup usage
 
-```tsx
+```tsx fragment
 <InputGroup prefix="R"><Input flow:model="form.price" /></InputGroup>
 <InputGroup addonAfter={<Button>Copy</Button>}><Input value={key} /></InputGroup>
 ```
@@ -1550,7 +1550,7 @@ Or import directly from the package: `import { InputOTP } from "@zerotal/flow-ui
 
 ### InputOTP usage
 
-```tsx
+```tsx fragment
 <InputOTP length={6} groupAfter={3} flow:model="form.code" />
 ```
 
@@ -1587,7 +1587,7 @@ Or import directly from the package: `import { Combobox } from "@zerotal/flow-ui
 
 ### Combobox usage
 
-```tsx
+```tsx fragment
 <Combobox bind={this.brandId} options={brands} placeholder="Search brands…" />
 ```
 
@@ -1624,7 +1624,7 @@ Or import directly from the package: `import { Slider } from "@zerotal/flow-ui";
 
 ### Slider usage
 
-```tsx
+```tsx fragment
 <Slider value={this.volume} max={100} showValue />
 ```
 
@@ -1662,7 +1662,7 @@ Or import directly from the package: `import { Toggle } from "@zerotal/flow-ui";
 
 ### Toggle usage
 
-```tsx
+```tsx fragment
 <Toggle pressed={this.bold}>B</Toggle>
 <ToggleGroup value={this.view} options={[
   { value: "list", label: "List" }, { value: "grid", label: "Grid" },
@@ -1703,7 +1703,7 @@ Or import directly from the package: `import { ButtonGroup } from "@zerotal/flow
 
 ### ButtonGroup usage
 
-```tsx
+```tsx fragment
 <ButtonGroup>
   <Button variant="outline">Day</Button>
   <Button variant="outline">Week</Button>
@@ -1742,7 +1742,7 @@ Or import directly from the package: `import { Calendar } from "@zerotal/flow-ui
 
 ### Calendar usage
 
-```tsx
+```tsx fragment
 <Calendar value={this.due} onSelect={this.pick} />
 <Calendar month="2026-07" events={[{ date: "2026-07-14", label: "Launch" }]} />
 ```
@@ -1782,7 +1782,7 @@ Or import directly from the package: `import { DatePicker } from "@zerotal/flow-
 
 ### DatePicker usage
 
-```tsx
+```tsx fragment
 <DatePicker value={this.due} onSelect={this.setDue} />
 ```
 
@@ -1820,7 +1820,7 @@ Or import directly from the package: `import { Toaster } from "@zerotal/flow-ui"
 
 ### Toaster usage
 
-```tsx
+```tsx fragment
 <Toaster position="bottom-right" />;
 // then anywhere on the server:
 page.flash("Saved.", "success");
@@ -1859,7 +1859,7 @@ Or import directly from the package: `import { Progress } from "@zerotal/flow-ui
 
 ### Progress usage
 
-```tsx
+```tsx fragment
 <Progress value={imported} max={total} showValue />
 <Progress />  {/* indeterminate */}
 ```
@@ -1898,7 +1898,7 @@ Or import directly from the package: `import { Spinner } from "@zerotal/flow-ui"
 
 ### Spinner usage
 
-```tsx
+```tsx fragment
 <Spinner />
 <Button disabled><Spinner size="sm" /> Saving…</Button>
 ```
@@ -1935,7 +1935,7 @@ Or import directly from the package: `import { Empty } from "@zerotal/flow-ui";`
 
 ### Empty usage
 
-```tsx
+```tsx fragment
 <Empty
   icon={icon}
   title="No orders yet"
@@ -1978,7 +1978,7 @@ Or import directly from the package: `import { Kbd } from "@zerotal/flow-ui";`
 
 ### Kbd usage
 
-```tsx
+```tsx fragment
 <KbdMod /> <Kbd>K</Kbd>
 ```
 
@@ -2014,7 +2014,7 @@ Or import directly from the package: `import { Accordion } from "@zerotal/flow-u
 
 ### Accordion usage
 
-```tsx
+```tsx fragment
 <Accordion
   items={[
     { label: "Shipping", content: <p>Ships in 2–3 days.</p> },
@@ -2056,7 +2056,7 @@ Or import directly from the package: `import { Collapsible } from "@zerotal/flow
 
 ### Collapsible usage
 
-```tsx
+```tsx fragment
 <Collapsible label="Advanced">
   <Field label="Timeout">
     <Input />
@@ -2097,7 +2097,7 @@ Or import directly from the package: `import { ScrollArea } from "@zerotal/flow-
 
 ### ScrollArea usage
 
-```tsx
+```tsx fragment
 <ScrollArea class="h-72">…long list…</ScrollArea>
 ```
 
@@ -2134,7 +2134,7 @@ Or import directly from the package: `import { Resizable } from "@zerotal/flow-u
 
 ### Resizable usage
 
-```tsx
+```tsx fragment
 <Resizable start={<Tree />} end={<Editor />} defaultSize={30} />
 ```
 
@@ -2172,7 +2172,7 @@ Or import directly from the package: `import { Carousel } from "@zerotal/flow-ui
 
 ### Carousel usage
 
-```tsx
+```tsx fragment
 <Carousel
   items={products.map((p) => (
     <ProductCard product={p} />
@@ -2213,7 +2213,7 @@ Or import directly from the package: `import { AspectRatio } from "@zerotal/flow
 
 ### AspectRatio usage
 
-```tsx
+```tsx fragment
 <AspectRatio ratio={16 / 9}>
   <img src={cover} class="h-full w-full object-cover" />
 </AspectRatio>
@@ -2251,7 +2251,7 @@ Or import directly from the package: `import { Item } from "@zerotal/flow-ui";`
 
 ### Item usage
 
-```tsx
+```tsx fragment
 <Item title="Team" description="4 members" action={<Button size="sm">Manage</Button>} />
 ```
 
@@ -2289,7 +2289,7 @@ Or import directly from the package: `import { Chart } from "@zerotal/flow-ui";`
 
 ### Chart usage
 
-```tsx
+```tsx fragment
 <Chart type="line" labels={days} datasets={[{ label: "Orders", data: counts }]} />
 <Chart type="donut" labels={["Paid","Pending"]} datasets={[{ data: [82, 18] }]} />
 ```
@@ -2329,7 +2329,7 @@ Or import directly from the package: `import { Prose } from "@zerotal/flow-ui";`
 
 ### Prose usage
 
-```tsx
+```tsx fragment
 <Prose dangerouslySetInnerHTML={{ __html: rendered }} />
 <H1>Page title</H1>
 <Muted>Last updated yesterday</Muted>
@@ -2375,7 +2375,7 @@ component _you_ composed from them, and the props you pass it.
 lives in your repo, it is application code — it changes when you edit it, and
 nothing upstream will catch a regression you introduce:
 
-```typescript
+```typescript fragment
 // tests/components/StatusBadge.test.ts
 import { test, expect } from "bun:test";
 import { StatusBadge } from "../../resources/components/StatusBadge.tsx";

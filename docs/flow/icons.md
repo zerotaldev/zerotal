@@ -8,7 +8,7 @@ description: 2,060 icons bundled with Flow's component library — typed by name
 `<Icon>` draws an icon by name. The set ships inside `@zerotal/flow-ui`, so this
 works in a new app with nothing installed and nothing configured:
 
-```tsx
+```tsx fragment
 import { Icon } from "@zerotal/flow-ui";
 
 <Icon name="inbox" />
@@ -42,7 +42,7 @@ An icon is `1em` square and painted in `currentColor`, so by default it matches
 the text it sits beside — size, weight of colour, and all. Override with classes
 rather than attributes:
 
-```tsx
+```tsx fragment
 <p class="text-sm text-slate-600">
   <Icon name="info" /> Saved a moment ago
 </p>
@@ -74,7 +74,7 @@ label, that button has no accessible name at all:
 A name from a database column or a URL segment is not a literal, so it does not
 satisfy the union. `isIconName()` narrows it:
 
-```tsx
+```tsx fragment
 import { Icon, isIconName } from "@zerotal/flow-ui";
 
 override async render() {
@@ -113,7 +113,7 @@ differently: `git-branch` not `branch`, `file-json` not `json`, `paperclip` not
 Three sign-in providers ship as brand marks, because `@zerotal/auth` has a code
 path for each and a sign-in button wants the provider's actual logo:
 
-```tsx
+```tsx fragment
 <button><Icon name="brand-google" /> Continue with Google</button>
 <button><Icon name="brand-github" /> Continue with GitHub</button>
 <button><Icon name="brand-apple" /> Continue with Apple</button>

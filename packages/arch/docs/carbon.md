@@ -28,7 +28,7 @@ import { Carbon, CarbonInterval } from "zerotal/carbon";
 The constructor accepts a string, a millisecond timestamp, a native `Date`, a
 Temporal type, or another Carbon. A second argument sets the timezone.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 // Current date and time (system timezone)
 const now = new Carbon();
@@ -60,7 +60,7 @@ const d8 = new Carbon(Temporal.Now.instant());
 Named static factories cover the common boundary cases (all accept an optional
 timezone string):
 
-```typescript
+```typescript fragment
 // anywhere in your app
 Carbon.today(); // today at 00:00:00
 Carbon.tomorrow(); // tomorrow at 00:00:00
@@ -79,7 +79,7 @@ Carbon.create(input); // same as new Carbon(input)
 Every modifier returns a **new** Carbon. Chain freely — the base instance never
 changes.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const base = new Carbon("2026-01-15");
 const nextWeek = base.addDays(7);
@@ -95,7 +95,7 @@ deadline.format("YYYY-MM-DD"); // '2026-02-15'
 A Carbon carries its timezone; converting produces a new instance pointing at the
 same instant.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 // Read the timezone of an instance
 const tz = Carbon.now("Asia/Tokyo").timezone; // 'Asia/Tokyo'
@@ -117,7 +117,7 @@ Reading a Carbon never changes it. Calendar fields are plain properties, so they
 carry no parentheses; the three counts that depend on the surrounding calendar are
 methods, because they compute an answer rather than expose a stored field.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const d = new Carbon("2026-06-15 09:30:45.123");
 
@@ -162,7 +162,7 @@ out and comparing them by hand.
 
 ### Predicates
 
-```typescript
+```typescript fragment
 // anywhere in your app
 d.isToday();
 d.isTomorrow();
@@ -221,7 +221,7 @@ ranges, where inclusive bounds would place a boundary value in both buckets.
 
 All arithmetic returns a new Carbon.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 d.addNanoseconds(1)       d.subtractNanoseconds(1)
 d.addMicroseconds(1)      d.subtractMicroseconds(1)
@@ -245,7 +245,7 @@ either direction from a computed value without branching.
 
 To add a [CarbonInterval](#carboninterval), use `add()` / `subtract()`:
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const interval = CarbonInterval.days(3).andHours(6);
 
@@ -259,7 +259,7 @@ Months and years are calendar units rather than fixed spans, so adding one lands
 on the same day number in the target month — and clamps when that day does not
 exist there:
 
-```typescript
+```typescript fragment
 new Carbon("2026-01-31").addMonths(1); // → 2026-02-28
 new Carbon("2024-02-29").addYears(1); // → 2025-02-28
 ```
@@ -267,7 +267,7 @@ new Carbon("2024-02-29").addYears(1); // → 2025-02-28
 Clamping discards information, which makes month arithmetic asymmetric. Adding a
 month and taking it back does not always return the original date:
 
-```typescript
+```typescript fragment
 new Carbon("2026-01-31").addMonths(1).subtractMonths(1); // → 2026-01-28
 ```
 
@@ -285,7 +285,7 @@ and always reverse cleanly.
 
 Snap to the start or end of a time period — all return a new Carbon.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 d.startOfMinute(); // :00.000
 d.endOfMinute(); // :59.999999999
@@ -325,7 +325,7 @@ day without also catching midnight the next morning.
 
 The `with` prefix signals a new instance is returned.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 d.withYear(2030);
 d.withMonth(12); // 1-indexed
@@ -351,7 +351,7 @@ of setters.
 All numeric diff methods return a **number** — positive when `this` is after
 `other`.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const a = new Carbon("2026-01-01");
 const b = new Carbon("2026-06-15");
@@ -373,7 +373,7 @@ b.diffInYears(a); // ~0.42
 For a calendar-aware breakdown use `diffAsCarbonInterval`, which delegates to
 Temporal's `until()`:
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const age = birthday.diffAsCarbonInterval(Carbon.now(), "year");
 // → CarbonInterval { years: 28, months: 3, days: 12, … }
@@ -394,7 +394,7 @@ The `largestUnit` defaults to `'day'` and accepts `'year'`, `'month'`, `'week'`,
 Returns a human-readable relative string using `Intl.RelativeTimeFormat`. With no
 argument it compares against now.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const posted = new Carbon("2026-06-08");
 posted.diffForHumans(); // '1 week ago'
@@ -407,7 +407,7 @@ a.diffForHumans(b); // '5 months ago'
 
 Pass an options object to tune the output:
 
-```typescript
+```typescript fragment
 // anywhere in your app
 a.diffForHumans(b, {
   parts: 2, // include up to 2 units → '5 months, 1 week ago'
@@ -419,7 +419,7 @@ a.diffForHumans(b, {
 });
 ```
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const future = Carbon.now().addDays(3);
 future.diffForHumans(); // '3 days from now'
@@ -434,7 +434,7 @@ future.diffForHumans({ absolute: true }); // '3 days'
 
 ### Token-based
 
-```typescript
+```typescript fragment
 // anywhere in your app
 d.format(); // '2026-06-15 09:30:00'  (default)
 d.format("YYYY-MM-DD"); // '2026-06-15'
@@ -472,7 +472,7 @@ d.format("YYYY-MM-DDTHH:mm:ssZ"); // '2026-06-15T09:30:00+02:00'
 
 `intlFormat` delegates to `Intl.DateTimeFormat`:
 
-```typescript
+```typescript fragment
 // anywhere in your app
 d.intlFormat("en-US", { dateStyle: "full" });
 // → 'Monday, June 15, 2026'
@@ -489,7 +489,7 @@ d.intlFormat("ja-JP", { year: "numeric", month: "long", day: "numeric" });
 
 ### Convenience formatters
 
-```typescript
+```typescript fragment
 // anywhere in your app
 d.toDateString(); // '2026-06-15'
 d.toDateTimeString(); // '2026-06-15 09:30:00'
@@ -509,7 +509,7 @@ d.toLongDate(); // '15 June 2026'
 
 ## Serialisation
 
-```typescript
+```typescript fragment
 // anywhere in your app
 d.toDate(); // native Date
 d.toISOString(); // '2026-06-15T07:30:00+00:00' (UTC)
@@ -529,7 +529,7 @@ d.toPlainDate(); // Temporal.PlainDate (loses time + timezone)
 
 `valueOf()` enables direct comparison with `<`, `>`, `-`:
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const a = new Carbon("2026-01-01");
 const b = new Carbon("2026-06-15");
@@ -544,7 +544,7 @@ Math.min(+a, +b) === +a; // true
 `CarbonInterval` is an immutable duration value object backed by
 `Temporal.Duration`. Every method returns a new instance.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 import { CarbonInterval } from "zerotal/carbon";
 
@@ -575,7 +575,7 @@ const built = new CarbonInterval({ years: 1, months: 6, days: 3 });
 
 Chain `and*` methods to compose multi-unit intervals:
 
-```typescript
+```typescript fragment
 // anywhere in your app
 CarbonInterval.days(3).andHours(6).andMinutes(30);
 // → 3 days 6 hours 30 minutes
@@ -592,7 +592,7 @@ Available: `andYears`, `andMonths`, `andWeeks`, `andDays`, `andHours`,
 
 ### Interval getters
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const i = CarbonInterval.fromISO("P1Y2M3DT4H5M6S");
 
@@ -613,7 +613,7 @@ i.isZero; // false
 
 ### Interval arithmetic
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const a = CarbonInterval.hours(2);
 const b = CarbonInterval.minutes(30);
@@ -630,7 +630,7 @@ CarbonInterval.abs(a.negate()); // 2 hours  (all fields positive)
 `cascade()` rolls excess sub-units up into higher ones. It needs a reference date
 for calendar-aware units (months, years) and defaults to now in UTC.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 CarbonInterval.seconds(90).cascade();
 // → { minutes: 1, seconds: 30 }
@@ -653,7 +653,7 @@ CarbonInterval.days(32).cascade(Carbon.today().inTimezone("UTC").toZonedDateTime
 
 Calendar units (years, months) are approximated as average lengths.
 
-```typescript
+```typescript fragment
 // anywhere in your app
 CarbonInterval.hours(2).andMinutes(30).totalMinutes(); // 150
 CarbonInterval.days(3).andHours(6).totalHours(); // 78
@@ -667,7 +667,7 @@ i.totalWeeks();
 
 ### Interval comparison
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const a = CarbonInterval.hours(2);
 const b = CarbonInterval.minutes(90);
@@ -681,7 +681,7 @@ CarbonInterval.compare(a, b); // 1 (a > b), -1 (a < b), 0 (equal)
 
 ### Human-readable output
 
-```typescript
+```typescript fragment
 // anywhere in your app
 CarbonInterval.days(1).andHours(2).andMinutes(30).forHumans();
 // → '1 day 2 hours 30 minutes'
@@ -697,7 +697,7 @@ i.toString(); // alias for forHumans()
 
 ### Interval serialisation
 
-```typescript
+```typescript fragment
 // anywhere in your app
 CarbonInterval.days(1).andHours(2).toISO();
 // → 'P1DT2H'
@@ -715,7 +715,7 @@ An interval is what [`add()` and `subtract()`](#add-and-subtract) accept, and wh
 [`diffAsCarbonInterval()`](#differences) returns — the two directions between the
 types:
 
-```typescript
+```typescript fragment
 // anywhere in your app
 const interval = CarbonInterval.days(3).andHours(6);
 
@@ -732,7 +732,7 @@ immutable and pure, so it needs no application — but a test that reaches for
 **Pin the instant.** Pass a fixed input rather than using the current time, and
 the assertion holds forever:
 
-```typescript
+```typescript fragment
 // tests/dates/BillingPeriod.test.ts
 import { test, expect } from "bun:test";
 import { Carbon } from "zerotal/carbon";
@@ -751,7 +751,7 @@ test("a mid-month signup bills to the end of the month", () => {
 calls `Carbon.now()` internally can only be tested by waiting or by mocking; one
 that accepts a `now` parameter is tested by passing a date:
 
-```typescript
+```typescript fragment
 // app/services/billing.ts
 export function periodFor(signedUp: Carbon, now: Carbon = Carbon.now()): Period {
   // …
@@ -766,7 +766,7 @@ month end.
 transitions are where date code breaks, and none of them appear in a test written
 around today:
 
-```typescript
+```typescript fragment
 // tests/dates/BillingPeriod.test.ts
 test("handles a leap day", () => {
   expect(Carbon.create("2028-02-29T12:00:00Z").addYears(1).toDateString()).toBe("2029-02-28");

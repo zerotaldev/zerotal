@@ -137,7 +137,7 @@ sends one real message and prints whatever the server said.
 Extend `Notification`, declare `channels()`, then implement a `to*()` method for
 each declared channel:
 
-```ts
+```ts fragment
 // app/notifications/OrderShippedNotification.ts
 import { Notification, MailMessage } from "@zerotal/notifications";
 import type { Notifiable } from "@zerotal/notifications";
@@ -188,7 +188,7 @@ export class OrderShippedNotification extends Notification {
 `channels()` receives the recipient, so a single notification can respect each
 person's preferences instead of forcing every recipient down the same path:
 
-```ts
+```ts fragment
 // app/notifications/OrderShippedNotification.ts
 channels(user: Notifiable) {
   // Everyone gets the inbox copy; how they're alerted is their choice.
@@ -202,7 +202,7 @@ common case, and `channels()` with no arguments stays valid.
 A recipient can also redirect an individual channel without any notification
 knowing about it, by implementing `routeNotificationFor`:
 
-```ts
+```ts fragment
 // app/models/User.ts
 routeNotificationFor(channel: string) {
   // Invoices go to the billing contact; everything else to the usual address.
@@ -221,7 +221,7 @@ afterwards as a `NotificationDispatchError`. A Slack webhook returning a 500 doe
 not cost the recipient the email and the stored row that were declared alongside
 it.
 
-```ts
+```ts fragment
 // in a controller or service
 try {
   await Notify.send(user, new OrderShippedNotification(order));
@@ -289,7 +289,7 @@ export class User extends AuthUser.using(Notifiable) {
 }
 ```
 
-```ts
+```ts fragment
 // in a controller or service
 await user.notify(new OrderShippedNotification(order)); // send now
 await user.notifyLater(new OrderShippedNotification(order)); // queue for background
@@ -301,7 +301,7 @@ await user.markNotificationsAsRead();
 
 ### Via the Notify facade
 
-```ts
+```ts fragment
 // in a controller or service
 import { Notify } from "@zerotal/notifications";
 
@@ -315,7 +315,7 @@ await Notify.queue(user, new OrderShippedNotification(order)); // queue for back
 independent: one failing does not stop the rest, and the errors are reported
 together at the end.
 
-```ts
+```ts fragment
 // in a controller or service
 const admins = await User.where("role", "admin").get();
 await Notify.sendMany(admins, new LowStockNotification(product));
@@ -326,7 +326,7 @@ await Notify.sendMany(admins, new LowStockNotification(product));
 Some notifications go to a destination rather than a user — an on-call address, a
 webhook, a number typed into a form. `route()` takes the destinations directly:
 
-```ts
+```ts fragment
 // in a controller or service
 await Notify.route({ mail: "ops@acme.test" }).notify(new DeployFinished(build));
 
@@ -343,7 +343,7 @@ normally declares only transport channels.
 
 ### Via the NotificationManager directly
 
-```ts
+```ts fragment
 // in a service
 import { NotificationManager } from "@zerotal/notifications";
 import { Application } from "zerotal";
@@ -361,7 +361,7 @@ to the notifiable's `email`, so you rarely set `to()`. The mail channel is
 built-in and works on the `log` driver out of the box; switch to `smtp` or
 `resend` in `config/notifications.ts`.
 
-```ts
+```ts fragment
 // in a Notification
 import { MailMessage } from "@zerotal/notifications";
 import type { Notifiable } from "@zerotal/notifications";
@@ -379,7 +379,7 @@ Attach files with `attach()` when you already have the bytes, or `attachFile()`
 to read one from disk. `embed()` places an image in the body rather than listing
 it as a download — reference it from your HTML as `cid:the-id`:
 
-```ts
+```ts fragment
 // in a Notification
 async toMail(_n: Notifiable): Promise<MailMessage> {
   return (await new MailMessage()
@@ -416,7 +416,7 @@ Read and mark stored notifications through the [mixin helpers](#via-the-notifiab
 Inbox reads return the 100 most recent rows unless told otherwise. Pass a limit
 and offset to page, or `limit: 0` for everything:
 
-```ts
+```ts fragment
 // in a controller
 const page = await user.notifications({ limit: 20, offset: 40 });
 const badge = await user.unreadNotificationCount(); // counts without loading rows
@@ -430,7 +430,7 @@ past an age threshold; add `--all` to include unread ones. Schedule it.
 
 Implement `toSlack(notifiable)` returning a `SlackMessage`:
 
-```ts
+```ts fragment
 // in a Notification
 import type { SlackMessage } from "@zerotal/notifications";
 
@@ -453,7 +453,7 @@ channel raises a `NotificationChannelNotConfiguredError` naming the notification
 Implement `toSms(notifiable)` returning an `SmsMessage`. Supported drivers:
 `twilio` and `vonage`.
 
-```ts
+```ts fragment
 // in a Notification
 import type { SmsMessage } from "@zerotal/notifications";
 
@@ -474,7 +474,7 @@ Push a notification to a connected client in real time via
 returning a `BroadcastMessage` (or a plain data object), and optionally
 `broadcastType()` to set the wire `type`:
 
-```ts
+```ts fragment
 // app/notifications/InvoicePaid.ts
 import { Notification, BroadcastMessage } from "@zerotal/notifications";
 import type { Notifiable } from "@zerotal/notifications";
@@ -504,7 +504,7 @@ The broadcast channel works like this:
   `private-notifications.{id}` by default. Override per notifiable with
   `receivesBroadcastNotificationsOn(): string`:
 
-  ```ts
+  ```ts fragment
   // app/models/User.ts
   class User extends Model {
     receivesBroadcastNotificationsOn() {
@@ -521,14 +521,14 @@ The broadcast channel works like this:
   stored notification.
 - **Authorize** the per-user channel in `routes/channels.ts`:
 
-  ```ts
+  ```ts fragment
   // routes/channels.ts
   Broadcast.channel("notifications.[id]", (user, id) => String(user.id) === id);
   ```
 
 - **Client** (any Pusher-compatible client):
 
-  ```ts
+  ```ts fragment
   // in your frontend
   Socket.private(`notifications.${userId}`).listen("notification", (n) => {
     console.log(n.type, n);
@@ -541,7 +541,7 @@ A broadcast goes out inline, which is the point of the channel. When one fans ou
 widely enough that the request should not wait for it, `.onQueue(name)` hands it
 to a worker instead — at the cost of arriving whenever that worker picks it up.
 
-```ts
+```ts fragment
 // in a Notification
 toBroadcast(_n: Notifiable) {
   return new BroadcastMessage({ id: this.report.id }).onQueue("broadcasts");
@@ -576,7 +576,7 @@ const notifications = this.app.container.makeSync("notifications");
 notifications.extend("discord", () => new DiscordChannel());
 ```
 
-```ts
+```ts fragment
 // app/notifications/DeployFinished.ts
 channels() {
   return ["database", "discord"];
@@ -627,7 +627,7 @@ By default a notification's own enumerable fields are serialized, which covers a
 constructor that assigns plain values. When it holds something JSON cannot carry
 — a model instance, a `Map`, a closure — say how to shrink and rebuild it:
 
-```ts
+```ts fragment
 // app/notifications/InvoicePaid.ts
 export class InvoicePaid extends Notification {
   constructor(private invoice: Invoice) {
@@ -649,7 +649,7 @@ export class InvoicePaid extends Notification {
 `NotificationFake` swaps the `"notifications"` container binding for an
 in-memory recorder, so assertions run without hitting any real channel:
 
-```ts
+```ts fragment
 // tests/orders.test.ts
 import { NotificationFake } from "@zerotal/notifications";
 import { describe, it, beforeEach, afterEach } from "bun:test";

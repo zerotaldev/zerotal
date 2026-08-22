@@ -11,7 +11,7 @@ Validate input, bind form fields to component state with two-way binding, encaps
 
 Attach rules with `@validate` on individual fields, or pass them explicitly to `this.validate()`:
 
-```typescript
+```typescript fragment
 import { expose, validate } from "@zerotal/flow";
 
 @expose @validate((rule) => rule.required().email())              email:    string = "";
@@ -29,7 +29,7 @@ builder (`rule.number()`, …). The same `@validate` rule also powers
 
 Call `this.validate()` at the start of your action. It reads the `@validate` rules and throws a `ValidationError` if any fail — Flow catches it, populates `this.errors`, and re-renders:
 
-```typescript
+```typescript fragment
 @expose async register(): Promise<void> {
   await this.validate(); // uses @validate rules declared on the class
 
@@ -46,7 +46,7 @@ Call `this.validate()` at the start of your action. It reads the `@validate` rul
 
 Pass explicit rules to override or extend `@validate`:
 
-```typescript
+```typescript fragment
 @expose async update(): Promise<void> {
   await this.validate({
     email:    (rule) => rule.required().email(),
@@ -83,7 +83,7 @@ Pass explicit rules to override or extend `@validate`:
 
 Pass a field off `this.errors` to the `error` prop. It renders the first message for that field and hides itself when the field is valid — no manual show/hide logic:
 
-```tsx
+```tsx fragment
 <input value={this.email} />
 <span error={this.errors.email} class="text-sm text-red-500" />
 
@@ -93,7 +93,7 @@ Pass a field off `this.errors` to the `error` prop. It renders the first message
 
 Use the `<Field>` component for accessible label + error wiring:
 
-```tsx
+```tsx fragment
 import { Field } from "@zerotal/flow";
 
 <Field label="Email" error={this.errors.email}>
@@ -107,7 +107,7 @@ import { Field } from "@zerotal/flow";
 
 Show all errors at once with `<Errors>`:
 
-```tsx
+```tsx fragment
 import { Errors } from "@zerotal/flow";
 
 <Errors />                          {/* all current errors */}
@@ -143,7 +143,7 @@ this.resetValidation("email"); // clear one field
 
 Pass state to `value` (or `checked`). Flow makes it two-way for `@expose` properties and read-only for `@locked` ones — no helper needed:
 
-```tsx
+```tsx fragment
 {/* Text inputs */}
 <input value={this.name} />
 <input value={this.email} />
@@ -194,7 +194,7 @@ export class LoginForm extends Form {
 
 Mount the form on a component:
 
-```typescript
+```typescript fragment
 export class LoginPage extends Component {
   @expose form = new LoginForm();
 
@@ -273,7 +273,7 @@ See [Pagination](/docs/flow/pagination) for the full guide — `paginate()`, `Pa
 
 Quick reference for in-memory pagination:
 
-```typescript
+```typescript fragment
 import { paginate } from "@zerotal/flow";
 
 export class PostsPage extends Component {
@@ -342,7 +342,7 @@ export class PostsPage extends Component {
 
 Compose `Pagination` to get the page state and navigation methods automatically — no boilerplate:
 
-```tsx
+```tsx fragment
 import { Component, Pagination } from "@zerotal/flow";
 
 export class PostsPage extends Component.using(Pagination) {
@@ -404,7 +404,7 @@ export class PostsPage extends Component.using(Pagination) {
 
 Reset the page when a filter changes to avoid showing an empty page:
 
-```typescript
+```typescript fragment
 @expose async applyFilter(status: string): Promise<void> {
   this.filter = status;
   this.resetPage(); // go back to page 1
@@ -413,7 +413,7 @@ Reset the page when a filter changes to avoid showing an empty page:
 
 Compose with other mixins:
 
-```typescript
+```typescript fragment
 // `Sorting` here is a mixin you author yourself (see Layouts & Composition);
 // `Pagination` is the one shipped by Flow.
 export class PostsPage extends Component.using(Sorting, Pagination) {
@@ -425,7 +425,7 @@ export class PostsPage extends Component.using(Sorting, Pagination) {
 
 For database queries, skip the in-memory `paginate()` and use the ORM query builder directly. Combine with `@url page`:
 
-```typescript
+```typescript fragment
 export class PostsPage extends Component {
   @url page = 1;
   @locked posts: Post[] = [];

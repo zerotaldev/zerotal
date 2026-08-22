@@ -25,13 +25,13 @@ carrying the rows plus the metadata, cursors, and URL helpers a UI needs.
 Pagination ships with `@zerotal/orm` as query-builder methods — nothing to
 install or register. Call them at the end of any query:
 
-```typescript
+```typescript fragment
 const page = await Post.query().latest().paginate();
 ```
 
 ## paginate — full numbered pages
 
-```typescript
+```typescript fragment
 // in a controller
 const page = await Post.query()
   .where("status", "published")
@@ -48,7 +48,7 @@ complete picture — at the cost of the extra count query. `perPage` defaults to
 omit `page` and it reads the request's current page (`?page=`, or the page a Flow
 component registered).
 
-```typescript
+```typescript fragment
 async paginate<T>(perPage?: number, page?: number): Promise<PaginateResult<T>>
 ```
 
@@ -77,7 +77,7 @@ interface PaginateResult<T> {
 
 ### URL & state helpers
 
-```typescript
+```typescript fragment
 // using a PaginateResult `page`
 page.hasMorePages; // boolean
 page.onFirstPage; // boolean
@@ -101,7 +101,7 @@ and extra query params, which are preserved across links so filters survive
 Skips the `COUNT` entirely by fetching `perPage + 1` rows to detect whether
 another page follows. Use it when you don't need a total or page numbers:
 
-```typescript
+```typescript fragment
 // in a controller
 const page = await Post.query().latest().simplePaginate(20);
 
@@ -111,7 +111,7 @@ page.nextPageUrl();
 page.onFirstPage;
 ```
 
-```typescript
+```typescript fragment
 async simplePaginate<T>(perPage?: number, page?: number): Promise<SimplePaginateResult<T>>
 ```
 
@@ -128,7 +128,7 @@ BY id ASC`, fetching `limit + 1` rows to detect a next page. It has **no
 `COUNT`** and stays fast no matter how deep you scroll — ideal for
 infinite-scroll feeds and very large tables:
 
-```typescript
+```typescript fragment
 // in a controller
 let result = await Post.query().cursorPaginate({ limit: 20 });
 
@@ -141,7 +141,7 @@ result.hasMore; // boolean
 const more = await Post.query().cursorPaginate({ cursor: result.nextCursor!, limit: 20 });
 ```
 
-```typescript
+```typescript fragment
 async cursorPaginate<T>(options?: { cursor?: number; limit?: number }): Promise<CursorPaginateResult<T>>
 ```
 
@@ -157,7 +157,7 @@ that encodes the last row's sort value so clients cannot interpret or tamper wit
 it. A secondary `id ASC` tiebreaker keeps page boundaries stable when the sort
 column isn't unique.
 
-```typescript
+```typescript fragment
 // in a controller
 // First page, newest first
 const p1 = await Post.query().keysetPaginate({ column: "created_at", direction: "desc" });
@@ -173,7 +173,7 @@ const p2 = await Post.query().keysetPaginate({
 });
 ```
 
-```typescript
+```typescript fragment
 async keysetPaginate<T>(options?: KeysetOptions): Promise<KeysetPaginateResult<T>>
 
 interface KeysetOptions {
@@ -213,7 +213,7 @@ Paginate _after_ applying filters and sorting, then pass the current filters to
 `links()` so they ride along on every page URL — without that, clicking "page 2" would
 silently drop the user's search:
 
-```typescript
+```typescript fragment
 // in a controller — GET /search?q=bun&page=2
 const q = http.query("q", "");
 
@@ -235,7 +235,7 @@ return view("search", {
 For a feed the client scrolls forever, return the rows plus the next cursor and nothing
 else — no count, no page numbers. The client sends the cursor back to fetch more:
 
-```typescript
+```typescript fragment
 // in a controller — GET /api/posts?cursor=128
 const result = await Post.query()
   .with("author")
@@ -258,7 +258,7 @@ live at the edges, so test the boundaries rather than the happy page.
 A `paginate()` result carries `data` plus the counts, so one call proves several
 things at once:
 
-```typescript
+```typescript fragment
 // tests/pagination/Posts.test.ts
 import { test, expect } from "bun:test";
 import { PostFactory } from "../../database/factories/PostFactory.ts";
@@ -280,7 +280,7 @@ test("reports the right totals on the last page", async () => {
 **The three cases worth pinning down** are the ones that produce a broken UI
 rather than an exception:
 
-```typescript
+```typescript fragment
 // tests/pagination/Posts.test.ts
 test("an empty result reports null bounds, not zero", async () => {
   const page = await Post.query().where("status", "nothing").paginate();

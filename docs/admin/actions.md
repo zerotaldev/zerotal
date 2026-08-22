@@ -9,7 +9,7 @@ Actions power the row, header, and bulk buttons. The defaults are
 `viewAction()/editAction()/deleteAction()` (rows), `createAction()` (header), and
 `bulkDeleteAction()` (bulk) — override the corresponding methods to customize.
 
-```ts
+```ts fragment
 import { action, editAction, deleteAction, textInput } from "@zerotal/admin";
 
 static recordActions() {
@@ -28,7 +28,7 @@ static recordActions() {
 A row with more than three visible actions collapses the surplus into an overflow
 menu. Actions can also open a **modal form**:
 
-```ts
+```ts fragment
 action("assign")
   .label("Assign reviewer")
   .form([ select("reviewer_id").options(reviewers).required() ])
@@ -43,7 +43,7 @@ action("assign")
 A row with seven buttons is unreadable. `actionGroup` collapses several into one
 labelled dropdown, so the row keeps the two people reach for and files the rest:
 
-```ts
+```ts fragment
 import { actionGroup, replicateAction, deleteAction } from "@zerotal/admin";
 
 static recordActions() {
@@ -67,7 +67,7 @@ nothing. Groups work in the header and the bulk toolbar too.
 `replicateAction()` copies a record and opens the copy for editing. The primary key
 and timestamps are always dropped; name anything else that must stay unique:
 
-```ts
+```ts fragment
 replicateAction()
   .excludeAttributes(["sku", "slug"])
   .beforeReplicaSaved((data) => ({ ...data, name: `${data.name} (copy)`, status: "draft" })),
@@ -75,7 +75,7 @@ replicateAction()
 
 ## Import and export
 
-```ts
+```ts fragment
 import { exportAction, importAction, bulkExportAction } from "@zerotal/admin";
 
 static headerActions() {
@@ -94,7 +94,7 @@ exports the selection instead.
 
 Pass `"xlsx"` for a spreadsheet instead:
 
-```ts
+```ts fragment
 return [createAction(), exportAction(), exportAction("xlsx")];
 ```
 
@@ -107,7 +107,7 @@ header row is frozen with a filter over the used range.
 Keep a column out of the file with `.exportable(false)`. Pay, internal notes and
 anything else that should not travel in a spreadsheet belongs behind that flag:
 
-```ts
+```ts fragment
 text("salary").exportable(false),
 ```
 
@@ -129,7 +129,7 @@ An import runs inline by default, capped at 2,000 rows — a synchronous import
 holds a WebSocket round-trip open, and a bigger file looks like a hang. Hand it
 to a queue instead and the cap lifts:
 
-```ts
+```ts fragment
 static headerActions() {
   return [createAction(), exportAction(), importAction({ queue: true })];
 }
@@ -153,7 +153,7 @@ imported only when an import is actually queued.
 
 Relation managers appear as tables on the View page.
 
-```ts
+```ts fragment
 import { hasMany, belongsToMany } from "@zerotal/admin";
 
 static relations() {

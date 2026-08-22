@@ -21,7 +21,7 @@ real back office takes.
 A cluster gives a group of resources a shared URL segment and a single sidebar
 entry. Declare one, then point resources at it:
 
-```ts
+```ts fragment
 import { Cluster } from "@zerotal/admin";
 
 export class ShopCluster extends Cluster {
@@ -42,7 +42,7 @@ the cluster segment on its own. Nothing in a resource needs to know its own path
 
 A cluster's `ability` gates the whole section:
 
-```ts
+```ts fragment
 export class FinanceCluster extends Cluster {
   static override slug = "finance";
   static override title = "Finance";
@@ -59,7 +59,7 @@ Some records have no meaning apart from their parent. Comments belong to a post;
 there is no useful screen listing every comment in the database. Declare the
 parent and the resource moves inside it:
 
-```ts
+```ts fragment
 export class CommentResource extends Resource {
   static override model = Comment;
   static override parent = { resource: () => PostResource, foreignKey: "post_id" };
@@ -83,7 +83,7 @@ on whichever side of the import cycle evaluated first.
 When the parent declares the child with `hasMany`, its view page links into the
 nested pages instead of rendering an inline table:
 
-```ts
+```ts fragment
 export class PostResource extends Resource {
   static override relations() {
     return [hasMany(CommentResource, "post_id").title("Comments")];
@@ -96,7 +96,7 @@ export class PostResource extends Resource {
 Site settings are one row. A list of one, with a view page and an edit page behind
 it, is three screens too many:
 
-```ts
+```ts fragment
 export class SettingsResource extends Resource {
   static override model = Setting;
   static override singular = true;
@@ -123,7 +123,7 @@ than an error.
 Most applications have one panel, and `Panel.configure(...)` / `Panel.register(...)`
 write to it. When a second audience needs a second set of screens, make another:
 
-```ts
+```ts fragment
 // The back office — everything.
 Panel.configure({ brand: "Acme", path: "/admin", middleware: [AuthMiddleware] });
 Panel.register(ProductResource, OrderResource, UserResource);

@@ -37,7 +37,7 @@ bunx playwright install --with-deps
 Add a `playwright.config.ts` that boots your app with the `webServer` option, so the
 server starts once for the whole run and is torn down after:
 
-```typescript
+```typescript fragment
 // playwright.config.ts
 import { defineConfig, devices } from "@playwright/test";
 
@@ -81,7 +81,7 @@ Wire up scripts in `package.json`:
 Specs live in `e2e/` and use Playwright's `test`/`expect`. Drive the page through
 roles and assert on what the user sees:
 
-```typescript
+```typescript fragment
 // e2e/navigate.e2e.ts
 import { test, expect } from "@playwright/test";
 
@@ -112,7 +112,7 @@ Flow pages finish wiring once Alpine has walked the DOM and fired
 `alpine:initialized`. A fast click can land before that and silently no-op (a flaky,
 browser-dependent failure). Wait for readiness before interacting:
 
-```typescript
+```typescript fragment
 // e2e/support/gotoReady.ts
 import type { Page } from "@playwright/test";
 

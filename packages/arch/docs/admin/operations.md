@@ -30,7 +30,7 @@ as it does today.
 
 Turn it on per resource:
 
-```ts
+```ts fragment
 export class ProductResource extends Resource {
   static override history = true;
 }
@@ -50,7 +50,7 @@ ago should not also undo the description somebody fixed yesterday.
 The support request nobody can reproduce is usually solved by seeing what the person
 actually sees.
 
-```ts
+```ts fragment
 export class UserResource extends Resource {
   static override impersonatable = true;
 
@@ -79,7 +79,7 @@ Every bit of list state already lives in the URL: search, filters, tab, sort, co
 visibility, grouping, page size. So a saved view is a saved query string, and
 restoring one is a link.
 
-```ts
+```ts fragment
 Panel.savedViews({
   async list(resource) {
     /* … */
@@ -103,7 +103,7 @@ A file upload field puts a file somewhere and stores a path. That works until th
 logo is needed on twenty products, or somebody wants to know what is still pointing at
 a file before deleting it.
 
-```ts
+```ts fragment
 import { databaseMedia, mediaPicker } from "@zerotal/admin";
 
 Panel.media(databaseMedia());
@@ -117,7 +117,7 @@ somewhere else.
 Configured, the panel gains a Media page — a grid with upload, search, folder
 filtering, alt-text editing and deletion — and forms can use the picker:
 
-```ts
+```ts fragment
 mediaPicker("imageUrl").label("Image");
 ```
 
@@ -134,7 +134,7 @@ Authorization already works without a UI: a resource's `can()` answers every que
 the panel asks. What is missing is the other direction — seeing who can do what, and
 changing it, without editing code.
 
-```ts
+```ts fragment
 import { authRoles } from "@zerotal/admin";
 
 Panel.roles(authRoles({ superusers: ["admin"] }));
@@ -162,7 +162,7 @@ week.
 What belongs at the top of a dashboard differs by role, and neither the finance lead
 nor support wants to scroll past the other's widget every morning.
 
-```ts
+```ts fragment
 Panel.dashboardLayout({
   async load() {
     return Auth.user()?.dashboard ?? null;
@@ -193,7 +193,7 @@ stale key mentions it.
 Two people editing the same record is normal; one of them losing their work silently
 is not.
 
-```ts
+```ts fragment
 export class ProductResource extends Resource {
   static override optimisticLock = "version";
 }
@@ -207,7 +207,7 @@ overwriting loses somebody's work, and merging blind is worse.
 
 The expensive mistake is editing production believing it is staging.
 
-```ts
+```ts fragment
 import { environmentIndicator } from "@zerotal/admin";
 
 Panel.renderHook("body.start", environmentIndicator());

@@ -125,7 +125,7 @@ import {
 Extend `BroadcastingEvent`, implement `broadcastOn()`, and dispatch — every subscribed client on
 that channel receives the payload:
 
-```ts
+```ts fragment
 // app/events/OrderShipmentStatusUpdated.ts
 import { BroadcastingEvent, privateChannel } from "@zerotal/broadcasting";
 import type { Order } from "../models/Order.ts";

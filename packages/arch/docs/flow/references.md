@@ -129,7 +129,7 @@ So Flow re-derives instead. Any component left mid-action is refreshed from the 
 
 The refresh is announced first, so you can say something rather than have the UI change under the user:
 
-```ts
+```ts fragment
 document.addEventListener("flow:desync", (e) => {
   const { components } = (e as CustomEvent<{ components: string[] }>).detail;
   toast(`Reconnected — refreshing ${components.length} component(s).`);
@@ -156,7 +156,7 @@ Mark a container with `onSort` (the reorder action) and each child with `sortIte
 | `sortIgnore`            | Exclude this child from dragging/reordering              | `flow:sort:ignore` |
 | `sortGroup="tasks"`     | Allow dragging between containers sharing the group name | `flow:sort:group`  |
 
-```tsx
+```tsx fragment
 @expose async reorder(key: string, index: number) {
   const moved = this.items.find((i) => String(i.id) === key);
   if (!moved) return;
@@ -272,7 +272,7 @@ A write syncs to the server after the expression finishes, unless the same expre
 
 `$flow.store` is app-wide UI state that shouldn't round-trip to the server — side-panel visibility, colour scheme, notification drawer, etc. Declare its shape with `defineStore(...)` at app start and type it by augmenting `FlowStore` (see [The global client store](/docs/flow#the-global-client-store)):
 
-```tsx
+```tsx fragment
 <button onClick={() => ($flow.store.ui.sidebarOpen = true)}>Open sidebar</button>
 <aside show={$flow.store.ui.sidebarOpen}>Sidebar content</aside>
 ```

@@ -54,7 +54,7 @@ cached either way.
 
 `data-current` matches by **prefix** — a link to `/posts` stays active on `/posts/42` — which is what you want for a section parent. For an index link that should be active only on its own exact URL (an "Overview" tab that shouldn't light up on the section's sub-pages), add `exact`:
 
-```tsx
+```tsx fragment
 <Link href="/dashboard" exact class="data-[current]:font-bold">
   Overview
 </Link>
@@ -72,7 +72,7 @@ Some links aren't really going anywhere, though: a sort header, a filter chip, a
 tab strip partway down a long page. Jumping to the top for those loses the
 control the user was just looking at. `preserveScroll` leaves the viewport alone:
 
-```tsx
+```tsx fragment
 <Link href={this.currentUrl({ query: { sort: "title" } })} preserveScroll>
   Title
 </Link>
@@ -132,7 +132,7 @@ Elements inside `<Persist>` also survive server-patch morphs (they carry `flow:i
 
 A dialog that bundles reactive visibility, a backdrop, a panel, a transition, a close button, and Escape-to-close — all wired to one boolean prop. Clicking the backdrop, the × button, or pressing Escape sets that prop back to `false`:
 
-```tsx
+```tsx fragment
 import { Modal } from "@zerotal/flow";
 
 export class ContactsPage extends Component {
@@ -175,7 +175,7 @@ export class ContactsPage extends Component {
 
 A slide-over panel — the edge-anchored sibling of `<Modal>`. Same binding and close model (backdrop, × and Escape all close it client-side with no round-trip; focus-trapped), but slides in from an edge:
 
-```tsx
+```tsx fragment
 import { Drawer } from "@zerotal/flow";
 
 <button onClick={() => (this.cartOpen = true)}>Cart ({this.cartCount})</button>
@@ -219,7 +219,7 @@ Levels `success` / `error` / `warning` / `info` map to distinct colors. Click a 
 
 A dismissible inline alert. `variant` sets the palette and ARIA role (error/warning announce assertively). Dismissal is client-only — no round-trip:
 
-```tsx
+```tsx fragment
 import { Alert } from "@zerotal/flow";
 
 <Alert variant="success" dismissible>
@@ -237,7 +237,7 @@ import { Alert } from "@zerotal/flow";
 
 Shows its children only while a server action is in flight — and, so a fast action never flashes a spinner, loading **indicators wait out a short delay** (~200ms) by default: an action that finishes inside that window shows nothing at all. This applies to the whole loading family — `<Loading>`, `showOnLoading`, `hideOnLoading`, and `loadingClass`. Only `loadingAttr` (e.g. `loadingAttr="disabled"`) is applied immediately, so a submit button still guards against a double-click even on a sub-100ms action. The `delay` prop is now the default behaviour and kept only for clarity/back-compat:
 
-```tsx
+```tsx fragment
 import { Loading } from "@zerotal/flow";
 
 <button onClick={this.save}>Save</button>
@@ -262,7 +262,7 @@ import { Loading } from "@zerotal/flow";
 
 Renders the component's entire validation error bag as a list. Hidden when there are none:
 
-```tsx
+```tsx fragment
 import { Errors } from "@zerotal/flow";
 
 <Errors />                              {/* every current error */}
@@ -273,7 +273,7 @@ import { Errors } from "@zerotal/flow";
 
 A single field's first error message as a self-hiding `<span>`. Equivalent to `<span error={this.errors.field} />`:
 
-```tsx
+```tsx fragment
 import { ErrorMessage } from "@zerotal/flow";
 
 <input value={this.form.email} />
@@ -286,7 +286,7 @@ Contains a failure in a nested component so it costs that component rather than 
 one, a child that throws while mounting or rendering takes the whole response with it — one broken
 widget blanks the dashboard.
 
-```tsx
+```tsx fragment
 import { ErrorBoundary } from "@zerotal/flow";
 
 <ErrorBoundary fallback={<p class="text-sm text-red-600">Sales data unavailable.</p>}>
@@ -297,7 +297,7 @@ import { ErrorBoundary } from "@zerotal/flow";
 `fallback` may be a function, which receives the thrown error. `onError` reports it (for logging or
 an error tracker) without changing what renders:
 
-```tsx
+```tsx fragment
 <ErrorBoundary fallback={(e) => <p>{(e as Error).message}</p>} onError={(e) => Log.error(e)}>
   <RiskyWidget />
 </ErrorBoundary>
@@ -317,7 +317,7 @@ affect the other.
 
 A data table with URL-driven sortable headers. Clicking a sortable header navigates to `?sortBy=key&sortDir=asc|desc`. Pair with `@url sortBy`/`@url sortDir` and sort the rows server-side in `render()`:
 
-```tsx
+```tsx fragment
 import { Table, Pager } from "@zerotal/flow";
 
 export class UsersPage extends Component.using(Pagination) {
@@ -362,7 +362,7 @@ export class UsersPage extends Component.using(Pagination) {
 
 Renders a Prev / numbered / Next pager from either paginator — `Model.paginate()` or the in-memory `paginate()` helper. Links are `navigate` anchors to `?page=N`, so they pair with `@url page` automatically. (The `Pagination` export is the page-state mixin; `<Pager>` is the links UI.)
 
-```tsx
+```tsx fragment
 import { Pager } from "@zerotal/flow";
 
 const users = await User.paginate(this.perPage);
@@ -375,7 +375,7 @@ const users = await User.paginate(this.perPage);
 
 A sentinel element that calls a server action when it scrolls into view. Pass `show` to stop loading when there are no more items:
 
-```tsx
+```tsx fragment
 import { InfiniteScroll } from "@zerotal/flow";
 
 @expose async loadMore(): Promise<void> {
@@ -396,7 +396,7 @@ elements; spacers above and below hold the scrollbar at the size the full collec
 As the viewport moves, `onWindow` is called with `(start, count)` and your action loads that slice.
 The collection never has to reach the client in full.
 
-```tsx
+```tsx fragment
 import { Virtualize } from "@zerotal/flow";
 
 @expose rows: Row[] = [];
@@ -457,7 +457,7 @@ import { Dropdown } from "@zerotal/flow";
 
 Client-side tabbed panels. Pass `items`, each with a `label` and the `content` to show when selected:
 
-```tsx
+```tsx fragment
 import { Tabs } from "@zerotal/flow";
 
 <Tabs
@@ -485,7 +485,7 @@ import { Tabs } from "@zerotal/flow";
 
 A dropzone bound to an `@expose` property. Choosing a file POSTs the bytes to `/__flow/upload` over HTTP, shows live upload progress, and resolves to a signed `TemporaryUploadedFile` reference. Compose the `FileUploads` mixin for the `removeUpload` action:
 
-```tsx
+```tsx fragment
 import { Component, expose, FileUpload, FileUploads, TemporaryUploadedFile } from "@zerotal/flow";
 
 export class AvatarPage extends Component.using(FileUploads) {
@@ -525,7 +525,7 @@ export class AvatarPage extends Component.using(FileUploads) {
 
 For multiple files, use `multiple`:
 
-```tsx
+```tsx fragment
 @expose photos: TemporaryUploadedFile[] = [];
 
 <FileUpload bind={this.photos} multiple accept="image/*" />
@@ -538,7 +538,7 @@ For multiple files, use `multiple`:
 
 Common Alpine plugins are bundled and exposed as props:
 
-```tsx
+```tsx fragment
 {/* Input masking */}
 <input mask="(999) 999-9999" value={this.phone} live />
 <input mask="9999 9999 9999 9999" value={this.cardNumber} live />
@@ -593,7 +593,7 @@ The Switch button is a Tailwind `group`, so the inner knob reacts with `group-da
 
 An accessible checkbox (`role="checkbox"`) bound to a boolean. Style the checked state with `data-[checked]:…`:
 
-```tsx
+```tsx fragment
 import { Checkbox } from "@zerotal/flow";
 
 <Checkbox bind={this.agree} class="h-5 w-5 rounded border border-gray-700 data-[checked]:bg-indigo-600 data-[checked]:border-indigo-600">

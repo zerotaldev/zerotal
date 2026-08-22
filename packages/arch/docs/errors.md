@@ -123,7 +123,7 @@ export class QuotaExceededError extends HttpError {
 }
 ```
 
-```typescript
+```typescript fragment
 // in a controller
 throw new PaymentFailedError(charge.id);
 ```
@@ -135,7 +135,7 @@ then register it in `bootstrap/app.ts` with `app.withExceptionHandler(Handler)`.
 The framework calls `report()` first, then `render()`, for every unhandled
 exception:
 
-```typescript
+```typescript fragment
 // app/exceptions/Handler.ts
 import { ExceptionHandler, NotFoundError, ForbiddenError } from "zerotal";
 import type { HttpContext } from "zerotal";
@@ -169,7 +169,7 @@ export class Handler extends ExceptionHandler {
 }
 ```
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 import { Application } from "zerotal";
 import providers from "./providers.ts";
@@ -193,7 +193,7 @@ reach `console.error`.
 To silence your own classes, list them on the `dontReport` array instead of
 filtering by hand:
 
-```typescript
+```typescript fragment
 // app/exceptions/Handler.ts
 import { ExceptionHandler, ForbiddenError } from "zerotal";
 import { PaymentFailedError } from "./PaymentFailedError.ts";
@@ -227,7 +227,7 @@ The validation system throws automatically — you don't catch anything. It thro
 `ValidationJsonError` (a 422 JSON body for API clients), and both flow straight
 through the handler:
 
-```typescript
+```typescript fragment
 // in a controller
 // Browser → 303 redirect back with flashed errors
 // API     → 422 JSON: { message: 'Validation failed', errors: {...} }
@@ -241,7 +241,7 @@ See the [Validator](/docs/validator) guide for details.
 Every `ZerotalError` carries a machine-readable `code` string alongside the HTTP
 `status`. Use it on the client to distinguish errors that share a status:
 
-```typescript
+```typescript fragment
 // the API client receives:
 // { "message": "Payment failed for charge ch_xxx", "code": "E_PAYMENT_FAILED" }
 

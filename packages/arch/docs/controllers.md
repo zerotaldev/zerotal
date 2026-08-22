@@ -16,7 +16,7 @@ A controller is a plain class. Each action receives the request `HttpContext`
 directly, reads input from it, and sets the response by calling a helper on it —
 actions return `void`, not a value.
 
-```typescript
+```typescript fragment
 // app/controllers/PostController.ts
 import type { HttpContext } from "zerotal";
 import { Post } from "../models/Post.ts";
@@ -48,7 +48,7 @@ export class PostController {
 
 Map routes to actions by passing the controller class and the action name:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 import { Router } from "zerotal";
 import { PostController } from "../app/controllers/PostController.ts";
@@ -71,7 +71,7 @@ dependencies. Decorate the **class** with `@inject(...)`, listing the tokens in
 constructor order — the container resolves each token and passes it to the
 constructor:
 
-```typescript
+```typescript fragment
 // app/controllers/PostController.ts
 import type { HttpContext } from "zerotal";
 import { inject } from "zerotal";
@@ -127,12 +127,12 @@ declaration — the resolved instance arrives on `ctx.params` under the param's 
 or you can read it explicitly with `ctx.model()`. `.bind()` and the model's own
 `resolveRouteBinding` are for overriding that default:
 
-```typescript
+```typescript fragment
 // routes/index.ts — :post already resolves through Post
 Router.get("/posts/:post", PostController, "show");
 ```
 
-```typescript
+```typescript fragment
 // app/controllers/PostController.ts — via ctx.params:
 async show(ctx: HttpContext<{ post: Post }>): Promise<void> {
   ctx.json(ctx.params.post);
@@ -176,7 +176,7 @@ export class StorePostRequest extends FormRequest {
 returns the validated data fully typed from your `rules()` return — it throws a
 validation error on failure:
 
-```typescript
+```typescript fragment
 // app/controllers/PostController.ts
 import { StorePostRequest } from "../requests/posts/StorePostRequest.ts";
 
@@ -228,7 +228,7 @@ export class ArticleController {
 
 Register all seven with a single call, or narrow them with `.only()` / `.except()`:
 
-```typescript
+```typescript fragment
 // routes/index.ts
 Router.resource("articles", ArticleController);
 Router.resource("articles", ArticleController).only(["index", "show"]);
@@ -243,7 +243,7 @@ Router.resource("articles", ArticleController).except(["create", "edit"]);
 Controllers set `ctx.response` via helper methods — they do not return a value
 (the return type is `Promise<void>`):
 
-```typescript
+```typescript fragment
 // in a controller action
 ctx.json(data); // 200 JSON
 ctx.json(data, 201); // 201 JSON
@@ -281,7 +281,7 @@ With `@zerotal/auth` installed, the authenticated user is available at
 `ctx.user` after `AuthMiddleware` runs. The `Auth` facade exposes the same data
 from anywhere in the async tree — handy inside services called by the controller:
 
-```typescript
+```typescript fragment
 // in a controller action
 import { Auth } from "@zerotal/auth";
 
@@ -304,7 +304,7 @@ Register a callback to run after the response has been sent — useful for
 expensive side effects that shouldn't block the client. `afterResponse` returns
 `this`, so it chains:
 
-```typescript
+```typescript fragment
 // in a controller action
 async store(ctx: HttpContext): Promise<void> {
   const post = await Post.create(data);

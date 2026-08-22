@@ -269,7 +269,7 @@ The underlying codemod utilities are exported from `zerotal` for use in your
 own generators, install scripts, or migration tools. Each is idempotent — a no-op
 when the change is already present.
 
-```ts
+```ts fragment
 // in your own generator or script
 import {
   addImport,

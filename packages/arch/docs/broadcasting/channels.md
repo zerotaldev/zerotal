@@ -39,7 +39,7 @@ broadcasting analogue of `routes/web.ts`. It's loaded automatically at boot.
 Patterns use the file-routing **`[param]` placeholder syntax**. Each `[param]` matches one channel
 segment and is passed to the callback positionally after the authenticated user.
 
-```ts
+```ts fragment
 // routes/channels.ts
 import { Broadcast } from "@zerotal/broadcasting";
 import { Order } from "../app/models/Order.ts";
@@ -98,7 +98,7 @@ writes an `app/events/*.ts` with `broadcastOn()`/`broadcastWith()` stubbed.
 Presence channels track who is currently subscribed, enabling "who's online" lists. The
 authorization rule for a presence channel returns the **member data** instead of a boolean:
 
-```ts
+```ts fragment
 // routes/channels.ts
 Broadcast.channel("chat.[roomId]", (user: User, roomId: string) => {
   if (!user.canJoin(Number(roomId))) return null;

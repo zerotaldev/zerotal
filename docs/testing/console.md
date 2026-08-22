@@ -41,7 +41,7 @@ describe("cache:clear", () => {
 Pass arguments and flags as a parameter map. Booleans become bare flags when `true`;
 everything else becomes a `key=value` token, mirroring how the CLI parses argv:
 
-```typescript
+```typescript fragment
 // in a test file
 await Artisan.call("migrate", { "--fresh": true });
 await Artisan.call("make:model", { name: "Post", "--migration": true });
@@ -55,7 +55,7 @@ Commands usually do work — touch the database, queue a job, write a file. Asse
 _effect_, not just the output, using the [database](/docs/testing/database) and
 [mocking](/docs/testing/mocking) helpers:
 
-```typescript
+```typescript fragment
 // src/tests/PruneUsersTest.ts
 import { Artisan } from "zerotal";
 import { assertDatabaseCount, QueueFake } from "@zerotal/testing";
@@ -79,7 +79,7 @@ For a focused test of a single command's logic, instantiate it directly and inje
 `BufferWriter` to capture output. The `_writer`, `args`, and `flags` fields are
 internal — the runner normally sets them — so a unit test reaches in with a cast:
 
-```typescript
+```typescript fragment
 // src/tests/GreetCommandTest.ts
 import { expect } from "bun:test";
 import { BufferWriter } from "zerotal";

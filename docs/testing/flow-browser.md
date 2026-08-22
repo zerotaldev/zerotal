@@ -8,7 +8,7 @@ description: Drive a real page against a real server inside bun test, and assert
 `FlowBrowser` runs a headless browser against your app inside `bun test`, so a test
 can assert on the thing `FlowTest` cannot reach: the WebSocket bridge.
 
-```ts
+```ts fragment
 import { FlowBrowser } from "@zerotal/testing/browser";
 
 const browser = await FlowBrowser.serve(() => import("../bootstrap/app.ts").then((m) => m.default));
@@ -70,7 +70,7 @@ The two environments differ deliberately. **A browser suite that skips itself in
 is worse than no suite**, because it reports green for exactly the failures it exists
 to catch. So pair the skip with a guard that runs regardless:
 
-```ts
+```ts fragment
 import { FlowBrowser, browserAvailability, browserRequired } from "@zerotal/testing/browser";
 
 const availability = await browserAvailability();
@@ -94,7 +94,7 @@ that sets it does not have to hard-code the string.
 
 ## Serving the app
 
-```ts
+```ts fragment
 const browser = await FlowBrowser.serve(bootstrap, options?);
 ```
 
@@ -112,7 +112,7 @@ through a second bootstrap that can drift. The server binds an OS-assigned port.
 Call `await browser.stop()` in `afterAll`: it closes every page it opened, then stops
 the server.
 
-```ts
+```ts fragment
 let browser: FlowBrowser;
 beforeAll(async () => {
   browser = await FlowBrowser.serve(bootstrap);
@@ -168,7 +168,7 @@ suite gets deleted.
 `page.transport()` reports what Chrome saw on the wire — which the page cannot lie
 about. A client that degraded silently still shows zero upgraded sockets here.
 
-```ts
+```ts fragment
 expect(page.socketUpgraded()).toBe(true);
 expect(page.transport().statuses).toContain(101);
 expect(await page.connection()).toBe("online");
@@ -192,7 +192,7 @@ It returns a `TransportReport`:
 `frames` carries the payloads, which is how you assert on what actually crossed the
 wire rather than on what the DOM ended up showing:
 
-```ts
+```ts fragment
 const sent = page.transport().frames.filter((f) => f.direction === "sent");
 expect(sent.some((f) => f.payload.includes(`"method":"save"`))).toBe(true);
 ```

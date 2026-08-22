@@ -7,7 +7,7 @@ description: Write a broadcast event, dispatch it, and broadcast model changes a
 
 You only have to implement `broadcastOn()`; the rest default sensibly.
 
-```ts
+```ts fragment
 // app/events/OrderShipmentStatusUpdated.ts
 import { BroadcastingEvent, privateChannel } from "@zerotal/broadcasting";
 import type { Order } from "../models/Order.ts";
@@ -48,7 +48,7 @@ export class OrderShipmentStatusUpdated extends BroadcastingEvent {
 
 Three ways to broadcast, in order of ergonomics:
 
-```ts
+```ts fragment
 // in a controller
 import { broadcast, Broadcast } from "@zerotal/broadcasting";
 
@@ -75,7 +75,7 @@ several statements; otherwise treat `broadcast(...)` as the whole call.
 
 A broadcastable event emitted on the [event bus](/docs/events) is broadcast automatically:
 
-```ts
+```ts fragment
 // in a controller
 import { Events } from "zerotal";
 
@@ -84,7 +84,7 @@ Events.emit(new OrderShipmentStatusUpdated(order)); // runs listeners AND broadc
 
 Broadcast to multiple channels by returning an array from `broadcastOn()`:
 
-```ts
+```ts fragment
 // in an event's broadcastOn()
 broadcastOn() {
   return [privateChannel(`orders.${this.order.id}`), privateChannel(`users.${this.order.userId}`)];
@@ -95,7 +95,7 @@ broadcastOn() {
 
 When a full event class is overkill, broadcast inline:
 
-```ts
+```ts fragment
 // in a controller
 Broadcast.on(`orders.${order.id}`).as("OrderPlaced").with(order).toOthers().send();
 Broadcast.private(`orders.${order.id}`).as("OrderPlaced").with({ id: order.id }).send();
@@ -110,7 +110,7 @@ Broadcast.to("posts", "PostViewed", { id: post.id, viewedAt: Date.now() });
 Get the members currently subscribed to a presence channel (real driver only —
 returns `[]` under the fake/null driver):
 
-```ts
+```ts fragment
 // in a controller
 const members = Broadcast.getMembers("presence-chat.room1");
 // → [{ id, info }, …]
@@ -122,7 +122,7 @@ Broadcast a model's lifecycle changes by mapping them to a `BroadcastingEvent` t
 `dispatchesEvents`. When the model fires the event on the [event bus](/docs/events), it is
 broadcast automatically (see [dispatching](#dispatching-events)) — no manual broadcast call.
 
-```ts
+```ts fragment
 // app/events/PostCreated.ts
 import { BroadcastingEvent, privateChannel } from "@zerotal/broadcasting";
 import type { Post } from "../models/Post.ts";
@@ -140,7 +140,7 @@ export class PostCreated extends BroadcastingEvent {
 }
 ```
 
-```ts
+```ts fragment
 // app/models/Post.ts
 @table("posts")
 export class Post extends Model {
@@ -179,7 +179,7 @@ broadcastsModelEvents(Order, {
 The wire event name defaults to `${ModelName}${Event}` (e.g. `OrderUpdated`) and the payload to
 `{ order }` (the model under its camel-cased name). On the client:
 
-```ts
+```ts fragment
 // in your client code
 Socket.private(`orders.${id}`).listen("OrderUpdated", (e) => render(e.order));
 ```

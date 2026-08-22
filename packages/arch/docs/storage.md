@@ -65,7 +65,7 @@ A disk outside `storage/public` can still be exposed — with `signed: true`, so
 every request carries a signature you issued. Serving one openly throws
 `UnsafePublicMountError` **at boot**, before the server accepts a request:
 
-```ts
+```ts fragment
 // config/storage.ts — refused
 invoices: { driver: "local", root: "./storage/invoices", serve: { path: "/invoices" } }
 //                                                              ^ no `signed`
@@ -100,7 +100,7 @@ A disk is reachable over the network only if it declares `serve`. The default
 `public` disk does; the default `local` disk does not, which is what makes it a
 sensible place for private uploads.
 
-```ts
+```ts fragment
 // config/storage.ts
 export default StorageConfig({
   disks: {
@@ -188,7 +188,7 @@ export default StorageConfig({
 
 Each disk is either a local or an S3 disk:
 
-```ts
+```ts fragment
 // config/storage.ts — disk shapes
 local: { driver: "local", root: "./storage/app", url: "/storage" /* optional */ }
 s3:    { driver: "s3", key, secret, region, bucket, endpoint?, url? }
@@ -230,7 +230,7 @@ Storage.disk("s3"); // S3 disk
 
 `put()` accepts a string, `Uint8Array`, or `Blob`:
 
-```ts
+```ts fragment
 function put(
   path: string,
   content: string | Uint8Array | Blob,
@@ -238,7 +238,7 @@ function put(
 ): Promise<void>;
 ```
 
-```ts
+```ts fragment
 // in a controller
 import { Storage } from "zerotal/storage";
 
@@ -390,7 +390,7 @@ const localSigned = await Storage.disk("invoices").temporaryUrl("2026-q1.pdf", 9
 Serving the disk with `signed: true` validates the link for you — no route to
 write. Reach for the verifiers only when you are serving the file yourself:
 
-```ts
+```ts fragment
 Router.get("/files/:path*", async ({ params, request, response }) => {
   const path = params.path;
   // Reads ?expires= & ?signature= off the request URL and checks them against `path`.
@@ -498,7 +498,7 @@ Stores files in any S3-compatible service, powered by Bun's native `S3Client` (n
 
 **Cloudflare R2:**
 
-```ts
+```ts fragment
 // config/storage.ts — a disk inside disks: { … }
 r2: {
   driver:   "s3",
@@ -513,7 +513,7 @@ r2: {
 
 **MinIO (self-hosted):**
 
-```ts
+```ts fragment
 // config/storage.ts — a disk inside disks: { … }
 minio: {
   driver:   "s3",
@@ -530,7 +530,7 @@ minio: {
 Set your suite up once as described in [Testing](/docs/testing). Storage ships
 two assertions, and they take either a disk name or a driver instance:
 
-```typescript
+```typescript fragment
 // tests/http/avatars.test.ts
 import { test } from "bun:test";
 import { assertStoredFile, assertMissingFile } from "@zerotal/testing";
@@ -552,7 +552,7 @@ test("uploading an avatar writes it to the disk", async () => {
 reason. Configure a temp directory in `tests/helpers.ts` and clear it between
 runs:
 
-```typescript
+```typescript fragment
 // tests/helpers.ts
 .useConfig({
   storage: { default: "local", disks: { local: { driver: "local", root: "./storage/tmp-test" } } },
@@ -563,7 +563,7 @@ runs:
 that removes a file — a delete endpoint returning `204` proves the route ran, not
 that the bytes are gone:
 
-```typescript
+```typescript fragment
 // tests/http/avatars.test.ts
 (await app.actingAs(user).delete("/avatar")).assertNoContent();
 
@@ -573,7 +573,7 @@ await assertMissingFile("local", `avatars/${user.id}.jpg`);
 **For a unit test, pass a driver instead of a disk name** — no application, no
 config, no container:
 
-```typescript
+```typescript fragment
 // tests/services/ReportWriter.test.ts
 import { LocalDriver } from "zerotal/storage";
 

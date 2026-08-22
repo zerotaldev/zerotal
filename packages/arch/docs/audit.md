@@ -24,7 +24,7 @@ bun add @zerotal/audit
 Add `AuditProvider` to the providers array in `bootstrap/providers.ts`, after
 `DatabaseProvider` (the audit table lives in your database):
 
-```ts
+```ts fragment
 // bootstrap/providers.ts
 import { AuditProvider } from "@zerotal/audit";
 
@@ -100,7 +100,7 @@ export class User extends Model.using(Auditable) {
 
 `Auditable` composes with the auth mixins as the outermost wrapper:
 
-```ts
+```ts fragment
 // app/models/User.ts
 export class User extends Auditable(WithRoles(WithPermissions(AuthUser))) {
   protected static auditExcept = ["password"];
@@ -129,7 +129,7 @@ For a model you'd rather not wrap in the mixin, register it from a provider's
 `onBooted()` (after the container has resolved the `"audit"` binding). Configure it
 with the same static fields:
 
-```ts
+```ts fragment
 // in a ServiceProvider.onBooted()
 import { registerAudit } from "@zerotal/audit";
 
@@ -157,12 +157,12 @@ Log any custom event — logins, exports, settings changes — via the `Audit` f
 Pass the **model instance** the event concerns; `auditable_type` and `auditable_id`
 are derived from it, so logs are always linked to a record:
 
-```ts
+```ts fragment
 function log(event: AuditEvent, model: Model, payload?: InstanceAuditPayload): Promise<void>;
 function log(event: AuditEvent, payload: Omit<AuditPayload, "event">): Promise<void>;
 ```
 
-```ts
+```ts fragment
 // in a controller or service (within a request context)
 import { Audit } from "@zerotal/audit";
 
@@ -178,7 +178,7 @@ await Audit.log("report.exported", report, {
 For an event not tied to a model, pass a raw payload with `auditable_type`. Outside
 a request (queue job, CLI command) supply the actor explicitly:
 
-```ts
+```ts fragment
 // in a queue job or CLI command
 await Audit.log("subscription.renewed", {
   auditable_type: "Subscription",
@@ -190,7 +190,7 @@ await Audit.log("subscription.renewed", {
 
 When a model is `Auditable`, the same call is available as an instance method:
 
-```ts
+```ts fragment
 // in a controller or service
 await user.auditLog("login.success", { tags: { method: "github_oauth" } });
 ```
@@ -207,7 +207,7 @@ operating outside a request.
 
 `AuditLog` is a full `Model` with scopes and chainable queries:
 
-```ts
+```ts fragment
 // in a controller or service
 import { AuditLog } from "@zerotal/audit";
 
@@ -233,7 +233,7 @@ const page = await AuditLog.query()
 
 The `Audit` facade exposes the same queries plus a convenience read:
 
-```ts
+```ts fragment
 // in a controller or service
 const logs = await Audit.logs(User, user.id).orderBy("id", "desc").limit(25).get();
 const byActor = await Audit.logsByActor(user.id).get();
@@ -245,7 +245,7 @@ const recent = await Audit.historyFor("User", user.id, 25);
 
 An `Auditable` model also offers an instance shortcut:
 
-```ts
+```ts fragment
 // in a controller or service
 const logs = await user.auditLogs().orderBy("id", "desc").limit(25).get();
 ```
@@ -309,7 +309,7 @@ implementation to the `"audit"` singleton.
 In tests, swap to the `NullDriver` so no database is needed. Bind a fresh
 `Auditor` over the `"audit"` key:
 
-```ts
+```ts fragment
 // tests/setup.ts
 import { Application } from "zerotal";
 import { Auditor, NullDriver } from "@zerotal/audit";

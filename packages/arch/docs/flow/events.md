@@ -11,7 +11,7 @@ Flow components communicate by dispatching named events. Listeners registered wi
 
 Call `this.dispatch()` inside any `@expose`d action. The event is delivered to all matching `@on` listeners on the page after the action completes:
 
-```typescript
+```typescript fragment
 @expose async save(): Promise<void> {
   const post = await Post.create({
     title:  this.title,
@@ -52,7 +52,7 @@ this.dispatchSelf("refresh");
 
 Register a method as an event listener with `@on`. The method is **implicitly exposed** — no `@expose` needed:
 
-```typescript
+```typescript fragment
 import { on } from "@zerotal/flow";
 
 export class PostList extends Component {
@@ -95,7 +95,7 @@ A component can have as many `@on` listeners as it needs. Each fires independent
 
 Several components on the same page can all listen for the same event. Each component is updated independently — Flow sends a separate patch frame to each listener:
 
-```typescript
+```typescript fragment
 // PostList.tsx
 @on("post-created")
 async onPostCreated(data: { id: number }) {
@@ -168,7 +168,7 @@ this.dispatch("cart-cleared", { anything: 1 }); // ✗ void takes no payload
 
 On the listener side, `@on` autocompletes to the known event names, and you annotate the handler's parameter with `EventPayload<K>` to type the payload against the same contract:
 
-```ts
+```ts fragment
 import { on } from "@zerotal/flow";
 import type { EventPayload } from "@zerotal/flow";
 
@@ -235,7 +235,7 @@ Listen for server-broadcast events over WebSockets with `@on("socket:…")`. Whe
 
 The socket client is bundled into the Flow runtime and created the first time a page declares one of these listeners, so there is no script to add and nothing to publish on `window`. An app that needs a configured client — a different host, its own auth endpoint — assigns `window.Socket` before the runtime loads and that one is used instead. Pages with no such listener open no broadcast connection at all.
 
-```typescript
+```typescript fragment
 export class OrderDashboard extends Component {
   @locked orderCount: number = 0;
   @locked recentOrders: Order[] = [];
@@ -299,7 +299,7 @@ Pass a resolver instead. It is called with the component when the snapshot is bu
 [`@presence`](#presence--whos-here-multiplayer) and [`@shared`](#shared-state--everyone-converges-multiplayer)
 resolve theirs:
 
-```typescript
+```typescript fragment
 export class IssuePage extends Component {
   @locked issue!: Issue;
   @locked comments: Comment[] = [];
@@ -339,7 +339,7 @@ window.Socket = new Socket();
 
 `@presence` binds a property to a broadcast **presence channel** and keeps it filled with the live member list — the framework joins the channel, seeds the list, and refreshes it as people join and leave. No event classes, no manual `@on` wiring:
 
-```tsx
+```tsx fragment
 import { Component, presence } from "@zerotal/flow";
 import type { PresenceMember } from "@zerotal/flow";
 
@@ -362,7 +362,7 @@ export class Board extends Component {
 
 The channel is resolved on the server from the component (so it can't be forged from the client) and carried, signed, in the snapshot. `who` is server-controlled (like `@locked`): it lives in the snapshot and the client can't write it. Authorize the channel — and shape the member data — in `routes/channels.ts`:
 
-```ts
+```ts fragment
 Broadcast.channel("board.[boardId]", (user, boardId) =>
   user.canView(boardId) ? { id: user.id, name: user.name } : null,
 );
@@ -385,7 +385,7 @@ Like all `socket:` features, presence needs a `window.Socket` client configured 
 
 Where `@presence` answers _who's here_, `@shared` answers _what do we all see_. It binds a property to convergent, **server-authoritative** state on a channel: mutate it in an action and the framework writes it to a per-channel **room store** and broadcasts to the channel, so every other subscriber re-reads and converges. No store to wire, no events, no dispatch:
 
-```tsx
+```tsx fragment
 import { Component, presence, shared, expose } from "@zerotal/flow";
 
 export class Board extends Component {
@@ -416,7 +416,7 @@ Broadcasting is an **optional peer**. With `window.Socket` and `BroadcastProvide
 
 Calling `this.refresh()` inside an action inserts `onMount()` back into the WebSocket round-trip cycle:
 
-```typescript
+```typescript fragment
 @expose async syncOrders(): Promise<void> {
   await OrderSync.run();
   this.refresh(); // onMount() re-runs → this.orders is freshly loaded

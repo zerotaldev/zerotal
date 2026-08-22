@@ -32,7 +32,7 @@ The server evaluates and returns just those props; the client keeps the rest. Ze
 `X-Inertia-Partial-Data` / `X-Inertia-Partial-Except` / `X-Inertia-Partial-Component` headers
 automatically — you don't write any special code for the route, you just make props lazy.
 
-```tsx
+```tsx fragment
 // client
 router.reload({ only: ["users"] });
 ```
@@ -41,7 +41,7 @@ router.reload({ only: ["users"] });
 
 Wrap optional data in a function so it's only evaluated when actually included:
 
-```ts
+```ts fragment
 // in a controller
 return inertia("Users/Index", {
   users: () => User.all(), // evaluated every full visit, and on partial reloads that ask for it
@@ -57,7 +57,7 @@ it from a partial reload also skips the query.
 `optional(fn)` — never sent on a normal visit; only when explicitly requested via `only`. Ideal for
 expensive data the page can load on demand.
 
-```ts
+```ts fragment
 // in a controller
 return inertia("Users/Index", {
   users: optional(() => User.all()), // only when reloaded with only: ["users"]
@@ -83,7 +83,7 @@ shared `errors` bag uses this internally.)
 request — great for below-the-fold or slow data. Group props to control parallelism (each group is
 one request).
 
-```ts
+```ts fragment
 // in a controller
 return inertia("Users/Index", {
   users: () => User.all(),
@@ -96,7 +96,7 @@ return inertia("Users/Index", {
 The first response carries a `deferredProps` map; the client then partial-reloads each group. On the
 client, wrap the UI in `<Deferred>`:
 
-```tsx
+```tsx fragment
 // in a page component
 import { Deferred } from "@inertiajs/react";
 
@@ -110,7 +110,7 @@ import { Deferred } from "@inertiajs/react";
 Pass `{ rescue: true }` so a thrown error is swallowed and the key reported in `rescuedProps` (the
 client renders the `<Deferred rescue>` slot) instead of failing the whole response:
 
-```ts
+```ts fragment
 // in a controller
 permissions: defer(() => Permission.all(), "default", { rescue: true }),
 ```
@@ -121,7 +121,7 @@ By default a reloaded prop _replaces_ the client value. `merge()` / `deepMerge()
 **combine** the new data with what it already has — the basis for paginated "load more" lists. Merging
 only happens on partial reloads (full visits always replace).
 
-```ts
+```ts fragment
 // in a controller
 return inertia("Feed", {
   posts: merge(() => Post.paginate(15, page)), // append at root
@@ -130,7 +130,7 @@ return inertia("Feed", {
 
 Chainable targeting:
 
-```ts
+```ts fragment
 // in a controller
 merge(users).append("data").matchOn("data.id"); // append to users.data, replace items matching id
 merge(items).prepend(); // prepend at root
@@ -147,7 +147,7 @@ before merging fresh data (e.g. on a new search) — Zerotal honors the `X-Inert
 paginator's `data` array and emits a `scrollProps` entry describing the current/next/previous page,
 so the client knows when (and which way) to load more:
 
-```ts
+```ts fragment
 // app/controllers/PostController.ts
 import { inertia, scroll } from "@zerotal/inertia";
 
@@ -176,7 +176,7 @@ This produces a page object like:
 `X-Inertia-Infinite-Scroll-Merge-Intent: prepend` and Zerotal prepends the new page instead of
 appending — no controller change needed. On the client:
 
-```tsx
+```tsx fragment
 // in a page component
 import { InfiniteScroll } from "@inertiajs/react";
 
@@ -193,7 +193,7 @@ Chain `.once()` onto an optional/merge/defer prop so it's resolved a single time
 client across navigations. The client sends `X-Inertia-Except-Once-Props` with the keys it already
 holds; the server skips re-resolving them.
 
-```ts
+```ts fragment
 // in a controller
 return inertia("Billing/Plans", {
   plans: optional(() => Plan.all()).once(),
@@ -231,7 +231,7 @@ export default InertiaConfig({ encryptHistory: true });
 `Inertia.location(url)` performs a full-page visit to an external URL — a `409` with
 `X-Inertia-Location` for Inertia requests, a `302` otherwise:
 
-```ts
+```ts fragment
 // in a controller
 return Inertia.location("https://billing.stripe.com/session/abc");
 ```
@@ -247,7 +247,7 @@ side effects** — perfect for live, inline validation. Register `PrecognitionMi
 `FormRequest`; when the client sends `Precognition: true`, `FormRequest.validate()` short-circuits
 with a `204` (valid) or `422` (errors), optionally limited to the fields in `Precognition-Validate-Only`.
 
-```ts
+```ts fragment
 // bootstrap — register PrecognitionMiddleware globally
 import { PrecognitionMiddleware } from "@zerotal/inertia";
 
@@ -302,7 +302,7 @@ same key wins.
 
 ### What's provided
 
-```ts
+```ts fragment
 // the shared bag sharedProps() returns
 {
   auth: {
@@ -325,7 +325,7 @@ that bag. The other shared props (`auth`/`flash`/`old`) are ordinary props, so a
 
 Every page component can read these without the controller passing them:
 
-```tsx
+```tsx fragment
 // resources/js/pages/Page.tsx
 import { usePage } from "@inertiajs/react";
 
@@ -365,7 +365,7 @@ Register props once — typically in a provider's boot or in middleware — and 
 every page. Values may be plain values, factory functions (evaluated lazily per request), or any
 [prop wrapper](#data-props):
 
-```ts
+```ts fragment
 // in a provider's boot or middleware
 import { Inertia } from "@zerotal/inertia";
 
@@ -384,7 +384,7 @@ over during instant visits.
 
 #### Merge in the controller
 
-```ts
+```ts fragment
 // in a controller
 return inertia("Dashboard", {
   notifications: await Notification.query().where("user_id", user.id).unread().get(),
@@ -397,7 +397,7 @@ return inertia("Dashboard", {
 When several pages need the same extra data, set it on the context in a middleware
 and read it back in the controller — keeping the controller body clean:
 
-```ts
+```ts fragment
 // in a middleware:
 ctx.setInternal("unreadCount", await Notification.unreadCount(ctx.user!.id));
 
@@ -415,7 +415,7 @@ displays the value on every page.
 The props a controller passes are checked against the props the page component
 declares:
 
-```tsx
+```tsx fragment
 // resources/js/pages/Posts/Show.tsx
 interface Props {
   post: Post;
@@ -425,7 +425,7 @@ interface Props {
 export default function Show({ post, related, stats }: Props) { … }
 ```
 
-```ts
+```ts fragment
 // in a controller
 return Inertia.render("Posts/Show", {
   post,
@@ -455,7 +455,7 @@ the component receives `Post[]` — so each prop accepts its value, a factory fo
 it, or a wrapper carrying it, and the wrapper's payload is checked against the
 prop it fills:
 
-```ts
+```ts fragment
 Inertia.render("Posts/Show", { post, related: merge(() => [1, 2]) });
 // ✗ number[] is not Post[]
 ```

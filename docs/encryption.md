@@ -81,7 +81,7 @@ Crypt.decrypt<{ userId: number }>(blob).userId; // 7
 algorithm is auto-detected on verify, so changing the default never breaks
 existing hashes.
 
-```ts
+```ts fragment
 // in a controller or service
 import { Hash } from "zerotal/security";
 
@@ -147,7 +147,7 @@ thread a signing key through your code.
 
 ### Generating a signed URL
 
-```ts
+```ts fragment
 function sign(
   base: string,
   params?: Record<string, string>,
@@ -173,7 +173,7 @@ per-feature invite secret): `Url.sign(base, params, minutes, inviteSecret)`.
 
 ### Verifying a signed URL
 
-```ts
+```ts fragment
 // in a controller
 import { Url } from "zerotal/http";
 
@@ -209,7 +209,7 @@ Apply `ValidateSignatureMiddleware` to any route that receives signed URLs — i
 rejects invalid or expired links with a 403 JSON response, so your controller
 only runs when the signature is good:
 
-```ts
+```ts fragment
 // routes/web.ts
 import { ValidateSignatureMiddleware } from "@zerotal/auth";
 
@@ -277,7 +277,7 @@ that a round-trip test alone would never notice.
 **Tampering must throw**, and proving it is what tells you the payload is
 authenticated rather than merely scrambled:
 
-```typescript
+```typescript fragment
 // tests/security/Crypt.test.ts
 import { DecryptionError } from "zerotal/security";
 
@@ -292,7 +292,7 @@ test("a modified payload is rejected", () => {
 **`encrypt()` round-trips any JSON value**, so a test covering an object confirms
 the serialisation as well as the cipher:
 
-```typescript
+```typescript fragment
 // tests/security/Crypt.test.ts
 const payload = Crypt.encrypt({ userId: 7, scopes: ["read"] });
 
@@ -303,7 +303,7 @@ Hashing has its own trap: every `Hash` method except `needsRehash` is async, and
 forgotten `await` yields a `Promise`, which is always truthy — the one mistake in
 this API that silently passes.
 
-```typescript
+```typescript fragment
 // tests/security/Hash.test.ts
 import { Hash } from "zerotal/security";
 

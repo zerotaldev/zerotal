@@ -26,7 +26,7 @@ works alongside the admin-specific ones below.
 | `AdminTest.view(Resource, id)`     | View page          | Infolist entries and header actions for a record |
 | `AdminTest.form(Resource, mode?)`  | Create / Edit form | Fields, validation and saving                    |
 
-```ts
+```ts fragment
 // tests/admin/users.test.ts
 import { AdminTest, assertHasColumn, assertHasAction } from "@zerotal/admin/testing";
 import { UserResource } from "../../app/admin/UserResource.ts";
@@ -41,7 +41,7 @@ list.assertSee("ada@example.com");
 default) or `"edit"`. Drive the form through its `form` property, which holds
 every field's value:
 
-```ts
+```ts fragment
 const form = await AdminTest.form(UserResource, "create");
 assertHasField(form, UserResource, "name");
 await form.set("form", { name: "" });
@@ -56,7 +56,7 @@ those values as the second argument to `AdminTest.list()` and the page mounts as
 though the reader had arrived on that URL — which is how you assert on a filtered
 or sorted table without first driving the clicks that would produce it.
 
-```ts
+```ts fragment
 const list = await AdminTest.list(UserResource, {
   search: "ada",
   sortBy: "createdAt",
@@ -125,7 +125,7 @@ Every helper accepts a panel as its last argument, defaulting to
 `Panel.default()`. Apps that register more than one panel pass the one under test,
 so the page resolves that panel's own configuration and navigation:
 
-```ts
+```ts fragment
 const shop = Panel.get("shop");
 
 const list = await AdminTest.list(OrderResource, {}, shop);

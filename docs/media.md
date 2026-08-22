@@ -9,7 +9,7 @@ Attach files to a model and let the framework handle the rest — where the byte
 live, the database row that points at them, the thumbnails, the URLs, the
 ordering, and the cleanup when the model goes away.
 
-```ts
+```ts fragment
 const media = await product.addMedia(await ctx.file("photo")).toCollection("images");
 
 media.getUrl(); // the original
@@ -24,7 +24,7 @@ Install the package and register its provider:
 bun add @zerotal/media
 ```
 
-```ts
+```ts fragment
 // bootstrap/providers.ts
 import { StorageProvider } from "zerotal/storage";
 import { MediaProvider } from "zerotal/media";
@@ -95,7 +95,7 @@ that silently creates a collection nobody ever reads from.
 
 ## Adding files
 
-```ts
+```ts fragment
 // From an upload
 await product.addMedia(await ctx.file("photo")).toCollection("images");
 
@@ -127,7 +127,7 @@ derived the same way.
 
 ## Reading
 
-```ts
+```ts fragment
 await product.getMedia("images"); // MediaItem[], in order
 await product.getFirstMedia("images"); // MediaItem | null
 await product.getFirstMediaUrl("images"); // or the collection's fallbackUrl
@@ -145,7 +145,7 @@ the original rather than to nothing.
 
 Conversions are declared per collection and generated when a file is added:
 
-```ts
+```ts fragment
 conversions: {
   thumb: { width: 200, height: 200, format: "webp", quality: 80 },
   hero:  { width: 1600, queued: true },
@@ -220,7 +220,7 @@ conversion runs inline — late is better than a thumbnail that never appears.
 Set `responsive: true` on a collection to generate a width ladder plus an inline
 blur placeholder:
 
-```tsx
+```tsx fragment
 <img
   src={media.getUrl()}
   srcset={media.srcset()}
@@ -237,7 +237,7 @@ needed.
 
 Any JSON you attach travels with the row:
 
-```ts
+```ts fragment
 media.getCustomProperty("alt");
 media.setCustomProperty("alt", "A steel kettle");
 await media.save();
@@ -247,7 +247,7 @@ await media.save();
 
 Items carry an `orderColumn`, assigned in insertion order:
 
-```ts
+```ts fragment
 await product.setMediaOrder([third.id, first.id], "images");
 ```
 
@@ -256,7 +256,7 @@ in only the items a drag-and-drop UI moved does what it looks like.
 
 ## Deleting
 
-```ts
+```ts fragment
 await media.delete(); // row + original + every derivative
 await product.clearMediaCollection("images");
 await product.clearAllMedia();
@@ -271,7 +271,7 @@ that if the images went with it. Those files go on `forceDelete()`.
 Media inherits whatever the disk does. Put a collection on a private disk and
 hand out signed, expiring links instead of public URLs:
 
-```ts
+```ts fragment
 await media.getTemporaryUrl(300); // the original, for 5 minutes
 await media.getTemporaryUrl(300, "thumb"); // a conversion
 ```
@@ -308,7 +308,7 @@ Pair `Storage.fake()` with `MediaFake`. The first asserts bytes landed, the
 second asserts a row points at them — a media row with no file and a file with
 no row are different bugs.
 
-```ts
+```ts fragment
 import { Storage } from "zerotal/storage";
 import { MediaFake } from "zerotal/media";
 
@@ -350,7 +350,7 @@ Signatures below are the ones `packages/media/api-surface.md` records, which CI 
 
 `Media` is the mixin — it reads as `Model.using(Media)`, and it declares the static `mediaCollections` field. `MediaItem` is one stored file: a row in the `media` table, and an ordinary model, so every query-builder method is available on it too.
 
-```ts
+```ts fragment
 function Media<TBase extends Constructor>(
   Base: TBase,
 ): TBase & { mediaCollections: MediaCollections };
@@ -382,7 +382,7 @@ Columns: `uuid`, `name`, `fileName`, `mimeType`, `size`, `disk`, `conversionsDis
 
 `addMedia(source)` returns a `MediaAdder`. Every method chains; `toCollection()` is what actually stores the file, and it returns the `MediaItem`.
 
-```ts
+```ts fragment
 class MediaAdder {
   usingName(name: string): MediaAdder;
   usingFileName(fileName: string): MediaAdder;
@@ -395,7 +395,7 @@ class MediaAdder {
 
 `MediaSource` is what a source may be:
 
-```ts
+```ts fragment
 type MediaSource = ArrayBuffer | Blob | UploadedFile | File | Uint8Array;
 ```
 
@@ -407,7 +407,7 @@ type MediaSource = ArrayBuffer | Blob | UploadedFile | File | Uint8Array;
 
 `MediaLibrary` is the facade; `MediaManager` is the class behind it. They are named differently because `Media` is already the mixin, and an app importing both would otherwise have to rename one at every call site.
 
-```ts
+```ts fragment
 class MediaManager {
   readonly config: MediaConfigShape;
   readonly driver: ImageDriver;
@@ -431,7 +431,7 @@ interface CleanReport {
 
 ### Collections and conversions
 
-```ts
+```ts fragment
 type MediaCollections = Record<string, CollectionDefinition | (() => CollectionDefinition)>;
 type ConversionMap = Record<string, ConversionDefinition>;
 ```
@@ -477,7 +477,7 @@ interface ResponsiveImageSet {
 
 `ImageDriver` is the seam between this package and whatever actually manipulates pixels. Two implementations ship — `BunImageDriver` (the default, no dependencies) and `SharpImageDriver` (opt-in, a native module) — and a shared parity suite holds them to the same output dimensions.
 
-```ts
+```ts fragment
 interface ImageDriver {
   readonly name: string;
   /** Whether `fit: "cover"` is available. Both shipped drivers report `true`. */
@@ -519,7 +519,7 @@ Writing your own driver is supported, and the interface may grow only in ways th
 
 `BunImageDriver` takes pixel ceilings, so a decompression bomb fails as a refusal rather than as memory exhaustion. `SharpImageDriver` takes no arguments — libvips streams tiles rather than materialising the full bitmap, so the ceiling has nothing to protect.
 
-```ts
+```ts fragment
 new BunImageDriver(maxPixels?, maxCropPixels?);
 new SharpImageDriver();
 ```
@@ -528,7 +528,7 @@ new SharpImageDriver();
 
 Three lookup tables are exported for reading — to label a download, or to check a type before offering an upload. They are frozen, because they are shared module state: an app that mutated one would change how conversions behave for every other caller in the process, including ones it does not own.
 
-```ts
+```ts fragment
 const FORMAT_MIME: Readonly<Record<ConversionFormat, string>>;
 const FORMAT_EXTENSION: Readonly<Record<ConversionFormat, string>>;
 const CONVERTIBLE_MIME_TYPES: ReadonlySet<string>;
@@ -541,7 +541,7 @@ function isConvertible(mimeType: string | null | undefined): boolean;
 
 Supply a `PathGenerator` to change the on-disk layout described under [Where files live](#where-files-live). `DefaultPathGenerator` is the shipped one, and `setPathGenerator` installs yours. It is process-global, so a provider's `register()` is the place for it.
 
-```ts
+```ts fragment
 interface PathGenerator {
   forOriginal(media: MediaItem): string;
   forConversions(media: MediaItem): string;
@@ -555,7 +555,7 @@ class DefaultPathGenerator implements PathGenerator {
 function setPathGenerator(generator: PathGenerator): void;
 ```
 
-```ts
+```ts fragment
 // A provider's register()
 setPathGenerator(new DefaultPathGenerator("uploads"));
 ```

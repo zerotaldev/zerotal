@@ -37,7 +37,7 @@ This writes `database/factories/PostFactory.ts`. A factory is `Factory.define(Mo
 definition)`, where the definition callback receives the built-in [`fake`](#the-fake-helper)
 helper and returns the model's default attributes:
 
-```typescript
+```typescript fragment
 // database/factories/PostFactory.ts
 import { Factory } from "@zerotal/testing";
 import { Post } from "../../app/models/Post.ts";
@@ -56,7 +56,7 @@ supply them at create time with [`.for()`](#relating-models) or an override.
 
 ## Creating records
 
-```typescript
+```typescript fragment
 // in a test or seeder
 // Persist one record → Promise<Post>
 const post = await PostFactory.create();
@@ -93,7 +93,7 @@ wins).
 `.for(parent)` injects the parent's primary key as a foreign key, derived from the
 parent's class name (`User` → `userId`):
 
-```typescript
+```typescript fragment
 // in a test or seeder
 const user = await UserFactory.create();
 
@@ -114,7 +114,7 @@ base factory stays reusable.
 Force the created instance into a model state via `forceState()` (bypassing guards
 and transition callbacks — see [Lifecycle & Events](/docs/orm/lifecycle)):
 
-```typescript
+```typescript fragment
 // in a test or seeder
 const expired = await SubscriptionFactory.state("expired").create();
 ```
@@ -123,7 +123,7 @@ const expired = await SubscriptionFactory.state("expired").create();
 
 Run logic after each instance is saved — e.g. attaching related records:
 
-```typescript
+```typescript fragment
 // in a test or seeder
 const user = await UserFactory.afterCreate(async (u) => {
   await PostFactory.for(u).count(3).create();
@@ -138,7 +138,7 @@ needs the full lifecycle to fire:
 > **Note** — Suppressing hooks keeps seeding side-effect free (no logs, emails, or
 > queued jobs). Call `dispatchEvents()` to let observers and hooks run.
 
-```typescript
+```typescript fragment
 // in a test
 // Silent — no "user registered" side effects:
 await UserFactory.count(20).create();
@@ -150,7 +150,7 @@ Queue.assertDispatched(WelcomeEmailJob);
 
 ## In seeders
 
-```typescript
+```typescript fragment
 // database/seeders/DatabaseSeeder.ts
 import { Seeder } from "@zerotal/orm";
 import { UserFactory } from "../factories/UserFactory.ts";
@@ -172,7 +172,7 @@ See [Seeding](/docs/seeding) for running seeders.
 
 Factories are the standard way to arrange database state in a test:
 
-```typescript
+```typescript fragment
 // in a test
 import { UserFactory } from "../../database/factories/UserFactory.ts";
 

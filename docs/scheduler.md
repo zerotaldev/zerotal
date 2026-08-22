@@ -80,7 +80,7 @@ cadence with either a `cron` string or the fluent `frequency()` method. Every
 `Schedule` subclass under `app/schedules/` is discovered and registered
 automatically — no manual wiring, no central list.
 
-```typescript
+```typescript fragment
 // app/schedules/SendDailyReports.ts
 import { Schedule } from "@zerotal/scheduler";
 import { Queue } from "@zerotal/queue";
@@ -152,7 +152,7 @@ Every setting is an optional property (or method) on your `Schedule` subclass:
 > Discovery warns at boot when it sees static schedule config, and
 > `bun zt doctor` reports it.
 
-```typescript
+```typescript fragment
 // app/schedules/NightlyBackup.ts
 import { Schedule, type SchedulerBuilder } from "@zerotal/scheduler";
 
@@ -213,7 +213,7 @@ expose fluent cadence methods. Each returns the configured task.
 For quick, in-code definitions (e.g. inside a provider) use the `Scheduler` facade,
 which exposes the underlying manager fluently:
 
-```typescript
+```typescript fragment
 // in a provider's onBooted()
 import { Scheduler } from "@zerotal/scheduler";
 
@@ -228,7 +228,7 @@ Scheduler.add("rotate-logs", "0 */6 * * *", () => rotateLogs());
 `ScheduledTask`, so you can chain the same fluent tuning the class form exposes
 declaratively:
 
-```typescript
+```typescript fragment
 // in a provider's onBooted()
 Scheduler.job("nightly-backup", () => runBackup())
   .dailyAt("02:30")
@@ -332,7 +332,7 @@ is configured (Redis or SQLite via the [lock primitive](/docs/lock)) — also ta
 machines. Cross-process locking is **on by default**; pass `{ crossProcess: false }`
 to guard within this process only:
 
-```typescript
+```typescript fragment
 // app/schedules/RebuildSearchIndex.ts
 withoutOverlapping = { expiresAfterMinutes: 30 }; // cross-process (default)
 // withoutOverlapping = { crossProcess: false };        // in-process guard only
@@ -370,7 +370,7 @@ Anything the task writes to `console.log` can be persisted or emailed:
 > **Note** — `sendOutputTo` is a facade-only tuning method; on a `Schedule`
 > subclass, use the `appendOutputTo` or `emailOutputTo` properties.
 
-```typescript
+```typescript fragment
 // app/schedules/GenerateSitemap.ts
 import { Schedule } from "@zerotal/scheduler";
 
@@ -404,7 +404,7 @@ ScheduledTask.outputMailer = async (email, subject, body) => {
 Every run emits a framework event you can listen for to feed metrics, logs, or
 alerts. Subscribe in a provider's `onBooted()`:
 
-```typescript
+```typescript fragment
 // in a provider's onBooted()
 import { FrameworkEvents } from "zerotal";
 import { TaskRan, TaskFailed, TaskSkipped } from "@zerotal/scheduler";
@@ -446,7 +446,7 @@ as data. To keep the scheduler but drop the section, set
 `ScheduledTask` exposes introspection getters and a `runNow()` that executes the
 handler immediately, bypassing the cron/time-window guards — ideal in tests:
 
-```typescript
+```typescript fragment
 // in a test
 import { Scheduler } from "@zerotal/scheduler";
 
@@ -474,7 +474,7 @@ bun zt worker       # starts the queue worker + scheduler
 For simpler deployments, `AppServiceProvider.onStarted()` can run inline polling
 instead of a dedicated worker process (skip it when this IS the worker):
 
-```typescript
+```typescript fragment
 // app/providers/AppServiceProvider.ts (onStarted)
 override async onStarted(): Promise<void> {
   if (Bun.env.APP_ENV === "worker") return; // dedicated worker handles it

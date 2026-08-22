@@ -100,7 +100,7 @@ after works the way you would expect.
 
 `DevTools.start()` accepts three optional fields:
 
-```typescript
+```typescript fragment
 // resources/js/app.js
 DevTools.start({ endpoint: "/__zerotal/devtools", mode: "floating" }); // defaults
 ```
@@ -356,7 +356,7 @@ log line's, a stack frame. Going from "this query is slow" to the line that ran
 it is the most frequent move in a debugging session, and without this it is two
 manual searches.
 
-```typescript
+```typescript fragment
 // config/devtools.ts
 export default DevtoolsConfig({
   editor: "cursor", // vscode | vscode-insiders | cursor | windsurf | zed | webstorm
@@ -369,7 +369,7 @@ Set `editor: null` to render locations as plain text instead.
 the one with your editor on it — a container reports `/app/src/Foo.ts` for a file
 that lives at `~/project/src/Foo.ts`. Map it home:
 
-```typescript
+```typescript fragment
 export default DevtoolsConfig({
   editorPathMap: { "/app": "/Users/you/project" },
 });
@@ -425,7 +425,7 @@ things that look like secrets. `console.log(user)` is masked field by field;
 
 Open individual names back up, close extra ones, or turn it off entirely:
 
-```typescript
+```typescript fragment
 // config/devtools.ts
 export default DevtoolsConfig({
   redact: {
@@ -458,7 +458,7 @@ directly when you are recording values somewhere else and need the same three
 problems solved — cycles, a depth bound, and values like `Date` or `File` that
 read better flat than walked — but want your own markers:
 
-```typescript
+```typescript fragment
 import { redactGraph } from "@zerotal/core/security";
 
 const safe = redactGraph(payload, {
@@ -557,7 +557,7 @@ the inspector on a shared staging box was to lie about `APP_ENV`.
 
 There is now a supported way:
 
-```typescript
+```typescript fragment
 // config/devtools.ts
 export default DevtoolsConfig({
   enabled: true, // explicit; `null` follows the dev-surface gate
@@ -589,7 +589,7 @@ there the way in is the dashboard at `/__zerotal/devtools`.
 
 To switch it off entirely without removing the provider:
 
-```typescript
+```typescript fragment
 // config/devtools.ts
 export default DevtoolsConfig({ enabled: false });
 ```
@@ -618,7 +618,7 @@ the way — not about the panel itself.
 injection middleware appends a script tag to every HTML response, and a
 misconfigured deploy that ships it exposes request traces to your users:
 
-```typescript
+```typescript fragment
 // tests/devtools/injection.test.ts
 import { test } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -637,7 +637,7 @@ test("the devtools script is not injected outside development", async () => {
 to a JSON body or a file download corrupts it, and the failure shows up as a
 parse error somewhere unrelated:
 
-```typescript
+```typescript fragment
 // tests/devtools/injection.test.ts
 test("JSON responses are left alone", async () => {
   const res = await app.get("/api/posts", { Accept: "application/json" });
@@ -650,7 +650,7 @@ test("JSON responses are left alone", async () => {
 **The trace store is an ordinary object**, so a panel plugin you write tests
 without a browser:
 
-```typescript
+```typescript fragment
 // tests/devtools/plugin.test.ts
 import { traceStore } from "@zerotal/devtools";
 
@@ -753,7 +753,7 @@ leaves. Each node's own fields become its `treeBadge` chip, its `flags`, and a
 dim attribute line, so you describe what a node _is_ without the panel knowing
 what any of it means:
 
-```typescript
+```typescript fragment
 trace.channel({
   id: "widgets",
   label: "Widgets",
@@ -779,7 +779,7 @@ every value any package might use.
 
 The shape pushed to the store and streamed to the panel:
 
-```typescript
+```typescript fragment
 // from @zerotal/devtools
 interface RequestTrace {
   id: string;
@@ -903,7 +903,7 @@ Resolve `devtools.trace` from the container, declare how your entries should
 read, then record one per event. Guard the lookup: it is absent when devtools is
 not installed or the app is in production, and your package must not care.
 
-```typescript
+```typescript fragment
 // your-package/src/observability.ts
 import { FrameworkEvents, RequestContext } from "zerotal";
 import type { Application } from "zerotal";
@@ -955,7 +955,7 @@ and entries recorded before a channel is declared still appear once it is.
 From your package's **browser** code, register a panel on the global registry the
 panel exposes:
 
-```ts
+```ts fragment
 window.__zerotalDevtools?.register({
   id: "my-panel", // unique — the tab is addressed internally as `plugin:my-panel`
   title: "My Panel", // tab label

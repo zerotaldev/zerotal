@@ -244,7 +244,7 @@ the pipeline sets `ctx.response`), and `onResponseSent()` (after the response is
 sent). The full phase reference lives in
 [The Application](/docs/application) and [Service Providers](/docs/providers).
 
-```typescript
+```typescript fragment
 // app/providers/PaymentProvider.ts
 import { ServiceProvider } from "zerotal";
 
@@ -303,7 +303,7 @@ Boot and shutdown phases in order, and the per-request hook surface.
 `app.bootDurationMs` is the total. `app.providerReport` is the breakdown — one
 `ProviderReport` per provider, in boot order:
 
-```typescript
+```typescript fragment
 for (const { name, durationMs, bindings } of app.providerReport) {
   console.log(`${name} ${durationMs}ms, bound ${bindings.length}`);
 }

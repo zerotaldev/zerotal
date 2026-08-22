@@ -35,7 +35,7 @@ The broker reads and writes through your query functions, so it needs a table to
 back them. The default examples below use a `password_reset_tokens` table keyed by
 email:
 
-```typescript
+```typescript fragment
 // database/migrations/xxxx_create_password_reset_tokens.ts
 await Schema.create("password_reset_tokens", (table) => {
   table.string("email").primary();
@@ -54,7 +54,7 @@ Create the broker once and export it so controllers can import it. Pass an objec
 implementing `PasswordBrokerOptions` — each query function maps the broker onto your
 storage:
 
-```typescript
+```typescript fragment
 // app/auth/passwords.ts
 import { PasswordBroker, Hash } from "@zerotal/auth";
 import { Notify } from "@zerotal/notifications";
@@ -136,7 +136,7 @@ The controller wires the broker into request handlers: one pair for requesting a
 link, one pair for submitting the new password. Compare the broker result against the
 [`PASSWORDS` constants](#passwords-constants) rather than raw strings.
 
-```typescript
+```typescript fragment
 // app/controllers/PasswordResetController.ts
 import { broker } from "#app/auth/passwords.ts";
 import { Auth, PASSWORDS } from "@zerotal/auth";
@@ -199,7 +199,7 @@ export class PasswordResetController {
 
 ## Routes
 
-```typescript
+```typescript fragment
 // routes/web.ts
 import { GuestMiddleware } from "@zerotal/auth";
 import { PasswordResetController } from "#app/controllers/PasswordResetController.ts";
@@ -220,7 +220,7 @@ Expired rows accumulate because `reset()` only deletes a token when it's used or
 found expired on lookup. Call `broker.prune()` on a schedule to clear the rest — it
 delegates to your `pruneTokens` function with the cutoff date:
 
-```typescript
+```typescript fragment
 // app/schedules/PrunePasswordTokens.ts
 import { Schedule } from "@zerotal/scheduler";
 import { broker } from "#app/auth/passwords.ts";
@@ -292,7 +292,7 @@ earn a test: a wrong token, an expired one, and the replay above.
 On the HTTP side, the case worth pinning down is that a miss is indistinguishable
 from a hit:
 
-```typescript
+```typescript fragment
 // tests/http/password-reset.test.ts
 const res = await app.post("/forgot-password", { email: "nobody@example.com" });
 

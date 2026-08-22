@@ -53,7 +53,7 @@ import { ServiceProvider } from "zerotal";
 
 ## Anatomy of a provider
 
-```typescript
+```typescript fragment
 // app/providers/AppServiceProvider.ts
 import { ServiceProvider } from "zerotal";
 import { PaymentGateway } from "../services/PaymentGateway.ts";
@@ -107,7 +107,7 @@ one provider must be fully prepared before another even registers. There are als
 List providers in `bootstrap/providers.ts`. Order matters — a provider can
 only resolve bindings registered by providers that appear earlier in the list:
 
-```typescript
+```typescript fragment
 // bootstrap/providers.ts
 import { DatabaseProvider } from "@zerotal/orm";
 import { CacheProvider } from "@zerotal/cache";
@@ -157,7 +157,7 @@ type-checked and survives renames. It does two jobs at once:
 
 So an app that uses the admin panel only needs the panel itself:
 
-```typescript
+```typescript fragment
 // bootstrap/providers.ts — FlowProvider arrives via AdminProvider.dependsOn
 const providers = [AdminProvider];
 
@@ -180,7 +180,7 @@ defaults to `0`), then to registration order. It's a coarse knob — useful for 
 framework-core provider that should generally boot ahead of everything else,
 without every other provider having to name it explicitly:
 
-```typescript
+```typescript fragment
 export class CoreProvider extends ServiceProvider {
   static priority = -100; // boots before ordinary (priority 0) providers
 }
@@ -214,7 +214,7 @@ is **synchronous** — no `await` — and runs before any binding is resolved, s
 treat it as pure wiring. The factory closures you pass don't run yet; they run
 _later_, when the binding is first resolved.
 
-```typescript
+```typescript fragment
 // inside a ServiceProvider
 onRegister(): void {
   // Singleton — one shared instance per app lifetime
@@ -243,7 +243,7 @@ booted. Reach for it only when one provider must finish preparing before the nex
 one even registers — most providers skip it entirely. It's async, so you can
 `await`:
 
-```typescript
+```typescript fragment
 // inside a ServiceProvider
 async onBooting(): Promise<void> {
   // e.g. open a connection pool that a provider listed after this one
@@ -259,7 +259,7 @@ By `onBooted()` every provider has registered, so this is the safe place to
 _resolve_ bindings (including from other providers), start background work, and
 register event listeners. It runs in parallel across all providers:
 
-```typescript
+```typescript fragment
 // inside a ServiceProvider
 async onBooted(): Promise<void> {
   // Resolve a binding from another provider
@@ -299,7 +299,7 @@ A provider can add its own auto-discovered directory by registering a concern de
 `onRegister()`/`onBooting()`. The framework scans the directory at boot and calls `register()`
 for each file's exports:
 
-```typescript
+```typescript fragment
 // inside a ServiceProvider
 onRegister(): void {
   this.app.registerConcern({
@@ -346,7 +346,7 @@ Second — and this is the part that actually defers it — register it with
 `app.defer()` instead of the normal providers array. `static provides` on its own
 is just metadata; it's `defer()` that wires the lazy boot:
 
-```typescript
+```typescript fragment
 // bootstrap/app.ts
 const app = Application.create({ providers });
 app.defer([SearchProvider]); // array form reads each provider's `static provides`
@@ -366,7 +366,7 @@ A provider runs in every runtime by default. Branch on `this.app.environment` to
 bind a different implementation per environment — a fake mailer under `test`, the
 real one everywhere else:
 
-```typescript
+```typescript fragment
 // inside a ServiceProvider
 onRegister(): void {
   if (this.app.environment === 'test') {
@@ -387,7 +387,7 @@ Providers can push middleware into the global pipeline via `this.app.useOnce()` 
 the framework guarantees it's added exactly once, even if the same middleware is
 registered by several providers:
 
-```typescript
+```typescript fragment
 // inside a ServiceProvider
 onBooting(): Promise<void> {
   this.app.useOnce(SessionMiddleware);

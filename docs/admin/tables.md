@@ -7,7 +7,7 @@ description: Columns, filters, sorting, search, and bulk actions on the list scr
 
 `columns()` returns `Column`s built with `text(key)` plus chainable modifiers.
 
-```ts
+```ts fragment
 static columns() {
   return [
     text("title").label("Title").sortable().searchable(),
@@ -42,14 +42,14 @@ static columns() {
 formatter) render a `<tfoot>` total computed over the **full filtered dataset**, plus
 per-group subtotals when grouping is active.
 
-```ts
+```ts fragment
 text("amount").align("end").sum("Revenue", (n) => `$${n.toFixed(2)}`),
 text("id").count("Orders"),
 ```
 
 ## Filters
 
-```ts
+```ts fragment
 import { selectFilter, ternaryFilter } from "@zerotal/admin";
 
 static filters() {
@@ -70,7 +70,7 @@ Fixed filters work when you can name the useful questions in advance. A catalogu
 or a ledger is queried in too many ways for that, so `queryBuilder` lets the user
 stack their own comparisons and nest AND/OR groups:
 
-```ts
+```ts fragment
 import {
   queryBuilder, textConstraint, numberConstraint,
   selectConstraint, booleanConstraint, dateConstraint,
@@ -112,7 +112,7 @@ link someone can send to a colleague.
 `tab(key)` adds quick-filter tabs above the table, each scoping the query and
 optionally showing a count badge.
 
-```ts
+```ts fragment
 import { tab } from "@zerotal/admin";
 
 static tabs() {
@@ -129,7 +129,7 @@ static tabs() {
 `group(column)` adds a "Group by" menu; the page renders header rows per bucket with
 counts (and per-group summary subtotals).
 
-```ts
+```ts fragment
 import { group } from "@zerotal/admin";
 
 static groups() {
@@ -143,7 +143,7 @@ static defaultGroup = "status";   // optional
 Set `reorderable` to an integer position column to show up/down handles that persist
 order:
 
-```ts
+```ts fragment
 static reorderable = "sort";
 ```
 
@@ -158,7 +158,7 @@ automatically and are URL-driven.
 A blank table teaches nobody anything. Override `emptyState()` to say why the list
 is empty and what will fill it:
 
-```ts
+```ts fragment
 static emptyState() {
   return {
     heading: "No orders yet",

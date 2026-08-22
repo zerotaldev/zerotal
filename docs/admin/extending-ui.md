@@ -23,7 +23,7 @@ everything else alone.
 **Table cells.** The column still owns its label, sorting, search and export;
 only the cell is yours:
 
-```ts
+```ts fragment
 text("health")
   .label("Health")
   .sortable()
@@ -32,7 +32,7 @@ text("health")
 
 **Infolist entries.** The section's grid still places it:
 
-```ts
+```ts fragment
 textEntry("route").render((value) => <RouteMap path={String(value)} />),
 ```
 
@@ -40,7 +40,7 @@ textEntry("route").render((value) => <RouteMap path={String(value)} />),
 saves like any other — you supply only the control. Bind your markup to
 `form.<key>` for the value to round-trip:
 
-```ts
+```ts fragment
 customField("coordinates")
   .label("Location")
   .required()
@@ -55,7 +55,7 @@ what lets a control react to a sibling field.
 A contributed page can only add a page. A hook adds markup at a named position
 in the chrome — a trial banner, a compliance notice, an environment badge:
 
-```ts
+```ts fragment
 Panel.renderHook("page.header.end", () => <TrialBanner />);
 
 // Conditional placement: register once, decide per render.
@@ -92,7 +92,7 @@ A resource does not have to be backed by a model. Return rows from `data()` and
 the panel filters, sorts and paginates them in memory, so search, tabs,
 summaries and the query builder all keep working:
 
-```ts
+```ts fragment
 export class RegionResource extends Resource {
   static override async data() {
     return await fetch("https://api.example.com/regions").then((r) => r.json());
@@ -115,7 +115,7 @@ rows and not millions. Past that, back it with a model or a view.
 
 Four statics change how a list renders:
 
-```ts
+```ts fragment
 export class ProductResource extends Resource {
   static override tableLayout = "grid"; // "table" (default) | "grid" | "kanban" | "calendar"
   static override striped = true;
@@ -131,7 +131,7 @@ title, and the next few render as label/value pairs. No second description.
 
 **Kanban** turns a status column into lanes, for records that read as a pipeline:
 
-```ts
+```ts fragment
 static override tableLayout = "kanban";
 static override kanbanColumn = "status";
 static override kanbanLanes = { pending: "Pending", paid: "Paid", shipped: "Shipped" };
@@ -144,7 +144,7 @@ does, not a second source of truth. A value present in the data but missing from
 
 **Calendar** lays the page out as a month grid keyed on a date column:
 
-```ts
+```ts fragment
 static override tableLayout = "calendar";
 static override calendarColumn = "startsOn";
 ```
@@ -159,7 +159,7 @@ on wide or long tables.
 
 A resource whose records nest under each other renders as a tree:
 
-```ts
+```ts fragment
 export class CategoryResource extends Resource {
   static override treeParentColumn = "parentId";
 }
@@ -176,7 +176,7 @@ than disappearing, so a filtered tree never hides a record.
 
 A resource whose text exists in several languages edits one at a time:
 
-```ts
+```ts fragment
 export class PostResource extends Resource {
   static override translatable = ["title", "excerpt"];
   static override locales = ["en", "fr"];
@@ -193,7 +193,7 @@ turning this on for an existing column does not blank it.
 
 A column can carry its own filter box in the table header:
 
-```ts
+```ts fragment
 text("sku").filterable();
 selectColumn("status", STATUS).filterable();
 ```
@@ -209,7 +209,7 @@ the active-filter chips, and land in a saved view.
 Filters sit above the table by default. Once there are more than a few, collapse
 them:
 
-```ts
+```ts fragment
 static override filterLayout = "panel";   // "inline" (default) | "panel" | "drawer"
 ```
 

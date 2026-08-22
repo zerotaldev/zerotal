@@ -64,7 +64,7 @@ add it here too — that one edit keeps every test in the suite honest.
 
 From then on a test is two lines of setup:
 
-```typescript
+```typescript fragment
 // tests/http/posts.test.ts
 import { test } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -197,7 +197,7 @@ See [HTTP Tests](/docs/testing/http) for the full `TestApp` and `TestResponse` A
 
 ## Resetting framework state
 
-```typescript
+```typescript fragment
 // tests/Feature/SomeTest.ts
 import { resetTestState } from "@zerotal/testing";
 

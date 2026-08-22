@@ -49,7 +49,7 @@ export class AppLayout extends Layout {
 
 Attach the layout to a page:
 
-```tsx
+```tsx fragment
 export class DashboardPage extends Component {
   static layout = AppLayout;
 
@@ -69,7 +69,7 @@ The layout's `render(slot)` receives the page's HTML as `slot`. Multiple pages c
 
 `static layout = SomeLayout` is the class form. The JSX-native alternative — and the same convention the framework's React/Inertia pages use — is to override the `layout(page)` method and wrap the rendered page in **any JSX** you like. There is no separate `Layout` base class and no named-slot mechanism: a layout is just a component you wrap the page in, and its regions are ordinary **props**.
 
-```tsx
+```tsx fragment
 import { Component } from "@zerotal/flow";
 import type { HtmlNode } from "@zerotal/flow";
 import { AppLayout } from "#app/layouts/AppLayout.tsx";
@@ -102,7 +102,7 @@ export class DashboardPage extends Component {
 
 `AppLayout` is an ordinary function component — nothing framework-specific:
 
-```tsx
+```tsx fragment
 export function AppLayout(props: { title?: string; actions?: HtmlNode; children?: unknown }) {
   return (
     <div data-flow-layout="app" class="min-h-screen bg-gray-50">
@@ -127,7 +127,7 @@ Two things to know:
 
 `static head` injects content into the `<head>` element on the initial render. For per-page head content (title, meta), use `<Head>` inside the page's `render()` — it's hoisted into `<head>` on load and on every `navigate` visit:
 
-```tsx
+```tsx fragment
 import { Head } from "@zerotal/flow";
 
 override async render() {
@@ -153,7 +153,7 @@ Both are valid on a `div` and apply to every descendant, so the _content_ is cor
 but the document still declares English to anything reading the root element, which is wrong for a
 screen reader announcing the page in the wrong voice:
 
-```tsx
+```tsx fragment
 override render(slot: HtmlNode) {
   return <div lang={activeLocale()}>{slot}</div>;
 }
@@ -188,7 +188,7 @@ import { SectionContent } from "@zerotal/flow";
 `<SectionContent>` renders nothing where it appears. Children of `<SectionOutlet>` are the default,
 used when no page published anything:
 
-```tsx
+```tsx fragment
 <SectionOutlet name="toolbar">
   <span class="text-sm text-gray-500">No actions</span>
 </SectionOutlet>
@@ -259,7 +259,7 @@ export function Sorting<T extends Constructor<Component>>(Base: T) {
 }
 ```
 
-```tsx
+```tsx fragment
 export class UsersPage extends Component.using(Sorting, Pagination) {}
 ```
 
@@ -269,7 +269,7 @@ export class UsersPage extends Component.using(Sorting, Pagination) {}
 an app-level base carry its own state and actions and still take mixins, without being flattened
 out of the prototype chain:
 
-```tsx
+```tsx fragment
 abstract class AdminPage extends Component {
   @expose breadcrumb = "admin";
 
@@ -297,7 +297,7 @@ live on it.
 The composed class carries `using` itself, so composition can be built up in stages — useful when
 a shared base is defined in one file and extended in another:
 
-```tsx
+```tsx fragment
 const AdminBase = Component.using(Pagination).using(Sorting);
 export class ReportsPage extends AdminBase.using(FileUploads) {}
 ```
@@ -311,7 +311,7 @@ export class ReportsPage extends AdminBase.using(FileUploads) {}
 
 Embed other `Component` subclasses as child components. Each child has its own isolated state, its own snapshot, and its own WebSocket update cycle. A parent re-render does not re-render existing children — their DOM and state are preserved (island architecture).
 
-```tsx
+```tsx fragment
 import { StatsWidget } from "./StatsWidget.tsx";
 import { ActivityFeed } from "./ActivityFeed.tsx";
 
@@ -340,7 +340,7 @@ export class DashboardPage extends Component {
 
 Each prop the parent passes is assigned onto the same-named field before any lifecycle hook runs — the field's initialiser is the default:
 
-```tsx
+```tsx fragment
 export class CounterWidget extends Component {
   @locked step: number = 1;
   @locked label: string = "Count";
@@ -369,7 +369,7 @@ Props that need to survive WebSocket round-trips must be `@locked` so they are i
 
 Where props pass **data** into a child, slots pass **markup**. A child component's plain children become its **default slot**; a `slots={{ … }}` prop supplies **named slots**. Inside the child, place each with `this.slot(name)` (or `this.slot()` for the default), and branch on `this.hasSlot(name)` to drop an optional wrapper entirely. This is the pattern for reusable shells — cards, modals, panels, page headers — where the container is fixed but the contents vary per use.
 
-```tsx
+```tsx fragment
 // The reusable shell — header and footer are optional.
 export class Card extends Component {
   override async render() {
@@ -433,7 +433,7 @@ Keys are sanitised to `[a-zA-Z0-9_-]`, so dots are stripped and `a.b` collides w
 
 ### Lazy, deferred, and streamed loading
 
-```tsx
+```tsx fragment
 // Defer mount until the placeholder enters the viewport (intersection observer)
 <HeavyChart key="chart" lazy />
 
@@ -454,7 +454,7 @@ works before and without Alpine). See [Streaming the initial render](#streaming-
 
 Override `placeholder()` to customise the skeleton shown while a lazy component loads:
 
-```tsx
+```tsx fragment
 export class HeavyChart extends Component {
   override placeholder() {
     return <div class="h-64 w-full rounded-xl bg-gray-200 animate-pulse" />;
@@ -472,7 +472,7 @@ export class HeavyChart extends Component {
 
 A `@locked` prop is frozen after mount. Mark a prop `@reactive` instead and the parent re-pushes its value whenever it changes, re-rendering the child — while the child keeps the rest of its own state intact:
 
-```tsx
+```tsx fragment
 export class PriceTag extends Component {
   @reactive currency = "USD";
   @reactive amount = 0;
@@ -497,7 +497,7 @@ export class PriceTag extends Component {
 
 `@modelable` is a reactive prop that also syncs **back** to the parent. The parent property and the child prop stay in lock-step, so you can build reusable input/control components:
 
-```tsx
+```tsx fragment
 export class StarRating extends Component {
   @modelable rating: number = 0; // two-way bound to parent
 
@@ -537,7 +537,7 @@ finishes. They solve different problems and do not interact.
 Mark a child `stream` and the page paints immediately with that child's placeholder; its real markup
 is appended to the same response as soon as it finishes rendering:
 
-```tsx
+```tsx fragment
 override async render() {
   return (
     <div>
@@ -569,13 +569,13 @@ so `stream` degrades to an ordinary inline child render.
 
 Push content to the client mid-action — before the final patch — using `this.stream()`. Useful for LLM token streaming, long-running progress updates, or any content that takes time:
 
-```tsx
+```tsx fragment
 {/* In the template: declare the stream target */}
 <div stream="answer" class="prose" />
 <div stream="status" class="text-sm text-gray-500" />
 ```
 
-```typescript
+```typescript fragment
 @expose async generate(): Promise<void> {
   this.stream("status", "Generating…");
 
@@ -596,7 +596,7 @@ this.stream("output", freshContent, { replace: true });
 
 `this.stream()` is the low-level primitive: it pushes raw HTML into a `flow:stream` target, but that content isn't part of the snapshot, so you must _also_ write the accumulated result to a field for the final render, and there's no built-in cancellation. `@task` handles both. Mark an async method `@task` and just **write the field** — the framework streams it:
 
-```tsx
+```tsx fragment
 import { Component, task, expose } from "@zerotal/flow";
 
 export class Chat extends Component {
@@ -612,7 +612,7 @@ export class Chat extends Component {
 }
 ```
 
-```tsx
+```tsx fragment
 {/* Bind the streamed field REACTIVELY (text={…} → flow:text, or x-text) so each write updates
     this element live off the client store — no flow:stream element, no re-render per chunk. */}
 <button onClick={this.generate} loadingAttr="disabled">Generate</button>
@@ -632,7 +632,7 @@ This is the primitive for AI answers, build/deploy logs, and progress feeds — 
 
 Middleware attached to a `Router.flow()` call runs on the initial HTTP `GET` **and** on every WebSocket update for that page. This keeps auth gates active across the entire session, not just at page load:
 
-```typescript
+```typescript fragment
 import { Router } from "zerotal";
 import { RequireAuthMiddleware } from "#app/middleware/RequireAuth.ts";
 import { RequireAdminMiddleware } from "#app/middleware/RequireAdmin.ts";
@@ -657,7 +657,7 @@ See [Testing](/docs/flow/testing) for the full guide — mounting, calling actio
 
 ### Mounting a composed component
 
-```typescript
+```typescript fragment
 import { FlowTest } from "@zerotal/flow/testing";
 import { CounterPage } from "../app/flow/CounterPage.tsx";
 
@@ -672,14 +672,14 @@ t.assertDontSee("Count: 1");
 
 Mount with initial props (seed state before `onMount`):
 
-```typescript
+```typescript fragment
 const t = await FlowTest.mount(PostsPage, { page: 2, search: "TypeScript" });
 expect(t.page().search).toBe("TypeScript");
 ```
 
 ### Calling composed actions
 
-```typescript
+```typescript fragment
 // call() drives: onBoot → onHydrate → action() → onUpdate → render → onDehydrate
 await t.call("increment");
 expect(t.page().count).toBe(1);
@@ -694,7 +694,7 @@ expect(t.page().count).toBe(42);
 
 Two ways to change a property between calls:
 
-```typescript
+```typescript fragment
 // set() — direct assignment, no hooks fire
 await t.set("draft", "Hello world");
 
@@ -708,14 +708,14 @@ Use `set()` to seed state for a specific scenario. Use `update()` to test that y
 
 **HTML assertions:**
 
-```typescript
+```typescript fragment
 t.assertSee("Published post"); // HTML contains this string
 t.assertDontSee("Error"); // HTML does NOT contain this string
 ```
 
 **Validation assertions:**
 
-```typescript
+```typescript fragment
 await t.call("save");
 t.assertHasErrors("email"); // field has at least one error
 t.assertHasErrors("email", "required"); // error message contains "required"
@@ -724,14 +724,14 @@ t.assertNoErrors(); // no errors at all
 
 **Redirect assertions:**
 
-```typescript
+```typescript fragment
 t.assertRedirectedTo("/dashboard");
 t.assertNotRedirected();
 ```
 
 **Flash assertions:**
 
-```typescript
+```typescript fragment
 t.assertFlashed("success", "Saved."); // level + message substring
 t.assertFlashed("error"); // just check the level
 t.assertFlashed(undefined, "Something went"); // just check the message substring
@@ -739,13 +739,13 @@ t.assertFlashed(undefined, "Something went"); // just check the message substrin
 
 **Event assertions:**
 
-```typescript
+```typescript fragment
 t.assertDispatched("post-created");
 ```
 
 ### Composed accessors
 
-```typescript
+```typescript fragment
 t.page(); // the Component instance — inspect properties directly
 t.html(); // the rendered HTML string
 t.errors(); // current validation error bag: Record<string, string[]>
@@ -755,7 +755,7 @@ t.snapshot(); // the serialised snapshot
 
 ### Full test example
 
-```typescript
+```typescript fragment
 import { describe, test, expect, beforeEach } from "bun:test";
 import { FlowTest } from "@zerotal/flow/testing";
 import { LoginPage } from "#app/flow/LoginPage.tsx";

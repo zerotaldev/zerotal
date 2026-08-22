@@ -42,7 +42,7 @@ app/providers/*    →   register → boot phases   →   app/middleware/*   →
 
 Every `Model` subclass under `app/models/` is registered automatically:
 
-```typescript
+```typescript fragment
 // app/models/User.ts
 import { Model, column, hasMany } from "@zerotal/orm";
 import { Post } from "./Post.ts";
@@ -65,7 +65,7 @@ No `@table` needed. The table name is derived by convention — `pluralize(snake
 
 Override the name (or set timestamps/soft-deletes) with `@table` whenever you need to:
 
-```typescript
+```typescript fragment
 // app/models/Account.ts
 @table("legacy_accounts", { softDeletes: true })
 export class Account extends Model {
@@ -86,7 +86,7 @@ export class Account extends Model {
 `XObserver` is attached to model `X` automatically (the `Observer` suffix is stripped and matched
 against the discovered models):
 
-```typescript
+```typescript fragment
 // app/observers/UserObserver.ts
 import type { ModelObserver } from "@zerotal/orm";
 import type { User } from "../models/User.ts";
@@ -107,7 +107,7 @@ Override the target with `static model = SomeModel` when the name doesn't match.
 
 `XPolicy` is registered with the Gate for model `X`:
 
-```typescript
+```typescript fragment
 // app/policies/PostPolicy.ts
 import { Policy } from "@zerotal/auth";
 import type { Post } from "../models/Post.ts";
@@ -130,14 +130,14 @@ model's class automatically. Override the target with `static model = Post`.
 
 A listener declares the event(s) it handles via `static listens`:
 
-```typescript
+```typescript fragment
 // app/events/UserRegistered.ts
 export class UserRegistered {
   constructor(public user: User) {}
 }
 ```
 
-```typescript
+```typescript fragment
 // app/listeners/SendWelcomeEmail.ts
 import { UserRegistered } from "../events/UserRegistered.ts";
 
@@ -158,7 +158,7 @@ them and runs any module-level side effects before listeners bind).
 A model can map its lifecycle events to event classes, which are dispatched on the bus when they
 fire — listeners then react with no coupling to the model:
 
-```typescript
+```typescript fragment
 // app/models/Order.ts
 export class Order extends Model {
   static dispatchesEvents = { created: OrderPlaced, deleted: OrderCancelled };
@@ -197,7 +197,7 @@ export class AppServiceProvider extends ServiceProvider {
 Each middleware class under `app/middleware/` is registered as a **named group** under its class
 name, so routes can reference it by string without importing it:
 
-```typescript
+```typescript fragment
 // app/middleware/EnsureSubscribed.ts
 import { BaseMiddleware } from "zerotal";
 
@@ -208,7 +208,7 @@ export class EnsureSubscribed extends BaseMiddleware<{}> {
 }
 ```
 
-```typescript
+```typescript fragment
 // routes/web.ts — reference by class name
 Router.group({ middleware: ["EnsureSubscribed"] }, () => {
   /* … */
@@ -218,7 +218,7 @@ Router.group({ middleware: ["EnsureSubscribed"] }, () => {
 Middleware is **not** applied globally by default. Opt a class into the global pipeline with
 `static global = true`:
 
-```typescript
+```typescript fragment
 // app/middleware/RequestId.ts
 export class RequestId extends BaseMiddleware<{}> {
   static global = true; // runs on every request
@@ -281,7 +281,7 @@ export class NotifyFollowersJob extends Job {
 
 Dispatch it from anywhere without importing the class into a barrel:
 
-```typescript
+```typescript fragment
 // in a controller
 await Queue.dispatch(new NotifyFollowersJob(post.id));
 ```
@@ -296,7 +296,7 @@ registered with the scheduler at boot. Each declares its cadence (a `cron` strin
 `frequency()` method) and its work (`handle()`); the loader translates the class's declarative
 settings into a scheduled task.
 
-```typescript
+```typescript fragment
 // app/schedules/SendDailyReports.ts
 import { Schedule } from "@zerotal/scheduler";
 
@@ -342,7 +342,7 @@ import only runs because this concern imports it.
 Once models are registered at boot, Zerotal can sync the schema additively — create missing tables
 and add missing columns to match your models (TypeORM-style `synchronize`):
 
-```typescript
+```typescript fragment
 // config/database.ts
 import { DatabaseConfig } from "@zerotal/orm";
 

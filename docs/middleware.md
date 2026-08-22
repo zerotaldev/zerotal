@@ -116,7 +116,7 @@ For middleware that must run on _every_ request, see [Global middleware](#global
 Pass an array of middleware classes as the fourth argument to any route
 registration method:
 
-```ts
+```ts fragment
 // routes/index.ts
 Router.get("/dashboard", DashboardController, "index", [AuthMiddleware]);
 Router.post("/posts", PostController, "store", [AuthMiddleware, ThrottleMiddleware]);
@@ -124,7 +124,7 @@ Router.post("/posts", PostController, "store", [AuthMiddleware, ThrottleMiddlewa
 
 ### Route groups
 
-```ts
+```ts fragment
 // routes/index.ts
 Router.group({ middleware: AuthMiddleware }, () => {
   Router.get("/dashboard", DashboardController, "index");
@@ -137,7 +137,7 @@ Router.group({ middleware: AuthMiddleware }, () => {
 Middleware classes under `app/middleware/` are auto-registered at boot as a **named group under
 their class name** — reference them by string in routes without importing:
 
-```ts
+```ts fragment
 // app/middleware/EnsureSubscribed.ts → referenceable as "EnsureSubscribed"
 Router.group({ middleware: ["EnsureSubscribed"] }, () => {
   /* … */
@@ -151,13 +151,13 @@ global pipeline. See [Conventions](/docs/conventions#middleware-appmiddleware).
 
 Define a group once, reference it by name everywhere:
 
-```ts
+```ts fragment
 // in a ServiceProvider.onRegister()
 Router.middlewareGroup("api", [ThrottleMiddleware, BearerTokenMiddleware]);
 Router.middlewareGroup("web", [SessionMiddleware, CsrfMiddleware]);
 ```
 
-```ts
+```ts fragment
 // routes/index.ts
 Router.group({ prefix: "/api/v1", middleware: "api" }, () => {
   Router.resource("posts", PostController);
@@ -173,7 +173,7 @@ Router.group({ middleware: ["web", AuthMiddleware] }, () => {
 Drop a `_middleware.ts` file into any directory under your file routes folder.
 It applies to every route file in that directory and all subdirectories:
 
-```ts
+```ts fragment
 // app/routes/admin/_middleware.ts
 import { AuthMiddleware } from "@zerotal/auth";
 import { AdminMiddleware } from "../../middleware/AdminMiddleware.ts";
@@ -188,7 +188,7 @@ you get `root/_middleware → admin/_middleware → route handler` in one pipeli
 
 Register middleware that runs on every request in `bootstrap/app.ts`:
 
-```ts
+```ts fragment
 // bootstrap/app.ts
 export default Application.create({ providers }).use([
   DevtoolsInjectionMiddleware,
@@ -208,7 +208,7 @@ bakes options into a zero-argument class.
 
 ### CorsMiddleware
 
-```ts
+```ts fragment
 // bootstrap/app.ts
 import { CorsMiddleware } from "zerotal";
 
@@ -240,7 +240,7 @@ app.use([CorsMiddleware.with({ origin: (o) => o.endsWith(".mycompany.com") })]);
 Rate-limits requests with an in-memory sliding window counter. Returns `429`
 with `Retry-After` and `X-RateLimit-*` headers when the limit is exceeded.
 
-```ts
+```ts fragment
 // bootstrap/app.ts (global) and routes/index.ts (per-route)
 import { ThrottleMiddleware } from "zerotal";
 
@@ -295,7 +295,7 @@ RateLimiter.for("upload")
 
 Apply as route middleware with `RateLimiter.middleware(name)`:
 
-```ts
+```ts fragment
 // routes/index.ts
 Router.post("/login", AuthController, "login", [RateLimiter.middleware("login")]);
 
@@ -314,7 +314,7 @@ Router.group({ prefix: "/api", middleware: [RateLimiter.middleware("api")] }, ()
 Check or reset a limiter manually — e.g. clear failed login attempts after a
 successful sign-in:
 
-```ts
+```ts fragment
 // in a controller action — `ctx` is the HttpContext the action receives
 if (await RateLimiter.tooManyAttempts("login", ctx)) {
   return ctx.json({ message: "Too Many Requests" }, 429);
@@ -333,7 +333,7 @@ RateLimiter.resetFor("login", ctx); // clear the counter for this actor
 Adds `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and a
 basic `Content-Security-Policy` to every response:
 
-```ts
+```ts fragment
 // bootstrap/app.ts
 import { SecureHeadersMiddleware } from "zerotal";
 app.use([SecureHeadersMiddleware]);
@@ -358,7 +358,7 @@ embeddable stays that way.
 
 Verifies HMAC-SHA256 signatures on incoming webhook requests:
 
-```ts
+```ts fragment
 // routes/index.ts
 import { WebhookMiddleware } from "zerotal";
 
@@ -379,7 +379,7 @@ Router.post("/webhooks/stripe", StripeController, "handle", [
 Decorate the class with `@inject(...)`, listing its dependency tokens in
 constructor order; the container resolves them and passes them in:
 
-```ts
+```ts fragment
 // app/middleware/AuditMiddleware.ts
 import { inject } from "zerotal";
 import type { Pipe, NextFn, HttpContext } from "zerotal";
@@ -423,7 +423,7 @@ lets a request **through**, and what it does when it **stops** one.
 
 **Test the stop first**, because it is the reason the middleware exists:
 
-```typescript
+```typescript fragment
 // tests/http/middleware.test.ts
 import { test } from "bun:test";
 import { createApp } from "../helpers.ts";
@@ -441,7 +441,7 @@ test("a guest is turned away from a protected route", async () => {
 **Then prove it lets the right request through**, otherwise a middleware that
 rejects everything passes the first test perfectly:
 
-```typescript
+```typescript fragment
 // tests/http/middleware.test.ts
 const res = await app.actingAs(user).get("/dashboard");
 
@@ -452,7 +452,7 @@ res.assertOk();
 Register a probe route in the `setup` callback — `createTestApp(bootstrap, setup)`
 runs it before the server starts, so the route compiles into the router:
 
-```typescript
+```typescript fragment
 // tests/http/middleware.test.ts
 const app = await createApp(() => {
   Router.get("/probe", () => ({ locale: Context.get("locale") })).middleware([LocaleMiddleware]);

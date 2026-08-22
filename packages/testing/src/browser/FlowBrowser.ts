@@ -142,6 +142,42 @@ export class BrowserPage {
     );
   }
 
+  /**
+   * Why an element overflows: its ancestors, and which of them fails to contain it.
+   *
+   * An element inside an `overflow-x: auto` box is *allowed* to measure wider than
+   * the viewport — the box scrolls and the page does not. So "this element sticks
+   * out" is not yet a bug report; the question is which ancestor was supposed to
+   * clip it and did not, which is what this walks up and answers.
+   */
+  async overflowTrace(selector: string): Promise<string[]> {
+    return this.evaluate<string[]>(
+      "(() => {" +
+        "let el = document.querySelector(" +
+        quote(selector) +
+        ");" +
+        'if (!el) return ["not found: " + ' +
+        quote(selector) +
+        "];" +
+        "const out = [];" +
+        "while (el && el !== document.documentElement) {" +
+        "const cs = getComputedStyle(el);" +
+        "out.push(" +
+        "el.tagName.toLowerCase() +" +
+        '(el.id ? "#" + el.id : "") +' +
+        '" client=" + el.clientWidth +' +
+        '" scroll=" + el.scrollWidth +' +
+        '" overflowX=" + cs.overflowX +' +
+        '" minWidth=" + cs.minWidth +' +
+        '" display=" + cs.display' +
+        ");" +
+        "el = el.parentElement;" +
+        "}" +
+        "return out;" +
+        "})()",
+    );
+  }
+
   /** `textContent` of the first match, trimmed. `null` when nothing matches. */
   async text(selector: string): Promise<string | null> {
     return this.evaluate<string | null>(

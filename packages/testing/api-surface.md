@@ -304,6 +304,7 @@ class BrowserPage = {
   evaluate: <T = unknown>(expression: string) => Promise<T>
   horizontalOverflow: () => Promise<number>
   html: (selector: string) => Promise<string | null>
+  overflowTrace: (selector: string) => Promise<string[]>
   overflowingElements: (limit?: number) => Promise<string[]>
   press: (key: string) => Promise<BrowserPage>
   resize: (width: number, height: number) => Promise<BrowserPage>

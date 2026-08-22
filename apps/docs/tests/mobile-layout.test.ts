@@ -65,8 +65,18 @@ describe.skipIf(!availability.available)("no horizontal overflow at 375px", () =
         // Name the offenders in the failure. A bare "204px" on a page of six
         // thousand nodes tells whoever reads it nothing they can act on.
         const worst = await page.overflowingElements();
+        // An element inside an `overflow-x: auto` box may legitimately measure
+        // wider than the viewport — the box scrolls and the page does not. Print
+        // the ancestor chain of the first code block so the failure names the box
+        // that was supposed to contain it and did not.
+        const trace = await page.overflowTrace("pre code");
         throw new Error(
-          [`${path} overflows by ${overflow}px at ${PHONE.width}px:`, ...worst].join("\n  "),
+          [
+            `${path} overflows by ${overflow}px at ${PHONE.width}px:`,
+            ...worst,
+            "ancestors of the first `pre code`:",
+            ...trace,
+          ].join("\n  "),
         );
       }
     });

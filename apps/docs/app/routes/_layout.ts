@@ -425,7 +425,9 @@ function mobileMenu(hideAt: string): string {
     </div>`;
 }
 
-const menuButton = (hideAt: string): string => `<button id="site-menu-btn" type="button" class="${hideAt} text-stone-500 hover:text-stone-900 p-1.5 -mr-1.5 rounded-lg hover:bg-stone-100 transition-colors" aria-label="Menu" aria-expanded="false" aria-controls="site-menu">
+const menuButton = (
+  hideAt: string,
+): string => `<button id="site-menu-btn" type="button" class="${hideAt} text-stone-500 hover:text-stone-900 p-1.5 -mr-1.5 rounded-lg hover:bg-stone-100 transition-colors" aria-label="Menu" aria-expanded="false" aria-controls="site-menu">
         <!-- Deliberately not a hamburger. On a documentation page the header already
              has one on the left for the page tree, and two identical icons a thumb
              apart is a guess rather than a choice. -->

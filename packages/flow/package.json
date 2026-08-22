@@ -40,18 +40,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@alpinejs/anchor": "^3.14.9",
-    "@alpinejs/collapse": "^3.14.9",
-    "@alpinejs/focus": "^3.14.9",
-    "@alpinejs/mask": "^3.14.9",
-    "@alpinejs/morph": "^3.14.9",
-    "@alpinejs/persist": "^3.14.9",
-    "@alpinejs/resize": "^3.14.9",
+    "@alpinejs/anchor": "^3.16.2",
+    "@alpinejs/collapse": "^3.16.2",
+    "@alpinejs/focus": "^3.16.2",
+    "@alpinejs/mask": "^3.16.2",
+    "@alpinejs/morph": "^3.16.2",
+    "@alpinejs/persist": "^3.16.2",
+    "@alpinejs/resize": "^3.16.2",
     "@zerotal/client": "workspace:*",
     "@zerotal/core": "workspace:*",
     "@zerotal/orm": "workspace:*",
     "@zerotal/validator": "workspace:*",
-    "alpinejs": "^3.14.9",
+    "alpinejs": "^3.16.2",
     "typescript": "^5.8.0"
   },
   "devDependencies": {

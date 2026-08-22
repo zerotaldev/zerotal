@@ -24,6 +24,12 @@ export default tseslint.config(
       // create-zerotal emits source files as template strings — not our source.
       "packages/create-zerotal/**",
       // Generated / fixture code.
+      // `docs:examples` extracts every documentation code block into a scratch
+      // directory to compile it. Those are the *examples*, not this repo's source,
+      // and a run killed mid-flight leaves the directory behind — which is how a
+      // lint baseline of 106 read as 509 with 111 errors that were all somebody's
+      // sample code.
+      "apps/*/.docs-examples-*/**",
       "**/__test_migrations__/**",
       "**/__fixtures__/**",
       // Flow compiles components into .zerotal/compiled/*.ts at build time —

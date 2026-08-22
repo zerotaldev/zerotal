@@ -46,7 +46,7 @@
  */
 import { Glob } from "bun";
 import { join } from "node:path";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile, readdir } from "node:fs/promises";
 
 const ROOT = join(import.meta.dir, "..");
 const DOCS = join(ROOT, "docs");
@@ -77,7 +77,10 @@ const DOCS = join(ROOT, "docs");
 // while one is compiling erases its inputs mid-check and the results are
 // nonsense — fragments reported as compiling, drift reported as clean. Cheap to
 // make impossible rather than rare.
-const WORK = join(ROOT, "apps", "docs", `.docs-examples-${process.pid}`, "a", "b", "units");
+const WORK_PARENT = join(ROOT, "apps", "docs");
+/** The directory to delete — the root of the nest, not the leaf that holds the units. */
+const WORK_ROOT = join(WORK_PARENT, `.docs-examples-${process.pid}`);
+const WORK = join(WORK_ROOT, "a", "b", "units");
 
 /** How far `WORK` sits below `apps/docs`, for the generated config's relative paths. */
 const WORK_DEPTH = 4;
@@ -320,8 +323,36 @@ const TSCONFIG = {
  * that both open `const user = …` would collide with an error about neither of
  * them.
  */
+/**
+ * Delete work directories left by earlier runs.
+ *
+ * `runTsc` removes its own on the way out, which covers every run that finishes.
+ * A run that is killed — a CI timeout, a Ctrl-C, the two-minute cap on a slow
+ * machine — leaves a few thousand extracted example files sitting under
+ * `apps/docs`. They are gitignored, so nothing notices until a tool that reads
+ * the filesystem rather than the index walks into them: the lint baseline went
+ * from 106 warnings to 509 with 111 errors, none of it this repo's code.
+ *
+ * Swept at startup rather than on a signal handler, because the process that
+ * needs to clean up is the one that already died.
+ */
+async function sweepStaleWork(): Promise<void> {
+  let entries: string[];
+  try {
+    entries = await readdir(WORK_PARENT);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith(".docs-examples-")) continue;
+    const dir = join(WORK_PARENT, entry);
+    if (dir === WORK_ROOT) continue;
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
 async function runTsc(blocks: Block[]): Promise<Map<Block, string>> {
-  await rm(WORK, { recursive: true, force: true });
+  await rm(WORK_ROOT, { recursive: true, force: true });
   await mkdir(WORK, { recursive: true });
   // `paths` replaces rather than merges across `extends`, so the app's own
   // mapping is folded in here instead of being silently dropped.
@@ -373,7 +404,7 @@ async function runTsc(blocks: Block[]): Promise<Map<Block, string>> {
     failures.set(block, `${m[4]} ${m[5]} (example line ${m[2]})`);
   }
 
-  await rm(WORK, { recursive: true, force: true });
+  await rm(WORK_ROOT, { recursive: true, force: true });
   return failures;
 }
 
@@ -565,6 +596,8 @@ async function seed(blocks: Block[], failures: Map<Block, string>): Promise<numb
 
 const args = new Set(Bun.argv.slice(2));
 const check = args.has("--check");
+
+await sweepStaleWork();
 
 const blocks = await collect();
 if (blocks.length === 0) {

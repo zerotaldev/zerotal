@@ -1,6 +1,6 @@
 import { Router } from "zerotal";
 import { searchDocs } from "../app/support/search.ts";
-import { Layout, ApiLayout, isApiPath } from "../app/routes/_layout.ts";
+import { Layout, ApiLayout, isApiPath, navPages } from "../app/routes/_layout.ts";
 // Registers GET /blog and GET /blog/* on import.
 import "./blog.ts";
 // Registers the authoring UI at /admin on import.
@@ -70,10 +70,23 @@ Router.raw("GET", "/docs/*", renderDoc);
 // outside the docs namespace on purpose, so a page can never be shadowed by it.
 Router.raw("GET", "/api/docs-search", async (request) => {
   const query = new URL(request.url).searchParams.get("q") ?? "";
+  const q = query.trim().toLowerCase();
+
+  // Two questions in one response. Page names answer "where is the Inertia
+  // section" and match on a prefix; the body index answers "how do I defer a
+  // prop" and needs whole words. Neither covers the other, so the dropdown shows
+  // both and the client makes one request instead of two.
+  const pages =
+    q.length > 0
+      ? navPages()
+          .filter((p) => p.label.toLowerCase().includes(q) || p.group.toLowerCase().includes(q))
+          .slice(0, 6)
+      : [];
+
   const results = await searchDocs(query);
 
   return Response.json(
-    { query, results },
+    { query, pages, results },
     {
       // Same query, same corpus, same answer for the life of a deploy — but a
       // deploy replaces the corpus, so it is `no-cache` rather than immutable.

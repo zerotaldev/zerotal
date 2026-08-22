@@ -248,6 +248,34 @@ const NAV: { group: string; items: NavItem[] }[] = [
   },
 ];
 
+/**
+ * Every page in the sidebar, flattened, with the group it sits under.
+ *
+ * The header search matches these by name and the content index matches what the
+ * pages *say* — two different questions ("where is the Inertia section" versus
+ * "how do I defer a prop"), answered in one dropdown. Name matching also covers
+ * prefixes, which BM25 cannot: "inert" ranks nothing in the body index and is
+ * obviously meant to find Inertia.
+ */
+export interface NavPage {
+  label: string;
+  slug: string;
+  group: string;
+}
+
+export function navPages(): NavPage[] {
+  const out: NavPage[] = [];
+  for (const { group, items } of NAV) {
+    for (const item of items) {
+      out.push({ label: item.label, slug: item.slug, group });
+      for (const child of item.children ?? []) {
+        out.push({ label: child.label, slug: child.slug, group: item.label });
+      }
+    }
+  }
+  return out;
+}
+
 // Flattened, ordered list of pages — powers prev/next navigation. Nested
 // children are spliced in right after their parent, same order as before.
 const FLAT: { label: string; slug: string }[] = NAV.flatMap((g) =>
@@ -321,6 +349,32 @@ const searchBox = (label: string, placeholder: string, empty: string): string =>
           <div id="search-results" class="hidden pt-3"></div>
         </div>`;
 
+/**
+ * The header search: one field, and a dropdown card for its results.
+ *
+ * It replaces the sidebar filter, which could only hide navigation rows and so
+ * could only find a page whose name you already knew. This asks the server on
+ * every keystroke and shows both what matched by name and what matched by
+ * content — see `/api/docs-search`.
+ *
+ * Rendered on every page, including ones with no sidebar, which the old box
+ * could not be.
+ */
+const HEADER_SEARCH = `
+      <div id="site-search" class="relative hidden sm:block">
+        <svg class="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <input id="site-search-input" type="text" role="combobox" aria-expanded="false"
+               aria-controls="site-search-panel" aria-autocomplete="list" autocomplete="off"
+               aria-label="Search the documentation" placeholder="Search documentation…"
+               class="w-56 lg:w-72 bg-stone-50 border border-stone-200 rounded-lg pl-9 pr-9 py-1.5 text-[0.8125rem] text-stone-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-voltage-700/20 focus:border-voltage-700/50 transition-all placeholder:text-stone-400">
+        <kbd class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-stone-200 bg-white px-1.5 text-[0.65rem] font-medium text-stone-400 pointer-events-none">/</kbd>
+
+        <!-- The card. Hidden until there is something to show, so an empty box
+             never covers the page behind it. -->
+        <div id="site-search-panel" role="listbox"
+             class="hidden absolute right-0 top-full mt-2 w-[26rem] max-h-[70vh] overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-xl shadow-stone-900/5 p-1.5 z-50"></div>
+      </div>`;
+
 function renderSidebar(pathname = ""): string {
   // A page is "active" for its own URL and any nested URL beneath it, so deep
   // pages (e.g. `/docs/api/@zerotal/core/...`) still highlight their nav item.
@@ -385,7 +439,9 @@ function renderSidebar(pathname = ""): string {
     <nav id="sidebar" class="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] overflow-y-auto bg-white border-r border-stone-200 z-40 hidden md:block"
          aria-label="Documentation navigation">
       <div class="px-4 py-5">
-        ${searchBox("Filter documentation", "Filter…", "No matching pages.")}
+        <!-- No filter box here any more: it could only hide nav rows, so it only
+             ever found a page you could already name. The header search does both
+             halves, and is on every page rather than only ones with a sidebar. -->
         <ul id="nav-list" class="m-0 p-0">${groups}</ul>
       </div>
     </nav>`;
@@ -566,7 +622,8 @@ function renderHeader(sidebar: boolean): string {
       ${_LOGO}
       ${_BADGE}
     </div>
-    <nav class="flex items-center gap-4 sm:gap-5" aria-label="External links">
+    <nav class="flex items-center gap-3 sm:gap-4" aria-label="External links">
+      ${HEADER_SEARCH}
       <a href="/docs/getting-started" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block">Documentation</a>
       <a href="/blog" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block">Blog</a>
       <div class="w-px h-4 bg-stone-200 hidden sm:block"></div>

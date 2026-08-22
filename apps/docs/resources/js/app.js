@@ -14,6 +14,11 @@ import "prismjs/components/prism-tsx"; // extends typescript + jsx
 import "prismjs/components/prism-ini";
 import "prismjs/components/prism-powershell";
 
+// ── Header search ─────────────────────────────────────────────────────────────
+// The search field, its dropdown and the `/` shortcut. Its own module because it
+// is the one piece of this bundle that talks to the server.
+import "./search.js";
+
 // ── Per-page init ─────────────────────────────────────────────────────────────
 // Called on first load AND after every SPA navigation (Decision 4).
 // Order: copy buttons → heading anchors → active link → highlight → ToC.
@@ -307,99 +312,11 @@ document.addEventListener("input", (e) => {
   // When search is cleared, restore the normal collapse state
   if (!searching) syncGroupCollapse(_currentPath);
 
-  // The nav filter above only ever matched page *names*, so "requests" found the
-  // two pages with it in the title and hid every page that explains requests
-  // without saying so. Content results come from the server and sit underneath.
-  document.getElementById("search-empty")?.classList.toggle("hidden", anyVisible || searching);
-  scheduleContentSearch(q);
+  document.getElementById("search-empty")?.classList.toggle("hidden", anyVisible);
 });
 
-// ── Full-text results ─────────────────────────────────────────────────────────
-// Ranked server-side by the same engine the MCP `search_docs` tool uses, so the
-// site and an agent answer a question the same way.
-
-let _searchTimer = null;
-let _searchSeq = 0;
-
-/** Debounced, because a keystroke is not a question. */
-function scheduleContentSearch(query) {
-  clearTimeout(_searchTimer);
-  const box = document.getElementById("search-results");
-  if (!box) return;
-
-  // Below two characters, nothing ranks — the nav filter above is still live and
-  // is the better tool for a prefix anyway.
-  if (query.length < 2) {
-    box.classList.add("hidden");
-    box.innerHTML = "";
-    return;
-  }
-
-  _searchTimer = setTimeout(() => void runContentSearch(query), 180);
-}
-
-async function runContentSearch(query) {
-  const box = document.getElementById("search-results");
-  if (!box) return;
-
-  // Out-of-order responses are the classic type-ahead bug: a slow "rou" landing
-  // after a fast "route model" replaces good results with stale ones.
-  const seq = ++_searchSeq;
-
-  let results = [];
-  try {
-    const res = await fetch(`/api/docs-search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) return;
-    ({ results = [] } = await res.json());
-  } catch {
-    return; // Offline, or navigated away mid-request. The nav filter still works.
-  }
-
-  if (seq !== _searchSeq) return;
-
-  if (results.length === 0) {
-    box.classList.add("hidden");
-    box.innerHTML = "";
-    return;
-  }
-
-  box.classList.remove("hidden");
-  box.innerHTML =
-    `<p class="px-1 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-stone-400">In the documentation</p>` +
-    results
-      .map(
-        (r) => `
-        <a href="${r.slug.startsWith("/") ? r.slug : `/docs/${r.slug}`}"
-           class="block rounded-md px-2 py-1.5 no-underline hover:bg-stone-100 transition-colors">
-          <span class="block text-[0.8125rem] font-medium text-stone-900">${esc(r.title)}</span>
-          ${r.heading ? `<span class="block text-[0.75rem] text-stone-500">${esc(r.heading)}</span>` : ""}
-        </a>`,
-      )
-      .join("");
-}
-
-/** The excerpt and headings are page content, so they are escaped, not trusted. */
-function esc(value) {
-  return String(value ?? "").replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
-  );
-}
-
-// STEP 3 — Keyboard shortcut (Decision 3) ────────────────────────────────────
-// Press / (forward slash) when focus is outside any text input to jump to the
-// sidebar search. Wired once on DOMContentLoaded — NOT inside initPage().
-document.addEventListener("keydown", (e) => {
-  if (e.key !== "/") return;
-  const t = e.target;
-  // Do not intercept / when the user is already typing in a field.
-  if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
-  const input = document.getElementById("sidebar-search");
-  if (!input) return;
-  e.preventDefault();
-  input.focus();
-  input.select();
-});
+// The `/` shortcut, the search field and its dropdown live in search.js — the
+// header owns search now, and this file owns the sidebar and the page chrome.
 
 // ── SPA Navigate ──────────────────────────────────────────────────────────────
 // Intercepts clicks on internal <a> elements and swaps page content without a

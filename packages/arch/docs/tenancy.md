@@ -261,7 +261,7 @@ nothing to resolve, so every request fails.
 
 ## ORM scoping — Tenantable
 
-Compose the `Tenantable` mixin via [`Model.using`](/docs/orm/index#composing-model-mixins) onto any model that belongs to a tenant. Two things happen automatically:
+Compose the `Tenantable` mixin via [`Model.using`](/docs/orm#composing-model-mixins) onto any model that belongs to a tenant. Two things happen automatically:
 
 1. Every query on the model receives `WHERE tenant_id = <current tenant id>` (skipped outside a tenant context).
 2. `create()` / `save()` inject `tenant_id` on new records, so you never accidentally write cross-tenant data.
@@ -601,7 +601,7 @@ Resolved from the container binding `"tenancy"`; the `Tenant` value is the facad
 
 ## Next steps
 
-- [ORM](/docs/orm/index) — how `Tenantable` composes onto your models via `Model.using`.
+- [ORM](/docs/orm) — how `Tenantable` composes onto your models via `Model.using`.
 - [Storage](/docs/storage) — the disks `tenantDisk()` wraps.
 - [Cache](/docs/cache) — the stores `tenantCache()` wraps.
 - [Middleware](/docs/middleware) — where `TenancyMiddleware` runs in the pipeline.

@@ -9,6 +9,7 @@ import "./admin.ts";
 import "./seo.ts";
 import {
   parseSlug,
+  canonicalPath,
   parseFrontmatter,
   resolveDocument,
   renderNotFoundPage,
@@ -27,6 +28,13 @@ const MARKDOWN_OPTIONS: BunMarkdownOptions = {
 
 async function renderDoc(req: Request): Promise<Response> {
   const { pathname } = new URL(req.url);
+
+  // Send the duplicates to the one URL before rendering anything. 301, because
+  // this is settled: the sitemap has always named this form, and a permanent
+  // redirect is what moves the accumulated ranking onto it.
+  const canonical = canonicalPath(pathname);
+  if (canonical) return Response.redirect(canonical, 301);
+
   const slug = parseSlug(pathname);
   const resolved = await resolveDocument(slug);
 
@@ -83,7 +91,17 @@ Router.raw("GET", "/api/docs-search", async (request) => {
           .slice(0, 6)
       : [];
 
-  const results = await searchDocs(query);
+  // A page whose *name* matched will already be the first row on the card, so
+  // ranking its body underneath it spends a second row saying the same thing —
+  // "Icons" above "Icons", one under each heading. The body index still earns its
+  // place for every other page; it just does not repeat what is already there.
+  //
+  // The two halves name pages differently — the nav carries `flow/icons`, the
+  // index returns `/docs/flow/icons` — so they have to be reduced to one form
+  // before they can be compared. Matching them raw silently deduplicated nothing.
+  const key = (slug: string) => slug.replace(/^\/?docs\//, "").replace(/^\//, "");
+  const named = new Set(pages.map((p) => key(p.slug)));
+  const results = (await searchDocs(query)).filter((r) => !named.has(key(r.slug)));
 
   return Response.json(
     { query, pages, results },

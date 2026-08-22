@@ -1,6 +1,6 @@
 import { Router, env } from "zerotal";
 import { listPosts, loadPost } from "@app/support/blog.ts";
-import { listDocSlugs } from "@app/support/helpers.ts";
+import { listDocSlugs, docPath } from "@app/support/helpers.ts";
 
 /**
  * The site's public origin. Absolute URLs are not optional here: a sitemap entry
@@ -65,7 +65,7 @@ Router.raw("GET", "/sitemap.xml", async () => {
     // The listing's `?category=`/`?sort=`/`?view=` views are deliberately absent:
     // they are the same posts rearranged, and every one of them canonicalises to
     // `/blog`. Listing them would be asking to be indexed as duplicates.
-    ...docs.map((slug) => url(`${SITE}/docs/${slug}`)),
+    ...docs.map((slug) => url(`${SITE}${docPath(slug)}`)),
     ...posts.map((post) => url(`${SITE}/blog/${post.slug}`, post.date)),
   ];
 

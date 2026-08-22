@@ -334,14 +334,21 @@ const GROUP_BTN =
 const chevronSvg = (cls: string, expanded: boolean): string =>
   `<svg class="${cls} w-2.5 h-2.5 shrink-0 opacity-80 transition-transform duration-150${expanded ? "" : " -rotate-90"}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>`;
 
-/** The filter field, shared by both sidebars. `/` focuses it (see app.js). */
+/**
+ * The API reference's symbol filter.
+ *
+ * Not the site search: this narrows a rendered tree of some three thousand
+ * generated symbols in place, which is a different job from ranking prose, and
+ * the reference is the one page where filtering what is already on screen beats
+ * being sent somewhere else. `/` belongs to the header field now, so this one no
+ * longer advertises the shortcut.
+ */
 const searchBox = (label: string, placeholder: string, empty: string): string => `
         <div class="mb-2">
           <div class="relative">
             <svg class="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             <input id="sidebar-search" type="text" aria-label="${label}" placeholder="${placeholder}" autocomplete="off"
                    class="w-full bg-stone-50 border border-stone-200 rounded-md pl-8.5 pr-9 py-1.5 text-[0.8125rem] text-stone-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-voltage-700/20 focus:border-voltage-700/50 transition-all placeholder:text-stone-400">
-            <kbd class="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-stone-200 bg-white px-1.5 text-[0.65rem] font-medium text-stone-400 pointer-events-none">/</kbd>
           </div>
           <p id="search-empty" class="hidden px-1 pt-3 text-[0.8125rem] text-stone-400">${empty}</p>
           <!-- Filled by app.js from /api/docs-search. The list above matches page
@@ -360,20 +367,77 @@ const searchBox = (label: string, placeholder: string, empty: string): string =>
  * Rendered on every page, including ones with no sidebar, which the old box
  * could not be.
  */
-const HEADER_SEARCH = `
-      <div id="site-search" class="relative hidden sm:block">
+/**
+ * A search instance: the field, and the card its results land in.
+ *
+ * Parameterised because there are two of them — one in the header for pointer
+ * users, one inside the mobile menu, where the header has no room for a text
+ * field. They share `search.js`, which finds its panel by walking up from the
+ * focused input rather than by a fixed id, so the same behaviour drives both
+ * without either knowing the other exists.
+ */
+function siteSearchBox(id: string, wrapperClass: string, inputClass: string): string {
+  return `
+      <div data-search class="relative ${wrapperClass}">
         <svg class="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-        <input id="site-search-input" type="text" role="combobox" aria-expanded="false"
-               aria-controls="site-search-panel" aria-autocomplete="list" autocomplete="off"
+        <input id="${id}" data-search-input type="text" role="combobox" aria-expanded="false"
+               aria-controls="${id}-panel" aria-autocomplete="list" autocomplete="off"
                aria-label="Search the documentation" placeholder="Search documentation…"
-               class="w-56 lg:w-72 bg-stone-50 border border-stone-200 rounded-lg pl-9 pr-9 py-1.5 text-[0.8125rem] text-stone-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-voltage-700/20 focus:border-voltage-700/50 transition-all placeholder:text-stone-400">
-        <kbd class="absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-stone-200 bg-white px-1.5 text-[0.65rem] font-medium text-stone-400 pointer-events-none">/</kbd>
+               class="${inputClass}">
+        <kbd class="hidden sm:block absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-stone-200 bg-white px-1.5 text-[0.65rem] font-medium text-stone-400 pointer-events-none">/</kbd>
 
         <!-- The card. Hidden until there is something to show, so an empty box
              never covers the page behind it. -->
-        <div id="site-search-panel" role="listbox"
-             class="hidden absolute right-0 top-full mt-2 w-[26rem] max-h-[70vh] overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-xl shadow-stone-900/5 p-1.5 z-50"></div>
+        <div id="${id}-panel" data-search-panel role="listbox" aria-label="Search results"
+             class="hidden absolute right-0 top-full mt-2 w-full sm:w-[26rem] max-h-[70vh] overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-xl shadow-stone-900/5 p-1.5 z-50"></div>
+        <!-- Announced, not shown: without it a screen-reader user types into a box
+             that silently fills with options they are never told about. -->
+        <p data-search-status role="status" aria-live="polite" class="sr-only"></p>
       </div>`;
+}
+
+const SEARCH_INPUT_CLASS =
+  "w-full bg-stone-50 border border-stone-200 rounded-lg pl-9 pr-9 py-1.5 text-[0.8125rem] text-stone-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-voltage-700/20 focus:border-voltage-700/50 transition-all placeholder:text-stone-400";
+
+const HEADER_SEARCH = siteSearchBox(
+  "site-search-input",
+  "hidden sm:block w-56 lg:w-72",
+  SEARCH_INPUT_CLASS,
+);
+
+/**
+ * The links the header hides below `sm`, as a panel.
+ *
+ * They were `hidden sm:block` with nothing behind them, so a phone got a logo, a
+ * GitHub icon and no way to reach the documentation index, the blog, or search —
+ * the site's entire navigation was desktop-only.
+ */
+function mobileMenu(hideAt: string): string {
+  const link =
+    "block px-3 py-2.5 rounded-lg text-sm font-medium text-stone-700 hover:bg-stone-100 no-underline transition-colors";
+  return `
+    <div id="site-menu" class="hidden ${hideAt} fixed inset-x-0 top-16 z-40 border-b border-stone-200 bg-white px-4 py-3 shadow-lg shadow-stone-900/5">
+      ${siteSearchBox("mobile-search-input", "mb-2", SEARCH_INPUT_CLASS)}
+      <a href="/docs" class="${link}">Documentation</a>
+      <a href="/blog" class="${link}">Blog</a>
+      <a href="https://github.com/zerotaldev/zerotal" target="_blank" rel="noopener" class="${link}">GitHub</a>
+      <p class="px-3 pt-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-stone-400">Version ${ZEROTAL_VERSION_SHORT}</p>
+    </div>`;
+}
+
+const menuButton = (hideAt: string): string => `<button id="site-menu-btn" type="button" class="${hideAt} text-stone-500 hover:text-stone-900 p-1.5 -mr-1.5 rounded-lg hover:bg-stone-100 transition-colors" aria-label="Menu" aria-expanded="false" aria-controls="site-menu">
+        <!-- Deliberately not a hamburger. On a documentation page the header already
+             has one on the left for the page tree, and two identical icons a thumb
+             apart is a guess rather than a choice. -->
+        <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>
+      </button>`;
+
+function domId(prefix: string, key: string): string {
+  return `${prefix}-${key
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")}`;
+}
 
 function renderSidebar(pathname = ""): string {
   // A page is "active" for its own URL and any nested URL beneath it, so deep
@@ -412,11 +476,11 @@ function renderSidebar(pathname = ""): string {
       <li class="nav-item nav-parent list-none" data-label="${escHtml(label.toLowerCase())}">
         <div class="flex items-center">
           <a href="/docs/${slug}" class="flex-1 min-w-0 ${linkClass(state, "parent")}">${label}</a>
-          <button type="button" class="nav-child-btn shrink-0 p-1.5 text-stone-300 hover:text-stone-600 bg-transparent border-0 cursor-pointer transition-colors" aria-label="Toggle ${escHtml(label)} section">
+          <button type="button" class="nav-child-btn shrink-0 p-1.5 text-stone-300 hover:text-stone-600 bg-transparent border-0 cursor-pointer transition-colors" aria-label="Toggle ${escHtml(label)} section" aria-expanded="${expanded}" aria-controls="${domId("nav-children", slug)}">
             ${chevronSvg("nav-child-chevron", expanded)}
           </button>
         </div>
-        <ul class="m-0 p-0 my-0.5 ml-4 ${RAIL} space-y-px ${expanded ? "" : "hidden"}" data-child-items>${childLinks}</ul>
+        <ul id="${domId("nav-children", slug)}" class="m-0 p-0 my-0.5 ml-4 ${RAIL} space-y-px ${expanded ? "" : "hidden"}" data-child-items>${childLinks}</ul>
       </li>`;
   };
 
@@ -426,12 +490,13 @@ function renderSidebar(pathname = ""): string {
     );
     const links = items.map(renderItem).join("\n");
     const chevron = chevronSvg("nav-group-chevron", isActiveGroup);
+    const listId = domId("nav-group", group);
     return `
       <li class="nav-group list-none">
-        <button class="${GROUP_BTN}">
+        <button class="${GROUP_BTN}" aria-expanded="${isActiveGroup}" aria-controls="${listId}">
           <span>${group}</span>${chevron}
         </button>
-        <ul class="m-0 p-0 ml-3 pb-1 ${RAIL} space-y-px${isActiveGroup ? "" : " hidden"}" data-group-items>${links}</ul>
+        <ul id="${listId}" class="m-0 p-0 ml-3 pb-1 ${RAIL} space-y-px${isActiveGroup ? "" : " hidden"}" data-group-items>${links}</ul>
       </li>`;
   }).join("\n");
 
@@ -528,7 +593,7 @@ function renderApiSidebar(pathname = ""): string {
     <nav id="sidebar" class="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] overflow-y-auto bg-white border-r border-stone-200 z-40 hidden md:block"
          aria-label="API reference navigation">
       <div class="px-4 py-5">
-        <a href="/docs/getting-started" class="inline-flex items-center gap-1.5 mb-3 text-[0.8125rem] text-stone-500 hover:text-stone-900 no-underline transition-colors">← Documentation</a>
+        <a href="/docs" class="inline-flex items-center gap-1.5 mb-3 text-[0.8125rem] text-stone-500 hover:text-stone-900 no-underline transition-colors">← Documentation</a>
         ${searchBox("Filter API symbols", "Filter symbols…", "No matching symbols.")}
         <ul id="nav-list" class="m-0 p-0">
           <li class="nav-group list-none">
@@ -598,8 +663,9 @@ function renderHeader(sidebar: boolean): string {
       ${_LOGO}
       ${_BADGE}
     </div>
-    <nav class="flex items-center gap-1 sm:gap-3" aria-label="Site navigation">
-      <a href="/docs/getting-started" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block px-3 py-1.5 rounded-lg hover:bg-stone-100">Documentation</a>
+    <nav class="flex items-center gap-1 sm:gap-3" aria-label="Primary navigation">
+      ${siteSearchBox("site-search-input", "hidden lg:block w-56", SEARCH_INPUT_CLASS)}
+      <a href="/docs" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block px-3 py-1.5 rounded-lg hover:bg-stone-100">Documentation</a>
       <a href="/blog" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block px-3 py-1.5 rounded-lg hover:bg-stone-100">Blog</a>
       <a href="https://github.com/zerotaldev/zerotal" target="_blank" rel="noopener"
          class="text-stone-400 hover:text-stone-900 transition-colors p-2 rounded-lg hover:bg-stone-100" title="GitHub">
@@ -610,31 +676,94 @@ function renderHeader(sidebar: boolean): string {
         Get Started
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5"><path fill-rule="evenodd" d="M2 8a.75.75 0 0 1 .75-.75h8.69L8.22 4.03a.75.75 0 0 1 1.06-1.06l4.5 4.5a.75.75 0 0 1 0 1.06l-4.5 4.5a.75.75 0 0 1-1.06-1.06l3.22-3.22H2.75A.75.75 0 0 1 2 8Z" clip-rule="evenodd" /></svg>
       </a>
+      ${menuButton("lg:hidden")}
     </nav>
+    ${mobileMenu("lg:hidden")}
   </header>`;
   }
 
   return `<header class="fixed top-0 left-0 right-0 h-16 flex items-center justify-between px-4 sm:px-6 bg-white/85 backdrop-blur-md border-b border-stone-200 z-50">
     <div class="flex items-center gap-4">
-      <button id="mobile-menu-btn" class="md:hidden text-stone-500 hover:text-stone-900" aria-label="Toggle navigation">
+      <button id="mobile-menu-btn" type="button" class="md:hidden text-stone-500 hover:text-stone-900" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
       </button>
       ${_LOGO}
       ${_BADGE}
     </div>
-    <nav class="flex items-center gap-3 sm:gap-4" aria-label="External links">
+    <nav class="flex items-center gap-3 sm:gap-4" aria-label="Primary navigation">
       ${HEADER_SEARCH}
-      <a href="/docs/getting-started" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block">Documentation</a>
+      <a href="/docs" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block">Documentation</a>
       <a href="/blog" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block">Blog</a>
       <div class="w-px h-4 bg-stone-200 hidden sm:block"></div>
       <a href="https://github.com/zerotaldev/zerotal" target="_blank" rel="noopener" class="text-stone-400 hover:text-stone-900 transition-colors" title="GitHub">
         ${_GH_ICON}
       </a>
+      ${menuButton("sm:hidden")}
     </nav>
+    ${mobileMenu("sm:hidden")}
   </header>`;
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────
+
+/**
+ * The site footer.
+ *
+ * There was none. Everything a reader reaches for *after* the page they came for
+ * — how to upgrade, what changed, how to report a vulnerability, what the licence
+ * is — lived only in the repository, and the site never mentioned it existed.
+ *
+ * Sits outside the sidebar's column offset on purpose: it belongs to the page,
+ * not to the documentation tree, and it is the last thing on every page including
+ * the ones with no sidebar at all.
+ */
+const REPO = "https://github.com/zerotaldev/zerotal";
+
+function renderFooter(): string {
+  const col = (heading: string, links: [string, string][]): string => `
+      <div>
+        <p class="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-stone-400 mb-3">${heading}</p>
+        <ul class="m-0 p-0 list-none space-y-2">
+          ${links
+            .map(
+              ([label, href]) =>
+                `<li class="list-none"><a href="${href}"${href.startsWith("http") ? ' target="_blank" rel="noopener"' : ""} class="text-[0.8125rem] text-stone-500 hover:text-stone-900 no-underline transition-colors">${label}</a></li>`,
+            )
+            .join("")}
+        </ul>
+      </div>`;
+
+  return `
+  <footer class="border-t border-stone-200 bg-white" aria-label="Site footer">
+    <div class="max-w-6xl mx-auto px-6 sm:px-10 py-12">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+        ${col("Documentation", [
+          ["Overview", "/docs"],
+          ["Getting started", "/docs/getting-started"],
+          ["Upgrade guide", "/docs/upgrade"],
+          ["Changelog", "/docs/changelog"],
+        ])}
+        ${col("Project", [
+          ["Blog", "/blog"],
+          ["Contributing", "/docs/contributing"],
+          ["Security", `${REPO}/blob/main/SECURITY.md`],
+          ["Licence (MIT)", `${REPO}/blob/main/LICENSE`],
+        ])}
+        ${col("Code", [
+          ["GitHub", REPO],
+          ["Issues", `${REPO}/issues`],
+          ["Releases", `${REPO}/releases`],
+          ["npm", "https://www.npmjs.com/package/zerotal"],
+        ])}
+        <div class="col-span-2 md:col-span-1">
+          <p class="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-stone-400 mb-3">Zerotal</p>
+          <p class="text-[0.8125rem] text-stone-500 leading-6 m-0">A full-stack TypeScript framework for Bun. Version ${ZEROTAL_VERSION_SHORT}.</p>
+        </div>
+      </div>
+      <p class="mt-10 pt-6 border-t border-stone-100 text-[0.75rem] text-stone-400 m-0">© ${new Date().getFullYear()} Zerotal · Released under the MIT licence.</p>
+    </div>
+  </footer>`;
+}
 
 export function Layout({
   content,
@@ -644,7 +773,10 @@ export function Layout({
   sidebar = true,
   variant = "guide",
 }: LayoutProps): string {
-  const pageTitle = title === "Zerotal Docs" ? title : `${title} — Zerotal Docs`;
+  // A page title names its page and then the site. A title that already says
+  // "Zerotal" has named the site itself, and appending the suffix anyway produced
+  // the homepage's "Zerotal — Full-stack framework for Bun — Zerotal Docs".
+  const pageTitle = title.includes("Zerotal") ? title : `${title} — Zerotal Docs`;
   // Built from the path alone, so the blog listing's `?category=`/`?sort=`/`?view=`
   // arrangements all point at the same canonical `/blog` rather than reading as
   // that many near-duplicate pages.
@@ -678,6 +810,8 @@ export function Layout({
   ${canonical ? `<meta property="og:url" content="${escHtml(canonical)}">` : ""}
   <meta property="og:image" content="${escHtml(SITE_URL)}/og.png">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escHtml(pageTitle)}">
+  ${description ? `<meta name="twitter:description" content="${escHtml(description)}">` : ""}
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -688,6 +822,13 @@ export function Layout({
 </head>
 <body class="bg-cream text-ink antialiased selection:bg-voltage-100 selection:text-ink">
 
+  <!-- First tab stop on every page. Offscreen until focused, so it costs nothing
+       visually and saves a keyboard or screen-reader user from tabbing through
+       the header, the search box and a nav tree of sixty links to reach the page
+       they asked for. -->
+  <a href="#main"
+     class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-ink focus:text-cream focus:text-sm focus:font-semibold focus:no-underline focus:shadow-lg">Skip to main content</a>
+
   ${renderHeader(sidebar)}
 
   <!-- Shell -->
@@ -696,7 +837,7 @@ export function Layout({
     ${sidebarHtml}
 
     <!-- Main content -->
-    <main class="${sidebar ? "md:ml-72 xl:mr-64" : ""} flex-1 min-w-0">
+    <main id="main" tabindex="-1" class="${sidebar ? "md:ml-72 xl:mr-64" : ""} flex-1 min-w-0">
       <div class="${contentWidth}">
         <article
           class="prose prose-stone max-w-none
@@ -724,12 +865,14 @@ export function Layout({
     <div id="toc" class="hidden"
          data-toc-classes="fixed top-16 right-0 w-64 h-[calc(100vh-4rem)] overflow-y-auto py-10 px-5 z-30 hidden xl:block">
       <p class="pl-3.5 text-[0.65rem] font-semibold uppercase tracking-[0.09em] text-stone-400 mb-2">On this page</p>
-      <nav id="toc-nav" class="ml-px ${RAIL}"></nav>
+      <nav id="toc-nav" class="ml-px ${RAIL}" aria-label="On this page"></nav>
     </div>`
         : ""
     }
 
   </div><!-- /shell -->
+
+  ${renderFooter()}
 
 </body>
 </html>

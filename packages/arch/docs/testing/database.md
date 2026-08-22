@@ -21,7 +21,7 @@ import {
 } from "@zerotal/testing";
 ```
 
-> **Note** — These helpers are part of the [testing toolkit](/docs/testing/index) and
+> **Note** — These helpers are part of the [testing toolkit](/docs/testing) and
 > only run inside `bun test`. Install the package as a dev dependency if it isn't
 > already: `bun add -d @zerotal/testing`.
 
@@ -231,7 +231,7 @@ jobs — call `.dispatchEvents()` when a test needs the full lifecycle.
 
 ## Next steps
 
-- [Testing overview](/docs/testing/index) — the full toolkit and a first test.
+- [Testing overview](/docs/testing) — the full toolkit and a first test.
 - [Factories](/docs/orm/factories) — generating model records for tests.
 - [Seeding](/docs/seeding) — reusable fixtures across dev and tests.
 - [Database](/docs/database) — transactions and the raw `DB` layer being rolled back.

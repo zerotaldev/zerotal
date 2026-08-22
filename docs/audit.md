@@ -364,4 +364,4 @@ app.container.singleton(
 - [ORM Lifecycle](/docs/orm/lifecycle) — the model hooks the audit system listens to.
 - [Authentication](/docs/authentication) — how the actor on each entry is resolved.
 - [Authorization](/docs/authorization) — gate read access to audit logs by role.
-- [Testing](/docs/testing/index) — swap in the null driver for isolated tests.
+- [Testing](/docs/testing) — swap in the null driver for isolated tests.

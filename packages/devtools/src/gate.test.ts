@@ -163,3 +163,88 @@ describe("the endpoints behind the gate", () => {
     expect(await hit("http://localhost/posts")).toBeUndefined();
   });
 });
+
+describe("the page marker", () => {
+  /** Run a normal (non-devtools) request through the middleware. */
+  async function pass(next: () => Promise<Response | undefined>): Promise<Response | undefined> {
+    _setTraceStore(new TraceStore({ dbPath: null }));
+    const ctx = HttpContext.fake("http://localhost/");
+    const mw = new DevtoolsInjectionMiddleware();
+    let out: Response | undefined;
+    await RequestContext.run(ctx, async () => {
+      const result = await mw.handle(ctx, next);
+      if (result instanceof Response) out = result;
+    });
+    _setTraceStore(null);
+    return out;
+  }
+
+  const html = (body = "<html><head><title>x</title></head><body>hi</body></html>") =>
+    new Response(body, { headers: { "content-type": "text/html; charset=utf-8" } });
+
+  it("writes the marker into an HTML page when the inspector is reachable", async () => {
+    setEnv("development");
+    const res = await pass(async () => html());
+
+    expect(await res!.text()).toContain(
+      '<meta name="zerotal-devtools" content="/__zerotal/devtools">',
+    );
+  });
+
+  it("puts it inside the head, before the closing tag", async () => {
+    setEnv("development");
+    const res = await pass(async () => html());
+    const text = await res!.text();
+
+    // The client reads it via `querySelector` on a parsed document, so anywhere in
+    // the head is correct — but before `</head>` means it is there even if the page
+    // runs a script in the head that looks.
+    expect(text.indexOf("zerotal-devtools")).toBeLessThan(text.indexOf("</head>"));
+  });
+
+  it("writes nothing on a page the viewer could not use it on", async () => {
+    // Production, unauthorized. This is the case that put a devtools request in
+    // every visitor's console: the marker is what the client now looks for, so its
+    // absence is what keeps a live site quiet.
+    setEnv("production");
+    const res = await pass(async () => html());
+
+    expect(await res!.text()).not.toContain("zerotal-devtools");
+  });
+
+  it("leaves a non-HTML response alone", async () => {
+    // A JSON body is not a document, and rewriting one would corrupt it.
+    setEnv("development");
+    const res = await pass(async () => Response.json({ ok: true }));
+
+    expect(await res!.json()).toEqual({ ok: true });
+  });
+
+  it("leaves an HTML fragment with no head alone", async () => {
+    // Flow patches and partials come back as HTML without a document around them.
+    setEnv("development");
+    const res = await pass(async () => html("<div>a fragment</div>"));
+
+    expect(await res!.text()).toBe("<div>a fragment</div>");
+  });
+
+  it("keeps the original status and headers", async () => {
+    setEnv("development");
+    const res = await pass(
+      async () =>
+        new Response("<html><head></head><body>gone</body></html>", {
+          status: 404,
+          headers: { "content-type": "text/html", "x-from": "app" },
+        }),
+    );
+
+    expect(res!.status).toBe(404);
+    expect(res!.headers.get("x-from")).toBe("app");
+  });
+
+  it("passes a handler that returned nothing straight through", async () => {
+    // Routing continues past the middleware stack; there is no response to mark yet.
+    setEnv("development");
+    expect(await pass(async () => undefined)).toBeUndefined();
+  });
+});

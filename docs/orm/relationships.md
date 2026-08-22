@@ -7,7 +7,7 @@ description: Define and query associations between models with relation decorato
 
 Relation decorators describe how your models connect — one-to-one, one-to-many, many-to-many, through, and polymorphic — so you can traverse and eager-load associated records without writing JOINs by hand.
 
-Zerotal's ORM supports all standard Active Record relationship types, plus polymorphic variants and eager loading with constraints. Relations are declared on the model class with decorators imported from `@zerotal/orm`; see [ORM](/docs/orm/index) for installing and configuring the package.
+Zerotal's ORM supports all standard Active Record relationship types, plus polymorphic variants and eager loading with constraints. Relations are declared on the model class with decorators imported from `@zerotal/orm`; see [ORM](/docs/orm) for installing and configuring the package.
 
 ## One-to-one — @hasOne / @belongsTo
 

@@ -100,33 +100,55 @@ export const DevTools = {
       });
     };
 
-    // Mount nothing until the server half answers.
+    // Mount nothing unless there is a server half to mount against.
     //
-    // The provider is gated on the environment, so in production the endpoints are
-    // absent — and the client took that to mean it could start anyway and simply
-    // connect to nothing. It could not: `mountShell` pinned the panel to the page
-    // regardless, so zerotal.dev served a floating DevTools bar to every visitor,
-    // opening onto tabs reading `Could not read the map — HTTP 404` because the
-    // routes behind them do not exist in production.
+    // The provider is gated on the environment, so in production the endpoints
+    // are absent — and the client took that to mean it could start anyway and
+    // simply connect to nothing. It could not: `mountShell` pinned the panel to
+    // the page regardless, so zerotal.dev served a floating DevTools bar to
+    // every visitor, opening onto tabs reading `Could not read the map — HTTP
+    // 404` because the routes behind them do not exist in production.
     //
     // Failing closed here rather than in each app's entry file is deliberate: an
-    // app that calls `start()` unconditionally — which the docs site did, with a
-    // comment explaining why that was safe — is covered without knowing to be.
-    void serverPresent(base).then((present) => {
-      if (!present) return;
-      if (document.getElementById("__zerotal_dt__")) return;
-      mount();
-    });
+    // app that calls `start()` unconditionally — which the docs site does, with a
+    // comment explaining why that is safe — is covered without knowing to be.
+    void serverPresent(base)
+      .then((present) => {
+        if (!present) return;
+        if (document.getElementById("__zerotal_dt__")) return;
+        mount();
+      })
+      // A panel that cannot build itself must not become an unhandled rejection
+      // in the host application's console — or, worse, in its error reporting.
+      // This is a development convenience failing; say so and leave the page it
+      // was decorating alone.
+      .catch((error: unknown) => {
+        console.warn("[Zerotal DevTools] could not start:", error);
+      });
   },
 };
 
 /**
  * Whether the devtools routes exist on this origin.
  *
- * `api/channels` rather than `sse`: it answers and closes, where the stream stays
- * open and would leave a connection hanging on every page load just to discover
- * the panel should not be there. `no-store` so a 404 is not cached into a session
- * that later starts a dev server on the same origin.
+ * Two ways to know, and the order matters.
+ *
+ * **The marker.** `DevtoolsInjectionMiddleware` writes
+ * `<meta name="zerotal-devtools">` into the HTML it passes through, and it is
+ * only in the stack when the provider is active. When it is there, presence is
+ * already in the document: no request, and the panel mounts on the first frame.
+ *
+ * **The probe, on a development host only.** `Router.raw` bypasses the global
+ * middleware pipeline by design, so an app that serves its pages that way — the
+ * documentation site does — never receives the marker however active devtools is.
+ * Asking is the only way left for those, so the fetch survives, restricted to the
+ * hostnames a production site is never served from.
+ *
+ * That restriction is the point. The first version of this probed unconditionally
+ * and was correct — a 404 meant absent, and nothing mounted — but it left a
+ * request to a devtools URL in the console of every production page, which reads
+ * as leaked tooling no matter how deliberate it is. A real domain now makes no
+ * request at all, and the apps that need asking are the ones nobody else can see.
  *
  * Any failure — offline, blocked by CSP, a proxy returning HTML — is treated as
  * absent. The panel is a development convenience, and the cost of guessing wrong
@@ -134,6 +156,9 @@ export const DevTools = {
  * way is a debug surface on a production page.
  */
 async function serverPresent(base: string): Promise<boolean> {
+  if (document.querySelector('meta[name="zerotal-devtools"]') !== null) return true;
+  if (!isDevelopmentHost(location.hostname)) return false;
+
   try {
     const res = await fetch(`${base}/api/channels`, {
       method: "GET",
@@ -144,6 +169,20 @@ async function serverPresent(base: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Whether `hostname` is one a development server answers on.
+ *
+ * Loopback and the private ranges — the last of those so a panel still appears
+ * when a phone on the same network is pointed at a laptop's dev server, which is
+ * most of what anyone uses a second device for.
+ */
+function isDevelopmentHost(hostname: string): boolean {
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") return true;
+  if (hostname.endsWith(".localhost") || hostname.endsWith(".test")) return true;
+  // 10.0.0.0/8, 192.168.0.0/16, and 172.16.0.0/12.
+  return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostname);
 }
 
 // ── Public surface ────────────────────────────────────────────────────────────

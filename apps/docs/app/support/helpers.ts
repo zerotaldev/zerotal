@@ -10,6 +10,48 @@ export function parseSlug(pathname: string): string {
   return pathname.replace(/^\/docs\/?/, "").replace(/\/$/, "") || "index";
 }
 
+/**
+ * The one URL a page is allowed to answer on, or `null` if `pathname` is already it.
+ *
+ * Every page had three. `docs/testing/index.md` is reachable as `/docs/testing`
+ * (the slug resolver falls back to `<slug>/index.md`), as `/docs/testing/index`
+ * (the file's own path), and as `/docs/testing/` (the trailing slash is trimmed
+ * before resolving) — and each rendered a 200 whose `<link rel="canonical">` named
+ * *itself*, because the tag is built from the request path. Three URLs, three
+ * canonicals, one page: exactly the shape that splits ranking signals and lets a
+ * search engine pick the form nothing links to.
+ *
+ * `listDocSlugs` already settled which form is canonical — it strips `/index`, so
+ * the sitemap has only ever offered `/docs/testing`. This makes the server agree
+ * with the sitemap rather than the other way round.
+ *
+ * Order matters: `/docs/testing/index/` has to lose the slash before the `/index`
+ * is visible to strip.
+ */
+export function canonicalPath(pathname: string): string | null {
+  let path = pathname;
+  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+  if (path.endsWith("/index")) path = path.slice(0, -"/index".length);
+  // `/docs/index` reduces to `/docs`, which is the overview — not an empty path.
+  if (path === "") path = "/docs";
+  return path === pathname ? null : path;
+}
+
+/**
+ * The canonical URL path for a documentation slug.
+ *
+ * The root overview is the awkward one: `listDocSlugs` strips a trailing `/index`,
+ * which turns `testing/index.md` into `testing` but leaves the root `index.md` as
+ * the literal slug `index` — there is no slash in front of it to match. So the
+ * sitemap offered `/docs/index`, one of the very URLs the server now redirects
+ * away, asking every crawler to follow a redirect for the site's front door.
+ *
+ * Both sides derive the path from here, so they cannot disagree again.
+ */
+export function docPath(slug: string): string {
+  return slug === "index" ? "/docs" : `/docs/${slug}`;
+}
+
 /** Parsed YAML frontmatter: the top-level scalar fields plus the body that follows. */
 export interface ParsedDocument {
   /** Top-level `key: value` fields from the frontmatter block (empty when absent). */
@@ -86,10 +128,14 @@ export async function resolveDocument(slug: string): Promise<ResolvedDocument | 
  * `docs/api/` is skipped: it is TypeDoc output, regenerated on every build and
  * thousands of pages wide, which would bury the hand-written guide in a sitemap
  * and is not what anyone should land on from a search.
+ *
+ * `dir` defaults to the corpus this site renders. It is a parameter so the slug
+ * rules can be exercised without booting an app — `DOCS_DIR` is resolved from
+ * `basePath()` at import, which outside a running application points at nothing.
  */
-export async function listDocSlugs(): Promise<string[]> {
+export async function listDocSlugs(dir: string = DOCS_DIR): Promise<string[]> {
   const slugs: string[] = [];
-  for await (const file of new Glob("**/*.md").scan({ cwd: DOCS_DIR })) {
+  for await (const file of new Glob("**/*.md").scan({ cwd: dir })) {
     const path = file.replace(/\\/g, "/");
     if (path.startsWith("api/")) continue;
     slugs.push(path.replace(/\.md$/, "").replace(/\/index$/, ""));

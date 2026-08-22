@@ -57,6 +57,14 @@ function injectCopyButtons() {
 function injectHeadingAnchors() {
   document.querySelectorAll("article h2[id], article h3[id]").forEach((h) => {
     if (h.querySelector(".heading-anchor")) return; // already injected
+
+    // Pin the heading's accessible name to its own words, before the link goes
+    // in. A heading's name is its contents, so appending a labelled `#` made
+    // every heading announce as "Requirements Link to this section" — and a
+    // screen reader's heading list, which is how many people navigate a long
+    // page, read as a column of that suffix repeated.
+    h.setAttribute("aria-label", h.textContent.trim());
+
     const a = document.createElement("a");
     a.href = "#" + h.id;
     a.className = "heading-anchor";
@@ -106,6 +114,7 @@ function syncGroupCollapse(pathname) {
       });
       items.classList.toggle("hidden", !hasActive);
       chev?.classList.toggle("-rotate-90", !hasActive);
+      li.querySelector(btn)?.setAttribute("aria-expanded", String(hasActive));
     });
   }
 }
@@ -238,13 +247,101 @@ function initPage(path = location.pathname) {
 }
 
 // ── Mobile sidebar toggle ─────────────────────────────────────────────────────
-// The button lives in the persistent <header> — wired once.
-// Sidebar is looked up lazily: it may be removed/re-injected by the navigator.
+//
+// The button lives in the persistent <header> — wired once. Sidebar is looked up
+// lazily: it may be removed/re-injected by the navigator.
+//
+// It used to be one `classList.toggle("hidden")`, which opens the panel and
+// nothing else. The panel is `fixed` and full-height, so the page behind it kept
+// scrolling under a finger; `aria-expanded` never moved, so the button announced
+// as a plain button whatever state it was in; and Escape did nothing, which is
+// the one key someone reaches for when a panel has covered the page.
 {
   const btn = document.getElementById("mobile-menu-btn");
+  const sidebar = () => document.getElementById("sidebar");
+
+  function setOpen(open) {
+    const nav = sidebar();
+    if (!nav) return;
+    nav.classList.toggle("hidden", !open);
+    btn?.setAttribute("aria-expanded", String(open));
+    // The panel covers the viewport at this width. Without this the page behind
+    // it scrolls instead, which reads as the menu having broken the page.
+    document.body.classList.toggle("overflow-hidden", open);
+    document.body.classList.toggle("md:overflow-auto", open);
+  }
+
+  const isOpen = () => btn?.getAttribute("aria-expanded") === "true";
+
   if (btn) {
-    btn.addEventListener("click", () => {
-      document.getElementById("sidebar")?.classList.toggle("hidden");
+    btn.addEventListener("click", () => setOpen(!isOpen()));
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || !isOpen()) return;
+      setOpen(false);
+      // Focus goes back to what opened it, rather than being left on a node that
+      // is now hidden.
+      btn.focus();
+    });
+
+    // Following a link closes it: the navigator swaps the page underneath without
+    // a reload, so the menu would otherwise stay open over the page just opened.
+    document.addEventListener("click", (e) => {
+      if (!isOpen()) return;
+      if (e.target?.closest?.("#sidebar a[href]")) setOpen(false);
+    });
+
+    // Crossing into the desktop layout, where the sidebar is permanent and the
+    // body must scroll again.
+    window.addEventListener("resize", () => {
+      if (isOpen() && btn.offsetParent === null) setOpen(false);
+    });
+  }
+}
+
+// ── Site menu (mobile) ────────────────────────────────────────────────────────
+//
+// The header's links are `hidden sm:block` and had nothing behind them, so a
+// phone got a logo, a GitHub icon, and no route to the documentation index, the
+// blog, or search. This is that panel.
+{
+  const btn = document.getElementById("site-menu-btn");
+  const menu = () => document.getElementById("site-menu");
+  const isOpen = () => btn?.getAttribute("aria-expanded") === "true";
+
+  function setOpen(open) {
+    menu()?.classList.toggle("hidden", !open);
+    btn?.setAttribute("aria-expanded", String(open));
+  }
+
+  if (btn) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation(); // Or the document handler below closes it again.
+      setOpen(!isOpen());
+      if (isOpen()) menu()?.querySelector("[data-search-input]")?.focus();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || !isOpen()) return;
+      // Escape belongs to the search card first: it is inside this panel, and
+      // dismissing the whole menu when someone meant to clear their query would
+      // throw away the thing they came for.
+      if (document.activeElement?.matches?.("[data-search-input]")) return;
+      setOpen(false);
+      btn.focus();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!isOpen()) return;
+      if (e.target?.closest?.("#site-menu a[href]")) return setOpen(false);
+      if (!e.target?.closest?.("#site-menu")) setOpen(false);
+    });
+
+    // Crossing into a layout where the header shows its links inline. The width
+    // that happens at differs between the two headers, so this asks whether the
+    // button is still displayed rather than hardcoding one of them.
+    window.addEventListener("resize", () => {
+      if (isOpen() && btn.offsetParent === null) setOpen(false);
     });
   }
 }
@@ -261,6 +358,10 @@ document.addEventListener("click", (e) => {
     const isOpen = !items.classList.contains("hidden");
     items.classList.toggle("hidden", isOpen);
     chev?.classList.toggle("-rotate-90", isOpen);
+    // The chevron says open/closed to anyone who can see it; this says it to
+    // everyone else. Without it the button announces as a plain button and the
+    // section it controls appears and disappears with no explanation.
+    btn.setAttribute("aria-expanded", String(!isOpen));
     return;
   }
 });
@@ -544,9 +645,10 @@ initPage();
 // so zerotal.dev served a DevTools bar to every visitor, opening onto tabs that
 // read `Could not read the map — HTTP 404`.
 //
-// `start()` now probes for the routes and mounts only if they answer, so this line
-// is safe for the reason the comment originally claimed. Left unconditional on
-// purpose: it is the shape an app will naturally write, and the package has to be
-// the thing that holds.
+// `start()` now mounts only when the page carries the `zerotal-devtools` marker,
+// which the middleware writes and which production never has — so this line is
+// safe for the reason the comment originally claimed, and costs a `querySelector`
+// rather than a request. Left unconditional on purpose: it is the shape an app
+// will naturally write, and the package has to be the thing that holds.
 import { DevTools } from "@zerotal/devtools/client";
 DevTools.start();

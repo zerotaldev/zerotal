@@ -160,7 +160,7 @@ A column in that list whose `@column({ type })` is `json` encrypts as
 `encrypted:json` automatically, so the structure survives the round trip rather
 than reaching the cipher as `"[object Object]"`.
 
-Unlike [`hashable`](/docs/orm/index), this is reversible and does not touch the
+Unlike [`hashable`](/docs/orm), this is reversible and does not touch the
 instance: after `save()`, `client.idNumber` still reads as the plaintext you set.
 `$dirty` therefore compares plaintext, and an unchanged column is not rewritten
 with a fresh IV on every unrelated save.
@@ -359,7 +359,7 @@ Cast options accepted by `@column()`:
 
 ## Next steps
 
-- [ORM](/docs/orm/index) — defining models and columns.
+- [ORM](/docs/orm) — defining models and columns.
 - [Queries](/docs/orm/queries) — the query builder and scopes.
 - [Serialization](/docs/orm/serialization) — control JSON output.
 - [Carbon](/docs/carbon) — the date type behind `datetime` casts.

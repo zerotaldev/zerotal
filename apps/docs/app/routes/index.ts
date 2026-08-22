@@ -152,7 +152,13 @@ const FEATURES = [
 ];
 
 // A realistic code snippet showing actual Zerotal patterns
-const CODE_SNIPPET = `@table('posts')
+// Two files, shown together because the point is how little sits between them.
+// The paths are in the code as well as on the window chrome: the block was
+// labelled `app/models/Post.ts` alone while a `PostController` sat halfway down
+// it, which tells a reader coming to the framework that controllers belong in
+// the models directory.
+const CODE_SNIPPET = `// app/models/Post.ts
+@table('posts')
 export class Post extends Model.using(SoftDeletes) {
   @column()        title!:  string;
   @column('text')  body!:   string;
@@ -162,6 +168,7 @@ export class Post extends Model.using(SoftDeletes) {
   static recent = Post.query().latest().limit(10);
 }
 
+// app/controllers/PostController.ts
 export class PostController extends Controller {
   async index(http: HttpContext) {
     const posts = await Post.query()
@@ -221,7 +228,7 @@ function buildPage(): string {
       </div>
 
       <div class="flex flex-col items-center text-center max-w-5xl mx-auto px-4">
-        <a href="/docs/getting-started" class="inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full bg-white border border-stone-200 text-voltage-700 text-sm font-semibold tracking-wide shadow-sm hover:border-stone-300 hover:shadow transition-all">
+        <a href="/docs/changelog" class="inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full bg-white border border-stone-200 text-voltage-700 text-sm font-semibold tracking-wide shadow-sm hover:border-stone-300 hover:shadow transition-all">
           <span class="relative flex h-2 w-2">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-voltage opacity-75"></span>
             <span class="relative inline-flex rounded-full h-2 w-2 bg-voltage-700"></span>
@@ -334,7 +341,7 @@ function buildPage(): string {
         </div>
         <div class="rounded-xl overflow-hidden shadow-2xl shadow-stone-300/50 border border-ink-600 bg-ink-800">
           <div class="flex items-center px-4 py-3 bg-ink-800 border-b border-ink-600">
-            <span class="text-xs text-ash font-mono">app/models/Post.ts</span>
+            <span class="text-xs text-ash font-mono">app/models/Post.ts<span class="hidden sm:inline"> · app/controllers/PostController.ts</span></span>
           </div>
           <pre class="m-0! p-6! sm:p-8! bg-transparent! text-sm sm:text-base overflow-x-auto"><code class="language-typescript text-cream">${CODE_SNIPPET}</code></pre>
         </div>
@@ -362,7 +369,7 @@ function buildPage(): string {
         <h2 class="font-display text-2xl sm:text-4xl font-semibold text-cream mb-6 relative z-10 tracking-[-0.03em] leading-tight">Ready to build your<br/>next big idea?</h2>
         <p class="text-cream/70 text-base sm:text-lg mb-10 max-w-2xl mx-auto relative z-10 leading-relaxed font-medium">One command scaffolds a working app — routing, models, auth, and a frontend of your choosing. Read the guide and ship something today.</p>
 
-        <a href="/docs/getting-started" class="inline-flex items-center justify-center gap-3 px-10 py-5 bg-voltage text-ink font-semibold text-base rounded-xl hover:bg-voltage-700 hover:shadow-xl hover:scale-105 transition-all relative z-10 no-underline">
+        <a href="/docs" class="inline-flex items-center justify-center gap-3 px-10 py-5 bg-voltage text-ink font-semibold text-base rounded-xl hover:bg-voltage-700 hover:shadow-xl hover:scale-105 transition-all relative z-10 no-underline">
           Read the Documentation
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
@@ -378,6 +385,14 @@ export function GET() {
     Layout({
       content: buildPage(),
       title: "Zerotal — Full-stack framework for Bun",
+      // Both of these are what `Layout` gates the page's `<meta name="description">`,
+      // `og:description`, `og:url` and `<link rel="canonical">` on. Every
+      // documentation page passes them and gets the full set; the homepage passed
+      // neither, so the one page most likely to be linked and shared was also the
+      // only one with no description and no canonical URL of its own.
+      description:
+        "A full-stack TypeScript framework for Bun. Routing, ORM, auth, validation, queues and server-driven UI — with no build step.",
+      pathname: "/",
       sidebar: false,
     }),
   );

@@ -12,7 +12,9 @@ provider.
 ## Requirements
 
 - **Bun** ≥ 1.3.14 — [install](https://bun.sh/docs/installation)
-- A PostgreSQL, MySQL, or SQLite database (SQLite requires nothing extra)
+- A database, unless you scaffold the **Minimal** template. Every other template
+  is configured for **SQLite**, which needs nothing installed — PostgreSQL and
+  MySQL are supported and are a `DATABASE_URL` away.
 
 ## Create a new project
 
@@ -26,11 +28,11 @@ The scaffolder prompts for a project name and a template, then generates a
 ready-to-run project and installs dependencies. The **database** prompt only
 appears for the API template:
 
-| Prompt       | Options                                                                     |
-| ------------ | --------------------------------------------------------------------------- |
-| Project name | Defaults to `my-zerotal-app`                                                |
-| Template     | **API**, **Flow**, **React**, **Vue**, or **Minimal** (see the guide below) |
-| Database     | **SQLite** (zero setup), **PostgreSQL**, or **MySQL** — API template only   |
+| Prompt       | Options                                                                      |
+| ------------ | ---------------------------------------------------------------------------- |
+| Project name | Defaults to `my-zerotal-app`                                                 |
+| Template     | **API**, **Admin**, **Flow**, **React**, **Vue**, or **Minimal** (see below) |
+| Database     | **SQLite** (zero setup), **PostgreSQL**, or **MySQL** — asked for **API**    |
 
 It writes a fresh `APP_KEY` into the generated `.env.example` for you (no manual
 generation needed). For Postgres/MySQL it reminds you to set `DATABASE_URL`
@@ -64,14 +66,17 @@ terminal: a half-built project that reports success is worse than one that stops
 ### Which template should I use?
 
 - **API** — JSON REST API with core, [ORM](/docs/orm), [auth](/docs/authentication),
-  [validation](/docs/validator), and [testing](/docs/testing/index). The default for a backend service.
+  [validation](/docs/validator), and [testing](/docs/testing). The default for a backend service.
+- **Admin** — an [admin panel](/docs/admin): resources, sign-in, dashboard widgets, and
+  seeded demo data. `bun zt db:seed` gives you an account to log in with.
 - **Flow** — server-driven reactive UI ([Flow](/docs/flow) pages, top nav, Tailwind).
 - **React** — [Inertia](/docs/inertia) + React SPA with file-based routes and Tailwind.
 - **Vue** — Inertia + Vue SPA with file-based routes and Tailwind.
 - **Minimal** — a single page with JSX views and Tailwind on the bare framework.
 
-> **Note** — Only the **API** template ships a database config and migrations.
-> The Flow, React, Vue, and Minimal templates start without a database.
+> **Note** — every template except **Minimal** ships a database config and migrations,
+> configured for SQLite. Only the **API** template _asks_ which database you want; the
+> rest start on SQLite and switch when you set `DATABASE_URL`.
 
 ## Project structure
 

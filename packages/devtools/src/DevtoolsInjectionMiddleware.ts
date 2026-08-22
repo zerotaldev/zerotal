@@ -238,6 +238,44 @@ export class DevtoolsInjectionMiddleware extends BaseMiddleware<DevtoolsInjectio
       });
     }
 
-    return next();
+    // Nothing else under the prefix; fall through to the app and mark the page.
+    const response = await next();
+    return response instanceof Response ? await _markPage(http, response) : response;
   }
+}
+
+/**
+ * Tell the browser half that a server half exists, by injecting one `<meta>`.
+ *
+ * The client used to find out by asking — a `GET api/channels` on every page
+ * load, treating a 404 as "not here". That failed closed, which was the point,
+ * but it meant a production page fetched a URL that was *designed* to 404 and
+ * the browser logged it. A reviewer reading that console sees development
+ * tooling running on a live site; the honest reading of a deliberate 404 and a
+ * leaked debug endpoint look identical from the outside.
+ *
+ * Inverting it removes the request rather than hiding it. The provider is gated
+ * on the environment, so in production this middleware is not in the stack at
+ * all: no marker is written, the client finds none, and it makes **zero**
+ * requests instead of one per page load. It also saves the round trip in
+ * development, where the panel now mounts on the first frame rather than after
+ * a fetch resolves.
+ *
+ * Absence stays the safe default — an app served by something that never runs
+ * this middleware gets no panel, which is the same answer the probe gave.
+ */
+async function _markPage(http: HttpContext, response: Response): Promise<Response> {
+  const type = response.headers.get("content-type") ?? "";
+  if (!type.includes("text/html")) return response;
+
+  // Same gate as the endpoints: a marker on a page whose viewer could not use
+  // the endpoints anyway would only advertise that they are there.
+  if (!(await devtoolsAuthorized(http.request))) return response;
+
+  const html = await response.text();
+  const head = html.indexOf("</head>");
+  if (head === -1) return new Response(html, response);
+
+  const marker = `<meta name="zerotal-devtools" content="${DEVTOOLS_PREFIX}">`;
+  return new Response(html.slice(0, head) + marker + html.slice(head), response);
 }

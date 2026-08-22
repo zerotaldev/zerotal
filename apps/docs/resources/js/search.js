@@ -1,26 +1,40 @@
-// ── Header search ─────────────────────────────────────────────────────────────
+// ── Site search ───────────────────────────────────────────────────────────────
 //
-// One field in the top bar, one dropdown card, two kinds of answer.
+// One field, one dropdown card, two kinds of answer.
 //
 // The sidebar filter this replaces could only hide navigation rows, so it could
 // only find a page whose name you already knew — typing "inertia" produced "No
 // matching pages" while the Inertia section sat in the nav behind it. The card
-// shows page-name matches *and* content matches from `/api/docs-search`, and it
-// is in the header, so it works on pages that have no sidebar at all.
+// shows page-name matches *and* content matches from `/api/docs-search`.
+//
+// There are two instances on the page: the header field, and one inside the
+// mobile menu, where the header has no room for a text box. Nothing here is
+// addressed by id for that reason — an instance is a `[data-search]` container,
+// and every lookup walks up from the focused input to find its own panel. Adding
+// a third would need no change here.
 //
 // Delegated from `document` throughout: SPA navigation replaces the header, and a
 // listener bound to the element would be pointing at a detached node afterwards.
 
 const DEBOUNCE_MS = 180;
 
-let timer = null;
-let seq = 0;
-/** Flat list of the rendered rows, for arrow-key movement. */
-let rows = [];
-let active = -1;
+/** Per-instance state, keyed by the container element. */
+const state = new WeakMap();
 
-const panel = () => document.getElementById("site-search-panel");
-const input = () => document.getElementById("site-search-input");
+function instanceOf(input) {
+  const root = input?.closest?.("[data-search]");
+  if (!root) return null;
+  let st = state.get(root);
+  if (!st) {
+    st = { root, timer: null, seq: 0, rows: [], active: -1 };
+    state.set(root, st);
+  }
+  return st;
+}
+
+const inputOf = (st) => st.root.querySelector("[data-search-input]");
+const panelOf = (st) => st.root.querySelector("[data-search-panel]");
+const statusOf = (st) => st.root.querySelector("[data-search-status]");
 
 function esc(value) {
   return String(value ?? "").replace(
@@ -29,25 +43,61 @@ function esc(value) {
   );
 }
 
-function close() {
-  const p = panel();
-  if (p) {
-    p.classList.add("hidden");
-    p.innerHTML = "";
-  }
-  input()?.setAttribute("aria-expanded", "false");
-  rows = [];
-  active = -1;
+/**
+ * Escaped text with every occurrence of `query`'s terms wrapped in `<mark>`.
+ *
+ * Escaping happens first and the marks go in afterwards, so a page title
+ * containing `<script>` stays inert — the offsets are computed against the
+ * escaped string, never the raw one.
+ */
+function highlight(text, query) {
+  const safe = esc(text);
+  const terms = query
+    .trim()
+    .split(/\s+/)
+    .filter((t) => t.length > 1)
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  if (terms.length === 0) return safe;
+  return safe.replace(
+    new RegExp(`(${terms.join("|")})`, "gi"),
+    '<mark class="bg-voltage-100 text-ink rounded-sm px-0.5">$1</mark>',
+  );
 }
 
-/** Highlight the row at `index`, wrapping at both ends. */
-function move(delta) {
-  if (rows.length === 0) return;
-  active = (active + delta + rows.length) % rows.length;
-  rows.forEach((row, i) => {
-    row.classList.toggle("bg-stone-100", i === active);
-    if (i === active) row.scrollIntoView({ block: "nearest" });
+function close(st) {
+  const panel = panelOf(st);
+  if (panel) {
+    panel.classList.add("hidden");
+    panel.innerHTML = "";
+  }
+  const input = inputOf(st);
+  input?.setAttribute("aria-expanded", "false");
+  input?.removeAttribute("aria-activedescendant");
+  const status = statusOf(st);
+  if (status) status.textContent = "";
+  st.rows = [];
+  st.active = -1;
+}
+
+/**
+ * Highlight the row at `index`, wrapping at both ends.
+ *
+ * `aria-activedescendant` is what makes this arrow key do anything for a screen
+ * reader: focus stays in the text field — it has to, or typing would stop — so
+ * the only way to announce a moving selection is to name the option the field is
+ * currently pointing at. Without it the rows were plain links and the arrows
+ * moved a background colour nobody was told about.
+ */
+function move(st, delta) {
+  if (st.rows.length === 0) return;
+  st.active = (st.active + delta + st.rows.length) % st.rows.length;
+  st.rows.forEach((row, i) => {
+    const on = i === st.active;
+    row.classList.toggle("bg-stone-100", on);
+    row.setAttribute("aria-selected", String(on));
+    if (on) row.scrollIntoView({ block: "nearest" });
   });
+  inputOf(st)?.setAttribute("aria-activedescendant", st.rows[st.active].id);
 }
 
 const GROUP_LABEL =
@@ -55,26 +105,36 @@ const GROUP_LABEL =
 const ROW =
   "search-row block rounded-lg px-2.5 py-2 no-underline hover:bg-stone-100 transition-colors";
 
-function render({ pages = [], results = [] }) {
-  const p = panel();
-  if (!p) return;
+function render(st, { pages = [], results = [] }, query) {
+  const panel = panelOf(st);
+  const input = inputOf(st);
+  if (!panel || !input) return;
 
-  if (pages.length === 0 && results.length === 0) {
-    p.innerHTML = `<p class="px-2.5 py-3 text-[0.8125rem] text-stone-400">Nothing matched.</p>`;
-    p.classList.remove("hidden");
-    input()?.setAttribute("aria-expanded", "true");
-    rows = [];
-    active = -1;
+  const status = statusOf(st);
+  const total = pages.length + results.length;
+
+  if (total === 0) {
+    panel.innerHTML = `<p class="px-2.5 py-3 text-[0.8125rem] text-stone-400">Nothing matched.</p>`;
+    panel.classList.remove("hidden");
+    input.setAttribute("aria-expanded", "true");
+    input.removeAttribute("aria-activedescendant");
+    if (status) status.textContent = "No results.";
+    st.rows = [];
+    st.active = -1;
     return;
   }
 
   const href = (slug) => (slug.startsWith("/") ? slug : `/docs/${slug}`);
+  // Ids have to be unique across both instances, or `aria-activedescendant` in
+  // the header could name a row inside the mobile menu.
+  const prefix = `${input.id}-opt`;
+  let n = 0;
 
   const pageRows = pages
     .map(
       (r) => `
-      <a href="${esc(href(r.slug))}" class="${ROW}">
-        <span class="block text-[0.8125rem] font-medium text-stone-900">${esc(r.label)}</span>
+      <a id="${prefix}-${n++}" role="option" aria-selected="false" href="${esc(href(r.slug))}" class="${ROW}">
+        <span class="block text-[0.8125rem] font-medium text-stone-900">${highlight(r.label, query)}</span>
         <span class="block text-[0.75rem] text-stone-400">${esc(r.group)}</span>
       </a>`,
     )
@@ -83,27 +143,32 @@ function render({ pages = [], results = [] }) {
   const contentRows = results
     .map(
       (r) => `
-      <a href="${esc(href(r.slug))}" class="${ROW}">
-        <span class="block text-[0.8125rem] font-medium text-stone-900">${esc(r.title)}</span>
-        ${r.heading ? `<span class="block text-[0.75rem] text-stone-500">${esc(r.heading)}</span>` : ""}
+      <a id="${prefix}-${n++}" role="option" aria-selected="false" href="${esc(href(r.slug))}" class="${ROW}">
+        <span class="block text-[0.8125rem] font-medium text-stone-900">${highlight(r.title, query)}</span>
+        ${r.heading ? `<span class="block text-[0.75rem] text-stone-500">${highlight(r.heading, query)}</span>` : ""}
+        <span class="block text-[0.6875rem] text-stone-400 font-mono mt-0.5">${esc(r.slug)}</span>
       </a>`,
     )
     .join("");
 
-  p.innerHTML =
+  panel.innerHTML =
     (pages.length ? `<p class="${GROUP_LABEL}">Pages</p>${pageRows}` : "") +
     (results.length ? `<p class="${GROUP_LABEL}">In the documentation</p>${contentRows}` : "");
 
-  p.classList.remove("hidden");
-  input()?.setAttribute("aria-expanded", "true");
-  rows = Array.from(p.querySelectorAll(".search-row"));
-  active = -1;
+  panel.classList.remove("hidden");
+  input.setAttribute("aria-expanded", "true");
+  input.removeAttribute("aria-activedescendant");
+  if (status) {
+    status.textContent = `${total} result${total === 1 ? "" : "s"}. Use the arrow keys to review them.`;
+  }
+  st.rows = Array.from(panel.querySelectorAll(".search-row"));
+  st.active = -1;
 }
 
-async function run(query) {
+async function run(st, query) {
   // Out-of-order responses are the classic type-ahead bug: a slow "in" landing
   // after a fast "inertia" replaces good results with worse ones.
-  const mine = ++seq;
+  const mine = ++st.seq;
 
   let payload;
   try {
@@ -114,30 +179,33 @@ async function run(query) {
     return; // Offline, or navigated away mid-request.
   }
 
-  if (mine !== seq) return;
-  render(payload);
+  if (mine !== st.seq) return;
+  render(st, payload, query);
 }
 
-function schedule(query) {
-  clearTimeout(timer);
+function schedule(st, query) {
+  clearTimeout(st.timer);
   if (query.length < 1) {
-    close();
+    close(st);
     return;
   }
-  timer = setTimeout(() => void run(query), DEBOUNCE_MS);
+  st.timer = setTimeout(() => void run(st, query), DEBOUNCE_MS);
 }
 
 document.addEventListener("input", (e) => {
-  if (e.target?.id !== "site-search-input") return;
-  schedule(e.target.value.trim());
+  const st = instanceOf(e.target);
+  if (!st || !e.target.matches("[data-search-input]")) return;
+  schedule(st, e.target.value.trim());
 });
 
 document.addEventListener("keydown", (e) => {
-  // `/` focuses the field from anywhere, unless the caret is already in one.
+  // `/` focuses the field from anywhere, unless the caret is already in one. The
+  // header field is the target: on a viewport where it is hidden there is no
+  // keyboard to press `/` on.
   if (e.key === "/") {
     const t = e.target;
     if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
-    const box = input();
+    const box = document.getElementById("site-search-input");
     if (!box) return;
     e.preventDefault();
     box.focus();
@@ -145,35 +213,51 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  if (e.target?.id !== "site-search-input") return;
+  if (!e.target?.matches?.("[data-search-input]")) return;
+  const st = instanceOf(e.target);
+  if (!st) return;
 
   if (e.key === "Escape") {
-    close();
+    close(st);
     e.target.blur();
     return;
   }
   if (e.key === "ArrowDown") {
     e.preventDefault();
-    move(1);
+    move(st, 1);
     return;
   }
   if (e.key === "ArrowUp") {
     e.preventDefault();
-    move(-1);
+    move(st, -1);
     return;
   }
-  if (e.key === "Enter" && active >= 0) {
+  if (e.key === "Home" && st.rows.length) {
     e.preventDefault();
-    rows[active]?.click();
+    st.active = -1;
+    move(st, 1);
+    return;
+  }
+  if (e.key === "End" && st.rows.length) {
+    e.preventDefault();
+    st.active = 0;
+    move(st, -1);
+    return;
+  }
+  if (e.key === "Enter" && st.active >= 0) {
+    e.preventDefault();
+    st.rows[st.active]?.click();
   }
 });
 
 // Clicking a result navigates, and the card has to go with it — the SPA router
-// swaps the page without a reload, so nothing else would close it.
+// swaps the page without a reload, so nothing else would close it. Clicking
+// anywhere outside an instance closes every open one.
 document.addEventListener("click", (e) => {
-  if (e.target?.closest?.("#site-search")) {
-    if (e.target.closest(".search-row")) close();
-    return;
-  }
-  close();
+  const inside = e.target?.closest?.("[data-search]");
+  document.querySelectorAll("[data-search]").forEach((root) => {
+    const st = state.get(root);
+    if (!st) return;
+    if (root !== inside || e.target.closest(".search-row")) close(st);
+  });
 });

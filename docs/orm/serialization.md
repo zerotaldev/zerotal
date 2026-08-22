@@ -228,7 +228,7 @@ Use model-level `hidden`/`visible` for globally sensitive fields. Use Resources 
 
 ## References
 
-`toJSON()` and the override methods live on every [`Model`](/docs/orm/index); the `Resource` helpers are exported from `zerotal`.
+`toJSON()` and the override methods live on every [`Model`](/docs/orm); the `Resource` helpers are exported from `zerotal`.
 
 | Member                  | Signature                                                          | Description                                                      |
 | ----------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------- |
@@ -245,7 +245,7 @@ Use model-level `hidden`/`visible` for globally sensitive fields. Use Resources 
 
 ## Next steps
 
-- [ORM](/docs/orm/index) — model definition, casts, and configuration.
+- [ORM](/docs/orm) — model definition, casts, and configuration.
 - [ORM relationships](/docs/orm/relationships) — load the related models you serialize here.
 - [ORM casts](/docs/orm/casts) — control how column values appear in serialized output.
 - [Responses](/docs/responses) — the `json()` helper that calls `toJSON()`.

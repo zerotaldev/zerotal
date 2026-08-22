@@ -576,4 +576,4 @@ Flow is a large surface. Each section below is its own page.
 - [Session](/docs/session) — the store behind `@session` and `SessionMiddleware`.
 - [Broadcasting](/docs/broadcasting) — drive `@on("socket:…")` real-time updates from the server.
 - [Storage](/docs/storage) — configure the disks that file uploads write to.
-- [Testing](/docs/testing/index) — patterns for the `FlowTest` harness and the rest of the suite.
+- [Testing](/docs/testing) — patterns for the `FlowTest` harness and the rest of the suite.

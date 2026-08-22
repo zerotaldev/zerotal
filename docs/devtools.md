@@ -57,7 +57,7 @@ lifecycle order, all of them additionally short-circuited in production):
 > **Note** — Nothing happens at import time. The trace store opens its database
 > on first use rather than in a constructor, so importing this package in an app
 > that runs in production writes nothing and starts no timer. N+1 detection
-> itself is owned by the [ORM](/docs/orm/index) provider (and env-gated there);
+> itself is owned by the [ORM](/docs/orm) provider (and env-gated there);
 > DevTools only consumes the `NPlusOneDetected` event and surfaces it.
 
 ## Start the client panel
@@ -1010,4 +1010,4 @@ folded follow-up (`child`).
 - [Query builder](/docs/query-builder) — the queries DevTools traces and flags for N+1.
 - [Events](/docs/events) — the `FrameworkEvents` that DevTools subscribes to.
 - [Telemetry](/docs/telemetry) — production-grade metrics once you move past the dev panel.
-- [Testing](/docs/testing/index) — assert on requests without the floating panel.
+- [Testing](/docs/testing) — assert on requests without the floating panel.

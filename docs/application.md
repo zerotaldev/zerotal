@@ -73,7 +73,7 @@ helper reaches it anywhere.
 > **Note** — `Application.create({ providers })` and
 > `Application.create({ providers, config, env })` accept explicit providers and
 > config for lightweight in-process test setups that bypass auto-discovery. See
-> [Testing](/docs/testing/index).
+> [Testing](/docs/testing).
 
 ### The current application
 

@@ -470,7 +470,7 @@ ctx.params = { id: "42" };
 ```
 
 The signature is `HttpContext.fake(url?, init?, container?)`; all three are optional.
-See [Testing](/docs/testing/index) for the full harness, and
+See [Testing](/docs/testing) for the full harness, and
 [HTTP testing](/docs/testing/http) for the higher-level request helpers.
 
 ## References

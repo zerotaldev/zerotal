@@ -89,7 +89,33 @@ A debug panel that was reaching production, a column type MySQL would not index,
 
 ## 1.7.3 — 2026-08-20
 
-Two fields that accepted input and threw it away, and a CI job that was testing nothing.
+Two fields that accepted input and threw it away, a CI job that was testing nothing, and a
+name given back to applications.
+
+### Changed
+
+- **BREAKING — `this.title(…)` is removed from Flow components.** Declare `static title`
+  instead, as a string or a function of the component:
+
+  ```ts fragment
+  // Before
+  override async mount(): Promise<void> {
+    this.title(`Search: ${this.query}`);
+  }
+
+  // After
+  static title = (c: SearchPage) => (c.query ? `Search: ${c.query}` : "Search");
+  ```
+
+  The instance method held a name four separate components wanted for their own data — a
+  media row, a guide, a review, an issue — for a one-line accessor that belongs on the class.
+  The static form is also the better one: it is resolved on the server for every render and
+  every patch, so a title that depends on state follows it without an action remembering to
+  update it.
+
+  A call to `this.title(…)` on a component that declares its own `title` field now sets that
+  field instead of the document title, which is silent. Search your components for
+  `this.title(` before upgrading; every hit is either a migration or was already shadowed.
 
 ### Fixed
 

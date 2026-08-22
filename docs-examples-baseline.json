@@ -1484,6 +1484,12 @@
       "hash": "122y8gia33uo"
     },
     {
+      "file": "docs/changelog.md",
+      "heading": "Changed",
+      "ordinal": 0,
+      "hash": "3vryxxmejov4"
+    },
+    {
       "file": "docs/client/index.md",
       "heading": "Authentication",
       "ordinal": 1,

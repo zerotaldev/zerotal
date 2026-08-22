@@ -70,9 +70,9 @@ dependency order, from CI. Never mix versions across packages.
 - **One exception, while the 1.x line is young:** a breaking change may land in a
   minor or a patch when leaving it in place would cost more than the migration
   does. It is called out in the release notes as **BREAKING**, with the reason and
-  the migration steps, and it is never silent. Two have shipped so far — the
-  `ComponentWith` / `BaseModelWith` removal in 1.3.0 and Flow's `socket:` listener
-  prefix in 1.7.2. This carve-out is a consequence of the project's age, not a
+  the migration steps, and it is never silent. Three have shipped so far — the
+  `ComponentWith` / `BaseModelWith` removal in 1.3.0, Flow's `socket:` listener
+  prefix in 1.7.2, and the removal of Flow's `this.title(…)` in 1.7.3. This carve-out is a consequence of the project's age, not a
   standing policy; it will be withdrawn, with a version named here, once adoption
   makes the cost of a break real.
 - **Provenance:** packages are published with npm provenance, so you can verify
@@ -114,6 +114,12 @@ outcomes — promote, keep with a new date and the reason, or withdraw.
 
 Neither is in the `zerotal` meta-package and nothing `stable` depends on either,
 so the cost of the label falling due is ours and not yours.
+
+That table used to be the whole of the commitment, which meant the version could
+sail past it and the only consequence would be this paragraph quietly becoming
+untrue. The review release now lives in each package's `package.json` as
+`maturityReview`, and the package-conventions gate fails once the version reaches
+it — so the deadline is a build failure rather than a promise.
 
 A package is never more mature than what it is built on: a stable package whose
 foundation can change under it is not stable, whatever its own label says. So

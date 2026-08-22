@@ -21,6 +21,7 @@
     "mcp:surface": "bun run scripts/mcp-surface.ts",
     "mcp:surface:check": "bun run scripts/mcp-surface.ts --check",
     "arch:docs": "bun run scripts/arch-docs.ts",
+    "breaking:check": "bun run scripts/breaking-check.ts",
     "docs:examples": "bun run scripts/docs-examples.ts",
     "docs:examples:check": "bun run scripts/docs-examples.ts --check",
     "arch:docs:check": "bun run scripts/arch-docs.ts --check",

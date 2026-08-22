@@ -113,6 +113,61 @@ function _checkErrorDiscipline(files: PackageFiles, packageName: string): Violat
 }
 
 /** Lint every package under `packagesDir` and return a report per package. */
+/**
+ * A package below `stable` names the release by which its label is reviewed, and
+ * the review actually falls due.
+ *
+ * The support policy's own argument is that "an honest 'experimental' is useful
+ * once and corrosive indefinitely" — a package that has worn the label for a year
+ * is not being cautious, it is unowned. It then set a review release for `ai` and
+ * `arch` in a prose table, where nothing could enforce it: the version could sail
+ * past and the only consequence would be a sentence quietly becoming untrue.
+ *
+ * So the date lives in `package.json` beside the label it governs, and when the
+ * package's version reaches it, this fails until somebody performs the review —
+ * promote, keep with a new date and the reason, or withdraw.
+ */
+function _checkMaturityReview(files: PackageFiles): Violation[] {
+  const violations: Violation[] = [];
+  const pkg = files.packageJson;
+  if (!pkg) return violations;
+
+  const maturity = pkg["maturity"] as string | undefined;
+  if (!maturity || maturity === "stable") return violations;
+
+  const review = pkg["maturityReview"] as string | undefined;
+  if (!review) {
+    violations.push({
+      rule: "maturity-review",
+      severity: "medium",
+      message: `maturity '${maturity}' with no 'maturityReview' — name the release by which the label is reviewed`,
+    });
+    return violations;
+  }
+
+  const version = pkg["version"] as string | undefined;
+  if (version && _atOrPast(version, review)) {
+    violations.push({
+      rule: "maturity-review-due",
+      severity: "high",
+      message: `maturity '${maturity}' was to be reviewed by ${review} and this package is ${version} — promote it, withdraw it, or set a new 'maturityReview' with the reason in docs/support-policy.md`,
+    });
+  }
+  return violations;
+}
+
+/** Whether `version` has reached `target`, comparing numerically per segment. */
+function _atOrPast(version: string, target: string): boolean {
+  const a = version.split(".").map(Number);
+  const b = target.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const left = a[i] ?? 0;
+    const right = b[i] ?? 0;
+    if (left !== right) return left > right;
+  }
+  return true;
+}
+
 export async function lintPackages(packagesDir: string): Promise<PackageReport[]> {
   const reports: PackageReport[] = [];
   let entries: string[];
@@ -134,6 +189,7 @@ export async function lintPackages(packagesDir: string): Promise<PackageReport[]
       ..._checkTests(files),
       ..._checkPackaging(files),
       ..._checkErrorDiscipline(files, packageName),
+      ..._checkMaturityReview(files),
     ];
     reports.push({ package: packageName, violations });
   }

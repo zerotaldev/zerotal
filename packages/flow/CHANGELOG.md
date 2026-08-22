@@ -13,6 +13,18 @@ change.
 
 ## [1.7.3] — 2026-08-20
 
+### Changed
+
+- **BREAKING — `this.title(…)` is removed.** Declare `static title` instead — a string, or a
+  function of the component: `static title = (c: SearchPage) => \`Search: ${c.query}\``. It is
+resolved on the server for every render and every patch, so a title that depends on state
+follows it without an action remembering to update it. `_titleValue` and the per-frame reset
+  go with it.
+
+  A call to `this.title(…)` on a component that declares its own `title` field now sets that
+  field rather than the document title, which is silent — search for `this.title(` before
+  upgrading.
+
 ### Fixed
 
 - **A bound password field silently discarded every keystroke.** The client-writable set was

@@ -30,7 +30,12 @@ jobs:
     name: Types, lint & API surface
     runs-on: ubuntu-latest
     steps:
+      # Full history, because `breaking:check` compares this change against the
+      # branch it forked from. The default shallow clone has no such commit, and a
+      # gate that cannot find its base is a gate that passes for the wrong reason.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
@@ -78,6 +83,17 @@ jobs:
       # contract itself.
       - name: MCP tool surface
         run: bun run mcp:surface:check
+
+      # `api:surface:check` refuses to let an export change shape without somebody
+      # regenerating the snapshot — and regenerating is the whole of what it asks.
+      # Once the snapshot is updated the removal is recorded and no longer
+      # reported, so the changelog, which is the only thing a user reads before
+      # upgrading, was defended by remembering. It failed exactly that way:
+      # `this.title(…)` left @zerotal/flow in a commit subjected `flow!:` and
+      # shipped in 1.7.3 with no BREAKING entry in either changelog. This reads
+      # the diff of the snapshots, which is where a removal is still visible.
+      - name: Breaking changes are announced
+        run: bun run breaking:check
 
       # Documentation drifts silently: a signature changes, the guide keeps the old
       # call, and nothing complains until a reader copies it. This compiles every

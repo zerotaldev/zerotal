@@ -196,11 +196,11 @@ body {
 
 /* Scrollbar styling for sidebar + ToC */
 #toc::-webkit-scrollbar,
-#sidebar::-webkit-scrollbar {
+#docs-sidebar::-webkit-scrollbar {
   width: 5px;
 }
 #toc::-webkit-scrollbar-thumb,
-#sidebar::-webkit-scrollbar-thumb {
+#docs-sidebar::-webkit-scrollbar-thumb {
   background: #e7e5e4;
   border-radius: 3px;
 }
@@ -271,7 +271,7 @@ article h3:hover .heading-anchor {
 /* Font weight is deliberately left to the Tailwind classes: leaves are medium
    and foldable parents semibold, and this higher-specificity rule would flatten
    both to one weight. */
-#sidebar a[aria-current="page"] {
+#docs-sidebar a[aria-current="page"] {
   color: #7fb513;
   border-left-color: #7fb513;
 }

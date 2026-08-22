@@ -88,6 +88,33 @@ export class BrowserPage {
     return this._view.evaluate<T>(expression);
   }
 
+  /**
+   * Resize the viewport, for the failures that only exist at a particular width.
+   *
+   * Horizontal overflow is the obvious one: a page can be flawless at 1280 and
+   * scroll sideways at 375 because one element inside a `not-prose` block has no
+   * width constraint. Nothing server-side can see it, and neither can a browser
+   * test that never leaves the default window size.
+   */
+  async resize(width: number, height: number): Promise<this> {
+    this._assertOpen();
+    await this._view.resize(width, height);
+    return this;
+  }
+
+  /**
+   * How far the document can scroll sideways beyond the viewport, in pixels.
+   *
+   * `0` is the only healthy answer. `documentElement.scrollWidth` rather than
+   * `body`'s, because an overflowing child can push the scrollable area wider
+   * than the body box without the body itself ever being wide.
+   */
+  async horizontalOverflow(): Promise<number> {
+    return this.evaluate<number>(
+      "Math.max(0, document.documentElement.scrollWidth - window.innerWidth)",
+    );
+  }
+
   /** `textContent` of the first match, trimmed. `null` when nothing matches. */
   async text(selector: string): Promise<string | null> {
     return this.evaluate<string | null>(

@@ -318,6 +318,7 @@ export const SPECS: DocSpec[] = [
       <div class="w-56">
         <Select
           bind={"ca"}
+          aria-label="Country"
           options={[
             { label: "Canada", value: "ca" },
             { label: "Brazil", value: "br" },

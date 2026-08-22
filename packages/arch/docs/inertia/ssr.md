@@ -83,7 +83,7 @@ traversal (`..` or a leading `/`).
 
 ### inertia vs. inertiaStream
 
-|                | `inertia()`            | `inertiaStream()`                  |
+| Criterion      | `inertia()`            | `inertiaStream()`                  |
 | -------------- | ---------------------- | ---------------------------------- |
 | Return type    | `Promise<void>`        | `Promise<void>`                    |
 | Rendering      | Buffered HTML string   | Streaming `renderToReadableStream` |

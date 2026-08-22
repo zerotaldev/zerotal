@@ -446,10 +446,10 @@ export const EXTENDED_SPECS: DocSpec[] = [
     preview: (
       <div class="w-full max-w-sm space-y-3">
         <InputGroup prefix="R">
-          <Input placeholder="0.00" />
+          <Input placeholder="0.00" aria-label="Price in rands" />
         </InputGroup>
         <InputGroup addonAfter={<Button variant="outline">Copy</Button>}>
-          <Input value="kln_live_8f3a" />
+          <Input value="kln_live_8f3a" aria-label="API key" />
         </InputGroup>
       </div>
     ),
@@ -463,7 +463,7 @@ export const EXTENDED_SPECS: DocSpec[] = [
   {
     name: "input-otp",
     code: `<InputOTP length={6} groupAfter={3} flow:model="form.code" />`,
-    preview: <InputOTP length={6} groupAfter={3} />,
+    preview: <InputOTP length={6} groupAfter={3} aria-label="One-time code" />,
     props: [
       {
         name: "length",
@@ -509,7 +509,7 @@ export const EXTENDED_SPECS: DocSpec[] = [
     code: `<Slider value={this.volume} max={100} showValue />`,
     preview: (
       <div class="w-full max-w-sm">
-        <Slider value={64} max={100} showValue />
+        <Slider value={64} max={100} showValue aria-label="Volume" />
       </div>
     ),
     props: [

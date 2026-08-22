@@ -154,7 +154,7 @@ export function renderNotFoundPage(slug: string, pathname: string): string {
   return Layout({
     content: `<h1>Page not found</h1>
 <p>No documentation page found for <code>${slug}</code>.</p>
-<p><a href="/">← Back to index</a></p>`,
+<p><a href="/docs">← Back to the documentation</a></p>`,
     title: "Not Found",
     pathname,
   });

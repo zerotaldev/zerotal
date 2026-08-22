@@ -2612,6 +2612,23 @@ function _linkActive(href: string, path: string, exact = false): boolean {
   return h === path || (h.length > 1 && path.startsWith(h + "/"));
 }
 
+/**
+ * Mark a navigate link as the current page, for both kinds of reader.
+ *
+ * `data-current` styles it; `aria-current` is the only way anyone using a screen
+ * reader learns which of thirty nav items is the page they are on. Setting one
+ * without the other marks the link only for people who can see it.
+ */
+function _mark(el: Element, active: boolean): void {
+  if (active) {
+    el.setAttribute("data-current", "");
+    el.setAttribute("aria-current", "page");
+  } else {
+    el.removeAttribute("data-current");
+    el.removeAttribute("aria-current");
+  }
+}
+
 function _updateCurrentLinks(): void {
   const path = window.location.pathname;
 
@@ -2623,13 +2640,11 @@ function _updateCurrentLinks(): void {
   document.querySelectorAll("a[flow\\:navigate]").forEach((el) => {
     if (el.hasAttribute("flow:current.ignore")) return;
     if (el.hasAttribute("flow:current.force")) {
-      el.setAttribute("data-current", "");
+      _mark(el, true);
       return;
     }
     const exact = el.hasAttribute("flow:current.exact");
-    if (_linkActive(el.getAttribute("href") ?? "", path, exact))
-      el.setAttribute("data-current", "");
-    else el.removeAttribute("data-current");
+    _mark(el, _linkActive(el.getAttribute("href") ?? "", path, exact));
   });
 
   document.querySelectorAll("a[flow\\:navigate][flow\\:current]").forEach((el) => {

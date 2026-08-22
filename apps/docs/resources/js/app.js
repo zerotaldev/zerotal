@@ -124,7 +124,7 @@ function syncGroupCollapse(pathname) {
 // Runs on first load and after every SPA navigation so the attribute is always
 // in sync — CSS in app.css targets [aria-current="page"] for the visual style.
 function setActiveLink(path = location.pathname) {
-  document.querySelectorAll("#sidebar a[href]").forEach((a) => {
+  document.querySelectorAll("#docs-sidebar a[href]").forEach((a) => {
     const href = a.getAttribute("href") ?? "";
     const active = href === path || href === path + "/";
     if (active) {
@@ -228,7 +228,7 @@ function buildToc() {
 // sidebar scroll "resetting" instead of following you to the new page.
 function scrollActiveNavIntoView() {
   document
-    .querySelector('#sidebar a[aria-current="page"]')
+    .querySelector('#docs-sidebar a[aria-current="page"]')
     ?.scrollIntoView({ block: "nearest", behavior: "instant" });
 }
 
@@ -258,7 +258,7 @@ function initPage(path = location.pathname) {
 // the one key someone reaches for when a panel has covered the page.
 {
   const btn = document.getElementById("mobile-menu-btn");
-  const sidebar = () => document.getElementById("sidebar");
+  const sidebar = () => document.getElementById("docs-sidebar");
 
   function setOpen(open) {
     const nav = sidebar();
@@ -287,7 +287,7 @@ function initPage(path = location.pathname) {
     // a reload, so the menu would otherwise stay open over the page just opened.
     document.addEventListener("click", (e) => {
       if (!isOpen()) return;
-      if (e.target?.closest?.("#sidebar a[href]")) setOpen(false);
+      if (e.target?.closest?.("#docs-sidebar a[href]")) setOpen(false);
     });
 
     // Crossing into the desktop layout, where the sidebar is permanent and the
@@ -367,7 +367,7 @@ document.addEventListener("click", (e) => {
 
 // ── Sidebar live search / filter ──────────────────────────────────────────────
 // Delegated to document so it keeps working when sidebar is dynamically
-// injected during SPA navigation (home → docs re-adds #sidebar to the DOM).
+// injected during SPA navigation (home → docs re-adds #docs-sidebar to the DOM).
 document.addEventListener("input", (e) => {
   if (e.target?.id !== "sidebar-search") return;
   const q = e.target.value.trim().toLowerCase();
@@ -426,7 +426,7 @@ document.addEventListener("input", (e) => {
 // keys) are left alone and fall through to the browser's default handler.
 //
 // Layout transitions (home ↔ docs) are handled by inserting or removing the
-// #sidebar and #toc elements so the shell structure is always correct.
+// #docs-sidebar and #toc elements so the shell structure is always correct.
 //
 // Hover prefetch: starts fetching the target page 150 ms after the cursor
 // settles on a link so most navigations feel instant.
@@ -516,8 +516,8 @@ document.addEventListener("input", (e) => {
     }
 
     // ── Sidebar ───────────────────────────────────────────────────────────────
-    const newSidebar = incoming.getElementById("sidebar");
-    const curSidebar = document.getElementById("sidebar");
+    const newSidebar = incoming.getElementById("docs-sidebar");
+    const curSidebar = document.getElementById("docs-sidebar");
 
     if (newSidebar && !curSidebar) {
       // home → docs: sidebar was never in DOM — import and insert before <main>.

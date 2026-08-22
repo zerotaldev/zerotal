@@ -65,14 +65,27 @@ export class FormsPage extends Component {
         <Demo code={CODE}>
           <form onSubmit={this.submit} class="max-w-md space-y-4">
             <div>
-              <label class={label}>Name</label>
-              <input value={this.name} live placeholder="Ada Lovelace" class={input} />
+              <label for="name" class={label}>
+                Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                value={this.name}
+                live
+                placeholder="Ada Lovelace"
+                class={input}
+              />
               <span error={this.errors.name} class={err} />
             </div>
 
             <div>
-              <label class={label}>Email</label>
+              <label for="email" class={label}>
+                Email
+              </label>
               <input
+                id="email"
+                name="email"
                 value={this.email}
                 live
                 type="email"
@@ -83,8 +96,12 @@ export class FormsPage extends Component {
             </div>
 
             <div>
-              <label class={label}>Password</label>
+              <label for="password" class={label}>
+                Password
+              </label>
               <input
+                id="password"
+                name="password"
                 value={this.password}
                 live
                 type="password"

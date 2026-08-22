@@ -36,7 +36,7 @@ never use framework events to drive business logic.
 If you want the full side-by-side, here it is — but you can skip it and come back
 once you've read the section for the one you need:
 
-|               | Framework events                  | Application events          |
+| Aspect        | Framework events                  | Application events          |
 | ------------- | --------------------------------- | --------------------------- |
 | Purpose       | Observing the framework           | Reacting to your domain     |
 | Who emits     | The framework                     | Your code                   |

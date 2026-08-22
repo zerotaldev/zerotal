@@ -49,7 +49,7 @@ bunx create-zerotal my-app --yes            # take the defaults for anything uns
 bunx create-zerotal --help
 ```
 
-| Flag                      |                                                    |
+| Flag                      | Values / description                               |
 | ------------------------- | -------------------------------------------------- |
 | `-t`, `--template <name>` | `api`, `admin`, `flow`, `react`, `vue`, `minimal`  |
 | `--db <name>`             | `sqlite`, `postgres`, `mysql` — API template only  |

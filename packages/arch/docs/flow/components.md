@@ -7,7 +7,7 @@ description: The component library that ships with Flow — forms, overlays, tab
 
 Flow ships a library of ready-made native components and unstyled headless primitives. All are imported from `@zerotal/flow`.
 
-> **Tip** — See them live: the example app's component gallery at `/pulse/components` (`apps/example/app/flow/ComponentsPage.tsx`) shows every component, and `/pulse/users` (`UsersPage.tsx`) is a realistic admin screen composing them together.
+> **Tip** — See them live: [the component gallery](/showcase/flow/components) shows modals, drawers, tabs and menus driven by a real server, and [the flow-ui kit](/showcase/flow/ui-kit) walks the styled set. The [full catalogue](/docs/components) documents every component with props.
 
 ## Navigation
 

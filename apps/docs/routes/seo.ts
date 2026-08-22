@@ -59,9 +59,28 @@ Router.raw("GET", "/sitemap.xml", async () => {
   const url = (loc: string, lastmod?: string) =>
     `  <url>\n    <loc>${escXml(loc)}</loc>${lastmod ? `\n    <lastmod>${escXml(lastmod)}</lastmod>` : ""}\n  </url>`;
 
+  // The live demos, which were reachable and indexed by nothing: no link from the
+  // site, no sitemap entry, and a bare `/showcase` that 404'd. They are the most
+  // persuasive pages here.
+  const showcase = [
+    "",
+    "/counter",
+    "/lists",
+    "/streaming",
+    "/forms",
+    "/components",
+    "/headless",
+    "/islands",
+    "/live",
+    "/reorder",
+    "/ai-chat",
+    "/ui-kit",
+  ].map((path) => url(`${SITE}/showcase/flow${path}`));
+
   const entries = [
     url(`${SITE}/`),
     url(`${SITE}/blog`),
+    ...showcase,
     // The listing's `?category=`/`?sort=`/`?view=` views are deliberately absent:
     // they are the same posts rearranged, and every one of them canonicalises to
     // `/blog`. Listing them would be asking to be indexed as duplicates.

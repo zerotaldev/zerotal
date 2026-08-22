@@ -1,7 +1,7 @@
 import { escapeHtml as escHtml } from "zerotal/helpers";
 import { env } from "zerotal";
 import { asset } from "zerotal/assets";
-import { ZEROTAL_VERSION_SHORT } from "../version.ts";
+import { ZEROTAL_VERSION_SHORT, BUILD_SHA_SHORT } from "../version.ts";
 import {
   loadApiNav,
   type ApiNavItem,
@@ -17,6 +17,14 @@ export interface LayoutProps {
   content: string;
   title?: string;
   description?: string;
+  /**
+   * Override the canonical URL.
+   *
+   * The generated API tree is served from `<dir>/README` so its relative links
+   * resolve, which makes the URL a reader lands on differ from the one worth
+   * indexing. This declares the clean one.
+   */
+  canonical?: string;
   pathname?: string;
   sidebar?: boolean;
   /** "guide" (default) uses the hand-written docs nav; "api" uses the generated API tree. */
@@ -419,6 +427,7 @@ function mobileMenu(hideAt: string): string {
     <div id="site-menu" class="hidden ${hideAt} fixed inset-x-0 top-16 z-40 border-b border-stone-200 bg-white px-4 py-3 shadow-lg shadow-stone-900/5">
       ${siteSearchBox("mobile-search-input", "mb-2", SEARCH_INPUT_CLASS)}
       <a href="/docs" class="${link}">Documentation</a>
+      <a href="/showcase/flow" class="${link}">Live demos</a>
       <a href="/blog" class="${link}">Blog</a>
       <a href="https://github.com/zerotaldev/zerotal" target="_blank" rel="noopener" class="${link}">GitHub</a>
       <p class="px-3 pt-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-stone-400">Version ${ZEROTAL_VERSION_SHORT}</p>
@@ -503,7 +512,7 @@ function renderSidebar(pathname = ""): string {
   }).join("\n");
 
   return `
-    <nav id="sidebar" class="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] overflow-y-auto bg-white border-r border-stone-200 z-40 hidden md:block"
+    <nav id="docs-sidebar" class="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] overflow-y-auto bg-white border-r border-stone-200 z-40 hidden md:block"
          aria-label="Documentation navigation">
       <div class="px-4 py-5">
         <!-- No filter box here any more: it could only hide nav rows, so it only
@@ -539,7 +548,7 @@ export function isApiPath(pathname: string): boolean {
  * for multi-entry packages, the module) matching the current path expands to
  * show its symbols grouped by kind. Falls back to the guide sidebar if the nav
  * data hasn't been generated (`bun run docs:api`). Reuses the guide sidebar's
- * `#sidebar` / `#nav-list` / `.nav-item` structure so the filter + active-link
+ * `#docs-sidebar` / `#nav-list` / `.nav-item` structure so the filter + active-link
  * JS work unchanged; the single wrapping `.nav-group` has no toggle button, so
  * `syncGroupCollapse` leaves it permanently open.
  */
@@ -592,7 +601,7 @@ function renderApiSidebar(pathname = ""): string {
   const list = nav.packages.map(packageBlock).join("\n");
 
   return `
-    <nav id="sidebar" class="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] overflow-y-auto bg-white border-r border-stone-200 z-40 hidden md:block"
+    <nav id="docs-sidebar" class="fixed top-16 left-0 w-72 h-[calc(100vh-4rem)] overflow-y-auto bg-white border-r border-stone-200 z-40 hidden md:block"
          aria-label="API reference navigation">
       <div class="px-4 py-5">
         <a href="/docs" class="inline-flex items-center gap-1.5 mb-3 text-[0.8125rem] text-stone-500 hover:text-stone-900 no-underline transition-colors">← Documentation</a>
@@ -668,6 +677,7 @@ function renderHeader(sidebar: boolean): string {
     <nav class="flex items-center gap-1 sm:gap-3" aria-label="Primary navigation">
       ${siteSearchBox("site-search-input", "hidden lg:block w-56", SEARCH_INPUT_CLASS)}
       <a href="/docs" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block px-3 py-1.5 rounded-lg hover:bg-stone-100">Documentation</a>
+      <a href="/showcase/flow" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block px-3 py-1.5 rounded-lg hover:bg-stone-100">Live demos</a>
       <a href="/blog" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block px-3 py-1.5 rounded-lg hover:bg-stone-100">Blog</a>
       <a href="https://github.com/zerotaldev/zerotal" target="_blank" rel="noopener"
          class="text-stone-400 hover:text-stone-900 transition-colors p-2 rounded-lg hover:bg-stone-100" title="GitHub">
@@ -686,7 +696,7 @@ function renderHeader(sidebar: boolean): string {
 
   return `<header class="fixed top-0 left-0 right-0 h-16 flex items-center justify-between px-4 sm:px-6 bg-white/85 backdrop-blur-md border-b border-stone-200 z-50">
     <div class="flex items-center gap-4">
-      <button id="mobile-menu-btn" type="button" class="md:hidden text-stone-500 hover:text-stone-900" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
+      <button id="mobile-menu-btn" type="button" class="md:hidden text-stone-500 hover:text-stone-900" aria-label="Toggle navigation" aria-expanded="false" aria-controls="docs-sidebar">
         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
       </button>
       ${_LOGO}
@@ -695,6 +705,7 @@ function renderHeader(sidebar: boolean): string {
     <nav class="flex items-center gap-3 sm:gap-4" aria-label="Primary navigation">
       ${HEADER_SEARCH}
       <a href="/docs" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block">Documentation</a>
+      <a href="/showcase/flow" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block">Live demos</a>
       <a href="/blog" class="text-sm font-medium text-stone-500 hover:text-stone-900 no-underline transition-colors hidden sm:block">Blog</a>
       <div class="w-px h-4 bg-stone-200 hidden sm:block"></div>
       <a href="https://github.com/zerotaldev/zerotal" target="_blank" rel="noopener" class="text-stone-400 hover:text-stone-900 transition-colors" title="GitHub">
@@ -746,6 +757,7 @@ function renderFooter(): string {
           ["Changelog", "/docs/changelog"],
         ])}
         ${col("Project", [
+          ["Live demos", "/showcase/flow"],
           ["Blog", "/blog"],
           ["Contributing", "/docs/contributing"],
           ["Security", `${REPO}/blob/main/SECURITY.md`],
@@ -771,6 +783,7 @@ export function Layout({
   content,
   title = "Zerotal Docs",
   description,
+  canonical: canonicalOverride,
   pathname = "",
   sidebar = true,
   variant = "guide",
@@ -782,7 +795,11 @@ export function Layout({
   // Built from the path alone, so the blog listing's `?category=`/`?sort=`/`?view=`
   // arrangements all point at the same canonical `/blog` rather than reading as
   // that many near-duplicate pages.
-  const canonical = pathname ? `${SITE_URL}${pathname}` : "";
+  const canonical = canonicalOverride
+    ? `${SITE_URL}${canonicalOverride}`
+    : pathname
+      ? `${SITE_URL}${pathname}`
+      : "";
   const isApi = variant === "api";
   const sidebarHtml = !sidebar ? "" : isApi ? renderApiSidebar(pathname) : renderSidebar(pathname);
   // API pages carry wide signature blocks and param tables — give them room.
@@ -805,6 +822,11 @@ export function Layout({
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate" type="application/rss+xml" title="Zerotal Blog" href="/blog/feed.xml">
   <meta name="theme-color" content="#0B0D0C">
+  <!-- Which commit rendered this page: curl the URL and grep for zerotal-build,
+       and "is my change live?" is settled without diffing prose against a branch.
+       It is the check that would have caught three batches of fixes sitting
+       behind a checkout that had not moved. -->
+  <meta name="zerotal-build" content="${escHtml(BUILD_SHA_SHORT)}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Zerotal">
   <meta property="og:title" content="${escHtml(pageTitle)}">

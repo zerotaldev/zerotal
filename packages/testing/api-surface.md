@@ -302,8 +302,10 @@ class BrowserPage = {
   connection: () => Promise<string | null>
   count: (selector: string) => Promise<number>
   evaluate: <T = unknown>(expression: string) => Promise<T>
+  horizontalOverflow: () => Promise<number>
   html: (selector: string) => Promise<string | null>
   press: (key: string) => Promise<BrowserPage>
+  resize: (width: number, height: number) => Promise<BrowserPage>
   socketUpgraded: () => boolean
   text: (selector: string) => Promise<string | null>
   transport: () => TransportReport

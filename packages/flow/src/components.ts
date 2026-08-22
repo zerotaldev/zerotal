@@ -250,7 +250,10 @@ export function Modal(props: ModalProps): HtmlNode {
   if (name) {
     overlay["flow:show"] = name;
     overlay["data-flow-modal"] = name;
-    overlay["x-trap"] = `$flow.${name}`; // trap focus while open (@alpinejs/focus)
+    // `.noscroll` locks the body while the dialog is open. Without it focus is
+    // trapped correctly and the page behind still scrolls under a finger or a
+    // wheel, which on a phone reads as the dialog having broken the page.
+    overlay["x-trap.noscroll"] = `$flow.${name}`; // focus trap + scroll lock (@alpinejs/focus)
     if (title) overlay["aria-labelledby"] = titleId;
   }
   if (!open) overlay["style"] = { display: "none" };
@@ -1482,7 +1485,7 @@ export function Drawer(props: DrawerProps): HtmlNode {
   };
   if (name) {
     panelOut["data-flow-modal"] = name; // Escape-to-close (shared bridge handler)
-    panelOut["x-trap"] = shownExpr; // trap focus while open
+    panelOut["x-trap.noscroll"] = shownExpr; // focus trap + scroll lock, as Modal
     if (title) panelOut["aria-labelledby"] = titleId;
   }
 

@@ -87,12 +87,12 @@ import { test, expect } from "@playwright/test";
 
 test.describe("SPA navigation", () => {
   test("swaps content without a full page reload", async ({ page }) => {
-    await page.goto("/pulse/counter");
+    await page.goto("/demo/counter");
     // A full reload would clear this marker; an SPA swap keeps it.
     await page.evaluate(() => ((window as any).__spa = true));
 
     await page.getByRole("link", { name: "Components" }).click();
-    await expect(page).toHaveURL(/\/pulse\/components/);
+    await expect(page).toHaveURL(/\/demo\/components/);
     await expect(page.getByRole("heading", { name: "Native Components" })).toBeVisible();
 
     const kept = await page.evaluate(() => (window as any).__spa);
@@ -128,7 +128,7 @@ export async function gotoReady(page: Page, url: string): Promise<void> {
 }
 ```
 
-Then `await gotoReady(page, "/pulse/counter")` instead of `page.goto(...)` for
+Then `await gotoReady(page, "/demo/counter")` instead of `page.goto(...)` for
 interactive Flow pages.
 
 > **Warning** — Clicking before `alpine:initialized` fires is the most common source

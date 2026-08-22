@@ -10,8 +10,16 @@ import type { ComponentEntry } from "../registry.ts";
 import { findSpec } from "./spec.tsx";
 import type { DocSpec, PropDoc } from "./spec.tsx";
 
+// `flex-wrap` and `overflow-x-auto` are load-bearing, not tidiness. This block is
+// `not-prose`, so nothing above it constrains its width, and a single row of
+// components — a table, a wide select, a button group — pushed the flex container
+// past the viewport on a phone: the catalogue page scrolled 356px sideways at
+// 375px wide. Wrapping lets the row become rows; the scroll container catches the
+// one component that is genuinely wider than the screen. `p-6` before `sm:p-10`
+// gives that component 80px more room to begin with.
 const PREVIEW_WRAP =
-  "not-prose my-6 flex min-h-32 items-center justify-center gap-4 rounded-lg border border-border bg-background p-10";
+  "not-prose my-6 flex min-h-32 max-w-full flex-wrap items-center justify-center gap-4 " +
+  "overflow-x-auto rounded-lg border border-border bg-background p-6 sm:p-10";
 
 /** HTML-escape text destined for a raw HTML cell. */
 function esc(s: string): string {

@@ -187,7 +187,7 @@ runtime, no native module, nothing to install.
 held to the same output dimensions by a shared parity suite, so switching is a
 performance decision rather than a feature one:
 
-|                             | `bun` (default)         | `sharp`                          |
+| Criterion                   | `bun` (default)         | `sharp`                          |
 | --------------------------- | ----------------------- | -------------------------------- |
 | Install                     | Nothing                 | `bun add sharp`, a native module |
 | `fit: "cover"`              | Yes                     | Yes                              |

@@ -177,7 +177,7 @@ export class UiKitPage extends Component {
               <Textarea placeholder="Say something…" />
             </div>
             <div class="flex items-center gap-3">
-              <Switch bind={this.notifications} />
+              <Switch bind={this.notifications} aria-label="Notifications" />
               <span
                 class="text-sm text-foreground"
                 x-text="$flow.notifications ? 'Notifications on' : 'Notifications off'"
@@ -199,6 +199,7 @@ export class UiKitPage extends Component {
 />`,
           <Select
             bind={this.country}
+            aria-label="Country"
             placeholder="Choose a country"
             options={[
               { label: "South Africa", value: "za" },
@@ -230,7 +231,7 @@ export class UiKitPage extends Component {
 <Skeleton class="h-4 w-3/4" />`,
           <div class="space-y-4">
             <div class="flex items-center gap-4">
-              <Avatar src="https://i.pravatar.cc/80?img=13" alt="Ada" />
+              <Avatar src="/img/avatar-ada.svg" alt="Ada" />
               <Avatar fallback="AT" />
               <Avatar fallback="GH" />
             </div>

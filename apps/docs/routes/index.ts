@@ -1,4 +1,6 @@
 import { Router } from "zerotal";
+import { assetVersion } from "zerotal/assets";
+import { ZEROTAL_VERSION, BUILD_SHA, BUILD_SHA_SHORT, BOOTED_AT } from "../app/version.ts";
 import { searchDocs } from "../app/support/search.ts";
 import { Layout, ApiLayout, isApiPath, navPages } from "../app/routes/_layout.ts";
 // Registers GET /blog and GET /blog/* on import.
@@ -54,12 +56,30 @@ async function renderDoc(req: Request): Promise<Response> {
   const body = Bun.markdown.html(content, MARKDOWN_OPTIONS);
   const title = data.title ?? extractTitle(content, slug);
 
-  const render = isApiPath(pathname) ? ApiLayout : Layout;
+  const isApi = isApiPath(pathname);
+
+  // TypeDoc names its root page "Documentation" — as a `<title>`, an `<h1>`, and
+  // the only thing a search result would show for the entire API reference. The
+  // tree is generated and gitignored, so the fix belongs here rather than in a
+  // file that is rewritten on every build.
+  const isApiRoot = pathname === "/docs/api/README" || pathname === "/docs/api";
+  const apiMeta = isApiRoot
+    ? {
+        title: "Zerotal API Reference",
+        description:
+          "Every exported symbol in the framework: signatures, parameters and types, generated from the source of each package.",
+        // The clean URL, not the `/README` the relative links need.
+        canonical: "/docs/api",
+      }
+    : {};
+
+  const render = isApi ? ApiLayout : Layout;
   const pageHtml = render({
     content: body,
     title,
     pathname,
     ...(data.description ? { description: data.description } : {}),
+    ...apiMeta,
   });
 
   return createHtmlResponse(pageHtml);
@@ -74,6 +94,39 @@ Router.raw("GET", "/docs/*", renderDoc);
 // Full-text search for the sidebar box, which until now filtered navigation
 // labels and so could only find a page whose title you already knew.
 //
+/**
+ * `/showcase` is a prefix, not a page — send it to the demo it prefixes.
+ *
+ * File-based routing mounts `app/showcase/**` under `/showcase`, so the pages
+ * live at `/showcase/flow/…` and the bare prefix matched nothing. It is the URL
+ * anyone types first, and it 404'd.
+ */
+Router.raw("GET", "/showcase", () => Response.redirect("/showcase/flow", 301));
+
+/**
+ * What this process is actually serving.
+ *
+ * A deploy command that exits zero proves the command ran, not that the site
+ * changed — three batches of documentation fixes sat unshipped behind a checkout
+ * that had not moved, and every check looked reasonable because no page said
+ * which commit it was. `curl -s https://zerotal.dev/__version` now answers that
+ * in one line, before anyone starts diffing rendered HTML against a branch.
+ *
+ * `no-store`, because a cached answer to "what is running" is worse than none.
+ */
+Router.raw("GET", "/__version", () =>
+  Response.json(
+    {
+      version: ZEROTAL_VERSION,
+      commit: BUILD_SHA,
+      commitShort: BUILD_SHA_SHORT,
+      bootedAt: BOOTED_AT,
+      assetVersion: assetVersion(),
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  ),
+);
+
 // Declared before `/docs/*` would be reached for it — `/api/docs-search` sits
 // outside the docs namespace on purpose, so a page can never be shadowed by it.
 Router.raw("GET", "/api/docs-search", async (request) => {

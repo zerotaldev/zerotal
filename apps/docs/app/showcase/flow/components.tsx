@@ -99,6 +99,7 @@ export class ComponentsPage extends Component {
           <div class="flex items-center gap-3">
             <Switch
               bind={this.notifications}
+              aria-label="Email notifications"
               class="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-300 transition data-[checked]:bg-orange-500"
             >
               <span class="inline-block h-4 w-4 translate-x-1 rounded-full bg-white transition group-data-[checked]:translate-x-6" />

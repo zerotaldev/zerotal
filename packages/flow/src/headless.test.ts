@@ -316,7 +316,9 @@ describe("<Modal> a11y upgrade", () => {
     }
     const p = new P();
     const html = await _renderFlowPage(p as any, () => Promise.resolve(p.render()));
-    expect(html).toContain('x-trap="$flow.open"');
+    // `.noscroll` is the half that stops the page behind scrolling; a trap
+    // without it holds focus while the background moves under a finger.
+    expect(html).toContain('x-trap.noscroll="$flow.open"');
     expect(html).toContain('aria-labelledby="flow-modal-title-open"');
     expect(html).toContain('id="flow-modal-title-open"');
   });
@@ -336,7 +338,7 @@ describe("<Drawer>", () => {
     expect(html).toContain('x-show="$flow.cart"'); // reactive visibility (Alpine)
     expect(html).toContain('x-transition:enter-start="translate-x-full"'); // slides from the right
     expect(html).toContain('data-flow-modal="cart"'); // Escape-to-close hook
-    expect(html).toContain('x-trap="$flow.cart"'); // focus trap
+    expect(html).toContain('x-trap.noscroll="$flow.cart"'); // focus trap + scroll lock
     expect(html).toContain('aria-labelledby="flow-drawer-title-cart"');
     expect(html).toContain('flow:click="$flow.cart = false"'); // backdrop/close → local set
   });

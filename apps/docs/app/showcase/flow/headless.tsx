@@ -79,6 +79,7 @@ export class HeadlessPage extends Component {
             <div class="flex items-center gap-3">
               <Switch
                 bind={this.airplane}
+                aria-label="Airplane mode"
                 class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-slate-300 transition-colors data-[checked]:bg-orange-500"
               >
                 <span class="inline-block h-4 w-4 translate-x-1 rounded-full bg-white shadow transition-transform group-data-[checked]:translate-x-6" />
@@ -133,6 +134,7 @@ export class HeadlessPage extends Component {
 />`,
             <Select
               bind={this.fruit}
+              aria-label="Fruit"
               placeholder="Pick a fruit"
               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-orange-400 focus:outline-none"
               options={[

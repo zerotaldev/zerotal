@@ -68,7 +68,7 @@ const DEMOS: { href: string; title: string; blurb: string }[] = [
     href: "/showcase/flow/ui-kit",
     title: "flow-ui component kit",
     blurb:
-      "All 20 shadcn-style components from @zerotal/flow-ui — buttons, cards, dialogs, tables, form controls — themed by CSS variables and yours to own with flow:add.",
+      "20 representative components from @zerotal/flow-ui — buttons, cards, dialogs, tables, form controls — themed by CSS variables and yours to own with flow:add. The catalogue documents all 53.",
   },
 ];
 

@@ -256,8 +256,30 @@ The transport is on the `@zerotal/arch/mcp` subpath: `McpServer`, `McpServerOpti
 `JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcSuccess`, `JsonRpcFailure`, `JsonRpcId`,
 `RpcError`, `Meta`, `MODERN_VERSION`, `LEGACY_VERSIONS` and `SUPPORTED_VERSIONS`.
 
+## What `stable` covers here
+
+The usual promise — anything importable without an `@internal` marker keeps its
+shape for the rest of the 1.x line — and one more, because this package's real
+interface is not its exports.
+
+**The MCP tool contract is covered.** Tool names, the arguments they accept, and
+the shape of what they return do not change within 1.x. That is the surface an
+agent client is configured against: a renamed tool or a dropped field breaks
+every `.mcp.json` pointing at this server, and none of it is visible to a
+type-level check — `archTools = (ctx) => ArchTool[]` is byte-identical whatever
+the tools are called. `mcp-surface.md` records all nine and CI diffs it.
+
+**The protocol revision is not.** Which version of the Model Context Protocol the
+server speaks follows the protocol, not this package's major version. A revision
+that requires a transport change will land in a minor release, described in the
+notes.
+
+**The writers behind `arch:install` are not.** `detectAgents`, `applyMcpConfig`,
+`applyBlock`, `buildGuidelines` and the rest are `@internal`: they exist for the
+command, and the format of the files it writes is not a promise.
+
 ## Next steps
 
 - [Commands](/docs/commands) — the full `bun zt` vocabulary an agent is told about.
 - [Package Development](/docs/package-development) — contributing doctor checks of your own.
-- [Support policy](/docs/support-policy#maturity-levels) — what `beta` promises.
+- [Support policy](/docs/support-policy#maturity-levels) — what `stable` promises.

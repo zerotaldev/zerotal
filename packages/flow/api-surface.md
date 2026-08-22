@@ -281,8 +281,6 @@ function registerComponent = (PageClass: typeof Component, path?: string) => voi
 
 function registerFlowEvent = <K extends EventName>(name: K, guard: (payload: unknown) => payload is FlowEvents[K]) => void
 
-function registerFlowModel = (name: string, ModelClass: typeof BaseModel) => void
-
 function registerForm = (FormClass: new () => Form) => void
 
 function registerSynth = (synth: Synth) => void
@@ -1089,11 +1087,7 @@ function __escAttr = (v: unknown) => string
 
 ## ./store  `(./src/store.ts)`
 
-function clientStore = () => Record<string, unknown>
-
 function defineStore = (initial: Record<string, unknown>) => void
-
-function initClientStore = (alpine: AlpineStores) => Record<string, unknown>
 
 interface FlowStore = {}
 

@@ -871,25 +871,9 @@ class WizardStep = {
   schema: (fields: Field[]) => WizardStep
 }
 
-const DEFAULT_ADMIN_CONFIG = AdminConfigShape
-
-const DEFAULT_PANEL_ID = 'admin'
-
-const EMPTY_LAYOUT = DashboardLayout
-
-const IMPERSONATOR_KEY = 'admin.impersonator'
-
-const IMPORT_ROW_LIMIT = 2000
-
-const MAPPING_FIELD_PREFIX = 'map_'
-
 const NOTIFICATION_CHANNEL = 'admin-notifications'
 
 const NOTIFICATION_EVENT = '.notification.sent'
-
-const THEME_STORAGE_KEY = 'zerotal-theme'
-
-const VIEW_PARAMS = readonly ['search', 'filters', 'tab', 'sortBy', 'sortDir', 'sort', 'trashed', 'perPage', 'cols', 'group']
 
 function action = (key: string) => Action
 
@@ -902,8 +886,6 @@ function adminHead = (title?: string, theme?: AdminThemeConfig) => string
 function adminTailwindConfig = () => string
 
 function adminTokensCss = () => string
-
-function applyLayout = <T>(widgets: T[], keyOf: (widget: T, index: number) => string, layout: DashboardLayout | null) => {    visible: T[];    hidden: {        key: string;        widget: T;    }[];}
 
 function authRoles = (options?: AuthRolesOptions) => RoleProvider
 
@@ -961,8 +943,6 @@ function deleteAction = () => Action
 
 function deleteMedia = (item: MediaItem, options: {    provider: MediaProvider;    disk?: string;}) => Promise<[true] | [false, string]>
 
-function describeRuleTree = (node: QueryRule | null, filter?: {    _constraints: Constraint[];}) => string
-
 function dispatchImport = (payload: ImportRecordsPayload) => Promise<boolean>
 
 function editAction = () => Action
@@ -972,10 +952,6 @@ function exportAction = (format?: ExportFormat) => Action
 function fieldset = (legend?: string) => FormSection
 
 function fileUpload = (key: string) => Field
-
-function flattenActions = (items: ActionItem[]) => Action[]
-
-function flattenFields = (components: FormComponent[]) => Field[]
 
 function forceDeleteAction = () => Action
 
@@ -988,10 +964,6 @@ function formTab = (label: string) => FormTab
 function formTabs = (tabs: FormTab[]) => FormTabs
 
 function group = (column: string) => Group
-
-function groupPermissions = (permissions: Permission[]) => {    group: string;    items: Permission[];}[]
-
-function guessColumnMapping = (headers: string[], candidates: {    key: string;    label: string;}[]) => Record<number, string>
 
 function hasMany = (resource: ResourceClass, foreignKey: string) => RelationManager
 
@@ -1013,19 +985,11 @@ function importAction = (options?: {    queue?: boolean;}) => Action
 
 function importCsv = (resource: ResourceClass, csv: string, mapping?: Record<number, string>, options?: {    limit?: number;}) => Promise<ImportResult>
 
-function isFormSection = (c: FormComponent) => c is FormSection
-
-function isImage = (item: MediaItem) => boolean
-
 function isImpersonating = () => Promise<boolean>
-
-function isUpload = (value: unknown) => value is UploadedFileLike
 
 function keyValue = (key: string) => Field
 
 function keyValueEntry = (key: string) => Entry
-
-function makeResourceForm = (schema: FormComponent[], mode: FieldMode, className: string) => {    FormClass: ResourceFormClass;    fields: Field[];}
 
 function markdownEditor = (key: string) => Field
 
@@ -1035,15 +999,11 @@ function mediaPicker = (key: string) => Field
 
 function mediaUrl = (item: MediaItem, disk?: string) => Promise<string | null>
 
-function moveKey = (order: string[], key: string, direction: -1 | 1) => string[]
-
 function numberConstraint = (key: string) => Constraint
 
 function panelPermissions = (panel: PanelInstance) => Permission[]
 
 function parseCsv = (text: string) => string[][]
-
-function parseRuleTree = (value: string) => QueryRule | null
 
 function prime = (text: string) => Prime
 
@@ -1055,8 +1015,6 @@ function queryBuilder = (key: string) => Filter
 
 function radio = (key: string) => Field
 
-function reconcile = (layout: DashboardLayout | null, keys: string[]) => DashboardLayout
-
 function recordHistory = (options: HistoryOptions) => Promise<HistoryEntry[]>
 
 function repeatableEntry = (key: string) => Entry
@@ -1067,17 +1025,11 @@ function replicateAction = () => Action
 
 function resolveMediaSrc = (value: unknown, disk?: string) => string | null
 
-function resolveRenderHooks = (hooks: RenderHook[], context?: RenderHookContext) => (HtmlNode | string)[]
-
 function restoreAction = () => Action
-
-function revertPayload = (entry: HistoryEntry) => Record<string, unknown>
 
 function richEditor = (key: string) => Field
 
 function roleHas = (role: Role, held: string[], key: string) => boolean
-
-function ruleTreeIsEmpty = (node: QueryRule | null) => boolean
 
 function runQueuedImport = (payload: ImportRecordsPayload) => Promise<ImportResult>
 
@@ -1131,10 +1083,6 @@ function timePicker = (key: string) => Field
 
 function toCsv = (rows: Record<string, unknown>[], columns: Column[]) => string
 
-function toFormLayout = (components: FormComponent[]) => FormBlock[]
-
-function toFormSections = (components: FormComponent[]) => FormSection[]
-
 function toggle = (key: string) => Field
 
 function toggleButtons = (key: string) => Field
@@ -1144,12 +1092,6 @@ function toggleColumn = (key: string) => Column
 function toXlsx = (rows: Record<string, unknown>[], columns: Column[], options?: {    sheet?: string;}) => Uint8Array
 
 function viewAction = () => Action
-
-function viewIsActive = (view: SavedView, current: URLSearchParams | string) => boolean
-
-function viewQuery = (params: URLSearchParams | string) => string
-
-function widgetPollInterval = (widgets: DashboardWidget[]) => string | undefined
 
 function wizard = (steps: WizardStep[]) => Wizard
 

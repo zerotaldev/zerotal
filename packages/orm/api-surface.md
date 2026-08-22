@@ -277,13 +277,6 @@ class ForeignKeyBuilder = {
   toConstraintSQL: () => string
 }
 
-class HookRegistry = {
-  new (): HookRegistry
-  static onAfterRun: ((ModelClass: ClassRef, hook: HookName, model: unknown) => void) | undefined
-  static register: <T>(ModelClass: ClassRef, hook: HookName, fn: HookFn<T>) => void
-  static run: <T>(ModelClass: ClassRef, hook: HookName, model: T) => Promise<void>
-}
-
 class JsonCast = {
   new <T = unknown>(mapper?: CastMapper<T> | undefined): JsonCast<T>
   fields: () => CastField[]
@@ -801,13 +794,9 @@ class UnsupportedDialectError = {
   readonly status: number
 }
 
-const columnRegistry = Map<ClassRef, Map<string, ColumnOptions>>
-
 const DB = {    table(tableName: string): QueryBuilder;    raw<T = Record<string, unknown>>(sql: TemplateStringsArray | string, ...rest: unknown[]): Promise<T[]>;    transaction<T>(callback: (tx?: SQLInstance) => Promise<T>, attempts?: number): Promise<T>;    beginTransaction(): Promise<ManualTransaction>;    onPrimary(): {        table(name: string): QueryBuilder;    };    currentTx(): unknown | undefined;    advisoryLock<T>(key: number, callback: () => Promise<T>): Promise<T>;    preventNPlusOne(options?: NPlusOneOptions): void;    allowNPlusOne(pattern: string, options?: {        once?: boolean;    }): void;}
 
 const ModelInspector = {    load(pattern: string, cwd?: string): Promise<void>;    all(): ModelSchema[];    fromClass(ctor: ClassRef): ModelSchema | null;}
-
-const modelsByName = Map<string, ClassRef>
 
 const relationRegistry = Map<ClassRef, Map<string, RelationMetadata>>
 
@@ -819,31 +808,13 @@ const SchemaInspector = {    tables(): Promise<string[]>;    columns(table: stri
 
 const TransactionContext = AsyncLocalStorage<SQLInstance>
 
-function _clearModelConnections = () => void
-
-function _clearTransitionCallbacks = () => void
-
 function _getConnection = () => SQLInstance
 
 function _getDbConnectionOverride = () => SQLInstance | null
 
-function _getDialect = () => 'sqlite' | 'postgres' | 'mysql'
-
-function _getModelConnection = () => SQLInstance
-
 function _globalScopeRegistry = () => Map<ClassRef, Map<string, GlobalScopeCallback>>
 
-function _normaliseSqliteUrl = (raw: string) => string
-
-function _resolveConn = (ModelClass?: typeof BaseModel) => SQLInstance
-
-function _setBaseModelConnection = (conn: SQLInstance | null) => void
-
-function _setBaseModelDialect = (dialect: 'sqlite' | 'postgres' | 'mysql') => void
-
 function _setDbConnection = (conn: SQLInstance | null) => void
-
-function _setQueryBuilderDialect = (d: Dialect) => void
 
 function _setReadReplicas = (primary: SQLInstance, replicas: SQLInstance[]) => void
 
@@ -856,8 +827,6 @@ function arrayOf = <T = unknown>(mapper?: CastMapper<T>) => ArrayCast<T>
 function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
 function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
-
-function columnsFor = (ctor: ClassRef) => Map<string, ColumnOptions> | null
 
 function createReadWriteRouter = (primary: SQLInstance, replicas: SQLInstance[]) => SQLInstance
 
@@ -885,10 +854,6 @@ function json = <T = unknown>(mapper?: CastMapper<T>) => JsonCast<T>
 
 function manyToMany = (related: () => unknown, options: ManyToManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
-function modelByName = (name: string) => ClassRef | undefined
-
-function modelForParam = (paramName: string) => ImplicitModel | undefined
-
 function morphedByMany = (related: () => unknown, options: MorphedByManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
 function morphMany = (related: () => unknown, options: MorphManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
@@ -903,13 +868,9 @@ function objectOf = <T = unknown>(mapper?: CastMapper<T>) => JsonCast<T>
 
 function preventNPlusOne = (options?: NPlusOneOptions) => void
 
-function registerColumn = (ctor: ClassRef, name: string, options: ColumnOptions) => void
-
 function registerConnectionResolver = (fn: ContextConnectionResolver | null) => void
 
 function registerImplicitBinding = () => void
-
-function registerModel = (ctor: ClassRef) => void
 
 function registerModelConnection = (name: string, conn: SQLInstance, dialect?: Dialect) => void
 
@@ -1206,21 +1167,6 @@ interface PaginateResult = {
   url: (page: number, baseUrl?: string, query?: Record<string, string>) => string
 }
 
-interface QueryState = {
-  distinct: boolean
-  groupBys: string[]
-  havings: HavingClause[]
-  joins: JoinClause[]
-  limit: number | undefined
-  lock: string | undefined
-  offset: number | undefined
-  orders: OrderClause[]
-  selects: string[]
-  table: string
-  unions: UnionClause[]
-  wheres: WhereClause[]
-}
-
 interface RelationMetadata = {
   firstKey?: string
   foreignKey: string
@@ -1314,8 +1260,6 @@ interface TransitionContext = {
 }
 
 type CastMapper = ((raw: unknown) => T) | (new (...args: never[]) => T)
-
-type ClassRef = abstract new (...args: never[]) => unknown
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 

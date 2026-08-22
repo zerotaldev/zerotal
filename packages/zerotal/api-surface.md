@@ -686,8 +686,6 @@ function data_get = (target: unknown, key: string, defaultValue?: unknown) => un
 
 function deepMerge = <T extends object>(base: T, override: DeepPartial<T>) => T
 
-function deployEnv = () => string
-
 function devSurfacesEnabled = () => boolean
 
 function env = {    (key: string): string | undefined;    (key: string, fallback: string): string;    (key: string, fallback: boolean): boolean;    (key: string, fallback: number): number;}
@@ -703,8 +701,6 @@ function html = (markup: string | {    toString(): string;}, status?: number) =>
 function inject = (...tokens: BindingToken[]) => (target: new (...args: any[]) => unknown, _context: ClassDecoratorContext) => void
 
 function isDevSurfaceAllowed = (env: string) => boolean
-
-function isProdLike = (env: string) => boolean
 
 function json = (data: unknown, status?: number) => void
 
@@ -727,8 +723,6 @@ function readCookie = (request: Request, name: string) => string | undefined
 function redirect = {    (url: string, status?: 301 | 302 | 303 | 307 | 308): ResponseBuilder;    (): RedirectBuilder;}
 
 function redirectTo = <N extends RouteTarget>(name: N, params?: RouteParamsArg<N>, status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
-
-function registerAppScope = (installer: AppScopeInstaller) => void
 
 function registerErrorDiagnoser = (diagnoser: ErrorDiagnoser) => void
 
@@ -753,8 +747,6 @@ function scanFileRoutes = (baseDir: string, reloadId?: string) => Promise<number
 function setAppEnv = (command?: string) => void
 
 function setCurrentPageResolver = (resolver: CurrentPageResolver) => void
-
-function setImplicitModelResolver = (fn: ((paramName: string) => ModelBindingResolver | undefined) | null) => void
 
 function sha256Hex = (input: string | Uint8Array) => string
 
@@ -1113,8 +1105,6 @@ type AppScopeInstaller = () => () => void
 type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 
 type BindingToken = ClassToken<T> | AbstractToken<T> | keyof ContainerBindings
-
-type ClassRef = abstract new (...args: never[]) => unknown
 
 type ContextKey = never
 
@@ -2094,8 +2084,6 @@ const TWO_FACTOR_SESSION_KEY = 'two_factor_confirmed'
 
 const TwoFactor = TwoFactorService
 
-function _attachModelPermissions = (modelType: string, modelId: unknown, permissionIds: number[]) => Promise<void>
-
 function AuthConfig = (options?: Partial<AuthConfigShape>) => AuthConfigShape
 
 function Authenticatable = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): Authenticatable;    prototype: Authenticatable<any>.Authenticatable;} & TBase
@@ -2311,11 +2299,6 @@ interface QrSvgOptions = {
 
 interface RememberMeOptions = {
   secure?: boolean
-}
-
-interface SocialHttpContext = {
-  redirect: (url: string) => void
-  request: {    readonly method: string;    readonly url: string;    formData(): Promise<FormData>;}
 }
 
 interface SocialSession = {
@@ -3196,35 +3179,6 @@ class CssBuildCommand = {
   write: (msg: string) => void
 }
 
-class DeployCommand = {
-  new (): DeployCommand
-  static args: ArgDef[]
-  static commandName: string
-  static description: string
-  static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'string';    description: string;    default?: never;})[]
-  static needsApp: boolean
-  static target: string
-  _readLine: () => Promise<string>
-  _writer: OutputWriter
-  app: unknown
-  args: Record<string, string>
-  ask: (question: string, defaultValue?: string) => Promise<string>
-  choice: (question: string, options: string[]) => Promise<string>
-  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
-  dim: (msg: string) => void
-  error: (msg: string) => void
-  flags: Record<string, string | number | boolean>
-  info: (msg: string) => void
-  line: (msg: string) => void
-  newLine: () => void
-  run: () => Promise<void>
-  secret: (question: string) => Promise<string>
-  section: (title: string) => void
-  table: (rows: [string, string][], indent?: number) => void
-  warn: (msg: string) => void
-  write: (msg: string) => void
-}
-
 class DevCommand = {
   new (): DevCommand
   static aliases: string[]
@@ -3986,8 +3940,6 @@ class WorkerCommand = {
   write: (msg: string) => void
 }
 
-function makeDeployCommand = (target: string) => DeployCommandClass
-
 ## ./config  `(./src/config-reexport.ts)`
 
 class ConfigLoader = {
@@ -4181,8 +4133,6 @@ const SERVER_PROCESS_NAME = 'server'
 
 function bootBuildDecision = (outDirs: string[], env: string | undefined) => Promise<BootBuildDecision>
 
-function browserEnvDefines = (isProduction: boolean) => Record<string, string>
-
 function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
 
 function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>
@@ -4193,13 +4143,7 @@ function createDeck = (options: DeckOptions) => Deck
 
 function detectCssPlugins = (cwd: string) => Promise<BunPlugin[]>
 
-function isDevOrchestrated = (env?: Record<string, string | undefined>, argv?: readonly string[]) => boolean
-
 function isWritableDir = (dir: string) => Promise<boolean>
-
-function pruneBuildOutput = (outdir: string, outputs: readonly {    path: string;}[]) => Promise<string[]>
-
-function registerDevBuildHook = (name: string, fn: BuildHookFn) => void
 
 function registerDevHtmlSnippet = (name: string, fn: DevHtmlSnippet) => void
 
@@ -4878,8 +4822,6 @@ class StackChannel = {
 
 const Log = LogManager
 
-function frameworkLog = (scope: string) => BoundLogger
-
 function LoggingConfig = (options?: Partial<LoggingConfigShape>) => LoggingConfigShape
 
 function renderTable = (data: TableData, indent?: number) => string[]
@@ -4944,12 +4886,6 @@ class BunImageDriver = {
   placeholder: (bytes: Uint8Array) => Promise<string | null>
   readonly name: 'BunImageDriver'
   readonly supportsCrop: true
-}
-
-class ConversionRunner = {
-  new (driver: ImageDriver, config: MediaConfigShape): ConversionRunner
-  run: (media: MediaItem, conversions: ConversionMap) => Promise<{    generated: string[];    failed: Array<{        name: string;        reason: string;    }>;}>
-  runResponsive: (media: MediaItem, widths: number[]) => Promise<ResponsiveImageSet | null>
 }
 
 class DefaultPathGenerator = {
@@ -5214,41 +5150,11 @@ const MediaFake = {    all(owner: {        id: number | string;        construct
 
 const MediaLibrary = MediaManager
 
-const mediaSchemaConcern = ConcernDescriptor
-
-function applyRetentionRules = (modelType: string, modelId: number | string, collection: string, definition: CollectionDefinition, justAdded: MediaItem) => Promise<void>
-
-function collectionNames = (host: CollectionHost) => string[]
-
-function defaultDiskName = () => string
-
-function diskFor = (name?: string | null) => StorageDriver
-
-function dispatchConversions = (mediaId: number, conversions: string[]) => Promise<void>
-
-function fromDisk = (path: string, disk?: string) => SourceResolver
-
-function fromPath = (path: string) => SourceResolver
-
-function fromUrl = (url: string, maxBytes: number) => SourceResolver
-
-function fromValue = (source: MediaSource, fileName?: string) => SourceResolver
-
-function hasCollection = (host: CollectionHost, name: string) => boolean
-
 function isConvertible = (mimeType: string | null | undefined) => boolean
-
-function isQueueAvailable = () => boolean
 
 function Media = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): MediaModel;    prototype: Media<any>.MediaModel;    mediaCollections: MediaCollections;} & TBase
 
 function MediaConfig = (options?: Partial<MediaConfigShape>) => MediaConfigShape
-
-function mediaDefaults = () => MediaConfigShape
-
-function pathGenerator = () => PathGenerator
-
-function resolveCollection = (host: CollectionHost, name: string) => CollectionDefinition
 
 function setPathGenerator = (generator: PathGenerator) => void
 
@@ -5269,11 +5175,6 @@ interface CollectionDefinition = {
   onlyKeepLatest?: number
   responsive?: boolean | number[]
   single?: boolean
-}
-
-interface CollectionHost = {
-  mediaCollections?: MediaCollections
-  name: string
 }
 
 interface ConversionDefinition = {
@@ -5363,11 +5264,6 @@ interface PendingMediaMeta = {
   order?: number
 }
 
-interface ResolvedSource = {
-  bytes: Uint8Array<ArrayBufferLike>
-  originalName: string
-}
-
 interface ResponsiveImage = {
   fileName: string
   height: number
@@ -5390,8 +5286,6 @@ type MediaCollections = {    [x: string]: CollectionDefinition | (() => Collecti
 type MediaSource = UploadedFile | File | Blob | Uint8Array | ArrayBuffer
 
 type SafeConversionFormat = 'jpeg' | 'png' | 'webp'
-
-type SourceResolver = () => Promise<ResolvedSource>
 
 ## ./metrics  `(./src/metrics.ts)`
 
@@ -5689,13 +5583,6 @@ class ForeignKeyBuilder = {
   references: (columnOrTableDotColumn: string) => ForeignKeyBuilder
   restrictOnDelete: () => ForeignKeyBuilder
   toConstraintSQL: () => string
-}
-
-class HookRegistry = {
-  new (): HookRegistry
-  static onAfterRun: ((ModelClass: ClassRef, hook: HookName, model: unknown) => void) | undefined
-  static register: <T>(ModelClass: ClassRef, hook: HookName, fn: HookFn<T>) => void
-  static run: <T>(ModelClass: ClassRef, hook: HookName, model: T) => Promise<void>
 }
 
 class JsonCast = {
@@ -6215,13 +6102,9 @@ class UnsupportedDialectError = {
   readonly status: number
 }
 
-const columnRegistry = Map<ClassRef, Map<string, ColumnOptions>>
-
 const DB = {    table(tableName: string): QueryBuilder;    raw<T = Record<string, unknown>>(sql: TemplateStringsArray | string, ...rest: unknown[]): Promise<T[]>;    transaction<T>(callback: (tx?: SQLInstance) => Promise<T>, attempts?: number): Promise<T>;    beginTransaction(): Promise<ManualTransaction>;    onPrimary(): {        table(name: string): QueryBuilder;    };    currentTx(): unknown | undefined;    advisoryLock<T>(key: number, callback: () => Promise<T>): Promise<T>;    preventNPlusOne(options?: NPlusOneOptions): void;    allowNPlusOne(pattern: string, options?: {        once?: boolean;    }): void;}
 
 const ModelInspector = {    load(pattern: string, cwd?: string): Promise<void>;    all(): ModelSchema[];    fromClass(ctor: ClassRef): ModelSchema | null;}
-
-const modelsByName = Map<string, ClassRef>
 
 const relationRegistry = Map<ClassRef, Map<string, RelationMetadata>>
 
@@ -6233,31 +6116,13 @@ const SchemaInspector = {    tables(): Promise<string[]>;    columns(table: stri
 
 const TransactionContext = AsyncLocalStorage<SQLInstance>
 
-function _clearModelConnections = () => void
-
-function _clearTransitionCallbacks = () => void
-
 function _getConnection = () => SQLInstance
 
 function _getDbConnectionOverride = () => SQLInstance | null
 
-function _getDialect = () => 'sqlite' | 'postgres' | 'mysql'
-
-function _getModelConnection = () => SQLInstance
-
 function _globalScopeRegistry = () => Map<ClassRef, Map<string, GlobalScopeCallback>>
 
-function _normaliseSqliteUrl = (raw: string) => string
-
-function _resolveConn = (ModelClass?: typeof BaseModel) => SQLInstance
-
-function _setBaseModelConnection = (conn: SQLInstance | null) => void
-
-function _setBaseModelDialect = (dialect: 'sqlite' | 'postgres' | 'mysql') => void
-
 function _setDbConnection = (conn: SQLInstance | null) => void
-
-function _setQueryBuilderDialect = (d: Dialect) => void
 
 function _setReadReplicas = (primary: SQLInstance, replicas: SQLInstance[]) => void
 
@@ -6270,8 +6135,6 @@ function arrayOf = <T = unknown>(mapper?: CastMapper<T>) => ArrayCast<T>
 function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
 function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
-
-function columnsFor = (ctor: ClassRef) => Map<string, ColumnOptions> | null
 
 function createReadWriteRouter = (primary: SQLInstance, replicas: SQLInstance[]) => SQLInstance
 
@@ -6299,10 +6162,6 @@ function json = <T = unknown>(mapper?: CastMapper<T>) => JsonCast<T>
 
 function manyToMany = (related: () => unknown, options: ManyToManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
-function modelByName = (name: string) => ClassRef | undefined
-
-function modelForParam = (paramName: string) => ImplicitModel | undefined
-
 function morphedByMany = (related: () => unknown, options: MorphedByManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
 function morphMany = (related: () => unknown, options: MorphManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
@@ -6317,13 +6176,9 @@ function objectOf = <T = unknown>(mapper?: CastMapper<T>) => JsonCast<T>
 
 function preventNPlusOne = (options?: NPlusOneOptions) => void
 
-function registerColumn = (ctor: ClassRef, name: string, options: ColumnOptions) => void
-
 function registerConnectionResolver = (fn: ContextConnectionResolver | null) => void
 
 function registerImplicitBinding = () => void
-
-function registerModel = (ctor: ClassRef) => void
 
 function registerModelConnection = (name: string, conn: SQLInstance, dialect?: Dialect) => void
 
@@ -6620,21 +6475,6 @@ interface PaginateResult = {
   url: (page: number, baseUrl?: string, query?: Record<string, string>) => string
 }
 
-interface QueryState = {
-  distinct: boolean
-  groupBys: string[]
-  havings: HavingClause[]
-  joins: JoinClause[]
-  limit: number | undefined
-  lock: string | undefined
-  offset: number | undefined
-  orders: OrderClause[]
-  selects: string[]
-  table: string
-  unions: UnionClause[]
-  wheres: WhereClause[]
-}
-
 interface RelationMetadata = {
   firstKey?: string
   foreignKey: string
@@ -6728,8 +6568,6 @@ interface TransitionContext = {
 }
 
 type CastMapper = ((raw: unknown) => T) | (new (...args: never[]) => T)
-
-type ClassRef = abstract new (...args: never[]) => unknown
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 
@@ -7096,16 +6934,10 @@ function hasRoute = (name: string) => boolean
 
 function resetRoutes = () => void
 
-function routeMethod = (name: string) => string | undefined
-
 interface RouteAction = {
   method: string
   url: string
 }
-
-interface RouteMethodRegistry = {}
-
-type MethodedRouteName = never
 
 type RouteArgs = [params?: RouteParamValues, query?: RouteQuery]
 

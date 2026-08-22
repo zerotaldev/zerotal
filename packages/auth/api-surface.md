@@ -903,8 +903,6 @@ const TWO_FACTOR_SESSION_KEY = 'two_factor_confirmed'
 
 const TwoFactor = TwoFactorService
 
-function _attachModelPermissions = (modelType: string, modelId: unknown, permissionIds: number[]) => Promise<void>
-
 function AuthConfig = (options?: Partial<AuthConfigShape>) => AuthConfigShape
 
 function Authenticatable = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): Authenticatable;    prototype: Authenticatable<any>.Authenticatable;} & TBase
@@ -1120,11 +1118,6 @@ interface QrSvgOptions = {
 
 interface RememberMeOptions = {
   secure?: boolean
-}
-
-interface SocialHttpContext = {
-  redirect: (url: string) => void
-  request: {    readonly method: string;    readonly url: string;    formData(): Promise<FormData>;}
 }
 
 interface SocialSession = {

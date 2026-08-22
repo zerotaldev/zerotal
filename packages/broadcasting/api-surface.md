@@ -104,14 +104,6 @@ class BroadcastProviderNotRegisteredError = {
   readonly status: number
 }
 
-class ChannelRegistry = {
-  new (): ChannelRegistry
-  all: () => {    pattern: string;    paramNames: string[];}[]
-  authorize: (channelName: string, user: unknown) => Promise<AuthorizeResult>
-  clear: () => void
-  register: <User = unknown>(pattern: string, callback: ChannelCallback<User>) => void
-}
-
 class MissingChannelParameterError = {
   new (key: string): MissingChannelParameterError
   readonly code: string
@@ -191,19 +183,13 @@ class TypedBroadcastManager = {
   wsHandlers: {    open: (ws: Bun.ServerWebSocket<WsConnectionData>) => void;    message: (ws: Bun.ServerWebSocket<WsConnectionData>, msg: string | Uint8Array) => undefined;    close: (ws: Bun.ServerWebSocket<WsConnectionData>) => void;}
 }
 
-const channelRegistry = ChannelRegistry
-
 function broadcast = (event: BroadcastEvent) => PendingBroadcast
 
 function BroadcastConfig = (overrides?: Partial<BroadcastConfigShape>) => BroadcastConfigShape
 
-function broadcastOnce = (event: BroadcastEvent) => void
-
 function broadcastsModelEvents = <M extends object>(ModelClass: ModelClassWithEvents<M>, options: BroadcastsModelEventsOptions<M>) => void
 
 function channel = (name: string) => string
-
-function compileChannelPattern = (pattern: string) => {    regex: RegExp;    paramNames: string[];}
 
 function isPrivateChannel = (name: string) => boolean
 

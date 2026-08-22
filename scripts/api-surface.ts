@@ -302,6 +302,7 @@ function renderPackage(program: ts.Program, checker: ts.TypeChecker, pkg: Packag
     const moduleSymbol = source && checker.getSymbolAtLocation(source);
     const exports = moduleSymbol ? checker.getExportsOfModule(moduleSymbol) : [];
     const lines = exports
+      .filter((sym) => !isInternal(sym))
       .map((sym) => renderExport(checker, sym.name, sym))
       .sort((a, b) => a.localeCompare(b));
     const heading = `## ${entry.subpath}  \`(${entry.file})\``;
@@ -315,6 +316,33 @@ function renderPackage(program: ts.Program, checker: ts.TypeChecker, pkg: Packag
       sections.join("\n\n") +
       "\n",
   );
+}
+
+/**
+ * Whether an export is marked `@internal`, and so carries no promise.
+ *
+ * Every package's changelog states the contract in exactly these terms —
+ * "anything importable without an `@internal` marker keeps its shape for the rest
+ * of the 1.x line" — and until now this file recorded the marked ones anyway. The
+ * promise was defined against a tag the tooling did not read, so a symbol
+ * deliberately excluded from it still sat in the snapshot, still counted as a
+ * break when it changed, and still had to be preserved by anyone reading the
+ * file as the source of truth. Which it is.
+ *
+ * Checked on the alias *and* on what it resolves to: an `export { x } from` line
+ * carries its own JSDoc, and marking it there is how a package withdraws a
+ * re-export without editing the module it comes from.
+ */
+function isInternal(symbol: ts.Symbol): boolean {
+  const seen = new Set<ts.Symbol>();
+  let current: ts.Symbol | undefined = symbol;
+
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    if (current.getJsDocTags().some((tag) => tag.name === "internal")) return true;
+    current = current.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(current) : undefined;
+  }
+  return false;
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────────

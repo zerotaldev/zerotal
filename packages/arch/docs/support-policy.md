@@ -107,13 +107,19 @@ has worn the label for a year is not being cautious, it is unowned. So each one
 below `stable` names the release by which it is reviewed, and the review has three
 outcomes — promote, keep with a new date and the reason, or withdraw.
 
-| Package         | Now            | Reviewed by |
-| --------------- | -------------- | ----------- |
-| `@zerotal/ai`   | `experimental` | **1.9.0**   |
-| `@zerotal/arch` | `beta`         | **1.9.0**   |
+| Package       | Now            | Reviewed by |
+| ------------- | -------------- | ----------- |
+| `@zerotal/ai` | `experimental` | **1.9.0**   |
 
-Neither is in the `zerotal` meta-package and nothing `stable` depends on either,
-so the cost of the label falling due is ours and not yours.
+`@zerotal/arch` held `beta` with the same date and was reviewed early, at 1.7.5:
+promoted to `stable`. Its surface was narrowed first — the writers behind
+`arch:install` are `@internal` now, because they had no caller outside the package
+and freezing them would have promised the shape of `.mcp.json` writing to nobody.
+
+`@zerotal/ai` is not in the `zerotal` meta-package and nothing `stable` depends on
+it, so the cost of its label falling due is ours and not yours. Neither is `arch`,
+still: `arch:install` writes configuration and instruction files into a project,
+which is an opinion about someone's toolchain and stays their choice to invite.
 
 That table used to be the whole of the commitment, which meant the version could
 sail past it and the only consequence would be this paragraph quietly becoming

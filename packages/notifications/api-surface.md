@@ -18,21 +18,6 @@ class BroadcastMessage = {
   readonly data: Record<string, unknown>
 }
 
-class BroadcastNotificationJob = {
-  new (_channel?: string, _event?: string, _data?: Record<string, unknown>, queue?: string): BroadcastNotificationJob
-  static fromPayload: (data: Record<string, unknown>) => BroadcastNotificationJob
-  _chain: SerializedJob[] | undefined
-  batchId: string | undefined
-  className: string
-  debounceKey: () => string
-  handle: () => Promise<void>
-  payload: () => Record<string, unknown>
-  readonly debounce?: number
-  readonly maxAttempts: number
-  readonly queue: string
-  readonly retryDelay: number
-}
-
 class DatabaseChannel = {
   new (table: string, _sql: SQLInstance): DatabaseChannel
   _count: () => Promise<number>
@@ -236,62 +221,6 @@ class NotificationSent = {
   readonly ok: boolean
 }
 
-class NotificationsPruneCommand = {
-  new (): NotificationsPruneCommand
-  static args: ArgDef[]
-  static commandName: string
-  static description: string
-  static flags: FlagDef[]
-  static needsApp: boolean
-  _readLine: () => Promise<string>
-  _writer: OutputWriter
-  app: unknown
-  args: Record<string, string>
-  ask: (question: string, defaultValue?: string) => Promise<string>
-  choice: (question: string, options: string[]) => Promise<string>
-  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
-  dim: (msg: string) => void
-  error: (msg: string) => void
-  flags: Record<string, string | number | boolean>
-  info: (msg: string) => void
-  line: (msg: string) => void
-  newLine: () => void
-  run: () => Promise<void>
-  secret: (question: string) => Promise<string>
-  section: (title: string) => void
-  table: (rows: [string, string][], indent?: number) => void
-  warn: (msg: string) => void
-  write: (msg: string) => void
-}
-
-class NotificationsTestCommand = {
-  new (): NotificationsTestCommand
-  static args: ArgDef[]
-  static commandName: string
-  static description: string
-  static flags: FlagDef[]
-  static needsApp: boolean
-  _readLine: () => Promise<string>
-  _writer: OutputWriter
-  app: unknown
-  args: Record<string, string>
-  ask: (question: string, defaultValue?: string) => Promise<string>
-  choice: (question: string, options: string[]) => Promise<string>
-  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
-  dim: (msg: string) => void
-  error: (msg: string) => void
-  flags: Record<string, string | number | boolean>
-  info: (msg: string) => void
-  line: (msg: string) => void
-  newLine: () => void
-  run: () => Promise<void>
-  secret: (question: string) => Promise<string>
-  section: (title: string) => void
-  table: (rows: [string, string][], indent?: number) => void
-  warn: (msg: string) => void
-  write: (msg: string) => void
-}
-
 class OnDemandNotifiable = {
   new (_routes: OnDemandRoutes): OnDemandNotifiable
   readonly email?: string
@@ -315,21 +244,6 @@ class RichLine = {
   size: (content: string, px: number) => RichLine
   styled: (content: string, style: TextStyle) => RichLine
   text: (content: string) => RichLine
-}
-
-class SendNotificationJob = {
-  new (_notifiable?: Notifiable | undefined, _notification?: Notification | undefined, serialized?: SerializedNotification): SendNotificationJob
-  static fromPayload: (data: Record<string, unknown>) => SendNotificationJob
-  _chain: SerializedJob[] | undefined
-  batchId: string | undefined
-  className: string
-  debounceKey: () => string
-  handle: () => Promise<void>
-  payload: () => Record<string, unknown>
-  readonly debounce?: number
-  readonly maxAttempts: number
-  readonly queue: 'notifications'
-  readonly retryDelay: number
 }
 
 class SlackChannel = {
@@ -395,8 +309,6 @@ function channelStats = () => ChannelStat[]
 function NotificationConfig = (options?: DeepPartial<NotificationConfigShape>) => NotificationConfigShape
 
 function recentDeliveries = () => RecentDelivery[]
-
-function validateNotificationConfig = (config: NotificationConfigShape) => void
 
 interface ChannelStat = {
   avgMs: number

@@ -686,8 +686,6 @@ function data_get = (target: unknown, key: string, defaultValue?: unknown) => un
 
 function deepMerge = <T extends object>(base: T, override: DeepPartial<T>) => T
 
-function deployEnv = () => string
-
 function devSurfacesEnabled = () => boolean
 
 function env = {    (key: string): string | undefined;    (key: string, fallback: string): string;    (key: string, fallback: boolean): boolean;    (key: string, fallback: number): number;}
@@ -703,8 +701,6 @@ function html = (markup: string | {    toString(): string;}, status?: number) =>
 function inject = (...tokens: BindingToken[]) => (target: new (...args: any[]) => unknown, _context: ClassDecoratorContext) => void
 
 function isDevSurfaceAllowed = (env: string) => boolean
-
-function isProdLike = (env: string) => boolean
 
 function json = (data: unknown, status?: number) => void
 
@@ -727,8 +723,6 @@ function readCookie = (request: Request, name: string) => string | undefined
 function redirect = {    (url: string, status?: 301 | 302 | 303 | 307 | 308): ResponseBuilder;    (): RedirectBuilder;}
 
 function redirectTo = <N extends RouteTarget>(name: N, params?: RouteParamsArg<N>, status?: 301 | 302 | 303 | 307 | 308) => ResponseBuilder
-
-function registerAppScope = (installer: AppScopeInstaller) => void
 
 function registerErrorDiagnoser = (diagnoser: ErrorDiagnoser) => void
 
@@ -753,8 +747,6 @@ function scanFileRoutes = (baseDir: string, reloadId?: string) => Promise<number
 function setAppEnv = (command?: string) => void
 
 function setCurrentPageResolver = (resolver: CurrentPageResolver) => void
-
-function setImplicitModelResolver = (fn: ((paramName: string) => ModelBindingResolver | undefined) | null) => void
 
 function sha256Hex = (input: string | Uint8Array) => string
 
@@ -1113,8 +1105,6 @@ type AppScopeInstaller = () => () => void
 type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 
 type BindingToken = ClassToken<T> | AbstractToken<T> | keyof ContainerBindings
-
-type ClassRef = abstract new (...args: never[]) => unknown
 
 type ContextKey = never
 
@@ -1505,35 +1495,6 @@ class CssBuildCommand = {
   static description: string
   static flags: ({    name: string;    short: string;    type: 'string';    description: string;    default: string;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;})[]
   static needsApp: boolean
-  _readLine: () => Promise<string>
-  _writer: OutputWriter
-  app: unknown
-  args: Record<string, string>
-  ask: (question: string, defaultValue?: string) => Promise<string>
-  choice: (question: string, options: string[]) => Promise<string>
-  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
-  dim: (msg: string) => void
-  error: (msg: string) => void
-  flags: Record<string, string | number | boolean>
-  info: (msg: string) => void
-  line: (msg: string) => void
-  newLine: () => void
-  run: () => Promise<void>
-  secret: (question: string) => Promise<string>
-  section: (title: string) => void
-  table: (rows: [string, string][], indent?: number) => void
-  warn: (msg: string) => void
-  write: (msg: string) => void
-}
-
-class DeployCommand = {
-  new (): DeployCommand
-  static args: ArgDef[]
-  static commandName: string
-  static description: string
-  static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'string';    description: string;    default?: never;})[]
-  static needsApp: boolean
-  static target: string
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2316,8 +2277,6 @@ class WorkerCommand = {
   write: (msg: string) => void
 }
 
-function makeDeployCommand = (target: string) => DeployCommandClass
-
 ## ./config  `(./src/config/index.ts)`
 
 class ConfigLoader = {
@@ -2511,8 +2470,6 @@ const SERVER_PROCESS_NAME = 'server'
 
 function bootBuildDecision = (outDirs: string[], env: string | undefined) => Promise<BootBuildDecision>
 
-function browserEnvDefines = (isProduction: boolean) => Record<string, string>
-
 function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
 
 function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>
@@ -2523,13 +2480,7 @@ function createDeck = (options: DeckOptions) => Deck
 
 function detectCssPlugins = (cwd: string) => Promise<BunPlugin[]>
 
-function isDevOrchestrated = (env?: Record<string, string | undefined>, argv?: readonly string[]) => boolean
-
 function isWritableDir = (dir: string) => Promise<boolean>
-
-function pruneBuildOutput = (outdir: string, outputs: readonly {    path: string;}[]) => Promise<string[]>
-
-function registerDevBuildHook = (name: string, fn: BuildHookFn) => void
 
 function registerDevHtmlSnippet = (name: string, fn: DevHtmlSnippet) => void
 
@@ -3409,8 +3360,6 @@ class StackChannel = {
 
 const Log = LogManager
 
-function frameworkLog = (scope: string) => BoundLogger
-
 function LoggingConfig = (options?: Partial<LoggingConfigShape>) => LoggingConfigShape
 
 function renderTable = (data: TableData, indent?: number) => string[]
@@ -3506,16 +3455,10 @@ function hasRoute = (name: string) => boolean
 
 function resetRoutes = () => void
 
-function routeMethod = (name: string) => string | undefined
-
 interface RouteAction = {
   method: string
   url: string
 }
-
-interface RouteMethodRegistry = {}
-
-type MethodedRouteName = never
 
 type RouteArgs = [params?: RouteParamValues, query?: RouteQuery]
 

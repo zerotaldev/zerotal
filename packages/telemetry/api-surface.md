@@ -15,19 +15,6 @@ class NoopExporter = {
   export: (_span: SpanData) => Promise<void>
 }
 
-class NoopSpan = {
-  new (): NoopSpan
-  addEvent: (_name: string, _attributes?: Record<string, unknown>) => NoopSpan
-  durationMs: number
-  end: () => void
-  isEnded: boolean
-  readonly data: SpanData
-  recordException: (_error: Error) => NoopSpan
-  setAttribute: (_key: string, _value: string | number | boolean) => NoopSpan
-  setAttributes: (_attrs: Record<string, string | number | boolean>) => NoopSpan
-  setStatus: (_code: 'ok' | 'error', _message?: string) => NoopSpan
-}
-
 class OtlpExporter = {
   new (options?: OtlpExporterOptions): OtlpExporter
   export: (span: SpanData) => Promise<void>
@@ -84,8 +71,6 @@ class Tracer = {
 }
 
 const SpanContext = AsyncLocalStorage<ActiveContext>
-
-function _randomHex = (bytes: number) => string
 
 function currentSpan = () => Span | undefined
 

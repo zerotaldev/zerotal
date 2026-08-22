@@ -53,6 +53,24 @@ const NOT_AN_EXPORT = /^\s*$|^#|^<!--|^\s*\/\/|^\s*\*|^```/;
  */
 const BREAKING = /^(?:#{2,4}.*BREAKING|.*\*\*BREAKING)/;
 
+/**
+ * The other truthful answer: an export was reclassified, not removed.
+ *
+ * A symbol marked `@internal` leaves the recorded surface while remaining
+ * exported and working. Nothing breaks — but something did leave a document
+ * people read as the contract, and saying so is worth a line.
+ *
+ * It needs its own marker because the alternative is worse. Faced with a gate
+ * that only accepts `**BREAKING`, the path of least resistance is to write
+ * `**BREAKING` about a change that breaks nothing — and a changelog where
+ * BREAKING sometimes means "your code still works" is a changelog nobody can
+ * act on. Keeping the strong word strong is the point of having it.
+ */
+const RECLASSIFIED = /^(?:#{2,4}.*INTERNAL|.*\*\*INTERNAL)/;
+
+/** Either note satisfies the gate; they answer different questions. */
+const ANNOUNCED = (line: string): boolean => BREAKING.test(line) || RECLASSIFIED.test(line);
+
 function run(...args: string[]): string {
   const proc = Bun.spawnSync(["git", ...args], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
   return new TextDecoder().decode(proc.stdout);
@@ -113,18 +131,15 @@ function removals(base: string, stable: Set<string>): Removal[] {
   return found;
 }
 
-/** Whether the change also writes a BREAKING note, in any changelog it touches. */
+/** Whether the change announces itself — BREAKING or INTERNAL — in any changelog it touches. */
 function notesABreak(base: string): boolean {
   const diff = run("diff", base, "HEAD", "--", "docs/changelog.md", "packages/*/CHANGELOG.md");
   return diff
     .split(/\r?\n/)
-    .some(
-      (line) => line.startsWith("+") && !line.startsWith("+++") && BREAKING.test(line.slice(1)),
-    );
+    .some((line) => line.startsWith("+") && !line.startsWith("+++") && ANNOUNCED(line.slice(1)));
 }
 
-/** Line split and paragraph break, named so an editor cannot eat the escape. */
-/** Named, because writing these inline is what kept breaking this file. */
+/** Line split and paragraph break, named because writing the escapes inline kept eating them. */
 const NEWLINE = String.fromCharCode(10);
 const CARRIAGE_RETURN = String.fromCharCode(13);
 const SPLIT_LINES = new RegExp(CARRIAGE_RETURN + "?" + NEWLINE);
@@ -205,7 +220,7 @@ if (gone.length === 0) {
 
 if (notesABreak(base)) {
   console.log(
-    `✓ ${gone.length} export(s) removed from a stable package, and the change notes a BREAKING entry.`,
+    `✓ ${gone.length} export(s) left a stable package's recorded surface, and the change says so.`,
   );
   process.exit(0);
 }
@@ -225,6 +240,8 @@ console.error(
     `\n  package's own CHANGELOG.md — naming the replacement and the migration.` +
     `\n` +
     `\n  If the export was never public, mark it \`@internal\` and regenerate the snapshot` +
-    `\n  instead: an internal export leaving is not a break, and should not read as one.\n`,
+    `\n  instead — then note it with **INTERNAL** rather than **BREAKING**. It leaves the` +
+    `\n  recorded surface while staying exported and working, so nothing breaks; the two` +
+    `\n  markers exist so the strong word keeps meaning "your code stops compiling".\n`,
 );
 process.exit(1);

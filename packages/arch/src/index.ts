@@ -53,12 +53,28 @@ export type {
   SchemaReport,
 } from "./probe/topics.ts";
 
-// The install writers, so a project can generate the same files its own way.
+// The writers behind `arch:install`. Exported for the command and its tests to
+// reach, not as API.
+//
+// They were public on the reasoning that "a project can generate the same files
+// its own way" — a use nobody has, and a promise about the shape of `.mcp.json`
+// writing, agent detection and marker fencing that would hold for the rest of
+// the 1.x line. `ArchInstallCommand` is the only caller in the tree. Under `beta`
+// that was a cheap bet; the stable label is what makes it expensive, so they are
+// marked now rather than withdrawn later on behalf of a caller who never arrived.
+/** @internal */
 export { detectAgents } from "./install/detect.ts";
+/** @internal */
 export type { Detected, McpTarget } from "./install/detect.ts";
+/** @internal */
 export { applyMcpConfig, serverEntry, SERVER_ENTRY_PATH } from "./install/mcpConfig.ts";
+/** @internal */
 export type { ConfigOutcome } from "./install/mcpConfig.ts";
+/** @internal */
 export { applyBlock, fence, BLOCK_END, BLOCK_START } from "./install/markers.ts";
+/** @internal */
 export type { BlockOutcome } from "./install/markers.ts";
+/** @internal */
 export { agentsPreamble, buildGuidelines, claudeShim } from "./install/guidelines.ts";
+/** @internal */
 export type { GuidelineOptions } from "./install/guidelines.ts";

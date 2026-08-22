@@ -1,7 +1,9 @@
 # @zerotal/arch
 
-**Maturity: beta.** The API is close to final and breaking changes are rare, called out
-in release notes with migration steps — but a minor release may still contain one. See
+**Maturity: stable.** The public API follows SemVer strictly: anything importable
+without an `@internal` marker keeps its shape for the rest of the 1.x line. That
+covers the MCP tool contract too — tool names, their inputs, and the shape of what
+they return — since that is what an agent client is configured against. See
 the [support policy](https://zerotal.dev/docs/support-policy#maturity-levels).
 
 The Zerotal agent surface: an MCP server that hands a coding agent the framework's

@@ -83,21 +83,6 @@ class AiGenerated = {
   readonly preview: string
 }
 
-class AiGenerationJob = {
-  new (request: AiRequest, options: AiQueueOptions): AiGenerationJob
-  static fromPayload: (data: Record<string, unknown>) => AiGenerationJob
-  _chain: SerializedJob[] | undefined
-  batchId: string | undefined
-  className: string
-  debounceKey: () => string
-  handle: () => Promise<void>
-  payload: () => Record<string, unknown>
-  readonly debounce?: number
-  readonly maxAttempts: number
-  readonly queue: string
-  readonly retryDelay: number
-}
-
 class AiManager = {
   new (config: AiConfigShape): AiManager
   agent: (request: AiAgentRequest) => Promise<AiAgentResult>
@@ -181,67 +166,11 @@ class AiSchemaError = {
   readonly status: number
 }
 
-class AiSpendCommand = {
-  new (): AiSpendCommand
-  static args: ArgDef[]
-  static commandName: string
-  static description: string
-  static flags: FlagDef[]
-  static needsApp: boolean
-  _readLine: () => Promise<string>
-  _writer: OutputWriter
-  app: unknown
-  args: Record<string, string>
-  ask: (question: string, defaultValue?: string) => Promise<string>
-  choice: (question: string, options: string[]) => Promise<string>
-  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
-  dim: (msg: string) => void
-  error: (msg: string) => void
-  flags: Record<string, string | number | boolean>
-  info: (msg: string) => void
-  line: (msg: string) => void
-  newLine: () => void
-  run: () => Promise<void>
-  secret: (question: string) => Promise<string>
-  section: (title: string) => void
-  table: (rows: [string, string][], indent?: number) => void
-  warn: (msg: string) => void
-  write: (msg: string) => void
-}
-
 class AiSpendLimitError = {
   new (message: string, context?: Record<string, unknown>): AiSpendLimitError
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
-}
-
-class AiTestCommand = {
-  new (): AiTestCommand
-  static args: ArgDef[]
-  static commandName: string
-  static description: string
-  static flags: FlagDef[]
-  static needsApp: boolean
-  _readLine: () => Promise<string>
-  _writer: OutputWriter
-  app: unknown
-  args: Record<string, string>
-  ask: (question: string, defaultValue?: string) => Promise<string>
-  choice: (question: string, options: string[]) => Promise<string>
-  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
-  dim: (msg: string) => void
-  error: (msg: string) => void
-  flags: Record<string, string | number | boolean>
-  info: (msg: string) => void
-  line: (msg: string) => void
-  newLine: () => void
-  run: () => Promise<void>
-  secret: (question: string) => Promise<string>
-  section: (title: string) => void
-  table: (rows: [string, string][], indent?: number) => void
-  warn: (msg: string) => void
-  write: (msg: string) => void
 }
 
 class AiToolCalled = {
@@ -341,8 +270,6 @@ function tool = <I extends Record<string, unknown> = Record<string, unknown>>(op
 function toSchema = (input: SchemaInput) => Schema
 
 function translateSchema = (input: SchemaInput) => JsonSchema
-
-function validateAiConfig = (config: AiConfigShape) => void
 
 interface AgentOptions = {
   maxResumes: number

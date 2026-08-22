@@ -188,15 +188,9 @@ const inertiaStream = PageRenderer
 
 const route = RouteBuilder
 
-function _getHtmlTemplate = () => string
-
-function _setHtmlTemplate = (html: string) => void
-
 function always = {    <T>(value: PropFactory<T>): AlwaysProp<T>;    <T>(value: T): AlwaysProp<T>;}
 
 function assetVersion = () => string
-
-function buildPageObject = (component: string, props: Record<string, unknown>) => Promise<PageObject>
 
 function clearHistory = () => void
 
@@ -206,13 +200,9 @@ function defer = <T>(callback: PropFactory<T>, group?: string, options?: {    re
 
 function defineRoutes = (table: RouteTable) => void
 
-function detectVuePlugin = (cwd: string) => Promise<BunPlugin[]>
-
 function devtoolsEnabled = () => boolean
 
 function encryptHistory = (on?: boolean) => void
-
-function generatePageRegistry = (cwd?: string, pagesDir?: string) => Promise<void>
 
 function hasRoute = (name: string) => boolean
 
@@ -230,17 +220,9 @@ function optional = <T>(callback: PropFactory<T>) => OptionalProp<T>
 
 function resetRoutes = () => void
 
-function resolveProps = (raw: Record<string, unknown>, headers: Headers, component: string) => Promise<ResolvedPage>
-
 function scroll = (value: PaginatorLike | PropFactory, options?: {    pageName?: string;    dataPath?: string;}) => InfiniteScrollProp
 
-function setAssetVersion = (v: string) => void
-
-function setHistoryEncryptionDefault = (on: boolean) => void
-
 function share = {    (key: string, value: unknown): void;    (values: Record<string, unknown>): void;}
-
-function sharedProps = () => Record<string, unknown>
 
 interface DevtoolsEntry = {
   __meta: {    id: string;    method: string;    url: string;    status: number;    requestType: DevtoolsRequestType;    component: string | null;    timestamp: string;    utime: number;    tabUuid: string | null;    batchId: string | null;    serverTimingMs: number | null;    redirectLocation?: string | null;    visitId?: string | null;}

@@ -47,8 +47,6 @@ class TraceStore = {
 
 const traceSink = TraceSink
 
-function _setTraceStore = (store: TraceStore | null) => void
-
 function attributeBindings = (sql: string, count: number) => Array<string | undefined>
 
 function DevtoolsConfig = (options?: Partial<DevtoolsConfigShape>) => DevtoolsConfigShape

@@ -16,12 +16,6 @@ class BunImageDriver = {
   readonly supportsCrop: true
 }
 
-class ConversionRunner = {
-  new (driver: ImageDriver, config: MediaConfigShape): ConversionRunner
-  run: (media: MediaItem, conversions: ConversionMap) => Promise<{    generated: string[];    failed: Array<{        name: string;        reason: string;    }>;}>
-  runResponsive: (media: MediaItem, widths: number[]) => Promise<ResponsiveImageSet | null>
-}
-
 class DefaultPathGenerator = {
   new (prefix?: string): DefaultPathGenerator
   forConversions: (media: MediaItem) => string
@@ -284,41 +278,11 @@ const MediaFake = {    all(owner: {        id: number | string;        construct
 
 const MediaLibrary = MediaManager
 
-const mediaSchemaConcern = ConcernDescriptor
-
-function applyRetentionRules = (modelType: string, modelId: number | string, collection: string, definition: CollectionDefinition, justAdded: MediaItem) => Promise<void>
-
-function collectionNames = (host: CollectionHost) => string[]
-
-function defaultDiskName = () => string
-
-function diskFor = (name?: string | null) => StorageDriver
-
-function dispatchConversions = (mediaId: number, conversions: string[]) => Promise<void>
-
-function fromDisk = (path: string, disk?: string) => SourceResolver
-
-function fromPath = (path: string) => SourceResolver
-
-function fromUrl = (url: string, maxBytes: number) => SourceResolver
-
-function fromValue = (source: MediaSource, fileName?: string) => SourceResolver
-
-function hasCollection = (host: CollectionHost, name: string) => boolean
-
 function isConvertible = (mimeType: string | null | undefined) => boolean
-
-function isQueueAvailable = () => boolean
 
 function Media = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): MediaModel;    prototype: Media<any>.MediaModel;    mediaCollections: MediaCollections;} & TBase
 
 function MediaConfig = (options?: Partial<MediaConfigShape>) => MediaConfigShape
-
-function mediaDefaults = () => MediaConfigShape
-
-function pathGenerator = () => PathGenerator
-
-function resolveCollection = (host: CollectionHost, name: string) => CollectionDefinition
 
 function setPathGenerator = (generator: PathGenerator) => void
 
@@ -339,11 +303,6 @@ interface CollectionDefinition = {
   onlyKeepLatest?: number
   responsive?: boolean | number[]
   single?: boolean
-}
-
-interface CollectionHost = {
-  mediaCollections?: MediaCollections
-  name: string
 }
 
 interface ConversionDefinition = {
@@ -433,11 +392,6 @@ interface PendingMediaMeta = {
   order?: number
 }
 
-interface ResolvedSource = {
-  bytes: Uint8Array<ArrayBufferLike>
-  originalName: string
-}
-
 interface ResponsiveImage = {
   fileName: string
   height: number
@@ -460,8 +414,6 @@ type MediaCollections = {    [x: string]: CollectionDefinition | (() => Collecti
 type MediaSource = UploadedFile | File | Blob | Uint8Array | ArrayBuffer
 
 type SafeConversionFormat = 'jpeg' | 'png' | 'webp'
-
-type SourceResolver = () => Promise<ResolvedSource>
 
 ## ./commands  `(./src/commands/index.ts)`
 

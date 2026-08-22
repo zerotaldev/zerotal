@@ -4,10 +4,40 @@ All notable changes to this package are documented here. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-**Maturity: beta.** The API is close to final and breaking changes are rare, called out
-here with migration steps — but a minor release may still contain one.
+**Maturity: `stable`** — matching this package's `maturity` field. The public API
+follows SemVer strictly: anything importable without an `@internal` marker keeps its
+shape for the rest of the 1.x line, and `api-surface.md` is diffed by CI on every
+change. That promise covers the MCP tool contract too — the tool names, their inputs
+and the shape of what they return — which is the part an agent client is configured
+against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
+
+### Changed
+
+- **`@zerotal/arch` is `stable`.** Reviewed ahead of its 1.9.0 date. The public API
+  follows SemVer strictly from here, and that promise covers the MCP tool contract —
+  tool names, their inputs, and the shape of what they return — because that is what
+  an agent client is configured against and nothing type-level can see it. The
+  protocol revision the server speaks is not covered; it follows the protocol.
+
+- **INTERNAL — the writers behind `arch:install` are no longer public API.** `detectAgents`,
+  `applyMcpConfig`, `serverEntry`, `SERVER_ENTRY_PATH`, `applyBlock`, `fence`,
+  `BLOCK_START`, `BLOCK_END`, `agentsPreamble`, `buildGuidelines`, `claudeShim` and
+  their types. They are still exported and still work; they are no longer promised.
+  Their only caller is `ArchInstallCommand`, and freezing them would have committed
+  the shape of `.mcp.json` writing and marker fencing to the rest of the 1.x line on
+  behalf of a caller who never arrived. Marked before the label attached rather than
+  withdrawn after.
+
+- **INTERNAL — `api-surface.md` now honours `@internal` across every package.** The
+  contract has always been stated as "anything importable without an `@internal`
+  marker keeps its shape", and the generator did not read the tag: symbols already
+  marked internal were recorded as though promised. They are omitted now — 374
+  entries across 13 packages, every one verified marked, either at its declaration
+  or by a module docblock covering a whole subpath as `@zerotal/core/dev` does.
+  Nothing changes at runtime or in the types. What changed is that the file listing
+  the promises lists the promises.
 
 ## [1.7.1] — 2026-08-16
 

@@ -1,4 +1,5 @@
 import { Router } from "zerotal";
+import { searchDocs } from "../app/support/search.ts";
 import { Layout, ApiLayout, isApiPath } from "../app/routes/_layout.ts";
 // Registers GET /blog and GET /blog/* on import.
 import "./blog.ts";
@@ -61,3 +62,22 @@ async function renderDoc(req: Request): Promise<Response> {
 // the table of contents.
 Router.raw("GET", "/docs", renderDoc);
 Router.raw("GET", "/docs/*", renderDoc);
+
+// Full-text search for the sidebar box, which until now filtered navigation
+// labels and so could only find a page whose title you already knew.
+//
+// Declared before `/docs/*` would be reached for it — `/api/docs-search` sits
+// outside the docs namespace on purpose, so a page can never be shadowed by it.
+Router.raw("GET", "/api/docs-search", async (request) => {
+  const query = new URL(request.url).searchParams.get("q") ?? "";
+  const results = await searchDocs(query);
+
+  return Response.json(
+    { query, results },
+    {
+      // Same query, same corpus, same answer for the life of a deploy — but a
+      // deploy replaces the corpus, so it is `no-cache` rather than immutable.
+      headers: { "Cache-Control": "no-cache" },
+    },
+  );
+});

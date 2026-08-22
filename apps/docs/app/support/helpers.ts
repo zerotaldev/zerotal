@@ -3,7 +3,8 @@ import { basePath } from "zerotal";
 import { Glob } from "bun";
 import { join } from "node:path";
 
-const DOCS_DIR = join(basePath("/"), "../../docs");
+/** The documentation corpus this site renders — the repository’s `docs/`. */
+export const DOCS_DIR = join(basePath("/"), "../../docs");
 
 export function parseSlug(pathname: string): string {
   return pathname.replace(/^\/docs\/?/, "").replace(/\/$/, "") || "index";

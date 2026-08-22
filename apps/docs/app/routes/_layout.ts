@@ -315,6 +315,9 @@ const searchBox = (label: string, placeholder: string, empty: string): string =>
             <kbd class="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-stone-200 bg-white px-1.5 text-[0.65rem] font-medium text-stone-400 pointer-events-none">/</kbd>
           </div>
           <p id="search-empty" class="hidden px-1 pt-3 text-[0.8125rem] text-stone-400">${empty}</p>
+          <!-- Filled by app.js from /api/docs-search. The list above matches page
+               *names*; this matches what the pages say. -->
+          <div id="search-results" class="hidden pt-3"></div>
         </div>`;
 
 function renderSidebar(pathname = ""): string {

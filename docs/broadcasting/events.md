@@ -164,7 +164,6 @@ import { broadcastsModelEvents, privateChannel } from "@zerotal/broadcasting";
 
 @table("orders")
 export class Order extends Model {
-  @column() id!: number;
   @column() status!: string;
 }
 

@@ -261,6 +261,12 @@
     },
     {
       "file": "docs/admin/extending.md",
+      "heading": "Abilities",
+      "ordinal": 0,
+      "hash": "1ky40tf4hqay"
+    },
+    {
+      "file": "docs/admin/extending.md",
       "heading": "Consoles: pages described rather than built",
       "ordinal": 0,
       "hash": "1nxnblvb6jcp"
@@ -7750,12 +7756,6 @@
       "hash": "hpowdr4qzvz1"
     },
     {
-      "file": "docs/admin/extending.md",
-      "heading": "Abilities",
-      "ordinal": 0,
-      "hash": "2f7s2hbqlmfs"
-    },
-    {
       "file": "docs/broadcasting/channels.md",
       "heading": "Typed channels",
       "ordinal": 0,
@@ -7766,12 +7766,6 @@
       "heading": "First-party Socket",
       "ordinal": 0,
       "hash": "toc0f7kvurk0"
-    },
-    {
-      "file": "docs/broadcasting/events.md",
-      "heading": "Shortcut: broadcastsModelEvents",
-      "ordinal": 0,
-      "hash": "2c3nxlggy8ti"
     },
     {
       "file": "docs/client/index.md",

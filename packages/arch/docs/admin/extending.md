@@ -55,11 +55,20 @@ That last row is the important one. A panel with no authorization wired stays
 closed in production, the same posture the panel guard already takes, which is
 what makes it safe for a package to add pages without the app asking.
 
-```ts
+```ts fragment
 // config/admin.ts
-export default {
-  authorize: (ability) => currentUser()?.permissions.includes(ability) ?? false,
-};
+import { AdminConfig } from "@zerotal/admin";
+import { Auth } from "@zerotal/auth";
+
+// Through the factory, not a bare object: it is what types `ability`, and every
+// other config in the framework is written this way.
+export default AdminConfig({
+  // `userOrNull()`, not `user()` — this runs for guests too, and `user()` throws
+  // rather than returning one. `can()` comes from the permissions mixin on your
+  // own User model, which is why this block is a fragment: the type depends on
+  // your app, not on the framework.
+  authorize: (ability) => Auth.userOrNull()?.can(ability) ?? false,
+});
 ```
 
 Resources are the exception: they authorize through their own

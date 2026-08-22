@@ -51,16 +51,19 @@ jobs:
       # and still pass. Baselined per package: the existing failures are
       # grandfathered, new ones fail.
       #
-      # **The recorded 252 is not a backlog.** A large share of it is an artifact
-      # of checking each package on its own, which is deliberate: a test reaching
-      # `ctx.user` sees no `user` because the augmentation that adds it lives in
-      # `@zerotal/auth`, which that package's program never loads. Checking
-      # everything as one program would fix those and break others — sibling
-      # ambients were the reason for going per-package in the first place.
+      # **The recorded 252 is real, and it is not a backlog.** Audited: most of it
+      # is tests asserting a literal against a generically-typed return —
+      # `expect(config.get("app.debug")).toBe(false)`, where `get()` gives back
+      # `unknown`. That is signal about the *API's* types, not a broken test: an
+      # app developer writing the same line has to cast too. A second class is
+      # control flow — a variable assigned inside a callback and asserted after,
+      # which TypeScript cannot follow through the closure.
       #
-      # So the number is a high-water mark, not debt to burn down. What earns its
-      # keep is the ratchet: a *new* error fails with its own message, unobscured
-      # by the grandfathered ones, which is the case worth catching.
+      # Both are mechanical to fix and there are ~250 of them, so this is a
+      # dedicated pass rather than something to do a little of. Until that pass
+      # happens the number stands, and the ratchet is what earns its keep: a *new*
+      # error fails naming its package and delta, unobscured by the grandfathered
+      # ones. Verified by planting one — `cache 6 > 5`, exit 1.
       - name: Typecheck tests
         run: bun run typecheck:tests
 

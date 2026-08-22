@@ -131,7 +131,7 @@ export class BrowserPage {
         "if (r.right <= edge + 1 || r.width === 0) continue;" +
         'const id = el.id ? "#" + el.id : "";' +
         'const cls = typeof el.className === "string" && el.className' +
-        ' ? "." + el.className.trim().split(/\s+/).slice(0, 3).join(".") : "";' +
+        ' ? "." + el.className.trim().split(" ").filter(Boolean).slice(0, 3).join(".") : "";' +
         "out.push({ s: el.tagName.toLowerCase() + id + cls, o: Math.round(r.right - edge) });" +
         "}" +
         "return out.sort((a, b) => b.o - a.o).slice(0, " +

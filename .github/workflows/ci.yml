@@ -165,6 +165,16 @@ jobs:
           echo "::error::No Chrome/Chromium on the runner — FlowBrowser's suite would skip."
           exit 1
 
+      # The docs app's stylesheet and bundle are build artifacts, and gitignored —
+      # so a checkout has neither. `mobile-layout.test.ts` drives a real browser
+      # over real pages, and without the stylesheet every code block loses its
+      # `overflow-x: auto` and the page scrolls sideways: the suite reported 204px
+      # of overflow on a site that has none, because it was measuring an unstyled
+      # one. Anything asserting about layout has to be given the layout.
+      - name: Build docs assets
+        working-directory: apps/docs
+        run: bun run build
+
       - name: Test
         run: bun run test
 

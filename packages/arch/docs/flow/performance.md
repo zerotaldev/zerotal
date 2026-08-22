@@ -124,7 +124,7 @@ Optimistic UI for a scalar is easy (flip a bool, reconcile on the patch). A **li
 
 **`<For>` — a reactive list.** Render the list with `<For>` and it compiles to an Alpine `x-for`, so any client change to the array re-renders it instantly (server patches still keep it authoritative):
 
-```tsx
+```tsx fragment
 import { For } from "@zerotal/flow";
 
 <For each={this.todos} keyBy="id">
@@ -141,7 +141,7 @@ The item template supports element structure, static attributes, `class`/`classN
 
 **`appendOptimistic` / `removeOptimistic` — instant add/remove with rollback.** Mutate the array optimistically, then dispatch the action that persists it:
 
-```tsx
+```tsx fragment
 <button
   onClick={() => {
     $flow.appendOptimistic("todos", { id: `tmp-${Date.now()}`, text: this.draft });

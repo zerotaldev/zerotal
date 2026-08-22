@@ -116,7 +116,7 @@ import { Errors } from "@zerotal/flow";
 
 ### Checking errors in server code
 
-```typescript
+```typescript fragment
 // Check if any errors exist
 if (this.errors.any()) {
   return;
@@ -219,7 +219,7 @@ export class LoginPage extends Component {
 
 Bind fields with nested `value={this.form.email}`:
 
-```tsx
+```tsx fragment
 <form onSubmit={this.login} class="space-y-4">
   <Field label="Email" error={this.errors.email}>
     <input value={this.form.email} type="email" live class="input" />

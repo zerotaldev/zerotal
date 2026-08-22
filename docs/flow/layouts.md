@@ -176,7 +176,7 @@ import { SectionOutlet } from "@zerotal/flow";
 </header>;
 ```
 
-```tsx
+```tsx fragment
 // In any page — fill it
 import { SectionContent } from "@zerotal/flow";
 
@@ -415,7 +415,7 @@ Two consequences worth knowing:
 
 Give every child rendered inside a `.map()` a `key` tied to the row's own identity:
 
-```tsx
+```tsx fragment
 {
   this.settings.map((s) => <SettingRow key={`setting-${s.id}`} settingKey={s.key} />);
 }

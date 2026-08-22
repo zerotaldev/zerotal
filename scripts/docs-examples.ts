@@ -540,6 +540,12 @@ const STRUCTURAL = new Set([
   // not Bun programs, which is the same thing every other entry here says.
 ]);
 
+/** Built with `String.raw` because inline escapes in this file keep losing their
+ * backslashes — twice to a literal backspace byte, which is invisible and makes
+ * the pattern silently match nothing. */
+const USES_THIS = /\bthis\./;
+const HAS_CLASS = /\bclass\s+\w/;
+
 /**
  * Whether `error` describes the block's shape rather than a defect in it.
  *
@@ -555,7 +561,12 @@ function isStructural(error: string, code: string): boolean {
   // does not parse, which is the plainest statement of "not a whole program".
   const id = error.slice(0, error.indexOf(" "));
   if (STRUCTURAL.has(id) || /^TS1(\d{3}|7\d{3})$/.test(id)) return true;
-  return (id === "TS2532" || id === "TS2531") && /^this\./m.test(code);
+  // `this` outside a class is `undefined` at module scope, so a snippet that
+  // references it without one is a body lifted out of a component — whether it
+  // opens with `this.info(…)` or reads `{this.unreadCount}` inside JSX. The
+  // absence of a `class` is what makes it a fragment; a TS2532 *inside* a class
+  // is a real nullable value and stays reported.
+  return (id === "TS2532" || id === "TS2531") && USES_THIS.test(code) && !HAS_CLASS.test(code);
 }
 
 /**

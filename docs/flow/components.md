@@ -101,7 +101,7 @@ import { Head } from "@zerotal/flow";
 
 Shorthand for `<Head><title>…</title></Head>`. Supports interpolation:
 
-```tsx
+```tsx fragment
 import { Title } from "@zerotal/flow";
 
 <Title>{`${this.unreadCount} unread — Inbox`}</Title>;
@@ -113,7 +113,7 @@ import { Title } from "@zerotal/flow";
 
 Preserve an element — and its live state (a playing `<audio>`, an embedded widget) — across `navigate` page visits. Give it a stable `name`; on navigation the bridge re-uses the existing DOM node instead of replacing it. Best placed in your layout:
 
-```tsx
+```tsx fragment
 import { Persist } from "@zerotal/flow";
 
 {
@@ -440,7 +440,7 @@ fetch latency.
 
 A click-to-open menu, entirely client-side (no round-trip). Fully keyboard-navigable: Down/Up/Enter opens (focusing first/last item), arrow keys + Home/End move between items, Escape closes and returns focus to the trigger, click-outside dismisses:
 
-```tsx
+```tsx fragment
 import { Dropdown } from "@zerotal/flow";
 
 <Dropdown label="Options" align="right">
@@ -576,7 +576,7 @@ Unstyled, fully accessible interactive primitives that expose state through `dat
 
 An accessible on/off toggle (`role="switch"`, keyboard-operable). Style the on-state with `data-[checked]:…`:
 
-```tsx
+```tsx fragment
 import { Switch } from "@zerotal/flow";
 
 <Switch
@@ -608,7 +608,7 @@ import { Checkbox } from "@zerotal/flow";
 
 A styled native `<select>`. Fully accessible out of the box. Use `<Listbox>` only when you need custom option markup:
 
-```tsx
+```tsx fragment
 import { Select } from "@zerotal/flow";
 
 <Select
@@ -627,7 +627,7 @@ import { Select } from "@zerotal/flow";
 
 `role="radiogroup"` with arrow-key roving. Style the selected option with `data-[checked]:…`:
 
-```tsx
+```tsx fragment
 import { RadioGroup } from "@zerotal/flow";
 
 <RadioGroup
@@ -645,7 +645,7 @@ import { RadioGroup } from "@zerotal/flow";
 
 A fully keyboard-navigable custom select. Arrow keys, Home/End, Enter/Escape, `aria-activedescendant`. `multiple` makes the value an array:
 
-```tsx
+```tsx fragment
 import { Listbox } from "@zerotal/flow";
 
 <Listbox
@@ -662,7 +662,7 @@ States: `data-[selected]`, `data-[active]`, `data-[open]`.
 
 An autocomplete input + filtered dropdown list. Two modes:
 
-```tsx
+```tsx fragment
 import { Combobox } from "@zerotal/flow";
 
 {
@@ -744,7 +744,7 @@ import { Popover } from "@zerotal/flow";
 
 Accessibility glue around a single control. `<Field>` wires `for` / `id` / `aria-describedby` between the label, the control, the description, and the error — keeping screen-reader semantics correct without hand-wiring IDs:
 
-```tsx
+```tsx fragment
 import { Field } from "@zerotal/flow";
 
 <Field label="Email" description="We'll never share it." error={this.errors.email}>
@@ -758,7 +758,7 @@ All three props (`label`, `description`, `error`) are optional. You can also com
 
 Group related fields. A native `<fieldset disabled>` cascades the disabled state to every control inside:
 
-```tsx
+```tsx fragment
 import { Fieldset } from "@zerotal/flow";
 
 <Fieldset legend="Billing address" disabled={this.saving}>
@@ -775,7 +775,7 @@ import { Fieldset } from "@zerotal/flow";
 
 Shows `content` on hover/focus of its children, wired with `aria-describedby` and `role="tooltip"`. Client-only:
 
-```tsx
+```tsx fragment
 import { Tooltip } from "@zerotal/flow";
 
 <Tooltip content="Copy link to clipboard" placement="top">
@@ -825,7 +825,7 @@ ZT_FLOW_CSP_SAFE=true
 
 When on, the client runtime swaps Alpine's evaluator for an eval-free interpreter, the bridge avoids `new Function`, and the AOT compiler emits only CSP-safe expressions:
 
-```tsx
+```tsx fragment
 <button onClick={() => this.count++}>+</button>
 // standard mode → flow:click="() => $flow.count++"
 // CSP mode      → flow:click="$flow.count++"

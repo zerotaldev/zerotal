@@ -2841,9 +2841,27 @@
     },
     {
       "file": "docs/flow/components.md",
+      "heading": "Combobox bind options",
+      "ordinal": 0,
+      "hash": "2u0li3j14tfe"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "CSP-safe mode",
+      "ordinal": 0,
+      "hash": "2juq39c4zbim"
+    },
+    {
+      "file": "docs/flow/components.md",
       "heading": "Drawer",
       "ordinal": 0,
       "hash": "1l9v7rsknppz"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "Dropdown",
+      "ordinal": 0,
+      "hash": "26pkdnl9xqdf"
     },
     {
       "file": "docs/flow/components.md",
@@ -2862,6 +2880,18 @@
       "heading": "ErrorMessage",
       "ordinal": 0,
       "hash": "16v38rpcicsb"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "Field / Label / Description",
+      "ordinal": 0,
+      "hash": "j7w8v2skjj8g"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "Fieldset / Legend",
+      "ordinal": 0,
+      "hash": "21qlxsnp3wif"
     },
     {
       "file": "docs/flow/components.md",
@@ -2889,6 +2919,12 @@
     },
     {
       "file": "docs/flow/components.md",
+      "heading": "Listbox bind options",
+      "ordinal": 0,
+      "hash": "rc33oi3rp54k"
+    },
+    {
+      "file": "docs/flow/components.md",
       "heading": "Loading",
       "ordinal": 0,
       "hash": "3s94zi5ow0hc"
@@ -2907,9 +2943,33 @@
     },
     {
       "file": "docs/flow/components.md",
+      "heading": "Persist",
+      "ordinal": 0,
+      "hash": "3rfurrsn6k32"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "RadioGroup bind options",
+      "ordinal": 0,
+      "hash": "3qurdlrcfdj0"
+    },
+    {
+      "file": "docs/flow/components.md",
       "heading": "Scroll position",
       "ordinal": 0,
       "hash": "2uu8wu84mme6"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "Select bind options",
+      "ordinal": 0,
+      "hash": "1nz5knk77sfo"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "Switch",
+      "ordinal": 0,
+      "hash": "10dicba9z1l8"
     },
     {
       "file": "docs/flow/components.md",
@@ -2928,6 +2988,18 @@
       "heading": "The Errors component",
       "ordinal": 0,
       "hash": "2bwon4y19gzs"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "Title",
+      "ordinal": 0,
+      "hash": "3ctkmh5drd4v"
+    },
+    {
+      "file": "docs/flow/components.md",
+      "heading": "Tooltip",
+      "ordinal": 0,
+      "hash": "3q7ihf2t82u9"
     },
     {
       "file": "docs/flow/components.md",
@@ -3057,6 +3129,18 @@
     },
     {
       "file": "docs/flow/events.md",
+      "heading": "Dispatching from the browser",
+      "ordinal": 0,
+      "hash": "1ncnvowr5qss"
+    },
+    {
+      "file": "docs/flow/events.md",
+      "heading": "In a client expression",
+      "ordinal": 0,
+      "hash": "1p5jlqwcfj48"
+    },
+    {
+      "file": "docs/flow/events.md",
       "heading": "In a server action",
       "ordinal": 0,
       "hash": "1fbc9x2tr4wj"
@@ -3129,6 +3213,12 @@
     },
     {
       "file": "docs/flow/forms.md",
+      "heading": "Checking errors in server code",
+      "ordinal": 0,
+      "hash": "2ni0ngym93jo"
+    },
+    {
+      "file": "docs/flow/forms.md",
       "heading": "Database-backed pagination",
       "ordinal": 0,
       "hash": "1dz9ilehhbeb"
@@ -3144,6 +3234,12 @@
       "heading": "Form objects",
       "ordinal": 1,
       "hash": "28el2z0i7ox7"
+    },
+    {
+      "file": "docs/flow/forms.md",
+      "heading": "Form objects",
+      "ordinal": 2,
+      "hash": "1cw75no4m1sn"
     },
     {
       "file": "docs/flow/forms.md",
@@ -3237,6 +3333,12 @@
     },
     {
       "file": "docs/flow/icons.md",
+      "heading": "Labelling",
+      "ordinal": 0,
+      "hash": "36jdgjxn5boa"
+    },
+    {
+      "file": "docs/flow/icons.md",
       "heading": "Sizing and colour",
       "ordinal": 0,
       "hash": "1npazkjf6fwf"
@@ -3274,8 +3376,20 @@
     {
       "file": "docs/flow/index.md",
       "heading": "Passing arguments to a server action",
+      "ordinal": 0,
+      "hash": "3tfio3438vct"
+    },
+    {
+      "file": "docs/flow/index.md",
+      "heading": "Passing arguments to a server action",
       "ordinal": 1,
       "hash": "1dn2wxmlrr31"
+    },
+    {
+      "file": "docs/flow/index.md",
+      "heading": "Passing arguments to a server action",
+      "ordinal": 2,
+      "hash": "faas3yw4peqm"
     },
     {
       "file": "docs/flow/index.md",
@@ -3288,6 +3402,12 @@
       "heading": "Two-way inputs",
       "ordinal": 0,
       "hash": "17re4x0apb37"
+    },
+    {
+      "file": "docs/flow/index.md",
+      "heading": "Two-way inputs",
+      "ordinal": 1,
+      "hash": "mjx3zwo6om3j"
     },
     {
       "file": "docs/flow/index.md",
@@ -3348,6 +3468,12 @@
       "heading": "`@task` — streaming, cancellable actions",
       "ordinal": 1,
       "hash": "6x6eqxnneso4"
+    },
+    {
+      "file": "docs/flow/layouts.md",
+      "heading": "`key` in a list",
+      "ordinal": 0,
+      "hash": "4ademfye138n"
     },
     {
       "file": "docs/flow/layouts.md",
@@ -3468,6 +3594,12 @@
       "heading": "Reactive props",
       "ordinal": 0,
       "hash": "3k3vqbdfqizm"
+    },
+    {
+      "file": "docs/flow/layouts.md",
+      "heading": "Sections",
+      "ordinal": 1,
+      "hash": "sifvpmn5owuc"
     },
     {
       "file": "docs/flow/layouts.md",
@@ -3651,6 +3783,12 @@
     },
     {
       "file": "docs/flow/models.md",
+      "heading": "Hidden fields are writable",
+      "ordinal": 0,
+      "hash": "14zgm2sx201u"
+    },
+    {
+      "file": "docs/flow/models.md",
       "heading": "Models in Components",
       "ordinal": 1,
       "hash": "2g1jb6g7vc5f"
@@ -3744,6 +3882,18 @@
       "heading": "Optimistic UI with automatic rollback",
       "ordinal": 0,
       "hash": "32uwsjreldbc"
+    },
+    {
+      "file": "docs/flow/performance.md",
+      "heading": "Reactive lists & optimistic collections",
+      "ordinal": 0,
+      "hash": "3ay4rtjtg2wn"
+    },
+    {
+      "file": "docs/flow/performance.md",
+      "heading": "Reactive lists & optimistic collections",
+      "ordinal": 1,
+      "hash": "p4c1xhh2rbno"
     },
     {
       "file": "docs/flow/performance.md",
@@ -7648,166 +7798,16 @@
       "hash": "2dktn5mn2krh"
     },
     {
-      "file": "docs/flow/components.md",
-      "heading": "Combobox bind options",
-      "ordinal": 0,
-      "hash": "2u0li3j14tfe"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "CSP-safe mode",
-      "ordinal": 0,
-      "hash": "2juq39c4zbim"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Dropdown",
-      "ordinal": 0,
-      "hash": "26pkdnl9xqdf"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Field / Label / Description",
-      "ordinal": 0,
-      "hash": "j7w8v2skjj8g"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Fieldset / Legend",
-      "ordinal": 0,
-      "hash": "21qlxsnp3wif"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Listbox bind options",
-      "ordinal": 0,
-      "hash": "rc33oi3rp54k"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Persist",
-      "ordinal": 0,
-      "hash": "3rfurrsn6k32"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "RadioGroup bind options",
-      "ordinal": 0,
-      "hash": "3qurdlrcfdj0"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Select bind options",
-      "ordinal": 0,
-      "hash": "1nz5knk77sfo"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Switch",
-      "ordinal": 0,
-      "hash": "10dicba9z1l8"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Title",
-      "ordinal": 0,
-      "hash": "3ctkmh5drd4v"
-    },
-    {
-      "file": "docs/flow/components.md",
-      "heading": "Tooltip",
-      "ordinal": 0,
-      "hash": "3q7ihf2t82u9"
-    },
-    {
-      "file": "docs/flow/events.md",
-      "heading": "Dispatching from the browser",
-      "ordinal": 0,
-      "hash": "1ncnvowr5qss"
-    },
-    {
-      "file": "docs/flow/events.md",
-      "heading": "In a client expression",
-      "ordinal": 0,
-      "hash": "1p5jlqwcfj48"
-    },
-    {
       "file": "docs/flow/events.md",
       "heading": "Presence — who's here (multiplayer)",
       "ordinal": 2,
       "hash": "31053be54mae"
     },
     {
-      "file": "docs/flow/forms.md",
-      "heading": "Checking errors in server code",
-      "ordinal": 0,
-      "hash": "2ni0ngym93jo"
-    },
-    {
-      "file": "docs/flow/forms.md",
-      "heading": "Form objects",
-      "ordinal": 2,
-      "hash": "1cw75no4m1sn"
-    },
-    {
-      "file": "docs/flow/icons.md",
-      "heading": "Labelling",
-      "ordinal": 0,
-      "hash": "36jdgjxn5boa"
-    },
-    {
-      "file": "docs/flow/index.md",
-      "heading": "Passing arguments to a server action",
-      "ordinal": 0,
-      "hash": "3tfio3438vct"
-    },
-    {
-      "file": "docs/flow/index.md",
-      "heading": "Passing arguments to a server action",
-      "ordinal": 2,
-      "hash": "faas3yw4peqm"
-    },
-    {
-      "file": "docs/flow/index.md",
-      "heading": "Two-way inputs",
-      "ordinal": 1,
-      "hash": "mjx3zwo6om3j"
-    },
-    {
-      "file": "docs/flow/layouts.md",
-      "heading": "`key` in a list",
-      "ordinal": 0,
-      "hash": "4ademfye138n"
-    },
-    {
-      "file": "docs/flow/layouts.md",
-      "heading": "Sections",
-      "ordinal": 1,
-      "hash": "sifvpmn5owuc"
-    },
-    {
-      "file": "docs/flow/models.md",
-      "heading": "Hidden fields are writable",
-      "ordinal": 0,
-      "hash": "14zgm2sx201u"
-    },
-    {
       "file": "docs/flow/pagination.md",
       "heading": "Composing mixins",
       "ordinal": 0,
       "hash": "2a7h5rzdzv8h"
-    },
-    {
-      "file": "docs/flow/performance.md",
-      "heading": "Reactive lists & optimistic collections",
-      "ordinal": 0,
-      "hash": "3ay4rtjtg2wn"
-    },
-    {
-      "file": "docs/flow/performance.md",
-      "heading": "Reactive lists & optimistic collections",
-      "ordinal": 1,
-      "hash": "p4c1xhh2rbno"
     },
     {
       "file": "docs/health.md",

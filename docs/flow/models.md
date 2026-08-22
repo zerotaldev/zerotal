@@ -149,7 +149,7 @@ and fails whatever the field actually holds. Two ways round it:
 the difference: fillable because a user sets it, hidden because the stored hash must never
 reach the page.
 
-```tsx
+```tsx fragment
 <input type="password" value={this.user.password} blur />
 ```
 

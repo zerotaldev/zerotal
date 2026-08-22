@@ -121,7 +121,7 @@ All three components update after a single `this.dispatch("post-created", ...)` 
 
 The same `dispatch`, `dispatchTo`, and `dispatchSelf` methods work inside **client expressions** — no server round-trip needed to start the dispatch. The `@on` listeners still run server-side when they're notified:
 
-```tsx
+```tsx fragment
 {
   /* Notify all listeners without a preceding server action */
 }
@@ -434,7 +434,7 @@ Calling `this.refresh()` inside an action inserts `onMount()` back into the WebS
 
 In the browser, `this.refresh()` sends a lightweight re-render request with no data change — useful for polling or a manual reload button:
 
-```tsx
+```tsx fragment
 {
   /* Manual reload button */
 }

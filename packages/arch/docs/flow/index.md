@@ -239,7 +239,7 @@ State that the server should never see — a hover flag, which accordion section
 
 A list with per-row actions needs to tell the server _which_ row. Write the call as you would expect, and Flow compiles the arguments into the markup:
 
-```tsx
+```tsx fragment
 {
   this.enquiries.map((row) => (
     <tr>
@@ -262,7 +262,7 @@ The arguments are evaluated **on the server, during the render** — where `row`
 
 You can also write `data-args` yourself, which is useful when the handler is built dynamically:
 
-```tsx
+```tsx fragment
 <button onClick={this.archive} data-args={JSON.stringify([row.id])}>
   Archive
 </button>
@@ -288,7 +288,7 @@ Bind an input by passing state straight to `value` (or `checked`). Flow wires up
 
 A **radio group** is bound as a unit rather than per input, because every option writes the same property. Pass the option's own value as a second argument to `bind()`:
 
-```tsx
+```tsx fragment
 {
   ["CUSTOM", "ROUTE", "TEAMS"].map((t) => (
     <label>

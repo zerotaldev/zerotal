@@ -63,7 +63,7 @@ would read the meaning out twice.
 An icon that is the **only** content of a control is not decoration. Without a
 label, that button has no accessible name at all:
 
-```tsx
+```tsx fragment
 <button onClick={this.remove}>
   <Icon name="trash-2" label="Delete order" />
 </button>

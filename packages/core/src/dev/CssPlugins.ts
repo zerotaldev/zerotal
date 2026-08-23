@@ -4,7 +4,7 @@
  * back to the Tailwind CLI when the plugin is absent).
  */
 import type { BunPlugin } from "bun";
-import { pruneBuildOutput } from "./BuildOutput.ts";
+import { pruneBuildOutput, cleanBuildOutput } from "./BuildOutput.ts";
 import { BuildCache } from "./BuildCache.ts";
 
 /** Outcome of one bundling helper. `skipped` means the cache answered. */
@@ -201,6 +201,12 @@ export interface AssetBuildConfig {
   minify: boolean;
   /** Per-extension loader overrides (e.g. `{ ".woff2": "file" }`). See AppAssetsConfig. */
   loader?: Record<string, string>;
+  /**
+   * Delete everything in `outDir` this build did not write, rather than only what
+   * the last build on this machine recorded. See {@link cleanBuildOutput} — it
+   * refuses a directory that holds more than build output.
+   */
+  clean?: boolean;
 }
 
 /**
@@ -271,7 +277,8 @@ export async function buildConfiguredAssets(
     // previous build — which is why the cache check returns early above rather
     // than falling through to here.
     if (result.success) {
-      await pruneBuildOutput(outdir, result.outputs);
+      if (assets.clean) await cleanBuildOutput(outdir, result.outputs);
+      else await pruneBuildOutput(outdir, result.outputs);
       await cache.record(result.outputs, { scanRoots: _scanRoots(cwd) });
     }
     return { success: result.success, logs: result.logs as unknown[] };

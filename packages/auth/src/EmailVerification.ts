@@ -3,9 +3,33 @@
  * stateless, link-based email verification.
  *
  * @remarks
- * Compose it with `Model.using` — no `@column` and no migration needed: the
- * column is registered imperatively here, and `AuthProvider` ensures it exists on
- * the model's table at boot (see `authSchemaConcern`).
+ * Compose it with `Model.using` — no `@column` needed: the column is registered
+ * imperatively here, and `authSchemaConcern` adds it to the model's table at boot
+ * if it is missing.
+ *
+ * **Whether you also need a migration depends on what your schema's source of
+ * truth is** (`zt doctor` reports which). With the models as the source of truth,
+ * you do not: the table is built from what the models declare, this column
+ * included. With **migrations** as the source of truth, you do — the boot-time
+ * concern only adds a column to a table that already exists, so a table created
+ * by a migration that does not mention `email_verified_at` will not have it, and
+ * every query touching the column fails with `no such column: email_verified_at`.
+ *
+ * Write that migration guarded:
+ *
+ * ```ts
+ * if (!(await Schema.hasColumn("users", "email_verified_at"))) {
+ *   await Schema.table("users", (t) => t.dateTime("email_verified_at").nullable());
+ * }
+ * ```
+ *
+ * Unguarded, it fails with `duplicate column name` on any database that has
+ * booted the app since the mixin was composed — the concern will have added the
+ * column already. That failure lands during a deployment's `migrate` step, which
+ * is the worst moment to discover it.
+ *
+ * `remember_token` from {@link Authenticatable} is provisioned the same way and
+ * carries the same condition.
  *
  * Verification links use a **stateless, encrypted token** (no database table): the
  * token is `Crypt`-encrypted (AES-256-GCM, keyed by APP_KEY) claims carrying the

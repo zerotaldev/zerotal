@@ -2559,6 +2559,12 @@
     },
     {
       "file": "docs/deployment.md",
+      "heading": "Rate limiting counts the proxy, not the visitor",
+      "ordinal": 0,
+      "hash": "nwig3zzoluzq"
+    },
+    {
+      "file": "docs/deployment.md",
       "heading": "Why a proxied app needs `APP_URL`",
       "ordinal": 0,
       "hash": "2yn08wx8atpc"

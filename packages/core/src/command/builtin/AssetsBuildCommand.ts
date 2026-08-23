@@ -34,11 +34,23 @@ export class AssetsBuildCommand extends Command {
       description: "Minify the output",
       default: true,
     },
+    {
+      name: "clean",
+      short: "c",
+      type: "boolean" as const,
+      description:
+        "Delete everything in the output directory this build did not write. " +
+        "Refused when that directory holds more than build output",
+      default: false,
+    },
   ];
 
   async run(): Promise<void> {
     const cwd = process.cwd();
     const minify = this.flags["minify"] as boolean;
+    // Off by default: the prune below is safe anywhere, and this is not — it is
+    // for a directory the build owns, which is a claim only the app can make.
+    const clean = this.flags["clean"] as boolean;
     let built = 0;
     let failed = 0;
 
@@ -48,7 +60,7 @@ export class AssetsBuildCommand extends Command {
         ? assets.entrypoint.join(", ")
         : assets.entrypoint;
       this.info(`Building assets: ${entries} → ${assets.outDir}/`);
-      const result = await buildConfiguredAssets({ ...assets, minify }, cwd);
+      const result = await buildConfiguredAssets({ ...assets, minify, clean }, cwd);
       if (result.success) built++;
       else {
         failed++;

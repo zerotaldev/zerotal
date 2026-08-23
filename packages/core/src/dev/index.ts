@@ -33,7 +33,7 @@ export { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
 export { browserEnvDefines } from "./buildEnv.ts";
 export { detectCssPlugins, buildCssBundle, buildJsBundle } from "./CssPlugins.ts";
 export type { AssetBuildConfig } from "./CssPlugins.ts";
-export { pruneBuildOutput } from "./BuildOutput.ts";
+export { pruneBuildOutput, cleanBuildOutput } from "./BuildOutput.ts";
 // Lets `serve` and any view provider agree on whether to build at boot, so a hardened
 // production unit with a read-only output directory logs a line instead of restart-looping.
 export { bootBuildDecision, isWritableDir } from "./bootBuild.ts";

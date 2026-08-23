@@ -9,9 +9,17 @@ import { isAuthenticatable } from "./Authenticatable.ts";
  * (order 70, post-`models`), additively and idempotently:
  *
  *  - `email_verified_at` column — added to the table of any model composing
- *    `EmailVerification` (when the table exists but the column doesn't; if the
- *    table isn't there yet, schema sync / migrations create it with the registered
- *    column instead).
+ *    `EmailVerification` (when the table exists but the column doesn't).
+ *
+ * **This adds columns to existing tables; it does not create them.** When the
+ * table is not there yet, something else builds it — and what that is decides
+ * whether the column comes with it. Schema sync builds from the models, so the
+ * imperatively-registered column is included. A migration builds from what the
+ * migration says, so a `create users` that does not mention `email_verified_at`
+ * produces a table without it, and this concern never revisits a table it has
+ * already seen exist. An app whose source of truth is migrations therefore needs
+ * the column in one, guarded with `Schema.hasColumn` — unguarded it collides with
+ * a database this concern has already fixed up. Same for `remember_token`.
  *
  * Both email-verification and password-reset links are stateless signed tokens, so there
  * are no token tables to provision. Restricted to environments with a live database; any

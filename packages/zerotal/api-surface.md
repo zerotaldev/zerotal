@@ -4178,6 +4178,7 @@ function registerDevHtmlSnippet = (name: string, fn: DevHtmlSnippet) => void
 function startDevMode = (options: StartDevModeOptions) => Promise<void>
 
 interface AssetBuildConfig = {
+  clean?: boolean
   entrypoint: string | string[]
   loader?: Record<string, string>
   minify: boolean

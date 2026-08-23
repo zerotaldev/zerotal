@@ -209,6 +209,32 @@ observers, global scopes, and state-machine callbacks, plus framework event
 subscriptions. `createTestApp()` and `testApp.close()` call it for you, so suites
 using those helpers don't need the explicit `afterEach`.
 
+## Running the suite from a script
+
+A script that gates on the tests has to read the tests' exit status, and a pipe hides it:
+
+```bash
+bun test 2>&1 | tail -3     # the status is tail's. Always 0, however the suite went.
+```
+
+The suite is verbose enough that piping it somewhere is the natural thing to write, which
+is what makes this worth saying: a deploy script written that way prints `1 fail` and
+carries straight on to upload and restart. Nothing is wrong with the output — it is the
+`$?` behind it that belongs to the last command in the pipe.
+
+Either turn the pipe honest, or do not pipe:
+
+```bash
+set -o pipefail             # bash/zsh: the pipeline fails if any stage does
+bun test 2>&1 | tail -3
+
+# or keep the status and the output separately
+bun test > test.log 2>&1 || { tail -20 test.log; exit 1; }
+```
+
+`set -e` alone does not cover it — the pipeline succeeded, as far as the shell is
+concerned.
+
 ## References
 
 The most-used members exported from `@zerotal/testing`. Each area's page documents

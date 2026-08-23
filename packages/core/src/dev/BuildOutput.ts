@@ -129,3 +129,65 @@ async function _listEntries(root: string): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Remove everything in `outdir` that this build did not write.
+ *
+ * The difference from {@link pruneBuildOutput} is what it trusts. Pruning is
+ * conservative on purpose — it removes only what a manifest recorded or what is
+ * named like a chunk — because the manifest lives in `.zerotal/`, which is
+ * machine-local and gitignored. A release built on a fresh CI checkout therefore
+ * has no record of the last build, and a release that is unpacked onto a server
+ * without rebuilding there has nobody to run a prune at all. Either way the
+ * output directory keeps files nothing references any more.
+ *
+ * That is not only clutter. A withdrawn page's bundle stays publicly fetchable
+ * at its content-hashed URL, so copy removed from the site is still readable by
+ * anyone who has the link — which is how pricing wording that had been taken
+ * down went on being served.
+ *
+ * This is the answer for a directory the build owns outright: whatever is not in
+ * `outputs` goes. It refuses the two directories where that is certainly wrong —
+ * the project root, and `public/`, which holds the app's images and favicon
+ * beside its bundles. Point it at a dedicated directory, or prune instead.
+ *
+ * @param outdir  Absolute path the build wrote to.
+ * @param outputs The build's artifacts (`Bun.build()`'s `outputs`).
+ * @returns Paths removed, relative to `outdir`.
+ * @throws When `outdir` is the project root or its `public/` directory.
+ *
+ * @internal
+ */
+export async function cleanBuildOutput(
+  outdir: string,
+  outputs: readonly { path: string }[],
+): Promise<string[]> {
+  const root = resolve(outdir);
+  const cwd = resolve(process.cwd());
+
+  if (root === cwd || root === join(cwd, "public")) {
+    throw new Error(
+      `Refusing to clean ${_relative(cwd, root) || "."} — it holds more than this build's output, ` +
+        `and everything not rebuilt would be deleted. Point the build at a directory of its own ` +
+        `(public/assets, say), or drop --clean and let the prune handle chunks.`,
+    );
+  }
+
+  const current = new Set(outputs.map((output) => _relative(root, output.path)));
+  const removed: string[] = [];
+
+  for (const path of await _listEntries(root)) {
+    if (current.has(path)) continue;
+    try {
+      await unlink(join(root, path));
+      removed.push(path);
+    } catch {
+      // A directory entry, or a file held open. Directories are left behind
+      // deliberately: emptied, they cost nothing and removing them races a
+      // concurrent read.
+    }
+  }
+
+  await _writeManifest(root, [...current].sort());
+  return removed.sort();
+}

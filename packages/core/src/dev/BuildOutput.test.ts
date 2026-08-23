@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pruneBuildOutput } from "./BuildOutput.ts";
+import { pruneBuildOutput, cleanBuildOutput } from "./BuildOutput.ts";
 
 let projectRoot: string;
 let outdir: string;
@@ -102,5 +102,77 @@ describe("pruneBuildOutput()", () => {
 
     expect(await remaining()).toEqual(["app.js"]);
     expect((await readdir(join(projectRoot, ".zerotal", "build"))).length).toBe(1);
+  });
+});
+
+/**
+ * `--clean`: the answer for an output directory the build owns outright.
+ *
+ * Pruning is deliberately conservative — manifest entries and chunk-shaped names,
+ * nothing else — because it has to be safe in a directory that holds more than
+ * build output. The cost of that caution shows up exactly where releases are
+ * made: the manifest lives in `.zerotal/`, which is gitignored, so a build on a
+ * fresh CI checkout has no record of the last one and leaves every stale file
+ * that is not chunk-named. Unpack that onto a server that does not rebuild, and
+ * the orphans accumulate release after release.
+ *
+ * They stay publicly fetchable, which is the part that matters: a page whose copy
+ * was withdrawn is still readable at its content-hashed URL by anyone holding the
+ * link.
+ */
+describe("cleanBuildOutput()", () => {
+  it("removes everything this build did not write, chunk-named or not", async () => {
+    await seed("app.js", "legacy-a1b2c3.js", "pricing-9f8e7d.js", "chunk-old.js", "app.css");
+
+    const removed = await cleanBuildOutput(outdir, emitted("app.js", "app.css"));
+
+    // The hashed entry names are the ones a prune cannot see: no manifest on a
+    // fresh checkout, and nothing about `pricing-9f8e7d.js` looks like a chunk.
+    expect(removed).toEqual(["chunk-old.js", "legacy-a1b2c3.js", "pricing-9f8e7d.js"]);
+    expect(await remaining()).toEqual(["app.css", "app.js"]);
+  });
+
+  it("reaches into nested directories", async () => {
+    await seed("app.js", join("pages", "old.js"));
+
+    await cleanBuildOutput(outdir, emitted("app.js"));
+
+    expect(await readdir(join(outdir, "pages"))).toEqual([]);
+  });
+
+  it("refuses the public directory, which holds more than the build's output", async () => {
+    // The failure this prevents is unrecoverable: an app's images, favicon and
+    // robots.txt are not rebuilt by anything, so deleting them is permanent.
+    const publicDir = join(projectRoot, "public");
+    await Bun.write(join(publicDir, "favicon.ico"), "icon");
+
+    await expect(cleanBuildOutput(publicDir, [])).rejects.toThrow(/Refusing to clean/);
+    expect(await Bun.file(join(publicDir, "favicon.ico")).exists()).toBe(true);
+  });
+
+  it("refuses the project root", async () => {
+    await expect(cleanBuildOutput(projectRoot, [])).rejects.toThrow(/Refusing to clean/);
+  });
+
+  it("leaves a directory holding exactly this build's output alone", async () => {
+    await seed("app.js", "chunk-live.js");
+
+    const removed = await cleanBuildOutput(outdir, emitted("app.js", "chunk-live.js"));
+
+    expect(removed).toEqual([]);
+    expect(await remaining()).toEqual(["app.js", "chunk-live.js"]);
+  });
+
+  it("records what it wrote, so a later prune knows the same set", async () => {
+    await seed("app.js", "stale.js");
+    await cleanBuildOutput(outdir, emitted("app.js"));
+
+    // Same build again, this time through the conservative path: the manifest
+    // `clean` left behind is what lets it recognise a file it did not name.
+    await seed("later.js");
+    const removed = await pruneBuildOutput(outdir, emitted("app.js", "later.js"));
+
+    expect(removed).toEqual([]);
+    expect(await remaining()).toEqual(["app.js", "later.js"]);
   });
 });

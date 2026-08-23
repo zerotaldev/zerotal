@@ -137,6 +137,14 @@ export class RedirectBuilder {
    * Redirect to the URL stored in session under `intended_url` (set by RequireAuth when
    * intercepting an unauthenticated request), then clear it. Falls back to `fallback` when
    * none is stored, or when the stored URL is cross-origin (open-redirect guard).
+   *
+   * **Single use.** Reading it spends it, so a second call in the same sign-in gets
+   * `fallback` — which is right (a stale destination should not hijack a later
+   * navigation) and surprising when the *first* redirect did not take effect. If a
+   * form is resubmitted because its redirect went unnoticed, the retry lands on
+   * `fallback`, and a customer who was part-way through something arrives somewhere
+   * they did not ask for with their selection gone. Nothing here can tell the two
+   * cases apart; read the value before authenticating if the flow needs it twice.
    */
   intended(fallback = "/", status: 301 | 302 | 303 | 307 | 308 = 302): ResponseBuilder {
     const session = (

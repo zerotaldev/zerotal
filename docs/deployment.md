@@ -71,6 +71,30 @@ Each entry is a `DeployTarget`:
 Omit the file entirely and you get `DEFAULT_DEPLOY_TARGETS`: `production` and
 `staging`, both with the default steps.
 
+The defaults build and migrate; they do not check anything you wrote. A preflight command
+of your own — `release:check`, a smoke test — has to be named in `steps` to run, and
+nothing prompts you to add it, so a command written precisely to guard a release can sit
+there never running. Name every step you want, in the order you want them:
+
+```ts
+// config/deploy.ts
+export default {
+  targets: {
+    production: {
+      url: "https://example.com",
+      steps: ["release:check", "assets:build", "inertia:build", "migrate"],
+    },
+  },
+};
+```
+
+Put a check first. A step that fails stops the release, and a check that runs after the
+migration has already run has missed its moment.
+
+Two things worth adding while you are there: `assets:build` and `inertia:build` accept
+`--clean`, which removes anything in the output directory the build did not write — see
+[Build assets](#build-assets).
+
 > **Note** — `deploy:<env>` runs **where the app runs**, with that environment's
 > variables. It does not reach another machine over SSH. Run it on the box, or in
 > the container build, as the step before the restart.
@@ -176,6 +200,34 @@ release that built its assets ahead of time and locked the tree down serves what
 shipped, and logs one line saying so. That is what lets the service run under a properly
 hardened unit; see [Hardening the service](#hardening-the-service).
 
+### Stale bundles do not go away on their own
+
+Code splitting names every shared chunk after its content, so each build emits a new set
+and abandons the last. Both build commands clean up after themselves, but conservatively:
+they remove chunk-shaped filenames, plus whatever the previous build on **this machine**
+recorded in `.zerotal/`. That record is gitignored and does not travel.
+
+So the two shapes that produce releases both defeat it. A build on a fresh CI checkout has
+no record to compare against. A release unpacked onto a server that does not rebuild has
+nobody to run a cleanup at all — the archive extracts over whatever is already there, and
+the leftovers accumulate release after release.
+
+Leftovers are not just clutter. They stay publicly fetchable at their content-hashed URLs,
+so a page whose copy you withdrew is still readable by anyone holding the link.
+
+`--clean` needs no record — the output directory belongs to the build, and what the build
+did not write does not belong in it:
+
+```bash
+# in your project root
+bun zt assets:build --clean
+bun zt inertia:build --production --clean
+```
+
+It refuses `public/` itself and the project root, where deleting what was not rebuilt
+would take the app's images and favicon with it. Point the build at a directory of its own
+— `public/assets` is the Inertia default — and run it wherever the release is built.
+
 Bump your asset version (or hash the bundle) so clients reload onto the new build — see
 [Inertia › Asset versioning](/docs/inertia/middleware#asset-versioning).
 
@@ -252,6 +304,29 @@ Origins are compared exactly: no wildcards and no suffix matching, because
 `endsWith(".example.com")` also matches `evil-example.com`.
 
 > **Warning** — an app with the wrong origin configured renders every page correctly and refuses every action. There is no 500, nothing in the logs, and a status-code health check passes. The only symptom is that buttons do nothing.
+
+### Rate limiting counts the proxy, not the visitor
+
+`ThrottleMiddleware` identifies a client by the address the request arrived from. Behind a
+proxy that address is the proxy — `127.0.0.1` for every visitor on the site — so one bucket
+is shared by everybody, and a single busy client can lock the whole site out.
+
+Tell it how many proxies sit in front of the app:
+
+```ts fragment
+// One proxy (Caddy, nginx, a load balancer) between the internet and the app.
+ThrottleMiddleware.with({ maxAttempts: 60, trustedProxies: 1 });
+```
+
+The count is how many entries to skip from the right of `X-Forwarded-For`. It is opt-in and
+defaults to zero because the header is written by the client until something trusted
+overwrites it: trusting it by default would let anyone forge an address and walk around
+every limit you set. Zero is the safe default and the wrong answer once you deploy behind
+something — which is easy to do and never revisit, because nothing about it fails loudly.
+The symptom is a legitimate visitor getting a 429 they did not earn.
+
+Count the proxies you actually run. Setting `trustedProxies: 3` with one proxy in front
+reads an entry the client supplied.
 
 ### Never gate the transport path
 

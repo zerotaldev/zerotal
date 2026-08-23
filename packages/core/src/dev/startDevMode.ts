@@ -114,23 +114,40 @@ export async function startDevMode(options: StartDevModeOptions): Promise<void> 
     },
   });
 
-  // Cards exist before anything can write to them, so early output has a tab to
-  // land in rather than being dropped for want of one.
-  deck.start([...(wantsServer ? [serverStatus] : []), ...supervised.map(_toStatus)]);
+  try {
+    // Cards exist before anything can write to them, so early output has a tab to
+    // land in rather than being dropped for want of one.
+    deck.start([...(wantsServer ? [serverStatus] : []), ...supervised.map(_toStatus)]);
 
-  // Started before the server rather than after it: these declared they do not
-  // depend on it, and making them wait for a build they have nothing to do with
-  // is dead time on every boot.
-  supervisor.start(supervised.filter((entry) => entry.after === "none"));
+    // Started before the server rather than after it: these declared they do not
+    // depend on it, and making them wait for a build they have nothing to do with
+    // is dead time on every boot.
+    supervisor.start(supervised.filter((entry) => entry.after === "none"));
 
-  if (!wantsServer) {
-    // `--only=queue`, say — supervised and drawn, with no server underneath.
-    // Still parks forever: quitting goes through the deck like everywhere else.
-    await new Promise<never>(() => {});
-    return;
+    if (!wantsServer) {
+      // `--only=queue`, say — supervised and drawn, with no server underneath.
+      // Still parks forever: quitting goes through the deck like everywhere else.
+      await new Promise<never>(() => {});
+      return;
+    }
+
+    await orchestrator.start();
+  } catch (error) {
+    // Give the terminal back *before* saying what went wrong.
+    //
+    // The deck draws in the alternate screen buffer, and leaving it restores the
+    // shell's screen — discarding everything written while it was up. So a dev
+    // run that failed printed its reason into a buffer that was then thrown
+    // away, and the developer was left with the startup banner and
+    // `error: script "zt" exited with code 1`. Nothing about the failure
+    // survived, on the one path where knowing the reason matters most.
+    //
+    // Reported here rather than left to the caller for the same reason: by the
+    // time an error reaches the command runner the deck may or may not have been
+    // stopped, and "may or may not" decides whether the message is visible.
+    deck.stop();
+    throw error;
   }
-
-  await orchestrator.start();
 }
 
 /** The card a process starts life with, before the supervisor has run it. */

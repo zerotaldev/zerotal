@@ -225,6 +225,66 @@ describe("stream mode", () => {
   });
 });
 
+describe("tabs mode — stdin it cannot have", () => {
+  /**
+   * A deck that cannot take stdin over must degrade, not die.
+   *
+   * It used to die, and take dev mode with it. Something else holding stdin —
+   * a prompt from earlier in the same command, most often the busy-port menu —
+   * makes `resume()` throw `ReadableStream is locked`, and the throw escaped
+   * from between the alternate-screen escape and the first paint. The restore
+   * on the way out then wiped the error off the terminal, so the developer got
+   * a startup banner, `exited with code 1`, and nothing else.
+   *
+   * Losing the keys costs tab switching and `q`. Losing the dev server costs
+   * the session.
+   */
+  function lockedStdin(): DeckStdin {
+    return {
+      isTTY: true,
+      setRawMode: () => {},
+      on: () => {},
+      off: () => {},
+      resume: () => {
+        throw new TypeError("ReadableStream is locked");
+      },
+      pause: () => {},
+    };
+  }
+
+  it("streams instead of throwing when stdin is already spoken for", () => {
+    const writer = new CapturingWriter();
+    const deck = new TabsDeck(
+      { writer, onRestart: () => {}, onQuit: () => {} },
+      fakeTty().stdout,
+      lockedStdin(),
+    );
+
+    expect(() => deck.start([status("server")])).not.toThrow();
+
+    // Back out of the alternate screen, so what follows is on the real one.
+    expect(writer.all()).toContain(ALT_OFF);
+    expect(writer.all()).toContain("keyboard controls unavailable");
+    expect(writer.all()).toContain("ReadableStream is locked");
+  });
+
+  it("keeps printing process output after it has degraded", () => {
+    const writer = new CapturingWriter();
+    const deck = new TabsDeck(
+      { writer, onRestart: () => {}, onQuit: () => {} },
+      fakeTty().stdout,
+      lockedStdin(),
+    );
+
+    deck.start([status("server")]);
+    deck.line("server", "Server listening on http://localhost:3001", "stdout");
+
+    // The whole point of degrading: the dev server is still usable, and still
+    // says so. A deck that survived but went silent would be no better.
+    expect(writer.all()).toContain("Server listening on http://localhost:3001");
+  });
+});
+
 describe("tabs mode — the terminal must survive", () => {
   it("restores the screen and leaves raw mode on a normal stop", () => {
     const tty = fakeTty();

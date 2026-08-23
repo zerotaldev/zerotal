@@ -53,7 +53,7 @@
     "packages/core/src/application/ExceptionHandler.ts": 1,
     "packages/core/src/command/builtin/MakeJobCommand.ts": 1,
     "packages/core/src/command/builtin/ReplCommand.ts": 3,
-    "packages/core/src/command/Command.ts": 2,
+    "packages/core/src/command/Command.ts": 1,
     "packages/core/src/command/CommandRunner.ts": 5,
     "packages/core/src/conventions/builtinConcerns.ts": 2,
     "packages/core/src/datetime/Carbon.ts": 1,
@@ -154,5 +154,5 @@
     "packages/validator/src/FormRequest.ts": 2,
     "packages/validator/src/validate.ts": 2
   },
-  "updatedAt": "2026-08-22T21:57:35.213Z"
+  "updatedAt": "2026-08-23T07:32:45.183Z"
 }

@@ -188,10 +188,11 @@ export abstract class Command {
     try {
       tty.setRawMode!(true);
       const characters: string[] = [];
-      const stdinIterator = this._stdinIter();
+      const reader = this._reader();
+      if (!reader) return "";
       const decoder = new TextDecoder();
       outer: while (true) {
-        const { value, done } = await stdinIterator.next();
+        const { value, done } = await reader.read();
         if (done) break;
         for (const character of decoder.decode(value)) {
           if (character === "\r" || character === "\n") break outer;
@@ -219,11 +220,18 @@ export abstract class Command {
       return line.replace(/\r$/, "");
     }
 
-    const stdinIterator = this._stdinIter();
+    const reader = this._reader();
+    if (!reader) {
+      // stdin belongs to something else now; answer from the buffer or not at all.
+      const rest = this._lineBuf;
+      this._lineBuf = "";
+      return rest.replace(/\r$/, "");
+    }
+
     const decoder = new TextDecoder();
 
     while (true) {
-      const { value, done } = await stdinIterator.next();
+      const { value, done } = await reader.read();
       if (done) break;
       this._lineBuf += decoder.decode(value);
       const newlineIndex = this._lineBuf.indexOf("\n");
@@ -239,16 +247,47 @@ export abstract class Command {
     return remaining.replace(/\r$/, "");
   }
 
-  // Shared stdin async iterator — one per Command instance so consecutive prompts
-  // don't each open a competing stream on the same stdin fd.
+  // One reader for the whole command: a second `Bun.stdin.stream()` over the same
+  // fd never yields, so consecutive prompts have to share the first one.
   private _lineBuf = "";
-  private _stdinIterator: AsyncIterator<Uint8Array> | undefined;
-  private _stdinIter(): AsyncIterator<Uint8Array> {
-    if (!this._stdinIterator) {
-      this._stdinIterator = (Bun.stdin.stream() as unknown as AsyncIterable<Uint8Array>)[
-        Symbol.asyncIterator
-      ]();
+  private _stdinReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  private _stdinHandedOver = false;
+
+  private _reader(): ReadableStreamDefaultReader<Uint8Array> | undefined {
+    if (this._stdinHandedOver) return undefined;
+    this._stdinReader ??= (Bun.stdin.stream() as ReadableStream<Uint8Array>).getReader();
+    return this._stdinReader;
+  }
+
+  /**
+   * Give stdin back, for a command that prompts and then hands the terminal to
+   * something else.
+   *
+   * Reading locks the stdin stream, and the lock is held for the life of the
+   * command so a second prompt can still read. Anything that takes stdin over
+   * afterwards — `process.stdin.resume()`, a raw-mode key listener, the dev deck
+   * — then throws `ReadableStream is locked`. That is how answering the busy-port
+   * menu used to kill `zt dev` on the spot: the deck died taking the terminal
+   * over, and because it dies inside the alternate screen buffer, the restore
+   * erased the reason on its way out.
+   *
+   * Released rather than cancelled. Cancelling closes the underlying stdin, and
+   * the next owner would take over a terminal that never delivers a keystroke —
+   * a dev deck whose tab keys and `q` silently do nothing.
+   *
+   * One-way: a prompt after this returns whatever is still buffered, because a
+   * fresh reader on Bun's stdin hangs rather than fails, and a hang is the worse
+   * of the two.
+   */
+  protected releaseStdin(): void {
+    this._stdinHandedOver = true;
+    const reader = this._stdinReader;
+    this._stdinReader = undefined;
+    try {
+      reader?.releaseLock();
+    } catch {
+      // Only throws with a read still in flight — nobody is mid-keystroke here,
+      // and the caller is taking the terminal over either way.
     }
-    return this._stdinIterator;
   }
 }

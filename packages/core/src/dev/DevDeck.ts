@@ -217,12 +217,38 @@ export class TabsDeck implements Deck {
     process.on("unhandledRejection", this._onExit);
 
     this._write(ALT_SCREEN_ON + CURSOR_HIDE + ALT_SCROLL_ON);
-    this._stdin.setRawMode?.(true);
-    this._stdin.resume?.();
-    this._stdin.on?.("data", this._onData);
-    this._stdout.on?.("resize", this._onResize);
 
+    try {
+      this._stdin.setRawMode?.(true);
+      this._stdin.resume?.();
+      this._stdin.on?.("data", this._onData);
+    } catch (error) {
+      // Someone else still owns stdin — a prompt earlier in the same command that
+      // never let go, most likely. Tabs with no keys is a deck nobody can drive,
+      // but that is no reason to take the dev server down with it, which is
+      // exactly what throwing from here used to do.
+      this._degrade(statuses, error);
+      return;
+    }
+
+    this._stdout.on?.("resize", this._onResize);
     this._paint();
+  }
+
+  /**
+   * Give up the tabs and stream instead, for a terminal that cannot be taken
+   * over. Losing the keyboard costs tab switching, restart and `q`; Ctrl-C still
+   * works, because that one is the shell's.
+   */
+  private _degrade(statuses: DevProcessStatus[], error: unknown): void {
+    this.stop();
+    this._restored = false; // stop() still has to run on quit.
+    this._streaming = true;
+    this._stream = new StreamDeck(this._options.writer, Boolean(this._stdout.isTTY));
+    this._stream.start(statuses);
+    this._stream.notice(
+      `keyboard controls unavailable (${error instanceof Error ? error.message : String(error)}) — streaming instead`,
+    );
   }
 
   line(name: string, text: string, stream: "stdout" | "stderr"): void {
@@ -231,7 +257,7 @@ export class TabsDeck implements Deck {
 
     const stamp = _clock();
     const body = stream === "stderr" ? _paint(text, "red") : text;
-    card.lines.push(`${stamp} ${body}`);
+    card.lines.push(`${stamp}\0${body}`);
     if (card.lines.length > SCROLLBACK) card.lines.shift();
     this._anchor(card, body);
 
@@ -256,7 +282,7 @@ export class TabsDeck implements Deck {
     }
     const card = this._cards[this._focused];
     if (!card) return;
-    card.lines.push(`${_clock()} ${_paint(text, "yellow")}`);
+    card.lines.push(`${_clock()}\0${_paint(text, "yellow")}`);
     this._schedulePaint();
   }
 
@@ -526,7 +552,7 @@ export class TabsDeck implements Deck {
     const needle = this._search.toLowerCase();
     const out: string[] = [];
     for (const entry of card.lines) {
-      const split = entry.indexOf(" ");
+      const split = entry.indexOf("\0");
       const stamp = entry.slice(0, split);
       const body = entry.slice(split + 1);
       if (needle && !body.toLowerCase().includes(needle)) continue;

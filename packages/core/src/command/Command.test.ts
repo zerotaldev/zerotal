@@ -621,14 +621,18 @@ describe("Command._readLine()", () => {
       return { cmd: c, buf };
     })();
 
-    // Temporarily override Bun.stdin.stream with a mock async iterable
+    // Temporarily override Bun.stdin.stream with a real stream carrying the line.
+    // A hand-rolled async iterable used to do here, but reads go through the
+    // stream's reader now — the lock is the thing a prompt has to hand back.
     const encoder = new TextEncoder();
     const origStream = (Bun.stdin as unknown as { stream?: () => unknown }).stream;
-    (Bun.stdin as unknown as { stream: () => unknown }).stream = () => ({
-      [Symbol.asyncIterator]: async function* () {
-        yield encoder.encode("hello\n");
-      },
-    });
+    (Bun.stdin as unknown as { stream: () => unknown }).stream = () =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode("hello\n"));
+          controller.close();
+        },
+      });
 
     const line = await (cmd as any)._readLine();
     (Bun.stdin as unknown as { stream?: () => unknown }).stream = origStream;

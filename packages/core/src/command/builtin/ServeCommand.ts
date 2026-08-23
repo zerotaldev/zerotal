@@ -372,7 +372,14 @@ export class ServeCommand extends Command {
       );
     }
 
-    return this._askAboutPort(requested, owner, held);
+    try {
+      return await this._askAboutPort(requested, owner, held);
+    } finally {
+      // Handed back here, where it was taken. What runs next on this path — the
+      // dev deck, or a `bun --watch` child with inherited stdio — takes the
+      // terminal over, and cannot while the menu still holds the read lock.
+      this.releaseStdin();
+    }
   }
 
   /**

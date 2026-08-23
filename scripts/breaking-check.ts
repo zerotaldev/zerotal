@@ -76,7 +76,24 @@ function run(...args: string[]): string {
   return new TextDecoder().decode(proc.stdout);
 }
 
-/** The ref to compare against: `--base`, else origin/main, else the previous commit. */
+/**
+ * What to compare against: `--base`, else the last release, else the fork point.
+ *
+ * **The last release, not the previous commit.** A user's experience of this
+ * package is the difference between published versions; a signature that appears
+ * in one commit and is reverted in the next never reaches anyone, and asking for
+ * a release note about it teaches people that the gate cries wolf.
+ *
+ * That is not hypothetical — it fired on exactly that. Render modes briefly
+ * widened `child()`'s parameter to name a static, then put it back when the
+ * widening turned out to risk worse generic inference at every call site. Net
+ * effect on the surface: nothing. Commit-to-commit: two removals and a demand
+ * for a BREAKING note about a change no release ever carried.
+ *
+ * On a pull request the branch point is still right — that is the cumulative
+ * effect the PR proposes for the next release, which is the question a reviewer
+ * is asking.
+ */
 function baseRef(): string {
   const flag = Bun.argv.indexOf("--base");
   if (flag !== -1 && Bun.argv[flag + 1]) return Bun.argv[flag + 1]!;
@@ -84,8 +101,14 @@ function baseRef(): string {
   const branch = Bun.env["GITHUB_BASE_REF"];
   if (branch) return `origin/${branch}`;
 
-  // On a push to main the interesting comparison is the commit before it; on a
-  // local run it is whatever the branch forked from.
+  // `--merged` so a tag on some other branch cannot be picked; sorted by version
+  // rather than by date, because a patch can be tagged after a later minor.
+  const tag = run("tag", "--list", "v*", "--merged", "HEAD", "--sort=-v:refname")
+    .split(SPLIT_LINES)
+    .map((line) => line.trim())
+    .find(Boolean);
+  if (tag) return tag;
+
   const merged = run("merge-base", "HEAD", "origin/main").trim();
   return merged && merged !== run("rev-parse", "HEAD").trim() ? merged : "HEAD~1";
 }

@@ -372,19 +372,6 @@ export interface FlashBuilder {
   onClose(method: string, args?: unknown[]): this;
 }
 
-/**
- * A component class as `child()` receives it: a constructor, plus the statics it
- * reads off the class.
- *
- * A bare `new () => C` carries no statics, so asking whether a child is static
- * needed a cast to `typeof Component` — a cast that says nothing true, since the
- * thing being cast really is a component class. `interactive` is optional, so
- * every existing caller satisfies this unchanged.
- */
-type ComponentClass<C extends Component> = (new () => C) & {
-  interactive?: boolean;
-};
-
 // ── Component ──────────────────────────────────────────────────────────────────────
 /**
  * Copy a parent's `props` onto a freshly constructed child.
@@ -1559,7 +1546,7 @@ export abstract class Component {
    * @category Rendering
    */
   async child<C extends Component>(
-    ChildClass: ComponentClass<C>,
+    ChildClass: new () => C,
     opts: {
       key?: string | number;
       props?: Partial<C>;
@@ -1609,7 +1596,13 @@ export abstract class Component {
     // the client morph preserve the live DOM underneath — and a static child has
     // no live DOM, so a stub would blank the region on every parent update. That
     // single interaction is the whole of what makes render modes delicate.
-    if (ChildClass.interactive === false) {
+    // `Reflect.get` rather than a cast to `typeof Component`, and rather than
+    // widening the parameter to name the static. Widening changes a public
+    // signature — and `C` is inferred from this parameter, which TypeScript does
+    // less reliably through an intersection than through a bare constructor. A
+    // subtly worse inference at every call site is a poor trade for reading one
+    // optional boolean.
+    if (Reflect.get(ChildClass, "interactive") === false) {
       if (opts.lazy || opts.defer || opts.stream) {
         throw new Error(
           `<${name}> is \`static interactive = false\`, so it cannot also be lazy, deferred ` +
@@ -1784,7 +1777,7 @@ export abstract class Component {
    */
   /** @internal Called only by {@link child}. */
   async _renderStaticChild<C extends Component>(
-    ChildClass: ComponentClass<C>,
+    ChildClass: new () => C,
     opts: { props?: Partial<C>; slots?: Record<string, string> },
   ): Promise<string> {
     const childPage = new ChildClass();

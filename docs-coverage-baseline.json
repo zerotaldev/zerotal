@@ -1,21 +1,21 @@
 {
   "packages": {
-    "@zerotal/admin": 121,
+    "@zerotal/admin": 120,
     "@zerotal/audit": 2,
     "@zerotal/auth": 58,
     "@zerotal/broadcasting": 16,
     "@zerotal/cache": 1,
     "@zerotal/client": 19,
-    "@zerotal/core": 196,
+    "@zerotal/core": 166,
     "@zerotal/devtools": 7,
     "@zerotal/flow": 94,
-    "@zerotal/flow-ui": 106,
+    "@zerotal/flow-ui": 103,
     "@zerotal/i18n": 2,
     "@zerotal/inertia": 7,
     "@zerotal/monitor": 55,
     "@zerotal/notifications": 9,
-    "@zerotal/orm": 98,
-    "@zerotal/queue": 15,
+    "@zerotal/orm": 87,
+    "@zerotal/queue": 11,
     "@zerotal/scheduler": 14,
     "@zerotal/session": 5,
     "@zerotal/telemetry": 4,
@@ -23,6 +23,6 @@
     "@zerotal/testing": 6,
     "@zerotal/validator": 9
   },
-  "total": 847,
-  "updatedAt": "2026-08-21T10:15:02.925Z"
+  "total": 798,
+  "updatedAt": "2026-08-23T01:59:38.361Z"
 }

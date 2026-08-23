@@ -215,6 +215,47 @@ function returnedTypeNames(type: ts.Type, checker: ts.TypeChecker): Set<string> 
   return names;
 }
 
+/**
+ * A CLI command's real name — `static commandName = "route:types"` — if it has one.
+ *
+ * Resolved through an alias, because these reach the public surface via a barrel
+ * re-export rather than from the file that declares them.
+ */
+function commandNameOf(symbol: ts.Symbol, checker: ts.TypeChecker): string | undefined {
+  const resolved = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+  for (const decl of resolved.getDeclarations() ?? []) {
+    if (!ts.isClassDeclaration(decl)) continue;
+    for (const member of decl.members) {
+      if (!ts.isPropertyDeclaration(member)) continue;
+      const isStatic = member.modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword);
+      if (!isStatic || member.name.getText() !== "commandName") continue;
+      const init = member.initializer;
+      if (init && ts.isStringLiteral(init)) return init.text;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Whether a command class is documented — by the name people actually type.
+ *
+ * Forty-nine command classes were counted as gaps, and none of them was ever
+ * going to close: nobody writes `new DoctorCommand()`, they write `bun zt
+ * doctor`, and the documentation is right to say the second. A measure that can
+ * only be satisfied by documenting something nobody uses is not measuring
+ * documentation.
+ *
+ * Matched as `zt <name>`, so a command called `dev` cannot be counted documented
+ * by the word appearing in a sentence. A *namespaced* name is exempt from that
+ * caution: `migrate:refresh` is not a word English produces by accident, and
+ * requiring the prefix missed it where the migrations guide discusses it by name.
+ */
+function documentedAsCommand(symbol: ts.Symbol, checker: ts.TypeChecker, corpus: string): boolean {
+  const name = commandNameOf(symbol, checker);
+  if (name === undefined) return false;
+  return corpus.includes(`zt ${name}`) || (name.includes(":") && corpus.includes(name));
+}
+
 interface Gap {
   pkg: string;
   subpath: string;
@@ -245,7 +286,9 @@ function main(): void {
 
     // Pass 1 — named in a docs page.
     const documented = new Set(
-      promisedNames.filter((e) => mentioned.has(e.name)).map((e) => e.name),
+      promisedNames
+        .filter((e) => mentioned.has(e.name) || documentedAsCommand(e.symbol, checker, corpus))
+        .map((e) => e.name),
     );
 
     // Pass 2 — trap 3: returned by something already documented.

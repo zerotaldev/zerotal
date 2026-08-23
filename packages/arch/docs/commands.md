@@ -315,6 +315,38 @@ Packages register their own — see
 | `bun zt doctor`        | Check the app for silent misconfigurations             |
 | `bun zt key:generate`  | Generate a new `APP_KEY` and write it to `.env`        |
 | `bun zt lint:packages` | Check every workspace package against convention rules |
+| `bun zt upgrade`       | Apply the codemods for a version upgrade               |
+
+### Upgrading between versions
+
+`bun zt upgrade --to <version>` applies the codemods a version gap calls for —
+mechanical rewrites the framework can make on your behalf when an API changes.
+
+```bash
+bun zt upgrade --to 2.0.0            # print the plan, change nothing
+bun zt upgrade --to 2.0.0 --write    # apply it
+```
+
+**It writes nothing unless you ask.** That is the opposite of most tools and
+deliberate: it rewrites source across your whole project, so the first run should
+be something you can read and disagree with. `--from` defaults to the `zerotal`
+version in your `package.json`.
+
+The half worth reading is the last one. A codemod that quietly walks past
+something it does not understand is worse than none, because the changes it _did_
+make suggest the job is finished — so anything it recognised and deliberately did
+not touch is listed with a file, a line and a reason:
+
+```text
+1 place(s) need a decision this cannot make for you:
+  app/models/Post.ts:9  export function all<T extends BaseModel>(rows: T[]): T[] {
+    `BaseModel` in a type position. It resolves to the same class as `Model`, so
+    this compiles either way — renaming it is a readability call, not a
+    correctness one.
+```
+
+Run it again after applying: a second run should report no changes. Codemods are
+idempotent, and that is the cheapest way to confirm one did what it said.
 
 `doctor` runs every static sanity check against the booted app and prints each
 finding with its fix: APP_KEY strength, `database.synchronize` colliding with

@@ -359,6 +359,7 @@ export class CommandRunner {
       RouteListCommand,
       RouteTypesCommand,
       DoctorCommand,
+      UpgradeCommand,
       MakeProviderCommand,
       CssBuildCommand,
       AssetsBuildCommand,
@@ -390,6 +391,9 @@ export class CommandRunner {
     // Non-web commands (console, worker, test).
     if (this._app._env !== "web") {
       this.register(ReplCommand);
+      // Rewrites source across the project, so it belongs nowhere near a running
+      // web process — same reasoning as the release commands below.
+      this.register(UpgradeCommand);
       this.register(CompileCommand, ["build"]);
       this.registerAll([
         WorkerCommand,

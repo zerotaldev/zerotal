@@ -195,7 +195,7 @@ The names in use:
 | Group             | Names                                                                                                                 |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Lifecycle         | `onBoot` `onMount` `onHydrate` `onDehydrate` `onRendering` `onRendered` `onUpdate` `onUpdating` `onUpdated` `onError` |
-| Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child`                                                              |
+| Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child` `isInteractive`                                              |
 | Actions & state   | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal`              |
 | Navigation        | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent`                                          |
 | Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `client` `$`                                                          |

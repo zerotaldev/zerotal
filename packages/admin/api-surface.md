@@ -87,6 +87,7 @@ class AdminPage = {
   static cluster?: typeof Cluster
   static durable?: boolean | {    ttl?: string;    scope?: 'user' | 'session';}
   static getNavigationLabel: () => string
+  static interactive?: boolean
   static layout: any
   static navigationBadge?: () => Promise<string | number | null> | string | number | null
   static navigationBadgeColor?: BadgeTone
@@ -122,6 +123,7 @@ class AdminPage = {
   _prevChildIds: string[]
   _redirectStatus: number | null
   _redirectUrl: string | null
+  _renderStaticChild: <C extends Component>(ChildClass: new () => C, opts: {    props?: Partial<C>;    slots?: Record<string, string>;}) => Promise<string>
   _resolveTitle: () => string | null
   _shouldRefresh: boolean
   _streamSender: ((ref: string, content: string, replace: boolean) => void) | null
@@ -141,6 +143,7 @@ class AdminPage = {
   errors: ErrorsProxy
   flash: (message: string, optionsOrLevel?: FlashLevel | FlashOptions) => FlashBuilder
   hasSlot: (name?: string) => boolean
+  isInteractive: boolean
   layout: (page: HtmlNode) => HtmlNode | Promise<HtmlNode>
   navigateCurrent: (options?: CurrentUrlOptions) => Promise<void>
   onBoot: (_ctx?: HttpContext) => Promise<void>

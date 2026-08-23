@@ -365,6 +365,44 @@ export class CounterWidget extends Component {
 
 Props that need to survive WebSocket round-trips must be `@locked` so they are included in the snapshot. A `@locked` prop is set once at mount and stays fixed for the child's lifetime.
 
+### Static children
+
+A child that will never receive an action does not need to be an island. Declare
+`static interactive = false` and it is rendered as plain markup:
+
+```tsx fragment
+export class SiteHeader extends Component {
+  static interactive = false;
+
+  override async render() {
+    return <header class="site-header">{/* … */}</header>;
+  }
+}
+```
+
+No snapshot, no state script, no entry in the client's component registry — and
+nothing on the wire for it beyond the HTML itself. Use it for the parts of a page
+that are structure rather than behaviour: headers, nav rails, footers, marketing
+sections.
+
+**A static child re-renders with its parent.** That is the difference that
+matters. An interactive child is preserved across a parent update — its DOM and
+state are left alone, which is the point of an island. A static child has no
+state to preserve, so it is rendered fresh every time the parent renders, and
+props passed to it are simply current.
+
+It cannot be `lazy`, `defer` or `stream`: each of those waits for the client to
+ask for the real render, and a static child never registers with the client to
+do the asking. Passing one throws rather than leaving a placeholder that never
+resolves.
+
+Inside the component, `this.isInteractive` reports which mode it is in — useful
+for leaving out something that only makes sense with a client attached.
+
+> **Note** — this is the first half of render modes. A page whose every component
+> is static still opens a WebSocket; making that connection conditional is
+> separate work.
+
 ### Slots
 
 Where props pass **data** into a child, slots pass **markup**. A child component's plain children become its **default slot**; a `slots={{ … }}` prop supplies **named slots**. Inside the child, place each with `this.slot(name)` (or `this.slot()` for the default), and branch on `this.hasSlot(name)` to drop an optional wrapper entirely. This is the pattern for reusable shells — cards, modals, panels, page headers — where the container is fixed but the contents vary per use.

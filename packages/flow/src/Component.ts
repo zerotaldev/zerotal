@@ -653,6 +653,53 @@ export abstract class Component {
    */
   static title?: string | ((component: never) => string);
 
+  /**
+   * Opt a component out of interactivity: `static interactive = false`.
+   *
+   * Every Flow component today is maximally interactive — rendered on the server,
+   * dehydrated into a state snapshot, tracked by the client, and re-rendered over
+   * a socket. That is right for a counter and wasteful for a page header, a nav
+   * rail or a marketing section, none of which will ever receive an action.
+   *
+   * A static child is rendered in full by its parent and nothing else: no
+   * snapshot, no `<script type="application/json">`, no entry in the client's
+   * component registry. It updates when its parent re-renders, the way ordinary
+   * markup does.
+   *
+   * ## Why it is not marked `data-flow-root`
+   *
+   * The client morph deliberately *skips* nested roots — that is what preserves a
+   * live child's DOM and state when its parent re-renders. A static child has no
+   * live DOM to preserve, so wearing that attribute would freeze its content at
+   * the first render and every later parent update would pass it by. So it is
+   * emitted as plain markup, which is also what makes "the parent re-renders it"
+   * true without any special case on the client.
+   *
+   * For the same reason a static child is kept out of `_childIds`: that list is
+   * what decides whether a hydrated parent emits a child as an empty stub, and a
+   * stub for something with no live DOM blanks the region.
+   *
+   * ## What it does not do yet
+   *
+   * The socket is still opened unconditionally, so a page whose every component
+   * is static still connects. That is the other half of render modes and it is
+   * separate work — see `_connect()` in the client bridge.
+   *
+   * @category Rendering
+   */
+  static interactive?: boolean;
+
+  /**
+   * Whether this component was rendered interactively.
+   *
+   * The instance-side reading of `static interactive`. Useful inside `render()`
+   * to leave out something that only makes sense with a client attached — a
+   * "Loading…" state, a control whose action can never fire.
+   */
+  get isInteractive(): boolean {
+    return (this.constructor as typeof Component).interactive !== false;
+  }
+
   static durable?: boolean | { ttl?: string; scope?: "user" | "session" };
 
   /** Set by {@link clearDurable}; the dispatcher deletes the durable entry after the request. @internal */
@@ -1523,6 +1570,25 @@ export abstract class Component {
     // excluded deliberately: those exist to change without remounting the child,
     // and hashing them would trade this bug for a child that resets on every
     // update. The counter still disambiguates genuinely identical siblings.
+    // A static child is markup, not an island: rendered in full by this parent
+    // every time, with no snapshot, no id, and no place in `_childIds`.
+    //
+    // Kept out of that list deliberately. `_childIds`/`_prevChildIds` is what
+    // decides whether a hydrated parent emits a child as an empty stub and lets
+    // the client morph preserve the live DOM underneath — and a static child has
+    // no live DOM, so a stub would blank the region on every parent update. That
+    // single interaction is the whole of what makes render modes delicate.
+    if ((ChildClass as unknown as typeof Component).interactive === false) {
+      if (opts.lazy || opts.defer || opts.stream) {
+        throw new Error(
+          `<${name}> is \`static interactive = false\`, so it cannot also be lazy, deferred ` +
+            `or streamed — each of those needs a client to ask for the real render, and a ` +
+            `static child has none. Drop the option, or make the component interactive.`,
+        );
+      }
+      return { html: await this._renderStaticChild(ChildClass, opts) };
+    }
+
     const keyPart =
       opts.key !== undefined
         ? String(opts.key).replace(/[^a-zA-Z0-9_-]/g, "")
@@ -1677,6 +1743,38 @@ export abstract class Component {
         `<script type="application/json" id="flow-state-${childId}">${toScriptJson(snapshot)}</script>` +
         `</div>`,
     };
+  }
+
+  /**
+   * Render a `static interactive = false` child: markup, and nothing else.
+   *
+   * Same lifecycle as an interactive child up to the point where the client would
+   * be involved — `onBoot`, `onMount`, `render` — and then it stops. No
+   * `onDehydrate`, no snapshot, no state script, no wrapper.
+   *
+   * The absent wrapper is the load-bearing part. `data-flow-root` is what tells
+   * the client morph to leave a subtree alone, which is right for something with
+   * live state and exactly wrong here: this child's only route to an update is
+   * its parent re-rendering it, and a skipped subtree would never receive one.
+   */
+  /** @internal Called only by {@link child}. */
+  async _renderStaticChild<C extends Component>(
+    ChildClass: new () => C,
+    opts: { props?: Partial<C>; slots?: Record<string, string> },
+  ): Promise<string> {
+    const childPage = new ChildClass();
+    childPage._flowPath = this._flowPath;
+    if (opts.slots) childPage._flowSlots = opts.slots;
+    if (opts.props) {
+      for (const [k, v] of Object.entries(opts.props)) {
+        if (!k.startsWith("_")) (childPage as unknown as Record<string, unknown>)[k] = v;
+      }
+    }
+
+    const ctx = HttpContext.tryGet();
+    await childPage.onBoot(ctx);
+    await childPage.onMount(ctx);
+    return _renderFlowPage(childPage, () => childPage.render());
   }
 
   // ── Streaming ─────────────────────────────────────────────────────────────

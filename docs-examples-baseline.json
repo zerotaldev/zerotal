@@ -3621,6 +3621,12 @@
     },
     {
       "file": "docs/flow/layouts.md",
+      "heading": "Static children",
+      "ordinal": 0,
+      "hash": "2wovcw45mirf"
+    },
+    {
+      "file": "docs/flow/layouts.md",
       "heading": "Streaming during an action",
       "ordinal": 0,
       "hash": "3km4pbsbihig"

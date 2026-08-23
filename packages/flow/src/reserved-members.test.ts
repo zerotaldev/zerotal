@@ -40,6 +40,7 @@ const DOCUMENTED = [
   "errors",
   "flash",
   "hasSlot",
+  "isInteractive",
   "layout",
   "navigateCurrent",
   "onBoot",

@@ -34,7 +34,7 @@ class Component = {
   _prevChildIds: string[]
   _redirectStatus: number | null
   _redirectUrl: string | null
-  _renderStaticChild: <C extends Component>(ChildClass: new () => C, opts: {    props?: Partial<C>;    slots?: Record<string, string>;}) => Promise<string>
+  _renderStaticChild: <C extends Component>(ChildClass: ComponentClass<C>, opts: {    props?: Partial<C>;    slots?: Record<string, string>;}) => Promise<string>
   _resolveTitle: () => string | null
   _shouldRefresh: boolean
   _streamSender: ((ref: string, content: string, replace: boolean) => void) | null
@@ -43,7 +43,7 @@ class Component = {
   addError: (field: string, message: string) => void
   bind: (key: string, optionValue?: string) => Record<string, unknown>
   cancelled: boolean
-  child: <C extends Component>(ChildClass: new () => C, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    stream?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>
+  child: <C extends Component>(ChildClass: ComponentClass<C>, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    stream?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>
   clearDurable: () => void
   client: (script: string) => void
   currentUrl: (options?: CurrentUrlOptions) => string

@@ -372,7 +372,38 @@ export interface FlashBuilder {
   onClose(method: string, args?: unknown[]): this;
 }
 
+/**
+ * A component class as `child()` receives it: a constructor, plus the statics it
+ * reads off the class.
+ *
+ * A bare `new () => C` carries no statics, so asking whether a child is static
+ * needed a cast to `typeof Component` — a cast that says nothing true, since the
+ * thing being cast really is a component class. `interactive` is optional, so
+ * every existing caller satisfies this unchanged.
+ */
+type ComponentClass<C extends Component> = (new () => C) & {
+  interactive?: boolean;
+};
+
 // ── Component ──────────────────────────────────────────────────────────────────────
+/**
+ * Copy a parent's `props` onto a freshly constructed child.
+ *
+ * Underscore-prefixed keys are skipped: those are the framework's own fields
+ * (`_flowId`, `_flowPath`, `_childIds`) and a parent overwriting one would
+ * detach the child from its own identity.
+ *
+ * The cast is the boundary. `Partial<C>` is a checked contract at the call site;
+ * inside, assignment is by string key and no index signature exists to express
+ * that. Written once here rather than at each of the four render paths, which is
+ * both less duplication and three fewer casts.
+ */
+function _assignChildProps(target: object, props: Record<string, unknown>): void {
+  const bag = target as Record<string, unknown>;
+  for (const [key, value] of Object.entries(props)) {
+    if (!key.startsWith("_")) bag[key] = value;
+  }
+}
 
 /**
  * Base class for Flow pages — reactive server-side components rendered over a WebSocket.
@@ -1528,7 +1559,7 @@ export abstract class Component {
    * @category Rendering
    */
   async child<C extends Component>(
-    ChildClass: new () => C,
+    ChildClass: ComponentClass<C>,
     opts: {
       key?: string | number;
       props?: Partial<C>;
@@ -1578,7 +1609,7 @@ export abstract class Component {
     // the client morph preserve the live DOM underneath — and a static child has
     // no live DOM, so a stub would blank the region on every parent update. That
     // single interaction is the whole of what makes render modes delicate.
-    if ((ChildClass as unknown as typeof Component).interactive === false) {
+    if (ChildClass.interactive === false) {
       if (opts.lazy || opts.defer || opts.stream) {
         throw new Error(
           `<${name}> is \`static interactive = false\`, so it cannot also be lazy, deferred ` +
@@ -1647,9 +1678,7 @@ export abstract class Component {
       childPage._flowPath = this._flowPath;
       if (opts.slots) childPage._flowSlots = opts.slots;
       if (opts.props) {
-        for (const [k, v] of Object.entries(opts.props)) {
-          if (!k.startsWith("_")) (childPage as Record<string, unknown>)[k] = v;
-        }
+        _assignChildProps(childPage, opts.props as Record<string, unknown>);
       }
       // Don't call onMount() — placeholder only
 
@@ -1682,9 +1711,7 @@ export abstract class Component {
       childPage._flowPath = this._flowPath;
       if (opts.slots) childPage._flowSlots = opts.slots;
       if (opts.props) {
-        for (const [k, v] of Object.entries(opts.props)) {
-          if (!k.startsWith("_")) (childPage as Record<string, unknown>)[k] = v;
-        }
+        _assignChildProps(childPage, opts.props as Record<string, unknown>);
       }
 
       queueStream({
@@ -1717,9 +1744,7 @@ export abstract class Component {
     childPage._flowPath = this._flowPath;
     if (opts.slots) childPage._flowSlots = opts.slots;
     if (opts.props) {
-      for (const [k, v] of Object.entries(opts.props)) {
-        if (!k.startsWith("_")) (childPage as Record<string, unknown>)[k] = v;
-      }
+      _assignChildProps(childPage, opts.props as Record<string, unknown>);
     }
     // A child is populated from its parent's props (assigned above), not from route segments,
     // but it still gets the request context — the same object the routed page received.
@@ -1759,16 +1784,14 @@ export abstract class Component {
    */
   /** @internal Called only by {@link child}. */
   async _renderStaticChild<C extends Component>(
-    ChildClass: new () => C,
+    ChildClass: ComponentClass<C>,
     opts: { props?: Partial<C>; slots?: Record<string, string> },
   ): Promise<string> {
     const childPage = new ChildClass();
     childPage._flowPath = this._flowPath;
     if (opts.slots) childPage._flowSlots = opts.slots;
     if (opts.props) {
-      for (const [k, v] of Object.entries(opts.props)) {
-        if (!k.startsWith("_")) (childPage as unknown as Record<string, unknown>)[k] = v;
-      }
+      _assignChildProps(childPage, opts.props as Record<string, unknown>);
     }
 
     const ctx = HttpContext.tryGet();

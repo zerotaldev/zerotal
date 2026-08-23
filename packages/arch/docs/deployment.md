@@ -200,23 +200,45 @@ release that built its assets ahead of time and locked the tree down serves what
 shipped, and logs one line saying so. That is what lets the service run under a properly
 hardened unit; see [Hardening the service](#hardening-the-service).
 
-### Stale bundles do not go away on their own
+### Replace the asset directory on release, do not merge into it
 
-Code splitting names every shared chunk after its content, so each build emits a new set
-and abandons the last. Both build commands clean up after themselves, but conservatively:
-they remove chunk-shaped filenames, plus whatever the previous build on **this machine**
-recorded in `.zerotal/`. That record is gitignored and does not travel.
+Code splitting names every chunk after its content, so each build emits a new set and
+abandons the last. Both build commands clean those up as they go, and they do it without
+needing anything to have survived from the previous build — so the directory a build
+writes holds that build's output and nothing else, on a developer's machine and a fresh CI
+checkout alike.
 
-So the two shapes that produce releases both defeat it. A build on a fresh CI checkout has
-no record to compare against. A release unpacked onto a server that does not rebuild has
-nobody to run a cleanup at all — the archive extracts over whatever is already there, and
-the leftovers accumulate release after release.
+What the build cannot clean is a directory it never sees. A release that is **unpacked over
+the top** of the running one — `tar -xzf` into the app directory, `rsync` without
+`--delete` — merges: every file in the archive is written, and every file that is not in
+the archive is left exactly where it was. Nothing on that server ever ran a build, so
+nothing ever removes last release's chunks, and they collect one release at a time.
 
-Leftovers are not just clutter. They stay publicly fetchable at their content-hashed URLs,
-so a page whose copy you withdrew is still readable by anyone holding the link.
+That is not only clutter. They stay publicly fetchable at their content-hashed URLs, so a
+page whose copy you withdrew is still readable by anyone holding the link — pricing you
+took down, a policy you replaced, a feature you pulled.
 
-`--clean` needs no record — the output directory belongs to the build, and what the build
-did not write does not belong in it:
+Clear the directory as part of the release, before the new files land:
+
+```bash
+# on the server, before extracting
+rm -rf "$APP_DIR/public/assets"
+tar -xzf release.tgz -C "$APP_DIR"
+
+# or let rsync do it
+rsync -a --delete public/assets/ "$HOST:$APP_DIR/public/assets/"
+```
+
+Ordering matters if the old release is still serving traffic: clearing the directory takes
+its bundles away, so do it as close to the swap as you can, or stage the release in a new
+directory and move it into place.
+
+### `--clean` for a directory the build does not own outright
+
+The cleanup above recognises the filenames `Bun.build()` produces. An app that sets its own
+`naming`, or that writes a second bundle into the same directory by other means, can leave
+output the build does not recognise as its own. `--clean` needs no recognition — whatever
+this build did not write, goes:
 
 ```bash
 # in your project root
@@ -224,9 +246,9 @@ bun zt assets:build --clean
 bun zt inertia:build --production --clean
 ```
 
-It refuses `public/` itself and the project root, where deleting what was not rebuilt
-would take the app's images and favicon with it. Point the build at a directory of its own
-— `public/assets` is the Inertia default — and run it wherever the release is built.
+It refuses `public/` itself and the project root, where deleting what was not rebuilt would
+take the app's images and favicon with it. Point the build at a directory of its own —
+`public/assets` is the Inertia default.
 
 Bump your asset version (or hash the bundle) so clients reload onto the new build — see
 [Inertia › Asset versioning](/docs/inertia/middleware#asset-versioning).

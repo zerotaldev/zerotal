@@ -106,19 +106,18 @@ describe("pruneBuildOutput()", () => {
 });
 
 /**
- * `--clean`: the answer for an output directory the build owns outright.
+ * `--clean`: for output the prune cannot recognise as output.
  *
- * Pruning is deliberately conservative — manifest entries and chunk-shaped names,
- * nothing else — because it has to be safe in a directory that holds more than
- * build output. The cost of that caution shows up exactly where releases are
- * made: the manifest lives in `.zerotal/`, which is gitignored, so a build on a
- * fresh CI checkout has no record of the last one and leaves every stale file
- * that is not chunk-named. Unpack that onto a server that does not rebuild, and
- * the orphans accumulate release after release.
+ * Pruning removes what it can identify — a manifest entry, or a filename shaped
+ * the way `Bun.build()` shapes a code-split chunk. Measured across ten releases
+ * into one directory, that holds it steady at exactly the build's own output,
+ * with or without a manifest to compare against. The gap is not releases; it is
+ * naming. Output that arrived under some other convention is invisible to both
+ * rules, and stays.
  *
- * They stay publicly fetchable, which is the part that matters: a page whose copy
- * was withdrawn is still readable at its content-hashed URL by anyone holding the
- * link.
+ * Which is worth stating because stale bundles are not only clutter: they remain
+ * publicly fetchable at their content-hashed URLs, so a page whose copy was
+ * withdrawn is still readable by anyone holding the link.
  */
 describe("cleanBuildOutput()", () => {
   it("removes everything this build did not write, chunk-named or not", async () => {
@@ -126,10 +125,23 @@ describe("cleanBuildOutput()", () => {
 
     const removed = await cleanBuildOutput(outdir, emitted("app.js", "app.css"));
 
-    // The hashed entry names are the ones a prune cannot see: no manifest on a
-    // fresh checkout, and nothing about `pricing-9f8e7d.js` looks like a chunk.
     expect(removed).toEqual(["chunk-old.js", "legacy-a1b2c3.js", "pricing-9f8e7d.js"]);
     expect(await remaining()).toEqual(["app.css", "app.js"]);
+  });
+
+  it("catches what the prune's name rule does not recognise", async () => {
+    // The two spellings side by side, against a directory with no manifest —
+    // which is what a first build on a new machine sees. `chunk-…` is the shape
+    // `Bun.build()` emits and the prune knows it; `Pricing-…` is what some other
+    // naming produces, and nothing about it says "build output".
+    await seed("app.js", "chunk-2502z4dn.js", "Pricing-9f8e7d1c.js");
+
+    const pruned = await pruneBuildOutput(outdir, emitted("app.js"));
+    expect(pruned).toEqual(["chunk-2502z4dn.js"]);
+    expect(await remaining()).toEqual(["Pricing-9f8e7d1c.js", "app.js"]);
+
+    const cleaned = await cleanBuildOutput(outdir, emitted("app.js"));
+    expect(cleaned).toEqual(["Pricing-9f8e7d1c.js"]);
   });
 
   it("reaches into nested directories", async () => {

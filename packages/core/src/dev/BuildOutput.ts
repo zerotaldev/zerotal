@@ -133,23 +133,25 @@ async function _listEntries(root: string): Promise<string[]> {
 /**
  * Remove everything in `outdir` that this build did not write.
  *
- * The difference from {@link pruneBuildOutput} is what it trusts. Pruning is
- * conservative on purpose — it removes only what a manifest recorded or what is
- * named like a chunk — because the manifest lives in `.zerotal/`, which is
- * machine-local and gitignored. A release built on a fresh CI checkout therefore
- * has no record of the last build, and a release that is unpacked onto a server
- * without rebuilding there has nobody to run a prune at all. Either way the
- * output directory keeps files nothing references any more.
+ * The difference from {@link pruneBuildOutput} is what it trusts. Pruning
+ * removes only what it recognises: a file the manifest recorded, or one named
+ * the way `Bun.build()` names a code-split chunk. That covers what this
+ * framework's own builds emit, with or without a manifest — the name rule alone
+ * holds a directory steady across releases on a machine that has never seen it
+ * before. What it cannot recognise is output some other naming produced: an app
+ * that sets its own `naming`, or writes a second bundle into the same directory
+ * by other means.
  *
- * That is not only clutter. A withdrawn page's bundle stays publicly fetchable
- * at its content-hashed URL, so copy removed from the site is still readable by
- * anyone who has the link — which is how pricing wording that had been taken
- * down went on being served.
+ * This needs no recognition — whatever is not in `outputs` goes. It refuses the
+ * two directories where that is certainly wrong: the project root, and `public/`,
+ * which holds the app's images and favicon beside its bundles. Point it at a
+ * dedicated directory, or prune instead.
  *
- * This is the answer for a directory the build owns outright: whatever is not in
- * `outputs` goes. It refuses the two directories where that is certainly wrong —
- * the project root, and `public/`, which holds the app's images and favicon
- * beside its bundles. Point it at a dedicated directory, or prune instead.
+ * Neither of these helps a directory nothing runs in. A release unpacked over the
+ * top of the previous one — `tar -xzf`, `rsync` without `--delete` — merges into
+ * it, and no build happens on that machine to clean anything: the old bundles
+ * stay, publicly fetchable at their content-hashed URLs. That one is fixed by
+ * replacing the directory on release, not here.
  *
  * @param outdir  Absolute path the build wrote to.
  * @param outputs The build's artifacts (`Bun.build()`'s `outputs`).

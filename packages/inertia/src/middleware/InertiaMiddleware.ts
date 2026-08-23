@@ -21,6 +21,15 @@ import { assetVersion } from "../version.ts";
  * 3. Always set Vary: X-Inertia on all responses
  *    Ensures browser cache treats HTML and JSON versions as distinct.
  */
+/**
+ * Every status the client can be handed as a redirect.
+ *
+ * 307 and 308 are here to be *marked*, not converted — an app that picks a
+ * method-preserving redirect means it, and a response the client cannot
+ * recognise as Inertia's is the failure this list exists to prevent.
+ */
+const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
+
 export class InertiaMiddleware extends BaseMiddleware {
   protected options: Record<string, never> = {};
 
@@ -51,34 +60,46 @@ export class InertiaMiddleware extends BaseMiddleware {
 
     const status = response.status;
     const method = http.request.method;
-    const isRedirect = [301, 302, 303].includes(status);
+    const isRedirect = REDIRECT_STATUSES.includes(status);
 
-    // Fragment redirects: a redirect whose target carries a URL fragment (#...) on an Inertia
-    // request becomes a 409 + X-Inertia-Redirect, so the client performs a standard Inertia visit
-    // (preserving the fragment) instead of a full reload.
     if (isInertia && isRedirect) {
       const target = response.headers.get("Location") ?? "";
+
+      // Fragment redirects: a redirect whose target carries a URL fragment (#...) on an Inertia
+      // request becomes a 409 + X-Inertia-Redirect, so the client performs a standard Inertia visit
+      // (preserving the fragment) instead of a full reload.
       if (target.includes("#")) {
-        // Same header-preservation concern as the 303 branch below.
+        // Same header-preservation concern as the redirect branch below.
         const headers = new Headers(response.headers);
         headers.delete("Location");
         headers.set("X-Inertia-Redirect", target);
         headers.set("X-Inertia", "true");
         return new Response(null, { status: 409, headers });
       }
-    }
 
-    // Convert 302 to 303 for non-GET Inertia redirects
-    // Inertia requires 303 so browsers use GET on the redirect target
-    if (isInertia && [301, 302].includes(status) && method !== "GET") {
       // Carry the original headers over. Rebuilding the Response from just `Location` dropped
       // every other header the handler set — most importantly `Set-Cookie`, so `POST /login`
       // returned a 303 to /dashboard with the session cookie discarded and the user still
       // logged out.
       const headers = new Headers(response.headers);
-      headers.set("Location", response.headers.get("Location") ?? "/");
+      headers.set("Location", target || "/");
+
+      // Stamped on *every* Inertia redirect, not only the ones converted below.
+      //
+      // It used to be set inside the conversion, which meant a handler that
+      // already returned the 303 the protocol asks for — `http.redirect(to, 303)`
+      // — skipped the only line that marked the response as Inertia's. The
+      // request succeeded, the row was written, and the form sat there with the
+      // fields still filled in: the worst shape a failure can take, because
+      // nothing about it looks like an error from either end.
       headers.set("X-Inertia", "true");
-      return new Response(null, { status: 303, headers });
+      if (!headers.has("Vary")) headers.set("Vary", "X-Inertia");
+
+      // A non-GET 301/302 becomes a 303, so the browser follows with GET instead
+      // of repeating the method against the target. 307 and 308 are left alone:
+      // preserving the method is the whole reason to choose them.
+      const needsSeeOther = method !== "GET" && (status === 301 || status === 302);
+      return new Response(null, { status: needsSeeOther ? 303 : status, headers });
     }
 
     // Never wrap streaming responses (e.g. SSE) — re-creating the Response

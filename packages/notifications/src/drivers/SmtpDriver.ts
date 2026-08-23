@@ -151,8 +151,16 @@ interface SmtpReply {
  * coalesced with the next reply. Reading is therefore driven by the protocol's
  * own framing — a reply ends at the first line whose code is followed by a space
  * rather than a hyphen — not by packet boundaries.
+ *
+ * Exported for its tests only. The transport rules it enforces — a superseded
+ * socket is not this session's, a reply is framed by the protocol and not by
+ * packet boundaries — cannot be reached through `SmtpDriver.send()` without a
+ * STARTTLS-capable peer, and Bun cannot be one: server-side TLS upgrade is not
+ * supported, so no in-process fake can complete the handshake.
+ *
+ * @internal
  */
-class SmtpConnection {
+export class SmtpConnection {
   private _buffer = "";
   private _replies: SmtpReply[] = [];
   private _waiters: Array<{
@@ -162,6 +170,25 @@ class SmtpConnection {
   private _failure: Error | undefined;
   private _closed = false;
   private _encrypted: boolean;
+
+  /**
+   * Which set of socket callbacks is the live one.
+   *
+   * `upgradeTLS()` does not detach the plaintext socket: its handlers go on
+   * firing, and what they deliver from then on is the *undecrypted* TLS stream —
+   * handshake records and ciphertext. Feeding that to `_onData` put binary in the
+   * middle of the reply buffer, so the `250` after STARTTLS was never parsed and
+   * every send died on the read timeout, with the server logging a connection
+   * lost after STARTTLS. `close` and `error` were worse: the superseded socket
+   * ending marked the live connection closed and rejected whatever was waiting on
+   * it.
+   *
+   * Each set of callbacks captures the generation it was installed for, and an
+   * upgrade bumps it. Anything from an older generation is somebody else's
+   * stream. Identity comparison against the current socket would nearly work,
+   * but a counter cannot be fooled by a runtime that hands the same object back.
+   */
+  private _generation = 0;
 
   private constructor(
     private _socket: import("bun").Socket<undefined>,
@@ -192,9 +219,10 @@ class SmtpConnection {
           ? { tls: { rejectUnauthorized: options.rejectUnauthorized, serverName: host } }
           : {}),
         socket: {
-          data: (_s, data) => conn._onData(data),
-          error: (_s, err) => conn._onError(err),
-          close: () => conn._onClose(),
+          // Generation 0: the connection as opened. An upgrade supersedes it.
+          data: (_s, data) => conn._onData(data, 0),
+          error: (_s, err) => conn._onError(err, 0),
+          close: () => conn._onClose(0),
           open: () => {},
         },
       });
@@ -212,12 +240,15 @@ class SmtpConnection {
   /** Upgrade a plaintext connection to TLS after a 220 response to STARTTLS. */
   async upgradeTLS(host: string, rejectUnauthorized: boolean): Promise<void> {
     try {
+      // Bumped before the call, so the plaintext socket's callbacks are already
+      // stale by the time the handshake can deliver its first record.
+      const generation = ++this._generation;
       const [, tls] = this._socket.upgradeTLS<undefined>({
         tls: { rejectUnauthorized, serverName: host },
         socket: {
-          data: (_s, data) => this._onData(data),
-          error: (_s, err) => this._onError(err),
-          close: () => this._onClose(),
+          data: (_s, data) => this._onData(data, generation),
+          error: (_s, err) => this._onError(err, generation),
+          close: () => this._onClose(generation),
           open: () => {},
         },
       });
@@ -305,7 +336,8 @@ class SmtpConnection {
     }
   }
 
-  private _onData(data: Uint8Array): void {
+  private _onData(data: Uint8Array, generation: number): void {
+    if (generation !== this._generation) return; // ciphertext from a superseded socket
     this._buffer += new TextDecoder().decode(data);
     this._parse();
   }
@@ -350,14 +382,18 @@ class SmtpConnection {
     }
   }
 
-  private _onError(error: Error): void {
+  private _onError(error: Error, generation: number): void {
+    if (generation !== this._generation) return;
     this._failure = new SmtpConnectionError(
       `SMTP socket error on ${this._host}:${this._port} — ${error.message}`,
     );
     this._rejectAll(this._failure);
   }
 
-  private _onClose(): void {
+  private _onClose(generation: number): void {
+    // The plaintext socket ends as a matter of course once TLS takes over, and
+    // treating that as the connection dropping killed the session that replaced it.
+    if (generation !== this._generation) return;
     this._closed = true;
     if (this._waiters.length > 0) {
       this._rejectAll(

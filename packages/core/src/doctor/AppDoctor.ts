@@ -100,13 +100,31 @@ const syncVsMigrationsCheck: DoctorCheck = {
   run(app) {
     const synchronize = _config(app, "database.synchronize") === true;
     const migrations = _sourceFiles(process.cwd(), "database/migrations");
+
+    // Both present is only *fatal* in production, where `deploy:<env>` runs
+    // `migrate` and boot-time sync would have created the tables first.
+    //
+    // Outside production it is a documented arrangement rather than a mistake:
+    // sync builds the schema from the models so a fresh clone runs without a
+    // migration step, and `synchronize` is written as an expression that is false
+    // in production. This app is one of them. Failing that configuration is how a
+    // check stops being trusted — and this is the check the roadmap wants trusted
+    // enough to gate a deploy, which it cannot be while it cries wolf locally.
     if (synchronize && migrations.length > 0) {
-      return fail(
+      const detail =
         `database.synchronize is on and ${migrations.length} migration(s) exist. Boot-time ` +
-          `sync creates tables from the models first, so the first \`migrate\` fails with ` +
-          `"table already exists". The schema needs exactly one source of truth.`,
-        "Set synchronize: false in config/database.ts (migrations become the source of truth).",
-      );
+        `sync creates tables from the models, so \`migrate\` then fails with ` +
+        `"table already exists".`;
+      return _isProductionEnv(app)
+        ? fail(
+            `${detail} In production the deploy runs \`migrate\`, so this will break the release.`,
+            "Set synchronize: false in config/database.ts (migrations become the source of truth).",
+          )
+        : warn(
+            `${detail} Fine if sync is deliberately for local only and off in production — ` +
+              `just do not run \`migrate\` against this database.`,
+            "If you meant migrations to own the schema everywhere, set synchronize: false.",
+          );
     }
     if (synchronize) return ok("synchronize (no migrations present)");
     return ok(migrations.length > 0 ? "migrations" : "no schema management configured");

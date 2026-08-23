@@ -156,13 +156,28 @@ describe("app-key check", () => {
 });
 
 describe("synchronize-vs-migrations check", () => {
-  it("fails when synchronize is on and migrations exist", async () => {
+  it("fails in production, where the deploy runs migrate", async () => {
     mkdirSync(join(root, "database", "migrations"), { recursive: true });
     writeFileSync(join(root, "database", "migrations", "0001_users.ts"), "");
-    const app = fakeApp({ config: { "database.synchronize": true } });
+    const app = fakeApp({
+      config: { "database.synchronize": true, "app.env": "production" },
+    });
     const result = await check("synchronize-vs-migrations").run(app);
     expect(result.status).toBe("fail");
-    expect(result.message).toContain("one source of truth");
+    expect(result.message).toContain("break the release");
+  });
+
+  it("warns rather than fails outside production", async () => {
+    // Sync locally and migrations for the deploy is a documented arrangement —
+    // the docs app itself is written that way, and `synchronize` is an expression
+    // that is false in production. Failing it is how a check stops being trusted,
+    // and this is the one the roadmap wants trusted enough to gate a deploy.
+    mkdirSync(join(root, "database", "migrations"), { recursive: true });
+    writeFileSync(join(root, "database", "migrations", "0001_users.ts"), "");
+    const app = fakeApp({ config: { "database.synchronize": true, "app.env": "local" } });
+    const result = await check("synchronize-vs-migrations").run(app);
+    expect(result.status).toBe("warn");
+    expect(result.message).toContain("do not run");
   });
 
   it("passes with migrations only", async () => {

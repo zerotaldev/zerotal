@@ -115,6 +115,12 @@ export interface PageClassWithMeta {
   title?: string | ((component: never) => string);
   /** Raw HTML to inject into <head> for this page. */
   head?: string;
+  /**
+   * `false` renders this page as markup: no snapshot, no state script, no client
+   * registration — and, if nothing else on the page registers either, no
+   * WebSocket. See {@link Component.interactive}.
+   */
+  interactive?: boolean;
   /** Optional model associations for auto-registration. */
   models?: Record<string, typeof import("@zerotal/orm").BaseModel>;
   /** Optional layout class. */

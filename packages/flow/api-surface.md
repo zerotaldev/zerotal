@@ -760,6 +760,7 @@ interface ModalProps = {
 interface PageClassWithMeta = {
   new (): Component
   head?: string
+  interactive?: boolean
   layout?: new () => Layout
   models?: Record<string, typeof BaseModel>
   name: string

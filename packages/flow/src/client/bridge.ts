@@ -501,6 +501,8 @@ function _setConnectionState(online: boolean): void {
 }
 
 let _ws: WebSocket | null = null;
+/** Whether this page has ever needed the socket. Latched, never cleared. @see _ensureConnected */
+let _socketWanted = false;
 let _reconnectDelay = 1_000;
 const MAX_DELAY = 30_000;
 
@@ -779,6 +781,37 @@ function _dispatchFrame(comp: FlowComponent, method: string, args: unknown[]): v
     return;
   }
   _sendCall(comp, method, args);
+}
+
+/**
+ * Open the socket, but only if the page has anything that could use it.
+ *
+ * Every page used to connect. A page whose components are all
+ * `static interactive = false` — a marketing page, a docs article, a rendered
+ * report — has nothing that can dispatch an action, poll, or receive a patch,
+ * and it still opened `/__flow/ws` and held it. That is a connection per visitor
+ * per page, and a server holding all of them, for a page that will never send a
+ * frame.
+ *
+ * The test is `_components.size`, and it is exact rather than a heuristic: both
+ * paths that write to the socket — {@link _sendCall} and {@link _cancelTask} —
+ * take a `FlowComponent`, so with none registered nothing can send. Navigation
+ * does not need it either; `<Link navigate>` fetches the page over HTTP.
+ *
+ * Called again after anything that can register a component — the initial scan,
+ * an SPA navigation, a lazy child arriving — so a page that becomes interactive
+ * connects at that moment rather than never. Already-connected is a no-op, and
+ * reconnection after a drop stays with {@link _connect}, which does not re-ask
+ * the question: a page that has connected once has proved it needs a socket.
+ *
+ * The latch is a flag rather than `_ws !== null`, because `_ws` is nulled on
+ * close while a reconnect is pending — so a scan during that window would have
+ * opened a second socket beside the one already on its way back.
+ */
+function _ensureConnected(): void {
+  if (_socketWanted || _components.size === 0) return;
+  _socketWanted = true;
+  _connect();
 }
 
 function _connect(): void {
@@ -1173,6 +1206,7 @@ function _morphComponent(comp: FlowComponent, html: string): void {
   }
 
   _scanComponents();
+  _ensureConnected();
   _cleanupDisconnected();
   _refreshComponentFeatures(comp);
 }
@@ -2908,6 +2942,7 @@ async function _navigateTo(href: string, options: NavigateOptions = {}): Promise
     currentRoot.replaceWith(incomingClone);
     _cleanupDisconnected();
     _scanComponents();
+    _ensureConnected();
     _processHead(doc); // re-apply head from the incoming page (shell stylesheet + page meta)
     // Inside the swap, not after it: the document only has its new height (and
     // its fragment targets) once the root is in place. Inside the View
@@ -4158,7 +4193,7 @@ export function initBridge(): void {
   _checkBootError(); // dev-only: an initial-render throw is embedded on the page → show the overlay
   _scanComponents();
   _processHead(); // hoist any SSR <Head> content into document.head
-  _connect();
+  _ensureConnected();
   _setupEventDelegation();
   _setupNavigationLinks();
   _setupModalEscape();

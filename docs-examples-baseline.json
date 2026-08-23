@@ -3483,6 +3483,12 @@
     },
     {
       "file": "docs/flow/layouts.md",
+      "heading": "A wholly static page opens no socket",
+      "ordinal": 0,
+      "hash": "2okb17se2l56"
+    },
+    {
+      "file": "docs/flow/layouts.md",
       "heading": "Assertions",
       "ordinal": 0,
       "hash": "q1gn2vab7kup"

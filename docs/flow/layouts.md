@@ -399,9 +399,35 @@ resolves.
 Inside the component, `this.isInteractive` reports which mode it is in — useful
 for leaving out something that only makes sense with a client attached.
 
-> **Note** — this is the first half of render modes. A page whose every component
-> is static still opens a WebSocket; making that connection conditional is
-> separate work.
+### A wholly static page opens no socket
+
+`static interactive = false` works on a routed page as well as on a child, and the
+page is the one that matters: a page is a component too, so a page whose children
+are all static but which is interactive itself still registers with the client —
+and still connects.
+
+```tsx fragment
+export class ChangelogPage extends Component {
+  static interactive = false;
+
+  override async render() {
+    return <article>{/* … */}</article>;
+  }
+}
+```
+
+When nothing on the page registers, **no WebSocket is opened at all**. Not opened
+and idle — never created. For a marketing page, a documentation article or a
+rendered report, that is one connection per visitor that no longer exists on
+either end.
+
+The connection is made when it is needed rather than at boot, so a page that
+becomes interactive later — an SPA navigation to one that is, a deferred child
+arriving — connects at that moment. `<Link navigate>` needs nothing: it fetches
+over HTTP.
+
+A page with a single interactive component still connects, as before. One is
+enough.
 
 ### Slots
 

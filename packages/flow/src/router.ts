@@ -174,23 +174,36 @@ export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
 
             const innerHtml = await _renderFlowPage(page, () => page.render());
 
+            // A page can opt out of interactivity as a child can — and it is the page
+            // that matters most, because the client connects when it finds anything to
+            // register. A page that is static and whose children are static registers
+            // nothing, so no socket is opened at all.
+            const interactive = PageClass.interactive !== false;
+
             // dehydrate() hook runs at the end of the request, before serialisation.
-            await page.onDehydrate();
-            const snapshot = dehydrate(page, { id: compId, name: compName, path });
-            warnIfLarge(snapshot, compName);
+            if (interactive) await page.onDehydrate();
+            const snapshot = interactive
+              ? dehydrate(page, { id: compId, name: compName, path })
+              : undefined;
+            if (snapshot) warnIfLarge(snapshot, compName);
 
             // Persist the durable snapshot (or clear it if clearDurable() was called). No-op unless
             // the component opted into `static durable`.
-            await persistDurable(page, ctx, snapshot);
+            if (snapshot) await persistDurable(page, ctx, snapshot);
 
             // toScriptJson, not JSON.stringify: the snapshot carries @expose/@locked values and
             // @url props seeded from the query string, so it routinely holds attacker-controlled
             // strings that would otherwise close the <script> island. See toScriptJson's docblock.
-            const snapshotJson = toScriptJson(snapshot);
+            const snapshotJson = snapshot ? toScriptJson(snapshot) : "";
 
             // The flow component root — always the same wrapper regardless of layout.
+            // A static page is not marked as a flow root: the attribute is what makes
+            // the client morph skip a subtree, and it is also what `_scanComponents`
+            // looks for. Neither applies to markup that will never be patched.
             const flowRoot: HtmlNode = {
-              html: `<div data-flow-root x-data="{}" data-flow-id="${compId}" data-flow-name="${compName}">${innerHtml}</div>`,
+              html: interactive
+                ? `<div data-flow-root x-data="{}" data-flow-id="${compId}" data-flow-name="${compName}">${innerHtml}</div>`
+                : innerHtml,
             };
 
             // Layout resolution. The JSX-native `layout(page)` instance hook wins; otherwise
@@ -244,7 +257,7 @@ export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
 </head>
 <body>
   ${bodyContent}
-  <script type="application/json" id="flow-state-${compId}">${snapshotJson}</script>
+  ${snapshotJson ? `<script type="application/json" id="flow-state-${compId}">${snapshotJson}</script>` : ""}
   ${runtimeTag}
 </body>
 </html>`;

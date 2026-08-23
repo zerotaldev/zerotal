@@ -434,6 +434,11 @@ export class FlowBrowser {
         //
         // Registered before the caller's own `setup`, so a suite can still
         // override the mount if it means to.
+        // `process.cwd()`, matching what the framework's own `_bootConventions`
+        // does — which means a suite invoked from the repo root rather than from
+        // the app directory mounts a `public/` that is not there, and every page
+        // arrives unstyled. It fails as a layout assertion rather than as a
+        // missing file, so it is worth knowing before spending an hour on it.
         Router.static("/", `${process.cwd()}/public`);
         options.setup?.();
       },

@@ -22,6 +22,13 @@ export interface ArchConfigShape {
    * `AGENTS.md` natively, and two files of guidance drift apart.
    */
   claudeFile: boolean;
+  /**
+   * Write the agent skill files.
+   *
+   * On by default: they cost nothing until an agent decides one is relevant,
+   * which is the entire reason they are files rather than more of `AGENTS.md`.
+   */
+  skills: boolean;
   /** Write the MCP client configuration. Default: `true`. */
   mcpConfig: boolean;
   /** Path of the MCP client config, relative to the project root. */
@@ -37,6 +44,7 @@ export interface ArchConfigShape {
 const defaults: ArchConfigShape = {
   agentsFile: true,
   claudeFile: true,
+  skills: true,
   mcpConfig: true,
   mcpConfigPath: ".mcp.json",
   serverName: "zerotal",

@@ -94,6 +94,7 @@ interface ArchConfigShape = {
   mcpConfig: boolean
   mcpConfigPath: string
   serverName: string
+  skills: boolean
 }
 
 interface Detected = {

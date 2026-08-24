@@ -20,6 +20,7 @@ import { installedPackages } from "../probe/topics.ts";
 import { detectAgents } from "./detect.ts";
 import { agentsPreamble, buildGuidelines, claudeShim } from "./guidelines.ts";
 import { detectShape } from "./shape.ts";
+import { selectSkills, renderSkill, skillPaths, SKILL_MARKER } from "./skills.ts";
 import type { ProjectShape } from "./shape.ts";
 import { applyBlock } from "./markers.ts";
 import { applyMcpConfig } from "./mcpConfig.ts";
@@ -62,6 +63,7 @@ export class ArchInstallCommand extends Command {
       ...(config.mcpConfig ? await this._mcpChanges(root, config, detected.targets) : []),
       ...(config.agentsFile ? [await this._agentsChange(root, config, packages, shape)] : []),
       ...(config.claudeFile ? [await this._claudeChange(root)] : []),
+      ...(config.skills ? await this._skillChanges(root, packages, shape, detected.agents) : []),
     ];
 
     this.section(dry ? "arch:install — dry run" : "arch:install");
@@ -82,7 +84,7 @@ export class ArchInstallCommand extends Command {
         continue;
       }
       if (change.status === "unchanged") {
-        this.dim(`  · ${change.path} — already up to date`);
+        this.dim(`  · ${change.path} — ${change.detail ?? "already up to date"}`);
         continue;
       }
       if (!dry && change.text !== undefined) {
@@ -168,6 +170,41 @@ export class ArchInstallCommand extends Command {
     return outcome.status === "conflict"
       ? { path: "AGENTS.md", status: "conflict", detail: outcome.reason }
       : { path: "AGENTS.md", status: outcome.status, text: outcome.text };
+  }
+
+  /**
+   * The skill files, one per applicable skill per agent directory.
+   *
+   * A file without {@link SKILL_MARKER} is left exactly as it is. That is the
+   * whole override mechanism: to replace a skill this ships, edit it and delete
+   * the marker line. Anything cleverer would be a second config to keep in step
+   * with the thing it configures.
+   */
+  private async _skillChanges(
+    root: string,
+    packages: string[],
+    shape: ProjectShape,
+    agents: string[],
+  ): Promise<Change[]> {
+    const changes: Change[] = [];
+
+    for (const skill of selectSkills(packages, shape)) {
+      const text = renderSkill(skill, shape);
+      for (const path of skillPaths(skill.name, agents)) {
+        const existing = await readIfPresent(join(root, path));
+        if (existing !== undefined && !existing.includes(SKILL_MARKER)) {
+          changes.push({ path, status: "unchanged", detail: "yours — left alone" });
+          continue;
+        }
+        changes.push(
+          existing === text
+            ? { path, status: "unchanged" }
+            : { path, status: existing === undefined ? "created" : "updated", text },
+        );
+      }
+    }
+
+    return changes;
   }
 
   private async _claudeChange(root: string): Promise<Change> {

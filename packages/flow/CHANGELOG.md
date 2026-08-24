@@ -11,6 +11,35 @@ change.
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-08-24
+
+### Added
+
+- **`static interactive = false` — the first render mode.** Every component until now was
+  maximally interactive: server-rendered, dehydrated into a snapshot, tracked by the client,
+  reachable over a socket. Right for a counter, wasteful for a nav rail. A static component is
+  rendered in full by its parent and nothing else — no `onDehydrate`, no snapshot, no state
+  script, no entry in the client registry, and no `data-flow-root` (which would freeze it at
+  its first render, since its only route to an update is the parent re-rendering it). It takes
+  no place in `_childIds` and does not shift its interactive siblings' ids. `lazy`, `defer` and
+  `stream` throw rather than being ignored: each waits for the client to ask for the real
+  render, and a static child never registers to do the asking. Opt-in — nothing existing
+  changes.
+
+- **`this.isInteractive`** reports the mode from inside a component. A new public member, so
+  the name is no longer available to applications; it is on the documented reserved list.
+
+### Changed
+
+- **A page with nothing interactive on it opens no socket.** Every page connected at boot,
+  unconditionally — so a marketing page, a docs article or a rendered report held a WebSocket
+  open on both ends for the life of the visit to carry nothing, since both paths that write to
+  the socket take a `FlowComponent` and none was registered. The connection is now made when
+  something needs it: after the initial scan, after an SPA navigation, after a patch registers
+  a child. `<Link navigate>` fetches over HTTP, so a static page with links stays disconnected.
+  A routed page honours the same static, which is the half that matters — a page is a
+  component, and one whose children are static but which is interactive itself still connects.
+
 ## [1.7.3] — 2026-08-20
 
 ### Changed

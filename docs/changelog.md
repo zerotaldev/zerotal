@@ -27,6 +27,169 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.8.0 — 2026-08-24
+
+The first render mode, the codemod runner 2.0 depends on, and five failures that
+each looked like something other than what they were.
+
+### Added
+
+- **`static interactive = false` — the first rung of Flow's render modes.** Every component
+  until now was maximally interactive: rendered on the server, dehydrated into a snapshot,
+  tracked by the client, reachable over a socket. Right for a counter, wasteful for a nav rail.
+  A static component is rendered in full by its parent and nothing else — no `onDehydrate`, no
+  snapshot, no `<script type="application/json">`, no entry in the client's registry, and no
+  `data-flow-root`, which would freeze it at its first render since its only route to an update
+  is the parent re-rendering it. It takes no place in `_childIds` and does not shift its
+  interactive siblings' ids, so no sibling remounts and loses its state when a static one
+  appears above it. `lazy`, `defer` and `stream` throw rather than being ignored: each waits
+  for the client to ask for the real render, and a static child never registers to do the
+  asking.
+
+  Opt-in — nothing existing changes. `this.isInteractive` reports the mode from inside the
+  component, and being a new public member it takes that name away from applications; it is on
+  the documented reserved list. See [Static children](/docs/flow/layouts#static-children).
+
+- **`zt upgrade` — the codemod runner.** The 2.0 ledger's rule is that every entry that can
+  have a codemod has one before 2.0 ships, and until now nothing had been built, which made
+  the ledger a list of changes nobody could afford to make.
+
+  **Dry by default**, which is backwards from most tools and deliberate: it rewrites source
+  across a whole project, and the first run should be something you can read and disagree with.
+  `--write` applies it. Nothing is written until the whole plan is known, so a run that fails
+  halfway leaves no half-upgraded tree, and `--dry` exercises the same code path as the real
+  thing rather than a parallel one that can drift from it. Codemods see each other's output,
+  because two of them touching one file across a version range is ordinary.
+
+  **What it could not do is the headline.** A codemod that walks past what it does not
+  understand is worse than none, since the changes it _did_ make imply the job is finished. So
+  every codemod returns two lists and the runner prints the second last and loudest, with file,
+  line and a reason. The first codemod covers the deprecated aliases — `BaseModel` → `Model`,
+  `routes:types` → `route:types`, `serve --dev` → `dev`. See [Commands](/docs/commands).
+
+- **`--clean` on `assets:build` and `inertia:build`.** Pruning is conservative by default:
+  chunk-shaped filenames, plus whatever the last build on this machine recorded in `.zerotal/`.
+  That cannot recognise output some other naming produced. `--clean` needs no record — the
+  output directory belongs to the build, and what the build did not write does not belong in
+  it. It refuses `public/` and the project root, where deleting what was not rebuilt takes the
+  app's images and favicon with it, which is the one failure here that building again cannot
+  undo. Pruning stays the default; only you can say the directory holds nothing else.
+
+- **Agent skills, from `@zerotal/arch`.** `AGENTS.md` is short because every prompt it lands
+  in pays for its whole length, so it points rather than teaches. That has a cost: an agent
+  gets a map and no detail, and the detail is where the expensive mistakes live. A skill is a
+  file with a one-line description that costs nothing until an agent decides it is relevant,
+  so a procedure can be written out in full. Two ship — one on changing the schema (who owns
+  it in your app, the mixin columns nothing declares, and why an unguarded `ALTER TABLE`
+  collides during a release's `migrate`) and one on shipping a release (naming your own deploy
+  steps, replacing the asset directory rather than merging into it, `trustedProxies` behind a
+  proxy, and the pipe that hides a test suite's exit status).
+
+  Written to `.agents/skills`, plus `.claude/skills` when that agent is detected. To replace
+  one this ships, edit it and delete its marker line — a `SKILL.md` without the marker is
+  yours and is never rewritten. `ArchConfig({ skills: false })` turns the feature off. Run
+  `zt arch:update` to install them.
+
+- **`zt doctor` reports agent instructions that no longer describe your project.** Every fact
+  in the generated block moves without anyone thinking about the file: add a migrations
+  directory, turn `synchronize` off, install a package. It goes on reading as current while
+  describing the app you used to have, and guidance that is confidently out of date gets
+  followed rather than questioned. Skills rot the same way and are easier to miss, since
+  nothing reads one until an agent decides it is relevant — by which point it is being acted
+  on. The check regenerates both and compares, and names `zt arch:update` as the fix. A
+  warning, not a failure: it misleads a reader, it does not stop the app working.
+
+### Changed
+
+- **A Flow page with nothing interactive on it opens no socket.** Every page connected at
+  boot, unconditionally — so a marketing page, a docs article or a rendered report held a
+  WebSocket per visitor, open on both ends for the life of the visit, to carry nothing. Both
+  paths that write to the socket take a `FlowComponent`, so with none registered there was not
+  a frame that _could_ be sent. The connection is made when something needs it now: after the
+  initial scan, after an SPA navigation, after a patch registers a child. `<Link navigate>`
+  fetches over HTTP, so a static page with links stays disconnected. A routed page honours the
+  same static, which is the half that matters — a page is a component, and one whose children
+  are static but which is interactive itself still connects.
+
+- **The `@zerotal/arch` agent block describes how your app is set up, not only what it
+  installed.** A package list answers "what is available here", which is not the question that
+  decides what an agent should write: the framework's contracts are not uniform across
+  projects, and the places they differ are the places where guessing wrong compiles cleanly and
+  fails at runtime. `AGENTS.md` now states the four facts that change an instruction — who owns
+  the schema, whether route names are typed, whether `exactOptionalPropertyTypes` or
+  `noUncheckedIndexedAccess` are on, and whether there are tests to run. Read off disk rather
+  than from a booted app, because a project that will not boot is often why the agent surface
+  is being installed. `.env` is deliberately not among the files read: this output is committed
+  and pasted into prompts, and a detector that reads secrets is one refactor away from emitting
+  them. Re-run `zt arch:update` to pick it up.
+
+### Fixed
+
+- **No mail could be sent over port 587.** A STARTTLS upgrade hands back a new socket and
+  leaves the old one attached, still firing its callbacks — and what that one delivers from
+  then on is the undecrypted TLS stream. Both sets of handlers appended to a single reply
+  buffer, so handshake records and ciphertext sat in the middle of the server's replies and no
+  line in the buffer matched a reply any more: the driver waited out its timeout without ever
+  parsing the `250`, and the server logged a connection lost after STARTTLS. Measured, 1,737
+  bytes of ciphertext went into the discarded socket's handler while the TLS handler received
+  the replies.
+
+  `close` and `error` were worse than `data`. The plaintext socket ending is a normal part of
+  handing over to TLS, and it marked the live connection closed — rejecting whatever was
+  waiting on the session that had just replaced it. Each set of callbacks now captures the
+  generation it was installed for, and an upgrade bumps it.
+
+- **An Inertia `303` redirect left the browser doing nothing at all.** `X-Inertia: true` was
+  set inside the 302-to-303 conversion, so it only ever reached a redirect that arrived as a
+  301 or 302 from a non-GET handler. A handler returning the 303 the protocol asks for skipped
+  the only line that marked its response — and `redirect(to, 303)` is what
+  [Authentication](/docs/authentication) tells people to write, in eight places. The form
+  submitted, the row was written, the mail went out, and the fields stayed filled in: a hang
+  from both ends, which is the worst shape a failure can take. Marking now happens for every
+  redirect status on an Inertia request, with the conversion a separate decision on top of it.
+  `307` and `308` are marked but left alone, since preserving the method is the whole reason to
+  choose them.
+
+- **Answering the busy-port menu killed `serve --dev` on the spot.** The banner printed, then
+  `exited with code 1`, and nothing said why. Reading a prompt locks Bun's stdin stream, and
+  the lock is deliberately held for the life of the command so a second prompt can still read —
+  so the dev deck taking the terminal over threw `ReadableStream is locked`. It died inside the
+  alternate screen buffer, and restoring the terminal on the way out erased the error along
+  with everything else drawn there, which is why this was reported as "it just exits" rather
+  than as the error it was. The prompt hands stdin back where it took it; a deck that still
+  cannot have stdin degrades to streaming rather than dying, and a dev-mode failure stops the
+  deck before it reports.
+
+- **Two builds sharing an output directory deleted each other's files.** Nothing forbids
+  `inertia:build` and `assets:build` writing to the same place, and the defaults invite it: one
+  writes to `public/assets`, `app.assets.outDir` often names the same directory, and the
+  default release pipeline runs them one after the other. The record of what to prune was one
+  flat list per directory, so each build read the other's files as its own previous build and
+  removed them. The release ended with whichever ran last and nothing reported a problem — the
+  build that lost still said "Build complete" on its way out, and the page it served then 404'd
+  its own script. The record is keyed by entry point now: a file another build claimed is not
+  this one's to remove, while chunks nobody claims are still swept.
+
+- **`zt doctor` failed a schema configuration that works.** Sync on plus migrations present
+  read as "the schema needs exactly one source of truth", which misses the documented
+  arrangement where sync builds the schema from the models so a fresh clone runs without a
+  migration step, and `synchronize` is an expression that is false in production, where the
+  deploy runs `migrate`. The two never apply in the same environment. It fails in production
+  now, where the deploy really does run both, and warns elsewhere. A check that cries wolf
+  against a correct configuration is what stops `zt doctor` ever being trusted to gate a
+  deploy.
+
+### Documented
+
+- **Replace a release directory, do not merge into it.** Chasing 195 orphaned chunks on a
+  server showed the build was never the problem — ten releases of a code-split app into one
+  directory hold steady at the build's own output, and every one of the reporting app's 68
+  chunks is referenced. What accumulates is the _release_: the archive is extracted over the
+  running directory, so every file in it is written and every file not in it is left alone, and
+  nothing on that machine ever runs a build. They stay publicly fetchable at their
+  content-hashed URLs, which is how copy that was taken down went on being served.
+  [Deployment](/docs/deployment) now gives the two spellings that replace the directory.
+
 ## 1.7.5 — 2026-08-23
 
 Two bugs that shipped to every deployed app, a package promoted to `stable`, and

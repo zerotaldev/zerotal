@@ -8,6 +8,49 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-08-24
+
+### Added
+
+- **`zt upgrade`** — the codemod runner. Dry by default: it rewrites source across a whole
+  project, so the first run is something you read and disagree with before `--write` applies
+  it. Nothing is written until the whole plan is known, so a run that fails halfway leaves no
+  half-upgraded tree. The first codemod covers the deprecated aliases — `BaseModel` → `Model`,
+  `routes:types` → `route:types`, `serve --dev` → `dev` — renaming the class only in a heritage
+  clause and fixing the import to match. What it _could not_ do is reported last and loudest,
+  with file, line and reason: a codemod that walks past what it does not understand implies the
+  job is finished when it is not.
+
+- **`--clean` on `assets:build` and `inertia:build`.** Pruning is conservative by default —
+  chunk-shaped filenames plus what the last build on this machine recorded in `.zerotal/` —
+  which cannot recognise output some other naming produced. `--clean` needs no record: the
+  output directory belongs to the build. It refuses `public/` and the project root, where
+  deleting what was not rebuilt takes the app's images and favicon with it.
+
+### Fixed
+
+- **Answering the busy-port prompt killed `serve --dev`.** The banner printed, then
+  `exited with code 1`, with nothing on screen saying why. Reading a prompt locks Bun's stdin
+  stream and the lock is held for the life of the command, so the dev deck's
+  `process.stdin.resume()` threw `ReadableStream is locked` — and it threw inside the alternate
+  screen buffer, so restoring the terminal erased the error on the way out. The prompt hands
+  stdin back where it took it; a deck that still cannot have it degrades to streaming instead
+  of dying, and a dev-mode failure stops the deck before it reports.
+
+- **Two builds sharing an output directory deleted each other's files.** Nothing forbids
+  `inertia:build` and `assets:build` writing to the same place and the defaults invite it, but
+  the prune record was one flat list per directory — so each build read the other's files as
+  its own previous output and removed them. The release ended up with whichever ran last, and
+  neither reported a problem: the build that lost still said "Build complete", and the page it
+  served then 404'd its own script. The record is keyed by entry point now, so a file another
+  build claimed is not this one's to remove. Unclaimed chunks are still swept.
+
+- **`zt doctor` failed a schema configuration that works.** Sync on plus migrations present
+  read as "the schema needs exactly one source of truth" — but sync building the schema from
+  the models for a fresh clone, with `synchronize` false in production where the deploy runs
+  `migrate`, is a documented arrangement in which the two never apply in the same environment.
+  It fails in production, where the deploy really does run both, and warns elsewhere.
+
 ## [1.7.3] — 2026-08-20
 
 ### Fixed

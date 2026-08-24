@@ -13,6 +13,58 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-08-24
+
+### Added
+
+- **Agent skills — the depth the upfront block cannot afford.** The generated `AGENTS.md`
+  is short because every prompt it lands in pays for its whole length, so it points rather
+  than teaches. That constraint has a cost: an agent gets a map and no detail, and the
+  detail is where the expensive mistakes live. A skill is a file with a one-line
+  description that costs nothing until an agent decides it is relevant, so a procedure can
+  be written out in full. Two ship — `zerotal-schema-changes` (who owns the schema here,
+  the mixin columns nothing declares, and why an unguarded `ALTER TABLE` collides during a
+  release's `migrate`) and `zerotal-releases` (naming your own deploy steps, replacing the
+  asset directory rather than merging into it, `trustedProxies` behind a proxy, and the
+  pipe that hides a test suite's exit status). Both are shaped by the project like the
+  block is: the schema skill states this app's actual answer, and refuses to pick a side
+  when `synchronize` and migrations are both in play.
+
+  Written to `.agents/skills`, the cross-client path, plus `.claude/skills` when that agent
+  is detected. Frontmatter descriptions are JSON-quoted, because unquoted a colon makes the
+  rest a nested mapping and the file stops parsing — an inert skill looks exactly like an
+  installed one. Overriding a shipped skill is deleting its marker line: a `SKILL.md`
+  without the marker is yours and is never rewritten. Turn the whole feature off with
+  `ArchConfig({ skills: false })`.
+
+- **`doctor` reports agent instructions that no longer describe this project.** The block
+  used to describe the framework, which moved when the framework did. It now also describes
+  the project, and every fact in it moves without anyone thinking about the file — add a
+  migrations directory, turn `synchronize` off, install a package. It still reads as current
+  while describing the app you used to have, and guidance that is confidently out of date
+  gets followed. Skills rot the same way and are easier to miss, because nothing reads one
+  until an agent decides it is relevant, by which point it is being acted on. The check
+  regenerates both in memory and compares, naming `arch:update` as the fix. A warning, never
+  a failure: a misleading instruction file does not stop an application working, and this
+  check earns the right to gate a deploy by failing only for what would. The server name is
+  read back from `.mcp.json` rather than assumed, so a project that renamed its server is
+  not reported as permanently stale.
+
+### Changed
+
+- **The generated `AGENTS.md` block describes how this app is set up, not only what it
+  installed.** A package list answers "what is available here", which is not the question that
+  decides what to write: the framework's contracts are not uniform across projects, and the
+  places they differ are the places where guessing wrong compiles cleanly and fails at runtime.
+  `detectShape()` reads four facts off disk and the block states only the ones that change an
+  instruction — who owns the schema, whether route names are typed, whether
+  `exactOptionalPropertyTypes` or `noUncheckedIndexedAccess` are on, and whether there are
+  tests to run. Read from files rather than a booted app, because a project that will not boot
+  is often why the agent surface is being installed; `.env` is deliberately not among them,
+  since this output is committed and pasted into prompts. The `extends` chain is followed, so
+  an app inheriting a strict base is not read as unstrict. Additive — a caller that passes no
+  shape gets the block it got before.
+
 ## [1.7.5] — 2026-08-22
 
 ### Changed

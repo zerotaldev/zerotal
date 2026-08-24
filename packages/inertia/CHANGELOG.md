@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-08-24
+
+### Fixed
+
+- **A `303` redirect was not marked as Inertia's, so the browser did nothing at all.**
+  `X-Inertia: true` was set inside the 302-to-303 conversion, so it only ever reached a
+  redirect arriving as a 301 or 302 from a non-GET handler. A handler returning the 303 the
+  protocol asks for skipped the only line that marked its response — and `redirect(to, 303)`
+  is exactly what `docs/authentication.md` tells people to write, in eight places. The form
+  submitted, the row was written, the mail went out, and the fields stayed filled in: a hang
+  from both ends. Marking now happens for every redirect status on an Inertia request, with
+  the conversion a separate decision on top of it. `307` and `308` are marked but left alone,
+  since preserving the method is the whole reason to choose them.
+
 ## [1.7.1] — 2026-08-16
 
 ### Fixed

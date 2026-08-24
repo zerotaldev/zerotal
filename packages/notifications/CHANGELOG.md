@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-08-24
+
+### Fixed
+
+- **No mail could be sent over port 587.** A STARTTLS upgrade hands back a new socket and
+  leaves the old one attached, still firing its callbacks — and what the old one delivers from
+  then on is the undecrypted TLS stream. Both sets of handlers appended to one reply buffer,
+  so handshake records and ciphertext sat in the middle of the server's replies and no line
+  matched a reply any more: the driver waited out its timeout without ever parsing the `250`,
+  and the server logged a connection lost after STARTTLS. `close` and `error` were worse than
+  `data` — the plaintext socket ending is a normal part of handing over to TLS, and it marked
+  the live connection closed, rejecting whatever was waiting on the session that had just
+  replaced it. Callbacks now capture the generation they were installed for and an upgrade
+  bumps it, so anything from an older stream is ignored.
+
 ## [1.5.0] — 2026-08-15
 
 ### Added

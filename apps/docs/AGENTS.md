@@ -67,19 +67,11 @@ bun zt doctor          # health checks, with a fix beside each finding
 
 **Auth.** `Auth` from `@zerotal/auth` for the current user; policies go in `app/policies/` and are discovered automatically. Do not hand-roll password hashing or session handling.
 
-**Validation.** `FormRequest` subclasses in `app/requests/`, or `validate()` inline. Rules are built with `RuleBuilder`, so a typo is a compile error rather than a runtime one.
-
 **Flow components.** Server-rendered interactive components: a class with state fields and actions, rendered as JSX. Every component is an island and is fully interactive — there is no separate hydration step to write. `bun zt make:flow` scaffolds one.
 
 **UI kit.** `@zerotal/flow-ui` ships the component set. Check it before writing a button, modal, table or form field from scratch.
 
 **Inertia.** Pages are React/Vue components under `resources/`; controllers return `Inertia.render(...)`. Props are serialised — do not pass class instances.
-
-**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower than a request belongs in one. `bun zt queue:work` runs the worker; `bun zt dev` runs it for you.
-
-**Cache.** `Cache` from `@zerotal/cache`. Never cache a request-scoped value.
-
-**Scheduling.** Schedules in `app/schedules/`, discovered at boot. They need `SchedulerProvider` registered — `doctor` will say so if it is missing.
 
 **Realtime.** Channels are declared in the app and authorised server-side. `bun zt make:channel` scaffolds one.
 

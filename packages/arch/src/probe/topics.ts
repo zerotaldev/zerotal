@@ -304,3 +304,43 @@ export async function installedPackages(root = process.cwd()): Promise<Installed
 function controllerLabel(rawName: string): string {
   return rawName.startsWith("FileRoute<") ? "file" : rawName;
 }
+
+/**
+ * The `@zerotal/*` packages this app *declares*, with their installed versions.
+ *
+ * {@link installedPackages} answers "what is on disk here", which is the right
+ * answer for a version report and the wrong one for guidance. Two things get into
+ * `node_modules/@zerotal` besides an app's own dependencies: transitive ones, and
+ * whatever an install layout decides to hoist — and layouts disagree. The same
+ * commit of one app resolved seventeen packages on a developer's machine and
+ * eleven on its server, because the server hoisted the shared ones to the
+ * workspace root instead.
+ *
+ * That is not a cosmetic difference when the list decides what an agent is told.
+ * `@zerotal/queue` arriving as a transitive dependency does not mean the app runs
+ * jobs, and a block explaining where jobs live is confidently wrong for an app
+ * that has none. It also made the generated file unstable between machines, so a
+ * check comparing it against the project could not tell drift from a difference
+ * of layout.
+ *
+ * Direct dependencies only, which is both deterministic and the honest reading of
+ * "what this app has": you import what you declare.
+ */
+export async function declaredPackages(root = process.cwd()): Promise<InstalledPackage[]> {
+  let declared: Set<string>;
+  try {
+    const manifest = (await Bun.file(`${root}/package.json`).json()) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    declared = new Set([
+      ...Object.keys(manifest.dependencies ?? {}),
+      ...Object.keys(manifest.devDependencies ?? {}),
+    ]);
+  } catch {
+    // No manifest to read — every installed package is as good a guess as any.
+    return installedPackages(root);
+  }
+
+  return (await installedPackages(root)).filter((pkg) => declared.has(pkg.name));
+}

@@ -29,7 +29,7 @@ when that carve-out ends.
 
 ## 1.8.0 — 2026-08-24
 
-The first render mode, the codemod runner 2.0 depends on, and four failures that
+The first render mode, the codemod runner 2.0 depends on, and five failures that
 each looked like something other than what they were.
 
 ### Added

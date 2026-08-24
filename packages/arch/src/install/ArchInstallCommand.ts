@@ -16,7 +16,7 @@ import type { Application } from "@zerotal/core";
 import { ArchConfig } from "../config.ts";
 import type { ArchConfigShape } from "../config.ts";
 import { NoProjectRootError } from "../errors.ts";
-import { installedPackages } from "../probe/topics.ts";
+import { declaredPackages } from "../probe/topics.ts";
 import { detectAgents } from "./detect.ts";
 import { agentsPreamble, buildGuidelines, claudeShim } from "./guidelines.ts";
 import { detectShape } from "./shape.ts";
@@ -54,7 +54,9 @@ export class ArchInstallCommand extends Command {
     const config = this._config();
 
     const detected = await detectAgents(root);
-    const packages = (await installedPackages(root)).map((pkg) => pkg.name);
+    // Declared, not installed: what an install layout hoists into node_modules
+    // differs between machines, and the guidance must not.
+    const packages = (await declaredPackages(root)).map((pkg) => pkg.name);
     // Read off disk rather than from a booted app: a project that will not boot is
     // often exactly why someone is installing the agent surface.
     const shape = await detectShape(root);

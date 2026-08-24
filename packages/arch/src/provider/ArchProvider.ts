@@ -142,7 +142,7 @@ export async function agentsFileCheck(
     };
   }
 
-  const [{ buildGuidelines }, { detectShape }, { installedPackages }, markers] = await Promise.all([
+  const [{ buildGuidelines }, { detectShape }, { declaredPackages }, markers] = await Promise.all([
     import("../install/guidelines.ts"),
     import("../install/shape.ts"),
     import("../probe/topics.ts"),
@@ -160,7 +160,7 @@ export async function agentsFileCheck(
     };
   }
 
-  const packages = (await installedPackages(root)).map((pkg) => pkg.name);
+  const packages = (await declaredPackages(root)).map((pkg) => pkg.name);
   const shape = await detectShape(root);
   const expected = buildGuidelines({
     packages,

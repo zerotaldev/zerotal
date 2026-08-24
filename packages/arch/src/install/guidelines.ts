@@ -11,6 +11,8 @@
  * would summarise are the ones those tools return in full.
  */
 
+import type { ProjectShape } from "./shape.ts";
+
 /** A block contributed by one installed package. */
 interface PackageBlock {
   /** The package that triggers it. */
@@ -144,6 +146,11 @@ export interface GuidelineOptions {
   packages: string[];
   /** The key the MCP server is registered under, so the text names it correctly. */
   serverName: string;
+  /**
+   * How this project is configured, from {@link detectShape}. Omitted, the block
+   * is what it always was — a function of the package list.
+   */
+  shape?: ProjectShape;
 }
 
 /**
@@ -190,6 +197,9 @@ export function buildGuidelines(options: GuidelineOptions): string {
       ...blocks.flatMap((block) => [...block.lines, ""]),
     );
   }
+
+  const shape = options.shape ? shapeSection(options.shape) : "";
+  if (shape) sections.push("", shape);
 
   sections.push(rulesSection());
 
@@ -256,6 +266,80 @@ function commandSection(): string {
     "bun zt doctor          # health checks, with a fix beside each finding",
     "```",
   ].join("\n");
+}
+
+/**
+ * What this project is configured to be, where that changes what to write.
+ *
+ * The rest of this file describes the framework; this describes *this app*. The
+ * distinction matters because the framework's contracts are not uniform, and the
+ * places they differ are places where guessing wrong compiles cleanly and fails
+ * at runtime. An `EmailVerification` mixin needs a migration in one app and not
+ * in another, and the app that needed one lost 419 tests to a column that was
+ * never created.
+ *
+ * Only facts that change an instruction are emitted. "This app uses SQLite" is
+ * trivia; "migrations own the schema here, so a new column needs one" is a
+ * decision the agent would otherwise get wrong half the time.
+ */
+function shapeSection(shape: ProjectShape): string {
+  const lines: string[] = [];
+
+  if (shape.schemaSource === "migrations") {
+    lines.push(
+      "- **Migrations own the schema.** A new or changed column needs a migration — including " +
+        "columns a mixin registers imperatively, which are added to tables that already exist " +
+        "but never create one. Generate with `bun zt make:migration`, guard an added column " +
+        "with `Schema.hasColumn`, and never hand-edit a migration that has run.",
+    );
+  } else if (shape.schemaSource === "models") {
+    lines.push(
+      "- **The models own the schema** (`database.synchronize`). The table is built from what " +
+        "the models declare, so a `@column` is the whole change and there is no migration to " +
+        "write. Check `schema` after adding one to confirm it landed.",
+    );
+  } else if (shape.schemaSource === "both") {
+    lines.push(
+      "- **Both `database.synchronize` and migrations are present**, which is deliberate in " +
+        "some apps (sync locally, migrations in production) and a mistake in others. Run " +
+        "`doctor` and read what it says about the source of truth before adding a column — " +
+        "the answer decides whether a migration is required or would collide.",
+    );
+  }
+
+  if (shape.routeTypes) {
+    lines.push(
+      "- **Route names are typed.** `types/routes.generated.ts` exists, so `route()` is checked " +
+        "against it and a stale file turns a working call into a type error. Run " +
+        "`bun zt route:types` after any route change.",
+    );
+  }
+
+  if (shape.strict.exactOptionalPropertyTypes) {
+    lines.push(
+      "- **`exactOptionalPropertyTypes` is on.** `{ x: undefined }` is not assignable to " +
+        "`{ x?: T }`. Build optional properties conditionally — `...(v ? { x: v } : {})` — " +
+        "rather than assigning `undefined` and expecting the key to be treated as absent.",
+    );
+  }
+
+  if (shape.strict.noUncheckedIndexedAccess) {
+    lines.push(
+      "- **`noUncheckedIndexedAccess` is on.** Every index read is `T | undefined`. Narrow it; " +
+        "do not reach for `!` to silence it.",
+    );
+  }
+
+  if (shape.hasTests) {
+    lines.push(
+      "- **This app has tests.** Run `bun zt test` before calling a task done — `doctor` checks " +
+        "configuration, not behaviour, and only one of the two notices that a change broke " +
+        "something.",
+    );
+  }
+
+  if (lines.length === 0) return "";
+  return ["### How this app is set up", "", ...lines].join("\n");
 }
 
 function rulesSection(): string {

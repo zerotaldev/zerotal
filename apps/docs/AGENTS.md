@@ -85,6 +85,14 @@ bun zt doctor          # health checks, with a fix beside each finding
 
 **Tests.** `createTestApp()` from `@zerotal/testing` boots a real app; factories and fakes come from the same package. Tests run on `bun test` via `bun zt test`.
 
+### How this app is set up
+
+- **Both `database.synchronize` and migrations are present**, which is deliberate in some apps (sync locally, migrations in production) and a mistake in others. Run `doctor` and read what it says about the source of truth before adding a column — the answer decides whether a migration is required or would collide.
+- **Route names are typed.** `types/routes.generated.ts` exists, so `route()` is checked against it and a stale file turns a working call into a type error. Run `bun zt route:types` after any route change.
+- **`exactOptionalPropertyTypes` is on.** `{ x: undefined }` is not assignable to `{ x?: T }`. Build optional properties conditionally — `...(v ? { x: v } : {})` — rather than assigning `undefined` and expecting the key to be treated as absent.
+- **`noUncheckedIndexedAccess` is on.** Every index read is `T | undefined`. Narrow it; do not reach for `!` to silence it.
+- **This app has tests.** Run `bun zt test` before calling a task done — `doctor` checks configuration, not behaviour, and only one of the two notices that a change broke something.
+
 ### Rules
 
 1. **The types are the guidance.** If a call type-checks it is almost certainly the

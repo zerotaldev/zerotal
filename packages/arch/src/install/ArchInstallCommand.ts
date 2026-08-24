@@ -19,6 +19,8 @@ import { NoProjectRootError } from "../errors.ts";
 import { installedPackages } from "../probe/topics.ts";
 import { detectAgents } from "./detect.ts";
 import { agentsPreamble, buildGuidelines, claudeShim } from "./guidelines.ts";
+import { detectShape } from "./shape.ts";
+import type { ProjectShape } from "./shape.ts";
 import { applyBlock } from "./markers.ts";
 import { applyMcpConfig } from "./mcpConfig.ts";
 
@@ -52,10 +54,13 @@ export class ArchInstallCommand extends Command {
 
     const detected = await detectAgents(root);
     const packages = (await installedPackages(root)).map((pkg) => pkg.name);
+    // Read off disk rather than from a booted app: a project that will not boot is
+    // often exactly why someone is installing the agent surface.
+    const shape = await detectShape(root);
 
     const changes: Change[] = [
       ...(config.mcpConfig ? await this._mcpChanges(root, config, detected.targets) : []),
-      ...(config.agentsFile ? [await this._agentsChange(root, config, packages)] : []),
+      ...(config.agentsFile ? [await this._agentsChange(root, config, packages, shape)] : []),
       ...(config.claudeFile ? [await this._claudeChange(root)] : []),
     ];
 
@@ -153,10 +158,11 @@ export class ArchInstallCommand extends Command {
     root: string,
     config: ArchConfigShape,
     packages: string[],
+    shape: ProjectShape,
   ): Promise<Change> {
     const outcome = applyBlock(
       await readIfPresent(join(root, "AGENTS.md")),
-      buildGuidelines({ packages, serverName: config.serverName }),
+      buildGuidelines({ packages, serverName: config.serverName, shape }),
       agentsPreamble(),
     );
     return outcome.status === "conflict"

@@ -118,6 +118,7 @@ interface DoctorReport = {
 interface GuidelineOptions = {
   packages: string[]
   serverName: string
+  shape?: ProjectShape
 }
 
 interface InstalledPackage = {

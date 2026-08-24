@@ -58,16 +58,17 @@ const SCHEMA_SKILL: Skill = {
   requires: ["@zerotal/orm"],
   body: (shape) => {
     const source = shape?.schemaSource ?? "unknown";
+
+    // Emphasis is written `_like this_`, not `*like this*`. These files land in
+    // somebody's repository and are checked by their formatter, and a generator
+    // whose output fails the project's own format check is one nobody can run in
+    // CI.
     const owner =
       source === "migrations"
         ? "**Migrations own the schema in this app.**"
         : source === "models"
           ? "**The models own the schema in this app** (`database.synchronize` is on)."
           : source === "both"
-            // `_and_`, not `*and*`: the file is written into someone's repository
-            // and prettier's markdown emphasis is underscores. A generator that
-            // emits output failing the project's own format check is a generator
-            // nobody can run in CI.
             ? "**Both are in play here** — `database.synchronize` is on _and_ migrations exist. " +
               "Run `doctor` and read the source-of-truth line before you touch anything."
             : "**Which one owns the schema here is not obvious from the config.** Run `doctor` " +

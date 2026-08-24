@@ -16,6 +16,16 @@ const CHUNK_NAME = /^chunk-[a-z0-9]+\.js(\.map)?$/i;
 /** Where the per-directory record of "what the last build wrote" is kept. */
 const MANIFEST_DIR = ".zerotal/build";
 
+/** What `Bun.build()` reports for one emitted file. */
+interface BuildArtifact {
+  path: string;
+  /** `"entry-point"` on the files the build was asked for; absent on older shapes. */
+  kind?: string;
+}
+
+/** One directory's record: which build wrote which files. */
+type Manifest = Record<string, string[]>;
+
 /**
  * Delete what an earlier build wrote to `outdir` and this one did not.
  *
@@ -40,40 +50,44 @@ const MANIFEST_DIR = ".zerotal/build";
  */
 export async function pruneBuildOutput(
   outdir: string,
-  outputs: readonly { path: string }[],
+  outputs: readonly BuildArtifact[],
 ): Promise<string[]> {
   const root = resolve(outdir);
   const current = new Set(outputs.map((output) => _relative(root, output.path)));
 
-  const previous = await _readManifest(root);
-  const stale = new Set<string>();
+  // Whose output this is. Nothing stops two builds sharing a directory —
+  // `inertia:build` and `assets:build` both default near `public/`, and the
+  // default release pipeline runs them one after the other — and with a single
+  // list per directory each one read the *other's* files as its own previous
+  // build and deleted them. The release ended with whichever ran last, and no
+  // error anywhere: `assets:build` removed the Inertia entry point, then
+  // `inertia:build` removed the other bundle.
+  const key = _buildKey(root, outputs);
+  const manifest = await _readManifest(root);
+  const mine = new Set(manifest[key] ?? []);
+  const theirs = new Set(
+    Object.entries(manifest)
+      .filter(([owner]) => owner !== key)
+      .flatMap(([, files]) => files),
+  );
 
-  for (const path of previous) {
+  const stale = new Set<string>();
+  for (const path of mine) {
     if (!current.has(path)) stale.add(path);
   }
 
   // Chunks are swept by name as well as by manifest, so a directory that has
   // been accumulating them since before any manifest existed still gets cleaned
-  // on the next build.
+  // on the next build. Only the unclaimed ones: a chunk another build has
+  // recorded is that build's to remove.
   for (const path of await _listEntries(root)) {
-    if (current.has(path)) continue;
+    if (current.has(path) || theirs.has(path)) continue;
     if (CHUNK_NAME.test(path.split("/").at(-1) ?? "")) stale.add(path);
   }
 
-  const removed: string[] = [];
-  for (const path of stale) {
-    try {
-      await unlink(join(root, path));
-      removed.push(path);
-    } catch {
-      // Already gone, or held open by another process — either way the next
-      // build tries again, and a file we could not delete is not worth failing
-      // an otherwise good build over.
-    }
-  }
-
-  await _writeManifest(root, [...current].sort());
-  return removed.sort();
+  const removed = await _unlinkAll(root, stale);
+  await _writeManifest(root, { ...manifest, [key]: [...current].sort() });
+  return removed;
 }
 
 // ── Private ──────────────────────────────────────────────────────────────────
@@ -95,26 +109,73 @@ function _manifestPath(root: string): string {
   return join(process.cwd(), MANIFEST_DIR, `${slug}-${hash}.json`);
 }
 
-/** What the previous build recorded, or nothing on a first run. */
-async function _readManifest(root: string): Promise<string[]> {
+/**
+ * Which build these outputs belong to, named by its entry points.
+ *
+ * Stable across rebuilds of the same build — the entry keeps its name while the
+ * chunks around it are rehashed — and different between two builds sharing a
+ * directory, which is the whole point of having it.
+ */
+function _buildKey(root: string, outputs: readonly BuildArtifact[]): string {
+  const entries = outputs
+    .filter((output) => output.kind === "entry-point")
+    .map((output) => _relative(root, output.path))
+    .sort();
+  // No entry point reported: an older Bun, or a build of nothing. One shared key
+  // is what this did before, and is no worse than it was.
+  return entries.join("|") || "default";
+}
+
+/** What previous builds recorded, or nothing on a first run. */
+async function _readManifest(root: string): Promise<Manifest> {
   try {
     const contents = (await Bun.file(_manifestPath(root)).json()) as unknown;
-    if (!Array.isArray(contents)) return [];
-    return contents.filter((entry): entry is string => typeof entry === "string");
+
+    // Written before this file recorded ownership: one flat list, which belonged
+    // to whichever build ran last. Kept under a key no build claims, so those
+    // files stay eligible for the build that recognises them and are never
+    // treated as another build's property.
+    if (Array.isArray(contents)) {
+      return { default: contents.filter((entry): entry is string => typeof entry === "string") };
+    }
+    if (!contents || typeof contents !== "object") return {};
+
+    const manifest: Manifest = {};
+    for (const [key, files] of Object.entries(contents as Record<string, unknown>)) {
+      if (!Array.isArray(files)) continue;
+      manifest[key] = files.filter((entry): entry is string => typeof entry === "string");
+    }
+    return manifest;
   } catch {
-    return [];
+    return {};
   }
 }
 
-async function _writeManifest(root: string, files: string[]): Promise<void> {
+async function _writeManifest(root: string, manifest: Manifest): Promise<void> {
   const path = _manifestPath(root);
   try {
     await mkdir(join(process.cwd(), MANIFEST_DIR), { recursive: true });
-    await writeFile(path, JSON.stringify(files, null, 2));
+    await writeFile(path, JSON.stringify(manifest, null, 2));
   } catch {
     // A manifest that cannot be written costs precision on the next prune, not
     // correctness: chunks are still swept by name.
   }
+}
+
+/** Delete each path, reporting what actually went. */
+async function _unlinkAll(root: string, paths: Iterable<string>): Promise<string[]> {
+  const removed: string[] = [];
+  for (const path of paths) {
+    try {
+      await unlink(join(root, path));
+      removed.push(path);
+    } catch {
+      // Already gone, or held open by another process — either way the next
+      // build tries again, and a file we could not delete is not worth failing
+      // an otherwise good build over.
+    }
+  }
+  return removed.sort();
 }
 
 /**
@@ -162,7 +223,7 @@ async function _listEntries(root: string): Promise<string[]> {
  */
 export async function cleanBuildOutput(
   outdir: string,
-  outputs: readonly { path: string }[],
+  outputs: readonly BuildArtifact[],
 ): Promise<string[]> {
   const root = resolve(outdir);
   const cwd = resolve(process.cwd());
@@ -176,20 +237,17 @@ export async function cleanBuildOutput(
   }
 
   const current = new Set(outputs.map((output) => _relative(root, output.path)));
-  const removed: string[] = [];
 
-  for (const path of await _listEntries(root)) {
-    if (current.has(path)) continue;
-    try {
-      await unlink(join(root, path));
-      removed.push(path);
-    } catch {
-      // A directory entry, or a file held open. Directories are left behind
-      // deliberately: emptied, they cost nothing and removing them races a
-      // concurrent read.
-    }
-  }
+  // Directories are left behind: emptied they cost nothing, and removing them
+  // races a concurrent read.
+  const doomed = (await _listEntries(root)).filter((path) => !current.has(path));
+  const removed = await _unlinkAll(root, doomed);
 
-  await _writeManifest(root, [...current].sort());
-  return removed.sort();
+  // This directory now holds one build's output and nothing else, so the record
+  // says exactly that — including dropping any other build that used to claim
+  // files here, whose files this has just deleted. Sharing a directory with
+  // `--clean` is the one thing it does not support, and the record should not
+  // pretend otherwise.
+  await _writeManifest(root, { [_buildKey(root, outputs)]: [...current].sort() });
+  return removed;
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, readdir } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pruneBuildOutput, cleanBuildOutput } from "./BuildOutput.ts";
@@ -119,6 +119,79 @@ describe("pruneBuildOutput()", () => {
  * publicly fetchable at their content-hashed URLs, so a page whose copy was
  * withdrawn is still readable by anyone holding the link.
  */
+/**
+ * Two builds, one output directory.
+ *
+ * Nothing forbids it, and the defaults invite it: `inertia:build` writes to
+ * `public/assets`, `app.assets.outDir` often names the same place, and the
+ * default release pipeline runs `assets:build` and then `inertia:build` back to
+ * back. With one list of files per directory, each build read the other's output
+ * as its own previous build and deleted it — so the release ended with whichever
+ * ran last, and nothing anywhere reported a problem. A page served by the bundle
+ * that lost simply 404s its script.
+ *
+ * The record says which build wrote what, so a file another build claimed is not
+ * this one's to remove.
+ */
+describe("two builds sharing one output directory", () => {
+  const entry = (name: string): { path: string; kind: string }[] => [
+    { path: join(outdir, name), kind: "entry-point" },
+  ];
+
+  it("leaves the other build's entry point alone", async () => {
+    await seed("app.js");
+    await pruneBuildOutput(outdir, entry("app.js"));
+
+    // The second build, into the same directory.
+    await seed("admin.js");
+    const removed = await pruneBuildOutput(outdir, entry("admin.js"));
+
+    expect(removed).toEqual([]);
+    expect(await remaining()).toEqual(["admin.js", "app.js"]);
+  });
+
+  it("leaves the other build's chunks alone, and still sweeps its own", async () => {
+    await seed("app.js", "chunk-aaa.js");
+    await pruneBuildOutput(outdir, [...entry("app.js"), { path: join(outdir, "chunk-aaa.js") }]);
+
+    await seed("admin.js", "chunk-bbb.js");
+    await pruneBuildOutput(outdir, [...entry("admin.js"), { path: join(outdir, "chunk-bbb.js") }]);
+
+    // Now the first build again, with a rehashed chunk of its own. `chunk-aaa`
+    // is its own and goes; `chunk-bbb` belongs to the other build and stays.
+    await seed("chunk-ccc.js");
+    const removed = await pruneBuildOutput(outdir, [
+      ...entry("app.js"),
+      { path: join(outdir, "chunk-ccc.js") },
+    ]);
+
+    expect(removed).toEqual(["chunk-aaa.js"]);
+    expect(await remaining()).toEqual(["admin.js", "app.js", "chunk-bbb.js", "chunk-ccc.js"]);
+  });
+
+  it("still sweeps a chunk no build has claimed", async () => {
+    // The bootstrap case has to keep working: a directory that collected chunks
+    // before anything recorded ownership is still cleaned on the next build.
+    await seed("app.js", "chunk-orphan.js");
+
+    const removed = await pruneBuildOutput(outdir, entry("app.js"));
+
+    expect(removed).toEqual(["chunk-orphan.js"]);
+  });
+
+  it("reads a manifest written before ownership was recorded", async () => {
+    // The old format is a flat array. It belonged to whichever build ran last,
+    // so it is claimed by nobody rather than handed to whoever prunes next.
+    await mkdir(join(projectRoot, ".zerotal", "build"), { recursive: true });
+    await seed("app.js", "chunk-legacy.js");
+
+    const removed = await pruneBuildOutput(outdir, entry("app.js"));
+
+    expect(removed).toEqual(["chunk-legacy.js"]);
+    expect(await remaining()).toEqual(["app.js"]);
+  });
+});
+
 describe("cleanBuildOutput()", () => {
   it("removes everything this build did not write, chunk-named or not", async () => {
     await seed("app.js", "legacy-a1b2c3.js", "pricing-9f8e7d.js", "chunk-old.js", "app.css");

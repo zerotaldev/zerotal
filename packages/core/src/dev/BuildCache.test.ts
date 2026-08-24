@@ -242,10 +242,17 @@ describe("BuildCache", () => {
 });
 
 describe("BuildCache + pruneBuildOutput", () => {
-  it("a skipped build must not prune, or it deletes the previous one", async () => {
-    // The sharpest edge in the design: a skipped build has no `outputs`, and
-    // pruning against an empty set marks every recorded file stale. The call
-    // sites return before pruning; this proves what that guard is protecting.
+  it("a skipped build prunes nothing, even if a call site forgets to return early", async () => {
+    // This used to be the sharpest edge in the design: a skipped build has no
+    // `outputs`, every recorded file was therefore stale, and one prune emptied
+    // the directory. The call sites return before pruning, and that was the only
+    // thing standing between a cache hit and a deleted release.
+    //
+    // Recording which build wrote what took the edge off. An empty `outputs` list
+    // names no entry point, so it is nobody's build, and files another build has
+    // claimed are not its to remove. The early return is still right — there is
+    // nothing to do after a skip — but it is now an optimisation rather than the
+    // last line of defence.
     const outdir = join(root, "public");
     const result = await build();
     expect(result.success).toBe(true);
@@ -254,9 +261,8 @@ describe("BuildCache + pruneBuildOutput", () => {
     const afterRealBuild = (await readdir(outdir)).sort();
     expect(afterRealBuild.length).toBeGreaterThan(0);
 
-    // What pruning after a skip would do:
     await pruneBuildOutput(outdir, []);
-    expect(await readdir(outdir)).toEqual([]);
+    expect((await readdir(outdir)).sort()).toEqual(afterRealBuild);
   });
 
   it("pruning after a real build keeps that build's outputs", async () => {

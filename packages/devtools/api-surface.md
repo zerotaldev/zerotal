@@ -276,6 +276,7 @@ interface DevtoolsPanelPlugin = {
 
 interface Facets = {
   errors: boolean
+  kinds?: RequestKind[]
   methods: string[]
   nPlusOne: boolean
   slow: boolean

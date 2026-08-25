@@ -11,6 +11,7 @@
  * browser.
  */
 import type { RequestTrace } from "../RequestTrace.ts";
+import { requestKind, type RequestKind } from "./kind.ts";
 
 /**
  * A request slower than this reads as slow.
@@ -33,16 +34,37 @@ export interface Facets {
   slow: boolean;
   /** Only requests with an N+1 warning. */
   nPlusOne: boolean;
+  /**
+   * Request kinds to show. Empty means every kind.
+   *
+   * The one facet whose usual job is *subtraction*: an app's own traffic is
+   * `document` and `api`, and picking those two is how you get a list without
+   * fifty stylesheet fetches in it. Picking `asset` alone is the other half —
+   * what the browser pulled in, what it cost, and which of it 404'd, which is
+   * not visible anywhere else.
+   *
+   * Optional because {@link Facets} is exported from `@zerotal/devtools/client`
+   * and a required field added to a published interface breaks whoever builds one
+   * by hand. `noFacets()` always sets it; reads here tolerate its absence.
+   */
+  kinds?: RequestKind[];
 }
 
 /** No narrowing at all — what a fresh panel starts with. */
 export function noFacets(): Facets {
-  return { methods: [], statusClasses: [], errors: false, slow: false, nPlusOne: false };
+  return { methods: [], statusClasses: [], errors: false, slow: false, nPlusOne: false, kinds: [] };
 }
 
 /** Whether any facet is actually narrowing, for the "clear" affordance. */
 export function facetsActive(f: Facets): boolean {
-  return f.methods.length > 0 || f.statusClasses.length > 0 || f.errors || f.slow || f.nPlusOne;
+  return (
+    f.methods.length > 0 ||
+    f.statusClasses.length > 0 ||
+    (f.kinds?.length ?? 0) > 0 ||
+    f.errors ||
+    f.slow ||
+    f.nPlusOne
+  );
 }
 
 /**
@@ -88,6 +110,7 @@ export function matchesFacets(trace: RequestTrace, f: Facets): boolean {
   if (f.errors && !trace.exception && trace.statusCode < 400) return false;
   if (f.slow && trace.durationMs <= SLOW_MS) return false;
   if (f.nPlusOne && !trace.warnings.length) return false;
+  if (f.kinds?.length && !f.kinds.includes(requestKind(trace))) return false;
   return true;
 }
 

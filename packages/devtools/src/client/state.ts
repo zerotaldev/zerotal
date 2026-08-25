@@ -11,6 +11,7 @@ import type { RequestTrace, TraceChannelDescriptor } from "../RequestTrace.ts";
 import type { EditorName } from "../editor.ts";
 import type { ClientMetric } from "./metrics.ts";
 import { noFacets, traceMatches, type Facets } from "./filter.ts";
+import { worthSelecting } from "./kind.ts";
 import type { ThemeChoice } from "./ui/theme.ts";
 
 /**
@@ -335,9 +336,26 @@ export class Store {
   addTrace(trace: RequestTrace): void {
     this.traces.unshift(trace);
     if (this.traces.length > this.capacity) this.traces.length = this.capacity;
-    if (this.live) this.selected = trace;
-    else this.pending++;
+    if (this.live && this._takesSelection(trace)) this.selected = trace;
+    else if (!this.live) this.pending++;
     this.changed();
+  }
+
+  /**
+   * Whether a newly arrived trace should become the selection in live mode.
+   *
+   * Everything did, which meant a page selected itself and was then replaced by
+   * its own favicon a few milliseconds later. The bar named a request nobody
+   * asked about while the page you were looking at scrolled into the list.
+   *
+   * A sub-resource yields to whatever is selected — but only to something. With
+   * nothing selected an asset is still better than an empty panel, and a page
+   * whose document 304s while its assets do not would otherwise show nothing at
+   * all.
+   */
+  private _takesSelection(trace: RequestTrace): boolean {
+    if (worthSelecting(trace)) return true;
+    return this.selected === null || !worthSelecting(this.selected);
   }
 
   clear(): void {

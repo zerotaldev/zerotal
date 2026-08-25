@@ -8,6 +8,7 @@
  */
 import { facetsActive, methodsPresent, noFacets, type Facets } from "../filter.ts";
 import { foldTraceRows, type TraceRow } from "../tree.ts";
+import type { RequestKind } from "../kind.ts";
 import { dCls, esc, fmt, scCls } from "../ui/format.ts";
 import { el, reconcile } from "../ui/render.ts";
 import type { TabContext, TabView } from "./types.ts";
@@ -34,6 +35,16 @@ const STATUS_CLASSES: Array<[string, string]> = [
   ["3", "3xx"],
   ["4", "4xx"],
   ["5", "5xx"],
+];
+
+/**
+ * Labelled for what they are from the reader's side rather than by their code
+ * name: "page" is what someone is looking at, "asset" is what came with it.
+ */
+const KIND_CHIPS: Array<[RequestKind, string]> = [
+  ["document", "page"],
+  ["api", "api"],
+  ["asset", "asset"],
 ];
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -82,10 +93,16 @@ function facetChips(store: TabContext["store"]): string {
     chip("status", digit, label, f.statusClasses.includes(digit)),
   ).join("");
 
+  const kinds = KIND_CHIPS.map(([kind, label]) =>
+    chip("kind", kind, label, f.kinds?.includes(kind) ?? false),
+  ).join("");
+
   return (
     methods +
     (methods ? `<span class="fsep"></span>` : "") +
     statuses +
+    `<span class="fsep"></span>` +
+    kinds +
     `<span class="fsep"></span>` +
     chip("errors", "", "errors", f.errors, true) +
     chip("slow", "", "slow", f.slow, true) +
@@ -103,6 +120,8 @@ export function toggleFacet(f: Facets, kind: string, value: string): Facets {
       return { ...f, methods: drop(f.methods, value) };
     case "status":
       return { ...f, statusClasses: drop(f.statusClasses, value) };
+    case "kind":
+      return { ...f, kinds: drop(f.kinds ?? [], value as RequestKind) };
     case "errors":
       return { ...f, errors: !f.errors };
     case "slow":

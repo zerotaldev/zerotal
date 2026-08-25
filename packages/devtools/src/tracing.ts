@@ -261,6 +261,11 @@ function _cleanupBuffers(ctx: object): void {
  */
 const SAFE_HEADERS = new Set([
   "accept",
+  // What the browser wanted the response for — `document`, `image`, `style`.
+  // The only unfoolable way to tell a page from a file the page pulled in, and
+  // devtools classifies every trace by it.
+  "sec-fetch-dest",
+  "sec-fetch-mode",
   "content-type",
   "content-length",
   "user-agent",

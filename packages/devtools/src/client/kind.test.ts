@@ -117,7 +117,7 @@ describe("the path, when nothing else said anything", () => {
 
 describe("the selection in live mode", () => {
   const state = (): Store => {
-    const s = new Store();
+    const s = new Store(false);
     s.live = true;
     return s;
   };
@@ -157,7 +157,7 @@ describe("the selection in live mode", () => {
   it("still counts assets as pending when live is off", () => {
     // Paused means paused. The count is how many arrived while you were reading,
     // and quietly not counting some would make it lie.
-    const s = new Store();
+    const s = new Store(false);
     s.live = false;
     s.addTrace(dest("image", { id: "icon" }));
     s.addTrace(dest("document", { id: "page" }));

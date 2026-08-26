@@ -8,6 +8,40 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.8.1] — 2026-08-26
+
+### Fixed
+
+- **A page keeps the panel while its own assets load.** Opening `/login` selected `/login`,
+  then `/favicon.ico` a few milliseconds later, then `/css/app.css`: live mode selected every
+  trace as it arrived, and a page's sub-resources arrive right behind it. The bar named a
+  request nobody asked about, the detail below described that request's headers and its empty
+  session, and the page under inspection had scrolled into the list. Nothing shown was wrong;
+  it was all about the wrong request.
+
+  Traces are classified into three kinds rather than two, because "not the document" would
+  have suppressed the form post and the Inertia visit — the requests most worth watching.
+  What is skipped over is narrower: a sub-resource the browser fetched on its own initiative.
+  The browser is asked rather than the URL, since an app may serve an API from a `.js` route
+  and a build that hashes its asset names has no extension to read; response content type is
+  the fallback, so a page fetched by curl still reads as a page. Anything unclassifiable is
+  `api`, never `asset`. An asset still takes the selection when nothing is selected, so a
+  panel opened mid-load shows a request rather than an empty pane, and a paused panel still
+  counts assets toward its pending badge.
+
+### Added
+
+- **A `kind` facet on the All tab**, beside method and status. Assets were never the problem,
+  only their claim on the selection, so they are not hidden: pick `page` and `api` for a list
+  without fifty stylesheet fetches in it, or `asset` alone for what the browser pulled in,
+  what it cost and which of it 404'd — which was not visible anywhere before. `Facets.kinds`
+  is optional, because that interface is exported from `@zerotal/devtools/client` and a
+  required field added to a published interface breaks whoever builds one by hand.
+
+- **`sec-fetch-dest` and `sec-fetch-mode` are recorded**, joining the safe header list. They
+  are where the classification above comes from, and they state what a request was for
+  without saying anything about who made it.
+
 ## [1.7.4] — 2026-08-21
 
 ### Fixed

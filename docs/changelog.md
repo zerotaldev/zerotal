@@ -27,6 +27,39 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.8.1 — 2026-08-26
+
+DevTools showed you the wrong request, accurately.
+
+### Fixed
+
+- **A page keeps the DevTools panel while its own assets load.** Opening `/login` selected
+  `/login`, then `/favicon.ico` a few milliseconds later, then `/css/app.css`. Live mode
+  selected every trace as it arrived and a page's sub-resources arrive right behind it, so the
+  bar named a request nobody asked about, the detail below described that request's headers
+  and its empty session, and the page you were inspecting had scrolled into the list. Nothing
+  shown was wrong; it was all about the wrong request.
+
+  Traces are now classified into three kinds rather than two, because "not the document" would
+  have suppressed the form post and the Inertia visit — the requests most worth watching. What
+  gets skipped over is narrower: a sub-resource the browser fetched on its own initiative. The
+  browser is asked rather than the URL, since an app may serve an API from a `.js` route and a
+  build that hashes its asset names has no extension to read; what was actually served is the
+  fallback, so a page fetched by `curl` still reads as a page. Anything unclassifiable counts
+  as app traffic, never as an asset — being wrong there decides whether a request is skipped,
+  and skipping the wrong one is how the panel stops showing what you came to see.
+
+  An asset still takes the selection when nothing else has it, so a panel opened mid-load
+  shows a request rather than an empty pane. A paused panel still counts assets toward its
+  pending badge.
+
+### Added
+
+- **A `kind` facet on the DevTools All tab**, beside method and status. Assets were never the
+  problem, only their claim on the selection, so they are not hidden: pick `page` and `api`
+  for a list without fifty stylesheet fetches in it, or `asset` alone for what the browser
+  pulled in, what it cost and which of it 404'd — which was not visible anywhere before.
+
 ## 1.8.0 — 2026-08-24
 
 The first render mode, the codemod runner 2.0 depends on, and five failures that

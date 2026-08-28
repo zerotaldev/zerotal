@@ -1,0 +1,20 @@
+{
+  "packages": {
+    "admin": 29,
+    "ai": 11,
+    "arch": 1,
+    "auth": 4,
+    "broadcasting": 4,
+    "core": 30,
+    "devtools": 4,
+    "flow": 8,
+    "inertia": 13,
+    "media": 16,
+    "notifications": 6,
+    "orm": 21,
+    "telemetry": 1,
+    "tenancy": 1,
+    "testing": 1
+  },
+  "updatedAt": "2026-08-28"
+}

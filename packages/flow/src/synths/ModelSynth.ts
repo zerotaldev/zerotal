@@ -1,5 +1,6 @@
 import type { BaseModel } from "@zerotal/orm";
 import { modelsByName } from "@zerotal/orm";
+import { isProdLike, deployEnv } from "@zerotal/core";
 import { registerSynth } from "./index.ts";
 
 // Models register themselves here when their class is imported.
@@ -169,6 +170,71 @@ export function _writableFields(ModelClass: typeof BaseModel): readonly string[]
   return fields;
 }
 
+/** Model class → fields already reported, so a hundred-row list logs once. */
+const _warnedUnfillable = new WeakMap<object, Set<string>>();
+
+/**
+ * Say that a bound field was dropped, once per class per field.
+ *
+ * A `flow:model` on a column missing from `fillable` is almost always a typo or a
+ * forgotten entry, and the symptom is a form that appears to work and saves
+ * nothing. The alternative — throwing — is not available: the same path receives
+ * whatever a browser chooses to send, and a hostile payload naming an unknown key
+ * must not be able to 500 the page. So: keep dropping, and say so where the person
+ * who can fix it will see it.
+ *
+ * Keyed per class *and* per field, so a second unfillable field on the same model
+ * is still reported. Silent in production, where nobody is reading the log for
+ * this and the payload may well be hostile.
+ */
+function _warnUnfillableBinding(ModelClass: typeof BaseModel, dropped: string[]): void {
+  if (_isProductionRuntime()) return;
+
+  let seen = _warnedUnfillable.get(ModelClass);
+  if (!seen) {
+    seen = new Set<string>();
+    _warnedUnfillable.set(ModelClass, seen);
+  }
+  const fresh = dropped.filter((field) => !seen.has(field));
+  if (fresh.length === 0) return;
+  for (const field of fresh) seen.add(field);
+
+  const name = ModelClass.name || "the model";
+  const fillable = [...(ModelClass.fillable ?? [])];
+  const listed = fillable.map((f) => `"${f}"`).join(", ") || "empty";
+  console.warn(
+    `[Zerotal Flow] ${name} received ${fresh.map((f) => `\`${f}\``).join(", ")} from the ` +
+      `browser and dropped ${fresh.length === 1 ? "it" : "them"}: not in \`fillable\`, so ` +
+      `nothing was written and nothing failed.\n` +
+      `  fillable is [${listed}].\n` +
+      `  If the binding is intended, add the field:  static fillable = […, "${fresh[0]}"];\n` +
+      `  If it is not, remove the flow:model — mass assignment is the reason this list exists.`,
+  );
+}
+
+/**
+ * Forget what has been warned about, for one model class. Tests.
+ *
+ * A `WeakMap` has no `clear()`, and it does not need one here: every key a test
+ * seeds is a class the test itself owns, and dropping that one entry is the whole
+ * reset. Classes from other tests are unreachable by then.
+ *
+ * @internal
+ */
+export function _resetUnfillableWarnings(ModelClass: object): void {
+  _warnedUnfillable.delete(ModelClass);
+}
+
+/**
+ * Whether this process is a production deployment.
+ *
+ * `deployEnv()`, not `APP_ENV` — the latter holds the runtime mode once the app
+ * has booted, so reading it answered "no" on every production server.
+ */
+function _isProductionRuntime(): boolean {
+  return isProdLike(deployEnv()) || Bun.env["NODE_ENV"] === "production";
+}
+
 /**
  * Whether a value is an instance of a model registered with {@link registerFlowModel}.
  *
@@ -266,11 +332,21 @@ export function _restoreSnapshotValues(model: object, data: unknown): void {
 export function _applyWireValues(model: object, data: unknown): void {
   if (data === null || typeof data !== "object" || Array.isArray(data)) return;
 
-  const allowed = new Set(_writableFields(model.constructor as typeof BaseModel));
+  const ModelClass = model.constructor as typeof BaseModel;
+  const allowed = new Set(_writableFields(ModelClass));
   const incoming: Record<string, unknown> = {};
+  const dropped: string[] = [];
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
     if (allowed.has(key)) incoming[key] = value;
+    else dropped.push(key);
   }
+
+  // Dropping is right — a hostile payload must not become a 500, and it must not
+  // write a column nobody allowed. What was wrong is that it happened in silence:
+  // bind a field that is not `fillable` and there is no write, no error and no
+  // clue, which is the failure shape this project's own severity key calls the
+  // worst kind. Development only, once per class and field.
+  if (dropped.length > 0) _warnUnfillableBinding(ModelClass, dropped);
 
   if (Object.keys(incoming).length === 0) return;
 

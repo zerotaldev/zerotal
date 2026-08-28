@@ -11,6 +11,13 @@ change.
 
 ## [Unreleased]
 
+- **A bound field the model will not accept now says so.** `flow:model` on a column missing from
+  `fillable` was dropped in silence: the form submitted, nothing was written, nothing failed, and
+  there was no clue. The drop stays — the same path receives whatever a browser sends, so an
+  unknown key must not write a column and must not be able to 500 the page — but a developer's
+  typo produced exactly the same silence as a hostile payload. In development it now warns once
+  per class per field, naming the field, the current `fillable`, and both ways to fix it.
+
 - **The client entries are held to the `@zerotal/orm` boundary.** Every orm import in this
   package is `import type` — deliberately, because a root import once dragged
   `await import("bun")` into a browser bundle and broke it at _resolution_ time, before

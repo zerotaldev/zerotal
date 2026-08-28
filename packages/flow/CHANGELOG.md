@@ -11,6 +11,18 @@ change.
 
 ## [Unreleased]
 
+- **The client entries are held to the `@zerotal/orm` boundary.** Every orm import in this
+  package is `import type` — deliberately, because a root import once dragged
+  `await import("bun")` into a browser bundle and broke it at _resolution_ time, before
+  tree-shaking could drop it. One exception exists: `ModelSynth` imports a value. It is safe only
+  because no client entry reaches a synth, and that condition had been verified by hand, once,
+  with nothing holding it. A test now walks the import graph from each client entry and fails
+  naming the module that crossed.
+
+- **The plain-form enhancement bundle is built on first request, not at boot.** Most apps never
+  serve a page that uses `<form data-enhance>`, so building it at boot spends time on an artefact
+  nobody asked for, in every process.
+
 ### Added
 
 - **`<form data-enhance>` — plain-form enhancement, no component required.** A page that is

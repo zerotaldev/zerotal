@@ -129,6 +129,46 @@ export function _enhanceJs(): string | null {
   return _enhanceBundle;
 }
 
+/** In-flight build, so concurrent first requests share one rather than racing. */
+let _enhanceBuild: Promise<string | null> | null = null;
+
+/**
+ * Build the enhancement bundle once, on first request.
+ *
+ * No CSP variant: it has no expression evaluator to swap, because it evaluates
+ * nothing — it reads attributes and calls `fetch`.
+ *
+ * @internal
+ */
+async function _buildEnhanceBundle(): Promise<string | null> {
+  if (_enhanceBundle) return _enhanceBundle;
+  // Cache the promise, not the result — two requests arriving together would
+  // otherwise both bundle.
+  _enhanceBuild ??= (async () => {
+    try {
+      const entry = fileURLToPath(new URL("../client/enhance.ts", import.meta.url));
+      const result = await Bun.build({
+        entrypoints: [entry],
+        target: "browser",
+        minify: isProdLike(deployEnv()),
+        format: "esm",
+      });
+      if (result.success && result.outputs.length > 0) {
+        _enhanceBundle = await result.outputs[0]!.text();
+        return _enhanceBundle;
+      }
+      console.warn("[Flow] Enhancement bundle build failed:", result.logs);
+    } catch (e) {
+      console.warn("[Flow] Could not build enhancement bundle:", e);
+    }
+    // A failed build is not cached: the next request tries again, which is right
+    // for a dev-time transient and harmless for a real one.
+    _enhanceBuild = null;
+    return null;
+  })();
+  return _enhanceBuild;
+}
+
 // ── Rate limiter for HMAC failures ───────────────────────────────────────────
 
 const _checksumFailures = new Map<string, { count: number; since: number }>();
@@ -1045,41 +1085,27 @@ export class FlowProvider extends ServiceProvider {
       console.warn("[Flow] Could not build client bundle:", e);
     }
 
-    // Build the standalone plain-form enhancement bundle. No CSP variant: it has no
-    // expression evaluator to swap, because it evaluates nothing — it reads
-    // attributes and calls `fetch`.
-    try {
-      const enhanceEntry = fileURLToPath(new URL("../client/enhance.ts", import.meta.url));
-      const enhanceResult = await Bun.build({
-        entrypoints: [enhanceEntry],
-        target: "browser",
-        minify: isProdLike(deployEnv()),
-        format: "esm",
-      });
-      if (enhanceResult.success && enhanceResult.outputs.length > 0) {
-        _enhanceBundle = await enhanceResult.outputs[0]!.text();
-      } else {
-        console.warn("[Flow] Enhancement bundle build failed:", enhanceResult.logs);
-      }
-    } catch (e) {
-      console.warn("[Flow] Could not build enhancement bundle:", e);
-    }
-
     // Serve the plain-form enhancement bundle. Deliberately cacheable, unlike the
     // runtime: it carries no per-app route table, so there is nothing in it that can
     // go stale between deploys of the same framework version.
+    //
+    // Built on first request rather than at boot. Most apps never serve a page that
+    // uses `<form data-enhance>` — it is for the pages Flow does not otherwise touch
+    // — so building it at boot spends time on an artefact nobody asks for, in every
+    // process, including every test that boots a provider.
     Router.get(
       "/__flow/enhance.js",
       class FlowEnhanceHandler {
-        handle(http: HttpContext): void {
-          if (!_enhanceBundle) {
+        async handle(http: HttpContext): Promise<void> {
+          const bundle = await _buildEnhanceBundle();
+          if (!bundle) {
             http.response = new Response("// Flow enhancement unavailable", {
               status: 503,
               headers: { "Content-Type": "text/javascript; charset=utf-8" },
             });
             return;
           }
-          http.response = new Response(_enhanceBundle, {
+          http.response = new Response(bundle, {
             status: 200,
             headers: {
               "Content-Type": "text/javascript; charset=utf-8",

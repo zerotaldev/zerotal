@@ -93,3 +93,8 @@ storage/logs/
 # .planning/ stays local; nothing in it is ever committed.
 .planning/
 apps/docs/.docs-examples-*/
+
+# `--outfile=/dev/null` on Windows creates a literal file called `nul`, because
+# the shell has no such device. It blocks a commit the first time and is recreated
+# by the next build, so it is ignored rather than repeatedly deleted.
+nul

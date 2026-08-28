@@ -178,6 +178,8 @@ const BLOCKED_URL = 'about:blank'
 
 const DEFAULT_PERSISTENT_MIDDLEWARE = (string | MiddlewareClass)[]
 
+const FLOW_ENHANCE_PATH = '/__flow/enhance.js'
+
 const locked = (value: unknown, context: ClassFieldDecoratorContext) => void
 
 const modelable = (value: unknown, context: ClassFieldDecoratorContext) => void
@@ -235,6 +237,8 @@ function flowActiveConnections = () => number
 function FlowConfig = (options?: Partial<FlowConfigShape>) => FlowConfigShape
 
 function flowConnections = () => FlowConnection[]
+
+function flowEnhanceTag = () => string
 
 function For = <T>(props: ForProps<T>) => HtmlNode
 

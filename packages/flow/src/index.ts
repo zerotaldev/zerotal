@@ -74,6 +74,7 @@ export type {
 // `class PostsPage extends Component.using(Pagination, …)`.
 export type { Constructor, Mixin, Compose } from "./mixins.ts";
 export { Layout } from "./Layout.ts";
+export { flowEnhanceTag, FLOW_ENHANCE_PATH } from "./enhanceTag.ts";
 export { Form, registerForm } from "./Form.ts";
 // Global client store — app-wide, client-only reactive UI state, read in JSX as
 // `$flow.$store.*`. `defineStore` declares its initial shape at app start; augment

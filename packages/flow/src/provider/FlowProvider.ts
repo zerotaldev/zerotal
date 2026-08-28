@@ -100,6 +100,17 @@ export function _devErrorInfo(error: unknown, action: string): DevErrorInfo {
 let _runtimeBundle: string | null = null;
 
 /**
+ * The `/__flow/enhance.js` bundle — the standalone plain-form enhancement.
+ *
+ * Separate from the runtime bundle on purpose. `/__flow/runtime.js` is injected
+ * only by `Router.flow` routes, and the whole point of `<form data-enhance>` is a
+ * page with no Flow component on it, which is therefore never served that script.
+ * It is also tiny and dependency-free, so an app that wants a form not to flash
+ * does not pay for Alpine and a WebSocket bridge to get it.
+ */
+let _enhanceBundle: string | null = null;
+
+/**
  * CSP-safe mode flag (no 'unsafe-eval'). Set `flow.cspSafe` in `config/flow.ts`,
  * or the ZT_FLOW_CSP_SAFE / APP_CSP_SAFE env flag when there is no config file.
  */
@@ -111,6 +122,11 @@ function _isCspSafe(): boolean {
 /** @internal — read by router.ts to build <script> tags. */
 export function _runtimeJs(): string | null {
   return _runtimeBundle;
+}
+
+/** @internal — the built plain-form enhancement bundle, or null when it failed to build. */
+export function _enhanceJs(): string | null {
+  return _enhanceBundle;
 }
 
 // ── Rate limiter for HMAC failures ───────────────────────────────────────────
@@ -1028,6 +1044,52 @@ export class FlowProvider extends ServiceProvider {
     } catch (e) {
       console.warn("[Flow] Could not build client bundle:", e);
     }
+
+    // Build the standalone plain-form enhancement bundle. No CSP variant: it has no
+    // expression evaluator to swap, because it evaluates nothing — it reads
+    // attributes and calls `fetch`.
+    try {
+      const enhanceEntry = fileURLToPath(new URL("../client/enhance.ts", import.meta.url));
+      const enhanceResult = await Bun.build({
+        entrypoints: [enhanceEntry],
+        target: "browser",
+        minify: isProdLike(deployEnv()),
+        format: "esm",
+      });
+      if (enhanceResult.success && enhanceResult.outputs.length > 0) {
+        _enhanceBundle = await enhanceResult.outputs[0]!.text();
+      } else {
+        console.warn("[Flow] Enhancement bundle build failed:", enhanceResult.logs);
+      }
+    } catch (e) {
+      console.warn("[Flow] Could not build enhancement bundle:", e);
+    }
+
+    // Serve the plain-form enhancement bundle. Deliberately cacheable, unlike the
+    // runtime: it carries no per-app route table, so there is nothing in it that can
+    // go stale between deploys of the same framework version.
+    Router.get(
+      "/__flow/enhance.js",
+      class FlowEnhanceHandler {
+        handle(http: HttpContext): void {
+          if (!_enhanceBundle) {
+            http.response = new Response("// Flow enhancement unavailable", {
+              status: 503,
+              headers: { "Content-Type": "text/javascript; charset=utf-8" },
+            });
+            return;
+          }
+          http.response = new Response(_enhanceBundle, {
+            status: 200,
+            headers: {
+              "Content-Type": "text/javascript; charset=utf-8",
+              "Cache-Control": "public, max-age=3600",
+            },
+          });
+        }
+      },
+      "handle",
+    );
 
     // Serve the client-side runtime bundle
     Router.get(

@@ -11,6 +11,25 @@ change.
 
 ## [Unreleased]
 
+### Added
+
+- **`<form data-enhance>` — plain-form enhancement, no component required.** A page that is
+  just server-rendered HTML can now have a form that submits without the page flashing: it
+  posts through `fetch` and the matching form in the response replaces it in place, so a
+  validation error lands where the person is looking and nothing else on the page moves.
+
+  Delivered as its own dependency-free bundle at `/__flow/enhance.js`, because the whole point
+  is a page with no Flow component on it — such a page is never served `/__flow/runtime.js`,
+  and pulling Alpine and a WebSocket bridge onto it would be paying the framework's entire
+  client cost for a submit handler. Add it with `flowEnhanceTag()` in a non-Flow layout.
+
+  Every path degrades: a network failure re-submits natively rather than losing what was
+  typed, a redirect is followed and `pushState`d so the address bar agrees, and no JavaScript
+  at all is an ordinary form post — `data-enhance` is additive on a form that already works,
+  so there is no fallback path that can rot.
+
+  This completes ACTION 8, whose other two items turned out to be already shipped.
+
 ## [1.8.0] — 2026-08-24
 
 ### Added

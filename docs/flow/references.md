@@ -216,6 +216,20 @@ override async render() {
 | `x-show="$flow.open && $flow.count > 0"` | Raw Alpine expression                                        |
 | `flow:click="increment"`                 | Hand-written Flow directive (accepted but not needed in JSX) |
 
+## Plain-form enhancement
+
+For forms on pages with no Flow component. See
+[Forms](/docs/flow/forms#enhancing-a-plain-form--no-component).
+
+| Attribute / export    | Meaning                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| `data-enhance`        | Submit through `fetch` and patch the response in. `"false"` opts out.                  |
+| `data-enhance-target` | CSS selector for what to replace, instead of the form itself.                          |
+| `data-enhance-busy`   | Set on the form while a submission is in flight. Styling hook and re-entry guard.      |
+| `flowEnhanceTag()`    | The `<script>` tag to put in a non-Flow layout.                                        |
+| `FLOW_ENHANCE_PATH`   | `/__flow/enhance.js` — the path the bundle is served at.                               |
+| `flow:enhanced`       | Window event after each swap; `detail.navigated` says whether a redirect was followed. |
+
 ## Client expressions
 
 Inside a client expression — `onClick={() => this.X(...)}` — `this.` resolves to the live client runtime (no server round-trip to start it). You write the **same names as on the server** — no `$`-prefixed syntax, and it all type-checks.

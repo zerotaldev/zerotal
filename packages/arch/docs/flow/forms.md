@@ -545,6 +545,63 @@ export class AvatarUploader extends Component {
   dedicated `temp` disk are natural follow-ups; the `TemporaryUploadedFile` API is designed to
   absorb them without changing component code.
 
+## Enhancing a plain form — no component
+
+Everything above needs a Flow component. This does not.
+
+A page that is just server-rendered HTML — no `Router.flow`, no `Component` — can still have a
+form that submits without the page flashing. Add `data-enhance`:
+
+```html
+<form method="post" action="/subscribe" data-enhance>
+  <p class="error">{{ error }}</p>
+  <input name="email" />
+  <button type="submit">Subscribe</button>
+</form>
+```
+
+The form posts through `fetch`, and **the matching form in the response replaces this one in
+place**. A validation error re-renders the form with the message in it, and that is what lands
+on the page — the rest of the document is untouched, so nothing scrolls, nothing flashes, and
+what the person typed is still there.
+
+### Include the script
+
+The enhancement is a separate, dependency-free bundle. Flow pages get
+`/__flow/runtime.js`; a plain page gets nothing, which is the whole reason this exists. Put the
+tag in the layout that renders your non-Flow pages:
+
+```tsx
+import { flowEnhanceTag } from "@zerotal/flow";
+
+// in your layout's <head>
+flowEnhanceTag(); // <script src="/__flow/enhance.js" defer></script>
+```
+
+Nothing fails if you forget it — the forms simply post the way they always did. That is the
+design, and it is also why the tag is easy to leave out and never notice.
+
+### What it does
+
+| Situation        | What happens                                                                    |
+| ---------------- | ------------------------------------------------------------------------------- |
+| Normal submit    | The response's matching form replaces this one; focus and caret are restored.   |
+| Validation error | Same — the server re-rendered the form, so the error is in the markup.          |
+| Redirect         | Followed, the document swapped, and `pushState`d so the address bar agrees.     |
+| Network failure  | Falls back to a native submit, so nothing typed is lost.                        |
+| No JavaScript    | An ordinary form post. `data-enhance` is additive; there is no fallback to rot. |
+
+`data-enhance-target="#selector"` replaces something else instead of the form — a results
+panel, a list. `data-enhance="false"` opts a form out. While a submission is in flight the form
+carries `data-enhance-busy`, which is a styling hook and a re-entry guard.
+
+A `flow:enhanced` event fires on `window` after each swap, with
+`detail.navigated` saying whether it followed a redirect.
+
+> **Note** — This is enhancement, not a component. There is no state, no socket and no server
+> round-trip beyond the form's own post. When the page needs live state, reach for a
+> [component](/docs/flow/components).
+
 ## Next steps
 
 - [Flow overview](/docs/flow) — the guide's front page and the rest of the sections.

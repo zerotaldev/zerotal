@@ -111,6 +111,8 @@ function alterTableBlocks(newColumns: NewColumn[]): string {
  *   - Creates new tables with `Schema.create()`
  *   - Adds new columns with `Schema.table()` (ALTER TABLE ADD COLUMN)
  *   - Drops created tables in `down()` (column additions are left for manual rollback)
+ *
+ * @internal
  */
 export function generateMigrationContent(className: string, diff: DiffResult): string {
   const upParts: string[] = [];

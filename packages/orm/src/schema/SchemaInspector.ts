@@ -3,6 +3,7 @@ import { _getDialect } from "../model/BaseModel.ts";
 
 // ── DB column descriptor (normalised across dialects) ─────────────────────────
 
+/** @internal */
 export interface LiveColumn {
   name: string;
   rawType: string; // original SQL type string from the DB (uppercase)
@@ -10,6 +11,7 @@ export interface LiveColumn {
   primary: boolean;
 }
 
+/** @internal */
 export interface LiveTable {
   name: string;
   columns: LiveColumn[];
@@ -38,6 +40,8 @@ async function queryParam<T>(sql: string, value: unknown): Promise<T[]> {
 /**
  * Queries the live database to enumerate tables and their column definitions.
  * Used by `migrate:generate` to compute what has changed since the last migration.
+ *
+ * @internal
  */
 export const SchemaInspector = {
   /** Return all user-defined table names in the current DB. */

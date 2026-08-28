@@ -7,10 +7,18 @@
 // consult the active dialect instead of hard-coding SQLite syntax behind the
 // multi-dialect facade.
 
-/** Supported database engines. Mirrors `Dialect` in QueryBuilder.ts. */
+/**
+ * Supported database engines. Mirrors `Dialect` in QueryBuilder.ts.
+ *
+ * @internal
+ */
 export type DialectName = "sqlite" | "postgres" | "mysql";
 
-/** A parameterised statement: `sql` uses `?` placeholders bound from `params`. */
+/**
+ * A parameterised statement: `sql` uses `?` placeholders bound from `params`.
+ *
+ * @internal
+ */
 export interface DialectQuery {
   sql: string;
   params: unknown[];
@@ -25,6 +33,8 @@ export type DatePart = "date" | "time" | "day" | "month" | "year";
  * @example
  * const d = getDialect("postgres");
  * const { sql, params } = d.hasTableSql("users");
+ *
+ * @internal
  */
 export interface SqlDialect {
   readonly name: DialectName;

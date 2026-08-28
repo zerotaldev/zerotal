@@ -68,6 +68,7 @@ export function resolverForParam(paramName: string): ModelBindingResolver | unde
       : M.findOrFail(value);
 }
 
+/** @internal */
 export function registerImplicitBinding(): void {
   setImplicitModelResolver(resolverForParam);
 }

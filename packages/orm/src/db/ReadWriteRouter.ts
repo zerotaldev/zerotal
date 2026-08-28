@@ -24,6 +24,8 @@ import type { SQLInstance } from "./sql-types.ts";
  *
  * // Drop-in: pass router wherever you'd pass a SQL connection
  * DB.table('users')  // SELECT → replica, mutating → primary
+ *
+ * @internal
  */
 export function createReadWriteRouter(primary: SQLInstance, replicas: SQLInstance[]): SQLInstance {
   if (replicas.length === 0) return primary;

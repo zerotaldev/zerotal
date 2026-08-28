@@ -14,6 +14,8 @@ const _dialects: Record<DialectName, SqlDialect> = {
  *
  * @example
  * getDialect(dialectFor(conn)).dateExpr('day', 'created_at')
+ *
+ * @internal
  */
 export function getDialect(name: DialectName): SqlDialect {
   return _dialects[name];

@@ -107,6 +107,8 @@ HookRegistry.onAfterRun = (ModelClass, hook, model): void => {
 /**
  * Register a named connection that models can select via `static connection`.
  * Stored on the current OrmContext (execution-scoped), not a global.
+ *
+ * @internal
  */
 export function registerModelConnection(name: string, conn: SQLInstance, dialect?: Dialect): void {
   currentOrmContext().namedConnections.set(name, conn);
@@ -159,6 +161,8 @@ export function _getModelConnection(): SQLInstance {
  * multi-database strategy: it returns the active tenant's connection so every model
  * query transparently hits the right database. Returns `null` to defer to the normal
  * resolution. Defaults to a no-op, so it changes nothing until something registers it.
+ *
+ * @internal
  */
 export type ContextConnectionResolver = (ModelClass?: typeof BaseModel) => SQLInstance | null;
 let _contextConnectionResolver: ContextConnectionResolver | null = null;
@@ -167,6 +171,8 @@ let _contextConnectionResolver: ContextConnectionResolver | null = null;
  * Register a context-aware connection resolver (pass `null` to clear). Consulted by
  * `_resolveConn` after explicit transactions and `static connection` named bindings,
  * but before the default connection — so transactions and pinned connections still win.
+ *
+ * @internal
  */
 export function registerConnectionResolver(fn: ContextConnectionResolver | null): void {
   _contextConnectionResolver = fn;

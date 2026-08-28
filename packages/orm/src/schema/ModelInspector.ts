@@ -7,6 +7,7 @@ import type { ClassRef } from "../support/classRef.ts";
 
 // ── Model schema descriptor ───────────────────────────────────────────────────
 
+/** @internal */
 export interface ModelColumn {
   name: string;
   type: ColumnOptions["type"]; // 'string' | 'text' | 'number' | 'boolean' | 'datetime' | 'json'
@@ -19,6 +20,7 @@ export interface ModelColumn {
   index?: boolean;
 }
 
+/** @internal */
 export interface ModelSchema {
   table: string;
   primaryKey: string;
@@ -109,6 +111,8 @@ function encryptedColumns(
  * by child classes, matching normal TypeScript class semantics.
  *
  * Used by `migrate:generate` to compare model intent against the live DB.
+ *
+ * @internal
  */
 export const ModelInspector = {
   /**

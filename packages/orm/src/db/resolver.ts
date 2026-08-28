@@ -11,6 +11,8 @@ let _resolver: ConnectionResolver | null = null;
 /**
  * Register the callback used to look up the base connection from the container.
  * Pass `null` to clear it. Set once by the `DatabaseProvider` at boot.
+ *
+ * @internal
  */
 export function setConnectionResolver(fn: ConnectionResolver | null): void {
   _resolver = fn;
@@ -19,6 +21,8 @@ export function setConnectionResolver(fn: ConnectionResolver | null): void {
 /**
  * Resolve the container's base connection via the registered resolver, swallowing
  * any resolver error. Returns `undefined` when no resolver is set or it fails.
+ *
+ * @internal
  */
 export function resolveContainerConnection(): SQLInstance | undefined {
   if (!_resolver) return undefined;

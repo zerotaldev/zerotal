@@ -5774,22 +5774,6 @@ class ModelQueryBuilder = {
   withoutTenancy: () => ModelQueryBuilder<M>
 }
 
-class MysqlDialect = {
-  new (): MysqlDialect
-  advisoryLockSql: (key: number) => DialectQuery
-  advisoryUnlockSql: (key: number) => DialectQuery
-  autoIncrementColumn: (column: string) => string
-  booleanLiteral: (value: boolean) => string
-  dateExpr: (part: DatePart, column: string) => string
-  hasColumnSql: (table: string, column: string) => DialectQuery
-  hasTableSql: (table: string) => DialectQuery
-  readonly booleanType: 'INTEGER'
-  readonly name: 'mysql'
-  readonly supportsAdvisoryLocks: true
-  readonly supportsTransactionalDdl: false
-  stringType: (length: number) => string
-}
-
 class NPlusOneDetected = {
   new (fingerprint: string, count: number, ctx: object | undefined): NPlusOneDetected
   readonly count: number
@@ -5805,31 +5789,6 @@ class NPlusOneError = {
   readonly distinctArgs: number
   readonly fingerprint: string
   readonly status: number
-}
-
-class OrmContext = {
-  new (): OrmContext
-  globalScopes: Map<ClassRef, Map<string, unknown>>
-  hooks: Map<ClassRef, Map<string, unknown[]>>
-  namedConnections: Map<string, SQLInstance>
-  overrideConnection: SQLInstance | null
-  transitionCallbacks: Map<ClassRef, Map<string, unknown[]>>
-}
-
-class PostgresDialect = {
-  new (): PostgresDialect
-  advisoryLockSql: (key: number) => DialectQuery
-  advisoryUnlockSql: (key: number) => DialectQuery
-  autoIncrementColumn: (column: string) => string
-  booleanLiteral: (value: boolean) => string
-  dateExpr: (part: DatePart, column: string) => string
-  hasColumnSql: (table: string, column: string) => DialectQuery
-  hasTableSql: (table: string) => DialectQuery
-  readonly booleanType: 'BOOLEAN'
-  readonly name: 'postgres'
-  readonly supportsAdvisoryLocks: true
-  readonly supportsTransactionalDdl: true
-  stringType: () => string
 }
 
 class QueryBuilder = {
@@ -5956,22 +5915,6 @@ class Seeder = {
   run: () => Promise<void>
 }
 
-class SqliteDialect = {
-  new (): SqliteDialect
-  advisoryLockSql: () => DialectQuery | null
-  advisoryUnlockSql: () => DialectQuery | null
-  autoIncrementColumn: (column: string) => string
-  booleanLiteral: (value: boolean) => string
-  dateExpr: (part: DatePart, column: string) => string
-  hasColumnSql: (table: string, column: string) => DialectQuery
-  hasTableSql: (table: string) => DialectQuery
-  readonly booleanType: 'INTEGER'
-  readonly name: 'sqlite'
-  readonly supportsAdvisoryLocks: false
-  readonly supportsTransactionalDdl: true
-  stringType: () => string
-}
-
 class StateError = {
   new (model: string, from: string, to: string, detail?: string): StateError
   readonly code: string
@@ -6016,29 +5959,11 @@ class UnsupportedDialectError = {
 
 const DB = {    table(tableName: string): QueryBuilder;    raw<T = Record<string, unknown>>(sql: TemplateStringsArray | string, ...rest: unknown[]): Promise<T[]>;    transaction<T>(callback: (tx?: SQLInstance) => Promise<T>, attempts?: number): Promise<T>;    beginTransaction(): Promise<ManualTransaction>;    onPrimary(): {        table(name: string): QueryBuilder;    };    currentTx(): unknown | undefined;    advisoryLock<T>(key: number, callback: () => Promise<T>): Promise<T>;    preventNPlusOne(options?: NPlusOneOptions): void;    allowNPlusOne(pattern: string, options?: {        once?: boolean;    }): void;}
 
-const ModelInspector = {    load(pattern: string, cwd?: string): Promise<void>;    all(): ModelSchema[];    fromClass(ctor: ClassRef): ModelSchema | null;}
-
 const relationRegistry = Map<ClassRef, Map<string, RelationMetadata>>
 
 const Schema = {    create(table: string, callback: (bp: Blueprint) => void): Promise<void>;    createIfNotExists(table: string, callback: (bp: Blueprint) => void): Promise<void>;    table(name: string, callback: (bp: Blueprint) => void): Promise<void>;    alter(name: string, callback: (bp: Blueprint) => void): Promise<void>;    drop(table: string): Promise<void>;    dropIfExists(table: string): Promise<void>;    rename(from: string, to: string): Promise<void>;    hasTable(table: string): Promise<boolean>;    hasColumn(table: string, column: string): Promise<boolean>;}
 
-const SchemaDiffer = {    diff(schemas: ModelSchema[]): Promise<DiffResult>;    isEmpty(diff: DiffResult): boolean;}
-
-const SchemaInspector = {    tables(): Promise<string[]>;    columns(table: string): Promise<LiveColumn[] | null>;    describe(table: string): Promise<LiveTable | null>;}
-
 const TransactionContext = AsyncLocalStorage<SQLInstance>
-
-function _getConnection = () => SQLInstance
-
-function _getDbConnectionOverride = () => SQLInstance | null
-
-function _globalScopeRegistry = () => Map<ClassRef, Map<string, GlobalScopeCallback>>
-
-function _setDbConnection = (conn: SQLInstance | null) => void
-
-function _setReadReplicas = (primary: SQLInstance, replicas: SQLInstance[]) => void
-
-function _suppressHooks = <T>(fn: () => Promise<T>) => Promise<T>
 
 function allowNPlusOne = (pattern: string, options?: {    once?: boolean;}, ctx?: object | null) => void
 
@@ -6048,15 +5973,7 @@ function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_va
 
 function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
 
-function createReadWriteRouter = (primary: SQLInstance, replicas: SQLInstance[]) => SQLInstance
-
-function currentOrmContext = () => OrmContext
-
 function DatabaseConfig = (options?: Partial<DatabaseConfigShape>) => DatabaseConfigShape
-
-function generateMigrationContent = (className: string, diff: DiffResult) => string
-
-function getDialect = (name: DialectName) => SqlDialect
 
 function hasMany = (related: () => unknown, options: HasManyOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
@@ -6065,8 +5982,6 @@ function hasManyThrough = (related: () => unknown, through: () => unknown, optio
 function hasOne = (related: () => unknown, options: HasOneOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
 function hasOneThrough = (related: () => unknown, through: () => unknown, options: HasManyThroughOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
-
-function installOrmObservability = (app: Application) => () => void
 
 function isEncryptedCast = (cast: unknown) => cast is EncryptedCastName
 
@@ -6088,29 +6003,11 @@ function objectOf = <T = unknown>(mapper?: CastMapper<T>) => JsonCast<T>
 
 function preventNPlusOne = (options?: NPlusOneOptions) => void
 
-function registerConnectionResolver = (fn: ContextConnectionResolver | null) => void
-
-function registerImplicitBinding = () => void
-
-function registerModelConnection = (name: string, conn: SQLInstance, dialect?: Dialect) => void
-
-function resetOrmContext = () => void
-
-function resolveContainerConnection = () => SQLInstance | undefined
-
-function resolveSyncOptions = (raw: unknown) => ResolvedSyncOptions
-
-function setConnectionResolver = (fn: ConnectionResolver | null) => void
-
 function SoftDeletes = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): SoftDeletes;    prototype: SoftDeletes<any>.SoftDeletes;    softDeletes: boolean;    withTrashed<T extends BaseModel>(this: SoftDeleteModelClass<T>): ModelQueryBuilder<T>;    onlyTrashed<T extends BaseModel>(this: SoftDeleteModelClass<T>): ModelQueryBuilder<T>;} & TBase
 
 function State = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): State;    prototype: State<any>.State;    stateField: string;    states?: Record<string, StateDefinition<string, any>>;    onTransition<T>(this: {        new (...args: any[]): T;    }, toState: string, callback: TransitionCallback<T>): void;} & TBase
 
-function synchronizeSchema = (options?: SynchronizeOptions) => Promise<DiffResult>
-
 function table = (tableName: string, options?: TableOptions) => TableDecoratorBuilder
-
-function useOrmContext = (ctx?: OrmContext) => OrmContext
 
 interface BelongsTo = {
   __@___relation__: 'belongsTo'
@@ -6166,22 +6063,6 @@ interface DatabaseConfigShape = {
   url: string
 }
 
-interface DialectQuery = {
-  params: unknown[]
-  sql: string
-}
-
-interface DiffResult = {
-  droppedColumns: DroppedColumn[]
-  newColumns: NewColumn[]
-  newTables: NewTable[]
-}
-
-interface DroppedColumn = {
-  column: string
-  table: string
-}
-
 interface HasMany = {
   __@___relation__: 'hasMany'
   __type__: T
@@ -6209,18 +6090,6 @@ interface KeysetOptions = {
 interface KeysetPaginateResult = {
   data: T[]
   nextCursor: string | null
-}
-
-interface LiveColumn = {
-  name: string
-  nullable: boolean
-  primary: boolean
-  rawType: string
-}
-
-interface LiveTable = {
-  columns: LiveColumn[]
-  name: string
 }
 
 interface ManualTransaction = {
@@ -6267,16 +6136,6 @@ interface MigrationStatus = {
   ranAt?: Date
 }
 
-interface ModelColumn = {
-  default: unknown
-  index?: boolean
-  name: string
-  nullable: boolean
-  primary: boolean
-  type: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json' | undefined
-  unique?: boolean
-}
-
 interface ModelObserver = {
   created?: (model: T) => Promise<void> | void
   creating?: (model: T) => Promise<void> | void
@@ -6287,14 +6146,6 @@ interface ModelObserver = {
   saving?: (model: T) => Promise<void> | void
   updated?: (model: T) => Promise<void> | void
   updating?: (model: T) => Promise<void> | void
-}
-
-interface ModelSchema = {
-  columns: ModelColumn[]
-  primaryKey: string
-  softDeletes: boolean
-  table: string
-  timestamps: boolean
 }
 
 interface MorphedByManyOptions = {
@@ -6342,15 +6193,6 @@ interface MorphToOptions = {
   morphForeignKey?: string
   morphMap: Record<string, () => unknown>
   morphTypeColumn?: string
-}
-
-interface NewColumn = {
-  column: ModelColumn
-  table: string
-}
-
-interface NewTable = {
-  schema: ModelSchema
 }
 
 interface NPlusOneOptions = {
@@ -6409,11 +6251,6 @@ interface RelationMetadata = {
   withDefault?: boolean | Record<string, unknown> | ((model: unknown) => void)
 }
 
-interface ResolvedSyncOptions = {
-  disruptive: boolean
-  enabled: boolean
-}
-
 interface ScopeApplicator = {
   apply: (query: QueryBuilder) => void
 }
@@ -6431,21 +6268,6 @@ interface SimplePaginateResult = {
   url: (page: number, baseUrl?: string, query?: Record<string, string>) => string
 }
 
-interface SqlDialect = {
-  advisoryLockSql: (key: number) => DialectQuery | null
-  advisoryUnlockSql: (key: number) => DialectQuery | null
-  autoIncrementColumn: (column: string) => string
-  booleanLiteral: (value: boolean) => string
-  dateExpr: (part: DatePart, column: string) => string
-  hasColumnSql: (table: string, column: string) => DialectQuery
-  hasTableSql: (table: string) => DialectQuery
-  readonly booleanType: string
-  readonly name: DialectName
-  readonly supportsAdvisoryLocks: boolean
-  readonly supportsTransactionalDdl: boolean
-  stringType: (length: number) => string
-}
-
 interface SQLInstance = {
   <T = Record<string, unknown>>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T[]>
   begin: <T>(fn: (tx: SQLInstance) => Promise<T>) => Promise<T>
@@ -6455,10 +6277,6 @@ interface SQLInstance = {
 interface StateDefinition = {
   canTransitionTo: readonly States[]
   guard?: StateGuard<T>
-}
-
-interface SynchronizeOptions = {
-  disruptive?: boolean
 }
 
 interface TableDecoratorBuilder = {
@@ -6487,11 +6305,7 @@ type ColumnShorthand = 'string' | 'text' | 'integer' | 'number' | 'float' | 'boo
 
 type Constructor = new (...args: any[]) => T
 
-type ContextConnectionResolver = (ModelClass?: typeof BaseModel) => SQLInstance | null
-
 type DatePart = 'date' | 'time' | 'day' | 'month' | 'year'
-
-type DialectName = 'sqlite' | 'postgres' | 'mysql'
 
 type EncryptedCastName = 'encrypted' | 'encrypted:json'
 

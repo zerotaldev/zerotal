@@ -528,6 +528,46 @@ test("backfills a slug for every existing post", async () => {
 | `hasTable`          | `hasTable(table: string): Promise<boolean>`                        | Whether a table exists.               |
 | `hasColumn`         | `hasColumn(table: string, column: string): Promise<boolean>`       | Whether a column exists.              |
 
+### Types
+
+The builders a migration's `up()` receives, and the shapes they take:
+
+| Type                     | What it is                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| `ColumnBuilder`          | What every `table.string(…)` returns — the chain that adds modifiers.              |
+| `ColumnOptions`          | Length, precision and the other per-type settings a column accepts.                |
+| `ColumnShorthand`        | The short forms (`"string"`, `"integer"`, …) accepted where a full builder fits.   |
+| `ForeignIdColumnBuilder` | What `table.foreignId(…)` returns, adding `.constrained()` to the chain.           |
+| `ForeignKeyBuilder`      | The `.references(…).on(…)` chain, and where `onDelete` / `onUpdate` are set.       |
+| `FKAction`               | `"cascade" \| "restrict" \| "set null" \| "no action"` — what a FK does on change. |
+| `TableOptions`           | Table-level settings: engine, charset, and whether it is temporary.                |
+
+### Running migrations yourself
+
+`MigrationRunner` is the class behind `zt migrate`. Reach for it when you need the runner
+somewhere a command cannot go — a test harness, a deploy script, a tenant provisioner that
+migrates a database it has just created:
+
+```typescript fragment
+import { MigrationRunner } from "@zerotal/orm";
+
+const runner = new MigrationRunner({ connection });
+const ran = await runner.run(entries); // names of the migrations applied
+const status = await runner.status(entries); // ran / pending, per migration
+```
+
+| Type              | What it is                                                                 |
+| ----------------- | -------------------------------------------------------------------------- |
+| `MigrationEntry`  | One migration handed to the runner: its name and its instance.             |
+| `MigrationRecord` | A row of the `migrations` table — name, batch, and when it ran.            |
+| `MigrationStatus` | What `status()` reports per migration: whether it ran, and in which batch. |
+| `MigrationError`  | Thrown when a migration fails, carrying which one and what it was doing.   |
+
+`runner.willRollBackOnFailure` says whether this engine has transactional DDL. On MySQL it is
+false — every DDL statement implicitly commits, so a migration that fails part-way leaves the
+half that succeeded. `zt migrate` warns about this before it starts, while taking a backup is
+still an option.
+
 ## Next steps
 
 - [ORM](/docs/orm) — the models your migrations build tables for.

@@ -3,20 +3,24 @@ import { columnDbName, type ModelSchema, type ModelColumn } from "./ModelInspect
 
 // -- Diff result types ---------------------------------------------------------
 
+/** @internal */
 export interface NewTable {
   schema: ModelSchema;
 }
 
+/** @internal */
 export interface NewColumn {
   table: string;
   column: ModelColumn;
 }
 
+/** @internal */
 export interface DroppedColumn {
   table: string;
   column: string;
 }
 
+/** @internal */
 export interface DiffResult {
   newTables: NewTable[];
   newColumns: NewColumn[];
@@ -36,6 +40,8 @@ export interface DiffResult {
  *
  * Additive deltas (newTables, newColumns) are always safe to apply. Dropped
  * columns are reported separately and only applied by a disruptive synchronize.
+ *
+ * @internal
  */
 export const SchemaDiffer = {
   async diff(schemas: ModelSchema[]): Promise<DiffResult> {

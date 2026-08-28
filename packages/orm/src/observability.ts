@@ -85,6 +85,8 @@ function _ctxPath(ctx: object): string {
 /**
  * Subscribe the ORM's events to every installed observer. Returns a disposer that
  * removes every subscription; call it from the ORM provider's `onStopping()`.
+ *
+ * @internal
  */
 export function installOrmObservability(app: Application): () => void {
   const unsubs: Array<() => void> = [];

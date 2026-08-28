@@ -3,6 +3,8 @@ import type { DatePart, DialectQuery, SqlDialect } from "./types.ts";
 /**
  * PostgreSQL strategy — information_schema introspection, EXTRACT()/casts for
  * date parts, pg_advisory_lock for advisory locks.
+ *
+ * @internal
  */
 export class PostgresDialect implements SqlDialect {
   readonly name = "postgres" as const;

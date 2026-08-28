@@ -12,9 +12,9 @@
     "@zerotal/flow-ui": 103,
     "@zerotal/i18n": 2,
     "@zerotal/inertia": 7,
-    "@zerotal/monitor": 55,
+    "@zerotal/monitor": 54,
     "@zerotal/notifications": 9,
-    "@zerotal/orm": 87,
+    "@zerotal/orm": 17,
     "@zerotal/queue": 11,
     "@zerotal/scheduler": 14,
     "@zerotal/session": 5,
@@ -23,6 +23,6 @@
     "@zerotal/testing": 5,
     "@zerotal/validator": 9
   },
-  "total": 752,
-  "updatedAt": "2026-08-28T16:24:31.385Z"
+  "total": 681,
+  "updatedAt": "2026-08-28T17:06:42.940Z"
 }

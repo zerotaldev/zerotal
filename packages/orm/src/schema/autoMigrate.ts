@@ -41,7 +41,11 @@ function applyColumn(table: TableBuilder, col: ModelColumn): void {
   else if (col.index) table.index(dbName);
 }
 
-/** Options for {@link synchronizeSchema}. */
+/**
+ * Options for {@link synchronizeSchema}.
+ *
+ * @internal
+ */
 export interface SynchronizeOptions {
   /**
    * When true, also DROP columns that exist in the database but are no longer
@@ -61,6 +65,8 @@ export interface SynchronizeOptions {
  *
  * Returns the diff that was applied (additive deltas are empty when already in sync;
  * `droppedColumns` is populated but only acted on when `disruptive` is set).
+ *
+ * @internal
  */
 export async function synchronizeSchema(options: SynchronizeOptions = {}): Promise<DiffResult> {
   const diff = await SchemaDiffer.diff(ModelInspector.all());
@@ -112,7 +118,11 @@ export async function synchronizeSchema(options: SynchronizeOptions = {}): Promi
   return diff;
 }
 
-/** Resolved, normalised form of the `database.synchronize` config value. */
+/**
+ * Resolved, normalised form of the `database.synchronize` config value.
+ *
+ * @internal
+ */
 export interface ResolvedSyncOptions {
   enabled: boolean;
   disruptive: boolean;
@@ -124,6 +134,8 @@ export interface ResolvedSyncOptions {
  *   false / undefined        -> { enabled: false, disruptive: false }
  *   true                     -> { enabled: true,  disruptive: false }  (additive)
  *   { enabled, disruptive? } -> as given (enabled defaults true when the object is present)
+ *
+ * @internal
  */
 export function resolveSyncOptions(raw: unknown): ResolvedSyncOptions {
   if (raw === true) return { enabled: true, disruptive: false };

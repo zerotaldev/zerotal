@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **INTERNAL: 41 framework-wiring exports are marked `@internal`.** The connection and context
+  plumbing (`_getConnection`, `setConnectionResolver`, `useOrmContext`, `createReadWriteRouter`,
+  `registerImplicitBinding`, …), the schema-diff machinery behind `migrate:generate` and
+  `synchronize` (`SchemaDiffer`, `SchemaInspector`, `ModelInspector`, `synchronizeSchema`, and
+  their result shapes), and the dialect layer (`SqliteDialect`, `PostgresDialect`,
+  `MysqlDialect`, `getDialect`).
+
+  **Nothing is removed and nothing breaks** — they are still exported and still work. What
+  changes is the promise: they leave the recorded API surface, because an app never calls any of
+  them, and the only callers outside `@zerotal/orm` are `@zerotal/testing`, `@zerotal/tenancy`
+  and `@zerotal/arch` wiring themselves in.
+
+  Everything an app does use is unaffected, and the parts of it that were undocumented are now
+  documented: the relation types and option shapes in
+  [Relationships](/docs/orm/relationships#types), and the column builders plus `MigrationRunner`
+  in [Migrations](/docs/migrations#types).
+
 - **`doctor` warns when migrations have not run**, and names them. The development error
   overlay already answers this after a request has failed with `no such table`; the check asks
   it before anything breaks, which is the cheaper moment to hear it. A warning rather than a

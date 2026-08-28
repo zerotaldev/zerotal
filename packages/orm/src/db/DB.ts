@@ -22,7 +22,11 @@ import {
 // Production code resolves the connection from the container instead.
 let _connection: SQLInstance | undefined;
 
-/** Test helper: inject a primary connection without going through the container/provider. */
+/**
+ * Test helper: inject a primary connection without going through the container/provider.
+ *
+ * @internal
+ */
 export function _setDbConnection(conn: SQLInstance | null): void {
   _connection = conn ?? undefined;
 }
@@ -34,6 +38,8 @@ export function _setDbConnection(conn: SQLInstance | null): void {
  * a helper that installs its own connection needs to restore the *override
  * slot* exactly as it found it, and cannot tell an absent override from a
  * container-resolved connection otherwise.
+ *
+ * @internal
  */
 export function _getDbConnectionOverride(): SQLInstance | null {
   return _connection ?? null;
@@ -42,6 +48,8 @@ export function _getDbConnectionOverride(): SQLInstance | null {
 /**
  * Test helper: inject a primary + replicas as a read/write router.
  * Resets to a plain primary when `replicas` is empty.
+ *
+ * @internal
  */
 export function _setReadReplicas(primary: SQLInstance, replicas: SQLInstance[]): void {
   _connection = replicas.length > 0 ? createReadWriteRouter(primary, replicas) : primary;
@@ -90,7 +98,11 @@ export function _getScopedDbConnection(): SQLInstance {
   return conn;
 }
 
-/** Alias used by migration command helpers. */
+/**
+ * Alias used by migration command helpers.
+ *
+ * @internal
+ */
 export function _getConnection(): SQLInstance {
   return _getDbConnection();
 }

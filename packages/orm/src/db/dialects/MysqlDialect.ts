@@ -3,6 +3,8 @@ import type { DatePart, DialectQuery, SqlDialect } from "./types.ts";
 /**
  * MySQL strategy — INFORMATION_SCHEMA introspection, DAY()/MONTH()/YEAR()
  * date parts, GET_LOCK()/RELEASE_LOCK() named advisory locks.
+ *
+ * @internal
  */
 export class MysqlDialect implements SqlDialect {
   readonly name = "mysql" as const;

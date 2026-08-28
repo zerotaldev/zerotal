@@ -5127,6 +5127,12 @@
     },
     {
       "file": "docs/migrations.md",
+      "heading": "Running migrations yourself",
+      "ordinal": 0,
+      "hash": "wdrfbbo7i9mb"
+    },
+    {
+      "file": "docs/migrations.md",
       "heading": "Soft deletes",
       "ordinal": 0,
       "hash": "3k3j6rzrtkhd"

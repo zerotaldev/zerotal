@@ -275,6 +275,7 @@ function _createPivotCollection<T extends BaseModel>(
 // BaseModel as a type only — no cycle.
 
 export type GlobalScopeCallback = (qb: ModelQueryBuilder<BaseModel>) => void;
+/** @internal */
 export function _globalScopeRegistry(): Map<ClassRef, Map<string, GlobalScopeCallback>> {
   return currentOrmContext().globalScopes as unknown as Map<
     ClassRef,

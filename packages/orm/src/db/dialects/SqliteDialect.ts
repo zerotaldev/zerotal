@@ -3,6 +3,8 @@ import type { DatePart, DialectQuery, SqlDialect } from "./types.ts";
 /**
  * SQLite strategy — sqlite_master / pragma_table_info introspection,
  * strftime() date parts, no advisory-lock primitive.
+ *
+ * @internal
  */
 export class SqliteDialect implements SqlDialect {
   readonly name = "sqlite" as const;

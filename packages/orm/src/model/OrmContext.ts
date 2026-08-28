@@ -18,6 +18,8 @@ import type { SQLInstance } from "../db/sql-types.ts";
  * } finally {
  *   useOrmContext(prev);
  * }
+ *
+ * @internal
  */
 export class OrmContext {
   /** Explicit connection override that wins over the resolved default (used by tests / `withDatabase`). */
@@ -34,7 +36,11 @@ export class OrmContext {
 
 let _ctx = new OrmContext();
 
-/** Return the currently active {@link OrmContext}. */
+/**
+ * Return the currently active {@link OrmContext}.
+ *
+ * @internal
+ */
 export function currentOrmContext(): OrmContext {
   return _ctx;
 }
@@ -45,6 +51,8 @@ export function currentOrmContext(): OrmContext {
  *
  * @param ctx The context to activate (defaults to a new, empty context).
  * @returns The context that was active before this call.
+ *
+ * @internal
  */
 export function useOrmContext(ctx: OrmContext = new OrmContext()): OrmContext {
   const prev = _ctx;
@@ -52,7 +60,11 @@ export function useOrmContext(ctx: OrmContext = new OrmContext()): OrmContext {
   return prev;
 }
 
-/** Replace the active context with a fresh, empty {@link OrmContext} (test/teardown reset). */
+/**
+ * Replace the active context with a fresh, empty {@link OrmContext} (test/teardown reset).
+ *
+ * @internal
+ */
 export function resetOrmContext(): void {
   _ctx = new OrmContext();
 }

@@ -36,6 +36,8 @@ const _suppressCtx = new AsyncLocalStorage<true>();
 /**
  * Run `fn` with all model hooks and observers silenced.
  * Used internally by Factory when `dispatchEvents()` has NOT been called.
+ *
+ * @internal
  */
 export function _suppressHooks<T>(fn: () => Promise<T>): Promise<T> {
   return _suppressCtx.run(true, fn);

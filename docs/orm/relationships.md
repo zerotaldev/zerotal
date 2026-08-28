@@ -432,6 +432,36 @@ Pivot collection methods on a `ManyToMany<T>` relation.
 | `sync`   | `sync(ids[]): Promise<void>`                    | Replace all pivot rows with the given set.            |
 | `toggle` | `toggle(id \| id[]): Promise<void>`             | Attach missing ids and detach present ones.           |
 
+### Types
+
+Every decorator above returns a typed relation, and every one takes an options shape. Both are
+exported, so a helper that builds relations or a signature that accepts one can be annotated.
+
+| Type                 | What it is                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| `HasOne<T>`          | What `@hasOne` produces — one related record, or `null`.                           |
+| `HasMany<T>`         | What `@hasMany` produces — a queryable collection of related records.              |
+| `BelongsTo<T>`       | What `@belongsTo` produces — the owning record, or `null`.                         |
+| `RelationType`       | The relation kinds as a union: `hasOne`, `hasMany`, `belongsTo`, `manyToMany`, …   |
+| `RelationDefinition` | One declared relation: its type, target model, and keys.                           |
+| `RelationMetadata`   | What the decorator records about a relation, read by eager loading and `whereHas`. |
+| `RelationConstraint` | The callback form — `with({ posts: (q) => q.where(…) })`.                          |
+| `WithLoaded<T, K>`   | A model type narrowed to say which relations are loaded, so reading one is safe.   |
+
+The option shapes match their decorators: `HasManyThroughOptions`, `ManyToManyOptions`,
+`MorphOneOptions`, `MorphManyOptions`, `MorphToOptions`, `MorphToManyOptions` and
+`MorphedByManyOptions`.
+
+`relationRegistry` is the map the decorators write into and eager loading reads back. It is
+framework wiring rather than something an app calls, but it is exported because the testing
+helpers reach for it.
+
+> **`RelationNotLoadedError`** is thrown when you read a relation that was never loaded, rather
+> than returning `undefined`. That is the whole reason the error exists: a silent `undefined`
+> reads as "no related records" and is indistinguishable from a genuine empty result, so an
+> N+1 you meant to fix becomes a page that quietly shows nothing. Load it with `with()`, or ask
+> for it explicitly with `await post.load("author")`.
+
 ## Next steps
 
 - [ORM queries](/docs/orm/queries) — eager loading, `whereHas`, and aggregates in depth.

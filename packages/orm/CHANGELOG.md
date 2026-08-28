@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+- **`doctor` warns when migrations have not run**, and names them. The development error
+  overlay already answers this after a request has failed with `no such table`; the check asks
+  it before anything breaks, which is the cheaper moment to hear it. A warning rather than a
+  failure, because pending migrations are the ordinary state of a checkout that just pulled,
+  and a doctor that fails there is one people learn to ignore.
+
 ### Added
 
 - **`zt db:backup`** — a verified snapshot of the SQLite database. SQLite is the default

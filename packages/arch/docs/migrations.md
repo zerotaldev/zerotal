@@ -81,6 +81,13 @@ bun zt migrate:rollback
 bun zt migrate:status
 ```
 
+`bun zt doctor` warns when migrations on disk have not run, and names them. It is a warning
+rather than a failure — pending migrations are the ordinary state of a checkout that just
+pulled — but it is the cheapest moment to hear about them: the alternative is finding out from
+a request that fails with `no such table`, an error whose stack is entirely framework frames.
+The [development error page](/docs/errors#missing-tables-and-columns) answers the same question
+after the fact, and can run them for you.
+
 `migrate --fresh`, `migrate:fresh` and `migrate:refresh` all do the same thing:
 roll everything back through each migration's `down()`, then re-run from scratch.
 `migrate:refresh` exists because that is the name the command has elsewhere,

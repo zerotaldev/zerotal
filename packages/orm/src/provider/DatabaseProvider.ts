@@ -1,6 +1,6 @@
 import type { SQLInstance } from "../db/sql-types.ts";
 import { ServiceProvider, registerErrorDiagnoser, isProdLike, deployEnv } from "@zerotal/core";
-import type { AppEnvironment } from "@zerotal/core";
+import type { AppEnvironment, DoctorCheck } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { SQL } from "bun";
 import { DB, _getConnection } from "../db/DB.ts";
@@ -18,6 +18,7 @@ import { autoMigrateConcern } from "../schema/autoMigrate.ts";
 import { registerImplicitBinding } from "../implicitBinding.ts";
 import { installOrmObservability } from "../observability.ts";
 import { diagnoseMissingRelation } from "../diagnostics/missingRelation.ts";
+import { pendingMigrationsCheck } from "../diagnostics/pendingMigrationsCheck.ts";
 import {
   registerRunMigrationsEndpoint,
   RUN_MIGRATIONS_PATH,
@@ -205,6 +206,15 @@ export class DatabaseProvider extends ServiceProvider {
     } catch {
       // DB was never initialised — nothing to close
     }
+  }
+
+  /**
+   * The overlay answers "why did this fail" after something already has. This asks
+   * the same question before anything breaks, which is the cheaper moment to hear
+   * it — `doctor` already boots the app and already holds the connection.
+   */
+  override doctorChecks(): DoctorCheck[] {
+    return [pendingMigrationsCheck];
   }
 
   override async onBooted(): Promise<void> {

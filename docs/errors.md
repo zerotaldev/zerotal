@@ -273,6 +273,8 @@ So a package that owns an error class can contribute a **diagnosis**, rendered a
 
 It works on SQLite, PostgreSQL and MySQL — matched on the driver's error code where there is one (`42P01`, `42703`, `1146`, `1054`) and on the message otherwise.
 
+`bun zt doctor` asks the same question before anything breaks, and warns when migrations are pending — see [Migrations](/docs/migrations#running-migrations). The overlay is reactive by nature: it needs a request to have already failed, which means somebody has already lost the thread of what they were doing.
+
 > **The button exists only in development.** The endpoint behind it refuses unless [`devSurfacesEnabled()`](/docs/deployment) is true, and that gate **fails closed**: an unset `APP_ENV` does not qualify. The route is not even registered otherwise.
 >
 > It also requires a single-use token minted into the page, and passes the same origin check the WebSocket endpoints use. A dev server on `localhost:3000` is reachable by any site you have open in another tab, and "run every pending migration" is not something a random page should be able to trigger.

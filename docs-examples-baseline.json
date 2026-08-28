@@ -843,6 +843,12 @@
     },
     {
       "file": "docs/authentication.md",
+      "heading": "Bind the type — a required step",
+      "ordinal": 0,
+      "hash": "sq2occozdgec"
+    },
+    {
+      "file": "docs/authentication.md",
       "heading": "Checking for compromised passwords",
       "ordinal": 0,
       "hash": "1bmqqu80bwhe"
@@ -1008,12 +1014,6 @@
       "heading": "Wire the User model",
       "ordinal": 0,
       "hash": "2e1vsyka0dn8"
-    },
-    {
-      "file": "docs/authentication.md",
-      "heading": "Wire the User model",
-      "ordinal": 2,
-      "hash": "sq2occozdgec"
     },
     {
       "file": "docs/authorization.md",
@@ -2669,7 +2669,7 @@
       "file": "docs/email-verification.md",
       "heading": "Migration",
       "ordinal": 0,
-      "hash": "d8azqh3y1eqb"
+      "hash": "2tgtb2vexs2y"
     },
     {
       "file": "docs/email-verification.md",
@@ -4485,6 +4485,12 @@
     },
     {
       "file": "docs/inertia/props.md",
+      "heading": "Declare the boundary at the model",
+      "ordinal": 0,
+      "hash": "2rhzw6msk4ep"
+    },
+    {
+      "file": "docs/inertia/props.md",
       "heading": "Deferred props",
       "ordinal": 0,
       "hash": "8m0wnxrcc0ax"
@@ -4557,6 +4563,12 @@
     },
     {
       "file": "docs/inertia/props.md",
+      "heading": "Page props are page source",
+      "ordinal": 0,
+      "hash": "q5ivpv0fd5uh"
+    },
+    {
+      "file": "docs/inertia/props.md",
       "heading": "Partial reloads",
       "ordinal": 0,
       "hash": "2n5t8vh21m0h"
@@ -4602,6 +4614,12 @@
       "heading": "What's provided",
       "ordinal": 1,
       "hash": "12wsr9l81hvv"
+    },
+    {
+      "file": "docs/inertia/props.md",
+      "heading": "When a route needs its own shape",
+      "ordinal": 0,
+      "hash": "14d9e9es40cl"
     },
     {
       "file": "docs/inertia/props.md",
@@ -6360,6 +6378,12 @@
       "heading": "Inspecting and resetting at runtime",
       "ordinal": 0,
       "hash": "i2bgszs43ezb"
+    },
+    {
+      "file": "docs/rate-limiting.md",
+      "heading": "One `.with()` call, one bucket",
+      "ordinal": 0,
+      "hash": "4x1dgq621llc"
     },
     {
       "file": "docs/rate-limiting.md",

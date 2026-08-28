@@ -132,6 +132,19 @@ function _runRaw(conn: SQLInstance, sql: string): Promise<unknown> {
   return conn(arr);
 }
 
+/**
+ * Run a raw, parameter-less statement on the ambient connection.
+ *
+ * The tagged-template path rather than `DB.raw(string)`, because that one splits
+ * its input on `?` to find bindings — fine for SQL somebody typed, wrong for a
+ * statement carrying a filesystem path that the caller has already made safe.
+ *
+ * @internal Used by `db:backup` for `VACUUM INTO`.
+ */
+export function _rawStatement(sql: string): Promise<unknown> {
+  return _runRaw(_getConnection(), sql);
+}
+
 /** Run a parameterised statement (`?` placeholders) on a specific connection. */
 function _runParams(conn: SQLInstance, sql: string, params: unknown[]): Promise<unknown> {
   const parts = sql.split("?");

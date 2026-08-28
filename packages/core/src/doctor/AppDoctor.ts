@@ -17,6 +17,7 @@ import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { unroutedRoutesWarning } from "../support/unroutedRoutes.ts";
 import { isWritableDir } from "../dev/bootBuild.ts";
 import { isProdLike } from "../support/env.ts";
+import { throttlesKeyedOnSocket } from "./throttleIdentity.ts";
 
 /** One finding: ok is silent health, warn is worth reading, fail is broken now. */
 export interface DoctorCheckResult {
@@ -365,12 +366,49 @@ const secureHeadersCheck: DoctorCheck = {
   },
 };
 
+/**
+ * A rate limiter behind a proxy that was never told about the proxy keys every
+ * visitor to the same bucket, because the socket address is the proxy's. It then
+ * does the opposite of its job: one attacker spends the allowance for everybody.
+ *
+ * A warning rather than a failure, because the framework cannot see the deployment.
+ * An app served directly, with no proxy in front of it, is correctly configured
+ * exactly as it stands — and that app should not be blocked from deploying by a
+ * guess. What is worth saying is that the combination is almost always wrong, and
+ * that nothing else will ever tell you.
+ */
+const throttleIdentityCheck: DoctorCheck = {
+  id: "throttle-trusted-proxies",
+  label: "Rate-limit identity",
+  run(app) {
+    const exposed = throttlesKeyedOnSocket(app);
+    if (exposed.length === 0) return ok("every registered throttle can identify a client.");
+    if (!_isProductionEnv(app)) {
+      return ok(`${exposed.length} throttle(s) key on the socket address — fine locally.`);
+    }
+    const where = exposed
+      .slice(0, 3)
+      .map((t) => t.where)
+      .join(", ");
+    return warn(
+      `${exposed.length} throttle(s) (${where}${exposed.length > 3 ? ", …" : ""}) key on the ` +
+        `socket address and no trustedProxies is set. Behind a reverse proxy that address is ` +
+        `the proxy's for every request, so all visitors share one bucket and one of them can ` +
+        `lock out the rest.`,
+      "If a proxy fronts this app, set trustedProxies to how many — `ThrottleMiddleware.with({ " +
+        "maxAttempts: 5, trustedProxies: 1 })`, or `app.throttle.trustedProxies` for all of " +
+        "them. If nothing fronts it, this is already correct.",
+    );
+  },
+};
+
 /** The core checks every app gets. */
 export const builtinDoctorChecks: DoctorCheck[] = [
   appKeyCheck,
   allowedOriginsCheck,
   corsWildcardCheck,
   secureHeadersCheck,
+  throttleIdentityCheck,
   bootAssetWriteCheck,
   syncVsMigrationsCheck,
   unroutedRoutesCheck,

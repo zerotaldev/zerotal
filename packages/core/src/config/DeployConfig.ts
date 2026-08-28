@@ -35,6 +35,19 @@
  */
 export const DEFAULT_DEPLOY_STEPS: readonly string[] = ["assets:build", "inertia:build", "migrate"];
 
+/**
+ * The command a deploy runs before anything else, when the app defines one.
+ *
+ * A convention rather than a required declaration, because the alternative is the
+ * failure this exists to prevent: an app writes a preflight command, forgets to
+ * wire it into the pipeline, and every refusal that command knows how to make sits
+ * behind something nobody is obliged to run. **A gate nothing calls is a comment.**
+ *
+ * Register a command by this name and the pipeline finds it. Declare `preflight`
+ * on a target to run something else, or to run more than one.
+ */
+export const CONVENTIONAL_PREFLIGHT_COMMAND = "release:check";
+
 /** One environment this app is released to. */
 export interface DeployTarget {
   /**
@@ -47,6 +60,26 @@ export interface DeployTarget {
    * {@link DEFAULT_DEPLOY_STEPS}. Names a `zt` command per entry.
    */
   steps?: readonly string[];
+  /**
+   * App-owned commands that run in the preflight phase — after the framework's
+   * own config validators and `doctor`, and before any step that mutates
+   * anything. A non-zero exit refuses the release.
+   *
+   * This is the slot for the checks only the app can make. The framework can tell
+   * you the `APP_KEY` is the one from `.env.example`; it cannot tell you this
+   * workspace has no cancellation policy, or that the owner account is still on
+   * the password the installer issued it. Those refusals are yours, and until
+   * there was somewhere to put them they lived in a command nobody ran.
+   *
+   * Defaults to {@link CONVENTIONAL_PREFLIGHT_COMMAND} when that command is
+   * registered, and to nothing when it is not.
+   *
+   * @example
+   * ```ts
+   * production: { preflight: ["release:check", "assets:verify"] }
+   * ```
+   */
+  preflight?: readonly string[];
 }
 
 /** The `deploy` config namespace. */

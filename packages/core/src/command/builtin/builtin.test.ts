@@ -1356,7 +1356,11 @@ describe("TestCommand.run()", () => {
       };
       await cmd.run();
       expect(spawnedArgs[0]).toContain("test");
-      expect(spawnedArgs[0]![0]).toBe("bun");
+      // The parent's own binary, not the name "bun" for the OS to resolve against
+      // PATH. A command whose job is to run this app's tests must run them on the
+      // runtime this app is served by, and PATH is not a promise about that.
+      expect(spawnedArgs[0]![0]).toBe(process.execPath);
+      expect(spawnedArgs[0]![0]).not.toBe("bun");
     } finally {
       (Bun as any).spawn = origSpawn;
     }

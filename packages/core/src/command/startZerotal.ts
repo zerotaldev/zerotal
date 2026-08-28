@@ -7,6 +7,12 @@
 import { CommandRunner } from "./CommandRunner.ts";
 import { configLoader } from "../config/ConfigLoader.ts";
 import { setAppEnv } from "../helpers/index.ts";
+import {
+  runtimeMismatch,
+  runtimeMismatchAllowed,
+  runtimeMismatchMessage,
+} from "../support/runtime.ts";
+import { RuntimeMismatchError } from "../errors/RuntimeMismatchError.ts";
 import type { Application } from "../application/Application.ts";
 
 /** Options for {@link startZerotal}. */
@@ -35,6 +41,11 @@ export async function startZerotal(
   loadApp: () => Promise<{ default: Application }>,
   options: StartZerotalOptions = {},
 ): Promise<void> {
+  // Before anything else, because everything after this is an assertion about a
+  // runtime — and if there are two of them, which one made the assertion is the
+  // first thing worth knowing.
+  assertOneRuntime();
+
   // Load + validate config synchronously — safe before the app boots.
   const config = configLoader(options.configDir ?? "./config");
   config.validate();
@@ -52,4 +63,27 @@ export async function startZerotal(
   const runner = new CommandRunner(app);
   await runner.boot();
   await runner.run(process.argv.slice(2));
+}
+
+/**
+ * Refuse to run when the project has two Bun runtimes in it.
+ *
+ * At the top of the entry point rather than in a check somebody remembers to run,
+ * because the value is in it being unmissable: the failure it prevents is a suite
+ * that passes about the wrong binary, and nothing downstream of here can notice
+ * that. A project with no `node_modules/bun` — most of them — never sees this.
+ *
+ * @throws When the running Bun and the installed one disagree, unless
+ *   `ZT_ALLOW_RUNTIME_MISMATCH` is set, which downgrades it to a warning on stderr.
+ * @internal
+ */
+function assertOneRuntime(): void {
+  const mismatch = runtimeMismatch();
+  if (!mismatch) return;
+  const message = runtimeMismatchMessage(mismatch);
+  if (runtimeMismatchAllowed()) {
+    console.warn(`\n⚠  ${message}\n`);
+    return;
+  }
+  throw new RuntimeMismatchError(message, mismatch);
 }

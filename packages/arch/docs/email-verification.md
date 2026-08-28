@@ -49,12 +49,29 @@ register ──▶ Url.sign(/auth/verify?id&email, ttl) ──▶ email link
 
 ## Migration
 
-Add a nullable `email_verified_at` column to your users table:
+Whether you need one **depends on what your schema's source of truth is** — `zt doctor`
+reports which mode this app is in.
+
+- **Models are the source of truth** (`synchronize` on). You do not need a migration. The
+  mixin registers `email_verified_at` imperatively and the table is built from what the
+  models declare, so the column comes with it.
+- **Migrations are the source of truth** (`synchronize` off — the production default). You
+  do. The boot-time concern only _adds_ a column to a table that already exists; it never
+  revisits one it has seen. A `create users` migration that does not mention
+  `email_verified_at` produces a table without it, and then every query touching the column
+  fails with `no such column: email_verified_at` — all at once, in tests that have nothing to
+  do with email, with nothing pointing at the mixin.
+
+`zt doctor` fails on that combination and names the table, so you find it before the suite
+does.
+
+Write the migration **guarded**:
 
 ```typescript fragment
 // database/migrations/002_add_email_verified_at.ts
 export default class AddEmailVerifiedAt extends Migration {
   async up(schema: Schema) {
+    if (await schema.hasColumn("users", "email_verified_at")) return;
     await schema.table("users", (table) => {
       table.timestamp("email_verified_at").nullable();
     });
@@ -66,6 +83,14 @@ export default class AddEmailVerifiedAt extends Migration {
   }
 }
 ```
+
+The guard is not defensive habit. Any database that has booted the app since the mixin was
+composed already **has** the column — the concern added it. An unguarded migration then fails
+with `duplicate column name`, during the `migrate` step of `deploy:production`, which is the
+worst possible moment to learn this.
+
+`remember_token` from `Authenticatable` is provisioned the same way and carries the same
+condition.
 
 ## User model
 

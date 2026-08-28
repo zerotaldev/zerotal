@@ -94,7 +94,12 @@ export class User extends AuthUser {
 }
 ```
 
-`AuthUser` provides `getAuthId()` (returns `this.id`) and `getAuthPassword()` (returns `this.password`). Make `Auth.user()` return your concrete type by augmenting `UserModel` once:
+`AuthUser` provides `getAuthId()` (returns `this.id`) and `getAuthPassword()` (returns `this.password`).
+
+### Bind the type — a required step
+
+Do this once, or every `Auth.user()` in the app returns the framework's minimal `UserModel`
+and reading your own columns off it is a type error:
 
 ```typescript fragment
 // bootstrap/app.ts (or any file imported at boot)
@@ -104,6 +109,12 @@ declare module "@zerotal/auth" {
   interface UserModel extends User {}
 }
 ```
+
+**The empty body is the point.** The interface is not being given members — it is being
+pointed at your class, so that everywhere the framework says `UserModel` it means `User`.
+That is not a shape anyone guesses, which is why it is here in setup rather than filed
+under advanced usage. Put it somewhere that is imported at boot and leave a comment saying
+what it is for; it looks like dead code otherwise.
 
 ## How it works
 
@@ -132,6 +143,20 @@ Auth.id(); // number — throws for guests
 await Auth.login(user); // write user_id to session, set ctx.user
 await Auth.logout(); // clear user_id from session, unset ctx.user
 ```
+
+> **`Auth.user()` throws for a guest, and the name does not telegraph that.** It is the right
+> call behind `AuthMiddleware`, where a user is guaranteed — that guarantee is what makes its
+> non-optional return type honest. It is the wrong call on any route a signed-out person can
+> reach. Plenty of audited things happen with nobody signed in: a storefront checkout, a
+> customer approving a change from a tokenised link, an incoming webhook. On those routes an
+> audit line that reaches for `Auth.user()` turns into a 401 on a public page, and the 401 is
+> about the audit line rather than about the request.
+>
+> ```typescript fragment
+> // A guest is a normal outcome here, not a failure.
+> const actor = Auth.userOrNull();
+> await Audit.record("checkout.completed", { actorId: actor?.getAuthId() ?? null });
+> ```
 
 `Auth.attempt()` rolls credential lookup, password verification, and login into one call:
 

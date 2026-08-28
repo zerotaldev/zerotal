@@ -63,18 +63,45 @@ the wrong database.
 
 Each entry is a `DeployTarget`:
 
-| Field   | Meaning                                                                                                                                                                                                                                  |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `url`   | The public URL in this environment. What `--probe` handshakes against when given no URL of its own.                                                                                                                                      |
-| `steps` | Override the release steps. Defaults to `DEFAULT_DEPLOY_STEPS` — `assets:build`, `inertia:build`, `migrate`. Each names a `zt` command, and one that is not registered is skipped, so an app without Inertia simply has no Inertia step. |
+| Field       | Meaning                                                                                                                                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`       | The public URL in this environment. What `--probe` handshakes against when given no URL of its own.                                                                                                                                             |
+| `steps`     | Override the release steps. Defaults to `DEFAULT_DEPLOY_STEPS` — `assets:build`, `inertia:build`, `migrate`. Each names a `zt` command, and one that is not registered is skipped, so an app without Inertia simply has no Inertia step.        |
+| `preflight` | Your own commands, run in the preflight phase — after the config validators and `doctor`, before anything is built or migrated. A non-zero exit refuses the release. Defaults to `release:check` when the app registers a command by that name. |
 
 Omit the file entirely and you get `DEFAULT_DEPLOY_TARGETS`: `production` and
 `staging`, both with the default steps.
 
-The defaults build and migrate; they do not check anything you wrote. A preflight command
-of your own — `release:check`, a smoke test — has to be named in `steps` to run, and
-nothing prompts you to add it, so a command written precisely to guard a release can sit
-there never running. Name every step you want, in the order you want them:
+### Your own release gate
+
+The framework's preflight knows the things a framework can know: that this really is the
+environment you think it is, that the config validators pass, that `doctor` is happy. It
+cannot know that this workspace has no cancellation policy, that mail is still wired to the
+`log` driver so nothing is ever sent, or that the owner account is still on the password
+`admin:create` issued it. Those refusals are yours.
+
+Write them as a command and name it `release:check` (exported as
+`CONVENTIONAL_PREFLIGHT_COMMAND`). The pipeline finds it by name — nothing to wire up:
+
+```ts
+// app/commands/ReleaseCheckCommand.ts
+import { Command } from "zerotal";
+
+export class ReleaseCheckCommand extends Command {
+  static commandName = "release:check";
+  static description = "Refuse a release this app is not ready for";
+  static needsApp = true;
+
+  async run(): Promise<void> {
+    const problems: string[] = [];
+    if (Bun.env["APP_KEY"] === "base64:CHANGE_ME") problems.push("APP_KEY is the example one.");
+    if (problems.length > 0) throw new Error(problems.join(" "));
+  }
+}
+```
+
+A throw, or any non-zero exit, stops the release before `assets:build` has run. To run
+something else — or more than one thing — name them:
 
 ```ts
 // config/deploy.ts
@@ -82,14 +109,16 @@ export default {
   targets: {
     production: {
       url: "https://example.com",
-      steps: ["release:check", "assets:build", "inertia:build", "migrate"],
+      preflight: ["release:check", "smoke:mail"],
     },
   },
 };
 ```
 
-Put a check first. A step that fails stops the release, and a check that runs after the
-migration has already run has missed its moment.
+A name in `preflight` that is not a registered command **fails the deploy** rather than being
+skipped. That is the opposite of how `steps` treats an absent command, and deliberately so: a
+missing `inertia:build` means the app has no Inertia, while a missing gate means the gate is
+not running — which is the state this exists to prevent. A gate nothing calls is a comment.
 
 Two things worth adding while you are there: `assets:build` and `inertia:build` accept
 `--clean`, which removes anything in the output directory the build did not write — see
@@ -179,6 +208,54 @@ bun zt migrate
 
 Auto-`synchronize` is **hard-off in production** — generate and commit
 [migrations](/docs/migrations) during development and run them on deploy.
+
+## Back up the database
+
+On SQLite the database is one file, which makes `cp` look like a backup. It is not one. A
+live SQLite database has pages in flight; copying the file while the server is serving can
+capture a half-written page, and the result is a file that sits in your retention directory
+for months and turns out to be corrupt on the one morning you open it.
+
+`zt db:backup` uses SQLite's own `VACUUM INTO`, which takes a read lock and writes a
+complete database while the server keeps serving. It needs no `sqlite3` binary on the box:
+
+```bash
+# in your project root
+bun zt db:backup --dir=/var/backups/app --keep=30 --require-rows=bookings,invoices
+```
+
+| Flag             | What it does                                                                 |
+| ---------------- | ---------------------------------------------------------------------------- |
+| `--dir`          | Where snapshots go. Default `storage/backups`.                               |
+| `--keep`         | How many to keep, newest first. `0` keeps every one. Default `14`.           |
+| `--require-rows` | Tables that must not be empty in the snapshot. **Set this.**                 |
+| `--rehearse`     | Also perform the restore — copy the snapshot, open the copy, check it there. |
+
+Every snapshot is opened and integrity-checked the moment it is written, and **every failure
+path exits non-zero**. That is what makes it safe to run from a timer: a bad night leaves a
+failed unit somebody can see, rather than a green one and no file.
+
+`--require-rows` is the flag that turns "a file was written" into "the file has the business
+in it". An empty `bookings` table in a snapshot of a live system is not a small discrepancy,
+and it is invisible in a byte count.
+
+Run `--rehearse` on a schedule of its own — weekly is plenty. A backup nobody has restored is
+a hope, and the restore is the operation you will be doing at 3am.
+
+```ini
+# /etc/systemd/system/app-backup.service
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/app
+Environment=APP_ENV=production
+ExecStart=/srv/app/node_modules/.bin/bun zt db:backup --keep=30 --require-rows=bookings
+```
+
+Pair it with a `.timer`, and let the failed unit be your alert. Retention is handled by
+`--keep`; anything the command did not write is never touched.
+
+On PostgreSQL or MySQL the command refuses and points at `pg_dump` / `mysqldump`, which is
+where that job belongs.
 
 ## Build assets
 
@@ -350,6 +427,11 @@ The symptom is a legitimate visitor getting a 429 they did not earn.
 Count the proxies you actually run. Setting `trustedProxies: 3` with one proxy in front
 reads an entry the client supplied.
 
+`zt doctor` warns about this: a production-like deployment with a registered throttle and no
+`trustedProxies` is reported as almost certainly wrong. It is a warning rather than a failure
+because the framework cannot see your deployment — an app served directly, with nothing in
+front of it, is correctly configured exactly as it stands.
+
 ### Never gate the transport path
 
 **Browsers do not attach basic-auth credentials to a WebSocket handshake.** An HTTP auth
@@ -513,8 +595,9 @@ Run the worker as a **second** container/service from the same image with the co
 `bun zt worker`.
 
 On a server with no Node installed, `bun install` can fail on a transitive package whose
-`postinstall` shells out to `node`. `--ignore-scripts` resolves it, but check what you are
-skipping first:
+`postinstall` shells out to `node`. The `bun` npm package is the usual one — its
+`postinstall` downloads a Bun binary the box already has, and there is no `node` to run the
+script with. `--ignore-scripts` resolves it, but check what you are skipping first:
 
 ```bash
 # every package with an install script, before you skip them all

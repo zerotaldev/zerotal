@@ -8,6 +8,52 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **One project, one Bun.** `engines.bun` is a floor and nothing enforces it, so a project
+  can end up serving its app with one runtime and running its suite with another — the
+  shell's `bun` and a `node_modules/bun` put there by a transitive peer dependency nobody
+  declared. Nothing announces that, and a green suite is then evidence about a binary the app
+  is not served by. `startZerotal()` now compares `Bun.version` against the installed
+  manifest and refuses on a mismatch, naming both versions and the two ways out. It is not a
+  pin: the version to agree on is whichever one the project installed, so `bun update bun`
+  moves it. `ZT_ALLOW_RUNTIME_MISMATCH=1` downgrades the refusal to a warning.
+
+- **`DeployTarget.preflight`** — a slot for the app's own release gate, run after the config
+  validators and `doctor` and before anything is built or migrated. A command named
+  `release:check` is found by convention with nothing to wire up. A declared name that is not
+  registered **fails** the deploy rather than being skipped: a missing `inertia:build` means
+  the app has no Inertia, but a missing gate means the gate is not running, which is the
+  state the feature exists to prevent.
+
+- **`zerotal/shared`** — the helpers that are safe to import from a browser bundle:
+  `pluralize`, `singularize`, `snakeCase`, `camelCase`, `tableNameFor`, `Str`, and new
+  `formatMoney` / `formatNumber` / `formatDate`. Everything reachable from it is pure, and a
+  test bundles the entry point for the browser to keep it that way. Without it a page that
+  wants the framework's `pluralize` gets a second implementation written by hand, and the
+  second copy is always the worse one — `"supplier line"` pluralises to `"supplier lines"`,
+  and the naive rule gives `"suppliers line"`.
+
+- **`doctor` check: rate-limit identity.** `ThrottleMiddleware` keys on the socket address
+  unless told how many proxies sit in front of the app. That default is right and it is the
+  wrong answer the moment you deploy behind one: the socket address is then the proxy's for
+  every request, everybody shares a bucket, and the limiter inverts into a way for one
+  attacker to lock out the rest. Nothing observable says so. A production-like deployment
+  with a registered throttle and no `trustedProxies` is now reported.
+
+### Changed
+
+- **`zt test` spawns the binary running it**, not the name `bun` for the OS to resolve
+  against `PATH`. A command whose job is to run this app's tests was handing them to whatever
+  the shell happened to offer, so `node_modules/.bin/bun zt test` satisfied every check in
+  the parent process and still ran the suite on a different runtime.
+
+- **`BaseMiddleware.with()`** now documents that each call creates a distinct class and any
+  per-class state goes with it — so re-using one `.with()` export on two routes shares that
+  state. For `ThrottleMiddleware` that state is the hit counter, and on a sign-in flow it
+  means a handful of fumbled passwords can spend the allowance a legitimate person needs to
+  answer their second factor.
+
 ## [1.8.0] — 2026-08-24
 
 ### Added

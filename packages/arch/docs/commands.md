@@ -370,9 +370,15 @@ can gate a deploy.
 | `bun zt migrate:status`       | Show the status (run / pending / batch) of each migration file |
 | `bun zt migrate:generate`     | Auto-generate a migration from model schema changes            |
 | `bun zt db:seed`              | Run all seeders from `database/seeders/`                       |
+| `bun zt db:backup`            | Take a verified SQLite snapshot with `VACUUM INTO`             |
 
 > **Danger** — `migrate --fresh` and `migrate:fresh` drop every table before
 > re-running migrations. Never run them against a production database.
+
+`db:backup` is the counterpart to everything above it: those commands all assume the database
+file will still be there. It verifies every snapshot it writes and exits non-zero on any
+failure, so it is safe to run from a timer — see
+[Deployment](/docs/deployment#back-up-the-database) for the flags and a systemd unit.
 
 ### Generators
 

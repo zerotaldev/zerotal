@@ -16,6 +16,44 @@ provider.
   is configured for **SQLite**, which needs nothing installed — PostgreSQL and
   MySQL are supported and are a `DATABASE_URL` away.
 
+### One project, one Bun
+
+`engines.bun` is a floor, not a lock, and nothing in npm enforces it. A project can end up
+with two runtimes in it without anyone choosing that: the shell's `bun`, and a different one
+in `node_modules/bun`, put there by a transitive peer dependency nobody declared. The work
+then splits between them — the server served by one, the suite run by the other — and nothing
+says so.
+
+That is expensive because the difference is real but narrow. The SQLite bindings, `node:`
+compatibility and the test runner itself all change between releases, so a couple of
+assertions happen to be runtime-sensitive and the rest are not. When those two fail you go
+looking for a bug in the code they touch. And a suite that passes is not evidence either: it
+only means no test happened to stand on a difference.
+
+So **`zt` refuses to run when the two disagree**:
+
+```
+Two Bun runtimes are in play. This process is Bun 1.3.14, but the project
+installs Bun 1.4.0 (/srv/app/node_modules/bun/package.json).
+```
+
+This is not a pin. The version to agree on is whichever one the project installed, so
+`bun update bun` moves it and nothing needs editing — what is enforced is that there is only
+one. Fix it either way:
+
+```bash
+bun update bun          # move the installed one to match your shell
+node_modules/.bin/bun   # or run everything through the installed one
+```
+
+Most projects never see this, because most have no `bun` in `node_modules` to disagree with.
+To boot anyway — mid-upgrade, say — set `ZT_ALLOW_RUNTIME_MISMATCH=1`, which downgrades the
+refusal to a warning. The refusal is a `RuntimeMismatchError`, which carries both versions in
+its `context` for anything scripting around it.
+
+`zt test` spawns the binary running it, not whatever `bun` resolves to on `PATH`, so the
+suite runs on the runtime the guard just checked.
+
 ## Create a new project
 
 ```bash

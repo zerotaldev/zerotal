@@ -3996,6 +3996,8 @@ class ConfigValidationError = {
   readonly status: number
 }
 
+const CONVENTIONAL_PREFLIGHT_COMMAND = 'release:check'
+
 const DEFAULT_DEPLOY_STEPS = readonly string[]
 
 const DEFAULT_DEPLOY_TARGETS = Record<string, DeployTarget>
@@ -4070,6 +4072,7 @@ interface DeployConfigShape = {
 }
 
 interface DeployTarget = {
+  preflight?: readonly string[]
   steps?: readonly string[]
   url?: string
 }
@@ -7407,6 +7410,50 @@ interface SessionOptions = {
 interface SessionPayload = {
   data: Record<string, unknown>
   id: string
+}
+
+## ./shared  `(./src/shared.ts)`
+
+const Str = {    camelCase(value: string): string;    snakeCase(value: string): string;    slugify(value: string): string;    titleCase(value: string): string;    pascalCase(value: string): string;    capitalize(value: string): string;    lcfirst(value: string): string;    truncate(value: string, maxLength: number, suffix?: string): string;    isAlphanumeric(value: string): boolean;    padLeft(value: string, length: number, char?: string): string;    kebab(value: string): string;    squish(value: string): string;    finish(value: string, cap: string): string;    start(value: string, prefix: string): string;    after(value: string, needle: string): string;    before(value: string, needle: string): string;    afterLast(value: string, needle: string): string;    beforeLast(value: string, needle: string): string;    contains(value: string, substring: string): boolean;    random(length?: number): string;    replaceFirst(value: string, search: string, replace: string): string;    replaceLast(value: string, search: string, replace: string): string;    reverse(value: string): string;    words(value: string, maxWords: number, suffix?: string): string;    macro(name: string, fn: (...args: unknown[]) => unknown): void;}
+
+function camelCase = (value: string) => string
+
+function formatDate = (value: Date | number | string, options?: DateOptions) => string
+
+function formatMoney = (amount: number, options: MoneyOptions) => string
+
+function formatNumber = (value: number, options?: NumberOptions) => string
+
+function pluralize = (value: string) => string
+
+function singularize = (value: string) => string
+
+function snakeCase = (value: string) => string
+
+function tableNameFor = (className: string) => string
+
+interface DateOptions = {
+  dateStyle?: 'medium' | 'short' | 'full' | 'long'
+  locale?: string
+  timeStyle?: 'medium' | 'short' | 'full' | 'long'
+  timeZone?: string
+}
+
+interface FormatOptions = {
+  locale?: string
+}
+
+interface MoneyOptions = {
+  currency: string
+  fractionDigits?: number
+  locale?: string
+  minorUnits?: boolean
+}
+
+interface NumberOptions = {
+  locale?: string
+  maximumFractionDigits?: number
+  minimumFractionDigits?: number
 }
 
 ## ./storage  `(./src/storage.ts)`

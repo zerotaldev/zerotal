@@ -16,6 +16,7 @@
     "./logger": "./src/logger/index.ts",
     "./commands": "./src/command/builtin/index.ts",
     "./helpers": "./src/helpers/index.ts",
+    "./shared": "./src/shared/index.ts",
     "./facades": "./src/facade/facades/index.ts",
     "./carbon": "./src/datetime/index.ts",
     "./http": "./src/http/index.ts",

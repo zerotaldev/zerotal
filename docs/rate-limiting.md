@@ -65,10 +65,45 @@ ThrottleMiddleware.with({
 | `keyResolver`    | no       | client IP   | Function returning the rate-limit key for a request.        |
 | `trustedProxies` | no       | `undefined` | Number of trusted upstream proxies (see the warning below). |
 
-> **Danger** — With `trustedProxies` left `undefined`, the limiter trusts the
-> leftmost `X-Forwarded-For` entry, which a client behind a real proxy can forge
-> to dodge the limit. Set `trustedProxies` to the exact number of proxies in
-> front of your server (`0` when there is none) so the real client IP is used.
+`X-Forwarded-For` is written by the client, so it is consulted **only** when
+`trustedProxies` says how many proxies sit in front of the app — the count is what says
+which entry is not attacker-controlled. Left `undefined` (or `0`), the unspoofable socket
+address is used.
+
+> **Danger** — That default is right, and it is the wrong answer the moment you deploy
+> behind a proxy. The socket address is then the _proxy's_ — `127.0.0.1` for every visitor
+> — so everyone shares one bucket per form and the limiter inverts into the thing it was
+> installed to prevent: one attacker making twenty bad sign-ins a minute locks the whole
+> staff out of the console. Nothing fails; you put Caddy in front, everything works, and
+> the limiter quietly stops telling people apart. Set `trustedProxies` to the number of
+> proxies you actually run. `zt doctor` warns when a production-like deployment has a
+> throttle and no `trustedProxies` — see [Deployment](/docs/deployment#behind-a-reverse-proxy).
+
+### One `.with()` call, one bucket
+
+Each `.with()` call returns its own class, and the hit counter belongs to the class — so
+**re-using one `.with()` export on two routes gives them a shared budget**:
+
+```typescript fragment
+// One bucket: 5 attempts across BOTH forms.
+const AuthThrottle = ThrottleMiddleware.with({ maxAttempts: 5, windowSeconds: 60 });
+Router.post("/login", AuthController, "login", [AuthThrottle]);
+Router.post("/two-factor", AuthController, "challenge", [AuthThrottle]);
+
+// A bucket each, which is almost always what was meant.
+Router.post("/login", AuthController, "login", [
+  ThrottleMiddleware.with({ maxAttempts: 5, windowSeconds: 60 }),
+]);
+Router.post("/two-factor", AuthController, "challenge", [
+  ThrottleMiddleware.with({ maxAttempts: 5, windowSeconds: 60 }),
+]);
+```
+
+The sharing is deliberate — it is what lets you spend one allowance across a group of
+related routes on purpose — and it is not what a reader expects from a factory. On a sign-in
+flow it bites: a handful of fumbled passwords can spend the allowance a legitimate person
+needs to answer their second factor. Call `.with()` once per thing that deserves its own
+budget.
 
 ## RateLimiter — named limiters
 

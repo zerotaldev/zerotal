@@ -26,7 +26,11 @@ import { runDoctor } from "../../doctor/AppDoctor.ts";
 import { probeTransport } from "../../doctor/TransportProbe.ts";
 import { runConfigValidators } from "../../config/validation.ts";
 import { deployEnv } from "../../support/env.ts";
-import { DEFAULT_DEPLOY_STEPS, type DeployTarget } from "../../config/DeployConfig.ts";
+import {
+  CONVENTIONAL_PREFLIGHT_COMMAND,
+  DEFAULT_DEPLOY_STEPS,
+  type DeployTarget,
+} from "../../config/DeployConfig.ts";
 
 /**
  * The pipeline. Subclassed per target by {@link makeDeployCommand}, which is what
@@ -129,6 +133,70 @@ export abstract class DeployCommand extends Command {
     this.line(`✓ config is valid for a ${target} deployment`);
 
     await this._doctor(app, "preflight");
+    await this._appPreflight(app, target);
+  }
+
+  /**
+   * Run the app's own preflight commands — the refusals the framework is not in a
+   * position to make.
+   *
+   * Last inside preflight, so the framework's cheap structural checks have already
+   * spoken; still before every step, so nothing has been built or migrated when one
+   * of these says no.
+   */
+  private async _appPreflight(app: Application, target: string): Promise<void> {
+    const commands = this._preflightCommands(app, target);
+    if (commands.length === 0) return;
+
+    const runner = app.container.makeSync("commands") as CommandRunner;
+    for (const name of commands) {
+      const { code, output } = await runner.callInProcess([name]);
+      if (output.trim()) this.line(output.trimEnd());
+      if (code !== 0) {
+        throw new Error(
+          `${name} refused this release. Nothing has been built or migrated — ` +
+            `fix what it reported and deploy again.`,
+        );
+      }
+      this.line(`✓ ${name} passed`);
+    }
+  }
+
+  /**
+   * The preflight commands for this target: what `config/deploy.ts` declares, or
+   * the conventional `release:check` when the app registers one.
+   *
+   * A declared name that is not registered is an error rather than a skip. That is
+   * the opposite of how `steps` treats an absent command, and deliberately so: a
+   * missing `inertia:build` means the app has no Inertia, while a missing gate
+   * means the gate is not running, which is exactly the state this feature exists
+   * to make impossible.
+   */
+  private _preflightCommands(app: Application, target: string): string[] {
+    let runner: CommandRunner | undefined;
+    try {
+      runner = app.container.makeSync("commands") as CommandRunner | undefined;
+    } catch {
+      runner = undefined;
+    }
+    // Same reasoning as `_steps`: with no registry to ask, nothing can be
+    // confirmed present. Returning nothing is the honest answer, and a declared
+    // preflight will be checked again by `_appPreflight` when it goes to run one.
+    if (!runner?.has) return [];
+
+    const declared = this._target(app, target)?.preflight;
+    if (declared === undefined) {
+      return runner.has(CONVENTIONAL_PREFLIGHT_COMMAND) ? [CONVENTIONAL_PREFLIGHT_COMMAND] : [];
+    }
+
+    const missing = declared.filter((name) => !runner.has(name));
+    if (missing.length > 0) {
+      throw new Error(
+        `config/deploy.ts declares preflight command(s) that are not registered: ` +
+          `${missing.join(", ")}. A gate that silently does not run is worse than no gate.`,
+      );
+    }
+    return [...declared];
   }
 
   // ── Phase 2 — build and migrate ─────────────────────────────────────────────
@@ -267,6 +335,9 @@ export abstract class DeployCommand extends Command {
       `APP_ENV       ${actual || "(unset)"}${actual === target ? "" : `  ✗ expected ${target}`}`,
     );
     this.line(`preflight     config validators, then ${"doctor"} checks`);
+    for (const name of this._preflightCommands(app, target)) {
+      this.line(`preflight     ${name}`);
+    }
     for (const name of steps) {
       const skipped = name === "migrate" && this.flags["skip-migrations"] === true;
       this.line(`step          ${name}${skipped ? "  (skipped: --skip-migrations)" : ""}`);

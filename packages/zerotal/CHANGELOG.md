@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`zerotal/shared`** — a browser-safe entry point re-exporting `@zerotal/core/shared`:
+  `pluralize`, `singularize`, `snakeCase`, `camelCase`, `tableNameFor`, `Str`, and the
+  `formatMoney` / `formatNumber` / `formatDate` formatters. Importing `zerotal` into a client
+  bundle drags the server in behind it; this is the subset that has no server in it, so one
+  definition of "how this app writes money" can be imported by both the controller and the
+  component instead of maintained twice.
+
 ## [1.4.0] — 2026-08-10
 
 ### Changed

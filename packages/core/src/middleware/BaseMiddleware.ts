@@ -46,6 +46,26 @@ export abstract class BaseMiddleware<O extends object = object> implements Pipe<
    * Returns a zero-arg subclass with the given options deep-merged on top of
    * the subclass defaults, usable directly in app.use([...]).
    *
+   * **Each call creates a distinct class, and any per-class state goes with it —
+   * so sharing one `.with()` export across two routes shares that state.** For
+   * `ThrottleMiddleware` that state is the hit counter, which means two routes on
+   * one exported instance share a budget: a handful of fumbled sign-ins can spend
+   * the allowance a legitimate person needs to answer their second factor. That is
+   * defensible behaviour and it is not what a reader expects from a factory, so it
+   * is worth saying where the factory is. Call `.with()` once per thing that
+   * deserves its own budget.
+   *
+   * ```ts
+   * // One bucket, shared by both forms — 5 attempts across the pair.
+   * const AuthThrottle = ThrottleMiddleware.with({ maxAttempts: 5 });
+   * Router.post("/login", ...[AuthThrottle]);
+   * Router.post("/two-factor", ...[AuthThrottle]);
+   *
+   * // A bucket each, which is almost always what was meant.
+   * Router.post("/login", ...[ThrottleMiddleware.with({ maxAttempts: 5 })]);
+   * Router.post("/two-factor", ...[ThrottleMiddleware.with({ maxAttempts: 5 })]);
+   * ```
+   *
    * `NoInfer` on the parameter is what makes this type-check at all. `Opts` has
    * a default computed from the middleware class, but a type parameter that
    * appears in an argument position is inferred from the *argument* first and

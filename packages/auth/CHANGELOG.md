@@ -6,6 +6,32 @@ follows the Zerotal monorepo's unified versioning.
 
 **Maturity: `stable`**
 
+## [Unreleased]
+
+### Added
+
+- **`doctor` check: auth columns.** `EmailVerification` and `Authenticatable` register their
+  columns imperatively, and the boot concern adds them to a table that already exists. That
+  makes "no migration needed" true for a model-first app and false for a migration-first one,
+  where a `create users` that does not mention `email_verified_at` leaves every query
+  touching it failing with `no such column` — all at once, in tests that have nothing to do
+  with email, with nothing pointing at the mixin. The doctor runs as a console command, where
+  the boot concern has not run, so what it sees is what a migration actually built.
+
+- **A test for the sign-in flow as a pair.** `AuthMiddleware` writes `intended_url` and
+  `redirect().intended()` consumes it. Both halves had tests and both passed, but both were
+  written against a stubbed session whose `regenerate()` is a no-op — so neither could
+  observe what happens between them, which is that login rotates the session ID before
+  elevating privileges. The flow is now exercised end to end against a real `SessionManager`.
+
+### Changed
+
+- **`Auth.user()` documents that it throws for a guest.** The name does not telegraph it, and
+  plenty of audited things happen with nobody signed in — a storefront checkout, a customer
+  approving a change from a tokenised link, a webhook. On those routes an audit write that
+  reaches for `Auth.user()` becomes a 401 on a public page, and the 401 is about the audit
+  line rather than about the request.
+
 ## [1.7.0] — 2026-08-16
 
 ### Fixed

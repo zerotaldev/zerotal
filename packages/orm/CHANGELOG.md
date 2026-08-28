@@ -8,6 +8,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`zt db:backup`** — a verified snapshot of the SQLite database. SQLite is the default
+  driver, which makes the database one file and makes `cp` look like a backup; it is not one,
+  because copying a live database can capture a half-written page and produce a file that
+  restores as corrupt, months later, from the one file you were relying on. This uses
+  `VACUUM INTO`, which takes a read lock and writes a complete database while the server
+  keeps serving, and needs no `sqlite3` binary on the box.
+
+  Every snapshot is opened and integrity-checked the moment it is written, and every failure
+  path exits non-zero — a backup job that reports success while writing nothing buys the
+  confidence without the file. `--require-rows` names the tables whose loss would end the
+  business and fails when the snapshot has none of them; `--rehearse` performs the actual
+  restore, because a backup nobody has restored is a hope. A snapshot that fails any check is
+  removed rather than left in the retention directory, where it would be indistinguishable
+  from a good one and, being newest, would push a verified older one out on the next prune.
+  Retention (`--keep`) only ever touches files this command wrote.
+
 ## [1.7.4] — 2026-08-21
 
 ### Fixed

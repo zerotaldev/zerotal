@@ -25,6 +25,70 @@ import { Inertia } from "@zerotal/inertia";
 > `defer()` loads after first paint; `merge()`/`scroll()` combine new data with what
 > the client already has.
 
+## Page props are page source
+
+**A page receives a projection chosen by its route, never a model — unless that model has
+declared which of its columns are safe to publish.**
+
+Everything you hand to `inertia()` is serialised into the HTML document, or returned as JSON
+on an XHR visit. Anyone who views source reads all of it. That is how the protocol works, and
+it is fine right up to the moment a model goes through it:
+
+```ts fragment
+// in a controller
+return inertia("Trips/Show", { trip }); // ← every column of the row, in the page
+```
+
+`trip.toJSON()` ships the whole row. If that row has an internal cost, a margin, a supplier
+reference or a note somebody left about the customer, all of it is now on the customer's own
+screen. Nothing fails, nothing logs, and the page looks right. This is the one mistake on this
+page that does not announce itself.
+
+### Declare the boundary at the model
+
+The ORM's `hidden` and `visible` lists are honoured by `toJSON()`, which is exactly what
+serialises a prop — so declaring them once at the model covers every route that ever passes it:
+
+```ts fragment
+import { Model, type Columns } from "zerotal/orm";
+
+class Trip extends Model {
+  // Never leaves the server, whoever passes this model to whatever page.
+  static hidden: Columns<Trip>[] = ["cost_cents", "markup_percent", "internal_notes"];
+}
+```
+
+`visible` is the allow-list form and takes precedence: state the columns a page may have, and a
+column added to the table later is private by default rather than published by default.
+
+In development, passing a model that declares neither list writes a warning naming the model and
+the number of fields it is about to publish. It fires once per model class and goes quiet as soon
+as either list exists.
+
+### When a route needs its own shape
+
+A `hidden` list is one decision for the whole app. Where two audiences need different columns of
+the same model, project per route and keep the dangerous fields out of the client-facing shape
+entirely:
+
+```ts fragment
+// in a controller
+function forCustomer(trip: Trip) {
+  return { id: trip.id, title: trip.title, total_cents: trip.total_cents };
+}
+
+function forOps(trip: Trip, options: { showCost: boolean }) {
+  return {
+    ...forCustomer(trip),
+    // Absent, not zeroed. A zero looks like a fact; a missing key cannot be misread.
+    ...(options.showCost ? { cost_cents: trip.cost_cents } : {}),
+  };
+}
+```
+
+Prefer omitting a field over blanking it. A `cost_cents: 0` in page source reads as "this trip
+cost us nothing", and somebody will eventually believe it.
+
 ## Partial reloads
 
 On a visit to the _same page_, the client can request a subset of props with `only` / `except`.

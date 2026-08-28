@@ -256,6 +256,12 @@ export class DatabaseProvider extends ServiceProvider {
     runner.registerLazy("db:seed", () =>
       import("../commands/DbSeedCommand.ts").then((m) => m.DbSeedCommand),
     );
+    // The counterpart to every command above it. `migrate`, `migrate:fresh` and
+    // `db:seed` all assume the file will still be there; this is the one that
+    // makes that assumption survivable.
+    runner.registerLazy("db:backup", () =>
+      import("../commands/DbBackupCommand.ts").then((m) => m.DbBackupCommand),
+    );
     runner.registerLazy("make:seeder", () =>
       import("../commands/MakeSeederCommand.ts").then((m) => m.MakeSeederCommand),
     );

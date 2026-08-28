@@ -5,6 +5,7 @@ import { DEFAULT_PAGES_DIR } from "./config.ts";
 import { sharedProps } from "./SharedProps.ts";
 import { assetVersion } from "./version.ts";
 import { resolveProps } from "./props/resolveProps.ts";
+import { checkPropBoundary } from "./props/propBoundary.ts";
 import { readHistoryFlags } from "./historyState.ts";
 import { allSharedKeys } from "./share.ts";
 import { recordPage } from "./devtools/recorder.ts";
@@ -80,6 +81,12 @@ export async function buildPageObject(
   // The only point that sees the raw wrappers and the resolved values together;
   // a no-op unless the DevTools recorder opened a recording for this request.
   recordPage(component, merged, resolved.props, resolved.rescuedProps);
+
+  // Everything below this line is page source. Last chance to say so — and the
+  // only place that sees the props as they will actually be serialised, after
+  // partial reloads and lazy wrappers have decided what is really going out.
+  // Development only; a no-op on a served request.
+  checkPropBoundary(resolved.props);
 
   const history = readHistoryFlags();
   if (history.encryptHistory) page.encryptHistory = true;

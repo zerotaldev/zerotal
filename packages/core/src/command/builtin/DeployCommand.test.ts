@@ -128,3 +128,128 @@ describe("deploy --dry-run", () => {
     expect(writer.flush()).toContain("--skip-migrations");
   });
 });
+
+/**
+ * The app's own gate. The framework can tell you the APP_KEY is the one from
+ * `.env.example`; it cannot tell you this workspace has no banking details. That
+ * refusal is the app's, and before there was a slot for it, it lived in a command
+ * nobody was obliged to run — which is a comment, not a gate.
+ */
+describe("deploy preflight — the app's own commands", () => {
+  // These run the framework's real preflight before reaching the app's, so APP_KEY has to
+  // be strong here or the doctor refuses first — and whether it is depends on which test
+  // file ran before this one.
+  const originalKey = Bun.env["APP_KEY"];
+
+  beforeEach(() => {
+    asDeployment("production");
+    Bun.env["APP_KEY"] = "base64:" + Buffer.alloc(32, 7).toString("base64");
+  });
+
+  afterEach(() => {
+    if (originalKey === undefined)
+      delete (Bun.env as Record<string, string | undefined>)["APP_KEY"];
+    else Bun.env["APP_KEY"] = originalKey;
+  });
+
+  /** A container whose command registry knows `names` and records what it ran. */
+  function appWith(names: string[], target: Record<string, unknown> = {}, failing?: string) {
+    const ran: string[] = [];
+    const runner = {
+      has: (n: string) => names.includes(n),
+      callInProcess: async (argv: string[]) => {
+        ran.push(argv[0]!);
+        return argv[0] === failing
+          ? { code: 1, output: "no cancellation policy on this workspace" }
+          : { code: 0, output: "" };
+      },
+    };
+    // Enough config to get past the framework's own preflight, which runs first and
+    // is not what these tests are about.
+    const config = {
+      get: (key: string, fallback?: unknown) => {
+        if (key === "deploy.targets.production") return target;
+        if (key === "app.allowedOrigins") return ["https://example.test"];
+        return fallback;
+      },
+    };
+    return {
+      ran,
+      app: {
+        // The pipeline runs the real preflight before it reaches any of this, so the
+        // stub has to carry what the config validators and the doctor read.
+        _configValidators: [],
+        _activeProviders: [],
+        doctorChecks: [],
+        webSocketPaths: () => [],
+        container: {
+          makeSync: (k: string) =>
+            k === "commands" ? runner : k === "config" ? config : undefined,
+        },
+      },
+    };
+  }
+
+  it("runs a conventionally-named release:check without being asked to", async () => {
+    const { app, ran } = appWith(["release:check"]);
+    const { command, writer } = build("production", { "dry-run": true }, app);
+    await command.run();
+    expect(writer.flush()).toContain("release:check");
+    expect(ran).toEqual([]); // --dry-run plans, it does not run
+  });
+
+  it("has nothing to run when the app defines no gate", async () => {
+    const { app } = appWith(["migrate"]);
+    const { command, writer } = build("production", { "dry-run": true }, app);
+    await command.run();
+    expect(writer.flush()).not.toContain("release:check");
+  });
+
+  it("runs declared preflight commands in order, before any step", async () => {
+    const { app, ran } = appWith(["release:check", "assets:verify", "migrate"], {
+      preflight: ["release:check", "assets:verify"],
+      steps: ["migrate"],
+    });
+    const { command } = build("production", {}, app);
+    await command.run();
+    expect(ran).toEqual(["release:check", "assets:verify", "migrate"]);
+  });
+
+  it("stops the release when a preflight command refuses, before anything mutates", async () => {
+    const { app, ran } = appWith(
+      ["release:check", "migrate"],
+      { preflight: ["release:check"], steps: ["migrate"] },
+      "release:check",
+    );
+    const { command } = build("production", {}, app);
+    await expect(command.run()).rejects.toThrow(/release:check refused this release/);
+    // The whole point of the ordering: `migrate` never ran.
+    expect(ran).toEqual(["release:check"]);
+  });
+
+  it("reports what the refusing command printed", async () => {
+    const { app } = appWith(["release:check"], { preflight: ["release:check"] }, "release:check");
+    const { command, writer } = build("production", {}, app);
+    await expect(command.run()).rejects.toThrow();
+    expect(writer.flush()).toContain("no cancellation policy");
+  });
+
+  it("refuses a declared preflight command that is not registered", async () => {
+    // The opposite of how `steps` treats an absent command, and deliberately so —
+    // a missing gate means the gate is not running, which is the state this exists
+    // to make impossible.
+    const { app } = appWith(["migrate"], { preflight: ["release:check"] });
+    const { command } = build("production", {}, app);
+    await expect(command.run()).rejects.toThrow(/not registered: release:check/);
+  });
+
+  it("takes an explicit empty list as 'this target has no gate'", async () => {
+    const { app, ran } = appWith(["release:check", "migrate"], {
+      preflight: [],
+      steps: ["migrate"],
+    });
+    const { command } = build("production", {}, app);
+    await command.run();
+    expect(ran).toEqual(["migrate"]);
+  });
+});

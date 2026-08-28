@@ -277,8 +277,28 @@ export const Auth = {
   /**
    * Returns the authenticated user for the current request.
    *
+   * **This throws for a guest**, and the name does not telegraph that — so it is
+   * the wrong call on any route a signed-out person can reach. Plenty of audited
+   * things happen with nobody signed in: a storefront checkout, a customer
+   * approving a change from a tokenised link, a webhook. On those routes an audit
+   * write that reaches for `Auth.user()` turns into a 401 on a public page, and
+   * the 401 is about the audit line rather than about the request.
+   *
+   * Use it where a middleware has already guaranteed a user, which is what makes
+   * the non-optional return type honest. Reach for {@link userOrNull} everywhere
+   * else.
+   *
    * @returns The current user, typed as the app's {@link UserModel}.
    * @throws {UnauthorizedError} when there is no authenticated user (a guest).
+   * @example
+   * ```ts
+   * // Behind AuthMiddleware — a user is guaranteed.
+   * const owner = Auth.user();
+   *
+   * // On a public route — a guest is a normal outcome, not a failure.
+   * const actor = Auth.userOrNull();
+   * await Audit.record("checkout.completed", { actorId: actor?.id ?? null });
+   * ```
    * @category Current user
    */
   user(): UserModel {

@@ -1,4 +1,5 @@
 import { ServiceProvider, HttpContext, ForbiddenError } from "@zerotal/core";
+import type { DoctorCheck } from "@zerotal/core";
 import type { AppEnvironment } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import type { UserModel } from "../facades/Auth.ts";
@@ -13,6 +14,7 @@ import { warmLoginTiming } from "../facades/Auth.ts";
 import type { AuthConfigShape } from "../config.ts";
 import { policiesConcern } from "../conventions.ts";
 import { authSchemaConcern } from "../authSchemaConcern.ts";
+import { authSchemaCheck } from "../authSchemaDoctor.ts";
 import { rbacSchemaConcern } from "../rbacSchemaConcern.ts";
 import "../augment.ts";
 
@@ -68,6 +70,16 @@ export class AuthProvider extends ServiceProvider {
    */
   static resolveUsing(fn: (id: number) => Promise<UserModel | null>): void {
     AuthProvider._resolver = fn;
+  }
+
+  /**
+   * The mixins' columns are provisioned at boot only when a table already exists,
+   * which makes "no migration needed" true for a model-first app and false for a
+   * migration-first one. The doctor runs as a console command, where that boot
+   * concern has not run — so what it sees is what a migration actually built.
+   */
+  override doctorChecks(): DoctorCheck[] {
+    return [authSchemaCheck];
   }
 
   override onRegister(): void {

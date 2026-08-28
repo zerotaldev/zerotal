@@ -214,6 +214,66 @@ singularize("people"); // 'person'
 tableNameFor("BlogPost"); // 'blog_posts'
 ```
 
+## Sharing helpers with the browser — `zerotal/shared`
+
+Importing `zerotal` into a client bundle drags the server in behind it. So the helpers that
+have no server in them are also published on their own entry point:
+
+```tsx
+// resources/js/pages/Trips/Index.tsx — a browser bundle
+import { pluralize, formatMoney, Str } from "zerotal/shared";
+```
+
+Everything reachable from `zerotal/shared` is pure — no `node:` imports, no `Bun` globals, no
+config, no container, no request context. Importing it pulls in these functions and nothing
+else, and a test in the framework's own suite bundles the entry point for the browser to keep
+that true.
+
+It carries `pluralize`, `singularize`, `snakeCase`, `camelCase`, `tableNameFor`, the whole
+`Str` namespace, and the formatters below.
+
+**Why it matters more than convenience.** Without it, a page that needs `pluralize` gets a
+second implementation written by hand — and the second copy is always the worse one, because
+the irregulars and the inflect-only-the-last-word rule are exactly what someone re-deriving
+it leaves out. `pluralize("supplier line")` is `"supplier lines"`; the naive rule gives
+`"suppliers line"`. One import removes the divergence rather than managing it.
+
+### Formatting both sides can agree on
+
+`Intl` is in both runtimes and does the work; the risk is that a server helper and a browser
+helper make the same decision twice. A total that reads `R 39 147` on screen and `R39,147.00`
+on the invoice looks like two different numbers to the person paying it.
+
+```typescript
+import { formatMoney, formatNumber, formatDate } from "zerotal/shared";
+
+// Minor units by default — how a column that must not lose a cent stores it.
+formatMoney(3_914_700, { currency: "ZAR", locale: "en-ZA" });
+formatMoney(39_147, { currency: "USD", locale: "en-US", minorUnits: false });
+
+formatNumber(39147.5, { locale: "en-GB", maximumFractionDigits: 1 }); // '39,147.5'
+
+formatDate("2026-08-28T21:30:00Z", { locale: "en-ZA", timeZone: "Africa/Johannesburg" });
+```
+
+Pass `locale` explicitly wherever the two sides must match. Left off, it is the machine's on
+the server and the reader's in the browser, and those are not the same. Pass `timeZone` for
+the same reason: a machine on UTC and a reader in Cape Town disagree about which _day_ an
+11pm booking happened on, and that is the shape the bug takes.
+
+Each formatter takes its own options interface, all extending `FormatOptions` (which carries
+`locale`):
+
+| Interface       | Used by        | Adds                                                                   |
+| --------------- | -------------- | ---------------------------------------------------------------------- |
+| `FormatOptions` | — (the base)   | `locale`                                                               |
+| `MoneyOptions`  | `formatMoney`  | `currency` (required), `minorUnits` (default `true`), `fractionDigits` |
+| `NumberOptions` | `formatNumber` | `minimumFractionDigits`, `maximumFractionDigits`                       |
+| `DateOptions`   | `formatDate`   | `dateStyle`, `timeStyle`, `timeZone`                                   |
+
+`formatDate` returns an empty string for an unparseable value rather than `Invalid Date`, so
+a bad timestamp renders as a blank rather than as words in the middle of a page.
+
 ## Objects — deepMerge
 
 Recursively merge an override object onto a base, lodash-style: nested plain

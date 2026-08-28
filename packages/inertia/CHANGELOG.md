@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A warning when a model crosses into page props having declared no boundary.** Page props
+  are page source: everything handed to `inertia()` is serialised into the document, and
+  `return inertia("Trips/Show", { trip })` is what a newcomer writes on their first afternoon
+  and ships the whole row — the internal cost, the margin, the note about the customer, on
+  the customer's own screen. Nothing fails and the page looks right, which makes it the one
+  mistake here that never announces itself.
+
+  The ORM's `hidden` / `visible` lists were already honoured, since they are applied by
+  `toJSON()` and that is what serialises a prop — nothing said so. In development, passing a
+  model that declares neither list now names the model and the number of fields it is about
+  to publish. It fires once per model class and goes quiet as soon as either list exists, so
+  the normal case of passing models stays quiet.
+
 ## [1.8.0] — 2026-08-24
 
 ### Fixed

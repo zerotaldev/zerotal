@@ -36,6 +36,7 @@
     "./scheduler": "./src/scheduler.ts",
     "./security": "./src/security.ts",
     "./session": "./src/session.ts",
+    "./shared": "./src/shared.ts",
     "./storage": "./src/storage.ts",
     "./testing": "./src/testing.ts",
     "./validator": "./src/validator.ts",

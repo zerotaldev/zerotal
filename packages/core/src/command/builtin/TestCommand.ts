@@ -1,4 +1,5 @@
 import { Command } from "../Command.ts";
+import { bunBinary } from "../../support/runtime.ts";
 
 /**
  * `bun zt test [pattern] [flags]` — runs the test suite in the test environment.
@@ -121,10 +122,16 @@ export class TestCommand extends Command {
     const timeout = (this.flags["timeout"] as number | undefined) || TestCommand.DEFAULT_TIMEOUT_MS;
     bunArguments.push(`--timeout=${timeout}`);
 
-    this.dim(`APP_ENV=test  ZT_DB_URL=${dbUrl}`);
+    this.dim(`APP_ENV=test  ZT_DB_URL=${dbUrl}  bun ${Bun.version}`);
     this.dim(`bun ${bunArguments.join(" ")}\n`);
 
-    const subprocess = Bun.spawn(["bun", ...bunArguments], {
+    // `bunBinary()`, not `"bun"`. The child of a command whose entire job is to run
+    // this app's tests must be the runtime this app is served by, and `"bun"` is
+    // resolved against PATH — so `node_modules/.bin/bun zt test` used to satisfy every
+    // check in the parent process and then hand the suite to whatever the shell had.
+    // The parent already refuses to boot on a runtime mismatch; spawning its own
+    // binary is what extends that guarantee to the process the assertions run in.
+    const subprocess = Bun.spawn([bunBinary(), ...bunArguments], {
       stdout: "inherit",
       stderr: "inherit",
       env: {

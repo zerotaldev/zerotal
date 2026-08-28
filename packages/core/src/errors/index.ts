@@ -31,6 +31,7 @@ export {
 } from "./HttpError.ts";
 export { ValidationError } from "./ValidationError.ts";
 export { ConfigError } from "./ConfigError.ts";
+export { RuntimeMismatchError } from "./RuntimeMismatchError.ts";
 export { BootCheckError } from "../application/BootDoctor.ts";
 export type { BootCheckFailure } from "../application/BootDoctor.ts";
 export { ConfigValidationError } from "../config/validation.ts";

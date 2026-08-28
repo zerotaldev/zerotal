@@ -39,7 +39,11 @@ export interface StartDevModeOptions {
   deckMode?: "tabs" | "stream" | undefined;
 }
 
-/** The server's card. Named so `--only=server` and `--without=server` read naturally. */
+/**
+ * The server's card. Named so `--only=server` and `--without=server` read naturally.
+ *
+ * @internal
+ */
 export const SERVER_PROCESS_NAME = "server";
 
 /**
@@ -47,6 +51,8 @@ export const SERVER_PROCESS_NAME = "server";
  *
  * Never returns: the orchestrator parks on an unresolved promise and the exit
  * happens in its signal handlers, after the deck has restored the terminal.
+ *
+ * @internal
  */
 export async function startDevMode(options: StartDevModeOptions): Promise<void> {
   const supervised = options.processes.filter((entry) => entry.name !== SERVER_PROCESS_NAME);

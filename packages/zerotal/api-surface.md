@@ -4131,75 +4131,6 @@ class DevReloadMiddleware = {
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
 }
 
-class DevSupervisor = {
-  new (options: DevSupervisorOptions): DevSupervisor
-  definitions: () => ResolvedDevProcess[]
-  restart: (name: string) => Promise<void>
-  start: (definitions: ResolvedDevProcess[]) => void
-  statuses: () => DevProcessStatus[]
-  stopAll: () => Promise<void>
-}
-
-class StreamDeck = {
-  new (_writer: OutputWriter, _color: boolean): StreamDeck
-  line: (name: string, text: string, stream: 'stdout' | 'stderr') => void
-  notice: (text: string) => void
-  start: (statuses: DevProcessStatus[]) => void
-  state: (status: DevProcessStatus) => void
-  stop: () => void
-}
-
-class TabsDeck = {
-  new (_options: DeckOptions, _stdout: DeckStdout, _stdin: DeckStdin): TabsDeck
-  line: (name: string, text: string, stream: 'stdout' | 'stderr') => void
-  notice: (text: string) => void
-  start: (statuses: DevProcessStatus[]) => void
-  state: (status: DevProcessStatus) => void
-  stop: () => void
-}
-
-const DEV_RELOAD_CLIENT = string
-
-const SERVER_PROCESS_NAME = 'server'
-
-function bootBuildDecision = (outDirs: string[], env: string | undefined) => Promise<BootBuildDecision>
-
-function buildCssBundle = (input: string, outdir: string, minify?: boolean, loader?: Record<string, string>) => Promise<BundleResult>
-
-function buildJsBundle = (input: string, outdir: string, minify?: boolean) => Promise<BundleResult>
-
-function collectDevProcesses = (app: ProviderHost, config?: ConfigReader) => Promise<ResolvedDevProcess[]>
-
-function createDeck = (options: DeckOptions) => Deck
-
-function detectCssPlugins = (cwd: string) => Promise<BunPlugin[]>
-
-function isWritableDir = (dir: string) => Promise<boolean>
-
-function registerDevHtmlSnippet = (name: string, fn: DevHtmlSnippet) => void
-
-function startDevMode = (options: StartDevModeOptions) => Promise<void>
-
-interface AssetBuildConfig = {
-  clean?: boolean
-  entrypoint: string | string[]
-  loader?: Record<string, string>
-  minify: boolean
-  outDir: string
-  prefix: string
-}
-
-interface BootBuildDecision = {
-  build: boolean
-  reason?: string
-}
-
-interface BuildResult = {
-  logs?: unknown[]
-  skipped?: boolean
-  success: boolean
-}
-
 interface Deck = {
   line: (name: string, text: string, stream: 'stdout' | 'stderr') => void
   notice: (text: string) => void
@@ -4207,57 +4138,6 @@ interface Deck = {
   state: (status: DevProcessStatus) => void
   stop: () => void
 }
-
-interface DeckOptions = {
-  mode?: 'tabs' | 'stream'
-  onQuit: () => void
-  onRestart: (name: string) => void
-  stdin?: DeckStdin
-  stdout?: DeckStdout
-  writer: OutputWriter
-}
-
-interface DevChild = {
-  kill: (signal?: number | NodeJS.Signals) => void
-  readonly exited: Promise<number>
-  readonly stderr: ReadableStream<Uint8Array<ArrayBufferLike>> | null
-  readonly stdout: ReadableStream<Uint8Array<ArrayBufferLike>> | null
-}
-
-interface DevOrchestratorHooks = {
-  onCleanup?: () => void | Promise<void>
-  onNotice?: (text: string, level: 'info' | 'warn' | 'error') => void
-  onServerLine?: (line: string, stream: 'stdout' | 'stderr') => void
-  onServerReady?: () => void | Promise<void>
-  onServerState?: (state: 'starting' | 'running' | 'restarting' | 'parked') => void
-}
-
-interface DevProcessStatus = {
-  attempts: number
-  color: DevProcessColor
-  exitCode?: number
-  label: string
-  name: string
-  state: DevProcessState
-}
-
-interface DevSupervisorOptions = {
-  backoffMs?: number[]
-  cwd: string
-  env?: Record<string, string | undefined>
-  healthyAfterMs?: number
-  onLine?: (name: string, line: string, stream: 'stdout' | 'stderr') => void
-  onState?: (status: DevProcessStatus) => void
-  spawn?: DevSpawnFn
-}
-
-type BuildHookFn = () => Promise<BuildResult>
-
-type DevHtmlSnippet = (ctx: HttpContext) => string
-
-type DevProcessState = 'starting' | 'running' | 'restarting' | 'exited' | 'parked'
-
-type DevSpawnFn = (argv: string[], options: {    cwd: string;    env: Record<string, string | undefined>;}) => DevChild
 
 ## ./env  `(./src/env.ts)`
 

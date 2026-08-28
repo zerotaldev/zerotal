@@ -51,6 +51,7 @@ export interface Deck {
   stop(): void;
 }
 
+/** @internal */
 export interface DeckOptions {
   writer: OutputWriter;
   /** Restart the named process — bound to `r`. */
@@ -90,6 +91,8 @@ export interface DeckStdin {
  * read keys from. A process with a TTY on stdout but not stdin (some CI
  * runners, `zt dev < /dev/null`) would render a tab bar nobody could ever
  * switch, so it gets stream instead.
+ *
+ * @internal
  */
 export function createDeck(options: DeckOptions): Deck {
   const stdout = options.stdout ?? process.stdout;
@@ -108,6 +111,8 @@ export function createDeck(options: DeckOptions): Deck {
  * Colour is applied only when stdout is a terminal. Piped to a file this emits
  * nothing but text, which is the point — a log with escape codes in it is a log
  * you have to clean before you can read it.
+ *
+ * @internal
  */
 export class StreamDeck implements Deck {
   private _width = 0;
@@ -181,6 +186,7 @@ interface Card {
   scroll: number;
 }
 
+/** @internal */
 export class TabsDeck implements Deck {
   private readonly _cards: Card[] = [];
   private readonly _index = new Map<string, Card>();

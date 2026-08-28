@@ -6,7 +6,7 @@
     "@zerotal/broadcasting": 16,
     "@zerotal/cache": 1,
     "@zerotal/client": 19,
-    "@zerotal/core": 166,
+    "@zerotal/core": 121,
     "@zerotal/devtools": 7,
     "@zerotal/flow": 94,
     "@zerotal/flow-ui": 103,
@@ -20,9 +20,9 @@
     "@zerotal/session": 5,
     "@zerotal/telemetry": 4,
     "@zerotal/tenancy": 3,
-    "@zerotal/testing": 6,
+    "@zerotal/testing": 5,
     "@zerotal/validator": 9
   },
-  "total": 798,
-  "updatedAt": "2026-08-23T01:59:38.361Z"
+  "total": 752,
+  "updatedAt": "2026-08-28T16:24:31.385Z"
 }

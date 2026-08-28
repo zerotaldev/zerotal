@@ -171,6 +171,44 @@ export default LoggingConfig({
 });
 ```
 
+### Writing your own channel
+
+A channel is one method. Implement `LogChannel` and register it as a driver when the five
+built-ins do not reach where you need entries to go — a hosted log service, a socket, a table:
+
+```typescript
+import type { LogChannel, LogEntry } from "zerotal/logger";
+
+class WebhookChannel implements LogChannel {
+  constructor(private readonly url: string) {}
+
+  async write(entry: LogEntry): Promise<void> {
+    // Failures are swallowed on purpose: a logging sink that throws turns a
+    // warning into an outage, and the entry it was carrying is lost either way.
+    await fetch(this.url, { method: "POST", body: JSON.stringify(entry) }).catch(() => {});
+  }
+}
+```
+
+The built-ins implement the same interface and are exported, so a custom channel can wrap one
+rather than reimplement it — `StackChannel` is itself only a fan-out over other channels.
+
+### Types
+
+| Type            | What it is                                                                     |
+| --------------- | ------------------------------------------------------------------------------ |
+| `LogLevel`      | `"debug" \| "info" \| "warn" \| "error" \| "fatal"` — the severity ladder.     |
+| `LogEntry`      | One record: level, message, context, scope, timestamp, and any captured error. |
+| `LogChannel`    | The one-method sink contract: `write(entry): Promise<void>`.                   |
+| `BoundLogger`   | A logger pinned to a channel and/or a fixed context bag.                       |
+| `ChannelConfig` | The discriminated union of the five driver configs below.                      |
+| `LoggerOptions` | What `LoggingConfig()` accepts.                                                |
+| `TableData`     | Rows for `Log.table()`.                                                        |
+
+The five built-in channels are exported under their own names — `ConsoleChannel`,
+`SingleChannel`, `DailyChannel`, `StackChannel`, `NullChannel` — each matching the `driver`
+value in the table above.
+
 ## The Log facade
 
 `Log` is a static proxy over the `LogManager` singleton. Use it anywhere —

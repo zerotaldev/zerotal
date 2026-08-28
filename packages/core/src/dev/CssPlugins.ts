@@ -40,6 +40,8 @@ function _scanRoots(cwd: string): string[] {
  *
  * Returns an empty array when `bun-plugin-tailwind` is not installed.
  * The caller falls back to a `bunx @tailwindcss/cli` subprocess.
+ *
+ * @internal
  */
 export async function detectCssPlugins(cwd: string): Promise<BunPlugin[]> {
   try {
@@ -60,6 +62,8 @@ export async function detectCssPlugins(cwd: string): Promise<BunPlugin[]> {
  * @param input   Absolute path to the CSS source (e.g. `${cwd}/resources/css/app.css`)
  * @param outdir  Absolute path to the output directory (e.g. `${cwd}/public/css`)
  * @param minify  Whether to minify the output (true in production)
+ *
+ * @internal
  */
 export async function buildCssBundle(
   input: string,
@@ -155,6 +159,8 @@ export async function buildCssBundle(
  * @param input   Absolute path to the JS/TS entry (e.g. `${cwd}/resources/js/app.js`)
  * @param outdir  Absolute path to the output directory (e.g. `${cwd}/public/js`)
  * @param minify  Whether to minify the output (true in production)
+ *
+ * @internal
  */
 export async function buildJsBundle(
   input: string,
@@ -193,7 +199,11 @@ function _basename(filePath: string): string {
   return filePath.split("/").at(-1) ?? filePath;
 }
 
-/** The resolved `app.assets` config block (see {@link AppAssetsConfig}). */
+/**
+ * The resolved `app.assets` config block (see {@link AppAssetsConfig}).
+ *
+ * @internal
+ */
 export interface AssetBuildConfig {
   entrypoint: string | string[];
   outDir: string;

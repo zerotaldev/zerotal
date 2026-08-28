@@ -123,6 +123,8 @@ interface ConfigReader {
  * @param app     A booted application — providers must have run, since `enabled`
  *                and a `command` thunk are allowed to read config.
  * @param config  The config manager, read for `app.dev`.
+ *
+ * @internal
  */
 export async function collectDevProcesses(
   app: ProviderHost,

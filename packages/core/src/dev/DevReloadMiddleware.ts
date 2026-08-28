@@ -19,7 +19,11 @@ import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { BaseMiddleware } from "../middleware/BaseMiddleware.ts";
 import { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
 
-/** Produces an HTML fragment to inject before `</body>` for the given request. */
+/**
+ * Produces an HTML fragment to inject before `</body>` for the given request.
+ *
+ * @internal
+ */
 export type DevHtmlSnippet = (ctx: HttpContext) => string;
 
 interface RegisteredSnippet {
@@ -39,6 +43,8 @@ const _snippets: RegisteredSnippet[] = [];
  * registerDevHtmlSnippet("devtools", (ctx) =>
  *   ctx.url.pathname.startsWith("/__zerotal") ? "" : `<script src="/__zerotal/devtools/client.js"></script>`,
  * );
+ *
+ * @internal
  */
 export function registerDevHtmlSnippet(name: string, fn: DevHtmlSnippet): void {
   if (_snippets.some((s) => s.name === name)) return;

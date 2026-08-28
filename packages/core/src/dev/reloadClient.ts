@@ -19,6 +19,8 @@
  * Exported as a string because it is injected inline: `DevReloadMiddleware`
  * rewrites HTML responses with it for every view layer, and Inertia bakes it
  * into its cached template so streamed pages need no body rewrite.
+ *
+ * @internal
  */
 export const DEV_RELOAD_CLIENT: string =
   `<script>(function(){` +

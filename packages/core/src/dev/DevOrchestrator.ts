@@ -14,6 +14,8 @@ import { ZEROTAL_VERSION, installedCoreVersion } from "../support/version.ts";
  * All optional, and all defaulting to the console. Without them the orchestrator
  * behaves exactly as it did before the deck existed — which is what keeps the
  * plain `bun --watch` path and the existing tests honest.
+ *
+ * @internal
  */
 export interface DevOrchestratorHooks {
   /**

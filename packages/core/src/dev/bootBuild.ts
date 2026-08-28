@@ -23,7 +23,11 @@
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { isProdLike } from "../support/env.ts";
 
-/** What to do about a boot-time asset build, and why. */
+/**
+ * What to do about a boot-time asset build, and why.
+ *
+ * @internal
+ */
 export interface BootBuildDecision {
   /** Whether to run the build. */
   build: boolean;
@@ -37,6 +41,8 @@ export interface BootBuildDecision {
  * Tested by writing rather than by reading a permission bit: the thing that makes
  * `public/` unwritable in the failure this guards against is `ProtectSystem=strict`, a
  * mount-level restriction that a mode check does not see.
+ *
+ * @internal
  */
 export async function isWritableDir(dir: string): Promise<boolean> {
   const probe = `${dir}/.zerotal-write-probe-${process.pid}`;
@@ -68,6 +74,8 @@ export async function isWritableDir(dir: string): Promise<boolean> {
  * if (!decision.build) console.info(decision.reason);
  * else await build();
  * ```
+ *
+ * @internal
  */
 export async function bootBuildDecision(
   outDirs: string[],

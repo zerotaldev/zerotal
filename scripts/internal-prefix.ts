@@ -43,6 +43,16 @@ interface Baseline {
   /** Package name → permitted count of unprefixed `@internal` exports. */
   packages: Record<string, number>;
   updatedAt: string;
+  /**
+   * Why the number last moved.
+   *
+   * A ratchet that only ever goes down needs no note. This one can legitimately go
+   * *up*: marking a plumbing export `@internal` — which is the right thing to do,
+   * and what the docs-coverage gate asks for — reveals debt that was already there
+   * and merely undeclared. That is the measurement getting more honest, not the
+   * tree getting worse, and the distinction is invisible in a bare number.
+   */
+  note?: string;
 }
 
 /** One export marked `@internal` whose name does not start with `_`. */
@@ -121,9 +131,15 @@ if (import.meta.main) {
   }
 
   if (update) {
+    const noteFlag = process.argv.indexOf("--note");
+    const note = noteFlag >= 0 ? process.argv[noteFlag + 1] : undefined;
+    const previous = existsSync(resolve(ROOT, BASELINE_FILE))
+      ? (JSON.parse(readFileSync(resolve(ROOT, BASELINE_FILE), "utf8")) as Baseline)
+      : undefined;
     const next: Baseline = {
       packages: Object.fromEntries(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b))),
       updatedAt: new Date().toISOString().slice(0, 10),
+      ...((note ?? previous?.note) ? { note: note ?? previous?.note } : {}),
     };
     writeFileSync(resolve(ROOT, BASELINE_FILE), `${JSON.stringify(next, null, 2)}\n`);
     console.log(`\x1b[32m✓\x1b[0m wrote ${BASELINE_FILE}: ${total} unprefixed internal export(s).`);

@@ -16,7 +16,11 @@
  */
 import type { ResolvedDevProcess } from "./DevProcess.ts";
 
-/** What the supervisor needs back from whatever it spawned. */
+/**
+ * What the supervisor needs back from whatever it spawned.
+ *
+ * @internal
+ */
 export interface DevChild {
   readonly stdout: ReadableStream<Uint8Array> | null;
   readonly stderr: ReadableStream<Uint8Array> | null;
@@ -24,16 +28,28 @@ export interface DevChild {
   kill(signal?: number | NodeJS.Signals): void;
 }
 
-/** How the supervisor starts a child. Injected so tests need no real processes. */
+/**
+ * How the supervisor starts a child. Injected so tests need no real processes.
+ *
+ * @internal
+ */
 export type DevSpawnFn = (
   argv: string[],
   options: { cwd: string; env: Record<string, string | undefined> },
 ) => DevChild;
 
-/** Where a process is in its life. */
+/**
+ * Where a process is in its life.
+ *
+ * @internal
+ */
 export type DevProcessState = "starting" | "running" | "restarting" | "exited" | "parked";
 
-/** A process as the deck sees it. */
+/**
+ * A process as the deck sees it.
+ *
+ * @internal
+ */
 export interface DevProcessStatus {
   name: string;
   label: string;
@@ -53,6 +69,7 @@ export interface DevSupervisorHooks {
   onState?: (status: DevProcessStatus) => void;
 }
 
+/** @internal */
 export interface DevSupervisorOptions extends DevSupervisorHooks {
   cwd: string;
   env?: Record<string, string | undefined>;
@@ -92,6 +109,7 @@ interface Entry {
   healthyTimer?: ReturnType<typeof setTimeout> | undefined;
 }
 
+/** @internal */
 export class DevSupervisor {
   private readonly _entries = new Map<string, Entry>();
   private readonly _cwd: string;

@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **INTERNAL: the dev orchestrator's 26 exports are marked `@internal`.** `DevSupervisor`,
+  `DevChild`, `DevSpawnFn`, `StreamDeck`, `TabsDeck`, `createDeck`, `collectDevProcesses`,
+  `buildCssBundle`, `buildJsBundle`, `bootBuildDecision`, `detectCssPlugins`, `isWritableDir`,
+  `startDevMode`, `registerDevHtmlSnippet`, `DEV_RELOAD_CLIENT`, `SERVER_PROCESS_NAME` and their
+  option/result types.
+
+  **Nothing is removed and nothing breaks** — they are still exported and still work. What
+  changes is the promise: they leave the recorded API surface, because an app never constructs
+  any of them and the only callers outside `@zerotal/core` are sibling framework packages wiring
+  their own dev-time build. `DevProcessDefinition` — the one a package author actually writes —
+  is unaffected and stays documented.
+
 ### Added
 
 - **One project, one Bun.** `engines.bun` is a floor and nothing enforces it, so a project

@@ -5,7 +5,7 @@
     "arch": 1,
     "auth": 4,
     "broadcasting": 4,
-    "core": 30,
+    "core": 44,
     "devtools": 4,
     "flow": 8,
     "inertia": 13,
@@ -16,5 +16,6 @@
     "tenancy": 1,
     "testing": 1
   },
-  "updatedAt": "2026-08-28"
+  "updatedAt": "2026-08-28",
+  "note": "core 30 → 44: the dev orchestrator's 26 exports were marked @internal (they are plumbing; only sibling framework packages call them). The names were already unprefixed — declaring them internal made existing debt visible rather than adding any. Renaming exported symbols is breaking, so it belongs in the 2.0 ledger."
 }

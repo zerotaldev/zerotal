@@ -12,7 +12,11 @@
  * server cheerfully reported "rebuilding… ✓ ready" on every change.
  */
 
-/** Outcome of a frontend build: whether it succeeded and any collected logs. */
+/**
+ * Outcome of a frontend build: whether it succeeded and any collected logs.
+ *
+ * @internal
+ */
 export interface BuildResult {
   success: boolean;
   logs?: unknown[];
@@ -25,7 +29,11 @@ export interface BuildResult {
   skipped?: boolean;
 }
 
-/** A frontend build routine that resolves once the build finishes. */
+/**
+ * A frontend build routine that resolves once the build finishes.
+ *
+ * @internal
+ */
 export type BuildHookFn = () => Promise<BuildResult>;
 
 const _hooks = new Map<string, BuildHookFn>();

@@ -626,6 +626,24 @@ Manager and exports from `zerotal/storage`:
 | `StorageProvider`        | `class`                                                         | Registers the `storage` binding.                 |
 | `DiskNotConfiguredError` | `class`                                                         | Thrown when a named disk is missing from config. |
 
+### Types
+
+The config shapes are exported, so a `config/storage.ts` can be annotated and a helper that
+builds disk options can be typed:
+
+| Type                  | What it is                                                                 |
+| --------------------- | -------------------------------------------------------------------------- |
+| `DiskConfig`          | The discriminated union of every disk config — `local` and `s3` today.     |
+| `LocalDiskConfig`     | A local disk: `root`, plus `serve` when it is reachable over HTTP.         |
+| `S3DiskConfig`        | An S3 disk: credentials, `region`, `bucket`, and an optional public `url`. |
+| `DiskServeConfig`     | How a disk is exposed over HTTP — the `serve` block `public` uses.         |
+| `StorageFilesOptions` | Options for `StorageFilesMiddleware`, which serves a disk's files.         |
+| `FakeStoredFile`      | What a faked disk records in tests, for asserting on what was written.     |
+
+`StorageError` is the base every storage failure extends, and `UnsupportedOperationError` is
+what a driver throws for something it genuinely cannot do — a local disk asked for a signed
+URL, for instance — rather than failing quietly and returning nothing.
+
 ## Next steps
 
 - [Validator](/docs/validator) — validate file uploads before storing them.

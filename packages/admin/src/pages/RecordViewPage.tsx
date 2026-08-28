@@ -95,6 +95,7 @@ interface PivotProxy {
   all?: () => unknown;
 }
 
+/** @internal */
 export class RecordViewPage extends Component {
   static layout = AdminLayout;
   /** Set by each generated subclass. */
@@ -925,6 +926,8 @@ export class RecordViewPage extends Component {
 /**
  * Build a uniquely-named View page subclass bound to a resource — mirrors
  * {@link makeResourceListPage} so Flow keeps component identity stable.
+ *
+ * @internal
  */
 export function makeRecordViewPage(
   resource: ResourceClass,

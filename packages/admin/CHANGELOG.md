@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **INTERNAL: the panel's own page machinery is marked `@internal`.** The `make*Page` factories,
+  the page classes they produce (`ResourceListPage`, `RecordViewPage`, `ResourceFormPage`,
+  `RolesPage`, `MediaPage`, `NotificationsPage`, `ConsolePage`, …), the action and widget
+  renderers, and `AdminPanelHost`.
+
+  **Nothing is removed and nothing breaks** — they are still exported and still work. An app
+  declares a `Resource` and the panel builds these pages from it; none of them has a caller
+  outside `@zerotal/admin` or a line in the guide, because writing one was never the way to use
+  this package.
+
 ## [1.6.0] — 2026-08-15
 
 ### Fixed

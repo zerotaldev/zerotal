@@ -63,7 +63,11 @@ const _formRegistry = new Map<string, FormMeta>();
 
 const formKey = (panelId: string, slug: string): string => `${panelId}:${slug}`;
 
-/** Register a resource's form config so the shared page can resolve it. */
+/**
+ * Register a resource's form config so the shared page can resolve it.
+ *
+ * @internal
+ */
 export function registerResourceForm(panelId: string, slug: string, meta: FormMeta): void {
   _formRegistry.set(formKey(panelId, slug), meta);
 }
@@ -72,6 +76,7 @@ const SPAN_CLASS = ["", "", "sm:col-span-2", "sm:col-span-3", "sm:col-span-4"];
 const INPUT_CLASS =
   "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
 
+/** @internal */
 export class ResourceFormPage extends Component {
   @locked slug = "";
   @locked mode: FieldMode = "create";

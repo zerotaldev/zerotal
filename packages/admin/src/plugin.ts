@@ -40,6 +40,8 @@ import type { RenderHookContext } from "./renderHooks.ts";
  * over without importing anything from `@zerotal/admin`. The panel gives the page
  * its own layout when it mounts the route, so a contributed page renders only its
  * content and inherits the panel's chrome.
+ *
+ * @internal
  */
 export type PanelPageClass = new () => object;
 
@@ -245,6 +247,8 @@ export interface UserMenuContribution {
  * Contributors should declare their own minimal copy of the members they use
  * rather than importing this type, so they depend on the admin package at build
  * time not at all.
+ *
+ * @internal
  */
 export interface AdminPanelHost {
   /**

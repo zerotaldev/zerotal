@@ -1,6 +1,6 @@
 {
   "packages": {
-    "@zerotal/admin": 120,
+    "@zerotal/admin": 87,
     "@zerotal/audit": 2,
     "@zerotal/auth": 58,
     "@zerotal/broadcasting": 16,
@@ -23,6 +23,6 @@
     "@zerotal/testing": 5,
     "@zerotal/validator": 9
   },
-  "total": 681,
-  "updatedAt": "2026-08-28T17:06:42.940Z"
+  "total": 648,
+  "updatedAt": "2026-08-28T18:18:51.482Z"
 }

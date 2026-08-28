@@ -7,6 +7,7 @@ import type { HtmlNode } from "@zerotal/flow";
 import { Panel } from "../Panel.ts";
 import { adminHead } from "../theme.ts";
 
+/** @internal */
 export class AuthLayout extends Layout {
   static override get head(): string {
     const cfg = Panel.config();

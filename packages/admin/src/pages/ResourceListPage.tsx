@@ -104,6 +104,7 @@ function parseFilters(s: string): Record<string, string> {
   }
 }
 
+/** @internal */
 export class ResourceListPage extends Component {
   static layout = AdminLayout;
   /** Set by each generated subclass. */
@@ -2535,6 +2536,8 @@ export class ResourceListPage extends Component {
 /**
  * Build a uniquely-named List page subclass bound to a resource. The distinct
  * class name keeps Flow's snapshot/component identity stable per resource.
+ *
+ * @internal
  */
 export function makeResourceListPage(
   resource: ResourceClass,

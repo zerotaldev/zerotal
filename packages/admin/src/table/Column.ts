@@ -37,6 +37,7 @@ export interface SummaryResult {
   text: string;
 }
 
+/** @internal */
 export interface RenderableCell {
   /** Pre-escaped/plain text, or a badge descriptor. */
   text: string;

@@ -158,7 +158,11 @@ export class SearchPage extends Component {
   }
 }
 
-/** The search page for one panel, searching only that panel's resources. */
+/**
+ * The search page for one panel, searching only that panel's resources.
+ *
+ * @internal
+ */
 export function makeSearchPage(panel: PanelInstance = Panel.default()): typeof SearchPage {
   const Page = class extends SearchPage {
     static override panel = panel;

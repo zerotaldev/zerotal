@@ -96,5 +96,7 @@ export abstract class AdminPage extends Component {
 /**
  * A concrete {@link AdminPage} subclass — the static metadata above, plus the
  * zero-argument constructor Flow builds the page with.
+ *
+ * @internal
  */
 export type AdminPageClass = typeof AdminPage & (new () => AdminPage);

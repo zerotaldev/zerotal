@@ -114,6 +114,7 @@ export interface EmptyState {
   actions?: ActionItem[];
 }
 
+/** @internal */
 export interface RecordPage {
   rows: Record<string, unknown>[];
   total: number;

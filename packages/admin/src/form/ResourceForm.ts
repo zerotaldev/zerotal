@@ -16,6 +16,7 @@ import type { RuleBuilder, FieldRule } from "@zerotal/validator";
 import type { Field, FieldMode } from "./Field.ts";
 import { type FormComponent, flattenFields } from "./Section.ts";
 
+/** @internal */
 export type ResourceFormClass = new () => Form & Record<string, unknown>;
 
 /** @internal */

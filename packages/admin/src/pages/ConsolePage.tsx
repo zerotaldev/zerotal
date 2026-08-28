@@ -36,6 +36,7 @@ const ALIGN: Record<string, string> = {
   end: "text-right tabular-nums",
 };
 
+/** @internal */
 export class ConsolePage extends Component {
   static layout = AdminLayout;
 
@@ -304,6 +305,8 @@ function cell(c: ConsoleColumn, row: ConsoleRow): HtmlNode | string {
  * shared class resolving itself from the route — keeps the console on a static
  * and matches how resource list pages are generated. The explicit name matters:
  * Flow's component registry is keyed by constructor name.
+ *
+ * @internal
  */
 export function makeConsolePage(
   console: ConsoleContribution,

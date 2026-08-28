@@ -253,7 +253,11 @@ export class DashboardPage extends Component {
   }
 }
 
-/** The dashboard for one panel, showing only that panel's resources and widgets. */
+/**
+ * The dashboard for one panel, showing only that panel's resources and widgets.
+ *
+ * @internal
+ */
 export function makeDashboardPage(panel: PanelInstance = Panel.default()): typeof DashboardPage {
   const Page = class extends DashboardPage {
     static override panel = panel;

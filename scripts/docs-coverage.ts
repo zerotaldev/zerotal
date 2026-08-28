@@ -163,7 +163,7 @@ function collectPackages(): PackageEntry[] {
   return packages;
 }
 
-function analysisOptions(): ts.CompilerOptions {
+export function analysisOptions(): ts.CompilerOptions {
   const { config } = ts.readConfigFile(resolve("tsconfig.json"), ts.sys.readFile);
   const parsed = ts.parseJsonConfigFileContent(config ?? {}, ts.sys, resolve("."));
   return {
@@ -173,6 +173,14 @@ function analysisOptions(): ts.CompilerOptions {
     composite: false,
     incremental: false,
     skipLibCheck: true,
+    // Without this the root tsconfig leaves `jsx` unset, and a `.tsx` module is
+    // not pulled into the program **at all** — not merely unparsed. Every symbol
+    // declared in one was then invisible: an `@internal` on a `.tsx` export was
+    // never seen, so the export stayed in the promised set and was reported as an
+    // undocumented gap for as long as it existed. That hit exactly the packages
+    // with the largest reported numbers, `admin` and `flow-ui`, because they are
+    // the ones written in TSX.
+    jsx: ts.JsxEmit.Preserve,
   };
 }
 

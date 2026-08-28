@@ -25,7 +25,11 @@ import { flattenFields } from "../form/index.ts";
 
 export type ActionColor = "default" | "primary" | "success" | "muted" | "destructive";
 
-/** Minimal view of the host page an action handler can drive (flash/redirect). */
+/**
+ * Minimal view of the host page an action handler can drive (flash/redirect).
+ *
+ * @internal
+ */
 export interface ActionPage {
   flash(message: string, level?: string): unknown;
   redirect(url: string): { withSuccess(message: string): unknown };

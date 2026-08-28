@@ -45,6 +45,8 @@ export function chartInitScript(configs: unknown[]): string {
  *
  * Returns `null` when there is nothing to draw, so a caller can drop the whole
  * block rather than leaving an empty gap above its table.
+ *
+ * @internal
  */
 export async function renderWidgets(
   widgets: DashboardWidget[],

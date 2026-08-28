@@ -72,6 +72,8 @@ export interface NavGroup {
  * A registered custom page, normalized from either door — an {@link AdminPage}
  * subclass registered by the app, or a {@link PageContribution} pushed in by a
  * package.
+ *
+ * @internal
  */
 export interface PanelPage {
   slug: string;

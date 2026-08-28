@@ -12,6 +12,7 @@ import type { PanelInstance } from "../PanelInstance.ts";
 import type { Permission, Role } from "../roles.ts";
 import { groupPermissions, panelPermissions, roleHas } from "../roles.ts";
 
+/** @internal */
 export class RolesPage extends Component {
   static layout = AdminLayout;
   /** The panel this page belongs to — set by each generated subclass. */
@@ -317,7 +318,11 @@ export class RolesPage extends Component {
   }
 }
 
-/** Build a RolesPage bound to one panel. */
+/**
+ * Build a RolesPage bound to one panel.
+ *
+ * @internal
+ */
 export function makeRolesPage(panel: PanelInstance = Panel.default()): typeof RolesPage {
   return class BoundRolesPage extends RolesPage {
     static override panel = panel;

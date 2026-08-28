@@ -46,5 +46,9 @@ export abstract class Cluster {
   }
 }
 
-/** A Cluster subclass (used by its static surface — never instantiated). */
+/**
+ * A Cluster subclass (used by its static surface — never instantiated).
+ *
+ * @internal
+ */
 export type ClusterClass = typeof Cluster;

@@ -15,6 +15,7 @@ import { deleteMedia, formatSize, isImage, isUpload, mediaUrl, storeMedia } from
 /** How many files the grid shows before the "load more" step. */
 const PAGE_SIZE = 60;
 
+/** @internal */
 export class MediaPage extends Component {
   static layout = AdminLayout;
   /** The panel this page belongs to — set by each generated subclass. */
@@ -338,7 +339,11 @@ export class MediaPage extends Component {
   }
 }
 
-/** Build a MediaPage bound to one panel. */
+/**
+ * Build a MediaPage bound to one panel.
+ *
+ * @internal
+ */
 export function makeMediaPage(panel: PanelInstance = Panel.default()): typeof MediaPage {
   return class BoundMediaPage extends MediaPage {
     static override panel = panel;

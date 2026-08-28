@@ -15,6 +15,7 @@ import { Icon } from "./icons.tsx";
 import { Command, Toaster, Sidebar } from "@zerotal/flow-ui";
 import type { CommandItem, SidebarItem, SidebarGroup } from "@zerotal/flow-ui";
 
+/** @internal */
 export class AdminLayout extends Layout {
   /**
    * The panel this shell belongs to. The base class serves whichever panel owns
@@ -335,6 +336,8 @@ export class AdminLayout extends Layout {
  * The router keys shell persistence on the layout class name, so each panel needs
  * a class of its own: without that, navigating from one panel to another would
  * swap the content while leaving the previous panel's sidebar in place.
+ *
+ * @internal
  */
 export function makeAdminLayout(panel: PanelInstance): typeof AdminLayout {
   const cached = LAYOUTS.get(panel);

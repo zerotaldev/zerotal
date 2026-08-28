@@ -1114,12 +1114,6 @@ interface ActionContext = {
   slug: string
 }
 
-interface ActionPage = {
-  download?: (filename: string, content: string | Uint8Array, mime?: string) => unknown
-  flash: (message: string, level?: string) => unknown
-  redirect: (url: string) => {    withSuccess(message: string): unknown;}
-}
-
 interface AdminAuthConfig = {
   authMiddleware?: MiddlewareClass[]
   authenticateWhen?: (user: unknown) => boolean | Promise<boolean>
@@ -1168,18 +1162,6 @@ interface AdminNotification = {
   read?: boolean
   time?: string
   title: string
-}
-
-interface AdminPanelHost = {
-  console: (contribution: ConsoleContribution) => void
-  enabled: (id: string) => boolean
-  navItem: (contribution: NavContribution) => void
-  page: (contribution: PageContribution) => void
-  renderHook: (name: string, hook: (context: RenderHookContext) => HtmlNode | string | null) => void
-  searchProvider: (provider: PanelSearchProvider) => void
-  topbarSlot: (slot: TopbarSlot) => void
-  userMenuItem: (item: UserMenuContribution) => void
-  widget: (contribution: WidgetContribution) => void
 }
 
 interface AdminPlugin = {
@@ -1492,22 +1474,6 @@ interface PageContribution = {
   title: string
 }
 
-interface PanelPage = {
-  ability: string | undefined
-  cluster?: typeof Cluster | undefined
-  navigationBadge?: (() => Promise<string | number | null> | string | number | null) | undefined
-  navigationBadgeColor?: BadgeTone | undefined
-  navigationGroup: string | undefined
-  navigationIcon: string
-  navigationLabel: string
-  navigationSort: number
-  page: PanelPageClass
-  routeParams: string[]
-  showInNavigation: boolean
-  slug: string
-  title: string
-}
-
 interface PanelSearchProvider = {
   ability: string
   icon?: string
@@ -1525,19 +1491,6 @@ interface Permission = {
 interface PivotColumn = {
   key: string
   label?: string
-}
-
-interface RecordPage = {
-  lastPage: number
-  page: number
-  perPage: number
-  rows: Record<string, unknown>[]
-  total: number
-}
-
-interface RenderableCell = {
-  badge?: BadgeTone | undefined
-  text: string
 }
 
 interface RenderHookContext = {
@@ -1663,8 +1616,6 @@ type ActionVisible = (record: AdminRecord | undefined, ctx: ActionContext) => bo
 
 type AdminAuthorizer = (ability: string) => boolean | Promise<boolean>
 
-type AdminPageClass = typeof AdminPage & (new () => AdminPage)
-
 type BadgeTone = 'default' | 'primary' | 'success' | 'muted' | 'destructive'
 
 type CalloutTone = 'default' | 'primary' | 'success' | 'warning' | 'destructive'
@@ -1674,8 +1625,6 @@ type CellAlign = 'start' | 'center' | 'end'
 type ChartResolver = () => Promise<ChartData> | ChartData
 
 type ChartType = 'line' | 'bar' | 'doughnut' | 'pie'
-
-type ClusterClass = typeof Cluster
 
 type ColumnKind = 'text' | 'toggle' | 'select' | 'input' | 'image' | 'color' | 'icon'
 
@@ -1711,8 +1660,6 @@ type FormComponent = FormSection | FormTabs | Wizard | FormSplit | Callout | Pri
 
 type InfolistComponent = Section | Entry
 
-type PanelPageClass = new () => object
-
 type PrimeKind = 'text' | 'html' | 'image'
 
 type QueryModifier = (query: AdminQuery) => AdminQuery
@@ -1726,8 +1673,6 @@ type RenderHook = (context: RenderHookContext) => HtmlNode | string | null
 type RenderHookName = 'body.start' | 'body.end' | 'sidebar.start' | 'sidebar.end' | 'topbar.start' | 'topbar.end' | 'page.header.start' | 'page.header.end' | 'table.start' | 'table.end' | 'form.start' | 'form.end' | 'record.start' | 'record.end'
 
 type ResourceClass = typeof Resource
-
-type ResourceFormClass = new () => Form & Record<string, unknown>
 
 type StatsResolver = () => Promise<Stat[]> | Stat[]
 

@@ -10,6 +10,7 @@ import { Icon } from "../ui/icons.tsx";
 import { Panel } from "../Panel.ts";
 import type { PanelInstance } from "../PanelInstance.ts";
 
+/** @internal */
 export class NotificationsPage extends Component {
   static layout = AdminLayout;
   /** The panel this page belongs to — set by each generated subclass. */
@@ -142,7 +143,11 @@ export class NotificationsPage extends Component {
   }
 }
 
-/** The notification centre for one panel, reading that panel's provider. */
+/**
+ * The notification centre for one panel, reading that panel's provider.
+ *
+ * @internal
+ */
 export function makeNotificationsPage(
   panel: PanelInstance = Panel.default(),
 ): typeof NotificationsPage {

@@ -27,7 +27,11 @@ export interface RenderActionOptions {
   args?: unknown[];
 }
 
-/** Render a single action. Link actions become `<a navigate>`, callbacks `<button>`. */
+/**
+ * Render a single action. Link actions become `<a navigate>`, callbacks `<button>`.
+ *
+ * @internal
+ */
 export function renderAction(
   a: Action,
   ctx: ActionContext,
@@ -92,6 +96,8 @@ export function renderAction(
  * Returns `null` when nothing inside is visible, so an empty menu never appears.
  * `argsFor` builds each member's handler arguments, since those carry the
  * action's own key.
+ *
+ * @internal
  */
 export function renderActionGroup(
   group: ActionGroup,
@@ -128,6 +134,8 @@ export function renderActionGroup(
 /**
  * Render an action as a full-width dropdown menu row (icon + label). Used by the
  * row-action overflow menu when a row has more actions than fit inline.
+ *
+ * @internal
  */
 export function renderActionMenuItem(
   a: Action,

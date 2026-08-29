@@ -10,10 +10,12 @@ export interface TelemetryConfigShape {
   exporter?: "noop" | "console" | "otlp" | undefined;
 
   /** Only relevant when `exporter` is `'otlp'`. */
-  otlp?: {
-    endpoint?: string;
-    headers?: Record<string, string>;
-  } | undefined;
+  otlp?:
+    | {
+        endpoint?: string;
+        headers?: Record<string, string>;
+      }
+    | undefined;
 
   /** Service name sent as a resource attribute. Defaults to `APP_NAME` env var or `'zerotal-app'`. */
   serviceName?: string | undefined;

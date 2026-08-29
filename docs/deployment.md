@@ -333,6 +333,31 @@ Ordering matters if the old release is still serving traffic: clearing the direc
 its bundles away, so do it as close to the swap as you can, or stage the release in a new
 directory and move it into place.
 
+### `assets:prune` — clearing up after the extract instead of before it
+
+Clearing the directory first has a cost the ordering note above hints at: between the
+`rm -rf` and the new files landing, the release still serving traffic has no bundles.
+If you would rather extract over the top and tidy afterwards, `assets:build` records
+what it wrote and `assets:prune` removes what that record does not claim:
+
+```bash
+# on the build machine — the record is written under .zerotal/
+bun zt assets:build
+tar -czf release.tgz public .zerotal   # ship the record with the release
+
+# on the server, after extracting and before the restart
+bun zt assets:prune --dry-run          # list what would go
+bun zt assets:prune
+```
+
+**Ship `.zerotal/` with the release** — that is the part that makes it work. Without
+the record, "which files belong to this release" has no answer on a server that never
+ran a build, and `assets:prune` says so and removes nothing rather than guessing.
+
+It is conservative by design: it deletes a file only when the record does not claim it
+_and_ it is named the way the bundler names a code-split chunk. Your images and
+favicon are never candidates, because an output directory is usually `public/`.
+
 ### `--clean` for a directory the build does not own outright
 
 The cleanup above recognises the filenames `Bun.build()` produces. An app that sets its own

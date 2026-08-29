@@ -27,10 +27,12 @@ export interface BroadcastConfigShape {
    *   appSecret: Bun.env.PUSHER_APP_SECRET!,
    * }
    */
-  pusher?: {
-    appKey: string;
-    appSecret: string;
-  } | undefined;
+  pusher?:
+    | {
+        appKey: string;
+        appSecret: string;
+      }
+    | undefined;
   /**
    * Where the `Broadcast.channel(...)` authorization rules live, relative to the
    * project root (or absolute).

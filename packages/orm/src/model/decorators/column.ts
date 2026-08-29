@@ -134,7 +134,8 @@ export interface ColumnOptions {
         get?: (dbValue: unknown) => unknown;
         set?: (jsValue: unknown) => unknown;
       }
-    | CastContract<unknown> | undefined;
+    | CastContract<unknown>
+    | undefined;
   /** Enum object (e.g. the imported TS enum) used alongside cast: 'enum'. */
   enumValues?: Record<string, string | number> | undefined;
 }

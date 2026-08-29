@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, mkdir, rm, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pruneBuildOutput, cleanBuildOutput } from "./BuildOutput.ts";
+import {
+  pruneBuildOutput,
+  cleanBuildOutput,
+  _recordedBuildOutput,
+  _buildManifestPath,
+} from "./BuildOutput.ts";
 
 let projectRoot: string;
 let outdir: string;
@@ -259,5 +264,51 @@ describe("cleanBuildOutput()", () => {
 
     expect(removed).toEqual([]);
     expect(await remaining()).toEqual(["app.js", "later.js"]);
+  });
+});
+
+/**
+ * A manifest that names a machine cannot describe a release.
+ *
+ * The filename used to be hashed from the output directory's *absolute* path, so a
+ * project built at `/home/me/app` and unpacked at `/opt/app` wrote and looked for two
+ * different files. A manifest shipped with a deploy matched nothing at the other end,
+ * which is the whole reason a server could not say which chunks belonged to the
+ * current release and every deploy left another set behind. Moving a checkout had the
+ * same effect, silently.
+ */
+describe("the build record travels", () => {
+  it("names the manifest the same wherever the project is checked out", () => {
+    const here = _buildManifestPath("/home/me/app/public/assets", "/home/me/app");
+    const there = _buildManifestPath("/opt/app/public/assets", "/opt/app");
+    const basename = (path: string): string => path.split(/[\\/]/).at(-1) ?? "";
+    expect(basename(here)).toBe(basename(there));
+  });
+
+  it("still tells two output directories apart", () => {
+    const assets = _buildManifestPath("/app/public/assets", "/app");
+    const css = _buildManifestPath("/app/public/css", "/app");
+    expect(assets).not.toBe(css);
+  });
+
+  it("reports what the recorded build wrote", async () => {
+    await seed("app.js", "chunk-a.js");
+    await pruneBuildOutput(outdir, emitted("app.js", "chunk-a.js"));
+
+    expect(await _recordedBuildOutput(outdir)).toEqual(["app.js", "chunk-a.js"]);
+  });
+
+  it("reports every build's files when two share a directory", async () => {
+    await seed("app.js", "inertia.js");
+    await pruneBuildOutput(outdir, [{ path: join(outdir, "app.js"), kind: "entry-point" }]);
+    await pruneBuildOutput(outdir, [{ path: join(outdir, "inertia.js"), kind: "entry-point" }]);
+
+    // Both entry points are the release's, and a prune that claimed only the last
+    // one would delete the other — which is the failure the ownership keys exist for.
+    expect(await _recordedBuildOutput(outdir)).toEqual(["app.js", "inertia.js"]);
+  });
+
+  it("is empty, not an error, when nothing has been recorded", async () => {
+    expect(await _recordedBuildOutput(outdir)).toEqual([]);
   });
 });

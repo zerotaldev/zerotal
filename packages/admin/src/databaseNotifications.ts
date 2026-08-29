@@ -46,7 +46,8 @@ export interface DatabaseNotificationOptions {
    * `body`/`message`, `url`/`href` and `icon` out of the payload, which is what
    * most notifications carry.
    */
-  present?: ((row: StoredNotification, data: Record<string, unknown>) => AdminNotification) | undefined;
+  present?:
+    ((row: StoredNotification, data: Record<string, unknown>) => AdminNotification) | undefined;
 }
 
 /** Parse a row's JSON payload, tolerating a payload that was never JSON. */

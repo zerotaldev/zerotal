@@ -148,10 +148,12 @@ export interface ApiClientConfig {
    * @example
    * onUnauthorized: async (err, retry) => retry({ Authorization: `Bearer ${await refresh()}` }),
    */
-  onUnauthorized?: ((
-    error: ApiClientError,
-    retry: (headerOverrides?: Record<string, string>) => Promise<unknown>,
-  ) => Promise<unknown> | void) | undefined;
+  onUnauthorized?:
+    | ((
+        error: ApiClientError,
+        retry: (headerOverrides?: Record<string, string>) => Promise<unknown>,
+      ) => Promise<unknown> | void)
+    | undefined;
   /** Attach a circuit breaker (instance to share, or options to create a dedicated one). */
   circuitBreaker?: CircuitBreaker | CircuitBreakerOptions | undefined;
 }

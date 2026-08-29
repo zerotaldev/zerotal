@@ -98,15 +98,67 @@ function _relative(root: string, path: string): string {
 }
 
 /**
- * The manifest lives outside `outdir` — writing it inside would put a file the
- * app then serves (and registers a route for) into the public directory.
+ * Where a directory's manifest lives.
+ *
+ * Outside `outdir` — writing it inside would put a file the app then serves (and
+ * registers a route for) into the public directory.
+ *
+ * Named from the output directory's path **relative to the project**, not its
+ * absolute one. The hash used to be `Bun.hash(absolutePath)`, which made the
+ * manifest belong to a machine rather than to a release: the same project built at
+ * `/home/me/app` and unpacked at `/opt/app` produced two different filenames, so a
+ * manifest that travelled with a deploy matched nothing at the other end and the
+ * server could not say which files belonged to the current release. It also meant
+ * moving a checkout silently orphaned the record and stopped pruning.
+ *
+ * @internal
  */
-function _manifestPath(root: string): string {
-  const slug = _relative(resolve(process.cwd()), root).replace(/[^a-z0-9]+/gi, "-") || "out";
+export function _buildManifestPath(root: string, cwd: string = process.cwd()): string {
+  const relativeRoot = _relative(resolve(cwd), resolve(root));
+  const slug = relativeRoot.replace(/[^a-z0-9]+/gi, "-") || "out";
   // The slug alone can collide (two different roots normalising to the same
   // name); the hash makes each directory's manifest its own.
-  const hash = Bun.hash(root).toString(36);
-  return join(process.cwd(), MANIFEST_DIR, `${slug}-${hash}.json`);
+  const hash = Bun.hash(relativeRoot).toString(36);
+  return join(cwd, MANIFEST_DIR, `${slug}-${hash}.json`);
+}
+
+/** Back-compat alias used throughout this module. */
+function _manifestPath(root: string): string {
+  return _buildManifestPath(root);
+}
+
+/**
+ * Every file the recorded builds wrote to `outdir`, relative and slash-normalised.
+ *
+ * The answer to "which assets belong to this release" — the question a deploy has
+ * to answer before it can remove anything, and the one that has no answer at all
+ * from inside a directory somebody extracted a tarball over.
+ *
+ * @param outdir - The output directory to describe.
+ * @param cwd - Project root the manifest is stored under. Defaults to the working directory.
+ * @returns The recorded files, or `[]` when no manifest exists.
+ *
+ * @internal
+ */
+export async function _recordedBuildOutput(
+  outdir: string,
+  cwd: string = process.cwd(),
+): Promise<string[]> {
+  try {
+    const contents = (await Bun.file(_buildManifestPath(outdir, cwd)).json()) as unknown;
+    if (Array.isArray(contents)) {
+      return contents.filter((entry): entry is string => typeof entry === "string").sort();
+    }
+    if (!contents || typeof contents !== "object") return [];
+    const files = new Set<string>();
+    for (const list of Object.values(contents as Record<string, unknown>)) {
+      if (!Array.isArray(list)) continue;
+      for (const entry of list) if (typeof entry === "string") files.add(entry);
+    }
+    return [...files].sort();
+  } catch {
+    return [];
+  }
 }
 
 /**

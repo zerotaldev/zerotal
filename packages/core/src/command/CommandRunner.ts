@@ -363,6 +363,7 @@ export class CommandRunner {
       MakeProviderCommand,
       CssBuildCommand,
       AssetsBuildCommand,
+      AssetsPruneCommand,
       LintPackagesCommand,
       MakePackageCommand,
     } = await import("./builtin/index.ts");
@@ -414,6 +415,7 @@ export class CommandRunner {
         TestCommand,
         CssBuildCommand,
         AssetsBuildCommand,
+        AssetsPruneCommand,
         LintPackagesCommand,
         MakePackageCommand,
       ]);

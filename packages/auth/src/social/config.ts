@@ -38,9 +38,9 @@ import type { OAuth2Config, AppleOAuth2Config } from "./types.ts";
  * {@link SocialProvider} registers a driver for every key with a matching built-in.
  */
 export type SocialConfigShape = {
-  github?: OAuth2Config & Record<string, unknown> | undefined;
-  google?: OAuth2Config & Record<string, unknown> | undefined;
-  apple?: AppleOAuth2Config & Record<string, unknown> | undefined;
+  github?: (OAuth2Config & Record<string, unknown>) | undefined;
+  google?: (OAuth2Config & Record<string, unknown>) | undefined;
+  apple?: (AppleOAuth2Config & Record<string, unknown>) | undefined;
   discord?: (OAuth2Config & Record<string, unknown>) | undefined;
   microsoft?: (OAuth2Config & Record<string, unknown>) | undefined;
   facebook?: (OAuth2Config & Record<string, unknown>) | undefined;

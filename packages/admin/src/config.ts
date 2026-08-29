@@ -42,21 +42,30 @@ export interface AdminAuthConfig {
   /** Extra gate after the password check (e.g. "is the account active?"). */
   authenticateWhen?: ((user: unknown) => boolean | Promise<boolean>) | undefined;
   /** Persist profile edits (name/email). Defaults to `user.fill(data); user.save()`. */
-  updateProfile?: ((user: unknown, data: Record<string, unknown>) => Promise<void> | void) | undefined;
+  updateProfile?:
+    ((user: unknown, data: Record<string, unknown>) => Promise<void> | void) | undefined;
   /** Middleware guarding the guest screens (login/forgot/reset). Default none. */
   guestMiddleware?: MiddlewareClass[] | undefined;
   /** Middleware guarding the profile/verify screens. Defaults to the panel guard. */
   authMiddleware?: MiddlewareClass[] | undefined;
   /** Password-reset broker — mounting the forgot/reset pages when provided. */
-  passwordReset?: {
-    sendResetLink(email: string): Promise<boolean> | boolean;
-    reset(input: { email: string; token: string; password: string }): Promise<boolean> | boolean;
-  } | undefined;
+  passwordReset?:
+    | {
+        sendResetLink(email: string): Promise<boolean> | boolean;
+        reset(input: {
+          email: string;
+          token: string;
+          password: string;
+        }): Promise<boolean> | boolean;
+      }
+    | undefined;
   /** Email-verification hooks — mounting the verify page when provided. */
-  emailVerification?: {
-    isVerified(user: unknown): boolean;
-    resend(user: unknown): Promise<void> | void;
-  } | undefined;
+  emailVerification?:
+    | {
+        isVerified(user: unknown): boolean;
+        resend(user: unknown): Promise<void> | void;
+      }
+    | undefined;
 }
 
 /** Admin panel configuration (read from `config/admin.ts`, with defaults). */

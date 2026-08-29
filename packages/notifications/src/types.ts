@@ -117,10 +117,12 @@ export interface NotificationConfigShape {
    * The per-notification toSlack() method provides the webhookUrl, so this is
    * only needed if you want a global fallback URL.
    */
-  slack?: {
-    /** Default webhook URL — can be overridden per-notification in toSlack(). */
-    webhook?: string;
-  } | undefined;
+  slack?:
+    | {
+        /** Default webhook URL — can be overridden per-notification in toSlack(). */
+        webhook?: string;
+      }
+    | undefined;
   /**
    * SMS provider settings (Twilio or Vonage).
    * Required when any notification uses the 'sms' channel.

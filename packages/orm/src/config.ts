@@ -33,12 +33,14 @@ export interface DatabaseConfigShape {
    * Connection pool options (PostgreSQL and MySQL only).
    * Bun.sql manages the pool automatically - these tune its behaviour.
    */
-  pool?: {
-    /** Maximum number of connections in the pool. Default: 10 */
-    max?: number;
-    /** Seconds an idle connection is kept before being closed. Default: 30 */
-    idleTimeout?: number;
-  } | undefined;
+  pool?:
+    | {
+        /** Maximum number of connections in the pool. Default: 10 */
+        max?: number;
+        /** Seconds an idle connection is kept before being closed. Default: 30 */
+        idleTimeout?: number;
+      }
+    | undefined;
   /** SQLite-specific options */
   sqlite: {
     /** Path to the SQLite file. Use ':memory:' for in-memory database. */

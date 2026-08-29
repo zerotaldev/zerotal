@@ -132,14 +132,93 @@ interface Removal {
   line: string;
 }
 
+/**
+ * Widening an optional property is not a removal.
+ *
+ * `image?: string` becoming `image?: string | undefined` reads as one line gone and
+ * one line added, and the gone one is not a break: a caller reading the property
+ * already got `string | undefined`, and one *writing* it can now do more, not less.
+ * Under `exactOptionalPropertyTypes` that is the difference between an options bag
+ * you can spread into and one you cannot, so it is a change worth making in bulk —
+ * and 438 false removals in a release would bury the one real one.
+ *
+ * Matched by pairing rather than by shape alone: the removed line plus
+ * ` | undefined` has to be a line the same package added. Anything else stays a
+ * removal.
+ */
+export function isWidening(removed: string, added: Set<string>): boolean {
+  // Nothing here is optional, so nothing here can have been widened.
+  if (!removed.includes("?:")) return false;
+
+  // One property on its own line — the common case. Exact, so the parentheses a
+  // function type needs are matched literally rather than unwrapped by pattern.
+  const property = /^(\s*[\w$]+\?:\s*)(.+)$/.exec(removed.trimEnd());
+  if (property) {
+    const [, prefix, type] = property as unknown as [string, string, string];
+    if (added.has(`${prefix}${type} | undefined`)) return true;
+    if (added.has(`${prefix}(${type}) | undefined`)) return true;
+  }
+
+  // A whole type alias flattened onto one line, where several members moved at
+  // once. Compared with every `| undefined` normalised away.
+  const beforeCount = _optionalCount(removed);
+  const normalised = _withoutOptional(removed);
+  for (const candidate of added) {
+    // Strictly more `| undefined` than it had: the same line with fewer would be a
+    // *narrowing*, which does break a caller and must stay reported.
+    if (_optionalCount(candidate) <= beforeCount) continue;
+    if (_withoutOptional(candidate) === normalised) return true;
+  }
+  return false;
+}
+
+/** How many properties on this line admit `undefined`. */
+function _optionalCount(line: string): number {
+  return line.split(" | undefined").length - 1;
+}
+
+/**
+ * The line with every `| undefined` removed, so two sides can be compared for what
+ * else changed.
+ *
+ * The parenthesis pass comes first and matters: a function or constructor type has
+ * to be wrapped before the union, because `() => void | undefined` parses as a
+ * function *returning* `void | undefined`. Undoing the wrap is what lets
+ * `x?: () => void` and `x?: (() => void) | undefined` compare equal.
+ */
+function _withoutOptional(line: string): string {
+  return line
+    .replace(/\(([^()]*)\) \| undefined/g, "$1")
+    .split(" | undefined")
+    .join("");
+}
+
 /** Exports deleted from a stable package's snapshot, between `base` and HEAD. */
 function removals(base: string, stable: Set<string>): Removal[] {
   const diff = run("diff", "--unified=0", base, "HEAD", "--", "packages/*/api-surface.md");
+  const lines = diff.split(/\r?\n/);
+  const header = /^\+\+\+ b\/packages\/([^/]+)\/api-surface\.md/;
+
+  // What each package added, so a removal can be checked against its replacement.
+  const additions = new Map<string, Set<string>>();
+  let scanning = "";
+  for (const line of lines) {
+    const file = line.match(header);
+    if (file) {
+      scanning = file[1]!;
+      continue;
+    }
+    if (!line.startsWith("+") || line.startsWith("+++")) continue;
+    let set = additions.get(scanning);
+    if (!set) additions.set(scanning, (set = new Set()));
+    set.add(line.slice(1).trim());
+  }
+
   const found: Removal[] = [];
   let dir = "";
 
-  for (const line of diff.split(/\r?\n/)) {
-    const file = line.match(/^\+\+\+ b\/packages\/([^/]+)\/api-surface\.md/);
+  for (const line of lines) {
+    const file = line.match(header);
     if (file) {
       dir = file[1]!;
       continue;
@@ -149,6 +228,7 @@ function removals(base: string, stable: Set<string>): Removal[] {
     const body = line.slice(1);
     if (NOT_AN_EXPORT.test(body)) continue;
     if (!stable.has(dir)) continue;
+    if (isWidening(body.trim(), additions.get(dir) ?? new Set())) continue;
     found.push({ dir, line: body.trim() });
   }
   return found;
@@ -203,68 +283,74 @@ async function versionsPolicyNames(): Promise<string[]> {
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-const base = baseRef();
-const maturity = await maturities();
-const stable = new Set([...maturity].filter(([, m]) => m === "stable").map(([dir]) => dir));
+// Guarded so `isWidening` can be unit-tested without the whole gate — including its
+// `process.exit` — running on import.
+if (import.meta.main) await _main();
 
-// The policy names the breaks that have shipped; the changelog is where they are
-// recorded. One of those is derived from the other, so they cannot be allowed to
-// disagree — and they did, in the third document nobody thought to update.
-const recorded = await versionsWithBreaks();
-const named = await versionsPolicyNames();
+async function _main(): Promise<void> {
+  const base = baseRef();
+  const maturity = await maturities();
+  const stable = new Set([...maturity].filter(([, m]) => m === "stable").map(([dir]) => dir));
 
-if (recorded.join() !== named.join()) {
-  console.error(
-    `
+  // The policy names the breaks that have shipped; the changelog is where they are
+  // recorded. One of those is derived from the other, so they cannot be allowed to
+  // disagree — and they did, in the third document nobody thought to update.
+  const recorded = await versionsWithBreaks();
+  const named = await versionsPolicyNames();
+
+  if (recorded.join() !== named.join()) {
+    console.error(
+      `
 ✖ docs/support-policy.md and docs/changelog.md disagree about which versions broke:
 ` +
-      `
+        `
     changelog says:      ${recorded.join(", ") || "(none)"}` +
-      `
+        `
     support policy says: ${named.join(", ") || "(none)"}
 ` +
-      `
+        `
   The changelog is the record; the policy summarises it. Update the policy's` +
-      `
+        `
   carve-out paragraph to name exactly the versions above, and check whether` +
-      `
+        `
   docs/upgrade.md repeats the list — it is not supposed to.
 `,
+    );
+    process.exit(1);
+  }
+
+  const gone = removals(base, stable);
+
+  if (gone.length === 0) {
+    console.log(`✓ No exports removed from a stable package (against ${base}).`);
+    process.exit(0);
+  }
+
+  if (notesABreak(base)) {
+    console.log(
+      `✓ ${gone.length} export(s) left a stable package's recorded surface, and the change says so.`,
+    );
+    process.exit(0);
+  }
+
+  const byPackage = new Map<string, string[]>();
+  for (const { dir, line } of gone) byPackage.set(dir, [...(byPackage.get(dir) ?? []), line]);
+
+  console.error(`\n✖ ${gone.length} export(s) left a stable package with no BREAKING note:\n`);
+  for (const [dir, lines] of byPackage) {
+    console.error(`  @zerotal/${dir}`);
+    for (const line of lines.slice(0, 8)) console.error(`    − ${line}`);
+    if (lines.length > 8) console.error(`    … and ${lines.length - 8} more`);
+  }
+  console.error(
+    `\n  A caller of any of these breaks on upgrade, and the changelog is the only place` +
+      `\n  they would find out. Add a **BREAKING** entry — to docs/changelog.md and to the` +
+      `\n  package's own CHANGELOG.md — naming the replacement and the migration.` +
+      `\n` +
+      `\n  If the export was never public, mark it \`@internal\` and regenerate the snapshot` +
+      `\n  instead — then note it with **INTERNAL** rather than **BREAKING**. It leaves the` +
+      `\n  recorded surface while staying exported and working, so nothing breaks; the two` +
+      `\n  markers exist so the strong word keeps meaning "your code stops compiling".\n`,
   );
   process.exit(1);
 }
-
-const gone = removals(base, stable);
-
-if (gone.length === 0) {
-  console.log(`✓ No exports removed from a stable package (against ${base}).`);
-  process.exit(0);
-}
-
-if (notesABreak(base)) {
-  console.log(
-    `✓ ${gone.length} export(s) left a stable package's recorded surface, and the change says so.`,
-  );
-  process.exit(0);
-}
-
-const byPackage = new Map<string, string[]>();
-for (const { dir, line } of gone) byPackage.set(dir, [...(byPackage.get(dir) ?? []), line]);
-
-console.error(`\n✖ ${gone.length} export(s) left a stable package with no BREAKING note:\n`);
-for (const [dir, lines] of byPackage) {
-  console.error(`  @zerotal/${dir}`);
-  for (const line of lines.slice(0, 8)) console.error(`    − ${line}`);
-  if (lines.length > 8) console.error(`    … and ${lines.length - 8} more`);
-}
-console.error(
-  `\n  A caller of any of these breaks on upgrade, and the changelog is the only place` +
-    `\n  they would find out. Add a **BREAKING** entry — to docs/changelog.md and to the` +
-    `\n  package's own CHANGELOG.md — naming the replacement and the migration.` +
-    `\n` +
-    `\n  If the export was never public, mark it \`@internal\` and regenerate the snapshot` +
-    `\n  instead — then note it with **INTERNAL** rather than **BREAKING**. It leaves the` +
-    `\n  recorded surface while staying exported and working, so nothing breaks; the two` +
-    `\n  markers exist so the strong word keeps meaning "your code stops compiling".\n`,
-);
-process.exit(1);

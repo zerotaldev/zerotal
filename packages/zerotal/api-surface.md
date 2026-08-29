@@ -2912,6 +2912,34 @@ class AssetsBuildCommand = {
   write: (msg: string) => void
 }
 
+class AssetsPruneCommand = {
+  new (): AssetsPruneCommand
+  static args: ArgDef[]
+  static commandName: string
+  static description: string
+  static flags: ({    name: string;    type: 'string';    description: string;    default?: never;} | {    name: string;    type: 'boolean';    description: string;    default: boolean;})[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class CompileCommand = {
   new (): CompileCommand
   static args: ArgDef[]

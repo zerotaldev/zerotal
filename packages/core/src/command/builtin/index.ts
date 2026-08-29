@@ -55,5 +55,6 @@ export { DeployCommand, makeDeployCommand } from "./DeployCommand.ts";
 export { MakeProviderCommand } from "./MakeProviderCommand.ts";
 export { CssBuildCommand } from "./CssBuildCommand.ts";
 export { AssetsBuildCommand } from "./AssetsBuildCommand.ts";
+export { AssetsPruneCommand } from "./AssetsPruneCommand.ts";
 export { LintPackagesCommand } from "./LintPackagesCommand.ts";
 export { MakePackageCommand } from "./MakePackageCommand.ts";

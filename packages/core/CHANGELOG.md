@@ -27,6 +27,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`zt assets:prune`** — remove the chunks an earlier release left behind, on the
+  machine that never ran a build. `assets:build --clean` cleans the directory it
+  _builds into_, which does nothing for the common release shape: build here, tar the
+  output, extract it over `public/` there. Extracting merges — nothing removes a file
+  the new release does not contain — so every deploy adds another set of
+  content-hashed chunks. One app reached 225 chunk files for the 49 its entry point
+  references. Ship `.zerotal/` with the release and this removes what the build record
+  does not claim; without a record it says so and removes nothing rather than guessing.
+
 - **`definedOnly` (`@zerotal/core/helpers`) and the `Resolved<T>` type.** Widening the
   option shapes moves a problem to the merge, and both of these are that problem's
   answer. Object spread copies own properties even when their value is `undefined`,
@@ -77,6 +86,15 @@ follows the Zerotal monorepo's unified versioning.
 
   "Skipping 0 schedules" on every boot of every app would be noise, and noise is how
   the line that matters gets scrolled past.
+
+### Fixed
+
+- **The build record is portable.** Its filename was hashed from the output
+  directory's _absolute_ path, so the same project built at `/home/me/app` and
+  unpacked at `/opt/app` wrote and looked for two different files. A record shipped
+  with a release matched nothing at the other end — which is why a server could not
+  say which files belonged to the current release — and moving a checkout silently
+  orphaned it. It is keyed on the path relative to the project now.
 
 ## [1.9.0] — 2026-08-29
 

@@ -284,7 +284,9 @@ describe("deploy --check", () => {
       has: (n: string) => names.includes(n),
       callInProcess: async (argv: string[]) => {
         ran.push(argv[0]!);
-        return argv[0] === failing ? { code: 1, output: "the gate said no" } : { code: 0, output: "" };
+        return argv[0] === failing
+          ? { code: 1, output: "the gate said no" }
+          : { code: 0, output: "" };
       },
     };
     const config = {

@@ -51,7 +51,11 @@ export function currentApp(): Application {
   return app;
 }
 
-/** The current application, or `undefined` when none is available. Safe off-app (CLI bootstrap, tests). */
+/**
+ * The current application, or `undefined` when none is available. Safe off-app (CLI bootstrap, tests).
+ *
+ * @internal
+ */
 export function tryCurrentApp(): Application | undefined {
   return _scope.getStore() ?? _default;
 }
@@ -67,6 +71,8 @@ export function tryCurrentApp(): Application | undefined {
  * // Run a migration against a second app's config without disturbing the default.
  * await withApp(secondApp, () => secondApp.container.make("db"));
  * ```
+ *
+ * @internal
  */
 export function withApp<T>(app: Application, fn: () => T): T {
   return _scope.run(app, fn);

@@ -8,6 +8,8 @@
  * @param last - The last page number.
  * @param each - How many page links to show on each side of the current page (default `1`).
  * @returns Page numbers interleaved with `'...'` for elided ranges.
+ *
+ * @internal
  */
 export function pageElements(current: number, last: number, each = 1): (number | "...")[] {
   if (last <= 1) return [1];

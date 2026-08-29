@@ -23,6 +23,8 @@ function isClass(fn: Function): boolean {
  * export that is a view component (or any function tagged via the view marker)
  * is rendered to HTML, wrapped in the nearest `_layout`, and registered as a GET
  * route. Call from a provider's `onRegister()` before file routes are scanned.
+ *
+ * @internal
  */
 export function registerViewFileRouteResolver(): void {
   enableFileRouteLayouts();

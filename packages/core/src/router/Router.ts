@@ -178,6 +178,8 @@ function _toResolver(modelOrResolver: ModelClass | ModelBindingResolver): ModelB
  * All mutable router state in one swappable object: registered routes, the
  * active group prefix/middleware/domain, static and markdown directories, named
  * routes, and named middleware groups.
+ *
+ * @internal
  */
 export class RouterState {
   routes = new Map<string, RouteDefinition>();

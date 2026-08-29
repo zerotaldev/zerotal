@@ -18,6 +18,7 @@ export type MiddlewareClass = new (...args: any[]) => Pipe<HttpContext>;
 /** Handler signature for file-based routes. Receives the request {@link HttpContext}
  *  directly — route params and resolved model bindings live on `ctx.params`. May return
  *  a Response or mutate `ctx` directly. */
+/** @internal */
 export type FileHandler = (ctx: HttpContext) => void | Response | Promise<void | Response>;
 
 /**
@@ -49,6 +50,8 @@ export type ViewLayout = (ctx: HttpContext, props: { children: unknown }) => unk
  * Receives the raw string param value and the current context;
  * must return (or resolve to) the model instance.
  * Throw `ModelNotFoundError` (or any 404 error) when the record does not exist.
+ *
+ * @internal
  */
 export type ModelBindingResolver = (value: string, ctx: HttpContext) => Promise<unknown>;
 

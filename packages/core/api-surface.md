@@ -512,20 +512,6 @@ class ResponseBuilder = {
   withWarning: (message: string) => ResponseBuilder
 }
 
-class RouterState = {
-  new (): RouterState
-  domain: string | undefined
-  groupMiddleware: MiddlewareClass[]
-  implicitModelResolver: ((paramName: string) => ModelBindingResolver | undefined) | null
-  markdownDirs: MarkdownDir[]
-  middlewareGroups: Map<string, MiddlewareClass[]>
-  namedRoutes: Map<string, string>
-  prefix: string
-  rawRoutes: Map<string, (req: Request) => Response | Promise<Response>>
-  routes: Map<string, RouteDefinition>
-  staticDirs: StaticDir[]
-}
-
 class ScopedResolver = {
   new (_container?: Container | undefined): ScopedResolver
   acquire: () => void
@@ -574,13 +560,6 @@ class ServiceUnavailableError = {
   readonly context?: Record<string, unknown> | undefined
   readonly retryAfter?: number | undefined
   readonly status: number
-}
-
-class TerminalWriter = {
-  new (): TerminalWriter
-  write: (message: string) => void
-  writeError: (message: string) => void
-  writeLine: (message: string) => void
 }
 
 class ThrottleMiddleware = {
@@ -648,8 +627,6 @@ const App = {    readonly container: Container;    readonly instance: () => Appl
 
 const Artisan = {    call(commandName: string, parameters?: Record<string, string | boolean | number>): Promise<ArtisanResult>;}
 
-const builtinDoctorChecks = DoctorCheck[]
-
 const Config = ConfigManager
 
 const Events = Emitter
@@ -667,8 +644,6 @@ function abort = {    (message: string): never;    (status: number, message: str
 function app = {    (): Application;    <T>(token: BindingToken<T>): Promise<T>;}
 
 function basePath = (...segments: string[]) => string
-
-function buildCookie = (options: CookieOptions) => string
 
 function camelCase = (value: string) => string
 
@@ -708,10 +683,6 @@ function make = <T>(token: BindingToken<T>) => Promise<T>
 
 function markdown = (content: string, options?: BunMarkdownOptions & {    title?: string;}, status?: number) => MarkdownBuilder
 
-function pageElements = (current: number, last: number, each?: number) => (number | '...')[]
-
-function parseCookieHeader = (header: string, name: string) => string | undefined
-
 function pipe = <T, R>(value: T, fn: (val: T) => R) => R
 
 function pipeAsync = <T, R>(value: T, fn: (val: T) => Promise<R>) => Promise<R>
@@ -726,8 +697,6 @@ function redirectTo = <N extends RouteTarget>(name: N, params?: RouteParamsArg<N
 
 function registerErrorDiagnoser = (diagnoser: ErrorDiagnoser) => void
 
-function registerFileRouteResolver = (resolver: FileRouteResolver) => void
-
 function request = {    (): HttpContext;    <T = string>(key: string, fallback?: T): T | undefined;}
 
 function requireEnv = (key: string) => string
@@ -740,13 +709,7 @@ function runDoctor = (app: Application, extraChecks?: DoctorCheck[]) => Promise<
 
 function safeEqual = (a: string, b: string) => boolean
 
-function safeRedirectPath = (url: string | null | undefined, origin: string) => string | undefined
-
-function scanFileRoutes = (baseDir: string, reloadId?: string) => Promise<number>
-
 function setAppEnv = (command?: string) => void
-
-function setCurrentPageResolver = (resolver: CurrentPageResolver) => void
 
 function sha256Hex = (input: string | Uint8Array) => string
 
@@ -762,11 +725,7 @@ function tap = <T>(value: T, callback: (val: T) => void) => T
 
 function tapAsync = <T>(value: T, callback: (val: T) => Promise<void>) => Promise<T>
 
-function tryCurrentApp = () => Application | undefined
-
 function view = {    (markup: string | {        toString(): string;    }, status?: number): void;    <P extends Record<string, unknown> = Record<string, never>>(component: (ctx: HttpContext, props: P) => ViewMarkup | Promise<ViewMarkup>, props?: P, status?: number): void | Promise<void>;}
-
-function withApp = <T>(app: Application, fn: () => T) => T
 
 function withHeaders = (res: Response, headers: Record<string, string>) => Response
 
@@ -776,18 +735,6 @@ interface ArtisanResult = {
 }
 
 interface AuthenticatedUser = {}
-
-interface CompiledDomain = {
-  params: string[]
-  regex: RegExp
-  source: string
-}
-
-interface ConcernContext = {
-  app: Application
-  env: AppEnvironment
-  resolve: <T = unknown>(token: string) => T | undefined
-}
 
 interface ConcernDescriptor = {
   dir?: string
@@ -860,8 +807,6 @@ interface ContainerBindings = {
   two_factor: TwoFactorService
 }
 
-interface ContextRegistry = {}
-
 interface CookieOptions = {
   domain?: string
   httpOnly?: boolean
@@ -880,11 +825,6 @@ interface CorsOptions = {
   maxAge?: number
   methods?: string[]
   origin?: string | string[] | ((origin: string) => boolean)
-}
-
-interface DevConfigShape = {
-  disable?: string[]
-  processes?: DevProcessDefinition[]
 }
 
 interface DevProcessDefinition = {
@@ -929,28 +869,10 @@ interface ErrorDiagnosis = {
   title: string
 }
 
-interface FileRouteContext = {
-  filePath: string
-  isIndex: boolean
-  layout?: ViewComponent | undefined
-  middleware: MiddlewareClass[]
-  module: Record<string, unknown>
-  name: string
-  urlPath: string
-}
-
 interface GroupOptions = {
   domain?: string
   middleware?: string | string[] | MiddlewareClass | MiddlewareClass[]
   prefix?: string
-}
-
-interface HasResponse = {
-  response: Response | undefined
-}
-
-interface MiddlewareModule = {
-  middleware: MiddlewareClass[]
 }
 
 interface ModelClass = {
@@ -973,28 +895,6 @@ interface ProviderReport = {
   name: string
 }
 
-interface QueuedListener = {
-  handle: (event: T) => Promise<void> | void
-  maxAttempts?: number
-  queue: string | boolean
-  retryDelay?: number
-}
-
-interface RequestIPProvider = {
-  requestIP: (req: Request) => {    address: string;    family: string;    port: number;} | null
-}
-
-interface ResolvedDevProcess = {
-  after: 'server' | 'none'
-  argv?: string[]
-  color: DevProcessColor
-  label: string
-  name: string
-  registrant: string
-  restart: 'always' | 'on-failure' | 'never'
-  run?: (signal: AbortSignal) => Promise<void>
-}
-
 interface RouteBuilder = {
   <N extends RouteTarget>(name: N, params?: RouteParamValues | undefined, query?: RouteQuery | undefined): string
   dynamic: (name: string, params?: RouteParamValues, query?: RouteQuery) => string
@@ -1009,34 +909,6 @@ interface RouteDefinition = {
   middleware: MiddlewareClass[]
   name: string | undefined
   path: string
-}
-
-interface RouteFileMeta = {
-  DELETE?: {    name?: string;}
-  GET?: {    name?: string;}
-  PATCH?: {    name?: string;}
-  POST?: {    name?: string;}
-  PUT?: {    name?: string;}
-}
-
-interface RouteMethodMiddleware = {
-  ALL?: MiddlewareClass[]
-  DELETE?: MiddlewareClass[]
-  GET?: MiddlewareClass[]
-  PATCH?: MiddlewareClass[]
-  POST?: MiddlewareClass[]
-  PUT?: MiddlewareClass[]
-}
-
-interface RouteModule = {
-  DELETE?: FileHandler
-  GET?: FileHandler
-  PATCH?: FileHandler
-  POST?: FileHandler
-  PUT?: FileHandler
-  default?: ViewComponent | FileHandler
-  layout?: ViewComponent | null
-  middleware?: RouteMiddleware
 }
 
 interface RouteRegistration = {
@@ -1100,37 +972,19 @@ interface WebSocketHandlers = {
 
 type AppEnvironment = 'web' | 'console' | 'worker' | 'test' | 'repl'
 
-type AppScopeInstaller = () => () => void
-
 type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 
 type BindingToken = ClassToken<T> | AbstractToken<T> | keyof ContainerBindings
 
-type ContextKey = never
-
-type ContextValue = ContextRegistry[K]
-
 type ControllerResponse = void | ResponseBuilder | MarkdownBuilder
 
-type CurrentPageResolver = (pageName: string) => number | undefined
-
 type DeepPartial = { [K in keyof T]?: (NonNullable<T[K]> extends _Atomic ? T[K] : NonNullable<T[K]> extends object ? DeepPartial<NonNullable<T[K]>> : T[K]) | undefined; }
-
-type DevProcessColor = 'cyan' | 'magenta' | 'yellow' | 'green' | 'blue' | 'red'
 
 type ErrorDiagnoser = (error: Error, ctx?: HttpContext) => ErrorDiagnosis | null | Promise<ErrorDiagnosis | null>
 
 type Factory = (container: Container) => T | Promise<T>
 
-type FileHandler = (ctx: HttpContext) => void | Response | Promise<void | Response>
-
-type FileRouteHandler = (ctx: HttpContext) => void | Response | Promise<void | Response>
-
-type FileRouteResolver = (ctx: FileRouteContext) => boolean
-
 type FileRoutingConfig = {    [x: string]: FileRoutingEntry;}
-
-type FileRoutingEntry = string | { dir: string; prefix?: string; middleware?: MiddlewareInput }
 
 type FlagDef = {    name: string;    short?: string;    type: 'string' | 'boolean' | 'number';    description?: string;    default?: unknown;}
 
@@ -1139,8 +993,6 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 type HttpResponse = Promise<void>
 
 type MiddlewareClass = new (...args: any[]) => Pipe<HttpContext>
-
-type ModelBindingResolver = (value: string, ctx: HttpContext) => Promise<unknown>
 
 type NextFn = () => Promise<Response | void>
 
@@ -1154,21 +1006,13 @@ type RouteName = never
 
 type RouteParams = { [K in keyof ParamsOf<RoutePattern<N>>]: ParamsOf<RoutePattern<N>>[K]; }
 
-type RouteParamsArg = {    [x: string]: RouteParamValue | readonly RouteParamValue[];}
-
-type RouteParamValue = string | number
-
 type RouteParamValues = {    [x: string]: RouteParamValue | readonly RouteParamValue[];}
-
-type RoutePattern = N extends never ? RouteRegistry[N] extends string ? RouteRegistry[N] : string : string
 
 type RouteQuery = {    [x: string]: string | number | boolean | readonly (string | number | boolean)[] | null | undefined;}
 
 type RouteTarget = string
 
 type RoutingConfig = {    [x: string]: RoutingEntry;}
-
-type RoutingEntry = string | { file: string; prefix?: string; middleware?: MiddlewareInput }
 
 type SameSite = 'Strict' | 'Lax' | 'None'
 
@@ -2393,12 +2237,6 @@ interface ConfigRegistry = {
   logging: LoggingConfigShape
 }
 
-interface ConfigValidationContext = {
-  config: ConfigManager
-  isProduction: boolean
-  namespace: string
-}
-
 interface ConventionsConfig = {
   enabled: boolean
   paths: {    providers: string;    middleware: string;    models: string;    observers: string;    policies: string;    listeners: string;    events: string;    jobs: string;    schedules: string;    validators: string;    commands: string;}
@@ -2414,18 +2252,9 @@ interface DeployTarget = {
   url?: string
 }
 
-interface RegisteredConfigValidator = {
-  namespace: string
-  validate: ConfigValidator
-}
-
 type AssetLoaderKind = 'file' | 'dataurl' | 'base64' | 'text' | 'json' | 'toml'
 
 type ConfigIssueLevel = 'error' | 'warning'
-
-type ConfigMap = {    [x: string]: Record<string, unknown>;}
-
-type ConfigPath = 'lock' | 'app' | 'deploy' | 'health' | 'logging' | 'lock.driver' | 'lock.sqlite' | 'lock.prefix' | 'lock.sqlite.path' | 'app.url' | 'app.name' | 'app.dev' | 'app.port' | 'app.health' | 'app.env' | 'app.key' | 'app.debug' | 'app.locale' | 'app.timezone' | 'app.http3' | 'app.tls' | 'app.maxRequestBodySize' | 'app.allowedOrigins' | 'app.cors' | 'app.throttle' | 'app.secureHeaders' | 'app.assets' | 'app.conventions' | 'app.cors.credentials' | 'app.cors.origin' | 'app.throttle.maxAttempts' | 'app.throttle.windowSeconds' | 'app.secureHeaders.referrerPolicy' | 'app.secureHeaders.frameOptions' | 'app.secureHeaders.secure' | 'app.secureHeaders.hstsMaxAge' | 'app.secureHeaders.hstsIncludeSubDomains' | 'app.secureHeaders.hstsPreload' | 'app.secureHeaders.contentSecurityPolicy' | 'app.conventions.paths' | 'app.conventions.enabled' | 'app.conventions.paths.events' | 'app.conventions.paths.commands' | 'app.conventions.paths.providers' | 'app.conventions.paths.middleware' | 'app.conventions.paths.models' | 'app.conventions.paths.observers' | 'app.conventions.paths.policies' | 'app.conventions.paths.listeners' | 'app.conventions.paths.jobs' | 'app.conventions.paths.schedules' | 'app.conventions.paths.validators' | 'deploy.targets' | `deploy.targets.${string}` | 'health.path' | 'health.enabled' | 'health.secret' | 'health.showDetails' | 'logging.default' | 'logging.file' | 'logging.console' | 'logging.channels' | 'logging.slowQueryMs' | 'logging.requests' | `logging.channels.${string}`
 
 type ConfigValidator = (value: unknown, ctx: ConfigValidationContext) => ConfigIssue[] | void
 
@@ -2793,12 +2622,6 @@ function deepMerge = <T extends object>(base: T, override: DeepPartial<T>) => T
 
 function env = {    (key: string): string | undefined;    (key: string, fallback: string): string;    (key: string, fallback: boolean): boolean;    (key: string, fallback: number): number;}
 
-function escapeHtml = (value: string) => string
-
-function markdownPage = (title: string, body: string) => string
-
-function parseCookieHeader = (header: string, name: string) => string | undefined
-
 function pipe = <T, R>(value: T, fn: (val: T) => R) => R
 
 function pipeAsync = <T, R>(value: T, fn: (val: T) => Promise<R>) => Promise<R>
@@ -2820,24 +2643,6 @@ function tableNameFor = (className: string) => string
 function tap = <T>(value: T, callback: (val: T) => void) => T
 
 function tapAsync = <T>(value: T, callback: (val: T) => Promise<void>) => Promise<T>
-
-interface BunMarkdownOptions = {
-  autolinks?: boolean | {    url?: boolean;    www?: boolean;    email?: boolean;}
-  collapseWhitespace?: boolean
-  hardSoftBreaks?: boolean
-  headings?: boolean | {    ids?: boolean;}
-  latexMath?: boolean
-  noHtmlBlocks?: boolean
-  noHtmlSpans?: boolean
-  noIndentedCodeBlocks?: boolean
-  permissiveAtxHeaders?: boolean
-  strikethrough?: boolean
-  tables?: boolean
-  tagFilter?: boolean
-  tasklists?: boolean
-  underline?: boolean
-  wikiLinks?: boolean
-}
 
 ## ./http  `(./src/http/index.ts)`
 
@@ -2972,11 +2777,7 @@ class UrlKeyMissingError = {
 
 const Url = UrlGenerator
 
-function isAllowedOrigin = (request: Request, allowedOrigins?: string[]) => boolean
-
 function negotiate = (ctx: HttpContext) => <TWeb = void, TJson = void, TCli = void>(map: NegotiateMap<TWeb, TJson, TCli>) => Promise<TWeb | TJson | TCli | void>
-
-function sniffContentType = (bytes: Uint8Array) => SniffedType
 
 function uri = (value?: string | Uri) => Uri
 
@@ -3000,13 +2801,6 @@ interface CliContext = {
   writeln: (content: string) => void
 }
 
-interface FakeStub = {
-  body?: unknown
-  headers?: Record<string, string>
-  status?: number
-  url: string
-}
-
 interface FileValidationOptions = {
   maxSize?: number
   mimes?: string[]
@@ -3026,20 +2820,6 @@ interface PaginatedData = {
   perPage: number
   previousPageUrl: (baseUrl?: string, query?: Record<string, string>) => string | null
   total: number
-}
-
-interface SniffedType = {
-  contentType: string
-  extension: string
-  recognised: boolean
-}
-
-interface UriQueryString = {
-  all: () => Record<string, QueryValue>
-  get: (key: string) => string | undefined
-  getAll: (key: string) => string[]
-  has: (key: string) => boolean
-  toString: () => string
 }
 
 interface UrlGenerator = {
@@ -3067,8 +2847,6 @@ interface WebContext = {
   redirect: (url: string, status?: 301 | 302 | 303 | 307 | 308) => void
   view: (markup: string | {    toString(): string;}, status?: number) => void
 }
-
-type AnsiColor = 'red' | 'green' | 'yellow' | 'blue' | 'cyan' | 'dim'
 
 type Channel = 'web' | 'json' | 'cli'
 
@@ -3335,13 +3113,9 @@ type TableData = Record<string, unknown> | ReadonlyArray<Record<string, unknown>
 
 ## ./macros/config  `(./src/macros/config.macro.ts)`
 
-function loadConfigsSync = (configDir: string) => Record<string, Record<string, unknown>>
+_(no exports)_
 
 ## ./metrics  `(./src/metrics/index.ts)`
-
-function beginHttp = () => void
-
-function endHttp = () => void
 
 function httpMetrics = () => HttpMetricsSnapshot
 
@@ -3634,8 +3408,6 @@ class UnsupportedOperationError = {
 
 const Storage = StorageManager
 
-function mountsFrom = (config: StorageConfigShape) => Mount[]
-
 function StorageConfig = (options?: Partial<StorageConfigShape>) => StorageConfigShape
 
 interface DiskServeConfig = {
@@ -3718,10 +3490,6 @@ class SafeHtml = {
   toString: () => string
 }
 
-const VIEW_COMPONENT_PROP = '__zerotalViewComponent'
-
-const VIEW_COMPONENT_SYMBOL = typeof VIEW_COMPONENT_SYMBOL
-
 function defineLayout = <LP extends Record<string, unknown>>(Layout: (props: LP & {    children?: unknown;}) => SafeHtml) => <PP extends Record<string, unknown> = Record<string, never>>(Page: (props: PP & {    children?: unknown;}) => SafeHtml) => (props: LP & PP) => SafeHtml
 
 function definePage = <P extends Record<string, unknown> = Record<string, unknown>>(component: (ctx: HttpContext, params: P) => SafeHtml | string | Promise<SafeHtml | string>) => typeof component
@@ -3731,8 +3499,6 @@ function esc = (val: unknown) => string
 function Fragment = ({ children }: {    children?: unknown;}) => SafeHtml
 
 function Raw = ({ html }: {    html: string;}) => SafeHtml
-
-function registerViewFileRouteResolver = () => void
 
 function safe = (html: string) => SafeHtml
 

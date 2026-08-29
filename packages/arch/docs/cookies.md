@@ -93,6 +93,12 @@ You rarely set cookies by hand — two parts of the framework manage their own:
   (non-`HttpOnly`) cookie after every request so Axios/Inertia can echo it back as
   the `X-XSRF-TOKEN` header.
 
+## Types
+
+`CookieOptions` is what every cookie-setting call accepts — `maxAge`, `path`, `domain`,
+`httpOnly`, `secure`, `sameSite`. It is exported so a helper that sets a cookie in more than one
+place can take the same shape.
+
 ## Next steps
 
 - [Session](/docs/session) — signed, `HttpOnly` cookie-backed state (the usual choice).

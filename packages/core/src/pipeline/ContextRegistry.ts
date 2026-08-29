@@ -32,11 +32,21 @@
  * still compiles and returns `unknown`.
  *
  * @category Extension registries
+ *
+ * @internal
  */
 export interface ContextRegistry {}
 
-/** Union of every registered context key. `never` until a package augments {@link ContextRegistry}. */
+/**
+ * Union of every registered context key. `never` until a package augments {@link ContextRegistry}.
+ *
+ * @internal
+ */
 export type ContextKey = keyof ContextRegistry;
 
-/** The value type stored under a registered context key. */
+/**
+ * The value type stored under a registered context key.
+ *
+ * @internal
+ */
 export type ContextValue<K extends ContextKey> = ContextRegistry[K];

@@ -53,7 +53,11 @@ type ValueAt<T, P extends string> = P extends `${infer Head}.${infer Rest}`
     ? T[P]
     : unknown;
 
-/** Every valid dot-path string across the registered config namespaces. */
+/**
+ * Every valid dot-path string across the registered config namespaces.
+ *
+ * @internal
+ */
 export type ConfigPath = Leaves<ConfigRegistry>;
 
 /** The value type stored at a given config dot-path. */

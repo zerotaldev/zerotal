@@ -373,6 +373,21 @@ it works only after the app has booted. In a unit test that never boots, constru
 | `Url.sign(base, params?, min?, secret?)` | `(base: string, params?, expiresInMinutes?, secret?) => string` | Build an HMAC-signed, time-limited URL.              |
 | `Url.verify(url, secret?)`               | `(signedUrl: string, secret?: string) => boolean`               | Verify a signed URL; `false` if tampered or expired. |
 
+## Hashing helpers
+
+Three pure helpers sit beside `Crypt`, for the cases that are not encryption:
+
+| Helper                | Use                                                                    |
+| --------------------- | ---------------------------------------------------------------------- |
+| `sha256Hex(value)`    | A hex digest. For a lookup key or a blind index, never for a password. |
+| `hmacHex(value, key)` | A keyed digest — a webhook signature, a tamper-evident token.          |
+| `safeEqual(a, b)`     | Constant-time comparison. Use it for every secret comparison.          |
+
+**`safeEqual` is the one that matters.** `a === b` on a token returns as soon as two bytes
+differ, and the time it took is a measurement of how much of the prefix was right — enough, over
+many attempts, to recover a secret a character at a time. Comparing anything an attacker
+supplies against anything you hold goes through `safeEqual`.
+
 ## Next steps
 
 - [Authentication](/docs/authentication) — where hashed passwords are verified at login.

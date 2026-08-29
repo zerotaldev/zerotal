@@ -444,6 +444,12 @@ res.assertDontSee("Draft"); // unpublished posts stay hidden
 | `Children`       | Type for the `children` prop.                                                                                             |
 | `HttpContext<T>` | The request context a view component or controller action receives; route params and model bindings live on `ctx.params`. |
 
+## Types
+
+`ViewComponent` is what `view()` accepts — a function taking the request context and your props,
+returning markup. `ViewLayout` is the wrapper form a layout takes. Both are exported so a helper
+that returns a component, or a registry that holds several, can be typed.
+
 ## Next steps
 
 - [Flow](/docs/flow) — server-driven interactive components over WebSocket.

@@ -42,6 +42,45 @@ const apiKey = env("API_KEY"); // no fallback → string | undefined
 
 > **Note** — When you need a value to be present, use `requireEnv("APP_KEY")` instead — it throws a `ConfigError` at boot if the variable is unset, rather than returning `undefined`.
 
+### Declaring the whole environment — `EnvSchema`
+
+`env()` is per-call and forgiving: an unset variable is `undefined` and you find out where it is
+used. `@zerotal/core/env` is the other end — declare every variable the app reads, once, and the
+boot either produces a fully typed frozen object or fails with every problem listed at the same
+time:
+
+```typescript fragment
+// env.ts
+import { EnvSchema, t } from "@zerotal/core/env";
+
+export const env = EnvSchema.define({
+  APP_KEY: t.string().min(32),
+  PORT: t.port().default(3000),
+  DATABASE_URL: t.string(),
+  LOG_LEVEL: t.enum(["debug", "info", "warn", "error"]).default("info"),
+  SENTRY_DSN: t.url().optional(),
+});
+
+env.PORT; // number — never undefined, because it has a default
+env.LOG_LEVEL; // "debug" | "info" | "warn" | "error", narrowed to the literals
+```
+
+**It reports every failure at once.** A schema with three missing variables fails the boot
+naming all three, rather than one per restart — which is the difference between one fix and
+three round trips through a deploy. The failure is an `EnvSchemaError` carrying an
+`EnvFieldError` per field.
+
+| Type             | What it is                                                                  |
+| ---------------- | --------------------------------------------------------------------------- |
+| `EnvSchemaError` | The boot failure, listing every field that did not validate.                |
+| `EnvFieldError`  | One field's problem: which variable, and what was wrong with it.            |
+| `FieldType`      | The builders `t` offers — string, number, boolean, port, url, enum.         |
+| `EnvOutput<S>`   | The typed object a schema produces. `typeof env` where you need to pass it. |
+| `InferDef<D>`    | The type one field definition resolves to.                                  |
+
+Use `env()` for a value read in one place and `EnvSchema` for the set an app cannot start
+without. They coexist; the schema is not a replacement for the helper.
+
 ## Config files
 
 Config files live in `config/`. Each file exports a typed object via a package helper:
@@ -249,6 +288,21 @@ if (config("app.env") === "production") {
 | `configLoader`          | `configLoader(dir = "./config"): ConfigLoader`             | Synchronously load a `config/` directory into a `ConfigLoader`.                           |
 | `ConfigLoader.get`      | `get(key: string, fallback?): value`                       | Dot-path read against the loaded map.                                                     |
 | `ConfigLoader.validate` | `validate(): this`                                         | Run each file's optional `validate(config)` export, throwing on failure.                  |
+
+## Types
+
+| Type                | What it is                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| `ConfigValidator`   | What `registerConfigValidator` takes — a function handed the config, reporting issues. |
+| `ConfigIssue`       | One finding: its namespace, message, and level.                                        |
+| `ConfigIssueLevel`  | Whether an issue refuses a production boot or is only worth reading.                   |
+| `ConventionsConfig` | The `conventions` namespace — where the framework looks for models, jobs and the rest. |
+| `AppTlsConfig`      | TLS settings under `app.tls`.                                                          |
+| `AssetLoaderKind`   | How an asset is loaded by the build — the `loader` values `assets.loaders` accepts.    |
+
+A validator reporting a **fatal** issue refuses a production-like boot rather than warning. That
+is the whole point of the level: an app that boots with a broken configuration serves wrong
+answers rather than failing, and the failure is the cheaper outcome.
 
 ## Next steps
 

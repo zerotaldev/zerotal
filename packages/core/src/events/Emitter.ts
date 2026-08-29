@@ -14,7 +14,11 @@ type ListenerClass<T extends object> = new (...args: unknown[]) => {
   retryDelay?: number;
 };
 
-/** A listener that opts into deferred execution by declaring a `queue` target. */
+/**
+ * A listener that opts into deferred execution by declaring a `queue` target.
+ *
+ * @internal
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the event payload type is listener-specific and not known at this boundary.
 export interface QueuedListener<T = any> {
   queue: boolean | string;

@@ -644,6 +644,9 @@ builds disk options can be typed:
 what a driver throws for something it genuinely cannot do — a local disk asked for a signed
 URL, for instance — rather than failing quietly and returning nothing.
 
+`S3Driver` is exported so a driver for another S3-compatible service can extend it rather than
+reimplement request signing.
+
 ## Next steps
 
 - [Validator](/docs/validator) — validate file uploads before storing them.

@@ -34,6 +34,8 @@ import { join } from "node:path";
  * Note: config files that read `Bun.env` capture their values from the
  * environment at macro-evaluation time. For bun build --compile this is the
  * CI/CD environment — the same intended behaviour as any immutable artifact.
+ *
+ * @internal
  */
 export function loadConfigsSync(configDir: string): Record<string, Record<string, unknown>> {
   const glob = new Bun.Glob("*.ts");

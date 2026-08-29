@@ -1953,6 +1953,12 @@
     },
     {
       "file": "docs/config-system.md",
+      "heading": "Declaring the whole environment — `EnvSchema`",
+      "ordinal": 0,
+      "hash": "2clmm8n71b76"
+    },
+    {
+      "file": "docs/config-system.md",
       "heading": "Environment files",
       "ordinal": 0,
       "hash": "27tfde0ukcs7"
@@ -6486,6 +6492,12 @@
       "heading": "Markdown",
       "ordinal": 0,
       "hash": "1azdfc610i3g"
+    },
+    {
+      "file": "docs/responses.md",
+      "heading": "Negotiating by client",
+      "ordinal": 0,
+      "hash": "2hpeo4w12ufw"
     },
     {
       "file": "docs/responses.md",

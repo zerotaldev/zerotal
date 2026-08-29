@@ -9,7 +9,11 @@ import { frameworkLog } from "../logger/frameworkLog.ts";
 
 const requireModule = createRequire(import.meta.url);
 
-/** Namespace → config object map (filename without extension is the namespace). */
+/**
+ * Namespace → config object map (filename without extension is the namespace).
+ *
+ * @internal
+ */
 export type ConfigMap = Record<string, Record<string, unknown>>;
 type Validator = (value: Record<string, unknown>) => void;
 

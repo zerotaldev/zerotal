@@ -8,7 +8,11 @@ export function markdownExtractTitle(content: string): string | undefined {
   return content.match(/^#{1,2}\s+(.+)$/m)?.[1]?.trim();
 }
 
-/** Minimal HTML shell for rendered markdown pages. */
+/**
+ * Minimal HTML shell for rendered markdown pages.
+ *
+ * @internal
+ */
 export function markdownPage(title: string, body: string): string {
   return `<html lang="en">
 <head>
@@ -44,6 +48,8 @@ ${body}
 /**
  * Options for `Bun.markdown.html()`. bun-types exposes the options type only inside
  * its `markdown` namespace; this is the named, exported equivalent the framework uses.
+ *
+ * @internal
  */
 export interface BunMarkdownOptions {
   tables?: boolean;

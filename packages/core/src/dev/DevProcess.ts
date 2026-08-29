@@ -69,13 +69,21 @@ export interface DevProcessDefinition {
   color?: DevProcessColor;
 }
 
-/** The colours a deck tab can take. Named, not ANSI codes, so the deck owns the rendering. */
+/**
+ * The colours a deck tab can take. Named, not ANSI codes, so the deck owns the rendering.
+ *
+ * @internal
+ */
 export type DevProcessColor = "cyan" | "magenta" | "yellow" | "green" | "blue" | "red";
 
 /** Assigned in order to processes that did not pick a colour. */
 const _PALETTE: DevProcessColor[] = ["cyan", "magenta", "yellow", "green", "blue", "red"];
 
-/** A definition with every default filled in and its argv settled. */
+/**
+ * A definition with every default filled in and its argv settled.
+ *
+ * @internal
+ */
 export interface ResolvedDevProcess {
   name: string;
   label: string;
@@ -95,7 +103,11 @@ export interface ResolvedDevProcess {
   registrant: string;
 }
 
-/** The `app.dev` config block. */
+/**
+ * The `app.dev` config block.
+ *
+ * @internal
+ */
 export interface DevConfigShape {
   /** App-level processes, registered after every provider's. */
   processes?: DevProcessDefinition[];

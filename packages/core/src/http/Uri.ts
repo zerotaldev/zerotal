@@ -40,7 +40,11 @@ interface UriParts {
   fragment?: string;
 }
 
-/** Read-only view over a URI's query string, returned by `Uri.query()`. */
+/**
+ * Read-only view over a URI's query string, returned by `Uri.query()`.
+ *
+ * @internal
+ */
 export interface UriQueryString {
   /** All query parameters as a plain object. */
   all(): Record<string, QueryValue>;

@@ -12,7 +12,11 @@ import type { Application } from "../application/Application.ts";
 import type { AppEnvironment } from "../provider/ServiceProvider.ts";
 import { frameworkLog } from "../logger/frameworkLog.ts";
 
-/** The context a concern receives while registering discovered modules. */
+/**
+ * The context a concern receives while registering discovered modules.
+ *
+ * @internal
+ */
 export interface ConcernContext {
   app: Application;
   env: AppEnvironment;

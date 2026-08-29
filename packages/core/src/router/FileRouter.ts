@@ -23,6 +23,8 @@ export type { FileHandler };
 /**
  * Per-method middleware map for a route file's `export const middleware`.
  * `ALL` applies to every method the file handles; the per-verb arrays add to it.
+ *
+ * @internal
  */
 export interface RouteMethodMiddleware {
   ALL?: MiddlewareClass[];
@@ -45,6 +47,7 @@ export type RouteMiddleware = MiddlewareClass[] | RouteMethodMiddleware;
 
 /** Shape of a route module. `default` may be a FileHandler or a ViewComponent;
  *  `layout` overrides the directory `_layout` (null = no layout). */
+/** @internal */
 export interface RouteModule {
   default?: FileHandler | ViewComponent;
   GET?: FileHandler;
@@ -57,7 +60,11 @@ export interface RouteModule {
   middleware?: RouteMiddleware;
 }
 
-/** Optional `export const meta = { GET: { name: 'users.show' } }` in route files. */
+/**
+ * Optional `export const meta = { GET: { name: 'users.show' } }` in route files.
+ *
+ * @internal
+ */
 export interface RouteFileMeta {
   GET?: { name?: string };
   POST?: { name?: string };
@@ -66,7 +73,11 @@ export interface RouteFileMeta {
   DELETE?: { name?: string };
 }
 
-/** Shape of a `_middleware.ts` file. */
+/**
+ * Shape of a `_middleware.ts` file.
+ *
+ * @internal
+ */
 export interface MiddlewareModule {
   middleware: MiddlewareClass[];
 }
@@ -75,6 +86,8 @@ export interface MiddlewareModule {
 
 /**
  * Context handed to a file-route resolver for each scanned route file.
+ *
+ * @internal
  */
 export interface FileRouteContext {
   /** URL path derived from the file location (e.g. '/users/:id'). */
@@ -105,6 +118,8 @@ export interface FileRouteContext {
  *   Router.flow(urlPath, PageClass, middleware);
  *   return true;
  * });
+ *
+ * @internal
  */
 export type FileRouteResolver = (ctx: FileRouteContext) => boolean;
 
@@ -112,6 +127,7 @@ const _fileRouteResolvers: FileRouteResolver[] = [];
 
 /** Register a resolver. Call from a provider's onRegister() so it is in place
  *  before Application.boot() scans file routes. */
+/** @internal */
 export function registerFileRouteResolver(resolver: FileRouteResolver): void {
   _fileRouteResolvers.push(resolver);
 }
@@ -390,6 +406,8 @@ async function _collectLayout(
  *                  creates a fresh module namespace instead of returning the
  *                  cached version.  Omit on first boot.
  * @returns The number of individual method handlers registered.
+ *
+ * @internal
  */
 export async function scanFileRoutes(baseDir: string, reloadId?: string): Promise<number> {
   const absoluteBase = _resolveAbsoluteBase(baseDir);

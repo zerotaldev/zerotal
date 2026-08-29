@@ -823,6 +823,11 @@ test("survives a DST spring-forward", () => {
 | `forHumans`                     | `forHumans(options?: { join?: string; short?: boolean }): string` | Human-readable description.                           |
 | `toISO`                         | `toISO(): string`                                                 | ISO 8601 duration string (`toJSON` alias).            |
 
+## Types
+
+`DurationLike` is what the arithmetic methods accept — `add`, `subtract` and their kin — so a
+duration can be built once and passed around rather than spelled out at each call site.
+
 ## Next steps
 
 - [Casts & Mutators](/docs/orm/casts) — `datetime` columns hydrate to Carbon automatically.

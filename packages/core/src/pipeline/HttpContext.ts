@@ -31,6 +31,8 @@ type AnyViewComponent = (ctx: HttpContext<any>, props: any) => ViewMarkup | Prom
 /**
  * Minimal Bun server interface needed for socket-level IP resolution.
  * Duck-typed so HttpContext has no hard dependency on Bun's global types.
+ *
+ * @internal
  */
 export interface RequestIPProvider {
   requestIP(req: Request): { address: string; family: string; port: number } | null;
@@ -874,6 +876,8 @@ const _prototypeMethods: ReadonlyArray<[string, (...args: unknown[]) => unknown]
  * @param origin - The current request origin to match against.
  * @returns The same-origin `url`, or `undefined` when it is absent, unparseable,
  * or points to a different origin.
+ *
+ * @internal
  */
 export function safeRedirectPath(
   url: string | null | undefined,

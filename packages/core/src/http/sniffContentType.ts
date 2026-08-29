@@ -65,7 +65,11 @@ export const FALLBACK_CONTENT_TYPE = "application/octet-stream";
 /** Extension stored when the bytes match nothing known. */
 export const FALLBACK_EXTENSION = "bin";
 
-/** What {@link sniffContentType} determined about a file. */
+/**
+ * What {@link sniffContentType} determined about a file.
+ *
+ * @internal
+ */
 export interface SniffedType {
   /** The detected media type, or {@link FALLBACK_CONTENT_TYPE} when unrecognised. */
   contentType: string;
@@ -88,6 +92,8 @@ export interface SniffedType {
  *
  * @example
  * const { contentType, extension } = sniffContentType(await file.bytes());
+ *
+ * @internal
  */
 export function sniffContentType(bytes: Uint8Array): SniffedType {
   for (const sig of SIGNATURES) {

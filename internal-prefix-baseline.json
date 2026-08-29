@@ -5,7 +5,7 @@
     "arch": 1,
     "auth": 28,
     "broadcasting": 4,
-    "core": 44,
+    "core": 67,
     "devtools": 4,
     "flow": 22,
     "flow-ui": 3,
@@ -18,5 +18,5 @@
     "testing": 1
   },
   "updatedAt": "2026-08-29",
-  "note": "Rose across 28-29 Aug 2026 as plumbing was correctly declared: core (dev orchestrator), orm (connection/context wiring, schema-diff, dialects), admin (panel page machinery), flow (compiler helpers, wire-protocol frames, registration, stores), flow-ui (calendar and flow:add helpers), monitor (panel shell), auth (session keys, mixin brands, remember-token internals). The names were already unprefixed — marking them @internal made existing debt visible rather than adding any. Renaming exported symbols is breaking and belongs in the 2.0 ledger."
+  "note": "Rose across 28-29 Aug 2026 as plumbing was correctly declared across core, orm, admin, flow, flow-ui, monitor and auth — the dev orchestrator, connection wiring, panel machinery, wire-protocol frames, file-routing internals, session keys and mixin brands. The names were already unprefixed; marking them @internal made existing debt visible rather than adding any. Renaming exported symbols is breaking and belongs in the 2.0 ledger."
 }

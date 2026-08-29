@@ -1081,6 +1081,22 @@ Every route registration returns a chainable handle:
 | `bun zt route:list`                    | —                                   | Print every route (`-m` method, `-p` path, `--name`, `-v` middleware).  |
 | `bun zt route:types`                   | `--check`                           | Write `types/routes.generated.ts`; `--check` fails when it is stale.    |
 
+## Types
+
+| Type                 | What it is                                                                                                |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| `HttpMethod`         | The verbs a route can answer on.                                                                          |
+| `HttpResponse`       | What a handler may return when it does not write to `ctx.response`.                                       |
+| `ControllerResponse` | A controller action's return type — `void`, a `ResponseBuilder`, or a `MarkdownBuilder`.                  |
+| `RouteParams`        | The params a pattern captures, as a record.                                                               |
+| `ParamsOf<P>`        | The params of one pattern, derived from the pattern string — what makes `route()` refuse a missing `:id`. |
+| `RouteRegistry`      | The generated name → pattern table, augmented by `types/routes.generated.ts`.                             |
+| `RouteMiddleware`    | What a route's middleware list accepts — a class, an array, or the method map.                            |
+| `GroupOptions`       | `Router.group({ prefix, middleware, domain })`.                                                           |
+| `RoutingConfig`      | The `routing` config namespace.                                                                           |
+| `FileRoutingConfig`  | File-router settings within it.                                                                           |
+| `WebSocketHandlers`  | The handler set a WebSocket route registers.                                                              |
+
 ## Next steps
 
 - [Controllers](/docs/controllers) — move route logic out of closures.

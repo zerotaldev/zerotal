@@ -25,12 +25,20 @@ let _2xx = 0,
 let _sumMs = 0,
   _maxMs = 0;
 
-/** Mark a request as started — increments the in-flight (currently-processing) gauge. */
+/**
+ * Mark a request as started — increments the in-flight (currently-processing) gauge.
+ *
+ * @internal
+ */
 export function beginHttp(): void {
   _inFlight++;
 }
 
-/** Mark a request as finished — decrements the in-flight gauge (floored at 0). */
+/**
+ * Mark a request as finished — decrements the in-flight gauge (floored at 0).
+ *
+ * @internal
+ */
 export function endHttp(): void {
   if (_inFlight > 0) _inFlight--;
 }

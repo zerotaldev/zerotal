@@ -8,6 +8,31 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`@zerotal/core/env` is documented.** A whole subpath — a strict, fully typed environment
+  schema — had no page. `EnvSchema.define()` with the `t` field builders reports **every**
+  failing variable at once rather than one per restart, which is the difference between one fix
+  and three round trips through a deploy. See
+  [Configuration](/docs/config-system#declaring-the-whole-environment--envschema).
+
+- **`negotiate()` is documented.** One route, three audiences: a browser, an API client and the
+  console, without three copies of the logic. It is what the framework's own error handler uses,
+  which is why a 422 is a redirect-with-errors for a form post and a JSON body for a fetch.
+
+- **The hashing helpers get the paragraph `safeEqual` deserves.** `a === b` on a token returns as
+  soon as two bytes differ, and how long it took measures how much of the prefix was right —
+  enough, over many attempts, to recover a secret a character at a time.
+
+- Routing, config, cookie, view, storage and Carbon types are named.
+
+### Changed
+
+- **INTERNAL: 58 exports are marked `@internal`** — the file-routing internals, the router's
+  compiled state, the context registry, the metrics instrumentation hooks, the view component
+  symbols, and the config map/path types. Still exported, still working; none is something an
+  app constructs.
+
 ## [1.9.0] — 2026-08-29
 
 ### Changed

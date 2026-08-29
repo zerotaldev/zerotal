@@ -7,12 +7,16 @@ import { escapeHtml as escHtml } from "../helpers/html.ts";
  * letting the renderer distinguish page/layout components from ordinary
  * functions. Registered via `Symbol.for` so the marker survives across module
  * realms.
+ *
+ * @internal
  */
 export const VIEW_COMPONENT_SYMBOL = Symbol.for("zerotal.view.component");
 
 /**
  * String-keyed twin of {@link VIEW_COMPONENT_SYMBOL}. Set alongside the symbol
  * as a fallback for tooling or environments that can't read symbol-keyed props.
+ *
+ * @internal
  */
 export const VIEW_COMPONENT_PROP = "__zerotalViewComponent";
 

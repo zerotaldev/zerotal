@@ -17,7 +17,11 @@ const ANSI: Record<string, string> = {
   dim: "\x1b[2m",
 };
 
-/** A supported ANSI text color for CLI output. */
+/**
+ * A supported ANSI text color for CLI output.
+ *
+ * @internal
+ */
 export type AnsiColor = "red" | "green" | "yellow" | "blue" | "cyan" | "dim";
 
 // ── Channel detection ──────────────────────────────────────────────────────────

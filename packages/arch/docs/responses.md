@@ -327,6 +327,29 @@ Common status codes:
 | `ctx.redirect(url, 303)` | 303    | After POST/PUT/DELETE                            |
 | `ctx.redirect(url, 301)` | 301    | Permanent redirect                               |
 
+## Negotiating by client
+
+One route, three audiences. `negotiate(ctx)` picks a branch from the `Accept` header and how the
+request arrived, so a handler answers a browser, an API client and the console without three
+copies of the logic:
+
+```typescript fragment
+import { negotiate } from "zerotal/http";
+
+await negotiate(http)({
+  web: () => http.redirect("/dashboard"),
+  api: () => http.json({ ok: true }),
+  cli: () => http.text("done"),
+});
+```
+
+`NegotiateMap` is that object; `WebContext`, `ApiContext` and `CliContext` are what each branch
+receives. A missing branch falls through to `web`, because the browser is the audience most
+likely to be looking.
+
+This is what the framework's own error handler uses, which is why a 422 is a redirect-with-errors
+for a form post and a JSON body for a fetch — see [Errors](/docs/errors#response-format-by-client-type).
+
 ## Next steps
 
 - [Requests Context](/docs/context) — read input from the incoming request.

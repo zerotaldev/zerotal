@@ -9,7 +9,11 @@ import { FrameworkEvents, OutgoingRequestCompleted } from "../events/FrameworkEv
 /** An HTTP request method. */
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
 
-/** A fake response definition matched by URL while `Http.fake()` is active. */
+/**
+ * A fake response definition matched by URL while `Http.fake()` is active.
+ *
+ * @internal
+ */
 export interface FakeStub {
   /** URL to match — exact string or glob-style `*` wildcard. */
   url: string;

@@ -29,7 +29,11 @@ export interface ConfigIssue {
   message: string;
 }
 
-/** Context handed to a config validator. */
+/**
+ * Context handed to a config validator.
+ *
+ * @internal
+ */
 export interface ConfigValidationContext {
   /** The namespace being validated (e.g. `"session"`). */
   namespace: string;
@@ -52,7 +56,11 @@ export type ConfigValidator = (
   ctx: ConfigValidationContext,
 ) => ConfigIssue[] | void;
 
-/** A validator paired with the namespace it guards, as held on the application. */
+/**
+ * A validator paired with the namespace it guards, as held on the application.
+ *
+ * @internal
+ */
 export interface RegisteredConfigValidator {
   namespace: string;
   validate: ConfigValidator;

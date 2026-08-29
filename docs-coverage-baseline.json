@@ -1,11 +1,11 @@
 {
   "packages": {
-    "@zerotal/admin": 85,
+    "@zerotal/admin": 84,
     "@zerotal/audit": 2,
     "@zerotal/broadcasting": 16,
     "@zerotal/cache": 1,
-    "@zerotal/client": 19,
-    "@zerotal/core": 105,
+    "@zerotal/client": 18,
+    "@zerotal/core": 10,
     "@zerotal/devtools": 7,
     "@zerotal/i18n": 2,
     "@zerotal/inertia": 7,
@@ -19,6 +19,6 @@
     "@zerotal/testing": 5,
     "@zerotal/validator": 9
   },
-  "total": 318,
-  "updatedAt": "2026-08-29T09:51:02.342Z"
+  "total": 221,
+  "updatedAt": "2026-08-29T10:16:26.508Z"
 }

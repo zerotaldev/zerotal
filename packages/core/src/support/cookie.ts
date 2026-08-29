@@ -35,6 +35,8 @@ export interface CookieOptions {
  * @example
  * buildCookie({ name: "session", value, maxAge: 86400, secure: true });
  * // "session=…; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400; Secure"
+ *
+ * @internal
  */
 export function buildCookie(options: CookieOptions): string {
   const parts = [`${options.name}=${options.value}`, `Path=${options.path ?? "/"}`];
@@ -59,7 +61,11 @@ export function readCookie(request: Request, name: string): string | undefined {
   return parseCookieHeader(request.headers.get("Cookie") ?? "", name);
 }
 
-/** Extract a single cookie value from a raw `Cookie` header string. */
+/**
+ * Extract a single cookie value from a raw `Cookie` header string.
+ *
+ * @internal
+ */
 export function parseCookieHeader(header: string, name: string): string | undefined {
   for (const part of header.split(";")) {
     const eqIdx = part.indexOf("=");

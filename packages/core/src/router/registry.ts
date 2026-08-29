@@ -23,7 +23,11 @@
  * updates with it.
  */
 
-/** A value that can be substituted into a `:param` segment. */
+/**
+ * A value that can be substituted into a `:param` segment.
+ *
+ * @internal
+ */
 export type RouteParamValue = string | number;
 
 /** The loose param bag accepted by the untyped `route()` overload. */
@@ -68,7 +72,11 @@ export type RouteName = Extract<keyof RouteRegistry, string>;
  */
 export type RouteTarget = [RouteName] extends [never] ? string : RouteName;
 
-/** The URL pattern registered for route `N`, or plain `string` when it isn't a known name. */
+/**
+ * The URL pattern registered for route `N`, or plain `string` when it isn't a known name.
+ *
+ * @internal
+ */
 export type RoutePattern<N extends string> = N extends RouteName
   ? RouteRegistry[N] extends string
     ? RouteRegistry[N]
@@ -101,6 +109,8 @@ export type RouteParams<N extends string> = Prettify<ParamsOf<RoutePattern<N>>>;
  * generated, loose before that. Used by the helpers that take params without
  * being able to take `route()`'s rest-tuple — `redirect().to(name, params,
  * status)` and Flow's `redirectRoute`.
+ *
+ * @internal
  */
 export type RouteParamsArg<N extends string> = [RouteName] extends [never]
   ? RouteParamValues

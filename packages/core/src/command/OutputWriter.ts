@@ -13,7 +13,11 @@ export interface OutputWriter {
   writeError(message: string): void;
 }
 
-/** Default writer — output goes to the terminal */
+/**
+ * Default writer — output goes to the terminal
+ *
+ * @internal
+ */
 export class TerminalWriter implements OutputWriter {
   // Explicit constructor so JSC's function-coverage counter attributes
   // the new TerminalWriter() call to this entry.

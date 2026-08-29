@@ -5,6 +5,8 @@ import { HttpContext } from "./HttpContext.ts";
  *
  * @param pageName - The paginator's name, so one request can drive several independently.
  * @returns The 1-based page, or `undefined` to fall back to the query string.
+ *
+ * @internal
  */
 export type CurrentPageResolver = (pageName: string) => number | undefined;
 
@@ -21,6 +23,8 @@ export type CurrentPageResolver = (pageName: string) => number | undefined;
  * another one. Keep it that way — a module-level slot would not be request-scoped.
  *
  * @param resolver - Called with the paginator name; return `undefined` to defer to the query string.
+ *
+ * @internal
  */
 export function setCurrentPageResolver(resolver: CurrentPageResolver): void {
   const ctx = HttpContext.tryGet();

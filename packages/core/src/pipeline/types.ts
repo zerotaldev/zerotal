@@ -74,6 +74,8 @@ export interface Pipe<T> {
 /**
  * A payload that can carry a `Response`. Pipes set `response` and return the
  * payload to short-circuit; the pipeline terminal reads it back.
+ *
+ * @internal
  */
 export interface HasResponse {
   response: Response | undefined;

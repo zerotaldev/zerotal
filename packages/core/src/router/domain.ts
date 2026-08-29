@@ -6,6 +6,7 @@
  * exposed on the request via `ctx.subdomains`.
  */
 
+/** @internal */
 export interface CompiledDomain {
   /** The original pattern, e.g. ':tenant.app.com'. */
   source: string;

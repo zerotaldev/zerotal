@@ -36,6 +36,8 @@
  *   return new Response('Forbidden origin', { status: 403 });
  * }
  * ```
+ *
+ * @internal
  */
 export function isAllowedOrigin(request: Request, allowedOrigins: string[] = []): boolean {
   const origin = request.headers.get("origin");

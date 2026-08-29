@@ -402,7 +402,11 @@ const throttleIdentityCheck: DoctorCheck = {
   },
 };
 
-/** The core checks every app gets. */
+/**
+ * The core checks every app gets.
+ *
+ * @internal
+ */
 export const builtinDoctorChecks: DoctorCheck[] = [
   appKeyCheck,
   allowedOriginsCheck,

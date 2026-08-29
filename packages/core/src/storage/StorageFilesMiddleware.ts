@@ -132,6 +132,8 @@ export class StorageFilesMiddleware extends BaseMiddleware<StorageFilesOptions> 
  * accepts a request rather than the first time someone guesses a path.
  *
  * @throws {@link UnsafePublicMountError}
+ *
+ * @internal
  */
 export function mountsFrom(config: StorageConfigShape): Mount[] {
   const mounts: Mount[] = [];

@@ -96,6 +96,8 @@ async function _discoverConfig(dir: string): Promise<Record<string, Record<strin
  *   "web" → prefix: "",     middleware: ["web"]
  *   "api" → prefix: "/api", middleware: ["api"]
  * Custom keys must declare both `prefix` and `middleware` explicitly.
+ *
+ * @internal
  */
 export type RoutingEntry = string | { file: string; prefix?: string; middleware?: MiddlewareInput };
 
@@ -105,6 +107,8 @@ export type RoutingConfig = Record<string, RoutingEntry>;
 /**
  * A single entry in a `fileBasedRouting()` config map.
  * Same semantics as `RoutingEntry` but points to a directory instead of a file.
+ *
+ * @internal
  */
 export type FileRoutingEntry =
   string | { dir: string; prefix?: string; middleware?: MiddlewareInput };
@@ -271,6 +275,8 @@ export interface WebSocketHandlers {
 /**
  * Installs application-scoped state and returns a teardown function that
  * restores the previous state when the application is reset.
+ *
+ * @internal
  */
 export type AppScopeInstaller = () => () => void;
 

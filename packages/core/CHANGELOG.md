@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A boot line when a convention is skipped in this environment.** An env-restricted
+  concern is skipped by _not looking_, which is correct and completely silent: from a
+  web process's point of view nothing is wrong, because from a web process's point of
+  view nothing exists. An app ran for weeks in production with `app/schedules` full
+  and no worker process — no inventory hold released, no payment reminder sent, and
+  nothing logged, because there was nothing to log. It was found by going looking.
+
+  `runConventions` now says so once, at boot, and only when the directory actually
+  holds files:
+
+      Skipping 3 file(s) in app/schedules — the "schedules" convention does not run in env=web (it runs in: worker, console).
+
+  "Skipping 0 schedules" on every boot of every app would be noise, and noise is how
+  the line that matters gets scrolled past.
+
 ## [1.9.0] — 2026-08-29
 
 ### Added

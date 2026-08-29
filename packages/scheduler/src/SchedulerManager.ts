@@ -24,10 +24,28 @@ export class SchedulerManager {
     return new SchedulerBuilder(this, name, callback);
   }
 
+  /**
+   * Register every task with the runtime's cron.
+   *
+   * A task that cannot be registered takes itself out and nothing else. Registration
+   * throws for exactly the reasons that are one task's problem — an expression the
+   * runtime rejects, a timezone it does not know — and letting one of them propagate
+   * meant the worker died during boot and restart-looped, so a typo in one schedule
+   * stopped every schedule in the app. Which ones those are is not a thing you can
+   * see from a crash loop.
+   */
   start(): void {
     this._started = true;
     for (const task of this._tasks.values()) {
-      task.start();
+      try {
+        task.start();
+      } catch (err) {
+        frameworkLog("scheduler").error(
+          `Task "${task.name}" did not register and will not run: ${(err as Error).message ?? String(err)}`,
+          { task: task.name, schedule: task.schedule },
+        );
+        continue;
+      }
       frameworkLog("scheduler").info(`Started "${task.name}" — ${task.schedule}`);
     }
   }

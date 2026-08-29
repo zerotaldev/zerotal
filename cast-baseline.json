@@ -138,7 +138,6 @@
     "packages/queue/src/QueueManager.ts": 2,
     "packages/scheduler/src/monitor.ts": 1,
     "packages/scheduler/src/observability.ts": 3,
-    "packages/scheduler/src/ScheduledTask.ts": 1,
     "packages/session/src/AuthSessionMiddleware.ts": 1,
     "packages/session/src/SessionMiddleware.ts": 2,
     "packages/tenancy/src/resolvers/AuthResolver.ts": 1,
@@ -154,5 +153,5 @@
     "packages/validator/src/FormRequest.ts": 2,
     "packages/validator/src/validate.ts": 2
   },
-  "updatedAt": "2026-08-23T07:32:45.183Z"
+  "updatedAt": "2026-08-29T18:49:21.067Z"
 }

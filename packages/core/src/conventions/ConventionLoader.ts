@@ -105,7 +105,10 @@ export async function runConventions(
 ): Promise<void> {
   const orderedConcerns = [...concerns].sort((first, second) => first.order - second.order);
   for (const concern of orderedConcerns) {
-    if (concern.envs && !concern.envs.includes(options.env)) continue;
+    if (concern.envs && !concern.envs.includes(options.env)) {
+      await _announceSkipped(concern, options);
+      continue;
+    }
 
     if (concern.dir && concern.register) {
       const relativeDirectory = options.paths?.[concern.name] ?? concern.dir;
@@ -129,4 +132,38 @@ export async function runConventions(
       }
     }
   }
+}
+
+/**
+ * Say once, at boot, that this process is not running a convention the app has
+ * written files for.
+ *
+ * An env-restricted concern is skipped by *not looking*, which is correct and
+ * completely silent: from a web process's point of view nothing is wrong, because
+ * from a web process's point of view nothing exists. An app ran for weeks in
+ * production with `app/schedules` full and no worker process — no inventory hold
+ * released, no payment reminder sent, nothing logged, and it was found by going
+ * looking rather than by being told.
+ *
+ * Only announced when the directory actually holds files: "skipping 0 schedules" on
+ * every boot of every app is noise, and noise is how the line that matters gets
+ * scrolled past.
+ */
+async function _announceSkipped(
+  concern: ConcernDescriptor,
+  options: RunConventionsOptions,
+): Promise<void> {
+  if (!concern.dir || !concern.register) return;
+
+  const relativeDirectory = options.paths?.[concern.name] ?? concern.dir;
+  const files = (await _scanDir(`${options.root}/${relativeDirectory}`)).filter(
+    (file) => !_shouldSkip(file),
+  );
+  if (files.length === 0) return;
+
+  frameworkLog("app").info(
+    `Skipping ${files.length} file(s) in ${relativeDirectory} — the "${concern.name}" convention ` +
+      `does not run in env=${options.env} (it runs in: ${(concern.envs ?? []).join(", ")}).`,
+    { convention: concern.name, env: options.env, files: files.length },
+  );
 }

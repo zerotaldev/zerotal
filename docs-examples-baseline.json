@@ -4713,6 +4713,12 @@
     },
     {
       "file": "docs/inertia/ssr.md",
+      "heading": "Page metadata: `<Head>` on the server",
+      "ordinal": 0,
+      "hash": "lka0juqykp9q"
+    },
+    {
+      "file": "docs/inertia/ssr.md",
       "heading": "Streaming SSR",
       "ordinal": 0,
       "hash": "2p4krwxkbvrd"
@@ -6918,6 +6924,12 @@
       "heading": "Testing",
       "ordinal": 0,
       "hash": "20mbro2xxcsy"
+    },
+    {
+      "file": "docs/scheduler.md",
+      "heading": "Timezones",
+      "ordinal": 0,
+      "hash": "2z78mp1kawrx"
     },
     {
       "file": "docs/seeding.md",

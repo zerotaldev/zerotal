@@ -6,6 +6,73 @@
  * Field syntax: star, n, a-b, a-b with step, star with step, and
  * comma-separated lists of any of those (e.g. `1,15,30` or `1-5`).
  */
+/**
+ * The same instant, shifted so a `Date`'s **local** getters read `timeZone`'s wall
+ * clock.
+ *
+ * Cron is a wall-clock spec: `0 3 * * *` means three in the morning where the
+ * business is, not three UTC. Every matcher below reads `getHours()`,
+ * `getMinutes()` and friends, which answer in the *process's* zone — so evaluating
+ * a schedule in another zone is a question of which Date you hand them.
+ *
+ * The returned Date is a lie about the instant and true about the clock face: its
+ * epoch value is wrong by the zone offset, and it is only ever passed to the field
+ * matchers, never returned to a caller or compared against a real time.
+ *
+ * @param date - The instant to read.
+ * @param timeZone - An IANA zone name, e.g. `"Africa/Johannesburg"`.
+ * @returns A Date whose local fields are that zone's wall clock at `date`.
+ * @throws {@link RangeError} When `timeZone` is not a zone this runtime knows.
+ */
+export function wallClockIn(date: Date, timeZone: string): Date {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+
+  const field = (type: string): number => {
+    const found = parts.find((p) => p.type === type);
+    return found ? Number(found.value) : 0;
+  };
+
+  return new Date(
+    field("year"),
+    field("month") - 1,
+    field("day"),
+    field("hour"),
+    field("minute"),
+    field("second"),
+    0,
+  );
+}
+
+/**
+ * Whether this runtime knows `timeZone`.
+ *
+ * Worth checking separately from using it: a typo in a schedule's zone would
+ * otherwise surface as a `RangeError` thrown once a minute from inside a cron
+ * tick, with nothing naming the task it came from.
+ *
+ * @param timeZone - An IANA zone name.
+ */
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Minutes in a day, for the day-skip in the next-run scans. */
+const MINUTES_PER_DAY = 24 * 60;
+
 export class CronExpression {
   private fields: [string, string, string, string, string];
 
@@ -148,6 +215,17 @@ export class CronExpression {
     );
   }
 
+  /**
+   * Whether the expression matches `date` **as read in `timeZone`**.
+   *
+   * @param date - The instant to test.
+   * @param timeZone - An IANA zone name the expression is written against.
+   * @throws {@link RangeError} When `timeZone` is not a zone this runtime knows.
+   */
+  matchesIn(date: Date, timeZone: string): boolean {
+    return this.matches(wallClockIn(date, timeZone));
+  }
+
   nextRun(from: Date = new Date()): Date | null {
     return CronExpression.nextRunAfter(this.toString(), from);
   }
@@ -221,6 +299,50 @@ export class CronExpression {
         // Nothing today can match — jump to 00:00 tomorrow rather than probing 1,440 minutes.
         cursor.setDate(cursor.getDate() + 1);
         cursor.setHours(0, 0, 0, 0);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * The first instant at or after `from` that `expression` fires, reading the clock
+   * in `timeZone`.
+   *
+   * The returned Date is a real instant, not a shifted one — the shifting happens
+   * inside the scan, where the expression is compared against the zone's wall clock
+   * a minute at a time. That is what keeps it right across a DST change: nothing
+   * here computes an offset once and adds it.
+   *
+   * @param expression - A 5- or 6-field cron expression.
+   * @param from - Search start; the result is strictly after this minute.
+   * @param timeZone - An IANA zone name the expression is written against.
+   * @returns The next firing instant, or `null` for an invalid expression, an unknown
+   *   zone, or no occurrence within {@link SEARCH_HORIZON_DAYS}.
+   */
+  static nextRunAfterIn(expression: string, from: Date, timeZone: string): Date | null {
+    if (!CronExpression.isValid(expression)) return null;
+    if (!isValidTimeZone(timeZone)) return null;
+
+    const cron = new CronExpression(expression);
+    const cursor = new Date(from);
+    cursor.setSeconds(0, 0);
+    cursor.setMinutes(cursor.getMinutes() + 1);
+
+    const deadline = new Date(from);
+    deadline.setDate(deadline.getDate() + CronExpression.SEARCH_HORIZON_DAYS);
+
+    while (cursor <= deadline) {
+      const local = wallClockIn(cursor, timeZone);
+      if (cron._dayMatches(local)) {
+        if (cron.matches(local)) return new Date(cursor);
+        cursor.setMinutes(cursor.getMinutes() + 1);
+      } else {
+        // Nothing on this local day can match — jump to the zone's next midnight
+        // rather than probing 1,440 minutes. Zone offsets are whole minutes, so
+        // this lands on it exactly; a DST change costs an hour of extra probes and
+        // nothing else.
+        const elapsed = local.getHours() * 60 + local.getMinutes();
+        cursor.setMinutes(cursor.getMinutes() + (MINUTES_PER_DAY - elapsed));
       }
     }
     return null;

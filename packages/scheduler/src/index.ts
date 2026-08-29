@@ -1,6 +1,7 @@
 export { SchedulerManager, SchedulerBuilder } from "./SchedulerManager.ts";
 export { ScheduledTask } from "./ScheduledTask.ts";
-export { CronExpression } from "./CronExpression.ts";
+export { CronExpression, wallClockIn, isValidTimeZone } from "./CronExpression.ts";
+export { SchedulerError, UnknownTimeZoneError } from "./errors.ts";
 export { SchedulerProvider } from "./provider/SchedulerProvider.ts";
 
 // Convention-based scheduling: extend Schedule, drop it in app/schedules/.

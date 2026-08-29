@@ -61,17 +61,43 @@ import { SchedulerConfig } from "@zerotal/scheduler";
 import { env } from "zerotal";
 
 export default SchedulerConfig({
-  timezone: env("APP_TIMEZONE", "UTC"),
+  timezone: env("APP_TIMEZONE", "Africa/Johannesburg"),
 });
 ```
 
-| Field      | Required | Default | Description                                                                             |
-| ---------- | -------- | ------- | --------------------------------------------------------------------------------------- |
-| `timezone` | no       | `"UTC"` | Informational only — `Bun.cron` uses the system timezone. Set per task with `timezone`. |
+| Field      | Required | Default         | Description                                                                        |
+| ---------- | -------- | --------------- | ---------------------------------------------------------------------------------- |
+| `timezone` | no       | the system zone | IANA zone every cron expression is read in, unless a task sets its own `timezone`. |
 
-> **Note** — The config `timezone` is informational. To evaluate a cron in a
-> specific zone, set `timezone` on the `Schedule` subclass or `.timezone(tz)` on a
-> facade task; that value is passed through to `Bun.cron`.
+## Timezones
+
+A cron expression is a wall clock: `0 3 * * *` means three in the morning
+_somewhere_. By default that somewhere is the server's zone. Set `scheduler.timezone`
+to make it one zone for the whole app, or `timezone` on a single schedule to override
+it:
+
+```typescript fragment
+export class SendDailyReports extends Schedule {
+  cron = "0 8 * * *";
+  timezone = "Africa/Johannesburg"; // 08:00 there, whatever the server is on
+}
+```
+
+The zone is evaluated by Zerotal, not by `Bun.cron` — which reads the system zone and
+has no option to change it. A zoned task ticks every minute and runs on the ticks
+where its expression matches the clock in its own zone, so it stays correct across a
+daylight-saving change rather than drifting by an hour twice a year. A minute is also
+the finest granularity `Bun.cron` accepts, so nothing is given up.
+
+Two consequences worth knowing:
+
+- **A skipped hour skips the schedules inside it, and a repeated hour runs them
+  twice.** That is what every cron does. A task at `0 2 * * *` in a zone that springs
+  from 01:59 to 03:00 does not run that day.
+- **An unknown zone name refuses at boot, loudly, and takes only its own task out.**
+  A registration failure used to propagate: the worker died during boot and
+  restart-looped, so one bad schedule stopped every schedule in the app. Now the
+  others start and the log names the one that did not.
 
 ## Defining schedules
 
@@ -134,7 +160,7 @@ Every setting is an optional property (or method) on your `Schedule` subclass:
 | `cron`                                                         | `string`                        | Cron expression (5- or 6-field). Set this **or** override `frequency()`.                                      |
 | `frequency(every)`                                             | method                          | Build the cadence fluently; return the task (see helpers below).                                              |
 | `name`                                                         | `string`                        | Task name in `schedule:list` and logs. Defaults to the class name.                                            |
-| `timezone`                                                     | `string`                        | IANA timezone the cron is evaluated in.                                                                       |
+| `timezone`                                                     | `string`                        | IANA timezone the cron is evaluated in — overrides `scheduler.timezone`. See [Timezones](#timezones).         |
 | `withoutOverlapping`                                           | `boolean \| OverlapLockOptions` | Skip a tick while a previous run is active; also takes a cross-process lock when a lock driver is configured. |
 | `environments`                                                 | `string[]`                      | Only run when `APP_ENV` is one of these.                                                                      |
 | `inBackground`                                                 | `boolean`                       | Run the body without blocking the scheduler tick.                                                             |
@@ -489,6 +515,19 @@ override async onStarted(): Promise<void> {
 For production, run the worker as a separate process so it can be scaled, restarted,
 and monitored independently of the web server.
 
+> **A web process says so when it is not running your schedules.** `app/schedules/`
+> is only discovered in `worker` and `console`, so a web process skips it by not
+> looking — which used to be completely silent, and is how an app runs for weeks in
+> production with every schedule written and none of them ever firing. A boot line
+> now names it:
+>
+> ```
+> Skipping 3 file(s) in app/schedules — the "schedules" convention does not run in env=web (it runs in: worker, console).
+> ```
+>
+> Seeing that on a web process is correct. Seeing it and having no worker running is
+> the hole.
+
 ## References
 
 The `Scheduler` facade resolves the `scheduler` container binding — a
@@ -513,6 +552,30 @@ The `Scheduler` facade resolves the `scheduler` container binding — a
 | `start` | `start(): void`                                                    | Arm every registered task (called in `onStarted`). |
 | `stop`  | `stop(): void`                                                     | Stop every running task.                           |
 | `tasks` | `get tasks(): ReadonlyMap<string, ScheduledTask>`                  | The registered tasks, keyed by name.               |
+
+### Timezone helpers
+
+The zone arithmetic the scheduler uses to evaluate a cron somewhere other than the
+server, exported because an app doing its own time-window logic needs the same
+answers.
+
+| Export                          | Signature                                            | Description                                                                                    |
+| ------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `isValidTimeZone`               | `isValidTimeZone(tz: string): boolean`               | Whether this runtime knows the IANA zone. Check before storing one a user typed.               |
+| `wallClockIn`                   | `wallClockIn(date: Date, tz: string): Date`          | The same instant, shifted so the Date's _local_ getters read that zone's clock face.           |
+| `CronExpression.matchesIn`      | `matchesIn(date: Date, tz: string): boolean`         | Whether the expression fires at `date`, read in `tz`.                                          |
+| `CronExpression.nextRunAfterIn` | `nextRunAfterIn(expr, from: Date, tz): Date \| null` | The next real instant the expression fires on that zone's clock — correct across a DST change. |
+
+`wallClockIn` returns a Date that is a lie about the instant and true about the clock
+face: its epoch value is off by the zone offset. Pass it to a field comparison, never
+back to a caller.
+
+### Errors
+
+| Error                  | Thrown when                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `SchedulerError`       | Base class for everything this package throws. Catch it to catch them all.                  |
+| `UnknownTimeZoneError` | A task declares a `timezone` this runtime does not know — at registration, naming the task. |
 
 ### ScheduledTask introspection
 

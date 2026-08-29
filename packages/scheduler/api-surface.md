@@ -10,10 +10,12 @@ class CronExpression = {
   static describe: (expression: string) => string
   static isValid: (expression: string) => boolean
   static nextRunAfter: (expression: string, from?: Date) => Date | null
+  static nextRunAfterIn: (expression: string, from: Date, timeZone: string) => Date | null
   static readonly SEARCH_HORIZON_DAYS: number
   dayOfMonth: (v: number | string) => CronExpression
   hour: (v: number | string) => CronExpression
   matches: (date?: Date) => boolean
+  matchesIn: (date: Date, timeZone: string) => boolean
   minute: (v: number | string) => CronExpression
   month: (v: number | string) => CronExpression
   nextRun: (from?: Date) => Date | null
@@ -121,6 +123,13 @@ class SchedulerBuilder = {
   yearlyOn: (month?: number, dayOfMonth?: number, time?: string) => ScheduledTask
 }
 
+class SchedulerError = {
+  new (message: string, code?: string, status?: number, context?: Record<string, unknown>): SchedulerError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
 class SchedulerManager = {
   new (): SchedulerManager
   add: (name: string, cronExpression: string, callback: TaskCallback) => ScheduledTask
@@ -172,9 +181,20 @@ class TaskSkipped = {
   readonly reason: 'lock' | 'window' | 'env' | 'when' | 'skip' | 'overlap'
 }
 
+class UnknownTimeZoneError = {
+  new (task: string, timezone: string): UnknownTimeZoneError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
 const Scheduler = SchedulerManager
 
+function isValidTimeZone = (timeZone: string) => boolean
+
 function SchedulerConfig = (options?: Partial<SchedulerConfigShape>) => SchedulerConfigShape
+
+function wallClockIn = (date: Date, timeZone: string) => Date
 
 interface OverlapLockOptions = {
   crossProcess?: boolean

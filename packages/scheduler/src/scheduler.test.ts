@@ -202,11 +202,34 @@ describe("ScheduledTask.start() / stop()", () => {
     }
   });
 
-  it("start() with timezone uses options form of Bun.cron", () => {
-    let receivedOptions: unknown;
+  /**
+   * This block used to assert that a timezoned task calls `Bun.cron` with croner's
+   * options form. `Bun.cron` does not accept that form — it throws — and the test
+   * passed because the mock accepted anything the code handed it. The throw
+   * happened during registration, so the worker died on boot and restart-looped:
+   * one task with a timezone stopped every task in the app, including the ones that
+   * release inventory holds and chase deposits.
+   *
+   * So the first test here runs against the *real* `Bun.cron`. It is the only one
+   * that could have caught this, and a mock of a two-argument API is exactly the
+   * shape of test that cannot.
+   */
+  it("registers a timezoned task with the real Bun.cron", () => {
+    const task = new ScheduledTask("tz-task", "0 9 * * *", async () => {});
+    task.timezone("Africa/Johannesburg");
+
+    expect(() => task.start()).not.toThrow();
+    expect((task as unknown as Record<string, unknown>)["_handle"]).toBeDefined();
+    task.stop();
+  });
+
+  it("start() with a timezone ticks every minute and gates on the zone's clock", () => {
+    let registered: string | undefined;
+    let handler: (() => Promise<void>) | undefined;
     const origCron = Bun.cron;
-    (Bun as unknown as Record<string, unknown>).cron = (_expr: string, optsOrHandler: unknown) => {
-      receivedOptions = optsOrHandler;
+    (Bun as unknown as Record<string, unknown>).cron = (expr: string, fn: unknown) => {
+      registered = expr;
+      handler = fn as () => Promise<void>;
       return { stop: () => {} };
     };
 
@@ -214,21 +237,82 @@ describe("ScheduledTask.start() / stop()", () => {
       const task = new ScheduledTask("tz-task", "0 9 * * *", async () => {});
       task.timezone("Africa/Johannesburg");
       task.start();
-      // When a timezone is set, Bun.cron is called with an options object
-      expect(typeof receivedOptions).toBe("object");
-      expect((receivedOptions as Record<string, unknown>)["timezone"]).toBe("Africa/Johannesburg");
+
+      // Bun is asked for every minute; the expression is Zerotal's to evaluate,
+      // because Bun.cron only ever reads the system zone.
+      expect(registered).toBe("* * * * *");
+      expect(typeof handler).toBe("function");
     } finally {
       (Bun as unknown as Record<string, unknown>).cron = origCron;
     }
+  });
+
+  it("runs a timezoned task on the zone's clock, not the server's", async () => {
+    // 07:00 UTC is 09:00 in Johannesburg (UTC+2, no DST) and 02:00 in New York.
+    // A `0 9 * * *` task in Johannesburg must fire on that tick and a New York one
+    // must not, whichever zone the machine running this test is in.
+    const ran: string[] = [];
+    const origCron = Bun.cron;
+    let lastHandler: (() => Promise<void>) | undefined;
+    (Bun as unknown as Record<string, unknown>).cron = (_expr: string, fn: unknown) => {
+      lastHandler = fn as () => Promise<void>;
+      return { stop: () => {} };
+    };
+
+    const at0700Utc = new Date("2026-03-10T07:00:00Z");
+    const realDate = Date;
+    try {
+      const jhb = new ScheduledTask("jhb", "0 9 * * *", async () => {
+        ran.push("jhb");
+      });
+      jhb.timezone("Africa/Johannesburg");
+      jhb.start();
+      const jhbHandler = lastHandler!;
+
+      const nyc = new ScheduledTask("nyc", "0 9 * * *", async () => {
+        ran.push("nyc");
+      });
+      nyc.timezone("America/New_York");
+      nyc.start();
+      const nycHandler = lastHandler!;
+
+      // Freeze the clock on the tick under test.
+      globalThis.Date = class extends realDate {
+        constructor(...args: ConstructorParameters<typeof Date>) {
+          super(...(args.length ? args : [at0700Utc.getTime()]));
+        }
+      } as DateConstructor;
+
+      await jhbHandler();
+      await nycHandler();
+    } finally {
+      globalThis.Date = realDate;
+      (Bun as unknown as Record<string, unknown>).cron = origCron;
+    }
+
+    expect(ran).toContain("jhb");
+    expect(ran).not.toContain("nyc");
+  });
+
+  it("refuses a timezone the runtime does not know, and names the task", () => {
+    const task = new ScheduledTask("typo-task", "0 9 * * *", async () => {});
+    task.timezone("Africa/Johanesburg"); // one 'n'
+
+    expect(() => task.start()).toThrow(/typo-task/);
+    expect(() => task.start()).toThrow(/Africa\/Johanesburg/);
   });
 });
 
 // ── SchedulerConfig factory ───────────────────────────────────────────────────
 
 describe("SchedulerConfig", () => {
-  it("returns defaults when called with no arguments", () => {
+  it("defaults the timezone to the system zone, not to a literal", () => {
+    // `bun test` runs under TZ=UTC, so asserting "UTC" here would pass for the
+    // wrong reason and hide the thing that matters: an app that does not set this
+    // key keeps whatever its server does. Turning the key from decoration into
+    // behaviour would otherwise have moved every schedule in every such app.
     const cfg = SchedulerConfig();
-    expect(cfg.timezone).toBe("UTC");
+    expect(cfg.timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
   });
 
   it("overrides work", () => {

@@ -58,6 +58,63 @@ describe("runConventions", () => {
     expect(ran).toBe(false);
   });
 
+  it("says so when it skips a directory the app has files in", async () => {
+    // Skipping by not looking is correct and completely silent, which is how an app
+    // ran for weeks in production with app/schedules full and no worker process.
+    const lines: string[] = [];
+    const original = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: unknown) => {
+      lines.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const concern: ConcernDescriptor = {
+        name: "conventions",
+        order: 1,
+        // This test file's own directory: guaranteed non-empty, no fixture needed.
+        dir: ".",
+        envs: ["worker"],
+        register: () => {},
+      };
+      await runConventions([concern], { root: import.meta.dir, env: "web", ctx });
+      // The console channel writes through a promise; let it land.
+      await Promise.resolve();
+    } finally {
+      process.stdout.write = original;
+    }
+
+    const announced = lines.join(" | ");
+    expect(announced).toContain("conventions");
+    expect(announced).toContain("env=web");
+    expect(announced).toContain("worker");
+  });
+
+  it("stays quiet about a skipped directory with nothing in it", async () => {
+    const lines: string[] = [];
+    const original = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: unknown) => {
+      lines.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+
+    try {
+      const concern: ConcernDescriptor = {
+        name: "empty-thing",
+        order: 1,
+        dir: "does-not-exist",
+        envs: ["worker"],
+        register: () => {},
+      };
+      await runConventions([concern], { root: import.meta.dir, env: "web", ctx });
+      await Promise.resolve();
+    } finally {
+      process.stdout.write = original;
+    }
+
+    expect(lines.join(" | ")).not.toContain("empty-thing");
+  });
+
   it("ignores a missing directory without throwing", async () => {
     let called = false;
     const concern: ConcernDescriptor = {

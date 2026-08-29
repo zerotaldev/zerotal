@@ -8,6 +8,51 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A task with a `timezone` no longer takes the whole scheduler down.** The code
+  passed croner's options form — `Bun.cron(schedule, { run, timezone })` — on the
+  belief that Bun accepted it at runtime and only the types disagreed. It does not:
+  it throws, and it throws during _registration_, so the worker died on boot and
+  restart-looped. One task with a timezone stopped **every** task in the app,
+  including the ones that release inventory holds and chase deposits. Setting a
+  timezone is the obvious thing to do for a business that operates in one country and
+  is not on UTC, which is most of them.
+
+  Zerotal evaluates the zone itself now. A zoned task registers a minute tick and runs
+  on the ticks where its expression matches the wall clock in its own zone — minute
+  granularity being the finest `Bun.cron` accepts anyway, so nothing is given up, and
+  comparing against the zone's local time rather than an offset computed once is what
+  keeps it right across a daylight-saving change. `nextRunAt()` reads the same zone,
+  so `schedule:list` and the monitor agree with when the task will actually run.
+
+  The test that covered this asserted the broken behaviour against a mock that
+  accepted anything. It now runs against the real `Bun.cron`.
+
+- **A task that cannot register takes only itself out.** Registration throws for
+  exactly the reasons that are one task's problem — an expression the runtime
+  rejects, a zone it does not know — and letting one propagate meant a typo in one
+  schedule stopped every schedule in the app, from a crash loop that named none of
+  them. The others start now, and the log names the one that did not.
+
+### Changed
+
+- **`scheduler.timezone` does something.** It was documented as informational and read
+  by nothing. It is now the zone every schedule is evaluated in unless the task sets
+  its own — one line instead of a `.timezone()` on every task. Its default changed
+  from the literal `"UTC"` to **the system zone**, so an app that never set the key
+  keeps doing exactly what it did; only an app that explicitly asked for a zone gets
+  a change, which is the change it asked for.
+
+### Added
+
+- `UnknownTimeZoneError` (and the `SchedulerError` base it extends) — raised at
+  registration and naming the task, rather than a `RangeError` thrown once a minute
+  from inside a cron tick with nothing to say which schedule it came from.
+- `wallClockIn`, `isValidTimeZone`, `CronExpression.matchesIn` and
+  `CronExpression.nextRunAfterIn` — the zone arithmetic the scheduler now uses,
+  exported because an app doing its own time-window logic needs the same answers.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

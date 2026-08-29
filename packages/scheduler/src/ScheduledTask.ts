@@ -1,10 +1,21 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { FrameworkEvents } from "@zerotal/core";
+import { config, FrameworkEvents } from "@zerotal/core";
 import { deployEnv } from "@zerotal/core";
 import { TaskRan, TaskFailed, TaskSkipped } from "./events.ts";
 import type { LockManager, ManagedLock } from "@zerotal/core/lock";
-import { CronExpression } from "./CronExpression.ts";
+import { CronExpression, isValidTimeZone } from "./CronExpression.ts";
+import { UnknownTimeZoneError } from "./errors.ts";
 import { frameworkLog } from "@zerotal/core/logger";
+
+/**
+ * The tick a timezoned task rides on.
+ *
+ * `Bun.cron` evaluates a schedule in the system zone and offers no way to change
+ * that, so a task with its own zone registers this instead and does the matching
+ * itself. Minute granularity is not a compromise: five fields is all `Bun.cron`
+ * accepts, so a minute is the finest a Zerotal schedule can express anyway.
+ */
+const EVERY_MINUTE = "* * * * *";
 
 // ── Output capture (shared, reference-counted) ────────────────────────────────
 // A single `console.log` patch is installed while ANY task is capturing, and the
@@ -134,6 +145,14 @@ export class ScheduledTask {
     this._callback = callback;
   }
 
+  /**
+   * Evaluate this task's schedule in `tz` rather than the server's zone.
+   *
+   * @param tz - An IANA zone name, e.g. `"Africa/Johannesburg"`.
+   * @throws {@link UnknownTimeZoneError} At {@link start}, when the runtime does not
+   *   know the zone — named there rather than here so a schedule declared as data
+   *   fails where the failure can name the task.
+   */
   timezone(tz: string): this {
     this._timezone = tz;
     return this;
@@ -250,9 +269,18 @@ export class ScheduledTask {
   get lastDurationMs(): number | undefined {
     return this._lastDurationMs;
   }
-  /** Next scheduled fire time from `from` (null if the expression never matches). */
+  /**
+   * Next scheduled fire time from `from` (null if the expression never matches).
+   *
+   * Read in the task's own timezone when it has one, so `schedule:list` and the
+   * monitor agree with when the task will actually run rather than with when the
+   * same expression would fire in the server's zone.
+   */
   nextRunAt(from: Date = new Date()): Date | null {
-    return new CronExpression(this._schedule).nextRun(from);
+    const timezone = this._effectiveTimezone();
+    return timezone
+      ? CronExpression.nextRunAfterIn(this._schedule, from, timezone)
+      : new CronExpression(this._schedule).nextRun(from);
   }
   /** Run the task body immediately, bypassing schedule/time-window guards. */
   async runNow(): Promise<void> {
@@ -497,19 +525,57 @@ export class ScheduledTask {
     };
   }
 
+  /**
+   * The zone this task's schedule is read in: its own, else `scheduler.timezone`.
+   *
+   * `undefined` when that resolves to the zone the process is already in, because
+   * `Bun.cron` evaluates a schedule in the system zone and its own tick is both
+   * cheaper and better tested than a minute tick with a match on top.
+   *
+   * @returns The zone to evaluate in, or `undefined` to let `Bun.cron` do it.
+   */
+  private _effectiveTimezone(): string | undefined {
+    const timezone = this._timezone ?? config.safe("scheduler.timezone", "");
+    if (!timezone) return undefined;
+    return timezone === Intl.DateTimeFormat().resolvedOptions().timeZone ? undefined : timezone;
+  }
+
   start(): void {
     if (this._handle) return;
     const handler = this._buildHandler();
-    // Bun.cron supports croner's options form `(schedule, { run, timezone })` at
-    // runtime, but @types/bun only types the `(schedule, handler)` overload — cast
-    // when passing a timezone.
-    const cronWithOptions = Bun.cron as unknown as (
-      schedule: string,
-      options: { run: () => void | Promise<void>; timezone: string },
-    ) => { stop(): void };
-    this._handle = this._timezone
-      ? cronWithOptions(this._schedule, { run: handler, timezone: this._timezone })
-      : Bun.cron(this._schedule, handler);
+    const timezone = this._effectiveTimezone();
+
+    if (!timezone) {
+      this._handle = Bun.cron(this._schedule, handler);
+      return;
+    }
+
+    if (!isValidTimeZone(timezone)) {
+      throw new UnknownTimeZoneError(this._name, timezone);
+    }
+
+    // `Bun.cron` takes `(schedule, handler)` and nothing else. The croner options
+    // form — `(schedule, { run, timezone })` — throws, and it throws during
+    // *registration*, so one task with a timezone took every other task in the app
+    // with it and the worker restart-looped. Setting a timezone is the obvious
+    // thing to do for a business that operates in one country and is not on UTC,
+    // which is most of them.
+    //
+    // So the schedule is evaluated here rather than by Bun. Bun ticks once a
+    // minute — the finest granularity it has, so nothing is given up — and the task
+    // runs on the ticks where the expression matches the wall clock in its own
+    // zone. Comparing against the zone's local time rather than an offset computed
+    // at registration is also what keeps it right across a DST change.
+    //
+    // A wall clock that skips an hour skips the schedules inside it, and one that
+    // repeats an hour runs them twice. That is what every cron does, and the
+    // alternative — inventing a firing time the clock never showed — is worse.
+    const expression = new CronExpression(this._schedule);
+
+    this._handle = Bun.cron(EVERY_MINUTE, async () => {
+      if (!expression.matchesIn(new Date(), timezone)) return;
+      await handler();
+    });
   }
 
   stop(): void {

@@ -726,13 +726,25 @@ function renderHeader(sidebar: boolean): string {
  * — how to upgrade, what changed, how to report a vulnerability, what the licence
  * is — lived only in the repository, and the site never mentioned it existed.
  *
- * Sits outside the sidebar's column offset on purpose: it belongs to the page,
- * not to the documentation tree, and it is the last thing on every page including
- * the ones with no sidebar at all.
+ * It belongs to the page rather than to the documentation tree, so on a page with
+ * no sidebar it spans the full width — which is what the original "sits outside
+ * the column offset" note meant, and it was right about that.
+ *
+ * What it missed is that both rails are `position: fixed` with the full viewport
+ * height, so they do not merely occupy a column — they paint over whatever is
+ * beneath them at that x-position, forever. A full-bleed footer on a docs page
+ * was therefore not full-bleed, it was *hidden*: the left 18rem under the sidebar
+ * and the right 16rem under the table of contents, so "Documentation" read as
+ * "TATION" and the licence line was cut in half. It could not be scrolled into
+ * view, because a fixed rail does not scroll away.
+ *
+ * So it takes the same offsets `<main>` does, and only when a sidebar is present.
+ *
+ * @param sidebar - Whether this page renders the docs rails.
  */
 const REPO = "https://github.com/zerotaldev/zerotal";
 
-function renderFooter(): string {
+function renderFooter(sidebar: boolean): string {
   const col = (heading: string, links: [string, string][]): string => `
       <div>
         <p class="text-[0.6875rem] font-semibold uppercase tracking-[0.09em] text-stone-400 mb-3">${heading}</p>
@@ -747,7 +759,7 @@ function renderFooter(): string {
       </div>`;
 
   return `
-  <footer class="border-t border-stone-200 bg-white" aria-label="Site footer">
+  <footer class="${sidebar ? "md:ml-72 xl:mr-64" : ""} border-t border-stone-200 bg-white" aria-label="Site footer">
     <div class="max-w-6xl mx-auto px-6 sm:px-10 py-12">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
         ${col("Documentation", [
@@ -896,7 +908,7 @@ export function Layout({
 
   </div><!-- /shell -->
 
-  ${renderFooter()}
+  ${renderFooter(Boolean(sidebar))}
 
 </body>
 </html>

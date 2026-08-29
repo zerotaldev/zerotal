@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A rebuilt bundle no longer 404s on a chunk the browser asks for.** `resources/js/app.tsx`
+  builds to `/assets/app.js` under that name every time, while `splitting: true` names each chunk
+  after its content. A rebuild therefore rewrites `app.js` to import `chunk-NEW.js` and prunes
+  `chunk-OLD.js` — and a browser holding a cached `app.js` asks for the pruned one and gets
+
+      GET /assets/chunk-hrnspqda.js  status=404
+
+  from a page that renders and a server that is healthy. Nothing in that line leads back to the
+  template.
+
+  The template hardcodes `/assets/app.js` rather than calling `asset()`, so the version token the
+  rest of the framework appends never reached it, and cache-busting had only ever been
+  implemented for `--dev-worker`. It now applies everywhere: the file's mtime in dev, where a
+  rebuild happens without a restart, and the boot-derived asset version otherwise, memoised
+  because a deploy restarts the process. An unchanged asset keeps a stable URL and stays cached,
+  which is why the token is derived rather than random.
+
 ### Documented
 
 - **Every promised export is documented.** The `docs-coverage` gate reads `maturity: stable` as a

@@ -1,4 +1,5 @@
 import { config, RequestContext } from "@zerotal/core";
+import { assetVersion as coreAssetVersion } from "@zerotal/core/assets";
 import { statSync } from "node:fs";
 import { InertiaTemplateNotLoadedError, InvalidComponentError } from "./errors.ts";
 import { DEFAULT_PAGES_DIR } from "./config.ts";
@@ -110,6 +111,9 @@ let _pagesDir = "";
  */
 export function _setHtmlTemplate(html: string): void {
   _htmlTemplate = html;
+  // The busted copy was derived from the previous template. Keeping it would
+  // serve the old markup for as long as the asset token happened to match.
+  _resetBustedTemplate();
 }
 
 /**
@@ -143,31 +147,70 @@ export function _getPagesDir(): string {
   return _pagesDir || `${process.cwd()}/${config.safe("inertia.pagesDir", DEFAULT_PAGES_DIR)}`;
 }
 
+/** Local `href="/…"` / `src="/…"` JS and CSS URLs that carry no query already. */
+const _LOCAL_ASSET_URL = /((?:href|src)=")(\/[^"?]+\.(?:js|css))(")/g;
+
 /**
- * In dev (`--dev-worker`) append a cache-busting `?v=<mtime>` to local JS/CSS
- * asset URLs in the served HTML, so the browser fetches a freshly-rebuilt
- * bundle instead of a stale cached copy.
+ * Append a cache-busting `?v=…` to the template's local JS/CSS URLs.
  *
- * The token is the asset file's modification time: unchanged assets keep a
- * stable URL (and stay cached), while a rebuild changes the URL and forces a
- * re-fetch. No-op in production, where assets are served as-is.
+ * **The entry point is not content-hashed and the chunks are**, which is the
+ * whole reason this exists. `app.tsx` builds to `/assets/app.js` under that name
+ * every time, while `splitting: true` names each chunk after its content — so a
+ * rebuild rewrites `app.js` to import `chunk-NEW.js` and prunes `chunk-OLD.js`.
+ * A browser holding a cached `app.js` then asks for a chunk that is no longer on
+ * disk and gets a 404, from a page that renders fine and a server that is
+ * perfectly healthy. The stack says `GET /assets/chunk-….js 404` and names
+ * nothing that would lead you here.
+ *
+ * The template hardcodes `/assets/app.js` rather than calling `asset()`, so the
+ * version token the rest of the framework appends never reached it. Two token
+ * sources, because the two runtimes invalidate at different moments:
+ *
+ * - **Dev (`--dev-worker`)**: the file's mtime, read per request. A rebuild
+ *   happens without a restart, so a token fixed at boot would be stale exactly
+ *   when it matters.
+ * - **Everywhere else**: the boot-derived asset version, memoised. A deploy
+ *   restarts the process — the pipeline says so in as many words — so the token
+ *   is computed once and reused, rather than stat-ing files on every render.
+ *
+ * Unchanged assets keep a stable URL and stay cached; that is the point of a
+ * derived token rather than a random one.
  *
  * @internal
  */
-function _devBustAssets(html: string): string {
-  if (!process.argv.includes("--dev-worker")) return html;
-  const root = `${process.cwd()}/public`;
-  return html.replace(
-    /((?:href|src)=")(\/[^"?]+\.(?:js|css))(")/g,
-    (match, pre: string, url: string, post: string) => {
+export function _bustAssets(html: string): string {
+  if (process.argv.includes("--dev-worker")) {
+    const root = `${process.cwd()}/public`;
+    return html.replace(_LOCAL_ASSET_URL, (match, pre: string, url: string, post: string) => {
       try {
         const mtime = Math.floor(statSync(`${root}${url}`).mtimeMs);
         return `${pre}${url}?v=${mtime}${post}`;
       } catch {
         return match; // asset not found under public/ — leave the URL untouched
       }
-    },
-  );
+    });
+  }
+
+  const token = coreAssetVersion();
+  // No token means nothing derived one — an app serving no built assets, or a
+  // boot order that has not reached the conventions phase. Leave the URLs alone
+  // rather than stamping `?v=` and inventing a second URL for the same file.
+  if (!token) return html;
+  if (_bustedFor === token) return _bustedHtml;
+
+  _bustedHtml = html.replace(_LOCAL_ASSET_URL, `$1$2?v=${token}$3`);
+  _bustedFor = token;
+  return _bustedHtml;
+}
+
+/** Memoised output of {@link _bustAssets}, keyed on the token it was built with. */
+let _bustedHtml = "";
+let _bustedFor = "";
+
+/** Drop the memoised template. Tests, and any caller that replaces the template. @internal */
+export function _resetBustedTemplate(): void {
+  _bustedHtml = "";
+  _bustedFor = "";
 }
 
 /**
@@ -222,7 +265,7 @@ async function _inertiaStream(component: string, props: Record<string, unknown>)
 
   const pageObject = await buildPageObject(component, props);
 
-  const [prefix = "", suffix = ""] = _devBustAssets(_htmlTemplate).split("<!-- @inertia -->");
+  const [prefix = "", suffix = ""] = _bustAssets(_htmlTemplate).split("<!-- @inertia -->");
 
   const { modPath, framework } = await resolvePageModule(_getPagesDir(), component);
   const encoder = new TextEncoder();
@@ -401,7 +444,7 @@ async function _inertia(component: string, props: Record<string, unknown>): Prom
     .replace(/&/g, "\\u0026")
     .replace(/\//g, "\\/");
 
-  const html = _devBustAssets(_htmlTemplate).replace(
+  const html = _bustAssets(_htmlTemplate).replace(
     "<!-- @inertia -->",
     `<div id="app"></div>\n    ` +
       `<script type="application/json" data-page="app">${safeJson}</script>`,

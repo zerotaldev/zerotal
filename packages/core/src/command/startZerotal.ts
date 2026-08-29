@@ -8,10 +8,13 @@ import { CommandRunner } from "./CommandRunner.ts";
 import { configLoader } from "../config/ConfigLoader.ts";
 import { setAppEnv } from "../helpers/index.ts";
 import {
+  runtimeBelowFloor,
+  runtimeBelowFloorMessage,
   runtimeMismatch,
   runtimeMismatchAllowed,
   runtimeMismatchMessage,
 } from "../support/runtime.ts";
+import type { RuntimeMismatch } from "../support/runtime.ts";
 import { RuntimeMismatchError } from "../errors/RuntimeMismatchError.ts";
 import type { Application } from "../application/Application.ts";
 
@@ -66,21 +69,45 @@ export async function startZerotal(
 }
 
 /**
- * Refuse to run when the project has two Bun runtimes in it.
+ * Refuse to run on a Bun the project does not agree with.
+ *
+ * Two disagreements, both about the same thing — which binary the assertions
+ * downstream of here are assertions *about*:
+ *
+ * - The runtime is below the `engines.bun` the project declares. Every generated
+ *   app writes that floor and nothing had ever enforced it.
+ * - The project installs a different Bun in `node_modules` than the one running.
+ *   Most projects do not install Bun as a package, so most never see this one.
  *
  * At the top of the entry point rather than in a check somebody remembers to run,
- * because the value is in it being unmissable: the failure it prevents is a suite
- * that passes about the wrong binary, and nothing downstream of here can notice
- * that. A project with no `node_modules/bun` — most of them — never sees this.
+ * because the value is in it being unmissable: the failure both prevent is a suite
+ * that passes about the wrong binary, and nothing downstream of here can notice that.
  *
- * @throws When the running Bun and the installed one disagree, unless
- *   `ZT_ALLOW_RUNTIME_MISMATCH` is set, which downgrades it to a warning on stderr.
+ * @throws When either check fails, unless `ZT_ALLOW_RUNTIME_MISMATCH` is set, which
+ *   downgrades it to a warning on stderr.
  * @internal
  */
 function assertOneRuntime(): void {
+  const floor = runtimeBelowFloor();
+  if (floor) {
+    _refuse(runtimeBelowFloorMessage(floor), {
+      running: floor.running,
+      installed: floor.required,
+      manifest: floor.manifest,
+    });
+  }
+
   const mismatch = runtimeMismatch();
-  if (!mismatch) return;
-  const message = runtimeMismatchMessage(mismatch);
+  if (mismatch) _refuse(runtimeMismatchMessage(mismatch), mismatch);
+}
+
+/**
+ * Stop, or warn and continue when the escape hatch is set.
+ *
+ * @param message - The full explanation, already formatted.
+ * @param mismatch - The two versions, carried on the error for a harness to read.
+ */
+function _refuse(message: string, mismatch: RuntimeMismatch): void {
   if (runtimeMismatchAllowed()) {
     console.warn(`\n⚠  ${message}\n`);
     return;

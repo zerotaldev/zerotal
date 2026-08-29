@@ -8,6 +8,9 @@ import {
   runtimeMismatchMessage,
   runtimeMismatchAllowed,
   bunBinary,
+  declaredBunFloor,
+  runtimeBelowFloor,
+  runtimeBelowFloorMessage,
   RUNTIME_MISMATCH_ESCAPE,
 } from "./runtime.ts";
 
@@ -24,6 +27,19 @@ function project(version?: string, nested = ""): string {
       JSON.stringify({ name: "bun", version }),
     );
   }
+  if (nested) {
+    const deep = join(root, nested);
+    mkdirSync(deep, { recursive: true });
+    return deep;
+  }
+  return root;
+}
+
+/** A throwaway project root whose `package.json` is exactly `contents`. */
+function manifest(contents: Record<string, unknown>, nested = ""): string {
+  const root = mkdtempSync(join(tmpdir(), "zt-runtime-"));
+  temporaries.push(root);
+  writeFileSync(join(root, "package.json"), JSON.stringify(contents));
   if (nested) {
     const deep = join(root, nested);
     mkdirSync(deep, { recursive: true });
@@ -120,5 +136,73 @@ describe("bunBinary", () => {
   it("is the binary this process is running, not a name PATH resolves", () => {
     expect(bunBinary()).toBe(process.execPath);
     expect(bunBinary()).not.toBe("bun");
+  });
+});
+
+/**
+ * `engines.bun` is written by every generated app and, until now, enforced by
+ * nothing — the module's own opening line says so. `runtimeMismatch` does not cover
+ * it: that compares against an *installed* Bun, and most projects do not install Bun
+ * as a package, so it correctly says nothing about most of them.
+ */
+describe("declaredBunFloor", () => {
+  it("reads engines.bun out of the project's package.json", () => {
+    expect(declaredBunFloor(manifest({ engines: { bun: ">=1.4.0" } }))?.range).toBe(">=1.4.0");
+  });
+
+  it("walks up, so a workspace app finds the root's floor", () => {
+    const app = manifest({ engines: { bun: ">=1.4.0" } }, join("apps", "web"));
+    expect(declaredBunFloor(app)?.range).toBe(">=1.4.0");
+  });
+
+  it("takes the nearest floor, because that one is the app's own", () => {
+    const root = manifest({ engines: { bun: ">=1.0.0" } });
+    const app = join(root, "apps", "web");
+    mkdirSync(app, { recursive: true });
+    writeFileSync(join(app, "package.json"), JSON.stringify({ engines: { bun: ">=1.4.0" } }));
+    expect(declaredBunFloor(app)?.range).toBe(">=1.4.0");
+  });
+
+  it("is null when nothing up the tree declares one", () => {
+    expect(declaredBunFloor(manifest({ name: "app" }))).toBeNull();
+  });
+});
+
+describe("runtimeBelowFloor", () => {
+  it("reports the shortfall when the running Bun is under the declared floor", () => {
+    const floor = runtimeBelowFloor(manifest({ engines: { bun: ">=99.0.0" } }));
+    expect(floor).not.toBeNull();
+    expect(floor?.running).toBe(Bun.version);
+    expect(floor?.required).toBe(">=99.0.0");
+    expect(floor?.manifest).toContain("package.json");
+  });
+
+  it("is null when the floor is met", () => {
+    expect(runtimeBelowFloor(manifest({ engines: { bun: ">=0.1.0" } }))).toBeNull();
+  });
+
+  it("is null when the project declares no floor", () => {
+    expect(runtimeBelowFloor(manifest({ name: "app" }))).toBeNull();
+  });
+
+  it("treats a range it cannot parse as satisfied", () => {
+    // Refusing to boot because we could not read a version range is worse than the
+    // mismatch it would have prevented.
+    expect(runtimeBelowFloor(manifest({ engines: { bun: "whatever-is-latest" } }))).toBeNull();
+  });
+});
+
+describe("runtimeBelowFloorMessage", () => {
+  it("names both versions, the manifest, and the way out", () => {
+    const message = runtimeBelowFloorMessage({
+      running: "1.3.14",
+      required: ">=1.4.0",
+      manifest: "/app/package.json",
+    });
+    expect(message).toContain("1.3.14");
+    expect(message).toContain(">=1.4.0");
+    expect(message).toContain("/app/package.json");
+    expect(message).toContain("bun upgrade");
+    expect(message).toContain(RUNTIME_MISMATCH_ESCAPE);
   });
 });

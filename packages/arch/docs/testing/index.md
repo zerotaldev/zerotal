@@ -209,6 +209,105 @@ observers, global scopes, and state-machine callbacks, plus framework event
 subscriptions. `createTestApp()` and `testApp.close()` call it for you, so suites
 using those helpers don't need the explicit `afterEach`.
 
+## `bun test` vs `bun zt test`
+
+Both run the same files. `bun zt test` is a wrapper that sets up three things Bun's
+runner does not, and each of them has cost somebody a day:
+
+|                  | `bun test`            | `bun zt test`                                              |
+| ---------------- | --------------------- | ---------------------------------------------------------- |
+| Per-test timeout | Bun's default, 5000ms | 30000ms (`--timeout`, override with `--timeout=`)          |
+| Runtime check    | none                  | refuses a Bun below the project's `engines.bun`            |
+| DB wiring        | none                  | preloads `@zerotal/testing/preload` and passes `ZT_DB_URL` |
+
+### The timeout
+
+Bun's default per-test timeout is 5000ms, and a suite that boots an app per file
+exceeds it on a loaded machine — CI, or a laptop that has just run `tsc`. The
+failures look like flakes, which is the expensive part: a flake gets re-run, and a
+re-run passes.
+
+`bun zt test` sets `--timeout=30000`. If you run `bun test` directly, pass it
+yourself, because **the two documented-looking alternatives do not work**:
+
+- `[test] timeout` in `bunfig.toml` — ignored.
+- `setDefaultTimeout()` in a preload — applies to the first test file only. Bun
+  re-imports the preload per file, but the setting does not survive.
+
+The command-line flag is the only mechanism that covers hooks as well as tests,
+which matters because it is usually a `beforeAll` that boots the app.
+
+### The runtime
+
+`engines.bun` in your `package.json` is a floor, and until you enforce it, it is a
+comment. The shell's `bun` and the project's can differ, and the difference between
+two Bun releases is real and narrow: `Intl` formatting, the SQLite bindings and
+`node:` compatibility all move. So a handful of currency or date assertions go red
+and the rest pass, and you go looking for a bug in the code they touch, because
+nothing in the failure says "wrong binary".
+
+`bun zt test` refuses to run below the declared floor. Direct `bun test` runs get the
+same check as a warning if you load the preload:
+
+```toml
+# bunfig.toml
+[test]
+preload = ["@zerotal/testing/preload"]
+timeout = 30000  # note: currently ignored by Bun — pass --timeout on the command line
+```
+
+Set `ZT_ALLOW_RUNTIME_MISMATCH=1` to downgrade the refusal to a warning while you
+are mid-upgrade.
+
+### `@zerotal/core/runtime`
+
+The checks behind the two paragraphs above, exported so a script or a test of your
+own can make the same assertion. `zt` runs both at the top of every command; the test
+preload runs the floor check as a warning.
+
+| Export                     | Signature                                                 | What it answers                                                                             |
+| -------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `declaredBunFloor`         | `declaredBunFloor(cwd): { range, manifest } \| null`      | The nearest `engines.bun` up the tree from `cwd`.                                           |
+| `runtimeBelowFloor`        | `runtimeBelowFloor(cwd?): RuntimeFloor \| null`           | Is this process below that floor? `null` when it is met or none is declared.                |
+| `runtimeBelowFloorMessage` | `runtimeBelowFloorMessage(floor): string`                 | The explanation to print — both versions, the manifest, and the way out.                    |
+| `installedBunVersion`      | `installedBunVersion(cwd): { version, manifest } \| null` | The Bun in `node_modules`, if the project installs one as a package.                        |
+| `runtimeMismatch`          | `runtimeMismatch(cwd?): RuntimeMismatch \| null`          | Does the running Bun differ from the installed one? Compared exactly — a patch is a binary. |
+| `runtimeMismatchMessage`   | `runtimeMismatchMessage(mismatch): string`                | The explanation for that one.                                                               |
+| `runtimeMismatchAllowed`   | `runtimeMismatchAllowed(): boolean`                       | Whether `ZT_ALLOW_RUNTIME_MISMATCH` is set.                                                 |
+| `bunBinary`                | `bunBinary(): string`                                     | The binary to spawn a child with — `process.execPath`, never the name PATH resolves.        |
+| `RUNTIME_MISMATCH_ESCAPE`  | `"ZT_ALLOW_RUNTIME_MISMATCH"`                             | The env var name, so a script can set it without hardcoding the string.                     |
+
+`RuntimeFloor` is `{ running, required, manifest }`; `RuntimeMismatch` is
+`{ running, installed, manifest }`. Both name the file the second version came from,
+because "which one is wrong" is the question you actually have.
+
+## Configuration is per-process, and `bun test` is one process
+
+Zerotal resolves configuration once, at boot. `bun test` runs every file in the same
+process, so **whichever file boots the app first fixes the configuration for all of
+them.**
+
+A test that sets an environment variable in its own `beforeAll` and then asserts on
+the resulting behaviour passes alone and fails in the suite — or worse, passes in the
+suite for a reason unrelated to what it claims to test:
+
+```typescript fragment
+// Passes alone. In a suite, the app may already be booted with CSRF on, and the
+// three "rejects without a token" assertions below pass on a 419 they would have
+// got anyway — never reaching the guard they name.
+beforeAll(() => {
+  Bun.env.CSRF_DISABLED = "1";
+});
+```
+
+Assert on the _relationship_ rather than on a literal — the published origin equals
+the configured one, whatever it is — or boot a dedicated app for the case:
+
+```typescript fragment
+const app = await createTestApp({ config: { app: { url: "https://example.test" } } });
+expect(page.canonical).toBe(config("app.url"));
+```
+
 ## Running the suite from a script
 
 A script that gates on the tests has to read the tests' exit status, and a pipe hides it:

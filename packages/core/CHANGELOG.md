@@ -10,6 +10,22 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`engines.bun` is enforced.** Every generated app writes a floor and nothing had
+  ever read it. `runtimeMismatch` did not cover this: it compares the running Bun
+  against an _installed_ one, and most projects do not install Bun as a package, so
+  it correctly says nothing about most of them. `startZerotal()` now refuses to run
+  below the declared floor, so every `zt` command is covered.
+
+  The failure it catches is narrow and expensive. `Intl` output moves between Bun
+  releases, so a suite with currency or date assertions goes red on a runtime that is
+  otherwise fine, the failures name the code they touch, and the version is the last
+  thing anyone checks. `ZT_ALLOW_RUNTIME_MISMATCH=1` downgrades it to a warning.
+
+- **`@zerotal/core/runtime`** (`zerotal/runtime`) — a subpath exporting the checks
+  themselves: `runtimeBelowFloor`, `declaredBunFloor`, `runtimeMismatch`, `bunBinary`
+  and the messages that go with them, so a script or a test can make the same
+  assertion. A subpath rather than the main barrel, which is deliberately lean.
+
 - **A boot line when a convention is skipped in this environment.** An env-restricted
   concern is skipped by _not looking_, which is correct and completely silent: from a
   web process's point of view nothing is wrong, because from a web process's point of

@@ -3164,6 +3164,38 @@ type RouteTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>
 
 type RouteTarget = string
 
+## ./runtime  `(./src/support/runtime.ts)`
+
+const RUNTIME_MISMATCH_ESCAPE = 'ZT_ALLOW_RUNTIME_MISMATCH'
+
+function bunBinary = () => string
+
+function declaredBunFloor = (cwd: string) => {    range: string;    manifest: string;} | null
+
+function installedBunVersion = (cwd: string) => {    version: string;    manifest: string;} | null
+
+function runtimeBelowFloor = (cwd?: string) => RuntimeFloor | null
+
+function runtimeBelowFloorMessage = (floor: RuntimeFloor) => string
+
+function runtimeMismatch = (cwd?: string) => RuntimeMismatch | null
+
+function runtimeMismatchAllowed = () => boolean
+
+function runtimeMismatchMessage = (mismatch: RuntimeMismatch) => string
+
+interface RuntimeFloor = {
+  manifest: string
+  required: string
+  running: string
+}
+
+interface RuntimeMismatch = {
+  installed: string
+  manifest: string
+  running: string
+}
+
 ## ./security  `(./src/security/index.ts)`
 
 class CryptKeyMissingError = {

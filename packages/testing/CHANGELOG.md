@@ -8,6 +8,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`@zerotal/testing/preload` warns when the runtime is below the project's
+  `engines.bun`.** `startZerotal()` refuses on the same condition, which covers every
+  `zt` command — but not `bun test` typed straight into a shell, and that is the case
+  worth catching: the shell's Bun and the project's can differ, and the difference
+  arrives as a handful of `Intl` assertions going red with nothing naming a binary.
+  A parent-process check cannot see this; only an assertion from inside the process
+  the tests run in can, which is what a preload is.
+
+  A warning rather than a refusal, because a preload that throws takes down the whole
+  run and a suite that is merely _suspect_ should still produce its results.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

@@ -24,7 +24,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-/** Set to `1`/`true` to downgrade a runtime mismatch from a refusal to a warning. */
+/** Set to `1`/`true` to downgrade a runtime disagreement from a refusal to a warning. */
 export const RUNTIME_MISMATCH_ESCAPE = "ZT_ALLOW_RUNTIME_MISMATCH";
 
 /** A running runtime and the installed one it disagrees with. */
@@ -133,4 +133,94 @@ export function runtimeMismatchAllowed(): boolean {
 export function bunBinary(): string {
   const path = process.execPath;
   return path && path.length > 0 ? path : "bun";
+}
+
+/** A running runtime and the floor the project says it needs. */
+export interface RuntimeFloor {
+  /** `Bun.version` — the binary this process is executing under. */
+  running: string;
+  /** The `engines.bun` range the project declares. */
+  required: string;
+  /** Absolute path of the manifest `required` was read from. */
+  manifest: string;
+}
+
+/**
+ * The project's declared Bun floor, by walking up from `cwd` for a `package.json`
+ * with an `engines.bun`.
+ *
+ * Walking rather than reading one fixed path, for the same reason
+ * {@link installedBunVersion} walks: in a workspace the app and the manifest that
+ * pins the runtime are not always the same directory. The first `engines.bun` found
+ * wins — the nearest one is the app's own.
+ *
+ * @param cwd - Directory to start from.
+ * @returns `{ range, manifest }`, or `null` when nothing up the tree declares one.
+ */
+export function declaredBunFloor(cwd: string): { range: string; manifest: string } | null {
+  let dir = cwd;
+  // Bounded by the filesystem root: dirname("/") === "/" and dirname("C:\\") === "C:\\".
+  for (;;) {
+    const manifest = join(dir, "package.json");
+    try {
+      const parsed = JSON.parse(readFileSync(manifest, "utf8")) as {
+        engines?: { bun?: string };
+      };
+      const range = parsed.engines?.bun;
+      if (range) return { range, manifest };
+    } catch {
+      // No manifest here, or not one we can read — keep climbing.
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+/**
+ * Whether this process is running below the Bun version the project says it needs.
+ *
+ * `engines.bun` is written by every generated app and enforced by nothing, which is
+ * the gap {@link runtimeMismatch} does not cover: that one compares the running
+ * runtime against an *installed* one, and most projects do not install Bun as a
+ * package, so it has nothing to compare against and correctly says nothing.
+ *
+ * The failure this catches is narrow and expensive. `Intl` output differs between
+ * Bun releases, so a suite with currency or date assertions goes red on a runtime
+ * that is otherwise fine, and the failures name the code they touch rather than the
+ * binary. The version is the last thing anyone checks.
+ *
+ * An unparseable range is treated as satisfied. A refusal because we could not read
+ * a version range is worse than the mismatch it would have prevented.
+ *
+ * @param cwd - Project root to look under. Defaults to the working directory.
+ * @returns The shortfall, or `null` when the floor is met or none is declared.
+ */
+export function runtimeBelowFloor(cwd: string = process.cwd()): RuntimeFloor | null {
+  const running = typeof Bun === "undefined" ? "" : Bun.version;
+  if (!running) return null;
+  const declared = declaredBunFloor(cwd);
+  if (!declared) return null;
+  if (Bun.semver.satisfies(running, declared.range)) return null;
+  return { running, required: declared.range, manifest: declared.manifest };
+}
+
+/**
+ * The message shown when the runtime is below the project's floor.
+ *
+ * @param floor - The shortfall to describe.
+ */
+export function runtimeBelowFloorMessage(floor: RuntimeFloor): string {
+  return (
+    `This process is Bun ${floor.running}, and the project requires ${floor.required} ` +
+    `(${floor.manifest}).\n\n` +
+    `  The difference between two Bun releases is real and narrow: Intl formatting, the ` +
+    `SQLite bindings and node: compatibility all move, so a handful of assertions are ` +
+    `runtime-sensitive and the rest are not. When two of them fail you go looking for a bug ` +
+    `in the code they touch, because nothing in the failure says "wrong binary".\n\n` +
+    `  Fix it by upgrading the runtime, or by lowering engines.bun if this version is ` +
+    `genuinely supported:\n` +
+    `    bun upgrade\n\n` +
+    `  To run anyway, set ${RUNTIME_MISMATCH_ESCAPE}=1 — it downgrades this to a warning.`
+  );
 }

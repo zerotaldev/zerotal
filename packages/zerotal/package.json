@@ -33,6 +33,7 @@
     "./orm": "./src/orm.ts",
     "./queue": "./src/queue.ts",
     "./routes": "./src/routes.ts",
+    "./runtime": "./src/runtime.ts",
     "./scheduler": "./src/scheduler.ts",
     "./security": "./src/security.ts",
     "./session": "./src/session.ts",

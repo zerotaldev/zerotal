@@ -7593,6 +7593,18 @@
     },
     {
       "file": "docs/testing/index.md",
+      "heading": "Configuration is per-process, and `bun test` is one process",
+      "ordinal": 0,
+      "hash": "3fwkm2nmbsn2"
+    },
+    {
+      "file": "docs/testing/index.md",
+      "heading": "Configuration is per-process, and `bun test` is one process",
+      "ordinal": 1,
+      "hash": "1a25tp9308tv"
+    },
+    {
+      "file": "docs/testing/index.md",
       "heading": "Resetting framework state",
       "ordinal": 0,
       "hash": "8ok94it79067"

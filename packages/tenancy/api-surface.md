@@ -278,10 +278,10 @@ interface MultiDbTenant = {
 }
 
 interface TenancyConfigShape = {
-  connect?: (tenant: MultiDbTenant) => SQLInstance
+  connect?: ((tenant: MultiDbTenant) => SQLInstance) | undefined
   resolvers: TenantResolver[]
   strategy: TenancyStrategy
-  tenantColumn?: string
+  tenantColumn?: string | undefined
 }
 
 interface TenantManagerOptions = {

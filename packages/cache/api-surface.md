@@ -150,7 +150,7 @@ interface CacheDriver = {
 interface IdempotencyOptions = {
   cache: CacheManager | undefined
   header: string
-  lock?: LockManager
+  lock?: LockManager | undefined
   methods: string[]
   ttl: number
   useLock: boolean

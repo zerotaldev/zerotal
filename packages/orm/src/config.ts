@@ -28,7 +28,7 @@ export interface DatabaseConfigShape {
    *   env('REPLICA_2_URL'),
    * ].filter((url) => url !== undefined)
    */
-  replicas?: string[];
+  replicas?: string[] | undefined;
   /**
    * Connection pool options (PostgreSQL and MySQL only).
    * Bun.sql manages the pool automatically - these tune its behaviour.
@@ -38,7 +38,7 @@ export interface DatabaseConfigShape {
     max?: number;
     /** Seconds an idle connection is kept before being closed. Default: 30 */
     idleTimeout?: number;
-  };
+  } | undefined;
   /** SQLite-specific options */
   sqlite: {
     /** Path to the SQLite file. Use ':memory:' for in-memory database. */
@@ -58,7 +58,7 @@ export interface DatabaseConfigShape {
    * synchronize: { enabled: true, disruptive: false }     // explicit, additive
    * synchronize: { enabled: true, disruptive: true }      // also drops removed columns
    */
-  synchronize?: boolean | { enabled: boolean; disruptive?: boolean };
+  synchronize?: boolean | { enabled: boolean; disruptive?: boolean } | undefined;
 }
 
 const defaults: DatabaseConfigShape = {

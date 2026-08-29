@@ -81,10 +81,10 @@ function TelemetryConfig = (options?: Partial<TelemetryConfigShape>) => Telemetr
 function withSpan = <T>(name: string, fn: (span: Span) => Promise<T>, options?: SpanOptions) => Promise<T>
 
 interface OtlpExporterOptions = {
-  endpoint?: string
-  headers?: Record<string, string>
-  serviceName?: string
-  serviceVersion?: string
+  endpoint?: string | undefined
+  headers?: Record<string, string> | undefined
+  serviceName?: string | undefined
+  serviceVersion?: string | undefined
 }
 
 interface SpanData = {
@@ -112,8 +112,8 @@ interface SpanExporter = {
 }
 
 interface SpanOptions = {
-  attributes?: Record<string, string | number | boolean>
-  kind?: SpanKind
+  attributes?: Record<string, string | number | boolean> | undefined
+  kind?: SpanKind | undefined
 }
 
 interface SpanStatus = {
@@ -122,21 +122,21 @@ interface SpanStatus = {
 }
 
 interface TelemetryConfigShape = {
-  exporter?: 'console' | 'noop' | 'otlp'
-  minDurationMs?: number
-  otlp?: {    endpoint?: string;    headers?: Record<string, string>;}
-  serviceName?: string
-  serviceVersion?: string
+  exporter?: 'console' | 'noop' | 'otlp' | undefined
+  minDurationMs?: number | undefined
+  otlp?: {    endpoint?: string;    headers?: Record<string, string>;} | undefined
+  serviceName?: string | undefined
+  serviceVersion?: string | undefined
 }
 
 interface TelemetryOptions = {
-  spanName?: (ctx: HttpContext) => string
+  spanName?: ((ctx: HttpContext) => string) | undefined
 }
 
 interface TracerOptions = {
   exporter: SpanExporter
-  minDurationMs?: number
-  rethrowExportErrors?: boolean
+  minDurationMs?: number | undefined
+  rethrowExportErrors?: boolean | undefined
 }
 
 type SpanKind = 'internal' | 'server' | 'client' | 'producer' | 'consumer'

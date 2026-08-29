@@ -341,7 +341,7 @@ interface FieldRuleDefinition = {
 }
 
 interface UniqueOptions = {
-  ignoreId?: string | number
+  ignoreId?: string | number | undefined
 }
 
 interface ValidatorConfigShape = {

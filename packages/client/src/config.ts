@@ -2,7 +2,7 @@ import { deepMerge } from "@zerotal/core/helpers";
 import type { ApiClientConfig } from "./ApiClient.ts";
 
 export interface ClientConfigShape extends ApiClientConfig {
-  baseUrl?: string;
+  baseUrl?: string | undefined;
 }
 
 // The client carries no framework-level defaults of its own — `ApiClient` applies

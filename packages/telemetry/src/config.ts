@@ -7,22 +7,22 @@ export interface TelemetryConfigShape {
    * - `'console'` - prints to stdout, useful in development
    * - `'otlp'`    - sends to an OTLP HTTP endpoint
    */
-  exporter?: "noop" | "console" | "otlp";
+  exporter?: "noop" | "console" | "otlp" | undefined;
 
   /** Only relevant when `exporter` is `'otlp'`. */
   otlp?: {
     endpoint?: string;
     headers?: Record<string, string>;
-  };
+  } | undefined;
 
   /** Service name sent as a resource attribute. Defaults to `APP_NAME` env var or `'zerotal-app'`. */
-  serviceName?: string;
+  serviceName?: string | undefined;
 
   /** Service version. Defaults to `APP_VERSION` env var or `'0.0.0'`. */
-  serviceVersion?: string;
+  serviceVersion?: string | undefined;
 
   /** Drop spans shorter than this many milliseconds. Default: 0 (keep all). */
-  minDurationMs?: number;
+  minDurationMs?: number | undefined;
 }
 
 const defaults: TelemetryConfigShape = {

@@ -26,17 +26,17 @@ export interface CorsOptions {
    * `new URL(o).hostname.endsWith('.example.com') && o.startsWith('https://')`, or just
    * list the origins.
    */
-  origin?: string | string[] | ((origin: string) => boolean);
+  origin?: string | string[] | ((origin: string) => boolean) | undefined;
   /** Allowed HTTP methods. Default: `['GET','POST','PUT','PATCH','DELETE','OPTIONS']`. */
-  methods?: string[];
+  methods?: string[] | undefined;
   /** Allowed request headers. Default: `['Content-Type','Authorization','X-Requested-With']`. */
-  allowedHeaders?: string[];
+  allowedHeaders?: string[] | undefined;
   /** Headers the browser may expose to JS. Default: `[]`. */
-  exposedHeaders?: string[];
+  exposedHeaders?: string[] | undefined;
   /** Allow cookies / auth headers in cross-origin requests. Default: `false`. */
-  credentials?: boolean;
+  credentials?: boolean | undefined;
   /** Preflight cache duration in seconds. Default: `600`. */
-  maxAge?: number;
+  maxAge?: number | undefined;
 }
 
 /**

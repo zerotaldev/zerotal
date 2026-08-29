@@ -16,11 +16,11 @@ interface Db {
 
 export interface TraceStoreOptions {
   /** How many traces to keep in memory and load back on open. */
-  capacity?: number;
+  capacity?: number | undefined;
   /** SQLite file backing the history. Pass `null` to keep traces in memory only. */
-  dbPath?: string | null;
+  dbPath?: string | null | undefined;
   /** How long a persisted trace survives, in hours. */
-  pruneHours?: number;
+  pruneHours?: number | undefined;
 }
 
 /**

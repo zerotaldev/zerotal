@@ -33,9 +33,9 @@ import type { HttpContext } from "@zerotal/core";
 
 export interface LoginThrottleOptions {
   /** Failures allowed within the window before lockout. Default: 5. */
-  maxAttempts?: number;
+  maxAttempts?: number | undefined;
   /** Window length in seconds; also the lockout duration. Default: 60. */
-  decaySeconds?: number;
+  decaySeconds?: number | undefined;
 }
 
 interface Bucket {

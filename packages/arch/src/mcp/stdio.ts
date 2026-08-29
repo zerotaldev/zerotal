@@ -27,11 +27,11 @@ import type { JsonRpcResponse } from "./types.ts";
 export interface StdioOptions {
   server: McpServer;
   /** Byte source. Defaults to this process's stdin. */
-  input?: ReadableStream<Uint8Array>;
+  input?: ReadableStream<Uint8Array> | undefined;
   /** Frame sink. Defaults to this process's stdout. Injected in tests. */
-  write?: (frame: string) => void;
+  write?: ((frame: string) => void) | undefined;
   /** Diagnostics sink. Defaults to stderr — never stdout. */
-  log?: (message: string) => void;
+  log?: ((message: string) => void) | undefined;
 }
 
 /**

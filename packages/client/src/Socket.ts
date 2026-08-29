@@ -50,42 +50,42 @@ export interface SocketOptions {
    * Full WebSocket URL. When omitted it's derived from the page location (browser) as
    * `ws(s)://<host>:<port><path>`. Required in non-browser environments.
    */
-  url?: string;
+  url?: string | undefined;
   /** WebSocket upgrade path. Defaults to `/app/ws` (matches the broadcasting config default). */
-  path?: string;
+  path?: string | undefined;
   /** Host override (defaults to `location.hostname`). */
-  host?: string;
+  host?: string | undefined;
   /** Port override (defaults to `location.port`). */
-  port?: string | number;
+  port?: string | number | undefined;
   /** Force a scheme. Defaults to `wss` on https pages, `ws` otherwise. */
-  scheme?: "ws" | "wss";
+  scheme?: "ws" | "wss" | undefined;
   /**
    * Authentication for the connection and for private/presence channels:
    *  - `params`  — query params appended to the WS URL (browsers can't set WS headers), read
    *                by the server on upgrade.
    *  - `headers` — sent on the `POST /broadcasting/auth` request (e.g. a CSRF token).
    */
-  auth?: { params?: Record<string, string>; headers?: Record<string, string> };
+  auth?: { params?: Record<string, string>; headers?: Record<string, string> } | undefined;
   /**
    * Endpoint that signs a private/presence subscription (Pusher-style). Defaults to
    * `/broadcasting/auth`. Set to `false` to skip the signature fetch and rely on
    * connection-level authorization instead.
    */
-  authEndpoint?: string | false;
+  authEndpoint?: string | false | undefined;
   /** Inject a `fetch` implementation for the auth request (tests / non-DOM runtimes). */
-  fetch?: typeof fetch;
+  fetch?: typeof fetch | undefined;
   /** Connect immediately on construction. Default: true. */
-  autoConnect?: boolean;
+  autoConnect?: boolean | undefined;
   /** Reconnect automatically after an unexpected close. Default: true. */
-  reconnect?: boolean;
+  reconnect?: boolean | undefined;
   /** Initial reconnect delay in ms (doubles each attempt up to `maxReconnectDelay`). Default: 1000. */
-  reconnectDelay?: number;
+  reconnectDelay?: number | undefined;
   /** Cap on the reconnect backoff in ms. Default: 30000. */
-  maxReconnectDelay?: number;
+  maxReconnectDelay?: number | undefined;
   /** Heartbeat ping interval in ms (0 disables). Default: 30000. */
-  pingInterval?: number;
+  pingInterval?: number | undefined;
   /** Inject a WebSocket constructor (tests / non-DOM runtimes). Defaults to the global. */
-  WebSocket?: new (url: string) => SocketLike;
+  WebSocket?: (new (url: string) => SocketLike) | undefined;
 }
 
 type Listener = (payload: unknown) => void;
@@ -217,6 +217,16 @@ export class PresenceChannel extends Channel {
   }
 }
 
+/** The options {@link Socket}'s constructor always fills in. */
+type GuaranteedOption =
+  | "path"
+  | "autoConnect"
+  | "reconnect"
+  | "reconnectDelay"
+  | "maxReconnectDelay"
+  | "pingInterval"
+  | "authEndpoint";
+
 /**
  * Realtime client for Zerotal broadcasting (native `ws` / `redis` drivers). Exposes a
  * familiar realtime-client API over the native protocol — see the module header for usage.
@@ -231,19 +241,17 @@ export class Socket {
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _pingTimer: ReturnType<typeof setInterval> | null = null;
   private _closedByUser = false;
-  private readonly _opts: Required<
-    Pick<
-      SocketOptions,
-      | "path"
-      | "autoConnect"
-      | "reconnect"
-      | "reconnectDelay"
-      | "maxReconnectDelay"
-      | "pingInterval"
-      | "authEndpoint"
-    >
-  > &
-    SocketOptions;
+  /**
+   * The seven fields the constructor guarantees, plus whatever else was passed.
+   *
+   * `Omit` rather than `& SocketOptions`: intersecting with the whole shape puts the
+   * optional declaration of each guaranteed field back alongside the required one, so
+   * `pingInterval` read as possibly `undefined` in the very code that had just given
+   * it a default.
+   */
+  private readonly _opts: {
+    [K in GuaranteedOption]-?: Exclude<SocketOptions[K], undefined>;
+  } & Omit<SocketOptions, GuaranteedOption>;
 
   constructor(options: SocketOptions = {}) {
     // The caller's options go FIRST, then the defaults fill the gaps.

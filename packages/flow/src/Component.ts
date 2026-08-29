@@ -306,21 +306,21 @@ export interface RedirectFlash {
  * for `level` (Tailwind/Notyf parlance).
  */
 export interface FlashOptions {
-  level?: FlashLevel;
+  level?: FlashLevel | undefined;
   /** Alias for `level`. */
-  type?: FlashLevel;
-  title?: string;
-  position?: FlashPosition;
+  type?: FlashLevel | undefined;
+  title?: string | undefined;
+  position?: FlashPosition | undefined;
   /** Auto-dismiss after N ms. `0` keeps the toast until dismissed. */
-  duration?: number;
-  dismissible?: boolean;
+  duration?: number | undefined;
+  dismissible?: boolean | undefined;
   /** Custom icon (emoji/text), or `false` to hide the status icon. */
-  icon?: string | false;
-  progressBar?: boolean;
+  icon?: string | false | undefined;
+  progressBar?: boolean | undefined;
   /** Action buttons that each invoke a `@expose` method on click. */
-  actions?: FlashAction[];
+  actions?: FlashAction[] | undefined;
   /** A `@expose` method invoked when the toast is dismissed. */
-  onClose?: FlashCallback;
+  onClose?: FlashCallback | undefined;
 }
 
 /**

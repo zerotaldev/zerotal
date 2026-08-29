@@ -63,7 +63,7 @@ export interface IdempotencyOptions {
    * Explicit lock manager. When omitted (and `useLock` is true), the manager is
    * resolved from the container's `lock` binding at request time.
    */
-  lock?: LockManager;
+  lock?: LockManager | undefined;
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────

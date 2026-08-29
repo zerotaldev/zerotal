@@ -73,31 +73,31 @@ export interface ResponseMeta {
 
 export interface RequestOptions {
   /** Extra headers merged on top of the client's default headers. */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | undefined;
   /** Additional `RequestInit` fields (e.g. `credentials`, `mode`, `cache`). */
-  init?: Omit<RequestInit, "method" | "headers" | "body">;
+  init?: Omit<RequestInit, "method" | "headers" | "body"> | undefined;
   /** Abort signal for cancellation (combined with any `timeout`). */
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
   /** Per-request timeout in ms (overrides the client default; `0` disables). */
-  timeout?: number;
+  timeout?: number | undefined;
   /** Per-request retry policy (overrides the client default; `false` disables). */
-  retry?: number | RetryOptions | false;
+  retry?: number | RetryOptions | false | undefined;
   /** How to read the response body. Default `"auto"` (JSON with text fallback). */
-  responseType?: "auto" | "json" | "text" | "blob" | "arrayBuffer";
+  responseType?: "auto" | "json" | "text" | "blob" | "arrayBuffer" | undefined;
   /** Read response metadata (status, headers) without a global interceptor. */
-  meta?: (meta: ResponseMeta) => void;
+  meta?: ((meta: ResponseMeta) => void) | undefined;
 }
 
 export interface GetOptions<Q> extends RequestOptions {
   /** Query-string parameters (nested arrays/objects are serialized with bracket notation). */
-  query?: Q;
+  query?: Q | undefined;
 }
 
 export interface MutationOptions<Q> extends RequestOptions {
   /** URL path parameters for routes like `/api/users/{id}/action`. */
-  params?: Record<string, string | number>;
+  params?: Record<string, string | number> | undefined;
   /** Query-string parameters. */
-  query?: Q;
+  query?: Q | undefined;
 }
 
 // ── Client config ─────────────────────────────────────────────────────────────
@@ -108,39 +108,39 @@ export type TokenSource =
 
 export interface ApiClientConfig {
   /** Base URL prepended to every request path, e.g. `'https://api.example.com'`. */
-  baseUrl?: string;
+  baseUrl?: string | undefined;
   /** Default headers sent with every request (e.g. `Authorization`). */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | undefined;
   /**
    * Bearer token attached as `Authorization: Bearer <token>` when no `Authorization` header is
    * already present. May be a string or a (possibly async) resolver. Update at runtime with
    * {@link ApiClient.setToken}.
    */
-  token?: TokenSource;
+  token?: TokenSource | undefined;
   /** Send credentials (cookies) with every request — sets `credentials: 'include'`. */
-  withCredentials?: boolean;
+  withCredentials?: boolean | undefined;
   /**
    * Attach the CSRF/XSRF token to mutating requests: reads the `XSRF-TOKEN` cookie and sends it as
    * `X-XSRF-TOKEN` (the SPA/session flow). Defaults to `true` when `withCredentials` is set.
    * Customize the cookie/header names with an object.
    */
-  csrf?: boolean | { cookie?: string; header?: string };
+  csrf?: boolean | { cookie?: string; header?: string } | undefined;
   /** Default per-request timeout in ms (`0`/omitted = no timeout). */
-  timeout?: number;
+  timeout?: number | undefined;
   /**
    * Default retry policy. `2` retries idempotent requests on network errors / 5xx / 429 with
    * exponential backoff (honoring `Retry-After`); pass {@link RetryOptions} to tune, or omit to
    * disable. Per-request `retry` overrides this.
    */
-  retry?: number | RetryOptions;
+  retry?: number | RetryOptions | undefined;
   /** Called for every non-2xx response before the error is thrown. */
-  onError?: (error: ApiClientError) => void | Promise<void>;
+  onError?: ((error: ApiClientError) => void | Promise<void>) | undefined;
   /** Called when a request receives `403 Forbidden`. */
-  onForbidden?: (error: ApiClientError) => void | Promise<void>;
+  onForbidden?: ((error: ApiClientError) => void | Promise<void>) | undefined;
   /** One or more request interceptors executed in order before every fetch. */
-  onRequest?: RequestInterceptor | RequestInterceptor[];
+  onRequest?: RequestInterceptor | RequestInterceptor[] | undefined;
   /** One or more response interceptors executed in order after every successful (2xx) response. */
-  onResponse?: ResponseInterceptor | ResponseInterceptor[];
+  onResponse?: ResponseInterceptor | ResponseInterceptor[] | undefined;
   /**
    * Called when a request receives `401 Unauthorized`. Receives the error and a `retry` function
    * (optionally with header overrides) to re-execute the request once.
@@ -148,12 +148,12 @@ export interface ApiClientConfig {
    * @example
    * onUnauthorized: async (err, retry) => retry({ Authorization: `Bearer ${await refresh()}` }),
    */
-  onUnauthorized?: (
+  onUnauthorized?: ((
     error: ApiClientError,
     retry: (headerOverrides?: Record<string, string>) => Promise<unknown>,
-  ) => Promise<unknown> | void;
+  ) => Promise<unknown> | void) | undefined;
   /** Attach a circuit breaker (instance to share, or options to create a dedicated one). */
-  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions;
+  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions | undefined;
 }
 
 // ── ApiClient<Routes> ───────────────────────────────────────────────────────────

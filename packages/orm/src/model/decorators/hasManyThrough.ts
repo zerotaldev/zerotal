@@ -6,9 +6,9 @@ export interface HasManyThroughOptions {
   /** FK on the related table referencing the through model (e.g. 'user_id' on posts). */
   secondKey: string;
   /** Parent local key the firstKey references. Default 'id'. */
-  localKey?: string;
+  localKey?: string | undefined;
   /** Through local key the secondKey references. Default 'id'. */
-  throughLocalKey?: string;
+  throughLocalKey?: string | undefined;
 }
 
 /**

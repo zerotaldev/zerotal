@@ -40,7 +40,7 @@ export interface MagicLinkBrokerOptions<U extends MagicLinkUser = MagicLinkUser>
   /** The absolute URL the signed link will point to (your verify endpoint). */
   verifyUrl: string;
   /** Minutes until the link expires. Default: 15. */
-  expiresInMinutes?: number;
+  expiresInMinutes?: number | undefined;
   findUser(email: string): Promise<U | null | undefined>;
   sendLink(email: string, signedUrl: string): Promise<void>;
 }

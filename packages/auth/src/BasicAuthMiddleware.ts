@@ -4,9 +4,9 @@ import { Auth } from "./facades/Auth.ts";
 
 export interface BasicAuthOptions {
   /** Credential column used as the "username". Default `email`. */
-  field?: string;
+  field?: string | undefined;
   /** Realm shown in the browser's auth prompt. Default `Restricted`. */
-  realm?: string;
+  realm?: string | undefined;
 }
 
 /**

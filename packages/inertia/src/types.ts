@@ -49,9 +49,9 @@ export interface PageObject {
  */
 export interface InertiaProviderOptions {
   /** Path to the HTML template. Default: 'resources/app.html' */
-  htmlTemplate?: string;
+  htmlTemplate?: string | undefined;
   /** Current asset version string. Used for cache-busting (409 responses). */
-  version?: string;
+  version?: string | undefined;
   /** Public URL prefix for built assets. Default: '/assets' */
-  assetsUrl?: string;
+  assetsUrl?: string | undefined;
 }

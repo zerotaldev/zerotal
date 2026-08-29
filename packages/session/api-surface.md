@@ -133,7 +133,7 @@ const Session = SessionAccessor
 function SessionConfig = (options?: Partial<SessionConfigShape>) => SessionConfigShape
 
 interface CsrfOptions = {
-  secure?: boolean
+  secure?: boolean | undefined
 }
 
 interface SessionConfigShape = {
@@ -153,7 +153,7 @@ interface SessionDriver = {
 }
 
 interface SessionOptions = {
-  driver?: SessionDriver
+  driver?: SessionDriver | undefined
 }
 
 interface SessionPayload = {

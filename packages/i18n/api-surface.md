@@ -75,11 +75,11 @@ function parseAcceptLanguage = (header: string | null) => string[]
 function resolveLocale = (request: Request, config: I18nConfigShape) => string
 
 interface I18nConfigShape = {
-  catalogs?: Catalogs
+  catalogs?: Catalogs | undefined
   cookieKey: string
   defaultLocale: string
   fallbackLocale: string
-  loadPath?: string
+  loadPath?: string | undefined
   queryKey: string
   resolvers: LocaleResolver[]
   supportedLocales: string[]

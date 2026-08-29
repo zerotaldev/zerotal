@@ -21,7 +21,7 @@ import type { Application } from "../application/Application.ts";
 /** Options for {@link startZerotal}. */
 export interface StartZerotalOptions {
   /** Directory to load config from, resolved against the cwd. Default: `./config`. */
-  configDir?: string;
+  configDir?: string | undefined;
 }
 
 /**

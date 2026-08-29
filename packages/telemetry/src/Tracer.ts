@@ -6,14 +6,14 @@ import type { SpanExporter } from "./exporters/SpanExporter.ts";
 export interface TracerOptions {
   exporter: SpanExporter;
   /** Drop spans in which the callback took less than this many ms. Default: 0 (keep all). */
-  minDurationMs?: number;
+  minDurationMs?: number | undefined;
   /** When true, export() errors are surfaced rather than swallowed. Default: false. */
-  rethrowExportErrors?: boolean;
+  rethrowExportErrors?: boolean | undefined;
 }
 
 export interface SpanOptions {
-  kind?: SpanKind;
-  attributes?: Record<string, string | number | boolean>;
+  kind?: SpanKind | undefined;
+  attributes?: Record<string, string | number | boolean> | undefined;
 }
 
 /**

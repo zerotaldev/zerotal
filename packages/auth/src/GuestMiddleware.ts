@@ -3,7 +3,7 @@ import { BaseMiddleware } from "@zerotal/core";
 
 export interface GuestOptions {
   /** Path to redirect authenticated users to. Defaults to `'/'`. */
-  redirectTo?: string;
+  redirectTo?: string | undefined;
 }
 
 /**

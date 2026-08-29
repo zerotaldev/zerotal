@@ -4,11 +4,11 @@ import { Jwt, type JwtPayload } from "./Jwt.ts";
 
 export interface JwtGuardOptions {
   /** HMAC secret. Defaults to `JWT_SECRET`, then `APP_KEY`, from the environment. */
-  secret?: string;
+  secret?: string | undefined;
   /** Resolve a user from the verified token claims. Required to populate `ctx.user`. */
-  resolve?: (claims: JwtPayload) => Promise<unknown> | unknown;
+  resolve?: ((claims: JwtPayload) => Promise<unknown> | unknown) | undefined;
   /** Header carrying the token. Default `authorization` (with a `Bearer ` prefix). */
-  header?: string;
+  header?: string | undefined;
 }
 
 /**

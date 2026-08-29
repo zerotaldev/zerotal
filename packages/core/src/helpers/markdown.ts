@@ -49,6 +49,13 @@ ${body}
  * Options for `Bun.markdown.html()`. bun-types exposes the options type only inside
  * its `markdown` namespace; this is the named, exported equivalent the framework uses.
  *
+ * Its optional properties stay `?: T` rather than `?: T | undefined`, unlike the
+ * framework's own option shapes. This one is not an option shape, it is a *mirror* of
+ * somebody else's signature, and a mirror that is wider than what it reflects stops
+ * being assignable to it — the value built here is handed straight to
+ * `Bun.markdown.html()`.
+ *
+ * @exact-optional-ignore
  * @internal
  */
 export interface BunMarkdownOptions {

@@ -1068,9 +1068,9 @@ export function resolveListeners(
  */
 export interface UrlOptions {
   /** Override the URL query parameter name. Defaults to the property name. */
-  as?: string;
+  as?: string | undefined;
   /** Push a new history entry or replace the current one. Defaults to `'replace'`. */
-  history?: "push" | "replace";
+  history?: "push" | "replace" | undefined;
 }
 
 type UrlDecorator = (value: unknown, context: ClassFieldDecoratorContext) => void;
@@ -1196,13 +1196,13 @@ function _paramDecorator(source: ParamSource): ParamDecorator {
 /** Options for {@link session}. */
 export interface SessionOptions {
   /** Session key to read and write. Defaults to the property's own name. */
-  key?: string;
+  key?: string | undefined;
   /**
    * Namespace the key to this component (`flow:<Component>:<key>`), so the value belongs to
    * this page alone and cannot collide with another component's field of the same name.
    * Default: `false` — the key is the session's own.
    */
-  scoped?: boolean;
+  scoped?: boolean | undefined;
 }
 
 type SessionDecorator = (value: unknown, context: ClassFieldDecoratorContext) => void;

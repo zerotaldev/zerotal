@@ -6,11 +6,11 @@ export interface MorphToManyOptions {
   /** FK on the pivot table referencing the related model (e.g. 'tag_id'). */
   relatedPivotKey: string;
   /** Pivot table name. Defaults to `{morphName}s`. */
-  pivotTable?: string;
+  pivotTable?: string | undefined;
   /** Extra pivot columns to hydrate. */
-  withPivot?: string[];
+  withPivot?: string[] | undefined;
   /** Maintain pivot timestamps. */
-  withTimestamps?: boolean;
+  withTimestamps?: boolean | undefined;
 }
 
 /**

@@ -50,9 +50,9 @@ export interface HistoryOptions {
   type: string;
   id: unknown;
   /** How many entries to show. Defaults to 25 — a record page is not an archive. */
-  limit?: number;
+  limit?: number | undefined;
   /** Turn an actor id into a name. Defaults to `#<id>`. */
-  resolveActor?: (id: number) => Promise<string | null> | string | null;
+  resolveActor?: ((id: number) => Promise<string | null> | string | null) | undefined;
 }
 
 /** Fields that change on every write and say nothing about intent. */

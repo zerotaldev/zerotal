@@ -104,12 +104,12 @@ let _forced = false; // true when explicitly configured via preventNPlusOne()
 
 export interface NPlusOneOptions {
   /** How many identical query shapes in one request triggers a violation. Default: 5. */
-  threshold?: number;
+  threshold?: number | undefined;
   /**
    * 'warn'  → console.warn (default — non-breaking, still visible)
    * 'throw' → throws NPlusOneError (good for CI / strict mode)
    */
-  mode?: "warn" | "throw";
+  mode?: "warn" | "throw" | undefined;
 }
 
 /**

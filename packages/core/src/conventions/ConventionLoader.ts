@@ -45,7 +45,7 @@ export interface RunConventionsOptions {
   root: string;
   env: AppEnvironment;
   /** Per-concern directory overrides (config `discovery.paths`). */
-  paths?: Record<string, string>;
+  paths?: Record<string, string> | undefined;
   ctx: ConcernContext;
 }
 

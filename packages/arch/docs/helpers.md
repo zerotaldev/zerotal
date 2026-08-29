@@ -393,6 +393,57 @@ matches how you want overrides to behave.
 > configured `driver`) are replaced by reference — they keep their prototype and are
 > never merged into.
 
+### `definedOnly` and `Resolved<T>` — merging a shallow options bag
+
+Every public option shape in the framework declares its optional properties as
+`?: T | undefined`, so that the most ordinary thing there is compiles under the
+`exactOptionalPropertyTypes` the generated `tsconfig.json` turns on:
+
+```typescript
+// in a controller
+import { Media } from "zerotal/media";
+
+await Media.store(file, { collection: request.input("collection") ?? undefined });
+```
+
+That flexibility moves a problem to the merge. **Object spread copies own properties
+even when their value is `undefined`**, so `{ ...DEFAULTS, ...options }` lets an
+explicitly-`undefined` field overwrite a default rather than leave it standing —
+which is how a `pingInterval` of `undefined` once became `setInterval(fn, 0)` and
+~830 pings a second. `definedOnly` is the fix: it drops the keys whose value is
+`undefined`, so "supplied as undefined" reads as "not supplied".
+
+```typescript fragment
+// in a class that takes options
+const merged = { ...DEFAULTS, ...definedOnly(options) };
+```
+
+`deepMerge` already does this for you — it skips `undefined` overrides at every
+depth — so `definedOnly` is for the shallow case where a spread is all you need.
+
+`Resolved<T>` is the type of what comes out. **`Required<T>` is not the same thing**,
+and that is the trap: `-?` removes the optionality a `?` introduced, but it does not
+remove an `undefined` written into the type. So `Required<MediaOptions>` still hands
+back `string | undefined` for a `collection?: string | undefined`, and a "defaults
+have been applied" type quietly stops meaning that.
+
+```typescript fragment
+// in a class that takes options
+interface Options {
+  retentionDays?: number | undefined;
+  storage?: string | undefined;
+}
+
+// Required<Pick<Options, "retentionDays">>  →  { retentionDays: number | undefined }  ✗
+// Resolved<Pick<Options, "retentionDays">>  →  { retentionDays: number }              ✓
+private readonly _opts: Resolved<Pick<Options, "retentionDays">> &
+  Omit<Options, "retentionDays">;
+```
+
+`Omit` rather than `& Options` for the rest: intersecting with the whole shape puts
+the optional declaration of each resolved field back alongside the required one, so
+the field reads as possibly `undefined` in the very code that just gave it a default.
+
 ## Fluent wrappers
 
 ### fluent

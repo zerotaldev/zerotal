@@ -524,16 +524,16 @@ interface FlashMessage = {
 }
 
 interface FlashOptions = {
-  actions?: FlashAction[]
-  dismissible?: boolean
-  duration?: number
-  icon?: string | false
-  level?: 'success' | 'error' | 'warning' | 'info'
-  onClose?: FlashCallback
-  position?: FlashPosition
-  progressBar?: boolean
-  title?: string
-  type?: 'success' | 'error' | 'warning' | 'info'
+  actions?: FlashAction[] | undefined
+  dismissible?: boolean | undefined
+  duration?: number | undefined
+  icon?: string | false | undefined
+  level?: 'success' | 'error' | 'warning' | 'info' | undefined
+  onClose?: FlashCallback | undefined
+  position?: FlashPosition | undefined
+  progressBar?: boolean | undefined
+  title?: string | undefined
+  type?: 'success' | 'error' | 'warning' | 'info' | undefined
 }
 
 interface FlashProps = {
@@ -735,8 +735,8 @@ interface SelectProps = {
 }
 
 interface SessionOptions = {
-  key?: string
-  scoped?: boolean
+  key?: string | undefined
+  scoped?: boolean | undefined
 }
 
 interface SkeletonProps = {
@@ -845,8 +845,8 @@ interface UploadRef = {
 }
 
 interface UrlOptions = {
-  as?: string
-  history?: 'replace' | 'push'
+  as?: string | undefined
+  history?: 'replace' | 'push' | undefined
 }
 
 interface VirtualizeProps = {

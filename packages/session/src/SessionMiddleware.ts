@@ -6,7 +6,7 @@ import type { SessionDriver } from "./drivers/CookieDriver.ts";
 
 export interface SessionOptions {
   /** Session driver to use. Resolved from the container when omitted. */
-  driver?: SessionDriver;
+  driver?: SessionDriver | undefined;
 }
 
 /**

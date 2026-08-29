@@ -298,5 +298,6 @@ export { markdownPage, type BunMarkdownOptions } from "./markdown.ts";
 // must not carry private copies.
 export { escapeHtml } from "./html.ts";
 export { pluralize, singularize, tableNameFor } from "../support/str.ts";
-export { deepMerge } from "../support/deepMerge.ts";
+export { deepMerge, definedOnly } from "../support/deepMerge.ts";
+export type { Resolved } from "../support/deepMerge.ts";
 export { parseCookieHeader } from "../support/cookie.ts";

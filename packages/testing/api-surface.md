@@ -261,16 +261,16 @@ interface InertiaPage = {
 }
 
 interface MigrateDatabaseOptions = {
-  connection?: SQLInstance
-  path?: string
-  table?: string
+  connection?: SQLInstance | undefined
+  path?: string | undefined
+  table?: string | undefined
 }
 
 interface RefreshDatabaseOptions = {
-  connection?: SQLInstance
-  migrate?: string | boolean
-  setup?: (db: SQLInstance) => void | Promise<void>
-  teardown?: (db: SQLInstance) => void | Promise<void>
+  connection?: SQLInstance | undefined
+  migrate?: string | boolean | undefined
+  setup?: ((db: SQLInstance) => void | Promise<void>) | undefined
+  teardown?: ((db: SQLInstance) => void | Promise<void>) | undefined
 }
 
 interface TestFileInput = {
@@ -342,8 +342,8 @@ interface BrowserAvailability = {
 }
 
 interface FlowBrowserOptions = {
-  setup?: () => void
-  timeout?: number
+  setup?: (() => void) | undefined
+  timeout?: number | undefined
 }
 
 interface ObservedFrame = {

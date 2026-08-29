@@ -124,13 +124,13 @@ export interface RecordPage {
 }
 
 export interface ListOptions {
-  page?: number;
-  perPage?: number;
+  page?: number | undefined;
+  perPage?: number | undefined;
   search?: string | undefined;
   sortBy?: string | undefined;
-  sortDir?: "asc" | "desc";
+  sortDir?: "asc" | "desc" | undefined;
   /** Scope the base query before search/sort/pagination (e.g. the active tab). */
-  modifyQuery?: QueryModifier;
+  modifyQuery?: QueryModifier | undefined;
   /** Soft-delete scope: include trashed (`with`) or only trashed (`only`). */
   trashed?: "with" | "only" | undefined;
   /**

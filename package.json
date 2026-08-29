@@ -32,6 +32,8 @@
     "brands:check": "bun run scripts/sync-brands.ts --check",
     "changelog:release": "bun run scripts/changelog-release.ts",
     "cast:check": "bun run scripts/cast-audit.ts",
+    "exact:optional": "bun run scripts/exact-optional.ts --write",
+    "exact:optional:check": "bun run scripts/exact-optional.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docs:build": "bun run docs:api && cd apps/docs && bun run build",

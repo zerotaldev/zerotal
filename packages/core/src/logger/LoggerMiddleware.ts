@@ -42,7 +42,7 @@ const LINE_WIDTH = 60;
 
 export interface LoggerOptions {
   /** Output format. Defaults to LOG_FORMAT env var, then 'text'. */
-  format?: "text" | "json";
+  format?: "text" | "json" | undefined;
 }
 
 /**

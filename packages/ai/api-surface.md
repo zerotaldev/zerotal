@@ -389,8 +389,8 @@ interface AiObjectResponse = {
 
 interface AiQueueOptions = {
   handler: string
-  meta?: Record<string, unknown>
-  queue?: string
+  meta?: Record<string, unknown> | undefined
+  queue?: string | undefined
 }
 
 interface AiRequest = {
@@ -451,14 +451,14 @@ interface AiUsage = {
 
 interface AnthropicConfigShape = {
   apiKey: string
-  baseUrl?: string
+  baseUrl?: string | undefined
   cacheSystem: boolean
   effort: AiEffort
   fallbacks: boolean
   maxTokens: number
   model: string
   streamMaxTokens: number
-  temperature?: number
+  temperature?: number | undefined
   timeout: number
 }
 

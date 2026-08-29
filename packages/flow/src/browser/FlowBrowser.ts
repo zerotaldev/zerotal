@@ -32,12 +32,12 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 /** @internal */
 export interface OpenOptions {
   /** Milliseconds to wait for the page to load and Flow to connect. */
-  timeout?: number;
+  timeout?: number | undefined;
   /**
    * Wait for Flow's WebSocket to report itself online before returning.
    * Default: true. Set false for a page with no Flow component on it.
    */
-  waitForConnection?: boolean;
+  waitForConnection?: boolean | undefined;
 }
 
 export class FlowBrowser {

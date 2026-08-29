@@ -286,32 +286,32 @@ interface ModelStat = {
 }
 
 interface MonitorConfigShape = {
-  accent?: string
-  alertCooldownMs?: number
-  alertThresholds?: AlertThresholds
-  alertWebhook?: string
-  alerts?: boolean
-  apdexTargetMs?: number
-  auth?: (user: unknown) => boolean | Promise<boolean>
-  capturePayloads?: boolean
-  deploy?: string
-  metrics?: boolean
-  metricsPath?: string
-  path?: string
-  payloadMaxBytes?: number
-  record?: boolean
-  refreshMs?: number
-  region?: string
-  retentionDays?: number
-  retentionMode?: RetentionMode
-  sections?: Record<string, boolean>
-  slowQueryMs?: number
-  slowRequestMs?: number
-  snapshotCacheMs?: number
-  storage?: string
-  subtitle?: string
-  title?: string
-  zerotalVersion?: string
+  accent?: string | undefined
+  alertCooldownMs?: number | undefined
+  alertThresholds?: AlertThresholds | undefined
+  alertWebhook?: string | undefined
+  alerts?: boolean | undefined
+  apdexTargetMs?: number | undefined
+  auth?: ((user: unknown) => boolean | Promise<boolean>) | undefined
+  capturePayloads?: boolean | undefined
+  deploy?: string | undefined
+  metrics?: boolean | undefined
+  metricsPath?: string | undefined
+  path?: string | undefined
+  payloadMaxBytes?: number | undefined
+  record?: boolean | undefined
+  refreshMs?: number | undefined
+  region?: string | undefined
+  retentionDays?: number | undefined
+  retentionMode?: RetentionMode | undefined
+  sections?: Record<string, boolean> | undefined
+  slowQueryMs?: number | undefined
+  slowRequestMs?: number | undefined
+  snapshotCacheMs?: number | undefined
+  storage?: string | undefined
+  subtitle?: string | undefined
+  title?: string | undefined
+  zerotalVersion?: string | undefined
 }
 
 interface MonitorSection = {
@@ -386,16 +386,16 @@ interface MonitorStat = {
 }
 
 interface MonitorStoreOptions = {
-  apdexTargetMs?: number
-  deploy?: string
-  region?: string
-  retentionDays?: number
-  retentionMode?: RetentionMode
-  slowQueryMs?: number
-  slowRequestMs?: number
-  snapshotCacheMs?: number
-  storage?: string
-  zerotalVersion?: string
+  apdexTargetMs?: number | undefined
+  deploy?: string | undefined
+  region?: string | undefined
+  retentionDays?: number | undefined
+  retentionMode?: RetentionMode | undefined
+  slowQueryMs?: number | undefined
+  slowRequestMs?: number | undefined
+  snapshotCacheMs?: number | undefined
+  storage?: string | undefined
+  zerotalVersion?: string | undefined
 }
 
 interface MonitorTable = {
@@ -525,30 +525,30 @@ interface RequestSpan = {
 interface ResolvedMonitorConfig = {
   accent: string
   alertCooldownMs: number
-  alertThresholds?: AlertThresholds
-  alertWebhook?: string
+  alertThresholds?: AlertThresholds | undefined
+  alertWebhook?: string | undefined
   alerts: boolean
   apdexTargetMs: number
   auth: (user: unknown) => boolean | Promise<boolean>
   capturePayloads: boolean
-  deploy?: string
+  deploy?: string | undefined
   metrics: boolean
   metricsPath: string
   path: string
   payloadMaxBytes: number
   record: boolean
   refreshMs: number
-  region?: string
+  region?: string | undefined
   retentionDays: number
   retentionMode: RetentionMode
-  sections?: Record<string, boolean>
+  sections?: Record<string, boolean> | undefined
   slowQueryMs: number
   slowRequestMs: number
   snapshotCacheMs: number
   storage: string
   subtitle: string
   title: string
-  zerotalVersion?: string
+  zerotalVersion?: string | undefined
 }
 
 interface RouteDetail = {

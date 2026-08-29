@@ -220,12 +220,12 @@ export function isUpload(value: unknown): value is UploadedFileLike {
 export interface StoreMediaOptions {
   provider: MediaProvider;
   /** Disk to write to; the default disk when omitted. */
-  disk?: string;
-  folder?: string;
+  disk?: string | undefined;
+  folder?: string | undefined;
   /** Refuse anything larger, in bytes. */
-  maxBytes?: number;
+  maxBytes?: number | undefined;
   /** Accepted MIME types; anything goes when omitted. */
-  accept?: string[];
+  accept?: string[] | undefined;
 }
 
 /**

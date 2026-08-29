@@ -31,7 +31,7 @@ export interface StartDevModeOptions {
    * and nothing to serve it to — `--only=queue` is supervision and a deck, and
    * the orchestrator that would call this never starts.
    */
-  build?: BuildHookFn;
+  build?: BuildHookFn | undefined;
   /** Everything the providers and the app contributed, already filtered. */
   processes: ResolvedDevProcess[];
   writer: OutputWriter;

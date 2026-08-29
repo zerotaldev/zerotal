@@ -52,7 +52,7 @@ export interface SynchronizeOptions {
    * declared by any model. Off by default - additive changes are always safe,
    * drops can lose data.
    */
-  disruptive?: boolean;
+  disruptive?: boolean | undefined;
 }
 
 /**

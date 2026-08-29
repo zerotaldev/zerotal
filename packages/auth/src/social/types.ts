@@ -47,11 +47,11 @@ export interface OAuth2Config {
   /** OAuth2 client / application ID issued by the provider. */
   clientId: string;
   /** Static client secret, or omit for Apple and supply teamId/keyId/privateKey instead. */
-  clientSecret?: string;
+  clientSecret?: string | undefined;
   /** Fixed callback URL, matching the one registered with the provider. */
   redirectUrl: string;
   /** Scopes to request; when omitted the driver's `defaultScopes()` are used. */
-  scopes?: string[];
+  scopes?: string[] | undefined;
 }
 
 /**
@@ -61,14 +61,14 @@ export interface OAuth2Config {
  */
 export interface AppleOAuth2Config extends OAuth2Config {
   /** Your Apple Developer Team ID (10-character string). */
-  teamId?: string;
+  teamId?: string | undefined;
   /** The Key ID of the private key created in App Store Connect. */
-  keyId?: string;
+  keyId?: string | undefined;
   /**
    * PEM-encoded PKCS#8 ES256 private key downloaded from App Store Connect.
    * Include the full -----BEGIN PRIVATE KEY----- / -----END PRIVATE KEY----- block.
    */
-  privateKey?: string;
+  privateKey?: string | undefined;
 }
 
 // ── Internal driver types ─────────────────────────────────────────────────────

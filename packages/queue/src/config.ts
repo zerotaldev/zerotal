@@ -23,7 +23,7 @@ export interface QueueConfigShape {
    * @example
    * workerBootstrap: new URL('../bootstrap/queue-worker.ts', import.meta.url).href
    */
-  workerBootstrap?: string;
+  workerBootstrap?: string | undefined;
 }
 
 const defaults: QueueConfigShape = {

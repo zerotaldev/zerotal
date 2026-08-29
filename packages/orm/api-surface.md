@@ -806,14 +806,14 @@ interface CastField = {
 }
 
 interface ColumnOptions = {
-  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
+  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined
   default?: unknown
-  enumValues?: Record<string, string | number>
-  index?: boolean
-  nullable?: boolean
-  primary?: boolean
-  type?: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json'
-  unique?: boolean
+  enumValues?: Record<string, string | number> | undefined
+  index?: boolean | undefined
+  nullable?: boolean | undefined
+  primary?: boolean | undefined
+  type?: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json' | undefined
+  unique?: boolean | undefined
 }
 
 interface Compose = {
@@ -836,10 +836,10 @@ interface CursorPaginateResult = {
 
 interface DatabaseConfigShape = {
   driver: 'sqlite' | 'postgres' | 'mysql'
-  pool?: {    max?: number;    idleTimeout?: number;}
-  replicas?: string[]
+  pool?: {    max?: number;    idleTimeout?: number;} | undefined
+  replicas?: string[] | undefined
   sqlite: {    path: string;}
-  synchronize?: boolean | {    enabled: boolean;    disruptive?: boolean;}
+  synchronize?: boolean | {    enabled: boolean;    disruptive?: boolean;} | undefined
   url: string
 }
 
@@ -850,9 +850,9 @@ interface HasMany = {
 
 interface HasManyThroughOptions = {
   firstKey: string
-  localKey?: string
+  localKey?: string | undefined
   secondKey: string
-  throughLocalKey?: string
+  throughLocalKey?: string | undefined
 }
 
 interface HasOne = {
@@ -861,10 +861,10 @@ interface HasOne = {
 }
 
 interface KeysetOptions = {
-  column?: string
-  cursor?: string | null
-  direction?: 'asc' | 'desc'
-  limit?: number
+  column?: string | undefined
+  cursor?: string | null | undefined
+  direction?: 'asc' | 'desc' | undefined
+  limit?: number | undefined
 }
 
 interface KeysetPaginateResult = {
@@ -890,13 +890,13 @@ interface ManyToMany = {
 }
 
 interface ManyToManyOptions = {
-  localKey?: string
+  localKey?: string | undefined
   pivotForeignKey: string
   pivotRelatedKey: string
   pivotTable: string
-  relatedKey?: string
-  withPivot?: string[]
-  withTimestamps?: boolean
+  relatedKey?: string | undefined
+  withPivot?: string[] | undefined
+  withTimestamps?: boolean | undefined
 }
 
 interface MigrationEntry = {
@@ -931,9 +931,9 @@ interface ModelObserver = {
 interface MorphedByManyOptions = {
   morphName: string
   parentPivotKey: string
-  pivotTable?: string
-  withPivot?: string[]
-  withTimestamps?: boolean
+  pivotTable?: string | undefined
+  withPivot?: string[] | undefined
+  withTimestamps?: boolean | undefined
 }
 
 interface MorphMany = {
@@ -942,7 +942,7 @@ interface MorphMany = {
 }
 
 interface MorphManyOptions = {
-  localKey?: string
+  localKey?: string | undefined
   morphName: string
 }
 
@@ -952,7 +952,7 @@ interface MorphOne = {
 }
 
 interface MorphOneOptions = {
-  localKey?: string
+  localKey?: string | undefined
   morphName: string
 }
 
@@ -963,21 +963,21 @@ interface MorphTo = {
 
 interface MorphToManyOptions = {
   morphName: string
-  pivotTable?: string
+  pivotTable?: string | undefined
   relatedPivotKey: string
-  withPivot?: string[]
-  withTimestamps?: boolean
+  withPivot?: string[] | undefined
+  withTimestamps?: boolean | undefined
 }
 
 interface MorphToOptions = {
-  morphForeignKey?: string
+  morphForeignKey?: string | undefined
   morphMap: Record<string, () => unknown>
-  morphTypeColumn?: string
+  morphTypeColumn?: string | undefined
 }
 
 interface NPlusOneOptions = {
-  mode?: 'warn' | 'throw'
-  threshold?: number
+  mode?: 'warn' | 'throw' | undefined
+  threshold?: number | undefined
 }
 
 interface PaginateMeta = {
@@ -1067,8 +1067,8 @@ interface TableDecoratorBuilder = {
 }
 
 interface TableOptions = {
-  primaryKey?: string
-  timestamps?: boolean
+  primaryKey?: string | undefined
+  timestamps?: boolean | undefined
 }
 
 interface TransitionContext = {

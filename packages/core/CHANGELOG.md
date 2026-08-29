@@ -8,7 +8,36 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **Optional properties in public option shapes are declared `?: T | undefined`.**
+  The generated `tsconfig.json` turns on `exactOptionalPropertyTypes`, under which
+  `image?: string` and `image?: string | undefined` are different types: only the
+  second accepts a key that is present and holds `undefined`. So an app with the
+  strictness the framework shipped it could not write the most ordinary thing there
+  is — `{ image: candidate ?? undefined }` — and had to spell every conditional field
+  `...(x ? { x } : {})` instead. An options bag exists to be spread into; one built by
+  spreading has conditionally-absent keys.
+
+  438 properties across 115 files, applied by `scripts/exact-optional.ts` and checked
+  by `bun run exact:optional:check` so the convention holds for shapes written later.
+  Scoped to exported `*Options` / `*Config` shapes — what an app constructs — rather
+  than every optional property in the codebase. Nothing changes for a reader: an
+  absent optional property already read as `undefined`.
+
 ### Added
+
+- **`definedOnly` (`@zerotal/core/helpers`) and the `Resolved<T>` type.** Widening the
+  option shapes moves a problem to the merge, and both of these are that problem's
+  answer. Object spread copies own properties even when their value is `undefined`,
+  so `{ ...DEFAULTS, ...options }` now lets an explicit `undefined` overwrite a
+  default; `definedOnly` drops those keys, turning "supplied as undefined" back into
+  "not supplied". (`deepMerge` already did this at every depth.)
+
+  `Resolved<T>` is what a defaults-applied object is. **`Required<T>` is not**, which
+  is the trap: `-?` removes the optionality a `?` introduced but not an `undefined`
+  written into the type, so `Required<Options>` quietly stopped meaning "the defaults
+  have been applied".
 
 - **`zt deploy:<env> --check`** — the preflight gate on its own. A release script has a
   moment where the new code is on disk and the service has not restarted yet, and that

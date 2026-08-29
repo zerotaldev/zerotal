@@ -119,7 +119,7 @@ interface DoctorReport = {
 interface GuidelineOptions = {
   packages: string[]
   serverName: string
-  shape?: ProjectShape
+  shape?: ProjectShape | undefined
 }
 
 interface InstalledPackage = {
@@ -177,8 +177,8 @@ interface SchemaReport = {
 }
 
 interface SpawnProbeOptions = {
-  cwd?: string
-  timeoutMs?: number
+  cwd?: string | undefined
+  timeoutMs?: number | undefined
 }
 
 interface ToolContext = {
@@ -262,10 +262,10 @@ interface ServerIdentity = {
 }
 
 interface StdioOptions = {
-  input?: ReadableStream<Uint8Array<ArrayBufferLike>>
-  log?: (message: string) => void
+  input?: ReadableStream<Uint8Array<ArrayBufferLike>> | undefined
+  log?: ((message: string) => void) | undefined
   server: McpServer
-  write?: (frame: string) => void
+  write?: ((frame: string) => void) | undefined
 }
 
 interface ToolOutcome = {

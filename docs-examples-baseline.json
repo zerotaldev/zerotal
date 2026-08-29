@@ -4281,6 +4281,18 @@
     },
     {
       "file": "docs/helpers.md",
+      "heading": "`definedOnly` and `Resolved<T>` — merging a shallow options bag",
+      "ordinal": 1,
+      "hash": "aj7fl0j31ytl"
+    },
+    {
+      "file": "docs/helpers.md",
+      "heading": "`definedOnly` and `Resolved<T>` — merging a shallow options bag",
+      "ordinal": 2,
+      "hash": "3kdqx3i8bx8d"
+    },
+    {
+      "file": "docs/helpers.md",
       "heading": "Arrays replace — they do not merge",
       "ordinal": 0,
       "hash": "rhwdc8nnyqst"
@@ -7912,10 +7924,10 @@
       "hash": "2a7h5rzdzv8h"
     },
     {
-      "file": "docs/health.md",
-      "heading": "Configuration",
+      "file": "docs/helpers.md",
+      "heading": "`definedOnly` and `Resolved<T>` — merging a shallow options bag",
       "ordinal": 0,
-      "hash": "ec21hqahzi9l"
+      "hash": "1irpsb5noy3v"
     },
     {
       "file": "docs/lock.md",

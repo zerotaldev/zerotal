@@ -10,19 +10,19 @@ export interface CircuitBreakerOptions {
    * Number of consecutive failures required to open the circuit.
    * Default: `5`.
    */
-  threshold?: number;
+  threshold?: number | undefined;
   /**
    * Milliseconds to wait in the open state before allowing a single probe
    * request through (transition to half-open). Default: `30_000` (30 s).
    */
-  resetTimeout?: number;
+  resetTimeout?: number | undefined;
   /**
    * Predicate that decides whether a thrown error counts as a failure.
    * By default, network errors and `ApiClientError` responses with status ≥ 500
    * are failures; 4xx errors are not (they indicate client mistakes, not
    * upstream outages).
    */
-  isFailure?: (error: unknown) => boolean;
+  isFailure?: ((error: unknown) => boolean) | undefined;
 }
 
 // ── Error thrown when the circuit is open ─────────────────────────────────────

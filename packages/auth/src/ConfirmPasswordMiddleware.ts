@@ -18,9 +18,9 @@ export const DEFAULT_PASSWORD_TIMEOUT = 3 * 60 * 60;
 
 export interface ConfirmPasswordOptions {
   /** Where to send users who must (re)confirm their password. Default `/confirm-password`. */
-  redirectTo?: string;
+  redirectTo?: string | undefined;
   /** How long a confirmation stays valid, in seconds. Default 10800 (3 hours). */
-  timeoutSeconds?: number;
+  timeoutSeconds?: number | undefined;
 }
 
 /**

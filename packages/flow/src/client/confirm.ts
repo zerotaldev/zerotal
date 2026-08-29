@@ -15,17 +15,17 @@ export interface ConfirmDialogOptions {
   /** Body text (the description, or the heading when no `title` is given). */
   message: string;
   /** Bold heading above the message. */
-  title?: string;
+  title?: string | undefined;
   /** Confirm button label (default: "Confirm", or "Delete" for danger). */
-  confirmLabel?: string;
+  confirmLabel?: string | undefined;
   /** Cancel button label (default: "Cancel"). */
-  cancelLabel?: string;
+  cancelLabel?: string | undefined;
   /** `danger` = destructive (red); `primary` = neutral/indigo (default). */
-  variant?: "danger" | "primary";
+  variant?: "danger" | "primary" | undefined;
   /** Custom icon (emoji/text/SVG markup), or `false` to hide the icon entirely. */
-  icon?: string | false;
+  icon?: string | false | undefined;
   /** Show a type-to-confirm input; Confirm unlocks only when the value matches this. */
-  prompt?: string;
+  prompt?: string | undefined;
 }
 
 const ICONS = {

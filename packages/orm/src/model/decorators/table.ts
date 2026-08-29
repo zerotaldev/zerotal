@@ -11,9 +11,9 @@ import type { ClassRef } from "../../support/classRef.ts";
  */
 export interface TableOptions {
   /** Enable / disable automatic timestamp columns. @default true */
-  timestamps?: boolean;
+  timestamps?: boolean | undefined;
   /** Override the primary key column name. @default "id" */
-  primaryKey?: string;
+  primaryKey?: string | undefined;
 }
 
 /**

@@ -19,7 +19,7 @@ export interface RememberMeOptions {
    * Mark the remember cookie `Secure`. Defaults to `true` — this is a long-lived,
    * password-free credential. Set `false` only for local HTTP development.
    */
-  secure?: boolean;
+  secure?: boolean | undefined;
 }
 
 /** A user model exposing the remember-token contract (from `Authenticatable`). */

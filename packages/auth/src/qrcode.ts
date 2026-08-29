@@ -632,25 +632,25 @@ export function encodeQr(text: string): QrMatrix {
 /** How {@link qrSvg} draws a matrix. */
 export interface QrSvgOptions {
   /** Accessible name for the image. Default: `"QR code"`. */
-  alt?: string;
+  alt?: string | undefined;
   /**
    * Light margin around the symbol, in modules. Default: `4`, which is what the
    * spec requires — scanners use it to find the edges, and a QR flush against a
    * coloured card often will not read. Drop it to `0` only when the surrounding
    * element already supplies a light margin of its own.
    */
-  quietZone?: number;
+  quietZone?: number | undefined;
   /** Colour of the dark modules. Default: `"#000000"`. */
-  dark?: string;
+  dark?: string | undefined;
   /** Background colour, or `null` for a transparent one. Default: `"#ffffff"`. */
-  light?: string | null;
+  light?: string | null | undefined;
   /**
    * Width and height in pixels. Omitted by default, which leaves the symbol
    * scaling to whatever box you put it in via the `viewBox` alone.
    */
-  size?: number;
+  size?: number | undefined;
   /** Value for the `class` attribute, for styling from your stylesheet. */
-  class?: string;
+  class?: string | undefined;
 }
 
 /**

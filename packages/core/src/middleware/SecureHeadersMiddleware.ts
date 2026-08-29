@@ -14,48 +14,48 @@ export interface SecureHeadersOptions {
    * `Content-Security-Policy` header value.
    * Omitted by default — set this to a policy appropriate for your application.
    */
-  contentSecurityPolicy?: string;
+  contentSecurityPolicy?: string | undefined;
 
   /**
    * `Strict-Transport-Security` max-age in seconds.
    * Defaults to 1 year (31 536 000 s). Set to `0` to disable HSTS entirely.
    * Only emitted when `secure: true` to avoid HSTS issues in plain-HTTP dev environments.
    */
-  hstsMaxAge?: number;
+  hstsMaxAge?: number | undefined;
 
   /**
    * Include `includeSubDomains` in the HSTS header. Defaults to `true`.
    */
-  hstsIncludeSubDomains?: boolean;
+  hstsIncludeSubDomains?: boolean | undefined;
 
   /**
    * Set the HSTS `preload` directive. Defaults to `false`.
    * Only set this if you have registered the domain with the HSTS preload list.
    */
-  hstsPreload?: boolean;
+  hstsPreload?: boolean | undefined;
 
   /**
    * Enable HSTS and the `Secure` flag on the XSRF-TOKEN cookie.
    * Default `false` — set to `true` in production when serving over HTTPS.
    */
-  secure?: boolean;
+  secure?: boolean | undefined;
 
   /**
    * `X-Frame-Options` value. Defaults to `'SAMEORIGIN'`.
    * Set to `'DENY'` for maximum protection, or `false` to omit the header.
    */
-  frameOptions?: "DENY" | "SAMEORIGIN" | false;
+  frameOptions?: "DENY" | "SAMEORIGIN" | false | undefined;
 
   /**
    * `Referrer-Policy` value. Defaults to `'strict-origin-when-cross-origin'`.
    */
-  referrerPolicy?: string;
+  referrerPolicy?: string | undefined;
 
   /**
    * `Permissions-Policy` header value.
    * Defaults to a conservative policy disabling sensitive APIs.
    */
-  permissionsPolicy?: string | false;
+  permissionsPolicy?: string | false | undefined;
 }
 
 const DEFAULT_PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=()";

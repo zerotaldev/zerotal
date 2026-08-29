@@ -71,17 +71,17 @@ interface ComponentEntry = {
 interface CustomIconRegistry = {}
 
 interface FlowUiThemeConfig = {
-  cdn?: boolean
-  extraHead?: string
-  noFonts?: boolean
-  stylesheet?: string
-  tokensCss?: string
+  cdn?: boolean | undefined
+  extraHead?: string | undefined
+  noFonts?: boolean | undefined
+  stylesheet?: string | undefined
+  tokensCss?: string | undefined
 }
 
 interface GvaConfig = {
-  compoundVariants?: CompoundVariant<V>[]
-  defaultVariants?: VariantSelection<V>
-  variants?: V
+  compoundVariants?: CompoundVariant<V>[] | undefined
+  defaultVariants?: VariantSelection<V> | undefined
+  variants?: V | undefined
 }
 
 interface IconBody = {

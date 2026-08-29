@@ -7,12 +7,12 @@ export interface MorphToOptions {
    * Override the _type column name. Defaults to `<propertyName>_type`.
    * e.g. property `commentable` → `commentable_type`.
    */
-  morphTypeColumn?: string;
+  morphTypeColumn?: string | undefined;
   /**
    * Override the _id column name. Defaults to `<propertyName>_id`.
    * e.g. property `commentable` → `commentable_id`.
    */
-  morphForeignKey?: string;
+  morphForeignKey?: string | undefined;
 }
 
 function _toSnake(s: string): string {

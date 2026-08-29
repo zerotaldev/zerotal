@@ -13,32 +13,32 @@ export interface WebhookOptions {
   /** HMAC secret used to verify the signature. */
   secret: string;
   /** Request header that carries the signature. Default: 'x-webhook-signature'. */
-  header?: string;
+  header?: string | undefined;
   /** HMAC algorithm. Default: 'sha256'. */
-  algorithm?: "sha256" | "sha1" | "sha512";
+  algorithm?: "sha256" | "sha1" | "sha512" | undefined;
   /**
    * Expected signature prefix that will be stripped before comparison
    * (e.g. `'sha256='` for GitHub). Default: `''`.
    */
-  prefix?: string;
+  prefix?: string | undefined;
   /**
    * Max age in seconds for replay-attack protection.
    * Requires `timestampHeader` (or `format: 'stripe'`). Disabled when `undefined`.
    */
-  tolerance?: number;
+  tolerance?: number | undefined;
   /**
    * Header that carries the Unix timestamp of the request.
    * When present the signed payload becomes `{timestamp}{timestampSeparator}{body}`.
    */
-  timestampHeader?: string;
+  timestampHeader?: string | undefined;
   /** Separator between timestamp and body in the signed payload. Default: `'.'`. */
-  timestampSeparator?: string;
+  timestampSeparator?: string | undefined;
   /**
    * Header format.
    * - `'raw'` (default) — signature is the full (or prefix-stripped) header value.
    * - `'stripe'` — header is parsed as `t=<ts>,v1=<sig>` (Stripe-Signature style).
    */
-  format?: "raw" | "stripe";
+  format?: "raw" | "stripe" | undefined;
 }
 
 /**

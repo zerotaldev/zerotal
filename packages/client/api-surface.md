@@ -127,64 +127,64 @@ function ClientConfig = (options?: Partial<ClientConfigShape>) => Partial<Client
 function createApiClient = <Routes extends ApiRouteMap>(config?: ApiClientConfig) => ApiClient<Routes>
 
 interface ApiClientConfig = {
-  baseUrl?: string
-  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions
-  csrf?: boolean | {    cookie?: string;    header?: string;}
-  headers?: Record<string, string>
-  onError?: (error: ApiClientError) => void | Promise<void>
-  onForbidden?: (error: ApiClientError) => void | Promise<void>
-  onRequest?: RequestInterceptor | RequestInterceptor[]
-  onResponse?: ResponseInterceptor | ResponseInterceptor[]
-  onUnauthorized?: (error: ApiClientError, retry: (headerOverrides?: Record<string, string>) => Promise<unknown>) => Promise<unknown> | void
-  retry?: number | RetryOptions
-  timeout?: number
-  token?: TokenSource
-  withCredentials?: boolean
+  baseUrl?: string | undefined
+  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions | undefined
+  csrf?: boolean | {    cookie?: string;    header?: string;} | undefined
+  headers?: Record<string, string> | undefined
+  onError?: ((error: ApiClientError) => void | Promise<void>) | undefined
+  onForbidden?: ((error: ApiClientError) => void | Promise<void>) | undefined
+  onRequest?: RequestInterceptor | RequestInterceptor[] | undefined
+  onResponse?: ResponseInterceptor | ResponseInterceptor[] | undefined
+  onUnauthorized?: ((error: ApiClientError, retry: (headerOverrides?: Record<string, string>) => Promise<unknown>) => Promise<unknown> | void) | undefined
+  retry?: number | RetryOptions | undefined
+  timeout?: number | undefined
+  token?: TokenSource | undefined
+  withCredentials?: boolean | undefined
 }
 
 interface CircuitBreakerOptions = {
-  isFailure?: (error: unknown) => boolean
-  resetTimeout?: number
-  threshold?: number
+  isFailure?: ((error: unknown) => boolean) | undefined
+  resetTimeout?: number | undefined
+  threshold?: number | undefined
 }
 
 interface ClientConfigShape = {
-  baseUrl?: string
-  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions
-  csrf?: boolean | {    cookie?: string;    header?: string;}
-  headers?: Record<string, string>
-  onError?: (error: ApiClientError) => void | Promise<void>
-  onForbidden?: (error: ApiClientError) => void | Promise<void>
-  onRequest?: RequestInterceptor | RequestInterceptor[]
-  onResponse?: ResponseInterceptor | ResponseInterceptor[]
-  onUnauthorized?: (error: ApiClientError, retry: (headerOverrides?: Record<string, string>) => Promise<unknown>) => Promise<unknown> | void
-  retry?: number | RetryOptions
-  timeout?: number
-  token?: TokenSource
-  withCredentials?: boolean
+  baseUrl?: string | undefined
+  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions | undefined
+  csrf?: boolean | {    cookie?: string;    header?: string;} | undefined
+  headers?: Record<string, string> | undefined
+  onError?: ((error: ApiClientError) => void | Promise<void>) | undefined
+  onForbidden?: ((error: ApiClientError) => void | Promise<void>) | undefined
+  onRequest?: RequestInterceptor | RequestInterceptor[] | undefined
+  onResponse?: ResponseInterceptor | ResponseInterceptor[] | undefined
+  onUnauthorized?: ((error: ApiClientError, retry: (headerOverrides?: Record<string, string>) => Promise<unknown>) => Promise<unknown> | void) | undefined
+  retry?: number | RetryOptions | undefined
+  timeout?: number | undefined
+  token?: TokenSource | undefined
+  withCredentials?: boolean | undefined
 }
 
 interface GetOptions = {
-  headers?: Record<string, string>
-  init?: Omit<RequestInit, 'method' | 'headers' | 'body'>
-  meta?: (meta: ResponseMeta) => void
-  query?: Q
-  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer'
-  retry?: number | false | RetryOptions
-  signal?: AbortSignal
-  timeout?: number
+  headers?: Record<string, string> | undefined
+  init?: Omit<RequestInit, 'method' | 'headers' | 'body'> | undefined
+  meta?: ((meta: ResponseMeta) => void) | undefined
+  query?: Q | undefined
+  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer' | undefined
+  retry?: number | false | RetryOptions | undefined
+  signal?: AbortSignal | undefined
+  timeout?: number | undefined
 }
 
 interface MutationOptions = {
-  headers?: Record<string, string>
-  init?: Omit<RequestInit, 'method' | 'headers' | 'body'>
-  meta?: (meta: ResponseMeta) => void
-  params?: Record<string, string | number>
-  query?: Q
-  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer'
-  retry?: number | false | RetryOptions
-  signal?: AbortSignal
-  timeout?: number
+  headers?: Record<string, string> | undefined
+  init?: Omit<RequestInit, 'method' | 'headers' | 'body'> | undefined
+  meta?: ((meta: ResponseMeta) => void) | undefined
+  params?: Record<string, string | number> | undefined
+  query?: Q | undefined
+  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer' | undefined
+  retry?: number | false | RetryOptions | undefined
+  signal?: AbortSignal | undefined
+  timeout?: number | undefined
 }
 
 interface PresenceMember = {
@@ -200,13 +200,13 @@ interface RequestConfig = {
 }
 
 interface RequestOptions = {
-  headers?: Record<string, string>
-  init?: Omit<RequestInit, 'method' | 'headers' | 'body'>
-  meta?: (meta: ResponseMeta) => void
-  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer'
-  retry?: number | false | RetryOptions
-  signal?: AbortSignal
-  timeout?: number
+  headers?: Record<string, string> | undefined
+  init?: Omit<RequestInit, 'method' | 'headers' | 'body'> | undefined
+  meta?: ((meta: ResponseMeta) => void) | undefined
+  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer' | undefined
+  retry?: number | false | RetryOptions | undefined
+  signal?: AbortSignal | undefined
+  timeout?: number | undefined
 }
 
 interface ResponseContext = {
@@ -222,11 +222,11 @@ interface ResponseMeta = {
 }
 
 interface RetryOptions = {
-  attempts?: number
-  backoff?: (attempt: number, retryAfterMs: number | null) => number
-  methods?: string[]
-  respectRetryAfter?: boolean
-  statuses?: number[]
+  attempts?: number | undefined
+  backoff?: ((attempt: number, retryAfterMs: number | null) => number) | undefined
+  methods?: string[] | undefined
+  respectRetryAfter?: boolean | undefined
+  statuses?: number[] | undefined
 }
 
 interface RouteShape = {
@@ -247,20 +247,20 @@ interface SocketLike = {
 }
 
 interface SocketOptions = {
-  WebSocket?: new (url: string) => SocketLike
-  auth?: {    params?: Record<string, string>;    headers?: Record<string, string>;}
-  authEndpoint?: string | false
-  autoConnect?: boolean
-  fetch?: typeof fetch
-  host?: string
-  maxReconnectDelay?: number
-  path?: string
-  pingInterval?: number
-  port?: string | number
-  reconnect?: boolean
-  reconnectDelay?: number
-  scheme?: 'ws' | 'wss'
-  url?: string
+  WebSocket?: (new (url: string) => SocketLike) | undefined
+  auth?: {    params?: Record<string, string>;    headers?: Record<string, string>;} | undefined
+  authEndpoint?: string | false | undefined
+  autoConnect?: boolean | undefined
+  fetch?: typeof fetch | undefined
+  host?: string | undefined
+  maxReconnectDelay?: number | undefined
+  path?: string | undefined
+  pingInterval?: number | undefined
+  port?: string | number | undefined
+  reconnect?: boolean | undefined
+  reconnectDelay?: number | undefined
+  scheme?: 'ws' | 'wss' | undefined
+  url?: string | undefined
 }
 
 type ApiRouteMap = {    [x: `GET ${string}`]: RouteShape | undefined;    [x: `POST ${string}`]: RouteShape | undefined;    [x: `PUT ${string}`]: RouteShape | undefined;    [x: `PATCH ${string}`]: RouteShape | undefined;    [x: `DELETE ${string}`]: RouteShape | undefined;}
@@ -373,20 +373,20 @@ interface SocketLike = {
 }
 
 interface SocketOptions = {
-  WebSocket?: new (url: string) => SocketLike
-  auth?: {    params?: Record<string, string>;    headers?: Record<string, string>;}
-  authEndpoint?: string | false
-  autoConnect?: boolean
-  fetch?: typeof fetch
-  host?: string
-  maxReconnectDelay?: number
-  path?: string
-  pingInterval?: number
-  port?: string | number
-  reconnect?: boolean
-  reconnectDelay?: number
-  scheme?: 'ws' | 'wss'
-  url?: string
+  WebSocket?: (new (url: string) => SocketLike) | undefined
+  auth?: {    params?: Record<string, string>;    headers?: Record<string, string>;} | undefined
+  authEndpoint?: string | false | undefined
+  autoConnect?: boolean | undefined
+  fetch?: typeof fetch | undefined
+  host?: string | undefined
+  maxReconnectDelay?: number | undefined
+  path?: string | undefined
+  pingInterval?: number | undefined
+  port?: string | number | undefined
+  reconnect?: boolean | undefined
+  reconnectDelay?: number | undefined
+  scheme?: 'ws' | 'wss' | undefined
+  url?: string | undefined
 }
 
 type SocketState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error'

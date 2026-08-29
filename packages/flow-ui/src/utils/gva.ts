@@ -42,9 +42,9 @@ type CompoundVariant<V extends VariantShape> = VariantSelection<V> & {
 };
 
 export interface GvaConfig<V extends VariantShape> {
-  variants?: V;
-  defaultVariants?: VariantSelection<V>;
-  compoundVariants?: CompoundVariant<V>[];
+  variants?: V | undefined;
+  defaultVariants?: VariantSelection<V> | undefined;
+  compoundVariants?: CompoundVariant<V>[] | undefined;
 }
 
 // Props accepted by the returned function: the variant selection plus a free-form

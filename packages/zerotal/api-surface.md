@@ -808,23 +808,23 @@ interface ContainerBindings = {
 }
 
 interface CookieOptions = {
-  domain?: string
-  httpOnly?: boolean
-  maxAge?: number
+  domain?: string | undefined
+  httpOnly?: boolean | undefined
+  maxAge?: number | undefined
   name: string
-  path?: string
-  sameSite?: SameSite
-  secure?: boolean
+  path?: string | undefined
+  sameSite?: SameSite | undefined
+  secure?: boolean | undefined
   value: string
 }
 
 interface CorsOptions = {
-  allowedHeaders?: string[]
-  credentials?: boolean
-  exposedHeaders?: string[]
-  maxAge?: number
-  methods?: string[]
-  origin?: string | string[] | ((origin: string) => boolean)
+  allowedHeaders?: string[] | undefined
+  credentials?: boolean | undefined
+  exposedHeaders?: string[] | undefined
+  maxAge?: number | undefined
+  methods?: string[] | undefined
+  origin?: string | string[] | ((origin: string) => boolean) | undefined
 }
 
 interface DevProcessDefinition = {
@@ -870,9 +870,9 @@ interface ErrorDiagnosis = {
 }
 
 interface GroupOptions = {
-  domain?: string
-  middleware?: string | string[] | MiddlewareClass | MiddlewareClass[]
-  prefix?: string
+  domain?: string | undefined
+  middleware?: string | string[] | MiddlewareClass | MiddlewareClass[] | undefined
+  prefix?: string | undefined
 }
 
 interface ModelClass = {
@@ -925,25 +925,25 @@ interface RouterMacros = {
 }
 
 interface SecureHeadersOptions = {
-  contentSecurityPolicy?: string
-  frameOptions?: false | 'DENY' | 'SAMEORIGIN'
-  hstsIncludeSubDomains?: boolean
-  hstsMaxAge?: number
-  hstsPreload?: boolean
-  permissionsPolicy?: string | false
-  referrerPolicy?: string
-  secure?: boolean
+  contentSecurityPolicy?: string | undefined
+  frameOptions?: false | 'DENY' | 'SAMEORIGIN' | undefined
+  hstsIncludeSubDomains?: boolean | undefined
+  hstsMaxAge?: number | undefined
+  hstsPreload?: boolean | undefined
+  permissionsPolicy?: string | false | undefined
+  referrerPolicy?: string | undefined
+  secure?: boolean | undefined
 }
 
 interface StartZerotalOptions = {
-  configDir?: string
+  configDir?: string | undefined
 }
 
 interface ThrottleOptions = {
-  keyResolver?: (ctx: HttpContext) => string
+  keyResolver?: ((ctx: HttpContext) => string) | undefined
   maxAttempts: number
-  trustedProxies?: number
-  windowSeconds?: number
+  trustedProxies?: number | undefined
+  windowSeconds?: number | undefined
 }
 
 interface ViewRegistration = {
@@ -952,14 +952,14 @@ interface ViewRegistration = {
 }
 
 interface WebhookOptions = {
-  algorithm?: 'sha256' | 'sha1' | 'sha512'
-  format?: 'raw' | 'stripe'
-  header?: string
-  prefix?: string
+  algorithm?: 'sha256' | 'sha1' | 'sha512' | undefined
+  format?: 'raw' | 'stripe' | undefined
+  header?: string | undefined
+  prefix?: string | undefined
   secret: string
-  timestampHeader?: string
-  timestampSeparator?: string
-  tolerance?: number
+  timestampHeader?: string | undefined
+  timestampSeparator?: string | undefined
+  tolerance?: number | undefined
 }
 
 interface WebSocketHandlers = {
@@ -997,6 +997,8 @@ type MiddlewareClass = new (...args: any[]) => Pipe<HttpContext>
 type NextFn = () => Promise<Response | void>
 
 type ParamsOf = P extends `${string}:${infer Name}/${infer Rest}` ? { [K in Name]: RouteParamValue; } & ParamsOf<`/${Rest}`> : P extends `${string}:${infer Name}` ? { [K in Name]: RouteParamValue; } : P extends `${string}*${string}` ? {    "*": RouteParamValue | readonly RouteParamValue[];} : Record<never, never>
+
+type Resolved = { [K in keyof T]-?: Exclude<T[K], undefined>; }
 
 type RouteArgs = [params?: RouteParamValues, query?: RouteQuery]
 
@@ -1925,50 +1927,50 @@ function tokenCan = (row: TokenRow, ability: string) => boolean
 
 interface AppleOAuth2Config = {
   clientId: string
-  clientSecret?: string
-  keyId?: string
-  privateKey?: string
+  clientSecret?: string | undefined
+  keyId?: string | undefined
+  privateKey?: string | undefined
   redirectUrl: string
-  scopes?: string[]
-  teamId?: string
+  scopes?: string[] | undefined
+  teamId?: string | undefined
 }
 
 interface AuthConfigShape = {
   algorithm: 'bcrypt' | 'argon2id'
-  twoFactor?: TwoFactorOptions
+  twoFactor?: TwoFactorOptions | undefined
 }
 
 interface AuthenticateSessionOptions = {
-  redirectTo?: string
+  redirectTo?: string | undefined
 }
 
 interface AuthOptions = {
-  mustVerifyEmail?: boolean
-  redirectTo?: string
-  verifyRedirectTo?: string
+  mustVerifyEmail?: boolean | undefined
+  redirectTo?: string | undefined
+  verifyRedirectTo?: string | undefined
 }
 
 interface BasicAuthOptions = {
-  field?: string
-  realm?: string
+  field?: string | undefined
+  realm?: string | undefined
 }
 
 interface CompromisedCheckOptions = {
-  endpoint?: string
-  threshold?: number
+  endpoint?: string | undefined
+  threshold?: number | undefined
 }
 
 interface ConfirmPasswordOptions = {
-  redirectTo?: string
-  timeoutSeconds?: number
+  redirectTo?: string | undefined
+  timeoutSeconds?: number | undefined
 }
 
 interface EmailOtpOptions = {
   deleteCode: (email: string) => Promise<void>
-  expireMinutes?: number
+  expireMinutes?: number | undefined
   findCode: (email: string) => Promise<{    code: string;    createdAt: Date;} | null>
-  length?: number
-  maxAttempts?: number
+  length?: number | undefined
+  maxAttempts?: number | undefined
   sendCode: (email: string, code: string) => Promise<void>
   storeCode: (email: string, hash: string, expiresAt: Date) => Promise<void>
 }
@@ -1982,31 +1984,31 @@ interface Guard = {
 }
 
 interface GuestOptions = {
-  redirectTo?: string
+  redirectTo?: string | undefined
 }
 
 interface JwtGuardOptions = {
-  header?: string
-  resolve?: (claims: JwtPayload) => Promise<unknown> | unknown
-  secret?: string
+  header?: string | undefined
+  resolve?: ((claims: JwtPayload) => Promise<unknown> | unknown) | undefined
+  secret?: string | undefined
 }
 
 interface JwtSignOptions = {
-  expiresIn?: number
-  issuedAt?: number
+  expiresIn?: number | undefined
+  issuedAt?: number | undefined
 }
 
 interface LoginOptions = {
-  remember?: boolean
+  remember?: boolean | undefined
 }
 
 interface LoginThrottleOptions = {
-  decaySeconds?: number
-  maxAttempts?: number
+  decaySeconds?: number | undefined
+  maxAttempts?: number | undefined
 }
 
 interface MagicLinkBrokerOptions = {
-  expiresInMinutes?: number
+  expiresInMinutes?: number | undefined
   findUser: (email: string) => Promise<U | null | undefined>
   secret: string
   sendLink: (email: string, signedUrl: string) => Promise<void>
@@ -2024,9 +2026,9 @@ interface NewToken = {
 
 interface OAuth2Config = {
   clientId: string
-  clientSecret?: string
+  clientSecret?: string | undefined
   redirectUrl: string
-  scopes?: string[]
+  scopes?: string[] | undefined
 }
 
 interface PasskeyCredential = {
@@ -2045,11 +2047,11 @@ interface PasskeysOptions = {
   findCredential: (credentialId: string) => Promise<PasskeyCredential | null | undefined>
   findUserCredentials: (userId: number) => Promise<PasskeyCredential[]>
   origin: string | string[]
-  requireUserVerification?: boolean
+  requireUserVerification?: boolean | undefined
   rpId: string
   rpName: string
   saveCredential: (credential: Omit<PasskeyCredential, 'id'>) => Promise<void>
-  timeoutSeconds?: number
+  timeoutSeconds?: number | undefined
   updateCounter: (id: number, newCounter: number) => Promise<void>
 }
 
@@ -2061,7 +2063,7 @@ interface PasskeyUser = {
 
 interface PasswordBrokerOptions = {
   deleteToken: (email: string) => Promise<void>
-  expireMinutes?: number
+  expireMinutes?: number | undefined
   findToken: (email: string) => Promise<{    token: string;    createdAt: Date;} | null>
   pruneTokens: (cutoff: Date) => Promise<void>
   resetPassword: (email: string, newPassword: string) => Promise<void>
@@ -2078,16 +2080,16 @@ interface QrMatrix = {
 }
 
 interface QrSvgOptions = {
-  alt?: string
-  class?: string
-  dark?: string
-  light?: string | null
-  quietZone?: number
-  size?: number
+  alt?: string | undefined
+  class?: string | undefined
+  dark?: string | undefined
+  light?: string | null | undefined
+  quietZone?: number | undefined
+  size?: number | undefined
 }
 
 interface RememberMeOptions = {
-  secure?: boolean
+  secure?: boolean | undefined
 }
 
 interface SocialSession = {
@@ -2129,19 +2131,19 @@ interface TokenRow = {
 }
 
 interface TwoFactorOptions = {
-  issuer?: string
-  recoveryCodeCount?: number
-  window?: number
+  issuer?: string | undefined
+  recoveryCodeCount?: number | undefined
+  window?: number | undefined
 }
 
 interface TwoFactorQrOptions = {
-  alt?: string
-  class?: string
-  dark?: string
-  issuer?: string
-  light?: string | null
-  quietZone?: number
-  size?: number
+  alt?: string | undefined
+  class?: string | undefined
+  dark?: string | undefined
+  issuer?: string | undefined
+  light?: string | null | undefined
+  quietZone?: number | undefined
+  size?: number | undefined
 }
 
 interface UserModel = {
@@ -2192,7 +2194,7 @@ type MagicLinkBrokerResult = 'magic.sent' | 'magic.user_not_found' | 'magic.ok' 
 
 type PasswordBrokerResult = 'passwords.sent' | 'passwords.token' | 'passwords.reset'
 
-type SocialConfigShape = {    [driver: string]: (OAuth2Config & Record<string, unknown>) | undefined;    github?: OAuth2Config & Record<string, unknown>;    google?: OAuth2Config & Record<string, unknown>;    apple?: AppleOAuth2Config & Record<string, unknown>;    discord?: (OAuth2Config & Record<string, unknown>) | undefined;    microsoft?: (OAuth2Config & Record<string, unknown>) | undefined;    facebook?: (OAuth2Config & Record<string, unknown>) | undefined;    twitter?: (OAuth2Config & Record<string, unknown>) | undefined;    linkedin?: (OAuth2Config & Record<string, unknown>) | undefined;    gitlab?: (OAuth2Config & Record<string, unknown>) | undefined;}
+type SocialConfigShape = {    [driver: string]: (OAuth2Config & Record<string, unknown>) | undefined;    github?: (OAuth2Config & Record<string, unknown>) | undefined;    google?: (OAuth2Config & Record<string, unknown>) | undefined;    apple?: (AppleOAuth2Config & Record<string, unknown>) | undefined;    discord?: (OAuth2Config & Record<string, unknown>) | undefined;    microsoft?: (OAuth2Config & Record<string, unknown>) | undefined;    facebook?: (OAuth2Config & Record<string, unknown>) | undefined;    twitter?: (OAuth2Config & Record<string, unknown>) | undefined;    linkedin?: (OAuth2Config & Record<string, unknown>) | undefined;    gitlab?: (OAuth2Config & Record<string, unknown>) | undefined;}
 
 ## ./build  `(./src/build.ts)`
 
@@ -2203,7 +2205,7 @@ function addToDefaultArrayExport = (source: string, identifier: string) => strin
 function registerProvider = (options: RegisterProviderOptions) => Promise<RegisterResult>
 
 interface RegisterProviderOptions = {
-  bootstrapPath?: string
+  bootstrapPath?: string | undefined
   className: string
   importPath: string
 }
@@ -2357,7 +2359,7 @@ interface CacheDriver = {
 interface IdempotencyOptions = {
   cache: CacheManager | undefined
   header: string
-  lock?: LockManager
+  lock?: LockManager | undefined
   methods: string[]
   ttl: number
   useLock: boolean
@@ -2718,64 +2720,64 @@ function ClientConfig = (options?: Partial<ClientConfigShape>) => Partial<Client
 function createApiClient = <Routes extends ApiRouteMap>(config?: ApiClientConfig) => ApiClient<Routes>
 
 interface ApiClientConfig = {
-  baseUrl?: string
-  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions
-  csrf?: boolean | {    cookie?: string;    header?: string;}
-  headers?: Record<string, string>
-  onError?: (error: ApiClientError) => void | Promise<void>
-  onForbidden?: (error: ApiClientError) => void | Promise<void>
-  onRequest?: RequestInterceptor | RequestInterceptor[]
-  onResponse?: ResponseInterceptor | ResponseInterceptor[]
-  onUnauthorized?: (error: ApiClientError, retry: (headerOverrides?: Record<string, string>) => Promise<unknown>) => Promise<unknown> | void
-  retry?: number | RetryOptions
-  timeout?: number
-  token?: TokenSource
-  withCredentials?: boolean
+  baseUrl?: string | undefined
+  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions | undefined
+  csrf?: boolean | {    cookie?: string;    header?: string;} | undefined
+  headers?: Record<string, string> | undefined
+  onError?: ((error: ApiClientError) => void | Promise<void>) | undefined
+  onForbidden?: ((error: ApiClientError) => void | Promise<void>) | undefined
+  onRequest?: RequestInterceptor | RequestInterceptor[] | undefined
+  onResponse?: ResponseInterceptor | ResponseInterceptor[] | undefined
+  onUnauthorized?: ((error: ApiClientError, retry: (headerOverrides?: Record<string, string>) => Promise<unknown>) => Promise<unknown> | void) | undefined
+  retry?: number | RetryOptions | undefined
+  timeout?: number | undefined
+  token?: TokenSource | undefined
+  withCredentials?: boolean | undefined
 }
 
 interface CircuitBreakerOptions = {
-  isFailure?: (error: unknown) => boolean
-  resetTimeout?: number
-  threshold?: number
+  isFailure?: ((error: unknown) => boolean) | undefined
+  resetTimeout?: number | undefined
+  threshold?: number | undefined
 }
 
 interface ClientConfigShape = {
-  baseUrl?: string
-  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions
-  csrf?: boolean | {    cookie?: string;    header?: string;}
-  headers?: Record<string, string>
-  onError?: (error: ApiClientError) => void | Promise<void>
-  onForbidden?: (error: ApiClientError) => void | Promise<void>
-  onRequest?: RequestInterceptor | RequestInterceptor[]
-  onResponse?: ResponseInterceptor | ResponseInterceptor[]
-  onUnauthorized?: (error: ApiClientError, retry: (headerOverrides?: Record<string, string>) => Promise<unknown>) => Promise<unknown> | void
-  retry?: number | RetryOptions
-  timeout?: number
-  token?: TokenSource
-  withCredentials?: boolean
+  baseUrl?: string | undefined
+  circuitBreaker?: CircuitBreaker | CircuitBreakerOptions | undefined
+  csrf?: boolean | {    cookie?: string;    header?: string;} | undefined
+  headers?: Record<string, string> | undefined
+  onError?: ((error: ApiClientError) => void | Promise<void>) | undefined
+  onForbidden?: ((error: ApiClientError) => void | Promise<void>) | undefined
+  onRequest?: RequestInterceptor | RequestInterceptor[] | undefined
+  onResponse?: ResponseInterceptor | ResponseInterceptor[] | undefined
+  onUnauthorized?: ((error: ApiClientError, retry: (headerOverrides?: Record<string, string>) => Promise<unknown>) => Promise<unknown> | void) | undefined
+  retry?: number | RetryOptions | undefined
+  timeout?: number | undefined
+  token?: TokenSource | undefined
+  withCredentials?: boolean | undefined
 }
 
 interface GetOptions = {
-  headers?: Record<string, string>
-  init?: Omit<RequestInit, 'method' | 'headers' | 'body'>
-  meta?: (meta: ResponseMeta) => void
-  query?: Q
-  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer'
-  retry?: number | false | RetryOptions
-  signal?: AbortSignal
-  timeout?: number
+  headers?: Record<string, string> | undefined
+  init?: Omit<RequestInit, 'method' | 'headers' | 'body'> | undefined
+  meta?: ((meta: ResponseMeta) => void) | undefined
+  query?: Q | undefined
+  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer' | undefined
+  retry?: number | false | RetryOptions | undefined
+  signal?: AbortSignal | undefined
+  timeout?: number | undefined
 }
 
 interface MutationOptions = {
-  headers?: Record<string, string>
-  init?: Omit<RequestInit, 'method' | 'headers' | 'body'>
-  meta?: (meta: ResponseMeta) => void
-  params?: Record<string, string | number>
-  query?: Q
-  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer'
-  retry?: number | false | RetryOptions
-  signal?: AbortSignal
-  timeout?: number
+  headers?: Record<string, string> | undefined
+  init?: Omit<RequestInit, 'method' | 'headers' | 'body'> | undefined
+  meta?: ((meta: ResponseMeta) => void) | undefined
+  params?: Record<string, string | number> | undefined
+  query?: Q | undefined
+  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer' | undefined
+  retry?: number | false | RetryOptions | undefined
+  signal?: AbortSignal | undefined
+  timeout?: number | undefined
 }
 
 interface PresenceMember = {
@@ -2791,13 +2793,13 @@ interface RequestConfig = {
 }
 
 interface RequestOptions = {
-  headers?: Record<string, string>
-  init?: Omit<RequestInit, 'method' | 'headers' | 'body'>
-  meta?: (meta: ResponseMeta) => void
-  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer'
-  retry?: number | false | RetryOptions
-  signal?: AbortSignal
-  timeout?: number
+  headers?: Record<string, string> | undefined
+  init?: Omit<RequestInit, 'method' | 'headers' | 'body'> | undefined
+  meta?: ((meta: ResponseMeta) => void) | undefined
+  responseType?: 'text' | 'json' | 'auto' | 'blob' | 'arrayBuffer' | undefined
+  retry?: number | false | RetryOptions | undefined
+  signal?: AbortSignal | undefined
+  timeout?: number | undefined
 }
 
 interface ResponseContext = {
@@ -2813,11 +2815,11 @@ interface ResponseMeta = {
 }
 
 interface RetryOptions = {
-  attempts?: number
-  backoff?: (attempt: number, retryAfterMs: number | null) => number
-  methods?: string[]
-  respectRetryAfter?: boolean
-  statuses?: number[]
+  attempts?: number | undefined
+  backoff?: ((attempt: number, retryAfterMs: number | null) => number) | undefined
+  methods?: string[] | undefined
+  respectRetryAfter?: boolean | undefined
+  statuses?: number[] | undefined
 }
 
 interface RouteShape = {
@@ -2838,20 +2840,20 @@ interface SocketLike = {
 }
 
 interface SocketOptions = {
-  WebSocket?: new (url: string) => SocketLike
-  auth?: {    params?: Record<string, string>;    headers?: Record<string, string>;}
-  authEndpoint?: string | false
-  autoConnect?: boolean
-  fetch?: typeof fetch
-  host?: string
-  maxReconnectDelay?: number
-  path?: string
-  pingInterval?: number
-  port?: string | number
-  reconnect?: boolean
-  reconnectDelay?: number
-  scheme?: 'ws' | 'wss'
-  url?: string
+  WebSocket?: (new (url: string) => SocketLike) | undefined
+  auth?: {    params?: Record<string, string>;    headers?: Record<string, string>;} | undefined
+  authEndpoint?: string | false | undefined
+  autoConnect?: boolean | undefined
+  fetch?: typeof fetch | undefined
+  host?: string | undefined
+  maxReconnectDelay?: number | undefined
+  path?: string | undefined
+  pingInterval?: number | undefined
+  port?: string | number | undefined
+  reconnect?: boolean | undefined
+  reconnectDelay?: number | undefined
+  scheme?: 'ws' | 'wss' | undefined
+  url?: string | undefined
 }
 
 type ApiRouteMap = {    [x: `GET ${string}`]: RouteShape | undefined;    [x: `POST ${string}`]: RouteShape | undefined;    [x: `PUT ${string}`]: RouteShape | undefined;    [x: `PATCH ${string}`]: RouteShape | undefined;    [x: `DELETE ${string}`]: RouteShape | undefined;}
@@ -3797,7 +3799,7 @@ function DeployConfig = (options?: Partial<DeployConfigShape>) => DeployConfigSh
 
 interface AppAssetsConfig = {
   entrypoint: string | string[]
-  loader?: Record<string, AssetLoaderKind>
+  loader?: Record<string, AssetLoaderKind> | undefined
   minify: boolean
   outDir: string
   prefix: string
@@ -3805,11 +3807,11 @@ interface AppAssetsConfig = {
 
 interface AppConfigShape = {
   allowedOrigins: string[]
-  assets?: AppAssetsConfig
+  assets?: AppAssetsConfig | undefined
   conventions: ConventionsConfig
   cors: AppCorsConfig
   debug: boolean
-  dev?: DevConfigShape
+  dev?: DevConfigShape | undefined
   env: string
   health: boolean | HealthConfigShape
   http3: boolean
@@ -3821,7 +3823,7 @@ interface AppConfigShape = {
   secureHeaders: AppSecureHeadersConfig
   throttle: AppThrottleConfig
   timezone: string
-  tls?: AppTlsConfig
+  tls?: AppTlsConfig | undefined
   url: string
 }
 
@@ -3976,10 +3978,10 @@ interface HealthCheckReport = {
 }
 
 interface HealthConfigShape = {
-  enabled?: boolean
-  path?: string
-  secret?: string
-  showDetails?: boolean
+  enabled?: boolean | undefined
+  path?: string | undefined
+  secret?: string | undefined
+  showDetails?: boolean | undefined
 }
 
 interface HealthReport = {
@@ -3999,7 +4001,7 @@ interface HealthResult = {
 interface ResolvedHealthConfig = {
   enabled: boolean
   path: string
-  secret?: string
+  secret?: string | undefined
   showDetails: boolean
 }
 
@@ -4016,6 +4018,8 @@ function basePath = (...segments: string[]) => string
 function data_get = (target: unknown, key: string, defaultValue?: unknown) => unknown
 
 function deepMerge = <T extends object>(base: T, override: DeepPartial<T>) => T
+
+function definedOnly = <T extends object>(value: T) => { [K in keyof T]?: Exclude<T[K], undefined>; }
 
 function env = {    (key: string): string | undefined;    (key: string, fallback: string): string;    (key: string, fallback: boolean): boolean;    (key: string, fallback: number): number;}
 
@@ -4040,6 +4044,8 @@ function tableNameFor = (className: string) => string
 function tap = <T>(value: T, callback: (val: T) => void) => T
 
 function tapAsync = <T>(value: T, callback: (val: T) => Promise<void>) => Promise<T>
+
+type Resolved = { [K in keyof T]-?: Exclude<T[K], undefined>; }
 
 ## ./http  `(./src/http.ts)`
 
@@ -4199,8 +4205,8 @@ interface CliContext = {
 }
 
 interface FileValidationOptions = {
-  maxSize?: number
-  mimes?: string[]
+  maxSize?: number | undefined
+  mimes?: string[] | undefined
 }
 
 interface NegotiateMap = {
@@ -4352,10 +4358,10 @@ class SqliteLockDriver = {
 function LockConfig = (options?: Partial<LockConfigShape>) => LockConfigShape
 
 interface BlockOptions = {
-  refresh?: boolean
-  refreshEvery?: number
-  retryDelay?: number
-  timeout?: number
+  refresh?: boolean | undefined
+  refreshEvery?: number | undefined
+  retryDelay?: number | undefined
+  timeout?: number | undefined
 }
 
 interface LockConfigShape = {
@@ -4374,8 +4380,8 @@ interface LockDriver = {
 }
 
 interface RefreshOptions = {
-  refresh?: boolean
-  refreshEvery?: number
+  refresh?: boolean | undefined
+  refreshEvery?: number | undefined
 }
 
 type LockedCallback = (lock: ManagedLock, signal: AbortSignal) => Promise<T> | T
@@ -4490,16 +4496,16 @@ interface LogEntry = {
 }
 
 interface LoggerOptions = {
-  format?: 'text' | 'json'
+  format?: 'text' | 'json' | undefined
 }
 
 interface LoggingConfigShape = {
   channels: Record<string, ChannelConfig>
-  console?: ConsoleSinkConfig
+  console?: ConsoleSinkConfig | undefined
   default: string
-  file?: FileSinkConfig
-  requests?: boolean
-  slowQueryMs?: number
+  file?: FileSinkConfig | undefined
+  requests?: boolean | undefined
+  slowQueryMs?: number | undefined
 }
 
 type ChannelConfig = { driver: 'console'; level?: LogLevel; format?: 'json' | 'pretty' } | { driver: 'single'; level?: LogLevel; path: string } | { driver: 'daily'; level?: LogLevel; path: string; days?: number } | { driver: 'stack'; level?: LogLevel; channels: string[] } | { driver: 'null' }
@@ -5743,14 +5749,14 @@ interface CastField = {
 }
 
 interface ColumnOptions = {
-  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown>
+  cast?: 'boolean' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'enum' | 'immutable_datetime' | 'encrypted' | 'encrypted:json' | `decimal:${number}` | {    get?: (dbValue: unknown) => unknown;    set?: (jsValue: unknown) => unknown;} | CastContract<unknown> | undefined
   default?: unknown
-  enumValues?: Record<string, string | number>
-  index?: boolean
-  nullable?: boolean
-  primary?: boolean
-  type?: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json'
-  unique?: boolean
+  enumValues?: Record<string, string | number> | undefined
+  index?: boolean | undefined
+  nullable?: boolean | undefined
+  primary?: boolean | undefined
+  type?: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json' | undefined
+  unique?: boolean | undefined
 }
 
 interface Compose = {
@@ -5773,10 +5779,10 @@ interface CursorPaginateResult = {
 
 interface DatabaseConfigShape = {
   driver: 'sqlite' | 'postgres' | 'mysql'
-  pool?: {    max?: number;    idleTimeout?: number;}
-  replicas?: string[]
+  pool?: {    max?: number;    idleTimeout?: number;} | undefined
+  replicas?: string[] | undefined
   sqlite: {    path: string;}
-  synchronize?: boolean | {    enabled: boolean;    disruptive?: boolean;}
+  synchronize?: boolean | {    enabled: boolean;    disruptive?: boolean;} | undefined
   url: string
 }
 
@@ -5787,9 +5793,9 @@ interface HasMany = {
 
 interface HasManyThroughOptions = {
   firstKey: string
-  localKey?: string
+  localKey?: string | undefined
   secondKey: string
-  throughLocalKey?: string
+  throughLocalKey?: string | undefined
 }
 
 interface HasOne = {
@@ -5798,10 +5804,10 @@ interface HasOne = {
 }
 
 interface KeysetOptions = {
-  column?: string
-  cursor?: string | null
-  direction?: 'asc' | 'desc'
-  limit?: number
+  column?: string | undefined
+  cursor?: string | null | undefined
+  direction?: 'asc' | 'desc' | undefined
+  limit?: number | undefined
 }
 
 interface KeysetPaginateResult = {
@@ -5827,13 +5833,13 @@ interface ManyToMany = {
 }
 
 interface ManyToManyOptions = {
-  localKey?: string
+  localKey?: string | undefined
   pivotForeignKey: string
   pivotRelatedKey: string
   pivotTable: string
-  relatedKey?: string
-  withPivot?: string[]
-  withTimestamps?: boolean
+  relatedKey?: string | undefined
+  withPivot?: string[] | undefined
+  withTimestamps?: boolean | undefined
 }
 
 interface MigrationEntry = {
@@ -5868,9 +5874,9 @@ interface ModelObserver = {
 interface MorphedByManyOptions = {
   morphName: string
   parentPivotKey: string
-  pivotTable?: string
-  withPivot?: string[]
-  withTimestamps?: boolean
+  pivotTable?: string | undefined
+  withPivot?: string[] | undefined
+  withTimestamps?: boolean | undefined
 }
 
 interface MorphMany = {
@@ -5879,7 +5885,7 @@ interface MorphMany = {
 }
 
 interface MorphManyOptions = {
-  localKey?: string
+  localKey?: string | undefined
   morphName: string
 }
 
@@ -5889,7 +5895,7 @@ interface MorphOne = {
 }
 
 interface MorphOneOptions = {
-  localKey?: string
+  localKey?: string | undefined
   morphName: string
 }
 
@@ -5900,21 +5906,21 @@ interface MorphTo = {
 
 interface MorphToManyOptions = {
   morphName: string
-  pivotTable?: string
+  pivotTable?: string | undefined
   relatedPivotKey: string
-  withPivot?: string[]
-  withTimestamps?: boolean
+  withPivot?: string[] | undefined
+  withTimestamps?: boolean | undefined
 }
 
 interface MorphToOptions = {
-  morphForeignKey?: string
+  morphForeignKey?: string | undefined
   morphMap: Record<string, () => unknown>
-  morphTypeColumn?: string
+  morphTypeColumn?: string | undefined
 }
 
 interface NPlusOneOptions = {
-  mode?: 'warn' | 'throw'
-  threshold?: number
+  mode?: 'warn' | 'throw' | undefined
+  threshold?: number | undefined
 }
 
 interface PaginateMeta = {
@@ -6004,8 +6010,8 @@ interface TableDecoratorBuilder = {
 }
 
 interface TableOptions = {
-  primaryKey?: string
-  timestamps?: boolean
+  primaryKey?: string | undefined
+  timestamps?: boolean | undefined
 }
 
 interface TransitionContext = {
@@ -6317,7 +6323,7 @@ interface QueueConfigShape = {
   driver: 'sqlite' | 'redis' | 'sync'
   pollInterval: number
   queues: string[]
-  workerBootstrap?: string
+  workerBootstrap?: string | undefined
   workers: number
 }
 
@@ -6618,9 +6624,9 @@ function SchedulerConfig = (options?: Partial<SchedulerConfigShape>) => Schedule
 function wallClockIn = (date: Date, timeZone: string) => Date
 
 interface OverlapLockOptions = {
-  crossProcess?: boolean
-  expiresAfterMinutes?: number
-  refresh?: boolean
+  crossProcess?: boolean | undefined
+  expiresAfterMinutes?: number | undefined
+  refresh?: boolean | undefined
 }
 
 interface RunLogConfig = {
@@ -6687,7 +6693,7 @@ function redactGraph = (value: unknown, options: RedactGraphOptions) => unknown
 
 interface RedactGraphOptions = {
   circular: string
-  flatten?: (value: unknown) => string | undefined
+  flatten?: ((value: unknown) => string | undefined) | undefined
   mask: string
   maxDepth: number
   sensitive: (key: string) => boolean
@@ -6826,7 +6832,7 @@ const Session = SessionAccessor
 function SessionConfig = (options?: Partial<SessionConfigShape>) => SessionConfigShape
 
 interface CsrfOptions = {
-  secure?: boolean
+  secure?: boolean | undefined
 }
 
 interface SessionConfigShape = {
@@ -6846,7 +6852,7 @@ interface SessionDriver = {
 }
 
 interface SessionOptions = {
-  driver?: SessionDriver
+  driver?: SessionDriver | undefined
 }
 
 interface SessionPayload = {
@@ -6875,27 +6881,27 @@ function snakeCase = (value: string) => string
 function tableNameFor = (className: string) => string
 
 interface DateOptions = {
-  dateStyle?: 'medium' | 'short' | 'full' | 'long'
-  locale?: string
-  timeStyle?: 'medium' | 'short' | 'full' | 'long'
-  timeZone?: string
+  dateStyle?: 'medium' | 'short' | 'full' | 'long' | undefined
+  locale?: string | undefined
+  timeStyle?: 'medium' | 'short' | 'full' | 'long' | undefined
+  timeZone?: string | undefined
 }
 
 interface FormatOptions = {
-  locale?: string
+  locale?: string | undefined
 }
 
 interface MoneyOptions = {
   currency: string
-  fractionDigits?: number
-  locale?: string
-  minorUnits?: boolean
+  fractionDigits?: number | undefined
+  locale?: string | undefined
+  minorUnits?: boolean | undefined
 }
 
 interface NumberOptions = {
-  locale?: string
-  maximumFractionDigits?: number
-  minimumFractionDigits?: number
+  locale?: string | undefined
+  maximumFractionDigits?: number | undefined
+  minimumFractionDigits?: number | undefined
 }
 
 ## ./storage  `(./src/storage.ts)`
@@ -7062,10 +7068,10 @@ const Storage = StorageManager
 function StorageConfig = (options?: Partial<StorageConfigShape>) => StorageConfigShape
 
 interface DiskServeConfig = {
-  expiresIn?: number
-  headers?: Record<string, string>
+  expiresIn?: number | undefined
+  headers?: Record<string, string> | undefined
   path: string
-  signed?: boolean
+  signed?: boolean | undefined
 }
 
 interface FakeStoredFile = {
@@ -7079,24 +7085,24 @@ interface FakeStoredFile = {
 interface LocalDiskConfig = {
   driver: 'local'
   root: string
-  serve?: DiskServeConfig
-  url?: string
+  serve?: DiskServeConfig | undefined
+  url?: string | undefined
 }
 
 interface PutOptions = {
-  contentType?: string
-  visibility?: 'public' | 'private'
+  contentType?: string | undefined
+  visibility?: 'public' | 'private' | undefined
 }
 
 interface S3DiskConfig = {
   bucket: string
   driver: 's3'
-  endpoint?: string
+  endpoint?: string | undefined
   key: string
   region: string
   secret: string
-  serve?: DiskServeConfig
-  url?: string
+  serve?: DiskServeConfig | undefined
+  url?: string | undefined
 }
 
 interface StorageConfigShape = {
@@ -7121,8 +7127,8 @@ interface StorageDriver = {
 }
 
 interface StorageFilesOptions = {
-  mounts?: Mount[]
-  storage?: StorageManager
+  mounts?: Mount[] | undefined
+  storage?: StorageManager | undefined
 }
 
 type DiskConfig = LocalDiskConfig | S3DiskConfig
@@ -7385,16 +7391,16 @@ interface InertiaPage = {
 }
 
 interface MigrateDatabaseOptions = {
-  connection?: SQLInstance
-  path?: string
-  table?: string
+  connection?: SQLInstance | undefined
+  path?: string | undefined
+  table?: string | undefined
 }
 
 interface RefreshDatabaseOptions = {
-  connection?: SQLInstance
-  migrate?: string | boolean
-  setup?: (db: SQLInstance) => void | Promise<void>
-  teardown?: (db: SQLInstance) => void | Promise<void>
+  connection?: SQLInstance | undefined
+  migrate?: string | boolean | undefined
+  setup?: ((db: SQLInstance) => void | Promise<void>) | undefined
+  teardown?: ((db: SQLInstance) => void | Promise<void>) | undefined
 }
 
 interface TestFileInput = {
@@ -7754,7 +7760,7 @@ interface FieldRuleDefinition = {
 }
 
 interface UniqueOptions = {
-  ignoreId?: string | number
+  ignoreId?: string | number | undefined
 }
 
 interface ValidatorConfigShape = {

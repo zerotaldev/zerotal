@@ -25,15 +25,15 @@ export const THEME_STORAGE_KEY = "zerotal-theme";
 /** Styling source for a flow-ui surface. */
 export interface FlowUiThemeConfig {
   /** A prebuilt stylesheet URL/path to link instead of (or alongside) the CDN. */
-  stylesheet?: string;
+  stylesheet?: string | undefined;
   /** Keep loading the Tailwind Play CDN. Defaults to `true` unless `stylesheet` is set. */
-  cdn?: boolean;
+  cdn?: boolean | undefined;
   /** Extra token CSS appended after the defaults — override `:root` / `.dark` here. */
-  tokensCss?: string;
+  tokensCss?: string | undefined;
   /** Skip the bundled Google Fonts links (e.g. you self-host). */
-  noFonts?: boolean;
+  noFonts?: boolean | undefined;
   /** Extra raw markup appended to the head. */
-  extraHead?: string;
+  extraHead?: string | undefined;
 }
 
 /** Inline Tailwind config: class-based dark mode + token → CSS-var color mapping. */

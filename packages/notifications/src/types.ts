@@ -98,8 +98,8 @@ export interface VonageConfigShape {
 
 export interface SmsConfigShape {
   driver: "twilio" | "vonage";
-  twilio?: TwilioConfigShape;
-  vonage?: VonageConfigShape;
+  twilio?: TwilioConfigShape | undefined;
+  vonage?: VonageConfigShape | undefined;
 }
 
 export interface NotificationConfigShape {
@@ -120,10 +120,10 @@ export interface NotificationConfigShape {
   slack?: {
     /** Default webhook URL — can be overridden per-notification in toSlack(). */
     webhook?: string;
-  };
+  } | undefined;
   /**
    * SMS provider settings (Twilio or Vonage).
    * Required when any notification uses the 'sms' channel.
    */
-  sms?: SmsConfigShape;
+  sms?: SmsConfigShape | undefined;
 }

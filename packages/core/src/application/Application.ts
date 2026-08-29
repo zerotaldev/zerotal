@@ -182,9 +182,9 @@ type PipeClass = new (...args: any[]) => Pipe<HttpContext>;
 
 /** Options form for `Application.create({ ... })`. */
 export interface CreateOptions {
-  providers?: ProviderClass[];
-  env?: Environment;
-  config?: ConfigLoader | ConfigMap;
+  providers?: ProviderClass[] | undefined;
+  env?: Environment | undefined;
+  config?: ConfigLoader | ConfigMap | undefined;
   /**
    * Drop {@link SecureHeadersMiddleware} from the front of the pipeline.
    *
@@ -194,7 +194,7 @@ export interface CreateOptions {
    * `config('app.secureHeaders')`; turn it off only when a proxy in front of the app is
    * already emitting the same headers.
    */
-  secureHeaders?: false;
+  secureHeaders?: false | undefined;
 }
 
 function _normaliseEnv(raw: string): Environment {

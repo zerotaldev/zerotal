@@ -197,9 +197,9 @@ function SchedulerConfig = (options?: Partial<SchedulerConfigShape>) => Schedule
 function wallClockIn = (date: Date, timeZone: string) => Date
 
 interface OverlapLockOptions = {
-  crossProcess?: boolean
-  expiresAfterMinutes?: number
-  refresh?: boolean
+  crossProcess?: boolean | undefined
+  expiresAfterMinutes?: number | undefined
+  refresh?: boolean | undefined
 }
 
 interface RunLogConfig = {

@@ -13,11 +13,11 @@ export interface MigrateDatabaseOptions {
    * Connection to migrate. Defaults to the active model connection, which is
    * what `createTestApp()` and `refreshDatabase({ connection })` install.
    */
-  connection?: SQLInstance;
+  connection?: SQLInstance | undefined;
   /** Directory holding the migration files. Defaults to `database/migrations`. */
-  path?: string;
+  path?: string | undefined;
   /** Tracking-table name. Defaults to `migrations`. */
-  table?: string;
+  table?: string | undefined;
 }
 
 /**

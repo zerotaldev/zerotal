@@ -84,7 +84,7 @@ export interface TenancyConfigShape {
    * Column name used for tenant scoping in the single-database strategy.
    * Default: 'tenant_id'.
    */
-  tenantColumn?: string;
+  tenantColumn?: string | undefined;
 
   /**
    * **Multi-database strategy only — required.** Opens (or returns) the database
@@ -95,5 +95,5 @@ export interface TenancyConfigShape {
    * @example
    * connect: (tenant) => new SQL(`file:./storage/tenants/${tenant.database}`),
    */
-  connect?: (tenant: MultiDbTenant) => SQLInstance;
+  connect?: ((tenant: MultiDbTenant) => SQLInstance) | undefined;
 }

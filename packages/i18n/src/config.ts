@@ -15,9 +15,9 @@ export interface I18nConfigShape {
   /** Cookie name for the `cookie` resolver. Default: `locale`. */
   cookieKey: string;
   /** Directory of `<locale>.json` catalogs, loaded on boot. */
-  loadPath?: string;
+  loadPath?: string | undefined;
   /** In-memory catalogs, merged over anything loaded from `loadPath`. */
-  catalogs?: Catalogs;
+  catalogs?: Catalogs | undefined;
 }
 
 /**

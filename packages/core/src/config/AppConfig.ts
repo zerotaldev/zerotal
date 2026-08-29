@@ -63,17 +63,17 @@ export interface AppSecureHeadersConfig {
    * Enable HSTS (and the `Secure` flag on the XSRF-TOKEN cookie). Defaults to
    * `false` — turn it on for any deployment served over HTTPS.
    */
-  secure?: boolean;
+  secure?: boolean | undefined;
   /** `Strict-Transport-Security` max-age in seconds. Defaults to one year. */
-  hstsMaxAge?: number;
+  hstsMaxAge?: number | undefined;
   /** Include `includeSubDomains` in the HSTS header. Defaults to `true`. */
-  hstsIncludeSubDomains?: boolean;
+  hstsIncludeSubDomains?: boolean | undefined;
   /** Set the HSTS `preload` directive. Only with the domain registered. Defaults to `false`. */
-  hstsPreload?: boolean;
+  hstsPreload?: boolean | undefined;
   /** `Content-Security-Policy` value. Omitted by default. */
-  contentSecurityPolicy?: string;
+  contentSecurityPolicy?: string | undefined;
   /** `Referrer-Policy` value. Defaults to `strict-origin-when-cross-origin`. */
-  referrerPolicy?: string;
+  referrerPolicy?: string | undefined;
 }
 
 /**
@@ -106,7 +106,7 @@ export interface AppAssetsConfig {
    * // config/app.ts
    * assets: { entrypoint: 'resources/css/app.css', loader: { '.woff2': 'file', '.woff': 'file' } }
    */
-  loader?: Record<string, AssetLoaderKind>;
+  loader?: Record<string, AssetLoaderKind> | undefined;
 }
 
 /**
@@ -176,7 +176,7 @@ export interface AppConfigShape {
   /** Enable HTTP/3 over QUIC. Requires a valid tls config. Default: false */
   http3: boolean;
   /** TLS certificate + key for HTTPS. Enables HTTPS when set. */
-  tls?: AppTlsConfig;
+  tls?: AppTlsConfig | undefined;
   /**
    * Largest request body the server will accept, in bytes. Default: 8 MiB.
    *
@@ -237,7 +237,7 @@ export interface AppConfigShape {
 
   // ── Assets ────────────────────────────────────────────────────────────────
   /** Front-end asset bundling, built on `serve`. Omitted means no asset build. */
-  assets?: AppAssetsConfig;
+  assets?: AppAssetsConfig | undefined;
 
   // ── Dev mode ──────────────────────────────────────────────────────────────
   /**
@@ -256,7 +256,7 @@ export interface AppConfigShape {
    * }
    * ```
    */
-  dev?: DevConfigShape;
+  dev?: DevConfigShape | undefined;
 
   // ── Conventions ───────────────────────────────────────────────────────────
   /** Auto-discovery settings (enabled + per-concern paths). */

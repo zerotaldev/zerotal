@@ -6,9 +6,9 @@ export interface MorphedByManyOptions {
   /** FK on the pivot referencing the parent model (e.g. 'tag_id'). */
   parentPivotKey: string;
   /** Pivot table name. Defaults to `{morphName}s`. */
-  pivotTable?: string;
-  withPivot?: string[];
-  withTimestamps?: boolean;
+  pivotTable?: string | undefined;
+  withPivot?: string[] | undefined;
+  withTimestamps?: boolean | undefined;
 }
 
 /**

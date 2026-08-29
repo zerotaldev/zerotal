@@ -31,17 +31,17 @@ export interface RedactionOptions {
    * Turn masking off entirely. Only reasonable when you are debugging the values
    * themselves and nothing sensitive is in the database.
    */
-  enabled?: boolean;
+  enabled?: boolean | undefined;
   /**
    * Names whose values are safe to show in full. Matched case-insensitively
    * against the column a binding belongs to, a channel entry's field name, or a
    * cache key's segment.
    */
-  allow?: string[];
+  allow?: string[] | undefined;
   /**
    * Extra names to mask, added to the built-in list.
    */
-  deny?: string[];
+  deny?: string[] | undefined;
 }
 
 /**

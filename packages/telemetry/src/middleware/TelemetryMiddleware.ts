@@ -8,7 +8,7 @@ export interface TelemetryOptions {
    * Custom function to derive a span name from the request.
    * Default: `"${method} ${pathname}"`.
    */
-  spanName?: (ctx: HttpContext) => string;
+  spanName?: ((ctx: HttpContext) => string) | undefined;
 }
 
 /**

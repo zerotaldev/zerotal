@@ -19,9 +19,9 @@ export interface CompromisedCheckOptions {
    * Minimum number of breach appearances to count as compromised. Default `1`
    * (any appearance). Raise it to tolerate very common-but-low-risk hits.
    */
-  threshold?: number;
+  threshold?: number | undefined;
   /** Override the range-API endpoint (for testing / self-hosting). */
-  endpoint?: string;
+  endpoint?: string | undefined;
 }
 
 /**

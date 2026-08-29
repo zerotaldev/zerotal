@@ -3,13 +3,13 @@ import type { SpanData, SpanKind } from "../Span.ts";
 
 export interface OtlpExporterOptions {
   /** OTLP HTTP/JSON endpoint. Default: `'http://localhost:4318/v1/traces'`. */
-  endpoint?: string;
+  endpoint?: string | undefined;
   /** Extra headers (e.g. `{ 'x-honeycomb-team': '<api-key>' }`). */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | undefined;
   /** Service name sent as a resource attribute. */
-  serviceName?: string;
+  serviceName?: string | undefined;
   /** Service version sent as a resource attribute. */
-  serviceVersion?: string;
+  serviceVersion?: string | undefined;
 }
 
 const SPAN_KIND: Record<SpanKind, number> = {

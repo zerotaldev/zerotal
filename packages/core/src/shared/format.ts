@@ -25,7 +25,7 @@ export interface FormatOptions {
    * and in a browser is the reader's, and those are not the same. Pass one
    * explicitly wherever the two sides must match, and they usually must.
    */
-  locale?: string;
+  locale?: string | undefined;
 }
 
 /** How money should be written. */
@@ -37,9 +37,9 @@ export interface MoneyOptions extends FormatOptions {
    * database column that must not lose a cent stores it. Default `true`, because
    * an app that stores money in a float has a different problem.
    */
-  minorUnits?: boolean;
+  minorUnits?: boolean | undefined;
   /** Digits after the decimal point. Defaults to whatever the currency uses. */
-  fractionDigits?: number;
+  fractionDigits?: number | undefined;
 }
 
 /**
@@ -69,9 +69,9 @@ export function formatMoney(amount: number, options: MoneyOptions): string {
 /** How a plain number should be written. */
 export interface NumberOptions extends FormatOptions {
   /** Smallest number of digits after the decimal point. */
-  minimumFractionDigits?: number;
+  minimumFractionDigits?: number | undefined;
   /** Largest number of digits after the decimal point. */
-  maximumFractionDigits?: number;
+  maximumFractionDigits?: number | undefined;
 }
 
 /**
@@ -90,9 +90,9 @@ export function formatNumber(value: number, options: NumberOptions = {}): string
 /** How a date should be written. */
 export interface DateOptions extends FormatOptions {
   /** Length of the date part. Omit for none. */
-  dateStyle?: "full" | "long" | "medium" | "short";
+  dateStyle?: "full" | "long" | "medium" | "short" | undefined;
   /** Length of the time part. Omit for none. */
-  timeStyle?: "full" | "long" | "medium" | "short";
+  timeStyle?: "full" | "long" | "medium" | "short" | undefined;
   /**
    * IANA zone — `Africa/Johannesburg`, `UTC`.
    *
@@ -100,7 +100,7 @@ export interface DateOptions extends FormatOptions {
    * disagree about which day an 11pm booking happened on, and that is the shape
    * the bug takes: not a wrong time, a wrong date.
    */
-  timeZone?: string;
+  timeZone?: string | undefined;
 }
 
 /**

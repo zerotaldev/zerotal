@@ -35,8 +35,8 @@ export interface ProbeRunner {
 
 export interface SpawnProbeOptions {
   /** Where to start looking for the app. Defaults to the server's working directory. */
-  cwd?: string;
-  timeoutMs?: number;
+  cwd?: string | undefined;
+  timeoutMs?: number | undefined;
 }
 
 /**

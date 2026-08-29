@@ -7,7 +7,7 @@ export interface MorphManyOptions {
    */
   morphName: string;
   /** Override the local key. Defaults to 'id'. */
-  localKey?: string;
+  localKey?: string | undefined;
 }
 
 /**

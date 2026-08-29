@@ -5,9 +5,9 @@ export interface BelongsToOptions {
   /** FK column on this (child) model pointing to the related row (e.g. `user_id`). */
   foreignKey: string;
   /** Key on the related model the FK references. Defaults to `'id'`. */
-  localKey?: string;
+  localKey?: string | undefined;
   /** Return a default (unsaved) related model instead of null when absent. */
-  withDefault?: boolean | Record<string, unknown> | ((model: unknown) => void);
+  withDefault?: boolean | Record<string, unknown> | ((model: unknown) => void) | undefined;
 }
 
 /**

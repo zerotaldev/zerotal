@@ -900,50 +900,50 @@ function tokenCan = (row: TokenRow, ability: string) => boolean
 
 interface AppleOAuth2Config = {
   clientId: string
-  clientSecret?: string
-  keyId?: string
-  privateKey?: string
+  clientSecret?: string | undefined
+  keyId?: string | undefined
+  privateKey?: string | undefined
   redirectUrl: string
-  scopes?: string[]
-  teamId?: string
+  scopes?: string[] | undefined
+  teamId?: string | undefined
 }
 
 interface AuthConfigShape = {
   algorithm: 'bcrypt' | 'argon2id'
-  twoFactor?: TwoFactorOptions
+  twoFactor?: TwoFactorOptions | undefined
 }
 
 interface AuthenticateSessionOptions = {
-  redirectTo?: string
+  redirectTo?: string | undefined
 }
 
 interface AuthOptions = {
-  mustVerifyEmail?: boolean
-  redirectTo?: string
-  verifyRedirectTo?: string
+  mustVerifyEmail?: boolean | undefined
+  redirectTo?: string | undefined
+  verifyRedirectTo?: string | undefined
 }
 
 interface BasicAuthOptions = {
-  field?: string
-  realm?: string
+  field?: string | undefined
+  realm?: string | undefined
 }
 
 interface CompromisedCheckOptions = {
-  endpoint?: string
-  threshold?: number
+  endpoint?: string | undefined
+  threshold?: number | undefined
 }
 
 interface ConfirmPasswordOptions = {
-  redirectTo?: string
-  timeoutSeconds?: number
+  redirectTo?: string | undefined
+  timeoutSeconds?: number | undefined
 }
 
 interface EmailOtpOptions = {
   deleteCode: (email: string) => Promise<void>
-  expireMinutes?: number
+  expireMinutes?: number | undefined
   findCode: (email: string) => Promise<{    code: string;    createdAt: Date;} | null>
-  length?: number
-  maxAttempts?: number
+  length?: number | undefined
+  maxAttempts?: number | undefined
   sendCode: (email: string, code: string) => Promise<void>
   storeCode: (email: string, hash: string, expiresAt: Date) => Promise<void>
 }
@@ -957,31 +957,31 @@ interface Guard = {
 }
 
 interface GuestOptions = {
-  redirectTo?: string
+  redirectTo?: string | undefined
 }
 
 interface JwtGuardOptions = {
-  header?: string
-  resolve?: (claims: JwtPayload) => Promise<unknown> | unknown
-  secret?: string
+  header?: string | undefined
+  resolve?: ((claims: JwtPayload) => Promise<unknown> | unknown) | undefined
+  secret?: string | undefined
 }
 
 interface JwtSignOptions = {
-  expiresIn?: number
-  issuedAt?: number
+  expiresIn?: number | undefined
+  issuedAt?: number | undefined
 }
 
 interface LoginOptions = {
-  remember?: boolean
+  remember?: boolean | undefined
 }
 
 interface LoginThrottleOptions = {
-  decaySeconds?: number
-  maxAttempts?: number
+  decaySeconds?: number | undefined
+  maxAttempts?: number | undefined
 }
 
 interface MagicLinkBrokerOptions = {
-  expiresInMinutes?: number
+  expiresInMinutes?: number | undefined
   findUser: (email: string) => Promise<U | null | undefined>
   secret: string
   sendLink: (email: string, signedUrl: string) => Promise<void>
@@ -999,9 +999,9 @@ interface NewToken = {
 
 interface OAuth2Config = {
   clientId: string
-  clientSecret?: string
+  clientSecret?: string | undefined
   redirectUrl: string
-  scopes?: string[]
+  scopes?: string[] | undefined
 }
 
 interface PasskeyCredential = {
@@ -1020,11 +1020,11 @@ interface PasskeysOptions = {
   findCredential: (credentialId: string) => Promise<PasskeyCredential | null | undefined>
   findUserCredentials: (userId: number) => Promise<PasskeyCredential[]>
   origin: string | string[]
-  requireUserVerification?: boolean
+  requireUserVerification?: boolean | undefined
   rpId: string
   rpName: string
   saveCredential: (credential: Omit<PasskeyCredential, 'id'>) => Promise<void>
-  timeoutSeconds?: number
+  timeoutSeconds?: number | undefined
   updateCounter: (id: number, newCounter: number) => Promise<void>
 }
 
@@ -1036,7 +1036,7 @@ interface PasskeyUser = {
 
 interface PasswordBrokerOptions = {
   deleteToken: (email: string) => Promise<void>
-  expireMinutes?: number
+  expireMinutes?: number | undefined
   findToken: (email: string) => Promise<{    token: string;    createdAt: Date;} | null>
   pruneTokens: (cutoff: Date) => Promise<void>
   resetPassword: (email: string, newPassword: string) => Promise<void>
@@ -1053,16 +1053,16 @@ interface QrMatrix = {
 }
 
 interface QrSvgOptions = {
-  alt?: string
-  class?: string
-  dark?: string
-  light?: string | null
-  quietZone?: number
-  size?: number
+  alt?: string | undefined
+  class?: string | undefined
+  dark?: string | undefined
+  light?: string | null | undefined
+  quietZone?: number | undefined
+  size?: number | undefined
 }
 
 interface RememberMeOptions = {
-  secure?: boolean
+  secure?: boolean | undefined
 }
 
 interface SocialSession = {
@@ -1104,19 +1104,19 @@ interface TokenRow = {
 }
 
 interface TwoFactorOptions = {
-  issuer?: string
-  recoveryCodeCount?: number
-  window?: number
+  issuer?: string | undefined
+  recoveryCodeCount?: number | undefined
+  window?: number | undefined
 }
 
 interface TwoFactorQrOptions = {
-  alt?: string
-  class?: string
-  dark?: string
-  issuer?: string
-  light?: string | null
-  quietZone?: number
-  size?: number
+  alt?: string | undefined
+  class?: string | undefined
+  dark?: string | undefined
+  issuer?: string | undefined
+  light?: string | null | undefined
+  quietZone?: number | undefined
+  size?: number | undefined
 }
 
 interface UserModel = {
@@ -1167,4 +1167,4 @@ type MagicLinkBrokerResult = 'magic.sent' | 'magic.user_not_found' | 'magic.ok' 
 
 type PasswordBrokerResult = 'passwords.sent' | 'passwords.token' | 'passwords.reset'
 
-type SocialConfigShape = {    [driver: string]: (OAuth2Config & Record<string, unknown>) | undefined;    github?: OAuth2Config & Record<string, unknown>;    google?: OAuth2Config & Record<string, unknown>;    apple?: AppleOAuth2Config & Record<string, unknown>;    discord?: (OAuth2Config & Record<string, unknown>) | undefined;    microsoft?: (OAuth2Config & Record<string, unknown>) | undefined;    facebook?: (OAuth2Config & Record<string, unknown>) | undefined;    twitter?: (OAuth2Config & Record<string, unknown>) | undefined;    linkedin?: (OAuth2Config & Record<string, unknown>) | undefined;    gitlab?: (OAuth2Config & Record<string, unknown>) | undefined;}
+type SocialConfigShape = {    [driver: string]: (OAuth2Config & Record<string, unknown>) | undefined;    github?: (OAuth2Config & Record<string, unknown>) | undefined;    google?: (OAuth2Config & Record<string, unknown>) | undefined;    apple?: (AppleOAuth2Config & Record<string, unknown>) | undefined;    discord?: (OAuth2Config & Record<string, unknown>) | undefined;    microsoft?: (OAuth2Config & Record<string, unknown>) | undefined;    facebook?: (OAuth2Config & Record<string, unknown>) | undefined;    twitter?: (OAuth2Config & Record<string, unknown>) | undefined;    linkedin?: (OAuth2Config & Record<string, unknown>) | undefined;    gitlab?: (OAuth2Config & Record<string, unknown>) | undefined;}

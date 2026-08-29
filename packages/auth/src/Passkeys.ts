@@ -79,7 +79,7 @@ export interface PasskeysOptions {
   rpName: string;
   rpId: string;
   origin: string | string[];
-  timeoutSeconds?: number;
+  timeoutSeconds?: number | undefined;
   /**
    * Require the authenticator to verify the *user* — a PIN, a biometric, or an unlock —
    * rather than merely to be present. Defaults to `true`.
@@ -92,7 +92,7 @@ export interface PasskeysOptions {
    * Set `false` only for a deliberate single-factor "device is the credential" flow, and
    * then do not count the passkey as a second factor.
    */
-  requireUserVerification?: boolean;
+  requireUserVerification?: boolean | undefined;
   findUserCredentials(userId: number): Promise<PasskeyCredential[]>;
   findCredential(credentialId: string): Promise<PasskeyCredential | null | undefined>;
   saveCredential(credential: Omit<PasskeyCredential, "id">): Promise<void>;

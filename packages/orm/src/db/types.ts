@@ -159,7 +159,7 @@ function _pageUrl(baseUrl: string, page: number, extra: Record<string, string> =
 /** Options accepted by the pagination helper factories. */
 export interface PaginationHelperOptions {
   /** Base path used by no-argument URL helpers and `meta.path`. Default: `''`. */
-  path?: string;
+  path?: string | undefined;
 }
 
 /** Attach URL helper methods + metadata to a plain paginate result object. */
@@ -276,13 +276,13 @@ export interface KeysetOptions {
    * Opaque cursor string from the previous page's `nextCursor`.
    * `null` or omitted = first page.
    */
-  cursor?: string | null;
+  cursor?: string | null | undefined;
   /** Column used for keyset ordering. Must be a safe SQL identifier. Default: `'id'`. */
-  column?: string;
+  column?: string | undefined;
   /** Sort direction. Default: `'asc'`. */
-  direction?: "asc" | "desc";
+  direction?: "asc" | "desc" | undefined;
   /** Items per page. Default: `15`. */
-  limit?: number;
+  limit?: number | undefined;
 }
 
 /** Result of {@link QueryBuilder.keysetPaginate} — opaque-cursor keyset pagination. */

@@ -6,13 +6,13 @@ export type ModelBroadcastEventName = "created" | "updated" | "deleted";
 
 export interface BroadcastsModelEventsOptions<M> {
   /** Which lifecycle events to broadcast. Default: `created`, `updated`, `deleted`. */
-  events?: ModelBroadcastEventName[];
+  events?: ModelBroadcastEventName[] | undefined;
   /** The channel(s) to broadcast on for a given model instance + event. */
   channels: (model: M, event: ModelBroadcastEventName) => string | string[];
   /** The wire event name. Default: `${ModelName}${Event}`, e.g. `OrderUpdated`. */
-  as?: (modelName: string, event: ModelBroadcastEventName) => string;
+  as?: ((modelName: string, event: ModelBroadcastEventName) => string) | undefined;
   /** The wire payload. Default: `{ [camelModelName]: model }`, e.g. `{ order }`. */
-  with?: (model: M, event: ModelBroadcastEventName) => object;
+  with?: ((model: M, event: ModelBroadcastEventName) => object) | undefined;
 }
 
 /** Minimal shape of an ORM model class with the `dispatchesEvents` bridge. */

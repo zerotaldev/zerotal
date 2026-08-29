@@ -17,13 +17,13 @@ export interface RefreshOptions {
    * question nobody can answer — and becomes "how long after a crash before
    * someone else may take over", which is a decision rather than a guess.
    */
-  refresh?: boolean;
+  refresh?: boolean | undefined;
 
   /**
    * Seconds between refreshes. Defaults to a third of the TTL, so two
    * consecutive failures still leave a full attempt before the lock lapses.
    */
-  refreshEvery?: number;
+  refreshEvery?: number | undefined;
 }
 
 /**
@@ -44,13 +44,13 @@ export interface BlockOptions extends RefreshOptions {
    * Maximum seconds to wait for the lock before throwing.
    * Defaults to the lock TTL.
    */
-  timeout?: number;
+  timeout?: number | undefined;
 
   /**
    * Milliseconds between polling attempts while waiting.
    * Default: 100 ms.
    */
-  retryDelay?: number;
+  retryDelay?: number | undefined;
 }
 
 /**

@@ -28,15 +28,15 @@ import { safeEqual, sha256Hex } from "@zerotal/core";
 
 export interface EmailOtpOptions {
   /** Minutes a code stays valid. Default 10. */
-  expireMinutes?: number;
+  expireMinutes?: number | undefined;
   /** Number of digits in the code. Default 6. */
-  length?: number;
+  length?: number | undefined;
   /**
    * Failed verification attempts allowed before the code is invalidated.
    * Default 5. Keeps a short numeric code from being brute-forced inside
    * its expiry window.
    */
-  maxAttempts?: number;
+  maxAttempts?: number | undefined;
   findCode(email: string): Promise<{ code: string; createdAt: Date } | null>;
   storeCode(email: string, hash: string, expiresAt: Date): Promise<void>;
   deleteCode(email: string): Promise<void>;

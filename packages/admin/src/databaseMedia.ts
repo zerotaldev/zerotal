@@ -21,9 +21,9 @@ import type { MediaItem, MediaProvider } from "./media.ts";
 
 export interface DatabaseMediaOptions {
   /** Table holding the catalogue. Defaults to `"media"`. */
-  table?: string;
+  table?: string | undefined;
   /** Map the panel's fields onto your column names. */
-  columns?: Partial<Record<keyof MediaItem, string>>;
+  columns?: Partial<Record<keyof MediaItem, string>> | undefined;
 }
 
 const DEFAULT_COLUMNS: Record<keyof MediaItem, string> = {

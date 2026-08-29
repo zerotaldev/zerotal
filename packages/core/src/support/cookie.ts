@@ -16,17 +16,17 @@ export interface CookieOptions {
   /** Cookie value (caller is responsible for encoding if needed). */
   value: string;
   /** `Path` attribute. Defaults to `/`. */
-  path?: string;
+  path?: string | undefined;
   /** `Max-Age` in seconds. Omit for a session cookie. `0` clears the cookie. */
-  maxAge?: number;
+  maxAge?: number | undefined;
   /** `SameSite` attribute. Defaults to `Lax`. */
-  sameSite?: SameSite;
+  sameSite?: SameSite | undefined;
   /** Add the `HttpOnly` attribute. Defaults to `true` — pass `false` for cookies JS must read (e.g. XSRF-TOKEN). */
-  httpOnly?: boolean;
+  httpOnly?: boolean | undefined;
   /** Add the `Secure` attribute. Defaults to `false`. */
-  secure?: boolean;
+  secure?: boolean | undefined;
   /** `Domain` attribute. Omitted when absent. */
-  domain?: string;
+  domain?: string | undefined;
 }
 
 /**

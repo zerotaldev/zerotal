@@ -210,13 +210,13 @@ export interface AssetBuildConfig {
   prefix: string;
   minify: boolean;
   /** Per-extension loader overrides (e.g. `{ ".woff2": "file" }`). See AppAssetsConfig. */
-  loader?: Record<string, string>;
+  loader?: Record<string, string> | undefined;
   /**
    * Delete everything in `outDir` this build did not write, rather than only what
    * the last build on this machine recorded. See {@link cleanBuildOutput} — it
    * refuses a directory that holds more than build output.
    */
-  clean?: boolean;
+  clean?: boolean | undefined;
 }
 
 /**

@@ -55,9 +55,9 @@ export interface AiQueueOptions {
   /** The handler name registered with {@link AiManager.onGenerated}. */
   handler: string;
   /** Anything the handler needs to know — an id, a tenant. Must be JSON-safe. */
-  meta?: Record<string, unknown>;
+  meta?: Record<string, unknown> | undefined;
   /** Queue name. Defaults to `ai`. */
-  queue?: string;
+  queue?: string | undefined;
 }
 
 /** What a queued generation's handler receives. */

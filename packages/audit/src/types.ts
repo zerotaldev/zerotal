@@ -79,17 +79,17 @@ export interface AuditableOptions {
    * Allowlist of column names to include in old_values / new_values.
    * If set, only listed columns are audited. (static `auditOnly`)
    */
-  only?: string[];
+  only?: string[] | undefined;
   /**
    * Denylist of column names to exclude.
    * Applied after `only` (if both are provided, `only` wins). (static `auditExcept`)
    */
-  except?: string[];
+  except?: string[] | undefined;
   /**
    * Override the auditable_type string stored in the log.
    * Defaults to the model's class name. (static `auditType`)
    */
-  type?: string;
+  type?: string | undefined;
 }
 
 export interface AuditConfigShape {
@@ -102,17 +102,17 @@ export interface AuditConfigShape {
    * Table name for the database driver.
    * @default 'audit_logs'
    */
-  table?: string;
+  table?: string | undefined;
   /**
    * Maximum number of audit records to keep per model instance.
    * Older records are pruned automatically. 0 = unlimited.
    * @default 0
    */
-  pruneKeep?: number;
+  pruneKeep?: number | undefined;
   /**
    * Whether to automatically capture request metadata (IP, UA, URL)
    * from the active RequestContext.
    * @default true
    */
-  captureRequest?: boolean;
+  captureRequest?: boolean | undefined;
 }

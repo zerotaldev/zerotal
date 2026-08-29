@@ -198,11 +198,11 @@ function presenceChannel = (name: string) => string
 function privateChannel = (name: string) => string
 
 interface BroadcastConfigShape = {
-  channels?: string
+  channels?: string | undefined
   driver: 'null' | 'ws' | 'redis' | 'pusher'
   path: string
-  pusher?: {    appKey: string;    appSecret: string;}
-  redis?: {    url: string;}
+  pusher?: {    appKey: string;    appSecret: string;} | undefined
+  redis?: {    url: string;} | undefined
 }
 
 interface BroadcastEvent = {
@@ -218,10 +218,10 @@ interface BroadcastRecord = {
 }
 
 interface BroadcastsModelEventsOptions = {
-  as?: (modelName: string, event: ModelBroadcastEventName) => string
+  as?: ((modelName: string, event: ModelBroadcastEventName) => string) | undefined
   channels: (model: M, event: ModelBroadcastEventName) => string | string[]
-  events?: ModelBroadcastEventName[]
-  with?: (model: M, event: ModelBroadcastEventName) => object
+  events?: ModelBroadcastEventName[] | undefined
+  with?: ((model: M, event: ModelBroadcastEventName) => object) | undefined
 }
 
 interface PresenceMember = {

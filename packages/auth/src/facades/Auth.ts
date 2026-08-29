@@ -117,7 +117,7 @@ export type Credentials = Record<string, unknown>;
 /** Options accepted by login(). */
 export interface LoginOptions {
   /** Persist the login beyond the session (advisory — recorded in the session). */
-  remember?: boolean;
+  remember?: boolean | undefined;
 }
 
 // Minimal structural view of the app's user model used for credential lookup.

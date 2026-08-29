@@ -59,10 +59,10 @@ export interface DeckOptions {
   /** The user asked to quit — bound to `q`. */
   onQuit: () => void;
   /** Force a renderer. Defaults to tabs on a TTY, stream otherwise. */
-  mode?: "tabs" | "stream";
+  mode?: "tabs" | "stream" | undefined;
   /** Overridable for tests. Defaults to `process.stdout`/`process.stdin`. */
-  stdout?: DeckStdout;
-  stdin?: DeckStdin;
+  stdout?: DeckStdout | undefined;
+  stdin?: DeckStdin | undefined;
 }
 
 /** The bits of `process.stdout` the deck reads. */

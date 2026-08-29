@@ -8,6 +8,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`MonitorStore` options no longer overwrite their own defaults with `undefined`.**
+  The constructor applied `?? 100`-style defaults and then spread `...opts` **after**
+  them, and object spread copies own properties even when their value is `undefined`.
+  So `new MonitorStore({ retentionDays: cfg.retentionDays })` with an unset config put
+  `undefined` straight back over the 7, and `prune()` computed a cutoff of
+  `Date.now() - undefined * DAY_MS` — `NaN`, which prunes nothing and reports nothing.
+  Spreading last is what made every `??` in that constructor decorative.
+
+  The caller's options now go first and the defaults fill the gaps, which is the
+  ordering `Socket`'s constructor already documents at length for the same reason.
+
 ## [1.9.0] — 2026-08-29
 
 ### Added

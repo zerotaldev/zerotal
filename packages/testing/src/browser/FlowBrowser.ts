@@ -39,7 +39,7 @@ export interface TransportReport {
 /** Options for {@link FlowBrowser.serve}. */
 export interface FlowBrowserOptions {
   /** Milliseconds any `waitFor*` will wait before giving up. */
-  timeout?: number;
+  timeout?: number | undefined;
   /**
    * Register routes, before the server starts.
    *
@@ -48,7 +48,7 @@ export interface FlowBrowserOptions {
    * needs a fixture page — one deliberately built to reproduce a bug — registers
    * it here instead of adding it to the application under test.
    */
-  setup?: () => void;
+  setup?: (() => void) | undefined;
 }
 
 const DEFAULT_TIMEOUT = 5_000;

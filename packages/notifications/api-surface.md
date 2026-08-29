@@ -375,8 +375,8 @@ interface NotificationChannel = {
 interface NotificationConfigShape = {
   database: {    table: string;}
   mail: MailConfigShape
-  slack?: {    webhook?: string;}
-  sms?: SmsConfigShape
+  slack?: {    webhook?: string;} | undefined
+  sms?: SmsConfigShape | undefined
 }
 
 interface NotificationRecord = {
@@ -415,8 +415,8 @@ interface SlackMessage = {
 
 interface SmsConfigShape = {
   driver: 'twilio' | 'vonage'
-  twilio?: TwilioConfigShape
-  vonage?: VonageConfigShape
+  twilio?: TwilioConfigShape | undefined
+  vonage?: VonageConfigShape | undefined
 }
 
 interface SmsMessage = {

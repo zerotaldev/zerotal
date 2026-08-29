@@ -149,20 +149,20 @@ export const Health = new HealthRegistry();
 /** The health config, authored under the `health` key of `config/app.ts`. */
 export interface HealthConfigShape {
   /** Serve the endpoint. Default: on outside production, off in production. */
-  enabled?: boolean;
+  enabled?: boolean | undefined;
   /** Route path. Default: `/health`. */
-  path?: string;
+  path?: string | undefined;
   /** Shared secret. Required in production; supplied via `?key=` or `X-Health-Key`. */
-  secret?: string;
+  secret?: string | undefined;
   /** Include per-check details. Set false for a bare `{ status }` body. Default: true. */
-  showDetails?: boolean;
+  showDetails?: boolean | undefined;
 }
 
 /** The health config after defaults and back-compat have been applied. */
 export interface ResolvedHealthConfig {
   enabled: boolean;
   path: string;
-  secret?: string;
+  secret?: string | undefined;
   showDetails: boolean;
 }
 

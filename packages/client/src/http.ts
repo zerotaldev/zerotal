@@ -1,3 +1,4 @@
+import { definedOnly, type Resolved } from "@zerotal/core/helpers";
 import { ApiClientError } from "./errors.ts";
 import { CircuitBreakerOpenError } from "./CircuitBreaker.ts";
 
@@ -109,18 +110,18 @@ export function readCookie(name: string): string | undefined {
 
 export interface RetryOptions {
   /** Max retry attempts after the first try. Default: 2. */
-  attempts?: number;
+  attempts?: number | undefined;
   /** HTTP methods eligible for retry. Default: idempotent verbs (GET/PUT/DELETE/HEAD/OPTIONS). */
-  methods?: string[];
+  methods?: string[] | undefined;
   /** HTTP statuses that should be retried. Default: 408, 425, 429, 500, 502, 503, 504. */
-  statuses?: number[];
+  statuses?: number[] | undefined;
   /** Honor a `Retry-After` header when present. Default: true. */
-  respectRetryAfter?: boolean;
+  respectRetryAfter?: boolean | undefined;
   /** Compute the delay (ms) before attempt N. Default: exponential backoff + jitter. */
-  backoff?: (attempt: number, retryAfterMs: number | null) => number;
+  backoff?: ((attempt: number, retryAfterMs: number | null) => number) | undefined;
 }
 
-const DEFAULT_RETRY: Required<Omit<RetryOptions, "backoff">> & Pick<RetryOptions, "backoff"> = {
+const DEFAULT_RETRY: Resolved<Omit<RetryOptions, "backoff">> & Pick<RetryOptions, "backoff"> = {
   attempts: 2,
   methods: ["GET", "PUT", "DELETE", "HEAD", "OPTIONS"],
   statuses: [408, 425, 429, 500, 502, 503, 504],
@@ -131,12 +132,15 @@ const DEFAULT_RETRY: Required<Omit<RetryOptions, "backoff">> & Pick<RetryOptions
 export function resolveRetry(
   retry: number | RetryOptions | false | undefined,
   method: string,
-): Required<Omit<RetryOptions, "backoff">> & Pick<RetryOptions, "backoff"> {
+): Resolved<Omit<RetryOptions, "backoff">> & Pick<RetryOptions, "backoff"> {
   if (retry === undefined || retry === false || retry === 0) {
     return { ...DEFAULT_RETRY, attempts: 0 };
   }
   const opts = typeof retry === "number" ? { attempts: retry } : retry;
-  const merged = { ...DEFAULT_RETRY, ...opts };
+  // `definedOnly`, not a bare spread: these options accept an explicit `undefined`
+  // so that `{ attempts: cfg.attempts }` compiles, and a bare spread would then let
+  // that `undefined` overwrite the default rather than leave it standing.
+  const merged = { ...DEFAULT_RETRY, ...definedOnly(opts) };
   // Methods are matched case-insensitively.
   if (!merged.methods.some((m) => m.toUpperCase() === method.toUpperCase())) {
     return { ...merged, attempts: 0 };
@@ -173,7 +177,7 @@ function _isRetryable(
 /** Run `fn`, retrying transient failures per `policy`. */
 export async function withRetry<T>(
   fn: () => Promise<T>,
-  policy: Required<Omit<RetryOptions, "backoff">> & Pick<RetryOptions, "backoff">,
+  policy: Resolved<Omit<RetryOptions, "backoff">> & Pick<RetryOptions, "backoff">,
 ): Promise<T> {
   const backoff = policy.backoff ?? _defaultBackoff;
   let attempt = 0;

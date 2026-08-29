@@ -16,9 +16,9 @@ interface Mount {
 
 export interface StorageFilesOptions {
   /** Disks to serve, in match order. Built from config by {@link StorageProvider}. */
-  mounts?: Mount[];
+  mounts?: Mount[] | undefined;
   /** The manager the files are read through. */
-  storage?: StorageManager;
+  storage?: StorageManager | undefined;
 }
 
 /**

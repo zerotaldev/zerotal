@@ -19,9 +19,9 @@ export type StorageDisk = Pick<StorageDriver, "url"> & {
  */
 export interface FileValidationOptions {
   /** Maximum allowed size in bytes. */
-  maxSize?: number;
+  maxSize?: number | undefined;
   /** Allowed MIME types — e.g. `['image/jpeg', 'image/png', 'application/pdf']`. */
-  mimes?: string[];
+  mimes?: string[] | undefined;
 }
 
 /**

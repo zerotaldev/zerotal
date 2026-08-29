@@ -64,8 +64,8 @@ export interface AnthropicMessageStream extends AsyncIterable<AnthropicStreamEve
 
 /** Per-request options. Note the SDK's timeout is in **milliseconds**. */
 export interface AnthropicRequestOptions {
-  signal?: AbortSignal;
-  timeout?: number;
+  signal?: AbortSignal | undefined;
+  timeout?: number | undefined;
 }
 
 /** One `messages` namespace — the shape is identical on `client` and `client.beta`. */

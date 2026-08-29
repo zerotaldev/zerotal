@@ -26,37 +26,37 @@ export interface UserMenu {
  */
 export interface AdminAuthConfig {
   /** Mount the auth pages. */
-  enabled?: boolean;
+  enabled?: boolean | undefined;
   /** Login route (relative to the panel path). Default `/login`. */
-  loginPath?: string;
+  loginPath?: string | undefined;
   /** Profile route (relative to the panel path). Default `/profile`. */
-  profilePath?: string;
+  profilePath?: string | undefined;
   /** Where to send the user after a successful login. Default the panel root. */
-  redirectTo?: string;
+  redirectTo?: string | undefined;
   /** The credential column users log in with. Default `"email"`. */
-  identifier?: string;
+  identifier?: string | undefined;
   /** Show a "remember me" checkbox. Default `true`. */
-  remember?: boolean;
+  remember?: boolean | undefined;
   /** Heading on the auth screens. Defaults to the panel brand. */
-  heading?: string;
+  heading?: string | undefined;
   /** Extra gate after the password check (e.g. "is the account active?"). */
-  authenticateWhen?: (user: unknown) => boolean | Promise<boolean>;
+  authenticateWhen?: ((user: unknown) => boolean | Promise<boolean>) | undefined;
   /** Persist profile edits (name/email). Defaults to `user.fill(data); user.save()`. */
-  updateProfile?: (user: unknown, data: Record<string, unknown>) => Promise<void> | void;
+  updateProfile?: ((user: unknown, data: Record<string, unknown>) => Promise<void> | void) | undefined;
   /** Middleware guarding the guest screens (login/forgot/reset). Default none. */
-  guestMiddleware?: MiddlewareClass[];
+  guestMiddleware?: MiddlewareClass[] | undefined;
   /** Middleware guarding the profile/verify screens. Defaults to the panel guard. */
-  authMiddleware?: MiddlewareClass[];
+  authMiddleware?: MiddlewareClass[] | undefined;
   /** Password-reset broker — mounting the forgot/reset pages when provided. */
   passwordReset?: {
     sendResetLink(email: string): Promise<boolean> | boolean;
     reset(input: { email: string; token: string; password: string }): Promise<boolean> | boolean;
-  };
+  } | undefined;
   /** Email-verification hooks — mounting the verify page when provided. */
   emailVerification?: {
     isVerified(user: unknown): boolean;
     resend(user: unknown): Promise<void> | void;
-  };
+  } | undefined;
 }
 
 /** Admin panel configuration (read from `config/admin.ts`, with defaults). */
@@ -66,7 +66,7 @@ export interface AdminConfigShape {
   /** Brand name shown in the sidebar. */
   brand: string;
   /** Optional short tagline under the brand. */
-  tagline?: string;
+  tagline?: string | undefined;
   /**
    * Middleware guarding every panel route. When left empty, the panel is
    * default-denied in production-like environments (fail closed) and open only
@@ -75,13 +75,13 @@ export interface AdminConfigShape {
    * `[AuthMiddleware.with({ ... })]`. To deliberately expose it without auth,
    * pass an explicit pass-through middleware.
    */
-  middleware?: MiddlewareClass[];
+  middleware?: MiddlewareClass[] | undefined;
   /** Optional top-bar user menu (Profile / Logout / …). */
-  userMenu?: UserMenu;
+  userMenu?: UserMenu | undefined;
   /** Styling source — Tailwind Play CDN (default) or a prebuilt stylesheet. */
-  theme?: AdminThemeConfig;
+  theme?: AdminThemeConfig | undefined;
   /** Auth pages (login / profile / password-reset / email-verification). */
-  auth?: AdminAuthConfig;
+  auth?: AdminAuthConfig | undefined;
   /**
    * Decide the abilities named by pages, widgets, nav entries and search
    * providers. Set this when the app models permissions itself; leave it unset to
@@ -90,13 +90,13 @@ export interface AdminConfigShape {
    * With neither configured, every ability is denied outside a development
    * environment — a panel with no authorization wired stays closed in production.
    */
-  authorize?: AdminAuthorizer;
+  authorize?: AdminAuthorizer | undefined;
   /**
    * Switch contributing packages off by id — `{ monitor: false }` keeps the
    * monitor provider installed but drops its pages, widgets and nav entries from
    * the panel. Anything absent here is on.
    */
-  plugins?: Record<string, boolean>;
+  plugins?: Record<string, boolean> | undefined;
 }
 
 /**

@@ -10,7 +10,7 @@ export interface AuthConfigShape {
   algorithm: "argon2id" | "bcrypt";
 
   /** Two-factor authentication configuration. */
-  twoFactor?: TwoFactorOptions;
+  twoFactor?: TwoFactorOptions | undefined;
 }
 
 const defaults: AuthConfigShape = {

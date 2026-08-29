@@ -11,9 +11,9 @@ export interface CurrentUrlOptions {
    * `null`, `undefined`, or `""` removes the param; anything else is stringified
    * and set. Params not listed here are preserved.
    */
-  query?: Record<string, unknown>;
+  query?: Record<string, unknown> | undefined;
   /** Replace the URL hash. `""` clears it; omit to leave the hash untouched. */
-  hash?: string;
+  hash?: string | undefined;
 }
 
 /**

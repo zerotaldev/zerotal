@@ -1,6 +1,6 @@
 export interface PutOptions {
-  contentType?: string;
-  visibility?: "public" | "private";
+  contentType?: string | undefined;
+  visibility?: "public" | "private" | undefined;
 }
 
 export interface StorageDriver {
@@ -61,14 +61,14 @@ export interface DiskServeConfig {
    * only someone holding a link you signed can read a file, and only until it
    * expires.
    */
-  signed?: boolean;
+  signed?: boolean | undefined;
   /**
    * How long a signed link stays valid, in seconds. Only meaningful with
    * `signed`. Defaults to 900 (15 minutes).
    */
-  expiresIn?: number;
+  expiresIn?: number | undefined;
   /** Extra response headers, e.g. `Cache-Control`. */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | undefined;
 }
 
 export interface LocalDiskConfig {
@@ -76,9 +76,9 @@ export interface LocalDiskConfig {
   /** Absolute or relative root directory for file storage. */
   root: string;
   /** Optional base URL for url() — e.g. '/storage' or 'https://cdn.example.com'. */
-  url?: string;
+  url?: string | undefined;
   /** Expose this disk over HTTP. Omit to keep it unreachable. */
-  serve?: DiskServeConfig;
+  serve?: DiskServeConfig | undefined;
 }
 
 export interface S3DiskConfig {
@@ -88,11 +88,11 @@ export interface S3DiskConfig {
   region: string;
   bucket: string;
   /** Override endpoint for R2, MinIO, etc. E.g. 'https://<account>.r2.cloudflarestorage.com' */
-  endpoint?: string;
+  endpoint?: string | undefined;
   /** Custom public URL base (e.g. CDN or R2 public domain). */
-  url?: string;
+  url?: string | undefined;
   /** Expose this disk over HTTP, proxied through the app. Omit to keep it unreachable. */
-  serve?: DiskServeConfig;
+  serve?: DiskServeConfig | undefined;
 }
 
 export type DiskConfig = LocalDiskConfig | S3DiskConfig;

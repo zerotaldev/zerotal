@@ -12,6 +12,7 @@
  * A retention policy (`prune`) deletes or archives data past the configured
  * window, and `wipe` clears everything on demand from the panel.
  */
+import type { Resolved } from "@zerotal/core";
 import { percentile } from "./store/RingBuffer.ts";
 import { MonitorDb } from "./store/MonitorDb.ts";
 import {
@@ -107,25 +108,25 @@ interface ReqSample {
 }
 
 export interface MonitorStoreOptions {
-  apdexTargetMs?: number;
-  slowQueryMs?: number;
-  zerotalVersion?: string;
-  region?: string;
-  deploy?: string;
+  apdexTargetMs?: number | undefined;
+  slowQueryMs?: number | undefined;
+  zerotalVersion?: string | undefined;
+  region?: string | undefined;
+  deploy?: string | undefined;
   /** SQLite path. `:memory:` (default) for tests; a file path for persistence. */
-  storage?: string;
+  storage?: string | undefined;
   /** Days of history to keep before pruning. Default: 7. */
-  retentionDays?: number;
+  retentionDays?: number | undefined;
   /** What to do with data past retention: delete it or move it to the archive. Default: `delete`. */
-  retentionMode?: RetentionMode;
+  retentionMode?: RetentionMode | undefined;
   /** Requests at/above this many ms count as "slow". Default: 1000. */
-  slowRequestMs?: number;
+  slowRequestMs?: number | undefined;
   /**
    * Cache built snapshots for this many ms, keyed by range. De-dupes overlapping
    * builds (panel poll + Prometheus scrape + alert loop all hit "live"). Mutating
    * actions invalidate it. Default: 0 (off) — the provider enables it in production.
    */
-  snapshotCacheMs?: number;
+  snapshotCacheMs?: number | undefined;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -139,22 +140,32 @@ export class MonitorStore {
   private readonly _snapTtlMs: number;
   private readonly _snapCache = new Map<MonitorRange, { at: number; snap: MonitorSnapshot }>();
 
-  private readonly _opts: Required<
+  private readonly _opts: Resolved<
     Pick<
       MonitorStoreOptions,
       "apdexTargetMs" | "slowQueryMs" | "slowRequestMs" | "retentionDays" | "retentionMode"
     >
   > &
-    MonitorStoreOptions;
+    Omit<
+      MonitorStoreOptions,
+      "apdexTargetMs" | "slowQueryMs" | "slowRequestMs" | "retentionDays" | "retentionMode"
+    >;
 
   constructor(opts: MonitorStoreOptions = {}) {
+    // The caller's options go FIRST, then the defaults fill the gaps — the same
+    // ordering, for the same reason, as `Socket`'s constructor documents at length.
+    // Object spread copies own properties even when their value is `undefined`, so
+    // `new MonitorStore({ retentionDays: cfg.retentionDays })` with an unset config
+    // put `undefined` straight back over the 7 and `prune()` then computed a cutoff
+    // of `Date.now() - undefined * DAY_MS` — NaN, which deletes nothing and reports
+    // nothing. Spreading last is what made the `??` above decorative.
     this._opts = {
+      ...opts,
       apdexTargetMs: opts.apdexTargetMs ?? 100,
       slowQueryMs: opts.slowQueryMs ?? 100,
       slowRequestMs: opts.slowRequestMs ?? 1000,
       retentionDays: opts.retentionDays ?? 7,
       retentionMode: opts.retentionMode ?? "delete",
-      ...opts,
     };
     this._snapTtlMs = Math.max(0, opts.snapshotCacheMs ?? 0);
     this._db = new MonitorDb(opts.storage ?? ":memory:");

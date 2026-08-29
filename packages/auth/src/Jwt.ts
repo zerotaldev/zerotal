@@ -28,9 +28,9 @@ import { safeEqual } from "@zerotal/core";
 
 export interface JwtSignOptions {
   /** Token lifetime in seconds. Sets the `exp` claim when provided. */
-  expiresIn?: number;
+  expiresIn?: number | undefined;
   /** Issued-at override (unix seconds). Defaults to now. */
-  issuedAt?: number;
+  issuedAt?: number | undefined;
 }
 
 export type JwtPayload = Record<string, unknown>;

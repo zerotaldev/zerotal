@@ -14,12 +14,12 @@ export interface ThrottleOptions {
   /** Maximum number of requests allowed within the window. */
   maxAttempts: number;
   /** Time window in seconds. Defaults to 60. */
-  windowSeconds?: number;
+  windowSeconds?: number | undefined;
   /**
    * Custom key resolver — defaults to client IP address.
    * Use this to rate-limit by user ID, API key, route, etc.
    */
-  keyResolver?: (ctx: HttpContext) => string;
+  keyResolver?: ((ctx: HttpContext) => string) | undefined;
   /**
    * Number of trusted reverse proxies in front of this server.
    *
@@ -35,7 +35,7 @@ export interface ThrottleOptions {
    * // Behind one load balancer:
    * ThrottleMiddleware.with({ maxAttempts: 60, trustedProxies: 1 })
    */
-  trustedProxies?: number;
+  trustedProxies?: number | undefined;
 }
 
 interface HitRecord {

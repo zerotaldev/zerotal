@@ -17,7 +17,7 @@ export interface BroadcastConfigShape {
    * @example
    * redis: { url: Bun.env.REDIS_URL ?? 'redis://localhost:6379' }
    */
-  redis?: { url: string };
+  redis?: { url: string } | undefined;
   /**
    * Pusher credentials - required when driver is `'pusher'`.
    * Configure a Pusher-compatible client to connect to ws://host/app/{appKey}.
@@ -30,7 +30,7 @@ export interface BroadcastConfigShape {
   pusher?: {
     appKey: string;
     appSecret: string;
-  };
+  } | undefined;
   /**
    * Where the `Broadcast.channel(...)` authorization rules live, relative to the
    * project root (or absolute).
@@ -43,7 +43,7 @@ export interface BroadcastConfigShape {
    * @example
    * channels: "app/routes/channels.ts"
    */
-  channels?: string;
+  channels?: string | undefined;
 }
 
 const defaults: BroadcastConfigShape = {

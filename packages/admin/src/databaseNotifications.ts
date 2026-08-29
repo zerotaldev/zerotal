@@ -32,21 +32,21 @@ export interface StoredNotification {
 
 export interface DatabaseNotificationOptions {
   /** Table holding the notifications. Defaults to `"notifications"`. */
-  table?: string;
+  table?: string | undefined;
   /**
    * Who the bell is showing. Defaults to the signed-in user from
    * `@zerotal/auth`; returning `null` shows nothing, which is the right answer
    * for a guest.
    */
-  notifiable?: () => Promise<unknown> | unknown;
+  notifiable?: (() => Promise<unknown> | unknown) | undefined;
   /** How many to show. Defaults to 20 — a bell is not an archive. */
-  limit?: number;
+  limit?: number | undefined;
   /**
    * Turn a stored row into what the panel renders. The default reads `title`,
    * `body`/`message`, `url`/`href` and `icon` out of the payload, which is what
    * most notifications carry.
    */
-  present?: (row: StoredNotification, data: Record<string, unknown>) => AdminNotification;
+  present?: ((row: StoredNotification, data: Record<string, unknown>) => AdminNotification) | undefined;
 }
 
 /** Parse a row's JSON payload, tolerating a payload that was never JSON. */

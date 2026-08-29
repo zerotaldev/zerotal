@@ -18,7 +18,7 @@ type DbRuleRunner = (
 
 export interface UniqueOptions {
   /** Ignore the row with this id — use on update to exclude the current record. */
-  ignoreId?: number | string;
+  ignoreId?: number | string | undefined;
 }
 
 let _runner: DbRuleRunner | undefined;

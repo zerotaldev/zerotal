@@ -260,7 +260,7 @@ interface QueueConfigShape = {
   driver: 'sqlite' | 'redis' | 'sync'
   pollInterval: number
   queues: string[]
-  workerBootstrap?: string
+  workerBootstrap?: string | undefined
   workers: number
 }
 

@@ -37,7 +37,7 @@ function _plainToken(): string {
 
 export interface PasswordBrokerOptions {
   /** Minutes until a reset token expires. Default: 60. */
-  expireMinutes?: number;
+  expireMinutes?: number | undefined;
   findToken(email: string): Promise<{ token: string; createdAt: Date } | null>;
   storeToken(email: string, hash: string, expiresAt: Date): Promise<void>;
   deleteToken(email: string): Promise<void>;

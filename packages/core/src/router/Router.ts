@@ -124,13 +124,13 @@ type CompiledRoutes = Record<string, Record<string, RouteHandlerFn> | Response>;
 /** Options for {@link Router.static}. */
 export interface StaticOptions {
   /** Extra response headers applied to every served file (e.g. Cache-Control). */
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | undefined;
   /**
    * When true (default) every file in the directory is pre-registered at
    * compile() time as a static `Response`, so Bun serves it without invoking
    * JS. Set false to fall back to the per-request lookup in Application.fetch.
    */
-  eager?: boolean;
+  eager?: boolean | undefined;
 }
 
 type StaticDir = { prefix: string; rootDir: string; options?: StaticOptions | undefined };
@@ -143,7 +143,7 @@ type MarkdownDir = {
 /** Options for Router.group(). All fields are optional. */
 export interface GroupOptions {
   /** URL prefix applied to every route registered inside the group. */
-  prefix?: string;
+  prefix?: string | undefined;
   /**
    * Middleware to prepend to every route inside the group.
    * Accepts a named group (string), an array of names/classes, or middleware class(es) directly.
@@ -152,9 +152,9 @@ export interface GroupOptions {
    * Router.group({ middleware: 'api' }, () => { ... });
    * Router.group({ middleware: ['web', AuthMiddleware] }, () => { ... });
    */
-  middleware?: string | string[] | MiddlewareClass | MiddlewareClass[];
+  middleware?: string | string[] | MiddlewareClass | MiddlewareClass[] | undefined;
   /** Host pattern; routes inside the group only match this host (e.g. ':tenant.app.com'). */
-  domain?: string;
+  domain?: string | undefined;
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

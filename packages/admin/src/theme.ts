@@ -38,13 +38,13 @@ export const THEME_TOGGLE_SCRIPT = FLOW_THEME_TOGGLE_SCRIPT;
  */
 export interface AdminThemeConfig {
   /** A prebuilt stylesheet URL/path to link instead of (or alongside) the CDN. */
-  stylesheet?: string;
+  stylesheet?: string | undefined;
   /** Keep loading the Tailwind Play CDN. Defaults to `true` unless `stylesheet` is set. */
-  cdn?: boolean;
+  cdn?: boolean | undefined;
   /** Extra design-token CSS appended after the defaults (override `:root` / `.dark`). */
-  tokensCss?: string;
+  tokensCss?: string | undefined;
   /** Skip the bundled Google Fonts links (e.g. you self-host Inter). */
-  noFonts?: boolean;
+  noFonts?: boolean | undefined;
 }
 
 /** The design-token CSS (`:root` + `.dark` custom properties + base styles). */

@@ -33,7 +33,7 @@ import { timelineTab } from "./tabs/timeline.ts";
 
 export interface DevtoolsClientOptions {
   /** Base URL path for the devtools API. Default: '/__zerotal/devtools' */
-  endpoint?: string;
+  endpoint?: string | undefined;
   /**
    * How the panel is mounted.
    *
@@ -42,9 +42,9 @@ export interface DevtoolsClientOptions {
    * inspector dashboard. Both run the same renderers, so a tab added for one
    * exists in the other.
    */
-  mode?: "floating" | "standalone";
+  mode?: "floating" | "standalone" | undefined;
   /** Element to mount into. Defaults to `document.body`. */
-  mount?: HTMLElement;
+  mount?: HTMLElement | undefined;
 }
 
 /**

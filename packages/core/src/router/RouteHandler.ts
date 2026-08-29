@@ -85,7 +85,7 @@ export interface DispatchOptions {
   exceptionHandler?: ExceptionHandler | undefined;
   providerHooks?: ProviderHooks | undefined;
   /** Configure the freshly created context (params, route info) before dispatch. */
-  configure?: (ctx: HttpContext) => void;
+  configure?: ((ctx: HttpContext) => void) | undefined;
   /**
    * Path-specific work: run the pipeline and produce the response (or leave it
    * on `ctx.response`). Errors thrown here are rendered by the exception handler.
@@ -95,7 +95,7 @@ export interface DispatchOptions {
    * Render an unhandled error to a Response. Defaults to reporting + rendering
    * through `exceptionHandler` when present, else `ExceptionHandler.defaultRender`.
    */
-  renderError?: (error: unknown, ctx: HttpContext) => Promise<Response>;
+  renderError?: ((error: unknown, ctx: HttpContext) => Promise<Response>) | undefined;
 }
 
 /**

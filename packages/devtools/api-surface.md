@@ -141,9 +141,9 @@ interface QuerySpan = {
 }
 
 interface RedactionOptions = {
-  allow?: string[]
-  deny?: string[]
-  enabled?: boolean
+  allow?: string[] | undefined
+  deny?: string[] | undefined
+  enabled?: boolean | undefined
 }
 
 interface RequestTrace = {
@@ -218,9 +218,9 @@ interface TraceSink = {
 }
 
 interface TraceStoreOptions = {
-  capacity?: number
-  dbPath?: string | null
-  pruneHours?: number
+  capacity?: number | undefined
+  dbPath?: string | null | undefined
+  pruneHours?: number | undefined
 }
 
 type DevtoolsGate = (request: Request) => boolean | Promise<boolean>
@@ -252,9 +252,9 @@ function traceGroupKey = (trace: RequestTrace, channels: TraceChannelDescriptor[
 function traceMatches = (trace: RequestTrace, query: string, f: Facets) => boolean
 
 interface DevtoolsClientOptions = {
-  endpoint?: string
-  mode?: 'floating' | 'standalone'
-  mount?: HTMLElement
+  endpoint?: string | undefined
+  mode?: 'floating' | 'standalone' | undefined
+  mount?: HTMLElement | undefined
 }
 
 interface DevtoolsPanelPlugin = {

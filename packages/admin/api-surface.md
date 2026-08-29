@@ -1115,31 +1115,31 @@ interface ActionContext = {
 }
 
 interface AdminAuthConfig = {
-  authMiddleware?: MiddlewareClass[]
-  authenticateWhen?: (user: unknown) => boolean | Promise<boolean>
-  emailVerification?: {    isVerified(user: unknown): boolean;    resend(user: unknown): Promise<void> | void;}
-  enabled?: boolean
-  guestMiddleware?: MiddlewareClass[]
-  heading?: string
-  identifier?: string
-  loginPath?: string
-  passwordReset?: {    sendResetLink(email: string): Promise<boolean> | boolean;    reset(input: {        email: string;        token: string;        password: string;    }): Promise<boolean> | boolean;}
-  profilePath?: string
-  redirectTo?: string
-  remember?: boolean
-  updateProfile?: (user: unknown, data: Record<string, unknown>) => Promise<void> | void
+  authMiddleware?: MiddlewareClass[] | undefined
+  authenticateWhen?: ((user: unknown) => boolean | Promise<boolean>) | undefined
+  emailVerification?: {    isVerified(user: unknown): boolean;    resend(user: unknown): Promise<void> | void;} | undefined
+  enabled?: boolean | undefined
+  guestMiddleware?: MiddlewareClass[] | undefined
+  heading?: string | undefined
+  identifier?: string | undefined
+  loginPath?: string | undefined
+  passwordReset?: {    sendResetLink(email: string): Promise<boolean> | boolean;    reset(input: {        email: string;        token: string;        password: string;    }): Promise<boolean> | boolean;} | undefined
+  profilePath?: string | undefined
+  redirectTo?: string | undefined
+  remember?: boolean | undefined
+  updateProfile?: ((user: unknown, data: Record<string, unknown>) => Promise<void> | void) | undefined
 }
 
 interface AdminConfigShape = {
-  auth?: AdminAuthConfig
-  authorize?: AdminAuthorizer
+  auth?: AdminAuthConfig | undefined
+  authorize?: AdminAuthorizer | undefined
   brand: string
-  middleware?: MiddlewareClass[]
+  middleware?: MiddlewareClass[] | undefined
   path: string
-  plugins?: Record<string, boolean>
-  tagline?: string
-  theme?: AdminThemeConfig
-  userMenu?: UserMenu
+  plugins?: Record<string, boolean> | undefined
+  tagline?: string | undefined
+  theme?: AdminThemeConfig | undefined
+  userMenu?: UserMenu | undefined
 }
 
 interface AdminModel = {
@@ -1202,15 +1202,15 @@ interface AdminRecord = {
 }
 
 interface AdminThemeConfig = {
-  cdn?: boolean
-  noFonts?: boolean
-  stylesheet?: string
-  tokensCss?: string
+  cdn?: boolean | undefined
+  noFonts?: boolean | undefined
+  stylesheet?: string | undefined
+  tokensCss?: string | undefined
 }
 
 interface AuthRolesOptions = {
-  guard?: string
-  superusers?: string[]
+  guard?: string | undefined
+  superusers?: string[] | undefined
 }
 
 interface ChartData = {
@@ -1312,15 +1312,15 @@ interface DashboardLayoutStore = {
 }
 
 interface DatabaseMediaOptions = {
-  columns?: Partial<Record<keyof MediaItem, string>>
-  table?: string
+  columns?: Partial<Record<keyof MediaItem, string>> | undefined
+  table?: string | undefined
 }
 
 interface DatabaseNotificationOptions = {
-  limit?: number
-  notifiable?: () => Promise<unknown> | unknown
-  present?: (row: StoredNotification, data: Record<string, unknown>) => AdminNotification
-  table?: string
+  limit?: number | undefined
+  notifiable?: (() => Promise<unknown> | unknown) | undefined
+  present?: ((row: StoredNotification, data: Record<string, unknown>) => AdminNotification) | undefined
+  table?: string | undefined
 }
 
 interface EmptyState = {
@@ -1378,8 +1378,8 @@ interface HistoryEntry = {
 
 interface HistoryOptions = {
   id: unknown
-  limit?: number
-  resolveActor?: (id: number) => Promise<string | null> | string | null
+  limit?: number | undefined
+  resolveActor?: ((id: number) => Promise<string | null> | string | null) | undefined
   type: string
 }
 
@@ -1396,12 +1396,12 @@ interface ImportResult = {
 }
 
 interface ListOptions = {
-  modifyQuery?: QueryModifier
-  page?: number
-  perPage?: number
+  modifyQuery?: QueryModifier | undefined
+  page?: number | undefined
+  perPage?: number | undefined
   search?: string | undefined
   sortBy?: string | undefined
-  sortDir?: 'asc' | 'desc'
+  sortDir?: 'asc' | 'desc' | undefined
   thenSort?: readonly {    column: string;    direction: 'asc' | 'desc';}[] | undefined
   trashed?: 'with' | 'only' | undefined
 }
@@ -1550,10 +1550,10 @@ interface StoredNotification = {
 }
 
 interface StoreMediaOptions = {
-  accept?: string[]
-  disk?: string
-  folder?: string
-  maxBytes?: number
+  accept?: string[] | undefined
+  disk?: string | undefined
+  folder?: string | undefined
+  maxBytes?: number | undefined
   provider: MediaProvider
 }
 

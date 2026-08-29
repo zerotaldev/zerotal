@@ -4,15 +4,15 @@ import type { SessionManager } from "@zerotal/session";
 
 export interface AuthOptions {
   /** Path to redirect unauthenticated users to. Defaults to `'/login'`. */
-  redirectTo?: string;
+  redirectTo?: string | undefined;
   /**
    * Also require the authenticated user to have a verified email. When `true`, a
    * signed-in but unverified user is bounced to `verifyRedirectTo`. No-op for models
    * that don't compose `EmailVerification`. Defaults to `false`.
    */
-  mustVerifyEmail?: boolean;
+  mustVerifyEmail?: boolean | undefined;
   /** Where to send unverified users when `mustVerifyEmail` is set. Defaults to `'/verify-email'`. */
-  verifyRedirectTo?: string;
+  verifyRedirectTo?: string | undefined;
 }
 
 /** The user fields this guard reads — present when the model composes EmailVerification. */

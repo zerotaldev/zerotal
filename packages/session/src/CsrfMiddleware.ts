@@ -17,7 +17,7 @@ export interface CsrfOptions {
    * Set the `Secure` flag on the XSRF-TOKEN cookie.
    * Enable in production when serving over HTTPS.
    */
-  secure?: boolean;
+  secure?: boolean | undefined;
 }
 
 /**

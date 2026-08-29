@@ -9,13 +9,13 @@ export interface ManyToManyOptions {
   /** Pivot column referencing the related model (e.g. `role_id`). */
   pivotRelatedKey: string;
   /** Parent local key the pivot FK references. Defaults to `'id'`. */
-  localKey?: string;
+  localKey?: string | undefined;
   /** Related local key the pivot relatedKey references. Defaults to `'id'`. */
-  relatedKey?: string;
+  relatedKey?: string | undefined;
   /** Extra pivot columns to hydrate onto each related model's `pivot` bag. */
-  withPivot?: string[];
+  withPivot?: string[] | undefined;
   /** Maintain created_at / updated_at on the pivot table during attach/sync. */
-  withTimestamps?: boolean;
+  withTimestamps?: boolean | undefined;
 }
 
 /**

@@ -178,16 +178,16 @@ function AuditConfig = (options?: Partial<AuditConfigShape>) => {    audit: Audi
 function registerAudit = (ModelClass: ModelClass) => void
 
 interface AuditableOptions = {
-  except?: string[]
-  only?: string[]
-  type?: string
+  except?: string[] | undefined
+  only?: string[] | undefined
+  type?: string | undefined
 }
 
 interface AuditConfigShape = {
-  captureRequest?: boolean
+  captureRequest?: boolean | undefined
   driver: 'null' | 'database'
-  pruneKeep?: number
-  table?: string
+  pruneKeep?: number | undefined
+  table?: string | undefined
 }
 
 interface AuditDriver = {

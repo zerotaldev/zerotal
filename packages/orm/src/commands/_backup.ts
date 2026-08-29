@@ -45,15 +45,15 @@ export interface BackupOptions {
    * it". An empty `bookings` table in a snapshot of a live system is not a small
    * discrepancy, it is the whole failure — and it is invisible in a byte count.
    */
-  requireRows?: string[];
+  requireRows?: string[] | undefined;
   /**
    * Perform the restore, not just a read of the snapshot: copy it to a scratch
    * path, open the copy, and check it there. Exercises the operation an incident
    * actually needs, rather than the one that is convenient to test.
    */
-  rehearse?: boolean;
+  rehearse?: boolean | undefined;
   /** Clock, so the snapshot name is deterministic under test. */
-  now?: Date;
+  now?: Date | undefined;
 }
 
 /** What a completed backup wrote and proved. */

@@ -237,14 +237,14 @@ export interface AnthropicConfigShape {
   /** Mark the system prompt cacheable. The cheapest win available. */
   cacheSystem: boolean;
   /** Override the API base URL (proxies, gateways). */
-  baseUrl?: string;
+  baseUrl?: string | undefined;
   /** Request timeout in milliseconds. */
   timeout: number;
   /**
    * Best-effort default sampling temperature. Dropped by this driver on models
    * that reject it (which is every current one) — `validateAiConfig` warns.
    */
-  temperature?: number;
+  temperature?: number | undefined;
 }
 
 /** OpenAI driver settings. */

@@ -808,23 +808,23 @@ interface ContainerBindings = {
 }
 
 interface CookieOptions = {
-  domain?: string
-  httpOnly?: boolean
-  maxAge?: number
+  domain?: string | undefined
+  httpOnly?: boolean | undefined
+  maxAge?: number | undefined
   name: string
-  path?: string
-  sameSite?: SameSite
-  secure?: boolean
+  path?: string | undefined
+  sameSite?: SameSite | undefined
+  secure?: boolean | undefined
   value: string
 }
 
 interface CorsOptions = {
-  allowedHeaders?: string[]
-  credentials?: boolean
-  exposedHeaders?: string[]
-  maxAge?: number
-  methods?: string[]
-  origin?: string | string[] | ((origin: string) => boolean)
+  allowedHeaders?: string[] | undefined
+  credentials?: boolean | undefined
+  exposedHeaders?: string[] | undefined
+  maxAge?: number | undefined
+  methods?: string[] | undefined
+  origin?: string | string[] | ((origin: string) => boolean) | undefined
 }
 
 interface DevProcessDefinition = {
@@ -870,9 +870,9 @@ interface ErrorDiagnosis = {
 }
 
 interface GroupOptions = {
-  domain?: string
-  middleware?: string | string[] | MiddlewareClass | MiddlewareClass[]
-  prefix?: string
+  domain?: string | undefined
+  middleware?: string | string[] | MiddlewareClass | MiddlewareClass[] | undefined
+  prefix?: string | undefined
 }
 
 interface ModelClass = {
@@ -925,25 +925,25 @@ interface RouterMacros = {
 }
 
 interface SecureHeadersOptions = {
-  contentSecurityPolicy?: string
-  frameOptions?: false | 'DENY' | 'SAMEORIGIN'
-  hstsIncludeSubDomains?: boolean
-  hstsMaxAge?: number
-  hstsPreload?: boolean
-  permissionsPolicy?: string | false
-  referrerPolicy?: string
-  secure?: boolean
+  contentSecurityPolicy?: string | undefined
+  frameOptions?: false | 'DENY' | 'SAMEORIGIN' | undefined
+  hstsIncludeSubDomains?: boolean | undefined
+  hstsMaxAge?: number | undefined
+  hstsPreload?: boolean | undefined
+  permissionsPolicy?: string | false | undefined
+  referrerPolicy?: string | undefined
+  secure?: boolean | undefined
 }
 
 interface StartZerotalOptions = {
-  configDir?: string
+  configDir?: string | undefined
 }
 
 interface ThrottleOptions = {
-  keyResolver?: (ctx: HttpContext) => string
+  keyResolver?: ((ctx: HttpContext) => string) | undefined
   maxAttempts: number
-  trustedProxies?: number
-  windowSeconds?: number
+  trustedProxies?: number | undefined
+  windowSeconds?: number | undefined
 }
 
 interface ViewRegistration = {
@@ -952,14 +952,14 @@ interface ViewRegistration = {
 }
 
 interface WebhookOptions = {
-  algorithm?: 'sha256' | 'sha1' | 'sha512'
-  format?: 'raw' | 'stripe'
-  header?: string
-  prefix?: string
+  algorithm?: 'sha256' | 'sha1' | 'sha512' | undefined
+  format?: 'raw' | 'stripe' | undefined
+  header?: string | undefined
+  prefix?: string | undefined
   secret: string
-  timestampHeader?: string
-  timestampSeparator?: string
-  tolerance?: number
+  timestampHeader?: string | undefined
+  timestampSeparator?: string | undefined
+  tolerance?: number | undefined
 }
 
 interface WebSocketHandlers = {
@@ -997,6 +997,8 @@ type MiddlewareClass = new (...args: any[]) => Pipe<HttpContext>
 type NextFn = () => Promise<Response | void>
 
 type ParamsOf = P extends `${string}:${infer Name}/${infer Rest}` ? { [K in Name]: RouteParamValue; } & ParamsOf<`/${Rest}`> : P extends `${string}:${infer Name}` ? { [K in Name]: RouteParamValue; } : P extends `${string}*${string}` ? {    "*": RouteParamValue | readonly RouteParamValue[];} : Record<never, never>
+
+type Resolved = { [K in keyof T]-?: Exclude<T[K], undefined>; }
 
 type RouteArgs = [params?: RouteParamValues, query?: RouteQuery]
 
@@ -1037,7 +1039,7 @@ function addToDefaultArrayExport = (source: string, identifier: string) => strin
 function registerProvider = (options: RegisterProviderOptions) => Promise<RegisterResult>
 
 interface RegisterProviderOptions = {
-  bootstrapPath?: string
+  bootstrapPath?: string | undefined
   className: string
   importPath: string
 }
@@ -2191,7 +2193,7 @@ function DeployConfig = (options?: Partial<DeployConfigShape>) => DeployConfigSh
 
 interface AppAssetsConfig = {
   entrypoint: string | string[]
-  loader?: Record<string, AssetLoaderKind>
+  loader?: Record<string, AssetLoaderKind> | undefined
   minify: boolean
   outDir: string
   prefix: string
@@ -2199,11 +2201,11 @@ interface AppAssetsConfig = {
 
 interface AppConfigShape = {
   allowedOrigins: string[]
-  assets?: AppAssetsConfig
+  assets?: AppAssetsConfig | undefined
   conventions: ConventionsConfig
   cors: AppCorsConfig
   debug: boolean
-  dev?: DevConfigShape
+  dev?: DevConfigShape | undefined
   env: string
   health: boolean | HealthConfigShape
   http3: boolean
@@ -2215,7 +2217,7 @@ interface AppConfigShape = {
   secureHeaders: AppSecureHeadersConfig
   throttle: AppThrottleConfig
   timezone: string
-  tls?: AppTlsConfig
+  tls?: AppTlsConfig | undefined
   url: string
 }
 
@@ -2579,10 +2581,10 @@ interface HealthCheckReport = {
 }
 
 interface HealthConfigShape = {
-  enabled?: boolean
-  path?: string
-  secret?: string
-  showDetails?: boolean
+  enabled?: boolean | undefined
+  path?: string | undefined
+  secret?: string | undefined
+  showDetails?: boolean | undefined
 }
 
 interface HealthReport = {
@@ -2602,7 +2604,7 @@ interface HealthResult = {
 interface ResolvedHealthConfig = {
   enabled: boolean
   path: string
-  secret?: string
+  secret?: string | undefined
   showDetails: boolean
 }
 
@@ -2619,6 +2621,8 @@ function basePath = (...segments: string[]) => string
 function data_get = (target: unknown, key: string, defaultValue?: unknown) => unknown
 
 function deepMerge = <T extends object>(base: T, override: DeepPartial<T>) => T
+
+function definedOnly = <T extends object>(value: T) => { [K in keyof T]?: Exclude<T[K], undefined>; }
 
 function env = {    (key: string): string | undefined;    (key: string, fallback: string): string;    (key: string, fallback: boolean): boolean;    (key: string, fallback: number): number;}
 
@@ -2643,6 +2647,8 @@ function tableNameFor = (className: string) => string
 function tap = <T>(value: T, callback: (val: T) => void) => T
 
 function tapAsync = <T>(value: T, callback: (val: T) => Promise<void>) => Promise<T>
+
+type Resolved = { [K in keyof T]-?: Exclude<T[K], undefined>; }
 
 ## ./http  `(./src/http/index.ts)`
 
@@ -2802,8 +2808,8 @@ interface CliContext = {
 }
 
 interface FileValidationOptions = {
-  maxSize?: number
-  mimes?: string[]
+  maxSize?: number | undefined
+  mimes?: string[] | undefined
 }
 
 interface NegotiateMap = {
@@ -2955,10 +2961,10 @@ class SqliteLockDriver = {
 function LockConfig = (options?: Partial<LockConfigShape>) => LockConfigShape
 
 interface BlockOptions = {
-  refresh?: boolean
-  refreshEvery?: number
-  retryDelay?: number
-  timeout?: number
+  refresh?: boolean | undefined
+  refreshEvery?: number | undefined
+  retryDelay?: number | undefined
+  timeout?: number | undefined
 }
 
 interface LockConfigShape = {
@@ -2977,8 +2983,8 @@ interface LockDriver = {
 }
 
 interface RefreshOptions = {
-  refresh?: boolean
-  refreshEvery?: number
+  refresh?: boolean | undefined
+  refreshEvery?: number | undefined
 }
 
 type LockedCallback = (lock: ManagedLock, signal: AbortSignal) => Promise<T> | T
@@ -3093,16 +3099,16 @@ interface LogEntry = {
 }
 
 interface LoggerOptions = {
-  format?: 'text' | 'json'
+  format?: 'text' | 'json' | undefined
 }
 
 interface LoggingConfigShape = {
   channels: Record<string, ChannelConfig>
-  console?: ConsoleSinkConfig
+  console?: ConsoleSinkConfig | undefined
   default: string
-  file?: FileSinkConfig
-  requests?: boolean
-  slowQueryMs?: number
+  file?: FileSinkConfig | undefined
+  requests?: boolean | undefined
+  slowQueryMs?: number | undefined
 }
 
 type ChannelConfig = { driver: 'console'; level?: LogLevel; format?: 'json' | 'pretty' } | { driver: 'single'; level?: LogLevel; path: string } | { driver: 'daily'; level?: LogLevel; path: string; days?: number } | { driver: 'stack'; level?: LogLevel; channels: string[] } | { driver: 'null' }
@@ -3226,7 +3232,7 @@ function redactGraph = (value: unknown, options: RedactGraphOptions) => unknown
 
 interface RedactGraphOptions = {
   circular: string
-  flatten?: (value: unknown) => string | undefined
+  flatten?: ((value: unknown) => string | undefined) | undefined
   mask: string
   maxDepth: number
   sensitive: (key: string) => boolean
@@ -3256,27 +3262,27 @@ function snakeCase = (value: string) => string
 function tableNameFor = (className: string) => string
 
 interface DateOptions = {
-  dateStyle?: 'medium' | 'short' | 'full' | 'long'
-  locale?: string
-  timeStyle?: 'medium' | 'short' | 'full' | 'long'
-  timeZone?: string
+  dateStyle?: 'medium' | 'short' | 'full' | 'long' | undefined
+  locale?: string | undefined
+  timeStyle?: 'medium' | 'short' | 'full' | 'long' | undefined
+  timeZone?: string | undefined
 }
 
 interface FormatOptions = {
-  locale?: string
+  locale?: string | undefined
 }
 
 interface MoneyOptions = {
   currency: string
-  fractionDigits?: number
-  locale?: string
-  minorUnits?: boolean
+  fractionDigits?: number | undefined
+  locale?: string | undefined
+  minorUnits?: boolean | undefined
 }
 
 interface NumberOptions = {
-  locale?: string
-  maximumFractionDigits?: number
-  minimumFractionDigits?: number
+  locale?: string | undefined
+  maximumFractionDigits?: number | undefined
+  minimumFractionDigits?: number | undefined
 }
 
 ## ./storage  `(./src/storage/index.ts)`
@@ -3443,10 +3449,10 @@ const Storage = StorageManager
 function StorageConfig = (options?: Partial<StorageConfigShape>) => StorageConfigShape
 
 interface DiskServeConfig = {
-  expiresIn?: number
-  headers?: Record<string, string>
+  expiresIn?: number | undefined
+  headers?: Record<string, string> | undefined
   path: string
-  signed?: boolean
+  signed?: boolean | undefined
 }
 
 interface FakeStoredFile = {
@@ -3460,24 +3466,24 @@ interface FakeStoredFile = {
 interface LocalDiskConfig = {
   driver: 'local'
   root: string
-  serve?: DiskServeConfig
-  url?: string
+  serve?: DiskServeConfig | undefined
+  url?: string | undefined
 }
 
 interface PutOptions = {
-  contentType?: string
-  visibility?: 'public' | 'private'
+  contentType?: string | undefined
+  visibility?: 'public' | 'private' | undefined
 }
 
 interface S3DiskConfig = {
   bucket: string
   driver: 's3'
-  endpoint?: string
+  endpoint?: string | undefined
   key: string
   region: string
   secret: string
-  serve?: DiskServeConfig
-  url?: string
+  serve?: DiskServeConfig | undefined
+  url?: string | undefined
 }
 
 interface StorageConfigShape = {
@@ -3502,8 +3508,8 @@ interface StorageDriver = {
 }
 
 interface StorageFilesOptions = {
-  mounts?: Mount[]
-  storage?: StorageManager
+  mounts?: Mount[] | undefined
+  storage?: StorageManager | undefined
 }
 
 type DiskConfig = LocalDiskConfig | S3DiskConfig

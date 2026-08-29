@@ -150,7 +150,7 @@ export interface GuidelineOptions {
    * How this project is configured, from {@link detectShape}. Omitted, the block
    * is what it always was — a function of the package list.
    */
-  shape?: ProjectShape;
+  shape?: ProjectShape | undefined;
 }
 
 /**

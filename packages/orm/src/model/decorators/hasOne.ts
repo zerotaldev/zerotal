@@ -5,7 +5,7 @@ export interface HasOneOptions {
   /** FK column on the related table pointing back to the parent (e.g. `user_id`). */
   foreignKey: string;
   /** Parent local key the FK references. Defaults to `'id'`. */
-  localKey?: string;
+  localKey?: string | undefined;
 }
 
 /**

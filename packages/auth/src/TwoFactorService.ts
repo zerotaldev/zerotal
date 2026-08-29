@@ -167,17 +167,17 @@ function _mintRecoveryCode(): string {
 
 export interface TwoFactorOptions {
   /** Issuer shown in the authenticator app (e.g. your app name). Default: 'Zerotal'. */
-  issuer?: string;
+  issuer?: string | undefined;
   /** TOTP window: number of periods to check on each side of current time. Default: 1. */
-  window?: number;
+  window?: number | undefined;
   /** Number of recovery codes to generate. Default: 8. */
-  recoveryCodeCount?: number;
+  recoveryCodeCount?: number | undefined;
 }
 
 /** How {@link TwoFactorService.getQrCodeSvg} draws the enrolment QR code. */
 export interface TwoFactorQrOptions extends QrSvgOptions {
   /** Overrides the constructor `issuer` for this URI. */
-  issuer?: string;
+  issuer?: string | undefined;
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────

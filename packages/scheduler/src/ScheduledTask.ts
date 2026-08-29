@@ -58,7 +58,7 @@ export interface OverlapLockOptions {
    * Take a cross-process lock (via the configured lock driver) in addition to the
    * in-process guard. Default: `true`. Set `false` to guard within this process only.
    */
-  crossProcess?: boolean;
+  crossProcess?: boolean | undefined;
 
   /**
    * **How long after a crash before another host may take the task over**, in
@@ -75,7 +75,7 @@ export interface OverlapLockOptions {
    * want a crash to be *slower* to recover from, which is rarely what anyone
    * wants.
    */
-  expiresAfterMinutes?: number;
+  expiresAfterMinutes?: number | undefined;
 
   /**
    * Heartbeat the lock for as long as the task runs. Default: `true`.
@@ -84,7 +84,7 @@ export interface OverlapLockOptions {
    * inside {@link expiresAfterMinutes} or lose its lock — and where you must
    * therefore size that value for the worst case.
    */
-  refresh?: boolean;
+  refresh?: boolean | undefined;
 }
 
 export class ScheduledTask {

@@ -24,7 +24,7 @@ export interface AuthRolesOptions {
    * Guard the roles belong to. Defaults to `"web"`, matching the framework's
    * own default, so most apps need not think about it.
    */
-  guard?: string;
+  guard?: string | undefined;
   /**
    * Role names that hold every permission.
    *
@@ -32,7 +32,7 @@ export interface AuthRolesOptions {
    * something the data can tell you. A superuser role is shown as holding
    * everything and cannot be edited or deleted from the panel.
    */
-  superusers?: string[];
+  superusers?: string[] | undefined;
 }
 
 /** The role surface this needs, kept structural so `auth` stays optional. */

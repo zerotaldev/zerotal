@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Runs the dev processes and keeps them running.
  *
  * The supervisor owns lifetimes, not presentation: it spawns, watches, restarts,
@@ -72,17 +72,17 @@ export interface DevSupervisorHooks {
 /** @internal */
 export interface DevSupervisorOptions extends DevSupervisorHooks {
   cwd: string;
-  env?: Record<string, string | undefined>;
+  env?: Record<string, string | undefined> | undefined;
   /** Defaults to `Bun.spawn` with output piped and **stdin ignored**. */
-  spawn?: DevSpawnFn;
+  spawn?: DevSpawnFn | undefined;
   /**
    * Backoff before each retry, in ms. Overridable for the same reason `spawn`
    * is: a test of the restart policy should assert the policy, not spend three
    * seconds proving that `setTimeout` works.
    */
-  backoffMs?: number[];
+  backoffMs?: number[] | undefined;
   /** How long a run must last to be considered healthy. See {@link HEALTHY_AFTER_MS}. */
-  healthyAfterMs?: number;
+  healthyAfterMs?: number | undefined;
 }
 
 /** Give up after this many consecutive failed starts. */

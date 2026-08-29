@@ -48,7 +48,7 @@ export interface RedactGraphOptions {
    * `JSON.stringify` drops the key it sits under, and a debugging tool that
    * silently omits a field is worse than one that says `‹fn›`.
    */
-  flatten?: (value: unknown) => string | undefined;
+  flatten?: ((value: unknown) => string | undefined) | undefined;
 }
 
 /**

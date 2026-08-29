@@ -12,7 +12,7 @@ export const AUTH_PASSWORD_HASH_KEY = "auth_password_hash";
 
 export interface AuthenticateSessionOptions {
   /** Where to send a session that has been invalidated. Default `/login`. */
-  redirectTo?: string;
+  redirectTo?: string | undefined;
 }
 
 /** A user model exposing the hashed password (from `Authenticatable`). */

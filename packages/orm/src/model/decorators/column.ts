@@ -82,11 +82,11 @@ export interface ColumnOptions {
    *
    * @default "string"
    */
-  type?: "string" | "text" | "number" | "boolean" | "datetime" | "json";
+  type?: "string" | "text" | "number" | "boolean" | "datetime" | "json" | undefined;
   /** Mark this column as the table's primary key. */
-  primary?: boolean;
+  primary?: boolean | undefined;
   /** Allow SQL `NULL` for this column. */
-  nullable?: boolean;
+  nullable?: boolean | undefined;
   /** Default value applied when none is provided. */
   default?: unknown;
   /**
@@ -96,9 +96,9 @@ export interface ColumnOptions {
    * usually a correctness property (a webhook idempotency key, an invoice number),
    * and `migrate:generate` can only emit constraints it can see declared.
    */
-  unique?: boolean;
+  unique?: boolean | undefined;
   /** Add a plain (non-unique) index on this column. */
-  index?: boolean;
+  index?: boolean | undefined;
   /**
    * Shorthand cast types automatically serialize/deserialize the column value.
    * Can also be a custom object with `get`/`set` functions for full control.
@@ -134,9 +134,9 @@ export interface ColumnOptions {
         get?: (dbValue: unknown) => unknown;
         set?: (jsValue: unknown) => unknown;
       }
-    | CastContract<unknown>;
+    | CastContract<unknown> | undefined;
   /** Enum object (e.g. the imported TS enum) used alongside cast: 'enum'. */
-  enumValues?: Record<string, string | number>;
+  enumValues?: Record<string, string | number> | undefined;
 }
 
 /**

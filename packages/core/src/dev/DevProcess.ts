@@ -110,9 +110,9 @@ export interface ResolvedDevProcess {
  */
 export interface DevConfigShape {
   /** App-level processes, registered after every provider's. */
-  processes?: DevProcessDefinition[];
+  processes?: DevProcessDefinition[] | undefined;
   /** Names to drop, whoever registered them. */
-  disable?: string[];
+  disable?: string[] | undefined;
 }
 
 /** The bits of `Application` this module needs — kept structural to avoid a cycle. */

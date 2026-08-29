@@ -186,11 +186,11 @@ export interface LoggingConfigShape {
   /**
    * The terminal sink, on unless `false`. See {@link ConsoleSinkConfig}.
    */
-  console?: ConsoleSinkConfig;
+  console?: ConsoleSinkConfig | undefined;
   /**
    * The durable file trail, on unless `false`. See {@link FileSinkConfig}.
    */
-  file?: FileSinkConfig;
+  file?: FileSinkConfig | undefined;
   /** Name of the channel used by unqualified `Log.*` calls. */
   default: string;
   /**
@@ -203,10 +203,10 @@ export interface LoggingConfigShape {
    */
   channels: Record<string, ChannelConfig>;
   /** Threshold, in ms, above which ORM queries are logged as slow (default 1000). */
-  slowQueryMs?: number;
+  slowQueryMs?: number | undefined;
   /**
    * Log every HTTP request (method, path, status, duration) via `LoggerMiddleware`.
    * On by default; set `false` to silence the per-request access log.
    */
-  requests?: boolean;
+  requests?: boolean | undefined;
 }

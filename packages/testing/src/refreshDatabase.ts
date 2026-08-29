@@ -18,16 +18,16 @@ function _hooks(): TestHooks {
 }
 
 export interface RefreshDatabaseOptions {
-  connection?: SQLInstance;
+  connection?: SQLInstance | undefined;
   /**
    * Build the schema by running the project's migrations before the suite.
    * `true` uses `database/migrations`; pass a string for a different directory.
    *
    * Prefer this over hand-written DDL in `setup` — see {@link migrateDatabase}.
    */
-  migrate?: boolean | string;
-  setup?: (db: SQLInstance) => void | Promise<void>;
-  teardown?: (db: SQLInstance) => void | Promise<void>;
+  migrate?: boolean | string | undefined;
+  setup?: ((db: SQLInstance) => void | Promise<void>) | undefined;
+  teardown?: ((db: SQLInstance) => void | Promise<void>) | undefined;
 }
 
 export function refreshDatabase(options: RefreshDatabaseOptions = {}): void {

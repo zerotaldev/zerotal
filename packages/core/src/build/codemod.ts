@@ -40,7 +40,7 @@ export interface RegisterProviderOptions {
   /** Import specifier, e.g. '../app/providers/FooProvider.ts' or '@zerotal/foo'. */
   importPath: string;
   /** Bootstrap file. Default: 'bootstrap/providers.ts'. */
-  bootstrapPath?: string;
+  bootstrapPath?: string | undefined;
 }
 
 /**

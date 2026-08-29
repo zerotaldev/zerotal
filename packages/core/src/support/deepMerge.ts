@@ -155,3 +155,52 @@ export function deepMerge<T extends object>(base: T, override: DeepPartial<T>): 
   }
   return result;
 }
+
+/**
+ * A shape whose optional properties have all been given a value.
+ *
+ * `Required<T>` is not this, which is the trap. `-?` removes the *optionality* a
+ * `?` introduced; it does not remove an `undefined` that was written into the type.
+ * So once an options shape says `retentionDays?: number | undefined` — as every
+ * public option shape here does, so that `{ x: a ?? undefined }` is writable —
+ * `Required<Options>` still hands back `number | undefined`, and the "defaults have
+ * been applied" type quietly stops meaning that.
+ *
+ * Use this for the object a constructor builds after applying its defaults.
+ *
+ * @example
+ * ```ts
+ * private readonly _opts: Resolved<Pick<Options, "retentionDays">> & Omit<Options, "retentionDays">;
+ * ```
+ */
+export type Resolved<T> = { [K in keyof T]-?: Exclude<T[K], undefined> };
+
+/**
+ * `value` without the keys whose value is `undefined`.
+ *
+ * Object spread copies own properties even when they hold `undefined`, so
+ * `{ ...defaults, ...options }` lets an explicitly-`undefined` field overwrite a
+ * default rather than leave it alone. Every public option shape accepts an explicit
+ * `undefined` — that is what makes `{ x: a ?? undefined }` writable — so the merge
+ * is where "supplied as undefined" has to be turned back into "not supplied".
+ *
+ * The return type keeps each key optional while dropping `undefined` from its type,
+ * which is exactly the guarantee this provides.
+ *
+ * @param value - The bag to filter.
+ * @returns A new object with the `undefined`-valued keys absent.
+ *
+ * @example
+ * ```ts
+ * const merged = { ...DEFAULTS, ...definedOnly(options) };
+ * ```
+ */
+export function definedOnly<T extends object>(
+  value: T,
+): { [K in keyof T]?: Exclude<T[K], undefined> } {
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (item !== undefined) out[key] = item;
+  }
+  return out as { [K in keyof T]?: Exclude<T[K], undefined> };
+}

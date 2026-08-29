@@ -732,6 +732,8 @@ export function resolvePresenceChannel(channel: PresenceChannel, instance: objec
  * component instance to compute a per-instance name (for dynamic rooms).
  *
  * @category Realtime
+ *
+ * @internal
  */
 export type SharedChannel = string | ((self: Record<string, any>) => string);
 

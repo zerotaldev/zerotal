@@ -174,10 +174,6 @@ class WebSocketDisconnected = {
   readonly url: string
 }
 
-const BLOCKED_URL = 'about:blank'
-
-const DEFAULT_PERSISTENT_MIDDLEWARE = (string | MiddlewareClass)[]
-
 const FLOW_ENHANCE_PATH = '/__flow/enhance.js'
 
 const locked = (value: unknown, context: ClassFieldDecoratorContext) => void
@@ -187,8 +183,6 @@ const modelable = (value: unknown, context: ClassFieldDecoratorContext) => void
 const reactive = (value: unknown, context: ClassFieldDecoratorContext) => void
 
 const transient = (value: unknown, context: ClassFieldDecoratorContext) => void
-
-const URL_ATTRIBUTES = ReadonlySet<string>
 
 function Accordion = (props: AccordionProps) => HtmlNode
 
@@ -232,27 +226,15 @@ function Flash = (props?: FlashProps) => HtmlNode
 
 function flow = <T>(target: T) => FlowChain<T>
 
-function flowActiveConnections = () => number
-
 function FlowConfig = (options?: Partial<FlowConfigShape>) => FlowConfigShape
-
-function flowConnections = () => FlowConnection[]
 
 function flowEnhanceTag = () => string
 
 function For = <T>(props: ForProps<T>) => HtmlNode
 
-function getDurableStore = () => DurableStore
-
-function getSharedStore = () => SharedStore
-
 function Head = (props: {    children?: unknown;}) => HtmlNode
 
 function InfiniteScroll = (props: InfiniteScrollProps) => HtmlNode
-
-function isSafeUrl = (url: string) => boolean
-
-function jsLiteral = (value: unknown) => string
 
 function Label = (props: LabelProps) => HtmlNode
 
@@ -284,17 +266,9 @@ function presence = (channel: PresenceChannel) => (value: unknown, context: Clas
 
 function RadioGroup = (props: RadioGroupProps) => HtmlNode
 
-function registerComponent = (PageClass: typeof Component, path?: string) => void
-
 function registerFlowEvent = <K extends EventName>(name: K, guard: (payload: unknown) => payload is FlowEvents[K]) => void
 
-function registerForm = (FormClass: new () => Form) => void
-
-function registerSynth = (synth: Synth) => void
-
 function renderless = (_fn: unknown, context: ClassMethodDecoratorContext) => void
-
-function sanitizeUrl = (url: string) => string
 
 function SectionContent = (props: SectionContentProps) => HtmlNode
 
@@ -375,26 +349,11 @@ interface CalendarProps = {
   weekdayClass?: string
 }
 
-interface CallFrame = {
-  args: unknown[]
-  component: string
-  method: string
-  snapshot: Snapshot
-  type: 'call'
-  updates: Record<string, unknown>
-}
-
 interface CheckboxProps = {
   [key: string]: unknown
   bind: unknown
   children?: unknown
   class?: string
-}
-
-interface ChildMemo = {
-  id: string
-  key: string
-  name: string
 }
 
 interface ComboboxOption = {
@@ -444,13 +403,6 @@ interface DisclosureProps = {
   trigger?: unknown
 }
 
-interface DownloadFrame = {
-  content: string
-  filename: string
-  mime: string
-  type: 'download'
-}
-
 interface DrawerProps = {
   [key: string]: unknown
   children?: unknown
@@ -473,12 +425,6 @@ interface DropdownProps = {
   trigger?: unknown
 }
 
-interface DurableStore = {
-  delete: (key: string) => Promise<void> | void
-  get: (key: string) => Promise<Snapshot | undefined> | Snapshot | undefined
-  set: (key: string, value: Snapshot, ttlMs?: number) => Promise<void> | void
-}
-
 interface ErrorBoundaryProps = {
   [key: string]: unknown
   children?: unknown
@@ -486,15 +432,6 @@ interface ErrorBoundaryProps = {
   fallback?: HtmlNode | ((error: unknown) => HtmlNode)
   onError?: (error: unknown) => void
   tag?: string
-}
-
-interface ErrorFrame = {
-  action?: string
-  component: string
-  message: string
-  name?: string
-  stack?: string
-  type: 'error'
 }
 
 interface ErrorProps = {
@@ -507,20 +444,6 @@ interface ErrorsProps = {
   [key: string]: unknown
   class?: string
   only?: string | string[]
-}
-
-interface ErrorsProxy = {
-  [key: string]: ErrorField | ((...args: never[]) => unknown)
-  add: {    (field: string, message: string): void;    (errors: Record<string, string | string[]>): void;}
-  any: () => boolean
-  clear: (field?: string) => void
-  has: (field: string) => boolean
-}
-
-interface EventFrame = {
-  data: Record<string, unknown>
-  name: string
-  type: 'event'
 }
 
 interface FieldProps = {
@@ -587,20 +510,6 @@ interface FlashCallback = {
   method: string
 }
 
-interface FlashFrame = {
-  actions?: FlashAction[]
-  dismissible?: boolean
-  duration?: number
-  icon?: string | false
-  level: 'success' | 'error' | 'warning' | 'info'
-  message: string
-  onClose?: FlashCallback
-  position?: FlashPosition
-  progressBar?: boolean
-  title?: string
-  type: 'flash'
-}
-
 interface FlashMessage = {
   actions?: FlashAction[]
   dismissible?: boolean
@@ -660,26 +569,6 @@ interface FlowChain = {
 interface FlowConfigShape = {
   cspSafe: boolean
   persistentMiddleware: (string | MiddlewareClass)[]
-}
-
-interface FlowConnection = {
-  actions: number
-  connectedAt: number
-  id: string
-  ip: string
-  lastActivityAt: number
-  user: string | null
-}
-
-interface FlowEffects = {
-  downloads: {    filename: string;    content: string;    mime: string;}[]
-  errors: Record<string, string[]>
-  events: {    name: string;    data: Record<string, unknown>;    to?: string;    self?: boolean;}[]
-  flashes: FlashMessage[]
-  redirectUrl: string | null
-  scripts: string[]
-  shouldRefresh: boolean
-  title: string | null
 }
 
 interface FlowEvents = {}
@@ -761,16 +650,6 @@ interface ModalProps = {
   title?: unknown
 }
 
-interface PageClassWithMeta = {
-  new (): Component
-  head?: string
-  interactive?: boolean
-  layout?: new () => Layout
-  models?: Record<string, typeof BaseModel>
-  name: string
-  title?: string | ((component: never) => string)
-}
-
 interface PagerProps = {
   [key: string]: unknown
   activeClass?: string
@@ -794,22 +673,6 @@ interface Paginator = {
   perPage: number
   to: number
   total: number
-}
-
-interface PatchFrame = {
-  actionError?: boolean
-  checksum?: string
-  component: string
-  dataDelta?: SnapshotData
-  dataRemoved?: string[]
-  errors?: Record<string, string[]>
-  html?: string
-  memo?: SnapshotMemo
-  partial?: boolean
-  scripts?: string[]
-  snapshot?: Snapshot
-  title?: string
-  type: 'patch'
 }
 
 interface PopoverProps = {
@@ -848,12 +711,6 @@ interface RedirectFlash = {
   withWarning: (message: string) => RedirectFlash
 }
 
-interface RedirectFrame = {
-  sessionToken?: string
-  type: 'redirect'
-  url: string
-}
-
 interface SectionContentProps = {
   children?: unknown
   name: string
@@ -880,12 +737,6 @@ interface SelectProps = {
 interface SessionOptions = {
   key?: string
   scoped?: boolean
-}
-
-interface SharedStore = {
-  get: (key: string) => unknown | undefined
-  has: (key: string) => boolean
-  set: (key: string, value: unknown) => void
 }
 
 interface SkeletonProps = {
@@ -917,31 +768,11 @@ interface Snapshot = {
   memo: SnapshotMemo
 }
 
-interface SnapshotMemo = {
-  children: string[]
-  iat?: number | undefined
-  id: string
-  listeners?: Record<string, string> | undefined
-  name: string
-  path: string
-  presence?: {    prop: string;    channel: string;}[] | undefined
-  shared?: {    prop: string;    channel: string;}[] | undefined
-  slots?: Record<string, string> | undefined
-  sub?: string | undefined
-}
-
 interface SwitchProps = {
   [key: string]: unknown
   bind: unknown
   children?: unknown
   class?: string
-}
-
-interface Synth = {
-  dehydrate: (value: T, meta: Record<string, unknown>) => unknown
-  hydrate: (data: unknown, meta: Record<string, unknown>) => T | Promise<T>
-  key: string
-  match: (value: unknown) => value is T
 }
 
 interface TabItem = {
@@ -1052,10 +883,6 @@ type Mixin = (Base: TIn) => TOut
 
 type PresenceChannel = string | ((self: Record<string, any>) => string)
 
-type SharedChannel = string | ((self: Record<string, any>) => string)
-
-type SnapshotData = {    [x: string]: SnapshotTuple;}
-
 type ValidationRules = {    [x: string]: (rule: RuleBuilder) => FieldRule;}
 
 ## ./browser  `(./src/browser/index.ts)`
@@ -1080,18 +907,9 @@ class FlowBrowser = {
   waitUntil: (expression: string, label: string, timeoutMs?: number) => Promise<void>
 }
 
-function findChrome = () => string | null
-
-interface OpenOptions = {
-  timeout?: number
-  waitForConnection?: boolean
-}
-
 ## ./compiler-helpers  `(./src/compiler/helpers.ts)`
 
-function __esc = (v: unknown) => string
-
-function __escAttr = (v: unknown) => string
+_(no exports)_
 
 ## ./store  `(./src/store.ts)`
 

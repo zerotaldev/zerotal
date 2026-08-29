@@ -13,6 +13,8 @@ export type SnapshotTuple = [data: unknown, meta: Record<string, unknown>];
 /**
  * The "data" map inside a snapshot: `propertyName → [value, meta]`.
  * @category Snapshot
+ *
+ * @internal
  */
 export type SnapshotData = Record<string, SnapshotTuple>;
 
@@ -20,6 +22,8 @@ export type SnapshotData = Record<string, SnapshotTuple>;
  * Metadata for a child Component component embedded inside a parent's render output.
  * Stored in memo.children (excluded from HMAC signing).
  * @category Snapshot
+ *
+ * @internal
  */
 export interface ChildMemo {
   /** The JSX `key` prop that identifies this slot in the parent's template. */
@@ -33,6 +37,8 @@ export interface ChildMemo {
 /**
  * Component identity / routing metadata embedded in the snapshot.
  * @category Snapshot
+ *
+ * @internal
  */
 export interface SnapshotMemo {
   id: string;
@@ -92,6 +98,8 @@ export interface Snapshot {
 /**
  * Outbound WS frame sent by the client to the server.
  * @category Frames
+ *
+ * @internal
  */
 export interface CallFrame {
   type: "call";
@@ -112,6 +120,8 @@ export interface CallFrame {
  * legacy `snapshot` field remains as a full fallback. `html` is omitted when the
  * re-render is byte-identical to the last patch on this connection (HTML suppression).
  * @category Frames
+ *
+ * @internal
  */
 export interface PatchFrame {
   type: "patch";
@@ -215,6 +225,8 @@ export interface FlashMessage {
 /**
  * Flash notification frame.
  * @category Frames
+ *
+ * @internal
  */
 export interface FlashFrame extends FlashMessage {
   type: "flash";
@@ -223,6 +235,8 @@ export interface FlashFrame extends FlashMessage {
 /**
  * Programmatic redirect frame.
  * @category Frames
+ *
+ * @internal
  */
 export interface RedirectFrame {
   type: "redirect";
@@ -233,6 +247,8 @@ export interface RedirectFrame {
 /**
  * Error frame (action threw, onError ran).
  * @category Frames
+ *
+ * @internal
  */
 export interface ErrorFrame {
   type: "error";
@@ -261,6 +277,8 @@ export interface StreamFrame {
 /**
  * Cross-component event frame.
  * @category Frames
+ *
+ * @internal
  */
 export interface EventFrame {
   type: "event";
@@ -271,6 +289,8 @@ export interface EventFrame {
 /**
  * File download frame.
  * @category Frames
+ *
+ * @internal
  */
 export interface DownloadFrame {
   type: "download";

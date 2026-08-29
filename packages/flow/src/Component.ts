@@ -68,6 +68,7 @@ export class ErrorField {
 //   this.errors.has("field")   → boolean
 //   this.errors.field          → ErrorField (for error={this.errors.field})
 
+/** @internal */
 export interface ErrorsProxy {
   /** True when the given field has at least one error. */
   has(field: string): boolean;
@@ -265,6 +266,8 @@ function _autoChildKey(
  * The bag of side effects an action queued (flashes, a redirect, client scripts, events,
  * downloads, a title, and the current error bag). Drained by {@link Component._drainEffects}
  * and read by the WebSocket handler to build the response frames sent to the client.
+ *
+ * @internal
  */
 export interface FlowEffects {
   flashes: FlashMessage[];

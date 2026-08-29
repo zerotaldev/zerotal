@@ -40,6 +40,8 @@ export function toScriptJson(value: unknown): string {
  *
  * @example
  * "x-on:click": `tab = ${jsLiteral(name)}`   // tab = "my-tab"
+ *
+ * @internal
  */
 export function jsLiteral(value: unknown): string {
   return JSON.stringify(String(value));

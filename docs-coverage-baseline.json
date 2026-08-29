@@ -8,19 +8,18 @@
     "@zerotal/client": 19,
     "@zerotal/core": 121,
     "@zerotal/devtools": 7,
-    "@zerotal/flow": 74,
     "@zerotal/i18n": 2,
     "@zerotal/inertia": 7,
     "@zerotal/notifications": 9,
     "@zerotal/orm": 17,
     "@zerotal/queue": 9,
     "@zerotal/scheduler": 14,
-    "@zerotal/session": 5,
+    "@zerotal/session": 4,
     "@zerotal/telemetry": 4,
     "@zerotal/tenancy": 3,
     "@zerotal/testing": 5,
     "@zerotal/validator": 9
   },
-  "total": 467,
-  "updatedAt": "2026-08-29T06:11:27.070Z"
+  "total": 392,
+  "updatedAt": "2026-08-29T06:53:26.317Z"
 }

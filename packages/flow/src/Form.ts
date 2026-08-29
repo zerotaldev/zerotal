@@ -29,7 +29,11 @@ import type { FieldRule, Schema } from "@zerotal/validator";
 /** Registry of Form subclasses by name, used to reconstruct forms on hydration. */
 const _formClasses = new Map<string, new () => Form>();
 
-/** Register a Form subclass so it can be rebuilt from a snapshot. Called automatically. */
+/**
+ * Register a Form subclass so it can be rebuilt from a snapshot. Called automatically.
+ *
+ * @internal
+ */
 export function registerForm(FormClass: new () => Form): void {
   _formClasses.set(FormClass.name, FormClass);
 }

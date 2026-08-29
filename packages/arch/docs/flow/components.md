@@ -859,6 +859,60 @@ Content-Security-Policy:
 }
 ```
 
+## Types
+
+Every built-in component exports the type of its own props, named after it. Reach for one when
+you wrap a component rather than use it directly — the usual reason an app needs the type at all:
+
+```tsx
+import { Modal, type ModalProps } from "@zerotal/flow";
+
+/** Our confirm dialog: the same API, one decision already made. */
+export function ConfirmModal(props: Omit<ModalProps, "closeable">) {
+  return <Modal closeable={false} {...props} />;
+}
+```
+
+```text
+DescriptionProps  DisclosureProps   DrawerProps       DropdownProps
+ErrorBoundaryProps                  ErrorProps        ErrorsProps
+FieldsetProps     FileUploadProps   FlashProps        ForProps
+InfiniteScrollProps                 LegendProps       LinkProps
+ListboxProps      LoadingProps      ModalProps        PagerProps
+SectionContentProps                 SectionOutletProps
+VirtualizeProps
+```
+
+`ListboxOption` is one entry in a `<Listbox>`, and `UploadRef` is what `<FileUpload>` hands back
+for a file the server has accepted.
+
+### The flash API
+
+`this.flash(…)` is the short form. The builder underneath it is exported, and so are the shapes
+it produces — worth having when a helper composes a message rather than writing one inline:
+
+| Type                 | What it is                                                               |
+| -------------------- | ------------------------------------------------------------------------ |
+| `FlashLevel`         | `"info" \| "success" \| "warning" \| "error"` — what colours the toast.  |
+| `FlashMessage`       | One flash: its level, text, and any actions.                             |
+| `FlashOptions`       | Per-message overrides — duration, position, whether it can be dismissed. |
+| `FlashBuilder`       | The fluent form, for a message assembled in more than one step.          |
+| `FlashPosition`      | Where the container puts it, matching `<Flash position>`.                |
+| `FlashAction`        | A button on the toast: its label and what it does.                       |
+| `FlashActionStyle`   | How that button is drawn.                                                |
+| `FlashActionVariant` | Its emphasis.                                                            |
+| `FlashCallback`      | What runs when the action is pressed.                                    |
+| `RedirectFlash`      | A flash that survives a redirect, so it appears on the page you land on. |
+
+`ErrorField` and `ValidationRules` are the validation side of the same story: what one field's
+errors look like, and the rules a component declares.
+
+### Elsewhere
+
+`DurableOption` configures `@durable` state, `SessionOptions` the session a component reads, and
+`UrlOptions` how `@url` state is written into the query string. `EventName` is the union of
+events a component can listen for.
+
 ## Next steps
 
 - [Flow overview](/docs/flow) — the guide's front page and the rest of the sections.

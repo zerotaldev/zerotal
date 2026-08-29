@@ -11,6 +11,23 @@ change.
 
 ## [Unreleased]
 
+- **The component and flash types are documented.** Every built-in component exports the type of
+  its own props — `ModalProps`, `ForProps`, `VirtualizeProps` and eighteen more — and none was
+  named anywhere a reader would look, though wrapping a component is the usual reason to want
+  one. The flash API's shapes are documented alongside them: `FlashBuilder` and the eight types
+  around it, for a helper that composes a message rather than writing one inline.
+
+### Changed
+
+- **INTERNAL: 35 exports are marked `@internal`.** The compiler's output helpers (`__esc`,
+  `__escAttr`, `jsLiteral`), the URL-safety internals, the wire-protocol frame types
+  (`PatchFrame`, `EventFrame`, `RedirectFrame`, …), the registration functions, the durable and
+  shared store accessors, and `FlowBrowser`'s Chrome discovery.
+
+  **Nothing is removed and nothing breaks.** The frame types are the clearest case: they
+  describe what crosses the socket, an app never constructs one, and naming them in the promised
+  surface implied a stability guarantee about a protocol that is free to change.
+
 - **A bound field the model will not accept now says so.** `flow:model` on a column missing from
   `fillable` was dropped in silence: the form submitted, nothing was written, nothing failed, and
   there was no clue. The drop stays — the same path receives whatever a browser sends, so an

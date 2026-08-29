@@ -13,13 +13,21 @@
  * @packageDocumentation
  */
 
-/** Escape a value for safe injection as HTML text content. */
+/**
+ * Escape a value for safe injection as HTML text content.
+ *
+ * @internal
+ */
 export function __esc(v: unknown): string {
   if (v == null || v === false || v === true) return "";
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** Escape a value for safe injection inside an HTML attribute (double-quoted). */
+/**
+ * Escape a value for safe injection inside an HTML attribute (double-quoted).
+ *
+ * @internal
+ */
 export function __escAttr(v: unknown): string {
   if (v == null) return "";
   return String(v).replace(/&/g, "&amp;").replace(/"/g, "&quot;");

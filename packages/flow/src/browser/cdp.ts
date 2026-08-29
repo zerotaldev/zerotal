@@ -42,6 +42,8 @@ const CHROME_PATHS: Record<string, string[]> = {
  * Returning `null` rather than throwing lets a suite skip itself on a machine
  * without a browser instead of failing — a browser test that cannot run is not
  * the same as one that failed.
+ *
+ * @internal
  */
 export function findChrome(): string | null {
   const override = Bun.env["CHROME_PATH"];

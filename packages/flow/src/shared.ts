@@ -35,6 +35,8 @@ export const SHARED_EVENT = "flow:shared";
  * The default is an in-process {@link MemorySharedStore}; swap a distributed
  * implementation (e.g. Redis-backed) via {@link setSharedStore} to converge
  * across processes. Implement all three methods synchronously.
+ *
+ * @internal
  */
 export interface SharedStore {
   /** Read the current value for a `channel::prop` key, or `undefined` if unset. */
@@ -93,6 +95,8 @@ export function setSharedStore(store: SharedStore): void {
  *   @expose increment() { this.count++; } // written back + broadcast on commit
  * }
  * ```
+ *
+ * @internal
  */
 export function getSharedStore(): SharedStore {
   return _store;

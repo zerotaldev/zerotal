@@ -22,6 +22,8 @@
  * synth re-fetches by id).
  *
  * @typeParam T - The live value type this synth handles.
+ *
+ * @internal
  */
 export interface Synth<T = unknown> {
   /** Short tag stored as `meta.s` in the snapshot, e.g. `'cbn'`, `'mdl'`. */
@@ -54,6 +56,8 @@ const _synths: Synth[] = [];
  *   hydrate: (data, meta) => new Money(data as number, meta.cur as string),
  * });
  * ```
+ *
+ * @internal
  */
 export function registerSynth(synth: Synth): void {
   _synths.unshift(synth); // user-registered synths take priority

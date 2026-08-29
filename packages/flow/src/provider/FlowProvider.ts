@@ -1459,6 +1459,8 @@ let _activeConnections = 0;
  * Number of currently-open Flow (reactive SSR) WebSocket connections.
  * @returns The live count of open `/__flow/ws` connections.
  * @category Connections
+ *
+ * @internal
  */
 export function flowActiveConnections(): number {
   return _activeConnections;
@@ -1467,6 +1469,8 @@ export function flowActiveConnections(): number {
 /**
  * One currently-open Flow WebSocket client, enriched as actions identify the user.
  * @category Connections
+ *
+ * @internal
  */
 export interface FlowConnection {
   id: string;
@@ -1485,6 +1489,8 @@ const _connections = new Map<string, FlowConnection>();
  * Snapshot of currently-connected Flow clients (most-recently-active first).
  * @returns An array of {@link FlowConnection}, sorted by `lastActivityAt` descending.
  * @category Connections
+ *
+ * @internal
  */
 export function flowConnections(): FlowConnection[] {
   return [..._connections.values()].sort((a, b) => b.lastActivityAt - a.lastActivityAt);

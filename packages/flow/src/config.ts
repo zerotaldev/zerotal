@@ -23,7 +23,11 @@ export interface FlowConfigShape {
   persistentMiddleware: (string | MiddlewareClass)[];
 }
 
-/** Global middleware re-run on every WebSocket action unless overridden. */
+/**
+ * Global middleware re-run on every WebSocket action unless overridden.
+ *
+ * @internal
+ */
 export const DEFAULT_PERSISTENT_MIDDLEWARE: (string | MiddlewareClass)[] = [
   "SessionMiddleware",
   "PersistUserMiddleware",

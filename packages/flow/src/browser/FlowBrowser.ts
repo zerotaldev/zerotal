@@ -29,6 +29,7 @@ import { CdpSession, findChrome, launchBrowser, type LaunchedBrowser } from "./c
 /** How long to wait for a condition driven by a server round-trip. */
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+/** @internal */
 export interface OpenOptions {
   /** Milliseconds to wait for the page to load and Flow to connect. */
   timeout?: number;

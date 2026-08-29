@@ -66,6 +66,8 @@ interface DurableConfig {
  * `@zerotal/cache`/Redis) via {@link setDurableStore} to also survive redeploys.
  * Methods may be sync or async; a swapped store is responsible for its own TTL
  * eviction (the `ttlMs` hint is passed to {@link DurableStore.set | set}).
+ *
+ * @internal
  */
 export interface DurableStore {
   /** Fetch a stored snapshot by key, or `undefined` if absent/expired. */
@@ -130,6 +132,8 @@ export function setDurableStore(store: DurableStore): void {
  * inspects persisted snapshots directly.
  *
  * @returns The current {@link DurableStore}.
+ *
+ * @internal
  */
 export function getDurableStore(): DurableStore {
   return _store;

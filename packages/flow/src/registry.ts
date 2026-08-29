@@ -56,6 +56,8 @@ export function _getPageEntries(): Map<string, PageEntry> {
  * // In a ServiceProvider's boot method:
  * registerComponent(CounterWidget);
  * ```
+ *
+ * @internal
  */
 export function registerComponent(PageClass: typeof Component, path = ""): void {
   if (!_pages.has(PageClass.name)) registerPage(path, PageClass);
@@ -103,6 +105,8 @@ export { getRenderlessMethods };
  * A Component constructor plus the optional static metadata a page class may declare
  * (`title`, `head`, `models`, `layout`). Used when resolving file-route page exports and
  * when auto-registering associated model classes.
+ *
+ * @internal
  */
 export interface PageClassWithMeta {
   new (): Component;

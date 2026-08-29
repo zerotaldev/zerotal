@@ -8,6 +8,47 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **React SSR emits the page's `<Head>` tags.** The React branch rendered the page
+  component directly — `createElement(Page, props)` — which produces correct body
+  markup and drops every `<Head>` on the page. `<Head>` renders nothing; it reports
+  its children to a head manager it reads from context, and rendering the component
+  alone puts none there. So a page that set a title, a description and an og: card
+  contributed all three to nothing, and the server sent the template's `<head>`
+  verbatim. Nothing failed and nothing logged — the page was perfect in a browser,
+  where React had run — and a link pasted into a chat was a grey rectangle with a
+  domain in it.
+
+  Both server-rendered paths (`inertiaStream()` and `POST /__ssr`) now render through
+  `@inertiajs/react`'s `<App>`, which installs the head manager, and splice what comes
+  back into the template's `<head>`. **React apps using SSR must have
+  `@inertiajs/react` installed** — the same adapter the browser entry point already
+  uses; a missing one is now a named error rather than a silent omission.
+
+- **An injected head tag replaces the template's, rather than being appended after
+  it.** This applies to Vue as well, where head injection did work: the templates all
+  ship a `<title>`, and a document with two titles is a document with the _first_
+  one. The page's tag was present, correct and ignored. A rendered `<title>` now
+  replaces the template's, and a `<meta>` replaces the one with the same `name` or
+  `property`; anything with no counterpart is appended before `</head>`.
+
+- **The React SSR root is marked `data-server-rendered`, and the page script comes
+  first.** The streaming branch emitted an unmarked `<div id="app">`, so the client
+  discarded the server's markup and rendered the page a second time — paying for SSR
+  and then throwing it away. `POST /__ssr` also returns the same body shape as the Vue
+  branch now (the whole Inertia root, ready to drop into a template) instead of the
+  bare component HTML.
+
+### Documented
+
+- **["What a crawler sees"](/docs/inertia/ssr#what-a-crawler-sees)** — `inertia()` does
+  not server-render the component at all, which is the normal Inertia arrangement and
+  worth saying out loud: the served document is a `<title>` and a JSON blob. The page
+  names which readers run JavaScript (browsers, search engines on a second pass) and
+  which do not (every link-preview scraper, `curl`, most reader tools), and the three
+  ways to give the second group something to read.
+
 ## [1.9.0] — 2026-08-29
 
 ### Fixed

@@ -10,7 +10,9 @@ import { checkPropBoundary } from "./props/propBoundary.ts";
 import { readHistoryFlags } from "./historyState.ts";
 import { allSharedKeys } from "./share.ts";
 import { recordPage } from "./devtools/recorder.ts";
-import { resolvePageModule, renderInertiaPage } from "./ssr/renderPage.ts";
+import { resolvePageModule, renderInertiaPage, _prepareReactRender } from "./ssr/renderPage.ts";
+import { injectHead } from "./ssr/head.ts";
+import { pageScript, rootOpen, ROOT_CLOSE } from "./pageScript.ts";
 import type { PageObject } from "./types.ts";
 import type { PageTarget, RenderArgs } from "./pages.ts";
 
@@ -274,38 +276,32 @@ async function _inertiaStream(component: string, props: Record<string, unknown>)
   };
 
   if (framework === "react") {
-    // React's stream is just the component's inner HTML, so Zerotal wraps it in
-    // the app root and serialises the pageObject into the data-page script.
-    const safeJson = JSON.stringify(pageObject)
-      .replace(/</g, "\\u003c")
-      .replace(/>/g, "\\u003e")
-      .replace(/&/g, "\\u0026")
-      .replace(/\//g, "\\/");
-    const openTag = `<div id="app">`;
-    const closeBlock = `</div>\n    <script type="application/json" data-page="app">${safeJson}</script>`;
+    // React's stream is just the component's inner HTML, so Zerotal writes the SSR
+    // root around it — the `<script data-page>` first, so the client's boot payload
+    // is in the browser's hands before the component finishes arriving.
+    //
+    // The head tags cost nothing to wait for. `renderToReadableStream` already
+    // resolves only once the shell is ready, which this branch already awaited, and
+    // `<Head>` reports to the head manager synchronously during that render. So by
+    // the time there is a first byte to send, the page's title and meta are known
+    // and can go into the `<head>` that is about to be flushed.
+    const { element, head } = await _prepareReactRender(pageObject, modPath);
 
-    // Specifiers via variables, not literals. React is an *optional* peer — a Vue
-    // app never installs it — but a literal `import("react")` is still resolved by
-    // TypeScript, so type-checking a Vue project failed on modules it will never
-    // have. Both results are cast below, so nothing is lost by hiding the
-    // specifier from the resolver; this branch only runs when the app is React.
-    const reactSpecifier = "react";
+    // Specifier via a variable, not a literal. `react-dom/server` is an *optional*
+    // peer — a Vue app never installs it — but a literal `import()` is still
+    // resolved by TypeScript, so type-checking a Vue project failed on a module it
+    // will never have. The result is cast below; this branch only runs on React.
     const reactServerSpecifier = "react-dom/server";
+    const serverMod = (await import(reactServerSpecifier)) as {
+      renderToReadableStream(el: unknown): Promise<ReadableStream<Uint8Array>>;
+    };
 
-    const [reactMod, serverMod, pageMod] = await Promise.all([
-      import(reactSpecifier) as Promise<{ createElement(type: unknown, props: unknown): unknown }>,
-      import(reactServerSpecifier) as Promise<{
-        renderToReadableStream(el: unknown): Promise<ReadableStream<Uint8Array>>;
-      }>,
-      import(modPath) as Promise<{ default: unknown }>,
-    ]);
-
-    const element = reactMod.createElement(pageMod.default, pageObject.props);
     const reactStream = await serverMod.renderToReadableStream(element);
+    const openBlock = injectHead(prefix, head()) + pageScript(pageObject) + rootOpen(true);
 
     const readable = new ReadableStream<Uint8Array>({
       async start(controller) {
-        controller.enqueue(encoder.encode(prefix + openTag));
+        controller.enqueue(encoder.encode(openBlock));
         const reader = reactStream.getReader();
         try {
           while (true) {
@@ -316,7 +312,7 @@ async function _inertiaStream(component: string, props: Record<string, unknown>)
         } finally {
           reader.releaseLock();
         }
-        controller.enqueue(encoder.encode(closeBlock + suffix));
+        controller.enqueue(encoder.encode(ROOT_CLOSE + suffix));
         controller.close();
       },
     });
@@ -325,18 +321,16 @@ async function _inertiaStream(component: string, props: Record<string, unknown>)
     return;
   }
 
-  // Vue: @inertiajs/vue3's SSR mode already emits the full
-  // `<div id="app" data-page="…">…</div>` root (the complete pageObject is
-  // serialised into data-page), so inject it directly in place of the
-  // placeholder — no extra app-div wrapper or data-page script. Any <Head>
-  // tags are injected into <head>.
+  // Vue: @inertiajs/vue3's SSR mode already emits the full Inertia root — the
+  // `<script data-page>` and the `<div id="app">` around the rendered component —
+  // so inject it directly in place of the placeholder. Any <Head> tags are spliced
+  // into <head>, replacing the template's own title and meta rather than being
+  // appended after them (a second <title> is a <title> the browser ignores).
   const { body, head } = await renderInertiaPage(pageObject, modPath, framework);
-  const prefixWithHead =
-    head.length > 0 ? prefix.replace("</head>", `${head.join("")}</head>`) : prefix;
 
   const readable = new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(encoder.encode(prefixWithHead + body + suffix));
+      controller.enqueue(encoder.encode(injectHead(prefix, head) + body + suffix));
       controller.close();
     },
   });
@@ -435,19 +429,15 @@ async function _inertia(component: string, props: Record<string, unknown>): Prom
     throw new InertiaTemplateNotLoadedError();
   }
 
-  // Inject pageObject into the HTML template.
-  // Escape characters that would break HTML parsing inside a script tag.
-  // </script> → <\/script>, < → <, > → >
-  const safeJson = JSON.stringify(pageObject)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026")
-    .replace(/\//g, "\\/");
-
+  // Inject pageObject into the HTML template. The root is empty — this path does
+  // not server-render the component, so it is deliberately *not* marked
+  // `data-server-rendered`: that flag tells the client to hydrate, and hydrating an
+  // empty div is a mismatch on every page. See `inertiaStream()` for the rendered
+  // form, and the "What a crawler sees" section of the Inertia docs for what this
+  // response contains.
   const html = _bustAssets(_htmlTemplate).replace(
     "<!-- @inertia -->",
-    `<div id="app"></div>\n    ` +
-      `<script type="application/json" data-page="app">${safeJson}</script>`,
+    `${rootOpen(false)}${ROOT_CLOSE}\n    ${pageScript(pageObject)}`,
   );
 
   ctx.response = new Response(html, {

@@ -721,3 +721,107 @@ describe("inertiaStream() — success path", () => {
     expect(html).toContain("</body>");
   });
 });
+
+// ── React <Head> on the server ───────────────────────────────────────────────
+
+/**
+ * The React SSR branch used to render the page component directly, which produced
+ * correct body HTML and dropped every `<Head>` tag on the page: `<Head>` renders
+ * nothing, it reports to a head manager it reads from context, and nothing had put
+ * one there. Every page served the template's `<title>` and no description, no
+ * canonical, no og: card — silently, and only to things that do not run JavaScript,
+ * which is every social scraper and every `curl`.
+ *
+ * These pin the two halves of the fix: the tags are collected, and they *replace*
+ * the template's own rather than being appended after them.
+ */
+describe("React <Head> reaches the served HTML", () => {
+  beforeEach(() => {
+    _setPagesDir(
+      new URL("../resources/pages", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"),
+    );
+  });
+
+  afterEach(() => {
+    _setHtmlTemplate("");
+    _setPagesDir("");
+  });
+
+  it("streams the page's title in place of the template's", async () => {
+    _setHtmlTemplate(
+      "<!DOCTYPE html><head><title>Zerotal</title>" +
+        '<meta name="description" content="placeholder"></head><body><!-- @inertia --></body>',
+    );
+    const ctx = fakeCtx("http://localhost/head");
+    await inRequest(ctx, () => inertiaStream.dynamic("HeadPage", { title: "Trip to Kruger" }));
+    const html = await ctx.response!.text();
+
+    expect(html).toContain("<title data-inertia>Trip to Kruger</title>");
+    // The template's title is gone, not merely outranked: a document with two
+    // titles is a document with the first one.
+    expect(html).not.toContain("<title>Zerotal</title>");
+    expect(html.match(/<title/g)?.length).toBe(1);
+  });
+
+  it("replaces a meta the template already declares, and appends one it does not", async () => {
+    _setHtmlTemplate(
+      '<!DOCTYPE html><head><meta name="description" content="placeholder"></head>' +
+        "<body><!-- @inertia --></body>",
+    );
+    const ctx = fakeCtx("http://localhost/head");
+    await inRequest(ctx, () => inertiaStream.dynamic("HeadPage", { title: "Kruger" }));
+    const html = await ctx.response!.text();
+
+    expect(html).toContain("A page that describes itself.");
+    expect(html).not.toContain("placeholder");
+    expect(html.match(/name="description"/g)?.length).toBe(1);
+    expect(html).toContain('property="og:title"');
+  });
+
+  it("serves the component's markup inside a root the client will hydrate", async () => {
+    _setHtmlTemplate("<!DOCTYPE html><head></head><body><!-- @inertia --></body>");
+    const ctx = fakeCtx("http://localhost/head");
+    await inRequest(ctx, () => inertiaStream.dynamic("HeadPage", { title: "Kruger" }));
+    const html = await ctx.response!.text();
+
+    expect(html).toContain('<div data-server-rendered="true" id="app">');
+    expect(html).toContain("head-page");
+    // The boot payload precedes the component, so the browser has it first.
+    expect(html.indexOf('data-page="app"')).toBeLessThan(html.indexOf("head-page"));
+  });
+
+  it("leaves the empty root unmarked, because there is nothing to hydrate", async () => {
+    _setHtmlTemplate("<!DOCTYPE html><head></head><body><!-- @inertia --></body>");
+    const ctx = fakeCtx("http://localhost/head");
+    await inRequest(ctx, () => inertia.dynamic("HeadPage", { title: "Kruger" }));
+    const html = await ctx.response!.text();
+
+    expect(html).toContain('<div id="app"></div>');
+    expect(html).not.toContain("data-server-rendered");
+  });
+
+  it("returns the head tags through the /__ssr contract too", async () => {
+    const pagesDir = new URL("../resources/pages", import.meta.url).pathname.replace(
+      /^\/([A-Z]:)/,
+      "$1",
+    );
+    const handler = new SsrHandler({ pagesDir });
+    const ctx = {
+      request: {
+        json: () =>
+          Promise.resolve({ component: "HeadPage", props: { title: "Kruger" }, url: "/head" }),
+      },
+      response: undefined as Response | undefined,
+      ip: () => "127.0.0.1",
+      headers: () => undefined,
+    };
+    await handler.handle(ctx as never);
+
+    const payload = (await ctx.response!.json()) as { body: string; head: string[] };
+    expect(payload.head.join("")).toContain("Kruger");
+    expect(payload.head.join("")).toContain('name="description"');
+    // Same body shape as the Vue branch: the whole Inertia root, ready to drop in.
+    expect(payload.body).toContain('data-page="app"');
+    expect(payload.body).toContain('<div data-server-rendered="true" id="app">');
+  });
+});

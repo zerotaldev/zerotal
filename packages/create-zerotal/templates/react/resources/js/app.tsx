@@ -1,5 +1,5 @@
 import { createInertiaApp, type ResolvedComponent } from "@inertiajs/react";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import { defineRoutes } from "zerotal/routes";
 import { pages } from "./pages.generated.ts";
 import { ROUTES } from "../../types/routes.generated.ts";
@@ -34,6 +34,15 @@ createInertiaApp({
   },
 
   setup({ el, App, props }) {
-    createRoot(el).render(<App {...props} />);
+    // `inertiaStream()` and endpoint SSR mark the root they rendered into. Hydrate
+    // that markup rather than replacing it: it is already the right page, a scraper
+    // has already read the head tags out of it, and rendering a second time throws
+    // away the first paint the server just paid for.
+    const app = <App {...props} />;
+    if (el.hasAttribute("data-server-rendered")) {
+      hydrateRoot(el, app);
+    } else {
+      createRoot(el).render(app);
+    }
   },
 });

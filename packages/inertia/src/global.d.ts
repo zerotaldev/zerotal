@@ -25,6 +25,8 @@ declare module 'react' {
 
 declare module 'react-dom/client' {
   export function createRoot(container: Element | null): { render(el: unknown): void };
+  /** Attach React to markup the server already rendered, rather than replacing it. */
+  export function hydrateRoot(container: Element, el: unknown): { render(el: unknown): void };
 }
 
 declare module 'react-dom/server' {

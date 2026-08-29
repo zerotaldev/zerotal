@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Added
 
 - **A warning when a model crosses into page props having declared no boundary.** Page props

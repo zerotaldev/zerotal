@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 - **The component and flash types are documented.** Every built-in component exports the type of
   its own props — `ModalProps`, `ForProps`, `VirtualizeProps` and eighteen more — and none was
   named anywhere a reader would look, though wrapping a component is the usual reason to want

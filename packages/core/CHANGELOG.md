@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Changed
 
 - **INTERNAL: the dev orchestrator's 26 exports are marked `@internal`.** `DevSupervisor`,

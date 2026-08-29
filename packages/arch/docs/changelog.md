@@ -27,6 +27,103 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.9.0 — 2026-08-29
+
+The gaps an app was filling in for itself: one Bun per project, a database backup that is not
+`cp`, a release gate the pipeline will actually call, a boundary between a model and a page
+prop, and helpers that work on both sides of the wire.
+
+**Two things to know before upgrading.** Both are new refusals or new noise, and both are quiet
+if they do not apply to you.
+
+- **`zt` now refuses to run when a project has two Bun runtimes in it** — the shell's `bun` and
+  a different one in `node_modules`. If it fires, pick one: `bun update bun` moves the installed
+  copy to match your shell, or run everything through `node_modules/.bin/bun`. To boot anyway
+  while you sort it out, set `ZT_ALLOW_RUNTIME_MISMATCH=1`. Most projects never see this,
+  because most have no `bun` in `node_modules` to disagree with.
+- **Passing an ORM model straight into an Inertia page prop now warns in development**, once per
+  model class, if that model declares neither `hidden` nor `visible`. Declaring either silences
+  it — and is the fix, not the silencer. Production is unaffected.
+
+### Added
+
+- **One project, one Bun.** `engines.bun` is a floor and nothing enforced it, so an app could be
+  served by one runtime and tested on another — the shell's `bun` and a `node_modules/bun` put
+  there by a transitive peer dependency nobody declared. A green suite is then evidence about a
+  binary the app is not served by. `startZerotal()` refuses on a mismatch, and `zt test` spawns
+  the binary running it rather than a name `PATH` resolves.
+
+- **`zt db:backup`** — a verified snapshot of the SQLite database, using `VACUUM INTO` rather
+  than `cp`. Copying a live SQLite file can capture a half-written page and produce a backup
+  that restores as a corrupt database, months later, from the one file you were relying on.
+  Every snapshot is opened and integrity-checked as it is written, `--require-rows` fails a
+  backup whose business tables are empty, `--rehearse` performs the actual restore, and every
+  failure path exits non-zero — a backup timer that reports success while writing nothing is
+  worse than no timer at all. See [Deployment](/docs/deployment#back-up-the-database).
+
+- **`DeployTarget.preflight`** — a slot for the app's own release gate, run after the config
+  validators and `doctor` and before anything is built or migrated. A command named
+  `release:check` is found by convention, with nothing to wire up. A declared name that is not
+  registered **fails** the deploy rather than being skipped: a gate nothing calls is a comment.
+
+- **`zerotal/shared`** — the helpers with no server in them, importable from a browser bundle:
+  `pluralize`, `Str`, and new `formatMoney` / `formatNumber` / `formatDate`. A total that reads
+  `R 39 147` on screen and `R39,147.00` on the invoice looks like two different numbers to the
+  person paying it, and maintaining that in two files is how it happens. See
+  [Helpers](/docs/helpers#sharing-helpers-with-the-browser--zerotalshared).
+
+- **`<form data-enhance>`** — a plain server-rendered page, with no Flow component on it, can
+  submit without the page flashing. It posts through `fetch` and the matching form in the
+  response replaces it in place, so a validation error lands where the person is looking. Its
+  own dependency-free bundle at `/__flow/enhance.js`, added with `flowEnhanceTag()` in the
+  layout. Every path degrades: a network failure re-submits natively, a redirect is followed and
+  `pushState`d, and no JavaScript at all is an ordinary form post.
+
+- **Three new `doctor` checks.** A rate limiter that cannot tell two people apart behind a proxy
+  — where the socket address is the proxy's for every request, so one attacker can lock out
+  everybody. Auth columns missing from a table a migration built without them, which otherwise
+  surfaces as `no such column` in tests that have nothing to do with email. And migrations that
+  have not run, named, before a request finds out.
+
+### Changed
+
+- **A model reaching Inertia page props says what it is safe to publish.** Page props are page
+  source, and `return inertia("Trips/Show", { trip })` ships every column of the row — the
+  internal cost, the margin, the note about the customer, on the customer's own screen. The
+  ORM's `hidden` / `visible` lists were already honoured and nothing said so. See the upgrade
+  note above and [Inertia props](/docs/inertia/props#page-props-are-page-source).
+
+- **A bound field the model will not accept says so.** `flow:model` on a column missing from
+  `fillable` was dropped in silence: the form submitted, nothing was written, nothing failed.
+  The drop stays — the same path receives whatever a browser sends — but a developer's typo no
+  longer produces the same silence as a hostile payload. Development only, once per field.
+
+- **INTERNAL: 116 exports leave the recorded API surface** across `core`, `orm`, `flow`,
+  `admin`, `flow-ui` and `monitor`. **Nothing is removed and nothing breaks** — they are still
+  exported and still work; what changes is the promise. The dev orchestrator, the ORM's
+  connection wiring and dialect layer, the admin panel's page machinery and Flow's
+  wire-protocol frame types are not things an app constructs, and naming them in a `stable`
+  surface implied a guarantee about a protocol that is free to change. Each package's own
+  changelog lists its share.
+
+- **A minor breaks nothing that can wait.** The roadmap used to say a minor never breaks
+  anything, which was false when written — three breaks had already shipped in minors, each
+  deliberately, each with a note, exactly as the [support policy](/docs/support-policy) has
+  always described. An absolute rule the project knowingly broke is worse than an honest one.
+
+### Documented
+
+- **Coverage went from 60% to 83%**, with `flow`, `flow-ui`, `monitor` and `ai` now fully
+  documented. `@zerotal/flow-ui`'s sixty-one component prop types are named for the first time —
+  a wrapper component cannot be written without them. `@zerotal/monitor`'s **Export JSON** shape
+  is mapped field by field, where the button was documented and the forty-odd row types it hands
+  you were not. And the outbound `Http` client has a page, which the testing guide had been
+  linking to for some time without one existing.
+
+  The gate that measures this could not see `.tsx` files at all: with `jsx` unset, TypeScript
+  declines to pull such a module into the program rather than failing to parse it, so every
+  symbol in one was invisible. It had been inflating exactly the TSX-heavy packages.
+
 ## 1.8.1 — 2026-08-26
 
 DevTools showed you the wrong request, accurately.

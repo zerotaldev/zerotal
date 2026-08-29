@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Added
 
 - **`zerotal/shared`** — a browser-safe entry point re-exporting `@zerotal/core/shared`:

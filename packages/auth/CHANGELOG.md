@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Added
 
 - **`doctor` check: auth columns.** `EmailVerification` and `Authenticatable` register their

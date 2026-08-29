@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Changed
 
 - **INTERNAL: the panel's own page machinery is marked `@internal`.** The `make*Page` factories,

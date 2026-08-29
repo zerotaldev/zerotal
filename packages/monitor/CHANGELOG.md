@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Added
 
 - **The snapshot shape is documented.** **Export JSON** hands you a `MonitorSnapshot` — the whole

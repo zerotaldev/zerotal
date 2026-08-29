@@ -42,7 +42,11 @@ export interface PageObject {
   sharedProps?: string[];
 }
 
-/** Options passed to `InertiaProvider` to configure the adapter at boot. */
+/**
+ * Options passed to `InertiaProvider` to configure the adapter at boot.
+ *
+ * @internal
+ */
 export interface InertiaProviderOptions {
   /** Path to the HTML template. Default: 'resources/app.html' */
   htmlTemplate?: string;

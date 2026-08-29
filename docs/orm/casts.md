@@ -357,6 +357,12 @@ Cast options accepted by `@column()`:
 | `cast`       | shorthand string, `{ get, set }`, or `CastContract` | The transform applied on read/write.            |
 | `enumValues` | `Record<string, string \| number>`                  | The TS enum object, paired with `cast: "enum"`. |
 
+## Types
+
+`CastField` is what a cast declaration holds. `EncryptedCastName` names the encrypted cast
+variants, and `isEncryptedCast` says whether a given cast is one — which matters because an
+encrypted column cannot be queried by value, only by a blind index kept beside it.
+
 ## Next steps
 
 - [ORM](/docs/orm) — defining models and columns.

@@ -221,6 +221,20 @@ the table — the search term, each filter, the trashed scope — and each chip 
 its own undo. A table showing four of two hundred rows for no visible reason is
 the most common way a panel misleads someone; the chips are the fix.
 
+## Types
+
+The contribution shapes another package pushes into the panel:
+
+| Type                                                               | What it is                                                               |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `NavItem`, `NavGroup`, `NavContribution`                           | A sidebar entry, a heading it sits under, and a contributed one.         |
+| `PageContribution`                                                 | A whole page added to the panel.                                         |
+| `UserMenu`, `UserMenuItem`, `UserMenuContribution`                 | The account menu and its entries.                                        |
+| `TopbarSlot`                                                       | Where something may be placed in the top bar.                            |
+| `RenderHookName`                                                   | Every point the panel can be extended at — the enumeration of the slots. |
+| `RenderHookContext`                                                | What a hook receives when it runs.                                       |
+| `ConsoleContribution`, `ConsoleColumn`, `ConsoleRow`, `ConsoleTab` | Contributions to the console page.                                       |
+
 ## Next steps
 
 - [Tables](/docs/admin/tables) — columns, filters and the query builder.

@@ -125,6 +125,12 @@ including on create.
 Both save hooks receive the `mode`, so one implementation can branch on `"create"`
 versus `"edit"` instead of duplicating the resource.
 
+## Types
+
+`AdminModel` is what a resource's `model` accepts, and `AdminQuery` the query it builds — the
+seam where the panel hands off to the ORM. `ListOptions` configures the list page,
+and `RelationKind` names the relation types a relation manager understands.
+
 ## Next steps
 
 - [Admin overview](/docs/admin) — the guide's front page and the rest of the sections.

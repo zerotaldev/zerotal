@@ -550,6 +550,16 @@ try {
 process is draining, not that anything is broken, so the right response is to
 re-dispatch on the next boot rather than to fail the request.
 
+## Types
+
+| Type                                         | What it is                                                                                      |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `QueueDriver`                                | The contract a backend implements — implement it to queue somewhere the built-ins do not reach. |
+| `JobRecord`, `JobStatus`                     | A queued job as stored, and where it is in its life.                                            |
+| `SerializedJob`                              | The wire form — what a driver actually persists.                                                |
+| `BatchOptions`, `BatchRecord`, `BatchStatus` | A batch's settings, its stored form, and its progress.                                          |
+| `WorkerPoolOptions`, `WorkerResult`          | How many workers run and what one attempt returned.                                             |
+
 ## Next steps
 
 - [Scheduler](/docs/scheduler) — run recurring jobs alongside the queue worker.

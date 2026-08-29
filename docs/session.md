@@ -444,6 +444,12 @@ try {
 The fix is nearly always to store an identifier rather than the object, or to
 move to a server-side driver where the cookie holds only the session id.
 
+## Types
+
+`SessionDriver` is the storage contract — implement it to keep sessions somewhere the built-ins
+do not reach. `SessionPayload` is what a driver loads and saves: the id and the data bag.
+`SessionAccessor` is the request-scoped handle `ctx.session` exposes.
+
 ## Next steps
 
 - [Middleware](/docs/middleware) — where `SessionMiddleware` and `CsrfMiddleware`

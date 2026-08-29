@@ -525,6 +525,17 @@ The `Scheduler` facade resolves the `scheduler` container binding — a
 | `lastDurationMs`   | `get lastDurationMs(): number \| undefined` | Duration of the last run in ms.                   |
 | `isRunning`        | `get isRunning(): boolean`                  | `true` while a run is in flight.                  |
 
+## Types
+
+| Type                                    | What it is                                                                                   |
+| --------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `CronExpression`                        | The schedule string a task declares.                                                         |
+| `TaskGuard`                             | A condition deciding whether a due run actually happens — a feature flag, a leader election. |
+| `TaskHook`                              | What runs before or after a task.                                                            |
+| `ScheduleRunRecord`, `ScheduleRunStore` | One recorded run, and where the log is kept.                                                 |
+| `RunLogConfig`                          | How much of that log is retained.                                                            |
+| `OutputMailer`                          | Sending a task's output somewhere when it finishes.                                          |
+
 ## Next steps
 
 - [Queue](/docs/queue) — schedules typically dispatch jobs; the worker runs both.

@@ -30,6 +30,7 @@ function resolveRequired(def: FieldRuleDefinition, input: Record<string, unknown
   return def.required;
 }
 
+/** @internal */
 export function runValidation<S extends Schema>(
   schema: S,
   input: Record<string, unknown>,
@@ -330,6 +331,8 @@ type RuleEntry = { name: string; args: unknown[]; message?: string; fn?: CustomF
  * Like runValidation() but also executes async rules (unique, exists, custom fn).
  * Use this in validate() and FormRequest.validate() instead of runValidation()
  * whenever the schema may contain DB-aware or custom async rules.
+ *
+ * @internal
  */
 export async function runValidationAsync<S extends Schema>(
   schema: S,

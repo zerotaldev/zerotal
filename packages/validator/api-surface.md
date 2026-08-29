@@ -315,14 +315,6 @@ const Validator = {    check<S extends Record<string, FieldRule>>(data: Record<s
 
 function registerDbRuleRunner = (runner: DbRuleRunner) => void
 
-function runStringRules = (data: Record<string, unknown>, rules: StringRules) => Record<string, string[]>
-
-function runStringRulesAsync = (data: Record<string, unknown>, rules: StringRules) => Promise<Record<string, string[]>>
-
-function runValidation = <S extends Schema>(schema: S, input: Record<string, unknown>) => ValidationOutcome<unknown>
-
-function runValidationAsync = <S extends Schema>(schema: S, input: Record<string, unknown>) => Promise<ValidationOutcome<unknown>>
-
 function validate = <S extends Record<string, FieldRule>>(ctx: HttpContext, factory: (rules: RuleBuilder) => S) => Promise<Infer<ExtractDefs<S>>>
 
 function ValidatorConfig = (options?: Partial<ValidatorConfigShape>) => ValidatorConfigShape
@@ -362,8 +354,6 @@ type Infer = { [K in keyof S]: InferField<S[K]>; }
 type InferFieldType = F['type'] extends 'string' ? string : F['type'] extends 'number' ? number : F['type'] extends 'boolean' ? boolean : F['type'] extends 'date' ? Date : F['type'] extends 'array' ? InferArrayType<F> : F['type'] extends 'object' ? InferObjectType<F> : unknown
 
 type Schema = {    [x: string]: FieldRuleDefinition;}
-
-type StringRules = {    [x: string]: string | string[];}
 
 type ValidationErrors = {    [x: string]: string;}
 

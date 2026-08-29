@@ -43,6 +43,7 @@ async function _buildDashboardJs(): Promise<string> {
   return _dashboardJs;
 }
 
+/** @internal */
 export interface DevtoolsInjectionOptions {
   // reserved for future use
 }
@@ -102,6 +103,8 @@ const SSE_HEARTBEAT_MS = 25_000;
  * built the one the app's config asks for.
  *
  * @returns A disposer that unsubscribes and closes connected clients.
+ *
+ * @internal
  */
 export function startDevtoolsStream(): () => void {
   const unsubscribe = traceStore().subscribe((trace) => {

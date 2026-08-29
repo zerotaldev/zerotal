@@ -593,6 +593,12 @@ Resolved from the container binding `"tenancy"`; the `Tenant` value is the facad
 | `evict`         | `evict(tenant): void`                | Close and drop a tenant's connection.             |
 | `closeAll`      | `closeAll(): void`                   | Close every open connection.                      |
 
+## Types
+
+`TenancyStrategy` is how a tenant is resolved from a request — subdomain, path, header, or the
+authenticated user. `TenantManagerOptions` configures the manager, and `TenantDeletedHook` runs
+when a tenant is removed, which is where the data belonging to it gets cleaned up.
+
 ## Next steps
 
 - [ORM](/docs/orm) — how `Tenantable` composes onto your models via `Model.using`.

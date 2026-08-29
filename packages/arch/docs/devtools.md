@@ -1004,6 +1004,11 @@ meaningfully different from `{}` — a node can be both a branch and a leaf.
 unfiltered list plus whether it heads a group (`groupKey`, `groupSize`) or is a
 folded follow-up (`child`).
 
+## Types
+
+`TraceStoreOptions` sets how many traces are kept and for how long.
+`DevtoolsClientOptions` configures the browser side.
+
 ## Next steps
 
 - [Logger](/docs/logger) — structured logging that surfaces in the Logs tab.

@@ -413,6 +413,24 @@ the two are identical.
 | `static dispatchesEvents` | `Record<string, new (model) => object>` | Maps lifecycle keys to app-bus event classes.              |
 | `static massPrune`        | `boolean` (default `false`)             | Permanently delete prunable rows instead of soft-deleting. |
 
+## Types
+
+**State machines.** `StateMachine` guards a column against transitions that should not happen —
+an order going from `shipped` back to `pending` is a bug, and the place to refuse it is the model
+rather than every call site.
+
+| Type                                      | What it is                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| `StateGuard`                              | The condition allowing one transition.                                 |
+| `TransitionCallback`, `TransitionContext` | What runs on a transition, and what it receives.                       |
+| `TransitionResult`                        | Whether it happened.                                                   |
+| `RejectTransition`                        | The refusal — a value, so a caller can branch on it rather than catch. |
+
+**Errors.** `TransactionError` wraps a failure inside a transaction with what was being
+attempted; `UnsupportedDialectError` is thrown when a driver genuinely cannot do something —
+a signed URL on a local disk, an advisory lock on SQLite — rather than failing quietly and
+returning nothing. `TransactionContext` is the ambient handle a transaction carries.
+
 ## Next steps
 
 - [ORM](/docs/orm) — model basics and the `dispatchesEvents` bridge.

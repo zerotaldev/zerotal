@@ -381,6 +381,11 @@ does.
 > `CacheSerializationError` at write time. It is a bug in the caller rather than
 > a cache fault, so let it surface in development instead of swallowing it.
 
+## Types
+
+`IdempotencyOptions` configures `Cache.idempotent()` — the key, the window, and what happens to
+a second identical request that arrives while the first is still running.
+
 ## Next steps
 
 - [Query Builder](/docs/query-builder) — the queries you'll most often wrap in `remember()`.

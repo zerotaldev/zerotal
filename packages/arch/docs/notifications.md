@@ -840,6 +840,17 @@ durable record is the database channel.
 | `OnDemandNotifiable` | The recipient `Notify.route()` builds — a destination with no model behind it. Its database rows are keyed to a random id nothing can query back, so on-demand notifications normally declare transport channels only. |
 | `RichLine`           | The chainable line returned inside `MailMessage` for mixed formatting (`.text()`, `.color()`).                                                                                                                         |
 
+## Types
+
+| Type                                                       | What it is                                                                                  |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `MailDriver`                                               | The transport contract — implement it to send through something the built-ins do not cover. |
+| `MailPayload`                                              | One message as the driver receives it.                                                      |
+| `MailAddress`, `AddressInput`                              | A recipient, and the forms one may be given in.                                             |
+| `MailAttachment`                                           | A file on a message.                                                                        |
+| `TextStyle`                                                | How the plain-text alternative is derived from the HTML.                                    |
+| `SmsConfigShape`, `TwilioConfigShape`, `VonageConfigShape` | SMS configuration, and the two providers' own settings.                                     |
+
 ## Next steps
 
 - [Broadcasting](/docs/broadcasting) — the real-time broadcast channel and channel auth.

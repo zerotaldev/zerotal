@@ -14,6 +14,8 @@
  * Generic so a wrapper can carry what it will resolve to — that is what lets
  * `Inertia.render` check `defer(() => stats())` against the `stats` prop the
  * page component declares, instead of checking that *something* was passed.
+ *
+ * @internal
  */
 export type PropFactory<T = unknown> = () => T | Promise<T>;
 

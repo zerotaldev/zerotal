@@ -177,6 +177,21 @@ When the model uses the ORM `SoftDeletes` mixin, the List page gains an
 **Active / All / Trashed** switch and the row + bulk actions gain Restore and
 Force-delete automatically — no extra configuration.
 
+## Types
+
+| Type                                   | What it is                                                               |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| `ActionItem`                           | One action as the panel holds it, after `action()` has built it.         |
+| `ActionHandler`                        | The callback an action runs, given its `ActionContext`.                  |
+| `ActionContext`                        | What that callback receives — the record or selection, and the page.     |
+| `ActionVisible`                        | The predicate deciding whether an action appears for this record at all. |
+| `ActionColor`                          | The emphasis it is drawn with.                                           |
+| `ConsoleAction`, `ConsoleHeaderAction` | The console's own row and header actions.                                |
+
+**`ActionVisible` hides, it does not authorize.** An action absent from the UI is still
+reachable by anyone who can form the request, so the authorization check belongs in the handler
+as well — see [Authorization](/docs/authorization).
+
 ## Next steps
 
 - [Admin overview](/docs/admin) — the guide's front page and the rest of the sections.

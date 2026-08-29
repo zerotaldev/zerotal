@@ -58,10 +58,16 @@ export interface RunLogConfig {
   keep: number;
 }
 
+/** @internal */
 export const DEFAULT_RUN_LOG_PATH = "storage/framework/schedule-runs.jsonl";
+/** @internal */
 export const DEFAULT_RUN_LOG_KEEP = 500;
 
-/** Resolve `scheduler.runLog` config with defaults, tolerating an absent config binding. */
+/**
+ * Resolve `scheduler.runLog` config with defaults, tolerating an absent config binding.
+ *
+ * @internal
+ */
 export function resolveRunLogConfig(app: Application): RunLogConfig {
   let raw: { enabled?: boolean; path?: string; keep?: number } = {};
   try {
@@ -81,6 +87,8 @@ export function resolveRunLogConfig(app: Application): RunLogConfig {
 /**
  * JSONL-backed run store. Appends are synchronous — runs happen at cron cadence,
  * not request cadence, and a record that survives a crash is the whole point.
+ *
+ * @internal
  */
 export class FileScheduleRunStore implements ScheduleRunStore {
   constructor(
@@ -151,6 +159,8 @@ export class FileScheduleRunStore implements ScheduleRunStore {
  * success and `TaskFailed` on a throw, so together they are exactly one record per
  * completed execution (skips are deliberate non-runs and are not recorded). Returns
  * a disposer, or undefined when the run log is disabled.
+ *
+ * @internal
  */
 export function installScheduleRunLog(app: Application): (() => void) | undefined {
   const config = resolveRunLogConfig(app);

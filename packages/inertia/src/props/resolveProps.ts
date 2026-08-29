@@ -7,7 +7,11 @@ import {
   type ScrollConfig,
 } from "./PropTypes.ts";
 
-/** The resolved props plus the page-object metadata the client needs to merge/defer correctly. */
+/**
+ * The resolved props plus the page-object metadata the client needs to merge/defer correctly.
+ *
+ * @internal
+ */
 export interface ResolvedPage {
   props: Record<string, unknown>;
   deferredProps?: Record<string, string[]>;

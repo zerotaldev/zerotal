@@ -388,6 +388,12 @@ differ, and the time it took is a measurement of how much of the prefix was righ
 many attempts, to recover a secret a character at a time. Comparing anything an attacker
 supplies against anything you hold goes through `safeEqual`.
 
+### Signed URLs
+
+`URLSigner` is what `signedUrl()` and `ValidateSignatureMiddleware` are built on. Reach for it
+directly when you need to sign or verify outside a request — a link minted by a scheduled job,
+or a signature checked by a worker.
+
 ## Next steps
 
 - [Authentication](/docs/authentication) — where hashed passwords are verified at login.

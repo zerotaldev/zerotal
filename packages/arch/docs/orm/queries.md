@@ -683,6 +683,16 @@ Child models inherit all global scopes registered on a parent model.
 | `toRawSql`                              | `toRawSql(): string`                                    | SQL with values inlined (logging only).   |
 | `clone`                                 | `clone(): this`                                         | Copy the builder to branch conditions.    |
 
+## Types
+
+| Type                  | What it is                                                      |
+| --------------------- | --------------------------------------------------------------- |
+| `WhereOperator`       | The comparison operators `where()` accepts.                     |
+| `OrderDirection`      | `asc` / `desc`.                                                 |
+| `DatePart`            | The parts date helpers can compare on — year, month, day.       |
+| `PaginateMeta`        | The page, per-page, total and last-page a paginator reports.    |
+| `GlobalScopeCallback` | A scope applied to every query for a model until it is removed. |
+
 ## Next steps
 
 - [ORM](/docs/orm) — model definition, columns, and configuration.

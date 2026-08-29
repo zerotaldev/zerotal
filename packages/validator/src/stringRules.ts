@@ -8,6 +8,7 @@
  * every rule it covers.
  */
 
+/** @internal */
 export type StringRules = Record<string, string | string[]>;
 
 export type RuleFn = (
@@ -242,6 +243,8 @@ function _label(field: string): string {
 /**
  * Validate `data` against pipe-delimited string `rules`. Returns a map of field → error messages
  * for every field that failed (an empty object means everything passed).
+ *
+ * @internal
  */
 export function runStringRules(
   data: Record<string, unknown>,
@@ -289,6 +292,8 @@ export function runStringRules(
  * Async variant of {@link runStringRules}. Currently wraps the synchronous engine; exists so
  * callers (e.g. Flow's `await this.validate()`) have a stable async entry point as
  * database-backed string rules (`unique`/`exists`) are layered in.
+ *
+ * @internal
  */
 export async function runStringRulesAsync(
   data: Record<string, unknown>,

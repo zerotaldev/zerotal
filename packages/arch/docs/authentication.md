@@ -110,6 +110,11 @@ declare module "@zerotal/auth" {
 }
 ```
 
+`AuthenticatableUser` in `@zerotal/core/contracts` is the same seam one layer down: `@zerotal/core`
+has to talk about "the user" without depending on `@zerotal/auth`, so it declares an empty
+interface for apps to augment, and `UserModel` extends it. Augmenting either resolves to the same
+shape — augment `UserModel`, which is the one the auth docs and examples use.
+
 **The empty body is the point.** The interface is not being given members — it is being
 pointed at your class, so that everywhere the framework says `UserModel` it means `User`.
 That is not a shape anyone guesses, which is why it is here in setup rather than filed

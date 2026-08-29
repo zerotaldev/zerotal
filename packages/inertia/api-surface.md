@@ -256,12 +256,6 @@ interface InertiaDevtoolsConfig = {
 
 interface InertiaPageRegistry = {}
 
-interface InertiaProviderOptions = {
-  assetsUrl?: string
-  htmlTemplate?: string
-  version?: string
-}
-
 interface MergeConfig = {
   appendPaths: string[]
   deep: boolean
@@ -303,18 +297,6 @@ interface PaginatorLike = {
   total?: number
 }
 
-interface ResolvedPage = {
-  deepMergeProps?: string[]
-  deferredProps?: Record<string, string[]>
-  matchPropsOn?: string[]
-  mergeProps?: string[]
-  onceProps?: Record<string, {    prop: string;    expiresAt: number | null;}>
-  prependProps?: string[]
-  props: Record<string, unknown>
-  rescuedProps?: string[]
-  scrollProps?: Record<string, ScrollConfig>
-}
-
 interface ScrollConfig = {
   currentPage: number | null
   nextPage: number | null
@@ -327,8 +309,6 @@ interface SharedProps = {}
 type PageName = never
 
 type PageTarget = string
-
-type PropFactory = () => T | Promise<T>
 
 type PropInput = T | (() => T | Promise<T>) | AlwaysProp<T> | MergeProp<T> | (T extends PaginatorLike ? InfiniteScrollProp : never) | (undefined extends T ? OptionalProp<T> | DeferProp<T> : never)
 

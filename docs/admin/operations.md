@@ -217,6 +217,18 @@ A coloured strip across the top names the environment — red for production, am
 staging. It returns nothing in local development, so registering it unconditionally is
 the intended usage; there is nothing to switch off per environment.
 
+## Types
+
+| Type                                        | What it is                                             |
+| ------------------------------------------- | ------------------------------------------------------ |
+| `HistoryOptions`, `HistoryChange`           | Record history: what is tracked, and one entry of it.  |
+| `ImportRecordsPayload`                      | What the import action hands your handler.             |
+| `AdminNotification`, `StoredNotification`   | A panel notification, and the persisted form.          |
+| `DatabaseNotificationOptions`               | Where those are stored.                                |
+| `StoreMediaOptions`, `DatabaseMediaOptions` | Media handling and its database backing.               |
+| `SearchHit`, `PanelSearchProvider`          | One global-search result, and where results come from. |
+| `CalloutTone`                               | The emphasis a callout is drawn with.                  |
+
 ## Next steps
 
 - [Panel Structure](/docs/admin/structure) — clusters, nested resources, multiple panels.

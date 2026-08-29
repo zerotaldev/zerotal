@@ -149,6 +149,18 @@ Custom pages and anything contributed by a package sit in the same sidebar, sort
 and grouped by the same rules — a page's group heading is just a string, so a page
 and a resource that name the same group land together.
 
+## Types
+
+| Type                                      | What it is                                                                  |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| `DashboardWidget`                         | One widget as declared.                                                     |
+| `WidgetContribution`                      | A widget pushed in by another package.                                      |
+| `WidgetTone`                              | Its good/warn/bad colouring.                                                |
+| `StatsResolver`                           | Supplies a stat widget's numbers for the selected range.                    |
+| `ChartResolver`, `ChartData`              | The same for a chart, and the shape it returns.                             |
+| `TableWidgetColumn`                       | A column in a table widget — narrower than a resource table's.              |
+| `DashboardLayout`, `DashboardLayoutStore` | An arrangement of widgets, and where a user's own arrangement is persisted. |
+
 ## Next steps
 
 - [Admin overview](/docs/admin) — the guide's front page and the rest of the sections.

@@ -247,6 +247,8 @@ export function redactBindings(
  * `SET col = ?`, and `WHERE col <op> ?` (including `IN (?, ?)`, where every
  * placeholder belongs to the same column). Returns `undefined` at any position it
  * cannot attribute.
+ *
+ * @internal
  */
 export function attributeBindings(sql: string, count: number): Array<string | undefined> {
   const out: Array<string | undefined> = new Array(count).fill(undefined);

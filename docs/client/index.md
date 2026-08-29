@@ -328,6 +328,23 @@ This package also ships `Socket`, `Channel` and `PresenceChannel` — a WebSocke
 client speaking Zerotal's broadcast protocol. Different job, documented where it is
 used: [Broadcasting → Client](/docs/broadcasting/client).
 
+## Types
+
+The typed client derives its shape from your app's routes, so most of these are inferred rather
+than written by hand — but a helper that wraps a call needs to name them:
+
+| Type                                         | What it is                                                                                                               |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `ApiRouteMap`                                | The generated route table the client is typed against.                                                                   |
+| `RouteShape`                                 | One route's method, params, body and response.                                                                           |
+| `PathsFor<M>`                                | Every path answering a given method — what makes an unknown path a compile error.                                        |
+| `PathParams`, `ParamRecord`                  | The params a path captures.                                                                                              |
+| `BodyOf<P>`, `QueryOf<P>`, `ResponseOf<P>`   | One route's request body, query and response types.                                                                      |
+| `ResponseMeta`                               | Status, headers and timing carried alongside a response.                                                                 |
+| `RequestInterceptor`, `ResponseInterceptor`  | Hooks running before a request leaves and after one returns — auth headers, retry, logging.                              |
+| `CircuitBreakerOptions`                      | When the client stops calling an endpoint that keeps failing, and when it tries again.                                   |
+| `SocketOptions`, `SocketState`, `SocketLike` | The realtime socket: how it connects, where it is in its lifecycle, and the minimum interface a substitute must satisfy. |
+
 ## Next steps
 
 - [Rate Limiting](/docs/rate-limiting) — throttle what you send and what you accept.

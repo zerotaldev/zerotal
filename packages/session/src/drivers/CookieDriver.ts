@@ -66,6 +66,8 @@ const MAX_COOKIE_BYTES = 4096;
  * save — the {@link SessionDriver} contract passes `(id, data, response)` and nothing
  * else — so it is how "when did this session first exist?" survives a round trip and
  * makes {@link CookieDriver}'s absolute lifetime enforceable.
+ *
+ * @internal
  */
 export const SESSION_ISSUED_AT_KEY = "_iat";
 

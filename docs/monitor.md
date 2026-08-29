@@ -422,6 +422,12 @@ Types: `MonitorConfigShape`, `ResolvedMonitorConfig`, `MonitorStoreOptions`,
 `@zerotal/monitor` ships no CLI commands. The panel is a route, not a console
 tool — everything is read through the browser or the Prometheus endpoint.
 
+### The metrics snapshot
+
+`httpMetrics()` returns an `HttpMetricsSnapshot` — request counts, durations and status classes
+since the process started. It is what the Prometheus endpoint renders, and it is exported so an
+app can ship the same numbers somewhere the panel does not reach.
+
 ## Next steps
 
 - [Telemetry](/docs/telemetry) — export the same signal to an OTLP backend for long-term storage.

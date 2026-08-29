@@ -149,6 +149,21 @@ section("Line items").schema([
 ]),
 ```
 
+## Types
+
+| Type               | What it is                                                                        |
+| ------------------ | --------------------------------------------------------------------------------- |
+| `FormComponent`    | Anything that can appear in a form — a field, a layout block, a custom component. |
+| `FormBlock`        | A grouping: a section, a tab, a fieldset.                                         |
+| `FieldMode`        | Whether a field is editable, read-only or hidden in this context.                 |
+| `FieldPredicate`   | The condition behind a conditional field.                                         |
+| `FormModeConfig`   | How the form differs between create and edit.                                     |
+| `UploadedFileLike` | What a file field hands your handler.                                             |
+
+Infolists — the read-only counterpart — use `InfolistComponent`, with `EntryKind`,
+`EntryDisplay`, `EntrySize` and `EntryWeight` describing one entry's type and presentation.
+`PrimeKind` is the leading entry a record view opens with.
+
 ## Next steps
 
 - [Admin overview](/docs/admin) — the guide's front page and the rest of the sections.

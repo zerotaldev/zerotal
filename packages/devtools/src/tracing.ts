@@ -99,6 +99,8 @@ const _channels = new Map<string, TraceChannelDescriptor>();
  *
  * A `hidden` channel is left out: its entries are still recorded and still reach
  * the panel on the trace, but whatever renders them is not this generic row list.
+ *
+ * @internal
  */
 export function traceChannels(): TraceChannelDescriptor[] {
   return [...(_channels.values() as Iterable<TraceChannelDescriptor>)]
@@ -199,6 +201,7 @@ export interface TraceSink {
 // nothing: by the time a panel draws a row, the unredacted copy has already been
 // streamed to the browser and written to `.zerotal/devtools.sqlite`, where it
 // sits for a day. The sink is the last point where "not recorded" is still true.
+/** @internal */
 export const traceSink: TraceSink = {
   channel(descriptor: TraceChannelDescriptor): void {
     _channels.set(descriptor.id, descriptor);

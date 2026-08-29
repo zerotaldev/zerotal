@@ -55,6 +55,8 @@ export function staticScheduleConfigKeys(cls: abstract new () => Schedule): stri
 /**
  * Register one Schedule instance with the scheduler manager, translating its declarative
  * settings into a configured ScheduledTask. Exported for testing.
+ *
+ * @internal
  */
 export function registerSchedule(
   manager: SchedulerManager,
@@ -101,6 +103,8 @@ export function registerSchedule(
  * `app/schedules/` convention. Every `Schedule` subclass is instantiated and registered with the
  * scheduler. Runs in worker (to execute) and console (so `schedule:list` can enumerate them);
  * never in `web`, so HTTP instances don't run cron. Contributed by `SchedulerProvider`.
+ *
+ * @internal
  */
 export const schedulesConcern: ConcernDescriptor = {
   name: "schedules",

@@ -179,6 +179,27 @@ How the table renders — grid instead of rows, striping, sticky headers, densit
 and where the filters sit are covered in
 [Extending the UI](/docs/admin/extending-ui#table-presentation).
 
+## Types
+
+What a column, filter and query rule are made of. All exported, so a helper that builds a
+column set for several resources can be typed rather than repeated.
+
+| Type                                                       | What it is                                                                                          |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `ColumnKind`                                               | Which column type this is — text, badge, boolean, date, and the rest.                               |
+| `ColumnOption`                                             | One column's settings.                                                                              |
+| `CellAlign`                                                | `start` / `center` / `end`.                                                                         |
+| `ColumnSummary`, `SummaryKind`, `SummaryResult`            | A footer aggregate: what to compute, and what comes back.                                           |
+| `BadgeTone`                                                | The colouring a badge column maps a value to.                                                       |
+| `EmptyState`                                               | What the table shows instead of rows when there are none.                                           |
+| `PivotColumn`                                              | A column reading a pivot table's own attributes on a many-to-many.                                  |
+| `FilterOption`, `FilterType`, `FilterApply`                | A filter's declaration, its kind, and how it modifies the query.                                    |
+| `ConstraintKind`, `ConstraintOperator`, `ConstraintOption` | The query-builder constraints behind advanced filtering.                                            |
+| `QueryRule`, `Conjunction`, `QueryModifier`                | One rule, how rules combine (`and` / `or`), and a raw modifier for what the builder cannot express. |
+| `SavedView`, `SavedViewProvider`                           | A stored filter set, and where those are kept.                                                      |
+| `TableRowsResolver`                                        | Supplying rows yourself instead of letting the resource query.                                      |
+| `ExportFormat`                                             | What the export action writes.                                                                      |
+
 ## Next steps
 
 - [Admin overview](/docs/admin) — the guide's front page and the rest of the sections.

@@ -565,6 +565,12 @@ still override one, and no page is forced to pass it.
 - **Before you rebuild the registry**, every name and every prop bag compiles, as
   it always did.
 
+## Types
+
+`PageObject` is what Inertia serialises into the page — component, props, url and version.
+`MergeConfig` and `ScrollConfig` configure `merge()` and `scroll()`, and `PaginatorLike` is what
+`scroll()` accepts from a paginator so the ORM's own and a hand-built one both work.
+
 ## Next steps
 
 - [Inertia overview](/docs/inertia) — the guide's front page and the rest of the sections.

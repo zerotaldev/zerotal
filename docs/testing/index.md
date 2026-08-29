@@ -256,6 +256,12 @@ its full surface.
 | `fake`                  | `typeof fake`                                                                                    | South-African-flavoured random data generator.       |
 | `fakeFile`              | `typeof fakeFile`                                                                                | Real PNG/JPEG/GIF/PDF files for upload tests.        |
 
+### Types
+
+`TestResponseContext` is what an assertion receives, `SessionDecoder` reads the session out of a
+response so a test can assert on it, and `FakeFile` / `TestFileInput` / `TestFormValue` are the
+shapes a multipart submission takes in a test.
+
 ## Next steps
 
 - [HTTP Tests](/docs/testing/http) — the full `TestApp` and `TestResponse` API.

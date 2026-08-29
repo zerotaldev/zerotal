@@ -540,6 +540,15 @@ res.assertUnprocessable(); // 422 for a JSON request
 | `validate`        | `validate(ctx, factory): Promise<Infer<…>>`  | One-off HTTP validation; throws on failure.          |
 | `Validator.check` | `check(data, factory): ValidationOutcome<…>` | Non-HTTP validation; returns a result, never throws. |
 
+## Types
+
+| Type                        | What it is                                                                                               |
+| --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `ValidationErrors`          | The error bag — field name to messages, which is what `withErrors()` and the `errors` shared prop carry. |
+| `FieldRuleDefinition`       | One field's rules as declared.                                                                           |
+| `InferFieldType<R>`         | The type a rule set produces, so validated data is typed rather than `unknown`.                          |
+| `PrecognitionResponseError` | What a precognition request returns when a field fails ahead of submission.                              |
+
 ## Next steps
 
 - [Requests Context](/docs/context#reading-input) — read the input that `FormRequest` validates.

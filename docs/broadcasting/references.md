@@ -77,6 +77,23 @@ Notifications can be delivered over a broadcast channel in real time — add `'b
 notification's `channels()` and implement `toBroadcast()`. See
 [Notifications → Broadcasting](/docs/notifications#broadcast).
 
+## Types
+
+Channel and event types, most of which are inferred from your channel declarations:
+
+| Type                                                      | What it is                                                                              |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `StaticChannels`, `ParameterizedChannels`                 | Channels with fixed names, and those taking params.                                     |
+| `ChannelParams`, `ChannelParamRecord`                     | What a parameterised channel captures.                                                  |
+| `ChannelAuthFn`                                           | The authorization callback for a private channel.                                       |
+| `PresenceAuthFn`, `PresenceMemberData`                    | The same for presence, plus what a member publishes to the others.                      |
+| `AuthorizeResult`                                         | What an auth callback may return — a refusal, or the member data.                       |
+| `TypedBroadcastEvent`, `EventsOf`, `PayloadOf`            | An event on a channel, the events a channel carries, and one event's payload.           |
+| `BroadcastsModelEventsOptions`, `ModelBroadcastEventName` | Broadcasting a model's own lifecycle, and the event names it produces.                  |
+| `BroadcastRecord`                                         | A queued broadcast as stored.                                                           |
+| `WsConnectionData`                                        | What the server holds per connection.                                                   |
+| `PusherPresenceResolver`                                  | Resolving presence members when running against Pusher rather than the built-in server. |
+
 ## Next steps
 
 - [Broadcasting overview](/docs/broadcasting) — the guide's front page and the rest of the sections.

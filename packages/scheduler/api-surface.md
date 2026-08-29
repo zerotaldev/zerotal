@@ -21,13 +21,6 @@ class CronExpression = {
   weekday: (v: number | string) => CronExpression
 }
 
-class FileScheduleRunStore = {
-  new (_path: string, _keep?: number): FileScheduleRunStore
-  lastFor: (name: string) => ScheduleRunRecord | undefined
-  recent: (limit?: number, name?: string) => ScheduleRunRecord[]
-  record: (run: ScheduleRunRecord) => void
-}
-
 class Schedule = {
   new (): Schedule
   appendOutputTo?: string
@@ -179,19 +172,7 @@ class TaskSkipped = {
   readonly reason: 'lock' | 'window' | 'env' | 'when' | 'skip' | 'overlap'
 }
 
-const DEFAULT_RUN_LOG_KEEP = 500
-
-const DEFAULT_RUN_LOG_PATH = 'storage/framework/schedule-runs.jsonl'
-
 const Scheduler = SchedulerManager
-
-const schedulesConcern = ConcernDescriptor
-
-function installScheduleRunLog = (app: Application) => (() => void) | undefined
-
-function registerSchedule = (manager: SchedulerManager, schedule: Schedule, fallbackName: string) => ScheduledTask | undefined
-
-function resolveRunLogConfig = (app: Application) => RunLogConfig
 
 function SchedulerConfig = (options?: Partial<SchedulerConfigShape>) => SchedulerConfigShape
 

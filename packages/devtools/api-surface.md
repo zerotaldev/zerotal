@@ -45,10 +45,6 @@ class TraceStore = {
   subscribe: (fn: Subscriber) => () => void
 }
 
-const traceSink = TraceSink
-
-function attributeBindings = (sql: string, count: number) => Array<string | undefined>
-
 function DevtoolsConfig = (options?: Partial<DevtoolsConfigShape>) => DevtoolsConfigShape
 
 function devtoolsEnabled = () => boolean
@@ -60,10 +56,6 @@ function redactBindings = (sql: string, bindings: unknown[], options?: Redaction
 function redactCacheKey = (key: string, options?: RedactionOptions) => string
 
 function redactValue = (value: unknown, options?: RedactionOptions) => unknown
-
-function startDevtoolsStream = () => () => void
-
-function traceChannels = () => TraceChannelDescriptor[]
 
 function traceStore = () => TraceStore
 
@@ -93,8 +85,6 @@ interface DevtoolsConfigShape = {
   pruneHours: number
   redact: RedactionOptions
 }
-
-interface DevtoolsInjectionOptions = {}
 
 interface DevtoolsPanelPlugin = {
   badge?: () => number | string | undefined

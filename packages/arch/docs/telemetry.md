@@ -497,6 +497,14 @@ console.log(mem.spans[0]?.attributes["x"]); // 1
 | `'producer'` | Enqueuing a message.                                        |
 | `'consumer'` | Processing a queued message.                                |
 
+## Types
+
+| Type                           | What it is                                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------------------- |
+| `TelemetryOptions`             | What `TelemetryConfig()` accepts.                                                        |
+| `OtlpExporterOptions`          | Where spans are shipped, and how.                                                        |
+| `SpanStatus`, `SpanStatusCode` | A span's outcome — `unset`, `ok` or `error`, which is what a backend colours a trace by. |
+
 ## Next steps
 
 - [Logger](/docs/logger) — pair traces with structured logs.

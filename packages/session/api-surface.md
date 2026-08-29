@@ -130,8 +130,6 @@ class SessionSecretMissingError = {
 
 const Session = SessionAccessor
 
-const SESSION_ISSUED_AT_KEY = '_iat'
-
 function SessionConfig = (options?: Partial<SessionConfigShape>) => SessionConfigShape
 
 interface CsrfOptions = {

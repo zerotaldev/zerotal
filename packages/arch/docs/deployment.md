@@ -606,6 +606,13 @@ for p in node_modules/*/package.json node_modules/@*/*/package.json; do
 done
 ```
 
+### `startZerotal` options
+
+`StartZerotalOptions` is what `zt.ts` may pass — currently `configDir`, for an app whose config
+does not live at `./config`. `isDevSurfaceAllowed(env)` is the check every dev-only surface
+gates on, exported so an app's own dev tooling can gate the same way; it **fails closed**, so an
+unset `APP_ENV` does not qualify.
+
 ## Next steps
 
 - [Configuration](/docs/config-system) — environment variables and config files.

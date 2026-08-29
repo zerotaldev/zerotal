@@ -83,6 +83,16 @@ Panel.configure({
 `adminTokensCss()` the `:root`/`.dark` custom properties — feed both into your own
 `tailwind.config` so a compiled stylesheet renders identically.
 
+## Types
+
+| Type                          | What it is                                                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AdminAuthConfig`             | Who may reach the panel and how they sign in.                                                                                                                           |
+| `AdminAuthorizer`             | The check run before a page renders.                                                                                                                                    |
+| `AuthRolesOptions`            | How panel access maps onto the app's roles.                                                                                                                             |
+| `AdminThemeConfig`            | Panel theming.                                                                                                                                                          |
+| `EnvironmentIndicatorOptions` | The banner naming which deployment you are looking at — worth setting, because the panel looks identical in staging and production and that is exactly when it matters. |
+
 ## Next steps
 
 - [Admin overview](/docs/admin) — the guide's front page and the rest of the sections.

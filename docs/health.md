@@ -280,6 +280,16 @@ What a check returns to describe its own state. A check may also return nothing
 | `HealthConfigShape`    | What `HealthConfig()` accepts.                                              |
 | `ResolvedHealthConfig` | The same after defaults are filled in — what the endpoint actually reads.   |
 
+### The doctor's own types
+
+`zt doctor` is extensible: a provider contributes checks through `doctorChecks()`, and
+`runDoctor(app)` runs them all. A check returns a `DoctorCheckResult` — `ok`, `warn` or `fail`,
+with a message and the `fix` printed under it — and the report is `DoctorReportEntry[]`, each
+pairing a check with what it found.
+
+A `fail` refuses a deploy; a `warn` does not. Choose deliberately: a check that warns about
+something fatal is ignored, and one that fails on something conditional gets worked around.
+
 ## Next steps
 
 - [Telemetry](/docs/telemetry) — collect the metrics behind your readiness checks.

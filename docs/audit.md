@@ -359,6 +359,11 @@ app.container.singleton(
 | `auditLog`  | `(event: AuditEvent, payload?: InstanceAuditPayload) => Promise<void>` | Log a custom event against this instance.   |
 | `auditLogs` | `() => ModelQueryBuilder<AuditLog>`                                    | Chainable query of this instance's history. |
 
+## Types
+
+`AuditableOptions` is what `Model.using(Auditable)` accepts — which columns are tracked and
+which are ignored. `AuditConfigShape` is the `audit` config namespace.
+
 ## Next steps
 
 - [ORM Lifecycle](/docs/orm/lifecycle) — the model hooks the audit system listens to.

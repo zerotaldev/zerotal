@@ -36,10 +36,18 @@ const _roleRelated = () => Role;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic mixin base bound
 type Constructor<T = object> = new (...args: any[]) => T;
 
-/** Brand marking a model (or an ancestor) as composing the `Roles` mixin. */
+/**
+ * Brand marking a model (or an ancestor) as composing the `Roles` mixin.
+ *
+ * @internal
+ */
 export const ROLES_MIXIN: unique symbol = Symbol.for("zerotal.auth.roles");
 
-/** True when the given model constructor composes `Roles`. */
+/**
+ * True when the given model constructor composes `Roles`.
+ *
+ * @internal
+ */
 export function hasRolesMixin(model: unknown): boolean {
   return !!(model as Record<symbol, unknown> | undefined)?.[ROLES_MIXIN];
 }

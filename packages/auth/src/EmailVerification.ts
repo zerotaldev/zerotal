@@ -68,10 +68,18 @@ import {
 
 const KIND = "email-verify";
 
-/** Brand marking a model (or an ancestor) as carrying the email-verification contract. */
+/**
+ * Brand marking a model (or an ancestor) as carrying the email-verification contract.
+ *
+ * @internal
+ */
 export const EMAIL_VERIFICATION: unique symbol = Symbol.for("zerotal.auth.emailVerification");
 
-/** True when the given model constructor composes `EmailVerification`. */
+/**
+ * True when the given model constructor composes `EmailVerification`.
+ *
+ * @internal
+ */
 export function hasEmailVerification(model: unknown): boolean {
   return !!(model as Record<symbol, unknown> | undefined)?.[EMAIL_VERIFICATION];
 }

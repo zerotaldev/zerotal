@@ -13,7 +13,11 @@
  */
 import { safeEqual, sha256Hex, buildCookie } from "@zerotal/core";
 
-/** Name of the persistent-login cookie. */
+/**
+ * Name of the persistent-login cookie.
+ *
+ * @internal
+ */
 export const REMEMBER_COOKIE = "remember_web";
 
 /**
@@ -23,17 +27,27 @@ export const REMEMBER_COOKIE = "remember_web";
  * other engines), so a longer value is not a longer credential — it is the same credential
  * with a misleading number on it. The token is also rotated on every use, so the window an
  * intercepted cookie is valid for is the interval between the victim's own visits, not this.
+ *
+ * @internal
  */
 export const REMEMBER_MAX_AGE = 60 * 60 * 24 * 400;
 
-/** Generate a 60-char hex token (30 random bytes) for a new remember cookie. */
+/**
+ * Generate a 60-char hex token (30 random bytes) for a new remember cookie.
+ *
+ * @internal
+ */
 export function mintRememberToken(): string {
   const bytes = new Uint8Array(30);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** SHA-256 hex of a raw token — this is what gets persisted, never the raw value. */
+/**
+ * SHA-256 hex of a raw token — this is what gets persisted, never the raw value.
+ *
+ * @internal
+ */
 export function hashRememberToken(raw: string): string {
   return sha256Hex(raw);
 }
@@ -42,6 +56,8 @@ export function hashRememberToken(raw: string): string {
  * Constant-time check that a raw cookie token matches a stored hash
  * (`safeEqual`'s length pre-check is safe: the hash length is a fixed public
  * constant).
+ *
+ * @internal
  */
 export function rememberTokenMatches(rawFromCookie: string, storedHash: string): boolean {
   return safeEqual(hashRememberToken(rawFromCookie), storedHash);

@@ -964,7 +964,86 @@ res.assertOk();
 res.assertSee("Welcome back");
 ```
 
+## Passkeys
+
+A passkey replaces the password with a key pair held by the device: the private half never
+leaves the authenticator, so there is nothing on your server worth stealing and nothing for a
+user to reuse across sites. `PasskeyService` implements both WebAuthn ceremonies.
+
+You supply where credentials are stored — the service does not assume a schema:
+
+```typescript fragment
+import { PasskeyService } from "@zerotal/auth";
+
+const passkeys = new PasskeyService({
+  rpName: "Acme",
+  rpId: "acme.test", // the domain, no scheme and no port
+  origin: "https://acme.test", // or an array, for staging alongside production
+  store: {
+    findUserCredentials: (userId) => Credential.where("user_id", userId).all(),
+    findCredential: (credentialId) => Credential.where("credential_id", credentialId).first(),
+    saveCredential: (credential) => Credential.create(credential),
+    updateCounter: (id, counter) => Credential.where("id", id).update({ counter }),
+  },
+});
+```
+
+Each ceremony is two calls — options out, response verified in. The challenge you hand back to
+`verify…` is the one you issued, which is what stops a replay:
+
+| Call                                                 | What it does                                                                                                                                          |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `registrationOptions(user, existing?)`               | Options for enrolment. Pass the user's existing credentials so the browser refuses to register the same authenticator twice.                          |
+| `verifyRegistration(user, response, challenge, ctx)` | Verifies enrolment and stores the credential.                                                                                                         |
+| `authenticationOptions(userId?)`                     | Options for sign-in. Omit `userId` for a usernameless flow, where the authenticator offers the account.                                               |
+| `verifyAuthentication(assertion, challenge, ctx)`    | Returns `{ credential, userId }`, or the string `"passkey.invalid"` — a value rather than a throw, because a failed assertion is an ordinary outcome. |
+
+`PasskeyUser` is the minimum the ceremonies need (`id`, `name`, `email`); `PasskeyCredential` is
+what your store holds.
+
+> **`requireUserVerification` defaults to `true`, and that is what makes a passkey a second
+> factor.** With it off, an assertion succeeds on possession of an unlocked authenticator alone
+> — whoever picks up the phone is the user. Turn it off only for a deliberate "the device is the
+> credential" flow, and then do not count the passkey as a second factor.
+
+`rpId` is the domain alone — no scheme, no port — and it must match the site the browser is on
+or the ceremony fails with an error that does not say why. `origin` takes an array when the same
+deployment answers on more than one.
+
 ## References
+
+### Types
+
+Every middleware and broker takes an options shape, exported so a helper that builds one can be
+typed:
+
+| Type                                | Configures                                                              |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `AuthOptions`                       | `AuthMiddleware` — `redirectTo`, `mustVerifyEmail`, `verifyRedirectTo`. |
+| `GuestOptions`                      | `GuestMiddleware` — where a signed-in visitor is sent instead.          |
+| `BasicAuthOptions`                  | HTTP Basic auth.                                                        |
+| `ConfirmPasswordOptions`            | `ConfirmPasswordMiddleware`, including the confirmation window.         |
+| `AuthenticateSessionOptions`        | Session-guard behaviour on a password change elsewhere.                 |
+| `RememberMeOptions`                 | The persistent-login cookie.                                            |
+| `TwoFactorOptions`                  | The second-factor gate.                                                 |
+| `LoginThrottleOptions`              | Sign-in rate limiting.                                                  |
+| `EmailOtpOptions`                   | Passwordless codes by email.                                            |
+| `MagicLinkBrokerOptions`            | Magic-link sign-in.                                                     |
+| `PasskeysOptions`                   | `PasskeyService`, above.                                                |
+| `CompromisedCheckOptions`           | The have-i-been-pwned style check on a chosen password.                 |
+| `JwtGuardOptions`, `JwtSignOptions` | The JWT guard and how tokens are minted.                                |
+| `QrSvgOptions`                      | The 2FA enrolment QR code.                                              |
+
+What the brokers and guards hand back: `PasswordBrokerResult`, `MagicLinkBrokerResult` and
+`MagicLinkUser` for the link flows, `JwtPayload` and `TokenBundle` for JWT, and
+`PasskeyCredential` / `PasskeyUser` for passkeys.
+
+### Events
+
+Emitted on `FrameworkEvents`, so an app can audit or react without wrapping the calls that
+raise them: `EmailVerified`, `PasswordConfirmed`, `PasswordResetLinkSent`, `PasswordResetEvent`
+and `CurrentDeviceLogout`. `LoginSucceeded`, `LoggedOut` and `OtherDeviceLogout` are documented
+above with the calls that emit them.
 
 ### Commands
 

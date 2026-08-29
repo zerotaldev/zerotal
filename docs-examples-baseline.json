@@ -945,6 +945,12 @@
     },
     {
       "file": "docs/authentication.md",
+      "heading": "Passkeys",
+      "ordinal": 0,
+      "hash": "278pehd31y87"
+    },
+    {
+      "file": "docs/authentication.md",
       "heading": "Password confirmation",
       "ordinal": 0,
       "hash": "16nuusa3lwgy"

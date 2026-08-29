@@ -16,6 +16,8 @@ export const TWO_FACTOR_SESSION_KEY = "two_factor_confirmed";
  *
  * This is what makes 2FA a *login* gate rather than a per-route one: enforcement does not
  * depend on a developer remembering to attach {@link TwoFactorMiddleware} to a route.
+ *
+ * @internal
  */
 export const TWO_FACTOR_PENDING_KEY = "two_factor_pending";
 
@@ -23,6 +25,8 @@ export const TWO_FACTOR_PENDING_KEY = "two_factor_pending";
  * Session key recording that the pending login asked to be remembered. The remember cookie
  * is a password-free credential, so it is minted by {@link Auth.completeTwoFactor} rather
  * than at password time.
+ *
+ * @internal
  */
 export const TWO_FACTOR_REMEMBER_KEY = "two_factor_pending_remember";
 

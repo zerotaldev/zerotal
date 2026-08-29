@@ -3,7 +3,11 @@ import { BaseMiddleware, FrameworkEvents } from "@zerotal/core";
 import { LoggedOut } from "./events.ts";
 import type { SessionManager } from "@zerotal/session";
 
-/** Session key holding a snapshot of the user's password hash for this session. */
+/**
+ * Session key holding a snapshot of the user's password hash for this session.
+ *
+ * @internal
+ */
 export const AUTH_PASSWORD_HASH_KEY = "auth_password_hash";
 
 export interface AuthenticateSessionOptions {

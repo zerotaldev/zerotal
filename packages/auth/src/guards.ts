@@ -18,7 +18,11 @@
  */
 import { RequestContext, UnauthorizedError } from "@zerotal/core";
 
-/** Resolves a user (or null) from the incoming request for a request guard. */
+/**
+ * Resolves a user (or null) from the incoming request for a request guard.
+ *
+ * @internal
+ */
 export type RequestGuardResolver = (request: Request) => unknown | Promise<unknown>;
 
 /**
@@ -50,6 +54,8 @@ interface CtxWithGuards {
 /**
  * A stateless guard that resolves its user from the request on first access and
  * caches the result on the context for the rest of the request.
+ *
+ * @internal
  */
 export class RequestGuard implements Guard {
   constructor(

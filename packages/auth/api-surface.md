@@ -621,15 +621,6 @@ class RememberMeMiddleware = {
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
 }
 
-class RequestGuard = {
-  new (_name: string, _resolver: RequestGuardResolver): RequestGuard
-  check: () => Promise<boolean>
-  guest: () => Promise<boolean>
-  id: () => Promise<number | string | undefined>
-  user: () => Promise<unknown>
-  userOrNull: () => Promise<unknown>
-}
-
 class RequirePermissionMiddleware = {
   new (...abilities: string[]): RequirePermissionMiddleware
   static for: (...abilities: string[]) => RequirePermissionMiddleware
@@ -857,14 +848,6 @@ class ValidateSignatureMiddleware = {
 
 const Auth = {    user(): UserModel;    userOrNull(): UserModel | undefined;    id(): number;    check(): boolean;    guest(): boolean;    viaRemember(): boolean;    confirmPassword(password: string): Promise<boolean>;    markPasswordConfirmed(): void;    hasRecentlyConfirmedPassword(timeoutSeconds?: number): boolean;    hasRole(role: string): boolean;    hasAnyRole(roles: string[]): boolean;    hasAllRoles(roles: string[]): boolean;    can(ability: string): boolean;    hasPermission(ability: string): boolean;    authorize(ability: string): void;    roles(): string[];    attempt(credentials: Credentials, remember?: boolean): Promise<boolean>;    attemptWhen(credentials: Credentials, callback: (user: UserModel) => boolean | Promise<boolean>, remember?: boolean): Promise<boolean>;    validate(credentials: Credentials): Promise<boolean>;    once(credentials: Credentials): Promise<boolean>;    loginUsingId(id: number, remember?: boolean): Promise<UserModel | null>;    login(user: UserModel, options?: LoginOptions): Promise<void>;    twoFactorPending(): boolean;    pendingTwoFactorUser(): UserModel | undefined;    completeTwoFactor(): Promise<UserModel | null>;    logout(): Promise<void>;    logoutOtherDevices(password: string): Promise<boolean>;    viaRequest(name: string, resolver: RequestGuardResolver): void;    guard(name?: string): Guard;}
 
-const AUTH_PASSWORD_HASH_KEY = 'auth_password_hash'
-
-const AUTHENTICATABLE = typeof AUTHENTICATABLE
-
-const DEFAULT_PASSWORD_TIMEOUT = number
-
-const EMAIL_VERIFICATION = typeof EMAIL_VERIFICATION
-
 const Gate = GateService
 
 const Hash = HashService
@@ -875,29 +858,9 @@ const loginThrottle = LoginRateLimiter
 
 const MAGIC = {    readonly SENT: 'magic.sent';    readonly USER_NOT_FOUND: 'magic.user_not_found';    readonly OK: 'magic.ok';    readonly INVALID: 'magic.invalid';}
 
-const PASSWORD_CONFIRMED_AT_KEY = 'auth_password_confirmed_at'
-
-const PASSWORD_RESET = typeof PASSWORD_RESET
-
 const PASSWORDS = {    readonly SENT: 'passwords.sent';    readonly TOKEN: 'passwords.token';    readonly RESET: 'passwords.reset';}
 
-const PermissionRegistry = {    define: (...names: (string | string[])[]) => void;    all: () => string[];}
-
-const PERMISSIONS_MIXIN = typeof PERMISSIONS_MIXIN
-
-const RECOVERY_CODE_BITS = 160
-
-const REMEMBER_COOKIE = 'remember_web'
-
-const REMEMBER_MAX_AGE = number
-
-const ROLES_MIXIN = typeof ROLES_MIXIN
-
 const Social = SocialManager
-
-const TWO_FACTOR_PENDING_KEY = 'two_factor_pending'
-
-const TWO_FACTOR_REMEMBER_KEY = 'two_factor_pending_remember'
 
 const TWO_FACTOR_SESSION_KEY = 'two_factor_confirmed'
 
@@ -917,35 +880,17 @@ function encodeQr = (text: string) => QrMatrix
 
 function fakeSocialUser = (overrides?: Partial<SocialUser>) => SocialUser
 
-function hasEmailVerification = (model: unknown) => boolean
-
-function hashRememberToken = (raw: string) => string
-
 function hashToken = (plaintext: string) => Promise<string>
-
-function hasPasswordReset = (model: unknown) => boolean
-
-function hasPermissionsMixin = (model: unknown) => boolean
-
-function hasRolesMixin = (model: unknown) => boolean
-
-function isAuthenticatable = (model: unknown) => boolean
 
 function isPasswordCompromised = (password: string, opts?: CompromisedCheckOptions) => Promise<boolean>
 
 function maxPayloadBytes = (version?: number) => number
-
-function mintRememberToken = () => string
 
 function PasswordReset = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): PasswordReset;    prototype: PasswordReset<any>.PasswordReset;    passwordResetExpireMinutes: number;    resetPassword(token: string, newPassword: string): Promise<PasswordReset | null>;} & TBase
 
 function Permissions = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): (Anonymous class);    prototype: Permissions<any>.(Anonymous class);    withPermissions: boolean;} & TBase
 
 function qrSvg = (matrix: QrMatrix, options?: QrSvgOptions) => string
-
-function registeredPermissions = () => string[]
-
-function rememberTokenMatches = (rawFromCookie: string, storedHash: string) => boolean
 
 function Roles = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): (Anonymous class);    prototype: Roles<any>.(Anonymous class);    withRoles: boolean;} & TBase
 
@@ -1221,7 +1166,5 @@ type JwtPayload = {    [x: string]: unknown;}
 type MagicLinkBrokerResult = 'magic.sent' | 'magic.user_not_found' | 'magic.ok' | 'magic.invalid'
 
 type PasswordBrokerResult = 'passwords.sent' | 'passwords.token' | 'passwords.reset'
-
-type RequestGuardResolver = (request: Request) => unknown | Promise<unknown>
 
 type SocialConfigShape = {    [driver: string]: (OAuth2Config & Record<string, unknown>) | undefined;    github?: OAuth2Config & Record<string, unknown>;    google?: OAuth2Config & Record<string, unknown>;    apple?: AppleOAuth2Config & Record<string, unknown>;    discord?: (OAuth2Config & Record<string, unknown>) | undefined;    microsoft?: (OAuth2Config & Record<string, unknown>) | undefined;    facebook?: (OAuth2Config & Record<string, unknown>) | undefined;    twitter?: (OAuth2Config & Record<string, unknown>) | undefined;    linkedin?: (OAuth2Config & Record<string, unknown>) | undefined;    gitlab?: (OAuth2Config & Record<string, unknown>) | undefined;}

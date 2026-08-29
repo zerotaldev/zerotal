@@ -129,6 +129,8 @@ function currentCounter(): bigint {
  * because the search space is this large: 2^160 leaves an offline attacker with a leaked
  * column nothing to do. Lowering this without also changing the storage scheme turns every
  * recovery code into a brute-forceable second-factor bypass.
+ *
+ * @internal
  */
 export const RECOVERY_CODE_BITS = 160;
 

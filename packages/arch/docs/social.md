@@ -516,6 +516,16 @@ validation errors is exactly the string you forward to `?error=`.
 | `OAuthUserFetchError`           | provider message          | User-profile fetch failed.                         |
 | `AppleClientSecretError`        | Apple credentials message | Apple driver has neither a JWT nor raw key trio.   |
 
+## Types
+
+| Type                | What it is                                                                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `OAuth2Config`      | What a provider entry in `config/services.ts` holds — id, secret, redirect URI.                                              |
+| `AppleOAuth2Config` | Apple's, which needs more: a team id, a key id, and the private key it signs with.                                           |
+| `SocialSession`     | What the driver stashes between the redirect out and the callback back.                                                      |
+| `GoogleDriver`      | Exported so a custom driver can extend it rather than reimplement OIDC.                                                      |
+| `FakeSocialDriver`  | What `Social.fake()` installs — returns a canned profile instead of exchanging a code. See [Mocking](/docs/testing/mocking). |
+
 ## Next steps
 
 - [Authentication](/docs/authentication) — establish the session after a social login.

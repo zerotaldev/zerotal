@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Passkeys are documented.** `PasskeyService` has shipped since 1.7.0 and had no page — a
+  feature the framework leads on, that nobody could find. Both WebAuthn ceremonies are now
+  written up with the store contract you supply, why `verifyAuthentication` returns
+  `"passkey.invalid"` as a value rather than throwing, and the two configuration details that
+  fail with an error naming neither: `rpId` is the bare domain, and `requireUserVerification`
+  defaults to `true` because that is what makes a passkey a second factor rather than one.
+
+- **Every middleware and broker options type is named**, plus the broker results, the JWT
+  payload shapes and the auth events. The social config shapes are in
+  [Social](/docs/social#types).
+
+### Changed
+
+- **INTERNAL: 25 exports are marked `@internal`** — the session-key constants, the mixin brand
+  symbols and their type guards, the remember-token internals, the permission registry, and the
+  request-guard plumbing. Still exported, still working; none is something an app calls, and
+  freezing the session key names would have promised the shape of the session bag.
+
 ## [1.9.0] — 2026-08-29
 
 ### Added

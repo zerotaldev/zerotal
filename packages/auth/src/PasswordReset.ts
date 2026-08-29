@@ -41,10 +41,18 @@ import {
 
 const KIND = "password-reset";
 
-/** Brand marking a model (or an ancestor) as carrying the password-reset contract. */
+/**
+ * Brand marking a model (or an ancestor) as carrying the password-reset contract.
+ *
+ * @internal
+ */
 export const PASSWORD_RESET: unique symbol = Symbol.for("zerotal.auth.passwordReset");
 
-/** True when the given model constructor composes `PasswordReset`. */
+/**
+ * True when the given model constructor composes `PasswordReset`.
+ *
+ * @internal
+ */
 export function hasPasswordReset(model: unknown): boolean {
   return !!(model as Record<symbol, unknown> | undefined)?.[PASSWORD_RESET];
 }

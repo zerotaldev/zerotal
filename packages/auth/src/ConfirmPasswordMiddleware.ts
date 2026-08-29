@@ -2,10 +2,18 @@ import type { NextFn, HttpContext } from "@zerotal/core";
 import { BaseMiddleware } from "@zerotal/core";
 import type { SessionManager } from "@zerotal/session";
 
-/** Session key holding the unix-ms timestamp of the last password confirmation. */
+/**
+ * Session key holding the unix-ms timestamp of the last password confirmation.
+ *
+ * @internal
+ */
 export const PASSWORD_CONFIRMED_AT_KEY = "auth_password_confirmed_at";
 
-/** Default window (seconds) a confirmation stays valid — 3 hours. */
+/**
+ * Default window (seconds) a confirmation stays valid — 3 hours.
+ *
+ * @internal
+ */
 export const DEFAULT_PASSWORD_TIMEOUT = 3 * 60 * 60;
 
 export interface ConfirmPasswordOptions {

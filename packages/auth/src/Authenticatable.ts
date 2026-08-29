@@ -5,10 +5,16 @@ import { registerColumn, type Constructor } from "@zerotal/orm";
  * `Symbol.for` keeps it stable across module instances. Set on the mixin class and
  * inherited by every subclass, so detection works for both
  * `extends AuthUser` and `extends Model.using(Authenticatable, …)`.
+ *
+ * @internal
  */
 export const AUTHENTICATABLE: unique symbol = Symbol.for("zerotal.auth.authenticatable");
 
-/** True when the given model constructor composes `Authenticatable` (directly or via a base). */
+/**
+ * True when the given model constructor composes `Authenticatable` (directly or via a base).
+ *
+ * @internal
+ */
 export function isAuthenticatable(model: unknown): boolean {
   return !!(model as Record<symbol, unknown> | undefined)?.[AUTHENTICATABLE];
 }

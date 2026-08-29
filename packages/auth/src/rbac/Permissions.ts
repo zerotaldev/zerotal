@@ -34,10 +34,18 @@ const _permissionRelated = () => Permission;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic mixin base bound
 type Constructor<T = object> = new (...args: any[]) => T;
 
-/** Brand marking a model (or an ancestor) as composing the `Permissions` mixin. */
+/**
+ * Brand marking a model (or an ancestor) as composing the `Permissions` mixin.
+ *
+ * @internal
+ */
 export const PERMISSIONS_MIXIN: unique symbol = Symbol.for("zerotal.auth.permissions");
 
-/** True when the given model constructor composes `Permissions`. */
+/**
+ * True when the given model constructor composes `Permissions`.
+ *
+ * @internal
+ */
 export function hasPermissionsMixin(model: unknown): boolean {
   return !!(model as Record<symbol, unknown> | undefined)?.[PERMISSIONS_MIXIN];
 }

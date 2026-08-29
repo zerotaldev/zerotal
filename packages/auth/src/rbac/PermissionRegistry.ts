@@ -16,7 +16,11 @@ export function definePermission(...names: (string | string[])[]): void {
   for (const n of names.flat()) _permissions.add(n);
 }
 
-/** All registered permission names. */
+/**
+ * All registered permission names.
+ *
+ * @internal
+ */
 export function registeredPermissions(): string[] {
   return [..._permissions];
 }
@@ -26,7 +30,11 @@ export function _clearRegisteredPermissions(): void {
   _permissions.clear();
 }
 
-/** Facade-style accessor: `PermissionRegistry.define('post.create')`, `PermissionRegistry.all()`. */
+/**
+ * Facade-style accessor: `PermissionRegistry.define('post.create')`, `PermissionRegistry.all()`.
+ *
+ * @internal
+ */
 export const PermissionRegistry = {
   define: (...names: (string | string[])[]): void => definePermission(...names),
   all: (): string[] => registeredPermissions(),

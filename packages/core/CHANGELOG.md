@@ -10,6 +10,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`zt deploy:<env> --check`** — the preflight gate on its own. A release script has a
+  moment where the new code is on disk and the service has not restarted yet, and that
+  is where a gate belongs: exit 0 and restart, exit non-zero and keep serving the
+  previous release. Everything that can refuse already runs by the end of preflight and
+  none of it mutates, so stopping there is a complete answer rather than half a deploy.
+  A workspace that has lost its banking details, or had its mail driver knocked back to
+  `log`, never goes live broken.
+
 - **`engines.bun` is enforced.** Every generated app writes a floor and nothing had
   ever read it. `runtimeMismatch` did not cover this: it compares the running Bun
   against an _installed_ one, and most projects do not install Bun as a package, so

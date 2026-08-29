@@ -253,3 +253,101 @@ describe("deploy preflight — the app's own commands", () => {
     expect(ran).toEqual(["migrate"]);
   });
 });
+
+/**
+ * `--check` is the gate on its own — the moment in a release script where the new
+ * code is on disk and the service has not restarted yet. Exit 0 and restart; exit 1
+ * and keep serving the previous release, so a workspace that has lost its banking
+ * details or had its mail driver knocked back to `log` never goes live broken.
+ *
+ * Everything that can refuse has already run by the end of preflight, and none of it
+ * mutates, so stopping there is a complete answer rather than half a deploy.
+ */
+describe("deploy --check", () => {
+  const originalKey = Bun.env["APP_KEY"];
+
+  beforeEach(() => {
+    asDeployment("production");
+    Bun.env["APP_KEY"] = "base64:" + Buffer.alloc(32, 7).toString("base64");
+  });
+
+  afterEach(() => {
+    if (originalKey === undefined)
+      delete (Bun.env as Record<string, string | undefined>)["APP_KEY"];
+    else Bun.env["APP_KEY"] = originalKey;
+  });
+
+  /** A container whose registry knows `names` and records everything it ran. */
+  function appWith(names: string[], target: Record<string, unknown> = {}, failing?: string) {
+    const ran: string[] = [];
+    const runner = {
+      has: (n: string) => names.includes(n),
+      callInProcess: async (argv: string[]) => {
+        ran.push(argv[0]!);
+        return argv[0] === failing ? { code: 1, output: "the gate said no" } : { code: 0, output: "" };
+      },
+    };
+    const config = {
+      get: (key: string, fallback?: unknown) => {
+        if (key === "deploy.targets.production") return target;
+        if (key === "app.allowedOrigins") return ["https://example.test"];
+        return fallback;
+      },
+    };
+    return {
+      ran,
+      app: {
+        _configValidators: [],
+        _activeProviders: [],
+        doctorChecks: [],
+        webSocketPaths: () => [],
+        container: {
+          makeSync: (k: string) =>
+            k === "commands" ? runner : k === "config" ? config : undefined,
+        },
+      },
+    };
+  }
+
+  it("runs the app's gate and nothing that mutates", async () => {
+    const { app, ran } = appWith(["release:check", "migrate", "assets:build"], {
+      preflight: ["release:check"],
+      steps: ["migrate", "assets:build"],
+    });
+    const { command } = build("production", { check: true }, app);
+
+    await command.run();
+
+    // The gate ran; the steps did not. That distinction is the whole feature.
+    expect(ran).toEqual(["release:check"]);
+  });
+
+  it("says plainly that nothing was changed", async () => {
+    const { app } = appWith(["release:check"], { preflight: ["release:check"] });
+    const { command, writer } = build("production", { check: true }, app);
+
+    await command.run();
+
+    expect(writer.flush()).toContain("Nothing was built, migrated or restarted");
+  });
+
+  it("fails when the app's gate refuses, so the caller can keep the old release up", async () => {
+    const { app, ran } = appWith(
+      ["release:check", "migrate"],
+      { preflight: ["release:check"], steps: ["migrate"] },
+      "release:check",
+    );
+    const { command } = build("production", { check: true }, app);
+
+    await expect(command.run()).rejects.toThrow(/release:check refused/);
+    expect(ran).toEqual(["release:check"]);
+  });
+
+  it("refuses on the wrong machine, before it reads anything else", async () => {
+    asDeployment("staging");
+    const { app } = appWith(["release:check"]);
+    const { command } = build("production", { check: true }, app);
+
+    await expect(command.run()).rejects.toThrow(/started as staging, not production/);
+  });
+});

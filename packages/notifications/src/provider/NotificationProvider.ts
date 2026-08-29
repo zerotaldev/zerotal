@@ -6,6 +6,7 @@ import { NotificationConfig } from "../config.ts";
 import { installNotificationsObservability } from "../observability.ts";
 import { installNotificationStats } from "../stats.ts";
 import { installNotificationsAdmin } from "../admin.ts";
+import { mailDriverCheck } from "../doctor.ts";
 
 declare module "@zerotal/core" {
   interface ContainerBindings {
@@ -35,6 +36,10 @@ export class NotificationProvider extends ServiceProvider {
     // The admin panel binds its contribution surface during registration, so the
     // booting phase reaches it regardless of provider order.
     installNotificationsAdmin(this.app);
+
+    // `zt doctor`, and through it `zt deploy`: mail going to a log file in
+    // production is the quietest failure this package has.
+    this.app.registerDoctorCheck?.(mailDriverCheck);
   }
 
   override async onBooted(): Promise<void> {

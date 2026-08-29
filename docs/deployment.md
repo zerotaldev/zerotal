@@ -38,6 +38,7 @@ deliberate: systemd, your container runtime or your deploy script owns process
 lifecycle, and this gives it a gate to restart behind.
 
 ```bash
+bun zt deploy:production --check            # run the gate only — see below
 bun zt deploy:production --dry-run          # print the plan, run none of it
 bun zt deploy:production --skip-migrations  # release without touching the schema
 bun zt deploy:production --probe=https://example.com  # real handshake at the end
@@ -75,10 +76,11 @@ Omit the file entirely and you get `DEFAULT_DEPLOY_TARGETS`: `production` and
 ### Your own release gate
 
 The framework's preflight knows the things a framework can know: that this really is the
-environment you think it is, that the config validators pass, that `doctor` is happy. It
-cannot know that this workspace has no cancellation policy, that mail is still wired to the
-`log` driver so nothing is ever sent, or that the owner account is still on the password
-`admin:create` issued it. Those refusals are yours.
+environment you think it is, that the config validators pass, that `doctor` is happy —
+which now includes refusing a production release whose `mail.driver` is still `log`,
+because mail written to a log file is delivered to nobody and says so nowhere. It
+cannot know that this workspace has no cancellation policy, or that the owner account
+is still on the password `admin:create` issued it. Those refusals are yours.
 
 Write them as a command and name it `release:check` (exported as
 `CONVENTIONAL_PREFLIGHT_COMMAND`). The pipeline finds it by name — nothing to wire up:
@@ -123,6 +125,27 @@ not running — which is the state this exists to prevent. A gate nothing calls 
 Two things worth adding while you are there: `assets:build` and `inertia:build` accept
 `--clean`, which removes anything in the output directory the build did not write — see
 [Build assets](#build-assets).
+
+### `--check`: the gate on its own
+
+A release script has a moment where the new code is on disk and the service has not
+restarted yet. That is the moment to ask whether this release is fit to go live, and
+`--check` is the whole preflight and nothing else:
+
+```bash
+# on the box, after the new release is unpacked and before the restart
+APP_ENV=production bun zt deploy:production --check || exit 1
+systemctl restart app
+```
+
+It runs the environment check, the config validators with production semantics,
+`doctor`, and your own `release:check` — everything that can refuse — and builds
+nothing, migrates nothing, restarts nothing. Exit 0 and restart; exit non-zero and
+keep serving the previous release, which is the point. A workspace that has lost its
+banking details, or had its mail driver knocked back to `log`, never goes live broken.
+
+`--check` and `--dry-run` answer different questions. `--dry-run` prints the plan
+without running any of it, including the gate. `--check` runs the gate for real.
 
 > **Note** — `deploy:<env>` runs **where the app runs**, with that environment's
 > variables. It does not reach another machine over SSH. Run it on the box, or in

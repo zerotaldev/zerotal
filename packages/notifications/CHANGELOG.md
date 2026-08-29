@@ -39,6 +39,20 @@ follows the Zerotal monorepo's unified versioning.
   reached for a connection object that did not exist yet. Early bytes are now buffered
   and replayed.
 
+### Added
+
+- **A doctor check for a production `mail.driver` of `"log"`.** It is the default, it
+  is right in development, and it is the quietest possible production failure: every
+  message is written to a log file, nothing reports a problem, and password resets
+  stop arriving until someone asks why. `zt doctor` reports it and `zt deploy` refuses
+  on it.
+
+  Two tiers, because the same value means two things. An app with a real
+  `mail.from.address` configured `log` by accident, or had it knocked back, and its
+  mail is going nowhere — that fails. An app still on the placeholder address probably
+  sends no mail at all, and failing its deploy over a setting it never touched would be
+  the framework inventing a problem — that warns.
+
 ### Testing
 
 - `SmtpSubmission.test.ts` runs the whole 587 flow against a real STARTTLS peer.

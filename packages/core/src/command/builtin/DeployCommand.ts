@@ -52,6 +52,12 @@ export abstract class DeployCommand extends Command {
       default: false,
     },
     {
+      name: "check",
+      type: "boolean" as const,
+      description: "Run the preflight gate and stop — build nothing, migrate nothing",
+      default: false,
+    },
+    {
       name: "skip-migrations",
       type: "boolean" as const,
       description: "Do not run pending migrations as part of this release",
@@ -76,6 +82,19 @@ export abstract class DeployCommand extends Command {
 
     const steps = this._steps(app, target);
     if (dryRun) return this._printPlan(app, target, steps);
+
+    // `--check` is the gate on its own, for the moment in a release script where the
+    // new code is on disk and the service has not restarted yet. Everything that can
+    // refuse has already run by the end of preflight and none of it mutates, so
+    // stopping here is a complete answer: exit 0 and restart, exit 1 and keep serving
+    // the previous release. A workspace that has lost its banking details or had its
+    // mail driver knocked back to `log` never goes live broken.
+    if (this.flags["check"] === true) {
+      await this._preflight(app, target);
+      this.newLine();
+      this.info(`${target} passed preflight. Nothing was built, migrated or restarted.`);
+      return;
+    }
 
     await this._preflight(app, target);
     await this._runSteps(app, steps);

@@ -109,7 +109,19 @@ outcomes — promote, keep with a new date and the reason, or withdraw.
 
 | Package       | Now            | Reviewed by |
 | ------------- | -------------- | ----------- |
-| `@zerotal/ai` | `experimental` | **1.9.0**   |
+| `@zerotal/ai` | `experimental` | **1.11.0**  |
+
+`@zerotal/ai`'s date moved once, from 1.9.0, and the reason is the same one that made it
+experimental in the first place: **it graduates in the release after its first real users, and
+it has not had them yet.** Promoting on a date rather than on evidence is how a label becomes
+decoration — a `stable` promise is only worth making about an API that something has pushed
+against.
+
+The date is a forcing function, not a prediction. It moved once; a second move needs a better
+reason than the first, or the honest answer is to withdraw the package rather than keep
+re-dating it. Its surface triage and the tests for its SSE parser and prompt redaction are worth
+doing meanwhile, and are tracked separately — they improve the package whichever way the review
+goes, and they are what would otherwise turn the deadline into a scramble.
 
 `@zerotal/arch` held `beta` with the same date, was reviewed ahead of it, and is
 `stable` — the release that carried the promotion is the one its

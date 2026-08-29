@@ -25,6 +25,7 @@
  *
  * @module
  */
+import { ZerotalError } from "@zerotal/core";
 import { Database } from "bun:sqlite";
 import { copyFileSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -71,11 +72,16 @@ export interface BackupResult {
   rehearsed: boolean;
 }
 
-/** Raised for every way a backup can fail to be a backup. */
-export class BackupError extends Error {
+/**
+ * Raised for every way a backup can fail to be a backup.
+ *
+ * `ZerotalError` rather than `Error`, like every other error the framework throws:
+ * it carries a stable `code` a wrapper can switch on, which matters here because
+ * the caller is usually a shell script reading an exit status and a log line.
+ */
+export class BackupError extends ZerotalError {
   constructor(message: string) {
-    super(message);
-    this.name = "BackupError";
+    super(message, "E_BACKUP_FAILED", 500);
   }
 }
 

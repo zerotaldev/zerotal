@@ -3,7 +3,7 @@
   "version": "1.8.1",
   "license": "MIT",
   "maturity": "experimental",
-  "maturityReview": "1.9.0",
+  "maturityReview": "1.11.0",
   "private": false,
   "type": "module",
   "main": "./src/index.ts",

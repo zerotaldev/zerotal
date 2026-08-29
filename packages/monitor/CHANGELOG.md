@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **The snapshot shape is documented.** **Export JSON** hands you a `MonitorSnapshot` — the whole
+  panel for a range, as data — and none of the forty-odd row types it is built from was named
+  anywhere. `docs/monitor.md` now maps every field to its row type, which is what you need to
+  post one somewhere, diff two of them, or drive an alerting integration off it rather than off
+  the built-in thresholds.
+
+- **Section contributions can be typed.** `MonitorSection`, `MonitorSectionData`, `MonitorStat`,
+  `MonitorTable`, `MonitorTableColumn` and `MonitorRow` are documented. Declaring the host's
+  shape locally stays the recommended path — it is what keeps a contributing package free of any
+  dependency on the monitor — but a large `resolve` is better served by a typo in a column key
+  being a compile error than a blank cell.
+
+### Changed
+
+- **INTERNAL: `MonitorLayout`, `MonitorPage` and `MonitorPanelHost` are marked `@internal`.**
+  The panel's own shell. Still exported, still working; a contributor pushes a section into the
+  host binding rather than constructing any of them.
+
 ## [1.6.0] — 2026-08-15
 
 ### Fixed

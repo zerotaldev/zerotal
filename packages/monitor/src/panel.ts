@@ -99,6 +99,8 @@ export interface MonitorSection {
  *
  * Contributors should declare their own minimal copy of the members they use
  * rather than importing this type, so they depend on this package not at all.
+ *
+ * @internal
  */
 export interface MonitorPanelHost {
   /**

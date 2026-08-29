@@ -31,6 +31,7 @@ const MONITOR_TOKENS = `
 }
 `.trim();
 
+/** @internal */
 export class MonitorLayout extends Layout {
   static override get head(): string {
     return flowUiHead("Zerotal · Monitor", { tokensCss: MONITOR_TOKENS });

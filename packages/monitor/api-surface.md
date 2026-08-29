@@ -314,11 +314,6 @@ interface MonitorConfigShape = {
   zerotalVersion?: string
 }
 
-interface MonitorPanelHost = {
-  enabled: (id: string) => boolean
-  section: (section: MonitorSection) => void
-}
-
 interface MonitorSection = {
   group?: string
   icon?: string

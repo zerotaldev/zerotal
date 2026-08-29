@@ -121,6 +121,8 @@ const FEED_PER_PAGE = 12;
  * `super-panel.html` built on Flow. Eight tabs (Overview, Requests,
  * Exceptions, Queues, Mail, Database, Cache, System) render from a live
  * {@link MonitorSnapshot}; interactions round-trip over the Flow WebSocket.
+ *
+ * @internal
  */
 export class MonitorPage extends Component {
   static layout = MonitorLayout;

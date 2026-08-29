@@ -262,6 +262,40 @@ Every colour in the panel resolves to a token — `bg-card`, `text-muted-foregro
 
 Practically, this means re-branding the monitor is a few CSS variables rather than a fork, and a contributed section written against the same tokens matches the built-in ones for free.
 
+## The snapshot shape
+
+**Export JSON** hands you a `MonitorSnapshot` — the whole panel for the selected range, as data.
+It is worth knowing the shape if you post it somewhere, diff two of them, or drive an alerting
+integration off it rather than off the built-in thresholds.
+
+`range` is a `MonitorRange`, and the rest is one field per thing the panel draws:
+
+| Area                 | Fields and their row types                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| Live                 | `pulse: PulseStats` — in-flight requests, connections, rate, error rate. Not windowed.                 |
+| Overview             | `statCards: StatCard[]`, `percentiles: Percentile[]`, `apdex`, `throughput`, `slowRoutes: RouteStat[]` |
+| Requests             | `requests` / `slowRequests: RequestEntry[]`, `topUsers: UserUsage[]`, `topMemory: MemoryRoute[]`       |
+| Outgoing             | `outgoingHttp: OutgoingHttp[]`                                                                         |
+| Queues               | `queueStats: QueueMetric[]`, `queues: QueueRow[]`, `failedJobs: FailedJob[]`, `deadLetter: DeadJob[]`  |
+| Schedule             | `scheduledJobs: ScheduledJob[]`, `scheduledRuns: FeedEvent[]`, `slowJobs`                              |
+| Database             | `dbStats: DbStat[]`, `slowQueries: SlowQuery[]`, `transactions: TxStats`, `nplusOnes: NPlusOne[]`      |
+| Exceptions           | `exceptions: ExceptionGroup[]` — grouped, so one recurring error is one row.                           |
+| Cache & realtime     | `cache: CacheStats`, `realtime: RealtimeStats`                                                         |
+| Mail & notifications | `mail`, `notifications: NotificationEntry[]`                                                           |
+| Models               | `models`, `recentModels: ModelEvent[]`                                                                 |
+| Health               | `health: HealthEntry[]`, `gauges: Gauge[]`, `commands: CommandEntry[]`                                 |
+| Feeds                | `security` / `logs: FeedEvent[]`, `alertHistory: AlertEntry[]`                                         |
+
+A few names carry more than their field suggests. `CacheKey` and `CacheStats` separate the hot
+keys from the aggregate. `StatusClassCount` is the 2xx/3xx/4xx/5xx split behind an error rate.
+`ConnectedClient` and `WsAction` are what `realtime` counts. `CheckIn` is a heartbeat from a
+scheduled job that reported in, `UptimeCheck` an external probe, `RequestSpan` / `RequestQuery`
+/ `RequestPayload` / `RequestLog` the detail behind one `RequestEntry`, and `RouteDetail` the
+per-route drill-down. `SystemMeta` and `StorageInfo` describe the machine rather than the app.
+
+`Tone` (and `MonitorTone`) is the good/warn/bad colouring the panel applies to a stat, and
+`AlertContext` is what an alert carries when it fires.
+
 ## Adding your own sections
 
 The panel owns the shell, the time-range selector, the storage and the retention policy — but it doesn't own the knowledge of what is worth watching about any given package. So it's a **host**: it publishes a write surface as the `monitor.panel` container binding, and a package pushes a section into it at boot.
@@ -317,6 +351,25 @@ export default MonitorConfig({
   sections: { scheduler: false },
 });
 ```
+
+### Typing a section
+
+Declaring the host's shape locally is the documented path and stays supported. If you would
+rather have the real types — because your `resolve` is large enough that a typo in a column key
+should be a compile error rather than a blank cell — they are exported:
+
+| Type                 | What it is                                                                 |
+| -------------------- | -------------------------------------------------------------------------- |
+| `MonitorSection`     | The whole contribution: `id`, `label`, optional `group`, and `resolve`.    |
+| `MonitorSectionData` | What `resolve` returns — the `stats` and `tables` below.                   |
+| `MonitorStat`        | One figure: label, value, optional `percent` and `tone`.                   |
+| `MonitorTable`       | One table: title, columns, rows, and the `empty` line when there are none. |
+| `MonitorTableColumn` | One column: `key`, `label`, and the `mono` / `align` presentation flags.   |
+| `MonitorRow`         | One row — a record keyed by the columns' `key` values.                     |
+
+Importing them means depending on `@zerotal/monitor`, which is the trade the structural form
+exists to avoid. For a section of two stats and one table, the local interface is still the
+better answer.
 
 ### Scheduled tasks
 

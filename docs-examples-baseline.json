@@ -4526,6 +4526,12 @@
       "hash": "235hxqklej8z"
     },
     {
+      "file": "docs/inertia/middleware.md",
+      "heading": "Pinning it from a test",
+      "ordinal": 0,
+      "hash": "15992kx7avjp"
+    },
+    {
       "file": "docs/inertia/props.md",
       "heading": "Declare the boundary at the model",
       "ordinal": 0,

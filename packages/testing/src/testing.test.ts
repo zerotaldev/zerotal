@@ -551,6 +551,47 @@ describe("TestResponse.assertRedirect()", () => {
   });
 });
 
+// ── TestResponse.assertInertiaRedirect() ─────────────────────────────────────
+
+/**
+ * The failure a status-and-location assertion cannot see.
+ *
+ * A redirect with the right status and the right `Location` and no `X-Inertia: true`
+ * is ignored by the Inertia client: the request succeeds, the row is written, and the
+ * form sits there with its fields still filled in. An app that wrote three tests for
+ * this and had them pass with and without its own workaround middleware had written
+ * three tests about the two headers that were never wrong.
+ */
+describe("TestResponse.assertInertiaRedirect()", () => {
+  const redirect = (status: number, headers: Record<string, string>): TestResponse =>
+    new TestResponse(new Response(null, { status, headers }));
+
+  it("passes on a 303 that carries the marker", () => {
+    const res = redirect(303, { Location: "/orders/1", "X-Inertia": "true" });
+    expect(() => res.assertInertiaRedirect("/orders/1")).not.toThrow();
+  });
+
+  it("fails on a redirect that is not marked as Inertia's", () => {
+    const res = redirect(303, { Location: "/orders/1" });
+    expect(() => res.assertInertiaRedirect("/orders/1")).toThrow(/X-Inertia/);
+  });
+
+  it("fails on a 302 after a form submit, and says why that matters", () => {
+    const res = redirect(302, { Location: "/orders/1", "X-Inertia": "true" });
+    expect(() => res.assertInertiaRedirect("/orders/1")).toThrow(/repeat the method/);
+  });
+
+  it("accepts another status when the caller names one", () => {
+    const res = redirect(302, { Location: "/orders/1", "X-Inertia": "true" });
+    expect(() => res.assertInertiaRedirect("/orders/1", 302)).not.toThrow();
+  });
+
+  it("still fails on the wrong Location", () => {
+    const res = redirect(303, { Location: "/elsewhere", "X-Inertia": "true" });
+    expect(() => res.assertInertiaRedirect("/orders/1")).toThrow("/orders/1");
+  });
+});
+
 // ── TestResponse.assertHeader() / assertHeaderMissing() ───────────────────────
 
 describe("TestResponse.assertHeader()", () => {

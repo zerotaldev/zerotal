@@ -187,6 +187,7 @@ class TestResponse = {
   assertHeaderMissing: (name: string) => TestResponse
   assertInertia: (component?: string, props?: Record<string, unknown>) => TestResponse
   assertInertiaProp: (key: string, value?: unknown) => TestResponse
+  assertInertiaRedirect: (url: string, status?: number) => TestResponse
   assertInvalid: (fields?: string | string[] | Record<string, string>) => TestResponse
   assertJson: (expected: Record<string, unknown>) => TestResponse
   assertJsonCount: (count: number, key?: string) => TestResponse

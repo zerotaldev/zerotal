@@ -70,6 +70,14 @@ ThrottleMiddleware.with({
 which entry is not attacker-controlled. Left `undefined` (or `0`), the unspoofable socket
 address is used.
 
+**Counted from the right, and that is the whole of it.** Each proxy _appends_ the address
+it received the request from, so the rightmost entries are the ones your own
+infrastructure wrote and the leftmost is whatever the client sent. Reading the header
+left-to-right — the obvious way, and how most hand-rolled versions do it — hands the
+limiter's key to the attacker: they set `X-Forwarded-For: <your CFO's IP>`, spend the
+budget, and the person whose address they borrowed is locked out of the form. A limiter
+that can be aimed is worse than no limiter, because it looks like it is working.
+
 > **Danger** — That default is right, and it is the wrong answer the moment you deploy
 > behind a proxy. The socket address is then the _proxy's_ — `127.0.0.1` for every visitor
 > — so everyone shares one bucket per form and the limiter inverts into the thing it was

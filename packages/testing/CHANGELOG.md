@@ -10,6 +10,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`res.assertInertiaRedirect(url)`** — the assertion that pins what actually breaks.
+  A redirect with the right status and the right `Location` and no `X-Inertia: true`
+  is ignored by the Inertia client: the request succeeds, the row is written, and the
+  form sits there with its fields still filled in. `assertRedirect` checks the two
+  headers that were never wrong, so an app can write three tests for this and have
+  them pass whether or not its own workaround middleware is installed — which is how
+  a workaround becomes permanent. This checks the redirect status (303 by default,
+  because that is what a form submit must get), the `Location`, and the marker.
+
 - **`@zerotal/testing/preload` warns when the runtime is below the project's
   `engines.bun`.** `startZerotal()` refuses on the same condition, which covers every
   `zt` command — but not `bun test` typed straight into a shell, and that is the case

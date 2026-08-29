@@ -206,6 +206,37 @@ The package ships several middleware you can drop straight into `app.use([...])`
 or a route's middleware array. Each extends `BaseMiddleware`, so `.with({ … })`
 bakes options into a zero-argument class.
 
+### Names the framework already occupies
+
+Middleware live in a flat namespace: your `app/middleware/` classes are discovered by
+class name, and so are the ones a package exports. Naming one of yours after one of
+these is not caught as a conflict — it surfaces later as a type error somewhere that
+does not mention either file, which is a confusing way to learn that
+`TwoFactorMiddleware` was taken.
+
+The full list, so you can check before you name:
+
+| Middleware                                                                             | Package                          |
+| -------------------------------------------------------------------------------------- | -------------------------------- |
+| `CorsMiddleware`, `SecureHeadersMiddleware`, `ThrottleMiddleware`, `WebhookMiddleware` | `@zerotal/core`                  |
+| `AuthMiddleware`, `GuestMiddleware`, `PersistUserMiddleware`, `RememberMeMiddleware`   | `@zerotal/auth`                  |
+| `BasicAuthMiddleware`, `BearerTokenMiddleware`, `JwtGuardMiddleware`                   | `@zerotal/auth`                  |
+| `RequireRoleMiddleware`, `RequirePermissionMiddleware`, `TwoFactorMiddleware`          | `@zerotal/auth`                  |
+| `ValidateSignatureMiddleware`                                                          | `@zerotal/auth`                  |
+| `SessionMiddleware`, `CsrfMiddleware`, `AuthSessionMiddleware`                         | `@zerotal/session`               |
+| `InertiaMiddleware`, `PrecognitionMiddleware`                                          | `@zerotal/inertia`               |
+| `AdminGuardMiddleware`, `AdminAbilityMiddleware`                                       | `@zerotal/admin`                 |
+| `MonitorAuthMiddleware`, `MonitorPayloadMiddleware`                                    | `@zerotal/monitor`               |
+| `IdempotencyMiddleware`                                                                | `@zerotal/cache`                 |
+| `LocaleMiddleware`                                                                     | `@zerotal/i18n`                  |
+| `EnsureTenancyMiddleware`                                                              | `@zerotal/tenancy`               |
+| `TelemetryMiddleware`                                                                  | `@zerotal/telemetry`             |
+| `BaseMiddleware`                                                                       | `@zerotal/core` (the base class) |
+
+If yours does something different from the framework's, say so in the name rather
+than shadowing it — `RequireTwoFactorMiddleware` for "fence the console until staff
+have enrolled" reads better than `TwoFactorMiddleware` anyway, and cannot collide.
+
 ### CorsMiddleware
 
 ```ts fragment

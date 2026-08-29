@@ -195,6 +195,61 @@ export class TestResponse {
     return this;
   }
 
+  /**
+   * Assert the response is a redirect a browser running Inertia will actually follow.
+   *
+   * Three things have to be true together, and `assertRedirect` checks one of them.
+   * A redirect that is correct on status and `Location` but unmarked is the failure
+   * this exists for: the request succeeds, the row is written, and the form sits
+   * there with the fields still filled in — because the Inertia client did not
+   * recognise the response as its own and never navigated. Nothing about that looks
+   * like an error from either end, which is why it is worth an assertion of its own.
+   *
+   * - **A redirect status.** After a POST/PUT/DELETE it must be `303`, not `302`:
+   *   only See Other makes the browser follow with `GET` instead of repeating the
+   *   method against the target.
+   * - **`Location`**, as `assertRedirect` checks it.
+   * - **`X-Inertia: true`**, which is the part a status-and-location assertion
+   *   cannot see and the part that was missing.
+   *
+   * Send the request with the `X-Inertia` header for this to mean anything — a
+   * redirect to a browser that is not running Inertia is just a redirect.
+   *
+   * @param url - Expected `Location` (matched as a substring, like {@link assertRedirect}).
+   * @param status - Expected status. Defaults to `303`, which is what a form submit gets.
+   *
+   * @example
+   * ```ts
+   * const res = await app.post("/orders", data, { headers: { "X-Inertia": "true" } });
+   * res.assertInertiaRedirect("/orders/1");
+   * ```
+   */
+  assertInertiaRedirect(url: string, status = 303): this {
+    this.assertRedirect(url);
+    if (this._res.status !== status) {
+      throw new Error(
+        this._decorate(
+          `Expected an Inertia redirect with HTTP ${status} but got ${this._res.status}. ` +
+            (status === 303 && this._res.status === 302
+              ? "A 302 after a non-GET makes the browser repeat the method against the target."
+              : ""),
+          { headers: true },
+        ),
+      );
+    }
+    if (this._res.headers.get("X-Inertia") !== "true") {
+      throw new Error(
+        this._decorate(
+          `Expected the redirect to carry X-Inertia: true, but it did not. The Inertia ` +
+            `client ignores a redirect it does not recognise as its own — the request ` +
+            `succeeds and the page never moves.`,
+          { headers: true },
+        ),
+      );
+    }
+    return this;
+  }
+
   // ── Header assertions ─────────────────────────────────────────────────
 
   /**

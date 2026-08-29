@@ -113,16 +113,44 @@ if they do not apply to you.
 
 ### Documented
 
-- **Coverage went from 60% to 83%**, with `flow`, `flow-ui`, `monitor` and `ai` now fully
-  documented. `@zerotal/flow-ui`'s sixty-one component prop types are named for the first time —
-  a wrapper component cannot be written without them. `@zerotal/monitor`'s **Export JSON** shape
-  is mapped field by field, where the button was documented and the forty-odd row types it hands
-  you were not. And the outbound `Http` client has a page, which the testing guide had been
-  linking to for some time without one existing.
+- **Every promised export is documented — 100%, up from 60%.** `maturity: stable` means an
+  export keeps its shape for the rest of the 1.x line, and the gate measuring how much of that
+  promise was written down stood at 798 gaps. It is zero.
 
-  The gate that measures this could not see `.tsx` files at all: with `jsx` unset, TypeScript
-  declines to pull such a module into the program rather than failing to parse it, so every
-  symbol in one was invisible. It had been inflating exactly the TSX-heavy packages.
+  Four features turned out to have shipped and been invisible. **Passkeys** — `PasskeyService`
+  has been here since 1.7.0 with no page at all, including that `requireUserVerification`
+  defaults to `true` because that is what makes a passkey a second factor rather than one.
+  **`@zerotal/core/env`**, a typed environment schema that reports every bad variable at once
+  rather than one per restart. **The outbound `Http` client**, which the testing guide had been
+  linking to a page that did not describe it. And **`@zerotal/monitor`'s Export JSON**, where the
+  button was documented and the forty-odd row types it hands you were not.
+
+  Also named for the first time: `@zerotal/flow-ui`'s sixty-one component prop types, which a
+  wrapper component cannot be written without.
+
+  The gate itself could not see `.tsx` files: with `jsx` unset, TypeScript declines to pull such
+  a module into the program rather than failing to parse it, so every symbol in one was
+  invisible. It had been inflating exactly the TSX-heavy packages.
+
+### Fixed
+
+- **A rebuilt Inertia bundle no longer 404s on a chunk the browser asks for.**
+  `resources/js/app.tsx` builds to `/assets/app.js` under that name every time, while
+  `splitting: true` names each chunk after its content. A rebuild therefore rewrites `app.js` to
+  import `chunk-NEW.js` and prunes `chunk-OLD.js` — and a browser holding a cached `app.js` asks
+  for the pruned one:
+
+      GET /assets/chunk-hrnspqda.js  status=404
+
+  from a page that renders and a server that is healthy, with nothing in that line leading back
+  to the template.
+
+  The template hardcodes `/assets/app.js` rather than calling `asset()`, so the version token the
+  rest of the framework appends never reached it — and cache-busting had only ever been
+  implemented for `serve --dev`. It now applies in every environment: the file's mtime in dev,
+  where a rebuild happens without a restart, and the boot-derived asset version otherwise. An
+  unchanged asset keeps a stable URL and stays cached, which is why the token is derived rather
+  than random.
 
 ## 1.8.1 — 2026-08-26
 

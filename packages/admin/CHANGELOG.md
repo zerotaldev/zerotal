@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Documented
 
 - **Every promised export is documented.** The `docs-coverage` gate reads `maturity: stable` as a
@@ -15,8 +17,6 @@ follows the Zerotal monorepo's unified versioning.
   was 798 gaps across the suite; it is now zero. This package's share is covered on its own
   pages — types named, options shapes described, and the decisions behind them recorded where
   somebody looking for them will find them.
-
-## [1.9.0] — 2026-08-29
 
 ### Changed
 

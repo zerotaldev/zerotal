@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Added
 
 - **Passkeys are documented.** `PasskeyService` has shipped since 1.7.0 and had no page — a
@@ -27,8 +29,6 @@ follows the Zerotal monorepo's unified versioning.
   symbols and their type guards, the remember-token internals, the permission registry, and the
   request-guard plumbing. Still exported, still working; none is something an app calls, and
   freezing the session key names would have promised the shape of the session bag.
-
-## [1.9.0] — 2026-08-29
 
 ### Added
 

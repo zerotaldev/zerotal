@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Added
 
 - **`@zerotal/core/env` is documented.** A whole subpath — a strict, fully typed environment
@@ -32,8 +34,6 @@ follows the Zerotal monorepo's unified versioning.
   compiled state, the context registry, the metrics instrumentation hooks, the view component
   symbols, and the config map/path types. Still exported, still working; none is something an
   app constructs.
-
-## [1.9.0] — 2026-08-29
 
 ### Changed
 

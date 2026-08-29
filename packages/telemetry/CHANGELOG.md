@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-08-29
+
 ### Documented
 
 - **Every promised export is documented.** The `docs-coverage` gate reads `maturity: stable` as a

@@ -274,6 +274,45 @@ Each formatter takes its own options interface, all extending `FormatOptions` (w
 `formatDate` returns an empty string for an unparseable value rather than `Invalid Date`, so
 a bad timestamp renders as a blank rather than as words in the middle of a page.
 
+## Outbound HTTP — Http
+
+`Http` is the fluent client for calling another service. It is `fetch` with the things you would
+otherwise write around every call — auth, timeout, retry, JSON — already there, and one place to
+intercept in a test:
+
+```typescript fragment
+import { Http } from "zerotal/http";
+
+const response = await Http.withToken(apiKey).timeout(5_000).retry(3).post("/charges", { amount });
+
+if (response.ok) {
+  const charge = await response.json<{ id: string }>();
+}
+```
+
+Every verb — `get`, `post`, `put`, `patch`, `delete`, `head` — returns a `PendingRequest`, which
+is awaitable _and_ chainable: `withHeaders`, `withToken`, `withBasicAuth`, `acceptJson`,
+`timeout`, `retry`, `withJson`, `withFormData`. Awaiting it gives an `HttpClientResponse` with
+`status`, `ok`, `headers`, `json()`, `text()` and `blob()`.
+
+**A failed response is not a thrown error by default.** A 404 is an answer, and an integration
+that treats every non-2xx as an exception cannot tell "no such customer" from "the service is
+down". Call `.throw()` on the response when you do want the non-2xx to raise — it throws
+`HttpClientError`, which carries the response so a handler can still read the status.
+
+```typescript fragment
+// Let a 404 be a value, and anything else be a problem.
+const response = await Http.get(`/customers/${id}`);
+if (response.status === 404) return null;
+return response.throw().json<Customer>();
+```
+
+In tests, `Http.fake()` intercepts all of it — see [Mocking](/docs/testing/mocking#outbound-http).
+
+`Http` is a class rather than a facade, so a request is made with the same import everywhere.
+`QueryInput` is what a query object may hold, and `PaginatedData` the shape of a paginated body
+when the other end returns one.
+
 ## Objects — deepMerge
 
 Recursively merge an override object onto a base, lodash-style: nested plain

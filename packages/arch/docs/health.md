@@ -271,6 +271,15 @@ What a check returns to describe its own state. A check may also return nothing
 | `message` | `string`                       | Optional human-readable detail.                         |
 | `meta`    | `Record<string, unknown>`      | Optional structured metadata surfaced in the report.    |
 
+### Types
+
+| Type                   | What it is                                                                  |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `HealthStatus`         | `"ok" \| "degraded" \| "down"` — what one check, and the aggregate, report. |
+| `HealthCheckReport`    | One check's result: its name, status, duration, and any message.            |
+| `HealthConfigShape`    | What `HealthConfig()` accepts.                                              |
+| `ResolvedHealthConfig` | The same after defaults are filled in — what the endpoint actually reads.   |
+
 ## Next steps
 
 - [Telemetry](/docs/telemetry) — collect the metrics behind your readiness checks.

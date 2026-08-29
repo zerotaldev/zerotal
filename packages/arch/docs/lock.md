@@ -447,6 +447,21 @@ sees an isolated, deterministic lock table with no network or file I/O.
 | `exists()`       | `exists(key: string): Promise<boolean>`                                     | `true` if the lock is currently held.               |
 | `dispose?()`     | `dispose?(): void`                                                          | Release background resources (timers, connections). |
 
+### Types
+
+| Type                | What it is                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| `LockedCallback<T>` | What `try` and `block` run while holding the lock.                                 |
+| `TryOptions`        | `try`'s options — the TTL and whether a failure throws or returns.                 |
+| `RefreshOptions`    | How a long-running hold extends its own TTL rather than letting it lapse mid-work. |
+
+The three built-in drivers are exported under their own names, so a custom driver can wrap one
+rather than reimplement it: `MemoryLockDriver` (single process — the default, and wrong the
+moment there are two), `SqliteLockDriver` (a file every process on the box can see) and
+`RedisLockDriver` (across machines).
+
+Picking the wrong one fails in the way locks always do: not at all, until there are two workers.
+
 ## Next steps
 
 - [Scheduler](/docs/scheduler#preventing-overlapping-runs) — `withoutOverlapping` builds on the same idea for cron tasks.

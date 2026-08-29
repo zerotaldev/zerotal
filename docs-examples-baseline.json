@@ -4311,6 +4311,18 @@
     },
     {
       "file": "docs/helpers.md",
+      "heading": "Outbound HTTP — Http",
+      "ordinal": 0,
+      "hash": "dk7x6cnrgoho"
+    },
+    {
+      "file": "docs/helpers.md",
+      "heading": "Outbound HTTP — Http",
+      "ordinal": 1,
+      "hash": "2qn8ippdf7xq"
+    },
+    {
+      "file": "docs/helpers.md",
       "heading": "pipe / pipeAsync",
       "ordinal": 0,
       "hash": "2jau4f4mca40"

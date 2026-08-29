@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`ctx.session.intended()` reads the URL `AuthMiddleware` stored.** It did not.
+  `captureIntended()`/`intended()` used the session key `intended` while
+  `AuthMiddleware`, `ConfirmPasswordMiddleware` and `redirect().intended()` used
+  `intended_url`. Each pair was internally consistent and separately tested, so every
+  test passed — and an app that mixed them, which the documentation invites by
+  describing both, got the fallback every time from a session that had the value
+  sitting in it under the other name. Nothing failed; the user was simply always sent
+  to `/` after signing in, which from the outside reads as the intended URL not
+  surviving login.
+
+  Both APIs now use `intended_url`. The old key is still read, so a session captured
+  before the upgrade and consumed after it still lands where it should.
+
+- **`ctx.session.intended()` refuses a cross-origin URL**, the guard
+  `redirect().intended()` already applied. Which of two APIs for one job you happened
+  to reach for should not decide whether an open redirect is possible.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

@@ -8,6 +8,45 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **SMTP submission on port 587 works.** The STARTTLS upgrade completed its handshake
+  and then sent nothing: `upgradeTLS()` returns the new socket while the handshake is
+  still in flight, and a write issued in that window is **dropped** — not buffered,
+  not an error, gone. The `EHLO` that has to follow STARTTLS went into that gap on
+  every send, so the server waited for a command that never came while the client
+  waited for a reply that never came, until the read timed out.
+
+  Everything either side looked healthy, which is what made it expensive: the server
+  logged a good TLS session and then a connection lost. Port 465 was unaffected,
+  because implicit TLS finishes before `Bun.connect()` resolves and there is no window
+  to write into — so mail worked on the port nobody documents, and configuring the 587
+  that every provider _does_ document produced silence. No error, no bounce, no log
+  line, and password resets that never arrived. `upgradeTLS()` now resolves only once
+  the handshake has completed, bounded by the reply timeout.
+
+- **TLS certificates are actually verified, on both transports.** `rejectUnauthorized`
+  is not enforced by the runtime: Bun reports `authorized: true` for a self-signed
+  certificate on `Bun.connect()` and on `upgradeTLS()` alike, whether the flag is set
+  or not, and puts the real reason in `authorizationError` beside it. Trusting the
+  flag made TLS decorative — the connection was encrypted, and would have accepted
+  that encryption from anyone in the network path, which is the one property TLS
+  exists to provide. The driver now reads the handshake result itself and fails
+  closed; `rejectUnauthorized: false` still accepts a self-signed relay, deliberately.
+
+- **The server greeting cannot be lost to a race.** `Bun.connect()` resolves after the
+  socket opens, and the 220 can arrive before the `await` returns — the data callback
+  reached for a connection object that did not exist yet. Early bytes are now buffered
+  and replayed.
+
+### Testing
+
+- `SmtpSubmission.test.ts` runs the whole 587 flow against a real STARTTLS peer.
+  The existing tests could not: they upgrade into a peer that is already speaking TLS,
+  because Bun cannot be a STARTTLS _server_ — and the bug lived in the one step that
+  arrangement skips. The fixture peer runs under Node, which can wrap a connected
+  socket as a TLS server. The limitation was the harness's, never the client's.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

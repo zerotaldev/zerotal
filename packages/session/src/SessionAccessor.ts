@@ -1,8 +1,21 @@
-import { request, RequestContext } from "@zerotal/core";
+import { request, RequestContext, safeRedirectPath } from "@zerotal/core";
 import type { HttpContext } from "@zerotal/core";
 import type { SessionManager } from "./SessionManager.ts";
 
 type SessionCtx = HttpContext & { session?: SessionManager };
+
+/**
+ * The session key holding where an intercepted request was headed.
+ *
+ * One key, named here, because it is written and read by four things that do not
+ * import each other — `AuthMiddleware`, `ConfirmPasswordMiddleware`,
+ * `redirect().intended()` and this accessor — and two of them used to spell it
+ * differently.
+ */
+const INTENDED_URL_KEY = "intended_url";
+
+/** What this accessor used to write. Still read, so a session mid-flow is not stranded. */
+const LEGACY_INTENDED_URL_KEY = "intended";
 
 /**
  * @internal Resolve the in-flight request's {@link SessionManager} from
@@ -174,14 +187,36 @@ export class SessionAccessor {
    * value is gone. Typically used after login to send the user back to the page
    * they originally requested.
    *
-   * @param defaultUrl - Fallback returned when no intended URL was captured.
-   * Defaults to `"/"`.
+   * Reads the same key `AuthMiddleware` writes and `redirect().intended()` reads.
+   * It did not: this pair used `intended` while the rest of the framework used
+   * `intended_url`, so the two halves of one feature never met. An app that let
+   * `AuthMiddleware` intercept a guest — the documented way — and then reached for
+   * `ctx.session.intended()` — the obvious API on the session object — got the
+   * fallback every time, on a session where the value was sitting there under the
+   * other name. Nothing failed; the user was simply always sent to `/`, which
+   * reads from the outside as the intended URL not surviving login.
+   *
+   * The legacy key is still read, so a session captured before the upgrade and
+   * consumed after it still lands where it should.
+   *
+   * @param defaultUrl - Fallback returned when no intended URL was captured, or
+   *   when the captured one points at another origin. Defaults to `"/"`.
    * @returns The captured URL, or `defaultUrl` if none is stored.
    *
    * @category Redirect flow
    */
   intended(defaultUrl: string = "/"): string {
-    return (_session()?.pull("intended") as string) ?? defaultUrl;
+    const session = _session();
+    const stored =
+      (session?.pull(INTENDED_URL_KEY) as string | undefined) ??
+      (session?.pull(LEGACY_INTENDED_URL_KEY) as string | undefined);
+
+    // Same guard `redirect().intended()` applies. `captureIntended()` only ever
+    // stores this request's own URL, but the key is a plain session value and
+    // anything that can write one could otherwise choose where a login lands.
+    const origin = RequestContext.tryGet()?.url.origin;
+    if (!origin) return stored ?? defaultUrl;
+    return safeRedirectPath(stored, origin) ?? defaultUrl;
   }
 
   /**
@@ -190,9 +225,13 @@ export class SessionAccessor {
    * Call this before redirecting an unauthenticated user to the login page so
    * that {@link intended} can send them back afterwards.
    *
+   * Writes `intended_url`, the key `AuthMiddleware` writes and
+   * `redirect().intended()` reads — so the capture and the redirect can come from
+   * either API in any combination.
+   *
    * @category Redirect flow
    */
   captureIntended(): void {
-    _session()?.set("intended", request().fullUrl());
+    _session()?.set(INTENDED_URL_KEY, request().fullUrl());
   }
 }

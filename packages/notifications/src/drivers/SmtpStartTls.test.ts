@@ -15,13 +15,20 @@
  *
  * ## The shape of these tests
  *
- * A STARTTLS negotiation cannot be faked in process — Bun answers
- * "Server-side upgradeTLS is not supported", so no fake server gets past the
- * 220. What matters is not the negotiation but what follows it: a client socket
+ * A STARTTLS negotiation cannot be faked in a *Bun* process — Bun answers
+ * "Server-side upgradeTLS is not supported", so no fake server written here gets
+ * past the 220. What these tests cover is what follows it: a client socket
  * upgrading into a peer that is already speaking TLS exercises exactly the same
  * `upgradeTLS()` call, the same two live handlers, and the same shared buffer.
  * So the peer here is TLS from its first byte and the client upgrades straight
  * into it.
+ *
+ * That arrangement skips one step, and a second bug lived in exactly the step it
+ * skipped: the write issued between `upgradeTLS()` returning and the handshake
+ * completing. `SmtpSubmission.test.ts` covers the real negotiation end to end by
+ * running the peer under Node, which *can* wrap a connected socket as a TLS
+ * server. Borrowing a runtime for the fixture was the missing move; the
+ * limitation was never the client's.
  *
  * Getting the reply out intact is the whole assertion. Before the fix the buffer
  * held binary, and nothing that went into it came back as a reply.

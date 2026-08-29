@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from "bun:test";
 import { Container, HttpContext, RequestContext, ScopedResolver, redirect } from "@zerotal/core";
-import { SessionManager } from "@zerotal/session";
+import { SessionAccessor, SessionManager } from "@zerotal/session";
 import { AuthMiddleware } from "./AuthMiddleware.ts";
 
 /** A driver that persists nowhere — the manager's data bag is what is under test. */
@@ -107,5 +107,75 @@ describe("AuthMiddleware and redirect().intended() as a pair", () => {
     // A JSON client has no login form to come back from; a stored URL would only
     // wait to misdirect whoever signs in on that session next.
     expect(session.get("intended_url")).toBeUndefined();
+  });
+});
+
+/**
+ * The other half of the same feature, which used a different key.
+ *
+ * `ctx.session.captureIntended()` wrote `intended` while `AuthMiddleware` wrote
+ * `intended_url`, and `ctx.session.intended()` read `intended` while
+ * `redirect().intended()` read `intended_url`. Each pair was internally consistent
+ * and separately tested, so both sets of tests passed — and an app that mixed them,
+ * which the docs invite by describing both, got the fallback every time on a session
+ * that had the value sitting in it under the other name. Nothing failed; the user
+ * was just always sent to `/`.
+ */
+describe("the session accessor and the middleware agree on one key", () => {
+  it("reads an intended URL that AuthMiddleware stored", async () => {
+    const session = newSession();
+    const guest = contextFor("http://localhost/trips/42/edit", session);
+    await new AuthMiddleware().handle(guest, async () => undefined);
+
+    const login = contextFor("http://localhost/login", session);
+    const landed = RequestContext.run(login, () => new SessionAccessor().intended("/dashboard"));
+
+    expect(landed).toBe("http://localhost/trips/42/edit");
+  });
+
+  it("stores an intended URL that redirect().intended() can consume", () => {
+    const session = newSession();
+    const guest = contextFor("http://localhost/trips/42/edit", session);
+    RequestContext.run(guest, () => new SessionAccessor().captureIntended());
+
+    const login = contextFor("http://localhost/login", session);
+    RequestContext.run(login, () => redirect().intended("/dashboard"));
+
+    expect(login.response?.headers.get("Location")).toBe("http://localhost/trips/42/edit");
+  });
+
+  it("still honours a URL captured under the old key", () => {
+    // A session mid-flow across an upgrade: captured before, consumed after.
+    const session = newSession();
+    session.set("intended", "http://localhost/trips/42/edit");
+
+    const login = contextFor("http://localhost/login", session);
+    const landed = RequestContext.run(login, () => new SessionAccessor().intended("/dashboard"));
+
+    expect(landed).toBe("http://localhost/trips/42/edit");
+  });
+
+  it("refuses a stored URL from another origin", () => {
+    // `redirect().intended()` guarded this and the accessor did not, so the safer
+    // of two APIs for one job depended on which you happened to reach for.
+    const session = newSession();
+    session.set("intended_url", "https://evil.test/steal");
+
+    const login = contextFor("http://localhost/login", session);
+    const landed = RequestContext.run(login, () => new SessionAccessor().intended("/dashboard"));
+
+    expect(landed).toBe("/dashboard");
+  });
+
+  it("spends the value, whichever API consumed it", async () => {
+    const session = newSession();
+    const guest = contextFor("http://localhost/trips/42/edit", session);
+    await new AuthMiddleware().handle(guest, async () => undefined);
+
+    const login = contextFor("http://localhost/login", session);
+    RequestContext.run(login, () => new SessionAccessor().intended("/dashboard"));
+    const second = RequestContext.run(login, () => new SessionAccessor().intended("/dashboard"));
+
+    expect(second).toBe("/dashboard");
   });
 });

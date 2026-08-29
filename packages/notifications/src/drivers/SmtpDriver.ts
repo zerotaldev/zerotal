@@ -19,6 +19,12 @@ const DEFAULT_TIMEOUT_MS = 30_000;
  * Every reply is parsed and its status code checked, so a rejected recipient or a
  * failed authentication raises {@link SmtpResponseError} instead of being
  * mistaken for a successful send.
+ *
+ * Certificate verification is enforced here rather than by the runtime. Bun does
+ * not honour `rejectUnauthorized` on either `Bun.connect()` or `upgradeTLS()` — it
+ * reports the peer as authorized and puts the real reason beside it — so both
+ * transports check the handshake result themselves and fail closed. See
+ * `_certificateFailure`.
  */
 export class SmtpDriver implements MailDriver {
   constructor(
@@ -143,6 +149,34 @@ interface SmtpReply {
 }
 
 /**
+ * Whether a completed handshake should be treated as a failure.
+ *
+ * **`rejectUnauthorized` is not enforced by the runtime.** Bun reports
+ * `authorized: true` for a self-signed certificate whether the flag is on or off,
+ * on `Bun.connect()` and on `upgradeTLS()` alike, and hands back the real reason in
+ * `authorizationError` beside it. Trusting the flag made TLS decorative on both
+ * paths: the connection was encrypted and would have accepted that encryption from
+ * anyone in the network path, which is the property TLS exists to provide.
+ *
+ * So the error is the signal and the flag is not. Verification is the framework's
+ * to enforce, and it fails closed.
+ *
+ * @param authorized - What the runtime claims about the peer.
+ * @param authorizationError - Why it would not have been authorized, if anything.
+ * @param rejectUnauthorized - Whether this connection asked for verification.
+ * @returns The error to fail with, or `undefined` to accept the peer.
+ */
+function _certificateFailure(
+  authorized: boolean,
+  authorizationError: Error | null | undefined,
+  rejectUnauthorized: boolean,
+): Error | undefined {
+  if (!rejectUnauthorized) return undefined;
+  if (authorized && !authorizationError) return undefined;
+  return authorizationError ?? new Error("the server's certificate could not be verified");
+}
+
+/**
  * A single SMTP session — owns the socket, buffers incoming bytes, and hands
  * back one complete reply at a time.
  *
@@ -210,9 +244,26 @@ export class SmtpConnection {
     port: number,
     options: { tls: boolean; rejectUnauthorized: boolean; timeoutMs: number },
   ): Promise<SmtpConnection> {
-    let conn!: SmtpConnection;
+    // The session, once there is one. A box rather than a bare `let`, because the
+    // socket callbacks below are installed before it exists and have to see it
+    // appear — `Bun.connect()` resolves after the socket is open, so the server's
+    // 220 greeting can beat the `await` that produces it.
+    const session: { conn?: SmtpConnection } = {};
+
+    // Bytes that arrive in that window. Dropping the greeting deadlocks the session
+    // on its own first read.
+    const early: Uint8Array[] = [];
+
+    let settle: (error?: Error) => void = () => {};
+    const verified = options.tls
+      ? new Promise<void>((resolve, reject) => {
+          settle = (error) => (error ? reject(error) : resolve());
+        })
+      : undefined;
+
+    let socket: import("bun").Socket<undefined>;
     try {
-      const socket = await Bun.connect<undefined>({
+      socket = await Bun.connect<undefined>({
         hostname: host,
         port,
         ...(options.tls
@@ -220,14 +271,23 @@ export class SmtpConnection {
           : {}),
         socket: {
           // Generation 0: the connection as opened. An upgrade supersedes it.
-          data: (_s, data) => conn._onData(data, 0),
-          error: (_s, err) => conn._onError(err, 0),
-          close: () => conn._onClose(0),
+          data: (_s, data) => {
+            if (session.conn) session.conn._onData(data, 0);
+            else early.push(data);
+          },
+          error: (_s, err) => {
+            settle(err);
+            session.conn?._onError(err, 0);
+          },
+          close: () => {
+            settle(new Error("the server closed the connection during the TLS handshake"));
+            session.conn?._onClose(0);
+          },
+          handshake: (_s, authorized, authorizationError) =>
+            settle(_certificateFailure(authorized, authorizationError, options.rejectUnauthorized)),
           open: () => {},
         },
       });
-      conn = new SmtpConnection(socket, host, port, options.timeoutMs, options.tls);
-      return conn;
     } catch (error) {
       throw new SmtpConnectionError(
         `Could not connect to SMTP server ${host}:${port} — ${
@@ -235,20 +295,78 @@ export class SmtpConnection {
         }`,
       );
     }
+
+    const conn = new SmtpConnection(socket, host, port, options.timeoutMs, options.tls);
+    session.conn = conn;
+    for (const chunk of early) conn._onData(chunk, 0);
+
+    // Implicit TLS (465) verifies here, for the same reason STARTTLS verifies in
+    // `upgradeTLS`: `rejectUnauthorized` is not enforced by the runtime, so a
+    // connection that asked for a verified certificate has to check that it got one.
+    if (verified) {
+      try {
+        await conn._withTimeout(verified, `completing the TLS handshake with ${host}`);
+      } catch (error) {
+        conn.close();
+        throw new SmtpConnectionError(
+          `TLS connection to ${host}:${port} failed — ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
+    return conn;
   }
 
-  /** Upgrade a plaintext connection to TLS after a 220 response to STARTTLS. */
+  /**
+   * Upgrade a plaintext connection to TLS after a 220 response to STARTTLS.
+   *
+   * Resolves once the handshake has actually completed, and that is the whole
+   * point of it being async. `upgradeTLS()` returns the new socket immediately,
+   * while the handshake is still in flight, and **a write issued in that window is
+   * dropped** — not buffered and flushed, not an error, just gone. The `EHLO` that
+   * has to follow STARTTLS was written into that gap, so the server sat waiting
+   * for a command that was never sent while the client sat waiting for a reply
+   * that was never coming, until the read timed out thirty seconds later.
+   *
+   * What made it expensive to place is that everything either side looks right.
+   * The handshake completes; the server logs a healthy TLS session and then a
+   * connection lost. Port 465 is unaffected, because implicit TLS finishes its
+   * handshake before `Bun.connect()` resolves and there is no window to write
+   * into. So mail worked, on the port that is not the one every provider
+   * documents, and configuring the documented 587 produced silence — no error, no
+   * bounce, no log line, just password resets that never arrived.
+   *
+   * @param host - Hostname, used as the TLS server name.
+   * @param rejectUnauthorized - Refuse a certificate that does not verify.
+   * @throws {@link SmtpConnectionError} When the upgrade or the handshake fails.
+   */
   async upgradeTLS(host: string, rejectUnauthorized: boolean): Promise<void> {
     try {
       // Bumped before the call, so the plaintext socket's callbacks are already
       // stale by the time the handshake can deliver its first record.
       const generation = ++this._generation;
+
+      let settle!: (error?: Error) => void;
+      const handshake = new Promise<void>((resolve, reject) => {
+        settle = (error) => (error ? reject(error) : resolve());
+      });
+
       const [, tls] = this._socket.upgradeTLS<undefined>({
         tls: { rejectUnauthorized, serverName: host },
         socket: {
           data: (_s, data) => this._onData(data, generation),
-          error: (_s, err) => this._onError(err, generation),
-          close: () => this._onClose(generation),
+          error: (_s, err) => {
+            settle(err);
+            this._onError(err, generation);
+          },
+          close: () => {
+            settle(new Error("the server closed the connection during the TLS handshake"));
+            this._onClose(generation);
+          },
+          handshake: (_s, authorized, authorizationError) =>
+            settle(_certificateFailure(authorized, authorizationError, rejectUnauthorized)),
           open: () => {},
         },
       });
@@ -258,12 +376,41 @@ export class SmtpConnection {
       // belongs to the discarded plaintext stream.
       this._buffer = "";
       this._replies = [];
+
+      await this._withTimeout(handshake, `completing the TLS handshake with ${host}`);
     } catch (error) {
       throw new SmtpConnectionError(
         `STARTTLS upgrade failed for ${host} — ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
+    }
+  }
+
+  /**
+   * Reject `work` if it has not settled within the session's reply timeout.
+   *
+   * A handshake that never completes and never errors is a hang with no reply to
+   * time out on, so the read timeout that covers every other step does not cover
+   * this one.
+   *
+   * @param work - The promise to bound.
+   * @param what - Named in the timeout message.
+   */
+  private async _withTimeout<T>(work: Promise<T>, what: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        work,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new Error(`timed out after ${this._timeoutMs}ms ${what}`)),
+            this._timeoutMs,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
 

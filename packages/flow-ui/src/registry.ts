@@ -21,7 +21,11 @@ import { dirname, join } from "node:path";
 // This file sits at <pkg>/src/registry.ts, so the package root is two levels up.
 const PKG_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
-/** A copyable utility module (shared by components). */
+/**
+ * A copyable utility module (shared by components).
+ *
+ * @internal
+ */
 export interface UtilEntry {
   name: string;
   /** Path relative to the package's `src/`. */
@@ -175,6 +179,8 @@ export function findComponent(name: string): ComponentEntry | undefined {
  * was never copied is the failure this prevents. The result keeps the caller's
  * order and appends dependencies after it, so the CLI reports what was asked for
  * first and what came along second.
+ *
+ * @internal
  */
 export function withDependencies(names: string[]): string[] {
   const out: string[] = [];
@@ -194,7 +200,11 @@ export function withDependencies(names: string[]): string[] {
   return out;
 }
 
-/** Absolute path to a registry source file (`source` is relative to `src/`, except the theme). */
+/**
+ * Absolute path to a registry source file (`source` is relative to `src/`, except the theme).
+ *
+ * @internal
+ */
 export function resolveSource(source: string): string {
   if (source === THEME.source) return join(PKG_ROOT, source);
   return join(PKG_ROOT, "src", source);
@@ -204,6 +214,8 @@ export function resolveSource(source: string): string {
  * Rewrite a component's util imports for the copy-in layout: `../utils/x.ts`
  * (the package layout) → `./lib/x.ts` (the app's UI dir layout). Idempotent and
  * a no-op for util files themselves (gva → `./cn.ts` stays a valid sibling import).
+ *
+ * @internal
  */
 export function rewriteImports(source: string): string {
   return source.replace(/(["'])\.\.\/utils\/(cn|gva)\.ts\1/g, "$1./lib/$2.ts$1");

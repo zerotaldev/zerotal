@@ -46,7 +46,11 @@ export interface DatePickerProps {
   [key: string]: unknown;
 }
 
-/** `2026-07-29` → `29 Jul 2026`, which is unambiguous in every locale. */
+/**
+ * `2026-07-29` → `29 Jul 2026`, which is unambiguous in every locale.
+ *
+ * @internal
+ */
 export function formatDay(day: string): string {
   const [y, m, d] = day.split("-");
   const months = [

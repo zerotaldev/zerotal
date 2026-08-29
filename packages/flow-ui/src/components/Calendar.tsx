@@ -84,14 +84,22 @@ const MONTHS = [
 ];
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-/** `YYYY-MM-DD` for a local date, avoiding the UTC shift `toISOString` applies. */
+/**
+ * `YYYY-MM-DD` for a local date, avoiding the UTC shift `toISOString` applies.
+ *
+ * @internal
+ */
 export function isoDay(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${date.getFullYear()}-${m}-${d}`;
 }
 
-/** Step a `YYYY-MM` by whole months, wrapping the year. */
+/**
+ * Step a `YYYY-MM` by whole months, wrapping the year.
+ *
+ * @internal
+ */
 export function shiftMonth(month: string, by: number): string {
   const [y, m] = month.split("-").map(Number);
   const date = new Date(y ?? 1970, (m ?? 1) - 1 + by, 1);
@@ -105,6 +113,8 @@ export function shiftMonth(month: string, by: number): string {
  * Those trailing days are rendered rather than left blank: a month that starts
  * mid-week reads as a grid with a hole in it otherwise, and seeing the last days
  * of the previous month is how people orient themselves.
+ *
+ * @internal
  */
 export function monthGrid(month: string, sundayFirst = false): { day: string; inMonth: boolean }[] {
   const [y, m] = month.split("-").map(Number);

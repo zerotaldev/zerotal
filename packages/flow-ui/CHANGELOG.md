@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **The type surface is documented.** Every component exports the type of its own props —
+  `ButtonProps`, `DialogProps`, and 59 more — and none of them was named anywhere a reader
+  would look, though wrapping a component is the usual reason to want one. `docs/components.md`
+  now names them, with a worked wrapper, alongside the option unions a prop takes
+  (`SelectOption`, `PopoverSide`, `ToastPosition`, …), the sub-components (`AlertTitle`,
+  `DropdownMenuShortcut`, the prose set), the `cva` variant configs a wrapper can reuse, and the
+  theming exports.
+
+### Changed
+
+- **INTERNAL: nine helpers are marked `@internal`** — the calendar's date maths (`monthGrid`,
+  `shiftMonth`, `isoDay`, `formatDay`, `paginationRange`) and the `flow:add` machinery
+  (`resolveSource`, `rewriteImports`, `withDependencies`, `UtilEntry`). Still exported, still
+  working; they were never something an app calls.
+
 ## [1.7.4] — 2026-08-21
 
 ### Added

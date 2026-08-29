@@ -2348,6 +2348,79 @@ Or import directly from the package: `import { Prose } from "@zerotal/flow-ui";`
 
 <!-- END GENERATED COMPONENTS -->
 
+## Types
+
+Every component exports the type of its own props, named after it — `Button` takes
+`ButtonProps`, `Dialog` takes `DialogProps`. Reach for them when you wrap a component rather
+than use it directly, which is the usual reason an app needs one:
+
+```tsx fragment
+import { Button, type ButtonProps } from "@zerotal/flow-ui";
+
+/** Our save button: the same API, one decision already made. */
+export function SaveButton(props: Omit<ButtonProps, "variant">) {
+  return <Button variant="primary" {...props} />;
+}
+```
+
+The full set:
+
+```text
+AccordionProps       AlertDialogProps     AlertProps           AlertTextProps
+AspectRatioProps     AvatarProps          BadgeProps           BreadcrumbProps
+ButtonGroupProps     ButtonProps          CalendarProps        CardElementProps
+CarouselProps        ChartProps           CheckboxProps        CollapsibleProps
+ComboboxProps        CommandProps         ContextMenuProps     DatePickerProps
+DialogProps          DropdownMenuItemProps                     DropdownMenuLabelProps
+DropdownMenuProps    DropdownMenuSeparatorProps                DropdownMenuShortcutProps
+EmptyProps           FieldProps           GvaProps             HoverCardProps
+InputGroupProps      InputOTPProps        InputProps           ItemProps
+KbdProps             LabelProps           MenubarProps         NavigationMenuProps
+PaginationProps      PopoverProps         ProgressProps        ProseProps
+RadioGroupProps      ResizableProps       ScrollAreaProps      SelectProps
+SeparatorProps       SheetProps           SidebarProps         SkeletonProps
+SliderProps          SpinnerProps         SwitchProps          TableProps
+TabsProps            TextProps            TextareaProps        ToasterProps
+ToggleGroupProps     ToggleProps          TooltipProps
+```
+
+### Values a prop takes
+
+Several props are unions rather than free strings, and the union is exported so a variable
+holding one can be typed:
+
+| Type                  | Used by                                                     |
+| --------------------- | ----------------------------------------------------------- |
+| `SelectOption`        | `Select`, `Combobox` — one `{ label, value }` entry.        |
+| `RadioOption`         | `RadioGroup`.                                               |
+| `TabItem`             | `Tabs`.                                                     |
+| `SidebarItem`         | `Sidebar`.                                                  |
+| `TableGroup`          | `Table` — a grouped set of rows.                            |
+| `NavigationPanelLink` | `NavigationMenu`.                                           |
+| `PopoverSide`         | `Popover`, `Tooltip`, `HoverCard` — which side it opens on. |
+| `PopoverAlign`        | The same, for alignment.                                    |
+| `ToastPosition`       | `Toaster` — where toasts stack.                             |
+| `ChartType`           | `Chart`.                                                    |
+| `ClassValue`          | Anything the `class` prop accepts, before merging.          |
+
+### Sub-components
+
+A few components are used as a small set rather than one tag: `AlertTitle` and
+`AlertDescription` inside `Alert`, `DropdownMenuShortcut` inside a menu item. The prose
+components — `Blockquote`, `Lead`, `H2`, `H3`, `H4` — are the same idea for `Prose`.
+
+### Variants and theming
+
+Each variant-bearing component exports its own `cva` config, so a wrapper can reuse the exact
+class set rather than re-deriving it: `buttonVariants`, `badgeVariants`, `alertVariants`,
+`spinnerVariants`, `toggleVariants`, and `popoverSurface` for the floating surfaces.
+`GvaConfig` is the shape they are built from.
+
+Theming is `flowTokensCss` (the CSS custom properties), `flowTailwindConfig` (the Tailwind
+preset that reads them), and `FlowUiThemeConfig` for `config/flow-ui.ts`. `THEME`,
+`THEME_STORAGE_KEY` and `THEME_TOGGLE_SCRIPT` are the light/dark toggle: the script runs before
+first paint, so a page does not flash the wrong theme on load.
+
 ## Testing
 
 Set your suite up once as described in [Testing](/docs/testing). A `flow-ui`

@@ -8,6 +8,7 @@
     "core": 44,
     "devtools": 4,
     "flow": 8,
+    "flow-ui": 3,
     "inertia": 13,
     "media": 16,
     "notifications": 6,
@@ -16,6 +17,6 @@
     "tenancy": 1,
     "testing": 1
   },
-  "updatedAt": "2026-08-28",
-  "note": "Rose three times on 28 Aug 2026 as plumbing was correctly declared: core 30 → 44 (dev orchestrator), orm 21 → 42 (connection/context wiring, schema-diff machinery, dialects), admin (panel page machinery). The names were already unprefixed — marking them @internal made existing debt visible rather than adding any. Renaming exported symbols is breaking and belongs in the 2.0 ledger."
+  "updatedAt": "2026-08-29",
+  "note": "Rose across 28-29 Aug 2026 as plumbing was correctly declared: core (dev orchestrator), orm (connection/context wiring, schema-diff, dialects), admin (panel page machinery), flow-ui (calendar and flow:add helpers). The names were already unprefixed — marking them @internal made existing debt visible rather than adding any. Renaming exported symbols is breaking and belongs in the 2.0 ledger."
 }

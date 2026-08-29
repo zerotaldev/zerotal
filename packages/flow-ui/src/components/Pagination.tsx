@@ -39,6 +39,8 @@ export interface PaginationProps {
  *
  * First and last are always present so the ends of the list stay one click away,
  * which is what people reach for far more often than page 96.
+ *
+ * @internal
  */
 export function paginationRange(page: number, lastPage: number, siblings = 5): (number | null)[] {
   if (lastPage <= siblings + 2) {

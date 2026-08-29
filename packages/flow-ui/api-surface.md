@@ -90,12 +90,6 @@ interface IconBody = {
   width?: number
 }
 
-interface UtilEntry = {
-  name: string
-  source: string
-  target: string
-}
-
 type ClassValue = ClassArray | ClassDictionary | string | number | bigint | null | boolean | undefined
 
 type CustomIconName = never
@@ -546,12 +540,6 @@ const UTILS = UtilEntry[]
 
 function findComponent = (name: string) => ComponentEntry | undefined
 
-function resolveSource = (source: string) => string
-
-function rewriteImports = (source: string) => string
-
-function withDependencies = (names: string[]) => string[]
-
 interface ComponentEntry = {
   description: string
   name: string
@@ -560,10 +548,4 @@ interface ComponentEntry = {
   target: string
   title: string
   utils: ('cn' | 'gva')[]
-}
-
-interface UtilEntry = {
-  name: string
-  source: string
-  target: string
 }

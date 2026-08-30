@@ -564,7 +564,7 @@ describe("TestResponse.assertRedirect()", () => {
  */
 describe("TestResponse.assertInertiaRedirect()", () => {
   const redirect = (status: number, headers: Record<string, string>): TestResponse =>
-    new TestResponse(new Response(null, { status, headers }));
+    new TestResponse(new Response(null, { status, headers }), "");
 
   it("passes on a 303 that carries the marker", () => {
     const res = redirect(303, { Location: "/orders/1", "X-Inertia": "true" });

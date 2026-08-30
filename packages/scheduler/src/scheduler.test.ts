@@ -276,10 +276,13 @@ describe("ScheduledTask.start() / stop()", () => {
       nyc.start();
       const nycHandler = lastHandler!;
 
-      // Freeze the clock on the tick under test.
+      // Freeze the clock on the tick under test. `new Date()` with no arguments
+      // answers 07:00 UTC; every other form is passed straight through, because
+      // `wallClockIn` builds a Date from Y/M/D parts and has to keep working.
       globalThis.Date = class extends realDate {
-        constructor(...args: ConstructorParameters<typeof Date>) {
-          super(...(args.length ? args : [at0700Utc.getTime()]));
+        constructor(...args: unknown[]) {
+          if (args.length === 0) super(at0700Utc.getTime());
+          else super(...(args as [number]));
         }
       } as DateConstructor;
 

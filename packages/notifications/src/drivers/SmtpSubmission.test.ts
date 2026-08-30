@@ -25,7 +25,8 @@
  * exactly what it does against a real mail server.
  */
 import { describe, it, expect, afterAll } from "bun:test";
-import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import type { Readable } from "node:stream";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -68,7 +69,10 @@ const certificate = ((): { cert: string; key: string } | undefined => {
 
 const canRun = certificate !== undefined && available("node", ["--version"]);
 
-const servers: ChildProcessWithoutNullStreams[] = [];
+/** `stdio: ["ignore", "pipe", "pipe"]` — no stdin, both output streams readable. */
+type FixtureServer = ChildProcess & { stdout: Readable; stderr: Readable };
+
+const servers: FixtureServer[] = [];
 
 afterAll(async () => {
   for (const server of servers) server.kill();
@@ -89,7 +93,7 @@ async function startServer(): Promise<{ port: number; transcript: () => string[]
       certificate!.key,
     ],
     { stdio: ["ignore", "pipe", "pipe"] },
-  );
+  ) as FixtureServer;
   servers.push(server);
 
   const lines: string[] = [];

@@ -8,6 +8,31 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`@zerotal/inertia/testing` — `renderPage()`.** `assertInertia("home")` proves the
+  _server_ named a component and handed it props. It proves nothing about the
+  component, and a page can throw on its first paint while every such test passes: the
+  route answers `200`, the payload is correct, and the failure happens in a browser
+  the suite never opened. An app shipped a blank page to production with **614 passing
+  tests** exactly that way — a layout callback read `page.props`, which the callback
+  is not given.
+
+  `renderPage(Component, props, { shared })` builds the tree through Inertia's own
+  `<App>`, so `usePage()`, `<Head>` and a persistent layout all behave as they do in
+  the browser, and lets whatever it throws escape. It is not a DOM — `useEffect` does
+  not run — which is the point: it proves the tree _builds_, which is what nothing
+  else checked.
+
+### Documented
+
+- **[Persistent layouts](/docs/inertia/rendering#persistent-layouts)**, which this
+  package documented nowhere — not in the README, not in `api-surface.md`. The
+  callback is handed the page **element**, not the page props, so the natural
+  `(page) => <Layout search={page.props.search}>{page}</Layout>` throws on the first
+  paint and only in a browser. The page now shows the `usePage()` form and says why
+  the wrong one typechecks.
+
 ### Fixed
 
 - **`zt inertia:build` fails when it produces nothing.** A build could report success

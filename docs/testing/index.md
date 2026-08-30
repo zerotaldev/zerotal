@@ -209,6 +209,46 @@ observers, global scopes, and state-machine callbacks, plus framework event
 subscriptions. `createTestApp()` and `testApp.close()` call it for you, so suites
 using those helpers don't need the explicit `afterEach`.
 
+## Pages render
+
+A test that asserts a status code or an Inertia payload proves the _server_ did its
+job. It proves nothing about the component, and a page can throw on its first paint
+while every such test passes — the route answers `200`, the payload is correct, and
+the failure happens in a browser the suite never opened.
+
+An app shipped a blank page to production with **614 passing tests** exactly that way:
+a [layout callback](/docs/inertia/rendering#persistent-layouts) read `page.props`,
+which the callback is not given.
+
+`renderPage()` builds the component tree and lets whatever it throws escape:
+
+```typescript fragment
+// tests/pages.test.ts
+import { renderPage } from "@zerotal/inertia/testing";
+import Profile from "../resources/js/pages/profile";
+
+test("profile builds", async () => {
+  await renderPage(Profile, { title: "Profile" }, { shared: SHARED });
+});
+```
+
+It renders through Inertia's own `<App>`, so `usePage()`, `<Head>` and a persistent
+layout all behave as they do in the browser — the layout is resolved and rendered
+too, which is the case worth catching.
+
+Two things to know:
+
+- **Seed the shared props.** A component that destructures `auth` or `flash` throws
+  without them. That is a real failure and rarely the one you are testing for, so
+  pass the shape your `Inertia.share()` actually sends.
+- **It is not a DOM.** `useEffect` does not run and nothing clicks; this is
+  `renderToString`. For behaviour after paint, use
+  [the browser harness](/docs/testing/browser).
+
+The React scaffold ships one of these covering every page it generates. Add a line
+when you add a page — the cost is one line and the bug it catches is a white screen
+your users find first.
+
 ## `bun test` vs `bun zt test`
 
 Both run the same files. `bun zt test` is a wrapper that sets up three things Bun's

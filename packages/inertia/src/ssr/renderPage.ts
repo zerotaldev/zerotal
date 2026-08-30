@@ -182,6 +182,23 @@ export async function _prepareReactRender(
     _importInertiaReact(inertiaReactSpecifier),
   ]);
 
+  return _elementFor(reactMod, inertiaReact, page, pageMod.default);
+}
+
+/**
+ * Wrap an already-resolved page component in Inertia's `<App>`.
+ *
+ * Split out so a test can render a component it imported directly, without a pages
+ * directory or a module path — see `@zerotal/inertia/testing`.
+ *
+ * @internal
+ */
+function _elementFor(
+  reactMod: ReactModule,
+  inertiaReact: InertiaReactModule,
+  page: SsrPage,
+  component: unknown,
+): PreparedReactRender {
   let head: string[] = [];
 
   // `<App>` owns the head manager, the page context and the layout resolution —
@@ -191,14 +208,34 @@ export async function _prepareReactRender(
   // whichever renderer we were handed to has produced its shell.
   const element = reactMod.createElement(inertiaReact.App, {
     initialPage: page,
-    initialComponent: pageMod.default,
-    resolveComponent: () => pageMod.default,
+    initialComponent: component,
+    resolveComponent: () => component,
     onHeadUpdate: (elements: string[]) => {
       head = elements;
     },
   });
 
   return { element, head: () => head };
+}
+
+/**
+ * Build the `<App>` element for a component the caller already has.
+ *
+ * @param page - The `{ component, props, url }` page to render.
+ * @param component - The page component itself.
+ * @internal
+ */
+export async function _prepareComponentRender(
+  page: SsrPage,
+  component: unknown,
+): Promise<PreparedReactRender> {
+  const reactSpecifier = "react";
+  const inertiaReactSpecifier = "@inertiajs/react";
+  const [reactMod, inertiaReact] = await Promise.all([
+    import(reactSpecifier) as Promise<ReactModule>,
+    _importInertiaReact(inertiaReactSpecifier),
+  ]);
+  return _elementFor(reactMod, inertiaReact, page, component);
 }
 
 /**

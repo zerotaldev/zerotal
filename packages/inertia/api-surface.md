@@ -319,3 +319,13 @@ type RenderArgs = [props?: Record<string, unknown>]
 type RenderProps = {    [x: string]: unknown;}
 
 type RouteTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>
+
+## ./testing  `(./src/testing.ts)`
+
+function renderPage = (component: unknown, props?: Record<string, unknown>, options?: RenderPageOptions) => Promise<string>
+
+interface RenderPageOptions = {
+  component?: string | undefined
+  shared?: Record<string, unknown> | undefined
+  url?: string | undefined
+}

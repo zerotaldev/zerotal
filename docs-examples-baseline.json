@@ -4713,9 +4713,33 @@
     },
     {
       "file": "docs/inertia/rendering.md",
+      "heading": "One layout for several pages",
+      "ordinal": 0,
+      "hash": "25mdyn7n6tlx"
+    },
+    {
+      "file": "docs/inertia/rendering.md",
+      "heading": "Persistent layouts",
+      "ordinal": 0,
+      "hash": "23tpw9d6p3vi"
+    },
+    {
+      "file": "docs/inertia/rendering.md",
       "heading": "Redirects",
       "ordinal": 0,
       "hash": "1pg3o10p9n1t"
+    },
+    {
+      "file": "docs/inertia/rendering.md",
+      "heading": "The callback is handed the page element, not the page props",
+      "ordinal": 0,
+      "hash": "2fsshvd9hjpf"
+    },
+    {
+      "file": "docs/inertia/rendering.md",
+      "heading": "The callback is handed the page element, not the page props",
+      "ordinal": 1,
+      "hash": "3urwdktmq7e6"
     },
     {
       "file": "docs/inertia/rendering.md",
@@ -7620,6 +7644,12 @@
       "heading": "Configuration is per-process, and `bun test` is one process",
       "ordinal": 1,
       "hash": "1a25tp9308tv"
+    },
+    {
+      "file": "docs/testing/index.md",
+      "heading": "Pages render",
+      "ordinal": 0,
+      "hash": "22t9ic030rt5"
     },
     {
       "file": "docs/testing/index.md",

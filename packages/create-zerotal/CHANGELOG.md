@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **The React scaffold ships a page-render test.** Every generated page is built once,
+  to prove it can be. The rest of a starter suite asserts values and status codes, and
+  a page can throw on its first paint while all of them pass — which is how a blank
+  page reaches production with a green suite. New projects inherited that gap; now
+  they inherit the check instead. One line per page.
+
 ### Fixed
 
 - **`config/session.ts` is scaffolded environment-aware**, so the first production

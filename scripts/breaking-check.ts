@@ -147,6 +147,12 @@ interface Removal {
  * removal.
  */
 export function isWidening(removed: string, added: Set<string>): boolean {
+  // A shape that gained an optional member. Checked first, because the removed line
+  // in that case has no `?:` of its own — it is the *added* one that grew.
+  for (const candidate of added) {
+    if (isOptionalMemberAddition(removed, candidate)) return true;
+  }
+
   // Nothing here is optional, so nothing here can have been widened.
   if (!removed.includes("?:")) return false;
 
@@ -169,7 +175,59 @@ export function isWidening(removed: string, added: Set<string>): boolean {
     if (_optionalCount(candidate) <= beforeCount) continue;
     if (_withoutOptional(candidate) === normalised) return true;
   }
+
   return false;
+}
+
+/**
+ * Whether the only difference is that `added` gained optional members.
+ *
+ * Adding `foreignKeys?: boolean` to a recorded `sqlite: { path: string }` reads as a
+ * removal plus an addition, and breaks nobody: the old shape is still constructible,
+ * still assignable, and still implementable. Reporting it as a removal spends the
+ * gate's credibility on a change that is purely additive.
+ *
+ * Deliberately strict about *which* members may appear: every one the added line has
+ * and the removed line does not must be optional, and every member the removed line
+ * had must survive. A required member appearing is a break (existing object literals
+ * stop type-checking) and a member disappearing obviously is.
+ */
+function isOptionalMemberAddition(removed: string, added: string): boolean {
+  if (!added.includes("?:")) return false;
+
+  const before = _members(removed);
+  const after = _members(added);
+  if (before === null || after === null) return false;
+
+  // Nothing may leave, and nothing required may arrive.
+  for (const [name, type] of before) {
+    if (after.get(name) !== type) return false;
+  }
+  for (const [name] of after) {
+    if (!before.has(name) && !name.endsWith("?")) return false;
+  }
+  if (after.size === before.size) return false;
+
+  // The frame around the members has to be the same declaration.
+  return _withoutMembers(removed) === _withoutMembers(added);
+}
+
+/** Members of an inline object type, as `name` (with a trailing `?` when optional) → type. */
+function _members(line: string): Map<string, string> | null {
+  if (!line.includes("{")) return null;
+  const out = new Map<string, string>();
+  for (const match of line.matchAll(/([\w$]+)(\??):\s*([^;{}]+);/g)) {
+    out.set(`${match[1]}${match[2]}`, match[3]!.trim());
+  }
+  return out.size === 0 ? null : out;
+}
+
+/** The declaration with its inline members removed, whitespace collapsed. */
+function _withoutMembers(line: string): string {
+  return line
+    .replace(/([\w$]+)\??:\s*([^;{}]+);/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** How many properties on this line admit `undefined`. */

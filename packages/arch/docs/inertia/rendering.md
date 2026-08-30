@@ -112,6 +112,73 @@ models with unloaded relations** — eager-load what the page needs (`.with("aut
 or map to a plain shape. Shared props (`auth.user`) are already reduced to scalars
 for you; see [Shared Props](/docs/inertia/props).
 
+## Persistent layouts
+
+A page can name a layout that survives navigation — the shell is not unmounted and
+remounted between visits, so its state, scroll position and any open panel stay put:
+
+```tsx fragment
+// resources/js/pages/mail.tsx
+import MailLayout from "../Layouts/MailLayout";
+
+export default function Mail({ messages }) {
+  return <MessageList messages={messages} />;
+}
+
+Mail.layout = (page) => <MailLayout>{page}</MailLayout>;
+```
+
+### The callback is handed the page element, not the page props
+
+This is the one thing to get right, because getting it wrong fails in a way nothing
+on the server can see:
+
+```tsx fragment
+// WRONG — `page.props` is undefined. Compiles, 200s, blank screen.
+Mail.layout = (page) => <MailLayout search={page.props.search}>{page}</MailLayout>;
+```
+
+The argument is the rendered page **element**. It has no `props.search`, so this
+throws `Cannot read properties of undefined` on the first paint — in the browser,
+after the response has been sent. The route still answers `200`, the Inertia payload
+is still correct, and a server-side test still passes. The user gets a white page.
+
+Read props with `usePage()` inside a layout component instead:
+
+```tsx fragment
+// resources/js/pages/mail.tsx
+import { usePage } from "@inertiajs/react";
+import type { SharedProps } from "../types";
+
+function MailLayout({ children }) {
+  const { props } = usePage<SharedProps & { search?: string }>();
+  return <SuiteLayout search={props.search}>{children}</SuiteLayout>;
+}
+
+Mail.layout = (page) => <MailLayout>{page}</MailLayout>;
+```
+
+`usePage()` reads the same page object the server sent, from context, and works at
+any depth — so a layout five components down needs nothing threaded to it.
+
+> **Why the wrong form typechecks.** `@inertiajs/react` types the callback's argument
+> loosely enough that reaching for `.props` is not a compile error, and a cast to get
+> past a complaint makes it worse. The check that catches it is
+> [rendering the page in a test](/docs/testing#pages-render) — the scaffold ships one,
+> and it is the only thing in a normal suite that builds the component tree at all.
+
+### One layout for several pages
+
+Assign the same callback, or export it from the layout module and reuse it:
+
+```tsx fragment
+// resources/js/Layouts/MailLayout.tsx
+export const withMailLayout = (page: ReactNode) => <MailLayout>{page}</MailLayout>;
+
+// resources/js/pages/mail.tsx
+Mail.layout = withMailLayout;
+```
+
 ## First load vs. navigation
 
 `inertia()` branches on the `X-Inertia` request header:

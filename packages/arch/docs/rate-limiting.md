@@ -125,8 +125,9 @@ import { RateLimiter } from "zerotal";
 // 1000 req/hour per authenticated user (falls back to IP when unauthenticated)
 RateLimiter.for("api").limit(1000).every(3600).byUser().register();
 
-// 5 login attempts per minute, per IP
-RateLimiter.for("login").limit(5).every(60).byIp().register();
+// 5 login attempts per minute, per IP. `.trustedProxies(1)` because this app is
+// behind one reverse proxy — without it every visitor shares the proxy's address.
+RateLimiter.for("login").limit(5).every(60).byIp().trustedProxies(1).register();
 
 // 500 req/min keyed by an API-key header (unknown key → per IP)
 RateLimiter.for("partner").limit(500).every(60).byApiKey("x-api-key").register();
@@ -148,12 +149,30 @@ RateLimiter.for("upload")
 Each `.by*()` call sets how requests are bucketed. The default (no `.by*()` call)
 is the client IP.
 
-| Method               | Keys on                                     | Falls back to            |
-| -------------------- | ------------------------------------------- | ------------------------ |
-| `.byUser()`          | `ctx.user.id`                               | IP when unauthenticated  |
-| `.byApiKey(header?)` | `x-api-key` header (or a custom header)     | IP when header is absent |
-| `.byIp()`            | Socket IP → `X-Forwarded-For` → `X-Real-IP` | `'unknown'`              |
-| `.by(fn)`            | Return value of your function               | —                        |
+| Method               | Keys on                                 | Falls back to            |
+| -------------------- | --------------------------------------- | ------------------------ |
+| `.byUser()`          | `ctx.user.id`                           | IP when unauthenticated  |
+| `.byApiKey(header?)` | `x-api-key` header (or a custom header) | IP when header is absent |
+| `.byIp()`            | Client IP (the explicit default)        | `'unknown'`              |
+| `.by(fn)`            | Return value of your function           | —                        |
+
+> **Danger** — **Every one of the built-in strategies can end up keying on an
+> address**, including `.byUser()` and `.byApiKey()` — for a request with no user and
+> no key, which on a login form is every request that matters. So a named limiter
+> behind a reverse proxy needs `.trustedProxies(n)` for exactly the reason
+> [`ThrottleMiddleware` does](#throttlemiddleware--inline): without it the address is
+> the socket's, which is the _proxy's_, and every visitor shares one bucket. A
+> `login` limiter of five attempts a minute becomes five attempts a minute for your
+> whole user base, and one attacker locks everybody out.
+>
+> ```typescript fragment
+> // config/limiters.ts — behind one reverse proxy
+> RateLimiter.for("login").limit(5).every(60).byIp().trustedProxies(1).register();
+> ```
+>
+> `zt doctor` reports a named limiter that keys on an address and was never told
+> about a proxy. `.by(fn)` is yours — it is exempt, and resolving the address is on
+> you if you use one.
 
 ### Applying a named limiter
 
@@ -271,15 +290,16 @@ await app.post("/login", { email: "a@b.c" }, { "X-Forwarded-For": "10.0.0.7" });
 
 ### `LimiterDefinition` (fluent)
 
-| Method     | Signature                                    | Description                                                |
-| ---------- | -------------------------------------------- | ---------------------------------------------------------- |
-| `limit`    | `limit(max: number): this`                   | Maximum requests in the window (default `60`).             |
-| `every`    | `every(seconds: number): this`               | Window duration in seconds (default `60`).                 |
-| `byUser`   | `byUser(): this`                             | Key by `ctx.user.id`; IP when unauthenticated.             |
-| `byApiKey` | `byApiKey(header?: string): this`            | Key by header value (default `x-api-key`); IP when absent. |
-| `byIp`     | `byIp(): this`                               | Key by client IP (the explicit default).                   |
-| `by`       | `by(fn: (ctx: HttpContext) => string): this` | Key by your own resolver.                                  |
-| `register` | `register(): this`                           | Register the limiter with the global registry.             |
+| Method           | Signature                                    | Description                                                |
+| ---------------- | -------------------------------------------- | ---------------------------------------------------------- |
+| `limit`          | `limit(max: number): this`                   | Maximum requests in the window (default `60`).             |
+| `every`          | `every(seconds: number): this`               | Window duration in seconds (default `60`).                 |
+| `byUser`         | `byUser(): this`                             | Key by `ctx.user.id`; IP when unauthenticated.             |
+| `byApiKey`       | `byApiKey(header?: string): this`            | Key by header value (default `x-api-key`); IP when absent. |
+| `byIp`           | `byIp(): this`                               | Key by client IP (the explicit default).                   |
+| `by`             | `by(fn: (ctx: HttpContext) => string): this` | Key by your own resolver.                                  |
+| `trustedProxies` | `trustedProxies(count: number): this`        | Proxies in front of the app — required behind one.         |
+| `register`       | `register(): this`                           | Register the limiter with the global registry.             |
 
 ### `ThrottleMiddleware`
 

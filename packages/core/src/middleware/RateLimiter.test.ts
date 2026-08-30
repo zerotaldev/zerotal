@@ -93,7 +93,10 @@ describe("LimiterDefinition.byUser()", () => {
   });
 
   it("falls back to IP for unauthenticated requests", async () => {
-    RateLimiter.for("u2").limit(1).every(60).byUser().register();
+    // `.trustedProxies(1)` is what makes X-Forwarded-For readable at all. Without
+    // it the header is ignored and every one of these keys on the socket address,
+    // which is the point of the guard rather than a limitation of the test.
+    RateLimiter.for("u2").limit(1).every(60).byUser().trustedProxies(1).register();
     const mw = new (RateLimiter.middleware("u2"))();
 
     const run = async (ip: string) => {
@@ -146,7 +149,7 @@ describe("LimiterDefinition.byApiKey()", () => {
   });
 
   it("falls back to IP when no api key header is present", async () => {
-    RateLimiter.for("ak2").limit(1).every(60).byApiKey().register();
+    RateLimiter.for("ak2").limit(1).every(60).byApiKey().trustedProxies(1).register();
     const mw = new (RateLimiter.middleware("ak2"))();
 
     expect(await run(mw, { "x-forwarded-for": "3.3.3.3" })).toBe(200);
@@ -165,7 +168,7 @@ describe("LimiterDefinition.byApiKey()", () => {
 
 describe("LimiterDefinition.byIp()", () => {
   it("keys by IP explicitly", async () => {
-    RateLimiter.for("ip").limit(1).every(60).byIp().register();
+    RateLimiter.for("ip").limit(1).every(60).byIp().trustedProxies(1).register();
     const mw = new (RateLimiter.middleware("ip"))();
 
     const run = async (ip: string) => {
@@ -281,5 +284,71 @@ describe("RateLimiter.tooManyAttempts()", () => {
   it("throws when the limiter is not registered", async () => {
     const ctx = makeCtx();
     await expect(RateLimiter.tooManyAttempts("ghost", ctx)).rejects.toThrow("ghost");
+  });
+});
+
+/**
+ * A named limiter has to obey `trustedProxies` like the middleware it builds on.
+ *
+ * `.byIp()`, `.byUser()` and `.byApiKey()` used a private resolver that read the
+ * socket address and then fell back to the **leftmost** `X-Forwarded-For` entry with
+ * no proxy count at all. Two consequences, both bad and in opposite directions:
+ *
+ * - Where there was no socket address, a client picked its own bucket by writing the
+ *   header — the header is client-written, and the leftmost entry is the part the
+ *   client controls.
+ * - Behind a real reverse proxy, where there *is* a socket address, it was the
+ *   proxy's. Every visitor shared one bucket, so a `login` limiter of five attempts a
+ *   minute was five attempts a minute for the whole user base and one attacker locked
+ *   everybody out.
+ *
+ * `ThrottleMiddleware` fixed exactly this and the sibling API kept it, because a
+ * `keyResolver` replaces the middleware's own proxy-aware path entirely.
+ */
+describe("named limiters honour trustedProxies", () => {
+  const withHeaders = async (
+    mw: InstanceType<ReturnType<typeof RateLimiter.middleware>>,
+    headers: Record<string, string>,
+  ): Promise<number | undefined> => {
+    const ctx = new HttpContext(
+      new Request("http://localhost/", { headers }),
+      new ScopedResolver(),
+    );
+    await runMw(mw, ctx);
+    return ctx.response?.status;
+  };
+
+  it("ignores X-Forwarded-For when no proxy is trusted", async () => {
+    RateLimiter.for("tp-off").limit(1).every(60).byIp().register();
+    const mw = new (RateLimiter.middleware("tp-off"))();
+
+    // A rotating forged header must not buy a fresh bucket. Before the fix each of
+    // these was a new key and the limiter never fired.
+    expect(await withHeaders(mw, { "x-forwarded-for": "1.1.1.1" })).toBe(200);
+    expect(await withHeaders(mw, { "x-forwarded-for": "2.2.2.2" })).toBe(429);
+    expect(await withHeaders(mw, { "x-forwarded-for": "3.3.3.3" })).toBe(429);
+  });
+
+  it("reads the entry the trusted proxy appended, not the one the client wrote", async () => {
+    RateLimiter.for("tp-on").limit(1).every(60).byIp().trustedProxies(1).register();
+    const mw = new (RateLimiter.middleware("tp-on"))();
+
+    // One proxy: the client's address is the second-from-right. The leftmost entry
+    // is whatever the client sent, and must not decide the bucket.
+    expect(await withHeaders(mw, { "x-forwarded-for": "9.9.9.9, 5.5.5.5, 10.0.0.1" })).toBe(200);
+    expect(await withHeaders(mw, { "x-forwarded-for": "1.1.1.1, 5.5.5.5, 10.0.0.1" })).toBe(429);
+
+    // A genuinely different client — different second-from-right — is its own bucket.
+    expect(await withHeaders(mw, { "x-forwarded-for": "9.9.9.9, 6.6.6.6, 10.0.0.1" })).toBe(200);
+  });
+
+  it("applies the count however the builder was ordered", async () => {
+    // `.trustedProxies()` after `.byIp()` has to reach the resolver `.byIp()` chose,
+    // which is why the strategy is recorded and the resolver built at the end.
+    RateLimiter.for("tp-order").limit(1).every(60).trustedProxies(1).byIp().register();
+    const mw = new (RateLimiter.middleware("tp-order"))();
+
+    expect(await withHeaders(mw, { "x-forwarded-for": "9.9.9.9, 5.5.5.5, 10.0.0.1" })).toBe(200);
+    expect(await withHeaders(mw, { "x-forwarded-for": "1.1.1.1, 6.6.6.6, 10.0.0.1" })).toBe(200);
   });
 });

@@ -4,7 +4,7 @@
  * later attached to routes or checked manually as `ThrottleMiddleware`.
  */
 import type { HttpContext } from "../pipeline/HttpContext.ts";
-import { ThrottleMiddleware } from "./ThrottleMiddleware.ts";
+import { ThrottleMiddleware, _clientIp, _markIpDerived } from "./ThrottleMiddleware.ts";
 import type { ThrottleOptions } from "./ThrottleMiddleware.ts";
 
 /**
@@ -14,7 +14,19 @@ import type { ThrottleOptions } from "./ThrottleMiddleware.ts";
 export class LimiterDefinition {
   private _max = 60;
   private _window = 60;
-  private _keyFn?: (ctx: HttpContext) => string;
+  private _trustedProxies?: number;
+
+  /**
+   * How this limiter keys its buckets, recorded rather than resolved.
+   *
+   * The built-in strategies all fall back to the client address, and resolving that
+   * needs `trustedProxies` — which the fluent API may not have been told yet when
+   * `.byIp()` runs. Keeping the *decision* here and building the resolver in
+   * {@link toMiddlewareClass} means `.byIp().trustedProxies(1)` and
+   * `.trustedProxies(1).byIp()` mean the same thing, which is the only defensible
+   * answer for a builder.
+   */
+  private _key: KeyStrategy = { kind: "default" };
 
   constructor(private readonly _name: string) {}
 
@@ -30,9 +42,33 @@ export class LimiterDefinition {
     return this;
   }
 
-  /** Custom key resolver — defaults to client IP. */
+  /**
+   * Number of trusted reverse proxies in front of this server.
+   *
+   * Needed by every strategy that can fall back to the client address, which is all
+   * the built-in ones. Without it the address used is the socket's — the *proxy's*,
+   * behind a reverse proxy, so every visitor shares one bucket and the limiter
+   * inverts into the thing it was installed to prevent.
+   *
+   * @param count - How many proxies sit in front; see {@link ThrottleOptions.trustedProxies}.
+   *
+   * @example
+   * RateLimiter.for("login").limit(5).every(60).trustedProxies(1).register();
+   */
+  trustedProxies(count: number): this {
+    this._trustedProxies = count;
+    return this;
+  }
+
+  /**
+   * Custom key resolver — defaults to client IP.
+   *
+   * Whatever this returns is the bucket. If it derives from the client address,
+   * resolve that with `ctx.ip()` plus your own proxy handling, or prefer
+   * {@link byIp}, which honours {@link trustedProxies} for you.
+   */
   by(fn: (ctx: HttpContext) => string): this {
-    this._keyFn = fn;
+    this._key = { kind: "custom", fn };
     return this;
   }
 
@@ -45,10 +81,7 @@ export class LimiterDefinition {
    * RateLimiter.for('api').limit(1000).every(3600).byUser().register();
    */
   byUser(): this {
-    this._keyFn = (ctx) => {
-      const user = (ctx as unknown as Record<string, unknown>).user as { id?: number } | undefined;
-      return user?.id !== undefined ? `user:${user.id}` : `ip:${_resolveIp(ctx)}`;
-    };
+    this._key = { kind: "user" };
     return this;
   }
 
@@ -60,10 +93,7 @@ export class LimiterDefinition {
    * RateLimiter.for('api').limit(500).every(60).byApiKey('x-api-key').register();
    */
   byApiKey(header = "x-api-key"): this {
-    this._keyFn = (ctx) => {
-      const key = ctx.header(header);
-      return key ? `apikey:${key}` : `ip:${_resolveIp(ctx)}`;
-    };
+    this._key = { kind: "apiKey", header };
     return this;
   }
 
@@ -73,7 +103,7 @@ export class LimiterDefinition {
    * through the fluent API.
    */
   byIp(): this {
-    this._keyFn = (ctx) => `ip:${_resolveIp(ctx)}`;
+    this._key = { kind: "ip" };
     return this;
   }
 
@@ -97,7 +127,12 @@ export class LimiterDefinition {
       maxAttempts: this._max,
       windowSeconds: this._window,
     };
-    if (this._keyFn) options.keyResolver = this._keyFn;
+    if (this._trustedProxies !== undefined) options.trustedProxies = this._trustedProxies;
+
+    // `default` deliberately sets no resolver: ThrottleMiddleware's own is already
+    // proxy-aware, and every resolver set here has to be too.
+    const resolver = _resolverFor(this._key, this._trustedProxies);
+    if (resolver) options.keyResolver = resolver;
     return ThrottleMiddleware.with(options);
   }
 
@@ -114,14 +149,62 @@ export class LimiterDefinition {
   }
 }
 
-/** Resolve the best available client IP from the context. */
-function _resolveIp(ctx: HttpContext): string {
-  return (
-    ctx.ip() ??
-    ctx.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-    ctx.header("x-real-ip") ??
-    "unknown"
-  );
+/** How a limiter decides which bucket a request belongs to. */
+type KeyStrategy =
+  | { kind: "default" }
+  | { kind: "ip" }
+  | { kind: "user" }
+  | { kind: "apiKey"; header: string }
+  | { kind: "custom"; fn: (ctx: HttpContext) => string };
+
+/**
+ * Build the key resolver for a strategy, or `undefined` to let `ThrottleMiddleware`
+ * use its own.
+ *
+ * Every branch that can end up keying on an address goes through `_clientIp` with the
+ * proxy count, and is marked so `zt doctor` still audits it. The previous versions
+ * used a private helper that read the socket address and fell back to the *leftmost*
+ * `X-Forwarded-For` entry with no proxy count at all — so behind a reverse proxy
+ * every visitor keyed on the proxy's own address and shared a single bucket. A named
+ * `login` limiter of five attempts a minute was five attempts a minute across the
+ * entire user base, and one attacker locked everybody out.
+ *
+ * @param strategy - What the builder recorded.
+ * @param trustedProxies - How many proxies sit in front, if the builder was told.
+ */
+function _resolverFor(
+  strategy: KeyStrategy,
+  trustedProxies: number | undefined,
+): ((ctx: HttpContext) => string) | undefined {
+  switch (strategy.kind) {
+    case "default":
+      return undefined;
+
+    case "ip":
+      return _markIpDerived((ctx) => `ip:${_clientIp(ctx, trustedProxies)}`);
+
+    case "user":
+      // Marked, because the *unauthenticated* half of this keys on an address —
+      // which is the half a rate limiter on a login form exists for.
+      return _markIpDerived((ctx) => {
+        const user = (ctx as unknown as Record<string, unknown>).user as
+          { id?: number } | undefined;
+        return user?.id !== undefined ? `user:${user.id}` : `ip:${_clientIp(ctx, trustedProxies)}`;
+      });
+
+    case "apiKey": {
+      const { header } = strategy;
+      return _markIpDerived((ctx) => {
+        const key = ctx.header(header);
+        return key ? `apikey:${key}` : `ip:${_clientIp(ctx, trustedProxies)}`;
+      });
+    }
+
+    case "custom":
+      // Unmarked on purpose: an app-supplied resolver is the app's to reason about,
+      // and most of them key on something no proxy can affect.
+      return strategy.fn;
+  }
 }
 
 /**

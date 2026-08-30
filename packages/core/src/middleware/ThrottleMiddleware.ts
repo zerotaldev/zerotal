@@ -226,7 +226,60 @@ export function _pruneStore(store: Map<string, HitRecord>, now: number): void {
   for (let i = 0; i < live.length - _MAX_KEYS; i++) store.delete(live[i]![0]);
 }
 
-function _clientIp(ctx: HttpContext, trustedProxies?: number): string {
+/**
+ * A `keyResolver` that derives its key from the client's address, tagged so the
+ * doctor can tell it apart from one that does not.
+ *
+ * `zt doctor` exempts a throttle with a custom `keyResolver` from the
+ * `trustedProxies` check, and that is right for a limiter keyed on a user id or a
+ * tenant — no proxy can affect it. It is exactly wrong for one keyed on an IP,
+ * which is what `RateLimiter`'s `.byIp()`, `.byUser()` and `.byApiKey()` build.
+ * Unmarked, those slipped past the one check that exists to catch them.
+ *
+ * @internal
+ */
+export const _IP_DERIVED_KEY = Symbol.for("zerotal.throttle.ipDerivedKey");
+
+/** Shape of a resolver carrying the marker. @internal */
+type MaybeMarked = { [_IP_DERIVED_KEY]?: boolean };
+
+/**
+ * Tag `resolver` as deriving its key from the client address.
+ *
+ * @param resolver - The key resolver to mark.
+ * @returns The same function, marked.
+ * @internal
+ */
+export function _markIpDerived<T extends (ctx: HttpContext) => string>(resolver: T): T {
+  (resolver as T & MaybeMarked)[_IP_DERIVED_KEY] = true;
+  return resolver;
+}
+
+/**
+ * Whether `resolver` keys on the client address, and so still needs `trustedProxies`.
+ *
+ * @param resolver - The key resolver to test, if there is one.
+ * @internal
+ */
+export function _isIpDerived(resolver: unknown): boolean {
+  return typeof resolver === "function" && (resolver as MaybeMarked)[_IP_DERIVED_KEY] === true;
+}
+
+/**
+ * The client's address, honouring `trustedProxies`.
+ *
+ * Exported so `RateLimiter`'s built-in key resolvers use the same rule rather than
+ * their own. Theirs read the socket address and fell back to the *leftmost*
+ * `X-Forwarded-For` entry with no proxy count at all — so behind a reverse proxy
+ * every visitor keyed on the proxy's address and shared one bucket, and a named
+ * `login` limiter of five attempts a minute was five attempts a minute for the whole
+ * user base. One attacker locked everybody out.
+ *
+ * @param ctx - The request to resolve an address for.
+ * @param trustedProxies - How many proxies sit in front; see {@link ThrottleOptions.trustedProxies}.
+ * @internal
+ */
+export function _clientIp(ctx: HttpContext, trustedProxies?: number): string {
   // Default (undefined) and an explicit 0 both mean "not behind a trusted proxy": read the raw
   // socket address, which cannot be spoofed.
   //

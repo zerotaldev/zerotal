@@ -394,6 +394,7 @@ class LimiterDefinition = {
   register: () => LimiterDefinition
   toMiddleware: () => ThrottleMiddleware
   toMiddlewareClass: () => new () => ThrottleMiddleware
+  trustedProxies: (count: number) => LimiterDefinition
 }
 
 class MarkdownBuilder = {

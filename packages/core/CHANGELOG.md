@@ -89,6 +89,33 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **Named rate limiters honour `trustedProxies`.** `ThrottleMiddleware` resolves the
+  client address from the socket unless told how many proxies sit in front — that was
+  fixed, documented and covered by a doctor check. `RateLimiter`'s `.byIp()`,
+  `.byUser()` and `.byApiKey()` did not: they used a private resolver that read the
+  socket address and fell back to the **leftmost** `X-Forwarded-For` entry, with no
+  proxy count anywhere in it. A `keyResolver` replaces the middleware's own
+  proxy-aware path entirely, so the sibling API kept the bug the middleware had shed.
+
+  Two consequences, in opposite directions. Where there was no socket address a client
+  picked its own bucket by writing the header, which is the part of it the client
+  controls. Behind a real reverse proxy — where there _is_ a socket address — it was
+  the proxy's, so **every visitor shared one bucket**: the documented
+  `RateLimiter.for("login").limit(5).every(60)` was five attempts a minute across the
+  entire user base, and one attacker locked everybody out.
+
+  All three now resolve through the same proxy-aware function, and
+  `.trustedProxies(n)` is on the builder. The strategy is recorded and the resolver
+  built at the end, so `.byIp().trustedProxies(1)` and `.trustedProxies(1).byIp()`
+  mean the same thing.
+
+- **`zt doctor` audits named limiters.** Its `trustedProxies` check exempted any
+  throttle with a custom `keyResolver` — right for one keyed on a user id, where no
+  proxy can affect the answer, and exactly wrong for `RateLimiter`'s built-ins, which
+  _are_ custom resolvers and do key on an address. The check that exists to catch this
+  skipped the whole API that still had it. The built-in resolvers mark themselves now;
+  an app's own `.by(fn)` stays exempt, which is the point of the exemption.
+
 - **The build record is portable.** Its filename was hashed from the output
   directory's _absolute_ path, so the same project built at `/home/me/app` and
   unpacked at `/opt/app` wrote and looked for two different files. A record shipped

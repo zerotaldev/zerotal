@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import type { Application } from "../application/Application.ts";
 import { ThrottleMiddleware } from "../middleware/ThrottleMiddleware.ts";
 import { BaseMiddleware } from "../middleware/BaseMiddleware.ts";
+import { RateLimiter } from "../middleware/RateLimiter.ts";
 import { registeredThrottles, throttlesKeyedOnSocket } from "./throttleIdentity.ts";
 import type { NextFn } from "../pipeline/types.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
@@ -75,5 +76,44 @@ describe("throttlesKeyedOnSocket", () => {
   it("treats trustedProxies: 0 as keying on the socket, because it does", () => {
     const explicit = ThrottleMiddleware.with({ maxAttempts: 5, trustedProxies: 0 });
     expect(throttlesKeyedOnSocket(appWith([explicit]))).toHaveLength(1);
+  });
+});
+
+/**
+ * The exemption that let the whole named-limiter API through.
+ *
+ * A custom `keyResolver` is exempt because an app keying on a user id has decided
+ * identity for itself and the proxy question does not arise. But `RateLimiter`'s
+ * `.byIp()`, `.byUser()` and `.byApiKey()` *are* custom resolvers, and every one of
+ * them can end up keying on the client address — so the check that exists to catch
+ * exactly this skipped exactly this. The resolvers mark themselves now.
+ */
+describe("named limiters are not exempt", () => {
+  it("reports a .byIp() limiter with no trusted proxy", () => {
+    RateLimiter.for("doctor-ip").limit(5).every(60).byIp().register();
+    const cls = RateLimiter.middleware("doctor-ip");
+    expect(throttlesKeyedOnSocket(appWith([cls]))).toHaveLength(1);
+  });
+
+  it("reports a .byUser() limiter, whose unauthenticated half keys on an address", () => {
+    RateLimiter.for("doctor-user").limit(5).every(60).byUser().register();
+    const cls = RateLimiter.middleware("doctor-user");
+    expect(throttlesKeyedOnSocket(appWith([cls]))).toHaveLength(1);
+  });
+
+  it("says nothing once the limiter has been told about the proxy", () => {
+    RateLimiter.for("doctor-ok").limit(5).every(60).byIp().trustedProxies(1).register();
+    const cls = RateLimiter.middleware("doctor-ok");
+    expect(throttlesKeyedOnSocket(appWith([cls]))).toEqual([]);
+  });
+
+  it("still exempts an app's own resolver, which is the point of the exemption", () => {
+    RateLimiter.for("doctor-custom")
+      .limit(5)
+      .every(60)
+      .by((ctx) => `tenant:${(ctx as unknown as { tenantId?: string }).tenantId ?? "none"}`)
+      .register();
+    const cls = RateLimiter.middleware("doctor-custom");
+    expect(throttlesKeyedOnSocket(appWith([cls]))).toEqual([]);
   });
 });

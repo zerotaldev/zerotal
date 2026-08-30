@@ -24,7 +24,7 @@
  * @module
  */
 import type { Application } from "../application/Application.ts";
-import { ThrottleMiddleware } from "../middleware/ThrottleMiddleware.ts";
+import { ThrottleMiddleware, _isIpDerived } from "../middleware/ThrottleMiddleware.ts";
 import { Router } from "../router/Router.ts";
 
 /** A registered throttle and how it decides who is who. */
@@ -64,7 +64,11 @@ function readIdentity(cls: unknown, where: string): ThrottleIdentity | null {
       name: (cls as { name?: string }).name || "ThrottleMiddleware",
       where,
       trustsProxies: typeof options.trustedProxies === "number" && options.trustedProxies > 0,
-      customKey: typeof options.keyResolver === "function",
+      // A resolver that keys on the client address is not an exemption — it is
+      // exactly the case this check exists for. `RateLimiter`'s `.byIp()`,
+      // `.byUser()` and `.byApiKey()` all mark themselves, so the named-limiter API
+      // stops slipping past the audit that covers the middleware it builds on.
+      customKey: typeof options.keyResolver === "function" && !_isIpDerived(options.keyResolver),
     };
   } catch {
     // A middleware that will not construct is a different problem, and not one

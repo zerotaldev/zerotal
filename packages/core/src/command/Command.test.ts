@@ -640,3 +640,70 @@ describe("Command._readLine()", () => {
     expect(line).toBe("hello");
   });
 });
+
+/**
+ * A command that sets `process.exitCode` has failed, and the runner has to agree.
+ *
+ * `callInProcess` returned `{ code: 0 }` the moment `run()` returned, so the only
+ * way to fail was to throw. `process.exitCode = 1` is the idiomatic way to fail a
+ * Bun/Node CLI without an exception and is what most people reach for — an app
+ * wrote a `release:check` that printed six blockers, set the code, and came back
+ * as success. Their deploy script read that and would have restarted a broken
+ * production deployment; `zt deploy` gates on the same return value, so its own
+ * preflight had the hole too.
+ *
+ * A gate that cannot fail is not a gate, and this one failed *open*.
+ */
+describe("CommandRunner honours process.exitCode", () => {
+  class BlockerCommand extends Command {
+    static override commandName = "gate:blocked";
+    static override needsApp = false;
+    override async run(): Promise<void> {
+      this.line("6 blockers found");
+      process.exitCode = 1;
+    }
+  }
+
+  class CleanCommand extends Command {
+    static override commandName = "gate:clean";
+    static override needsApp = false;
+    override async run(): Promise<void> {
+      this.line("all good");
+    }
+  }
+
+  async function runnerWith(...commands: (typeof Command)[]) {
+    const { CommandRunner } = await import("./CommandRunner.ts");
+    const { Application } = await import("../application/Application.ts");
+    Application._resetInstance();
+    const app = Application.create({ env: "test" });
+    await app.boot();
+    const runner = new CommandRunner(app);
+    for (const c of commands) runner.register(c as never);
+    return runner;
+  }
+
+  it("reports a non-zero code when the command set one", async () => {
+    const runner = await runnerWith(BlockerCommand);
+    const result = await runner.callInProcess(["gate:blocked"]);
+
+    expect(result.code).toBe(1);
+    expect(result.output).toContain("6 blockers");
+  });
+
+  it("still reports success for a command that sets nothing", async () => {
+    const runner = await runnerWith(CleanCommand);
+    expect((await runner.callInProcess(["gate:clean"])).code).toBe(0);
+  });
+
+  it("does not let one command's exit code leak into the next", async () => {
+    // `process.exitCode` is process-global and these run in-process, so without
+    // save/restore the blocker would fail every command called after it — and
+    // would leave the runner's own process marked as failed.
+    const runner = await runnerWith(BlockerCommand, CleanCommand);
+
+    expect((await runner.callInProcess(["gate:blocked"])).code).toBe(1);
+    expect((await runner.callInProcess(["gate:clean"])).code).toBe(0);
+    expect(process.exitCode ?? 0).toBe(0);
+  });
+});

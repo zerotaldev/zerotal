@@ -206,3 +206,67 @@ describe("runtimeBelowFloorMessage", () => {
     expect(message).toContain(RUNTIME_MISMATCH_ESCAPE);
   });
 });
+
+/**
+ * A runtime the project never asked for is not two runtimes in play.
+ *
+ * The common way to acquire a `node_modules/bun` is not to want one:
+ * `bun-plugin-tailwind` declares `bun` as a *required* peer, so `bun install`
+ * fetches the Bun npm package as a second, usually newer runtime. Nobody executes
+ * it — it is a directory — and refusing to boot over it crash-looped an app behind
+ * a 502. Worse, the refusal's advice (`bun update bun`, or run through
+ * `node_modules/.bin/bun`) is the wrong answer for that cause, and the obvious fix
+ * it invites — deleting the directory after install — cannot work, because that
+ * package's postinstall runs during install.
+ */
+describe("a chosen runtime versus a stray one", () => {
+  /** A project root with `node_modules/bun` and a manifest that may or may not name it. */
+  function withBun(installedVersion: string, declares: "dep" | "devDep" | "no"): string {
+    const root = mkdtempSync(join(tmpdir(), "zt-runtime-"));
+    temporaries.push(root);
+    mkdirSync(join(root, "node_modules", "bun"), { recursive: true });
+    writeFileSync(
+      join(root, "node_modules", "bun", "package.json"),
+      JSON.stringify({ name: "bun", version: installedVersion }),
+    );
+    const manifest: Record<string, unknown> = { name: "app" };
+    if (declares === "dep") manifest["dependencies"] = { bun: "^1.0.0" };
+    if (declares === "devDep") manifest["devDependencies"] = { bun: "^1.0.0" };
+    writeFileSync(join(root, "package.json"), JSON.stringify(manifest));
+    return root;
+  }
+
+  it("marks a mismatch the project declared as chosen", () => {
+    expect(runtimeMismatch(withBun("0.0.1-nope", "dep"))?.chosen).toBe(true);
+    expect(runtimeMismatch(withBun("0.0.1-nope", "devDep"))?.chosen).toBe(true);
+  });
+
+  it("marks one nothing depends on as not chosen", () => {
+    expect(runtimeMismatch(withBun("0.0.1-nope", "no"))?.chosen).toBe(false);
+  });
+
+  it("names the transitive peer, and warns against the fix that does not work", () => {
+    const message = runtimeMismatchMessage({
+      running: "1.3.14",
+      installed: "1.4.0",
+      manifest: "/app/node_modules/bun/package.json",
+      chosen: false,
+    });
+    expect(message).toContain("bun-plugin-tailwind");
+    expect(message).toContain("--omit=peer");
+    expect(message).toContain("Do NOT remove node_modules/bun");
+    // The advice for a chosen runtime would be actively misleading here.
+    expect(message).not.toContain("bun update bun");
+  });
+
+  it("still gives the pick-one advice when the project chose the runtime", () => {
+    const message = runtimeMismatchMessage({
+      running: "1.3.14",
+      installed: "1.4.0",
+      manifest: "/app/node_modules/bun/package.json",
+      chosen: true,
+    });
+    expect(message).toContain("bun update bun");
+    expect(message).not.toContain("bun-plugin-tailwind");
+  });
+});

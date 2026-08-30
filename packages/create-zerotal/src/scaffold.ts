@@ -28,6 +28,18 @@ function randomBase64(bytes: number): string {
   return Buffer.from(crypto.getRandomValues(new Uint8Array(bytes))).toString('base64');
 }
 
+/**
+ * What the secrets read as in the committed `.env.example`.
+ *
+ * A value nobody could mistake for a working key, and one that names the command
+ * that produces a real one. `.env` still gets a freshly generated key, so a new
+ * app boots immediately — the example is the copy that goes to a git host.
+ */
+const PLACEHOLDER_SECRETS: Record<string, string> = {
+  '{{app_key}}':        'run-`bun zt.ts key:generate`-to-fill-this',
+  '{{session_secret}}': 'run-`bun zt.ts key:generate`-to-fill-this',
+};
+
 function tokens(opts: ScaffoldOptions): Record<string, string> {
   const dbUrl: Record<Database, string> = {
     sqlite:   './database/db.sqlite',
@@ -93,12 +105,19 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
     const content = applyTokens(raw, map);
     await Bun.write(dest, content);
 
-    // Also write a ready-to-run `.env` next to `.env.example`. The example
-    // already carries a freshly-generated APP_KEY/SESSION_SECRET, so a fresh
-    // app boots immediately without a manual `cp .env.example .env` +
-    // `key:generate` step (the old flow left APP_KEY empty on first boot).
+    // `.env` gets the real secrets; `.env.example` gets placeholders.
+    //
+    // Both used to get the same rendered content, which put a live, working
+    // APP_KEY into the one file of the pair that `.gitignore` does *not* cover.
+    // Every scaffolded project therefore committed its own session-signing key,
+    // and `cp .env.example .env` — the first line of every deployment guide there
+    // is — carried that published key into production. One key across a laptop
+    // and a server is one compromise across both, and a strength check cannot
+    // catch it: as a string the value is perfectly strong. The problem is that
+    // this particular value was distributed.
     if (dest.endsWith('.env.example')) {
       await Bun.write(dest.replace(/\.env\.example$/, '.env'), content);
+      await Bun.write(dest, applyTokens(raw, { ...map, ...PLACEHOLDER_SECRETS }));
     }
   }
 }

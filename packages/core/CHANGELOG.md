@@ -8,6 +8,35 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A command can fail without throwing.** `CommandRunner` ran an unconditional
+  `process.exit(0)` the moment `run()` returned and never read `process.exitCode` —
+  which is the idiomatic way to fail a Bun/Node CLI without an exception, and what
+  most people reach for. An app's `release:check` printed six blockers, set the code,
+  and exited **0**; their deploy script read success and would have restarted a broken
+  production deployment. `zt deploy` gates on the same value through
+  `callInProcess`, so its own preflight had the hole too. A gate that cannot fail is
+  not a gate, and this one failed _open_.
+
+  `callInProcess` saves and restores the code around each command, because it runs
+  them in-process and the value is global. Note for anyone doing the same:
+  `process.exitCode = undefined` is a **no-op in Bun** — the previous value survives —
+  so clearing it takes `0`.
+
+- **A Bun the project never asked for is a warning, not a refusal.**
+  `bun-plugin-tailwind` declares `bun` as a _required_ peer, so `bun install` fetches
+  the Bun npm package as a second, newer runtime — and the runtime guard refused to
+  boot. An app took two production outages on this: the first crash-looping behind a
+  502, the second because the obvious fix (removing `node_modules/bun` after install)
+  cannot work — that package's postinstall runs _during_ install, so deleting it
+  leaves the tree incomplete.
+
+  Nothing about that is two runtimes in play; nobody executes the stray copy. The
+  guard now asks whether the project _declared_ `bun` in its own dependencies. If it
+  did, the refusal stands. If it did not, it warns and names the likely culprit, the
+  fix that works (`bun install --omit=peer`) and the one that does not.
+
 ## [1.10.0] — 2026-08-30
 
 ### Changed

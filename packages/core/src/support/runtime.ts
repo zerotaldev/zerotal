@@ -35,6 +35,12 @@ export interface RuntimeMismatch {
   installed: string;
   /** Absolute path of the manifest `installed` was read from. */
   manifest: string;
+  /**
+   * Whether the project *asked* for a `bun` package — named it in its own
+   * dependencies — or merely acquired one as a transitive peer. A mismatch the
+   * project chose is a refusal; one it did not is a warning.
+   */
+  chosen?: boolean | undefined;
 }
 
 /**
@@ -83,7 +89,54 @@ export function runtimeMismatch(cwd: string = process.cwd()): RuntimeMismatch | 
   const installed = installedBunVersion(cwd);
   if (!installed) return null;
   if (installed.version === running) return null;
-  return { running, installed: installed.version, manifest: installed.manifest };
+  return {
+    running,
+    installed: installed.version,
+    manifest: installed.manifest,
+    chosen: declaresBunDependency(cwd),
+  };
+}
+
+/**
+ * Whether the project asked for a `bun` package, or merely ended up with one.
+ *
+ * This is the difference between two runtimes and one runtime plus a stray npm
+ * package, and it decides whether the mismatch is a refusal or a warning.
+ *
+ * It matters because the common way to acquire a `node_modules/bun` is not to want
+ * one. `bun-plugin-tailwind@0.1.2` — which the scaffold itself installs — declares
+ * `"peerDependencies": { "bun": ">=1.0.0" }` with no `peerDependenciesMeta` marking
+ * it optional, so `bun install` auto-installs the Bun *npm package* as a second
+ * runtime, newer than the one executing. An app hit exactly that and took two
+ * production outages: the first when the refusal crash-looped behind a 502, the
+ * second when the obvious fix (`rm -rf node_modules/bun` after install) could not
+ * work, because that package's postinstall runs *during* install and its removal
+ * leaves the tree incomplete.
+ *
+ * Nothing about that situation is a project running two runtimes. Nobody executes
+ * the stray copy; it is a directory. Refusing to boot over it is the guard being
+ * confidently wrong, and the remedies it prints — `bun update bun`, or run
+ * everything through `node_modules/.bin/bun` — are both wrong answers to it.
+ *
+ * @param cwd - Project root to look under.
+ * @returns `true` when a manifest up the tree names `bun` in its own dependencies.
+ */
+export function declaresBunDependency(cwd: string): boolean {
+  let dir = cwd;
+  for (;;) {
+    try {
+      const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      if (manifest.dependencies?.["bun"] ?? manifest.devDependencies?.["bun"]) return true;
+    } catch {
+      // No manifest here, or unreadable — keep climbing.
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return false;
+    dir = parent;
+  }
 }
 
 /**
@@ -93,12 +146,34 @@ export function runtimeMismatch(cwd: string = process.cwd()): RuntimeMismatch | 
  * @param mismatch - The disagreement to describe.
  */
 export function runtimeMismatchMessage(mismatch: RuntimeMismatch): string {
-  return (
+  const head =
     `Two Bun runtimes are in play. This process is Bun ${mismatch.running}, but the ` +
     `project installs Bun ${mismatch.installed} (${mismatch.manifest}).\n\n` +
     `  Whichever one is not running this command is still running something else — ` +
     `the server, the suite, a deploy step — and a test that passes under one is not ` +
-    `evidence about the other.\n\n` +
+    `evidence about the other.\n\n`;
+
+  // Nothing named `bun`, so it arrived as a transitive peer. Naming the usual
+  // culprit is most of the fix, because the remedies below are the opposite of the
+  // ones for a runtime somebody chose — and following those instead cost an app two
+  // production outages.
+  if (mismatch.chosen === false) {
+    return (
+      head +
+      `  Nothing in this project depends on "bun", so it arrived as a transitive peer —\n` +
+      `  usually bun-plugin-tailwind, which declares "bun" as a required peer dependency\n` +
+      `  and has Bun auto-install it as a second runtime.\n\n` +
+      `  Fix it by not installing it:\n` +
+      `    bun install --omit=peer   # skips every peer; safe when yours are direct deps\n\n` +
+      `  Do NOT remove node_modules/bun after installing. That package's postinstall runs\n` +
+      `  *during* install, so deleting it afterwards leaves the tree incomplete and the\n` +
+      `  next install fails — which is its own outage.\n\n` +
+      `  To boot anyway, set ${RUNTIME_MISMATCH_ESCAPE}=1 — it downgrades this to a warning.`
+    );
+  }
+
+  return (
+    head +
     `  Fix it by picking one:\n` +
     `    bun update bun          # move the installed one to match your shell\n` +
     `    node_modules/.bin/bun   # or run everything through the installed one\n\n` +

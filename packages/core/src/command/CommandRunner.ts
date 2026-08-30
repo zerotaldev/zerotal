@@ -533,8 +533,21 @@ export class CommandRunner {
     const startedAt = performance.now();
     try {
       await instance.run();
-      FrameworkEvents.emit(new CommandRan(name, performance.now() - startedAt, 0, true));
-      process.exit(0);
+
+      // Honour `process.exitCode` if the command set one.
+      //
+      // This used to be an unconditional `process.exit(0)`, so a command could
+      // only fail by throwing — and `process.exitCode = 1` is the idiomatic way
+      // to fail a Bun/Node CLI without an exception, which is what most people
+      // reach for. It was silently discarded. An app wrote a `release:check`
+      // gate that printed six blockers, set the code, and exited 0; the deploy
+      // script's `if ! …` read success and would have restarted a broken
+      // production deployment. A gate that cannot fail is not a gate, and that
+      // one failed *open*, which is the worst direction available.
+      const code = process.exitCode ?? 0;
+      const ok = Number(code) === 0;
+      FrameworkEvents.emit(new CommandRan(name, performance.now() - startedAt, Number(code), ok));
+      process.exit(Number(code));
     } catch (error) {
       FrameworkEvents.emit(
         new CommandRan(name, performance.now() - startedAt, 1, false, (error as Error).message),
@@ -594,16 +607,32 @@ export class CommandRunner {
 
     const name = (Cmd as { commandName?: string }).commandName ?? commandName;
     const startedAt = performance.now();
+    // `process.exitCode` is process-global, and this runs the command *in this
+    // process* — so it has to be cleared before and restored after, or a command
+    // that sets it poisons the runner and everything called after it. Reading it
+    // at all is the point: `zt deploy` gates on these return codes, and a
+    // `release:check` that printed its blockers and set the code used to come back
+    // as success. The gate failed open, which is the one direction a gate must not.
+    //
+    // `0`, not `undefined`, for both the clear and the restore: in Bun,
+    // `process.exitCode = undefined` is a no-op that leaves the previous value in
+    // place, so clearing with it does nothing and one blocked command marks every
+    // command after it as failed.
+    const outerExitCode = process.exitCode ?? 0;
+    process.exitCode = 0;
     try {
       await instance.run();
-      FrameworkEvents.emit(new CommandRan(name, performance.now() - startedAt, 0, true));
-      return { code: 0, output: writer.flush() };
+      const code = Number(process.exitCode ?? 0);
+      FrameworkEvents.emit(new CommandRan(name, performance.now() - startedAt, code, code === 0));
+      return { code, output: writer.flush() };
     } catch (error) {
       FrameworkEvents.emit(
         new CommandRan(name, performance.now() - startedAt, 1, false, (error as Error).message),
       );
       const errorLine = `\x1b[31m✖ ${(error as Error).message}\x1b[0m\n`;
       return { code: 1, output: writer.flush() + errorLine };
+    } finally {
+      process.exitCode = outerExitCode;
     }
   }
 

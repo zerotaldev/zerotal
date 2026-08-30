@@ -8,6 +8,31 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`.env.example` no longer ships the key the project actually runs with.** Both
+  files got the same rendered content, so every scaffolded project committed a live,
+  working `APP_KEY` — `.gitignore` covers `.env` and not `.env.example`. And
+  `cp .env.example .env` is the first line of every deployment guide there is, so the
+  published key went on to sign production sessions. One key across a laptop and a
+  server is one compromise across both, and no strength check can catch it: as a
+  string the value is perfectly strong. The example now carries a placeholder naming
+  `key:generate`; `.env` still gets a fresh key, so a new app boots immediately.
+
+- **`.gitignore` covers the SQLite sidecars.** It had `*.sqlite`, which does not match
+  `db.sqlite-wal` or `db.sqlite-shm`. WAL mode is on by default so both exist in every
+  project, and the write-ahead log holds pages not yet checkpointed into the main
+  file — real rows. An app found both in its first commit on a public host, and was
+  saved only by the WAL happening to be empty at that moment. Now `*.sqlite*`.
+
+### Changed
+
+- **`bun-plugin-tailwind` is pinned, and it and `tailwindcss` moved to
+  `dependencies`.** Pinned because `latest` on a build-critical package whose peer
+  declaration can take down a deploy is a combination worth removing. Moved because a
+  deploy that installs with `--production` and *then* builds on the server has no
+  devDependencies — so no Tailwind, and a page with no CSS.
+
 ## [1.7.2] — 2026-08-18
 
 ### Added

@@ -6435,6 +6435,8 @@ function bunBinary = () => string
 
 function declaredBunFloor = (cwd: string) => {    range: string;    manifest: string;} | null
 
+function declaresBunDependency = (cwd: string) => boolean
+
 function installedBunVersion = (cwd: string) => {    version: string;    manifest: string;} | null
 
 function runtimeBelowFloor = (cwd?: string) => RuntimeFloor | null
@@ -6454,6 +6456,7 @@ interface RuntimeFloor = {
 }
 
 interface RuntimeMismatch = {
+  chosen?: boolean | undefined
   installed: string
   manifest: string
   running: string

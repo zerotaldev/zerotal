@@ -12,20 +12,20 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@zerotal/devtools": "{{zerotal_version}}",
     "@inertiajs/react": "^3.0.0",
+    "@zerotal/devtools": "{{zerotal_version}}",
     "@zerotal/inertia": "{{zerotal_version}}",
+    "bun-plugin-tailwind": "0.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
     "zerotal": "{{zerotal_version}}"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.14",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "bun-plugin-tailwind": "latest",
-    "tailwindcss": "^4.0.0",
-    "typescript": "^5.8.0",
-    "@types/bun": "^1.3.14"
+    "typescript": "^5.8.0"
   },
   "engines": {
     "bun": ">=1.3.14"

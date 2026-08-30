@@ -271,6 +271,7 @@ preload runs the floor check as a warning.
 | `runtimeBelowFloor`        | `runtimeBelowFloor(cwd?): RuntimeFloor \| null`           | Is this process below that floor? `null` when it is met or none is declared.                |
 | `runtimeBelowFloorMessage` | `runtimeBelowFloorMessage(floor): string`                 | The explanation to print — both versions, the manifest, and the way out.                    |
 | `installedBunVersion`      | `installedBunVersion(cwd): { version, manifest } \| null` | The Bun in `node_modules`, if the project installs one as a package.                        |
+| `declaresBunDependency`    | `declaresBunDependency(cwd): boolean`                     | Whether the project _asked_ for that package, or acquired it as a transitive peer.          |
 | `runtimeMismatch`          | `runtimeMismatch(cwd?): RuntimeMismatch \| null`          | Does the running Bun differ from the installed one? Compared exactly — a patch is a binary. |
 | `runtimeMismatchMessage`   | `runtimeMismatchMessage(mismatch): string`                | The explanation for that one.                                                               |
 | `runtimeMismatchAllowed`   | `runtimeMismatchAllowed(): boolean`                       | Whether `ZT_ALLOW_RUNTIME_MISMATCH` is set.                                                 |

@@ -98,7 +98,23 @@ function assertOneRuntime(): void {
   }
 
   const mismatch = runtimeMismatch();
-  if (mismatch) _refuse(runtimeMismatchMessage(mismatch), mismatch);
+  if (!mismatch) return;
+
+  // A runtime the project never asked for is a warning, not a refusal. It arrives
+  // as a transitive peer — `bun-plugin-tailwind` declares `bun` as a required peer
+  // and Bun auto-installs it — and nothing executes the stray copy, so "two
+  // runtimes in play" is not what is happening. Refusing over it crash-looped an
+  // app behind a 502 twice, and the remedies the refusal prints are the wrong ones
+  // for this cause. Loud, because the version skew is still real if anything ever
+  // *does* run it.
+  if (mismatch.chosen === false) {
+    console.warn(`
+⚠  ${runtimeMismatchMessage(mismatch)}
+`);
+    return;
+  }
+
+  _refuse(runtimeMismatchMessage(mismatch), mismatch);
 }
 
 /**

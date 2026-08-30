@@ -169,6 +169,54 @@ these are the changes that need action. Full detail is in the
    interface so pages that read them do not look unpassed; see
    [Typed props](/docs/inertia/props#typed-props).
 
+## 1.9 to 1.10
+
+Three settings changed meaning. Each is quiet if it does not apply to you, and each is
+worth thirty seconds of checking if it does.
+
+1. **`scheduler.timezone` is honoured.** It was documented as informational and read by
+   nothing, so whatever you put there had no effect and your schedules ran in the
+   server's zone. It is now the zone every schedule is evaluated in unless the task sets
+   its own.
+
+   Its default moved from the literal `"UTC"` to **the system zone**, so an app that never
+   set the key keeps doing exactly what it did. The case to check is an app that _did_:
+
+   ```ts fragment
+   // config/scheduler.ts
+   export default SchedulerConfig({ timezone: env("APP_TIMEZONE", "UTC") });
+   ```
+
+   On a server that is not on UTC, that line used to do nothing and now moves every
+   schedule. Either set it to the zone you actually want your crons read in — which is
+   the point of the setting — or delete the key to keep the server's zone.
+
+   `bun zt schedule:list` prints each task's next run in its own zone, which is the
+   quickest way to see whether anything moved.
+
+2. **Named rate limiters need `.trustedProxies(n)` behind a proxy.** `RateLimiter`'s
+   `.byIp()`, `.byUser()` and `.byApiKey()` ignored the proxy count entirely and read
+   `X-Forwarded-For` unconditionally. They now follow the same rule `ThrottleMiddleware`
+   already did — the header is consulted only when you say how many proxies sit in front:
+
+   ```ts fragment
+   RateLimiter.for("login").limit(5).every(60).byIp().trustedProxies(1).register();
+   ```
+
+   Without it the address used is the socket's, which behind a proxy is the _proxy's_, and
+   every visitor shares one bucket. `bun zt doctor` reports any limiter that needs this —
+   it could not before, because its check exempted custom key resolvers and all three of
+   these are one.
+
+3. **React apps using SSR need `@inertiajs/react` installed.** The same adapter your
+   browser entry point already uses. Server-side rendering now goes through its `<App>`,
+   which is what makes `<Head>` produce a title and an og: card in the HTML your server
+   actually sends. If it is missing you get a named error at render time, not a silent
+   omission.
+
+   Nothing to change if you already have it as a dependency, which every React Inertia app
+   does.
+
 ## The managed zt.ts
 
 `zt.ts` is framework-managed — the header says _do not modify_. If a release

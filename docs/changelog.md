@@ -27,6 +27,162 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.10.0 — 2026-08-30
+
+A second report from the team building on Zerotal, and the things it found. Most of this
+release is failures that were silent by construction — mail delivered nowhere, a page
+shared as a grey rectangle, a schedule that never fired, a rate limiter with one bucket
+for everybody. None of them logged anything.
+
+**Three things to know before upgrading.**
+
+- **React apps using SSR now need `@inertiajs/react` installed.** It is the same adapter
+  your browser entry point already uses; the server renders through its `<App>` so
+  `<Head>` works. A missing one is a named error rather than a silent omission.
+- **`scheduler.timezone` does something now.** It was documented as informational and read
+  by nothing. Its default moved from the literal `"UTC"` to **the system zone**, so an app
+  that never set the key keeps doing exactly what it did — but an app that set it now gets
+  what it asked for. If you set it to `"UTC"` on a server that is not on UTC, your
+  schedules will move. See [the upgrade guide](/docs/upgrade#1-9-to-1-10).
+- **Named rate limiters need `.trustedProxies(n)` behind a proxy.** `.byIp()`, `.byUser()`
+  and `.byApiKey()` now ignore `X-Forwarded-For` unless told how many proxies sit in
+  front, which is the same rule `ThrottleMiddleware` already followed. `zt doctor` reports
+  any that need it.
+
+### Added
+
+- **`zt assets:prune`** — removes the chunks an earlier release left behind, on the machine
+  that never ran a build. `assets:build --clean` cleans the directory it _builds into_,
+  which does nothing for the usual release shape: build here, tar the output, extract it
+  over `public/` there. Extracting merges, so every deploy adds another set of
+  content-hashed chunks and none are ever removed. One app reached 225 chunk files for the
+  49 its entry point references. Ship `.zerotal/` with the release and this removes what
+  the build record does not claim. See [Deployment](/docs/deployment#assetsprune--clearing-up-after-the-extract-instead-of-before-it).
+
+- **`zt deploy:<env> --check`** — the preflight gate on its own, for the point in a release
+  script where the new code is on disk and the service has not restarted. Exit 0 and
+  restart; exit non-zero and keep serving the previous release. Everything that can refuse
+  already runs by the end of preflight and none of it mutates, so stopping there is a
+  complete answer rather than half a deploy.
+
+- **`RateLimiter.trustedProxies(n)`** on the fluent builder, and
+  **`res.assertInertiaRedirect(url)`** in `@zerotal/testing` — the assertion that checks
+  what actually breaks on an Inertia redirect, which is the `X-Inertia` marker rather than
+  the status and `Location` a normal redirect assertion already covers.
+
+- **`@zerotal/core/runtime`** (`zerotal/runtime`) — the runtime checks as exports, so a
+  script or a test can make the same assertion `zt` makes: `runtimeBelowFloor`,
+  `declaredBunFloor`, `runtimeMismatch`, `bunBinary` and the messages that go with them.
+
+- **`definedOnly()` and `Resolved<T>`** on `@zerotal/core/helpers`, for merging an options
+  bag over defaults without an explicit `undefined` overwriting one.
+
+- **Scheduler timezone helpers** — `wallClockIn`, `isValidTimeZone`,
+  `CronExpression.matchesIn` and `CronExpression.nextRunAfterIn`, plus `SchedulerError` and
+  `UnknownTimeZoneError`.
+
+- **A boot line when a convention is skipped in this environment.** An env-restricted
+  concern is skipped by _not looking_, which is correct and completely silent: an app ran
+  for weeks in production with `app/schedules` full and no worker process, and nothing
+  logged anything because from a web process's point of view nothing existed.
+
+### Changed
+
+- **Optional properties in public option shapes are declared `?: T | undefined`.** The
+  generated `tsconfig.json` enables `exactOptionalPropertyTypes`, under which
+  `image?: string` refuses a key that is present and holds `undefined` — so
+  `{ image: candidate ?? undefined }`, the most ordinary thing there is, did not compile
+  and every conditionally-absent field had to be spelled `...(x ? { x } : {})`. 438
+  properties across 115 files. Nothing changes for a reader: an absent optional property
+  already read as `undefined`.
+
+- **`scheduler.timezone` is honoured**, and its default is the system zone rather than the
+  literal `"UTC"`. See the note above.
+
+- **`mail.driver: "log"` fails `zt doctor` in production** when `mail.from.address` has been
+  configured, and warns when it is still the placeholder. Mail written to a log file is
+  delivered to nobody and says so nowhere.
+
+### Fixed
+
+- **React SSR emitted no `<Head>` tags at all.** The React branch rendered the page
+  component directly, and `<Head>` renders nothing — it reports its children to a head
+  manager it reads from context, and rendering the component alone puts none there. So
+  every page served the template's `<head>`: no title, no description, no card. Nothing
+  failed and nothing logged, because the page is perfect in a browser, where React has run.
+  Only the readers that do not run JavaScript saw it — which is every link-preview scraper
+  and every `curl`.
+
+- **SMTP submission on port 587 sent nothing.** The STARTTLS handshake completed and then
+  the client's `EHLO` was dropped: `upgradeTLS()` returns the new socket while the
+  handshake is still in flight, and a write issued in that window is lost — not buffered,
+  not an error, gone. Port 465 was unaffected, so mail worked on the port nobody documents
+  and the 587 every provider _does_ document produced silence: no error, no bounce, no log
+  line, and password resets that never arrived.
+
+- **TLS certificates were not actually verified, on either SMTP transport.**
+  `rejectUnauthorized` is not enforced by the runtime — it reports a self-signed
+  certificate as authorized and puts the real reason beside it — so the connection was
+  encrypted and would have accepted that encryption from anyone in the network path. The
+  driver reads the handshake result itself now and fails closed.
+
+- **A scheduled task with a `timezone` took the whole scheduler down.** `Bun.cron`'s options
+  form throws, and it throws during registration, so the worker died on boot and
+  restart-looped: one task with a timezone stopped every task in the app. Zerotal evaluates
+  the zone itself now, and a task that cannot register takes only itself out.
+
+- **Named rate limiters ignored `trustedProxies`, and `zt doctor` was told not to look.**
+  `.byIp()`, `.byUser()` and `.byApiKey()` used a resolver that read the socket address and
+  fell back to the leftmost `X-Forwarded-For` entry with no proxy count. Behind a reverse
+  proxy every visitor keyed on the proxy's own address and shared one bucket, so a `login`
+  limiter of five attempts a minute was five attempts a minute for the entire user base and
+  one attacker locked everybody out. The doctor check written to catch this exempted any
+  custom `keyResolver`, which is what all three are.
+
+- **`ctx.session.intended()` could not read what `AuthMiddleware` stored.** It used the key
+  `intended` while the middleware and `redirect().intended()` used `intended_url`. Each pair
+  was internally consistent and separately tested, so every test passed — and an app that
+  mixed them, which the documentation invited, was silently sent to `/` after every sign-in.
+
+- **`MonitorStore` overwrote its own defaults with `undefined`.** It applied `?? …` defaults
+  and then spread `...opts` after them, and spread copies own properties even when they
+  hold `undefined` — so an unset config put `undefined` back over the retention window and
+  `prune()` computed a `NaN` cutoff, pruning nothing and reporting nothing.
+
+- **`engines.bun` is enforced.** Every generated app writes a floor and nothing read it.
+  `Intl` output moves between Bun releases, so a suite with currency or date assertions goes
+  red on a runtime that is otherwise fine and the failures name the code they touch rather
+  than the binary.
+
+- **The asset build record is portable.** Its filename was hashed from the output
+  directory's _absolute_ path, so a record shipped with a release matched nothing at the
+  other end and moving a checkout silently orphaned it.
+
+- **The React SSR root is marked `data-server-rendered`**, so the client hydrates the markup
+  instead of discarding it and rendering the page a second time. `POST /__ssr` returns the
+  same body shape as the Vue branch.
+
+### Documented
+
+- **["What a crawler sees"](/docs/inertia/ssr#what-a-crawler-sees)** — `inertia()` does not
+  server-render the component, which is the normal Inertia arrangement and worth saying out
+  loud: the served document is a `<title>` and a JSON blob. Which readers run JavaScript,
+  which do not, and the three ways to give the second group something to read.
+
+- **[Which Inertia redirects are covered](/docs/inertia/middleware#which-redirects-are-covered)**
+  — all of them, because `useOnce()` registers the middleware globally. Written down because
+  the opposite belief is what keeps an app's own workaround on every request forever.
+
+- **[`bun test` vs `bun zt test`](/docs/testing#bun-test-vs-bun-zt-test)** — the 30-second
+  timeout (the `bunfig.toml` key is ignored by Bun and `setDefaultTimeout()` in a preload
+  reaches only the first file, so the flag is the only mechanism that works), the runtime
+  check, and the fact that configuration resolves once per process — so a test that mutates
+  the environment in `beforeAll` is testing whichever file booted first.
+
+- **[Timezones](/docs/scheduler#timezones)** in the scheduler, **[the middleware names the
+  framework occupies](/docs/middleware#names-the-framework-already-occupies)**, and why
+  `X-Forwarded-For` is [counted from the right](/docs/rate-limiting#trustedproxies).
+
 ## 1.9.0 — 2026-08-29
 
 The gaps an app was filling in for itself: one Bun per project, a database backup that is not

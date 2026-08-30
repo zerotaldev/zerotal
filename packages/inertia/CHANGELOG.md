@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-08-30
+
 ### Fixed
 
 - **React SSR emits the page's `<Head>` tags.** The React branch rendered the page

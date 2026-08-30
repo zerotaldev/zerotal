@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-08-30
+
 ### Fixed
 
 - **SMTP submission on port 587 works.** The STARTTLS upgrade completed its handshake

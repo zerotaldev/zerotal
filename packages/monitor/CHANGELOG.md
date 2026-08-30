@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-08-30
+
 ### Fixed
 
 - **`MonitorStore` options no longer overwrite their own defaults with `undefined`.**

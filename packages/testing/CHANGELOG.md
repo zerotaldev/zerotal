@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-08-30
+
 ### Added
 
 - **`res.assertInertiaRedirect(url)`** — the assertion that pins what actually breaks.

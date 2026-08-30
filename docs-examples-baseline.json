@@ -7676,6 +7676,18 @@
       "hash": "2qp165w60p47"
     },
     {
+      "file": "docs/upgrade.md",
+      "heading": "1.9 to 1.10",
+      "ordinal": 0,
+      "hash": "b1fyz5ddho91"
+    },
+    {
+      "file": "docs/upgrade.md",
+      "heading": "1.9 to 1.10",
+      "ordinal": 1,
+      "hash": "110jftj4suet"
+    },
+    {
       "file": "docs/validator.md",
       "heading": "Accessing context inside rules",
       "ordinal": 0,

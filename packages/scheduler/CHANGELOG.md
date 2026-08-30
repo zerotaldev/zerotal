@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-08-30
+
 ### Fixed
 
 - **A task with a `timezone` no longer takes the whole scheduler down.** The code

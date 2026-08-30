@@ -171,6 +171,21 @@ await testApp.withSession({ locale: "fr", flash: "saved" }).get("/profile");
 `session.secret` and `session.cookie` from your config. `withSession()` preserves
 any `user_id` already set by `actingAs()`.
 
+> **No users table?** `withSession()` is the whole answer, and it is the one to reach
+> for when identity is not a row — an app whose login _is_ an IMAP login has no user
+> to hand `actingAs()`. Seed whatever your app reads from the session and the request
+> is authenticated:
+>
+> ```typescript fragment
+> // in a test
+> await testApp.withSession({ mail_wallet: { primary: "a@example.test" } }).get("/mail");
+> ```
+>
+> Reaching past this to the session driver is the wrong layer and does not work —
+> `driver.write()` is not a method, and `saveSession()` wants an id and a `Response`
+> you do not have yet. Both of these encode through the app's _own_ driver, so the
+> cookie always matches the format the app will read.
+
 ### Headers and redirects
 
 ```typescript fragment
@@ -396,42 +411,43 @@ expect(ctx.response?.status).toBe(200);
 
 ### TestResponse
 
-| Member                                                                              | Signature                                 | Description                                          |
-| ----------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------- |
-| `assertStatus`                                                                      | `assertStatus(expected: number): this`    | Assert the status code.                              |
-| `assertOk` / `assertCreated` / `assertNoContent`                                    | `(): this`                                | Assert `200` / `201` / `204`.                        |
-| `assertSuccessful`                                                                  | `(): this`                                | Assert any `2xx`.                                    |
-| `assertMovedPermanently`                                                            | `(): this`                                | Assert `301`.                                        |
-| `assertUnauthorized` / `assertForbidden` / `assertNotFound` / `assertUnprocessable` | `(): this`                                | Assert `401` / `403` / `404` / `422`.                |
-| `assertServerError`                                                                 | `(): this`                                | Assert `500`.                                        |
-| `assertRedirect`                                                                    | `assertRedirect(url: string): this`       | Assert a `3xx` whose `Location` contains `url`.      |
-| `assertHeader`                                                                      | `assertHeader(name, value?): this`        | Assert a header is present (and contains `value`).   |
-| `assertHeaderMissing`                                                               | `assertHeaderMissing(name): this`         | Assert a header is absent.                           |
-| `assertJson`                                                                        | `assertJson(expected): this`              | Assert each key in `expected` matches the JSON body. |
-| `assertJsonPath`                                                                    | `assertJsonPath(path, expected): this`    | Assert a dot-notation path in the JSON body.         |
-| `assertJsonCount`                                                                   | `assertJsonCount(count, key?): this`      | Assert an array length at the body or `key`.         |
-| `assertSee` / `assertBodyContains`                                                  | `(needle): this`                          | Assert the body contains `needle`.                   |
-| `assertDontSee`                                                                     | `assertDontSee(needle): this`             | Assert the body does not contain `needle`.           |
-| `assertSeeText` / `assertDontSeeText`                                               | `(needle): this`                          | The same, against the body with its tags stripped.   |
-| `assertInvalid`                                                                     | `assertInvalid(fields?): this`            | Assert validation failed, optionally on `fields`.    |
-| `assertValid`                                                                       | `assertValid(fields?): this`              | Assert validation did not fail.                      |
-| `validationErrors`                                                                  | `(): Record<string, string[]> \| null`    | The errors, from the body or the session.            |
-| `assertAuthenticated`                                                               | `(): this`                                | Assert the session holds a `user_id`.                |
-| `assertAuthenticatedAs`                                                             | `assertAuthenticatedAs(user \| id): this` | Assert that specific user is signed in.              |
-| `assertGuest`                                                                       | `(): this`                                | Assert nobody is signed in.                          |
-| `assertCookie`                                                                      | `assertCookie(name, value?): this`        | Assert a `Set-Cookie` (and optional value).          |
-| `assertCookieMissing`                                                               | `assertCookieMissing(name): this`         | Assert no such cookie is set.                        |
-| `assertSessionHas`                                                                  | `assertSessionHas(key, value?): this`     | Assert the session contains `key`.                   |
-| `assertSessionMissing`                                                              | `assertSessionMissing(key): this`         | Assert the session lacks `key`.                      |
-| `assertSessionHasErrors` / `assertSessionHasNoErrors`                               | `(fields?): this`                         | Assert flashed validation errors.                    |
-| `session`                                                                           | `(): Record<string, unknown> \| null`     | The decoded session.                                 |
-| `assertInertia`                                                                     | `assertInertia(component?, props?): this` | Assert the Inertia page and a partial prop match.    |
-| `assertInertiaProp`                                                                 | `assertInertiaProp(key, value?): this`    | Assert a single Inertia prop.                        |
-| `inertia`                                                                           | `(): InertiaPage \| null`                 | The Inertia page object, from either wire shape.     |
-| `exception`                                                                         | `(): unknown`                             | The exception the request raised, if any.            |
-| `json`                                                                              | `json<T>(): T`                            | Parse and return the full JSON body.                 |
-| `text`                                                                              | `text(): string`                          | Return the body as text.                             |
-| `status` / `ok` / `headers`                                                         | getters                                   | The underlying `Response` status, `ok`, and headers. |
+| Member                                                                              | Signature                                        | Description                                                                    |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `assertStatus`                                                                      | `assertStatus(expected: number): this`           | Assert the status code.                                                        |
+| `assertOk` / `assertCreated` / `assertNoContent`                                    | `(): this`                                       | Assert `200` / `201` / `204`.                                                  |
+| `assertSuccessful`                                                                  | `(): this`                                       | Assert any `2xx`.                                                              |
+| `assertMovedPermanently`                                                            | `(): this`                                       | Assert `301`.                                                                  |
+| `assertUnauthorized` / `assertForbidden` / `assertNotFound` / `assertUnprocessable` | `(): this`                                       | Assert `401` / `403` / `404` / `422`.                                          |
+| `assertServerError`                                                                 | `(): this`                                       | Assert `500`.                                                                  |
+| `assertRedirect`                                                                    | `assertRedirect(url: string): this`              | Assert a `3xx` whose `Location` path equals `url`.                             |
+| `assertRedirectContains`                                                            | `assertRedirectContains(fragment: string): this` | Assert a `3xx` whose `Location` merely contains `fragment` — for a signed URL. |
+| `assertHeader`                                                                      | `assertHeader(name, value?): this`               | Assert a header is present (and contains `value`).                             |
+| `assertHeaderMissing`                                                               | `assertHeaderMissing(name): this`                | Assert a header is absent.                                                     |
+| `assertJson`                                                                        | `assertJson(expected): this`                     | Assert each key in `expected` matches the JSON body.                           |
+| `assertJsonPath`                                                                    | `assertJsonPath(path, expected): this`           | Assert a dot-notation path in the JSON body.                                   |
+| `assertJsonCount`                                                                   | `assertJsonCount(count, key?): this`             | Assert an array length at the body or `key`.                                   |
+| `assertSee` / `assertBodyContains`                                                  | `(needle): this`                                 | Assert the body contains `needle`.                                             |
+| `assertDontSee`                                                                     | `assertDontSee(needle): this`                    | Assert the body does not contain `needle`.                                     |
+| `assertSeeText` / `assertDontSeeText`                                               | `(needle): this`                                 | The same, against the body with its tags stripped.                             |
+| `assertInvalid`                                                                     | `assertInvalid(fields?): this`                   | Assert validation failed, optionally on `fields`.                              |
+| `assertValid`                                                                       | `assertValid(fields?): this`                     | Assert validation did not fail.                                                |
+| `validationErrors`                                                                  | `(): Record<string, string[]> \| null`           | The errors, from the body or the session.                                      |
+| `assertAuthenticated`                                                               | `(): this`                                       | Assert the session holds a `user_id`.                                          |
+| `assertAuthenticatedAs`                                                             | `assertAuthenticatedAs(user \| id): this`        | Assert that specific user is signed in.                                        |
+| `assertGuest`                                                                       | `(): this`                                       | Assert nobody is signed in.                                                    |
+| `assertCookie`                                                                      | `assertCookie(name, value?): this`               | Assert a `Set-Cookie` (and optional value).                                    |
+| `assertCookieMissing`                                                               | `assertCookieMissing(name): this`                | Assert no such cookie is set.                                                  |
+| `assertSessionHas`                                                                  | `assertSessionHas(key, value?): this`            | Assert the session contains `key`.                                             |
+| `assertSessionMissing`                                                              | `assertSessionMissing(key): this`                | Assert the session lacks `key`.                                                |
+| `assertSessionHasErrors` / `assertSessionHasNoErrors`                               | `(fields?): this`                                | Assert flashed validation errors.                                              |
+| `session`                                                                           | `(): Record<string, unknown> \| null`            | The decoded session.                                                           |
+| `assertInertia`                                                                     | `assertInertia(component?, props?): this`        | Assert the Inertia page and a partial prop match.                              |
+| `assertInertiaProp`                                                                 | `assertInertiaProp(key, value?): this`           | Assert a single Inertia prop.                                                  |
+| `inertia`                                                                           | `(): InertiaPage \| null`                        | The Inertia page object, from either wire shape.                               |
+| `exception`                                                                         | `(): unknown`                                    | The exception the request raised, if any.                                      |
+| `json`                                                                              | `json<T>(): T`                                   | Parse and return the full JSON body.                                           |
+| `text`                                                                              | `text(): string`                                 | Return the body as text.                                                       |
+| `status` / `ok` / `headers`                                                         | getters                                          | The underlying `Response` status, `ok`, and headers.                           |
 
 ## Next steps
 

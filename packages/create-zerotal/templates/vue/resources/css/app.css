@@ -46,7 +46,10 @@
   --accent: oklch(0.958 0.018 286);
   --accent-foreground: oklch(0.36 0.14 286);
 
-  --success: oklch(0.6 0.14 158);
+  /* 0.504, not 0.6: measured as status *text* against the 10% success tint it is
+     drawn on, 0.6 is 3.1:1 — under the 4.5:1 WCAG AA needs. Measuring it against
+     the surface *under* the tint is what makes it look like it passes. */
+  --success: oklch(0.504 0.11 158);
   --success-foreground: oklch(0.99 0.01 158);
 
   --destructive: oklch(0.577 0.245 27.3);

@@ -8,6 +8,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`assertRedirect` compares the path exactly**, where it used to use `includes()`.
+  The loose form made the assertion mean less than it looks like it means:
+  `assertRedirect("/login")` was satisfied by `/login-as-someone-else` and by
+  `/admin?next=/login` — the two cases a test about a login redirect exists to rule
+  out. An absolute `Location` still matches a relative expectation, and naming a query
+  string compares that too. `assertRedirectContains()` is the old behaviour, for the
+  cases that want it (a signed URL with an unpredictable token).
+
+### Documented
+
+- **How to authenticate a test when identity is not a row.** `withSession()` already
+  did it, and an app with no users table — an IMAP login _is_ the identity — reached
+  past it to the session driver instead, guessing `driver.write()`. Reaching for the
+  driver is the wrong layer and does not work; the doc now says so and shows the form
+  that does.
+
 ## [1.10.0] — 2026-08-30
 
 ### Added

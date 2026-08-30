@@ -8,6 +8,38 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Migration names no longer carry the platform that recorded them.** `Bun.Glob`
+  yields native separators, and the prefix strip was a forward-slash-only pattern —
+  so on Windows the whole joined path went into the `migrations` table. An app found
+  `database\migrations\010_add_tenant_limits` in ten dev rows and
+  `010_add_tenant_limits` in production, from the same files.
+
+  A database moved between the two re-runs every migration: every recorded name
+  misses, all of them look pending, and the first fails on `table already exists` —
+  a failed boot, not a graceful skip. The name is now the bare filename on both.
+
+  Note the half this does _not_ fix: the recorded identity is still the filename, so
+  renaming a migration makes it look unrun. The same app nearly took an outage
+  renumbering `001_` to `0001_` to match this framework's own scaffold convention.
+
+### Added
+
+- **`database.sqlite.foreignKeys`**, and a `zt doctor` check for the schemas that
+  need it. **SQLite ignores foreign keys unless the connection asks it not to**, so
+  `constrained()` and `cascadeOnDelete()` in a migration described behaviour the
+  database would not perform: deleting a parent left its children, silently, and
+  every child had to be removed by hand in the right order by code that remembered
+  to. An app's data-erasure path swept fifteen tables and missed three — including
+  both holding uploaded files — so an erasure left the paperwork on disk.
+
+  Off by default, because turning it on can fail writes an existing database already
+  permits: a row whose parent is missing is legal without enforcement and a violation
+  with it. Run `PRAGMA foreign_key_check` before enabling on an existing database. The
+  doctor check warns only when the schema actually declares a foreign key, so an app
+  with none hears nothing.
+
 ## [1.9.0] — 2026-08-29
 
 ### Changed

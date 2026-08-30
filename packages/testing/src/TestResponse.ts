@@ -179,20 +179,72 @@ export class TestResponse {
     return this;
   }
 
-  /** Assert the response is a redirect to `url`. */
+  /**
+   * Assert the response is a redirect to `url`.
+   *
+   * The comparison is on the `Location` header's **path**, exactly. A substring
+   * match — which this used to do — makes the assertion mean less than it looks
+   * like it means: `assertRedirect("/login")` was satisfied by
+   * `/login-as-someone-else` and by `/admin?next=/login`, so a redirect to the
+   * wrong place passed a test written to catch exactly that.
+   *
+   * A `url` carrying a query string or a fragment is compared whole, so you can
+   * still pin one when it matters. For anything looser, use
+   * {@link assertRedirectContains}.
+   *
+   * @param url - Expected `Location`, or just its path.
+   */
   assertRedirect(url: string): this {
+    const location = this._assertIsRedirect();
+
+    // Compare paths unless the expectation names a query or a fragment — an
+    // absolute `Location` and a relative expectation are the same redirect.
+    const wantsMore = url.includes("?") || url.includes("#");
+    const actual = wantsMore ? _withoutOrigin(location) : _pathOf(location);
+    const expected = wantsMore ? _withoutOrigin(url) : _pathOf(url);
+
+    if (actual !== expected) {
+      throw new Error(
+        this._decorate(
+          `Expected redirect to "${url}" but Location was "${location}".` +
+            (location.includes(url)
+              ? `\n  (It contains the expected value but is not equal to it. ` +
+                `Use assertRedirectContains() if that is what you meant.)`
+              : ""),
+        ),
+      );
+    }
+    return this;
+  }
+
+  /**
+   * Assert the response is a redirect whose `Location` *contains* `fragment`.
+   *
+   * The old behaviour of {@link assertRedirect}, kept for the cases where it is
+   * genuinely what you want — a signed URL with an unpredictable token, say.
+   *
+   * @param fragment - Substring the `Location` must contain.
+   */
+  assertRedirectContains(fragment: string): this {
+    const location = this._assertIsRedirect();
+    if (!location.includes(fragment)) {
+      throw new Error(
+        this._decorate(
+          `Expected redirect containing "${fragment}" but Location was "${location}".`,
+        ),
+      );
+    }
+    return this;
+  }
+
+  /** The `Location` of a response that is a redirect, or a failure saying it is not. */
+  private _assertIsRedirect(): string {
     if (this._res.status < 300 || this._res.status > 399) {
       throw new Error(
         this._decorate(`Expected a redirect but got HTTP ${this._res.status}.`, { body: true }),
       );
     }
-    const location = this._res.headers.get("Location") ?? "";
-    if (!location.includes(url)) {
-      throw new Error(
-        this._decorate(`Expected redirect to "${url}" but Location was "${location}".`),
-      );
-    }
-    return this;
+    return this._res.headers.get("Location") ?? "";
   }
 
   /**
@@ -1005,4 +1057,28 @@ function _indent(text: string): string {
     .split("\n")
     .map((line) => `    ${line}`)
     .join("\n");
+}
+
+/**
+ * A URL's path, so an absolute `Location` and a relative expectation compare equal.
+ *
+ * A redirect to `https://app.test/dashboard` and an expectation of `/dashboard` are
+ * the same redirect, and a test should not have to know which form the handler used.
+ */
+function _pathOf(url: string): string {
+  try {
+    return new URL(url, "http://localhost").pathname;
+  } catch {
+    return url;
+  }
+}
+
+/** A URL without its origin — path, query and fragment — for an exact comparison. */
+function _withoutOrigin(url: string): string {
+  try {
+    const parsed = new URL(url, "http://localhost");
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return url;
+  }
 }

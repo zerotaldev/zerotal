@@ -10,6 +10,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`config/session.ts` is scaffolded environment-aware**, so the first production
+  deploy no longer fails. The production config validator refuses to boot without
+  `session.secure`, which is right — but the scaffold shipped `secret`, `cookie` and
+  `lifetime` only, so every app built from it hit that refusal on its first deploy,
+  after uploading, installing and migrating, at the moment it tried to serve. It also
+  cannot simply be `true`: development runs on `http://localhost`, where a secure
+  cookie is never sent, and the symptom there is a login that appears to succeed and
+  bounces back to the sign-in page with nothing in any log. Now
+  `secure: env("APP_ENV", "development") === "production"`, with `httpOnly` and
+  `sameSite: "Lax"` — `Lax` because invitation and password-reset links arrive from a
+  mail client, and `Strict` withholds the cookie on exactly that navigation.
+
+- **`--success` meets WCAG AA.** The light-palette token was `oklch(0.6 0.14 158)`,
+  which measures 3.1:1 as status text against the 10% success tint it is drawn on —
+  under the 4.5:1 AA needs. Measuring it against the surface *under* the tint is what
+  made it look like it passed. Now `oklch(0.504 0.11 158)`.
+
+### Fixed
+
 - **`.env.example` no longer ships the key the project actually runs with.** Both
   files got the same rendered content, so every scaffolded project committed a live,
   working `APP_KEY` — `.gitignore` covers `.env` and not `.env.example`. And

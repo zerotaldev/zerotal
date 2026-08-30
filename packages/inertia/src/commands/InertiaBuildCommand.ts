@@ -79,6 +79,20 @@ export class InertiaBuildCommand extends Command {
       throw new Error("Frontend build failed.");
     }
 
+    // `success` with no artefacts is not a build, and it is the shape that reaches
+    // production: a deploy runs this, sees exit 0, restarts, and serves a page with
+    // no script and no stylesheet. The health check passes — the server is fine, the
+    // HTML is fine, there is simply nothing in it. An app had to assert the files
+    // exist in its own deploy script to catch it, which is the framework's job.
+    if (result.outputs.length === 0) {
+      throw new Error(
+        `Frontend build reported success and produced no files ` +
+          `(entry point: resources/js/app.tsx). An empty output directory serves a ` +
+          `page with no script and no stylesheet, which a health check cannot tell ` +
+          `from a working one.`,
+      );
+    }
+
     // Chunks are named after their content, so the ones this build replaced
     // would otherwise stay behind — and ship.
     //

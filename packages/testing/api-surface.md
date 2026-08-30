@@ -197,6 +197,7 @@ class TestResponse = {
   assertNotFound: () => TestResponse
   assertOk: () => TestResponse
   assertRedirect: (url: string) => TestResponse
+  assertRedirectContains: (fragment: string) => TestResponse
   assertSee: (needle: string) => TestResponse
   assertSeeText: (needle: string) => TestResponse
   assertServerError: () => TestResponse

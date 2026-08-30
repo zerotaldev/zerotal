@@ -45,6 +45,30 @@ export interface DatabaseConfigShape {
   sqlite: {
     /** Path to the SQLite file. Use ':memory:' for in-memory database. */
     path: string;
+    /**
+     * Enforce foreign keys on every SQLite connection (`PRAGMA foreign_keys = ON`).
+     *
+     * **SQLite ignores foreign keys unless you ask it not to**, and it is the only
+     * supported dialect that does. Without this, `cascadeOnDelete()` and
+     * `constrained()` in a migration are a statement of intent that the database
+     * will not perform: deleting a parent leaves its children behind, and every
+     * child has to be deleted by hand, in the right order, by application code that
+     * remembers to.
+     *
+     * That is not a theoretical cost. An app's data-erasure path swept fifteen
+     * tables and missed three — including both tables holding uploaded files — so an
+     * account erasure left the paperwork on disk and its rows in the database. They
+     * found it by having a second person write the runbook and compare the prose
+     * against the code.
+     *
+     * Off by default because turning it on can fail writes an existing database
+     * already permits: a row whose parent is missing is legal with enforcement off
+     * and a constraint violation with it on. Turn it on for a new project. For an
+     * existing one, check first with `PRAGMA foreign_key_check`.
+     *
+     * Default: `false`. Postgres and MySQL always enforce, so this is ignored there.
+     */
+    foreignKeys?: boolean | undefined;
   };
   /**
    * Auto-sync the schema to your models at boot (TypeORM-style). Opt-in, and

@@ -592,6 +592,59 @@ describe("TestResponse.assertInertiaRedirect()", () => {
   });
 });
 
+// ── TestResponse.assertRedirect() — exactness ────────────────────────────────
+
+/**
+ * A redirect assertion that passes on the wrong redirect.
+ *
+ * This compared with `includes()`, so `assertRedirect("/login")` was satisfied by
+ * `/login-as-someone-else` and by `/admin?next=/login` — the two cases a test about
+ * a login redirect exists to rule out. It now compares paths exactly, and the loose
+ * form has its own name.
+ */
+describe("TestResponse.assertRedirect() is exact", () => {
+  const to = (location: string): TestResponse =>
+    new TestResponse(new Response(null, { status: 302, headers: { Location: location } }), "");
+
+  it("passes on the same path", () => {
+    expect(() => to("/dashboard").assertRedirect("/dashboard")).not.toThrow();
+  });
+
+  it("rejects a longer path that merely starts with it", () => {
+    expect(() => to("/login-as-someone-else").assertRedirect("/login")).toThrow();
+  });
+
+  it("rejects the expected path appearing in a query string", () => {
+    expect(() => to("/admin?next=/login").assertRedirect("/login")).toThrow();
+  });
+
+  it("says why, when the old behaviour would have passed", () => {
+    expect(() => to("/login-as-someone-else").assertRedirect("/login")).toThrow(
+      /assertRedirectContains/,
+    );
+  });
+
+  it("treats an absolute Location and a relative expectation as the same redirect", () => {
+    expect(() => to("https://app.test/dashboard").assertRedirect("/dashboard")).not.toThrow();
+  });
+
+  it("compares the query string too, once the expectation names one", () => {
+    expect(() => to("/search?q=zerotal").assertRedirect("/search?q=zerotal")).not.toThrow();
+    expect(() => to("/search?q=other").assertRedirect("/search?q=zerotal")).toThrow();
+  });
+
+  it("still offers the loose form under its own name", () => {
+    expect(() => to("/reset?token=abc123").assertRedirectContains("/reset")).not.toThrow();
+    expect(() => to("/dashboard").assertRedirectContains("/reset")).toThrow();
+  });
+
+  it("reports a non-redirect as a non-redirect, either way", () => {
+    const ok = new TestResponse(new Response("hi", { status: 200 }), "hi");
+    expect(() => ok.assertRedirect("/x")).toThrow(/Expected a redirect/);
+    expect(() => ok.assertRedirectContains("/x")).toThrow(/Expected a redirect/);
+  });
+});
+
 // ── TestResponse.assertHeader() / assertHeaderMissing() ───────────────────────
 
 describe("TestResponse.assertHeader()", () => {

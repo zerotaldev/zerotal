@@ -5,6 +5,7 @@ import type { ConfigManager } from "@zerotal/core/config";
 import { SQL } from "bun";
 import { DB, _getConnection } from "../db/DB.ts";
 import { preventNPlusOne } from "../db/NPlusOneDetector.ts";
+import { foreignKeysCheck } from "../doctor/foreignKeys.ts";
 import {
   _setBaseModelConnection,
   _setBaseModelDialect,
@@ -118,6 +119,10 @@ export class DatabaseProvider extends ServiceProvider {
         pool?.max !== undefined || pool?.idleTimeout !== undefined ? { url, ...pool } : url;
       const primary = new SQL(sqlArg as unknown as string);
 
+      const driver = config.get<string>("database.driver", "sqlite");
+      const enforceForeignKeys = config.get<boolean>("database.sqlite.foreignKeys", false);
+      await _applySqlitePragmas(primary, driver, enforceForeignKeys);
+
       if (replicaUrls.length === 0) return primary;
 
       // Build read replicas and wrap in a transparent read/write router.
@@ -131,6 +136,9 @@ export class DatabaseProvider extends ServiceProvider {
             : replicaUrl;
         return new SQL(replicaSqlArg as unknown as string);
       });
+      for (const replica of replicas) {
+        await _applySqlitePragmas(replica, driver, enforceForeignKeys);
+      }
 
       return createReadWriteRouter(primary, replicas);
     });
@@ -214,7 +222,7 @@ export class DatabaseProvider extends ServiceProvider {
    * it — `doctor` already boots the app and already holds the connection.
    */
   override doctorChecks(): DoctorCheck[] {
-    return [pendingMigrationsCheck];
+    return [pendingMigrationsCheck, foreignKeysCheck];
   }
 
   override async onBooted(): Promise<void> {
@@ -322,4 +330,30 @@ function _detectDialect(raw: string): "sqlite" | "postgres" | "mysql" {
   if (raw.startsWith("postgres://") || raw.startsWith("postgresql://")) return "postgres";
   if (raw.startsWith("mysql://") || raw.startsWith("mysql2://")) return "mysql";
   return "sqlite";
+}
+
+/**
+ * Apply the connection-scoped PRAGMAs SQLite needs, if this is SQLite.
+ *
+ * `foreign_keys` is **per connection**, not per database, so it has to be set on
+ * every handle the app opens — including each read replica. Setting it once on the
+ * primary and assuming it stuck is how this ends up half-enforced.
+ *
+ * @param sql - The connection to configure.
+ * @param driver - The configured driver; anything but `sqlite` is left alone.
+ * @param foreignKeys - Whether to enforce foreign keys on this connection.
+ * @internal
+ */
+export async function _applySqlitePragmas(
+  sql: SQLInstance,
+  driver: string,
+  foreignKeys: boolean,
+): Promise<void> {
+  if (driver !== "sqlite" || !foreignKeys) return;
+  try {
+    await sql`PRAGMA foreign_keys = ON`;
+  } catch {
+    // A driver that will not take the pragma is not a reason to refuse the
+    // connection; the doctor check reports the consequence.
+  }
 }

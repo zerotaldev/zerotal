@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`zt inertia:build` fails when it produces nothing.** A build could report success
+  with zero artefacts, and that is the shape that reaches production: the deploy sees
+  exit 0, restarts, and serves a page with no script and no stylesheet. The health
+  check passes — the server is fine and the HTML is fine, there is just nothing in
+  it. An app had to assert the files exist in its own deploy script to catch it.
+
 ## [1.10.0] — 2026-08-30
 
 ### Fixed

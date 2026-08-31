@@ -141,6 +141,37 @@ export class PruneDeletedContentJob extends Job {
 JobRegistry.register(PruneDeletedContentJob as never);
 ```
 
+### Renaming a job class
+
+A queued job is a **persisted reference to a class**. The payload in the database or in Redis
+carries a string, and the worker resolves the class by it — so a job enqueued yesterday is
+looked up by today's process. That makes the class name a compatibility surface, and renaming
+the class a silent data migration: jobs already in the queue under the old name stop resolving
+at the moment you deploy.
+
+It is invisible to a test suite, because a test enqueues and runs in the same process.
+
+Declare the stored name and the class is free to move:
+
+```ts
+import { Job } from "@zerotal/queue";
+
+export class SendWelcomeEmail extends Job {
+  // The name in the queue payload. Keep it when the class is renamed.
+  static override jobName = "SendWelcomeEmail";
+
+  async handle(): Promise<void> {}
+}
+```
+
+It defaults to the class name, so a job that says nothing behaves exactly as before. Declare it
+when you rename a job class, or ahead of time on jobs you expect to rename — it is the same
+tool `Migration.id` is for a migration's filename, and the same reason.
+
+**Drain before you rename, if you have not declared one.** A rename with jobs in flight and no
+`jobName` leaves rows the worker reports as an unknown job class; `zt queue:failed` lists them
+and `zt queue:retry` can replay them once the name matches again.
+
 ## Auto-registration
 
 You don't import or wire up your jobs anywhere. Any job class placed under

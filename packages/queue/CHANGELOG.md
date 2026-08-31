@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.13.1] — 2026-08-31
+
+### Added
+
+- **`Job.jobName`** — a declared name for the queue payload, so renaming a job class is free.
+
+  A queued job is a persisted reference to a class: the payload carries a string and the
+  worker resolves the class by it, so a job enqueued yesterday is looked up by today's
+  process. The class name was therefore a compatibility surface that nothing said was one —
+  renaming a job class silently invalidated every job already enqueued under the old name,
+  and the failure landed on the deploy rather than on the change. A test never sees it,
+  because a test enqueues and runs in the same process.
+
+  `static jobName` decouples the stored identity from the class, exactly as `Migration.id`
+  does for a migration's filename, and for the same reason. It defaults to the class name, so
+  a job that declares nothing behaves as before.
+
+  Found while sizing a suite-wide rename of `@internal` exports: three `Job` classes were on
+  that list, and renaming them would have been a data migration wearing a refactor's clothes.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

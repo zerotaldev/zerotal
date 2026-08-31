@@ -81,10 +81,39 @@ export abstract class Job {
   }
 
   /**
-   * The class name used as the serialization key.
-   * Must match what JobRegistry.register() stores.
+   * The name this job is stored and resolved under, when it should not be the
+   * class name.
+   *
+   * A queued job is a *persisted* reference to a class: the payload in the
+   * database or in Redis carries a string, and the worker looks the class up by
+   * it. So the class name is a wire identifier, not just a source symbol — and
+   * renaming the class silently invalidates every job already enqueued under the
+   * old name. The failure lands on the deploy rather than on the change, and a
+   * test never sees it, because a test enqueues and runs in the same process.
+   *
+   * Declaring the name decouples the two, exactly as
+   * {@link @zerotal/orm!Migration.id} does for a migration's filename:
+   *
+   * ```ts
+   * export class SendWelcomeEmail extends Job {
+   *   static override jobName = "SendWelcomeEmail"; // survives a class rename
+   * }
+   * ```
+   *
+   * It also survives a build that mangles names. `zt compile` does not minify
+   * today, so this is not a live hazard — but nothing about the registry said it
+   * depended on that, which is the kind of assumption worth writing down before
+   * it is discovered.
+   *
+   * Defaults to the class name, so nothing changes for a job that does not set it.
+   */
+  static jobName?: string;
+
+  /**
+   * The name used as the serialization key. Matches what `JobRegistry.register()`
+   * stores: {@link Job.jobName} when declared, the class name otherwise.
    */
   get className(): string {
-    return this.constructor.name;
+    return (this.constructor as typeof Job).jobName ?? this.constructor.name;
   }
 }

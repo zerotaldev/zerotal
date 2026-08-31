@@ -27,6 +27,39 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.13.1 — 2026-08-31
+
+One addition, found by sizing a job rather than doing it.
+
+The 2.0 ledger carries an entry to prefix every `@internal` export with `_` — 270 symbols,
+filed as mechanical. Three of them are `Job` classes, and a job class name is not a source
+symbol: `JobRegistry` keys on it and that string is written into the persisted queue payload,
+so a job enqueued yesterday is resolved by today's process. Renaming one invalidates every job
+already in the queue, at deploy time rather than at change time, and no test sees it because a
+test enqueues and runs in the same process.
+
+The rename is re-scoped. The hazard it exposed is fixed here.
+
+### Added
+
+- **`Job.jobName`** — a declared name for the queue payload, so renaming a job class is free:
+
+  ```ts
+  export class SendWelcomeEmail extends Job {
+    static override jobName = "SendWelcomeEmail"; // survives a class rename
+    async handle(): Promise<void> {}
+  }
+  ```
+
+  It defaults to the class name, so a job that declares nothing behaves exactly as before.
+  This is the same tool [`Migration.id`](/docs/upgrade#1-10-to-1-11) is for a migration's
+  filename, shipped in 1.11.0 for the same reason: an identity the framework derived from a
+  name someone was free to change, with no way to say otherwise.
+
+  It also decouples the queue from a build that mangles names. `zt compile` does not minify
+  today, so that is not a live hazard — but nothing in the registry said it depended on that,
+  and an assumption worth relying on is worth writing down.
+
 ## 1.13.0 — 2026-08-31
 
 Three retirements, taken together on purpose. Each is a small migration, and three minors

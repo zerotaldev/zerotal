@@ -6159,6 +6159,7 @@ class Bus = {
 
 class Job = {
   new (): Job
+  static jobName?: string
   _chain: SerializedJob[] | undefined
   batchId: string | undefined
   className: string

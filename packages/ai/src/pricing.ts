@@ -38,7 +38,25 @@ const PRICES: Record<string, ModelPrice> = {
   "claude-haiku-4-5": { input: 1, output: 5 },
 };
 
-/** Cache reads bill at roughly a tenth of input; writes at a 25% premium. */
+/**
+ * Cache reads bill at a tenth of input; writes at a 25% premium.
+ *
+ * Both are exact for the cache this driver asks for. It sends
+ * `cache_control: { type: "ephemeral" }` and nothing else — the 5-minute TTL — and
+ * Anthropic prices that at 0.1× input for a read and 1.25× for a write. On Sonnet 5's
+ * $2 input rate: $0.20 and $2.50 per million, which is what they publish.
+ *
+ * **The 1-hour TTL is 2× input, and this underestimates it by 37.5%.** Nothing in this
+ * package requests one, so the only way to get there is `providerOptions` overriding
+ * the cache control by hand. Worth knowing before you do, because the error is in the
+ * unsafe direction for a ceiling: a write priced at 1.25× when it billed at 2× lets
+ * spend through rather than blocking it, and a limit that under-counts fails quietly.
+ *
+ * It is not corrected automatically because `AiUsage` carries one
+ * `cacheWriteTokens` number with no TTL attached, so the two cases are
+ * indistinguishable here. Guessing between them would trade a known bias for an
+ * unknown one.
+ */
 const CACHE_READ_MULTIPLIER = 0.1;
 const CACHE_WRITE_MULTIPLIER = 1.25;
 

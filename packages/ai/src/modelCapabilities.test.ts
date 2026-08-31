@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { modelCapabilities, modelRejectsSampling } from "./modelCapabilities.ts";
-import { modelPrice } from "./pricing.ts";
+import { modelPrice, estimateCost } from "./pricing.ts";
 
 describe("modelCapabilities", () => {
   it("treats the current generation as sampling-free, effort-taking and adaptive", () => {
@@ -85,5 +85,22 @@ describe("pricing", () => {
     expect(five).toEqual({ input: 2, output: 10 });
     // The bug was that these were identical, which is how the copy went unnoticed.
     expect(five).not.toEqual(fourSix);
+  });
+});
+
+describe("cache pricing", () => {
+  it("matches Anthropic's published rates for the cache this driver asks for", () => {
+    // Sonnet 5: $2/M input. Read = $0.20/M, 5-minute write = $2.50/M.
+    const perMillion = (usage: Partial<Record<string, number>>) =>
+      estimateCost("claude-sonnet-5", {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        ...usage,
+      } as never);
+
+    expect(perMillion({ cacheReadTokens: 1_000_000 })).toBeCloseTo(0.2, 6);
+    expect(perMillion({ cacheWriteTokens: 1_000_000 })).toBeCloseTo(2.5, 6);
   });
 });

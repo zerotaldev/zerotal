@@ -4773,15 +4773,21 @@
     },
     {
       "file": "docs/inertia/ssr.md",
+      "heading": "How it streams",
+      "ordinal": 0,
+      "hash": "2p4krwxkbvrd"
+    },
+    {
+      "file": "docs/inertia/ssr.md",
       "heading": "Page metadata: `<Head>` on the server",
       "ordinal": 0,
       "hash": "lka0juqykp9q"
     },
     {
       "file": "docs/inertia/ssr.md",
-      "heading": "Streaming SSR",
-      "ordinal": 0,
-      "hash": "2p4krwxkbvrd"
+      "heading": "Server-side rendering",
+      "ordinal": 1,
+      "hash": "2m90a09pqgng"
     },
     {
       "file": "docs/lifecycle.md",

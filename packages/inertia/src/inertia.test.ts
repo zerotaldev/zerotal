@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { HttpContext, RequestContext, Router } from "@zerotal/core";
+import { HttpContext, RequestContext, Router, Application } from "@zerotal/core";
+import { withApp } from "@zerotal/core";
 import {
   inertia,
   inertiaStream,
@@ -859,5 +860,104 @@ describe("React <Head> reaches the served HTML", () => {
     // Same body shape as the Vue branch: the whole Inertia root, ready to drop in.
     expect(payload.body).toContain('data-page="app"');
     expect(payload.body).toContain('<div data-server-rendered="true" id="app">');
+  });
+});
+
+// ── inertia() with inertia.ssr enabled ───────────────────────────────────────
+
+describe("inertia() — config-driven SSR", () => {
+  beforeEach(() => {
+    _setHtmlTemplate("<!DOCTYPE html><head></head><body><!-- @inertia --></body>");
+    _setPagesDir(
+      new URL("../resources/pages", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"),
+    );
+  });
+
+  afterEach(() => {
+    _setHtmlTemplate("");
+    _setPagesDir("");
+  });
+
+  it("renders the component into the root when inertia.ssr is on", async () => {
+    // The whole point of the option. Before 1.13.4 `ssr: true` registered POST
+    // /__ssr and changed nothing about what a page load returned, so an app that
+    // set it and read the docs got the same empty root it had before.
+    const app = Application.create({ env: "test" });
+    app.container.value(
+      "config" as never,
+      {
+        get: <T>(k: string, d: T): T => (k === "inertia.ssr" ? (true as unknown as T) : d),
+        safe: <T>(k: string, d: T): T => (k === "inertia.ssr" ? (true as unknown as T) : d),
+      } as never,
+    );
+
+    await withApp(app, async () => {
+      const ctx = fakeCtx("http://localhost/ssr-on");
+      await inRequest(ctx, () => inertia("TestPage", { title: "Rendered" }));
+
+      const html = await ctx.response!.text();
+      // Marked, so the client hydrates rather than throwing the first paint away.
+      expect(html).toContain('data-server-rendered="true"');
+      // And the markup is actually there — an empty marked root would be worse
+      // than no SSR, because the client would hydrate against nothing.
+      expect(html).toContain("Rendered");
+      expect(html).not.toBe("");
+    });
+    Application._resetInstance();
+  });
+
+  it("leaves the root empty and unmarked when inertia.ssr is off", async () => {
+    const ctx = fakeCtx("http://localhost/ssr-off");
+    await inRequest(ctx, () => inertia("TestPage", { title: "Plain" }));
+
+    const html = await ctx.response!.text();
+    expect(html).not.toContain("data-server-rendered");
+    expect(html).toContain('<div id="app"></div>');
+  });
+
+  it("still answers an X-Inertia XHR with JSON, SSR or not", async () => {
+    // Server rendering is about the first arrival. A running client asks for a
+    // page object either way.
+    const app = Application.create({ env: "test" });
+    app.container.value(
+      "config" as never,
+      {
+        get: <T>(k: string, d: T): T => (k === "inertia.ssr" ? (true as unknown as T) : d),
+        safe: <T>(k: string, d: T): T => (k === "inertia.ssr" ? (true as unknown as T) : d),
+      } as never,
+    );
+
+    await withApp(app, async () => {
+      const ctx = fakeCtx("http://localhost/ssr-on", { headers: { "X-Inertia": "true" } });
+      await inRequest(ctx, () => inertia("TestPage", { title: "Rendered" }));
+
+      expect(ctx.response?.headers.get("Content-Type")).toBe("application/json");
+    });
+    Application._resetInstance();
+  });
+
+  it("falls back to the client-rendered document when a component cannot render", async () => {
+    // A page that fails to server-render still works in the browser. Taking the
+    // route down because an optimisation failed would make `ssr: true` a
+    // liability rather than an improvement.
+    const app = Application.create({ env: "test" });
+    app.container.value(
+      "config" as never,
+      {
+        get: <T>(k: string, d: T): T => (k === "inertia.ssr" ? (true as unknown as T) : d),
+        safe: <T>(k: string, d: T): T => (k === "inertia.ssr" ? (true as unknown as T) : d),
+      } as never,
+    );
+
+    await withApp(app, async () => {
+      const ctx = fakeCtx("http://localhost/missing");
+      await inRequest(ctx, () => inertia.dynamic("NoSuchPageAtAll", {}));
+
+      expect(ctx.response?.status).toBe(200);
+      const html = await ctx.response!.text();
+      expect(html).toContain('<div id="app"></div>');
+      expect(html).not.toContain("data-server-rendered");
+    });
+    Application._resetInstance();
   });
 });

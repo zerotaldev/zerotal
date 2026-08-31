@@ -439,6 +439,49 @@ function _writeInertiaJson(ctx: HttpContext, pageObject: unknown): void {
   });
 }
 
+/** Whether `inertia.ssr` is on. Read per request, so a config change needs no rebuild. */
+function _ssrEnabled(): boolean {
+  return config.safe<boolean>("inertia.ssr", false) === true;
+}
+
+/**
+ * The full document with the component rendered into the root.
+ *
+ * Buffered rather than streamed, because this is `render()`: the caller asked for a
+ * page, not for time-to-first-byte. {@link inertiaStream} is the streaming form and
+ * stays a per-route choice, since streaming trades TTFB against a shell that arrives
+ * in pieces — a decision that belongs to a route rather than to an application.
+ *
+ * Falls back to the un-rendered document when a component cannot be rendered. A page
+ * that fails to server-render still works in the browser, so taking the route down
+ * because an *optimisation* failed would make `ssr: true` a liability rather than an
+ * improvement. The failure is logged rather than swallowed.
+ */
+async function _renderedHtml(component: string, pageObject: PageObject): Promise<string> {
+  const [prefix = "", suffix = ""] = _bustAssets(_htmlTemplate).split("<!-- @inertia -->");
+
+  try {
+    const { modPath, framework } = await resolvePageModule(_getPagesDir(), component);
+    const { body, head } = await renderInertiaPage(pageObject, modPath, framework);
+
+    return (
+      injectHead(prefix, head) +
+      pageScript(pageObject) +
+      rootOpen(true) +
+      body +
+      ROOT_CLOSE +
+      suffix
+    );
+  } catch (error) {
+    console.warn(
+      `[Inertia] SSR render failed for "${component}", serving the client-rendered ` +
+        `document instead: ${(error as Error).message}`,
+    );
+    return `${prefix}${rootOpen(false)}${ROOT_CLOSE}
+    ${pageScript(pageObject)}${suffix}`;
+  }
+}
+
 async function _inertia(component: string, props: Record<string, unknown>): Promise<void> {
   const ctx = RequestContext.get();
   const isInertiaRequest = ctx.request.headers.get("X-Inertia") === "true";
@@ -454,16 +497,25 @@ async function _inertia(component: string, props: Record<string, unknown>): Prom
     throw new InertiaTemplateNotLoadedError();
   }
 
-  // Inject pageObject into the HTML template. The root is empty — this path does
-  // not server-render the component, so it is deliberately *not* marked
-  // `data-server-rendered`: that flag tells the client to hydrate, and hydrating an
-  // empty div is a mismatch on every page. See `inertiaStream()` for the rendered
-  // form, and the "What a crawler sees" section of the Inertia docs for what this
-  // response contains.
-  const html = _bustAssets(_htmlTemplate).replace(
-    "<!-- @inertia -->",
-    `${rootOpen(false)}${ROOT_CLOSE}\n    ${pageScript(pageObject)}`,
-  );
+  // `inertia.ssr` renders the component here, on the first load, for every page.
+  //
+  // That is what the option is named for and what every Inertia adapter does with
+  // it — and until 1.13.4 it did not: the flag registered `POST /__ssr` and nothing
+  // in the request path consulted it, so an app that set `ssr: true` and read the
+  // documentation got exactly the empty root it had before. Server rendering was
+  // reachable only by rewriting each route to `Inertia.stream()`, one call site at
+  // a time, which is not what a global switch means.
+  const html = _ssrEnabled()
+    ? await _renderedHtml(component, pageObject)
+    : _bustAssets(_htmlTemplate).replace(
+        "<!-- @inertia -->",
+        // The root is empty, so it is deliberately *not* marked
+        // `data-server-rendered`: that flag tells the client to hydrate, and
+        // hydrating an empty div is a mismatch on every page. See the "What a
+        // crawler sees" section of the Inertia docs for what this contains.
+        `${rootOpen(false)}${ROOT_CLOSE}
+    ${pageScript(pageObject)}`,
+      );
 
   ctx.response = new Response(html, {
     headers: {

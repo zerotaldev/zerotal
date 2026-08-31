@@ -9,22 +9,7 @@ By default Inertia renders the first page on the client. Server-side rendering (
 renders the initial HTML on the server instead — better Time-to-First-Byte and
 crawlable content — while subsequent navigations keep using the fast JSON path.
 
-Zerotal offers two approaches: the **`/__ssr` endpoint** (standard Inertia SSR) and
-**streaming SSR** via `inertiaStream()`.
-
-## Which should I use?
-
-- **Endpoint SSR** (`ssr: true`) — the standard Inertia SSR contract. Turn it on
-  globally and the Inertia client renders the first page through `POST /__ssr`. Use
-  this when you want crawlable, server-rendered HTML across the whole app with no
-  per-controller change.
-- **Streaming SSR** (`inertiaStream()`) — swap `inertia()` for `inertiaStream()` in
-  the controllers whose initial document you want streamed for the fastest TTFB. Use
-  it selectively on heavy landing pages; everything else stays on `inertia()`.
-
-## Endpoint SSR
-
-Enable the SSR endpoint in config:
+Turn `ssr` on and every first page load is server-rendered. That is the whole of it:
 
 ```ts
 // config/inertia.ts
@@ -34,21 +19,70 @@ import { env } from "zerotal";
 export default InertiaConfig({
   htmlTemplate: "./resources/app.html",
   version: env("ASSET_VERSION", "1"),
-  ssr: true, // registers POST /__ssr — requires a server renderer
+  ssr: true,
 });
 ```
 
-When `ssr: true`, `InertiaProvider` registers `POST /__ssr`, which accepts
-`{ component, props, url }` and returns `{ body, head }` — the same contract as the
-Inertia Node SSR server. On a first-page load the server renders the component into
-the template instead of shipping an empty root `<div>`; subsequent navigations use
-the normal JSON path. Pages render with the framework they're authored in: React
-`.tsx` via `react-dom/server`, or Vue `.vue` via `@inertiajs/vue3` +
-`vue/server-renderer` — install the server renderer for the framework(s) your app uses.
+No controller changes. `Inertia.render()` renders the component into the root, injects
+the page's `<Head>` tags into the document head, and marks the root
+`data-server-rendered` so the client **hydrates** that markup instead of throwing it
+away and painting again. The scaffolded `app.tsx` already does the hydrating half:
 
-## Streaming SSR
+```tsx fragment
+setup({ el, App, props }) {
+  const app = <App {...props} />;
+  if (el.hasAttribute("data-server-rendered")) {
+    hydrateRoot(el, app);
+  } else {
+    createRoot(el).render(app);
+  }
+}
+```
 
-`inertiaStream()` is a drop-in async alternative to `inertia()` that uses React 18's
+Subsequent navigations are unaffected — an `X-Inertia` XHR gets the page object as JSON
+either way, because server rendering is about the _first_ arrival.
+
+> **Before 1.13.4, `ssr: true` did not do this.** It registered `POST /__ssr` and nothing
+> in the request path consulted it, so an app that set the flag and read this page got
+> exactly the empty root it had before, and server rendering was reachable only by
+> rewriting each route to `inertiaStream()`. If you worked around that with a per-route
+> switch, you can delete it.
+
+Pages render with the framework they are authored in: React `.tsx` via
+`react-dom/server`, Vue `.vue` via `@inertiajs/vue3` + `vue/server-renderer`. Install the
+server renderer for the framework your app uses.
+
+**A page that fails to server-render still works.** The failure is logged and the
+client-rendered document is served instead, because taking a route down because an
+_optimisation_ failed would make `ssr: true` a liability rather than an improvement.
+
+## What `POST /__ssr` is for
+
+`ssr: true` also registers it. It accepts `{ component, props, url }` and returns
+`{ body, head }` — the same contract as the Inertia Node SSR server — and it exists for
+an **external** caller: a separate renderer process, or a deployment that renders
+somewhere other than the web process.
+
+You do not need it for the switch above, which renders in-process. It is throttled and
+loopback-gated; see `ssrSecret` for reaching it from another host.
+
+## Streaming SSR — a different question
+
+`inertiaStream()` is **not** how you turn SSR on — that is the config flag. Streaming is
+about **time to first byte**: the document goes out in pieces as the component renders,
+rather than being buffered and sent whole.
+
+That is a trade, which is why it stays a per-route choice rather than an app-wide one. A
+streamed response starts arriving sooner and finishes no earlier, and on a page that is
+mostly shell the buffering costs nothing worth reclaiming. Reach for it on a heavy
+landing page; leave everything else on `Inertia.render()`.
+
+Both render the component and both mark the root for hydration. The only difference is
+whether the bytes are streamed.
+
+### How it streams
+
+It uses React 18's
 `renderToReadableStream` to improve TTFB. Instead of buffering the whole render, it
 streams the React output between the template's HTML prefix and suffix:
 
@@ -82,14 +116,17 @@ export class PostController {
 
 ### inertia vs. inertiaStream
 
-| Criterion      | `inertia()`              | `inertiaStream()`                  |
-| -------------- | ------------------------ | ---------------------------------- |
-| Return type    | `Promise<void>`          | `Promise<void>`                    |
-| Rendering      | None — empty root + JSON | Streaming `renderToReadableStream` |
-| Response body  | Fully buffered string    | Streaming `ReadableStream`         |
-| TTFB           | Immediate                | After the shell is ready           |
-| Page `<Head>`  | Client only              | Collected into the served `<head>` |
-| XHR navigation | JSON (the normal path)   | JSON — the same page object        |
+| Criterion      | `inertia()`                             | `inertiaStream()`                  |
+| -------------- | --------------------------------------- | ---------------------------------- |
+| Return type    | `Promise<void>`                         | `Promise<void>`                    |
+| Rendering      | Server-rendered when `ssr: true`        | Always server-rendered             |
+| Response body  | Fully buffered string                   | Streaming `ReadableStream`         |
+| TTFB           | After the render                        | As the component renders           |
+| Page `<Head>`  | In the served `<head>` when `ssr: true` | Collected into the served `<head>` |
+| XHR navigation | JSON (the normal path)                  | JSON — the same page object        |
+
+With `ssr: false` — the default — `inertia()` serves an empty root and the page object,
+and the browser does all the rendering.
 
 **Both implement the whole protocol.** An `X-Inertia: true` request gets the page
 object as JSON from either one; the streaming half applies to the first arrival,
@@ -152,8 +189,9 @@ Two things it does not do:
 
 ## What a crawler sees
 
-`inertia()` — the default — **does not server-render the component at all.** Its
-response body is the template with an empty root and the page object beside it:
+**With `ssr: false` — the default — `inertia()` does not server-render the component at
+all.** Its response body is the template with an empty root and the page object beside
+it:
 
 ```html
 <body>
@@ -179,10 +217,11 @@ readers of your site run JavaScript and which do not:
 So the link preview a page produces is decided entirely by its `<head>` — which is
 the template's, identically, on every page, unless you do one of these:
 
-1. **Switch the page to `inertiaStream()`.** The component is rendered, `<Head>` is
-   collected, and the served `<head>` is the page's own. This is the smallest change
-   and the one to reach for on pages that get shared.
-2. **Turn on endpoint SSR** (`ssr: true`) for the whole app.
+1. **Turn on `ssr: true`.** One line, every page: the component is rendered, `<Head>` is
+   collected, and the served `<head>` is the page's own. This is the change to reach for
+   unless you have a reason not to.
+2. **Switch a single page to `inertiaStream()`**, if you want that and streaming on one
+   route without turning rendering on everywhere.
 3. **Set the tags in middleware**, if the metadata is server-side data the component
    does not otherwise need.
 

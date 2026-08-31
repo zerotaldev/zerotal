@@ -1448,6 +1448,62 @@ class DoctorCommand = {
   write: (msg: string) => void
 }
 
+class DownCommand = {
+  new (): DownCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: ({    name: string;    type: 'number';    description: string;    default: number;} | {    name: string;    type: 'string';    description: string;    default?: never;})[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
+class GateStatusCommand = {
+  new (): GateStatusCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class KeyGenerateCommand = {
   new (): KeyGenerateCommand
   static args: never[]
@@ -1896,6 +1952,34 @@ class MakeTestCommand = {
   write: (msg: string) => void
 }
 
+class PreviewCommand = {
+  new (): PreviewCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: {    name: string;    type: 'string';    description: string;}[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class ReloadCommand = {
   new (): ReloadCommand
   static args: never[]
@@ -2102,6 +2186,34 @@ class TestCommand = {
   static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'number';    description: string;    default: number;    short?: never;})[]
   static needsApp: boolean
   static readonly DEFAULT_TIMEOUT_MS: 30000
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
+class UpCommand = {
+  new (): UpCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: never[]
+  static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2624,6 +2736,59 @@ interface ArtisanResult = {
   code: number
   output: string
 }
+
+## ./gate  `(./src/gate/index.ts)`
+
+class GateMiddleware = {
+  new (): GateMiddleware
+  static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
+  afterResponse?: (ctx: HttpContext) => Promise<void>
+  handle: (ctx: HttpContext, next: NextFn) => Promise<Response | void>
+  onError?: (ctx: HttpContext, error: Error) => Promise<void>
+}
+
+const Gate = {    maintenance(options?: MaintenanceOptions): Promise<void>;    preview(options: PreviewOptions): Promise<void>;    open(): Promise<void>;    status(): GateStatus;}
+
+const GATE_COOKIE = 'zerotal_preview'
+
+const GATE_FILE = string
+
+const GATE_QUERY = 'preview'
+
+function gateExpired = (state: GateState, now?: Date) => boolean
+
+function readGate = (root?: string) => GateState | null
+
+interface GateState = {
+  by?: string | undefined
+  mode: GateMode
+  retryAfter?: number | undefined
+  since: string
+  tokenHash?: string | undefined
+  until?: string | undefined
+}
+
+interface GateStatus = {
+  by?: string | undefined
+  expired?: boolean | undefined
+  mode: 'open' | GateMode
+  retryAfter?: number | undefined
+  since?: string | undefined
+  until?: string | undefined
+}
+
+interface MaintenanceOptions = {
+  by?: string | undefined
+  retryAfter?: number | undefined
+}
+
+interface PreviewOptions = {
+  by?: string | undefined
+  token: string
+  until?: string | undefined
+}
+
+type GateMode = 'maintenance' | 'preview'
 
 ## ./health  `(./src/health/index.ts)`
 

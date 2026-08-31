@@ -3,6 +3,7 @@ import { Application } from "./Application.ts";
 import { currentApp } from "./currentApp.ts";
 import { ServiceProvider } from "../provider/ServiceProvider.ts";
 import { FrameworkEvents, AppBooted } from "../events/FrameworkEvents.ts";
+import { GateMiddleware } from "../gate/GateMiddleware.ts";
 import { SecureHeadersMiddleware } from "../middleware/SecureHeadersMiddleware.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -678,16 +679,20 @@ describe("routing() group resolution", () => {
 // ── globalMiddleware getter ───────────────────────────────────────────────────
 
 describe("Application.globalMiddleware", () => {
-  it("carries only the kernel's security headers before any middleware is registered", () => {
+  it("carries the kernel before any middleware is registered", () => {
     // Not empty: a scaffolded app must not ship without clickjacking and MIME-sniffing
-    // protection just because nobody remembered to register the middleware.
+    // protection just because nobody remembered to register the middleware. The gate
+    // is ahead of it so a closed site answers before anything else runs.
     const app = Application.create({ env: "test" });
-    expect(app.globalMiddleware).toEqual([SecureHeadersMiddleware]);
+    expect(app.globalMiddleware).toEqual([GateMiddleware, SecureHeadersMiddleware]);
   });
 
-  it("is empty when the app opts out of the kernel's security headers", () => {
+  it("drops only the headers when the app opts out of them", () => {
+    // Opting out of security headers must not opt out of the site gate. They share
+    // the kernel and nothing else; emptying it would make one feature's switch
+    // silently disable another's.
     const app = Application.create({ env: "test", secureHeaders: false });
-    expect(app.globalMiddleware).toEqual([]);
+    expect(app.globalMiddleware).toEqual([GateMiddleware]);
   });
 
   it("does not stack a second copy when the app registers its own", () => {

@@ -3054,6 +3054,62 @@ class DoctorCommand = {
   write: (msg: string) => void
 }
 
+class DownCommand = {
+  new (): DownCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: ({    name: string;    type: 'number';    description: string;    default: number;} | {    name: string;    type: 'string';    description: string;    default?: never;})[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
+class GateStatusCommand = {
+  new (): GateStatusCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class KeyGenerateCommand = {
   new (): KeyGenerateCommand
   static args: never[]
@@ -3502,6 +3558,34 @@ class MakeTestCommand = {
   write: (msg: string) => void
 }
 
+class PreviewCommand = {
+  new (): PreviewCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: {    name: string;    type: 'string';    description: string;}[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class ReloadCommand = {
   new (): ReloadCommand
   static args: never[]
@@ -3708,6 +3792,34 @@ class TestCommand = {
   static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'number';    description: string;    default: number;    short?: never;})[]
   static needsApp: boolean
   static readonly DEFAULT_TIMEOUT_MS: 30000
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
+class UpCommand = {
+  new (): UpCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: never[]
+  static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown

@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { Router } from "./Router.ts";
 import { Container } from "../container/Container.ts";
+import { writeGate } from "../gate/state.ts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Pipe, NextFn } from "../pipeline/types.ts";
 import { HttpContext } from "../pipeline/HttpContext.ts";
 
@@ -810,6 +814,35 @@ describe("Router.raw()", () => {
       new Request("http://localhost/__echo", { method: "POST" }),
     );
     expect(await res.text()).toBe("echo:POST");
+  });
+
+  it("is still subject to the site gate", async () => {
+    // `Router.raw()` opts out of *request handling* — CSRF on a transport
+    // endpoint, session resolution on a relay — not out of whether the site is
+    // open at all. A gate that covered only the pipeline would be the worst kind,
+    // because it gates the homepage and therefore looks like it works: this
+    // framework's own docs site serves every /docs/* page from a raw route, and
+    // with the gate on the front page said "coming soon" while every page of
+    // content stayed public.
+    const root = mkdtempSync(join(tmpdir(), "zt-raw-gate-"));
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      writeGate({ mode: "maintenance", since: new Date().toISOString(), retryAfter: 30 });
+
+      Router.raw("GET", "/public-page", () => new Response("the real content"));
+      const compiled = Router.compile(new Container());
+      const handler = methods(compiled, "/public-page")!["GET"]!;
+      const res = await (handler as (req: Request) => Promise<Response>)(
+        new Request("http://localhost/public-page"),
+      );
+
+      expect(res.status).toBe(503);
+      expect(await res.text()).not.toContain("the real content");
+    } finally {
+      process.chdir(cwd);
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

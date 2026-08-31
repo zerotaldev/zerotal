@@ -12,6 +12,7 @@
  * scheduler's static-config check is the model); the built-ins cover core.
  */
 import { readdirSync } from "node:fs";
+import { siteGateCheck } from "../gate/doctor.ts";
 import type { Application } from "../application/Application.ts";
 import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { unroutedRoutesWarning } from "../support/unroutedRoutes.ts";
@@ -409,6 +410,7 @@ const throttleIdentityCheck: DoctorCheck = {
  */
 export const builtinDoctorChecks: DoctorCheck[] = [
   appKeyCheck,
+  siteGateCheck,
   allowedOriginsCheck,
   corsWildcardCheck,
   secureHeadersCheck,

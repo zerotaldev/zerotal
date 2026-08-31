@@ -344,6 +344,10 @@ export class CommandRunner {
       ReloadCommand,
       StatusCommand,
       VersionCommand,
+      DownCommand,
+      PreviewCommand,
+      UpCommand,
+      GateStatusCommand,
       MakeControllerCommand,
       MakeMiddlewareCommand,
       MakeCommandCommand,
@@ -385,6 +389,15 @@ export class CommandRunner {
     // Always registered, and deliberately not gated on the boot mode: the answer to
     // "which version is this" must not depend on which environment is asking.
     this.register(VersionCommand);
+
+    // The gate is changed at the moments things are going wrong — before a
+    // migration, during an incident — so these are registered in every
+    // environment and need no application. A maintenance command that only
+    // works when the app boots is one you cannot reach when you need it.
+    this.register(DownCommand);
+    this.register(PreviewCommand);
+    this.register(UpCommand);
+    this.register(GateStatusCommand);
 
     // route:list and doctor are inspection commands — always available regardless of mode.
     this.register(RouteListCommand);

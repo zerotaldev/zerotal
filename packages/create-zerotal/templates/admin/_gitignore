@@ -5,3 +5,12 @@ node_modules/
 # have not been checkpointed into the main file yet — real ones.
 *.sqlite*
 .env
+
+# The site gate's state — never committed.
+#
+# This is the whole reason the feature exists in the app rather than in a reverse
+# proxy: a gate held in version control is one that gets deployed and forgotten,
+# and quietly password-protects a live site at launch. It is per-environment
+# state, like a log, not configuration.
+storage/framework/gate.json
+**/storage/framework/gate.json

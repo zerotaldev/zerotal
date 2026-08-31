@@ -31,6 +31,7 @@ import type { ProviderHooks } from "./RouteHandler.ts";
 import { tryCurrentApp } from "../application/currentApp.ts";
 import { frameworkLog } from "../logger/frameworkLog.ts";
 import { staticSecurityHeaders } from "../middleware/SecureHeadersMiddleware.ts";
+import { _gateResponse } from "../gate/GateMiddleware.ts";
 import {
   markdownExtractTitle,
   markdownPage,
@@ -81,6 +82,33 @@ function _wrapFileHandler(fn: FileHandler, debugName: string): ControllerClass {
 type AnyRouteHandler = RouteHandler<any>;
 
 type RouteHandlerFn = (req: Request, server?: unknown) => Response | Promise<Response>;
+
+/**
+ * Apply the site gate to a raw route.
+ *
+ * Same reasoning as `_withSecurityDefaults` directly below: `Router.raw()` exists
+ * to skip *request handling* — CSRF on a transport endpoint, session resolution
+ * on a relay — not to opt a route out of whether the site is open at all.
+ *
+ * A gate that covered only the pipeline would be the worst kind, because it
+ * gates the homepage and therefore looks like it works. This framework's own
+ * documentation site serves every `/docs/*` page from a raw route: with the gate
+ * on, the front page said "coming soon" and every page of content stayed public.
+ *
+ * No staff bypass here — a raw route has no session resolved, so the token
+ * cookie is the only way through. That is the safe direction for a check whose
+ * failure mode is letting somebody in.
+ */
+function _withGate(handler: RouteHandlerFn): RouteHandlerFn {
+  return async (req: Request, ...rest: unknown[]) => {
+    const gated = _gateResponse(req, false);
+    if (gated) return gated;
+    return (handler as (req: Request, ...rest: unknown[]) => Response | Promise<Response>)(
+      req,
+      ...rest,
+    );
+  };
+}
 
 /**
  * Wrap a raw handler so its response carries the security headers, without
@@ -1130,7 +1158,7 @@ export class Router {
       const method = key.slice(0, spaceIndex) as HttpMethod;
       const path = key.slice(spaceIndex + 1);
       const rawMap = (compiled[path] ??= {}) as Record<string, RouteHandlerFn>;
-      rawMap[method] = _withSecurityDefaults(handler, rawDefaults);
+      rawMap[method] = _withGate(_withSecurityDefaults(handler, rawDefaults));
       // And `HEAD`, for the same reason the pipeline derives it — a raw route is
       // still a route, and `curl -I` against one answered 404 while the `GET`
       // beside it answered 200. This site's own `/docs/*` and `/blog` are raw,

@@ -8,6 +8,47 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A site gate — maintenance, and private preview.** From a proposal by the Trekly team,
+  who were running a hand-edited `basic_auth` block in a reverse proxy, deliberately kept
+  out of version control so it could not be deployed and forgotten into a live shop.
+
+  Two states that look alike and are not. **Maintenance** means the site is down —
+  everyone refused, staff included, because the usual reason a site is down is that its
+  database is being changed underneath it. **Private preview** means the site is up and
+  working, for the people invited to it, for weeks.
+
+  `zt down`, `zt preview`, `zt up`, `zt gate:status`, and a `Gate` API at
+  `@zerotal/core/gate` so an app can build its own switch. See
+  [the guide](https://zerotal.dev/docs/site-gate).
+
+  The details that are the reason this belongs in the framework rather than in each app:
+
+  - **Maintenance is always `503` with `Retry-After`, and is not configurable.** A
+    maintenance page at `200` tells a search engine the apology is your homepage.
+  - **A preview token is stripped from the URL on first use**, via a redirect to a cookie.
+    Left in the address bar it travels into `Referer`, analytics and screenshots.
+  - **Webhook paths must be declared** in `gate.allow`. A payment provider posting a
+    settlement into a maintenance window otherwise gets a 503, and that is a retry, a
+    dropped callback, or a payment your books never learn about.
+  - **The state is a file, and the token is stored hashed.** A flag in the database is
+    unreadable exactly when the database is what you are working on; a token in a file is
+    a credential in something every backup copies.
+  - **It covers `Router.raw()` routes.** Found while testing: this framework's own docs
+    site serves every `/docs/*` page from a raw route, so an early build gated the front
+    page — which is what a person checks — and left all the content public.
+  - **`zt doctor` reports a gate left on**, and a preview whose `until` has passed.
+  - **The state file is gitignored** by the scaffold, which is the whole point.
+
+### Fixed
+
+- **`secureHeaders: false` no longer empties the kernel.** It set the kernel middleware to
+  `[]`, which was the same thing as removing the headers until the gate joined that layer —
+  at which point opting out of security headers would silently have taken the site gate
+  with it. One feature's opt-out disabling another's is the failure the gate is otherwise
+  about.
+
 ## [1.13.0] — 2026-08-31
 
 ### Changed — **BREAKING**

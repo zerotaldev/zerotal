@@ -34,6 +34,7 @@ export { KeyGenerateCommand } from "./KeyGenerateCommand.ts";
 export { ReloadCommand } from "./ReloadCommand.ts";
 export { StatusCommand } from "./StatusCommand.ts";
 export { VersionCommand } from "./VersionCommand.ts";
+export { DownCommand, PreviewCommand, UpCommand, GateStatusCommand } from "./GateCommands.ts";
 export { MakeControllerCommand } from "./MakeControllerCommand.ts";
 export { MakeMiddlewareCommand } from "./MakeMiddlewareCommand.ts";
 export { MakeCommandCommand } from "./MakeCommandCommand.ts";

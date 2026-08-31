@@ -32,6 +32,7 @@ import {
   SecureHeadersMiddleware,
   staticSecurityHeaders,
 } from "../middleware/SecureHeadersMiddleware.ts";
+import { GateMiddleware } from "../gate/GateMiddleware.ts";
 import { isAllowedOrigin, allowedOriginsFrom } from "../http/originGuard.ts";
 import { rescueSync } from "../helpers/index.ts";
 import {
@@ -525,7 +526,15 @@ export class Application {
 
     const app = new Application();
     app._env = resolvedEnv;
-    if (options.secureHeaders === false) app._kernelMiddleware = [];
+    // Remove only the headers, not the whole kernel. Emptying it used to be the
+    // same thing; once the gate joined the kernel it stopped being, and
+    // `secureHeaders: false` would have silently taken a site's maintenance mode
+    // with it — an opt-out for one feature disabling an unrelated one.
+    if (options.secureHeaders === false) {
+      app._kernelMiddleware = app._kernelMiddleware.filter(
+        (pipe) => pipe !== SecureHeadersMiddleware,
+      );
+    }
     if (options.providers) for (const provider of options.providers) app._addProvider(provider);
     if (options.config) {
       app._configMap =
@@ -899,7 +908,11 @@ export class Application {
    * documenting it and hoping — shipped every scaffold with no clickjacking protection and
    * no MIME-sniffing protection. Cleared by `Application.create({ secureHeaders: false })`.
    */
-  private _kernelMiddleware: PipeClass[] = [SecureHeadersMiddleware];
+  // GateMiddleware first, and before SecureHeaders: a closed site should answer
+  // from the gate without anything else running, including the session and
+  // anything that reaches the database — which in maintenance mode may be the
+  // thing that is unavailable.
+  private _kernelMiddleware: PipeClass[] = [GateMiddleware, SecureHeadersMiddleware];
 
   /** Resolved middleware pipeline: kernel → provider auto → explicit .use() */
   private get _pipeline(): PipeClass[] {

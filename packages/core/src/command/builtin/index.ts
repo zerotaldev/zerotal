@@ -33,6 +33,7 @@ export { CompileCommand } from "./CompileCommand.ts";
 export { KeyGenerateCommand } from "./KeyGenerateCommand.ts";
 export { ReloadCommand } from "./ReloadCommand.ts";
 export { StatusCommand } from "./StatusCommand.ts";
+export { VersionCommand } from "./VersionCommand.ts";
 export { MakeControllerCommand } from "./MakeControllerCommand.ts";
 export { MakeMiddlewareCommand } from "./MakeMiddlewareCommand.ts";
 export { MakeCommandCommand } from "./MakeCommandCommand.ts";

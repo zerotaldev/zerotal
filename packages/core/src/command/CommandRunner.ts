@@ -343,6 +343,7 @@ export class CommandRunner {
       KeyGenerateCommand,
       ReloadCommand,
       StatusCommand,
+      VersionCommand,
       MakeControllerCommand,
       MakeMiddlewareCommand,
       MakeCommandCommand,
@@ -380,6 +381,10 @@ export class CommandRunner {
     // not the app itself, so they don't need an application instance.
     this.register(ReloadCommand);
     this.register(StatusCommand);
+
+    // Always registered, and deliberately not gated on the boot mode: the answer to
+    // "which version is this" must not depend on which environment is asking.
+    this.register(VersionCommand);
 
     // route:list and doctor are inspection commands — always available regardless of mode.
     this.register(RouteListCommand);

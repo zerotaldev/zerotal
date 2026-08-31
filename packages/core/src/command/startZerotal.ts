@@ -17,6 +17,7 @@ import {
 import type { RuntimeMismatch } from "../support/runtime.ts";
 import { RuntimeMismatchError } from "../errors/RuntimeMismatchError.ts";
 import type { Application } from "../application/Application.ts";
+import { _formatVersion, _versionInfo } from "./versionInfo.ts";
 
 /** Options for {@link startZerotal}. */
 export interface StartZerotalOptions {
@@ -44,6 +45,29 @@ export async function startZerotal(
   loadApp: () => Promise<{ default: Application }>,
   options: StartZerotalOptions = {},
 ): Promise<void> {
+  // Answer `--version` before anything else can fail to.
+  //
+  // Ahead of the runtime assertion, the config load and the app import, because
+  // those are exactly the things someone is asking the version *about*: a config
+  // that no longer validates and an app that will not boot are the two moments
+  // when "which version am I on" stops being idle curiosity. A version flag that
+  // only works when everything else already works answers a question nobody has.
+  //
+  // It reports a second runtime as a line of output rather than throwing about
+  // one, which is strictly more informative than the refusal it skips.
+  // `--json` is honoured here and not only on the command, because this is the
+  // path that produces clean output: the app's boot log goes to stdout, so
+  // `zt version --json` — which dispatches normally, and therefore boots — cannot
+  // be piped into a parser. This form never boots, so it can.
+  const first = process.argv[2] ?? "";
+  if (first === "--version" || first === "-v") {
+    const info = _versionInfo();
+    console.log(
+      process.argv.includes("--json") ? JSON.stringify(info, null, 2) : _formatVersion(info),
+    );
+    return;
+  }
+
   // Before anything else, because everything after this is an assertion about a
   // runtime — and if there are two of them, which one made the assertion is the
   // first thing worth knowing.

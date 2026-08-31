@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`zt version`** — which Zerotal, which Bun, which app. The first question anyone
+  asks when filing a bug, and the CLI had no answer: `zt version` was an unknown
+  command, so the version had to be dug out of `package.json` or `node_modules` —
+  both of which report what is _installed_ rather than what is _running_, and those
+  differ for any process that has been up since before an upgrade.
+
+  `--version` and `-v` are answered earlier still, before the runtime check, the
+  config load and the app import, because those are the things someone is asking the
+  version _about_. A version flag that only works when the app already boots answers
+  a question nobody has. Add `--json` for a script.
+
+  Two notes on the output. It is uncoloured, unlike every other `Command` helper,
+  because it gets pasted into bug reports and piped into parsers more than it is read
+  on a terminal. And prefer `zt --version --json` over `zt version --json` in a
+  script: the application's boot log is written to stdout, so the second form emits a
+  log line ahead of the JSON while the first never boots at all.
+
 ## [1.11.0] — 2026-08-31
 
 ### Fixed

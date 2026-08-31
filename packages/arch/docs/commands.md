@@ -310,12 +310,43 @@ Packages register their own — see
 
 | Command                | Description                                            |
 | ---------------------- | ------------------------------------------------------ |
+| `bun zt version`       | Show the Zerotal, Bun and app versions                 |
 | `bun zt route:list`    | List all registered routes with methods and middleware |
 | `bun zt route:types`   | Write `types/routes.generated.ts` (`--check` in CI)    |
 | `bun zt doctor`        | Check the app for silent misconfigurations             |
 | `bun zt key:generate`  | Generate a new `APP_KEY` and write it to `.env`        |
 | `bun zt lint:packages` | Check every workspace package against convention rules |
 | `bun zt upgrade`       | Apply the codemods for a version upgrade               |
+
+#### Which version am I on?
+
+`bun zt version` prints the framework, the runtime and the app:
+
+```
+Zerotal  1.11.0
+Bun      1.3.14
+App      my-app 0.1.0
+```
+
+It reports the version that is **running**, which is not always the version that is
+installed — a long-running server holds the code it booted with, so an upgrade lands
+on disk without reaching it.
+
+`--version` and `-v` answer the same question without booting the application:
+
+```bash
+bun zt --version
+bun zt --version --json     # for a script
+```
+
+Prefer the flag form in scripts, for two reasons. It still answers when the app does
+not boot — a config that no longer validates is exactly when you want to know which
+version you are on. And it is the form whose output can be piped: the application's
+boot log is written to stdout, so `bun zt version --json` carries a log line ahead of
+the JSON, while `bun zt --version --json` never boots and emits nothing else.
+
+If `node_modules` contains a second Bun, the report names it. Nothing executes that
+copy — it arrives as a peer dependency — but it is the one an install would use.
 
 ### Upgrading between versions
 

@@ -258,7 +258,7 @@ export function recheckAgainstSchema<T>(input: SchemaInput, value: unknown): T {
   }
 
   const cleaned = dropAbsentNulls(schema, value as Record<string, unknown>);
-  const result = runValidation(schema, cleaned);
+  const result = runValidation(emptyStringIsPresent(schema, cleaned), cleaned);
 
   if (!result.success) {
     const detail = Object.entries(result.errors)
@@ -289,4 +289,71 @@ function dropAbsentNulls(schema: Schema, value: Record<string, unknown>): Record
   }
 
   return out;
+}
+
+/**
+ * Let `""` count as an answer on a required string field.
+ *
+ * `required` treats the empty string as absent, and for an HTML form that is exactly
+ * right: an empty text input submits `""`, and a user who typed nothing has supplied
+ * nothing. Structured model output is not a form. There, `""` is the conventional way
+ * to say *"this field does not apply"* — it is what a prompt naturally asks for, and
+ * a model that returns it has answered rather than declined:
+ *
+ * > A month must be YYYY-MM. Use an empty string when the question names no month.
+ *
+ * With the form rule applied, that correct answer was rejected as malformed and the
+ * whole feature returned nothing. An app shipped exactly that: most questions named
+ * no month, the model returned `""` in 3.3 seconds every time, and the page said
+ * "either no model is configured, or it was not about your money" — while a model
+ * was configured and had answered.
+ *
+ * Only `required` is relaxed, and only for a field the schema declares as a string
+ * whose value is exactly `""`. Every other constraint still applies: a
+ * `rule.string().min(3)` still rejects `""`, because that length is the app's own
+ * requirement rather than a form convention leaking in.
+ *
+ * @param schema - The declared schema.
+ * @param value - The model's parsed answer.
+ * @returns A schema to validate with — the same one when nothing needed relaxing.
+ */
+function emptyStringIsPresent(schema: Schema, value: Record<string, unknown>): Schema {
+  let relaxed: Schema | undefined;
+
+  for (const [name, def] of Object.entries(schema)) {
+    // Only a field that is *present* and holds `""`. An absent field leaves
+    // `value[name]` as `undefined`, so `required` still fires on it — which is the
+    // difference between "the model said this does not apply" and "the model did
+    // not answer", and only the first is an answer.
+    if (value[name] !== "") continue;
+
+    const shape = def as { type?: string; required?: boolean };
+    if (shape.type !== "string" || shape.required !== true) continue;
+
+    relaxed ??= { ...schema };
+    // A shallow clone: the caller's schema object is theirs, and mutating it would
+    // change every later validation that reuses the same instance.
+    relaxed[name] = { ...(def as object), required: false } as Schema[string];
+  }
+
+  return relaxed ?? schema;
+}
+
+/**
+ * Resolve a schema that may be declared as a builder callback.
+ *
+ * `Ai.object(request, (rule) => ({ … }))` is the ergonomic form — it saves the caller
+ * an import — and every consumer of a schema has to accept it. Shared so the fake
+ * resolves it exactly as the manager does, rather than declining to check a schema it
+ * did not recognise.
+ *
+ * @param schema - A schema, or a callback given a {@link RuleBuilder}.
+ * @internal
+ */
+export async function _resolveSchema(
+  schema: SchemaInput | ((rule: import("@zerotal/validator").RuleBuilder) => SchemaInput),
+): Promise<SchemaInput> {
+  if (typeof schema !== "function") return schema;
+  const { RuleBuilder } = await import("@zerotal/validator");
+  return schema(new RuleBuilder());
 }

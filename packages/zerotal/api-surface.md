@@ -5784,7 +5784,7 @@ interface ColumnOptions = {
   index?: boolean | undefined
   nullable?: boolean | undefined
   primary?: boolean | undefined
-  type?: 'string' | 'number' | 'boolean' | 'text' | 'datetime' | 'json' | undefined
+  type?: 'string' | 'number' | 'boolean' | 'text' | 'date' | 'datetime' | 'array' | 'integer' | 'json' | 'float' | 'encrypted' | 'encrypted:json' | undefined
   unique?: boolean | undefined
 }
 

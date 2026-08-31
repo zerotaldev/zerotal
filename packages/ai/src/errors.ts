@@ -1,9 +1,52 @@
 import { ZerotalError } from "@zerotal/core";
 
-/** Base class for all `@zerotal/ai` errors. */
+/**
+ * Base class for all `@zerotal/ai` errors.
+ *
+ * Every one of them carries {@link transient}, because the caller cannot work it out
+ * and the package can.
+ */
 export class AiError extends ZerotalError {
-  constructor(message: string, code = "E_AI", status = 500, context?: Record<string, unknown>) {
+  /**
+   * Whether retrying could plausibly succeed — `true` for *this call failed*, `false`
+   * for *this machine cannot do this*.
+   *
+   * The distinction exists because a service that calls a model per row has to latch
+   * itself off after a permanent failure. Without that, a laptop with no API key pays
+   * the driver's timeout per row, per merchant, per page load — measured at 8s × 12
+   * merchants, which is ninety seconds of blank page.
+   *
+   * Writing that latch meant classifying eleven error classes by hand, and the
+   * permissive mistake is unrecoverable: get it wrong toward "permanent" and a
+   * feature disables itself for the lifetime of the process, silently, because every
+   * call site already treats "no answer" as normal. An app classified
+   * {@link AiSchemaError} as permanent and would have turned two features off on
+   * their first badly-shaped answer.
+   *
+   * So the judgement lives here, where the knowledge is. Only this package knows
+   * whether a new error class means "this call" or "this machine".
+   *
+   * @example
+   * ```ts
+   * try {
+   *   return await Ai.object(prompt, schema);
+   * } catch (error) {
+   *   if (error instanceof AiError && !error.transient) this.disabled = true;
+   *   return null;
+   * }
+   * ```
+   */
+  readonly transient: boolean;
+
+  constructor(
+    message: string,
+    code = "E_AI",
+    status = 500,
+    context?: Record<string, unknown>,
+    transient = false,
+  ) {
     super(message, code, status, context);
+    this.transient = transient;
   }
 }
 
@@ -18,6 +61,8 @@ export class UnknownAiDriverError extends AiError {
       "E_AI_UNKNOWN_DRIVER",
       500,
       { driver, known },
+      // A name that does not exist will not start existing. Permanent.
+      false,
     );
   }
 }
@@ -25,7 +70,8 @@ export class UnknownAiDriverError extends AiError {
 /** Thrown at boot, or on first use, for a config combination that cannot work. */
 export class AiConfigError extends AiError {
   constructor(message: string, context?: Record<string, unknown>) {
-    super(`[Zerotal/ai] ${message}`, "E_AI_CONFIG", 500, context);
+    // Configuration does not fix itself between two calls. Permanent.
+    super(`[Zerotal/ai] ${message}`, "E_AI_CONFIG", 500, context, false);
   }
 }
 
@@ -43,6 +89,9 @@ export class AiDriverUnavailableError extends AiError {
       "E_AI_DRIVER_UNAVAILABLE",
       500,
       { driver, packageName },
+      // A missing package is missing for the life of the process. Permanent, and the
+      // one this distinction exists for — it is what a laptop with no key hits.
+      false,
     );
   }
 }
@@ -72,6 +121,10 @@ export class AiRefusedError extends AiError {
       // policy decision about the content, which is what 422 says.
       422,
       { category, explanation },
+      // Transient: a refusal is about *this content*, not about the machine. The
+      // next prompt may be fine, and latching a feature off because one request was
+      // declined would disable it for everybody over one user's question.
+      true,
     );
   }
 }
@@ -82,7 +135,8 @@ export class AiRateLimitError extends AiError {
     message: string,
     readonly retryAfterSeconds?: number,
   ) {
-    super(`[Zerotal/ai] ${message}`, "E_AI_RATE_LIMIT", 429, { retryAfterSeconds });
+    // The provider is telling you when to come back. Transient by definition.
+    super(`[Zerotal/ai] ${message}`, "E_AI_RATE_LIMIT", 429, { retryAfterSeconds }, true);
   }
 }
 
@@ -93,37 +147,52 @@ export class AiRequestError extends AiError {
     readonly providerStatus: number,
     context?: Record<string, unknown>,
   ) {
-    super(`[Zerotal/ai] ${message}`, "E_AI_REQUEST", providerStatus >= 500 ? 502 : 400, {
-      providerStatus,
-      ...context,
-    });
+    super(
+      `[Zerotal/ai] ${message}`,
+      "E_AI_REQUEST",
+      providerStatus >= 500 ? 502 : 400,
+      { providerStatus, ...context },
+      // The only classification here that reads a value, and the split is the
+      // provider's own: 5xx is the provider having a bad moment and 408/429 say so
+      // outright, while a 4xx is this request being wrong in a way that repeating it
+      // will not fix — a bad key, a model name that does not exist, a payload the
+      // API rejects.
+      providerStatus >= 500 || providerStatus === 408 || providerStatus === 429,
+    );
   }
 }
 
 /** Thrown when a request would breach a configured spend ceiling. */
 export class AiSpendLimitError extends AiError {
   constructor(message: string, context?: Record<string, unknown>) {
-    super(`[Zerotal/ai] ${message}`, "E_AI_SPEND_LIMIT", 429, context);
+    // A budget resets on its window. Transient, though a caller may reasonably
+    // back off much harder than it would for a rate limit.
+    super(`[Zerotal/ai] ${message}`, "E_AI_SPEND_LIMIT", 429, context, true);
   }
 }
 
 /** Thrown when a validator schema uses a constraint structured output cannot express. */
 export class AiSchemaError extends AiError {
   constructor(message: string, context?: Record<string, unknown>) {
-    super(`[Zerotal/ai] ${message}`, "E_AI_SCHEMA", 500, context);
+    // Transient, and deliberately so. A model that shaped one answer badly may
+    // shape the next one correctly — sampling is not deterministic. An app called
+    // this permanent and would have disabled two features on a single bad reply.
+    super(`[Zerotal/ai] ${message}`, "E_AI_SCHEMA", 500, context, true);
   }
 }
 
 /** Thrown when the agent loop hits its step or resume ceiling. */
 export class AiAgentLimitError extends AiError {
   constructor(message: string, context?: Record<string, unknown>) {
-    super(`[Zerotal/ai] ${message}`, "E_AI_AGENT_LIMIT", 500, context);
+    // The loop hit its own ceiling on this run. Another run may not. Transient.
+    super(`[Zerotal/ai] ${message}`, "E_AI_AGENT_LIMIT", 500, context, true);
   }
 }
 
 /** Thrown when the caller's `AbortSignal` fired before the call finished. */
 export class AiCancelledError extends AiError {
   constructor(message = "The generation was cancelled.") {
-    super(`[Zerotal/ai] ${message}`, "E_AI_CANCELLED", 499);
+    // Somebody asked for this to stop. Nothing is wrong with the machine.
+    super(`[Zerotal/ai] ${message}`, "E_AI_CANCELLED", 499, undefined, true);
   }
 }

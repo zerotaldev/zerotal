@@ -501,15 +501,33 @@
     },
     {
       "file": "docs/ai.md",
+      "heading": "`AiFake` checks what you script it with",
+      "ordinal": 0,
+      "hash": "p4gafxhxinwc"
+    },
+    {
+      "file": "docs/ai.md",
       "heading": "Adding a provider",
       "ordinal": 0,
       "hash": "2oyi1h9uu3iw"
     },
     {
       "file": "docs/ai.md",
+      "heading": "An empty string is an answer",
+      "ordinal": 0,
+      "hash": "1isgzd5iztp2"
+    },
+    {
+      "file": "docs/ai.md",
       "heading": "Background generation",
       "ordinal": 0,
       "hash": "2epq3iingy59"
+    },
+    {
+      "file": "docs/ai.md",
+      "heading": "Deciding whether to give up: `transient`",
+      "ordinal": 0,
+      "hash": "i2djk14de5r7"
     },
     {
       "file": "docs/ai.md",
@@ -5532,6 +5550,12 @@
       "heading": "@column decorator",
       "ordinal": 0,
       "hash": "3btjn5gyxyrc"
+    },
+    {
+      "file": "docs/orm/index.md",
+      "heading": "@column decorator",
+      "ordinal": 1,
+      "hash": "guir7hx13wbr"
     },
     {
       "file": "docs/orm/index.md",

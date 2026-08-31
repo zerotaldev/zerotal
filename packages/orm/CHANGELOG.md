@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`@column({ type: "integer" })` compiles.** `ColumnShorthand` has twelve names and
+  `ColumnOptions["type"]` had six, so `@column("integer")` worked and
+  `@column({ type: "integer", default: 0 })` did not — the vocabulary shrank by half
+  exactly when a caller needed `default`, `nullable` or `unique`, which is most real
+  columns. The error listed the six without mentioning that `integer` resolves to
+  `{ type: "number", cast: "integer" }`, so the way out was reading `SHORTHAND_MAP` in
+  the source.
+
+  The object form now takes either vocabulary and resolves a shorthand the way the
+  string form does. An explicit `cast` alongside one still wins: somebody who wrote
+  both meant the one they spelled out.
+
 ### Fixed
 
 - **Migration names no longer carry the platform that recorded them.** `Bun.Glob`

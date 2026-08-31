@@ -82,7 +82,7 @@ export interface ColumnOptions {
    *
    * @default "string"
    */
-  type?: "string" | "text" | "number" | "boolean" | "datetime" | "json" | undefined;
+  type?: ColumnStorageType | ColumnShorthand | undefined;
   /** Mark this column as the table's primary key. */
   primary?: boolean | undefined;
   /** Allow SQL `NULL` for this column. */
@@ -143,6 +143,15 @@ export interface ColumnOptions {
 /**
  * Map each ColumnShorthand to its resolved ColumnOptions.
  */
+/**
+ * The types a column is actually *stored* as — what schema generation emits.
+ *
+ * Distinct from {@link ColumnShorthand}, which is the larger vocabulary a caller may
+ * write. `integer`, `float`, `date` and the encrypted forms are shorthands that
+ * resolve to one of these plus a cast.
+ */
+export type ColumnStorageType = "string" | "text" | "number" | "boolean" | "datetime" | "json";
+
 const SHORTHAND_MAP: Record<ColumnShorthand, ColumnOptions> = {
   string: { type: "string" },
   text: { type: "text" },
@@ -197,7 +206,36 @@ function _resolveBase(arg?: ColumnShorthand | ColumnOptions): ColumnOptions {
       } as ColumnOptions;
     return SHORTHAND_MAP[a as ColumnShorthand] ?? { type: "string" };
   }
-  return arg;
+  return _resolveOptionType(arg);
+}
+
+/**
+ * Let the object form take a shorthand `type`, resolving it the way the string form
+ * would.
+ *
+ * `@column("integer")` compiled and `@column({ type: "integer", default: 0 })` did
+ * not — so the vocabulary shrank from twelve names to six exactly when a caller
+ * needed `default`, `nullable` or `unique`, which is most real columns. And the
+ * error listed the six without mentioning that `integer` means
+ * `{ type: "number", cast: "integer" }`, so the way out was reading this file.
+ *
+ * An explicit `cast` wins over the shorthand's own: someone who wrote both meant the
+ * one they spelled out.
+ *
+ * @param options - The options object as written.
+ * @returns The same options with any shorthand `type` resolved to storage type + cast.
+ */
+function _resolveOptionType(options: ColumnOptions): ColumnOptions {
+  const declared = options.type;
+  if (declared === undefined) return options;
+
+  const shorthand = SHORTHAND_MAP[declared as ColumnShorthand];
+  // A storage type maps to itself with no cast — `string`, `text`, `number`,
+  // `boolean`, `datetime` and `json` appear in both vocabularies and mean the same
+  // thing in each, so there is nothing to resolve.
+  if (!shorthand || shorthand.type === declared) return options;
+
+  return { ...shorthand, ...options, type: shorthand.type };
 }
 
 // ── Reactivity ────────────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 import { Application, currentApp } from "@zerotal/core";
-import { AiRefusedError } from "./errors.ts";
+import { AiRefusedError, AiSchemaError } from "./errors.ts";
+import { recheckAgainstSchema, _resolveSchema, type SchemaInput } from "./schema.ts";
+import type { RuleBuilder } from "@zerotal/validator";
 import { normalizeMessages, promptText, type DriverStatus } from "./drivers/AiDriver.ts";
 import type { AiAgentRequest, AiQueueHandler, AiQueueOptions } from "./AiManager.ts";
 import type {
@@ -158,7 +160,28 @@ export class AiFake {
     };
   }
 
-  async object<T = Record<string, unknown>>(request: AiRequest | string): Promise<T> {
+  /**
+   * Return the next scripted object — after checking it against the same schema the
+   * real driver would.
+   *
+   * This used to hand the canned value back unexamined, and that is a fake that
+   * makes tests *less* informative than no test. An app scripted `{ month: "" }`,
+   * eleven tests passed on it, and the live path rejected the identical answer every
+   * time — so the suite was green about a feature that returned nothing in
+   * production. The permissive fake is what made the schema bug invisible; they are
+   * the same defect seen from both ends.
+   *
+   * The check runs only when the caller passed a schema, because that is the only
+   * case where there is anything to check. A mismatch throws here, in the test, with
+   * the field named — which is the whole point.
+   *
+   * @param request - The request, or just a prompt.
+   * @param schema - The schema the production call declares.
+   */
+  async object<T = Record<string, unknown>>(
+    request: AiRequest | string,
+    schema?: SchemaInput | ((rule: RuleBuilder) => SchemaInput),
+  ): Promise<T> {
     const normalized = capture(request);
     this._record("object", normalized);
     this._maybeRefuse();
@@ -169,7 +192,26 @@ export class AiFake {
           "ai.respondWithObject({ … }) before the code under test runs.",
       );
     }
-    return (this._objects.length > 1 ? this._objects.shift() : this._objects[0]) as T;
+
+    const scripted = (
+      this._objects.length > 1 ? this._objects.shift() : this._objects[0]
+    ) as unknown;
+
+    if (schema === undefined) return scripted as T;
+
+    const resolved = await _resolveSchema(schema);
+    try {
+      return recheckAgainstSchema<T>(resolved, scripted);
+    } catch (error) {
+      throw new AiSchemaError(
+        `[Zerotal/ai] The object scripted with respondWithObject() does not satisfy the ` +
+          `schema this call declares, so the real driver would reject it too — and a test ` +
+          `passing on it would be green about a call that fails in production.
+  ` +
+          `${(error as Error).message}`,
+        { scripted },
+      );
+    }
   }
 
   async agent(request: AiAgentRequest): Promise<AiAgentResult> {

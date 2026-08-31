@@ -12,7 +12,7 @@ import { AiCancelledError, AiConfigError, AiRefusedError, UnknownAiDriverError }
 import { AiGenerated, AiRefused } from "./events.ts";
 import { estimateCost } from "./pricing.ts";
 import { redactPrompt } from "./redact.ts";
-import type { SchemaInput } from "./schema.ts";
+import { _resolveSchema, type SchemaInput } from "./schema.ts";
 import { assertWithinLimits, recordSpend } from "./spend.ts";
 import type {
   AiAgentResult,
@@ -266,7 +266,7 @@ export class AiManager {
   ): Promise<T> {
     const normalized = normalize(request);
     const driver = this.driver(normalized.driver);
-    const resolved = await resolveSchema(schema);
+    const resolved = await _resolveSchema(schema);
     const startedAt = performance.now();
 
     try {
@@ -553,14 +553,6 @@ function normalize(request: AiRequest | string): AiRequest {
 }
 
 /** Accept either a schema map or a `(rule) => schema` factory. */
-async function resolveSchema(
-  schema: SchemaInput | ((rule: import("@zerotal/validator").RuleBuilder) => SchemaInput),
-): Promise<SchemaInput> {
-  if (typeof schema !== "function") return schema;
-  const { RuleBuilder } = await import("@zerotal/validator");
-  return schema(new RuleBuilder());
-}
-
 /** The `lock` binding, or `undefined` when the app has no LockProvider. */
 async function lockManager(): Promise<import("@zerotal/core/lock").LockManager | undefined> {
   try {

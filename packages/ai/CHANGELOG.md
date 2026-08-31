@@ -8,6 +8,48 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **An empty string is an answer.** `required` treats `""` as absent, which is right
+  for an HTML form — an empty text input submits `""` — and wrong for structured
+  model output, where `""` is the conventional way to say _"this field does not
+  apply"_ and is what a prompt naturally asks for. So `rule.string()` rejected the
+  answer a prompt had requested, and the whole feature returned nothing: an app's
+  questions mostly named no month, the model replied `""` in 3.3 seconds every time,
+  and the page said "either no model is configured, or it was not about your money"
+  while a model was configured and had answered.
+
+  `""` now counts as present on a **string** field in the AI path only. Absence is
+  still a failure, every other constraint still applies (a `min(3)` still rejects
+  `""`), and a non-string field is untouched — `""` for a number is a malformed
+  answer, not a convention.
+
+- **`AiFake` validates what it is scripted with.** `respondWithObject()` handed the
+  canned value back unexamined, so a fake answer the real driver would reject passed
+  every test. An app scripted `{ month: "" }`, eleven tests passed on it, and the live
+  path rejected the identical value every time — the feature shipped green and
+  answered nothing. The permissive fake is what made the bug above invisible; they are
+  the same defect from both ends.
+
+  `AiFake.object()` now takes the schema `AiManager.object()` takes, and checks the
+  scripted object through the same `recheckAgainstSchema` a driver uses. Omit the
+  schema and nothing is checked, because there is nothing to check against.
+
+### Added
+
+- **`AiError.transient`** — `true` for _this call failed_, `false` for _this machine
+  cannot do this_. A service calling a model per row has to latch itself off after a
+  permanent failure, or a machine with no API key pays the driver's timeout per row,
+  per merchant, per page load — 8s × 12 merchants is ninety seconds of blank page.
+
+  Writing that latch meant classifying eleven error classes by hand, and the mistake
+  is unrecoverable in one direction: call something permanent that is not, and the
+  feature disables itself for the life of the process, silently, because every call
+  site already treats "no answer" as normal. An app classified `AiSchemaError` as
+  permanent and would have turned two features off on their first badly-shaped reply.
+  **It is transient** — sampling is not deterministic. Only this package knows what a
+  new error class means, so the judgement now lives here.
+
 ## [1.5.0] — 2026-08-15
 
 ### Added

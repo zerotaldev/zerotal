@@ -202,12 +202,21 @@ import { column } from "@zerotal/orm";
 
 Shorthands map to: `string`, `text`, `integer`, `number`, `float`, `boolean`, `datetime`, `date`, `json`, `array`, `encrypted`, `encrypted:json`. See [Casts & Mutators](/docs/orm/casts) for the full cast reference.
 
-A shorthand is not the same as `type`. `type` is only the storage type —
-`string`, `text`, `number`, `boolean`, `datetime`, `json` — so `{ type: "integer" }`
-and `{ type: "encrypted" }` are both errors. The shorthands that look like types
-(`integer`, `float`, `encrypted`) are type-and-cast pairs: `@column("integer")` is
-`{ type: "number", cast: "integer" }`, and `@column("encrypted")` is
-`{ type: "text", cast: "encrypted" }`.
+**`type` takes either vocabulary.** The _storage_ types are `string`, `text`,
+`number`, `boolean`, `datetime` and `json` — what schema generation emits. The
+shorthands that look like types (`integer`, `float`, `date`, `encrypted`) are
+type-and-cast pairs, and writing one as a `type` resolves it the same way the string
+form does:
+
+```typescript fragment
+// in a model class body
+@column({ type: "integer", default: 0 }) retries!: number; // → { type: "number", cast: "integer" }
+@column({ type: "encrypted", nullable: true }) idNumber?: string; // → { type: "text", cast: "encrypted" }
+```
+
+`{ type: "integer" }` used to be an error while `@column("integer")` compiled, so the
+vocabulary halved exactly when a column needed `default`, `nullable` or `unique` —
+which is most real columns. An explicit `cast` alongside a shorthand still wins.
 
 `string` is a bounded VARCHAR and `text` is the unbounded TEXT type — a distinction that matters on Postgres and MySQL, where a long body in a `VARCHAR(255)` is an error rather than a slow column.
 

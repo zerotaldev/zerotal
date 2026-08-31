@@ -333,6 +333,88 @@ the part that can be wrong. Whether the model's prose is good is not a unit test
 `ai.refuse()` makes the next call decline, which is worth exercising deliberately: a
 refusal is an HTTP 200, so that handling path is the one most likely never to have run.
 
+### An empty string is an answer
+
+`required` treats `""` as absent, which is right for a form — an empty text input
+submits `""`, and a user who typed nothing supplied nothing. It is **not** how
+structured output works. There, `""` is the conventional way to say _"this field does
+not apply"_, and it is what a prompt naturally asks for:
+
+> A month must be YYYY-MM. Use an empty string when the question names no month.
+
+So `rule.string()` accepts `""` on the AI path, and only there. Absence is still a
+failure — the field has to be present — and every other constraint still applies:
+
+```typescript fragment
+// in a service
+await Ai.object(prompt, (rule) => ({
+  month: rule.string(), //          "" is an answer; missing is not
+  category: rule.string().min(3), // "" fails min(3), because that is your rule
+  score: rule.number(), //           "" is a malformed answer, not a convention
+}));
+```
+
+That difference is worth knowing because the failure it caused was silent: an app's
+questions mostly named no month, the model returned `""` in three seconds every time,
+the answer was rejected as malformed, and the page said _"either no model is
+configured, or it was not about your money"_ — while a model was configured and had
+answered.
+
+### `AiFake` checks what you script it with
+
+Pass the same schema to the fake that production passes, and a canned object that the
+real driver would reject fails the test instead:
+
+```typescript fragment
+// in a test
+const ai = AiFake.install();
+ai.respondWithObject({ month: "" });
+
+// Validated against this schema, exactly as a driver would validate a real answer.
+await service.answer("what did I spend");
+```
+
+This matters more than it sounds. A fake that returns whatever it is handed makes a
+suite _less_ informative than no suite: eleven tests passed on a `{ month: "" }` the
+live path rejected every time, so the feature shipped green and answered nothing. The
+permissive fake is what made the schema bug invisible; they were the same defect from
+both ends.
+
+Omit the schema and nothing is checked, because there is nothing to check against.
+
+### Deciding whether to give up: `transient`
+
+Every `AiError` carries `transient` — `true` for _this call failed_, `false` for _this
+machine cannot do this_:
+
+```typescript fragment
+// in a service
+try {
+  return await Ai.object(prompt, schema);
+} catch (error) {
+  if (error instanceof AiError && !error.transient) this.disabled = true;
+  return null;
+}
+```
+
+A service calling a model per row needs that latch, or a machine with no API key pays
+the driver's timeout per row, per merchant, per page load — eight seconds times twelve
+merchants is ninety seconds of blank page.
+
+| Permanent — stop asking                     | Transient — try again                   |
+| ------------------------------------------- | --------------------------------------- |
+| `AiConfigError`, `AiDriverUnavailableError` | `AiRateLimitError`, `AiSpendLimitError` |
+| `UnknownAiDriverError`                      | `AiSchemaError`, `AiRefusedError`       |
+| `AiRequestError` with a 4xx                 | `AiRequestError` with 5xx, 408 or 429   |
+|                                             | `AiAgentLimitError`, `AiCancelledError` |
+
+**`AiSchemaError` is transient**, and that is the one worth checking your own code
+against. Sampling is not deterministic, so a model that shaped one answer badly may
+shape the next correctly — an app classified it as permanent and would have disabled
+two features on their first imperfect reply. The permissive mistake in this direction
+is unrecoverable, because every call site already treats "no answer" as normal, so a
+feature that switches itself off never says so.
+
 ## Observability
 
 Every generation emits `AiGenerated` on the framework event bus, and a decline also

@@ -10,6 +10,7 @@ class AiAgentLimitError = {
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiCancelledError = {
@@ -17,6 +18,7 @@ class AiCancelledError = {
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiConfigError = {
@@ -24,6 +26,7 @@ class AiConfigError = {
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiDriverUnavailableError = {
@@ -31,13 +34,15 @@ class AiDriverUnavailableError = {
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiError = {
-  new (message: string, code?: string, status?: number, context?: Record<string, unknown>): AiError
+  new (message: string, code?: string, status?: number, context?: Record<string, unknown>, transient?: boolean): AiError
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiFake = {
@@ -55,7 +60,7 @@ class AiFake = {
   embed: (input: string | string[], _options?: Omit<AiEmbedRequest, 'input'>) => Promise<AiEmbedResponse>
   generate: (request: AiRequest | string) => Promise<AiResponse>
   handlerFor: (name: string) => AiQueueHandler | undefined
-  object: <T = Record<string, unknown>>(request: AiRequest | string) => Promise<T>
+  object: <T = Record<string, unknown>>(request: AiRequest | string, schema?: SchemaInput | ((rule: RuleBuilder) => SchemaInput)) => Promise<T>
   onGenerated: (name: string, handler: AiQueueHandler) => AiFake
   prompts: string[]
   queue: (request: AiRequest, options: AiQueueOptions) => Promise<void>
@@ -131,6 +136,7 @@ class AiRateLimitError = {
   readonly context?: Record<string, unknown> | undefined
   readonly retryAfterSeconds?: number | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiRefused = {
@@ -149,6 +155,7 @@ class AiRefusedError = {
   readonly explanation: string | null
   readonly partialText: string
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiRequestError = {
@@ -157,6 +164,7 @@ class AiRequestError = {
   readonly context?: Record<string, unknown> | undefined
   readonly providerStatus: number
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiSchemaError = {
@@ -164,6 +172,7 @@ class AiSchemaError = {
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiSpendLimitError = {
@@ -171,6 +180,7 @@ class AiSpendLimitError = {
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 class AiToolCalled = {
@@ -235,6 +245,7 @@ class UnknownAiDriverError = {
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
+  readonly transient: boolean
 }
 
 const Ai = AiManager

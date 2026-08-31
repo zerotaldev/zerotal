@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.11.1] — 2026-08-31
+
 ### Added
 
 - **`zt version`** — which Zerotal, which Bun, which app. The first question anyone

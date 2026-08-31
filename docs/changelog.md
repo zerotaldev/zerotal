@@ -27,6 +27,79 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.11.1 — 2026-08-31
+
+Two things the framework could not do, both reported by teams who had already
+worked around them.
+
+A patch, not a minor: nothing here breaks. Under
+[the versioning scheme](/docs/upgrade#versioning) a minor is reserved for a
+breaking change and a patch carries everything else, features included — so this
+is safe to take from any 1.11.x.
+
+### Added
+
+- **`zt version`** — which Zerotal, which Bun, which app.
+
+  ```
+  Zerotal  1.11.1
+  Bun      1.3.14
+  App      my-app 0.1.0
+  ```
+
+  It was an unknown command, so the version had to be dug out of `package.json` or
+  `node_modules` — both of which report what is _installed_ rather than what is
+  _running_, and those differ for any process that has been up since before an
+  upgrade. It reports the running one.
+
+  `--version` and `-v` answer earlier still, ahead of the runtime check, the config
+  load and the app import, because those are the things someone is asking the version
+  _about_: a config that no longer validates and an app that will not boot are the two
+  moments the question stops being idle. A version flag that only works when
+  everything else already works answers a question nobody has.
+
+  Add `--json` for a script, and prefer `zt --version --json` over
+  `zt version --json` there — the application's boot log is written to stdout, so the
+  second form puts a log line ahead of the JSON while the first never boots at all.
+  The output carries no colour, unlike every other command's, because it gets pasted
+  into bug reports and piped into parsers more than it is read on a terminal.
+
+- **`MailMessage.header()` and `MailPayload.headers`** — set a header the mail driver
+  does not build itself.
+
+  ```ts
+  new MailMessage()
+    .subject("Your weekly digest")
+    .header("List-Unsubscribe", `<https://app.test/unsubscribe/${token}>`)
+    .header("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+  ```
+
+  `MailPayload` had `to`, `from`, `subject`, `text`, `html`, `cc`, `bcc`, `replyTo`
+  and `attachments`, and no way to add anything else — so a team that wanted
+  `List-Unsubscribe` had to patch a vendored copy of the package, and shipped a footer
+  link instead.
+
+  Those are not substitutes for one another. Gmail and Yahoo draw their native
+  unsubscribe control from the header, and a recipient who cannot find a control marks
+  the message as spam instead — a judgement that attaches to the sending domain and
+  degrades delivery of everything else it sends, including the mail people asked for.
+  Send `List-Unsubscribe-Post` alongside it: alone, the first leaves a link to follow,
+  and only the pair produces the one-click control both providers now expect.
+
+  Wired through all three drivers. SMTP writes them into the message, Resend sends
+  them as the API's `headers` object, and the log driver prints them — that last one
+  deliberately, because the reason to set a header is that a mail client does
+  something with it, and the log driver is where that gets checked before anything is
+  sent for real.
+
+  Names the drivers build themselves are refused rather than sent twice: a second
+  `Subject` is an ambiguous message, not an override, and which copy a client believes
+  is its own business. The list is exported as `RESERVED_MAIL_HEADERS`, with
+  `resolveHeaders()` beside it for anyone writing a custom transport. CR and LF in a
+  value are folded to a space — left raw they end the header and let the remainder be
+  read as further headers, which is how a `Bcc` arrives courtesy of whoever supplied a
+  tracking ID.
+
 ## 1.11.0 — 2026-08-30
 
 Two production reports, from teams taking apps live on 1.9.0 — one shipping a

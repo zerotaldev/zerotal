@@ -27,6 +27,93 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.11.2 — 2026-08-31
+
+`@zerotal/ai` is `stable`, and the release that promotes it is the one that fixes five
+bugs its first production users found. That ordering is the point: a `stable` promise
+about an API nothing has pushed against is a promise nobody has tested.
+
+Also here: two gates that were not doing their job, one of which had let two releases
+publish over a red build.
+
+A patch. Nothing here breaks — `@zerotal/ai`'s surface was narrowed _before_ the label,
+while narrowing was still free.
+
+### `@zerotal/ai` — the review, answered
+
+The package shipped `experimental` with a stated precondition — _it graduates in the
+release after its first real users_ — and a review date of 1.11.0 enforced by the
+package linter rather than by a promise. Its first production users, running it against
+Anthropic, sent a field review of the driver. So the precondition was met rather than
+waived, and the answer is **promote**.
+
+**Fixed, all from that review:**
+
+- **Sonnet 5 was priced as Sonnet 4.6** — 3/15 rather than 2/10, 50% high. The same
+  table feeds `limits.perRequestUsd` and `perDayUsd`, so an app on that model was
+  refused requests comfortably inside its budget by an error that said "spend limit"
+  and sent it to its config rather than to the row. `AiSpendLimitError` now quotes the
+  rate it priced with and names `registerModelPrice()`, so a wrong table is legible
+  from the refusal and correctable without waiting for a release.
+
+- **`effort` and `thinking` are model-aware.** Both went on every call. `effort` is a
+  400 on the 4.5 generation and those models want an explicit thinking budget rather
+  than the adaptive form — so the package listed `claude-haiku-4-5` in its pricing
+  table while the driver could not successfully call it. `modelCapabilities()` answers
+  what a model takes, and the driver builds the request that model accepts.
+
+- **`temperature` never reached the API, on any model.** Not in the review — it turned
+  up while testing the item below. The driver warned about dropping `temperature` and
+  had no branch that set it, so the configured default and `AiRequest.temperature` were
+  both inert everywhere, including on the models that accept them. The old predicate
+  warned for almost every model, which is exactly what made the silence look deliberate
+  on the few it did not.
+
+- **The streamed `thinking` chunk was always empty.** The API omits thinking text by
+  default on the current generation, so a documented chunk type fired forever with
+  `text: ""` and no error — and a "thinking…" view built against the 4.6 models, where
+  it defaulted on, stopped working when users moved to 5 with nothing to say so.
+  `drivers.anthropic.thinkingDisplay` defaults to `"summarized"`.
+
+- **An app with no AI configured now boots.** `AiConfig` threw when no driver was
+  declared and threw again on an empty `apiKey`, so a deployment with no key could not
+  express itself either way. One app declared an Ollama server it did not run purely to
+  satisfy the validator, with a comment explaining that the config was lying. "AI is
+  off" is a coherent deployment and is now expressible; the first call raises
+  `AiDriverUnavailableError`, whose `transient` is already `false`.
+
+- **`countTokens` returns `null` where a provider cannot count**, rather than `0`. Only
+  Anthropic has a counting endpoint, and `0` is also a real count for an empty prompt.
+
+**How it was promoted**, because the order is the part that matters:
+
+The surface was narrowed **first** — narrowing after `stable` is itself a breaking
+change. `toSchema`, `strippedConstraints`, `resetSpend` and `resetStats` are `@internal`
+now: still exported, so nothing breaks at runtime, but no longer promised.
+`translateSchema` stayed public despite having no caller outside the package, for the
+same reason `AiDriver` is public — the point of a driver contract is that someone else
+implements it, and implementing structured output means translating a schema.
+`AiDelivery` stayed too, being the element type of `recentGenerations()`.
+
+Then the two modules it would have been embarrassing to freeze untested: the SSE
+parser, which reads a remote provider's framing off the network, and prompt redaction,
+which is the only thing between a user's prompt and a log that outlives the request.
+Both hold up — the parser reassembles a frame whose terminator is split across chunks
+and a UTF-8 sequence cut mid-character.
+
+### Fixed — the gates
+
+- **The release workflow ran three checks; the pull-request workflow ran fifteen.** So
+  every convention, surface and documentation gate guarded the cheap, reversible action
+  and not the permanent one. 1.11.0 and 1.11.1 both published over a CI that had been
+  red since the first of them, and nothing in the release objected, because nothing in
+  the release looked. `release.yml` now runs the same set.
+
+- **One failing check hid eleven others.** When the `@zerotal/ai` review fell due, the
+  package-conventions step failed and every later step in that job was skipped —
+  reported as "skipped", which reads like "not applicable" rather than "never ran".
+  Each check is now guarded so it reports its own result.
+
 ## 1.11.1 — 2026-08-31
 
 Two things the framework could not do, both reported by teams who had already

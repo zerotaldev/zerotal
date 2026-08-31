@@ -65,28 +65,39 @@ jobs:
       # error fails naming its package and delta, unobscured by the grandfathered
       # ones. Verified by planting one — `cache 6 > 5`, exit 1.
       - name: Typecheck tests
+        if: ${{ !cancelled() }}
         run: bun run typecheck:tests
 
       - name: Lint
+        if: ${{ !cancelled() }}
         run: bun run lint:ci
 
       # Package-convention checks (provider location, config factory shape, error base
       # class). Zero tolerance: every package passes clean, and a new violation fails CI.
+      # `!cancelled()` on every check below, so one failure reports its own result
+      # instead of skipping the rest of the job. When the `@zerotal/ai` maturity
+      # review fell due, this step failed and took eleven later gates with it — they
+      # were reported as skipped, and two releases shipped without them ever running.
+      # A gate nobody reads is the same as no gate; so is a gate that is never reached.
       - name: Package conventions
+        if: ${{ !cancelled() }}
         run: bun run lint:packages:ci
 
       # `endOfLine: "auto"` in .prettierrc.json is what makes this gate meaningful on a
       # checkout with `core.autocrlf=true`: without it every file arrives CRLF and fails,
       # burying the handful of real formatting issues under the whole tree.
       - name: Formatting
+        if: ${{ !cancelled() }}
         run: bun run format:check
 
       # Both of these keep a baseline file in the repo; they fail when the tree drifts from
       # it, and the fix is to look at what changed rather than to move the baseline.
       - name: Cast ratchet
+        if: ${{ !cancelled() }}
         run: bun run cast:check
 
       - name: API surface
+        if: ${{ !cancelled() }}
         run: bun run api:surface:check
 
       # `api-surface.md` records the typed exports, and for the whole MCP tool system
@@ -96,6 +107,7 @@ jobs:
       # The names are runtime data, so nothing type-level can see them. This diffs the
       # contract itself.
       - name: MCP tool surface
+        if: ${{ !cancelled() }}
         run: bun run mcp:surface:check
 
       # `api:surface:check` refuses to let an export change shape without somebody
@@ -107,6 +119,7 @@ jobs:
       # shipped in 1.7.3 with no BREAKING entry in either changelog. This reads
       # the diff of the snapshots, which is where a removal is still visible.
       - name: Breaking changes are announced
+        if: ${{ !cancelled() }}
         run: bun run breaking:check
 
       # Documentation drifts silently: a signature changes, the guide keeps the old
@@ -121,6 +134,7 @@ jobs:
       # documentation and is recorded under that name so it reads as work
       # outstanding rather than as intent. Neither list may grow.
       - name: Documentation examples
+        if: ${{ !cancelled() }}
         run: bun run docs:examples:check
 
       # `docs/` lives at the repo root and ships in no package, so the agent
@@ -128,6 +142,7 @@ jobs:
       # an installed app. Unverified, it would drift and start describing an API
       # the app is not running, which is worse than having no search at all.
       - name: Vendored docs corpus
+        if: ${{ !cancelled() }}
         run: bun run arch:docs:check
 
       # `<Icon name>` is a union generated from the vendored icon bodies, so the two
@@ -136,12 +151,14 @@ jobs:
       # files, never npm, so an upstream release does not redden a build that changed
       # nothing. Upgrading the set is `bun run icons:sync`, reviewed as a diff.
       - name: Icon names
+        if: ${{ !cancelled() }}
         run: bun run icons:check
 
       # The component reference is generated from the flow-ui registry + doc specs.
       # Without this gate a new component ships undocumented and nothing complains,
       # which is how the page came to cover 20 of 53.
       - name: Component docs
+        if: ${{ !cancelled() }}
         run: bun run docs:components:check
 
       # A `stable` maturity is a promise about every export, and a promise over a
@@ -150,6 +167,7 @@ jobs:
       # number only moves down. A gate demanding a clean sweep on the day it lands
       # either blocks the release or gets switched off.
       - name: Docs coverage
+        if: ${{ !cancelled() }}
         run: bun run docs:coverage
 
       # types/routes.generated.ts is what makes `route()` type-checked, and it is
@@ -157,6 +175,7 @@ jobs:
       # but a route added in an editor-only session (or by a provider) would ship
       # stale otherwise — and a generated file that is wrong is worse than none.
       - name: Route types
+        if: ${{ !cancelled() }}
         run: cd apps/docs && bun zt.ts route:types --check
 
   test:

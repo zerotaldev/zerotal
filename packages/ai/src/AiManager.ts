@@ -8,7 +8,13 @@ import { OpenAiEmbeddingsDriver } from "./drivers/embeddings/OpenAiEmbeddingsDri
 import type { EmbeddingsDriver } from "./drivers/embeddings/EmbeddingsDriver.ts";
 import type { AiDriver, DriverStatus } from "./drivers/AiDriver.ts";
 import { normalizeMessages, promptText } from "./drivers/AiDriver.ts";
-import { AiCancelledError, AiConfigError, AiRefusedError, UnknownAiDriverError } from "./errors.ts";
+import {
+  AiCancelledError,
+  AiConfigError,
+  AiDriverUnavailableError,
+  AiRefusedError,
+  UnknownAiDriverError,
+} from "./errors.ts";
 import { AiGenerated, AiRefused } from "./events.ts";
 import { estimateCost } from "./pricing.ts";
 import { redactPrompt } from "./redact.ts";
@@ -144,7 +150,16 @@ export class AiManager {
     if (existing) return existing;
 
     const resolver = this._resolvers.get(key);
-    if (!resolver) throw new UnknownAiDriverError(key, [...this._resolvers.keys()]);
+    if (!resolver) {
+      // No driver at all is a different situation from a driver named wrongly, and
+      // it is now a legal config: an app can ship with AI off and no key. Saying
+      // "unknown driver 'anthropic', configured: (none)" invites someone to go
+      // looking for a typo. Both errors are permanent (`transient: false`), so a
+      // caller latching itself off behaves correctly either way — this only decides
+      // which sentence it reads on the way.
+      if (this._resolvers.size === 0) throw AiDriverUnavailableError.notConfigured(key);
+      throw new UnknownAiDriverError(key, [...this._resolvers.keys()]);
+    }
 
     const instance = resolver();
     this._drivers.set(key, instance);
@@ -358,8 +373,12 @@ export class AiManager {
     return result;
   }
 
-  /** Count the prompt's tokens with the provider's own tokenizer. */
-  async countTokens(request: AiRequest | string): Promise<number> {
+  /**
+   * Count the prompt's tokens with the provider's own tokenizer.
+   *
+   * `null` when the configured provider cannot count — only Anthropic can, today.
+   */
+  async countTokens(request: AiRequest | string): Promise<number | null> {
     const normalized = normalize(request);
     return this.driver(normalized.driver).countTokens(normalized);
   }
@@ -458,7 +477,10 @@ export class AiManager {
     let inputTokens = 0;
 
     if (limits.perRequestUsd > 0) {
-      inputTokens = await driver.countTokens(request).catch(() => 0);
+      // A provider that cannot count, or one whose count failed, falls back to the
+      // approximation. Both were already the same branch when this returned 0 — the
+      // difference is that the ambiguity is no longer visible to callers.
+      inputTokens = (await driver.countTokens(request).catch(() => null)) ?? 0;
       if (inputTokens === 0) inputTokens = approximateTokens(request);
     }
 

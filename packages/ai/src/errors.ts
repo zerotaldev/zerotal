@@ -94,6 +94,28 @@ export class AiDriverUnavailableError extends AiError {
       false,
     );
   }
+
+  /**
+   * The variant for an app that has configured no AI at all.
+   *
+   * Deliberately this class rather than a new one. "No driver is installed" and "no
+   * driver is configured" are the same fact to a caller — AI cannot answer here, and
+   * will not start being able to mid-process — and every consumer's handling is
+   * already written against the four permanent classes. A fifth would fall outside
+   * it silently, which is the failure mode a shared error taxonomy exists to prevent.
+   *
+   * @param requested - The driver name that was asked for.
+   */
+  static notConfigured(requested: string): AiDriverUnavailableError {
+    const error = new AiDriverUnavailableError(requested, "a provider SDK");
+    return Object.assign(error, {
+      message:
+        `[Zerotal/ai] No AI driver is configured, so there is nothing to generate with. ` +
+        `This is a supported state — an app can ship with AI off. Add a driver under ` +
+        `'drivers' in config/ai.ts to turn it on.`,
+      context: { requested, configured: [] as string[] },
+    });
+  }
 }
 
 /**

@@ -174,10 +174,10 @@ export class AnthropicDriver implements AiDriver {
     };
   }
 
-  async countTokens(request: AiRequest): Promise<number> {
+  async countTokens(request: AiRequest): Promise<number | null> {
     const { client } = await this._load();
     const api = this._api(client);
-    if (!api.countTokens) return 0;
+    if (!api.countTokens) return null;
 
     const params = this._params(request, false);
     // Counting is about the prompt; the response ceiling and sampling knobs are

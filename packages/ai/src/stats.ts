@@ -96,7 +96,10 @@ export function refusalRate(): number {
   return _deliveries.filter((d) => d.refused).length / _deliveries.length;
 }
 
-/** Reset the buffer. Tests. */
+/** Reset the buffer. Tests.
+ *
+ * @internal A test helper, as `resetSpend` is.
+ */
 export function resetStats(): void {
   _deliveries.length = 0;
 }

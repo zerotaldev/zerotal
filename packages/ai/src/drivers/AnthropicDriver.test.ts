@@ -23,6 +23,7 @@ const BASE: AnthropicConfigShape = {
   maxTokens: 16000,
   streamMaxTokens: 64000,
   effort: "high",
+  thinkingDisplay: "summarized",
   fallbacks: true,
   cacheSystem: true,
   timeout: 600_000,

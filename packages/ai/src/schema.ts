@@ -44,7 +44,11 @@ function defOf(value: FieldRule | FieldRuleDefinition): FieldRuleDefinition {
   return "_def" in value ? value._def : value;
 }
 
-/** Normalise either input shape to raw definitions. */
+/** Normalise either input shape to raw definitions.
+ *
+ * @internal Normalisation between the two accepted input shapes. No caller anywhere, in this
+ * package or out of it — an app declares a schema; it never converts one.
+ */
 export function toSchema(input: SchemaInput): Schema {
   const out: Schema = {};
   for (const [key, value] of Object.entries(input)) out[key] = defOf(value);
@@ -212,6 +216,8 @@ function withStringKeywords(base: JsonSchema, def: FieldRuleDefinition): JsonSch
  * @example
  * strippedConstraints({ title: rule.string().min(3).max(80) });
  * // → ["title: min", "title: max"]
+ *
+ * @internal A diagnostic for the translation layer, called by nothing but its own test.
  */
 export function strippedConstraints(input: SchemaInput): string[] {
   const out: string[] = [];

@@ -48,7 +48,13 @@ export function recordSpend(model: string, usage: AiUsage): number {
   return cost;
 }
 
-/** Reset the ledger. Tests, and the `ai:spend --reset` path. */
+/**
+ * Reset the ledger.
+ *
+ * @internal Backs `ai:spend --reset` and this package's own tests. An app's test
+ * wanting spend isolation should reach for `AiFake`, which is the seam built for
+ * it; this one reaches past the manager into module state.
+ */
 export function resetSpend(): void {
   _day = today();
   _spentUsd = 0;

@@ -6,7 +6,9 @@ One way to talk to a language model: `Ai.text()` for a completion, `Ai.stream()`
 
 Part of the [Zerotal](../../README.md) framework. Requires **Bun ≥ 1.3.14**.
 
-**Maturity: `experimental`** — the API may change in a minor release.
+**Maturity: `stable`** — the public API follows the compatibility promise in
+[the support policy](https://zerotal.dev/docs/support-policy). Anything importable
+that does not carry an `@internal` marker is covered.
 
 ## Installation
 

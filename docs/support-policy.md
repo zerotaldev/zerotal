@@ -111,32 +111,39 @@ has worn the label for a year is not being cautious, it is unowned. So each one
 below `stable` names the release by which it is reviewed, and the review has three
 outcomes — promote, keep with a new date and the reason, or withdraw.
 
-| Package       | Now            | Reviewed by |
-| ------------- | -------------- | ----------- |
-| `@zerotal/ai` | `experimental` | **1.11.0**  |
+Nothing is below `stable` today. The table that lived here is empty, which is the
+outcome the mechanism is for rather than the absence of one — it is how the review
+looks when every date has been answered.
 
-`@zerotal/ai`'s date moved once, from 1.9.0, and the reason is the same one that made it
-experimental in the first place: **it graduates in the release after its first real users, and
-it has not had them yet.** Promoting on a date rather than on evidence is how a label becomes
-decoration — a `stable` promise is only worth making about an API that something has pushed
-against.
+`@zerotal/ai` was the last entry, `experimental` and due by 1.11.0. It was promoted in
+1.11.2, and the precondition it carried was met rather than waived: it graduates in the
+release after its first real users, and its first production users sent a field review
+of the driver against Anthropic. That review is why the promotion is worth anything —
+five bugs came back with it, and a `stable` promise about an API nothing has pushed
+against is a promise nobody has tested.
 
-The date is a forcing function, not a prediction. It moved once; a second move needs a better
-reason than the first, or the honest answer is to withdraw the package rather than keep
-re-dating it. Its surface triage and the tests for its SSE parser and prompt redaction are worth
-doing meanwhile, and are tracked separately — they improve the package whichever way the review
-goes, and they are what would otherwise turn the deadline into a scramble.
+The order was deliberate. Its surface was narrowed **before** the label, because
+narrowing after `stable` is itself a breaking change: `toSchema`, `strippedConstraints`,
+`resetSpend` and `resetStats` are `@internal` now. `translateSchema` stayed public
+despite having no caller outside the package, for the same reason `AiDriver` did — the
+whole point of a driver contract is that someone else implements it, and implementing
+structured output requires translating a schema. Then its two riskiest modules were
+tested: the SSE parser, which reads a remote provider's framing off the network, and
+prompt redaction, which is the only thing between a user's prompt and a log that
+outlives the request.
 
 `@zerotal/arch` held `beta` with the same date, was reviewed ahead of it, and is
 `stable` — the release that carried the promotion is the one its
-[changelog](/docs/changelog) names. Its surface was narrowed first — the writers behind
-`arch:install` are `@internal` now, because they had no caller outside the package
+[changelog](/docs/changelog) names. Its surface was narrowed first too: the writers
+behind `arch:install` are `@internal`, because they had no caller outside the package
 and freezing them would have promised the shape of `.mcp.json` writing to nobody.
 
-`@zerotal/ai` is not in the `zerotal` meta-package and nothing `stable` depends on
-it, so the cost of its label falling due is ours and not yours. Neither is `arch`,
-still: `arch:install` writes configuration and instruction files into a project,
-which is an opinion about someone's toolchain and stays their choice to invite.
+Neither `ai` nor `arch` is in the `zerotal` meta-package. `arch` stays out because
+`arch:install` writes configuration and instruction files into a project, which is an
+opinion about someone's toolchain and stays their choice to invite. `ai` stays out for
+its own reason rather than by omission: it is the only package with an optional peer
+on a vendor SDK, and pulling it into the meta-package would put a provider dependency
+in front of every app that installs `zerotal`, including the ones with no AI in them.
 
 That table used to be the whole of the commitment, which meant the version could
 sail past it and the only consequence would be this paragraph quietly becoming

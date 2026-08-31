@@ -61,8 +61,13 @@ export interface AiDriver {
    * Count the tokens this request would consume, using the provider's own
    * tokenizer. Never an estimate from another vendor's tokenizer — the spend
    * panel is built on this number.
+   *
+   * `null` when the provider has no counting endpoint, which is most of them.
+   * It used to be `0`, and a zero that means "cannot count" is indistinguishable
+   * from a zero that means "empty prompt" — easy to divide by, easy to budget
+   * against, and wrong in the direction that costs money.
    */
-  countTokens(request: AiRequest): Promise<number>;
+  countTokens(request: AiRequest): Promise<number | null>;
 
   /** Reach the provider once and report what came back. Backs `zt ai:test`. */
   verify(): Promise<DriverStatus>;

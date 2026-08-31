@@ -128,8 +128,10 @@ export class OllamaDriver implements AiDriver {
   }
 
   /** Ollama reports `prompt_eval_count` only after generating. 0 means unknown. */
-  async countTokens(_request: AiRequest): Promise<number> {
-    return 0;
+  async countTokens(_request: AiRequest): Promise<number | null> {
+    // Ollama exposes no token-counting endpoint. `null`, not 0 — the caller can
+    // tell "cannot count" from "counted nothing".
+    return null;
   }
 
   async verify(): Promise<DriverStatus> {

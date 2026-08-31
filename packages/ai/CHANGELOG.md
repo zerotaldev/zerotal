@@ -4,9 +4,52 @@ All notable changes to this package are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/); this package
 follows the Zerotal monorepo's unified versioning.
 
-**Maturity: `experimental`**
+**Maturity: `stable`**
 
 ## [Unreleased]
+
+## [1.11.2] — 2026-08-31
+
+### Changed
+
+- **Promoted to `stable`.** The public API now follows the compatibility promise in
+  [the support policy](https://zerotal.dev/docs/support-policy): anything importable
+  without an `@internal` marker is covered.
+
+  The precondition was met rather than waived. This package shipped `experimental`
+  with a stated one — _it graduates in the release after its first real users_ — and
+  its first production users sent a field review of the driver running against
+  Anthropic. Five bugs came back with it, all fixed below. A `stable` promise about an
+  API that nothing has pushed against is a promise nobody has tested.
+
+  **The surface was narrowed first**, because narrowing after `stable` is itself a
+  breaking change. `toSchema`, `strippedConstraints`, `resetSpend` and `resetStats` are
+  `@internal` — still exported, so nothing breaks at runtime, but no longer promised.
+  `translateSchema` stayed public despite having no caller outside this package, for
+  the same reason `AiDriver` is public: the point of a driver contract is that someone
+  else implements it, and implementing structured output means translating a schema.
+  `AiDelivery` stayed too — it is the element type of `recentGenerations()`, and
+  marking the return type of a public function internal would be the exact lie the
+  review is meant to prevent.
+
+  Then the two modules it would have been embarrassing to freeze untested: the SSE
+  parser, which reads a remote provider's framing off the network, and prompt
+  redaction, which is the only thing between a user's prompt and a log that outlives
+  the request.
+
+- **An app with no AI configured now boots.** `AiConfig` threw when no driver was
+  declared, and threw again on an empty `apiKey`, so a deployment with no key could
+  not express itself either way — one app declared an Ollama server it did not run
+  purely to satisfy the validator, with a comment explaining that the config was lying.
+  Declaring no driver is now legal and means AI is off; the first call raises
+  `AiDriverUnavailableError`, whose `transient` is already `false`, so a caller that
+  latches itself off on a permanent error gets the right behaviour for free. Declaring
+  a driver still means you want it, so an incomplete one is still refused at boot.
+
+- **`countTokens` returns `null` where a provider cannot count**, rather than `0`. Only
+  Anthropic has a counting endpoint; `0` is also a real count for an empty prompt, so
+  the old return value was a number you could divide by and budget against without ever
+  being told it meant "unsupported".
 
 ### Fixed
 

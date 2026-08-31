@@ -7,10 +7,12 @@ import { AiFake } from "./AiFake.ts";
 import { AiGenerated, AiRefused } from "./events.ts";
 import {
   AiConfigError,
+  AiDriverUnavailableError,
   AiRefusedError,
   AiSpendLimitError,
   UnknownAiDriverError,
 } from "./errors.ts";
+import { OllamaDriver } from "./drivers/OllamaDriver.ts";
 import { estimateCost, modelRejectsSampling, registerModelPrice } from "./pricing.ts";
 import { assertWithinLimits, recordSpend, resetSpend, spentToday } from "./spend.ts";
 import { redactPrompt } from "./redact.ts";
@@ -120,8 +122,20 @@ describe("AiConfig", () => {
     ).toThrow(/default is 'openai'/);
   });
 
-  it("rejects a config with no drivers at all", () => {
-    expect(() => AiConfig({ drivers: {} })).toThrow(/No AI drivers are configured/);
+  it("accepts a config with no drivers at all — AI being off is a deployment", () => {
+    // This used to throw, which combined with the empty-key throw below meant a
+    // machine with no key could not express itself: naming a driver failed and
+    // naming none failed. An app worked around it by declaring an Ollama server it
+    // did not run, so the config said something untrue to get past the validator.
+    expect(() => AiConfig({ drivers: {} })).not.toThrow();
+  });
+
+  it("still rejects a default that names a driver alongside others that exist", () => {
+    // Declaring nothing means "off". Declaring some and pointing `default` at one
+    // you did not declare is still a typo worth catching at boot.
+    expect(() =>
+      AiConfig({ default: "openai", drivers: { anthropic: { apiKey: "k" } } } as never),
+    ).toThrow(/default is 'openai'/);
   });
 
   it("rejects an empty Anthropic key at boot rather than on the first prompt", () => {
@@ -640,5 +654,41 @@ describe("observability", () => {
     const stats = modelStats();
     expect(stats[0]!.refusals).toBe(1);
     expect(stats[0]!.failures).toBe(1);
+  });
+});
+
+describe("AI turned off", () => {
+  it("fails at the call, not at boot, and says so permanently", () => {
+    const config = AiConfig({ drivers: {} });
+    const manager = new AiManager(config);
+
+    let thrown: unknown;
+    try {
+      manager.driver();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(AiDriverUnavailableError);
+    expect((thrown as Error).message).toContain("No AI driver is configured");
+    // The classification a caller latches off on: this machine cannot do this, and
+    // retrying will not change that.
+    expect((thrown as AiDriverUnavailableError).transient).toBe(false);
+  });
+
+  it("does not mistake 'off' for a typo", () => {
+    const manager = new AiManager(AiConfig({ drivers: {} }));
+    // "unknown driver 'anthropic', configured: (none)" would send someone hunting
+    // for a misspelling that is not there.
+    expect(() => manager.driver()).not.toThrow(/[Uu]nknown/);
+  });
+});
+
+describe("countTokens", () => {
+  it("returns null from a provider that cannot count, not 0", async () => {
+    // 0 is a real count for an empty prompt, so a 0 meaning "unsupported" is a
+    // number you can divide by and budget against without ever being told.
+    const driver = new OllamaDriver({ model: "llama3.2", baseUrl: "http://x", timeout: 1000 });
+    expect(await driver.countTokens({ prompt: "hello" })).toBeNull();
   });
 });

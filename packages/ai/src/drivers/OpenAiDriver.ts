@@ -153,8 +153,10 @@ export class OpenAiDriver implements AiDriver {
    * tokenizer would be a guess dressed as a number. 0 means "unknown"; the spend
    * guard falls back to a labelled character approximation.
    */
-  async countTokens(_request: AiRequest): Promise<number> {
-    return 0;
+  async countTokens(_request: AiRequest): Promise<number | null> {
+    // OpenAI exposes no token-counting endpoint. `null`, not 0 — the caller can
+    // tell "cannot count" from "counted nothing".
+    return null;
   }
 
   async verify(): Promise<DriverStatus> {

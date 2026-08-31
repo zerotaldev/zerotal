@@ -53,7 +53,67 @@ jobs:
       - name: Test
         run: bun run test:packages
 
+      # The same checks `ci.yml` runs on a pull request, because a publish is
+      # permanent and a pull request is not.
+      #
+      # This job used to be typecheck + test + the tag check, and nothing else. So
+      # every convention, surface and documentation gate guarded the PR path and not
+      # the publish path — the weaker check on the more expensive action. 1.11.0 and
+      # 1.11.1 both went to npm over a CI that had been red since the first of them,
+      # and nothing in the release objected, because nothing in the release looked.
+      #
+      # Kept as separate steps rather than one script so a failure names itself, and
+      # `!cancelled()` so the first failure does not hide the rest.
+      - name: Package conventions
+        if: ${{ !cancelled() }}
+        run: bun run lint:packages:ci
+
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: bun run lint:ci
+
+      - name: Formatting
+        if: ${{ !cancelled() }}
+        run: bun run format:check
+
+      - name: Cast ratchet
+        if: ${{ !cancelled() }}
+        run: bun run cast:check
+
+      - name: Internal prefix
+        if: ${{ !cancelled() }}
+        run: bun run internal:prefix:check
+
+      - name: API surface
+        if: ${{ !cancelled() }}
+        run: bun run api:surface:check
+
+      - name: Breaking changes are announced
+        if: ${{ !cancelled() }}
+        run: bun run breaking:check
+
+      - name: Documentation examples
+        if: ${{ !cancelled() }}
+        run: bun run docs:examples:check
+
+      - name: Docs coverage
+        if: ${{ !cancelled() }}
+        run: bun run docs:coverage
+
+      - name: Vendored docs corpus
+        if: ${{ !cancelled() }}
+        run: bun run arch:docs:check
+
+      - name: Optional-property widening
+        if: ${{ !cancelled() }}
+        run: bun run exact:optional:check
+
+      - name: Typecheck tests
+        if: ${{ !cancelled() }}
+        run: bun run typecheck:tests
+
       - name: Tag matches package version
+        if: ${{ !cancelled() }}
         run: bun run scripts/publish-packages.ts --dry-run --tag "${GITHUB_REF_NAME}"
 
   publish:

@@ -193,13 +193,19 @@ export function validateAiConfig(config: AiConfigShape): void {
     (name) => drivers[name as keyof typeof drivers] !== undefined,
   );
 
-  if (configured.length === 0) {
-    throw new AiConfigError(
-      "No AI drivers are configured. Add at least one under drivers in config/ai.ts.",
-    );
-  }
-
-  if (!configured.includes(config.default)) {
+  // "AI is off" is a coherent deployment, and it used to be inexpressible: naming no
+  // driver was a boot failure and naming one without a key was also a boot failure,
+  // so an app with no key on this machine had to declare a driver it did not run
+  // purely to satisfy this function. One did — an Ollama block it had no server for,
+  // with a comment explaining that the config was lying to get past the validator.
+  //
+  // So the split is by intent. *Declaring* a driver still means "I want this", and an
+  // incomplete one is still a misconfiguration worth refusing at boot. Declaring
+  // none — or pointing `default` at one you did not declare — now means AI is not
+  // available here, which is a fact rather than an error. The first call says so,
+  // through `AiDriverUnavailableError`, whose `transient` is already `false`: a caller
+  // that latches itself off on a permanent error gets the right behaviour for free.
+  if (configured.length > 0 && !configured.includes(config.default)) {
     throw new AiConfigError(
       `default is '${config.default}' but that driver has no block. Configured: ${configured.join(", ")}.`,
       { default: config.default, configured },

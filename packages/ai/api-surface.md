@@ -31,6 +31,7 @@ class AiConfigError = {
 
 class AiDriverUnavailableError = {
   new (driver: string, packageName: string): AiDriverUnavailableError
+  static notConfigured: (requested: string) => AiDriverUnavailableError
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number
@@ -91,7 +92,7 @@ class AiGenerated = {
 class AiManager = {
   new (config: AiConfigShape): AiManager
   agent: (request: AiAgentRequest) => Promise<AiAgentResult>
-  countTokens: (request: AiRequest | string) => Promise<number>
+  countTokens: (request: AiRequest | string) => Promise<number | null>
   driver: (name?: string) => AiDriver
   drivers: () => string[]
   embed: (input: string | string[], options?: Omit<AiEmbedRequest, 'input'>) => Promise<AiEmbedResponse>
@@ -195,7 +196,7 @@ class AiToolCalled = {
 
 class AnthropicDriver = {
   new (config: AnthropicConfigShape, inject?: LoadedAnthropic): AnthropicDriver
-  countTokens: (request: AiRequest) => Promise<number>
+  countTokens: (request: AiRequest) => Promise<number | null>
   model: string
   object: <T>(request: AiRequest, schema: SchemaInput) => Promise<AiObjectResponse<T>>
   readonly name: 'anthropic'
@@ -206,7 +207,7 @@ class AnthropicDriver = {
 
 class OllamaDriver = {
   new (config: OllamaConfigShape, fetchImpl?: typeof fetch): OllamaDriver
-  countTokens: (_request: AiRequest) => Promise<number>
+  countTokens: (_request: AiRequest) => Promise<number | null>
   model: string
   object: <T>(request: AiRequest, schema: SchemaInput) => Promise<AiObjectResponse<T>>
   readonly name: 'ollama'
@@ -224,7 +225,7 @@ class OllamaEmbeddingsDriver = {
 
 class OpenAiDriver = {
   new (config: OpenAiConfigShape, fetchImpl?: typeof fetch): OpenAiDriver
-  countTokens: (_request: AiRequest) => Promise<number>
+  countTokens: (_request: AiRequest) => Promise<number | null>
   model: string
   object: <T>(request: AiRequest, schema: SchemaInput) => Promise<AiObjectResponse<T>>
   readonly name: 'openai'
@@ -270,17 +271,9 @@ function refusalRate = () => number
 
 function registerModelPrice = (model: string, price: ModelPrice) => void
 
-function resetSpend = () => void
-
-function resetStats = () => void
-
 function spentToday = () => number
 
-function strippedConstraints = (input: SchemaInput) => string[]
-
 function tool = <I extends Record<string, unknown> = Record<string, unknown>>(options: {    name: string;    description: string;    input: ((rule: RuleBuilder) => Record<string, FieldRule>) | SchemaInput;    handle: (input: I, ctx: AiToolContext) => Promise<unknown> | unknown;}) => AiTool
-
-function toSchema = (input: SchemaInput) => Schema
 
 function translateSchema = (input: SchemaInput) => JsonSchema
 
@@ -358,7 +351,7 @@ interface AiDelivery = {
 
 interface AiDriver = {
   agent?: (request: AiRequest, options: AgentOptions) => Promise<AiAgentResult>
-  countTokens: (request: AiRequest) => Promise<number>
+  countTokens: (request: AiRequest) => Promise<number | null>
   object: <T>(request: AiRequest, schema: SchemaInput) => Promise<AiObjectResponse<T>>
   readonly model: string
   readonly name: string

@@ -18,6 +18,7 @@
     "./helpers": "./src/helpers/index.ts",
     "./runtime": "./src/support/runtime.ts",
     "./gate": "./src/gate/index.ts",
+    "./heartbeat": "./src/heartbeat/index.ts",
     "./shared": "./src/shared/index.ts",
     "./facades": "./src/facade/facades/index.ts",
     "./carbon": "./src/datetime/index.ts",

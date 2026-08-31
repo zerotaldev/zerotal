@@ -1,6 +1,7 @@
 import { ScheduledTask } from "./ScheduledTask.ts";
 import type { TaskCallback } from "./ScheduledTask.ts";
 import { frameworkLog } from "@zerotal/core/logger";
+import { Heartbeat } from "@zerotal/core/heartbeat";
 
 export class SchedulerManager {
   private _tasks: Map<string, ScheduledTask> = new Map();
@@ -34,8 +35,15 @@ export class SchedulerManager {
    * stopped every schedule in the app. Which ones those are is not a thing you can
    * see from a crash loop.
    */
+  private _stopBeat: (() => void) | undefined;
+
   start(): void {
     this._started = true;
+    // Beat while running, so `zt doctor` can tell "schedules registered and a
+    // worker is running them" from "schedules registered and nothing is". The
+    // second is silent by nature: the web process has no way to notice, and the
+    // work simply does not happen.
+    this._stopBeat = Heartbeat.start("scheduler", { detail: `${this._tasks.size} task(s)` });
     for (const task of this._tasks.values()) {
       try {
         task.start();
@@ -51,6 +59,8 @@ export class SchedulerManager {
   }
 
   stop(): void {
+    this._stopBeat?.();
+    this._stopBeat = undefined;
     for (const task of this._tasks.values()) task.stop();
     this._started = false;
     frameworkLog("scheduler").info("All tasks stopped");

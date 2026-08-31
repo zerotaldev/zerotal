@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A `zt doctor` check for schedules with nothing running them.** Schedules register in
+  `worker` and `console`, not `web` — the right design, and it means a second process is
+  required that the framework starts happily without.
+
+  Registered and never seen is a **failure**; registered and stale is a warning, because a
+  worker mid-restart is not a missing one. The scheduler beats every minute while running.
+
 ## [1.10.0] — 2026-08-30
 
 ### Fixed

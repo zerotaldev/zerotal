@@ -353,6 +353,24 @@ needed, so chaining works with any driver.
 
 ## Processing jobs
 
+### Is a worker running?
+
+Jobs waiting with nothing to run them is the same failure as an unrun schedule, one layer
+over: the queue fills, nothing errors, and you find out when a customer asks where their
+email went.
+
+`zt doctor` reports it, keyed on the **pending depth** rather than on whether any job
+class exists — an app with an empty queue and no worker may be perfectly fine:
+
+```
+✖ Queue worker — 4102 job(s) waiting, and no worker has ever checked in.
+    fix: Start the worker process: `bun zt worker`.
+```
+
+The same shared-cache caveat applies as for [schedules](/docs/scheduler#is-anything-actually-running-them):
+the beat lives in the cache, so a `memory` driver means the check stands aside rather
+than guessing.
+
 ### Dedicated worker process
 
 The standard way to process jobs in production is a long-running worker process:

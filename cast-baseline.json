@@ -60,6 +60,7 @@
     "packages/core/src/datetime/CarbonInterval.ts": 1,
     "packages/core/src/doctor/AppDoctor.ts": 2,
     "packages/core/src/facade/Facade.ts": 1,
+    "packages/core/src/heartbeat/Heartbeat.ts": 1,
     "packages/core/src/helpers/Collection.ts": 6,
     "packages/core/src/helpers/response.ts": 2,
     "packages/core/src/http/Uri.ts": 2,
@@ -153,5 +154,5 @@
     "packages/validator/src/FormRequest.ts": 2,
     "packages/validator/src/validate.ts": 2
   },
-  "updatedAt": "2026-08-29T18:49:21.067Z"
+  "updatedAt": "2026-08-31T21:04:11.145Z"
 }

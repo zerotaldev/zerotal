@@ -14,6 +14,8 @@ import { installQueueObservability } from "../observability.ts";
 import { installQueueAdmin } from "../admin.ts";
 import { validateQueueConfig } from "../config.ts";
 import { frameworkLog } from "@zerotal/core/logger";
+import { workerLivenessCheck } from "@zerotal/core/heartbeat";
+import type { DoctorCheck } from "@zerotal/core";
 
 declare module "@zerotal/core" {
   interface ContainerBindings {
@@ -176,5 +178,36 @@ export class QueueProvider extends ServiceProvider {
     runner.registerLazy("queue:flush", () =>
       import("../commands/QueueFlushCommand.ts").then((m) => m.QueueFlushCommand),
     );
+  }
+
+  /**
+   * Report jobs waiting with no worker running.
+   *
+   * Same failure as the scheduler's, one layer over: jobs accumulate, nothing
+   * errors, and you learn about it when a customer asks where their email went.
+   *
+   * Keyed on the *pending depth* rather than on whether any job class is
+   * registered — an app with an empty queue and no worker may be perfectly fine,
+   * and a doctor that says otherwise is one people scroll past.
+   */
+  override doctorChecks(): DoctorCheck[] {
+    return [
+      workerLivenessCheck({
+        id: "queue-worker-running",
+        label: "Queue worker",
+        name: "queue",
+        hasWork: async () => {
+          try {
+            const depth = (await this.app.container.tryMake("queue")?.size()) ?? 0;
+            return { has: depth > 0, summary: `${depth} job(s) waiting` };
+          } catch {
+            // An unreadable queue is not a finding about the worker.
+            return { has: false, summary: "" };
+          }
+        },
+        staleAfter: 15 * 60,
+        command: "bun zt worker",
+      }),
+    ];
   }
 }

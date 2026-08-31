@@ -8,6 +8,8 @@ import { schedulesConcern } from "../conventions.ts";
 import { installSchedulerObservability } from "../observability.ts";
 import { installSchedulerMonitor } from "../monitor.ts";
 import { FileScheduleRunStore, installScheduleRunLog, resolveRunLogConfig } from "../runLog.ts";
+import { workerLivenessCheck } from "@zerotal/core/heartbeat";
+import type { DoctorCheck } from "@zerotal/core";
 
 declare module "@zerotal/core" {
   interface ContainerBindings {
@@ -98,5 +100,32 @@ export class SchedulerProvider extends ServiceProvider {
 
     const scheduler = this.app.container.tryMake("scheduler") as SchedulerManager | undefined;
     scheduler?.stop();
+  }
+
+  /**
+   * Report schedules registered with nothing running them.
+   *
+   * The reported production failure this exists for: an app ran for weeks with no
+   * worker process, and every scheduled task silently did not execute. Nothing
+   * logged, because from the web process's point of view nothing was wrong.
+   */
+  override doctorChecks(): DoctorCheck[] {
+    return [
+      workerLivenessCheck({
+        id: "scheduler-running",
+        label: "Scheduler",
+        name: "scheduler",
+        // Registered tasks, read from the manager rather than from config: a
+        // schedule that failed to register is not work anything can do.
+        hasWork: () => {
+          const count = this.app.container.tryMake("scheduler")?.tasks.size ?? 0;
+          return { has: count > 0, summary: `${count} schedule(s) registered` };
+        },
+        // Generous: the beat is every 60s, and a worker mid-restart should not
+        // read as a missing one.
+        staleAfter: 15 * 60,
+        command: "bun zt worker",
+      }),
+    ];
   }
 }

@@ -301,6 +301,69 @@ Scheduled tasks (2)
   Next run     2026-06-22T06:00:00.000Z
 ```
 
+## Is anything actually running them?
+
+Schedules register in the `worker` and `console` environments, not in `web`. That is the
+right design — HTTP instances should not run cron — and it means **a second process is
+required.** The framework starts happily without one.
+
+An app shipped to production with no worker, and every scheduled task silently did not
+execute for weeks. No hold was released, no reminder was sent, nothing logged, because
+from the web process's point of view nothing was wrong. They found it by going looking.
+
+`zt doctor` now looks for you:
+
+```
+✖ Scheduler — 3 schedule(s) registered, and no worker has ever checked in. Nothing is
+  running them. This is silent by nature — the web process has no way to notice, and
+  the work simply does not happen.
+    fix: Start the worker process: `bun zt worker`. It is a second process; the web
+         server does not run this.
+```
+
+The worker records a check-in every minute while it runs. A check-in older than fifteen
+minutes is a warning rather than a failure, because a worker mid-restart is not a
+missing worker.
+
+### It needs a shared cache to mean anything
+
+The beat is written to the cache, because the process reading `doctor` is not the
+process running the schedules — and often not the same machine. Your cache driver
+decides what that can see:
+
+| Driver             | Sees a worker on…                       |
+| ------------------ | --------------------------------------- |
+| `sqlite` (default) | another process on the same box         |
+| `redis`            | another machine                         |
+| `memory`           | nothing — it is private to each process |
+
+On `memory` the check **stands aside and says so** rather than reporting a missing
+worker. A check that cried wolf on every app using the memory driver is one people would
+learn to skip, and then it would not be there for the case it exists for.
+
+### Reading it yourself
+
+The primitive is `@zerotal/core/heartbeat`, if you want the same signal on an ops page:
+
+```ts
+import { Heartbeat } from "@zerotal/core/heartbeat";
+
+const seen = await Heartbeat.lastSeen("scheduler");
+// { status: "seen", ageSeconds, beat } | { status: "never" } | { status: "unknown", reason }
+```
+
+| Name                  | Description                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Heartbeat`           | `beat()` records a check-in, `start()` beats on an interval and returns a stopper, `lastSeen()` reads one. |
+| `Beat`                | What a check-in records — `at`, `pid`, `detail`.                                                           |
+| `BeatLookup`          | The three answers: `seen`, `never`, and `unknown` with a reason.                                           |
+| `workerLivenessCheck` | Builds the doctor check above for a worker kind.                                                           |
+| `describeBeat`        | Renders a `BeatLookup` as the prose used in the report.                                                    |
+
+`unknown` is a distinct answer from `never` on purpose, and every consumer has to keep
+them apart: one means nothing is running, the other means this process cannot see whether
+anything is.
+
 ## Run history
 
 Every completed execution — success or failure — is recorded to a capped JSONL

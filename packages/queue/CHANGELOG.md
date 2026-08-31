@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A `zt doctor` check for jobs waiting with no worker.** The same failure as an unrun
+  schedule, one layer over: the queue fills, nothing errors, and you find out when a
+  customer asks where their email went.
+
+  Keyed on the pending depth rather than on whether any job class is registered — an app
+  with an empty queue and no worker may be perfectly fine, and a doctor that says otherwise
+  is one people scroll past.
+
 ## [1.13.1] — 2026-08-31
 
 ### Added

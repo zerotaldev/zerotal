@@ -1,5 +1,6 @@
 import type { JobRecord } from "./drivers/QueueDriver.ts";
 import { frameworkLog } from "@zerotal/core/logger";
+import { Heartbeat } from "@zerotal/core/heartbeat";
 
 export interface WorkerPoolOptions {
   /** Number of OS threads to spawn. */
@@ -60,6 +61,9 @@ export class WorkerPool {
   /** True once {@link terminate} has run, so a dying worker is not respawned. */
   private _terminated = false;
 
+  /** Stops the liveness beat. Set while the pool is up. */
+  private _stopBeat: (() => void) | undefined;
+
   /** Spawn all worker threads and wait until every thread has bootstrapped. */
   async start(): Promise<void> {
     this._terminated = false;
@@ -72,6 +76,10 @@ export class WorkerPool {
     }
 
     await Promise.all(readyPromises);
+
+    // Beat once the pool is actually up, not when start() was called: a pool that
+    // failed to bootstrap should look like no worker, because that is what it is.
+    this._stopBeat = Heartbeat.start("queue", { detail: `${this.opts.size} thread(s)` });
   }
 
   /**
@@ -211,6 +219,8 @@ export class WorkerPool {
     // Set first: terminate() closes every worker, and the close listener must not read
     // that as a crash and respawn what we are shutting down.
     this._terminated = true;
+    this._stopBeat?.();
+    this._stopBeat = undefined;
 
     // Reject any callers still waiting for a worker — avoids hanging promises.
     for (const { resolve } of this._pending) {

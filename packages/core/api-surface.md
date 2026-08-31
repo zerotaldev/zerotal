@@ -2834,6 +2834,22 @@ type HealthCheckFn = () => Promise<HealthResult | void> | HealthResult | void
 
 type HealthStatus = 'ok' | 'degraded' | 'down'
 
+## ./heartbeat  `(./src/heartbeat/index.ts)`
+
+const Heartbeat = {    beat(name: string, extra?: Omit<Beat, 'at'>): Promise<void>;    start(name: string, extra?: Omit<Beat, 'at'>, everyMs?: number): () => void;    lastSeen(name: string): Promise<BeatLookup>;}
+
+function describeBeat = (lookup: BeatLookup) => string
+
+function workerLivenessCheck = (options: WorkerLivenessOptions) => DoctorCheck
+
+interface Beat = {
+  at: string
+  detail?: string | undefined
+  pid?: number | undefined
+}
+
+type BeatLookup = { status: 'seen'; beat: Beat; ageSeconds: number } | { status: 'never' } | { status: 'unknown'; reason: string }
+
 ## ./helpers  `(./src/helpers/index.ts)`
 
 const Str = {    camelCase(value: string): string;    snakeCase(value: string): string;    slugify(value: string): string;    titleCase(value: string): string;    pascalCase(value: string): string;    capitalize(value: string): string;    lcfirst(value: string): string;    truncate(value: string, maxLength: number, suffix?: string): string;    isAlphanumeric(value: string): boolean;    padLeft(value: string, length: number, char?: string): string;    kebab(value: string): string;    squish(value: string): string;    finish(value: string, cap: string): string;    start(value: string, prefix: string): string;    after(value: string, needle: string): string;    before(value: string, needle: string): string;    afterLast(value: string, needle: string): string;    beforeLast(value: string, needle: string): string;    contains(value: string, substring: string): boolean;    random(length?: number): string;    replaceFirst(value: string, search: string, replace: string): string;    replaceLast(value: string, search: string, replace: string): string;    reverse(value: string): string;    words(value: string, maxWords: number, suffix?: string): string;    macro(name: string, fn: (...args: unknown[]) => unknown): void;}

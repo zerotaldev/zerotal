@@ -10,6 +10,27 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`Heartbeat` — which background processes are actually running.** An app could say what
+  it _registered_ and nothing could say whether any of it ever _ran_.
+
+  The failure this exists for was reported from production: an app shipped with no worker
+  process, and every scheduled task silently did not execute for weeks. No hold was
+  released, no reminder was sent, and nothing logged, because from the web process's point
+  of view nothing was wrong. They found it by going looking.
+
+  `@zerotal/core/heartbeat` — `beat()`, `start()`, `lastSeen()`, and `workerLivenessCheck()`
+  for building the doctor check.
+
+  The beat lives in the **cache**, because the reader is a different process from the
+  writer and often a different machine, and the app has already chosen where its shared
+  state goes. `sqlite` (the default) is shared across processes on one box, `redis` across
+  machines, `memory` with nobody — which is why `lastSeen()` returns a distinct
+  `"unknown"` rather than `"never"`. A check that reported a missing worker on every app
+  using the memory driver would be wrong more often than right, and a check that is
+  usually wrong is one people learn to skip.
+
+### Added
+
 - **A site gate — maintenance, and private preview.** From a proposal by the Trekly team,
   who were running a hand-edited `basic_auth` block in a reverse proxy, deliberately kept
   out of version control so it could not be deployed and forgotten into a live shop.

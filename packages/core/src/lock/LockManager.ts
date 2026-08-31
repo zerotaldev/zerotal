@@ -135,13 +135,12 @@ export class ManagedLock {
     if (!this._acquired) return false;
     const ttl = ttlSeconds ?? this._ttl;
 
-    // `extend` is optional on the contract so a driver written against 1.x still
-    // satisfies it. `acquire` is the fallback because on every built-in driver it
-    // is an owner-guarded refresh — which is exactly what this needs, and is the
-    // behaviour the memory driver had to be fixed to honour.
-    const extended = this._driver.extend
-      ? await this._driver.extend(this._key, this._owner, ttl)
-      : await this._driver.acquire(this._key, this._owner, ttl);
+    // `extend` is required on the contract since 1.13.0, so there is no fallback
+    // here any more. The one it replaced — `acquire(key, owner, ttl)` — worked only
+    // because every built-in driver happens to make `acquire` an owner-guarded
+    // refresh, which the interface never required and a third-party driver had no
+    // reason to know.
+    const extended = await this._driver.extend(this._key, this._owner, ttl);
 
     if (!extended) {
       this._acquired = false;

@@ -48,9 +48,15 @@ export class ServeCommand extends Command {
       default: 3000,
     },
     {
+      // Declared only so it can be refused by name. Removing it outright would be
+      // worse than keeping it: `parseFlagsAndArgs` runs with `strict: false`, so an
+      // undeclared `--dev` is parsed and dropped, and `serve --dev` would have gone
+      // on starting a plain server with no watcher and no message. A retired flag
+      // that silently changes what a command does is the failure this release is
+      // otherwise about.
       name: "dev",
       type: "boolean",
-      description: "Start in dev mode with file watching, auto-rebuild, and browser reload",
+      description: "Retired in 1.13.0 — use `zt dev`",
       default: false,
     },
     {
@@ -74,8 +80,26 @@ export class ServeCommand extends Command {
     },
   ];
 
+  /**
+   * Set by {@link DevCommand} rather than by a flag, so `serve --dev` can be
+   * refused while `dev` keeps the supervisor it subclasses.
+   *
+   * @internal
+   */
+  protected _dev = false;
+
   async run(): Promise<void> {
-    const isDev = this.flags["dev"] as boolean;
+    if (this.flags["dev"] === true && !this._dev) {
+      this.error(
+        "`serve --dev` was retired in 1.13.0. Use `bun zt dev` — it is the same supervisor, " +
+          "the same processes and the same restart behaviour, plus the flags that only make " +
+          "sense with a deck on screen (--only, --without, --list, --stream).",
+      );
+      process.exitCode = 1;
+      return;
+    }
+
+    const isDev = this._dev;
     const isWorker = this.flags["dev-worker"] as boolean;
 
     // ── DEV ORCHESTRATOR (Process 1) ────────────────────────────────────────

@@ -31,7 +31,6 @@ const DOCUMENTED = [
   "cancelled",
   "child",
   "clearDurable",
-  "client",
   "currentUrl",
   "dispatch",
   "dispatchSelf",
@@ -70,6 +69,14 @@ describe("Component reserved member names", () => {
     // If this fails, a public member was added to or removed from Component. Update the
     // table in docs/flow/index.md — every name here is one an application cannot use.
     expect(reservedMembers()).toEqual(DOCUMENTED);
+  });
+
+  it("no longer reserves client", () => {
+    // Removed in 1.13.0 for its own reasons — it took a raw string and its docblock
+    // had to warn against interpolating user input — and freeing the name is the
+    // same benefit `title` gave in 1.7.3. `client` is a plausible property on a
+    // component that models a customer.
+    expect(reservedMembers()).not.toContain("client");
   });
 
   it("no longer reserves title", () => {

@@ -80,9 +80,10 @@ export class DevCommand extends ServeCommand {
   ];
 
   override async run(): Promise<void> {
-    // `dev` is `serve --dev` — set the flag the parent branches on rather than
-    // duplicating its port resolution, asset config and banner.
-    this.flags["dev"] = true;
+    // Set the parent's own switch rather than the `dev` flag, which is now
+    // reserved for refusing `serve --dev` by name. Same supervisor, same port
+    // resolution, same banner — this subclasses so the two cannot drift.
+    this._dev = true;
     await super.run();
   }
 }

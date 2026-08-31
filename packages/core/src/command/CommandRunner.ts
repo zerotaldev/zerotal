@@ -392,7 +392,9 @@ export class CommandRunner {
 
     // route:types reads the same booted router, so it is available wherever
     // route:list is — including in CI containers that only ever run `--check`.
-    this.register(RouteTypesCommand, ["routes:types"]);
+    //
+    // The `routes:types` alias was retired in 1.13.0; `zt upgrade` rewrites it.
+    this.register(RouteTypesCommand);
 
     // Non-web commands (console, worker, test).
     if (this._app._env !== "web") {

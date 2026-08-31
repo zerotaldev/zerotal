@@ -7737,6 +7737,12 @@
     },
     {
       "file": "docs/upgrade.md",
+      "heading": "`Component.client(…)` is removed — use the `$` tagged template",
+      "ordinal": 0,
+      "hash": "2k3jygykj7z0"
+    },
+    {
+      "file": "docs/upgrade.md",
       "heading": "1.10 to 1.11",
       "ordinal": 0,
       "hash": "3rz321ebs61h"
@@ -8000,6 +8006,12 @@
       "heading": "Added",
       "ordinal": 0,
       "hash": "1w30tcu7fugp"
+    },
+    {
+      "file": "docs/changelog.md",
+      "heading": "Removed — BREAKING",
+      "ordinal": 0,
+      "hash": "226t73gwc2yk"
     },
     {
       "file": "docs/client/index.md",

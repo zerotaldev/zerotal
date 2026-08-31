@@ -25,7 +25,7 @@ declare module "@zerotal/core" {
 
 /**
  * $flow — the client runtime object, available directly in JSX client expressions
- * (event handlers, attribute bindings, text children) and `this.client()` scripts.
+ * (event handlers, attribute bindings, text children) and `this.$` scripts.
  *
  * It is the single home for all client-only magics, so the component class itself stays
  * clean. The rule: `this.name` is always YOUR member (state/action); `$flow.name` is always a

@@ -289,6 +289,64 @@ doing something quiet.
    If it really is a new migration, give it a name that does not collide once the
    leading digits are removed.
 
+## 1.12 to 1.13
+
+Three retirements in one crossing, deliberately together: each is a small migration, and
+three minors each asking an app to move costs more than one that asks properly. `zt upgrade`
+does the mechanical half.
+
+```bash fragment
+bun zt upgrade --to 1.13.0
+```
+
+### `Component.client(…)` is removed — use the `$` tagged template
+
+The reason this did not wait: `client()` took a **string** and queued it to be evaluated in
+the browser, so the caller owned the escaping. Its own docblock had to say _never interpolate
+unescaped user input_, which is a warning about a footgun rather than a design. `$` is a
+tagged template, so every `${…}` is encoded as a JS literal before it reaches the page.
+
+```ts fragment
+// in a component class body — before
+this.client(`$refs.titleInput.focus()`);
+this.client(`toast(${JSON.stringify(this.search)})`); // escaping was yours to remember
+
+// after
+this.$`$refs.titleInput.focus()`;
+this.$`toast(${this.search})`; // encoded for you
+```
+
+The codemod rewrites a call whose argument is a single literal. **A call whose argument is a
+variable or a concatenation is reported rather than rewritten**, because those are exactly the
+ones the security note was about — and wrapping the finished string as `` $`${expr}` `` would
+encode it as a string literal and stop running it as code. Read those and interpolate through
+`$` instead.
+
+Removing it also frees `client` as a property name on your components, the way removing
+`title` did in 1.7.3.
+
+### `LockDriver.extend()` is required
+
+Only affects a **custom lock driver**; the three built-in ones already implement it.
+
+It shipped optional in 1.5.0 with `acquire(key, owner, ttl)` as the fallback, and the fallback
+was correct only by coincidence: `acquire` happens to be an owner-guarded refresh on every
+built-in driver, and nothing in the interface said it had to be. A driver whose `acquire` takes
+a _free_ lock — the ordinary reading of the word — would have had `refresh()` silently take a
+lock another holder owned, which is the one thing a lock exists to prevent.
+
+Implement `extend(key, owner, ttlSeconds)`: push the deadline out, return `false` when the key
+is free or held by someone else.
+
+### `routes:types` and `serve --dev` are retired
+
+`route:types` and `dev` are the real names. The codemod rewrites both in scripts and CI config.
+
+`serve --dev` **fails loudly** rather than being ignored. The flag is still declared for exactly
+that reason: flag parsing is non-strict, so deleting it would have left `serve --dev` starting a
+plain server with no watcher and no message — a retired flag that silently changes what a
+command does.
+
 ## 1.11 to 1.12
 
 One breaking change, and it is the intended kind: a minor, announced, with the reason.

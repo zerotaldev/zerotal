@@ -213,20 +213,34 @@ describe("ManagedLock.refresh()", () => {
     expect(lock.expiresAt).toBeUndefined();
   });
 
-  it("falls back to acquire on a driver with no extend", async () => {
-    // A driver written against 1.x satisfies the contract without `extend`, and
-    // acquire() is an owner-guarded refresh on every built-in.
+  it("refreshes through extend, not through acquire", async () => {
+    // `extend` became required in 1.13.0 and the `acquire` fallback is gone. It was
+    // only ever correct by coincidence: `acquire` is an owner-guarded refresh on
+    // every built-in driver, and nothing in the contract said it had to be. A
+    // third-party driver whose `acquire` takes a *free* lock — the ordinary reading
+    // of the word — would have had refresh() silently take a lock someone else held.
+    const calls: string[] = [];
     const base = new MemoryLockDriver();
-    const legacy: LockDriver = {
-      acquire: (key, owner, ttl) => base.acquire(key, owner, ttl),
+    const watched: LockDriver = {
+      acquire: (key, owner, ttl) => {
+        calls.push("acquire");
+        return base.acquire(key, owner, ttl);
+      },
       release: (key, owner) => base.release(key, owner),
       forceRelease: (key) => base.forceRelease(key),
       exists: (key) => base.exists(key),
+      extend: (key, owner, ttl) => {
+        calls.push("extend");
+        return base.extend(key, owner, ttl);
+      },
     };
 
-    const lock = new ManagedLock("key", 0.05, legacy);
+    const lock = new ManagedLock("key", 0.05, watched);
     await lock.acquire();
     expect(await lock.refresh(10)).toBe(true);
+
+    // One acquire for the initial take, then extend — never acquire again.
+    expect(calls).toEqual(["acquire", "extend"]);
     await Bun.sleep(80);
     expect(await base.exists("key")).toBe(true);
   });

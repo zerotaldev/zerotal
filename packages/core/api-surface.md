@@ -3034,7 +3034,7 @@ interface LockDriver = {
   acquire: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   dispose?: () => void
   exists: (key: string) => Promise<boolean>
-  extend?: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
+  extend: (key: string, owner: string, ttlSeconds: number) => Promise<boolean>
   forceRelease: (key: string) => Promise<void>
   release: (key: string, owner: string) => Promise<boolean>
 }

@@ -71,10 +71,10 @@ describe("the $ tagged template", () => {
     expect(scriptFrom((c) => c.$`a(${1})b(${2})c`)).toBe("a(1)b(2)c");
   });
 
-  it("batches in call order, like client()", () => {
+  it("batches in call order", () => {
     const c = new Demo();
     c.$`first()`;
-    c.client("second()");
+    c.$`second()`;
     c.$`third(${3})`;
     expect(c._clientScripts).toEqual(["first()", "second()", "third(3)"]);
   });

@@ -11,6 +11,60 @@ change.
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-08-31
+
+### Removed — **BREAKING**
+
+- **`Component.client(…)`.** Use the `` this.# Changelog — @zerotal/flow
+
+All notable changes to this package are documented here. The format is
+based on [Keep a Changelog](https://keepachangelog.com/); this package
+follows the Zerotal monorepo's unified versioning.
+
+**Maturity: `stable`** — matching this package's `maturity` field. The public API
+follows SemVer strictly: anything importable without an `@internal` marker keeps its
+shape for the rest of the 1.x line, and `api-surface.md` is diffed by CI on every
+change.
+
+…` `` tagged template.
+
+A security fix rather than an ergonomics change, which is why it did not wait for 2.0.
+`client()` took a **string** and queued it for evaluation in the browser, so the caller
+owned the escaping — and its own docblock had to warn _never interpolate unescaped user
+input_. A method whose documentation has to tell you not to hold it that way is a footgun
+with a label on. `# Changelog — @zerotal/flow
+
+All notable changes to this package are documented here. The format is
+based on [Keep a Changelog](https://keepachangelog.com/); this package
+follows the Zerotal monorepo's unified versioning.
+
+**Maturity: `stable`** — matching this package's `maturity` field. The public API
+follows SemVer strictly: anything importable without an `@internal` marker keeps its
+shape for the rest of the 1.x line, and `api-surface.md` is diffed by CI on every
+change.
+
+is a tagged template, so each `${…}` is encoded as a JS literal before
+it reaches the page and the caller cannot forget.
+
+`zt upgrade --to 1.13.0` rewrites a call whose argument is a single literal. One whose
+argument is a variable or a concatenation is **reported, not rewritten** — those are the
+ones the warning was about, and wrapping the finished string as `` # Changelog — @zerotal/flow
+
+All notable changes to this package are documented here. The format is
+based on [Keep a Changelog](https://keepachangelog.com/); this package
+follows the Zerotal monorepo's unified versioning.
+
+**Maturity: `stable`** — matching this package's `maturity` field. The public API
+follows SemVer strictly: anything importable without an `@internal` marker keeps its
+shape for the rest of the 1.x line, and `api-surface.md` is diffed by CI on every
+change.
+
+${expr}` `` would
+encode it as a string literal and stop running it as code.
+
+Removing it frees `client` as a property name on a component, as removing `title` did in
+1.7.3.
+
 ## [1.9.0] — 2026-08-29
 
 - **The component and flash types are documented.** Every built-in component exports the type of

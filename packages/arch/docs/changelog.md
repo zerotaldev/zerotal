@@ -27,6 +27,71 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.13.0 — 2026-08-31
+
+Three retirements, taken together on purpose. Each is a small migration, and three minors
+each asking an app to move costs more than one that asks properly — so this is one crossing
+and one `zt upgrade` run.
+
+```bash
+bun zt upgrade --to 1.13.0
+```
+
+### Removed — BREAKING
+
+- **Flow's `Component.client(…)`.** Use the `` this.$`…` `` tagged template.
+
+  This is a security fix wearing an ergonomics change's clothes, which is why it did not wait
+  for 2.0. `client()` took a **string** and queued it to be evaluated in the browser, so the
+  caller owned the escaping — and its own docblock had to warn _never interpolate unescaped
+  user input_. A method whose documentation has to tell you not to hold it that way is a
+  footgun with a label on. `$` is a tagged template, so every `${…}` is encoded as a JS
+  literal before it reaches the page.
+
+  ```ts
+  // before — escaping was yours to remember
+  this.client(`toast(${JSON.stringify(this.search)})`);
+
+  // after — encoded for you
+  this.$`toast(${this.search})`;
+  ```
+
+  The codemod rewrites a call whose argument is a single literal. **One whose argument is a
+  variable or a concatenation is reported rather than rewritten**: those are precisely the
+  ones the warning was about, and wrapping a finished string as `` $`${expr}` `` would encode
+  it as a string literal and stop running it as code. A codemod that quietly did that would
+  leave an app compiling, running, and no longer doing anything where it used to run a script.
+
+  Removing it also frees `client` as a property name on a component — the same benefit
+  removing `title` gave in 1.7.3.
+
+### Changed — BREAKING
+
+- **`LockDriver.extend()` is required.** Only affects a custom lock driver; all three
+  built-in drivers already implement it.
+
+  It shipped optional in 1.5.0 with `acquire(key, owner, ttl)` as the fallback, and that
+  fallback was correct only by coincidence. `acquire` happens to be an owner-guarded refresh
+  on every built-in driver, and nothing in the interface ever said it had to be — so a
+  third-party driver whose `acquire` takes a _free_ lock, which is the ordinary reading of
+  the word, would have had `refresh()` silently take a lock another holder owned. That is the
+  one thing a lock exists to prevent. Requiring the method turns an assumption the contract
+  never stated into something a driver has to answer.
+
+- **`routes:types` and `serve --dev` are retired**, in favour of `route:types` and `dev`.
+  Both are rewritten by the codemod.
+
+  `serve --dev` **fails with a message** rather than being ignored, and the flag is still
+  declared for that reason alone. Flag parsing runs non-strict, so simply deleting it would
+  have left `serve --dev` starting a plain server — no watcher, no rebuild, no explanation. A
+  retired flag that silently changes what a command does is worse than one that is still
+  there.
+
+### Added
+
+- **The `client-tagged-template` codemod**, which is what makes the first item above a
+  migration rather than a search.
+
 ## 1.12.0 — 2026-08-31
 
 One change, deliberately alone: the minor exists to carry it.

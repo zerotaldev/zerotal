@@ -134,7 +134,6 @@ class AdminPage = {
   cancelled: boolean
   child: <C extends Component>(ChildClass: new () => C, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    stream?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>
   clearDurable: () => void
-  client: (script: string) => void
   currentUrl: (options?: CurrentUrlOptions) => string
   dispatch: <K extends string>(name: K, ...args: K extends EventName ? EventArgs<FlowEvents[K]> : [payload?: Record<string, unknown>]) => void
   dispatchSelf: <K extends string>(name: K, ...args: K extends EventName ? EventArgs<FlowEvents[K]> : [payload?: Record<string, unknown>]) => void

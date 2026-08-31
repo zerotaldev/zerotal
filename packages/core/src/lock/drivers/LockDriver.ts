@@ -32,11 +32,16 @@ export interface LockDriver {
    * returns `false` when the key is free or held by someone else, so a holder
    * that lost the lock learns about it rather than extending a stranger's.
    *
-   * **Optional** so a driver written against 1.x still satisfies this interface.
-   * {@link ManagedLock.refresh} falls back to `acquire(key, owner, ttl)`, which
-   * is an owner-guarded refresh on all three built-in drivers.
+   * **Required since 1.13.0.** It shipped optional in 1.5.0 with `acquire()` as a
+   * fallback, and the fallback was only ever correct by coincidence: `acquire` is
+   * an owner-guarded refresh on all three built-in drivers, and nothing in this
+   * interface said it had to be. A third-party driver whose `acquire` takes a free
+   * lock — the ordinary reading of the word — would have had `refresh()` silently
+   * steal a lock another holder owned, which is the one thing a lock exists to
+   * prevent. Requiring the method turns an assumption the contract never stated
+   * into something a driver has to answer.
    */
-  extend?(key: string, owner: string, ttlSeconds: number): Promise<boolean>;
+  extend(key: string, owner: string, ttlSeconds: number): Promise<boolean>;
 
   /** Release background resources (timers, DB connections). */
   dispose?(): void;

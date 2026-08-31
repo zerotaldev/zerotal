@@ -198,7 +198,7 @@ The names in use:
 | Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child` `isInteractive`                                              |
 | Actions & state   | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal`              |
 | Navigation        | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent`                                          |
-| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `client` `$`                                                          |
+| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `$`                                                                   |
 | Misc              | `flash` `download` `clearDurable`                                                                                     |
 
 Anything beginning with `_` is also framework-internal, as are the statics `durable`

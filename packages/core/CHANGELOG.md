@@ -8,6 +8,32 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-08-31
+
+### Changed — **BREAKING**
+
+- **`LockDriver.extend()` is required.** Only affects a custom driver; all three built-in
+  ones implement it.
+
+  It shipped optional in 1.5.0 with `acquire(key, owner, ttl)` as the fallback, and the
+  fallback was correct only by coincidence — `acquire` happens to be an owner-guarded refresh
+  on every built-in driver, and nothing in the interface said it had to be. A third-party
+  driver whose `acquire` takes a _free_ lock, which is the ordinary reading of the word, would
+  have had `refresh()` silently take a lock another holder owned. That is the one thing a lock
+  exists to prevent, and the contract was quietly assuming its way past it.
+
+- **`routes:types` and `serve --dev` are retired**, in favour of `route:types` and `dev`.
+  `zt upgrade` rewrites both.
+
+  `serve --dev` **fails with a message** rather than being ignored. The flag is still declared
+  for that reason alone: flag parsing runs non-strict, so deleting it would have left
+  `serve --dev` starting a plain server with no watcher and no explanation — a retired flag
+  that silently changes what a command does is worse than one that is still there.
+
+### Added
+
+- **The `client-tagged-template` codemod**, for the Flow removal above.
+
 ## [1.11.1] — 2026-08-31
 
 ### Added

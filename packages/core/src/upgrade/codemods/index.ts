@@ -9,7 +9,8 @@
  */
 import type { Codemod } from "../types.ts";
 import { deprecatedAliases } from "./deprecated-aliases.ts";
+import { clientTaggedTemplate } from "./client-tagged-template.ts";
 
-export const CODEMODS: Codemod[] = [deprecatedAliases];
+export const CODEMODS: Codemod[] = [clientTaggedTemplate, deprecatedAliases];
 
-export { deprecatedAliases };
+export { deprecatedAliases, clientTaggedTemplate };

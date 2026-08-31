@@ -554,7 +554,7 @@ export abstract class Component {
   _shouldRefresh = false;
 
   /**
-   * Raw JS expressions queued by this.client() during an action.
+   * Raw JS expressions queued by the `$` tagged template during an action.
    * Drained by _drainEffects() and forwarded to the client in the patch frame.
    * @internal
    */
@@ -1125,28 +1125,6 @@ export abstract class Component {
   }
 
   /**
-   * Queue a raw JavaScript expression to be evaluated in the browser
-   * after the current action's DOM patch is applied.
-   *
-   * The expression runs in the Alpine context of the component root element:
-   * `$el`, `$refs`, and other Alpine magic properties are all available.
-   *
-   * Multiple calls are batched and executed in order after the single round trip.
-   *
-   * @example
-   * this.client(`$refs.titleInput.focus()`);
-   * this.client(`$el.querySelector('.toast').classList.add('visible')`);
-   *
-   * @security Never interpolate unescaped user input into the expression string. Prefer the
-   *           {@link $} tagged template, which encodes interpolated values for you.
-   * @deprecated Use the `$` tagged template: ``this.$`$refs.titleInput.focus()` ``.
-   * @category Actions
-   */
-  client(script: string): void {
-    this._clientScripts.push(script);
-  }
-
-  /**
    * Run a client-side expression from a server action, interpolating values safely.
    *
    * A tagged template, so each `${…}` is encoded as a JS literal rather than concatenated
@@ -1158,13 +1136,15 @@ export abstract class Component {
    * this.$`$el.dataset.count = ${this.items.length}`;
    * ```
    *
-   * That is the whole reason it replaces {@link client}. Building the expression by hand meant
-   * the caller owned the escaping, and a value containing a quote — a name, a search term —
-   * produced either a syntax error or something worse.
+   * That is the whole reason it replaced `client()`, removed in 1.13.0. Building the
+   * expression by hand meant the caller owned the escaping, and a value containing a quote —
+   * a name, a search term — produced either a syntax error or something worse. A method whose
+   * own documentation has to warn you not to interpolate into it is a footgun with a label on,
+   * so the label was replaced with an API that cannot be held the wrong way.
    *
-   * Runs in the component root's Alpine context after the action's DOM patch, exactly as
-   * {@link client} does: `$el`, `$refs` and the `$flow` magics are all in scope, and multiple
-   * calls execute in order after the single round trip.
+   * Runs in the component root's Alpine context after the action's DOM patch: `$el`, `$refs`
+   * and the `$flow` magics are all in scope, and multiple calls execute in order after the
+   * single round trip.
    *
    * @category Actions
    */

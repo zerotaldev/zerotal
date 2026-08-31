@@ -431,3 +431,84 @@ describe("SmtpDriver — connection failures", () => {
     await expect(driver.send(payload())).rejects.toThrow(SmtpConnectionError);
   });
 });
+
+describe("SmtpDriver — custom headers", () => {
+  it("puts List-Unsubscribe on the wire so a client can draw the button", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(
+      payload({
+        headers: {
+          "List-Unsubscribe": "<https://app.test/u/abc>, <mailto:unsub@app.test>",
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      }),
+    );
+
+    const headers = server.body.split("\r\n\r\n")[0]!.split("\r\n");
+    expect(headers).toContain(
+      "List-Unsubscribe: <https://app.test/u/abc>, <mailto:unsub@app.test>",
+    );
+    expect(headers).toContain("List-Unsubscribe-Post: List-Unsubscribe=One-Click");
+  });
+
+  it("sends nothing extra when no headers are set", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload());
+
+    expect(server.body).not.toContain("List-Unsubscribe");
+  });
+
+  it("strips CRLF from a header value so a value cannot open a new header", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ headers: { "X-Trace": "abc\r\nBcc: attacker@evil.test" } }));
+
+    const headers = server.body.split("\r\n\r\n")[0]!.split("\r\n");
+    expect(headers.some((l) => l.startsWith("Bcc:"))).toBe(false);
+    expect(headers).toContain("X-Trace: abc Bcc: attacker@evil.test");
+  });
+
+  it("refuses a reserved header rather than sending it twice", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    // A second Subject is not an override — it is an ambiguous message, and which
+    // one a client shows is its own business.
+    await expect(driver.send(payload({ headers: { Subject: "Different" } }))).rejects.toThrow(
+      "set by the mail driver",
+    );
+  });
+
+  it("refuses a reserved header whatever its case", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await expect(
+      driver.send(payload({ headers: { "content-type": "text/evil" } })),
+    ).rejects.toThrow("set by the mail driver");
+  });
+
+  it("refuses a header name carrying a colon", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await expect(
+      driver.send(payload({ headers: { "X-A: b\r\nBcc": "evil@test" } })),
+    ).rejects.toThrow("not a valid header name");
+  });
+
+  it("encodes a non-ASCII header value rather than putting raw bytes on the wire", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ headers: { "X-Note": "café" } }));
+
+    expect(server.body).toContain("X-Note: =?UTF-8?B?");
+    expect(server.body).not.toContain("X-Note: café");
+  });
+});

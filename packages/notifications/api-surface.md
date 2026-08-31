@@ -54,6 +54,7 @@ class MailMessage = {
   embed: (cid: string, attachment: Omit<MailAttachment, 'cid' | 'inline'>) => MailMessage
   from: (address: AddressInput) => MailMessage
   greeting: {    (text: string): MailMessage;    (text: string, style: TextStyle): MailMessage;    (build: (t: RichLine) => void): MailMessage;}
+  header: (name: string, value: string) => MailMessage
   html: (content: string) => MailMessage
   line: {    (text: string): MailMessage;    (text: string, style: TextStyle): MailMessage;    (build: (t: RichLine) => void): MailMessage;}
   replyTo: (address: AddressInput) => MailMessage
@@ -304,11 +305,15 @@ const NotificationRegistry = {    _map: Map<string, NotificationClass>;    regis
 
 const Notify = NotificationManager
 
+const RESERVED_MAIL_HEADERS = readonly string[]
+
 function channelStats = () => ChannelStat[]
 
 function NotificationConfig = (options?: DeepPartial<NotificationConfigShape>) => NotificationConfigShape
 
 function recentDeliveries = () => RecentDelivery[]
+
+function resolveHeaders = (headers: Record<string, string>) => Record<string, string>
 
 interface ChannelStat = {
   avgMs: number
@@ -352,6 +357,7 @@ interface MailPayload = {
   bcc?: MailAddress[]
   cc?: MailAddress[]
   from: MailAddress
+  headers?: Record<string, string>
   html?: string
   replyTo?: MailAddress
   subject: string

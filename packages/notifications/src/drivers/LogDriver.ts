@@ -15,6 +15,10 @@ export class LogDriver implements MailDriver {
       `From:    ${message.from.name ? `${message.from.name} <${message.from.address}>` : message.from.address}`,
       `Subject: ${message.subject}`,
       ...(message.cc?.length ? [`CC:      ${message.cc.map((a) => a.address).join(", ")}`] : []),
+      // Printed because the reason to set one is that a mail client does
+      // something with it, and the log driver is where that gets checked before
+      // anything is sent for real.
+      ...Object.entries(message.headers ?? {}).map(([n, v]) => `${n}: ${v}`),
       ...(message.attachments?.length
         ? [
             `Files:   ${message.attachments

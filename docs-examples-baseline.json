@@ -5325,6 +5325,12 @@
     },
     {
       "file": "docs/notifications.md",
+      "heading": "Custom headers, and the unsubscribe button",
+      "ordinal": 0,
+      "hash": "c63c9f157foc"
+    },
+    {
+      "file": "docs/notifications.md",
       "heading": "database",
       "ordinal": 0,
       "hash": "3ikvzo9e5mql"

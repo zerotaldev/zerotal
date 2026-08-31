@@ -160,3 +160,50 @@ describe("MailMessage — recipients", () => {
     expect(sent[0]!.to[0]!.address).toBe("someone@else.local");
   });
 });
+
+describe("MailMessage.header()", () => {
+  it("carries custom headers into the payload", () => {
+    const payload = new MailMessage()
+      .subject("Digest")
+      .header("List-Unsubscribe", "<https://app.test/u/abc>")
+      .header("List-Unsubscribe-Post", "List-Unsubscribe=One-Click")
+      .toPayload({ address: "app@test" }, [{ address: "ada@test" }]);
+
+    expect(payload.headers).toEqual({
+      "List-Unsubscribe": "<https://app.test/u/abc>",
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    });
+  });
+
+  it("omits the key entirely when no header is set", () => {
+    const payload = new MailMessage()
+      .subject("Plain")
+      .toPayload({ address: "app@test" }, [{ address: "ada@test" }]);
+
+    expect(payload.headers).toBeUndefined();
+  });
+
+  it("replaces rather than duplicates on a repeated name", () => {
+    const payload = new MailMessage()
+      .header("X-Run", "first")
+      .header("X-Run", "second")
+      .toPayload({ address: "app@test" }, [{ address: "ada@test" }]);
+
+    expect(payload.headers).toEqual({ "X-Run": "second" });
+  });
+
+  it("throws where the value is written, not at send time", () => {
+    // The stack of a queue worker three hops away names the worker, not the code
+    // that set the header.
+    expect(() => new MailMessage().header("Subject", "sneaky")).toThrow("set by the mail driver");
+    expect(() => new MailMessage().header("X-A\r\nBcc", "evil")).toThrow("not a valid header name");
+  });
+
+  it("folds CRLF in a value to a space", () => {
+    const payload = new MailMessage()
+      .header("X-Trace", "a\r\nb")
+      .toPayload({ address: "app@test" }, [{ address: "ada@test" }]);
+
+    expect(payload.headers).toEqual({ "X-Trace": "a b" });
+  });
+});

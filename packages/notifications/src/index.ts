@@ -38,6 +38,10 @@ export type {
   MailAttachment,
   AddressInput,
 } from "./drivers/MailDriver.ts";
+// Exported for the same reason the drivers above are: writing a custom transport
+// is a supported thing to do, and a custom transport has to refuse the same header
+// names the built-in ones refuse.
+export { RESERVED_MAIL_HEADERS, resolveHeaders } from "./drivers/MailDriver.ts";
 
 export { SendNotificationJob } from "./SendNotificationJob.ts";
 export { BroadcastNotificationJob } from "./BroadcastNotificationJob.ts";

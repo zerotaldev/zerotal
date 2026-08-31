@@ -390,6 +390,47 @@ async toMail(_n: Notifiable): Promise<MailMessage> {
 }
 ```
 
+#### Custom headers, and the unsubscribe button
+
+`header(name, value)` sets a header the driver does not build itself. The one this
+exists for is `List-Unsubscribe`:
+
+```ts fragment
+// in a Notification
+toMail(n: Notifiable): MailMessage {
+  return new MailMessage()
+    .subject("Your weekly digest")
+    .line("Here is what happened this week.")
+    .header("List-Unsubscribe", `<https://app.test/unsubscribe/${n.unsubscribeToken}>`)
+    .header("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+}
+```
+
+Gmail and Yahoo draw their native unsubscribe control — the one beside the sender's
+name, not the one in your footer — from that header, and there is no other way to ask
+for it. Send both headers, not just the first: alone, `List-Unsubscribe` leaves the
+recipient a link to follow, and only the pair produces a control that resolves in one
+press. The URL must accept a `POST` with no body and unsubscribe on the spot, with no
+confirmation page.
+
+It is worth more than the footer link it duplicates. A recipient who cannot find the
+control marks the message as spam instead, and that judgement attaches to the sending
+domain and affects delivery of everything else it sends — including the mail people do
+want. The two paths out of a mailing list are not equivalent for the sender.
+
+Header names the drivers build themselves are refused rather than sent twice, because
+a second `Subject` is an ambiguous message rather than an override. Those names are
+`RESERVED_MAIL_HEADERS`, and the error names the `MailMessage` method to use instead
+where there is one. The check runs when you set the header, so the throw carries the
+stack of the code that wrote it rather than of a queue worker three hops away — and
+again in the driver, since a `MailPayload` can be built without ever passing through
+`MailMessage`.
+
+Values are folded to a single line: a CR or LF in a header value ends the header and
+lets the rest be read as further headers, which is how a `Bcc` gets added by someone
+who was only supposed to be supplying a tracking ID. Writing a custom transport?
+Call `resolveHeaders()` on the payload's headers and it does both checks for you.
+
 ### database
 
 Implement `toDatabase(notifiable)` returning a plain object. The notification is

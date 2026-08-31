@@ -1,4 +1,5 @@
 import type { MailDriver, MailPayload, MailAddress } from "./MailDriver.ts";
+import { resolveHeaders } from "./MailDriver.ts";
 import { SmtpResponseError, SmtpConnectionError } from "../errors.ts";
 
 /** How long to wait for any single SMTP reply before giving up. */
@@ -615,6 +616,15 @@ function buildRawMessage(msg: MailPayload): string {
     `Message-ID: <${crypto.randomUUID()}@${msg.from.address.split("@")[1] ?? "localhost"}>`,
   );
   lines.push("MIME-Version: 1.0");
+
+  // Re-validated here, not just in `MailMessage.header()`, because a payload can
+  // reach a driver without ever passing through the builder — a job deserialising
+  // one, or an app constructing a MailPayload literal. Placing them after the
+  // headers this function owns would not be enough on its own: a second `Subject`
+  // is still a second `Subject`, wherever it sits.
+  for (const [name, value] of Object.entries(resolveHeaders(msg.headers ?? {}))) {
+    lines.push(`${name}: ${encodeHeaderValue(value)}`);
+  }
 
   const attachments = msg.attachments ?? [];
   const body = renderBody(msg);

@@ -8,6 +8,36 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`MailMessage.header()` and `MailPayload.headers`** — set a header the driver does
+  not build itself. `MailPayload` had `to`/`from`/`subject`/`text`/`html`/`cc`/`bcc`/
+  `replyTo`/`attachments` and no way to add one, so a team that wanted
+  `List-Unsubscribe` had to patch a vendored copy of this package and settled for a
+  footer link instead.
+
+  That is not an equivalent substitute. Gmail and Yahoo draw their native unsubscribe
+  control from the header, and a recipient who cannot find a control marks the message
+  as spam instead — a judgement that attaches to the sending domain and degrades
+  delivery of everything else it sends. Pair it with `List-Unsubscribe-Post` for the
+  one-click form both providers now expect.
+
+  Wired through all three drivers: SMTP writes them into the message, Resend sends
+  them as the API's `headers` object, and the log driver prints them, since the reason
+  to set one is that a client does something with it and the log driver is where that
+  gets checked before anything is sent for real.
+
+  Names the drivers build themselves are refused rather than sent twice — a second
+  `Subject` is an ambiguous message, not an override — and the error names the
+  `MailMessage` method to use instead. The list is exported as
+  `RESERVED_MAIL_HEADERS`, with `resolveHeaders()` beside it for anyone writing a
+  custom transport. Validation runs when the header is set, so the throw carries the
+  stack of the code that wrote it rather than of a queue worker three hops away, and
+  again in the driver, because a payload can reach one without passing through
+  `MailMessage`. CR and LF in a value are folded to a space: left raw they end the
+  header and let the remainder be read as further headers, which is how a `Bcc`
+  arrives courtesy of whoever supplied a tracking ID.
+
 ## [1.11.0] — 2026-08-31
 
 ### Changed

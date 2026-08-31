@@ -1,6 +1,7 @@
 import { tryCurrentApp } from "@zerotal/core";
 import {
   resolveAddress,
+  resolveHeaders,
   type AddressInput,
   type MailAddress,
   type MailAttachment,
@@ -165,6 +166,7 @@ export class MailMessage {
   private _from?: MailAddress;
   private _replyTo?: MailAddress;
   private _attachments: MailAttachment[] = [];
+  private _headers: Record<string, string> = {};
 
   subject(text: string): this {
     this._subject = text;
@@ -255,6 +257,44 @@ export class MailMessage {
   }
 
   /**
+   * Set a header on the message, beyond the ones the driver builds itself.
+   *
+   * The header this exists for is `List-Unsubscribe`. Gmail and Yahoo draw their
+   * native unsubscribe control — the one beside the sender's name, not the one in
+   * your footer — from that header, and there is no other way to ask for it. Bulk
+   * senders are required to send it; everyone else benefits from a recipient who
+   * unsubscribes instead of reporting spam, because the second one costs the
+   * sending domain its reputation and the first does not.
+   *
+   * Pair it with `List-Unsubscribe-Post` to get the one-click form, which is what
+   * both providers now expect: the header alone leaves the recipient a `mailto:`
+   * or a link to follow, and only the pair produces a button that resolves in one
+   * press.
+   *
+   * Header names the driver builds itself are refused rather than sent twice —
+   * see {@link RESERVED_MAIL_HEADERS}. Calling this twice with the same name
+   * replaces the value, since a driver cannot know which of two was meant.
+   *
+   * @param name - Header name. Printable ASCII, no spaces or colons.
+   * @param value - Header value. CR and LF are folded to a space.
+   * @throws When the name is reserved or malformed.
+   *
+   * @example
+   * ```ts
+   * new MailMessage()
+   *   .subject("Your weekly digest")
+   *   .header("List-Unsubscribe", `<https://app.test/unsubscribe/${token}>, <mailto:unsub@app.test>`)
+   *   .header("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+   * ```
+   */
+  header(name: string, value: string): this {
+    // Validated here rather than at send time so the throw carries the stack of
+    // the code that wrote the header, not of a queue worker three hops away.
+    Object.assign(this._headers, resolveHeaders({ [name]: value }));
+    return this;
+  }
+
+  /**
    * Attach a file to the message.
    *
    * @example
@@ -321,6 +361,7 @@ export class MailMessage {
       ...(this._bcc.length > 0 ? { bcc: this._bcc } : {}),
       ...(this._replyTo ? { replyTo: this._replyTo } : {}),
       ...(this._attachments.length > 0 ? { attachments: this._attachments } : {}),
+      ...(Object.keys(this._headers).length > 0 ? { headers: this._headers } : {}),
     };
   }
 

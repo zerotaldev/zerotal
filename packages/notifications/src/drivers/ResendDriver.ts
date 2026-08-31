@@ -1,4 +1,5 @@
 import type { MailDriver, MailPayload } from "./MailDriver.ts";
+import { resolveHeaders } from "./MailDriver.ts";
 import { NotificationDeliveryError } from "../errors.ts";
 
 /**
@@ -21,6 +22,12 @@ export class ResendDriver implements MailDriver {
     if (message.cc?.length) body["cc"] = message.cc.map((a) => a.address);
     if (message.bcc?.length) body["bcc"] = message.bcc.map((a) => a.address);
     if (message.replyTo) body["reply_to"] = message.replyTo.address;
+    // Resend takes custom headers as an object and sets the rest itself, so the
+    // reserved names are refused here too rather than handed to the API to
+    // silently drop or duplicate.
+    if (message.headers && Object.keys(message.headers).length > 0) {
+      body["headers"] = resolveHeaders(message.headers);
+    }
     if (message.html !== undefined) body["html"] = message.html;
     if (message.text !== undefined) body["text"] = message.text;
     if (message.attachments?.length) {

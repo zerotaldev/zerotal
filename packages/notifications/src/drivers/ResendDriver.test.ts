@@ -182,3 +182,43 @@ describe("ResendDriver — failure", () => {
     await expect(new ResendDriver("k").send(payload())).resolves.toBeUndefined();
   });
 });
+
+describe("ResendDriver — custom headers", () => {
+  it("sends them as the API's headers object", async () => {
+    const calls = capture();
+    await new ResendDriver("k").send(
+      payload({
+        headers: {
+          "List-Unsubscribe": "<https://app.test/u/abc>",
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      }),
+    );
+
+    expect(sentBody(calls).headers).toEqual({
+      "List-Unsubscribe": "<https://app.test/u/abc>",
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    });
+  });
+
+  it("omits the field when there are none, rather than sending an empty object", async () => {
+    const calls = capture();
+    await new ResendDriver("k").send(payload());
+
+    expect(sentBody(calls)).not.toHaveProperty("headers");
+  });
+
+  it("refuses a reserved header rather than letting the API decide", async () => {
+    capture();
+    await expect(
+      new ResendDriver("k").send(payload({ headers: { From: "someone@else.test" } })),
+    ).rejects.toThrow("set by the mail driver");
+  });
+
+  it("strips CRLF from a value", async () => {
+    const calls = capture();
+    await new ResendDriver("k").send(payload({ headers: { "X-Trace": "a\r\nb" } }));
+
+    expect(sentBody(calls).headers).toEqual({ "X-Trace": "a b" });
+  });
+});

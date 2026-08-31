@@ -289,6 +289,42 @@ doing something quiet.
    If it really is a new migration, give it a name that does not collide once the
    leading digits are removed.
 
+## 1.11.2
+
+One breaking change, and it is in a release that should not have carried one.
+
+**`countTokens` returns `number | null`.** `Ai.countTokens()` and
+`AiDriver.countTokens()` used to return `number`, with `0` standing in for "this
+provider cannot count". Only Anthropic has a counting endpoint, and `0` is also a real
+count for an empty prompt — so the old return value could not tell you which it meant,
+and a budget built on it was quietly wrong for every other provider.
+
+```ts fragment
+// before
+const tokens = await Ai.countTokens(prompt);
+if (tokens > 1000) shorten();
+
+// after
+const tokens = await Ai.countTokens(prompt);
+if (tokens !== null && tokens > 1000) shorten();
+```
+
+A custom `AiDriver` needs no change — returning `number` still satisfies
+`Promise<number | null>`. Only callers do.
+
+**Why this is in a patch.** It was made while `@zerotal/ai` was still `experimental`
+and therefore outside the compatibility promise, in the same release that then promoted
+the package to `stable`. That ordering is real and it is not a distinction anyone
+installing 1.11.2 can observe: what arrives is a patch that breaks a build. The rule
+stands as written — a patch does not break — and this release is recorded as the
+exception rather than as a reinterpretation of it. See
+[the support policy](/docs/support-policy#releases-and-versioning).
+
+Everything else in 1.11.2 is additive. `@zerotal/ai`'s other surface change — `toSchema`,
+`strippedConstraints`, `resetSpend` and `resetStats` becoming `@internal` — leaves those
+exports working; they are no longer covered by the promise, which is different from
+being gone.
+
 ## The managed zt.ts
 
 `zt.ts` is framework-managed — the header says _do not modify_. If a release

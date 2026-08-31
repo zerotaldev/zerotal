@@ -10,6 +10,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [1.11.2] — 2026-08-31
 
+### Changed — **BREAKING**
+
+- **`countTokens` returns `number | null`.** Only Anthropic has a counting endpoint, and
+  `0` — the old value from the others — is also a real count for an empty prompt, so the
+  return value could not distinguish "no tokens" from "cannot count". Callers need a
+  `null` check; a custom driver returning `number` still satisfies the contract.
+
+  This shipped in a patch and should have been a minor.
+
+### Changed — **INTERNAL**
+
+- **`toSchema`, `strippedConstraints`, `resetSpend` and `resetStats` are `@internal`.**
+  Still exported, still working — no longer promised. This is the surface narrowing that
+  had to precede the `stable` promotion, because narrowing after it is itself breaking.
+
 ### Changed
 
 - **Promoted to `stable`.** The public API now follows the compatibility promise in

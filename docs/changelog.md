@@ -101,6 +101,37 @@ which is the only thing between a user's prompt and a log that outlives the requ
 Both hold up — the parser reassembles a frame whose terminator is split across chunks
 and a UTF-8 sequence cut mid-character.
 
+#### **BREAKING** — `countTokens` can return `null`
+
+`Ai.countTokens()` and `AiDriver.countTokens()` return `number | null` rather than
+`number`. Only Anthropic has a counting endpoint; the other drivers returned `0`, which
+is also a real count for an empty prompt, so the old value was a number you could divide
+by and budget against without ever being told it meant "unsupported".
+
+```ts
+// before
+const tokens = await Ai.countTokens(prompt);
+if (tokens > 1000) shorten();
+
+// after
+const tokens = await Ai.countTokens(prompt);
+if (tokens !== null && tokens > 1000) shorten();
+```
+
+A custom `AiDriver` implementation compiles unchanged — returning `number` still
+satisfies `Promise<number | null>`. It is callers who need the check.
+
+**This should have been a minor.** It shipped in a patch, which the versioning scheme
+says cannot carry a break; see [the note in the upgrade guide](/docs/upgrade#1-11-2).
+
+#### **INTERNAL** — four `@zerotal/ai` exports left the promised surface
+
+`toSchema`, `strippedConstraints`, `resetSpend` and `resetStats` are `@internal`. They
+are still exported and still work, so nothing breaks — they are simply no longer
+covered by the compatibility promise, which is the narrowing that had to happen before
+the package could be promoted at all. Reach for `AiFake` where a test used `resetSpend`
+or `resetStats`; it is the seam built for that.
+
 ### Fixed — the gates
 
 - **The release workflow ran three checks; the pull-request workflow ran fifteen.** So

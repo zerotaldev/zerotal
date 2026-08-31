@@ -7749,6 +7749,12 @@
     },
     {
       "file": "docs/upgrade.md",
+      "heading": "1.11.2",
+      "ordinal": 0,
+      "hash": "1chf3ban1kv1"
+    },
+    {
+      "file": "docs/upgrade.md",
       "heading": "1.9 to 1.10",
       "ordinal": 0,
       "hash": "b1fyz5ddho91"
@@ -7976,6 +7982,12 @@
       "heading": "First-party Socket",
       "ordinal": 0,
       "hash": "toc0f7kvurk0"
+    },
+    {
+      "file": "docs/changelog.md",
+      "heading": "**BREAKING** — `countTokens` can return `null`",
+      "ordinal": 0,
+      "hash": "1chf3ban1kv1"
     },
     {
       "file": "docs/changelog.md",

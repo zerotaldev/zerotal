@@ -8,6 +8,37 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-08-31
+
+### Changed — **BREAKING**
+
+- **A boolean written to a column declared to hold text is refused.** A bare
+  `@column()` resolves to `{ type: "string" }`, so a boolean property decorated with
+  one was stored as text — and a text column has text affinity, so `false` was stored
+  as `"0"`, which is truthy in JavaScript. Every `if (model.flag)` took the wrong
+  branch for a stored `false`, on every row, with nothing in the app or the database
+  registering a fault. An app found it when a feature flag read as enabled for every
+  record that had it turned off.
+
+  There is no correct coercion — `0` becomes `"0"` and `"false"` is truthy too — so
+  the value cannot survive the round trip and the write raises `ColumnTypeError`
+  instead, naming the property and the fix: `@column("boolean")`.
+
+  The decorator cannot infer it for you. `declare active: boolean` erases the
+  TypeScript type at runtime, so a bare `@column()` on a boolean is indistinguishable
+  from one on a string until a value arrives. Declaring the type is the only signal
+  there is.
+
+  An explicit `@column({ type: "string", cast: "boolean" })` is honoured — that is
+  someone saying what they meant. The guard is for the column that says nothing.
+
+  **This release stops new bad writes; it does not migrate old rows.** See
+  [the upgrade guide](https://zerotal.dev/docs/upgrade#1-11-to-1-12).
+
+### Added
+
+- **`ColumnTypeError`**, for the above.
+
 ## [1.11.0] — 2026-08-31
 
 ### Changed

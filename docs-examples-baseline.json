@@ -7749,6 +7749,12 @@
     },
     {
       "file": "docs/upgrade.md",
+      "heading": "1.11 to 1.12",
+      "ordinal": 0,
+      "hash": "2aimlfljb5n7"
+    },
+    {
+      "file": "docs/upgrade.md",
       "heading": "1.11.2",
       "ordinal": 0,
       "hash": "1chf3ban1kv1"

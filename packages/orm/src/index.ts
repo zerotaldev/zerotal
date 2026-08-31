@@ -206,6 +206,7 @@ export {
   MigrationError,
   StateError,
   UnsupportedDialectError,
+  ColumnTypeError,
 } from "./errors/index.ts";
 
 // Provider

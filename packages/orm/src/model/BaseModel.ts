@@ -30,6 +30,7 @@ import {
   ModelNotFoundError,
   RelationNotLoadedError,
   MassAssignmentError,
+  ColumnTypeError,
 } from "../errors/index.ts";
 import { type ManyToMany } from "./relations/RelationRegistry.ts";
 import { installReactiveAccessors, type ColumnOptions } from "./decorators/column.ts";
@@ -396,6 +397,13 @@ function _serializeForWrite(
     serializedVal = castOpt.set(val);
   } else if (typeof castOpt === "string") {
     serializedVal = applyCastSet(val, castOpt, model ? `${model}.${key}` : key);
+  } else if (typeof val === "boolean" && (colType === "string" || colType === "text")) {
+    // No coercion is correct here, so the write is refused rather than made wrong.
+    // A text column has text affinity: `0` is stored as "0", and "0" is truthy in
+    // JavaScript, so a stored `false` reads back as true on every row. "false" has
+    // the same problem. A bare `@column()` resolves to `{ type: "string" }`, which
+    // is how a boolean property ends up here looking perfectly declared.
+    throw new ColumnTypeError(model ? `${model}.${key}` : key, colType);
   } else if (colType === "boolean" && val !== null && val !== undefined) {
     serializedVal = val ? 1 : 0;
   } else if (colType === "json" && val !== null) {

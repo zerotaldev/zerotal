@@ -289,6 +289,49 @@ doing something quiet.
    If it really is a new migration, give it a name that does not collide once the
    leading digits are removed.
 
+## 1.11 to 1.12
+
+One breaking change, and it is the intended kind: a minor, announced, with the reason.
+
+**A boolean written to a text column is refused.** A bare `@column()` resolves to
+`{ type: "string" }`, so a boolean property decorated with one was stored as text —
+and a text column has text affinity, so `false` was stored as `"0"`, which is truthy
+in JavaScript. Every `if (model.flag)` on such a column took the wrong branch for a
+stored `false`, on every row, with nothing in the app or the database registering a
+fault. An app found it when a feature flag read as enabled for every record that had
+it turned off.
+
+```ts fragment
+// in a model class body — before, and silently wrong
+@column() declare active: boolean;
+
+// after
+@column("boolean") declare active: boolean;
+```
+
+There is no correct coercion: `0` becomes `"0"` and `"false"` is truthy too, so the
+value cannot survive the round trip. The write now throws `ColumnTypeError`, naming
+the property and the fix.
+
+### What to do before upgrading
+
+**Find your boolean properties whose `@column()` declares no type.** The decorator
+cannot find them for you — `declare active: boolean` erases the TypeScript type at
+runtime, so a bare `@column()` on a boolean is indistinguishable from one on a string
+until a value arrives. A search of your models for `@column()` with no argument, read
+against the property types beside them, is the reliable way.
+
+**The rows you already wrote are still text.** This release stops new bad writes; it
+does not migrate old ones. A column that has been holding `"0"` and `"1"` needs both
+the decorator fixed and the stored values converted — on SQLite,
+`UPDATE widgets SET active = CAST(active AS INTEGER)` after the column type is
+corrected. Until then those rows keep reading truthy, which is the behaviour you are
+upgrading to escape.
+
+**If a text column really should hold a boolean**, say so explicitly and it is
+honoured: `@column({ type: "string", cast: "boolean" })`. The guard is for the column
+that says nothing, not for every string column.
+
 ## 1.11.2
 
 One breaking change, and it is in a release that should not have carried one.

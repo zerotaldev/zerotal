@@ -5208,6 +5208,13 @@ class ColumnBuilder = {
   wantsIndex: boolean
 }
 
+class ColumnTypeError = {
+  new (column: string, declared: string): ColumnTypeError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
 class DatabaseProvider = {
   new (app: Application): DatabaseProvider
   static dependsOn?: (new (app: Application) => ServiceProvider)[]

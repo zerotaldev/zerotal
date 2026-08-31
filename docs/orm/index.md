@@ -227,6 +227,34 @@ so it is a **string**. TypeScript cannot catch either — the decorator does not
 constrain the property type — so an annotation that disagrees compiles fine and
 fails at the first `.diffForHumans()` or arithmetic.
 
+#### A boolean needs `@column("boolean")`
+
+A bare `@column()` resolves to `{ type: "string" }` — the right default for the common
+case, and a trap for a boolean. Writing one to a text column is **refused**:
+
+```
+[Zerotal ORM] Widget.active is declared as a `string` column and was given a boolean.
+A text column stores that as "0"/"1", and "0" is truthy in JavaScript — so a stored
+`false` would read back as true and every `if (…)` on it would take the wrong branch.
+Declare the column's type instead: `@column("boolean")`.
+```
+
+There is no correct coercion, which is why it refuses rather than converting. SQLite
+gives a text column text affinity, so an integer `0` written there is stored as the
+string `"0"`, and `"0"` is truthy in JavaScript. `"false"` is truthy too. The value
+cannot survive the round trip in either direction, so the only honest options are to
+refuse the write or to let a stored `false` read back as `true` — which is what used to
+happen, on every row, with nothing in the app or the database registering a fault.
+
+The decorator cannot infer the type for you: `declare active: boolean` erases the
+TypeScript type at runtime, so the property looks the same to a decorator whether it
+holds a boolean or a string. Declaring the type is the only signal there is.
+
+If you genuinely want the text `"true"`/`"false"`, assign a string. If you want a
+boolean stored in a text column on purpose, say so with a cast —
+`@column({ type: "string", cast: "boolean" })` is honoured, because it is someone
+stating what they meant.
+
 ### Indexes and uniqueness
 
 Declare constraints on the column and schema generation emits them, so `migrate:generate` produces a schema with the guarantees your application depends on rather than a bare set of columns:
@@ -648,6 +676,15 @@ Type helpers exported from `@zerotal/orm`:
 | `InsertPayload<T>`    | The shape accepted by `create()`.                                   |
 | `UpdatePayload<T>`    | The shape accepted by `fill()` / `update()`.                        |
 | `DatabaseConfigShape` | The `config/database.ts` configuration type.                        |
+
+### Errors
+
+| Error                    | Thrown when                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `ModelNotFoundError`     | `findOrFail()` / `firstOrFail()` found no row.                                                         |
+| `MassAssignmentError`    | `fill()` / `create()` received an attribute the model's rules do not allow.                            |
+| `ColumnTypeError`        | A boolean was written to a column declared to hold text — see [above](#a-boolean-needs-columnboolean). |
+| `RelationNotLoadedError` | A relation was read without being loaded, under strict relation access.                                |
 
 ### Commands
 

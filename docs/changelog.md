@@ -27,6 +27,57 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.12.0 — 2026-08-31
+
+One change, deliberately alone: the minor exists to carry it.
+
+A field report from an app running in production found a feature flag reading as
+enabled for every record that had it turned off. Nothing errored, nothing logged, and
+the database was doing exactly what it had been asked to.
+
+### Changed — BREAKING
+
+- **A boolean written to a column declared to hold text is refused.**
+
+  A bare `@column()` resolves to `{ type: "string" }` — the right default for the
+  common case, and the wrong one for a boolean. A text column has text affinity, so
+  `false` was stored as the string `"0"`, and `"0"` is truthy in JavaScript. Every
+  `if (model.flag)` on such a column took the wrong branch for a stored `false`, on
+  every row, silently.
+
+  There is no correct coercion. `0` becomes `"0"`; `"false"` is truthy too. The value
+  cannot survive the round trip, so the only honest options were to refuse the write or
+  to keep letting a stored `false` read back as `true`. It now raises
+  `ColumnTypeError`, naming the property and the fix:
+
+  ```
+  [Zerotal ORM] Widget.active is declared as a `string` column and was given a boolean.
+  A text column stores that as "0"/"1", and "0" is truthy in JavaScript — so a stored
+  `false` would read back as true and every `if (…)` on it would take the wrong branch.
+  Declare the column's type instead: `@column("boolean")`.
+  ```
+
+  The decorator cannot pick for you: `declare active: boolean` erases the TypeScript
+  type at runtime, so the property looks identical to a decorator whether it holds a
+  boolean or a string. Declaring the type is the only signal there is — which is why
+  the mistake is worth refusing loudly rather than guessing at.
+
+  An explicit `@column({ type: "string", cast: "boolean" })` is still honoured. That is
+  someone stating what they meant; the guard is for the column that says nothing.
+
+### Before you upgrade
+
+- **Find the boolean properties whose `@column()` declares no type.** Nothing can find
+  them for you, for the reason above — a search of your models for a bare `@column()`,
+  read against the property types beside them, is the reliable way.
+- **The rows you already wrote are still text.** This stops new bad writes; it does not
+  migrate old ones. Those rows keep reading truthy until they are converted. The
+  [upgrade guide](/docs/upgrade#1-11-to-1-12) has the statement.
+
+### Added
+
+- **`ColumnTypeError`** — exported, so an app can catch it by class.
+
 ## 1.11.2 — 2026-08-31
 
 `@zerotal/ai` is `stable`, and the release that promotes it is the one that fixes five

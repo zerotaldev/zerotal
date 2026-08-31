@@ -27,6 +27,50 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.13.2 — 2026-08-31
+
+From a production field report at 1.12.0 — an Inertia + React app on SQLite, 117 routes,
+1256 tests, live behind Caddy. Six items, of which one was still open. The other five had
+been closed between 1.10.0 and 1.13.0 and are listed at the end, because a report that
+carries items forward is worth answering precisely rather than generally.
+
+### Fixed
+
+- **`Inertia.stream()` honours `X-Inertia`.** It answered every request with `text/html`,
+  including the XHR a running Inertia client sends. So the obvious way to adopt server
+  rendering — point a route at `stream` — broke client-side navigation _to_ that route.
+
+  The shape of the failure is the reason it survived: the first load looks perfect, which
+  is what a person checks. The second click does nothing. It fails only for somebody
+  already in the app, silently, and only once the route otherwise works.
+
+  `render` and `stream` now share the branch that writes the page object rather than one
+  of them having it, which is precisely how they came apart. An app that wrote a header
+  check in front of the call can delete it; it does no harm either way.
+
+### Verified, not changed
+
+Five of the six items were already closed. Each was re-checked against this release rather
+than taken on trust, because the report carried them forward from 1.9.0:
+
+- **STARTTLS on port 587** — fixed in 1.11.0, with `SmtpStartTls.test.ts` covering it. The
+  cause was that a write issued before the handshake completes is dropped.
+- **`intended_url` across `Auth.attempt()`** — fixed in 1.11.0. `attempt` delegates to
+  `login`, `regenerate()` deliberately carries the data bag, and only privilege markers are
+  swept. `intendedFlow.test.ts` runs the three steps in order against a real session,
+  including the ID rotation.
+- **`bun install --ignore-scripts`** — documented in the
+  [deployment guide](/docs/deployment).
+- **A default test timeout** — `zt test` has passed `--timeout=30000` for some time, and
+  [the testing guide](/docs/testing#bun-test-vs-bun-zt-test) already names the two
+  alternatives that do not work: `bunfig.toml`'s `[test] timeout`, and
+  `setDefaultTimeout()` in a preload.
+- **`postForm` refusing a `File`** — it has thrown, naming `multipart()`, since 1.0.2.
+
+The report's other upload concern — that `http.file()` consumes the multipart stream, so a
+later `body()` reads empty — **does not reproduce**: `_parseFormData()` caches, and reading
+the file first is safe. A test now pins that, since nothing had covered that order.
+
 ## 1.13.1 — 2026-08-31
 
 One addition, found by sizing a job rather than doing it.

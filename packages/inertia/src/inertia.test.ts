@@ -720,6 +720,42 @@ describe("inertiaStream() — success path", () => {
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("</body>");
   });
+
+  it("answers an X-Inertia XHR with the page object, not a document", async () => {
+    // Server rendering is about the *first* arrival. A running client asks for a
+    // page object, and this used to hand it a document — so the cold load looked
+    // perfect and the next click did nothing, for someone already in the app.
+    const ctx = fakeCtx("http://localhost/test-stream", {
+      headers: { "X-Inertia": "true" },
+    });
+    await inRequest(ctx, () => inertiaStream("TestPage", { title: "Streamed" }));
+
+    expect(ctx.response?.headers.get("Content-Type")).toBe("application/json");
+    expect(ctx.response?.headers.get("X-Inertia")).toBe("true");
+    // Without Vary a browser caches the JSON as this URL's HTML and shows a raw
+    // page object on Back or Refresh.
+    expect(ctx.response?.headers.get("Vary")).toBe("X-Inertia");
+
+    const page = (await ctx.response!.json()) as { component: string; props: unknown };
+    expect(page.component).toBe("TestPage");
+    expect(page.props).toMatchObject({ title: "Streamed" });
+  });
+
+  it("answers the XHR identically whether the route used render or stream", async () => {
+    // The two entry points implement one protocol. Anything that is true of one
+    // half on `render` has to be true of it on `stream`, or picking `stream` to get
+    // SSR silently changes how navigation behaves.
+    const viaStream = fakeCtx("http://localhost/same", { headers: { "X-Inertia": "true" } });
+    await inRequest(viaStream, () => inertiaStream("TestPage", { title: "Same" }));
+
+    const viaRender = fakeCtx("http://localhost/same", { headers: { "X-Inertia": "true" } });
+    await inRequest(viaRender, () => inertia("TestPage", { title: "Same" }));
+
+    expect(await viaStream.response!.json()).toEqual(await viaRender.response!.json());
+    expect(viaStream.response!.headers.get("Content-Type")).toBe(
+      viaRender.response!.headers.get("Content-Type"),
+    );
+  });
 });
 
 // ── React <Head> on the server ───────────────────────────────────────────────

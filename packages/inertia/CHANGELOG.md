@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.13.2] — 2026-08-31
+
+### Fixed
+
+- **`Inertia.stream()` honours `X-Inertia`.** It answered every request with
+  `text/html`, including the XHR a running Inertia client sends — so pointing a route at
+  it to get server rendering broke client-side navigation _to_ that route.
+
+  The shape of the failure is why it went unnoticed: the first load looks perfect, which
+  is what a person checks, and the second click does nothing. It fails for people already
+  in the app, silently, and only after the route works.
+
+  `render` and `stream` now share the branch that writes the page object, rather than one
+  of them having it — which is exactly how they came apart.
+
 ## [1.11.0] — 2026-08-31
 
 ### Added

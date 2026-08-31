@@ -89,12 +89,23 @@ export class PostController {
 | Response body  | Fully buffered string    | Streaming `ReadableStream`         |
 | TTFB           | Immediate                | After the shell is ready           |
 | Page `<Head>`  | Client only              | Collected into the served `<head>` |
-| XHR navigation | JSON (the normal path)   | N/A — only the first-page document |
+| XHR navigation | JSON (the normal path)   | JSON — the same page object        |
 
-For XHR navigations (`X-Inertia: true`), keep using `inertia()` — streaming only
-benefits the initial HTML document load.
+**Both implement the whole protocol.** An `X-Inertia: true` request gets the page
+object as JSON from either one; the streaming half applies to the first arrival,
+which is the only load that renders a document.
+
+That means a route can be moved to `inertiaStream()` for its cold load without
+anything else changing. Until 1.13.2 it could not: `inertiaStream()` answered every
+request with `text/html`, including the XHR, so pointing a route at it broke
+client-side navigation _to_ that route. The first load looked perfect — which is what
+a person checks — and the second click did nothing, for somebody already in the app.
+Apps that hit this wrote a header check in front of the call; that workaround still
+works and is no longer needed.
 
 > **Tip** — Stream the heaviest landing pages and leave everything else on `inertia()`.
+> Streaming costs TTFB on a page that is mostly shell, so it is a choice per route
+> rather than a global default.
 
 ## Page metadata: `<Head>` on the server
 

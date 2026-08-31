@@ -1,4 +1,5 @@
 import { config, RequestContext } from "@zerotal/core";
+import type { HttpContext } from "@zerotal/core";
 import { assetVersion as coreAssetVersion } from "@zerotal/core/assets";
 import { statSync } from "node:fs";
 import { InertiaTemplateNotLoadedError, InvalidComponentError } from "./errors.ts";
@@ -267,6 +268,15 @@ async function _inertiaStream(component: string, props: Record<string, unknown>)
 
   const pageObject = await buildPageObject(component, props);
 
+  // A running Inertia client asks for a page object, not a document — server
+  // rendering is about the *first* arrival. Answering an `X-Inertia` XHR with HTML
+  // broke client-side navigation to any route that used this: the cold load looked
+  // right and the next click did nothing, silently, for someone already in the app.
+  if (ctx.request.headers.get("X-Inertia") === "true") {
+    _writeInertiaJson(ctx, pageObject);
+    return;
+  }
+
   const [prefix = "", suffix = ""] = _bustAssets(_htmlTemplate).split("<!-- @inertia -->");
 
   const { modPath, framework } = await resolvePageModule(_getPagesDir(), component);
@@ -405,6 +415,30 @@ export const inertia: PageRenderer = Object.assign(
   },
 );
 
+/**
+ * The XHR half of the Inertia protocol: a page object as JSON.
+ *
+ * Shared by {@link inertia} and {@link inertiaStream} rather than written twice,
+ * because having it in only one of them is precisely the bug this exists to close.
+ * `stream` used to answer every request with `text/html` — the first load looked
+ * perfect, which is what a person checks, and the *second* click did nothing,
+ * because the running client got a document where it expected a page object.
+ *
+ * `Vary: X-Inertia` is critical: without it a browser caches the JSON as the HTML
+ * for the same URL and shows a raw page object on Back or Refresh.
+ *
+ * @internal
+ */
+function _writeInertiaJson(ctx: HttpContext, pageObject: unknown): void {
+  ctx.response = new Response(JSON.stringify(pageObject), {
+    headers: {
+      "Content-Type": "application/json",
+      "X-Inertia": "true",
+      Vary: "X-Inertia",
+    },
+  });
+}
+
 async function _inertia(component: string, props: Record<string, unknown>): Promise<void> {
   const ctx = RequestContext.get();
   const isInertiaRequest = ctx.request.headers.get("X-Inertia") === "true";
@@ -412,16 +446,7 @@ async function _inertia(component: string, props: Record<string, unknown>): Prom
   const pageObject = await buildPageObject(component, props);
 
   if (isInertiaRequest) {
-    // Subsequent XHR navigation — JSON only
-    // Vary: X-Inertia is CRITICAL — prevents browser from caching
-    // JSON as HTML, which would show raw JSON on browser Back/Refresh
-    ctx.response = new Response(JSON.stringify(pageObject), {
-      headers: {
-        "Content-Type": "application/json",
-        "X-Inertia": "true",
-        Vary: "X-Inertia",
-      },
-    });
+    _writeInertiaJson(ctx, pageObject);
     return;
   }
 

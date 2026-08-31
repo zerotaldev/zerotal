@@ -49,6 +49,18 @@ class FeatureController {
     );
   }
 
+  /**
+   * Reads the file *before* the body, which is the order a person writing an
+   * upload route naturally reaches for. Whether the fields survive that is the
+   * question: `request.formData()` consumes the stream, so a second parse of the
+   * same request would see nothing.
+   */
+  async uploadThenBody(http: HttpContext): Promise<void> {
+    const file = await http.file("avatar");
+    const body = await http.body<{ amount?: string }>();
+    http.json({ file: file?.originalName ?? null, amount: body.amount ?? null }, 200);
+  }
+
   /** Always throws, to exercise exception capture. */
   boom(_http: HttpContext): void {
     throw new BoomError("payment declined");
@@ -106,6 +118,7 @@ beforeAll(async () => {
       Router.post("/form", FeatureController, "form");
       Router.put("/form", FeatureController, "form");
       Router.post("/upload", FeatureController, "upload");
+      Router.post("/upload-then-body", FeatureController, "uploadThenBody");
       Router.get("/boom", FeatureController, "boom");
       Router.get("/remember", FeatureController, "remember");
       Router.get("/whoami", FeatureController, "whoami");
@@ -194,6 +207,21 @@ describe("TestApp.multipart()", () => {
   it("reports no file when none was attached", async () => {
     const res = await app.multipart("/upload", { name: "Alice" });
     res.assertUnprocessable();
+  });
+
+  it("keeps the fields readable after the file has been read", async () => {
+    // `request.formData()` consumes the stream, so reading the file and then the
+    // body would see an empty body if the parse were not cached. The failure that
+    // shape produces is quiet: with both fields optional, the upload lands and the
+    // value typed beside it silently arrives null.
+    const res = await app.multipart("/upload-then-body", {
+      amount: "1500",
+      avatar: fakeFile.image("receipt.png"),
+    });
+
+    res.assertOk();
+    res.assertJsonPath("file", "receipt.png");
+    res.assertJsonPath("amount", "1500");
   });
 });
 

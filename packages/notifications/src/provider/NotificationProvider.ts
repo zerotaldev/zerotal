@@ -7,6 +7,7 @@ import { installNotificationsObservability } from "../observability.ts";
 import { installNotificationStats } from "../stats.ts";
 import { installNotificationsAdmin } from "../admin.ts";
 import { mailDriverCheck } from "../doctor.ts";
+import { notificationsTableCheck } from "../tableDoctor.ts";
 
 declare module "@zerotal/core" {
   interface ContainerBindings {
@@ -40,6 +41,7 @@ export class NotificationProvider extends ServiceProvider {
     // `zt doctor`, and through it `zt deploy`: mail going to a log file in
     // production is the quietest failure this package has.
     this.app.registerDoctorCheck?.(mailDriverCheck);
+    this.app.registerDoctorCheck?.(notificationsTableCheck);
   }
 
   override async onBooted(): Promise<void> {

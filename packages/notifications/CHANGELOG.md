@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The database channel is built on first use, not at construction.** Registering the
+  provider used to open a `DatabaseChannel` against `database.table` — default
+  `notifications` — and create that table, whether or not any notification ever routed
+  there. An app that never uses the channel now never touches the table, and the
+  manager no longer resolves a database connection while it is being constructed.
+
+### Added
+
+- **A doctor check for a `notifications` table that is not the framework's.**
+  `notifications` is a very ordinary name for a table an app already owns, and one
+  app's was a completely different shape — `household_id`, `title`, `body`,
+  `action_url`, with an in-app inbox reading it. The only thing between the
+  framework's channel and a wrong-shaped insert into that inbox was that no
+  notification's `channels()` happened to return `"database"`. A convention holding
+  back data corruption is a convention that will lose, so `zt doctor` now says so
+  before the first notification does. Silent when the table does not exist yet, which
+  is every fresh checkout.
+
 ## [1.10.0] — 2026-08-30
 
 ### Fixed

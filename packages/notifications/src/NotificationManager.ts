@@ -23,13 +23,29 @@ export class NotificationManager {
   private readonly _resolvers = new Map<string, ChannelResolver>();
   /** Resolved channel instances, memoized per name. */
   private readonly _channels = new Map<string, NotificationChannel>();
-  private readonly _db: DatabaseChannel;
+  /**
+   * The database channel, built on first use rather than at construction.
+   *
+   * It used to be built in the constructor, which meant every app that registered
+   * this provider opened a `DatabaseChannel` against `database.table` — default
+   * `notifications` — whether or not any notification ever routed there. `notifications`
+   * is a very ordinary name for a table an app already owns, and one app's is a
+   * completely different shape: `household_id`, `user_id`, `title`, `body`,
+   * `action_url`, with an in-app inbox reading it. The only thing standing between
+   * the framework's channel and a wrong-shaped insert into that inbox was that no
+   * notification's `channels()` happened to return `"database"`. A convention holding
+   * back data corruption is a convention that will lose.
+   *
+   * Building it lazily does not make the collision safe — `notificationsTableCheck`
+   * is what reports that — but it means an app that never uses the channel never
+   * touches the table, and it stops the manager resolving a database connection at
+   * construction time.
+   */
+  private _dbChannel: DatabaseChannel | undefined;
 
   constructor(private readonly config: NotificationConfigShape) {
-    this._db = new DatabaseChannel(config.database.table, _getConnection());
-
     this._resolvers.set("mail", () => new MailChannel(config.mail));
-    this._resolvers.set("database", () => this._db);
+    this._resolvers.set("database", () => this.database);
     this._resolvers.set("broadcast", () => new BroadcastChannel());
 
     this._resolvers.set("slack", () => {
@@ -241,7 +257,8 @@ export class NotificationManager {
 
   /** Expose the database channel for direct queries (unread, markAsRead). */
   get database(): DatabaseChannel {
-    return this._db;
+    this._dbChannel ??= new DatabaseChannel(this.config.database.table, _getConnection());
+    return this._dbChannel;
   }
 
   private async _dispatch(

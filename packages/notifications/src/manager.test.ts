@@ -83,6 +83,10 @@ describe("NotificationManager — channel failure isolation", () => {
       },
     }));
 
+    // Touching `.database` is what creates the table now: the channel is built on
+    // first use rather than in the constructor, so a provider registration no longer
+    // creates a table in the app's database before anything has asked it to.
+    void mgr.database;
     await new Promise<void>((r) => setTimeout(r, 10));
     await db`DELETE FROM iso_notifications`;
 

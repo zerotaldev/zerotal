@@ -82,7 +82,10 @@ export interface ColumnOptions {
    *
    * @default "string"
    */
-  type?: ColumnStorageType | ColumnShorthand | undefined;
+  // Spelled out rather than written as {@link ColumnStorageType}: this line is the
+  // recorded public surface, and replacing a union with an alias of identical members
+  // reads as a removal in the diff even though nothing changed.
+  type?: "string" | "text" | "number" | "boolean" | "datetime" | "json" | undefined;
   /** Mark this column as the table's primary key. */
   primary?: boolean | undefined;
   /** Allow SQL `NULL` for this column. */
@@ -152,6 +155,19 @@ export interface ColumnOptions {
  */
 export type ColumnStorageType = "string" | "text" | "number" | "boolean" | "datetime" | "json";
 
+/**
+ * What `@column({ … })` accepts, as opposed to what it resolves to.
+ *
+ * The difference is `type`: a caller may write any {@link ColumnShorthand} there and
+ * it is resolved to a storage type plus a cast, exactly as the string form is.
+ * {@link ColumnOptions} — the resolved shape held in metadata and read back by
+ * schema generation — keeps the narrow storage union, because widening a property
+ * people *read* breaks the ones who assigned it to the narrower type.
+ */
+export type ColumnOptionsInput = Omit<ColumnOptions, "type"> & {
+  type?: ColumnStorageType | ColumnShorthand | undefined;
+};
+
 const SHORTHAND_MAP: Record<ColumnShorthand, ColumnOptions> = {
   string: { type: "string" },
   text: { type: "text" },
@@ -179,7 +195,7 @@ const SHORTHAND_MAP: Record<ColumnShorthand, ColumnOptions> = {
  * `Omit<ColumnOptions, "type">`, so it cannot contradict the type it is modifying.
  */
 function resolveOptions(
-  arg?: ColumnShorthand | ColumnOptions,
+  arg?: ColumnShorthand | ColumnOptionsInput,
   extra?: Omit<ColumnOptions, "type">,
 ): ColumnOptions {
   const base = _resolveBase(arg);
@@ -193,7 +209,7 @@ function resolveOptions(
   return merged;
 }
 
-function _resolveBase(arg?: ColumnShorthand | ColumnOptions): ColumnOptions {
+function _resolveBase(arg?: ColumnShorthand | ColumnOptionsInput): ColumnOptions {
   if (arg === undefined) return { type: "string" };
   if (typeof arg === "string") {
     const a = arg as string;
@@ -225,15 +241,15 @@ function _resolveBase(arg?: ColumnShorthand | ColumnOptions): ColumnOptions {
  * @param options - The options object as written.
  * @returns The same options with any shorthand `type` resolved to storage type + cast.
  */
-function _resolveOptionType(options: ColumnOptions): ColumnOptions {
+function _resolveOptionType(options: ColumnOptionsInput): ColumnOptions {
   const declared = options.type;
-  if (declared === undefined) return options;
+  if (declared === undefined) return options as ColumnOptions;
 
   const shorthand = SHORTHAND_MAP[declared as ColumnShorthand];
   // A storage type maps to itself with no cast — `string`, `text`, `number`,
   // `boolean`, `datetime` and `json` appear in both vocabularies and mean the same
   // thing in each, so there is nothing to resolve.
-  if (!shorthand || shorthand.type === declared) return options;
+  if (!shorthand || shorthand.type === declared) return options as ColumnOptions;
 
   return { ...shorthand, ...options, type: shorthand.type };
 }
@@ -346,7 +362,7 @@ export function column(
   options: Omit<ColumnOptions, "type">,
 ): ColumnDecorator;
 export function column(
-  arg?: ColumnShorthand | ColumnOptions,
+  arg?: ColumnShorthand | ColumnOptionsInput,
   extra?: Omit<ColumnOptions, "type">,
 ): ColumnDecorator {
   const options = resolveOptions(arg, extra);

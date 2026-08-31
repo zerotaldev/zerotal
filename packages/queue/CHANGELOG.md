@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.13.3] — 2026-08-31
+
 ### Added
 
 - **A `zt doctor` check for jobs waiting with no worker.** The same failure as an unrun

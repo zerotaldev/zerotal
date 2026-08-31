@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.13.3] — 2026-08-31
+
 ### Added
 
 - **`Heartbeat` — which background processes are actually running.** An app could say what

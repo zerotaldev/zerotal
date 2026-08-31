@@ -27,6 +27,87 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.13.3 — 2026-08-31
+
+Two things an app cannot see about itself, from two field reports. Both are the same
+shape as most of this month's work: state that is real, consequential, and invisible from
+inside the process that would want to know it.
+
+### Added
+
+- **A site gate — maintenance, and private preview.**
+  [Guide](/docs/site-gate) · `zt down` · `zt preview` · `zt up` · `zt gate:status`
+
+  Proposed by a team running a hand-edited `basic_auth` block in their reverse proxy,
+  deliberately kept out of version control so it could not be deployed and forgotten into
+  a live shop. That precaution is the feature request: the gate belongs where the app can
+  reason about it.
+
+  Two states that look alike and are not. **Maintenance** means the site is down —
+  everyone refused, staff included, because the usual reason a site is down is that its
+  database is being changed underneath it. **Private preview** means the site is up and
+  working, for the people invited to it, for weeks.
+
+  The details that make it framework work rather than app work:
+
+  - **Maintenance is always `503` with `Retry-After`, and is not configurable.** A
+    maintenance page served at `200` tells a search engine the apology is your homepage,
+    and it will index it as such.
+  - **A preview token is stripped from the URL on first use**, by redirecting to a
+    cookie. Left in the address bar it travels into `Referer` on every outbound link,
+    into analytics, and into screenshots.
+  - **Webhook paths must be declared** in `gate.allow`. A payment provider posting a
+    settlement into a maintenance window otherwise gets a 503 — a retry, a dropped
+    callback, or a payment your books never learn about.
+  - **The state is a file, and the token is stored hashed.** A flag in the database is
+    unreadable exactly when the database is what you are working on; a token in a file
+    is a credential in something every backup copies.
+  - **It covers `Router.raw()` routes.** Found by running it: this framework's own docs
+    site serves every `/docs/*` page from a raw route, so an early build gated the front
+    page — which is what a person checks — and left all the content public.
+  - **The state file is gitignored** by the scaffold, which is the entire point.
+
+- **Worker liveness — `zt doctor` can tell whether anything is running your background
+  work.** [Schedules](/docs/scheduler#is-anything-actually-running-them) ·
+  [Queue](/docs/queue#is-a-worker-running)
+
+  An app could say what it _registered_ and nothing could say whether any of it ever
+  _ran_. The reported failure: a team shipped to production with no worker process, and
+  every scheduled task silently did not execute for weeks. No hold was released, no
+  reminder was sent, nothing logged — from the web process's point of view nothing was
+  wrong, and they found it by going looking.
+
+  ```
+  ✖ Scheduler — 3 schedule(s) registered, and no worker has ever checked in.
+    Nothing is running them.
+      fix: Start the worker process: `bun zt worker`.
+  ```
+
+  The beat lives in the **cache**, because the process reading `doctor` is not the process
+  running the work and often not the same machine — and your cache driver already decides
+  what shared state can see. On `memory`, which is private to each process, the check
+  **says it cannot tell** rather than reporting a missing worker: a check that cried wolf
+  on every app using that driver is one people would learn to skip, and then it would not
+  be there for the case it exists for.
+
+  `@zerotal/core/heartbeat` exposes the primitive if you want the same signal on an ops
+  page.
+
+### Fixed
+
+- **`secureHeaders: false` no longer empties the kernel middleware.** It set the layer to
+  `[]`, which was the same thing as removing the headers right up until the site gate
+  joined it — at which point opting out of security headers would silently have taken the
+  gate with it. One feature's opt-out disabling another's is precisely what the gate is
+  otherwise about.
+
+### Documented
+
+- **Minting `APP_KEY` without the code.** `key:generate` is part of the application, so it
+  exists only once a release is installed — awkward when preparing `.env` first, since
+  `migrate` wants the file and the file wants a key. `openssl rand -base64 32` produces
+  exactly what `key:generate` writes; the [deployment guide](/docs/deployment) now says so.
+
 ## 1.13.2 — 2026-08-31
 
 From a production field report at 1.12.0 — an Inertia + React app on SQLite, 117 routes,

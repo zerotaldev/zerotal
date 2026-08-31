@@ -213,6 +213,19 @@ DATABASE_URL=postgres://user:pass@db-host:5432/app
 and a `base64:`-prefixed one are accepted. Generate it **on the server** — a key carried
 from a laptop is a key that has been in a shell history and a scrollback buffer.
 
+**On a first deploy you do not have to wait for the code.** `key:generate` is part of the
+application, so it only exists once the release is installed — which is awkward if you are
+preparing `.env` before that, since `migrate` wants the file and the file wants a key.
+There is nothing framework-specific about the value:
+
+```bash fragment
+openssl rand -base64 32
+```
+
+That is exactly what `key:generate` produces — 32 random bytes, base64 — so a key minted
+this way is indistinguishable from one it wrote. Use whichever fits the order you deploy
+in.
+
 `APP_ENV` accepts deployment names like `production` and `staging`; they all normalize to
 the `web` runtime mode — they describe _where_ the app runs, not _how_. See
 [Configuration](/docs/config-system).

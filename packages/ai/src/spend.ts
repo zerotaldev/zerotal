@@ -90,11 +90,27 @@ export function assertWithinLimits(
   });
 
   if (worstCase > limits.perRequestUsd) {
+    // The price is named because the table is a thing that can be wrong, and when
+    // it is, this refusal is the only symptom. A row carrying its predecessor's
+    // number once made the ceiling reject requests comfortably inside a budget, and
+    // the message said "spend limit" — which sends someone to their config rather
+    // than to the row that is 50% high. Quoting the rate makes a bad table legible
+    // from the error, and `registerModelPrice` is how it gets corrected without
+    // waiting for a release.
+    const price = modelPrice(model)!;
     throw new AiSpendLimitError(
       `This request could cost up to $${worstCase.toFixed(4)}, over the per-request ceiling of ` +
         `$${limits.perRequestUsd.toFixed(4)}. Shorten the prompt, lower maxTokens, or raise ` +
-        `limits.perRequestUsd in config/ai.ts.`,
-      { model, estimatedInputTokens, maxOutputTokens, worstCaseUsd: worstCase },
+        `limits.perRequestUsd in config/ai.ts. ` +
+        `Priced at $${price.input}/$${price.output} per million tokens for ${model} — if that is ` +
+        `not what you are billed, correct it with registerModelPrice() rather than raising the ceiling.`,
+      {
+        model,
+        estimatedInputTokens,
+        maxOutputTokens,
+        worstCaseUsd: worstCase,
+        priceUsdPerMillion: price,
+      },
     );
   }
 }

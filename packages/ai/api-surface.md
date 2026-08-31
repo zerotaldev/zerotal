@@ -256,6 +256,8 @@ function AiConfigFromEnv = () => AiConfigShape
 
 function estimateCost = (model: string, usage: AiUsage) => number
 
+function modelCapabilities = (model: string) => ModelCapabilities
+
 function modelPrice = (model: string) => ModelPrice | undefined
 
 function modelRejectsSampling = (model: string) => boolean
@@ -470,6 +472,7 @@ interface AnthropicConfigShape = {
   model: string
   streamMaxTokens: number
   temperature?: number | undefined
+  thinkingDisplay: 'summarized' | 'omitted'
   timeout: number
 }
 
@@ -507,6 +510,12 @@ interface JsonSchema = {
   properties?: Record<string, JsonSchema>
   required?: string[]
   type?: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'integer' | 'null'
+}
+
+interface ModelCapabilities = {
+  effort: boolean
+  sampling: boolean
+  thinking: 'adaptive' | 'budget' | null
 }
 
 interface ModelPrice = {

@@ -8,6 +8,54 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Sonnet 5 was priced as Sonnet 4.6** — 3/15 instead of 2/10, 50% high. The same
+  table feeds `limits.perRequestUsd` and `perDayUsd`, so a Sonnet 5 app was refused
+  requests comfortably inside its budget and the daily ceiling tripped a third early.
+  The error said "spend limit", which sends someone to their config rather than to the
+  row that is wrong. `AiSpendLimitError` now quotes the rate it used and names
+  `registerModelPrice()`, so a bad table is legible from the refusal and correctable
+  without waiting for a release.
+
+- **`effort` and `thinking` are model-aware.** Both were sent on every call. `effort`
+  is a 400 on the 4.5 generation, and those models want an explicit thinking budget
+  rather than `{ type: "adaptive" }` — so the package advertised `claude-haiku-4-5` in
+  its pricing table while the driver could not successfully call it. `modelCapabilities()`
+  now answers what a model takes, and the driver builds the request that model accepts.
+
+  The table lists the models that _differ_ and treats anything unrecognised as current
+  generation. An allowlist would need an edit every time a model ships and would treat
+  each new one as legacy until that edit landed; the models that differ are a closed
+  set that ages out.
+
+- **`temperature` never reached the API, on any model.** The driver warned about
+  dropping it and had no branch that set it, so `AiRequest.temperature` and the
+  configured default were both inert everywhere — including on the 4.6 models, which
+  accept it. The old sampling predicate hid this by warning for almost every model,
+  which made the silence look deliberate on the few it did not warn for. Sampling
+  parameters are now sent where the model takes them.
+
+- **`modelRejectsSampling` was too broad**, reading as "every Claude model except 4.6",
+  which is wrong for the 4.5 generation. It compounded with the above: on Haiku 4.5 the
+  driver dropped a legal `temperature` and advised `effort` instead — the one parameter
+  guaranteed to fail there. The advice is now only given where `effort` exists, in the
+  driver and in `validateAiConfig` alike.
+
+- **The streamed `thinking` chunk was always empty.** The API omits thinking text by
+  default on the current generation, so a documented stream chunk fired forever with
+  `text: ""` and no error — and a "thinking…" view built against the 4.6 models, where
+  it defaulted to on, silently stopped working as users moved to 5.
+  `drivers.anthropic.thinkingDisplay` defaults to `"summarized"`; set `"omitted"` for
+  the API's own default. The thinking happens and is billed either way.
+
+### Added
+
+- **`modelCapabilities()` and `ModelCapabilities`** — what a model accepts: sampling,
+  `effort`, and which of the three thinking shapes it takes.
+- **`drivers.anthropic.thinkingDisplay`** — whether a streamed `thinking` chunk carries
+  text.
+
 ## [1.11.0] — 2026-08-31
 
 ### Fixed

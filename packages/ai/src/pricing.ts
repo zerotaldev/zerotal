@@ -30,7 +30,10 @@ const PRICES: Record<string, ModelPrice> = {
   "claude-opus-4-8": { input: 5, output: 25 },
   "claude-opus-4-7": { input: 5, output: 25 },
   "claude-opus-4-6": { input: 5, output: 25 },
-  "claude-sonnet-5": { input: 3, output: 15 },
+  // Sonnet 5 carried Sonnet 4.6's row — 3/15 — until 1.11.2. Every other family
+  // got its own number and this one was copied, so the ceiling refused requests
+  // that were 50% inside their budget and blamed the budget.
+  "claude-sonnet-5": { input: 2, output: 10 },
   "claude-sonnet-4-6": { input: 3, output: 15 },
   "claude-haiku-4-5": { input: 1, output: 5 },
 };
@@ -75,16 +78,9 @@ export function estimateCost(model: string, usage: AiUsage): number {
   );
 }
 
-/**
- * Whether a Claude model rejects `temperature` / `top_p` / `top_k` with a 400.
- *
- * Unknown models answer `true`. The removal has only ever gone one way, and the
- * two failure modes are not symmetric: guessing "rejects" costs a dropped
- * parameter the API would have ignored anyway, while guessing "accepts" fails
- * every single request against a model released after this line was written.
- */
-export function modelRejectsSampling(model: string): boolean {
-  // Opus 4.6 and Sonnet 4.6 were the last Claude models to accept sampling
-  // parameters; everything before them predates the models this package targets.
-  return !/^claude-(opus|sonnet)-4-6\b/.test(model) && model.startsWith("claude-");
-}
+// Re-exported from its new home so existing imports keep working. The predicate is
+// derived from the capability table now rather than from a regex over model ids —
+// see `modelCapabilities.ts` for why the exceptions are listed and the default is
+// the current generation.
+export { modelRejectsSampling, modelCapabilities } from "./modelCapabilities.ts";
+export type { ModelCapabilities } from "./modelCapabilities.ts";

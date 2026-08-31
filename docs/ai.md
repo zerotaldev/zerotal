@@ -138,9 +138,28 @@ response.stopReason; // "end_turn" | "max_tokens" | "tool_use" | …
 
 Current Claude models **reject** `temperature`, `top_p`, and `top_k` with a 400 — a
 generic sampling parameter forwarded blindly fails every request. The Anthropic
-driver therefore drops `temperature` and warns once.
+driver drops `temperature` on those models and warns once.
 
-Reach for `effort` instead. It trades thoroughness against cost and latency:
+**On models that accept it, it is sent.** The 4.6 and 4.5 generations take sampling
+parameters perfectly well, and there the configured or per-request `temperature`
+reaches the API. Ask `modelCapabilities(model)` if you want to know which you are on:
+
+```ts
+import { modelCapabilities } from "@zerotal/ai";
+
+const caps = modelCapabilities("claude-haiku-4-5");
+// { sampling: true, effort: false, thinking: "budget" }
+```
+
+That table is also what keeps the driver from sending a model something it rejects.
+`effort` is a 400 on the 4.5 generation, and those models want an explicit thinking
+budget rather than the adaptive form — so the driver builds a different request for
+them rather than one request for everything. Models it does not recognise are treated
+as current generation, because the ones that differ are a closed set that ages out
+while new models keep arriving.
+
+Reach for `effort` where the model has it. It trades thoroughness against cost and
+latency:
 
 | Effort   | Use it for                                               |
 | -------- | -------------------------------------------------------- |
@@ -149,6 +168,18 @@ Reach for `effort` instead. It trades thoroughness against cost and latency:
 | `high`   | The default — most intelligence-sensitive work           |
 | `xhigh`  | Hard coding and agentic tasks                            |
 | `max`    | When correctness matters more than the bill              |
+
+### The thinking stream
+
+A streamed `thinking` chunk carries the model's reasoning as it happens. The API
+**omits that text by default** on the current generation, so the driver asks for it:
+`drivers.anthropic.thinkingDisplay` defaults to `"summarized"`.
+
+Set it to `"omitted"` to get the API's own default back. The thinking happens — and is
+billed — either way; the setting only decides whether you are shown it. Before 1.11.2
+the driver never asked, so the documented `thinking` chunk fired forever with
+`text: ""` and no error, and a "thinking…" view built against the 4.6 models stopped
+working when their users moved to 5 without anything saying so.
 
 ### Streaming
 
@@ -531,6 +562,8 @@ sections above; this is the index.
 | `modelPrice`             | The price for a model, or `undefined` when we have none.                     |
 | `estimateCost`           | Estimated USD for one request's usage. Returns 0 for an unpriced model.      |
 | `modelRejectsSampling`   | Whether a Claude model rejects `temperature` / `top_p` / `top_k` with a 400. |
+| `modelCapabilities`      | What a model accepts: sampling, `effort`, and which thinking shape.          |
+| `ModelCapabilities`      | The three answers `modelCapabilities` returns.                               |
 
 ### Spend and statistics
 

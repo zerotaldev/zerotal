@@ -58,6 +58,8 @@ export { AiGenerationJob } from "./AiGenerationJob.ts";
 
 // Cost estimation — extend the table for a model this package does not price.
 export { estimateCost, modelPrice, registerModelPrice, modelRejectsSampling } from "./pricing.ts";
+export { modelCapabilities } from "./modelCapabilities.ts";
+export type { ModelCapabilities } from "./modelCapabilities.ts";
 export type { ModelPrice } from "./pricing.ts";
 
 // Spend ledger

@@ -96,7 +96,10 @@ describe("AnthropicDriver — request shape", () => {
     const { driver, requests } = harness();
     await driver.text({ prompt: "hi" });
 
-    expect(requests[0]!["thinking"]).toEqual({ type: "adaptive" });
+    // `display` joined this in 1.11.2: without it the API omits thinking text on
+    // every current model, so the documented `thinking` stream chunk fired forever
+    // with text: "".
+    expect(requests[0]!["thinking"]).toEqual({ type: "adaptive", display: "summarized" });
     expect(requests[0]!["output_config"]).toEqual({ effort: "high" });
   });
 
@@ -260,5 +263,87 @@ describe("AnthropicDriver — the optional SDK", () => {
     // an optional peer and this repo does not install it — which is the case.
     const driver = new AnthropicDriver(BASE);
     await expect(driver.text({ prompt: "x" })).rejects.toThrow(/bun add @anthropic-ai\/sdk/);
+  });
+});
+
+describe("AnthropicDriver — model-aware request shape", () => {
+  it("sends effort and adaptive thinking to a current model", async () => {
+    const { driver, requests } = harness({ model: "claude-opus-5" });
+    await driver.text({ prompt: "hi" });
+
+    expect(requests[0]!["output_config"]).toEqual({ effort: "high" });
+    expect(requests[0]!["thinking"]).toEqual({ type: "adaptive", display: "summarized" });
+  });
+
+  it("sends neither to a 4.5 model, which 400s on both", async () => {
+    // The package priced claude-haiku-4-5 while the driver could not call it.
+    const { driver, requests } = harness({ model: "claude-haiku-4-5" });
+    await driver.text({ prompt: "hi" });
+
+    expect(requests[0]).not.toHaveProperty("output_config");
+    // Not omitted — the shape that model actually takes.
+    expect(requests[0]!["thinking"]).toEqual({ type: "enabled", budget_tokens: 8000 });
+  });
+
+  it("drops thinking entirely when the ceiling cannot hold a legal budget", async () => {
+    const { driver, requests } = harness({ model: "claude-haiku-4-5", maxTokens: 512 });
+    await driver.text({ prompt: "hi" });
+
+    // Better no thinking than a budget the API rejects outright.
+    expect(requests[0]).not.toHaveProperty("thinking");
+  });
+
+  it("sets display so the thinking stream is not empty forever", async () => {
+    // The API omits thinking text by default on current models, so the documented
+    // `thinking` chunk fired with text: "" and no error.
+    const { driver, requests } = harness({ model: "claude-sonnet-5" });
+    await driver.text({ prompt: "hi" });
+
+    expect((requests[0]!["thinking"] as Record<string, unknown>)["display"]).toBe("summarized");
+  });
+
+  it("honours an explicit thinkingDisplay of omitted", async () => {
+    const { driver, requests } = harness({ model: "claude-sonnet-5", thinkingDisplay: "omitted" });
+    await driver.text({ prompt: "hi" });
+
+    expect((requests[0]!["thinking"] as Record<string, unknown>)["display"]).toBe("omitted");
+  });
+
+  it("keeps a temperature the model accepts", async () => {
+    const { driver, requests } = harness({ model: "claude-haiku-4-5" });
+    await driver.text({ prompt: "hi", temperature: 0.5 });
+
+    // The old regex dropped this and then advised `effort`, which 400s here.
+    expect(requests[0]!["temperature"]).toBe(0.5);
+  });
+});
+
+describe("AnthropicDriver — temperature actually reaches the wire", () => {
+  it("sends the configured default on a model that accepts sampling", async () => {
+    const { driver, requests } = harness({ model: "claude-sonnet-4-6", temperature: 0.3 });
+    await driver.text({ prompt: "hi" });
+
+    expect(requests[0]!["temperature"]).toBe(0.3);
+  });
+
+  it("lets the request override the configured default", async () => {
+    const { driver, requests } = harness({ model: "claude-sonnet-4-6", temperature: 0.3 });
+    await driver.text({ prompt: "hi", temperature: 0.9 });
+
+    expect(requests[0]!["temperature"]).toBe(0.9);
+  });
+
+  it("still drops it on a model that rejects it", async () => {
+    const { driver, requests } = harness({ model: "claude-opus-5" });
+    await driver.text({ prompt: "hi", temperature: 0.5 });
+
+    expect(requests[0]).not.toHaveProperty("temperature");
+  });
+
+  it("sends nothing when neither config nor request sets one", async () => {
+    const { driver, requests } = harness({ model: "claude-sonnet-4-6" });
+    await driver.text({ prompt: "hi" });
+
+    expect(requests[0]).not.toHaveProperty("temperature");
   });
 });

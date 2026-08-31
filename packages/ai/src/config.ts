@@ -8,7 +8,7 @@ import type {
   OllamaConfigShape,
   OpenAiConfigShape,
 } from "./types.ts";
-import { modelRejectsSampling } from "./pricing.ts";
+import { modelCapabilities } from "./modelCapabilities.ts";
 
 /**
  * What {@link AiConfig} accepts — every key optional, all the way down. The
@@ -109,6 +109,7 @@ function applyDriverDefaults(config: AiConfigShape): void {
       // Streaming has no HTTP-timeout ceiling to respect, so give it room.
       streamMaxTokens: given.streamMaxTokens ?? 64000,
       effort: given.effort ?? "high",
+      thinkingDisplay: given.thinkingDisplay ?? "summarized",
       fallbacks: given.fallbacks ?? true,
       cacheSystem: given.cacheSystem ?? true,
       timeout: given.timeout ?? 600_000,
@@ -224,13 +225,20 @@ export function validateAiConfig(config: AiConfigShape): void {
         { maxTokens: a.maxTokens, streamMaxTokens: a.streamMaxTokens },
       );
     }
-    if (a.temperature !== undefined && modelRejectsSampling(a.model)) {
+    const capabilities = modelCapabilities(a.model);
+    if (a.temperature !== undefined && !capabilities.sampling) {
       // A warning rather than a throw: the driver drops it and the request still
       // succeeds. Throwing would break an app whose config merely carries a
       // leftover from a model that accepted it.
       console.warn(
         `[Zerotal/ai] drivers.anthropic.temperature is set, but ${a.model} rejects temperature/top_p/top_k ` +
-          `with a 400. The driver drops it. Use effort ('low' … 'max') to trade thoroughness for cost instead.`,
+          `with a 400. The driver drops it.` +
+          // Only where effort exists. This suggestion used to be unconditional and
+          // fired on models that accept the temperature it was telling them to
+          // replace — recommending the one parameter that 400s there.
+          (capabilities.effort
+            ? ` Use effort ('low' … 'max') to trade thoroughness for cost instead.`
+            : ""),
       );
     }
   }

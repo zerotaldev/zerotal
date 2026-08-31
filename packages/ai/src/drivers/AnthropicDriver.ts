@@ -7,7 +7,8 @@ import {
   AiSchemaError,
 } from "../errors.ts";
 import { recheckAgainstSchema, translateSchema, type SchemaInput } from "../schema.ts";
-import { modelRejectsSampling } from "../pricing.ts";
+import { modelCapabilities } from "../modelCapabilities.ts";
+import type { ModelCapabilities } from "../modelCapabilities.ts";
 import type {
   AiMessage,
   AiObjectResponse,
@@ -34,6 +35,14 @@ import type {
 
 /** Opts into the server-side refusal fallback. */
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+
+/**
+ * The API's floor for an explicit thinking budget, on the models that take one.
+ *
+ * A budget below this is rejected, so a `max_tokens` too small to hold both a
+ * budget and an answer means thinking is dropped rather than asked for invalidly.
+ */
+const MIN_THINKING_BUDGET = 1024;
 
 /**
  * Roughly the shortest system prompt worth a cache breakpoint.
@@ -217,16 +226,62 @@ export class AnthropicDriver implements AiDriver {
       : { timeout: this.config.timeout };
   }
 
+  /**
+   * The `thinking` block for this model, or `null` to omit the field.
+   *
+   * Three shapes, because the models take three. The 4.5 generation wants an
+   * explicit `budget_tokens`; everything current takes `adaptive` and decides for
+   * itself; a non-Anthropic id gets nothing. Sending the wrong one is a 400, which
+   * is why this returns `null` rather than guessing.
+   *
+   * `display` is set on the adaptive form because the API omits thinking text by
+   * default there — see {@link AnthropicConfigShape.thinkingDisplay}.
+   *
+   * @param capabilities - What the model accepts.
+   * @param maxTokens - The request's ceiling, which thinking shares with the answer.
+   */
+  private _thinking(
+    capabilities: ModelCapabilities,
+    maxTokens: number,
+  ): Record<string, unknown> | null {
+    if (capabilities.thinking === null) return null;
+
+    if (capabilities.thinking === "budget") {
+      // The API requires at least 1024 thinking tokens, and the budget shares
+      // `max_tokens` with the answer. A ceiling too low to hold both is a request
+      // that would be rejected for asking, so thinking is dropped instead — the
+      // answer is what the caller wanted.
+      const budget = Math.floor(maxTokens / 2);
+      if (budget < MIN_THINKING_BUDGET) return null;
+      return { type: "enabled", budget_tokens: budget };
+    }
+
+    // Defaulted here as well as in `AiConfig`, because a config object built by
+    // hand — a test, a driver constructed directly — would otherwise send
+    // `display: undefined`, which drops out of the JSON and silently restores the
+    // API's own default of omitting the text.
+    return { type: "adaptive", display: this.config.thinkingDisplay ?? "summarized" };
+  }
+
   private _params(request: AiRequest, streaming: boolean): Record<string, unknown> {
     const model = request.model ?? this.config.model;
     const maxTokens =
       request.maxTokens ?? (streaming ? this.config.streamMaxTokens : this.config.maxTokens);
 
-    if (request.temperature !== undefined && modelRejectsSampling(model) && !this._warnedSampling) {
+    const capabilities = modelCapabilities(model);
+
+    if (request.temperature !== undefined && !capabilities.sampling && !this._warnedSampling) {
       this._warnedSampling = true;
       console.warn(
         `[Zerotal/ai] temperature was supplied but ${model} rejects temperature/top_p/top_k with ` +
-          `a 400. Dropping it. Use effort ('low' … 'max') to trade thoroughness for cost.`,
+          `a 400. Dropping it.` +
+          // Only suggest effort where effort exists. This advice used to be
+          // unconditional, and on the 4.5 models it named the one parameter that
+          // is guaranteed to 400 there — on models that accept the temperature it
+          // had just dropped.
+          (capabilities.effort
+            ? ` Use effort ('low' … 'max') to trade thoroughness for cost.`
+            : ""),
       );
     }
 
@@ -236,9 +291,25 @@ export class AnthropicDriver implements AiDriver {
       // by default on Claude Opus 5, so a budget sized for the prose truncates.
       max_tokens: maxTokens,
       messages: toAnthropicMessages(normalizeMessages(request)),
-      thinking: { type: "adaptive" },
-      output_config: { effort: request.effort ?? this.config.effort },
     };
+
+    // Sent where the model takes it. It never was, on any model: this driver
+    // warned about dropping `temperature` and then had no branch that set it, so
+    // `AiRequest.temperature` and the configured default were both inert. The old
+    // sampling predicate hid it by warning for almost every model, which made the
+    // silence look deliberate on the few it did not warn for.
+    if (capabilities.sampling) {
+      const temperature = request.temperature ?? this.config.temperature;
+      if (temperature !== undefined) params["temperature"] = temperature;
+    }
+
+    // Both of these are 400s on a model that does not take them, so they are added
+    // only where they are accepted rather than sent everywhere and hoped for.
+    if (capabilities.effort) {
+      params["output_config"] = { effort: request.effort ?? this.config.effort };
+    }
+    const thinking = this._thinking(capabilities, maxTokens);
+    if (thinking) params["thinking"] = thinking;
 
     const system = this._system(request);
     if (system) params["system"] = system;

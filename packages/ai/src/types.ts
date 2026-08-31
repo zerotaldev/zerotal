@@ -232,6 +232,20 @@ export interface AnthropicConfigShape {
   /** Cap for streaming calls, where HTTP timeouts are not a concern. */
   streamMaxTokens: number;
   effort: AiEffort;
+  /**
+   * Whether a streamed `thinking` chunk carries text.
+   *
+   * The API defaults this to `"omitted"` on the current generation, which is why
+   * the documented `thinking` stream chunk used to fire forever with `text: ""` —
+   * thinking happened, and was billed, and nothing was emitted. It defaulted to
+   * `"summarized"` on the 4.6 models, so a "thinking…" view built against those
+   * worked and then silently stopped working as people moved forward.
+   *
+   * Defaults to `"summarized"` here, because a documented channel that is always
+   * empty is worse than one that costs a little to fill. Set `"omitted"` to get
+   * the API's own default back — the thinking still happens either way.
+   */
+  thinkingDisplay: "summarized" | "omitted";
   /** Route a safety refusal to Anthropic's recommended fallback model. */
   fallbacks: boolean;
   /** Mark the system prompt cacheable. The cheapest win available. */

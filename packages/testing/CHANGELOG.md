@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-08-31
+
 ### Changed
 
 - **`assertRedirect` compares the path exactly**, where it used to use `includes()`.

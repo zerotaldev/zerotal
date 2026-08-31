@@ -64,17 +64,21 @@ All `@zerotal/*` packages and `create-zerotal` share **one version line and
 publish lockstep** — a release publishes every package at the same version, in
 dependency order, from CI. Never mix versions across packages.
 
-- **Semantic versioning:** patch for fixes, minor for compatible features, major
-  for breaking changes. The [Upgrade Guide](/docs/upgrade) describes the upgrade
-  procedure; the [Release Notes](/docs/changelog) list what changed.
-- **One exception, while the 1.x line is young:** a breaking change may land in a
-  minor or a patch when leaving it in place would cost more than the migration
-  does. It is called out in the release notes as **BREAKING**, with the reason and
-  the migration steps, and it is never silent. Three have shipped so far — the
+- **What the numbers mean:** a **patch** is anything that does not break —
+  a fix, and a feature too. A **minor** carries a breaking change. A **major** is
+  an annual consolidation, cut each July. The
+  [Upgrade Guide](/docs/upgrade#versioning) explains why the framework is versioned
+  this way and describes the upgrade procedure; the
+  [Release Notes](/docs/changelog) list what changed.
+- **What that costs you:** a caret range crosses a minor, so a project on
+  `^1.10.0` takes 1.11.0 and its breaking change without being asked. Pin with a
+  tilde if you would rather cross a minor deliberately.
+- **A break is never silent.** Every one is called out in the release notes as
+  **BREAKING**, with the reason and the migration steps, and the version gets its
+  own section in the Upgrade Guide. Four have shipped so far — the
   `ComponentWith` / `BaseModelWith` removal in 1.3.0, Flow's `socket:` listener
-  prefix in 1.7.2, and the removal of Flow's `this.title(…)` in 1.7.3. This carve-out is a consequence of the project's age, not a
-  standing policy; it will be withdrawn, with a version named here, once adoption
-  makes the cost of a break real.
+  prefix in 1.7.2, the removal of Flow's `this.title(…)` in 1.7.3, and SQLite
+  foreign-key enforcement in 1.11.0.
 - **Provenance:** packages are published with npm provenance, so you can verify
   a tarball was built by this repository's release workflow rather than someone's
   laptop.

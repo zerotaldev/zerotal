@@ -27,6 +27,142 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.11.0 — 2026-08-30
+
+Two production reports, from teams taking apps live on 1.9.0 — one shipping a
+household-finance app to a VPS, one migrating a webmail platform from Flow to Inertia
+and cutting it over to live traffic. Between them, nineteen findings.
+
+The character of the list is the thing worth naming. Almost none of it is a crash.
+Most of it fails silently or fails open: a release gate that always passes, a
+`cascadeOnDelete` that deletes nothing, an `.env.example` carrying the key the project
+actually runs with, a fake that agrees with whatever it is handed. Building an app
+finds loud bugs quickly because somebody is watching. Deploying one finds the quiet
+ones, months later, when nobody is.
+
+**This is the first release under the versioning scheme in
+[the upgrade guide](/docs/upgrade#versioning): a minor carries breaking changes, a
+patch never does, and majors are annual.** So a `^1.10.0` range will pull this in.
+Read the two items below before you take it.
+
+### Two things to do before upgrading
+
+- **SQLite now enforces foreign keys.** Run `bun zt db:check-foreign-keys` first. It
+  lists any row whose parent is missing — legal before, a constraint violation now —
+  and exits non-zero, so a release script can gate on it.
+- **If you have ever renamed a migration file**, `migrate` will now stop rather than
+  re-run it. That is the intended behaviour and the message says what to do; see
+  [the upgrade guide](/docs/upgrade#1-10-to-1-11).
+
+### Changed — BREAKING
+
+- **SQLite enforces foreign keys.** `database.sqlite.foreignKeys` defaults to `true`.
+  SQLite ignores foreign keys unless the connection asks it not to, and it is the only
+  supported dialect that does — so `constrained()` and `cascadeOnDelete()` in a
+  migration described behaviour the database would not perform. Deleting a parent left
+  its children, silently, and every child had to be removed by hand in the right order
+  by application code that remembered to. An app's data-erasure path swept fifteen
+  tables and missed three, two of them holding uploaded files, so an account erasure
+  left the paperwork on disk. `zt db:check-foreign-keys` and `zt doctor` both report
+  the rows that enforcement would now reject; `sqlite: { foreignKeys: false }` takes
+  the old behaviour back while you fix them.
+
+- **A renumbered migration is refused rather than re-run.** A migration is recorded
+  under its filename, so renaming one made an applied migration look pending — the
+  runner tried it again and failed on `table already exists`, a failed boot whose
+  error named a table rather than the rename. An app renumbered `001_` to `0001_` to
+  match this framework's own scaffold convention and would have made all nine of its
+  production migrations look unrun. `migrate` now recognises that shape, refuses, and
+  prints both spellings and the fix.
+
+### Fixed
+
+- **`.env.example` no longer ships the key the project runs with.** Both files got the
+  same rendered content, so every scaffolded project committed a live, working
+  `APP_KEY` — `.gitignore` covers `.env` and not `.env.example`. And
+  `cp .env.example .env` is the first line of every deployment guide, so the published
+  key went on to sign production sessions. No strength check can catch it: as a string
+  the value is perfectly strong.
+
+- **`.gitignore` covers the SQLite sidecars.** `*.sqlite` does not match
+  `db.sqlite-wal` or `db.sqlite-shm`, and WAL mode is on by default, so both exist in
+  every project and the write-ahead log holds rows not yet checkpointed. An app found
+  both in its first commit on a public host.
+
+- **A command can fail without throwing.** `CommandRunner` ran `process.exit(0)` the
+  moment `run()` returned and never read `process.exitCode` — the idiomatic way to
+  fail a CLI without an exception. A release gate printed six blockers, set the code,
+  and exited `0`. `zt deploy` gates on the same value, so its own preflight had the
+  hole too: a gate that could not fail, failing open.
+
+- **A Bun the project never asked for is a warning, not a refusal.**
+  `bun-plugin-tailwind` declares `bun` as a required peer, so `bun install` fetches a
+  second runtime and the guard refused to boot. An app took two outages on it. The
+  guard now asks whether the project _declared_ `bun`; if not, it warns and names both
+  the fix that works and the one that cannot.
+
+- **SMTP submission and TLS verification.** STARTTLS on 587 completed its handshake
+  and sent nothing — a write issued before the handshake finishes is dropped. And
+  `rejectUnauthorized` is not enforced by the runtime on either transport, so TLS was
+  encrypted and would have accepted that encryption from anyone in the path.
+
+- **Migration names no longer carry the platform that recorded them.** `Bun.Glob`
+  yields native separators, so on Windows the whole joined path went into the
+  `migrations` table. A database moved between platforms re-ran every migration.
+
+- **React SSR emits the page's `<Head>` tags**, and `ctx.session.intended()` reads the
+  URL `AuthMiddleware` stored — the two APIs used different session keys, so an app
+  that mixed them was silently sent to `/` after every sign-in.
+
+- **An empty string is an answer.** `required` treats `""` as absent, which is right
+  for a form and wrong for structured model output, where `""` is how a prompt asks a
+  model to say "this does not apply". A whole feature returned nothing because of it —
+  and shipped green, because `AiFake` never checked its canned object against the
+  schema. One half made the mistake; the other made it invisible.
+
+- **`MonitorStore` no longer overwrites its own defaults with `undefined`**, and
+  `zt inertia:build` fails when it produces no files rather than serving a page with
+  no script.
+
+### Added
+
+- **`zt db:check-foreign-keys`** — the rows enforcement would reject, by table and
+  rowid, exiting non-zero.
+- **`Migration.id`** — a declared identity, so renaming a migration file is free.
+- **`@zerotal/inertia/testing`'s `renderPage()`**, and a page-render test in the React
+  scaffold. An app shipped a blank page with 614 passing tests: every one asserted a
+  value or a status code, so a page could throw on its first paint and the suite
+  stayed green.
+- **`AiError.transient`** — `true` for _this call failed_, `false` for _this machine
+  cannot do this_, so a service can latch itself off without classifying eleven error
+  classes by hand.
+- **`assertRedirectContains()`**, and **`assertRedirect()` now compares paths
+  exactly** — it used `includes()`, so `assertRedirect("/login")` passed on
+  `/login-as-someone-else`.
+- **`database.sqlite.foreignKeys`**, a doctor check for a `notifications` table that
+  is not the framework's, and a doctor check for a production `mail.driver` of `log`.
+
+### Changed
+
+- **`config/session.ts` is scaffolded environment-aware**, so the first production
+  deploy no longer fails on the config validator's (correct) refusal.
+- **Tailwind and its plugin move to `dependencies`** and the plugin is pinned — a
+  `--production` install that then builds on the server had neither.
+- **The notification database channel is built on first use**, so an app that never
+  routes there never touches the table.
+- **`@column({ type: "integer" })` compiles.** The object form took six type names
+  while the string form took twelve.
+- **`--success` meets WCAG AA** at the contrast it is actually drawn at.
+
+### Documented
+
+- [Persistent layouts](/docs/inertia/rendering#persistent-layouts), which failed only
+  in a browser and were documented nowhere;
+  [which Inertia redirects are covered](/docs/inertia/middleware#which-redirects-are-covered);
+  [pages render](/docs/testing#pages-render); the middleware names the framework
+  occupies; why `X-Forwarded-For` is counted from the right; and how to authenticate a
+  test when identity is not a row.
+
 ## 1.10.0 — 2026-08-30
 
 A second report from the team building on Zerotal, and the things it found. Most of this

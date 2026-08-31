@@ -10,15 +10,28 @@ what changed in each version, see the [Release Notes](/docs/changelog).
 
 ## Versioning
 
-Zerotal follows semantic versioning across its `@zerotal/*` packages, which share a
-version line:
+Zerotal's `@zerotal/*` packages share one version line, and what each number means
+is set by how much the framework still moves in a year rather than by the letter of
+semver:
 
-- **Patch** (`x.y.Z`) — bug fixes, safe to take anytime.
-- **Minor** (`x.Y.z`) — new features, backward compatible.
-- **Major** (`X.y.z`) — breaking changes; read the version's section in the
-  [Release Notes](/docs/changelog) before upgrading.
+- **Patch** (`x.y.Z`) — anything that does not break. Fixes, and features too.
+  Safe to take at any time.
+- **Minor** (`x.Y.z`) — a breaking change. Always labelled **BREAKING** in the
+  [Release Notes](/docs/changelog), with the reason and the migration steps, and
+  given its own section on this page.
+- **Major** (`X.y.z`) — an annual consolidation, cut each July. The next is 2.0, in
+  July 2027.
 
-> **Warning** — while the 1.x line is young, a breaking change may also land in a minor or a patch. It is always labelled **BREAKING** in the [Release Notes](/docs/changelog) with migration steps. Read the notes for every version you cross, not only the majors. See [Releases and versioning](/docs/support-policy#releases-and-versioning) for which ones have shipped and when this carve-out ends.
+Why not strict semver: a framework this young corrects itself often, and under
+strict semver every correction is a major. A version line that reaches 9.0 in its
+first year tells a reader nothing about how much has changed — only that the
+project is willing to break things, which the release notes already say far more
+precisely. Keeping the major for a yearly line in the sand leaves it meaning
+something, and puts the work where it is useful: reading the notes for each minor.
+
+> **Warning** — **a caret range crosses a minor.** `"zerotal": "^1.10.0"` will
+> install 1.11.0, and its breaking change, without asking. Read the notes for every
+> minor you cross, or pin with a tilde (`~1.10.0`) and cross them deliberately.
 
 > **Warning** — always upgrade the `@zerotal/*` packages together. Mixing versions across core, ORM, and feature packages leads to type and runtime mismatches.
 

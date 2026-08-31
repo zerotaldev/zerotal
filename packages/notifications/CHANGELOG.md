@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-08-31
+
 ### Changed
 
 - **The database channel is built on first use, not at construction.** Registering the

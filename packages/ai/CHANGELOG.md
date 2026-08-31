@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-08-31
+
 ### Fixed
 
 - **An empty string is an answer.** `required` treats `""` as absent, which is right

@@ -84,3 +84,40 @@ describe("_applySqlitePragmas", () => {
     expect(Number(kids[0]!.n)).toBe(1);
   });
 });
+
+/**
+ * Enforcement is on by default now, so the question changes.
+ *
+ * A child row whose parent is missing was legal without enforcement and is a
+ * violation with it — so an existing database can carry rows the upgrade turns into
+ * writes that fail. That is the whole risk of flipping the default, and it is worth
+ * reporting rather than discovering.
+ */
+describe("foreignKeysCheck once enforcement is on", () => {
+  async function orphaned(): Promise<SQLInstance> {
+    const sql = new SQL(":memory:") as unknown as SQLInstance;
+    // Written the way an app on the old default wrote it: constraints declared,
+    // enforcement off, so the orphan goes in without complaint.
+    await sql`CREATE TABLE parents (id INTEGER PRIMARY KEY)`;
+    await sql`CREATE TABLE kids (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES parents(id))`;
+    await sql`INSERT INTO kids (id, parent_id) VALUES (1, 999)`;
+    await sql`PRAGMA foreign_keys = ON`;
+    return sql;
+  }
+
+  it("fails on a database that already holds an orphan", async () => {
+    const result = await foreignKeysCheck.run(appWith(await orphaned()));
+
+    expect(result.status).toBe("fail");
+    expect(result.message).toContain("1 row(s)");
+    expect(result.fix).toContain("db:check-foreign-keys");
+  });
+
+  it("passes once the data agrees with the constraints", async () => {
+    const sql = await db(true, true);
+    await sql`INSERT INTO parents (id) VALUES (1)`;
+    await sql`INSERT INTO kids (id, parent_id) VALUES (10, 1)`;
+
+    expect((await foreignKeysCheck.run(appWith(sql))).status).toBe("ok");
+  });
+});

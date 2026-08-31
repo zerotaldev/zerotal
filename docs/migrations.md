@@ -397,6 +397,16 @@ The `onDelete` / `onUpdate` actions are `"CASCADE"`, `"SET NULL"`, `"RESTRICT"`,
 `"NO ACTION"`. Shorthands `cascadeOnDelete()`, `nullOnDelete()`, and `restrictOnDelete()`
 read more fluently.
 
+> **SQLite only enforces these when asked**, and it is the only supported dialect that
+> behaves that way — `database.sqlite.foreignKeys` defaults to `true` and sets
+> `PRAGMA foreign_keys = ON` on every connection. Turn it off and the declarations
+> above become comments: deleting a parent leaves its children, silently, and every
+> child has to be removed by hand in the right order. An app's data-erasure path
+> missed three tables that way, two of them holding uploaded files.
+>
+> On a database that ran without enforcement, `bun zt db:check-foreign-keys` lists any
+> rows that would now be rejected. Postgres and MySQL always enforce.
+
 ## Soft deletes
 
 ```typescript fragment

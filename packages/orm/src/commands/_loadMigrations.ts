@@ -26,7 +26,9 @@ export async function loadMigrations(): Promise<MigrationRecord[]> {
     const mod = await import(`${process.cwd()}/${file}`);
     const Ctor = mod.default as (new () => MigrationRecord["instance"]) | undefined;
     if (!Ctor) continue;
-    records.push({ name: _migrationName(file), instance: new Ctor() });
+    // A declared `static id` wins over the filename — see `Migration.id`.
+    const declared = (Ctor as { id?: string }).id;
+    records.push({ name: declared ?? _migrationName(file), instance: new Ctor() });
   }
 
   return records;

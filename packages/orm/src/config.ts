@@ -61,12 +61,16 @@ export interface DatabaseConfigShape {
      * found it by having a second person write the runbook and compare the prose
      * against the code.
      *
-     * Off by default because turning it on can fail writes an existing database
-     * already permits: a row whose parent is missing is legal with enforcement off
-     * and a constraint violation with it on. Turn it on for a new project. For an
-     * existing one, check first with `PRAGMA foreign_key_check`.
+     * **On by default**, because an API describing behaviour the database will not
+     * perform is the worst of the available states — worse than not offering it.
      *
-     * Default: `false`. Postgres and MySQL always enforce, so this is ignored there.
+     * Set it to `false` for an existing database that may already hold rows a
+     * constraint would reject: a child whose parent is missing is legal without
+     * enforcement and a violation with it, so turning it on can fail a write the app
+     * has always made. `zt db:check-foreign-keys` lists exactly those rows, and
+     * `zt doctor` reports them too. Fix them, then remove the override.
+     *
+     * Default: `true`. Postgres and MySQL always enforce, so this is ignored there.
      */
     foreignKeys?: boolean | undefined;
   };
@@ -90,7 +94,7 @@ export interface DatabaseConfigShape {
 const defaults: DatabaseConfigShape = {
   driver: "sqlite",
   url: "./database/db.sqlite",
-  sqlite: { path: "./database/db.sqlite" },
+  sqlite: { path: "./database/db.sqlite", foreignKeys: true },
 };
 
 /**

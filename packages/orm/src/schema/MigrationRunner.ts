@@ -150,6 +150,8 @@ export class MigrationRunner {
     const batch = (await this._lastBatch()) + 1;
 
     const pendingEntries = entries.filter((e) => !ran.has(e.name));
+    _refuseLikelyRenames(pendingEntries, ran);
+
     const executed: string[] = [];
 
     for (const entry of pendingEntries) {
@@ -425,11 +427,75 @@ export class MigrationRunner {
       // Dynamic import — each migration file must have a default export
       const mod = (await import(fullPath)) as { default: new () => Migration };
       const Ctor = mod.default;
+      // A declared `static id` wins over the filename — see `Migration.id`. Without
+      // it, renaming a file makes an applied migration look pending.
+      const declared = (Ctor as { id?: string }).id;
       entries.push({
-        name: file.replace(/\.(ts|js)$/, ""),
+        name: declared ?? file.replace(/\.(ts|js)$/, ""),
         migration: new Ctor(),
       });
     }
     return entries;
+  }
+}
+
+/**
+ * Refuse to run a "pending" migration that is almost certainly a renamed applied one.
+ *
+ * A migration is recorded under a name, and the next run compares files against those
+ * names — so renaming a file makes an applied migration look pending. The runner then
+ * tries it again and it fails on `table already exists`, which is a failed boot rather
+ * than a graceful skip, and the error names a table rather than the rename that caused
+ * it.
+ *
+ * An app renumbered `001_` to `0001_` to match this framework's own scaffold
+ * convention and would have made all nine of its production migrations look unrun.
+ * They caught it by reading, not by being told.
+ *
+ * The signal is precise enough to act on: a pending migration whose name matches a
+ * recorded one once the leading digits are stripped is a renumbering, not a new
+ * migration. Nobody writes `0001_create_users` alongside an applied
+ * `001_create_users` and means two different things.
+ *
+ * This refuses rather than warns because the alternative is running it — and running
+ * it is the outage. {@link Migration.id} is the way to make the rename permanent.
+ *
+ * @param pending - Migrations about to run.
+ * @param ran - Names already recorded.
+ * @throws {@link MigrationError} naming both spellings and the fix.
+ * @internal
+ */
+export function _refuseLikelyRenames(pending: MigrationEntry[], ran: Set<string>): void {
+  /** The name with any leading ordinal removed: `0001_create_users` → `create_users`. */
+  const withoutOrdinal = (name: string): string => name.replace(/^[0-9]+[_-]?/, "");
+
+  const appliedBySuffix = new Map<string, string>();
+  for (const name of ran) appliedBySuffix.set(withoutOrdinal(name), name);
+
+  for (const entry of pending) {
+    const suffix = withoutOrdinal(entry.name);
+    // A bare ordinal strips to nothing; two of those are not evidence of anything.
+    if (suffix === "") continue;
+    const applied = appliedBySuffix.get(suffix);
+    if (applied === undefined || applied === entry.name) continue;
+
+    throw new MigrationError(
+      entry.name,
+      new Error(
+        `"${entry.name}" looks like "${applied}", which has already run — the same ` +
+          `migration renumbered rather than a new one. Running it would apply a schema ` +
+          `change that is already applied, and fail on the first table it creates.
+
+` +
+          `  If it IS the same migration: rename the file back to "${applied}", or keep ` +
+          `the new filename and pin the identity to what the database already holds:
+` +
+          `    static override id = "${applied}";
+
+` +
+          `  If it is genuinely a new migration, give it a name that does not collide ` +
+          `once the leading digits are removed.`,
+      ),
+    );
   }
 }

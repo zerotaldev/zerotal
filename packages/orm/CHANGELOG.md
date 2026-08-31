@@ -10,6 +10,46 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Changed
 
+- **BREAKING: SQLite enforces foreign keys.** `database.sqlite.foreignKeys` now
+  defaults to `true`, so `PRAGMA foreign_keys = ON` is set on every connection.
+  Until now SQLite ignored them, which made `constrained()` and `cascadeOnDelete()`
+  in a migration a statement of intent the database would not perform — deleting a
+  parent left its children, silently, and an app's data-erasure path missed three
+  tables because of it.
+
+  **What can break:** a child row whose parent is missing was legal without
+  enforcement and is a violation with it, so a write touching one now fails. Run
+  `zt db:check-foreign-keys` before deploying — it lists every offending row by table
+  and rowid and exits non-zero, so a release script can gate on it. `zt doctor`
+  reports the same. To take the release without dealing with it yet, set
+  `sqlite: { foreignKeys: false }`, and remove the override afterwards; with it in
+  place `cascadeOnDelete()` does nothing. See
+  [the upgrade guide](/docs/upgrade#1-10-to-1-11).
+
+- **BREAKING: a renumbered migration is refused rather than re-run.** A migration is
+  recorded under its filename, so renaming one makes an applied migration look
+  pending — the runner tried it again and failed on `table already exists`, which is a
+  failed boot with an error naming a table rather than the rename. An app renumbered
+  `001_` to `0001_` to match this framework's own scaffold convention and would have
+  made all nine of its production migrations look unrun.
+
+  `migrate` now recognises a pending migration whose name matches a recorded one once
+  the leading digits are stripped, and stops with both spellings and the fix. It
+  refuses rather than warns because the alternative is running it, and running it is
+  the outage.
+
+### Added
+
+- **`Migration.id`** — a declared identity that decouples a migration from its
+  filename. Set it to what the database already recorded and the file is free to be
+  renamed. Deliberately not a content hash: a migration's content is edited far more
+  often than its name, and a hash would make every edit look like a new migration.
+
+- **`zt db:check-foreign-keys`** — lists the rows enforcement would reject, by table
+  and rowid, and exits non-zero when there are any.
+
+### Changed
+
 - **`@column({ type: "integer" })` compiles.** `ColumnShorthand` has twelve names and
   `ColumnOptions["type"]` had six, so `@column("integer")` worked and
   `@column({ type: "integer", default: 0 })` did not — the vocabulary shrank by half

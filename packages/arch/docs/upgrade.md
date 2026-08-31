@@ -217,6 +217,65 @@ worth thirty seconds of checking if it does.
    Nothing to change if you already have it as a dependency, which every React Inertia app
    does.
 
+## 1.10 to 1.11
+
+Two changes to how the database is treated. Both are **BREAKING** in the narrow sense
+that a working app can stop working on upgrade, and both refuse loudly rather than
+doing something quiet.
+
+1. **SQLite enforces foreign keys.** `database.sqlite.foreignKeys` defaults to `true`,
+   so `PRAGMA foreign_keys = ON` is set on every connection. Until now SQLite ignored
+   them, which meant `constrained()` and `cascadeOnDelete()` in your migrations
+   described behaviour the database would not perform — deleting a parent left its
+   children, silently.
+
+   The risk is data you already have. A child row whose parent is missing was legal
+   without enforcement and is a constraint violation with it, so a write touching one
+   now fails. Find them before deploying:
+
+   ```bash fragment
+   bun zt db:check-foreign-keys
+   ```
+
+   It lists every offending row by table and rowid and exits non-zero, so a release
+   script can gate on it. `zt doctor` reports the same thing. Delete them or repoint
+   them at a parent that exists.
+
+   To take the release without dealing with it yet:
+
+   ```ts fragment
+   // config/database.ts
+   export default DatabaseConfig({ sqlite: { foreignKeys: false } });
+   ```
+
+   Take that override back off afterwards. With it in place `cascadeOnDelete()` is a
+   comment.
+
+2. **A renumbered migration is refused rather than re-run.** A migration is recorded
+   under its filename, so renaming one makes an applied migration look pending — the
+   runner tries it again and fails on `table already exists`. Renumbering `001_` to
+   `0001_` to match the scaffold's convention is exactly the kind of tidying that
+   causes it, and it takes every migration with it.
+
+   `migrate` now recognises that shape and stops:
+
+   ```
+   "0001_create_users" looks like "001_create_users", which has already run — the
+   same migration renumbered rather than a new one.
+   ```
+
+   If you meant to rename, pin the identity to what the database already holds and the
+   filename is then free:
+
+   ```ts fragment
+   export default class CreateUsers extends Migration {
+     static override id = "001_create_users";
+   }
+   ```
+
+   If it really is a new migration, give it a name that does not collide once the
+   leading digits are removed.
+
 ## The managed zt.ts
 
 `zt.ts` is framework-managed — the header says _do not modify_. If a release

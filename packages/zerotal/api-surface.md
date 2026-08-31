@@ -5259,6 +5259,7 @@ class JsonCast = {
 
 class Migration = {
   new (): Migration
+  static id?: string
   down: () => Promise<void>
   up: () => Promise<void>
 }

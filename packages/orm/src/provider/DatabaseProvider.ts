@@ -120,7 +120,7 @@ export class DatabaseProvider extends ServiceProvider {
       const primary = new SQL(sqlArg as unknown as string);
 
       const driver = config.get<string>("database.driver", "sqlite");
-      const enforceForeignKeys = config.get<boolean>("database.sqlite.foreignKeys", false);
+      const enforceForeignKeys = config.get<boolean>("database.sqlite.foreignKeys", true);
       await _applySqlitePragmas(primary, driver, enforceForeignKeys);
 
       if (replicaUrls.length === 0) return primary;
@@ -259,6 +259,9 @@ export class DatabaseProvider extends ServiceProvider {
     // rollback that does not work.
     runner.registerLazy("migrate:refresh", () =>
       import("../commands/MigrateRefreshCommand.ts").then((m) => m.MigrateRefreshCommand),
+    );
+    runner.registerLazy("db:check-foreign-keys", () =>
+      import("../commands/CheckForeignKeysCommand.ts").then((m) => m.CheckForeignKeysCommand),
     );
     runner.registerLazy("migrate:status", () =>
       import("../commands/MigrateStatusCommand.ts").then((m) => m.MigrateStatusCommand),

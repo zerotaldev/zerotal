@@ -78,7 +78,26 @@ export const foreignKeysCheck: DoctorCheck = {
 
     const enforcing = await _enforcing(sql);
     if (enforcing === null) return { status: "ok", message: "could not read the pragma" };
-    if (enforcing) return { status: "ok", message: "enforced on this connection" };
+
+    // Enforced: the remaining question is whether the data already agrees. A row whose
+    // parent is missing was legal before enforcement and is a violation now, so an
+    // upgraded database can carry rows that the next write touching them will fail on.
+    if (enforcing) {
+      const violations = await _violationCount(sql);
+      if (violations === 0) return { status: "ok", message: "enforced, and the data agrees" };
+      return {
+        status: "fail",
+        message:
+          `Foreign keys are enforced and ${violations} row(s) already violate one — rows whose ` +
+          `parent is missing, which were legal before enforcement and are not now. A write ` +
+          `touching one of them fails.`,
+        fix:
+          "Run `zt db:check-foreign-keys` to see them by table and rowid. Delete them or " +
+          "repoint them at a parent that exists. To keep deploying meanwhile, set " +
+          "sqlite.foreignKeys: false in config/database.ts — and take it back off after, " +
+          "because with it in place cascadeOnDelete() does nothing.",
+      };
+    }
 
     const declaring = await _tablesWithForeignKeys(sql);
     if (declaring === 0) {
@@ -99,3 +118,13 @@ export const foreignKeysCheck: DoctorCheck = {
     };
   },
 };
+
+/** How many rows violate a foreign key right now. `0` when the pragma is unavailable. */
+async function _violationCount(sql: SQLInstance): Promise<number> {
+  try {
+    const rows = (await sql`PRAGMA foreign_key_check`) as unknown[];
+    return rows.length;
+  } catch {
+    return 0;
+  }
+}

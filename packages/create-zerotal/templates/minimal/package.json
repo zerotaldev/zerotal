@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "zt": "bun zt.ts",
-    "dev": "bun zt.ts serve --dev",
+    "dev": "bun zt.ts dev",
     "start": "bun zt.ts serve",
     "test": "bun zt.ts test",
     "typecheck": "tsc --noEmit"

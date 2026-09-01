@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.14.2] — 2026-09-01
+
+### Fixed
+
+- **`bun run dev` was broken in every app scaffolded since 1.13.0.** Each template's
+  `package.json` carried `"dev": "bun zt.ts serve --dev"`, and `serve --dev` was retired in
+  1.13.0 — deliberately failing loudly rather than silently starting a plain server. So the
+  first command a new user runs exited 1 and told them to use something else.
+
+  Retiring it updated the runner, the docs and the `zt upgrade` codemod, and missed the
+  templates that *write* new apps. A test now checks the scaffolder against the codemod's
+  own list of retired forms, so the thing that generates apps cannot fall behind the thing
+  that migrates them.
+
 ## [1.11.0] — 2026-08-31
 
 ### Added

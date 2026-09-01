@@ -27,6 +27,39 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.14.2 — 2026-09-01
+
+**`bun run dev` was broken in every app scaffolded since 1.13.0.** Take this one.
+
+Found by starting the adoption release the obvious way — scaffolding a fresh app and
+walking the first-run path as a newcomer would, rather than reasoning about it.
+
+### Fixed
+
+- **The scaffold templates shipped a retired command.** Every template's `package.json`
+  carried `"dev": "bun zt.ts serve --dev"`, and `serve --dev` was retired in
+  [1.13.0](#1130--2026-08-31) — deliberately failing loudly rather than silently starting a
+  plain server with no watcher. So the first command a new user runs exited 1 and told them
+  to use something else.
+
+  Retiring an alias meant updating the runner, the documentation and the `zt upgrade`
+  codemod. It did not occur to me to update the thing that _writes new apps_, which is the
+  one place a retired form is guaranteed to keep appearing.
+
+  A test now checks the scaffolder against the codemod's own list of retired forms, so what
+  generates apps cannot fall behind what migrates them. It is driven by the codemod rather
+  than a second list, because two lists disagree.
+
+- **`zt upgrade` did not rewrite `zt.ts serve --dev` either.** The codemod anchored on `zt`
+  followed by whitespace, matching `zt serve --dev` and missing `bun zt.ts serve --dev` —
+  the form in every scaffolded `package.json`. So an app running `zt upgrade` to migrate off
+  the alias was told there was nothing to do, on the file that needed it most.
+
+  Worth naming as its own failure: the first version of the new scaffolder test passed with
+  the bug deliberately planted, because it was driven by that same pattern. A gate is only
+  worth what it catches, and the way to know is to break the thing on purpose and watch it
+  fail.
+
 ## 1.14.1 — 2026-09-01
 
 Clearing the deferred list. Three of the four are fixed; the other two were sized and moved

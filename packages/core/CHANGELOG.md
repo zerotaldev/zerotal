@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.14.2] — 2026-09-01
+
+### Fixed
+
+- **`zt upgrade` now rewrites `zt.ts serve --dev`.** The `deprecated-aliases` codemod
+  anchored on `zt` followed by whitespace, so it matched `zt serve --dev` and missed
+  `bun zt.ts serve --dev` — the form in every scaffolded `package.json`, and the one an app
+  runs as `bun run dev`. The codemod reported nothing to do on the file that needed it most.
+
 ## [1.14.1] — 2026-09-01
 
 ### Fixed

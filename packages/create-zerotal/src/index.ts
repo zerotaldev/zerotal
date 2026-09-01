@@ -177,7 +177,7 @@ async function main(): Promise<void> {
     // account) is what makes a fresh app usable rather than a locked door.
     dim(`bun zt db:seed              # demo data + admin@example.com / password`);
   }
-  dim(`bun zt serve --dev`);
+  dim(`bun zt dev`);
   if (template === 'admin') {
     dim(`# then open http://localhost:3000/admin`);
   }

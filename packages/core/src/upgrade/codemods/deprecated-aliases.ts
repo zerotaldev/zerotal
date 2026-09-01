@@ -41,8 +41,13 @@ const BASE_MODEL_IMPORT = /(\bimport\s*\{[^}]*?)\bBaseModel\b([^}]*?\}\s*from\s*
 const COMMAND_ALIASES: { find: RegExp; replace: string; label: string }[] = [
   { find: /\broutes:types\b/g, replace: "route:types", label: "`routes:types` → `route:types`" },
   {
-    find: /\b(zt|zerotal)\s+serve\s+--dev\b/g,
-    replace: "$1 dev",
+    // `zt.ts` as well as `zt`, because the scaffolded entry point *is* `zt.ts` and
+    // every generated `package.json` reads `bun zt.ts serve --dev`. Anchoring on
+    // `zt` followed by whitespace missed the most common occurrence there is — the
+    // one an app runs as `bun run dev` — so `zt upgrade` reported nothing to do on
+    // the file that needed it most.
+    find: /\b(zt|zerotal)(\.ts)?\s+serve\s+--dev\b/g,
+    replace: "$1$2 dev",
     label: "`serve --dev` → `dev`",
   },
 ];

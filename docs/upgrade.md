@@ -296,6 +296,34 @@ doing something quiet.
    If it really is a new migration, give it a name that does not collide once the
    leading digits are removed.
 
+## 1.13 to 1.14
+
+One breaking change, and it is small in practice.
+
+**`inertia.ssr: true` no longer registers `POST /__ssr`.** Rendering and the endpoint are
+separate decisions now:
+
+```ts fragment
+// config/inertia.ts — before
+export default InertiaConfig({ ssr: true }); // rendered, and opened the route
+
+// after
+export default InertiaConfig({ ssr: true }); // renders, and opens nothing
+export default InertiaConfig({ ssrEndpoint: true }); // opens the route, for an
+// external renderer
+```
+
+**Most apps need no change.** If you set `ssr: true` for server rendering — which is what
+the option is for — you keep exactly that, and you stop exposing a route you were not
+using. The endpoint had no in-process caller before 1.13.5, so an app that set the flag was
+getting the route and nothing else.
+
+**Add `ssrEndpoint: true` only if something outside the web process calls `/__ssr`** — a
+separate renderer, a second host. If you are not running one, you were not using it.
+
+Why split them: turning rendering on should not open a route that renders arbitrary
+components from POST input, however well guarded. One switch, one thing.
+
 ## 1.12 to 1.13
 
 Three retirements in one crossing, deliberately together: each is a small migration, and

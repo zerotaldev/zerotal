@@ -7773,6 +7773,12 @@
     },
     {
       "file": "docs/upgrade.md",
+      "heading": "1.13 to 1.14",
+      "ordinal": 0,
+      "hash": "2iclnbrmuks0"
+    },
+    {
+      "file": "docs/upgrade.md",
       "heading": "1.9 to 1.10",
       "ordinal": 0,
       "hash": "b1fyz5ddho91"
@@ -8018,6 +8024,12 @@
       "heading": "Added",
       "ordinal": 0,
       "hash": "1w30tcu7fugp"
+    },
+    {
+      "file": "docs/changelog.md",
+      "heading": "Changed — BREAKING",
+      "ordinal": 0,
+      "hash": "2rghgpqtpvfk"
     },
     {
       "file": "docs/changelog.md",

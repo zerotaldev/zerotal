@@ -27,6 +27,53 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.14.0 — 2026-09-01
+
+Rendering and the SSR endpoint become separate decisions. Small in practice — most apps
+change nothing — but it is a change to what a config flag does, so it takes a minor and
+says so.
+
+### Changed — BREAKING
+
+- **`inertia.ssr: true` no longer registers `POST /__ssr`.**
+
+  ```ts
+  // config/inertia.ts
+  export default InertiaConfig({
+    ssr: true, // server-render every first page load. Renders nothing else.
+    ssrEndpoint: true, // expose POST /__ssr, for a renderer outside this process
+  });
+  ```
+
+  **If you set `ssr: true` for server rendering, you need no change.** You keep exactly
+  that and stop exposing a route you were not using. Add `ssrEndpoint: true` only when
+  something outside the web process calls `/__ssr` — a separate renderer, a second host.
+
+  The endpoint exists because upstream Inertia runs on hosts with no JavaScript runtime:
+  PHP cannot import a `.tsx`, so it posts `{ component, props, url }` to a Node process and
+  gets `{ body, head }` back. That hop is forced by the host language, not chosen. Bun _is_
+  a JavaScript runtime, so [1.13.5](#1135--2026-09-01) made `ssr` import the component and
+  render it inline — no serialisation, no second process, no network.
+
+  So the endpoint solves a problem this framework does not have, and it stays only for the
+  case that is still real: deliberately moving render CPU off the web process. That is a
+  deployment choice, and it now has to be made rather than inherited.
+
+  Turning rendering on should not open a route that renders arbitrary components from POST
+  input, however well guarded. One switch, one thing — the same reasoning that separated
+  `secureHeaders: false` from the site gate in 1.13.3.
+
+### A note on what this costs
+
+Worth stating plainly, because it is easy to expect the opposite: **turning `ssr` on adds
+CPU to the web process.** Before 1.13.5 the flag rendered nothing, so there was no round
+trip to remove — a page load did no rendering at all. Now it renders every first load.
+
+The comparison where in-process rendering _is_ cheaper is against the way other frameworks
+do SSR: no HTTP hop, no JSON round trip of the whole page object, no second process to run
+and supervise. Against the framework's own previous behaviour, it is new work in exchange
+for HTML a crawler and a link preview can read.
+
 ## 1.13.5 — 2026-09-01
 
 **`inertia.ssr: true` server-renders now.** One config line, every page, no controller

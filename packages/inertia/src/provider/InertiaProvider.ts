@@ -103,8 +103,11 @@ export class InertiaProvider extends ServiceProvider {
     // installed, so React apps are unaffected.
     await registerVueRuntimeLoader(process.cwd());
 
-    // 3. Register SSR endpoint when enabled
-    if (config.get<boolean>("inertia.ssr", false)) {
+    // 3. Register the SSR endpoint when the app asks for it — `ssrEndpoint`, not
+    // `ssr`. Rendering happens in-process (see `inertia.ts`); this route exists only
+    // for a renderer running somewhere else, and turning rendering on should not
+    // open a route that renders arbitrary components from POST input.
+    if (config.get<boolean>("inertia.ssrEndpoint", false)) {
       // Throttled as well as loopback-gated: rendering a page is real CPU, and this route
       // sits outside every application guard.
       Router.post(

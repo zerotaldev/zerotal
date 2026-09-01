@@ -56,15 +56,30 @@ server renderer for the framework your app uses.
 client-rendered document is served instead, because taking a route down because an
 _optimisation_ failed would make `ssr: true` a liability rather than an improvement.
 
-## What `POST /__ssr` is for
+## What `POST /__ssr` is for, and why you probably do not want it
 
-`ssr: true` also registers it. It accepts `{ component, props, url }` and returns
-`{ body, head }` — the same contract as the Inertia Node SSR server — and it exists for
-an **external** caller: a separate renderer process, or a deployment that renders
-somewhere other than the web process.
+Set `ssrEndpoint: true` and the app exposes `POST /__ssr`, which accepts
+`{ component, props, url }` and returns `{ body, head }`.
 
-You do not need it for the switch above, which renders in-process. It is throttled and
-loopback-gated; see `ssrSecret` for reaching it from another host.
+That is the contract upstream Inertia uses, and it exists there for a reason that does not
+apply here: **PHP and Ruby have no JavaScript runtime**, so the web framework cannot import
+a `.tsx` and must hand rendering to a separate Node process. The HTTP hop is forced by the
+host language.
+
+Bun _is_ a JavaScript runtime. `ssr: true` imports the component and renders it inline, in
+the same process, with no serialisation and no network. So the endpoint solves a problem
+this framework does not have.
+
+What it is still good for is the one case that remains real: **deliberately moving render
+CPU off the web process**, onto another process or another host, on an app where rendering
+competes with request handling. Then the hop is the point rather than the cost.
+
+It is throttled, answers a 404 to anything that is not loopback, and takes `ssrSecret` for
+a renderer on another host.
+
+> **`ssr: true` does not register it, since 1.14.0.** It used to, which meant turning
+> rendering on opened a route the app never asked for. See
+> [the upgrade note](/docs/upgrade#1-13-to-1-14).
 
 ## Streaming SSR — a different question
 

@@ -241,6 +241,7 @@ interface InertiaConfigShape = {
   htmlTemplate: string
   pagesDir: string
   ssr: boolean
+  ssrEndpoint: boolean
   ssrSecret: string
   version: string
 }

@@ -461,6 +461,14 @@ describe("InertiaConfig", () => {
     expect(cfg.ssr).toBe(true);
     expect(cfg.htmlTemplate).toBe("./resources/app.html");
   });
+
+  it("keeps rendering and the endpoint as separate decisions", () => {
+    // Turning rendering on must not open a route that renders arbitrary
+    // components from POST input, however well guarded. One switch, one thing.
+    expect(InertiaConfig().ssrEndpoint).toBe(false);
+    expect(InertiaConfig({ ssr: true }).ssrEndpoint).toBe(false);
+    expect(InertiaConfig({ ssrEndpoint: true }).ssr).toBe(false);
+  });
 });
 
 // ── SsrHandler ────────────────────────────────────────────────────────────────

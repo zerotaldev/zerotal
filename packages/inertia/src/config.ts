@@ -14,20 +14,44 @@ export interface InertiaConfigShape {
    */
   pagesDir: string;
   /**
-   * Enable server-side rendering.
+   * Server-render every first page load.
    *
-   * When true, InertiaProvider registers POST /__ssr which accepts
-   * { component, props, url } and returns { body, head } - the same
-   * contract as the Inertia Node SSR server. The Inertia client calls
-   * this endpoint when rendering the first page load on the server.
+   * `Inertia.render()` renders the component into the root, injects the page's
+   * `<Head>` into the served `<head>`, and marks the root `data-server-rendered`
+   * so the client hydrates it. One line; no controller changes.
    *
-   * Pages are rendered with the framework they're authored in: React `.tsx`
-   * via `react-dom/server`, or Vue `.vue` via `@inertiajs/vue3` + `vue/server-renderer`.
-   * Install the server renderer for the framework(s) the app uses.
+   * Pages render with the framework they are authored in: React `.tsx` via
+   * `react-dom/server`, Vue `.vue` via `@inertiajs/vue3` + `vue/server-renderer`.
+   * Install the server renderer for the framework the app uses.
+   *
+   * **This renders in-process and registers no route.** Until 1.14.0 it did the
+   * opposite — it registered `POST /__ssr` and rendered nothing — so an app that
+   * set it got an HTTP endpoint it had not asked for and the empty root it
+   * already had. See {@link ssrEndpoint} for the endpoint, which is now its own
+   * decision.
    *
    * Default: false
    */
   ssr: boolean;
+  /**
+   * Expose `POST /__ssr` for a renderer running outside this process.
+   *
+   * The endpoint accepts `{ component, props, url }` and returns `{ body, head }` —
+   * the contract upstream Inertia uses, where the web framework has no JavaScript
+   * runtime and must hand rendering to a separate Node process.
+   *
+   * **Zerotal does not need that boundary.** Bun *is* a JavaScript runtime, so
+   * {@link ssr} imports the component and renders it inline. The endpoint remains
+   * for the one case that is still real: deliberately moving render CPU off the
+   * web process, onto another process or another host.
+   *
+   * Separate from {@link ssr} since 1.14.0. Turning rendering on should not open a
+   * route that renders arbitrary components from POST input, however well guarded —
+   * one switch, one thing.
+   *
+   * Default: false
+   */
+  ssrEndpoint: boolean;
   /**
    * Shared secret required to reach `POST /__ssr` from off-box.
    *
@@ -105,6 +129,7 @@ const defaults: InertiaConfigShape = {
   assetsUrl: "/",
   pagesDir: DEFAULT_PAGES_DIR,
   ssr: false,
+  ssrEndpoint: false,
   ssrSecret: "",
   encryptHistory: false,
   devtools: {
@@ -135,7 +160,7 @@ function _envFlag(name: string): boolean | null {
  * export default InertiaConfig({
  *   htmlTemplate: './resources/app.html',
  *   version:      Bun.env['ASSET_VERSION'] ?? '1',
- *   ssr:          true,   // enable SSR endpoint at POST /__ssr
+ *   ssr:          true,   // server-render every first page load
  * });
  */
 export function InertiaConfig(options: Partial<InertiaConfigShape> = {}): InertiaConfigShape {

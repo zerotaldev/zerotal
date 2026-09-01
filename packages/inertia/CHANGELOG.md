@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.14.0] — 2026-09-01
+
+### Changed — **BREAKING**
+
+- **`inertia.ssr: true` no longer registers `POST /__ssr`.** Rendering and the endpoint are
+  separate decisions: `ssr` renders in-process, `ssrEndpoint` exposes the route.
+
+  Most apps need no change. `ssr: true` still means "server-render every first page load",
+  which is what it is named for. Add `ssrEndpoint: true` only if something outside the web
+  process calls `/__ssr` — a separate renderer, a second host.
+
+  The endpoint exists because upstream Inertia runs on hosts with no JavaScript runtime:
+  PHP cannot import a `.tsx`, so it posts to a Node process. Bun is a JavaScript runtime,
+  so `ssr` imports the component and renders it inline, with no serialisation and no
+  network hop. The endpoint remains for the case that is still real — deliberately moving
+  render CPU off the web process — and is no longer something an app gets by accident.
+
+  Turning rendering on should not open a route that renders arbitrary components from POST
+  input, however well guarded. One switch, one thing.
+
 ## [1.13.5] — 2026-09-01
 
 ### Fixed

@@ -379,6 +379,7 @@ interface AiLimitsConfigShape = {
 }
 
 interface AiMessage = {
+  cache?: boolean
   content: string
   raw?: unknown
   role: AiRole
@@ -450,6 +451,7 @@ interface AiToolResult = {
 
 interface AiUsage = {
   cacheReadTokens: number
+  cacheWrite1hTokens?: number | undefined
   cacheWriteTokens: number
   inputTokens: number
   outputTokens: number

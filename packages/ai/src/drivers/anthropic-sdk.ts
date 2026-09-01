@@ -26,6 +26,16 @@ export interface AnthropicUsage {
   output_tokens: number;
   cache_read_input_tokens?: number | null;
   cache_creation_input_tokens?: number | null;
+  /**
+   * The write split by cache lifetime, present only when a 1-hour cache was used.
+   *
+   * `cache_creation_input_tokens` is the total of both, so the two tiers are
+   * indistinguishable without this.
+   */
+  cache_creation?: {
+    ephemeral_5m_input_tokens?: number | null;
+    ephemeral_1h_input_tokens?: number | null;
+  } | null;
 }
 
 /** Populated only when `stop_reason` is `refusal`; `null` otherwise. */

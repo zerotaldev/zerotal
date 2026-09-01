@@ -8,6 +8,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.14.1] — 2026-09-01
+
+### Fixed
+
+- **A command that declares `needsApp = false` no longer boots the application.**
+  `CommandRunner.boot()` booted unconditionally, so `zt version`, `key:generate`, every
+  `make:*` scaffolder and the gate commands all paid for providers, a database connection
+  and a schedule registry they never touch — and could not run at all when booting was the
+  thing that was broken. A CLI you cannot reach when the app is down is missing exactly
+  when it is wanted.
+
+  Config is still bound, via the new `Application.bindConfig()`: `needsApp = false` is a
+  claim about the _application_, not about configuration, and every scaffolder reads config
+  for its output paths.
+
+  This also makes `zt version --json` pipeable, which previously needed the `--version`
+  form to avoid the boot log on stdout.
+
 ## [1.13.4] — 2026-09-01
 
 ### Fixed

@@ -148,4 +148,6 @@ function accumulate(total: AiUsage, next: AiUsage): void {
   total.outputTokens += next.outputTokens;
   total.cacheReadTokens += next.cacheReadTokens;
   total.cacheWriteTokens += next.cacheWriteTokens;
+  // Optional on the contract, so absent reads as zero rather than NaN.
+  total.cacheWrite1hTokens = (total.cacheWrite1hTokens ?? 0) + (next.cacheWrite1hTokens ?? 0);
 }

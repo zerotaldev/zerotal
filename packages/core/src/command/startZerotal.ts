@@ -88,7 +88,7 @@ export async function startZerotal(
   app.useConfig(config.all());
 
   const runner = new CommandRunner(app);
-  await runner.boot();
+  await runner.boot(command);
   await runner.run(process.argv.slice(2));
 }
 

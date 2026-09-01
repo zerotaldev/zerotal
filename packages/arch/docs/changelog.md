@@ -27,6 +27,72 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.14.1 — 2026-09-01
+
+Clearing the deferred list. Three of the four are fixed; the other two were sized and moved
+to 2.0 with the reasoning recorded, because deciding is also addressing.
+
+### Added
+
+- **Prompt-cache breakpoints on messages.** Caching reached exactly one place — the system
+  prompt — so a long stable document in the message history could not be cached, which is
+  the case caching is most worth having for.
+
+  ```ts
+  await Ai.generate({
+    messages: [
+      { role: "user", content: policyDocument, cache: true },
+      { role: "user", content: question },
+    ],
+  });
+  ```
+
+  The marker goes on the **last** message of the prefix, because a breakpoint caches
+  everything before it — marking each message spends four breakpoints describing one
+  boundary. Anthropic allows four, and a fifth is refused by name rather than surfacing as
+  a provider 400 about a field you never wrote.
+
+### Fixed
+
+- **A 1-hour cache write is priced at 2×, not 1.25×.** Every write was multiplied by the
+  5-minute rate, underestimating a 1-hour write by 37.5% — in the unsafe direction for a
+  ceiling, since a limit that under-counts lets spend through rather than blocking it.
+  `AiUsage.cacheWrite1hTokens` carries the split, read from the `cache_creation` breakdown
+  Anthropic returns when a 1-hour cache was used. Optional on the type, because a custom
+  driver constructs `AiUsage` and making it required would break every one for an
+  accounting detail their provider probably does not report.
+
+- **A command that declares `needsApp = false` no longer boots the application.**
+  `zt version`, `key:generate`, every `make:*` scaffolder and the gate commands paid for
+  providers, a database connection and a schedule registry they never touch — and could not
+  run when booting was the thing that was broken. A CLI you cannot reach when the app is
+  down is missing exactly when it is wanted.
+
+  Config is still bound, through the new `Application.bindConfig()`. "Does not need the
+  app" and "does not need config" are different claims, and only the first is true of a
+  scaffolder writing to a configured path.
+
+  It also makes `zt version --json` pipeable, which previously needed the `--version` form
+  to dodge the boot log on stdout.
+
+### Decided, not done
+
+Two entries on the 2.0 ledger were filed as alias retirements and are mass renames:
+
+- **`BaseModel` → `Model`** is **617 references across `api-surface.md` files and 354 in
+  non-test source.** `BaseModel` is the class's declared name, so TypeScript prints it into
+  every signature mentioning a model — retiring it means renaming the class and
+  regenerating every snapshot, which the breaking-change gate reads as hundreds of removals.
+  The "trivial" codemod in the ledger is the app-side rewrite, which is genuinely trivial
+  and already written; the framework side was never sized.
+- **Prefixing the 269 `@internal` exports with `_`** is the same shape, minus the classes
+  that [cannot be renamed at all](#1131--2026-08-31).
+
+Both move to 2.0 on the ledger's own rule — a break worth taking once, wanting one
+migration and one `zt upgrade` run rather than hundreds of app-visible type positions
+churned so there is one name instead of two. They should cross together, so an app pays for
+one rename pass rather than two.
+
 ## 1.14.0 — 2026-09-01
 
 Rendering and the SSR endpoint become separate decisions. Small in practice — most apps

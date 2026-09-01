@@ -39,26 +39,27 @@ const PRICES: Record<string, ModelPrice> = {
 };
 
 /**
- * Cache reads bill at a tenth of input; writes at a 25% premium.
+ * Cache reads bill at a tenth of input; writes at a premium that depends on how
+ * long the entry lives.
  *
- * Both are exact for the cache this driver asks for. It sends
- * `cache_control: { type: "ephemeral" }` and nothing else — the 5-minute TTL — and
- * Anthropic prices that at 0.1× input for a read and 1.25× for a write. On Sonnet 5's
- * $2 input rate: $0.20 and $2.50 per million, which is what they publish.
+ * Anthropic prices a **5-minute** write at 1.25x input and a **1-hour** write at
+ * 2x. On Sonnet 5's $2 input rate: $0.20 per million for a read, $2.50 for a
+ * 5-minute write, $4.00 for a 1-hour one.
  *
- * **The 1-hour TTL is 2× input, and this underestimates it by 37.5%.** Nothing in this
- * package requests one, so the only way to get there is `providerOptions` overriding
- * the cache control by hand. Worth knowing before you do, because the error is in the
- * unsafe direction for a ceiling: a write priced at 1.25× when it billed at 2× lets
- * spend through rather than blocking it, and a limit that under-counts fails quietly.
+ * The two are priced separately because a single number cannot be priced two ways.
+ * Until 1.14.1 this multiplied every write by 1.25, which underestimated a 1-hour
+ * write by 37.5% — in the unsafe direction for a ceiling, since a limit that
+ * under-counts lets spend through rather than blocking it.
  *
- * It is not corrected automatically because `AiUsage` carries one
- * `cacheWriteTokens` number with no TTL attached, so the two cases are
- * indistinguishable here. Guessing between them would trade a known bias for an
- * unknown one.
+ * `AiUsage.cacheWrite1hTokens` carries the split, read from the `cache_creation`
+ * breakdown Anthropic returns when a 1-hour cache was actually used. This driver
+ * never requests one, so it is `0` unless an app reaches past it with
+ * `providerOptions` — which is exactly the case that used to be mispriced.
  */
 const CACHE_READ_MULTIPLIER = 0.1;
 const CACHE_WRITE_MULTIPLIER = 1.25;
+/** A 1-hour cache entry costs twice input to write, against 1.25x for five minutes. */
+const CACHE_WRITE_1H_MULTIPLIER = 2;
 
 /**
  * Teach the cost estimator about a model it does not know.
@@ -92,7 +93,15 @@ export function estimateCost(model: string, usage: AiUsage): number {
     usage.inputTokens * perInputToken +
     usage.outputTokens * perOutputToken +
     usage.cacheReadTokens * perInputToken * CACHE_READ_MULTIPLIER +
-    usage.cacheWriteTokens * perInputToken * CACHE_WRITE_MULTIPLIER
+    // `cacheWrite1hTokens` is counted *inside* `cacheWriteTokens`, so the
+    // short-lived remainder is the difference. Clamped at zero: a provider that
+    // ever reported a larger 1-hour figure than the total would otherwise produce
+    // a negative charge, and an estimator that can go negative is one a ceiling
+    // cannot trust.
+    Math.max(0, usage.cacheWriteTokens - (usage.cacheWrite1hTokens ?? 0)) *
+      perInputToken *
+      CACHE_WRITE_MULTIPLIER +
+    (usage.cacheWrite1hTokens ?? 0) * perInputToken * CACHE_WRITE_1H_MULTIPLIER
   );
 }
 

@@ -476,6 +476,10 @@ function toUsage(usage: AnthropicUsage): AiUsage {
     outputTokens: usage.output_tokens,
     cacheReadTokens: usage.cache_read_input_tokens ?? 0,
     cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
+    // Reported only when a 1-hour cache was actually requested, so the absence of
+    // the breakdown means every write was the 5-minute kind — which is all this
+    // driver ever asks for.
+    cacheWrite1hTokens: usage.cache_creation?.ephemeral_1h_input_tokens ?? 0,
   };
 }
 
@@ -509,20 +513,57 @@ function toAnthropicTool(tool: AiTool): Record<string, unknown> {
  * it is reconstructed from text, because the signature does not survive the
  * round trip.
  */
+/** Anthropic's ceiling on `cache_control` markers in one request. */
+const MAX_CACHE_BREAKPOINTS = 4;
+
+/**
+ * Attach `cache_control` to the last block of a turn the caller marked.
+ *
+ * The *last* block, because a breakpoint caches everything up to and including
+ * where it sits — putting it on the first block of a multi-block turn would cache
+ * less than the caller asked for, silently and in the direction that costs money
+ * without saving any.
+ */
+function _withCacheMarker(
+  content: string | Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  const blocks = typeof content === "string" ? [{ type: "text", text: content }] : [...content];
+  const last = blocks[blocks.length - 1];
+  if (last) blocks[blocks.length - 1] = { ...last, cache_control: { type: "ephemeral" } };
+  return blocks;
+}
+
 function toAnthropicMessages(messages: AiMessage[]): Array<Record<string, unknown>> {
+  const marked = messages.filter((m) => m.cache === true).length;
+  if (marked > MAX_CACHE_BREAKPOINTS) {
+    throw new AiRequestError(
+      `${marked} messages are marked \`cache: true\`, and Anthropic allows ` +
+        `${MAX_CACHE_BREAKPOINTS} cache breakpoints per request. A breakpoint caches ` +
+        `everything up to and including it, so the marker belongs on the last message of ` +
+        `each stable prefix rather than on every message in it.`,
+      400,
+    );
+  }
+
   return messages.map((message) => {
-    if (message.raw !== undefined) return { role: message.role, content: message.raw };
+    const cache = message.cache === true;
+    if (message.raw !== undefined) {
+      return {
+        role: message.role,
+        content: cache
+          ? _withCacheMarker(message.raw as Array<Record<string, unknown>>)
+          : message.raw,
+      };
+    }
 
     if (message.toolResults?.length) {
-      return {
-        role: "user",
-        content: message.toolResults.map((result) => ({
-          type: "tool_result",
-          tool_use_id: result.id,
-          content: result.content,
-          ...(result.isError ? { is_error: true } : {}),
-        })),
-      };
+      const results = message.toolResults.map((result) => ({
+        type: "tool_result",
+        tool_use_id: result.id,
+        content: result.content,
+        ...(result.isError ? { is_error: true } : {}),
+      }));
+      return { role: "user", content: cache ? _withCacheMarker(results) : results };
     }
 
     if (message.toolCalls?.length) {
@@ -531,10 +572,13 @@ function toAnthropicMessages(messages: AiMessage[]): Array<Record<string, unknow
       for (const call of message.toolCalls) {
         blocks.push({ type: "tool_use", id: call.id, name: call.name, input: call.input });
       }
-      return { role: message.role, content: blocks };
+      return { role: message.role, content: cache ? _withCacheMarker(blocks) : blocks };
     }
 
-    return { role: message.role, content: message.content };
+    return {
+      role: message.role,
+      content: cache ? _withCacheMarker(message.content) : message.content,
+    };
   });
 }
 

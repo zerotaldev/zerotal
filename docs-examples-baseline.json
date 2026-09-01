@@ -549,6 +549,12 @@
     },
     {
       "file": "docs/ai.md",
+      "heading": "Prompt caching",
+      "ordinal": 0,
+      "hash": "3dterihi1wu4"
+    },
+    {
+      "file": "docs/ai.md",
       "heading": "Refusals",
       "ordinal": 0,
       "hash": "3uignr3hi9ld"
@@ -8012,6 +8018,12 @@
       "heading": "**BREAKING** — `countTokens` can return `null`",
       "ordinal": 0,
       "hash": "1chf3ban1kv1"
+    },
+    {
+      "file": "docs/changelog.md",
+      "heading": "Added",
+      "ordinal": 0,
+      "hash": "3dterihi1wu4"
     },
     {
       "file": "docs/changelog.md",

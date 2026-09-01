@@ -38,6 +38,23 @@ export interface AiMessage {
   /** Tool results this user turn carries back. */
   toolResults?: AiToolResult[];
   /**
+   * Mark this turn as a prompt-cache breakpoint.
+   *
+   * Everything *before and including* it is cached, so the marker goes on the last
+   * message of the stable prefix — a long document, a retrieved corpus, a fixed
+   * few-shot block — and everything after it stays uncached.
+   *
+   * The system prompt is cached separately by `cacheSystem` and does not consume a
+   * breakpoint. Anthropic allows four in total, and marking a fifth is an error
+   * from the provider rather than a silently dropped marker, so the framework
+   * refuses past the limit with a message naming which turns asked.
+   *
+   * Only worth setting on a prefix that is genuinely stable and genuinely large:
+   * a cache write costs more than an ordinary input token, so caching something
+   * that changes every request is strictly more expensive than not caching it.
+   */
+  cache?: boolean;
+  /**
    * The provider's own content blocks for this turn, kept verbatim.
    *
    * Replaying a turn that contained thinking, cache markers, or server-tool blocks
@@ -56,6 +73,24 @@ export interface AiUsage {
   cacheReadTokens: number;
   /** Tokens written to the prompt cache (billed at a premium over input). */
   cacheWriteTokens: number;
+  /**
+   * Of {@link cacheWriteTokens}, those written to a **1-hour** cache.
+   *
+   * Anthropic prices a 5-minute cache write at 1.25x input and a 1-hour write at
+   * 2x, and reports the split only when a 1-hour cache was actually asked for.
+   * Kept separate because one number cannot be priced two ways: an estimator
+   * given only the total has to guess, and guessing low on a spend ceiling lets
+   * spend through rather than blocking it.
+   *
+   * Zerotal's own driver never requests a 1-hour cache, so this is absent or `0`
+   * unless an app reaches past it with `providerOptions`. Counted inside
+   * `cacheWriteTokens`, not alongside it.
+   *
+   * Optional rather than required, because a custom `AiDriver` constructs this
+   * type — making it required would have broken every one of them for an
+   * accounting detail their provider probably does not report.
+   */
+  cacheWrite1hTokens?: number | undefined;
 }
 
 /** Why generation stopped. `refusal` is a successful HTTP response, not an error. */

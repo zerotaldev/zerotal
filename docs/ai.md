@@ -287,6 +287,48 @@ after a crash before another worker may take over". If the lock is ever lost the
 loop's signal aborts, because at that point somebody else may be doing the same work.
 See [Locking](/docs/lock) for the mechanism.
 
+## Prompt caching
+
+A long, stable prefix is worth caching: a cached read costs a tenth of an ordinary input
+token. A _write_ costs more than one, so caching something that changes every request is
+strictly more expensive than not caching it.
+
+**The system prompt is cached for you** when `cacheSystem` is on (the default) and it is
+long enough to be worth a breakpoint.
+
+**Anything else you mark yourself.** Put `cache: true` on the last message of the stable
+prefix — a retrieved document, a fixed few-shot block — and everything up to and including
+it is cached:
+
+```ts fragment
+await Ai.generate({
+  messages: [
+    { role: "user", content: policyDocument, cache: true },
+    { role: "user", content: question },
+  ],
+});
+```
+
+The marker goes on the **last** message of the prefix, not on every message in it: a
+breakpoint caches everything before it, so marking each one spends four breakpoints to
+describe one boundary. Anthropic allows four per request and the framework refuses a fifth
+by name rather than letting the provider return a 400 about a field you did not write.
+
+Before 1.14.1 only the system prompt could be cached, so a long document in the message
+history could not be — which is the case caching is most worth having for.
+
+### What it costs
+
+`estimateCost` prices a cache read at 0.1× input and a **5-minute** write at 1.25×. A
+**1-hour** write costs 2×, and the two are tracked separately in `AiUsage`
+(`cacheWrite1hTokens`, counted inside `cacheWriteTokens`) because one number cannot be
+priced two ways.
+
+Zerotal never requests a 1-hour cache, so that figure is `0` unless you reach past the
+driver with `providerOptions`. It used to be priced at 1.25× regardless, which
+underestimated by 37.5% — in the unsafe direction for a spend ceiling, since a limit that
+under-counts lets spend through rather than blocking it.
+
 ## Refusals
 
 A provider's safety classifiers can decline a request. That arrives as a **successful

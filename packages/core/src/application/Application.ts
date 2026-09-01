@@ -1157,23 +1157,7 @@ export class Application {
     this.container._app = this;
 
     // Auto-discover config when useConfig() was not called explicitly.
-    // Scans <cwd>/config/*.ts and loads each file's default export.
-    // Gracefully skips missing or unreadable files.
-    if (this._configMap === undefined) {
-      this._configMap = await _discoverConfig(process.cwd());
-    }
-
-    // Built-in core singletons (overridable by providers via last-write-wins)
-    this.container.singleton("config", () => new ConfigManager());
-    this.container.singleton("events", () => new Emitter(this.container));
-
-    if (this._configMap !== undefined) {
-      const configManager = new ConfigManager();
-      for (const [key, value] of Object.entries(this._configMap)) {
-        configManager.load(key, value);
-      }
-      this.container.value("config", configManager);
-    }
+    await this.bindConfig();
 
     // Auto-discover app/providers/* BEFORE the register phase so they run the full lifecycle.
     await this._discoverProviders(process.cwd());
@@ -1725,6 +1709,39 @@ export class Application {
     onGracefulStopRequest(() => void this.stop());
 
     process.on("SIGUSR2", () => void this._reloadRoutes());
+  }
+
+  /**
+   * Make `config` and `events` resolvable without booting the application.
+   *
+   * Split out of {@link boot} so a command that declares `needsApp = false` can
+   * read configuration without paying for providers, a database connection and a
+   * schedule registry it does not use. Every `make:*` scaffolder reads config for
+   * its output paths, so "does not need the app" and "does not need config" are
+   * different statements and only the first one is true of them.
+   *
+   * Idempotent: `boot()` calls it too, and calling it twice binds the same values.
+   *
+   * @category Configuration
+   */
+  async bindConfig(): Promise<void> {
+    // Scans <cwd>/config/*.ts and loads each file's default export.
+    // Gracefully skips missing or unreadable files.
+    if (this._configMap === undefined) {
+      this._configMap = await _discoverConfig(process.cwd());
+    }
+
+    // Built-in core singletons (overridable by providers via last-write-wins)
+    this.container.singleton("config", () => new ConfigManager());
+    this.container.singleton("events", () => new Emitter(this.container));
+
+    if (this._configMap !== undefined) {
+      const configManager = new ConfigManager();
+      for (const [key, value] of Object.entries(this._configMap)) {
+        configManager.load(key, value);
+      }
+      this.container.value("config", configManager);
+    }
   }
 
   /**

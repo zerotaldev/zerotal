@@ -23,6 +23,7 @@ class Application = {
   _userResolver: ((id: number) => Promise<AuthenticatedUser | null>) | undefined
   adoptAsCurrent: () => Application
   bind: (callback: (container: Container) => void) => Application
+  bindConfig: () => Promise<void>
   boot: () => Promise<void>
   bootAsWorker: () => Promise<void>
   bootDurationMs: number | undefined
@@ -179,7 +180,7 @@ class CommandRan = {
 
 class CommandRunner = {
   new (_app: Application): CommandRunner
-  boot: () => Promise<void>
+  boot: (commandName?: string) => Promise<void>
   callInProcess: (argv: string[], parameters?: Record<string, string | boolean | number>) => Promise<{    code: number;    output: string;}>
   command: (definition: CommandDefinition, aliases?: string[]) => CommandClass
   discover: (dir: string) => Promise<string[]>

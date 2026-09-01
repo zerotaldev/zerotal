@@ -8,6 +8,32 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.14.1] — 2026-09-01
+
+### Added
+
+- **Prompt-cache breakpoints on messages.** Caching reached exactly one place — the system
+  prompt — so a long stable document in the message history could not be cached at all,
+  which is the case caching is most worth having for. Mark the last message of a stable
+  prefix with `cache: true` and everything up to it is cached.
+
+  On the _last_ message, because a breakpoint caches everything before it: marking each
+  message of a prefix spends four breakpoints describing one boundary. Anthropic allows
+  four, and a fifth is refused by name here rather than surfacing as a provider 400 about a
+  field the caller never wrote.
+
+### Fixed
+
+- **A 1-hour cache write is priced at 2x, not 1.25x.** `estimateCost` multiplied every
+  write by the 5-minute rate, underestimating a 1-hour write by 37.5% — in the unsafe
+  direction for a spend ceiling, since a limit that under-counts lets spend through rather
+  than blocking it. `AiUsage.cacheWrite1hTokens` carries the split, read from the
+  `cache_creation` breakdown Anthropic returns when a 1-hour cache was used.
+
+  Optional on the type rather than required: a custom `AiDriver` constructs `AiUsage`, and
+  making it required would have broken every one of them for an accounting detail their
+  provider probably does not report.
+
 ## [1.11.2] — 2026-08-31
 
 ### Changed — **BREAKING**

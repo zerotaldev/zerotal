@@ -330,9 +330,16 @@ export class CommandRunner {
    * is dynamically imported. Application.create() reads it, so _env is already
    * correct by the time boot() runs — no argv inspection needed here.
    */
-  async boot(): Promise<void> {
+  async boot(commandName?: string): Promise<void> {
     this._app.container.value("commands", this);
-    await this._app.boot();
+
+    // Config first, and separately from the application.
+    //
+    // `needsApp = false` is a claim about the *application* — providers, the
+    // database, the schedule registry — not about configuration. Every `make:*`
+    // scaffolder reads config for its output paths, so binding it here is what
+    // makes skipping the boot below safe rather than merely fast.
+    await this._app.bindConfig();
 
     const {
       ServeCommand,
@@ -409,6 +416,17 @@ export class CommandRunner {
     // The `routes:types` alias was retired in 1.13.0; `zt upgrade` rewrites it.
     this.register(RouteTypesCommand);
 
+    // Boot the application only when the command actually needs one.
+    //
+    // This used to be unconditional, so `zt version`, `zt key:generate`, every
+    // `make:*` scaffolder and the gate commands all paid for providers, a database
+    // connection and a schedule registry they never touch — and, worse, could not
+    // run at all when booting was the thing that was broken. A CLI you cannot reach
+    // when the app is down is missing exactly when it is wanted.
+    //
+    // Resolved against the built-ins registered above. A name that is not among
+    // them may still be an app command from `app/commands/`, which is discovered
+    // below and needs the boot — so an unknown name boots rather than assuming.
     // Non-web commands (console, worker, test).
     if (this._app._env !== "web") {
       this.register(ReplCommand);
@@ -439,7 +457,20 @@ export class CommandRunner {
         LintPackagesCommand,
         MakePackageCommand,
       ]);
+    }
 
+    // Everything above is a pure `register()` call, so it happens before the
+    // decision — which is what lets a scaffolder skip the boot too. Deciding
+    // earlier would leave `make:*` unregistered and unrecognised, and an
+    // unrecognised name boots.
+    const requested = commandName ? this._resolveStatic(commandName) : undefined;
+    const skipBoot = requested !== undefined && requested.needsApp === false;
+
+    if (skipBoot) return;
+
+    await this._app.boot();
+
+    if (this._app._env !== "web") {
       // One `deploy:<target>` per environment this app releases to. Console-only,
       // like the other release commands — a running web server has no business
       // migrating a database.
@@ -497,6 +528,23 @@ export class CommandRunner {
   // ── Private resolution ────────────────────────────────────────────────────
 
   /** Resolve a command name to its class — handles both eager and lazy entries. */
+  /**
+   * Look a command up without resolving a lazy thunk.
+   *
+   * Used to decide whether to boot the application, which has to happen *before*
+   * anything is awaited that might need one. A thunk is `undefined` here rather
+   * than imported, so a lazily-registered command boots — the safe answer, since
+   * the only cost of booting unnecessarily is the cost this change avoids, while
+   * the cost of not booting when needed is a broken command.
+   *
+   * @internal
+   */
+  private _resolveStatic(name: string): CommandClass | undefined {
+    const entry = this._registry.get(name);
+    if (typeof entry === "function" && "commandName" in entry) return entry as CommandClass;
+    return undefined;
+  }
+
   private async _resolve(name: string): Promise<CommandClass | undefined> {
     const entry = this._registry.get(name);
     if (!entry) return undefined;

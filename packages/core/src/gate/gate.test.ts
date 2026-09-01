@@ -172,24 +172,36 @@ describe("private preview", () => {
     expect((await through("http://localhost/", { headers: { cookie } })).passed).toBe(false);
   });
 
-  it("admits signed-in staff without a token", async () => {
+  /** Run the gate with `user` attached, as the auth package would. */
+  async function asUser(role: unknown): Promise<boolean> {
     const ctx = HttpContext.fake("http://localhost/");
-    (ctx as unknown as { user: unknown }).user = { role: "admin" };
+    (ctx as unknown as { user: unknown }).user = { role };
     let passed = false;
     await new GateMiddleware().handle(ctx, async () => {
       passed = true;
     });
-    expect(passed).toBe(true);
+    return passed;
+  }
+
+  it("admits an admin without a token", async () => {
+    expect(await asUser("admin")).toBe(true);
   });
 
-  it("does not admit a signed-in customer", async () => {
-    const ctx = HttpContext.fake("http://localhost/");
-    (ctx as unknown as { user: unknown }).user = { role: "customer" };
-    let passed = false;
-    await new GateMiddleware().handle(ctx, async () => {
-      passed = true;
-    });
-    expect(passed).toBe(false);
+  it("refuses every role that is not on the allowlist", async () => {
+    // 1.13.3 asked `role !== "customer"`, which reads as "everyone except
+    // customers is staff" — so in an app whose roles are `user` and `admin`,
+    // every signed-in visitor walked through the gate and the public saw the
+    // site. A gate that fails *open* is worse than no gate, because it reports
+    // success while doing nothing.
+    for (const role of ["user", "customer", "editor", "guest", "", "ADMIN"]) {
+      expect(await asUser(role)).toBe(false);
+    }
+  });
+
+  it("refuses a user whose role is not a string", async () => {
+    for (const role of [undefined, null, 42, { name: "admin" }, ["admin"]]) {
+      expect(await asUser(role)).toBe(false);
+    }
   });
 
   it("lifts itself once `until` has passed", async () => {

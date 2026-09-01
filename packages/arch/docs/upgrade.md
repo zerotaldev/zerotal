@@ -33,6 +33,13 @@ something, and puts the work where it is useful: reading the notes for each mino
 > install 1.11.0, and its breaking change, without asking. Read the notes for every
 > minor you cross, or pin with a tilde (`~1.10.0`) and cross them deliberately.
 
+> **Warning** — **a tilde still crosses a patch**, and under this scheme a patch carries
+> features. `~1.13.2` means `>=1.13.2 <1.14.0`, so it takes 1.13.3 without asking. That is
+> the right default for most apps and it is weaker protection than the same range gives
+> under strict semver, where a patch is only ever a bug fix. If you need the version to
+> hold exactly where you put it — a release you have certified, a machine you cannot
+> re-test quickly — pin the exact version with no range operator at all.
+
 > **Warning** — always upgrade the `@zerotal/*` packages together. Mixing versions across core, ORM, and feature packages leads to type and runtime mismatches.
 
 ## Upgrade steps

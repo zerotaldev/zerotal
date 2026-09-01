@@ -50,6 +50,22 @@ interface GateConfig {
    */
   allow?: string[];
   /**
+   * Roles admitted to a preview without a token.
+   *
+   * An **allowlist**, defaulting to `["admin"]`. An app whose staff role is named
+   * something else declares it here:
+   *
+   * ```ts
+   * // config/gate.ts
+   * export default { staffRoles: ["admin", "editor"] };
+   * ```
+   *
+   * It is a list rather than a rule because the framework cannot know an app's
+   * role names, and the shape it replaced — "anyone who is not a customer" —
+   * admitted every signed-in user in an app that has no role called `customer`.
+   */
+  staffRoles?: string[];
+  /**
    * What the public gets during a **preview** — not maintenance, which is always
    * 503.
    *
@@ -200,8 +216,25 @@ function _isStaff(ctx: HttpContext): boolean {
   if (!("user" in ctx)) return false;
   const user = ctx.user;
   if (typeof user !== "object" || user === null || !("role" in user)) return false;
-  const role = user.role;
-  return typeof role === "string" && role !== "customer";
+
+  // Widened to `string` deliberately. Comparing against an app's own role union
+  // is a type error when the app has no such member — 1.13.3 shipped
+  // `role !== "customer"` and broke `tsc` for every app whose roles are, say,
+  // `"user" | "admin"`, on a feature they were not using. The framework cannot
+  // know an app's role names, so it must not narrow to them.
+  const role: string = typeof user.role === "string" ? user.role : "";
+  if (!role) return false;
+
+  // An **allowlist**, and this is the load-bearing part. 1.13.3 asked
+  // `role !== "customer"`, which reads as "everyone except customers is staff" —
+  // so in an app whose roles are `user` and `admin`, every signed-in visitor was
+  // staff and the gate let the public straight through. A gate that fails *open*
+  // is worse than no gate, because it reports success.
+  //
+  // Defaulting to `admin` alone rather than to something broad, for the same
+  // reason: an app that names its staff role something else gets no bypass and
+  // notices, which is the safe direction to be wrong in.
+  return config.safe<string[]>("gate.staffRoles", ["admin"]).includes(role);
 }
 
 /** HMAC of the token hash under the app key, so the cookie cannot be forged. */

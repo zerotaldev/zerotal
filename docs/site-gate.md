@@ -64,9 +64,20 @@ on every outbound link, into analytics, into screenshots, and into the message w
 somebody shares "the page I was looking at". Stripping it on first use leaves the
 secret in a cookie and nowhere else.
 
-**A signed-in staff account.** A request whose authenticated user has any role other
-than `customer` is admitted without a token, so an app that already has staff accounts
-does not need a second secret for the same people.
+**A signed-in staff account.** A request whose authenticated user holds a role on the
+allowlist is admitted without a token, so an app that already has staff accounts does not
+need a second secret for the same people. It defaults to `["admin"]`:
+
+```ts
+// config/gate.ts
+export default { staffRoles: ["admin", "editor"] };
+```
+
+An **allowlist**, and it matters. 1.13.3 shipped the inverse — "anyone whose role is not
+`customer`" — which in an app whose roles are `user` and `admin` admitted every signed-in
+visitor and let the public straight through. A gate that fails open is worse than no gate,
+because it reports success while doing nothing. An app whose staff role is named something
+this does not list gets no bypass and notices, which is the safe direction to be wrong in.
 
 The cookie lasts seven days. A preview cookie with no lifetime means an ex-tester keeps
 access to a site that has since gone live with real customer data.

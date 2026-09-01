@@ -27,6 +27,44 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.13.4 — 2026-09-01
+
+**Take this one if you are on 1.13.3.** The site gate shipped a staff bypass that failed
+open, and a type error that landed on apps not using it. Both found by a team upgrading,
+within a day.
+
+### Fixed
+
+- **The gate's staff bypass was a denylist, and let the public in.** 1.13.3 admitted any
+  authenticated user whose role was not literally `"customer"`. In an app whose roles are
+  `user` and `admin` — which is most of them — that is every signed-in visitor, so a
+  private preview showed the site to anyone with an account. A gate that fails open is
+  worse than no gate, because it reports success while doing nothing.
+
+  It is an allowlist now: `gate.staffRoles`, defaulting to `["admin"]`. An app whose staff
+  role is named something else gets no bypass and notices, which is the safe direction to
+  be wrong in. The token path is unchanged.
+
+  Worth naming the mistake, because this release cycle already contained its lesson: the
+  1.11.0 notes describe an app that wrote its own "is this error permanent" check as a
+  denylist and found it was a latent outage, and the fix was an allowlist. The same shape
+  went into the gate three releases later.
+
+- **The same line broke `tsc` for apps that do not use the gate.** `role !== "customer"`
+  is a type error when an app's role union has no such member (`TS2367`), and the
+  framework ships TypeScript source, so the error arrived on a feature the app never
+  touched — failing its build. The role is read as `string` now, because the framework
+  cannot know an app's role names and must not narrow to them.
+
+### Documented
+
+- **A tilde still crosses a patch, and under this scheme a patch carries features.**
+  `~1.13.2` is `>=1.13.2 <1.14.0`, so it takes 1.13.3 without asking — which is exactly
+  how 1.13.3 reached the app that found the bugs above. That is the right default for most
+  apps, and it is weaker protection than the same range gives under strict semver, where a
+  patch is only ever a bug fix. [The upgrade guide](/docs/upgrade#versioning) now says so,
+  and says to pin the exact version when you need it to hold.
+
 ## 1.13.3 — 2026-08-31
 
 Two things an app cannot see about itself, from two field reports. Both are the same

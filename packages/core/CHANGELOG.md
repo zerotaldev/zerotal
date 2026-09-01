@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.13.4] — 2026-09-01
+
+### Fixed
+
+- **The site gate's staff bypass was a denylist, and failed open.** 1.13.3 admitted any
+  authenticated user whose role was not literally `"customer"`. In an app whose roles are
+  `user` and `admin` — which is most of them — that is every signed-in visitor, so a
+  private preview showed the site to anyone with an account. A gate that fails open is
+  worse than no gate, because it reports success while doing nothing.
+
+  It is now an allowlist: `gate.staffRoles`, defaulting to `["admin"]`. An app whose staff
+  role is named something else gets no bypass and notices, which is the safe direction to
+  be wrong in. The token path is unchanged.
+
+- **The same code broke `tsc` for apps that do not use the gate.** `role !== "customer"`
+  is a type error when an app's role union has no such member, and the framework ships TS
+  source, so the error landed on a feature the app never touched. The role is read as
+  `string` now, because the framework cannot know an app's role names and must not narrow
+  to them.
+
 ## [1.13.3] — 2026-08-31
 
 ### Added

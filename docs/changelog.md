@@ -27,6 +27,42 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.14.3 — 2026-09-01
+
+Consistency pass on the documentation, and two bugs it uncovered.
+
+Everything is written `bun zt <command>` now. The scaffold still adds a `dev` script, so
+`bun run dev` keeps working — the docs simply lead with the form that is the same in every
+project, including one that never ran the scaffolder.
+
+### Fixed
+
+- **Twenty pages taught a retired command.** `serve --dev` was retired in
+  [1.13.0](#1130--2026-08-31), and that release updated the runner, the codemod,
+  `docs/commands.md` and `docs/upgrade.md` — leaving the form in the getting-started guide,
+  the assets guide, two Flow pages, the logger page, and both READMEs. For three weeks the
+  front door told newcomers to run a command that exits 1.
+
+  A gate now scans every page against the upgrade codemods' own list of retired forms, so
+  what the docs teach cannot drift from what the framework accepts. Only _shipped_
+  retirements count: a codemod for 2.0 describes a rename that has not happened, and
+  flagging correct prose is how a gate becomes something people add exclusions to rather
+  than read.
+
+- **`zt upgrade` never offered the 1.13.0 migrations.** The `deprecated-aliases` codemod
+  bundled `serve --dev` and `routes:types` — retired in 1.13.0 — with the `BaseModel`
+  rename, which has not shipped and is scheduled for 2.0. A codemod carries one version, so
+  it took the later one: `zt upgrade --to 1.13.0` selected **nothing**, and the migration
+  for the release that broke `serve --dev` was unreachable by every app crossing it.
+
+  Split into `deprecated-aliases` at 1.13.0 and `base-model-rename` at 2.0.0. An app moving
+  to any 1.13+ release gets the command rewrites; one crossing to 2.0 no longer has
+  `BaseModel` renamed as a side effect of a command alias.
+
+  Found by the new gate, which flagged `extends BaseModel` in the ORM docs — correct prose,
+  and the reason it was reported was that the codemod claimed a rename that had not
+  happened.
+
 ## 1.14.2 — 2026-09-01
 
 **`bun run dev` was broken in every app scaffolded since 1.13.0.** Take this one.

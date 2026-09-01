@@ -46,7 +46,7 @@ cd my-app
 # (set DATABASE_URL in .env for a non-sqlite api project)
 bun zt migrate   # api template only
 bun zt db:seed   # admin template — demo data plus the first account
-bun zt serve --dev
+bun zt dev
 ```
 
 The `admin` template's panel is behind a sign-in, so seeding is what makes a fresh

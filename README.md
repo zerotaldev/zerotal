@@ -37,7 +37,7 @@ bun install
 cp .env.example .env       # then set DATABASE_URL if not using the default SQLite file
 bun zt key:generate       # generates APP_KEY into .env
 bun zt migrate            # create the database schema
-bun run dev                # start the dev server (bun zt serve --dev)
+bun zt dev                # start the dev server, with hot reload
 ```
 
 ---
@@ -599,7 +599,7 @@ bun zt key:generate
 bun install       # install all workspace dependencies
 bun test          # run the full test suite
 bun run typecheck # type-check every package
-bun run dev       # start dev server with hot reload
+bun zt dev       # start dev server with hot reload
 ```
 
 > There is no build step — packages ship as source (see [Distribution](#distribution-packages-ship-as-typescript-source)).

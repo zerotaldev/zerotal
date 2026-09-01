@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { planUpgrade, applyPlan, collectFiles, selectCodemods } from "./runner.ts";
 import { compareVersions } from "./types.ts";
 import type { Codemod } from "./types.ts";
-import { CODEMODS, deprecatedAliases } from "./codemods/index.ts";
+import { CODEMODS, deprecatedAliases, baseModelRename } from "./codemods/index.ts";
 
 let root: string;
 
@@ -171,8 +171,12 @@ describe("collectFiles", () => {
 
 // ── The first real codemod ────────────────────────────────────────────────────
 
-describe("deprecated-aliases (ledger #4)", () => {
-  const run = (contents: string) => deprecatedAliases.run([{ file: "x.ts", contents }]);
+describe("base-model-rename (ledger #4, 2.0)", () => {
+  // Split from `deprecated-aliases` in 1.14.3: a codemod carries one version, and
+  // bundling this unshipped rename with two retirements that shipped in 1.13.0
+  // took the later number — so `zt upgrade --to 1.13.0` selected nothing and
+  // offered no help with the release that actually broke `serve --dev`.
+  const run = (contents: string) => baseModelRename.run([{ file: "x.ts", contents }]);
 
   it("renames the base class and its import together", () => {
     const { changes } = run(
@@ -207,6 +211,16 @@ describe("deprecated-aliases (ledger #4)", () => {
     expect(manual).toHaveLength(1);
     expect(manual[0]!.line).toBe(1);
     expect(manual[0]!.reason).toContain("type position");
+  });
+});
+
+describe("deprecated-aliases (ledger #4, shipped 1.13.0)", () => {
+  const run = (contents: string) => deprecatedAliases.run([{ file: "x.ts", contents }]);
+
+  it("is selectable by an app upgrading to 1.13.0", () => {
+    // The version is the whole point of the split: an app crossing the release
+    // that retired these has to be offered the migration for them.
+    expect(deprecatedAliases.version).toBe("1.13.0");
   });
 
   it("rewrites the command aliases", () => {

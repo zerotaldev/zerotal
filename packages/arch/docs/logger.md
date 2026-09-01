@@ -292,7 +292,7 @@ level you can filter and in a file you can ship. Nothing writes to the terminal
 behind the logger's back, which means a `daily` channel captures the framework's
 own account of a boot, not just your application's.
 
-The one deliberate exception is the CLI itself. `serve --dev`'s banner and its
+The one deliberate exception is the CLI itself. `zt dev`'s banner and its
 `[zerotal:dev]` build/restart lines come from the supervisor process that watches
 your files, not from the application, and they are interactive terminal output
 rather than a record of anything. They stay on stdout.

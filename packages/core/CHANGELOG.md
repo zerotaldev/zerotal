@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.14.3] — 2026-09-01
+
+### Fixed
+
+- **`zt upgrade` never offered the 1.13.0 migrations.** `deprecated-aliases` bundled two
+  retirements that shipped in 1.13.0 — `serve --dev` and `routes:types` — with the
+  `BaseModel` rename that has not shipped and is scheduled for 2.0. A codemod carries one
+  version, so it took the later one, and `zt upgrade --to 1.13.0` selected nothing at all.
+  The migration for the release that broke `serve --dev` was unreachable by every app
+  crossing it.
+
+  Split into `deprecated-aliases` at 1.13.0 and `base-model-rename` at 2.0.0. An app moving
+  to any 1.13+ release now gets the command rewrites, and one crossing to 2.0 no longer has
+  `BaseModel` renamed as a side effect of a command alias.
+
 ## [1.14.2] — 2026-09-01
 
 ### Fixed

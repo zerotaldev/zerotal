@@ -8,9 +8,9 @@
  * that rule fails is by everyone assuming there is time.
  */
 import type { Codemod } from "../types.ts";
-import { deprecatedAliases } from "./deprecated-aliases.ts";
+import { deprecatedAliases, baseModelRename } from "./deprecated-aliases.ts";
 import { clientTaggedTemplate } from "./client-tagged-template.ts";
 
-export const CODEMODS: Codemod[] = [clientTaggedTemplate, deprecatedAliases];
+export const CODEMODS: Codemod[] = [clientTaggedTemplate, deprecatedAliases, baseModelRename];
 
-export { deprecatedAliases, clientTaggedTemplate };
+export { deprecatedAliases, baseModelRename, clientTaggedTemplate };

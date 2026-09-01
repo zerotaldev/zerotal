@@ -193,11 +193,14 @@ bun zt migrate
 
 ```bash
 # in your project root
-bun dev          # → bun zt serve --dev
+bun zt dev
 ```
 
+Every command in these docs is written `bun zt <command>`. The scaffold also adds a
+`dev` script, so `bun run dev` does the same thing — reach for whichever you prefer.
+
 Your app is now running at **http://localhost:3000** with hot reload enabled —
-`--dev` watches your files and hot-swaps routes without dropping connections. The
+`dev` watches your files and hot-swaps routes without dropping connections. The
 generated `package.json` also gives you `bun start` (production serve) and
 `bun test`.
 

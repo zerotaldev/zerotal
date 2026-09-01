@@ -12,20 +12,20 @@ View, Inertia) has its own pipeline and hot-reload behaviour; all three use
 
 Asset compilation is built into the framework — there's no package to install or
 provider to register for the pipeline itself. You only add Tailwind and wire up a
-static route, then `bun zt serve --dev` handles build-and-reload for you.
+static route, then `bun zt dev` handles build-and-reload for you.
 
 > **Note** — Projects ship a `zt.ts` entry and a `zt` package script,
-> so commands are written `bun zt <command>` (e.g. `bun zt serve --dev`).
+> so commands are written `bun zt <command>` (e.g. `bun zt dev`).
 
 ## Getting Started
 
 Asset building is part of `@zerotal/core` — nothing to install and no provider
-to register. `bun zt serve --dev` builds on change, and `bun zt css:build`
+to register. `bun zt dev` builds on change, and `bun zt css:build`
 produces a production bundle:
 
 ```bash
 # in your project root
-bun zt serve --dev     # watch and rebuild
+bun zt dev     # watch and rebuild
 bun zt css:build       # one production build
 ```
 
@@ -39,7 +39,7 @@ Pick by stack — the dev server runs the right pipeline automatically:
   production. Dev rebuilds are wired up by `FlowProvider`.
 - **Inertia** (React or Vue SPA, JS + CSS bundle): `bun zt inertia:build` for
   production. Dev rebuilds are wired up by `InertiaProvider`.
-- **Any stack, development**: `bun zt serve --dev` — initial build, file watch,
+- **Any stack, development**: `bun zt dev` — initial build, file watch,
   rebuild on save, and a browser reload over WebSocket.
 
 ## Tailwind CSS
@@ -113,7 +113,7 @@ returned HTML:
 
 ```bash
 # in your project root
-bun zt serve --dev
+bun zt dev
 ```
 
 When `resources/css/app.css` exists, `FlowProvider.onBooted()` registers a
@@ -296,7 +296,7 @@ Inertia Vue plugin so `.vue` single-file components compile.
 
 ```bash
 # in your project root
-bun zt serve --dev
+bun zt dev
 ```
 
 `InertiaProvider.onBooted()` registers Inertia's build routine under its own
@@ -409,14 +409,14 @@ stylesheet stays small and the fonts load in parallel. The other accepted values
 
 ## Hot reload
 
-Both pipelines above are driven by the same dev process. `bun zt serve --dev`
+Both pipelines above are driven by the same dev process. `bun zt dev`
 builds once, spawns the server as a child process, and watches the filesystem;
 what happens on a change depends on which directory the change landed in:
 
 ```text
-# bun zt serve --dev process model
+# bun zt dev process model
 ┌──────────────────────────────────────────────────────┐
-│  bun zt serve --dev                                 │
+│  bun zt dev                                 │
 │                                                      │
 │  Process 1: DevOrchestrator                          │
 │  ├─ Initial build (CSS or JS+CSS)                    │
@@ -699,7 +699,7 @@ test("a stale bundle is told to reload", async () => {
 | Command                             | Effect                                          |
 | ----------------------------------- | ----------------------------------------------- |
 | `bun zt serve`                      | Serve the app; assets are built once at boot    |
-| `bun zt serve --dev`                | Dev server with hot reload                      |
+| `bun zt dev`                        | Dev server with hot reload                      |
 | `bun zt css:build`                  | Production CSS build (Flow/View)                |
 | `bun zt inertia:build`              | Development JS+CSS build (Inertia)              |
 | `bun zt inertia:build --production` | Production JS+CSS build (Inertia)               |

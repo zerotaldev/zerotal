@@ -186,7 +186,7 @@ The cache is small (a handful of recent pages) and short-lived, same-origin only
 
 ### Fast refresh in dev
 
-When you edit a component under `serve --dev`, the server restarts (quickly) and the client **re-renders each mounted component from its held snapshot with the new code — keeping its state**, instead of a full reload that would reset everything. Because component state is a signed snapshot and your `APP_KEY` doesn't change across a restart, that snapshot still verifies against the fresh server; the browser also refetches the stylesheet, so a newly-used Tailwind class shows up too. Increment a counter, tweak its template, save — the counter keeps its value and the change appears in place.
+When you edit a component under `zt dev`, the server restarts (quickly) and the client **re-renders each mounted component from its held snapshot with the new code — keeping its state**, instead of a full reload that would reset everything. Because component state is a signed snapshot and your `APP_KEY` doesn't change across a restart, that snapshot still verifies against the fresh server; the browser also refetches the stylesheet, so a newly-used Tailwind class shows up too. Increment a counter, tweak its template, save — the counter keeps its value and the change appears in place.
 
 Two things to know:
 
@@ -199,7 +199,7 @@ Two things to know:
 
 ### Time-travel devtools
 
-Because the engine signs and delta-encodes the **full component state** on every round-trip, the client already holds an exact, verifiable history of everything each component has been. Under `serve --dev`, Flow records that stream: one frame per applied patch,
+Because the engine signs and delta-encodes the **full component state** on every round-trip, the client already holds an exact, verifiable history of everything each component has been. Under `zt dev`, Flow records that stream: one frame per applied patch,
 plus the initial mount. You can then **scrub back to any frame**.
 
 Jumping re-applies that frame's snapshot _and_ its HTML to the live component, so
@@ -225,7 +225,7 @@ use. Recording is capped to the most recent frames and runs **only** under the d
 
 ### Dev error overlay
 
-When an **unexpected** error is thrown, `serve --dev` shows a **full-screen
+When an **unexpected** error is thrown, `zt dev` shows a **full-screen
 overlay** carrying the error class, message, and stack. It covers both a server
 action and the initial `GET` render (`onMount` / `render`).
 

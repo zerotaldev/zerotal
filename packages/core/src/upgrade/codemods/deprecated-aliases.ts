@@ -1,24 +1,19 @@
 /**
  * Ledger #4 — retire the deprecated aliases.
  *
- * Three pairs, each a live alias somebody depends on, which is exactly why they
- * could not be dropped in a minor:
+ * Two codemods, not one, because they retire at different times and a codemod
+ * carries a single version:
  *
- * - `BaseModel` → `Model`. The same class object under its original name.
- * - `routes:types` → `route:types`. Registered as an alias in `CommandRunner`.
- * - `serve --dev` → `dev`. The flag still works; `dev` is the command it became.
+ * - {@link deprecatedAliases} at **1.13.0** — `routes:types` → `route:types` and
+ *   `serve --dev` → `dev`. Both shipped; both fail loudly now.
+ * - {@link baseModelRename} at **2.0.0** — `BaseModel` → `Model`. Not shipped;
+ *   sized on 1 Sep 2026 at 617 api-surface references and moved to 2.0.
  *
- * ## What this deliberately does not do
- *
- * **It does not touch `BaseModel` in a type position.** `Model` and `BaseModel`
- * are the same runtime class, so a value-position rename is cosmetic and safe.
- * In a generic bound — `<T extends BaseModel>` — the name may be load-bearing
- * for a reader even though it resolves identically, and in framework source it
- * genuinely is. Those are reported for a person instead.
- *
- * That asymmetry is the whole reason this is a codemod rather than a
- * find-and-replace: the mixin-composition script learned it the hard way in
- * 1.3.0, where a blind rename broke import specifiers it had not considered.
+ * They were one codemod, which forced one version, which took the later of the
+ * two — so `zt upgrade --to 1.13.0` selected nothing and offered no help
+ * migrating the very release that retired `serve --dev`, while an app crossing to
+ * 2.0 would have had its `BaseModel` renamed as a side effect of a command alias.
+ * A codemod nobody's upgrade reaches is a codemod that does not exist.
  */
 import type { Change, Codemod, CodemodResult, Manual, SourceFile } from "../types.ts";
 
@@ -52,10 +47,53 @@ const COMMAND_ALIASES: { find: RegExp; replace: string; label: string }[] = [
   },
 ];
 
+/** The command aliases retired in 1.13.0. Both fail loudly rather than drifting. */
 export const deprecatedAliases: Codemod = {
-  version: "2.0.0",
+  version: "1.13.0",
   name: "deprecated-aliases",
-  description: "Retire BaseModel, routes:types and serve --dev in favour of their real names",
+  description: "Retire routes:types and serve --dev in favour of their real names",
+  ledger: 4,
+
+  run(files: SourceFile[]): CodemodResult {
+    const changes: Change[] = [];
+
+    for (const { file, contents } of files) {
+      let next = contents;
+      const notes: string[] = [];
+
+      for (const { find, replace, label } of COMMAND_ALIASES) {
+        const hits = next.match(find)?.length ?? 0;
+        if (hits === 0) continue;
+        next = next.replace(find, replace);
+        notes.push(`${hits} × ${label}`);
+      }
+
+      if (next !== contents) changes.push({ file, summary: notes.join(", "), contents: next });
+    }
+
+    return { changes, manual: [] };
+  },
+};
+
+/**
+ * `BaseModel` → `Model`, which has **not shipped** and is scheduled for 2.0.
+ *
+ * ## What this deliberately does not do
+ *
+ * **It does not touch `BaseModel` in a type position.** `Model` and `BaseModel`
+ * are the same runtime class, so a value-position rename is cosmetic and safe.
+ * In a generic bound — `<T extends BaseModel>` — the name may be load-bearing
+ * for a reader even though it resolves identically, and in framework source it
+ * genuinely is. Those are reported for a person instead.
+ *
+ * That asymmetry is the whole reason this is a codemod rather than a
+ * find-and-replace: the mixin-composition script learned it the hard way in
+ * 1.3.0, where a blind rename broke import specifiers it had not considered.
+ */
+export const baseModelRename: Codemod = {
+  version: "2.0.0",
+  name: "base-model-rename",
+  description: "Rename BaseModel to Model at every declaration site",
   ledger: 4,
 
   run(files: SourceFile[]): CodemodResult {
@@ -86,13 +124,6 @@ export const deprecatedAliases: Codemod = {
             : `${before}Model${after}`,
         );
         notes.push("import specifier updated");
-      }
-
-      for (const { find, replace, label } of COMMAND_ALIASES) {
-        const hits = next.match(find)?.length ?? 0;
-        if (hits === 0) continue;
-        next = next.replace(find, replace);
-        notes.push(`${hits} × ${label}`);
       }
 
       // Type positions are a handover, not a rewrite.

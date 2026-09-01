@@ -84,7 +84,7 @@ bun create zerotal my-app     # choose: API, Flow, React, Vue, or Minimal
 cd my-app
 cp .env.example .env         # APP_KEY is pre-generated for you
 bun zt migrate              # create the database schema (API template)
-bun run dev                  # dev server + hot reload at http://localhost:3000
+bun zt dev                  # dev server + hot reload at http://localhost:3000
 ```
 
 The scaffolder writes a fresh `APP_KEY` into `.env.example` and installs
@@ -95,7 +95,7 @@ dependencies. Pick a template at the prompt:
 - **React** / **Vue** — Inertia SPA (see [Inertia](#inertia-react-vue-spa)).
 - **Minimal** — one page with JSX views on the bare framework.
 
-There's **no build step**: `bun run dev` starts the server, `bun test` runs the suite,
+There's **no build step**: `bun zt dev` starts the server, `bun test` runs the suite,
 `bun run typecheck` type-checks. More in [Getting Started](/docs/getting-started).
 
 ## The shape of an app
@@ -631,7 +631,7 @@ bun zt migrate:rollback              # roll back last batch
 bun zt migrate:fresh                 # drop all + re-migrate
 bun zt key:generate                  # fresh APP_KEY
 bun zt queue:work                    # start the queue worker
-bun zt serve --dev                   # dev server (aliased by `bun run dev`)
+bun zt dev                           # dev server, hot reload (also `bun run dev`)
 bun zt list                          # every available command
 ```
 
@@ -658,7 +658,7 @@ The [README](../README.md) has a package-by-package table with links.
 
 - **The `zt` CLI is your control panel.** `bun zt list` shows everything —
   scaffolding, migrations, the dev server, the worker, and tests all run through it.
-- **No build, ever.** `bun run dev` / `bun test` / `bun run typecheck`. No compile
+- **No build, ever.** `bun zt dev` / `bun test` / `bun run typecheck`. No compile
   step to remember.
 - **Starters are the fastest way in.** `bun create zerotal my-app` scaffolds a working
   app from one of six starters — `api`, `admin`, `flow`, `react`, `vue`, or `minimal`.

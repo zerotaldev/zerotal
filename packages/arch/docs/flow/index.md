@@ -46,7 +46,7 @@ Registering the provider switches on the following (in lifecycle order):
 
 - `onRegister` — registers the `Router.flow()` macro and the file-route resolver so Flow pages can be declared and auto-discovered.
 - `onBooting` — builds the client runtime bundle (Alpine + the Flow bridge) and mounts the routes under `/__flow` (the WebSocket endpoint, `runtime.js`, the upload endpoint, and the session-relay endpoint).
-- `onBooted` — wires `serve --dev` rebuild hooks for `resources/css/app.css` and `resources/js/app.js` (a no-op when those entry points are absent).
+- `onBooted` — wires `zt dev` rebuild hooks for `resources/css/app.css` and `resources/js/app.js` (a no-op when those entry points are absent).
 - `onStarting` — AOT-compiles and validates every registered page's `render()` method.
 
 ### Configuration

@@ -21,12 +21,14 @@ function scaffolderFiles(): { file: string; contents: string }[] {
   const root = new URL("..", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
   const files: { file: string; contents: string }[] = [];
 
-  for (const dir of ["templates", "src"]) {
+  for (const dir of ["templates", "src", "."]) {
     for (const rel of new Glob("**/*").scanSync({ cwd: `${root}/${dir}`, onlyFiles: true })) {
       if (/\.(png|jpg|jpeg|ico|woff2?)$/i.test(rel)) continue;
       // A test is not shipped to a scaffolded app, and this file names the retired
       // form in prose describing why it exists.
       if (/\.test\.tsx?$/.test(rel)) continue;
+      // `.` is scanned for README.md; skip what it would otherwise re-read.
+      if (dir === "." && !/^README\.md$/i.test(rel)) continue;
       try {
         files.push({
           file: `${dir}/${rel}`,

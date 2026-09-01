@@ -166,6 +166,15 @@ jobs:
       # rather than a wall: today's gap is recorded, a regression fails, and the
       # number only moves down. A gate demanding a clean sweep on the day it lands
       # either blocks the release or gets switched off.
+      # Retiring a command means finding every page that teaches it, and "every
+      # page" is not a thing anyone recalls. `serve --dev` was retired in 1.13.0
+      # and stayed in twenty places for three weeks, including the getting-started
+      # guide. Driven by the upgrade codemods, so what the docs teach cannot drift
+      # from what the framework accepts.
+      - name: Docs teach no retired command
+        if: ${{ !cancelled() }}
+        run: bun run retired:check
+
       - name: Docs coverage
         if: ${{ !cancelled() }}
         run: bun run docs:coverage

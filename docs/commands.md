@@ -181,7 +181,7 @@ that cannot cost you anything.
 Nothing prompts when there is no terminal to answer, which covers CI, containers,
 and anything reading `serve`'s output from a pipe. There it fails with the same
 explanation, so use `--force` or `--auto-port` to say up front which way you want
-it decided. Both flags work with a plain `serve` and with `serve --dev`.
+it decided. Both flags work with `serve` and with `dev`.
 
 The dev server is a special case worth knowing about: on every restart it waits a
 few seconds for its own previous process to let go of the socket rather than
@@ -192,8 +192,13 @@ is about to free itself anyway.
 
 `bun zt dev` starts the server, the file watcher, and every process a provider or
 your app registered — a queue worker, a type-checker, a Stripe listener — in one
-terminal, each in its own tab. It is `serve --dev` with those extra tabs and the
-keys to drive them, so anything true of one is true of the other.
+terminal, each in its own tab. It subclasses `serve`, so it is the same supervisor,
+the same port resolution and the same restart behaviour, plus the flags that only
+make sense with a deck on screen — anything true of `serve` is true of it.
+
+`serve --dev` was the old spelling and was retired in 1.13.0; it now fails with a
+message rather than starting a plain server. The scaffold's `dev` script runs this,
+so `bun run dev` and `bun zt dev` are the same thing.
 
 An app with a queue no longer needs a second terminal:
 

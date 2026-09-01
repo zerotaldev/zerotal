@@ -31,6 +31,8 @@
     "brands:sync": "bun run scripts/sync-brands.ts",
     "brands:check": "bun run scripts/sync-brands.ts --check",
     "changelog:release": "bun run scripts/changelog-release.ts",
+    "release:notes:check": "bun run scripts/release-notes-check.ts",
+    "docs:current": "bun run scripts/docs-current.ts",
     "cast:check": "bun run scripts/cast-audit.ts",
     "exact:optional": "bun run scripts/exact-optional.ts --write",
     "exact:optional:check": "bun run scripts/exact-optional.ts",

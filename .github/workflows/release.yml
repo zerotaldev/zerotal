@@ -112,6 +112,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun run typecheck:tests
 
+      # Every package whose source changed since the last tag has to say so.
+      #
+      # 1.13.4 shipped a user-facing change to @zerotal/inertia whose release
+      # notes did not mention Inertia at all, because notes get written from what
+      # the author meant to ship rather than from the diff — and anything that
+      # landed on main in between goes out silently. The author is the last person
+      # who can catch that, since they are recalling rather than reading.
+      - name: Release notes cover what changed
+        if: ${{ !cancelled() }}
+        run: bun run scripts/release-notes-check.ts --tag "${GITHUB_REF_NAME}"
+
       - name: Tag matches package version
         if: ${{ !cancelled() }}
         run: bun run scripts/publish-packages.ts --dry-run --tag "${GITHUB_REF_NAME}"

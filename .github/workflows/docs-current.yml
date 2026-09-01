@@ -1,0 +1,31 @@
+name: Docs are current
+
+# zerotal.dev is a separate git checkout, so publishing to npm does not update it.
+# That is written down in the deployment notes and it still drifted three releases
+# behind, because the last step of a release is a habit and habits lapse exactly
+# when releases come fast.
+#
+# So this asks the question instead of trusting anyone to remember it: is the
+# version the docs site is serving the version npm is serving? It runs on a
+# schedule rather than in the release workflow, because the deploy happens after
+# the publish — a check inside the release would fail every time by construction,
+# and a check that always fails is one nobody reads.
+
+on:
+  schedule:
+    # Every morning, and a few hours after a typical release afternoon.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: zerotal.dev matches npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Compare the live docs against the published version
+        run: bun run scripts/docs-current.ts

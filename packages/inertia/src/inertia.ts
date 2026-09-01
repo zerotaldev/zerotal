@@ -464,14 +464,12 @@ async function _renderedHtml(component: string, pageObject: PageObject): Promise
     const { modPath, framework } = await resolvePageModule(_getPagesDir(), component);
     const { body, head } = await renderInertiaPage(pageObject, modPath, framework);
 
-    return (
-      injectHead(prefix, head) +
-      pageScript(pageObject) +
-      rootOpen(true) +
-      body +
-      ROOT_CLOSE +
-      suffix
-    );
+    // `body` is already the whole mount root — `renderInertiaPage` returns
+    // `pageScript + rootOpen + html + ROOT_CLOSE` for React, and Vue's SSR result
+    // carries its own root too. Wrapping it again emits two `<div id="app">` and
+    // two `data-page` scripts, and the client hydrates against the wrong one.
+    // Composed exactly as `inertiaStream` composes it, so the two cannot drift.
+    return injectHead(prefix, head) + body + suffix;
   } catch (error) {
     console.warn(
       `[Inertia] SSR render failed for "${component}", serving the client-rendered ` +

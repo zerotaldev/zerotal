@@ -27,6 +27,47 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.13.5 — 2026-09-01
+
+**`inertia.ssr: true` server-renders now.** One config line, every page, no controller
+changes — which is what the option is named for and what it did not do.
+
+### Fixed
+
+- **The `ssr` flag rendered nothing.** It registered `POST /__ssr` and nothing in the
+  request path consulted it. So an app that set `ssr: true` and read
+  [the SSR guide](/docs/inertia/ssr) — which stated that the server renders the component
+  into the template — got exactly the empty root it had before, and the documentation was
+  the reason nobody suspected otherwise.
+
+  ```ts
+  // config/inertia.ts — this is now the whole of it
+  export default InertiaConfig({ ssr: true });
+  ```
+
+  `Inertia.render()` renders the component into the root, injects the page's `<Head>` into
+  the served `<head>`, and marks the root `data-server-rendered`. The scaffolded `app.tsx`
+  already hydrated on that attribute, so the client half needed nothing: turning SSR on is
+  one line, and there is no second step.
+
+  Server rendering was previously reachable only by rewriting each route to
+  `Inertia.stream()`, one call site at a time. Two teams did that. **They can go back to
+  `render()`** — and should, unless they wanted the streaming.
+
+  A component that fails to render falls back to the client-rendered document with a
+  warning rather than failing the route. The page still works in a browser, and taking a
+  route down because an _optimisation_ failed would make `ssr: true` a liability rather
+  than an improvement.
+
+- **Streaming and SSR are separated in the docs.** `inertiaStream()` is not how you turn
+  server rendering on; it decides whether the bytes are **buffered or streamed**. Both
+  render the component and both hydrate. Conflating them is what made a per-route rewrite
+  look like the supported answer, so the comparison table and the "what a crawler sees"
+  remedies now lead with the config flag.
+
+  `POST /__ssr` is unchanged and documented for what it is: the contract for an
+  **external** renderer, not the in-process switch.
+
 ## 1.13.4 — 2026-09-01
 
 **Take this one if you are on 1.13.3.** The site gate shipped a staff bypass that failed

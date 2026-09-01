@@ -8,6 +8,31 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.13.5] — 2026-09-01
+
+### Fixed
+
+- **`inertia.ssr: true` now actually server-renders.** The flag registered `POST /__ssr`
+  and nothing in the request path consulted it, so an app that set it — and read the
+  documentation, which said the server renders the component into the template — got
+  exactly the empty root it had before.
+
+  `Inertia.render()` renders the component into the root, injects the page's `<Head>` into
+  the served `<head>`, and marks the root `data-server-rendered`. The scaffolded `app.tsx`
+  already hydrated on that attribute, so the client half needed no change: an app turns SSR
+  on with one config line and nothing else.
+
+  Server rendering was previously reachable only by rewriting each route to
+  `Inertia.stream()`, one call site at a time, which is not what a global switch means. An
+  app that did that can go back to `render()`.
+
+  A component that fails to render falls back to the client-rendered document with a
+  warning rather than failing the route: the page still works in a browser, and taking a
+  route down because an _optimisation_ failed would make `ssr: true` a liability.
+
+  `POST /__ssr` is unchanged and stays documented for what it is — the contract for an
+  external renderer, not the in-process switch.
+
 ## [1.13.2] — 2026-08-31
 
 ### Fixed

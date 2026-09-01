@@ -901,7 +901,14 @@ describe("inertia() — config-driven SSR", () => {
       // And the markup is actually there — an empty marked root would be worse
       // than no SSR, because the client would hydrate against nothing.
       expect(html).toContain("Rendered");
-      expect(html).not.toBe("");
+
+      // Exactly one of each. `renderInertiaPage` returns a body that already
+      // carries the page script and the root div, so composing the wrapper around
+      // it again emits two `<div id="app">` and two `data-page` scripts — a
+      // document that still contains every string the assertions above look for,
+      // and that hydrates against the wrong root.
+      expect(html.match(/id="app"/g)).toHaveLength(1);
+      expect(html.match(/data-page=/g)).toHaveLength(1);
     });
     Application._resetInstance();
   });

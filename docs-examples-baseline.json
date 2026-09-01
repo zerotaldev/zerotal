@@ -8021,6 +8021,12 @@
     },
     {
       "file": "docs/changelog.md",
+      "heading": "Fixed",
+      "ordinal": 0,
+      "hash": "2uazqfnu3qt8"
+    },
+    {
+      "file": "docs/changelog.md",
       "heading": "Removed — BREAKING",
       "ordinal": 0,
       "hash": "226t73gwc2yk"

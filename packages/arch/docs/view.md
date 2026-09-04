@@ -272,9 +272,27 @@ Router.view("/terms", TermsPage)
 
 ## File-based pages
 
-Under [file-based routing](/docs/routing), a page file's **default export**
-becomes a `GET` route automatically. The page is a function of `(http, params)`
-and may be async:
+Server-rendered file-route pages are **opt-in**. Register the resolver before
+your routes are scanned — in `bootstrap/app.ts`, or a provider's `onRegister()`:
+
+```ts
+// bootstrap/app.ts
+import { registerViewFileRouteResolver } from "@zerotal/core/view";
+
+registerViewFileRouteResolver();
+```
+
+That is what makes the two conventions below work: a page's default export is
+rendered to HTML rather than treated as a plain handler, and `_layout` files are
+discovered. Without it neither applies — the default export is registered as an
+ordinary file handler and `_layout` discovery is switched off.
+
+It is opt-in because it claims every `.tsx` route file's default export, which an
+app using file routes for plain handlers has not asked for, and because `_layout`
+discovery walks the directory tree for every scanned route.
+
+With it registered, a page file's **default export** becomes a `GET` route. The
+page is a function of `(http, params)` and may be async:
 
 ```tsx fragment
 // app/views/posts/[slug].tsx  →  GET /posts/:slug
@@ -305,6 +323,41 @@ import { definePage } from "zerotal/view";
 
 export default definePage((http, params) => `<h1>Hello ${params.name}</h1>`);
 ```
+
+### Directory layouts — `_layout.tsx`
+
+With the resolver registered, a `_layout.tsx` beside your pages wraps every page
+in that directory and below. The nearest one wins, so a section can override the
+root:
+
+```tsx fragment
+// app/views/_layout.tsx  →  wraps every page under app/views
+export default (http: HttpContext, { children }: { children?: unknown }) => (
+  <html>
+    <body>
+      <nav>…</nav>
+      {children}
+    </body>
+  </html>
+);
+```
+
+```
+app/views/
+  _layout.tsx          ← wraps everything below
+  index.tsx
+  admin/
+    _layout.tsx        ← wraps only the admin pages
+    users.tsx
+```
+
+It is read by its **default export** — the opposite of `_middleware.ts`, which is
+read by a named `middleware` export. Both refuse to boot on the other's spelling
+rather than silently applying nothing, so a mistake here is a startup error
+naming the file, not a page that quietly renders without its chrome.
+
+A page can opt out with `export const layout = null`, or override with
+`export { SomeLayout as layout }`.
 
 ## Embedding raw HTML
 

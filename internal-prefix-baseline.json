@@ -5,7 +5,7 @@
     "arch": 1,
     "auth": 28,
     "broadcasting": 4,
-    "core": 68,
+    "core": 67,
     "devtools": 8,
     "flow": 22,
     "flow-ui": 3,
@@ -20,6 +20,6 @@
     "testing": 1,
     "validator": 4
   },
-  "updatedAt": "2026-08-31",
+  "updatedAt": "2026-09-04",
   "note": "Rose to 15 on 31 Aug 2026 for the @zerotal/ai stable review: toSchema, strippedConstraints, resetSpend and resetStats were marked @internal as part of narrowing the surface before the promotion, since narrowing after stable is itself a breaking change. Left unprefixed deliberately — renaming them would be a real runtime break for anyone importing them, and the point of the exercise was to withdraw the promise, not the export."
 }

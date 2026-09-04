@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`registerViewFileRouteResolver` is public.** It is what turns on server-rendered
+  file-route pages — a route file's default export rendered to HTML and wrapped in the
+  nearest `_layout` — and it carried an internal marker, so nothing outside the framework
+  could call it. Both features were implemented, tested, and described in `docs/view.md` as
+  automatic, while being unreachable through the public API.
+
+  Promoted rather than removed: the marker was wrong, not the design. It stays opt-in, and
+  the docblock now says why — it claims every `.tsx` route file's default export, which an
+  app using file routes for plain handlers has not asked for, and it turns on a directory
+  walk per scanned route. `docs/view.md` documents the call and the `_layout` convention,
+  including that `_layout` is read by its **default** export where `_middleware` is read by
+  a named one.
+
 ### Fixed
 
 - **A `_layout` file that could not apply rendered its pages without one.** The same

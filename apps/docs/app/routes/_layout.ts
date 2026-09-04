@@ -71,6 +71,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { label: "Commands", slug: "commands" },
       { label: "Scaffolding", slug: "scaffolding" },
       { label: "Deployment", slug: "deployment" },
+      { label: "Site Gate", slug: "site-gate" },
     ],
   },
   {

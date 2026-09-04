@@ -2324,6 +2324,12 @@
       "hash": "2z7k8p3902dv"
     },
     {
+      "file": "docs/contributing.md",
+      "heading": "Tests restore anything process-global",
+      "ordinal": 0,
+      "hash": "3vadlnqk2r2h"
+    },
+    {
       "file": "docs/controllers.md",
       "heading": "Accessing the authenticated user",
       "ordinal": 0,
@@ -7959,6 +7965,12 @@
     },
     {
       "file": "docs/view.md",
+      "heading": "Directory layouts — `_layout.tsx`",
+      "ordinal": 0,
+      "hash": "2a5g8647trhx"
+    },
+    {
+      "file": "docs/view.md",
       "heading": "Embedding raw HTML",
       "ordinal": 0,
       "hash": "325ppn1wommc"
@@ -7972,7 +7984,7 @@
     {
       "file": "docs/view.md",
       "heading": "File-based pages",
-      "ordinal": 0,
+      "ordinal": 1,
       "hash": "zbzlr61u41yk"
     },
     {

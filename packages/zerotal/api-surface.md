@@ -7989,6 +7989,8 @@ function Fragment = ({ children }: {    children?: unknown;}) => SafeHtml
 
 function Raw = ({ html }: {    html: string;}) => SafeHtml
 
+function registerViewFileRouteResolver = () => void
+
 function safe = (html: string) => SafeHtml
 
 type Children = unknown

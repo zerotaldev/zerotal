@@ -7,8 +7,20 @@
  * TestCommand) and calls _setBaseModelConnection + _setDbConnection so that
  * withDatabase() and DB.table() work without any manual beforeAll setup.
  *
- * Each Bun test worker runs its own copy of this module, so connections are
- * isolated per file — no cross-file leakage.
+ * Each Bun test *worker* evaluates this module once — not once per file. Every
+ * file that worker runs therefore shares the connection wired here, and shares
+ * every other piece of module-level state in the process with it.
+ *
+ * This used to read "isolated per file — no cross-file leakage", which is the
+ * assumption that let five separate cross-file leaks hide: a `document` stub, a
+ * runtime-mode variable, an ORM dialect, and two whole booted applications, each
+ * set by one file and read by another. Verified rather than assumed — a hook
+ * registered here runs once at the end of a run, not once per file.
+ *
+ * So a test that mutates process-global state has to put it back, and the reason
+ * it is easy to skip is that the damage lands somewhere else: the file that
+ * breaks is the one that ran next, and which file that is depends on directory
+ * order — alphabetical on Windows, arbitrary on Linux.
  *
  * ## Why the runtime check is here and not only in `zt test`
  *

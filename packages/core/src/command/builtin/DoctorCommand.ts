@@ -39,6 +39,7 @@ export class DoctorCommand extends Command {
 
     const probeFailures = await this._probeTransport(app);
     const headerFindings = await this._probeHeaders();
+    this._noteSkippedProbes();
 
     const warns = report.filter((e) => e.result.status === "warn").length + headerFindings.warnings;
     const fails =
@@ -104,6 +105,30 @@ export class DoctorCommand extends Command {
    * are a warning, because they are a conflict waiting for someone to edit one
    * side.
    */
+  /**
+   * Say that the outside-in probes did not run, when they did not.
+   *
+   * They are the two checks that can see what no in-process check can — a header the
+   * proxy also sets, a WebSocket the proxy drops — and they are behind a flag, so the
+   * people who most need them are the ones who do not know the flag exists. A team
+   * running `doctor` after every deploy for months never saw the duplicate-header
+   * check and had no way to find out it was there.
+   *
+   * A line, not a default. Auto-probing `app.url` would print "✓ No duplicated
+   * security headers" for a site that was simply unreachable, which is a worse
+   * failure than the silence: it is the same false confidence the secure-headers
+   * check was fixed for.
+   */
+  private _noteSkippedProbes(): void {
+    if (this.flags["url"]) return;
+    this.newLine();
+    this.dim(
+      "Not checked: response headers and WebSocket transport, which are only visible " +
+        "from outside.\n    Add --url https://your-site to read the deployed app through " +
+        "its proxy.",
+    );
+  }
+
   private async _probeHeaders(): Promise<{ failures: number; warnings: number }> {
     const url = this.flags["url"] as string | undefined;
     if (!url) return { failures: 0, warnings: 0 };

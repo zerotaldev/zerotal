@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, afterEach } from "bun:test";
 import {
   flowRadioGroup,
   flowListbox,
@@ -250,6 +250,17 @@ describe("flowField cleanup", () => {
 });
 
 describe("flowMenu", () => {
+  // This suite installs a partial `document` global to drive focus, and `bun test`
+  // has no real one — so leaving it behind changes what every later test file in the
+  // process sees. `errorOverlay`'s "safe with no DOM" test guards on
+  // `typeof document === "undefined"`, sailed past that guard on the stub, and died
+  // on `createElement`, which the stub does not have. It only failed when the file
+  // order put this file first, so it passed on Windows and failed on CI's Linux
+  // runner, months after it was written.
+  afterEach(() => {
+    delete (globalThis as unknown as { document?: unknown }).document;
+  });
+
   it("opens to first item, arrows/Home/End move, Escape closes + refocuses trigger", () => {
     let active: any = null;
     const mk = (id: string) => {

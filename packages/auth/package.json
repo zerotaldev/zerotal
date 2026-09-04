@@ -34,7 +34,7 @@
     "@zerotal/session": "workspace:*",
     "@zerotal/orm": "workspace:*",
     "@zerotal/cache": "workspace:*",
-    "@simplewebauthn/server": "^13.1.0"
+    "@simplewebauthn/server": "^13.3.3"
   },
   "devDependencies": {
     "typescript": "^5.8.0"

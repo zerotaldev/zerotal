@@ -286,6 +286,7 @@ describe("scanFileRoutes — auto-naming and meta overrides", () => {
 // ── registerFileRouteResolver + resolver invocation ───────────────────────────
 
 import { registerFileRouteResolver, _resetFileRouteResolvers } from "./FileRouter.ts";
+import { enableFileRouteLayouts, _resetFileRouteLayouts } from "./FileRouter.ts";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -497,5 +498,57 @@ describe("scanFileRoutes — a broken _middleware file stops the boot", () => {
     await scanFileRoutes(dir);
 
     expect(Router.middlewareFor("GET", "/").map((m) => m.name)).toEqual(["OkMw"]);
+  });
+});
+
+// ── A broken _layout file must not render pages without their chrome ──────────
+
+describe("scanFileRoutes — a broken _layout file stops the boot", () => {
+  // The same fail-open the `_middleware` loader had, one function up. Lower stakes —
+  // a missing layout is not a missing guard — but the same silence: pages render
+  // without their chrome, and on a hot-reload without chrome they had a moment ago.
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "zerotal-layout-"));
+    Router.reset();
+    _resetFileRouteResolvers();
+    // Layout discovery is opt-in, so without this the loader is never reached and
+    // every assertion below would pass vacuously.
+    enableFileRouteLayouts();
+    await Bun.write(join(dir, "index.tsx"), "export default () => '<p>hi</p>';");
+  });
+
+  afterEach(async () => {
+    _resetFileRouteLayouts();
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  it("throws, naming the cause, when the layout fails to import", async () => {
+    await Bun.write(
+      join(dir, "_layout.tsx"),
+      'throw new Error("intentional layout import failure");',
+    );
+
+    expect(scanFileRoutes(dir)).rejects.toThrow(/intentional layout import failure/);
+  });
+
+  it("throws when the layout default-exports nothing", async () => {
+    await Bun.write(join(dir, "_layout.tsx"), "export const notALayout = 1;");
+
+    expect(scanFileRoutes(dir)).rejects.toThrow(/does not default-export a component/);
+  });
+
+  it("still resolves a correctly written layout", async () => {
+    await Bun.write(
+      join(dir, "_layout.tsx"),
+      "export default (ctx, { children }) => `<root>${children}</root>`;",
+    );
+
+    expect(await scanFileRoutes(dir)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("stays silent when the directory simply has no layout", async () => {
+    expect(await scanFileRoutes(dir)).toBeGreaterThanOrEqual(1);
   });
 });

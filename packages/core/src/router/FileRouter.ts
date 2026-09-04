@@ -414,18 +414,44 @@ async function _collectLayout(
       const layoutPath = dir
         ? join(baseDir, dir, `_layout${extension}`)
         : join(baseDir, `_layout${extension}`);
+      // No file at this spelling is the ordinary case — most directories have no
+      // layout, and the walk continues outward to find the nearest one that does.
+      if (!(await Bun.file(layoutPath).exists())) continue;
+
+      const href = pathToFileURL(layoutPath).href;
+      const importUrl = reloadId ? `${href}?t=${reloadId}` : href;
+
+      let loadedModule: { default?: unknown };
       try {
-        if (await Bun.file(layoutPath).exists()) {
-          const href = pathToFileURL(layoutPath).href;
-          const importUrl = reloadId ? `${href}?t=${reloadId}` : href;
-          const loadedModule = (await import(importUrl)) as { default?: unknown };
-          if (typeof loadedModule.default === "function") {
-            return loadedModule.default as ViewComponent;
-          }
-        }
-      } catch {
-        // A page module that fails to import is skipped — component resolution is best-effort.
+        loadedModule = (await import(importUrl)) as { default?: unknown };
+      } catch (error) {
+        // This was swallowed with the not-found case, under "component resolution is
+        // best-effort". Best-effort is right for *absence*; it is not right for a file
+        // that exists and threw. A `_layout.tsx` with a typo in it rendered every page
+        // beneath without its chrome — no error, no log, and on a hot-reload a layout
+        // that was there a moment ago. Same failure the `_middleware` loader had, one
+        // function up, minus the part where the missing thing was a guard.
+        throw new Error(
+          `[Zerotal] Failed to import ${layoutPath}: ` +
+            `${error instanceof Error ? error.message : String(error)}\n` +
+            `Pages under this directory would render without their layout, so boot ` +
+            `stops here. Fix the file, or delete it if the directory needs no layout.`,
+          { cause: error },
+        );
       }
+
+      if (typeof loadedModule.default === "function") {
+        return loadedModule.default as ViewComponent;
+      }
+
+      // The file exists and exports no component. Continuing the walk would silently
+      // hand these pages an outer directory's layout instead — plausible-looking output
+      // that is not what the file says should happen.
+      throw new Error(
+        `[Zerotal] ${layoutPath} does not default-export a component, so it lays out ` +
+          `nothing.\nA layout file is read by its default export:\n` +
+          `  export default (ctx, { children }) => \`<main>\${children}</main>\`;`,
+      );
     }
   }
   return undefined;

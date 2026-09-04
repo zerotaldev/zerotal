@@ -8,6 +8,37 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `_layout` file that could not apply rendered its pages without one.** The same
+  fail-open the `_middleware` loader had, one function up in the same file, and found by
+  looking for the shape rather than by hitting it: an import error was swallowed together
+  with the not-found case under "component resolution is best-effort". Best-effort is
+  right for _absence_ and wrong for a file that exists and threw — a `_layout.tsx` with a
+  typo rendered every page beneath it without its chrome, with no error and no log, and on
+  a hot-reload without chrome it had a moment earlier.
+
+  Absence stays silent and the walk continues outward, as before. An import error stops
+  the boot with the path and the original error, and a `_layout` that default-exports no
+  component now says so rather than silently handing those pages an outer directory's
+  layout instead.
+
+  Worth noting alongside the `_middleware` fix in 1.15.0: these two sibling conventions
+  disagreed about export shape — `_layout` reads `default` and ignored a named export,
+  `_middleware` read the named export and ignored `default` — and each failed open on the
+  other's spelling. That disagreement is why `export default` was the natural guess in a
+  `_middleware.ts` to begin with.
+
+- **`zt doctor` says when its outside-in probes did not run.** The response-header and
+  WebSocket-transport probes only run with `--url`, and they are the two checks that can
+  see what no in-process check can. Being silent about skipping them meant the people who
+  most needed them were the ones with no way to learn they existed — a team running
+  `doctor` after every deploy for months never saw the duplicate-header check.
+
+  A line, not a new default: auto-probing `app.url` would print "✓ No duplicated security
+  headers" for a site that was merely unreachable, which is the same false confidence the
+  secure-headers check was fixed for in 1.15.0.
+
 ## [1.15.0] — 2026-09-04
 
 ### Changed — **BREAKING**

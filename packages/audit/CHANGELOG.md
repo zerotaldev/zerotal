@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.0] — 2026-09-04
+
 ### Changed
 
 - **BREAKING: `AuditLog.createdAt` is a `Carbon`, not a `Date`.** It was declared `Date`

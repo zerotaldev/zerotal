@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.0] — 2026-09-04
+
 ### Fixed
 
 - **A test that stubbed `globalThis.fetch` also answered the test client's own requests.**

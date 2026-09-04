@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.0] — 2026-09-04
+
 ### Changed — **BREAKING**
 
 - **BREAKING: a `_middleware.ts` that cannot apply now stops the boot.** Two ways one could

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.0] — 2026-09-04
+
 ### Changed — **BREAKING**
 
 - **BREAKING: `createdAt`, `updatedAt` and `deletedAt` are `Carbon`, not `Date`.** Every

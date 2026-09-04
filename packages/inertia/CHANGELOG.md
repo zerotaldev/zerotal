@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.0] — 2026-09-04
+
 ### Added
 
 - **`bun zt route:types` now regenerates the page registry too.** Adding a page and rendering

@@ -27,6 +27,112 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.15.0 — 2026-09-04
+
+A working developer building a training-provider platform on 1.14.3 sent eight findings
+from doing it. All eight are here. Two of them were the same bug twice, and it was the
+worst kind: a routing convention that failed open.
+
+### Changed — BREAKING
+
+- **`createdAt`, `updatedAt` and `deletedAt` are `Carbon`, not `Date`** (`@zerotal/orm`,
+  `@zerotal/audit`).
+
+  They were declared `Date` and never held one. Every `datetime` column hydrates as
+  `Carbon`, these three included, so the declaration was wrong on any freshly loaded row —
+  and `order.createdAt.getTime()` type-checked and threw, because `Carbon` has
+  `toISOString()` and `valueOf()` but no `getTime()`.
+
+  Worse, the runtime class depended on how you reached the property: `Carbon` after a load,
+  a raw `Date` after `save()`, `touch()` or a soft `delete()` wrote one straight back onto
+  the instance. The same property on the same model, matching its declared type in neither
+  case, and with no `@column` declaration to check the truth against — which is exactly why
+  the declaration had to be the thing that is right.
+
+  ```ts fragment
+  order.createdAt.getTime(); // compiled, threw at runtime
+  order.createdAt.valueOf(); // epoch milliseconds
+  order.createdAt.toISOString(); // "2026-09-04T09:12:33.000Z"
+  order.createdAt.toDate(); // a native Date, when something needs one
+  ```
+
+  **Compile and follow the errors.** Every one is a line that would have thrown against a
+  loaded row, so the break is the fix arriving early. See the
+  [Upgrade Guide](/docs/upgrade#114-to-115).
+
+### Fixed
+
+- **A `_middleware.ts` that could not apply left its subtree serving, unguarded**
+  (`@zerotal/core`). Two ways in, both silent.
+
+  `export default [Mw]` was ignored: the loader read only the named export. It is the
+  natural guess — every route file in the same directory default-exports its handler — and
+  getting it wrong produced no warning, no boot error, and nothing in `route:list`. This was
+  found on a host-employer portal scoped to one company's learners, where shipping it
+  unguarded would have been a data breach rather than a bug report.
+
+  The second was one `catch {}` covering both "there is no middleware here" and "the
+  middleware threw on import". A typo, a bad import path, a circular import or a
+  `SyntaxError` all read as absence — and on a hot-reload, that is a guard which was there
+  a second earlier.
+
+  Absence stays silent, because that is the convention working. Everything else is loud: a
+  file that throws stops the boot with its path and the original error; a file that exports
+  nothing appliable names the mistake and the line to write instead. Nothing rejected here
+  has ever applied, so no working app changes behaviour.
+
+- **`zt doctor`'s secure-headers check false-positived behind a reverse proxy**
+  (`@zerotal/core`). It read `app.secureHeaders.secure` and inferred the response from it,
+  so an app where Caddy or nginx terminates TLS and sets HSTS — the most common production
+  topology for a Bun app — was reported as downgradeable while `curl -I` showed the header
+  present.
+
+  The cost is not the wrong answer. `doctor` is reliable enough that people run it after
+  every deploy, and one line they have to remember to ignore is a line nobody reads on the
+  day it is right. It now makes one request to `app.url` on a deployment and reports what
+  came back. When it cannot reach the site it says so, rather than reporting a header as
+  missing.
+
+- **A test that stubbed `globalThis.fetch` also answered the test client's own requests**
+  (`@zerotal/testing`). Faking a third-party integration — the ordinary way to test one —
+  made unrelated route tests fail with `connection refused`. The failure presents as "my
+  test client cannot reach my app", which sends you looking at the server. `TestApp` now
+  binds `fetch` at module load, before any test can replace it.
+
+### Added
+
+- **`bun zt route:types` generates every type file, not only the routes** (`@zerotal/core`,
+  `@zerotal/inertia`). Adding a page and rendering it failed with `TS2345: … not assignable
+to 'PageName'` — accurate and unhelpful, since it reads as a mistyped page name when the
+  registry simply had not been rebuilt. The command whose name says it generates types
+  regenerated half of them.
+
+  `registerTypeGenerator` lets a view package add its codegen without core importing it.
+  One command refreshes both, and `--check` gates on both in CI.
+
+- **`bun zt test` no longer inherits `.env`'s outbound drivers** (`@zerotal/core`). Bun
+  loads `.env` into every process, so a developer with `MAIL_DRIVER=smtp` pointed at a
+  local Postfix got a suite where every path that sends mail opened a real SMTP connection
+  — one test going from milliseconds to a five-second timeout, failing only when run with
+  its siblings, and invisible to anyone without a mail server configured.
+
+  Mail, queue, session and cache now get their in-process defaults, which is what the app's
+  own config already defaults to. A value set in the shell still wins, `.env.test` is read
+  and merged last, and `--keep-env` turns it off.
+
+### Documented
+
+- **The query builder is findable.** A team wrote whole-table loads with JavaScript
+  filtering throughout an app because they never found `whereIn`. The page documenting it
+  exists and is thorough; the README's Data table sent anyone looking for `Post.query()` to
+  the `DB.table()` page, and `api-surface.md` is a flat alphabetical snapshot where
+  `whereIn` sits among two hundred siblings. Both now point where they should, and
+  [Queries](/docs/orm/queries) warns against the shape that degrades in proportion to the
+  table rather than the result.
+
+- **`_middleware.ts` takes a named export**, and stubbing `globalThis.fetch` in a test has
+  a documented pattern next to `Http.fake()`.
+
 ## 1.14.3 — 2026-09-01
 
 Consistency pass on the documentation, and two bugs it uncovered.

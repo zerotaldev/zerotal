@@ -449,7 +449,23 @@ export class TestApp {
    * The shared instance is torn down once, by {@link closeSharedTestApps}.
    */
   async close(): Promise<void> {
-    if (this._shared) {
+    // `_shared` says this wrapper came from the sharing path. It is not the same
+    // question as whether the *Application* is shared — a `bootstrap/app.ts` is
+    // module-cached, so a `createTestApp(bootstrap, setup)` call (which opts out of
+    // sharing, because `setup` registers routes and those cannot be added twice to
+    // a running server) is handed the very same `Application` the shared wrapper
+    // holds. `FlowBrowser.serve` always passes a `setup`.
+    //
+    // Tearing down here would then stop an Application somebody else is still
+    // using, closing the process-global database connection out from under every
+    // later file: they fail on their first query with "No database connection. Is
+    // DatabaseProvider registered?", in files that are entirely correct and merely
+    // ran second. The ordering that exposes it — a browser-driven file before an
+    // ordinary one — is alphabetical on Windows and arbitrary on Linux, so it read
+    // as a CI-only flake for months.
+    //
+    // So the question to ask is about the Application, not the wrapper.
+    if (this._shared || _sharedApps.has(this._app)) {
       resetTestState();
       return;
     }
@@ -668,10 +684,22 @@ export async function createTestApp(
   await app.start(0);
   const testApp = new TestApp(app, errors);
 
-  if (!setup) {
-    testApp._shared = true;
-    _sharedApps.set(app, testApp);
-  }
+  // Cache it either way. `_shared` still means "reached through the sharing path",
+  // and only a `setup`-free call is handed one back — a second `setup` caller has
+  // routes to register and needs the fresh path. But the *Application* is
+  // module-cached and every later file will ask for it, so it has to be findable
+  // regardless of which call happened to boot it first.
+  //
+  // Without this, an app booted by `FlowBrowser.serve` (which always passes a
+  // `setup`) was invisible here, so nothing knew it was in use: its `close()` ran
+  // the full teardown, `DatabaseProvider.onStopping` cleared the process-global
+  // connection resolver, and the next file's `bootstrap()` returned that same dead
+  // Application — `Application.create()` short-circuits on a module-cached app, so
+  // the providers never re-registered and nothing ever put the resolver back. Every
+  // query after that raised "No database connection. Is DatabaseProvider
+  // registered?" in a file that had done nothing wrong.
+  testApp._shared = !setup;
+  _sharedApps.set(app, testApp);
   return testApp;
 }
 

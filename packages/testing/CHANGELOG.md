@@ -8,6 +8,32 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A file that booted the app with a `setup` callback left every later file without a
+  database.** `createTestApp(bootstrap, setup)` opts out of _sharing_, because `setup`
+  registers routes and those cannot be added twice to a running server — and
+  `FlowBrowser.serve` always passes one. But "not shared" was implemented as "not cached",
+  which is a much bigger claim: `bootstrap/app.ts` is module-cached, so the `Application`
+  behind it is the one every later file's `bootstrap()` returns.
+
+  Being invisible to the cache meant nothing knew it was in use, so its `close()` ran the
+  full provider teardown. `DatabaseProvider.onStopping` clears the process-global
+  connection resolver, and the next file then got that same stopped `Application` back —
+  `Application.create()` short-circuits on a module-cached app, so the providers never
+  re-registered and nothing put the resolver back. Every query from then on raised
+  `[Zerotal ORM] No database connection. Is DatabaseProvider registered?` in files that
+  had done nothing wrong.
+
+  The app is now cached whichever call booted it. `_shared` still means "reached through
+  the sharing path", and a second `setup` caller still gets the fresh path it needs — only
+  the bookkeeping changed.
+
+  It read as a CI-only flake for months because the exposing order is a browser-driven
+  file before an ordinary one: alphabetical on Windows, arbitrary readdir order on Linux.
+  Reproduced locally by renaming the one ordinary file to sort last (62 pass / 49 fail),
+  and verified at 111 / 0 across seven runs in both orders.
+
 ## [1.15.0] — 2026-09-04
 
 ### Fixed

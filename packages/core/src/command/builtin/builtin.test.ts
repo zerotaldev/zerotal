@@ -1321,13 +1321,15 @@ describe("TestCommand", () => {
     expect(TestCommand.needsApp).toBe(false);
     expect(TestCommand.args).toHaveLength(1);
     expect(TestCommand.args[0]!.name).toBe("pattern");
-    expect(TestCommand.flags).toHaveLength(5);
+    expect(TestCommand.flags).toHaveLength(6);
   });
 
   it("has coverage, watch, timeout, bail flags", () => {
     const names = TestCommand.flags.map((f) => f.name);
     expect(names).toContain("coverage");
     expect(names).toContain("watch");
+    // Opts out of resetting the mail/queue/session/cache drivers `.env` supplies.
+    expect(names).toContain("keep-env");
     expect(names).toContain("timeout");
     expect(names).toContain("bail");
   });

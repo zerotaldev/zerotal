@@ -636,6 +636,46 @@ describe("generatePageRegistry()", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("reports what it generated, for `route:types` to print and `--check` to gate on", async () => {
+    const dir = join(tmpdir(), `reno-registry-report-${Date.now()}`);
+    await mkdir(join(dir, "resources", "js", "pages"), { recursive: true });
+    await Bun.write(
+      join(dir, "resources", "js", "pages", "Dashboard.tsx"),
+      "export default function Page() {}",
+    );
+
+    const first = await generatePageRegistry(dir);
+    expect(first).toEqual({
+      file: "resources/js/pages.generated.ts",
+      summary: "1 page",
+      changed: true,
+    });
+
+    // Second run over an unchanged tree writes nothing. The file is regenerated on
+    // every dev rebuild and at every production boot, and rewriting identical bytes
+    // churns the mtime a watcher keys on — retriggering the rebuild that wrote it.
+    const second = await generatePageRegistry(dir);
+    expect(second.changed).toBe(false);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("under `check`, reports staleness without writing", async () => {
+    const dir = join(tmpdir(), `reno-registry-check-${Date.now()}`);
+    await mkdir(join(dir, "resources", "js", "pages"), { recursive: true });
+    await Bun.write(
+      join(dir, "resources", "js", "pages", "Dashboard.tsx"),
+      "export default function Page() {}",
+    );
+
+    const result = await generatePageRegistry(dir, undefined, { check: true });
+
+    expect(result.changed).toBe(true);
+    expect(await Bun.file(`${dir}/resources/js/pages.generated.ts`).exists()).toBe(false);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("honours a custom pagesDir and computes the relative import path", async () => {
     const dir = join(tmpdir(), `reno-registry3-${Date.now()}`);
     await mkdir(join(dir, "resources", "pages", "Users"), { recursive: true });

@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`bun zt route:types` now regenerates the page registry too.** Adding a page and rendering
+  it failed typecheck with `TS2345: Argument of type '"ops/orders"' is not assignable to
+parameter of type 'PageName'` — accurate and unhelpful, because it reads as a mistyped page
+  name when the actual state is a registry that has not been rebuilt. `route:types` is the
+  command whose name says it fixes that and used to regenerate only the routes half.
+
+  `InertiaProvider` registers `generatePageRegistry` through core's `registerTypeGenerator`,
+  so one command refreshes both, and `route:types --check` gates on both in CI. `PageName`
+  also carries a doc comment saying what to run, so the editor hover answers the question the
+  compiler error raises.
+
+### Fixed
+
+- **`generatePageRegistry` rewrote `pages.generated.ts` even when nothing had changed**,
+  churning its mtime on every dev rebuild and at every production boot — which is what a file
+  watcher keys on. It now compares before writing.
+
 ## [1.14.0] — 2026-09-01
 
 ### Changed — **BREAKING**

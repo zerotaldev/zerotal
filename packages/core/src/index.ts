@@ -245,6 +245,9 @@ export type {
 } from "./router/Route.ts";
 export { scanFileRoutes, registerFileRouteResolver } from "./router/FileRouter.ts";
 export type { FileRouteResolver, FileRouteContext } from "./router/FileRouter.ts";
+// `registerTypeGenerator` — the hook that lets a view package add its own
+// generated-types file to `zt route:types` — lives on `@zerotal/core/commands`,
+// not here: it is command plumbing, and this barrel is the frozen lean kernel.
 export type {
   FileHandler,
   RouteModule,

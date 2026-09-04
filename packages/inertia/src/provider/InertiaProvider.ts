@@ -1,4 +1,5 @@
 import { ServiceProvider, Router, ConfigError, ThrottleMiddleware } from "@zerotal/core";
+import { registerTypeGenerator } from "@zerotal/core/commands";
 import {
   registerDevBuildHook,
   pruneBuildOutput,
@@ -132,6 +133,14 @@ export class InertiaProvider extends ServiceProvider {
     // trigger a full pages-manifest sync + asset rebuild without @zerotal/core
     // importing @zerotal/inertia (which would create a circular dependency).
     const cwd = process.cwd();
+
+    // Same inversion, for `bun zt route:types`. The page registry and the route
+    // map are both "types generated from the file tree" and go stale on the same
+    // edits, but only the routes half was wired to the command named for it —
+    // so adding a page, running `route:types`, and getting the same `PageName`
+    // error back sent people looking at their page name instead of the registry.
+    registerTypeGenerator("inertia", (options) => generatePageRegistry(cwd, undefined, options));
+
     registerDevBuildHook("inertia", async () => {
       await generatePageRegistry(cwd);
       const plugins = [...(await detectCssPlugins(cwd)), ...(await detectVuePlugin(cwd))];

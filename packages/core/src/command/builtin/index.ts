@@ -60,3 +60,10 @@ export { AssetsBuildCommand } from "./AssetsBuildCommand.ts";
 export { AssetsPruneCommand } from "./AssetsPruneCommand.ts";
 export { LintPackagesCommand } from "./LintPackagesCommand.ts";
 export { MakePackageCommand } from "./MakePackageCommand.ts";
+
+// Extension point rather than a command: lets a view package add its own
+// generated-types file to `zt route:types`, so one command refreshes every type
+// file an app generates from its file tree. `@zerotal/inertia` registers its page
+// registry here. See ../TypeGenerators.ts.
+export { registerTypeGenerator } from "../TypeGenerators.ts";
+export type { TypeGeneratorFn, TypeGeneratorResult } from "../TypeGenerators.ts";

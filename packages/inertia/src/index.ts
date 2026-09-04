@@ -64,6 +64,7 @@ export { PrecognitionMiddleware } from "./middleware/PrecognitionMiddleware.ts";
 export { sharedProps } from "./SharedProps.ts";
 export { assetVersion, setAssetVersion } from "./version.ts";
 export { generatePageRegistry } from "./PageRegistry.ts";
+export type { PageRegistryResult } from "./PageRegistry.ts";
 // The typed page registry: `InertiaPageRegistry` is what `pages.generated.ts`
 // augments, `SharedProps` is what the app declares for `Inertia.share()`.
 export type {

@@ -88,12 +88,31 @@ type AllSharedProps = SharedProps & BuiltInSharedProps;
 /** The generated `pages` map, or an empty map before the registry exists. */
 type PageModules = InertiaPageRegistry extends { pages: infer Map } ? Map : Record<never, never>;
 
-/** Every page name in the generated registry. `never` until it is generated. */
+/**
+ * Every page name in the generated registry. `never` until it is generated.
+ *
+ * **If a name you can see on disk is rejected here, the registry is stale, not
+ * the name** — `resources/js/pages.generated.ts` is written by a scan of the
+ * pages directory and does not know about a file added since. Regenerate it:
+ *
+ * ```sh
+ * bun zt route:types
+ * ```
+ *
+ * TypeScript reports the mismatch as TS2345 ("not assignable to parameter of
+ * type 'PageName'"), which reads like a typo, so this note is here to be the
+ * first thing the hover shows.
+ */
 export type PageName = Extract<keyof PageModules, string>;
 
 /**
  * What the Inertia helpers accept as a component name: the generated page names
  * once the registry exists, any string before that.
+ *
+ * The `never` fallback is a bootstrap — a new app type-checks before its first
+ * build — but it does mean page names are unchecked until the registry exists
+ * once, so the first error of this kind arrives after a build that succeeded.
+ * See {@link PageName} if a name you can see on disk is being rejected.
  */
 export type PageTarget = [PageName] extends [never] ? string : PageName;
 

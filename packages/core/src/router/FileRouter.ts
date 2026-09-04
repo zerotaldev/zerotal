@@ -312,23 +312,71 @@ async function _collectMiddleware(
     // sibling routes stayed live and unguarded, with no error and no log. A convention
     // that fails open is worse than one that does not exist.
     const middlewarePath = await _findMiddlewareFile(baseDir, dir);
+    // No file is the convention working — most directories have none. Everything past
+    // this point is a file somebody wrote in order to guard a subtree, so every way it
+    // can fail to apply is loud. These two cases used to share one `catch`, which made
+    // "there is no middleware here" and "the middleware is broken" indistinguishable.
+    if (!middlewarePath) continue;
+
+    // Convert to a file:// URL so dynamic import works on Windows (raw
+    // absolute paths with backslashes are not valid import specifiers).
+    // Append ?t=<reloadId> to bust the module cache on hot-reload.
+    const href = pathToFileURL(middlewarePath).href;
+    const importUrl = reloadId ? `${href}?t=${reloadId}` : href;
+
+    let loadedModule: MiddlewareModule & { default?: unknown };
     try {
-      if (middlewarePath) {
-        // Convert to a file:// URL so dynamic import works on Windows (raw
-        // absolute paths with backslashes are not valid import specifiers).
-        // Append ?t=<reloadId> to bust the module cache on hot-reload.
-        const href = pathToFileURL(middlewarePath).href;
-        const importUrl = reloadId ? `${href}?t=${reloadId}` : href;
-        const loadedModule = (await import(importUrl)) as MiddlewareModule;
-        if (Array.isArray(loadedModule.middleware)) {
-          result.push(...loadedModule.middleware);
-        }
-      }
-    } catch {
-      // The file is missing or failed to import — skip it.
+      loadedModule = (await import(importUrl)) as MiddlewareModule & { default?: unknown };
+    } catch (error) {
+      // A typo, a bad import path, a circular import, a SyntaxError — swallowing any of
+      // these left the subtree beneath serving normally with its guard silently gone,
+      // and on a hot-reload, gone a second after it was there. Boot stops instead.
+      throw new Error(
+        `[Zerotal] Failed to import ${middlewarePath}: ` +
+          `${error instanceof Error ? error.message : String(error)}\n` +
+          `Routes under this directory would serve unguarded, so boot stops here. ` +
+          `Fix the file, or delete it if the subtree needs no middleware.`,
+        { cause: error },
+      );
     }
+
+    if (Array.isArray(loadedModule.middleware)) {
+      result.push(...loadedModule.middleware);
+      continue;
+    }
+
+    // The file loaded and exports nothing the loader can apply — the same fail-open in
+    // a different disguise. `export default` is the common one: every route file in the
+    // same directory default-exports its handler, so it is the natural guess, and it
+    // used to leave the subtree open while looking exactly like a guarded one. Throwing
+    // cannot break a working app, because no shape rejected here has ever applied.
+    throw new Error(_middlewareExportError(middlewarePath, loadedModule));
   }
   return result;
+}
+
+/**
+ * The boot error for a `_middleware` file that exports nothing the loader can apply,
+ * naming the specific mistake so the message carries its own fix.
+ */
+function _middlewareExportError(
+  path: string,
+  loadedModule: MiddlewareModule & { default?: unknown },
+): string {
+  const fix = "  export const middleware = [YourMiddleware];";
+  const head = `[Zerotal] ${path} does not export a \`middleware\` array, so it guards nothing.`;
+
+  if (loadedModule.default !== undefined) {
+    return (
+      `${head}\n` +
+      `It has a \`default\` export, which this file does not use — route files ` +
+      `default-export their handler, but a _middleware file is read by name:\n${fix}`
+    );
+  }
+  if (loadedModule.middleware !== undefined) {
+    return `${head}\n\`middleware\` must be an array, even for a single entry:\n${fix}`;
+  }
+  return `${head}\nAdd the export, or delete the file if the subtree needs no middleware:\n${fix}`;
 }
 
 /**

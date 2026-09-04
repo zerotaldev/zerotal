@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, afterAll } from "bun:test";
 import { rm } from "node:fs/promises";
 import { Router } from "./Router.ts";
 import { filePathToRoutePath, generateRouteName, scanFileRoutes } from "./FileRouter.ts";
@@ -419,5 +419,83 @@ describe("scanFileRoutes — import failure is caught and logged", () => {
     const count = await scanFileRoutes(badDir);
     // good.ts should still register (count ≥ 1)
     expect(count).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ── A _middleware file that cannot apply must never fail open ─────────────────
+
+describe("scanFileRoutes — a broken _middleware file stops the boot", () => {
+  // Every case here used to be swallowed: the file was written to guard a subtree,
+  // nothing applied, the routes beneath answered normally, and there was no error and
+  // no log to say so. Each test gets its own directory because the expected outcome is
+  // a throw, which would otherwise poison every later scan of a shared one.
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "zerotal-guard-"));
+    Router.reset();
+    await Bun.write(join(dir, "index.ts"), "export function GET() {}");
+  });
+
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  it("throws when the file default-exports instead of naming the export", async () => {
+    // `export default [Mw]` is the natural guess — every route file in the same
+    // directory default-exports its handler — and it was silently ignored.
+    await Bun.write(
+      join(dir, "_middleware.ts"),
+      `class DefMw { async handle(_c, n) { return n(); } }
+       export default [DefMw];`,
+    );
+
+    expect(scanFileRoutes(dir)).rejects.toThrow(/export const middleware = \[YourMiddleware\]/);
+  });
+
+  it("throws when the file exports no middleware at all", async () => {
+    await Bun.write(join(dir, "_middleware.ts"), "export const notMiddleware = [];");
+
+    expect(scanFileRoutes(dir)).rejects.toThrow(/does not export a `middleware` array/);
+  });
+
+  it("throws when `middleware` is a bare class rather than an array", async () => {
+    await Bun.write(
+      join(dir, "_middleware.ts"),
+      `class BareMw { async handle(_c, n) { return n(); } }
+       export const middleware = BareMw;`,
+    );
+
+    expect(scanFileRoutes(dir)).rejects.toThrow(/must be an array/);
+  });
+
+  it("throws, naming the cause, when the file fails to import", async () => {
+    // A SyntaxError, a bad import path and a circular import all used to read as
+    // "no middleware here" — on a hot-reload, a guard that was there a second ago.
+    await Bun.write(
+      join(dir, "_middleware.ts"),
+      'throw new Error("intentional middleware import failure");',
+    );
+
+    expect(scanFileRoutes(dir)).rejects.toThrow(/intentional middleware import failure/);
+  });
+
+  it("stays silent when the directory simply has no _middleware file", async () => {
+    // The other half of it: absence is the convention working, not a mistake, and
+    // is the case for most directories in a route tree.
+    await scanFileRoutes(dir);
+
+    expect(Router.middlewareFor("GET", "/")).toEqual([]);
+  });
+
+  it("still applies a correctly written file", async () => {
+    await Bun.write(
+      join(dir, "_middleware.ts"),
+      `export class OkMw { async handle(_c, n) { return n(); } }
+       export const middleware = [OkMw];`,
+    );
+    await scanFileRoutes(dir);
+
+    expect(Router.middlewareFor("GET", "/").map((m) => m.name)).toEqual(["OkMw"]);
   });
 });

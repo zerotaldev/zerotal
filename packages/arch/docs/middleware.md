@@ -184,6 +184,15 @@ export const middleware = [AuthMiddleware, AdminMiddleware];
 Middleware stacks from outer directories are prepended automatically —
 you get `root/_middleware → admin/_middleware → route handler` in one pipeline.
 
+> **It is `export const middleware`, an array — not `export default`.** Route
+> files in the same directory default-export their handler, so `export default
+[AdminMiddleware]` is the natural guess and it is the wrong one. The app refuses
+> to boot and tells you which file, rather than serving the subtree unguarded and
+> looking exactly like a guarded one. The same applies to a `_middleware.ts` that
+> fails to import: a typo or a bad import path is a boot error, not a subtree that
+> quietly loses its guard. A directory with no `_middleware` file at all is the
+> convention working, and stays silent.
+
 ## Global middleware
 
 Register middleware that runs on every request in `bootstrap/app.ts`:

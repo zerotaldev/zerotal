@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from "bun:test";
+﻿import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Command } from "./Command.ts";
 import { BufferWriter } from "./OutputWriter.ts";
 
@@ -316,6 +316,25 @@ describe("CommandRunner.registerLazy()", () => {
 describe("Application.create() reads APP_ENV", () => {
   // Cast to mutable for test setup/teardown: Bun.env is typed Readonly.
   const mutableEnv = Bun.env as Record<string, string | undefined>;
+
+  // `APP_ENV` is the *legacy* location for the runtime mode: `runtimeMode()` reads
+  // `APP_TYPE` first and only falls back to this. So exercising the fallback means
+  // `APP_TYPE` has to be absent — which it is in a bare `bun test`, and is not once
+  // anything in the process has called `createTestApp()`, since that sets
+  // `APP_TYPE=test` deliberately and for the lifetime of the process.
+  //
+  // Without this these tests read whatever ran before them: alone they passed, in a
+  // whole-repo sweep they got `"test"` back from every case and failed. They were
+  // asserting on a fallback they were not reaching.
+  let savedType: string | undefined;
+  beforeEach(() => {
+    savedType = mutableEnv["APP_TYPE"];
+    delete mutableEnv["APP_TYPE"];
+  });
+  afterEach(() => {
+    if (savedType === undefined) delete mutableEnv["APP_TYPE"];
+    else mutableEnv["APP_TYPE"] = savedType;
+  });
 
   it("creates web app when APP_ENV=web", async () => {
     const { Application } = await import("../application/Application.ts");

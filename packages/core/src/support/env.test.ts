@@ -6,6 +6,7 @@ import {
   deployEnv,
   DEV_WORKER_ENV_VAR,
   DEPLOY_ENV_VAR,
+  RUNTIME_MODE_VAR,
 } from "./env.ts";
 import { setAppEnv } from "../helpers/index.ts";
 
@@ -14,12 +15,19 @@ const saved = {
   appEnv: env["APP_ENV"],
   devWorker: env[DEV_WORKER_ENV_VAR],
   deployEnv: env[DEPLOY_ENV_VAR],
+  runtimeMode: env[RUNTIME_MODE_VAR],
 };
 
 /**
  * Pin the whole env surface these predicates read — including {@link DEPLOY_ENV_VAR},
  * which `setAppEnv()` writes. Leaving it out let a value set by another test file
  * leak in and decide the answer, because `devSurfacesEnabled()` prefers it.
+ *
+ * {@link RUNTIME_MODE_VAR} is cleared for the same reason, one layer up: `setAppEnv()`
+ * treats an existing value as an explicit choice and leaves it alone, so a stray one
+ * makes the calls below no-ops. `createTestApp()` sets it to `"test"` for the lifetime
+ * of the process — correct for a real suite, and enough to make these assertions read
+ * whatever ran before them in a whole-repo sweep.
  */
 function setEnv(
   appEnv: string | undefined,
@@ -32,9 +40,14 @@ function setEnv(
   else env[DEV_WORKER_ENV_VAR] = devWorker;
   if (deploy === undefined) delete env[DEPLOY_ENV_VAR];
   else env[DEPLOY_ENV_VAR] = deploy;
+  delete env[RUNTIME_MODE_VAR];
 }
 
-afterEach(() => setEnv(saved.appEnv, saved.devWorker, saved.deployEnv));
+afterEach(() => {
+  setEnv(saved.appEnv, saved.devWorker, saved.deployEnv);
+  if (saved.runtimeMode === undefined) delete env[RUNTIME_MODE_VAR];
+  else env[RUNTIME_MODE_VAR] = saved.runtimeMode;
+});
 
 describe("isProdLike()", () => {
   it("accepts the production-like names, case-insensitively", () => {

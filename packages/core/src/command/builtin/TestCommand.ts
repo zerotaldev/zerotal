@@ -1,5 +1,6 @@
 import { Command } from "../Command.ts";
 import { bunBinary } from "../../support/runtime.ts";
+import { testEnvOverrides } from "../testEnv.ts";
 
 /**
  * `bun zt test [pattern] [flags]` — runs the test suite in the test environment.
@@ -11,6 +12,9 @@ import { bunBinary } from "../../support/runtime.ts";
  *    withDatabase() and DB.table() work without manual beforeAll boilerplate.
  *  - If @zerotal/testing is not installed the preload is silently skipped —
  *    tests that use createTestApp() still work without it.
+ *  - Resets the driver keys `.env` would otherwise lend the suite (mail, queue,
+ *    session, cache) to their in-process defaults, and loads `.env.test` when
+ *    the app has one. See `../testEnv.ts` for why, and `--keep-env` to opt out.
  *
  * All positional args and recognised flags are forwarded to bun test.
  *
@@ -72,6 +76,12 @@ export class TestCommand extends Command {
       description: "Run database/migrations against the test database before the suite",
       default: false,
     },
+    {
+      name: "keep-env",
+      type: "boolean" as const,
+      description: "Inherit .env's mail/queue/session/cache drivers instead of resetting them",
+      default: false,
+    },
   ];
 
   async run(): Promise<void> {
@@ -122,7 +132,18 @@ export class TestCommand extends Command {
     const timeout = (this.flags["timeout"] as number | undefined) || TestCommand.DEFAULT_TIMEOUT_MS;
     bunArguments.push(`--timeout=${timeout}`);
 
+    // `.env` is written for `zt dev`; a test run should decide for itself which
+    // outbound services it reaches. Reported rather than applied silently — a
+    // suite that behaves differently from the same code under `zt dev` has to
+    // say so, or the next person debugs the difference instead of reading it.
+    const { overrides, neutralised } = this.flags["keep-env"]
+      ? { overrides: {}, neutralised: [] as string[] }
+      : await testEnvOverrides(process.cwd(), Bun.env as Record<string, string | undefined>);
+
     this.dim(`APP_ENV=test  ZT_DB_URL=${dbUrl}  bun ${Bun.version}`);
+    if (neutralised.length > 0) {
+      this.dim(`Reset for tests: ${neutralised.join("  ")}  (keep .env's with --keep-env)`);
+    }
     this.dim(`bun ${bunArguments.join(" ")}\n`);
 
     // `bunBinary()`, not `"bun"`. The child of a command whose entire job is to run
@@ -136,6 +157,7 @@ export class TestCommand extends Command {
       stderr: "inherit",
       env: {
         ...Bun.env,
+        ...overrides,
         APP_ENV: "test",
         ZT_DB_URL: dbUrl,
       } as Record<string, string | undefined>,

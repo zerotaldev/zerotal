@@ -251,14 +251,45 @@ your users find first.
 
 ## `bun test` vs `bun zt test`
 
-Both run the same files. `bun zt test` is a wrapper that sets up three things Bun's
+Both run the same files. `bun zt test` is a wrapper that sets up four things Bun's
 runner does not, and each of them has cost somebody a day:
 
-|                  | `bun test`            | `bun zt test`                                              |
-| ---------------- | --------------------- | ---------------------------------------------------------- |
-| Per-test timeout | Bun's default, 5000ms | 30000ms (`--timeout`, override with `--timeout=`)          |
-| Runtime check    | none                  | refuses a Bun below the project's `engines.bun`            |
-| DB wiring        | none                  | preloads `@zerotal/testing/preload` and passes `ZT_DB_URL` |
+|                  | `bun test`            | `bun zt test`                                                      |
+| ---------------- | --------------------- | ------------------------------------------------------------------ |
+| Per-test timeout | Bun's default, 5000ms | 30000ms (`--timeout`, override with `--timeout=`)                  |
+| Runtime check    | none                  | refuses a Bun below the project's `engines.bun`                    |
+| DB wiring        | none                  | preloads `@zerotal/testing/preload` and passes `ZT_DB_URL`         |
+| Drivers          | inherits `.env`       | resets mail, queue, session and cache to their in-process defaults |
+
+### The drivers
+
+Bun loads `.env` into every process it starts, so a test run inherits your local
+setup — including the keys that decide whether a code path talks to something
+real. A developer with `MAIL_DRIVER=smtp` pointed at a local Postfix gets a suite
+where every path that sends mail opens an SMTP connection: one test that confirms
+a payment and issues an invitation goes from milliseconds to a five-second
+timeout, and fails only when run alongside its siblings. A teammate with no mail
+server configured never sees it.
+
+So `bun zt test` resets these for the child process:
+
+| Key              | Test value |
+| ---------------- | ---------- |
+| `MAIL_DRIVER`    | `log`      |
+| `QUEUE_DRIVER`   | `sync`     |
+| `SESSION_DRIVER` | `cookie`   |
+| `CACHE_DRIVER`   | `memory`   |
+
+Each is already the app config's default; only `.env` was overriding it. Two
+things still win, and the command prints a line saying what it changed:
+
+- **A value set in the shell** — `MAIL_DRIVER=smtp bun zt test` is someone
+  testing that path deliberately, and is left alone.
+- **`.env.test`** — read by `bun zt test` and merged last, for anything a test
+  run should configure for itself. (Bun only loads that file when `NODE_ENV=test`,
+  so `bun test` on its own does not see it.)
+
+`--keep-env` skips the reset entirely and inherits `.env` as-is.
 
 ### The timeout
 

@@ -10,19 +10,34 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
-- **Every MySQL insert failed on a current Bun with "This adapter doesn't support connection
-  reservation".** `LAST_INSERT_ID()` is per-connection, so the INSERT and the SELECT that
-  reads the id have to be pinned to one connection; the code reserved one when the adapter
-  offered `reserve()` and fell back to a short transaction when it did not. Bun's MySQL
-  adapter now _exposes_ `reserve()` and throws when it is called, so `typeof … ===
-"function"` stopped telling the two apart and the fallback became unreachable.
+- **Hardening: a MySQL adapter that offers `reserve()` may still refuse it.**
+  `LAST_INSERT_ID()` is scoped per connection, so a MySQL insert pins its INSERT and the
+  SELECT that reads the id to one connection, reserving one where the adapter supports it
+  and falling back to a short transaction where it does not. The check was
+  `typeof conn.reserve === "function"`, and presence is not support — an adapter can expose
+  the method and throw `"This adapter doesn't support connection reservation"` when it is
+  called, which is what Bun's SQLite adapter does.
 
-  Presence is not support: the reservation is attempted and the transaction path is used
-  when it refuses. Only the acquisition is guarded — a failure inside the insert is a real
-  error and is not retried against a second connection.
+  The reservation is now attempted and the transaction path used when it refuses. Only the
+  acquisition is guarded: a failure inside the insert is a real error and is not retried
+  against a second connection. `try`/`catch` rather than `.catch()`, since an adapter that
+  refuses may throw synchronously.
 
-  Nothing in this repository changed to cause it; a runtime upgrade was enough, which is
-  what makes it worth a note. SQLite and PostgreSQL were never affected.
+  No released version was affected — this path was only reachable through a test that had
+  leaked a dialect (see below). Changed because the detection was wrong either way.
+
+- **A dialect-coverage test left the ORM in MySQL mode for the rest of the process.**
+  `server.smoke.test.ts` sets four globals in `beforeAll` and restored three — the
+  BaseModel dialect stayed on whatever server it had just tested. Every later file in that
+  process then took the MySQL insert branch, which reads the new row's id with
+  `LAST_INSERT_ID()`; against the SQLite connection those tests actually use, that is
+  `no such function`.
+
+  Test-only, and it never reached a release: the leak needs `ZT_MYSQL_URL` set, which
+  happens in one CI job. Postgres hid it for months — its branch uses `RETURNING`, which
+  SQLite also supports — so only the MySQL job could go red, and only when the file order
+  put the smoke test first. Bun walks test files in directory order, which is arbitrary on
+  Linux, so "when" was a coin flip on every run.
 
 ## [1.15.0] — 2026-09-04
 

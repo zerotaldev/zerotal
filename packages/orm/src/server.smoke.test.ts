@@ -80,6 +80,14 @@ for (const { dialect, url } of SERVERS.length
       await db`DROP TABLE IF EXISTS zt_smoke_widgets`;
       _setDbConnection(null as never);
       _setBaseModelConnection(null as never);
+      // Both dialect globals, not just the query builder's. `_setBaseModelDialect`
+      // was set in beforeAll and never put back, so after this file ran against
+      // MySQL every later test in the process took the MySQL insert branch — and
+      // that branch reads the new row's id with `LAST_INSERT_ID()`, which SQLite
+      // does not have. Postgres hid it: its branch uses `RETURNING`, which SQLite
+      // does support, so the same leak was harmless there and only the MySQL job
+      // went red — and only when the file order put this one first.
+      _setBaseModelDialect("sqlite");
       _setQueryBuilderDialect("sqlite");
       await db.end();
     });

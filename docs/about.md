@@ -236,6 +236,7 @@ decorators; the table name is derived by convention (so `@table` is optional):
 ```ts fragment
 // app/models/Post.ts
 import { Model, table, column, hasMany, belongsTo } from "@zerotal/orm";
+import type { Carbon } from "@zerotal/core/carbon";
 
 @table("posts")
 export default class Post extends Model {
@@ -243,7 +244,7 @@ export default class Post extends Model {
   @column() declare title: string;
   @column("text") declare body: string;
   @column("boolean") declare published: boolean;
-  @column("datetime") declare createdAt: Date;
+  @column("datetime") declare createdAt: Carbon;
 
   @hasMany(() => Comment) declare comments: Comment[];
   @belongsTo(() => User) declare author: User;

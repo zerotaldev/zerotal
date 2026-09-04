@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: `AuditLog.createdAt` is a `Carbon`, not a `Date`.** It was declared `Date`
+  and never held one — a `@column("datetime")` hydrates as `Carbon` — so `.getTime()` on
+  an audit row compiled and threw. The declaration now matches what the column actually
+  produces, which is the same correction made to the base model's own timestamps in
+  `@zerotal/orm`. Use `.toISOString()`, `.valueOf()`, or `.toDate()`.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

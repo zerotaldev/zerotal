@@ -85,6 +85,26 @@ describe("BaseModel — create()", () => {
     expect(user.updatedAt).toBeInstanceOf(Carbon);
   });
 
+  it("keeps updatedAt a Carbon across save() and touch(), not just after a load", async () => {
+    // The class used to depend on the path: Carbon on a freshly loaded row, a raw
+    // Date on one you had just saved — from the same property on the same model,
+    // declared as `Date` and matching neither. `.toISOString()` then worked on one
+    // and `.getTime()` on the other, so a screen could throw on its first render.
+    const user = await User.create({ name: "Carol", active: 1, score: 0 });
+
+    user.name = "Caroline";
+    await user.save();
+    expect(user.updatedAt).toBeInstanceOf(Carbon);
+
+    await user.touch();
+    expect(user.updatedAt).toBeInstanceOf(Carbon);
+
+    const reloaded = await User.find(user.id);
+    expect(reloaded?.updatedAt).toBeInstanceOf(Carbon);
+    // The declared type says Carbon, so this is what type-checks — and now works.
+    expect(typeof user.updatedAt?.toISOString()).toBe("string");
+  });
+
   it("emits ModelChanged on create, update, and delete", async () => {
     const { FrameworkEvents } = await import("@zerotal/core");
     const { ModelChanged } = await import("../events.ts");
@@ -243,7 +263,9 @@ describe("BaseModel — soft deletes", () => {
   it("delete() sets deleted_at when softDeletes=true", async () => {
     const user = await User.create({ name: "Alice", active: 1, score: 0 });
     await user.delete();
-    expect(user.deletedAt).toBeInstanceOf(Date);
+    // Carbon, matching what a reload of the same row hydrates — this used to be a
+    // raw Date, so the class of `deletedAt` depended on how you got to it.
+    expect(user.deletedAt).toBeInstanceOf(Carbon);
   });
 
   it("query() automatically excludes soft-deleted rows", async () => {

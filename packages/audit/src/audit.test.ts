@@ -6,6 +6,7 @@ import { AuditLog } from "./AuditLog.ts";
 import { Auditable } from "./Auditable.ts";
 import { auditSchemaConcern } from "./auditSchemaConcern.ts";
 import { NullDriver } from "./drivers/NullDriver.ts";
+import { Carbon } from "@zerotal/core/carbon";
 import { AuditConfig } from "./config.ts";
 import { AuditObserver } from "./AuditObserver.ts";
 import type { AuditDriver } from "./drivers/AuditDriver.ts";
@@ -92,7 +93,7 @@ describe("Querying — Audit.logs / instance auditLogs (in-memory DB)", () => {
       table.string("url").nullable();
       table.string("created_at").nullable();
     });
-    const at = new Date();
+    const at = Carbon.now();
     await AuditLog.create({
       event: "created",
       auditableType: "User",

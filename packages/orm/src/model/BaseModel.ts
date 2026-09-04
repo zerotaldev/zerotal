@@ -930,16 +930,30 @@ export class BaseModel {
   /**
    * Creation timestamp, set on insert when {@link timestamps} is enabled.
    *
+   * A {@link Carbon}, like every other `datetime` column — not a `Date`. These
+   * two were declared as `Date` while hydration produced a `Carbon`, so
+   * `order.createdAt.getTime()` type-checked and threw, and `.slice(0, 10)` on
+   * a value assumed to be an ISO string threw differently. Neither has a column
+   * declaration in the model to read the truth off, which is exactly why the
+   * declaration here has to be right.
+   *
+   * Use `.toISOString()` for a string, `.valueOf()` for epoch milliseconds, and
+   * `.toDate()` when something really needs a native `Date`.
+   *
    * @category Timestamps
    */
-  createdAt?: Date;
+  createdAt?: Carbon;
 
   /**
    * Last-update timestamp, bumped on every save when {@link timestamps} is enabled.
    *
+   * A {@link Carbon} — see {@link createdAt}. It used to depend on how you got
+   * here: a `Carbon` on a freshly loaded row, a raw `Date` on one you had just
+   * saved, from the same property on the same model.
+   *
    * @category Timestamps
    */
-  updatedAt?: Date;
+  updatedAt?: Carbon;
 
   /** @internal Snapshot of attribute values at load/last-save, for dirty tracking. */
   private _original: Record<string, unknown> = {};
@@ -1849,7 +1863,10 @@ export class BaseModel {
       await HookRegistry.run(ModelClass, "beforeUpdate", this);
 
       const dirty = this.$dirty();
-      if (ModelClass.timestamps) dirty["updatedAt"] = new Date();
+      // Carbon, not `new Date()`. The entries below are written back onto the
+      // instance, so a plain Date here left `updatedAt` holding a different class
+      // after a save than after a load — with the declared type matching neither.
+      if (ModelClass.timestamps) dirty["updatedAt"] = Carbon.now();
 
       if (Object.keys(dirty).length > 0) {
         const entries = _writeDialect.run(dialect, () =>
@@ -1900,16 +1917,17 @@ export class BaseModel {
     await HookRegistry.run(ModelClass, "beforeDelete", this);
 
     if (ModelClass.softDeletes) {
-      const now = new Date();
+      const now = Carbon.now();
       await runSegs(conn, [
         `UPDATE ${ModelClass.table} SET deleted_at = `,
-        { val: _writeDialect.run(dialect, () => _serializeDate(now)) },
+        { val: _writeDialect.run(dialect, () => _serializeDate(now.toDate())) },
         ` WHERE ${ModelClass.primaryKey} = `,
         { val: this.id },
       ]);
       // `deletedAt` lives on the SoftDeletes mixin; this branch only runs for models
-      // that compose it (softDeletes === true).
-      (this as { deletedAt?: Date | null }).deletedAt = now;
+      // that compose it (softDeletes === true). Carbon, to match what a reload of
+      // this same row would put there.
+      (this as { deletedAt?: Carbon | null }).deletedAt = now;
     } else {
       await runSegs(conn, [
         `DELETE FROM ${ModelClass.table} WHERE ${ModelClass.primaryKey} = `,
@@ -2028,7 +2046,7 @@ export class BaseModel {
   async touch(): Promise<this> {
     const ModelClass = this.constructor as typeof BaseModel;
     if (!ModelClass.timestamps) return this;
-    this.updatedAt = new Date();
+    this.updatedAt = Carbon.now();
     this.markDirty("updatedAt" as keyof this);
     return this.save();
   }

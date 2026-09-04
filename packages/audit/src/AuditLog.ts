@@ -1,5 +1,6 @@
 import { BaseModel, column, table } from "@zerotal/orm";
 import type { AuditEvent } from "./types.ts";
+import type { Carbon } from "@zerotal/core/carbon";
 
 /**
  * The `AuditLog` model represents a single row in the `audit_logs` table.
@@ -30,7 +31,11 @@ export class AuditLog extends BaseModel {
   // Timestamps are disabled for this table, so `createdAt` is a plain tracked
   // column set explicitly by the Auditor (not auto-managed by the ORM). The
   // initializer satisfies the base-class field override check (TS2612).
-  @column("datetime") createdAt: Date = undefined as unknown as Date;
+  //
+  // `Carbon`, not `Date`: a `datetime` column hydrates as Carbon, and this was
+  // declared as a Date it never held — so `.getTime()` on an audit row compiled
+  // and threw. Same mistake the base model's own timestamps carried.
+  @column("datetime") createdAt: Carbon = undefined as unknown as Carbon;
 
   // ── Scopes ───────────────────────────────────────────────────────────────
 

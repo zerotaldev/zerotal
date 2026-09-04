@@ -210,6 +210,7 @@ Active Record–style models backed by `Bun.sql`:
 ```ts
 // app/models/Post.ts
 import { Model, table, column, hasMany, belongsTo } from "@zerotal/orm";
+import type { Carbon } from "@zerotal/core/carbon";
 
 @table("posts")
 export default class Post extends Model {
@@ -217,7 +218,7 @@ export default class Post extends Model {
   @column() declare title: string;
   @column("text") declare body: string;
   @column("boolean") declare published: boolean;
-  @column("datetime") declare createdAt: Date;
+  @column("datetime") declare createdAt: Carbon;
 
   @hasMany(() => Comment) declare comments: Comment[];
   @belongsTo(() => User) declare author: User;
@@ -236,6 +237,21 @@ const posts = await Post.query()
   .limit(20)
   .get();
 
+// Filtering happens in SQL — the builder is wide enough that you should rarely
+// load a table and filter it in JavaScript
+const results = await Post.query()
+  .whereIn("author_id", editorIds)
+  .whereNotNull("published_at")
+  .whereBetween("views", [100, 1000])
+  .whereLike("title", "%release%")
+  .whereYear("published_at", 2026)
+  .whereHas("comments", (q) => q.where("approved", true))
+  .whereDoesntHave("flags")
+  .orWhere("pinned", true)
+  .paginate(20, page);
+
+const total = await Post.query().where("published", true).count();
+
 // Relationships
 const post = await Post.find(1);
 await post.load(["comments"]);
@@ -245,6 +261,12 @@ const created = await Post.create({ title: "Hello", body: "..." });
 created.fill({ published: true });
 await created.save();
 ```
+
+Every one of those has an `orWhere*` counterpart, and there are more —
+`whereJson`, `whereExists`, `whereRelation`, `whereMonth`, chunking, streaming
+and cursor pagination. See **[Queries](https://zerotal.dev/docs/orm/queries)**
+for the full surface; it is worth ten minutes before writing your first
+repository method.
 
 Migrations live in `database/migrations/` as TypeScript classes built with the `Schema` builder, and run with `bun zt migrate`:
 
@@ -632,13 +654,14 @@ The full documentation lives in [`docs/`](docs). Start with **[Getting Started](
 
 **Data**
 
-| Guide                                  | Description                               |
-| -------------------------------------- | ----------------------------------------- |
-| [ORM](docs/orm/index.md)               | Models, casts, relationships, lifecycle   |
-| [Query Builder](docs/query-builder.md) | Fluent queries, scopes, pagination        |
-| [Migrations](docs/migrations.md)       | Schema builder, running migrations        |
-| [Seeding](docs/seeding.md)             | Database seeders and factories            |
-| [Validation](docs/validator.md)        | FormRequest, RuleBuilder, available rules |
+| Guide                                  | Description                                                   |
+| -------------------------------------- | ------------------------------------------------------------- |
+| [ORM](docs/orm/index.md)               | Models, casts, relationships, lifecycle                       |
+| [Queries](docs/orm/queries.md)         | `Model.query()` — the `where*` surface, scopes, pagination    |
+| [Query Builder](docs/query-builder.md) | `DB.table()` — the same fluent API for tables without a model |
+| [Migrations](docs/migrations.md)       | Schema builder, running migrations                            |
+| [Seeding](docs/seeding.md)             | Database seeders and factories                                |
+| [Validation](docs/validator.md)        | FormRequest, RuleBuilder, available rules                     |
 
 **Frontend**
 

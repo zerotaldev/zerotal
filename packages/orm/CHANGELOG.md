@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed — **BREAKING**
+
+- **BREAKING: `createdAt`, `updatedAt` and `deletedAt` are `Carbon`, not `Date`.** Every
+  `datetime` column hydrates as `Carbon`, these three included — so the declared type was
+  wrong on a freshly loaded row, and `order.createdAt.getTime()` type-checked and threw,
+  because `Carbon` has `toISOString()` and `valueOf()` but no `getTime()`.
+
+  Worse, the runtime class depended on how you got there: `Carbon` after a load, a raw
+  `Date` after a `save()`, a `touch()`, or a soft `delete()` wrote one straight back onto
+  the instance. The same property on the same model, matching its declared type in neither
+  case, and with no `@column` declaration to check the truth against.
+
+  All three are now `Carbon` everywhere, declared and at runtime. Code calling a `Date`
+  method on them was already failing at runtime and now fails to compile; `.toISOString()`
+  gives a string, `.valueOf()` epoch milliseconds, and `.toDate()` a native `Date`.
+
+  Compile and follow the errors — every one is a line that would have thrown against a
+  loaded row. See the [Upgrade Guide](/docs/upgrade#114-to-115).
+
 ## [1.12.0] — 2026-08-31
 
 ### Changed — **BREAKING**

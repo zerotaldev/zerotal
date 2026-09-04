@@ -330,12 +330,13 @@ describe("replicate()", () => {
 describe("touch()", () => {
   it("updates updated_at on a timestamps-enabled model", async () => {
     const u = await User.create({ name: "Touch Me" } as never);
-    // updatedAt is Carbon after create (no getTime); normalise to epoch ms
-    const toMs = (d: Date | undefined) => (d ? ((d as any).toDate?.() ?? d).getTime() : 0);
-    const beforeMs = toMs(u.updatedAt);
+    // `updatedAt` is a Carbon on every path now — declared and at runtime — so this
+    // no longer needs the `as any` that worked around a property declared `Date`
+    // and holding something else.
+    const beforeMs = u.updatedAt?.valueOf() ?? 0;
     await new Promise((r) => setTimeout(r, 10));
     await u.touch();
-    expect(toMs(u.updatedAt)).toBeGreaterThan(beforeMs);
+    expect(u.updatedAt?.valueOf() ?? 0).toBeGreaterThan(beforeMs);
   });
 
   it("is a no-op when timestamps are disabled", async () => {

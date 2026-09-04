@@ -24,6 +24,7 @@ import { _resolveConn, type BaseModel } from "./BaseModel.ts";
 import { ModelQueryBuilder } from "./ModelQueryBuilder.ts";
 import { QueryBuilder } from "../db/QueryBuilder.ts";
 import type { Constructor } from "./mixins.ts";
+import type { Carbon } from "@zerotal/core/carbon";
 
 // Structural view of the concrete model class used by the static scopes.
 interface SoftDeleteModelClass<T extends BaseModel> {
@@ -63,8 +64,13 @@ export function SoftDeletes<TBase extends Constructor>(Base: TBase) {
     /** Engine switch — query scoping + schema `deleted_at` provisioning read this. */
     static softDeletes = true;
 
-    /** When the row was soft-deleted, or null/undefined when live. */
-    declare deletedAt?: Date | null;
+    /**
+     * When the row was soft-deleted, or null/undefined when live.
+     *
+     * A {@link Carbon}, like `createdAt`/`updatedAt` and every other `datetime`
+     * column — `.toISOString()` for a string, `.toDate()` for a native `Date`.
+     */
+    declare deletedAt?: Carbon | null;
 
     /** A query that INCLUDES soft-deleted rows (bypasses the default scope). */
     static withTrashed<T extends BaseModel>(this: SoftDeleteModelClass<T>): ModelQueryBuilder<T> {

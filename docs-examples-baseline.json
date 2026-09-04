@@ -47,7 +47,7 @@
       "file": "docs/about.md",
       "heading": "Models, queries, and migrations",
       "ordinal": 0,
-      "hash": "7voyx7uo4dyo"
+      "hash": "p6e5n8osyx6s"
     },
     {
       "file": "docs/about.md",
@@ -7743,6 +7743,12 @@
     },
     {
       "file": "docs/testing/mocking.md",
+      "heading": "Stubbing `globalThis.fetch` directly",
+      "ordinal": 0,
+      "hash": "10z9t0kqoxhj"
+    },
+    {
+      "file": "docs/testing/mocking.md",
       "heading": "Time",
       "ordinal": 0,
       "hash": "2qp165w60p47"
@@ -7752,6 +7758,18 @@
       "heading": "`Component.client(…)` is removed — use the `$` tagged template",
       "ordinal": 0,
       "hash": "2k3jygykj7z0"
+    },
+    {
+      "file": "docs/upgrade.md",
+      "heading": "`createdAt`, `updatedAt` and `deletedAt` are `Carbon`, not `Date`",
+      "ordinal": 0,
+      "hash": "2j42gbcu5kar"
+    },
+    {
+      "file": "docs/upgrade.md",
+      "heading": "`createdAt`, `updatedAt` and `deletedAt` are `Carbon`, not `Date`",
+      "ordinal": 1,
+      "hash": "1p3anciw92pd"
     },
     {
       "file": "docs/upgrade.md",
@@ -7794,6 +7812,12 @@
       "heading": "1.9 to 1.10",
       "ordinal": 1,
       "hash": "110jftj4suet"
+    },
+    {
+      "file": "docs/upgrade.md",
+      "heading": "A broken `_middleware.ts` stops the boot",
+      "ordinal": 0,
+      "hash": "159qzjh9l7rx"
     },
     {
       "file": "docs/validator.md",

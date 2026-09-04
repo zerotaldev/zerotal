@@ -114,6 +114,41 @@ bun test src/db/QueryBuilder.test.ts   # a single file
 5. **Update the docs.** If you change or add public API, update the relevant page
    under `docs/` (and the nav in `apps/docs/app/routes/_layout.ts` if you add a page).
 
+### Tests restore anything process-global
+
+Bun runs a package's test files in **one process**, and the preload is evaluated
+once per worker, not once per file. So a global a test writes is still there for
+every file that runs after it: `Bun.env` keys, `globalThis.fetch` or
+`globalThis.document`, and framework module state set through the `_set*` helpers.
+
+Put it back. `beforeEach` captures, `afterEach` restores — and restore in a
+`finally` or an `afterEach`, never at the end of the test body, or a failing
+assertion skips the restore and takes the rest of the suite with it.
+
+```ts fragment
+let saved: string | undefined;
+beforeEach(() => {
+  saved = Bun.env["APP_ENV"];
+  Bun.env["APP_ENV"] = "production";
+});
+afterEach(() => {
+  if (saved === undefined) delete Bun.env["APP_ENV"];
+  else Bun.env["APP_ENV"] = saved;
+});
+```
+
+This is worth its own rule because **the damage never lands where the mistake is**.
+The file that fails is whichever ran next, and which file that is depends on
+directory order — alphabetical on Windows, arbitrary readdir order on Linux. So a
+leak passes locally for months and reddens CI on an unrelated commit. Five of
+these were found in one week, each written by someone who had tested their own
+file in isolation and seen it pass.
+
+If a CI-only failure lands in a package your change did not touch, suspect a
+leaked global before suspecting your diff. To reproduce the order locally, rename
+the file you think runs second so it sorts last — passing paths to `bun test`
+explicitly does not work, because Bun re-sorts them.
+
 ## Documentation changes
 
 The docs are markdown files in `docs/`, served by the docs app in `apps/docs`. A page's

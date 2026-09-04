@@ -8,6 +8,22 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Every MySQL insert failed on a current Bun with "This adapter doesn't support connection
+  reservation".** `LAST_INSERT_ID()` is per-connection, so the INSERT and the SELECT that
+  reads the id have to be pinned to one connection; the code reserved one when the adapter
+  offered `reserve()` and fell back to a short transaction when it did not. Bun's MySQL
+  adapter now _exposes_ `reserve()` and throws when it is called, so `typeof … ===
+"function"` stopped telling the two apart and the fallback became unreachable.
+
+  Presence is not support: the reservation is attempted and the transaction path is used
+  when it refuses. Only the acquisition is guarded — a failure inside the insert is a real
+  error and is not retried against a second connection.
+
+  Nothing in this repository changed to cause it; a runtime upgrade was enough, which is
+  what makes it worth a note. SQLite and PostgreSQL were never affected.
+
 ## [1.15.0] — 2026-09-04
 
 ### Changed — **BREAKING**

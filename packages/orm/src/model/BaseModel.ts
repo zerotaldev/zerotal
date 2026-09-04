@@ -1833,15 +1833,33 @@ export class BaseModel {
         };
         if (inTx) {
           newId = await insertAndReadId(conn);
-        } else if (typeof reservable.reserve === "function") {
-          const pinned = await reservable.reserve();
-          try {
-            newId = await insertAndReadId(pinned);
-          } finally {
-            pinned.release();
-          }
         } else {
-          newId = await conn.begin((tx) => insertAndReadId(tx));
+          // Presence is not support. Bun's MySQL adapter now exposes `reserve()`
+          // and throws "This adapter doesn't support connection reservation" when
+          // it is called, so `typeof … === "function"` stopped distinguishing the
+          // two and every MySQL insert failed on a runtime that had merely been
+          // updated. Only the acquisition is guarded — a failure inside the insert
+          // is a real error and must not be retried against a second connection.
+          let pinned: (SQLInstance & { release(): void }) | undefined;
+          if (typeof reservable.reserve === "function") {
+            try {
+              // try/catch rather than `.catch()`: an adapter that refuses may throw
+              // synchronously, before there is a promise to attach a handler to.
+              pinned = await reservable.reserve();
+            } catch {
+              pinned = undefined;
+            }
+          }
+
+          if (pinned) {
+            try {
+              newId = await insertAndReadId(pinned);
+            } finally {
+              pinned.release();
+            }
+          } else {
+            newId = await conn.begin((tx) => insertAndReadId(tx));
+          }
         }
       } else {
         await runSegs(conn, segs);

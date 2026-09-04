@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A test that stubbed `globalThis.fetch` also answered the test client's own requests.**
+  `TestApp` drives the app over a loopback server through whatever `fetch` was current, so
+  faking an outbound integration — the ordinary way to test one — made unrelated route tests
+  fail with `connection refused`, or come back holding the third-party's JSON. The failure
+  presents as "my test client cannot reach my app", which sends you looking at the server.
+
+  `TestApp` now holds the real `fetch`, captured at module load before any test can replace
+  it. An outbound stub cannot intercept an inbound request, and no passthrough is needed for
+  the test client.
+
 ## [1.11.0] — 2026-08-31
 
 ### Changed

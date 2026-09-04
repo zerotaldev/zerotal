@@ -364,3 +364,31 @@ describe("TestApp.followingRedirects()", () => {
     expect(result).toBe(app);
   });
 });
+
+// ── An outbound fetch stub must not intercept the test client ─────────────────
+
+describe("TestApp and a stubbed globalThis.fetch", () => {
+  it("keeps reaching the app while a test fakes an outbound integration", async () => {
+    // Stubbing `globalThis.fetch` is the ordinary way to fake a third-party API.
+    // The test client used to go through the same global, so the stub answered
+    // the client's own requests too — three unrelated route tests failing with
+    // `connection refused`, which reads as "my test client cannot reach my app".
+    const original = globalThis.fetch;
+    let stubCalls = 0;
+
+    globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      stubCalls++;
+      return Response.json({ courses: [] });
+    }) as typeof fetch;
+
+    try {
+      const res = await app.get("/users");
+      res.assertStatus(200);
+      const body = await res.json<{ data: { name: string }[] }>();
+      expect(body.data[0]?.name).toBe("Alice");
+      expect(stubCalls).toBe(0);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});

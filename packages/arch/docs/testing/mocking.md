@@ -225,6 +225,34 @@ it("charges the card and records the reference", async () => {
 A catch-all stub at the end is worth adding: without it an unstubbed URL falls
 through, and a test can quietly start depending on a service being reachable.
 
+### Stubbing `globalThis.fetch` directly
+
+`Http.fake()` only sees requests made through the `Http` client. An integration
+written against `fetch` directly — a third-party SDK, or a client you wrote
+before reaching for `Http` — needs the global replaced:
+
+```typescript fragment
+// src/tests/MoodleTest.ts
+const originalFetch = globalThis.fetch;
+
+beforeEach(() => {
+  globalThis.fetch = (async (input, init) => {
+    const url = String(typeof input === "string" ? input : (input as Request).url);
+    if (!url.startsWith("https://learn.example.test")) return originalFetch(input, init);
+    return Response.json({ courses: [] });
+  }) as typeof fetch;
+});
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
+```
+
+The passthrough is there for **everything else your code fetches**, not for the
+test client: `TestApp` holds the real `fetch` from before any test ran, so a stub
+installed here can never answer `app.get('/orders')`. Restoring in `afterEach` is
+what matters — a stub left installed makes the next file's outbound calls return
+the previous file's fixture.
+
 ## Time
 
 Behaviour that depends on the passage of time — a token that expires in seven

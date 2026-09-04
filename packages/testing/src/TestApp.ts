@@ -6,6 +6,24 @@ import { resetTestState } from "./resetTestState.ts";
 type BunServer = { port: number; stop(drain?: boolean): void };
 
 /**
+ * The real `fetch`, captured at module load — before any test has had a chance
+ * to replace `globalThis.fetch`.
+ *
+ * The test client talks to the app over a real loopback server, so it used to
+ * call whatever `fetch` was current. A test that stubs `globalThis.fetch` to
+ * fake an outbound integration therefore also answered the test client's own
+ * requests: three unrelated route tests fail with `connection refused` or come
+ * back holding the third-party's JSON, and the failure reads as "my test client
+ * cannot reach my app", which sends you looking at the server.
+ *
+ * Binding it here means an outbound stub can never intercept an inbound request.
+ * A test that genuinely wants to intercept the test client has `app.app` and the
+ * router; a test that wants to stub an integration should not have to know this
+ * exists at all.
+ */
+const _fetch: typeof globalThis.fetch = globalThis.fetch.bind(globalThis);
+
+/**
  * Wrapper around a running Application that provides an HTTP test client.
  * Obtain an instance via createTestApp().
  *
@@ -251,7 +269,7 @@ export class TestApp {
 
     if (this._errors) this._errors.lastError = undefined;
 
-    let res = await fetch(full, { ...init, headers, redirect: "manual" });
+    let res = await _fetch(full, { ...init, headers, redirect: "manual" });
 
     if (this._followRedirects) {
       let hops = 0;
@@ -267,7 +285,7 @@ export class TestApp {
           const cookiePair = setCookie.split(";")[0] ?? "";
           nextHeaders.set("Cookie", existing ? `${existing}; ${cookiePair}` : cookiePair);
         }
-        res = await fetch(nextUrl, { method: "GET", headers: nextHeaders, redirect: "manual" });
+        res = await _fetch(nextUrl, { method: "GET", headers: nextHeaders, redirect: "manual" });
         hops++;
       }
     }

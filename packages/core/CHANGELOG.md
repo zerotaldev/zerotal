@@ -8,6 +8,68 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed — **BREAKING**
+
+- **BREAKING: a `_middleware.ts` that cannot apply now stops the boot.** Two ways one could
+  fail were silent, and both left the routes it was written to guard live and unguarded.
+  An app where either was happening will now refuse to boot until the file is fixed —
+  which is the point: it was not guarding anything before, and nothing said so. A directory
+  with no `_middleware` file is unchanged and stays silent. See the
+  [Upgrade Guide](/docs/upgrade#114-to-115).
+
+### Fixed
+
+- **A `_middleware.ts` that default-exported its list left the subtree unguarded.** The
+  loader read only `export const middleware`, so `export default [EmployerMiddleware]` was
+  ignored — no warning, no boot error, nothing in `route:list`. The app started, the routes
+  answered, and the directory the file was written to protect served to anyone. `export
+default` is the natural guess: every route file in the same directory default-exports its
+  handler.
+
+  The file now has to export a `middleware` array, and boot fails naming the file and the
+  fix when it does not. Nothing rejected here has ever applied, so no working app changes.
+
+- **An import error in a `_middleware.ts` was swallowed with the missing-file case.** Both
+  shared one `catch`, so a typo, a bad import path, a circular import or a `SyntaxError` all
+  read as "this directory has no middleware" and the routes beneath went on serving — on a
+  hot-reload, a guard that had been there a second earlier.
+
+  Absence and failure are now separate: no file is silent, as the convention intends, and a
+  file that threw stops the boot with the original error and its path. Under `zt dev` the
+  reload aborts and the previously compiled routes keep serving, so the guard never drops.
+
+- **`zt doctor`'s secure-headers check failed on any app behind a reverse proxy.** It read
+  `app.secureHeaders.secure` and inferred the response from it, so a deployment where Caddy
+  or nginx terminates TLS and sets HSTS — the most common production topology for a Bun app
+  — was reported as downgradeable while `curl -I` showed the header present. A check that is
+  wrong on the ordinary case is one people learn to skip.
+
+  It now makes one request to `app.url` on a deployment and reports what came back. When it
+  cannot reach the site, it warns with what it actually knows — the app does not send HSTS,
+  confirm the proxy does — instead of asserting a header is missing. Unreachable is no
+  longer reported as absent.
+
+### Added
+
+- **`zt route:types` regenerates every type file the app generates from its file tree**, not
+  only `types/routes.generated.ts`. `@zerotal/inertia` registers its page registry through
+  the new `registerTypeGenerator`, so adding a page and running the command whose name says
+  it generates types now does. Previously it regenerated the routes half, `Inertia.render`
+  still failed with `TS2345: … not assignable to 'PageName'`, and the error reads as a typo
+  in the page name rather than a registry that has not been rebuilt. `--check` gates on all
+  of them.
+
+- **`zt test` no longer inherits `.env`'s mail, queue, session and cache drivers.** Bun loads
+  `.env` into every process, so a developer with `MAIL_DRIVER=smtp` pointed at a local
+  Postfix got a suite where every path that sends mail opened a real SMTP connection — one
+  test going from milliseconds to a five-second timeout, failing only when run with its
+  siblings, and invisible to anyone without a mail server configured.
+
+  These four now get their in-process defaults (`log`, `sync`, `cookie`, `memory`), which is
+  what the app's own config already defaults to. A value set in the shell still wins, so
+  `MAIL_DRIVER=smtp bun zt test` works; `.env.test` is read and merged last; `--keep-env`
+  turns the whole thing off. The command prints what it changed.
+
 ## [1.14.3] — 2026-09-01
 
 ### Fixed

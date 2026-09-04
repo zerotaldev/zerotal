@@ -351,21 +351,87 @@ const corsWildcardCheck: DoctorCheck = {
  * false and has never had production auto-detection. A deployment that never set it
  * serves no `Strict-Transport-Security` at all, so a visitor's first request each
  * time stays downgradeable to plain HTTP.
+ *
+ * The header is the only thing that settles this, and the header is not always the
+ * app's to send. Reading `app.secureHeaders.secure` and inferring the response from
+ * it failed on the most ordinary production topology there is: a reverse proxy
+ * terminating TLS and setting HSTS itself. The app's config is then correctly
+ * false, the header is correctly present, and the check said the site could be
+ * downgraded — a wrong answer on a check that is otherwise reliable enough to be
+ * read, which is how a check becomes the line people learn to skip.
+ *
+ * So it probes when it can (`--url`, or `app.url` on a deployment: the response is
+ * the only thing that answers the question) and, when it cannot, says what it
+ * actually knows — the app does not send HSTS — rather than what it was guessing.
  */
 const secureHeadersCheck: DoctorCheck = {
   id: "secure-headers",
   label: "Secure headers",
-  run(app) {
+  async run(app) {
     const secure = _config(app, "app.secureHeaders.secure") === true;
     if (secure) return ok("HSTS enabled.");
     if (!_isProductionEnv(app)) return ok("HSTS off — expected outside a deployment.");
-    return fail(
-      "app.secureHeaders.secure is not true, so no Strict-Transport-Security header is " +
-        "sent and the first request of each visit can be downgraded to HTTP.",
-      "Set app.secureHeaders.secure: true in config/app.ts once the site is served over HTTPS.",
+
+    // One request to the public URL, which is the only view that includes the
+    // proxy. A loopback `app.url` on a deployment is its own finding, already
+    // reported by the transport-origins check.
+    const url = _config(app, "app.url");
+    if (typeof url === "string" && url !== "" && !_isLoopback(url)) {
+      const observed = await _observedHsts(url);
+      if (observed === true) {
+        return ok(`HSTS served by the proxy (${url}) — the app does not set it.`);
+      }
+      if (observed === false) {
+        return fail(
+          `No Strict-Transport-Security on ${url}: neither the app nor anything in ` +
+            `front of it sends it, so the first request of each visit can be downgraded ` +
+            `to HTTP.`,
+          "Set app.secureHeaders.secure: true in config/app.ts, or add the header at the proxy.",
+        );
+      }
+      // Unreachable: the deployment may not be up yet, or `doctor` may be running
+      // somewhere that cannot see the public URL. That is not evidence either way.
+    }
+
+    return warn(
+      "app.secureHeaders.secure is not true, so the app does not send " +
+        "Strict-Transport-Security. If a reverse proxy terminates TLS it may be sending " +
+        "it — confirm there; if nothing does, the first request of each visit can be " +
+        "downgraded to HTTP.",
+      `Check with: curl -sI ${typeof url === "string" && url !== "" ? url : "https://your-site"} | grep -i strict-transport-security\n` +
+        "    Then either set app.secureHeaders.secure: true in config/app.ts, or leave it " +
+        "to the proxy — but not both, which sends the header twice.",
     );
   },
 };
+
+/**
+ * Whether the deployed site answers with `Strict-Transport-Security`.
+ *
+ * `null` when the request could not be made at all, which is different from "no
+ * header" and must not be reported as one.
+ */
+async function _observedHsts(url: string): Promise<boolean | null> {
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      // `redirect: "manual"`: the redirect's own response is the one the proxy wrote,
+      // and following it would report the destination's headers instead.
+      redirect: "manual",
+      // `doctor` is what people run immediately after a deploy, so it may not hang on
+      // an unreachable host — a diagnostic that stops responding is worse than one
+      // that says it could not tell. A timeout lands in the `catch` as `null`, which
+      // is already "no evidence either way" rather than "no header".
+      signal: AbortSignal.timeout(_PROBE_TIMEOUT_MS),
+    });
+    return response.headers.get("strict-transport-security") !== null;
+  } catch {
+    return null;
+  }
+}
+
+/** How long the HSTS probe waits before reporting that it could not tell. */
+const _PROBE_TIMEOUT_MS = 5_000;
 
 /**
  * A rate limiter behind a proxy that was never told about the proxy keys every

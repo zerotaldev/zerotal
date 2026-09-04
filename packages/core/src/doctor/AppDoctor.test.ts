@@ -280,3 +280,82 @@ describe("runDoctor", () => {
     expect(report.every((e) => !e.result.message.includes("provider is broken"))).toBe(true);
   });
 });
+
+describe("secure-headers check", () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("passes when the app sets HSTS itself", async () => {
+    const result = await check("secure-headers").run(
+      fakeApp({ config: { "app.env": "production", "app.secureHeaders.secure": true } }),
+    );
+    expect(result.status).toBe("ok");
+  });
+
+  it("stays quiet outside a deployment", async () => {
+    const result = await check("secure-headers").run(fakeApp({ config: { "app.env": "local" } }));
+    expect(result.status).toBe("ok");
+  });
+
+  it("passes when a reverse proxy sends HSTS the app does not", async () => {
+    // The reported false positive: Caddy terminates TLS and sets the header, the
+    // app's own `secureHeaders.secure` is correctly false, and doctor used to
+    // report the site as downgradeable while `curl -I` showed the header present.
+    globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(null, {
+        headers: { "strict-transport-security": "max-age=31536000; includeSubDomains" },
+      })) as typeof fetch;
+
+    const result = await check("secure-headers").run(
+      fakeApp({ config: { "app.env": "production", "app.url": "https://app.example.com" } }),
+    );
+
+    expect(result.status).toBe("ok");
+    expect(result.message).toContain("proxy");
+  });
+
+  it("fails when the response really carries no HSTS", async () => {
+    globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(null)) as typeof fetch;
+
+    const result = await check("secure-headers").run(
+      fakeApp({ config: { "app.env": "production", "app.url": "https://app.example.com" } }),
+    );
+
+    expect(result.status).toBe("fail");
+    expect(result.message).toContain("No Strict-Transport-Security");
+  });
+
+  it("warns, rather than failing, when the site cannot be reached", async () => {
+    // Unreachable is not evidence of a missing header, and must not be reported as
+    // one — that is how a check earns the reputation that gets it skipped.
+    globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      throw new Error("ECONNREFUSED");
+    }) as unknown as typeof fetch;
+
+    const result = await check("secure-headers").run(
+      fakeApp({ config: { "app.env": "production", "app.url": "https://app.example.com" } }),
+    );
+
+    expect(result.status).toBe("warn");
+    expect(result.message).toContain("reverse proxy");
+  });
+
+  it("warns without probing a loopback app.url", async () => {
+    let probed = false;
+    globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      probed = true;
+      return new Response(null);
+    }) as typeof fetch;
+
+    const result = await check("secure-headers").run(
+      fakeApp({ config: { "app.env": "production", "app.url": "http://localhost:3000" } }),
+    );
+
+    expect(probed).toBe(false);
+    expect(result.status).toBe("warn");
+  });
+});

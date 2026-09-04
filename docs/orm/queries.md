@@ -159,6 +159,14 @@ const user = await User.findOrNew(1);
 `Model.query()` returns a `ModelQueryBuilder`. Most methods are also available on
 `DB.table()` for unmodelled raw queries — see [Query builder](/docs/query-builder).
 
+> **Filter in SQL, not in JavaScript.** If you find yourself writing
+> `(await Placement.all()).filter((p) => p.employerId === id)`, the builder has
+> what you want — `.where("employerId", id)`. That shape works fine on a table
+> with hundreds of rows and gets slower in proportion to the table, not to the
+> result, so it fails long after it was written and nowhere near the code that
+> caused it. The next four sections are the whole filtering surface; skimming
+> them once is the cheapest thing on this page.
+
 ### Filtering
 
 ```typescript fragment

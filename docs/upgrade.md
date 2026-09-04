@@ -296,6 +296,93 @@ doing something quiet.
    If it really is a new migration, give it a name that does not collide once the
    leading digits are removed.
 
+## 1.14 to 1.15
+
+Two breaking changes. Both replace something that was quietly wrong with something that
+says so.
+
+### `createdAt`, `updatedAt` and `deletedAt` are `Carbon`, not `Date`
+
+They always hydrated as `Carbon` — every `datetime` column does — but were declared `Date`,
+so the type was wrong on any row loaded from the database. Worse, the runtime class
+depended on how you got there: a `Carbon` after a load, a raw `Date` after a `save()`, a
+`touch()` or a soft `delete()`. The same property on the same model, matching its declared
+type in neither case.
+
+```ts fragment
+// before — compiled, and threw at runtime on a loaded row
+const ms = order.createdAt.getTime();
+
+// after
+const ms = order.createdAt?.valueOf(); // epoch milliseconds
+const iso = order.createdAt?.toISOString(); // "2026-09-04T08:15:00.000Z"
+const native = order.createdAt?.toDate(); // a real Date, if something needs one
+```
+
+**What to change.** Compile and follow the errors: every one is code that would have thrown
+if that line had run against a loaded row. `Carbon` has `toISOString()`, `valueOf()`,
+`toJSON()` and `toDate()`, plus its own comparison and arithmetic — it does not have
+`getTime()`, `getFullYear()` or the rest of the `Date` accessors.
+
+If you were working around the old inconsistency, the workaround can go:
+
+```ts fragment
+// before — needed because the class varied by path
+const ms = ((value as any).toDate?.() ?? value).getTime();
+
+// after
+const ms = value.valueOf();
+```
+
+A cast that hid the mismatch (`order.createdAt as unknown as string`) now hides a different
+one — `.slice(0, 10)` on a `Carbon` still throws. Use `.toISOString().slice(0, 10)`.
+
+### A broken `_middleware.ts` stops the boot
+
+Two ways a `_middleware.ts` could fail to apply used to be silent, leaving the routes it
+was written to guard live and unguarded:
+
+- **`export default [Middleware]`** — the loader only ever read `export const middleware`.
+  `export default` is the natural guess, because every route file in the same directory
+  default-exports its handler.
+- **A file that fails to import** — a typo, a bad import path, a circular import, a
+  `SyntaxError`. All shared a `catch` with the missing-file case, so all read as "this
+  directory has no middleware".
+
+Both now fail the boot, naming the file and the fix. A directory with no `_middleware` file
+is unchanged: absence is the convention working, and stays silent.
+
+```ts fragment
+// app/routes/employer/_middleware.ts
+
+// before — silently ignored, subtree served unguarded
+export default [EmployerMiddleware];
+
+// after
+export const middleware = [EmployerMiddleware];
+```
+
+**What to change.** Boot the app once — `bun zt route:list` is enough. If nothing changes,
+you had none of this. If a `_middleware.ts` file was never applying, you will be told which
+one, and the routes under it were open until now.
+
+Under `zt dev` a reload that hits this aborts and keeps serving the previously compiled
+routes, so a guard never drops mid-session.
+
+### Also worth knowing (not breaking)
+
+- **`bun zt route:types` regenerates the Inertia page registry too.** Adding a page and
+  getting `TS2345: … not assignable to parameter of type 'PageName'` is now fixed by the
+  command whose name says it generates types. `--check` gates on both files.
+- **`bun zt test` no longer inherits `.env`'s mail, queue, session and cache drivers.**
+  They get their in-process defaults (`log`, `sync`, `cookie`, `memory`) so a suite cannot
+  open a real SMTP or Redis connection because of how one machine is configured. A value
+  set in the shell still wins, `.env.test` is read and merged last, and `--keep-env` turns
+  it off. See [Testing](/docs/testing#bun-test-vs-bun-zt-test).
+- **`zt doctor`'s secure-headers check probes the deployed URL** instead of inferring HSTS
+  from config, so an app behind a TLS-terminating proxy is no longer reported as
+  downgradeable when the header is being sent.
+
 ## 1.13 to 1.14
 
 One breaking change, and it is small in practice.

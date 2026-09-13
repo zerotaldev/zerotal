@@ -5601,6 +5601,12 @@
     },
     {
       "file": "docs/orm/index.md",
+      "heading": "A primary key that isn't `id`",
+      "ordinal": 0,
+      "hash": "esxmkce4pp49"
+    },
+    {
+      "file": "docs/orm/index.md",
       "heading": "Bridging model events to the app event bus",
       "ordinal": 0,
       "hash": "1ovsa3qubfbm"

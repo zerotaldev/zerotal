@@ -4,7 +4,7 @@ import { Router } from "./Router.ts";
 import type { Container } from "../container/Container.ts";
 
 const fakeContainer = {} as unknown as Container;
-const TMP = `./.tmp-static-${Date.now()}`;
+const TMP = `.tmp-static-${Date.now()}`;
 
 beforeEach(() => {
   Router.reset();
@@ -13,6 +13,12 @@ beforeEach(() => {
 afterAll(async () => {
   // Use node:fs rm (not Bun.$`rm -rf`, which silently no-ops on Windows and
   // leaves .tmp-static-* dirs behind) so the temp tree is reliably removed.
+  //
+  // And note what TMP is NOT: a "./"-prefixed path. On Bun 1.4.0 / Windows,
+  // rm("./dir", { recursive: true }) RESOLVES and deletes nothing, so this hook
+  // reported a clean teardown while every run left another fixture tree behind —
+  // which lint:ci then counted, drifting its baseline by a warning or two per run.
+  // The same prefix bit three sibling suites; they are all written bare now.
   await rm(TMP, { recursive: true, force: true });
 });
 

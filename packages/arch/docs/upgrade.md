@@ -371,6 +371,12 @@ routes, so a guard never drops mid-session.
 
 ### Also worth knowing (not breaking)
 
+- **A save or delete on a model with no primary-key value now raises an error** (1.15.1).
+  It used to bind NULL, match no row, and resolve as though it had written. The one way to
+  reach it is a partially hydrated instance — `Post.query().select("title").get()`, then
+  `save()` on a result — and in that state the write was already being thrown away. What
+  changes is that you hear about it: `E_NO_PRIMARY_KEY`, naming the model and the key.
+  Select the key column alongside whatever else you need, and the write works as intended.
 - **`bun zt route:types` regenerates the Inertia page registry too.** Adding a page and
   getting `TS2345: … not assignable to parameter of type 'PageName'` is now fixed by the
   command whose name says it generates types. `--check` gates on both files.

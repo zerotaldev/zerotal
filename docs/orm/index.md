@@ -171,6 +171,45 @@ export class LedgerEntry extends Model {
 > `forceDelete()`, `trashed()`, and the `withTrashed()` / `onlyTrashed()` scopes. See
 > [Lifecycle & Events](/docs/orm/lifecycle).
 
+#### A primary key that isn't `id`
+
+Name the key column and every read and write keys on it — `find()`, `save()`, `delete()`,
+`refresh()`, `increment()`, relation counts. Declare it like any other column and set the
+value yourself, because a `TEXT` key has no auto-increment to fall back on:
+
+```typescript fragment
+@(table("documents").primaryKey("uuid"))
+export class Document extends Model {
+  @column("string") uuid!: string;
+  @column("string") title!: string;
+
+  // `localKey` defaults to "id" on every relation, so a named key has to be named here too
+  @hasMany(() => Revision, { foreignKey: "documentUuid", localKey: "uuid" })
+  revisions!: HasMany<Revision>;
+}
+
+const doc = new Document();
+doc.uuid = crypto.randomUUID(); // nothing fills this in for you
+doc.title = "Roadmap";
+await doc.save();
+
+doc.createdAt; // the insert writes your key, then reads the row back by it
+```
+
+Three consequences worth holding onto:
+
+- **Set the key before the first `save()`.** With no value to write, the insert hands the
+  column to the database, which for a `TEXT` key means whatever its schema says — a `NOT
+NULL` violation, or a silent `NULL`.
+- **`localKey` on every relation.** It defaults to `"id"`, so a relation left at the
+  default reads a property the model does not have and quietly matches nothing.
+- **A string key wants its own name.** `Model` types the inherited `id` as a `number`, so
+  `primaryKey("uuid")` (or `"ticket_ref"`, or whatever it is) type-checks where a `TEXT`
+  column called `id` does not.
+
+Keep the key out of `fillable` unless request data really is allowed to choose it —
+[mass assignment](#mass-assignment) is what decides that, the same as any other column.
+
 ### @column decorator
 
 Declare typed columns. Accepts a shorthand cast string or a full options object:

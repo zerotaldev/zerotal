@@ -1,6 +1,6 @@
 import type { SQLInstance } from "../db/sql-types.ts";
 import type { PaginateResult } from "../db/types.ts";
-import { RequestContext, FrameworkEvents } from "@zerotal/core";
+import { RequestContext, FrameworkEvents, ZerotalError } from "@zerotal/core";
 import { ModelChanged } from "../events.ts";
 import { Carbon } from "@zerotal/core/carbon";
 import { toCamelKey as toCamel, toSnakeColumn as toSnake } from "../support/identifiers.ts";
@@ -923,6 +923,10 @@ export class BaseModel {
    * Primary-key value. Populated after {@link save} inserts a new row, or when
    * the instance is hydrated from the database.
    *
+   * A model that overrides {@link primaryKey} carries its key under that name
+   * instead (`uuid`, `user_id`, …) and leaves this one unset — every persistence
+   * method reads the declared key, not this property.
+   *
    * @category Attributes & mass assignment
    */
   id!: number;
@@ -954,6 +958,51 @@ export class BaseModel {
    * @category Timestamps
    */
   updatedAt?: Carbon;
+
+  /**
+   * The value every `WHERE <primary key> = …` this instance issues is keyed on:
+   * update, delete, refresh, fresh, increment/decrement and the relation
+   * aggregate loads.
+   *
+   * Reads the property named by {@link primaryKey} rather than `id`, because a
+   * model that overrides the key has no `id` — these all used `this.id`, so an
+   * `uuid`-keyed model issued `WHERE uuid = NULL`: an update and a delete both
+   * reported success having touched no row, and `refresh()` threw
+   * {@link ModelNotFoundError} for a row that was sitting right there.
+   *
+   * Prefers the loaded snapshot so reassigning the key updates the row it was
+   * read from (`SET uuid = new WHERE uuid = old`) instead of a row that does not
+   * exist yet.
+   *
+   * @internal
+   */
+  private get _keyValue(): unknown {
+    const pk = toCamel((this.constructor as typeof BaseModel).primaryKey);
+    const loaded = (this._original as Record<string, unknown>)[pk];
+    return loaded !== undefined ? loaded : (this as unknown as Record<string, unknown>)[pk];
+  }
+
+  /**
+   * Throw rather than build a `WHERE <key> = NULL` that quietly matches nothing.
+   * Reached when a row was hydrated without its key column (`select("name")`),
+   * where the silent version of this looked exactly like a successful write.
+   *
+   * @internal
+   */
+  private _requireKey(operation: string): unknown {
+    const key = this._keyValue;
+    if (key === undefined || key === null) {
+      const ModelClass = this.constructor as typeof BaseModel;
+      throw new ZerotalError(
+        `Cannot ${operation} ${ModelClass.name}: its primary key "${ModelClass.primaryKey}" is not set. ` +
+          `Load the row including its key column, or set the key before saving.`,
+        "E_NO_PRIMARY_KEY",
+        500,
+        { model: ModelClass.name, primaryKey: ModelClass.primaryKey, operation },
+      );
+    }
+    return key;
+  }
 
   /** @internal Snapshot of attribute values at load/last-save, for dirty tracking. */
   private _original: Record<string, unknown> = {};
@@ -1762,13 +1811,25 @@ export class BaseModel {
     const colReg = columnsFor(ModelClass as unknown as ClassRef);
     const colKeys = _allColumnKeys(ModelClass as unknown as ClassRef);
 
+    const pkProp = toCamel(ModelClass.primaryKey);
+    const pkColumn = toSnake(ModelClass.primaryKey);
+
     if (!this._exists) {
       // ── INSERT ──
       await HookRegistry.run(ModelClass, "beforeCreate", this);
 
+      // The primary key is a system column only while the DATABASE mints it. When the
+      // app mints it — `static primaryKey = "uuid"`, or a TEXT `id` — it has to reach
+      // the INSERT, so drop it from the skip set here (it is added back explicitly
+      // below, since the key is often not `@column`-registered and `colKeys` would
+      // filter it out). An unset key is still omitted, so AUTOINCREMENT is untouched.
+      const insertSkip = SYSTEM_KEYS.has(pkProp)
+        ? new Set([...SYSTEM_KEYS].filter((k) => k !== pkProp))
+        : SYSTEM_KEYS;
+
       const row: Record<string, unknown> = _writeDialect.run(dialect, () => {
         const r: Record<string, unknown> = {};
-        for (const [key, val] of ownDataEntries(this, SYSTEM_KEYS, rels, colKeys)) {
+        for (const [key, val] of ownDataEntries(this, insertSkip, rels, colKeys)) {
           // A declared field that was never assigned is `undefined`, and writing that
           // as an explicit NULL made `@column({ default: … })` inert: the INSERT named
           // the column, so the database never applied its own default and a NOT NULL
@@ -1788,6 +1849,12 @@ export class BaseModel {
           }
           r[toSnake(key)] = _serializeForWrite(key, effective, casts, colReg, ModelClass.name);
         }
+        // An app-minted key that is not `@column`-registered (the common shape for a
+        // plain `id`) never reaches the loop above, so take it straight off the instance.
+        const minted = self[pkProp];
+        if (minted !== undefined && minted !== null && !(pkColumn in r)) {
+          r[pkColumn] = _serializeForWrite(pkProp, minted, casts, colReg, ModelClass.name);
+        }
         if (ModelClass.timestamps) {
           const now = _serializeDate(new Date());
           r["created_at"] = now;
@@ -1806,11 +1873,22 @@ export class BaseModel {
       });
       segs.push(")");
 
-      let newId: number;
-      if (dialect === "postgres") {
+      // The key to read the row back by. When the app minted it there is nothing to
+      // ask the database for — and asking was the bug: `last_insert_rowid()` /
+      // `LAST_INSERT_ID()` answer with a rowid, which no TEXT key ever equals, so the
+      // re-read below matched no row and left the instance with no timestamps, no
+      // database defaults and `_exists` still false — making the NEXT save() insert
+      // the same row a second time instead of updating it.
+      const mintedKey = pkColumn in row ? row[pkColumn] : undefined;
+
+      let newId: unknown;
+      if (mintedKey !== undefined && mintedKey !== null) {
+        await runSegs(conn, segs);
+        newId = mintedKey;
+      } else if (dialect === "postgres") {
         segs.push(` RETURNING ${ModelClass.primaryKey}`);
-        const [returning] = await runQuery<Record<string, number>>(conn, segs);
-        newId = returning![ModelClass.primaryKey as string] as number;
+        const [returning] = await runQuery<Record<string, unknown>>(conn, segs);
+        newId = returning![ModelClass.primaryKey as string];
       } else if (dialect === "mysql") {
         // LAST_INSERT_ID() is scoped per connection, so the INSERT and the
         // SELECT must be pinned to the SAME connection — under concurrency a
@@ -1873,7 +1951,17 @@ export class BaseModel {
         `SELECT * FROM ${ModelClass.table} WHERE ${ModelClass.primaryKey} = `,
         { val: newId },
       ]);
-      if (rows[0]) _applyRow(this, rows[0]);
+      if (rows[0]) {
+        _applyRow(this, rows[0]);
+      } else {
+        // The INSERT succeeded, so the instance is resident whether or not the row came
+        // back (a trigger may have moved it, the target may be a view). Record that much
+        // instead of leaving `_exists` false, which turns the next save() into a second
+        // INSERT and a duplicate-key error rather than the UPDATE the caller asked for.
+        if (newId !== undefined && newId !== null) self[pkProp] = newId;
+        this._exists = true;
+        this._original = { ...this._original, [pkProp]: self[pkProp] };
+      }
 
       await HookRegistry.run(ModelClass, "afterCreate", this);
     } else {
@@ -1904,7 +1992,7 @@ export class BaseModel {
           segs.push({ val });
         });
         segs.push(` WHERE ${ModelClass.primaryKey} = `);
-        segs.push({ val: this.id });
+        segs.push({ val: this._requireKey("update") });
         await runSegs(conn, segs);
 
         const self = this as unknown as Record<string, unknown>;
@@ -1940,7 +2028,7 @@ export class BaseModel {
         `UPDATE ${ModelClass.table} SET deleted_at = `,
         { val: _writeDialect.run(dialect, () => _serializeDate(now.toDate())) },
         ` WHERE ${ModelClass.primaryKey} = `,
-        { val: this.id },
+        { val: this._requireKey("delete") },
       ]);
       // `deletedAt` lives on the SoftDeletes mixin; this branch only runs for models
       // that compose it (softDeletes === true). Carbon, to match what a reload of
@@ -1949,7 +2037,7 @@ export class BaseModel {
     } else {
       await runSegs(conn, [
         `DELETE FROM ${ModelClass.table} WHERE ${ModelClass.primaryKey} = `,
-        { val: this.id },
+        { val: this._requireKey("delete") },
       ]);
     }
 
@@ -2011,11 +2099,12 @@ export class BaseModel {
   async fresh(): Promise<this> {
     const ModelClass = this.constructor as typeof BaseModel;
     const conn = _resolveConn(ModelClass);
+    const key = this._requireKey("reload");
     const rows = await runQuery<Record<string, unknown>>(conn, [
       `SELECT * FROM ${ModelClass.table} WHERE ${ModelClass.primaryKey} = `,
-      { val: this.id },
+      { val: key },
     ]);
-    if (!rows[0]) throw new ModelNotFoundError(ModelClass.name, this.id);
+    if (!rows[0]) throw new ModelNotFoundError(ModelClass.name, key as number | string);
     return ModelClass.fromRow(rows[0]) as this;
   }
 
@@ -2029,11 +2118,12 @@ export class BaseModel {
   async refresh(): Promise<this> {
     const ModelClass = this.constructor as typeof BaseModel;
     const conn = _resolveConn(ModelClass);
+    const key = this._requireKey("reload");
     const rows = await runQuery<Record<string, unknown>>(conn, [
       `SELECT * FROM ${ModelClass.table} WHERE ${ModelClass.primaryKey} = `,
-      { val: this.id },
+      { val: key },
     ]);
-    if (!rows[0]) throw new ModelNotFoundError(ModelClass.name, this.id);
+    if (!rows[0]) throw new ModelNotFoundError(ModelClass.name, key as number | string);
     _applyRow(this, rows[0]);
     return this;
   }
@@ -2048,7 +2138,13 @@ export class BaseModel {
     const ModelClass = this.constructor as typeof BaseModel;
     const rels = relNames(ModelClass as unknown as ClassRef);
     const colKeys = _allColumnKeys(ModelClass as unknown as ClassRef);
-    const skip = new Set<string>([...SYSTEM_KEYS, ...(except ?? [])]);
+    // The declared key, not just `id` — copying a `uuid` forward produced a replica
+    // that could only ever fail on save with a duplicate-key error.
+    const skip = new Set<string>([
+      ...SYSTEM_KEYS,
+      toCamel(ModelClass.primaryKey),
+      ...(except ?? []),
+    ]);
     const inst = new (this.constructor as new () => this)();
     for (const [k, v] of ownDataEntries(this, skip, rels, colKeys)) {
       (inst as unknown as Record<string, unknown>)[k] = v;
@@ -2122,7 +2218,7 @@ export class BaseModel {
       `UPDATE ${ModelClass.table} SET ${col} = ${col} ${op} `,
       { val: Math.abs(delta) },
       ` WHERE ${ModelClass.primaryKey} = `,
-      { val: this.id },
+      { val: this._requireKey(delta >= 0 ? "increment" : "decrement") },
     ]);
     const self = this as unknown as Record<string, unknown>;
     const current = Number(self[column] ?? 0);
@@ -2140,7 +2236,7 @@ export class BaseModel {
     const rels = Array.isArray(relations) ? relations : [relations];
     const ModelClass = this.constructor as typeof BaseModel;
     const qb = new ModelQueryBuilder(ModelClass.table, _resolveConn(ModelClass), ModelClass);
-    qb.where(ModelClass.primaryKey, this.id);
+    qb.where(ModelClass.primaryKey, this._keyValue as number | string);
     for (const r of rels) qb.withCount(r);
     const fresh = (await qb.limit(1).get<BaseModel>())[0] ?? null;
     const src = fresh as unknown as Record<string, unknown> | null;
@@ -2171,15 +2267,18 @@ export class BaseModel {
   ): Promise<T[]> {
     if (models.length === 0) return models;
     const rels = Array.isArray(relations) ? relations : [relations];
-    const idOf = (m: T): unknown => (m as unknown as { id: unknown }).id;
+    // Read the declared key, not `id`: on a model that overrides `primaryKey` this
+    // collected a list of `undefined` and set every count to 0.
+    const keyProp = toCamel(this.primaryKey);
+    const idOf = (m: BaseModel): unknown => (m as unknown as Record<string, unknown>)[keyProp];
 
     const qb = new ModelQueryBuilder(this.table, _resolveConn(this), this);
-    qb.whereIn(this.primaryKey, models.map(idOf));
+    qb.whereIn(this.primaryKey, models.map(idOf) as (number | string)[]);
     for (const r of rels) qb.withCount(r);
     const fresh = await qb.get<BaseModel>();
 
     const byId = new Map<unknown, Record<string, unknown>>();
-    for (const f of fresh) byId.set((f as unknown as { id: unknown }).id, f as never);
+    for (const f of fresh) byId.set(idOf(f), f as never);
 
     for (const m of models) {
       const src = byId.get(idOf(m));
@@ -2200,7 +2299,7 @@ export class BaseModel {
   ): Promise<this> {
     const ModelClass = this.constructor as typeof BaseModel;
     const qb = new ModelQueryBuilder(ModelClass.table, _resolveConn(ModelClass), ModelClass);
-    qb.where(ModelClass.primaryKey, this.id);
+    qb.where(ModelClass.primaryKey, this._keyValue as number | string);
     (qb as unknown as Record<string, (r: string, c: string) => void>)[`with${fn}`]?.(
       relation,
       column,

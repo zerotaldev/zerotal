@@ -8,7 +8,39 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.1] — 2026-09-13
+
 ### Fixed
+
+- **A model with a primary key other than `id` could not be updated, deleted or
+  reloaded.** `static primaryKey = "uuid"` (and the `@(table("…").primaryKey("…"))` chain)
+  configured the column name everywhere the key was written into SQL, but the value bound
+  against it came from `this.id` — a property such a model never has. Every statement
+  therefore went out as `WHERE uuid = NULL`: `save()` on a loaded instance and `delete()`
+  each matched zero rows and returned as though they had written, `refresh()` and `fresh()`
+  threw `ModelNotFoundError` for a row that was sitting in the table, and `increment()`,
+  `decrement()`, `loadCount()` and the relation aggregate loads no-opped or reported zero.
+
+  The insert was worse than a silent no-op. It wrote the row correctly, then read it back
+  by `last_insert_rowid()` / `LAST_INSERT_ID()`, which answer with a rowid that no `TEXT`
+  key ever equals — so the re-read matched nothing and the instance came back with no
+  timestamps, no database defaults, and still marked as not yet resident. The next `save()`
+  on it was a second INSERT and a duplicate-key error rather than the UPDATE the caller
+  asked for.
+
+  Every one of those paths now reads the key by its declared name, preferring the loaded
+  value so reassigning a key updates the row it was read from. An insert whose key the app
+  minted skips the generated-id round-trip and reads the row back by the key it just wrote.
+  `replicate()` drops the declared key instead of only `id`, so the copy is insertable.
+  A write against an instance whose key is genuinely absent — a row hydrated by
+  `select("title")`, say — now throws `E_NO_PRIMARY_KEY` instead of binding NULL and
+  looking like a success.
+
+- **A primary key the app mints was stripped from the INSERT.** `id` was treated as
+  database-generated unconditionally, so a table whose key is a `TEXT id` the application
+  supplies took the value on the instance, dropped it from the statement, and stored NULL
+  while the in-memory model went on holding the value it thought it had written. The key is
+  now omitted only when it has no value, which is what leaves AUTOINCREMENT to the database.
 
 - **Hardening: a MySQL adapter that offers `reserve()` may still refuse it.**
   `LAST_INSERT_ID()` is scoped per connection, so a MySQL insert pins its INSERT and the

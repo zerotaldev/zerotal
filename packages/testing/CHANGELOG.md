@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.1] — 2026-09-13
+
 ### Fixed
 
 - **A file that booted the app with a `setup` callback left every later file without a

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { rm } from 'node:fs/promises';
 import { lintPackages, countViolations } from './PackageLinter.ts';
 
-const TMP = `./.tmp-lint-${Date.now()}`;
+const TMP = `.tmp-lint-${Date.now()}`;
 
 beforeAll(async () => {
   await Bun.write(`${TMP}/good/package.json`, JSON.stringify({

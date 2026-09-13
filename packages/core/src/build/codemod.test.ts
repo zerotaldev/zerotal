@@ -29,7 +29,7 @@ describe('addToDefaultArrayExport', () => {
 });
 
 describe('registerProvider', () => {
-  const TMP = `./.tmp-boot-${Date.now()}`;
+  const TMP = `.tmp-boot-${Date.now()}`;
   const path = `${TMP}/providers.ts`;
   beforeEach(() => Bun.write(path, BOOT));
   afterEach(() => rm(TMP, { recursive: true, force: true }).catch(() => {}));

@@ -3,7 +3,7 @@ import { rm } from 'node:fs/promises';
 import { scaffoldPackage, packageNames } from './PackageScaffold.ts';
 import { lintPackages } from './PackageLinter.ts';
 
-const TMP = `./.tmp-scaffold-${Date.now()}`;
+const TMP = `.tmp-scaffold-${Date.now()}`;
 afterAll(async () => { await rm(TMP, { recursive: true, force: true }).catch(() => {}); });
 
 describe('packageNames()', () => {

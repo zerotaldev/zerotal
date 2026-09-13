@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.1] — 2026-09-13
+
 ### Added
 
 - **`registerViewFileRouteResolver` is public.** It is what turns on server-rendered
@@ -24,6 +26,19 @@ follows the Zerotal monorepo's unified versioning.
   a named one.
 
 ### Fixed
+
+- **Four test suites left their fixture trees on disk after every run.** Each builds a
+  temporary package or asset tree and removes it in `afterAll`, and the removal reported
+  success without removing anything: on Bun 1.4.0 under Windows, a recursive `rm()` from
+  `node:fs/promises` resolves and deletes nothing when the path carries a `"./"` prefix,
+  which all four used. Written bare, the same call works.
+
+  Test-only, but it was not harmless. The abandoned trees contain deliberately
+  non-conformant fixture packages, `lint:ci` lints anything under `packages/**`, and the
+  gate is a ratchet against a committed count — so a full test run left the next lint run
+  one or two warnings over baseline, and the regression pointed at whatever change happened
+  to be in the tree. Previously read as fallout from interrupted runs, because an
+  interrupted run skips the hook and produces the same evidence.
 
 - **A `_layout` file that could not apply rendered its pages without one.** The same
   fail-open the `_middleware` loader had, one function up in the same file, and found by

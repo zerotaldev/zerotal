@@ -27,6 +27,78 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.15.1 — 2026-09-13
+
+A patch, and its headline is an ORM bug as old as the option it breaks: a model keyed on
+anything but `id` could not be updated, deleted or reloaded, and said nothing about it.
+
+Nothing here breaks. Safe to take directly.
+
+### Added
+
+- **`registerViewFileRouteResolver` is public** (`@zerotal/core`). It is what turns on
+  server-rendered file-route pages — a route file's default export rendered to HTML and
+  wrapped in the nearest `_layout`. Both halves were implemented, tested, and described in
+  [View](/docs/view) as automatic, while the call that enables them carried an internal
+  marker and could not be reached from an app. It stays opt-in, because it claims every
+  `.tsx` route file's default export; the docs now say so and document the `_layout`
+  convention beside it.
+
+### Fixed
+
+- **A model with a primary key other than `id` could not be updated, deleted or reloaded**
+  (`@zerotal/orm`). `static primaryKey = "uuid"` configured the column name everywhere the
+  key was written into SQL, while the value bound against it came from `this.id` — a
+  property such a model never has. So every statement went out as `WHERE uuid = NULL`:
+  `save()` on a loaded instance and `delete()` each matched zero rows and returned as
+  though they had written, `refresh()` and `fresh()` raised `ModelNotFoundError` for a row
+  sitting in the table, and `increment()`, `loadCount()` and the relation aggregates
+  no-opped or reported zero.
+
+  The insert was worse than silent. It wrote the row, then read it back by
+  `last_insert_rowid()`, which answers with a rowid no `TEXT` key ever equals — so the
+  instance came back with no timestamps and not marked as resident, and the next `save()`
+  on it was a second INSERT and a duplicate-key error rather than an UPDATE.
+
+  Every one of those paths now reads the key by its declared name. A write against an
+  instance whose key is genuinely absent, such as a row hydrated by `select("title")`,
+  raises `E_NO_PRIMARY_KEY` instead of binding NULL and looking like a success.
+  [The ORM guide](/docs/orm) now has a section on keying a model on something other than
+  `id`, including the part that bit: `localKey` on a relation defaults to `"id"`, so a
+  named key has to be named there too.
+
+- **A primary key the app mints was stripped from the INSERT** (`@zerotal/orm`). `id` was
+  treated as database-generated unconditionally, so a table whose key is a `TEXT id` the
+  application supplies took the value off the instance, dropped it from the statement, and
+  stored NULL — while the in-memory model went on holding the value it thought it had
+  written. The key is now omitted only when it has no value, which is what leaves
+  AUTOINCREMENT to the database.
+
+- **A `_layout` file that could not apply rendered its pages without one**
+  (`@zerotal/core`). The same fail-open the `_middleware` loader had in
+  [1.15.0](#1150--2026-09-04), one function up in the same file: an import error was
+  swallowed together with the not-found case. A `_layout.tsx` with a typo rendered every
+  page beneath it stripped of its chrome, with no error and no log. Absence stays silent;
+  a file that exists and threw now stops the boot with its path and the original error.
+
+- **A test file that booted the app with a `setup` callback left every later file without a
+  database** (`@zerotal/testing`). `createTestApp(bootstrap, setup)` opts out of sharing,
+  which was implemented as opting out of the cache — so nothing knew that app was in use,
+  its `close()` ran the full provider teardown, and `DatabaseProvider.onStopping` cleared
+  the process-global connection resolver for everyone after it. Suites that had done
+  nothing wrong failed with `No database connection. Is DatabaseProvider registered?`. It
+  read as a CI-only flake for months, because whether it bites depends on test-file order.
+
+- **`zt doctor` says when its outside-in probes did not run** (`@zerotal/core`). The
+  response-header and WebSocket-transport checks need `--url`, and they are the two that
+  see what no in-process check can. Skipping them silently meant the people who most needed
+  them had no way to learn they existed.
+
+Three more are internal, and in the notes for each package: a MySQL adapter that offers
+connection reservation may still refuse it, a dialect-coverage test left the ORM in MySQL
+mode for the rest of the process, and four test suites left their fixture trees on disk
+because a recursive `rm()` of a `"./"`-prefixed path silently deletes nothing on Windows.
+
 ## 1.15.0 — 2026-09-04
 
 A working developer building a training-provider platform on 1.14.3 sent eight findings

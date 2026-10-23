@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The cache is available in the worker, so the scheduler's heartbeat reaches `zt doctor`.**
+  `CacheProvider` was registered in web, console, test and repl but not in the worker, which is
+  where the scheduler runs. Its heartbeat resolved no cache and did nothing, as a heartbeat
+  should rather than take a worker down, and `zt doctor` reported a worker that was running
+  every schedule as one that had never checked in: the failure the check exists to catch,
+  raised about a healthy process. Code that uses `Cache` in a worker had no cache either. With a
+  file-backed or Redis cache the heartbeat is shared with doctor; with the in-memory driver
+  doctor still says it cannot verify, as before.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

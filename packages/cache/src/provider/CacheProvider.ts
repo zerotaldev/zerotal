@@ -18,7 +18,11 @@ declare module "@zerotal/core" {
 
 export class CacheProvider extends ServiceProvider {
   static override provides = ["cache"] as const;
-  static override environments: AppEnvironment[] = ["web", "console", "test", "repl"];
+  // Includes `worker`. The scheduler runs there and records its heartbeat in the cache, which
+  // `zt doctor` reads; without a cache in the worker the heartbeat quietly did nothing and doctor
+  // reported a worker that was running every schedule as one that had never checked in. Jobs
+  // that use `Cache` have the same need.
+  static override environments: AppEnvironment[] = ["web", "console", "worker", "test", "repl"];
 
   private _disposeObservability: (() => void) | undefined = undefined;
 

@@ -52,6 +52,10 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
   let cached = 0;
   let skipped = 0;
   let injected = 0;
+  // Pages registered from code, with no source file in this app. They render through the
+  // runtime by design, and are left out of the fallback warning: it is addressed to the
+  // authors of the app's own pages.
+  let external = 0;
 
   const start = Date.now();
 
@@ -65,6 +69,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
     const sourceFile = PageClass.__sourceFile;
     if (!sourceFile) {
       skipped++;
+      external++;
       continue;
     }
 
@@ -170,7 +175,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
     );
   }
 
-  _warnIfMostlyRuntime(compiled + cached + injected + skipped, skipped);
+  _warnIfMostlyRuntime(compiled + cached + injected + skipped - external, skipped - external);
 }
 
 /**
@@ -184,6 +189,10 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
  * handful of pages), but the *rate* is reported unconditionally once it passes
  * half. The message names the flag, because knowing which construct blocks each
  * page is the only actionable next step.
+ *
+ * Both figures cover only the app's own pages. A fresh admin app was told 12 of 12 of its
+ * pages fell back, all of them the panel's, which come from a package and which its authors
+ * cannot change.
  */
 function _warnIfMostlyRuntime(total: number, runtime: number): void {
   if (total < MIN_PAGES_FOR_FALLBACK_WARNING) return;

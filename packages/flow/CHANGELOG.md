@@ -11,6 +11,16 @@ change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The runtime-fallback warning counts only the app's own pages.** Flow warns once more than
+  half of an app's pages fall back to the runtime renderer, so that its authors go and look at
+  why. A page registered from code rather than loaded from the app's files, such as one a package
+  ships for its own UI, has nothing for them to change, but it was counted all the same: a fresh
+  admin app, whose panel comes from `@zerotal/admin`, was told 12 of 12 of its pages fell back.
+  Those pages are left out of both figures now. The "using runtime" total in the startup summary
+  still includes them, because they do render that way.
+
 ## [1.15.2] — 2026-10-23
 
 ### Changed

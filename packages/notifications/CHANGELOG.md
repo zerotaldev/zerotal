@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`SmtpDriver` transfer-encodes text and HTML parts.** They went on the wire raw,
+  with no `Content-Transfer-Encoding`, so a body line over RFC 5322's 998-octet limit
+  was cut by a relay wherever the limit fell — a single-line HTML email reached a
+  customer reading "sup pliers" — and a non-ASCII body was sent as undeclared 8-bit
+  on a connection that never negotiated `8BITMIME`. A part that is plain ASCII with
+  lines of 78 characters or fewer is still sent as written, now declared `7bit`;
+  anything else is quoted-printable, which keeps ASCII readable where base64 would
+  not.
+
 ## [1.11.1] — 2026-08-31
 
 ### Added

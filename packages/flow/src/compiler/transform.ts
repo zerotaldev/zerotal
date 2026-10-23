@@ -503,6 +503,29 @@ interface MemberInfo {
 /** Decorators that put a method in the client-callable allowlist. */
 const ACTION_DECORATORS = new Set(["expose", "task", "on"]);
 
+/**
+ * Field decorators that register a property as exposed without `@expose` written beside them,
+ * and whether they make it `@locked` as well (read by the client, written by the server). It
+ * mirrors what each one registers in decorators.ts: a page may read these fields, so the
+ * compiler has to agree. `@session` is not here on purpose; it persists a field and exposes
+ * nothing.
+ */
+const IMPLIED_EXPOSE: ReadonlyMap<string, { locked: boolean }> = new Map([
+  ["url", { locked: false }],
+  ["reactive", { locked: false }],
+  ["modelable", { locked: false }],
+  ["presence", { locked: true }],
+  ["shared", { locked: true }],
+]);
+
+/** The name a decorator is written with, bare (`@reactive`) or called (`@url({ as: "q" })`). */
+function _decoratorName(decorator: ts.Decorator): string {
+  const e = ts.isCallExpression(decorator.expression)
+    ? decorator.expression.expression
+    : decorator.expression;
+  return ts.isIdentifier(e) ? e.text : "";
+}
+
 /** Collect @expose, @locked, and @computed decorated members from the Component class AST. */
 function _getMemberInfo(cls: ts.ClassDeclaration): MemberInfo {
   const exposed = new Set<string>();
@@ -537,16 +560,14 @@ function _getMemberInfo(cls: ts.ClassDeclaration): MemberInfo {
       mods.some(
         (m) => ts.isDecorator(m) && ts.isIdentifier(m.expression) && m.expression.text === dec,
       );
-    // `@url` implies `@expose`: the field lives in the address bar, so the client holds it.
-    // Written bare (`@url`) or configured (`@url({ as: "q" })`).
-    const isUrl = (m: ts.ModifierLike): boolean =>
-      ts.isDecorator(m) &&
-      (ts.isIdentifier(m.expression)
-        ? m.expression.text === "url"
-        : ts.isCallExpression(m.expression) &&
-          ts.isIdentifier(m.expression.expression) &&
-          m.expression.expression.text === "url");
-    if (has("expose") || mods.some(isUrl)) exposed.add(name);
+    if (has("expose")) exposed.add(name);
+    for (const m of mods) {
+      const implied = ts.isDecorator(m) ? IMPLIED_EXPOSE.get(_decoratorName(m)) : undefined;
+      if (!implied) continue;
+      // Like a written `@locked`, a locked one goes in `locked` alone: `exposed` is the set the
+      // client may write, and a bound input on a locked field has to be read-only.
+      (implied.locked ? locked : exposed).add(name);
+    }
     if (has("locked")) locked.add(name);
     if (has("computed")) computed.add(name);
   }

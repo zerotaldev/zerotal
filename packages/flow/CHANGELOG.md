@@ -26,10 +26,13 @@ change.
 
 ### Fixed
 
-- **A `@url` field can be read in a compiled page.** `@url` implies `@expose`, but the check of
-  what a page may read did not know that, so `{this.token}` on a `@url token` field failed with
-  `"token" does not match any @expose, @locked, or @computed property`. Outside `cspSafe` the page
-  was skipped with a warning and rendered through the runtime; under it, the build stopped.
+- **A field exposed by `@url`, `@reactive`, `@modelable`, `@presence` or `@shared` can be read in a
+  compiled page.** Each of these exposes its property without `@expose` written beside it, and
+  `@presence` and `@shared` lock it as well, but the check of what a page may read did not know
+  that. `{this.token}` on a `@url token` field failed with
+  `"token" does not match any @expose, @locked, or @computed property`: outside `cspSafe` the page
+  was skipped with a warning and rendered through the runtime, and under it the build stopped. A
+  bound input on a `@presence` or `@shared` field is read-only, as it is for `@locked`.
 
 ## [1.15.4] — 2026-10-23
 

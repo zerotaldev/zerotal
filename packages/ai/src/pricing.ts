@@ -14,6 +14,18 @@ import type { AiUsage } from "./types.ts";
 export interface ModelPrice {
   input: number;
   output: number;
+  /**
+   * What a cache read costs, as a fraction of `input`. Defaults to 0.1, which is right for most
+   * models; Claude Opus 5.5 and Sonnet 5.5 bill 0.05 and Claude Fable 5.1 and Mythos 5.1 bill
+   * 0.025.
+   */
+  cacheRead?: number | undefined;
+  /**
+   * Higher prices for a request whose whole prompt is longer than `aboveTokens`. A request's
+   * prompt counts every input token, cache reads and writes included, and each request is priced
+   * on its own. Claude Haiku 5.5 is the model that has one.
+   */
+  longPrompt?: { aboveTokens: number; input: number; output: number } | undefined;
 }
 
 /**
@@ -24,23 +36,36 @@ export interface ModelPrice {
  */
 const PRICES: Record<string, ModelPrice> = {
   // Anthropic
+  "claude-fable-5-1": { input: 10, output: 50, cacheRead: 0.025 },
+  "claude-mythos-5-1": { input: 10, output: 50, cacheRead: 0.025 },
   "claude-fable-5": { input: 10, output: 50 },
   "claude-mythos-5": { input: 10, output: 50 },
+  "claude-opus-5-5": { input: 4, output: 20, cacheRead: 0.05 },
   "claude-opus-5": { input: 5, output: 25 },
   "claude-opus-4-8": { input: 5, output: 25 },
   "claude-opus-4-7": { input: 5, output: 25 },
   "claude-opus-4-6": { input: 5, output: 25 },
+  "claude-opus-4-5": { input: 5, output: 25 },
+  "claude-sonnet-5-5": { input: 2, output: 10, cacheRead: 0.05 },
   // Sonnet 5 carried Sonnet 4.6's row — 3/15 — until 1.11.2. Every other family
   // got its own number and this one was copied, so the ceiling refused requests
   // that were 50% inside their budget and blamed the budget.
   "claude-sonnet-5": { input: 2, output: 10 },
   "claude-sonnet-4-6": { input: 3, output: 15 },
+  "claude-sonnet-4-5": { input: 3, output: 15 },
+  // Haiku 5.5 is priced by prompt length: five times the price past 100,000 tokens.
+  "claude-haiku-5-5": {
+    input: 0.1,
+    output: 0.5,
+    longPrompt: { aboveTokens: 100_000, input: 0.5, output: 2.5 },
+  },
   "claude-haiku-4-5": { input: 1, output: 5 },
 };
 
 /**
- * Cache reads bill at a tenth of input; writes at a premium that depends on how
- * long the entry lives.
+ * Cache reads bill at a tenth of input unless the model's row says otherwise
+ * ({@link ModelPrice.cacheRead}); writes at a premium that depends on how long the entry
+ * lives.
  *
  * Anthropic prices a **5-minute** write at 1.25x input and a **1-hour** write at
  * 2x. On Sonnet 5's $2 input rate: $0.20 per million for a read, $2.50 for a
@@ -86,13 +111,20 @@ export function estimateCost(model: string, usage: AiUsage): number {
   const price = PRICES[model];
   if (!price) return 0;
 
-  const perInputToken = price.input / 1_000_000;
-  const perOutputToken = price.output / 1_000_000;
+  // A model priced by prompt length bills the whole request at the higher rates once its
+  // prompt, cache reads and writes included, passes the threshold. Under-counting is the unsafe
+  // direction for a ceiling, so the tier is not left to the caller to remember.
+  const promptTokens = usage.inputTokens + usage.cacheReadTokens + usage.cacheWriteTokens;
+  const rates =
+    price.longPrompt && promptTokens > price.longPrompt.aboveTokens ? price.longPrompt : price;
+
+  const perInputToken = rates.input / 1_000_000;
+  const perOutputToken = rates.output / 1_000_000;
 
   return (
     usage.inputTokens * perInputToken +
     usage.outputTokens * perOutputToken +
-    usage.cacheReadTokens * perInputToken * CACHE_READ_MULTIPLIER +
+    usage.cacheReadTokens * perInputToken * (price.cacheRead ?? CACHE_READ_MULTIPLIER) +
     // `cacheWrite1hTokens` is counted *inside* `cacheWriteTokens`, so the
     // short-lived remainder is the difference. Clamped at zero: a provider that
     // ever reported a larger 1-hour figure than the total would otherwise produce

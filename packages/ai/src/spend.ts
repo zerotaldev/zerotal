@@ -13,9 +13,44 @@
  *
  * A model with no price contributes 0 and is never blocked. See `pricing.ts`.
  */
+import { frameworkLog } from "@zerotal/core/logger";
 import { AiSpendLimitError } from "./errors.ts";
 import { estimateCost, modelPrice } from "./pricing.ts";
 import type { AiLimitsConfigShape, AiUsage } from "./types.ts";
+
+/** Models already reported as unpriced, so the warning is one line and not one per request. */
+const _warnedUnpriced = new Set<string>();
+
+/**
+ * Say, once per model, that a model has no price.
+ *
+ * An unpriced model costs 0 as far as this package can tell, and 0 turns the spend ceilings off
+ * for it: they stand aside rather than block a model they cannot price. That is the right
+ * direction to fail in and a bad thing to do silently, because the day an app points at a model
+ * newer than the table, the limits that exist to stop a runaway loop stop, and the spend panel
+ * reads $0.00, with nothing anywhere saying so.
+ *
+ * @param model - The model about to be called.
+ * @param limits - The configured ceilings; they decide what the warning says is lost.
+ */
+export function warnIfUnpriced(model: string, limits: AiLimitsConfigShape): void {
+  if (modelPrice(model) || _warnedUnpriced.has(model)) return;
+  _warnedUnpriced.add(model);
+
+  const ceilings = limits.perRequestUsd > 0 || limits.perDayUsd > 0;
+  frameworkLog("ai").warn(
+    (ceilings
+      ? `${model} has no price, so the spend ceilings (limits.perRequestUsd, limits.perDayUsd) do not apply to it and its spend is recorded as $0. `
+      : `${model} has no price, so its spend is recorded as $0. `) +
+      `Add one with registerModelPrice("${model}", { input, output }), USD per million tokens.`,
+    { model },
+  );
+}
+
+/** @internal Forget which models were warned about; backs this package's own tests. */
+export function _resetUnpricedWarnings(): void {
+  _warnedUnpriced.clear();
+}
 
 /** Today's spend, keyed by UTC date so the window rolls without a timer. */
 let _day = "";

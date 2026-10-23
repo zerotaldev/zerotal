@@ -8,6 +8,34 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Prices for Claude Fable 5.1, Mythos 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5**, and for Opus
+  4.5 and Sonnet 4.5, which the capability table already knew. A request to any of them was
+  estimated at $0, and $0 turns both spend ceilings off. `ModelPrice` gains two optional fields
+  to carry what those models bill: `cacheRead`, the cache-read rate as a fraction of input
+  (Opus 5.5 and Sonnet 5.5 bill 0.05, Fable 5.1 and Mythos 5.1 0.025; the default stays 0.1),
+  and `longPrompt`, a higher rate for a request whose whole prompt is over a threshold, which
+  is how Haiku 5.5 is priced (five times the rates past 100,000 tokens; cache reads and writes
+  count toward the prompt).
+
+### Changed
+
+- **`zt ai:test` tests the default driver and exits 1 when a driver it tested failed.** With no
+  argument it tested every declared driver, so an app that keeps a local fallback next to its real
+  provider got a red line on every run of a correct setup; and it never set an exit code, so a
+  script or CI step that ran it to check a key passed on a dead provider. It tests the default
+  driver now, says which drivers it left out, and takes `--all` for the old behaviour. It also
+  prints the price of the model it reached, or says there is none.
+
+### Fixed
+
+- **A model with no price says so.** An unpriced model costs 0 as far as the ceilings and the
+  spend panel can tell, so `limits.perRequestUsd` stands aside and `limits.perDayUsd` never
+  accumulates, with nothing to show for it. The first request to such a model now logs a warning,
+  once per model, naming the model and the ceilings it escapes and pointing at
+  `registerModelPrice()`.
+
 ## [1.14.1] — 2026-09-01
 
 ### Added

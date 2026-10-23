@@ -28,6 +28,13 @@ follows the Zerotal monorepo's unified versioning.
   share one list now. The responses are unchanged, the request log still records a 404 at `WARN`,
   and a genuine fault is still logged as an error.
 
+- **`zt list`, `zt help <command>` and `zt <command> --help` exit once they have printed.** A
+  command that does work ends the process itself, and one that serves never returns. These three
+  print and return, and left the process to wind down on its own. In an app that holds anything
+  open, such as a database connection or the dev tools (the admin starter does), it never did:
+  the page printed and the terminal sat there until Ctrl+C. `zt list` and `zt help` have always
+  done this; `--help` goes through the same path. The CLI now exits with whatever status was set.
+
 ## [1.15.2] — 2026-10-23
 
 ### Fixed

@@ -90,6 +90,13 @@ export async function startZerotal(
   const runner = new CommandRunner(app);
   await runner.boot(command);
   await runner.run(process.argv.slice(2));
+
+  // A command that does work ends the process itself, and one that serves never returns. What
+  // does return is `list`, `help` and `<command> --help`: they print and stop, and leave the
+  // process to wind down by itself. In an app that holds anything open (a database connection,
+  // the dev tools) it never does, so `zt help migrate` printed its page and then sat there until
+  // Ctrl+C. Exit, with whatever code was set.
+  process.exit(Number(process.exitCode ?? 0));
 }
 
 /**

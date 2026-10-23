@@ -21,7 +21,7 @@ export type Template = 'minimal' | 'api' | 'admin' | 'flow' | 'react' | 'vue';
 // `~X.Y.Z` takes every patch (fixes and features) and stops at the minor, which the
 // app then crosses deliberately. The docs already call a tilde the right default;
 // this is the tool following its own advice.
-export const ZT_VERSION = "~1.15.3";
+export const ZT_VERSION = "~1.15.4";
 
 export interface ScaffoldOptions {
   name:     string;

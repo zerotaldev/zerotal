@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.15.4] — 2026-10-23
+
 ### Fixed
 
 - **The runtime-fallback warning counts only the app's own pages.** Flow warns once more than

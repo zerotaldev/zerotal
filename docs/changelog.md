@@ -27,6 +27,48 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.15.4 — 2026-10-23
+
+A patch, and its headline is a safety fix: `zt <command> --help` ran the command. Two pieces of
+noisy logging that a newcomer sees in their first minutes go with it.
+
+Nothing here breaks. Safe to take directly.
+
+### Fixed
+
+- **`zt <command> --help` shows help instead of running the command** (`@zerotal/core`). The flag
+  parser ran with `strict: false`, so a `--help` it did not recognise was dropped without
+  complaint and the command it was typed after ran: `zt dev --help` started a dev server, and
+  `zt migrate --help` would have migrated. People type `--help` when they are unsure what a
+  command does, which is the worst moment to run it. `--help` and `-h` now print the command's
+  usage and stop, and a bare `zt --help` lists the commands. A command that declares its own
+  `help` flag or `-h` option keeps it, and everything after a bare `--` is still an operand. See
+  [Commands](/docs/commands).
+
+- **`zt list`, `zt help <command>` and `zt <command> --help` exit once they have printed**
+  (`@zerotal/core`). A command that does work ends the process itself, and one that serves never
+  returns; these three print and return, and left the process to wind down on its own. In an app
+  that holds anything open, such as a database connection or the dev tools (the admin starter
+  does), it never did: the page printed and the terminal sat there until Ctrl+C. `zt list` and
+  `zt help` have always done this, and `--help` goes through the same path, so it is fixed here
+  rather than shipped half-working.
+
+- **A 404 or a failed validation is no longer logged as `ERROR Unhandled error`**
+  (`@zerotal/core`). An app that has not registered an `ExceptionHandler` of its own, which
+  covers the minimal, API, Flow and admin starters, logged every error as unhandled with a stack
+  trace. A mistyped URL, a bot probing `/wp-admin`, or a form with one mistake in it each
+  produced an `ERROR` line, although the [error guide](/docs/errors#silencing-expected-errors)
+  says they never reach the log. They stay silent now, as they already did once an app had a
+  handler of its own. The responses are unchanged, the request log still records a 404 at
+  `WARN`, and a genuine fault is still logged as an error.
+
+- **The runtime-fallback warning counts only your app's own pages** (`@zerotal/flow`). Flow warns
+  once more than half of an app's pages fall back to the runtime renderer, so that its authors go
+  and look at why. Pages that a package registers from code, such as the admin panel's, were
+  counted too, so a fresh admin app was told 12 of 12 of its pages fell back, although none of
+  them were its own to change. They are left out of the figures now. See
+  [Flow performance](/docs/flow/performance).
+
 ## 1.15.3 — 2026-10-23
 
 A patch for the first ten minutes with Zerotal. Scaffolding each starter, following its README

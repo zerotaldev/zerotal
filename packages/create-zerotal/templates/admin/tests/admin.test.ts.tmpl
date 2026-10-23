@@ -30,6 +30,11 @@ describe("the panel", () => {
     ]);
   });
 
+  test("sends the bare origin to the panel rather than a 404", async () => {
+    const res = await app.actingAsGuest().get("/", { Accept: "text/html" });
+    res.assertRedirect("/admin");
+  });
+
   test("sends guests to the login page", async () => {
     const res = await app.actingAsGuest().get("/admin", { Accept: "text/html" });
     res.assertRedirect("/admin/login");

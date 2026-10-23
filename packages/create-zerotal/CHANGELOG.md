@@ -17,6 +17,29 @@ follows the Zerotal monorepo's unified versioning.
   minor. Apps already scaffolded keep what they have; changing `^` to `~` in their
   `package.json` gives them the same protection.
 
+### Fixed
+
+- **The README and the terminal now give the same first steps, from one list.** The scaffolder
+  printed `bun zt migrate` (or `bun zt db:seed` for the admin template) before `bun zt dev`;
+  every README said `bun install` then `bun run dev`. The README is the copy that stays, and
+  following it on `api`, `flow`, `react` or `vue` reached a running app with no `users` table.
+  Both render from the same step list now, and a test ties them together.
+
+- **The admin template answers `/`.** The dev server prints `http://localhost:3000`, and the app
+  had nothing there: a bare JSON `E_NOT_FOUND`, with no hint that the panel is at `/admin`. The
+  bare origin now redirects to it, and the template ships a test of that.
+
+- **A new `api` app passes `zt doctor`.** Its `config/app.ts` was a bare object where the other
+  five templates use `AppConfig`, which is what fills `allowedOrigins` from `url`. The doctor
+  failed an app with no code of its own, and told you to set a `url` that was already set. It also
+  read `APP_KEY` with an empty default where the others require one; it now requires it too.
+
+- **`flow` and `react` create `users.remember_token`.** Their `User` uses `Authenticatable`, but
+  the migration did not create the column, so `zt doctor` failed between `migrate` and the first
+  dev boot, until the boot step added it. The migration creates it now.
+
+Apps already scaffolded keep what they have.
+
 ## [1.14.2] — 2026-09-01
 
 ### Fixed

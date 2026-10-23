@@ -1,4 +1,4 @@
-import { Application } from "zerotal";
+import { Application, basePath } from "zerotal";
 import providers from "./providers";
 import type { User } from "../app/models/User.ts";
 
@@ -9,8 +9,11 @@ declare module "zerotal/auth" {
   interface UserModel extends User {}
 }
 
-// No file-based routing: this app is the admin panel. AdminProvider loads
-// `app/admin/index.ts` on boot and mounts every route from what it registers.
-const app = Application.create({ providers });
+// This app is the admin panel. AdminProvider loads `app/admin/index.ts` on boot and
+// mounts every route from what it registers; the one route declared here is the bare
+// origin, which sends a visitor to the panel instead of a 404.
+const app = Application.create({ providers }).routing({
+  web: basePath("routes/web.ts"),
+});
 
 export default app;

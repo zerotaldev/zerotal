@@ -1,5 +1,6 @@
 import { join, dirname } from 'node:path';
 import { mkdir } from 'node:fs/promises';
+import { gettingStarted } from './steps.ts';
 
 export type Database = 'sqlite' | 'postgres' | 'mysql';
 export type Template = 'minimal' | 'api' | 'admin' | 'flow' | 'react' | 'vue';
@@ -61,6 +62,7 @@ function tokens(opts: ScaffoldOptions): Record<string, string> {
     '{{session_secret}}':  randomBase64(32),
     '{{db_driver}}':       opts.db,
     '{{zerotal_version}}':  ZT_VERSION,
+    '{{getting_started}}':  gettingStarted(opts.template, opts.db),
   };
 }
 

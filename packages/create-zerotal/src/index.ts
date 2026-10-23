@@ -12,6 +12,7 @@ import { printBanner, ask, choose, log, info, warn, step, dim, c } from './promp
 import { scaffold, install, type Template, type Database } from './scaffold.ts';
 import { parseArgs, resolveOptions, helpText, TEMPLATES, DATABASES } from './args.ts';
 import { newerScaffolderVersion } from './staleness.ts';
+import { nextStepLines } from './steps.ts';
 
 /** This scaffolder's own version, read from the manifest that ships beside it. */
 const ZT_SELF_VERSION: string = (
@@ -163,24 +164,8 @@ async function main(): Promise<void> {
   log(`${c.green}${c.bold}  ✓ Done!${c.reset}`);
   log('');
   log(`${c.bold}  Next steps:${c.reset}`);
-  dim(`cd ${name}`);
-  // Every template that ships baseline migrations builds its schema from them
-  // (synchronize is off), so the first migrate is a required step, not a tip.
-  if (template === 'api' || template === 'flow' || template === 'react' || template === 'vue') {
-    if (db !== 'sqlite') {
-      dim(`# Set DATABASE_URL in .env`);
-    }
-    dim(`bun zt migrate`);
-  }
-  if (template === 'admin') {
-    // The panel is behind a sign-in, so the demo data (which includes the first
-    // account) is what makes a fresh app usable rather than a locked door.
-    dim(`bun zt db:seed              # demo data + admin@example.com / password`);
-  }
-  dim(`bun zt dev`);
-  if (template === 'admin') {
-    dim(`# then open http://localhost:3000/admin`);
-  }
+  // The same list the project's README renders under "Getting started" — see steps.ts.
+  for (const line of nextStepLines(name, template, db)) dim(line);
   log('');
   // Discoverability without a dependency. `@zerotal/arch` exposes the app's own
   // routes, schema and docs to a coding agent over MCP, and it is genuinely

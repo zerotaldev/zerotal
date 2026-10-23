@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { createReadWriteRouter, _isReadQuery } from "./ReadWriteRouter.ts";
 import { DB, _setDbConnection, _setReadReplicas } from "./DB.ts";
+import { _templateStrings } from "./templateStrings.ts";
 
 // ── Mock connection factory ───────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ function makeMock(label: string): MockConn & ((...args: unknown[]) => Promise<un
 
 /** Call the router as a tagged template with a fixed SQL string. */
 function callWith(router: SQLInstance, sql: string): Promise<unknown[]> {
-  const tpl = Object.assign([sql, ""], { raw: [sql, ""] }) as TemplateStringsArray;
+  const tpl = _templateStrings([sql, ""]);
   return (router as unknown as (t: TemplateStringsArray) => Promise<unknown[]>)(tpl);
 }
 

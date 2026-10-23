@@ -8,6 +8,7 @@ import { MigrationRan } from "../events.ts";
 import { dialectFor } from "../db/QueryBuilder.ts";
 import { getDialect } from "../db/dialects/index.ts";
 import { TransactionContext } from "../db/TransactionContext.ts";
+import { _templateStrings } from "../db/templateStrings.ts";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -375,9 +376,7 @@ export class MigrationRunner {
   /** Execute a DDL string with no parameters. */
   private async _ddl(sql: string): Promise<void> {
     const strings = [sql];
-    const tpl = Object.assign(strings, {
-      raw: strings,
-    }) as TemplateStringsArray;
+    const tpl = _templateStrings(strings);
     await this._active()(tpl);
   }
 
@@ -389,22 +388,20 @@ export class MigrationRunner {
   /** SELECT with exactly one bound parameter. */
   private async _selectParam<T>(sql: string, value: unknown): Promise<T[]> {
     const parts = sql.split("?");
-    const tpl = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
+    const tpl = _templateStrings(parts);
     return this._active()<T>(tpl, value);
   }
 
   /** DML with N bound parameters. */
   private async _exec(sql: string, ...values: unknown[]): Promise<void> {
     const parts = sql.split("?");
-    const tpl = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
+    const tpl = _templateStrings(parts);
     await this._active()(tpl, ...values);
   }
 
   private async _exec0<T>(sql: string): Promise<T[]> {
     const strings = [sql];
-    const tpl = Object.assign(strings, {
-      raw: strings,
-    }) as TemplateStringsArray;
+    const tpl = _templateStrings(strings);
     return this._active()<T>(tpl);
   }
 

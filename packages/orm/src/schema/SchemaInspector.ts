@@ -1,5 +1,6 @@
 import { _getDbConnection } from "../db/DB.ts";
 import { _getDialect } from "../model/BaseModel.ts";
+import { _templateStrings } from "../db/templateStrings.ts";
 
 // ── DB column descriptor (normalised across dialects) ─────────────────────────
 
@@ -23,7 +24,7 @@ export interface LiveTable {
 async function queryRaw<T>(sql: string): Promise<T[]> {
   const conn = _getDbConnection();
   const strings = [sql];
-  const tpl = Object.assign(strings, { raw: strings }) as TemplateStringsArray;
+  const tpl = _templateStrings(strings);
   return conn<T>(tpl);
 }
 
@@ -31,7 +32,7 @@ async function queryRaw<T>(sql: string): Promise<T[]> {
 async function queryParam<T>(sql: string, value: unknown): Promise<T[]> {
   const conn = _getDbConnection();
   const parts = sql.split("?");
-  const tpl = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
+  const tpl = _templateStrings(parts);
   return conn<T>(tpl, value);
 }
 

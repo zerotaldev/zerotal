@@ -25,6 +25,7 @@ import {
   RUN_MIGRATIONS_PATH,
   _mintDiagnosisToken,
 } from "../diagnostics/runMigrationsEndpoint.ts";
+import { _templateStrings } from "../db/templateStrings.ts";
 
 // Extend the core container registry so 'db' is a typed binding.
 declare module "@zerotal/core" {
@@ -171,27 +172,17 @@ export class DatabaseProvider extends ServiceProvider {
           let rows: unknown[];
           if (ignoreId !== undefined) {
             const strs = [`SELECT 1 FROM ${table} WHERE ${column} = `, ` AND id != `, ` LIMIT 1`];
-            rows = await conn(
-              Object.assign(strs, { raw: strs }) as unknown as TemplateStringsArray,
-              value,
-              ignoreId,
-            );
+            rows = await conn(_templateStrings(strs), value, ignoreId);
           } else {
             const strs = [`SELECT 1 FROM ${table} WHERE ${column} = `, ` LIMIT 1`];
-            rows = await conn(
-              Object.assign(strs, { raw: strs }) as unknown as TemplateStringsArray,
-              value,
-            );
+            rows = await conn(_templateStrings(strs), value);
           }
           return rows.length === 0; // true = unique (no duplicate found)
         }
 
         // exists
         const strs = [`SELECT 1 FROM ${table} WHERE ${column} = `, ` LIMIT 1`];
-        const rows = await conn(
-          Object.assign(strs, { raw: strs }) as unknown as TemplateStringsArray,
-          value,
-        );
+        const rows = await conn(_templateStrings(strs), value);
         return rows.length > 0; // true = exists (row found)
       });
     } catch {

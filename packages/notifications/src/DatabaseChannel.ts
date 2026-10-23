@@ -1,15 +1,8 @@
-import type { SQLInstance } from "@zerotal/orm";
+import { _templateStrings, type SQLInstance } from "@zerotal/orm";
 import type { Notifiable } from "./types.ts";
 import { NotificationError } from "./errors.ts";
 import { notifiableType } from "./serialization.ts";
 import type { Notification } from "./Notification.ts";
-
-/** Build a TemplateStringsArray from a plain string array (mirrors ORM helper). */
-function tpl(strings: string[]): TemplateStringsArray {
-  return Object.freeze(
-    Object.assign([...strings], { raw: [...strings] }),
-  ) as unknown as TemplateStringsArray;
-}
 
 /** Execute sql with a dynamically-constructed template (table name in static parts). */
 async function run<T = Record<string, unknown>>(
@@ -17,7 +10,7 @@ async function run<T = Record<string, unknown>>(
   parts: string[],
   ...values: unknown[]
 ): Promise<T[]> {
-  return conn<T>(tpl(parts), ...values);
+  return conn<T>(_templateStrings(parts), ...values);
 }
 
 /** Allow only simple identifier characters — guards against injection in table names. */

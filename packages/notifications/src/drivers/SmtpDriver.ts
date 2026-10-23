@@ -669,26 +669,89 @@ function buildRawMessage(msg: MailPayload): string {
 function renderBody(msg: MailPayload): { headers: string; content: string } {
   if (msg.html && msg.text) {
     const alt = `zerotal-alt-${crypto.randomUUID()}`;
+    const text = encodeTextPart(msg.text);
+    const html = encodeTextPart(msg.html);
     const content = [
       `--${alt}`,
       "Content-Type: text/plain; charset=utf-8",
+      `Content-Transfer-Encoding: ${text.encoding}`,
       "",
-      dotStuff(msg.text),
+      text.content,
       `--${alt}`,
       "Content-Type: text/html; charset=utf-8",
+      `Content-Transfer-Encoding: ${html.encoding}`,
       "",
-      dotStuff(msg.html),
+      html.content,
       `--${alt}--`,
     ].join("\r\n");
     return { headers: `Content-Type: multipart/alternative; boundary="${alt}"`, content };
   }
-  if (msg.html) {
-    return { headers: "Content-Type: text/html; charset=utf-8", content: dotStuff(msg.html) };
-  }
+  const type = msg.html ? "text/html" : "text/plain";
+  const part = encodeTextPart(msg.html || msg.text || "");
   return {
-    headers: "Content-Type: text/plain; charset=utf-8",
-    content: dotStuff(msg.text ?? ""),
+    headers: `Content-Type: ${type}; charset=utf-8\r\nContent-Transfer-Encoding: ${part.encoding}`,
+    content: part.content,
   };
+}
+
+/**
+ * RFC 5322 §2.1.1's recommended line length. A part whose lines all fit, in plain
+ * ASCII, goes on the wire as written; anything else is quoted-printable.
+ */
+const PLAIN_LINE_LIMIT = 78;
+
+/**
+ * Pick a transfer encoding for a text part and apply it.
+ *
+ * Sent raw, a part breaks two rules at once. A line may not exceed 998 octets
+ * (RFC 5322 §2.1.1), and relays enforce that by cutting the line wherever the
+ * limit falls — a single-line HTML email arrived with "sup pliers" in it. And a
+ * part with no Content-Transfer-Encoding is 7bit by default, which raw UTF-8 is
+ * not; this driver never negotiates 8BITMIME. Quoted-printable fixes both and
+ * leaves ASCII readable, which base64 would not — and spam filters score a
+ * base64-wrapped ASCII body as disguised.
+ *
+ * The result is dot-stuffed, since quoted-printable lines can still begin with
+ * a period.
+ */
+function encodeTextPart(text: string): { encoding: "7bit" | "quoted-printable"; content: string } {
+  const lines = text.split(/\r?\n/);
+  // eslint-disable-next-line no-control-regex -- matching non-ASCII by definition
+  const plain = !/[^\x00-\x7F]/.test(text) && lines.every((l) => l.length <= PLAIN_LINE_LIMIT);
+  if (plain) return { encoding: "7bit", content: dotStuff(text) };
+  return {
+    encoding: "quoted-printable",
+    content: dotStuff(lines.map(quotedPrintableLine).join("\r\n")),
+  };
+}
+
+/**
+ * Quoted-printable encode one line of text (RFC 2045 §6.7), with soft breaks
+ * keeping every output line at 76 characters or fewer.
+ */
+function quotedPrintableLine(line: string): string {
+  const bytes = Buffer.from(line, "utf8");
+  const out: string[] = [];
+  let current = "";
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i]!;
+    // Printable ASCII bar `=` is literal, as are space and tab — except at the
+    // end of the line, where a relay may strip them, so they are escaped there.
+    const literal =
+      (byte >= 33 && byte <= 126 && byte !== 61) ||
+      ((byte === 32 || byte === 9) && i < bytes.length - 1);
+    const token = literal
+      ? String.fromCharCode(byte)
+      : `=${byte.toString(16).toUpperCase().padStart(2, "0")}`;
+    // 75 leaves room for the `=` of the soft break, and never splits an escape.
+    if (current.length + token.length > 75) {
+      out.push(`${current}=`);
+      current = "";
+    }
+    current += token;
+  }
+  out.push(current);
+  return out.join("\r\n");
 }
 
 function toBase64(content: string | Uint8Array): string {

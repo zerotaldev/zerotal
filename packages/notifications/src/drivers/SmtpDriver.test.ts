@@ -120,6 +120,27 @@ function payload(overrides: Partial<MailPayload> = {}): MailPayload {
   };
 }
 
+/** The body of a single-part message as the receiver sees it, dot-stuffing undone. */
+function singlePartBody(raw: string): string {
+  const start = raw.indexOf("\r\n\r\n") + 4;
+  return raw.slice(start, raw.lastIndexOf("\r\n.\r\n")).replace(/\r\n\.\./g, "\r\n.");
+}
+
+/** Reverse RFC 2045 quoted-printable, written independently of the driver's encoder. */
+function decodeQuotedPrintable(encoded: string): string {
+  const joined = encoded.replace(/=\r\n/g, "");
+  const bytes: number[] = [];
+  for (let i = 0; i < joined.length; i++) {
+    if (joined[i] === "=") {
+      bytes.push(parseInt(joined.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else {
+      bytes.push(joined.charCodeAt(i));
+    }
+  }
+  return Buffer.from(bytes).toString("utf8");
+}
+
 const servers: FakeServer[] = [];
 afterEach(() => {
   while (servers.length) servers.pop()!.stop();
@@ -414,6 +435,85 @@ describe("SmtpDriver — message structure", () => {
 
     expect(server.body).toMatch(/Message-ID: <.+@test\.local>/);
     expect(server.body).toContain("Reply-To: support@test.local");
+  });
+
+  it("sends a short ASCII body as written, declared 7bit", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ text: "Plain body" }));
+
+    expect(server.body).toContain("Content-Transfer-Encoding: 7bit\r\n\r\nPlain body\r\n");
+  });
+
+  it("keeps every line within the SMTP limit however long the body", async () => {
+    // The incident: a mail layout rendered its HTML as one ~5 KB line, a relay cut
+    // it at the 998-octet limit, and the customer read "sup pliers".
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+    const html = `<p style="margin:0">${"Our local suppliers confirm every booking. ".repeat(120)}</p>`;
+
+    const { to, from, subject } = payload();
+    await driver.send({ to, from, subject, html });
+
+    expect(server.body).toContain("Content-Transfer-Encoding: quoted-printable");
+    for (const line of server.body.split("\r\n")) expect(line.length).toBeLessThanOrEqual(998);
+    const body = singlePartBody(server.body);
+    for (const line of body.split("\r\n")) expect(line.length).toBeLessThanOrEqual(76);
+    expect(decodeQuotedPrintable(body)).toBe(html);
+  });
+
+  it("encodes non-ASCII body text instead of putting raw UTF-8 on a 7bit wire", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+    const text = "Café — total = R 1 200 \nThank you";
+
+    await driver.send(payload({ text }));
+
+    const body = singlePartBody(server.body);
+    expect(server.body).not.toContain("Café");
+    // `=` is escaped, and so is the space a relay could strip from a line's end.
+    expect(body).toContain("=3D");
+    expect(body).toContain("=20\r\n");
+    expect(decodeQuotedPrintable(body)).toBe(text.replace(/\n/g, "\r\n"));
+  });
+
+  it("breaks before an escape rather than letting it overrun the line", async () => {
+    // One literal then two-byte characters puts a three-character escape across
+    // the 75th column, where a careless soft break would leave a 77-character line.
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+    const text = `x${"é".repeat(100)}`;
+
+    await driver.send(payload({ text }));
+
+    const body = singlePartBody(server.body);
+    for (const line of body.split("\r\n")) expect(line.length).toBeLessThanOrEqual(76);
+    expect(decodeQuotedPrintable(body)).toBe(text);
+  });
+
+  it("dot-stuffs an encoded body as well as a plain one", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ text: "Café\n.\nend" }));
+
+    expect(server.body).toContain("Content-Transfer-Encoding: quoted-printable");
+    expect(server.body).toContain("\r\n..\r\n");
+  });
+
+  it("encodes each alternative on its own terms", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ text: "Plain", html: `<p>${"Rich ".repeat(40)}</p>` }));
+
+    expect(server.body).toContain(
+      "text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 7bit\r\n\r\nPlain",
+    );
+    expect(server.body).toContain(
+      "text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable",
+    );
   });
 
   it("refuses a message with no recipients instead of sending a blank envelope", async () => {

@@ -41,7 +41,7 @@ import type { PageClassWithMeta } from "../registry.ts";
 import { getTaskMethods } from "../decorators.ts";
 import { ValidationError } from "../validation.ts";
 import { makeSignedRef } from "../uploads/TemporaryUploadedFile.ts";
-import { isAllowedOrigin } from "@zerotal/core/http";
+import { isAllowedOrigin, _clientAddress, _trustedProxyCount } from "@zerotal/core/http";
 
 // ── In-memory runtime.js bundle (built once at boot) ─────────────────────────
 
@@ -273,6 +273,34 @@ type FlowBunWs = {
   };
   send(msg: string): void;
 };
+
+/**
+ * The address a Flow connection, or a call made over the HTTP fallback, came from.
+ *
+ * It keys the invalid-snapshot limiter and the connection list, so it must not be something the
+ * client can choose. The fallback used to take the whole `X-Forwarded-For` header as the address,
+ * which let a client pick its own bucket; both paths now use the framework's one rule: the
+ * socket address, unless the app says how many proxies sit in front of it
+ * (`app.throttle.trustedProxies`), in which case the client is read from the right of the header.
+ *
+ * @param req - The request (an upgrade, or the fallback POST).
+ * @param server - The `Bun.serve` server that took it, which is where the socket address comes from.
+ * @internal exported for tests.
+ */
+export function _flowRemoteIp(req: Request, server: unknown): string {
+  const requestIP = (
+    server as { requestIP?: (r: Request) => { address: string } | null } | undefined
+  )?.requestIP;
+  const socket = requestIP?.call(server, req)?.address ?? null;
+  return _clientAddress(
+    {
+      socket,
+      forwardedFor: req.headers.get("x-forwarded-for"),
+      realIp: req.headers.get("x-real-ip"),
+    },
+    _trustedProxyCount(),
+  );
+}
 
 /** Dependencies handed to the WS message handler by FlowProvider.onBooting(). */
 type FlowWsDeps = {
@@ -1256,14 +1284,7 @@ export class FlowProvider extends ServiceProvider {
       _makeFlowWsHandlers(flowDeps),
       (req: Request, server?: unknown) => ({
         flowUrl: new URL(req.url).pathname,
-        // Prefer the actual socket IP (not spoofable); fall back to
-        // x-forwarded-for only when behind a trusted reverse proxy.
-        remoteIp:
-          (
-            server as { requestIP?: (r: Request) => { address: string } | null } | undefined
-          )?.requestIP?.(req)?.address ??
-          req.headers.get("x-forwarded-for") ??
-          "unknown",
+        remoteIp: _flowRemoteIp(req, server),
         origin: new URL(req.url).origin,
         headers: req.headers,
       }),
@@ -1277,39 +1298,46 @@ export class FlowProvider extends ServiceProvider {
     // apply. A raw route (no HTTP middleware pipeline) so the action's own persistent-middleware
     // replay handles auth/session exactly as it does over the socket. Streaming @tasks degrade to a
     // single batched response.
-    Router.raw("POST", "/__flow/http", async (req: Request): Promise<Response> => {
-      // Raw routes are stored outside the middleware pipeline, so nothing here is covered by
-      // CsrfMiddleware — and a cross-origin fetch with `credentials: "include"` and the default
-      // `text/plain` content type is a CORS-*simple* request, so there is no preflight to stop
-      // it either. Without this check any site the user visits could drive every @expose action
-      // their session permits. Mirrors the guard on the WebSocket upgrade.
-      if (!isAllowedOrigin(req, app._allowedOrigins())) {
-        return new Response("Forbidden origin.", { status: 403 });
-      }
-      const body = await req.text();
-      const frames: unknown[] = [];
-      const fakeWs = {
-        data: {
-          remoteIp: req.headers.get("x-forwarded-for") ?? "unknown",
-          origin: new URL(req.url).origin,
-          headers: req.headers,
-        },
-        send(msg: string): void {
-          try {
-            frames.push(JSON.parse(msg));
-          } catch {
-            /* non-JSON frame — skip */
-          }
-        },
-      } as unknown as FlowBunWs;
+    Router.raw(
+      "POST",
+      "/__flow/http",
+      async (req: Request, server?: unknown): Promise<Response> => {
+        // Raw routes are stored outside the middleware pipeline, so nothing here is covered by
+        // CsrfMiddleware — and a cross-origin fetch with `credentials: "include"` and the default
+        // `text/plain` content type is a CORS-*simple* request, so there is no preflight to stop
+        // it either. Without this check any site the user visits could drive every @expose action
+        // their session permits. Mirrors the guard on the WebSocket upgrade.
+        if (!isAllowedOrigin(req, app._allowedOrigins())) {
+          return new Response("Forbidden origin.", { status: 403 });
+        }
+        const body = await req.text();
+        const frames: unknown[] = [];
+        const fakeWs = {
+          data: {
+            remoteIp: _flowRemoteIp(req, server),
+            origin: new URL(req.url).origin,
+            headers: req.headers,
+          },
+          send(msg: string): void {
+            try {
+              frames.push(JSON.parse(msg));
+            } catch {
+              /* non-JSON frame — skip */
+            }
+          },
+        } as unknown as FlowBunWs;
 
-      await _handleFlowMessage(fakeWs, body, flowDeps);
+        await _handleFlowMessage(fakeWs, body, flowDeps);
 
-      return new Response(JSON.stringify(frames), {
-        status: 200,
-        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
-      });
-    });
+        return new Response(JSON.stringify(frames), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "no-store",
+          },
+        });
+      },
+    );
   }
 
   /**

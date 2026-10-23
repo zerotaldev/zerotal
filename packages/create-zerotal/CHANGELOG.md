@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **Every page of the Flow starter compiles ahead of time.** Five of its eight pages rendered
+  through the runtime fallback, because they are styled with the class lists in `ui.ts`
+  (`class={CARD}`), which the compiler could not read until now. `reset-password` also returned
+  from `render()` twice, which the compiler cannot read either; it returns once now, with the
+  confirmation and the form as the two branches of a conditional inside the card. A test checks
+  that all of them compile, under `cspSafe` too. Apps already scaffolded are not touched.
+
 ## [1.15.3] — 2026-10-23
 
 ### Changed

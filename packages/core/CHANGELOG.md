@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A production build ships React's production build.** `browserEnvDefines()` defined
+  `import.meta.env` but not `process.env.NODE_ENV`, which is the switch React and most of
+  npm read — and Bun.build leaves that expression to whatever the shell has. An app that ran
+  `inertia:build --production` without `NODE_ENV` in its environment shipped React's
+  development build: a 522 KB vendor chunk where 322 KB would do, the DevTools notice in
+  every visitor's console, and full hydration diffs. The define now states it from the same
+  flag. Found on a live consumer app (Trekly).
+
 ## [1.15.1] — 2026-09-13
 
 ### Added

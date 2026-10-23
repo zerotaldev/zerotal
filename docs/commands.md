@@ -30,7 +30,13 @@ arguments, and options for a single command.
 # in your project root
 bun zt list
 bun zt help migrate
+bun zt migrate --help    # the same page; -h works too
 ```
+
+Adding `--help` (or `-h`) to any command prints that page and does **not** run the
+command, so it is safe to ask about one you are unsure of. A command that declares
+its own `help` flag or `-h` option keeps it, and everything after a bare `--` is
+passed to the command as it is.
 
 ## Class-based commands
 

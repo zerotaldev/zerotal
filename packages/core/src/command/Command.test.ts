@@ -726,3 +726,158 @@ describe("CommandRunner honours process.exitCode", () => {
     expect(process.exitCode ?? 0).toBe(0);
   });
 });
+
+// ── asking for help never runs the command ───────────────────────────────────
+
+describe("CommandRunner — --help and -h print help instead of running the command", () => {
+  let ran = 0;
+
+  // The kind of command a person would be wary of running to find out what it does.
+  class DestructiveCommand extends Command {
+    static override commandName = "danger:run";
+    static override description = "Deletes things";
+    static override needsApp = false;
+    static override args = [{ name: "target", required: false, default: "all" }];
+    static override flags = [
+      {
+        name: "force",
+        short: "f",
+        type: "boolean" as const,
+        description: "Skip the prompt",
+        default: false,
+      },
+    ];
+    override async run(): Promise<void> {
+      ran++;
+    }
+  }
+
+  beforeEach(() => {
+    ran = 0;
+  });
+
+  /** Dispatch argv the way `zt` does and return what it printed. */
+  async function cli(argv: string[]): Promise<string> {
+    const { CommandRunner } = await import("./CommandRunner.ts");
+    const { Application } = await import("../application/Application.ts");
+
+    Application._resetInstance();
+    const app = Application.create({ env: "test" });
+    await app.boot();
+    const runner = new CommandRunner(app);
+    runner.register(DestructiveCommand);
+
+    let out = "";
+    const originalLog = console.log;
+    const originalExit = process.exit;
+    console.log = (message?: unknown) => {
+      out += String(message ?? "") + "\n";
+    };
+    // A command that really runs ends in process.exit(), which would take this whole test
+    // process with it, and `bun test` then exits 0 having run nothing further. Turn that into
+    // a failure of this test rather than a silent green run.
+    process.exit = ((code?: number) => {
+      throw new Error(`the command ran: process.exit(${code ?? 0}) was called`);
+    }) as typeof process.exit;
+    try {
+      await runner.run(argv);
+    } finally {
+      console.log = originalLog;
+      process.exit = originalExit;
+      Application._resetInstance();
+    }
+    return out;
+  }
+
+  it("--help shows the usage and does not run the command", async () => {
+    const out = await cli(["danger:run", "--help"]);
+
+    expect(ran).toBe(0);
+    expect(out).toContain("Usage:");
+    expect(out).toContain("danger:run");
+    expect(out).toContain("Deletes things");
+    expect(out).toContain("--force");
+  });
+
+  it("-h does the same", async () => {
+    const out = await cli(["danger:run", "-h"]);
+
+    expect(ran).toBe(0);
+    expect(out).toContain("Usage:");
+  });
+
+  it("help is shown even when other flags and arguments come first", async () => {
+    await cli(["danger:run", "users", "--force", "--help"]);
+
+    expect(ran).toBe(0);
+  });
+
+  it("a bare --help or -h lists the commands, as no command at all does", async () => {
+    for (const flag of ["--help", "-h"]) {
+      const out = await cli([flag]);
+      expect(out).toContain("Available commands:");
+      expect(ran).toBe(0);
+    }
+  });
+});
+
+describe("_wantsHelp()", () => {
+  class Plain extends Command {
+    static override commandName = "plain";
+    static override needsApp = false;
+    override async run(): Promise<void> {}
+  }
+  class OwnsShortH extends Command {
+    static override commandName = "owns:short";
+    static override needsApp = false;
+    static override flags = [
+      { name: "host", short: "h", type: "string" as const, description: "Host", default: "x" },
+    ];
+    override async run(): Promise<void> {}
+  }
+  class OwnsHelp extends Command {
+    static override commandName = "owns:help";
+    static override needsApp = false;
+    static override flags = [
+      { name: "help", type: "boolean" as const, description: "Its own", default: false },
+    ];
+    override async run(): Promise<void> {}
+  }
+
+  it("recognises --help and -h anywhere in the arguments", async () => {
+    const { _wantsHelp } = await import("./CommandRunner.ts");
+
+    expect(_wantsHelp(Plain, ["--help"])).toBe(true);
+    expect(_wantsHelp(Plain, ["-h"])).toBe(true);
+    expect(_wantsHelp(Plain, ["a", "--x", "--help"])).toBe(true);
+  });
+
+  it("ignores ordinary arguments", async () => {
+    const { _wantsHelp } = await import("./CommandRunner.ts");
+
+    expect(_wantsHelp(Plain, [])).toBe(false);
+    expect(_wantsHelp(Plain, ["posts", "--force"])).toBe(false);
+    expect(_wantsHelp(Plain, ["--helpful", "-help"])).toBe(false);
+  });
+
+  it("treats everything after -- as an operand", async () => {
+    const { _wantsHelp } = await import("./CommandRunner.ts");
+
+    expect(_wantsHelp(Plain, ["--", "--help"])).toBe(false);
+    expect(_wantsHelp(Plain, ["x", "--", "-h"])).toBe(false);
+  });
+
+  it("leaves -h to a command that declares it, and still answers --help", async () => {
+    const { _wantsHelp } = await import("./CommandRunner.ts");
+
+    expect(_wantsHelp(OwnsShortH, ["-h"])).toBe(false);
+    expect(_wantsHelp(OwnsShortH, ["--help"])).toBe(true);
+  });
+
+  it("leaves --help to a command that declares it, and still answers -h", async () => {
+    const { _wantsHelp } = await import("./CommandRunner.ts");
+
+    expect(_wantsHelp(OwnsHelp, ["--help"])).toBe(false);
+    expect(_wantsHelp(OwnsHelp, ["-h"])).toBe(true);
+  });
+});

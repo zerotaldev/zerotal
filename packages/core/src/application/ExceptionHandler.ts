@@ -9,6 +9,34 @@ import { renderDevErrorPage, renderHttpErrorPage } from "./DevErrorPage.ts";
 import { devSurfacesEnabled } from "../support/env.ts";
 
 /**
+ * Errors that are an ordinary outcome of a request rather than a fault: a URL nothing
+ * matches, a form that failed validation. They are rendered, never reported as unhandled.
+ */
+const _EXPECTED_OUTCOMES: ReadonlySet<string> = new Set([
+  "ValidationRedirectError",
+  "ValidationJsonError",
+  "ValidationError",
+  "PrecognitionResponse",
+  "NotFoundError",
+]);
+
+/**
+ * Whether `error` is an expected outcome of a request, so nothing is wrong and nothing should
+ * be logged as an error.
+ *
+ * One list for both error paths. `ExceptionHandler.report()` already skipped these, but the
+ * path an app takes before it registers a handler of its own — every fresh app — logged them
+ * as `ERROR Unhandled error`, stack trace and all: a mistyped URL, or a bot probing
+ * `/wp-admin`, or a form with one mistake in it.
+ *
+ * @internal
+ */
+export function _isExpectedOutcome(error: unknown): boolean {
+  const name = (error as { name?: string } | null)?.name;
+  return name !== undefined && _EXPECTED_OUTCOMES.has(name);
+}
+
+/**
  * Base class for application-level exception handling.
  *
  * Register a subclass with `app.withExceptionHandler(Handler)` in
@@ -35,17 +63,8 @@ export abstract class ExceptionHandler {
 
   protected dontReport: Array<new (...args: never[]) => unknown> = [];
 
-  private static readonly _alwaysSilent = new Set([
-    "ValidationRedirectError",
-    "ValidationJsonError",
-    "ValidationError",
-    "PrecognitionResponse",
-    "NotFoundError",
-  ]);
-
   protected shouldReport(error: unknown): boolean {
-    const name = (error as { name?: string } | null)?.name;
-    if (name && ExceptionHandler._alwaysSilent.has(name)) return false;
+    if (_isExpectedOutcome(error)) return false;
     for (const Type of this.dontReport) {
       if (error instanceof (Type as unknown as new (...args: never[]) => object)) return false;
     }

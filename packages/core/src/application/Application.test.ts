@@ -1097,6 +1097,129 @@ describe("Application._handleErrorAsync()", () => {
   });
 });
 
+// ── what the default path logs as an unhandled error ─────────────────────────
+
+describe("Application._handleErrorAsync() — the log line on the default path", () => {
+  /** Boot an app whose framework log writes error-level messages into `logged`. */
+  async function appLoggingTo(logged: string[]): Promise<Application> {
+    const app = Application.create({ env: "test" });
+    await app.boot();
+    const scoped = {
+      debug() {},
+      info() {},
+      warn() {},
+      fatal() {},
+      table() {},
+      error: (message: string) => {
+        logged.push(message);
+      },
+    };
+    app.container.singleton("log", () => ({ scope: () => scoped }));
+    // `tryMake` only returns a singleton that has been resolved once.
+    await app.container.make("log" as never);
+
+    // Prove the fake is what frameworkLog() reaches before any test relies on it. Without
+    // this, "nothing was logged" is also what a fake that was never wired looks like.
+    const { frameworkLog } = await import("../logger/frameworkLog.ts");
+    frameworkLog("probe").error("wired");
+    if (logged.length !== 1 || logged[0] !== "wired") {
+      throw new Error("the fake log is not what frameworkLog() resolves");
+    }
+    logged.length = 0;
+    return app;
+  }
+
+  async function handle(app: Application, error: unknown): Promise<Response> {
+    const { HttpContext } = await import("../pipeline/HttpContext.ts");
+    const cast = app as unknown as { _handleErrorAsync(e: unknown, c: unknown): Promise<Response> };
+    return cast._handleErrorAsync(error, HttpContext.fake());
+  }
+
+  // A mistyped URL, a bot probing /wp-admin, a form with one mistake in it. Each logged as
+  // `ERROR Unhandled error` with a stack trace on every fresh app, while the same errors
+  // were already silent once an app registered a handler of its own.
+  it("does not log a 404 as an unhandled error", async () => {
+    const { NotFoundError } = await import("../errors/HttpError.ts");
+    const logged: string[] = [];
+    const app = await appLoggingTo(logged);
+
+    const res = await handle(app, new NotFoundError());
+
+    expect(res.status).toBe(404);
+    expect(logged).toEqual([]);
+  });
+
+  it("does not log a failed validation as an unhandled error", async () => {
+    const logged: string[] = [];
+    const app = await appLoggingTo(logged);
+
+    const redirect = await handle(
+      app,
+      Object.assign(new Error("invalid"), { name: "ValidationRedirectError", redirectTo: "/back" }),
+    );
+    const json = await handle(
+      app,
+      Object.assign(new Error("invalid"), {
+        name: "ValidationJsonError",
+        errors: { a: "required" },
+      }),
+    );
+
+    expect(redirect.status).toBe(303);
+    expect(json.status).toBe(422);
+    expect(logged).toEqual([]);
+  });
+
+  it("still logs a genuine fault, once", async () => {
+    const logged: string[] = [];
+    const app = await appLoggingTo(logged);
+
+    const res = await handle(app, new Error("boom"));
+
+    expect(res.status).toBe(500);
+    expect(logged).toEqual(["Unhandled error"]);
+  });
+});
+
+describe("_isExpectedOutcome()", () => {
+  it("is true for the errors a request routinely ends in", async () => {
+    const { _isExpectedOutcome } = await import("./ExceptionHandler.ts");
+
+    for (const name of [
+      "NotFoundError",
+      "ValidationError",
+      "ValidationRedirectError",
+      "ValidationJsonError",
+      "PrecognitionResponse",
+    ]) {
+      expect(_isExpectedOutcome(Object.assign(new Error("x"), { name }))).toBe(true);
+    }
+  });
+
+  it("is false for anything else, including what is not an error at all", async () => {
+    const { _isExpectedOutcome } = await import("./ExceptionHandler.ts");
+
+    expect(_isExpectedOutcome(new Error("boom"))).toBe(false);
+    expect(_isExpectedOutcome(new TypeError("boom"))).toBe(false);
+    expect(_isExpectedOutcome(null)).toBe(false);
+    expect(_isExpectedOutcome(undefined)).toBe(false);
+    expect(_isExpectedOutcome("NotFoundError")).toBe(false);
+  });
+
+  it("is what ExceptionHandler.report() uses, so the two paths cannot drift", async () => {
+    const { ExceptionHandler } = await import("./ExceptionHandler.ts");
+    class Probe extends ExceptionHandler {
+      reports(error: unknown): boolean {
+        return this.shouldReport(error);
+      }
+    }
+    const probe = new Probe();
+
+    expect(probe.reports(Object.assign(new Error("x"), { name: "NotFoundError" }))).toBe(false);
+    expect(probe.reports(new Error("boom"))).toBe(true);
+  });
+});
+
 // ── _runAfterResponse() ───────────────────────────────────────────────────────
 
 // Note: firing of afterResponse() callbacks is exercised where the behaviour now

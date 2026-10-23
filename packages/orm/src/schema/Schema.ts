@@ -2,6 +2,7 @@ import { _getScopedDbConnection } from "../db/DB.ts";
 import { _getDialect } from "../model/BaseModel.ts";
 import { getDialect } from "../db/dialects/index.ts";
 import { Blueprint } from "./Blueprint.ts";
+import { _templateStrings } from "../db/templateStrings.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -16,7 +17,7 @@ async function ddl(sql: string): Promise<void> {
   // migration runner's `begin()` wrapper decorative.
   const conn = _getScopedDbConnection();
   const strings = [sql];
-  const tpl = Object.assign(strings, { raw: strings }) as TemplateStringsArray;
+  const tpl = _templateStrings(strings);
   await conn(tpl);
 }
 
@@ -29,7 +30,7 @@ async function query<T = Record<string, unknown>>(sql: string, params: unknown[]
   // the tables that transaction has created, which a pooled connection cannot.
   const conn = _getScopedDbConnection();
   const parts = sql.split("?");
-  const tpl = Object.assign(parts, { raw: parts }) as TemplateStringsArray;
+  const tpl = _templateStrings(parts);
   return conn<T>(tpl, ...params);
 }
 

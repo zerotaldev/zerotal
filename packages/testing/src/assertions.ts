@@ -1,4 +1,4 @@
-import { _getModelConnection } from "@zerotal/orm";
+import { _getModelConnection, _templateStrings } from "@zerotal/orm";
 
 async function countRows(table: string, where: Record<string, unknown>): Promise<number> {
   const conn = _getModelConnection() as unknown as (
@@ -19,7 +19,7 @@ async function countRows(table: string, where: Record<string, unknown>): Promise
   });
   parts.push(sql);
 
-  const tpl = Object.assign([...parts], { raw: [...parts] }) as unknown as TemplateStringsArray;
+  const tpl = _templateStrings(parts);
   const rows = await conn(tpl, ...vals);
   return Number(rows[0]?.cnt ?? 0);
 }

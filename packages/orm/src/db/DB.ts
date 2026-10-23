@@ -17,6 +17,7 @@ import {
   allowNPlusOne as _allowNPlusOne,
   type NPlusOneOptions,
 } from "./NPlusOneDetector.ts";
+import { _templateStrings } from "./templateStrings.ts";
 
 // Test-override escape hatch — set by _setDbConnection() in test files.
 // Production code resolves the connection from the container instead.
@@ -140,7 +141,7 @@ let _savepointCounter = 0;
 
 /** Run a raw, parameter-less statement on a specific connection (SAVEPOINT, etc.). */
 function _runRaw(conn: SQLInstance, sql: string): Promise<unknown> {
-  const arr = Object.assign([sql], { raw: [sql] }) as unknown as TemplateStringsArray;
+  const arr = _templateStrings([sql]);
   return conn(arr);
 }
 
@@ -160,7 +161,7 @@ export function _rawStatement(sql: string): Promise<unknown> {
 /** Run a parameterised statement (`?` placeholders) on a specific connection. */
 function _runParams(conn: SQLInstance, sql: string, params: unknown[]): Promise<unknown> {
   const parts = sql.split("?");
-  const tpl = Object.assign(parts, { raw: parts }) as unknown as TemplateStringsArray;
+  const tpl = _templateStrings(parts);
   return conn(tpl, ...params);
 }
 
@@ -246,7 +247,7 @@ export const DB = {
     if (typeof sql === "string") {
       const bindings: unknown[] = Array.isArray(rest[0]) ? (rest[0] as unknown[]) : rest;
       const parts = sql.split("?");
-      const tpl = Object.assign(parts, { raw: parts }) as unknown as TemplateStringsArray;
+      const tpl = _templateStrings(parts);
       const rows = await conn<T>(tpl, ...bindings);
       FrameworkEvents.emit(
         new QueryExecuted(

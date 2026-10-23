@@ -20,6 +20,7 @@ import type {
   SimplePaginateResult,
 } from "./types.ts";
 import { withPaginationHelpers, withSimplePaginationHelpers } from "./types.ts";
+import { _templateStrings } from "./templateStrings.ts";
 
 /**
  * The comparison operators accepted in a value-comparison slot. Exported so
@@ -204,8 +205,7 @@ function _getCachedTemplate(strings: string[]): TemplateStringsArray {
   const key = strings.join("\x00");
   let tpl = _tplCache.get(key);
   if (!tpl) {
-    const arr = [...strings];
-    tpl = Object.assign(arr, { raw: arr }) as TemplateStringsArray;
+    tpl = _templateStrings(strings);
     if (_tplCache.size >= _TPL_CACHE_MAX) {
       // FIFO eviction: drop the oldest interned shape.
       const oldest = _tplCache.keys().next().value;

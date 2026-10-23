@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`assertDatabaseHas`, `assertDatabaseMissing` and `assertDatabaseCount` run on Bun
+  1.4.4.** They counted rows through a hand-built template object whose `raw` was
+  enumerable, which Bun 1.4.4 refuses. They use the ORM's `_templateStrings()` now; see
+  `@zerotal/orm`.
+
 ## [1.15.1] — 2026-09-13
 
 ### Fixed

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "bun:test";
 import { SQL } from "bun";
 import { _setDbConnection } from "../db/DB.ts";
+import { _templateStrings } from "../db/templateStrings.ts";
 import { _setBaseModelConnection, _setBaseModelDialect } from "../model/BaseModel.ts";
 import { column } from "../model/decorators/column.ts";
 import { table } from "../model/decorators/table.ts";
@@ -27,8 +28,7 @@ afterAll(() => {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function createTable(sql: string): Promise<void> {
-  const strings = [sql];
-  const tpl = Object.assign(strings, { raw: strings }) as TemplateStringsArray;
+  const tpl = _templateStrings([sql]);
   await (db as unknown as (tpl: TemplateStringsArray) => Promise<unknown>)(tpl);
 }
 

@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The ORM runs on Bun 1.4.4.** Every statement it assembled from a runtime string — the
+  string form of `DB.raw()`, the query builder, schema and migration DDL, the `SAVEPOINT`
+  a nested transaction issues, the validator's `unique` and `exists` rules — reached Bun's
+  `sql` function as a template object built with `Object.assign(parts, { raw: parts })`,
+  whose `raw` is enumerable. Bun 1.4.4 refuses that ("has an enumerable 'raw' property, so
+  it is not a template object"), so on that version and later none of those statements ran:
+  the package's own suite failed 288 tests and then hung. Earlier Bun accepted it, which is
+  why nothing noticed until the CI job that runs on the latest Bun did.
+
+  All of them now take the object from one helper, `_templateStrings()`, which defines
+  `raw` the way a real template object has it and freezes the result. `@zerotal/notifications`
+  and `@zerotal/testing` had built the same object by hand and use it too. One test runs the
+  ORM's paths through a connection that rejects an enumerable `raw`; another fails if any
+  package's source builds one again.
+
 ## [1.15.1] — 2026-09-13
 
 ### Fixed

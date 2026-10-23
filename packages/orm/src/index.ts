@@ -97,6 +97,7 @@ export type { InsertPayload, UpdatePayload } from "./model/payload.ts";
 export { ModelQueryBuilder, _globalScopeRegistry } from "./model/ModelQueryBuilder.ts";
 export type { GlobalScopeCallback, RelationConstraint } from "./model/ModelQueryBuilder.ts";
 export { DB } from "./db/DB.ts";
+export { _templateStrings } from "./db/templateStrings.ts";
 export {
   _getConnection,
   _setDbConnection,

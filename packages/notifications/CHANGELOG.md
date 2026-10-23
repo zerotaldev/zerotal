@@ -19,6 +19,10 @@ follows the Zerotal monorepo's unified versioning.
   anything else is quoted-printable, which keeps ASCII readable where base64 would
   not.
 
+- **`DatabaseChannel` runs on Bun 1.4.4.** It built its query templates with an enumerable
+  `raw`, which Bun 1.4.4 refuses. It uses the ORM's `_templateStrings()` now; see
+  `@zerotal/orm`.
+
 ## [1.11.1] — 2026-08-31
 
 ### Added

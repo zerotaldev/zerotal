@@ -1,5 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { HttpContext } from "./HttpContext.ts";
+import { Application } from "../application/Application.ts";
+import { withApp } from "../application/currentApp.ts";
 
 describe("HttpContext.json()", () => {
   it("sets a JSON response with default status 200", () => {
@@ -592,3 +594,63 @@ declare module "./ContextRegistry.ts" {
     "test.answer": number;
   }
 }
+
+describe("HttpContext.back() behind a proxy that terminates TLS", () => {
+  /**
+   * The request reaches the process as http://, the browser's Referer says
+   * https://. A same-origin check alone refused every Referer in production and
+   * sent every failed form to "/". The configured app.url is the app's own
+   * address, so it counts as same-site — and nothing else does.
+   */
+  function appAt(url: string) {
+    const app = Application.create({ env: "test" });
+    app.container.value(
+      "config" as never,
+      {
+        get: <T>(key: string, fallback: T): T =>
+          key === "app.url" ? (url as unknown as T) : fallback,
+      } as never,
+    );
+    return app;
+  }
+
+  const proxied = (referer: string) =>
+    HttpContext.fake("http://127.0.0.1:3002/ops/settings", { headers: { Referer: referer } });
+
+  it("goes back to the page the browser came from, named by its public https address", () => {
+    Application._resetInstance();
+    const app = appAt("https://shop.example");
+    withApp(app, () => {
+      const ctx = proxied("https://shop.example/ops/settings?tab=policy");
+      ctx.back(303);
+      expect(ctx.response!.headers.get("Location")).toBe(
+        "https://shop.example/ops/settings?tab=policy",
+      );
+    });
+    Application._resetInstance();
+  });
+
+  it("still refuses any other site", () => {
+    Application._resetInstance();
+    const app = appAt("https://shop.example");
+    withApp(app, () => {
+      for (const evil of [
+        "https://evil.example/",
+        "https://shop.example.evil.com/",
+        "http://evil.example/",
+      ]) {
+        const ctx = proxied(evil);
+        ctx.back(303);
+        expect(ctx.response!.headers.get("Location")).toBe("/");
+      }
+    });
+    Application._resetInstance();
+  });
+
+  it("behaves exactly as before with no app or no app.url", () => {
+    Application._resetInstance();
+    const ctx = proxied("https://shop.example/ops/settings");
+    ctx.back(303);
+    expect(ctx.response!.headers.get("Location")).toBe("/");
+  });
+});

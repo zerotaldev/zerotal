@@ -12,7 +12,7 @@ import { DevReloadMiddleware, setDevReloadClientActive } from "../dev/DevReloadM
 import { onGracefulStopRequest } from "../dev/devShutdown.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { Pipeline } from "../pipeline/Pipeline.ts";
-import { ExceptionHandler } from "./ExceptionHandler.ts";
+import { ExceptionHandler, _isExpectedOutcome } from "./ExceptionHandler.ts";
 import { Router, RouterState } from "../router/Router.ts";
 import { defineRouteMethods, defineRoutes } from "../router/routes.ts";
 import type { StaticOptions } from "../router/Router.ts";
@@ -1973,7 +1973,7 @@ export class Application {
       await handler.report(error, ctx);
       return handler.render(error, ctx);
     }
-    frameworkLog("app").error("Unhandled error", undefined, error);
+    if (!_isExpectedOutcome(error)) frameworkLog("app").error("Unhandled error", undefined, error);
     return ExceptionHandler.defaultRender(error, ctx);
   }
 

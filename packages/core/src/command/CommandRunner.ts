@@ -183,6 +183,31 @@ function parseFlagsAndArgs(
   return { parsedArgs, parsedFlags, missingArgs };
 }
 
+/**
+ * Whether the arguments after a command's name are asking how to use it, not to run it.
+ *
+ * The flag parser runs with `strict: false`, so an unrecognised `--help` is dropped
+ * without complaint — and the command it was typed after ran. `zt dev --help` started a
+ * dev server; `zt migrate --help` would have migrated. People type `--help` exactly when
+ * they are unsure what a command does, which is the worst moment to run it.
+ *
+ * A command that declares its own `help` flag or `-h` short option keeps it (an app's
+ * `-h` is as likely to mean `--host`), and everything after a bare `--` is an operand.
+ *
+ * @internal
+ */
+export function _wantsHelp(Cmd: CommandClass, rawArgv: string[]): boolean {
+  const flags = Cmd.flags ?? [];
+  const ownsLong = flags.some((flag) => flag.name === "help");
+  const ownsShort = flags.some((flag) => flag.short === "h");
+  for (const token of rawArgv) {
+    if (token === "--") return false;
+    if (token === "--help" && !ownsLong) return true;
+    if (token === "-h" && !ownsShort) return true;
+  }
+  return false;
+}
+
 // ── CommandRunner ─────────────────────────────────────────────────────────────
 
 /**
@@ -567,7 +592,12 @@ export class CommandRunner {
    */
   async run(argv: string[]): Promise<void> {
     const commandName = argv[0] ?? "";
-    if (commandName === "list" || commandName === "") {
+    if (
+      commandName === "list" ||
+      commandName === "" ||
+      commandName === "--help" ||
+      commandName === "-h"
+    ) {
       this._printList();
       return;
     }
@@ -580,6 +610,11 @@ export class CommandRunner {
     if (!Cmd) {
       console.error(`\x1b[31mUnknown command: "${commandName}"\x1b[0m`);
       process.exit(1);
+    }
+
+    if (_wantsHelp(Cmd, argv.slice(1))) {
+      await this._printHelp(commandName);
+      return;
     }
 
     const { parsedArgs, parsedFlags, missingArgs } = parseFlagsAndArgs(Cmd, argv.slice(1));

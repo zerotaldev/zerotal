@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`zt <command> --help` shows help instead of running the command.** The flag parser ran with
+  `strict: false`, so a `--help` it did not recognise was dropped without complaint and the
+  command it was typed after ran: `zt dev --help` started a dev server, and `zt migrate --help`
+  would have migrated. People type `--help` when they are unsure what a command does, which is
+  the worst moment to run it. `--help` and `-h` now print the command's usage and stop, a bare
+  `zt --help` lists the commands, and a command that declares its own `help` flag or `-h` option
+  keeps it. Everything after a bare `--` is still an operand.
+
+- **A 404 or a failed validation is no longer logged as `ERROR Unhandled error`.** The path an
+  app takes before it registers an `ExceptionHandler` of its own (the minimal, API, Flow and
+  admin starters; the React and Vue ones register theirs) logged every error as unhandled,
+  stack trace included. A mistyped URL, a bot probing
+  `/wp-admin`, or a form with one mistake in it each produced an `ERROR` line, although
+  `ExceptionHandler.report()` already skipped exactly these and the
+  [error guide](/docs/errors#silencing-expected-errors) says they never reach the log. Both paths
+  share one list now. The responses are unchanged, the request log still records a 404 at `WARN`,
+  and a genuine fault is still logged as an error.
+
 ## [1.15.2] — 2026-10-23
 
 ### Fixed

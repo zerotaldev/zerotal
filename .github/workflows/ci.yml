@@ -29,6 +29,11 @@ jobs:
   static:
     name: Types, lint & API surface
     runs-on: ubuntu-latest
+    # Every job has a cap because a hung one otherwise runs to GitHub's 360-minute default:
+    # on 23 Oct 2026 the Bun-latest leg sat for hours after its ORM suite stalled, and
+    # nothing ended it. Each cap is at least 4x the slowest legitimate run, so it stops a
+    # hang and not a slow day.
+    timeout-minutes: 20
     steps:
       # Full history, because `breaking:check` compares this change against the
       # branch it forked from. The default shallow clone has no such commit, and a
@@ -190,6 +195,7 @@ jobs:
   test:
     name: Tests (Bun ${{ matrix.bun }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -253,6 +259,7 @@ jobs:
   postgres:
     name: ORM against PostgreSQL
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -311,6 +318,7 @@ jobs:
   mysql:
     name: ORM against MySQL
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       mysql:
         image: mysql:8

@@ -40,6 +40,8 @@ something, and puts the work where it is useful: reading the notes for each mino
 > hold exactly where you put it — a release you have certified, a machine you cannot
 > re-test quickly — pin the exact version with no range operator at all.
 
+> **Note** — `bun create zerotal` writes a tilde range into new apps for this reason. An app scaffolded earlier has a caret: change `^` to `~` in its `package.json` to get the same protection.
+
 > **Warning** — always upgrade the `@zerotal/*` packages together. Mixing versions across core, ORM, and feature packages leads to type and runtime mismatches.
 
 ## Upgrade steps

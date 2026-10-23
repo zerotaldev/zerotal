@@ -28,6 +28,7 @@ jobs:
   deprecate:
     name: Deprecate ${{ inputs.range }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

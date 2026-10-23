@@ -440,6 +440,7 @@ class MediaCleanCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -468,6 +469,7 @@ class MediaRegenerateCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void

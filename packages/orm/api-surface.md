@@ -1156,6 +1156,7 @@ class DbSeedCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1184,6 +1185,7 @@ class MakeFactoryCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1212,6 +1214,7 @@ class MakeMigrationCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1240,6 +1243,7 @@ class MakeModelCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1268,6 +1272,7 @@ class MakeSeederCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1297,6 +1302,7 @@ class MigrateCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1325,6 +1331,7 @@ class MigrateFreshCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1353,6 +1360,7 @@ class MigrateGenerateCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1381,6 +1389,7 @@ class MigrateRefreshCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1409,6 +1418,7 @@ class MigrateRollbackCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -1437,6 +1447,7 @@ class MigrateStatusCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void

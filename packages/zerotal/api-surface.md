@@ -164,6 +164,7 @@ class Command = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -2909,6 +2910,7 @@ class AssetsBuildCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -2937,6 +2939,7 @@ class AssetsPruneCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -2965,6 +2968,7 @@ class CompileCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -2993,6 +2997,7 @@ class CssBuildCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3022,6 +3027,7 @@ class DevCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3050,6 +3056,7 @@ class DoctorCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3078,6 +3085,7 @@ class DownCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3106,6 +3114,7 @@ class GateStatusCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3134,6 +3143,7 @@ class KeyGenerateCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3162,6 +3172,7 @@ class LintPackagesCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3190,6 +3201,7 @@ class MakeCommandCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3218,6 +3230,7 @@ class MakeControllerCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3246,6 +3259,7 @@ class MakeEventCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3274,6 +3288,7 @@ class MakeJobCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3302,6 +3317,7 @@ class MakeListenerCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3330,6 +3346,7 @@ class MakeMiddlewareCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3358,6 +3375,7 @@ class MakeNotificationCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3386,6 +3404,7 @@ class MakeObserverCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3414,6 +3433,7 @@ class MakePackageCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3442,6 +3462,7 @@ class MakePolicyCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3470,6 +3491,7 @@ class MakeProviderCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3498,6 +3520,7 @@ class MakeRequestCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3526,6 +3549,7 @@ class MakeResourceCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3554,6 +3578,7 @@ class MakeTestCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3582,6 +3607,7 @@ class PreviewCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3610,6 +3636,7 @@ class ReloadCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3638,6 +3665,7 @@ class ReplCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3666,6 +3694,7 @@ class RouteListCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3694,6 +3723,7 @@ class RouteTypesCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3723,6 +3753,7 @@ class ServeCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3752,6 +3783,7 @@ class StartCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3780,6 +3812,7 @@ class StatusCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3809,6 +3842,7 @@ class TestCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3837,6 +3871,7 @@ class UpCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3865,6 +3900,7 @@ class UpgradeCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3893,6 +3929,7 @@ class VersionCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -3922,6 +3959,7 @@ class WorkerCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void

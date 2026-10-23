@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`Command.rest`**: the positional arguments past the ones a command declares, in order. The
+  parser kept the declared ones and dropped the rest without a word, so a command taking any
+  number of paths could only ever see the first.
+
+### Fixed
+
+- **`zt test a.test.ts b.test.ts` runs both.** The wrapper passed on only the first path, so a
+  green run could be for a file that was not the one you meant and the count of tests was the only
+  sign. Every path and filter goes to `bun test`, as `bun test` itself accepts.
+
 ## [1.15.4] — 2026-10-23
 
 ### Fixed

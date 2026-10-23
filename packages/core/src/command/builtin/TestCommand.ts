@@ -22,6 +22,7 @@ import { testEnvOverrides } from "../testEnv.ts";
  * ```bash
  * bun zt test                        # run all tests
  * bun zt test src/models             # filter by path
+ * bun zt test a.test.ts b.test.ts    # several paths
  * bun zt test --coverage             # with coverage
  * bun zt test --watch                # watch mode
  * ```
@@ -116,8 +117,12 @@ export class TestCommand extends Command {
       );
     }
 
-    const pattern = this.args["pattern"];
-    if (pattern) bunArguments.push(pattern);
+    // Every path or pattern given, not just the first: `bun test a.test.ts b.test.ts` runs both,
+    // and this used to run only `a` while reporting a green result for the pair.
+    const patterns = [this.args["pattern"], ...this.rest].filter(
+      (pattern): pattern is string => !!pattern,
+    );
+    bunArguments.push(...patterns);
 
     if (this.flags["coverage"]) bunArguments.push("--coverage");
     if (this.flags["watch"]) bunArguments.push("--watch");

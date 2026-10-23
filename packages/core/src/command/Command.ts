@@ -72,6 +72,12 @@ export abstract class Command {
 
   /** Parsed positional arguments — set by CommandRunner before run(). */
   args: Record<string, string> = {};
+  /**
+   * Positional arguments beyond the ones declared in {@link Command.args}, in the order given —
+   * set by CommandRunner before run(). Without this they were dropped without a word, so a
+   * command that takes any number of paths could only ever see the first.
+   */
+  rest: string[] = [];
   /** Parsed flags — set by CommandRunner before run(). */
   flags: Record<string, string | boolean | number> = {};
   /** Application instance — set by CommandRunner when needsApp is true. */

@@ -486,12 +486,13 @@ is `{ name: string; short?: string; type: "string" | "boolean" | "number"; descr
 
 ### Command instance members
 
-| Member  | Signature                                     | Description                                      |
-| ------- | --------------------------------------------- | ------------------------------------------------ |
-| `run`   | `run(): Promise<void>`                        | The work the command performs (abstract).        |
-| `args`  | `Record<string, string>`                      | Parsed positional arguments, set before `run()`. |
-| `flags` | `Record<string, string \| boolean \| number>` | Parsed flags, set before `run()`.                |
-| `app`   | `unknown`                                     | The application instance, set before `run()`.    |
+| Member  | Signature                                     | Description                                       |
+| ------- | --------------------------------------------- | ------------------------------------------------- |
+| `run`   | `run(): Promise<void>`                        | The work the command performs (abstract).         |
+| `args`  | `Record<string, string>`                      | Parsed positional arguments, set before `run()`.  |
+| `rest`  | `string[]`                                    | Positionals beyond the declared `args`, in order. |
+| `flags` | `Record<string, string \| boolean \| number>` | Parsed flags, set before `run()`.                 |
+| `app`   | `unknown`                                     | The application instance, set before `run()`.     |
 
 ### Output helpers
 

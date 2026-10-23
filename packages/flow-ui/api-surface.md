@@ -469,6 +469,7 @@ class FlowAddCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -497,6 +498,7 @@ class FlowInitCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -525,6 +527,7 @@ class FlowListCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void

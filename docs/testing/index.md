@@ -97,7 +97,8 @@ Add a `test` script so the suite runs the same way everywhere:
 
 `bun zt test` runs the same files with `APP_ENV=test` already set, which is
 what you want when a test boots the app through your own `bootstrap/app.ts`
-rather than through `createApp()`.
+rather than through `createApp()`. It takes any number of paths or filters, as
+`bun test` does: `bun zt test tests/a.test.ts tests/b.test.ts` runs both.
 
 ## The toolkit
 

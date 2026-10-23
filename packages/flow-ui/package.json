@@ -44,7 +44,7 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "bun-types": "^1.3.14",
+    "bun-types": "^1.4.3",
     "typescript": "^5.8.0"
   },
   "description": "Copy-in UI component registry for Flow (Zerotal's reactive SSR layer).",

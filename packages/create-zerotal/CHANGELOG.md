@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.3] — 2026-10-23
+
 ### Changed
 
 - **New apps start on a tilde range.** `bun create zerotal` wrote `^X.Y.Z` into every scaffolded

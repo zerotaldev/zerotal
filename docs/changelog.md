@@ -27,6 +27,50 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.15.3 — 2026-10-23
+
+A patch for the first ten minutes with Zerotal. Scaffolding each starter, following its README
+and running it, the way a newcomer would, turned up four things that did not work as written,
+and a fifth where two guides told you to throw away your own key. All five are fixed here.
+
+Nothing here breaks. Safe to take directly.
+
+### Fixed
+
+- **A new app's README now says what it takes to run** (`create-zerotal`). The scaffolder
+  printed `bun zt migrate` (or `bun zt db:seed` for the admin starter) before `bun zt dev`,
+  while every README said `bun install` then `bun run dev`. The README is the copy that stays,
+  and following it on the API, Flow, React or Vue starter reached a running app with no `users`
+  table. Both are generated from one list now, so they cannot disagree again.
+
+- **The admin starter answers `/`.** The dev server prints `http://localhost:3000`, and the app
+  had nothing there: a bare JSON `E_NOT_FOUND`, with no hint that the panel is at `/admin`. The
+  bare origin now redirects to it.
+
+- **A new API starter passes `zt doctor`.** Its `config/app.ts` was a bare object where the other
+  five starters use `AppConfig`, which is what fills `allowedOrigins` from `url`. The doctor failed
+  an app with no code of its own, and told you to set a `url` that was already set. The config is
+  wrapped in `AppConfig` now, and reads `APP_KEY` the way the other starters do: it must be set.
+
+- **The Flow and React starters create `users.remember_token`.** Their `User` uses
+  `Authenticatable`, but the migration did not create the column, so `zt doctor` failed between
+  `migrate` and the first dev boot, until the boot step added it. The migration creates it now.
+
+- **[Getting Started](/docs/getting-started) and [About Zerotal](/docs/about) no longer tell you
+  to overwrite your key.** Both said to run `cp .env.example .env` and that the ready-made `APP_KEY` lives in
+  `.env.example`. The scaffolder writes the real key into `.env` and only a placeholder into the
+  example, so following them replaced a generated key with the placeholder. Both now describe
+  what the scaffolder writes.
+
+### Changed
+
+- **New apps start on a tilde range.** `bun create zerotal` wrote `^X.Y.Z` into every new app's
+  `zerotal` and `@zerotal/*` dependencies. Under the [versioning scheme](/docs/upgrade#versioning)
+  a minor is where a break lands, so a caret let the app's next install cross one without anyone
+  reading its notes. It writes `~X.Y.Z` now, which takes every patch and stops at the minor.
+  Apps already scaffolded keep what they have; change `^` to `~` in their `package.json` to get
+  the same protection.
+
 ## 1.15.2 — 2026-10-23
 
 A patch, and if you run Bun 1.4.4 or later it is the one to take: that Bun stopped accepting the

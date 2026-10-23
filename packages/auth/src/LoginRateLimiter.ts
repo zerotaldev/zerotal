@@ -28,6 +28,7 @@
  * ```
  */
 import { FrameworkEvents } from "@zerotal/core";
+import { _clientAddress, _trustedProxyCount } from "@zerotal/core/http";
 import { Lockout } from "./events.ts";
 import type { HttpContext } from "@zerotal/core";
 
@@ -178,13 +179,19 @@ export class LoginRateLimiter {
   }
 }
 
-/** @internal Resolve the client IP from the context, with proxy-header fallbacks. */
+/**
+ * @internal Resolve the client IP from the context: the socket address, unless the app says how
+ * many proxies sit in front of it (`app.throttle.trustedProxies`). Without a socket this used to
+ * take the leftmost `X-Forwarded-For` entry, which the client writes.
+ */
 function _ip(ctx: HttpContext): string {
-  return (
-    ctx.ip() ??
-    ctx.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-    ctx.header("x-real-ip") ??
-    "unknown"
+  return _clientAddress(
+    {
+      socket: ctx.ip(),
+      forwardedFor: ctx.header("x-forwarded-for"),
+      realIp: ctx.header("x-real-ip"),
+    },
+    _trustedProxyCount(),
   );
 }
 

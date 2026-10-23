@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The sign-in lockout no longer reads a header the client writes.** When there was no socket
+  address to read, `LoginRateLimiter` fell back to the leftmost `X-Forwarded-For` entry, so a
+  client could give each guess a fresh counter. It uses the framework's one address rule now:
+  the socket, or the client counted from the right when `app.throttle.trustedProxies` is set.
+
 ## [1.15.2] — 2026-10-23
 
 ### Changed

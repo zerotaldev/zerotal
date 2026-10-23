@@ -20,6 +20,12 @@ import {
   ATTR_RENAMES,
   VOID_ELEMENTS,
 } from "./directives.ts";
+import {
+  foldStaticString,
+  moduleStringConstants,
+  normalizeClassList,
+  type StaticStrings,
+} from "./constants.ts";
 
 // Component base class names that trigger compilation.
 const BASE_CLASSES = new Set(["Component"]);
@@ -122,6 +128,36 @@ export function validateFlowFile(source: string, filename: string): void {
  *  module state because compilation is synchronous and single-threaded. */
 let _cspSafe = false;
 
+/** String constants the current page can rely on: its own top-level `const`s plus the ones the
+ *  caller resolved from relative imports, minus any name the page class re-declares. Set
+ *  per-call by transformFlowFile, like `_cspSafe`. */
+let _staticStrings: StaticStrings = new Map();
+
+/** Every name the class declares anywhere inside it: locals, parameters, destructured names,
+ *  inner functions and classes. Any of these could shadow a constant of the same name. */
+function _declaredNames(node: ts.Node): Set<string> {
+  const names = new Set<string>();
+  const visit = (n: ts.Node): void => {
+    if (
+      (ts.isVariableDeclaration(n) || ts.isParameter(n) || ts.isBindingElement(n)) &&
+      ts.isIdentifier(n.name)
+    ) {
+      names.add(n.name.text);
+    } else if (
+      (ts.isFunctionDeclaration(n) ||
+        ts.isFunctionExpression(n) ||
+        ts.isClassDeclaration(n) ||
+        ts.isClassExpression(n)) &&
+      n.name
+    ) {
+      names.add(n.name.text);
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return names;
+}
+
 /** Throw if an emitted client expression uses syntax the CSP evaluator rejects. */
 function _assertCspExpr(text: string, filename: string): void {
   if (!_cspSafe) return;
@@ -149,9 +185,10 @@ function _assertCspExpr(text: string, filename: string): void {
 export function transformFlowFile(
   source: string,
   filename: string,
-  opts: { cspSafe?: boolean; report?: BlockerReport } = {},
+  opts: { cspSafe?: boolean; report?: BlockerReport; constants?: ReadonlyMap<string, string> } = {},
 ): TransformResult | null {
   _cspSafe = opts.cspSafe ?? false;
+  _staticStrings = new Map();
   const sf = ts.createSourceFile(
     filename,
     source,
@@ -162,6 +199,10 @@ export function transformFlowFile(
 
   const pageClass = _findPageClass(sf);
   if (!pageClass) return null;
+
+  const strings = moduleStringConstants(sf, opts.constants);
+  for (const shadowed of _declaredNames(pageClass)) strings.delete(shadowed);
+  _staticStrings = strings;
 
   const members = _getMemberInfo(pageClass);
   const className = pageClass.name?.text ?? "Unknown";
@@ -496,7 +537,16 @@ function _getMemberInfo(cls: ts.ClassDeclaration): MemberInfo {
       mods.some(
         (m) => ts.isDecorator(m) && ts.isIdentifier(m.expression) && m.expression.text === dec,
       );
-    if (has("expose")) exposed.add(name);
+    // `@url` implies `@expose`: the field lives in the address bar, so the client holds it.
+    // Written bare (`@url`) or configured (`@url({ as: "q" })`).
+    const isUrl = (m: ts.ModifierLike): boolean =>
+      ts.isDecorator(m) &&
+      (ts.isIdentifier(m.expression)
+        ? m.expression.text === "url"
+        : ts.isCallExpression(m.expression) &&
+          ts.isIdentifier(m.expression.expression) &&
+          m.expression.expression.text === "url");
+    if (has("expose") || mods.some(isUrl)) exposed.add(name);
     if (has("locked")) locked.add(name);
     if (has("computed")) computed.add(name);
   }
@@ -1969,26 +2019,51 @@ function _compileRenderMethod(
         continue;
       }
 
+      // class={CARD} / class={`${CARD} mt-4`} - a class string made only of string constants the
+      // compiler can read (this file's top-level consts, and constants imported from a relative
+      // module). Folded and emitted as a plain `class="..."`, exactly as if it had been written
+      // out, so the page keeps its fast path and stays legal under cspSafe.
+      if (name === "class" || name === "className") {
+        const folded = foldStaticString(expr, _staticStrings);
+        if (folded !== undefined) {
+          const staticClass = normalizeClassList(folded);
+          if (staticClass) emitStatic(` class="${_escAttr(staticClass)}"`);
+          continue;
+        }
+      }
+
       // class={`base ${this.x ? 'a' : 'b'}`} — reactive class (Workstream G). When a
       // template literal's substitutions reference only snapshot props, split the literal
       // parts into a static `class` and the dynamic parts into Alpine's `:class` array, so
       // the class updates client-side with no round-trip. Decomposition (static vs dynamic)
       // avoids Alpine's class-merge duplication (static base never overlaps computed values).
+      // A span that is a string constant the compiler can read folds into the static part.
       if (
         (name === "class" || name === "className") &&
         ts.isTemplateExpression(expr) &&
-        _isSnapshotOnly(expr)
+        expr.templateSpans.every(
+          (span) =>
+            foldStaticString(span.expression, _staticStrings) !== undefined ||
+            _isSnapshotOnly(span.expression),
+        )
       ) {
         const staticParts: string[] = [];
         const dynamic: string[] = [];
-        if (expr.head.text) staticParts.push(expr.head.text);
+        let pending = expr.head.text;
         for (const span of expr.templateSpans) {
+          const folded = foldStaticString(span.expression, _staticStrings);
+          if (folded !== undefined) {
+            pending += folded + span.literal.text;
+            continue;
+          }
+          if (pending) staticParts.push(pending);
           const part = _rewriteClientExpr(span.expression.getText());
           _assertCspExpr(part, filename); // CSP: substitutions must be subset-safe (no nested `…`/=>)
           dynamic.push(part);
-          if (span.literal.text) staticParts.push(span.literal.text);
+          pending = span.literal.text;
         }
-        const staticClass = staticParts.join(" ").split(/\s+/).filter(Boolean).join(" ");
+        if (pending) staticParts.push(pending);
+        const staticClass = normalizeClassList(staticParts.join(" "));
         if (staticClass) emitStatic(` class="${_escAttr(staticClass)}"`);
         emitStatic(` :class="${_escAttr(`[${dynamic.join(", ")}]`)}"`);
         continue;

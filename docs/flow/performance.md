@@ -53,12 +53,19 @@ design and are left out of it.
 
 Set `ZT_FLOW_COMPILE_LOG=1` to print what blocks each page. The common causes:
 
-| Blocker                                                              | Fix                                                |
-| -------------------------------------------------------------------- | -------------------------------------------------- |
-| `render()` with more than one `return`                               | Build the branches into a variable and return once |
-| A function call in a text child — including **`__()`**               | See below                                          |
-| An imported child component in `render()` (`<Header/>`)              | Inline it, or accept the fallback                  |
-| `class={someLocalConst}` or a numeric-literal attribute (`rows={3}`) | Use a literal string                               |
+| Blocker                                                            | Fix                                                |
+| ------------------------------------------------------------------ | -------------------------------------------------- |
+| `render()` with more than one `return`                             | Build the branches into a variable and return once |
+| A function call in a text child — including **`__()`**             | See below                                          |
+| An imported child component in `render()` (`<Header/>`)            | Inline it, or accept the fallback                  |
+| A `class` the compiler cannot read: a call, a `let`, a conditional | Build it from string constants, or use a literal   |
+| A numeric-literal attribute (`rows={3}`)                           | Use a literal string                               |
+
+A class list kept in a `const` does compile: one in the same file, or a named import from a
+relative module such as `import { CARD } from "../ui"`, on its own, joined with `+`, or inside a
+template literal. The compiler reads the value out of the source, so it has to be a plain string:
+a `let`, the result of a call, a name the page declares itself, or a constant re-exported through
+another file is not one.
 
 **`__()` is the one that matters most.** A translated template is a function call in a text child,
 so a page that translates a single string falls off the fast path — which in an app where `__()`

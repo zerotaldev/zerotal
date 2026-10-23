@@ -540,7 +540,7 @@ describe("Flow compiler — fallback blockers", () => {
   });
 
   it("names a computed class", () => {
-    expect(blockerFor(`<div class={SUFFIX}>x</div>`)?.reason).toContain(
+    expect(blockerFor(`<div class={SUFFIX.toUpperCase()}>x</div>`)?.reason).toContain(
       "is not a static class string",
     );
   });

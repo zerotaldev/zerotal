@@ -26,6 +26,14 @@ change.
 
 ### Fixed
 
+- **`this.refresh()` inside an action re-runs `onMount()`, as documented.** The lifecycle, events
+  and pagination guides all say an action can change the data and call `this.refresh()` to reload
+  what `onMount()` loads, and `make:flow --crud` generates exactly that. The server looked for
+  the request only before the action ran, so a refresh the action itself asked for was recorded
+  and never read: the row was saved, the list on screen stayed as it was, and nothing said so.
+  `onMount()` now runs again after the action, before the render, in the server and in
+  `FlowTest`, and not after an action that threw. A refresh asked for by the client
+  (`onClick={() => this.refresh()}`) was never affected.
 - **A field exposed by `@url`, `@reactive`, `@modelable`, `@presence` or `@shared` can be read in a
   compiled page.** Each of these exposes its property without `@expose` written beside it, and
   `@presence` and `@shared` lock it as well, but the check of what a page may read did not know

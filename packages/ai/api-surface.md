@@ -517,7 +517,9 @@ interface ModelCapabilities = {
 }
 
 interface ModelPrice = {
+  cacheRead?: number | undefined
   input: number
+  longPrompt?: {    aboveTokens: number;    input: number;    output: number;} | undefined
   output: number
 }
 

@@ -332,6 +332,7 @@ class QueueFailedCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -360,6 +361,7 @@ class QueueFlushCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -388,6 +390,7 @@ class QueueRetryCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void
@@ -416,6 +419,7 @@ class QueueWorkCommand = {
   info: (msg: string) => void
   line: (msg: string) => void
   newLine: () => void
+  rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
   section: (title: string) => void

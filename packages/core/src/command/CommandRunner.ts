@@ -145,6 +145,8 @@ function parseFlagsAndArgs(
   rawArgv: string[],
 ): {
   parsedArgs: Record<string, string>;
+  /** Positional arguments past the last declared one. */
+  rest: string[];
   parsedFlags: Record<string, string | boolean | number>;
   /** Names of `required` arguments the caller omitted. */
   missingArgs: string[];
@@ -180,7 +182,7 @@ function parseFlagsAndArgs(
     parsedArgs[argument.name] = value ?? "";
   }
 
-  return { parsedArgs, parsedFlags, missingArgs };
+  return { parsedArgs, rest: positionals.slice((Cmd.args ?? []).length), parsedFlags, missingArgs };
 }
 
 /**
@@ -617,7 +619,7 @@ export class CommandRunner {
       return;
     }
 
-    const { parsedArgs, parsedFlags, missingArgs } = parseFlagsAndArgs(Cmd, argv.slice(1));
+    const { parsedArgs, rest, parsedFlags, missingArgs } = parseFlagsAndArgs(Cmd, argv.slice(1));
 
     if (missingArgs.length > 0) {
       console.error(
@@ -628,9 +630,7 @@ export class CommandRunner {
     }
 
     const instance = new Cmd();
-    (instance as unknown as Record<string, unknown>).args = parsedArgs;
-    (instance as unknown as Record<string, unknown>).flags = parsedFlags;
-    (instance as unknown as Record<string, unknown>).app = this._app;
+    Object.assign(instance, { args: parsedArgs, rest, flags: parsedFlags, app: this._app });
 
     const name = (Cmd as { commandName?: string }).commandName ?? commandName;
     const startedAt = performance.now();
@@ -688,7 +688,10 @@ export class CommandRunner {
       }
     }
 
-    const { parsedArgs, parsedFlags, missingArgs } = parseFlagsAndArgs(Cmd, fullArgv.slice(1));
+    const { parsedArgs, rest, parsedFlags, missingArgs } = parseFlagsAndArgs(
+      Cmd,
+      fullArgv.slice(1),
+    );
 
     if (missingArgs.length > 0) {
       const plural = missingArgs.length > 1 ? "s" : "";
@@ -703,10 +706,13 @@ export class CommandRunner {
     // Instantiate with BufferWriter — output is captured, not printed
     const instance = new Cmd();
     const writer = new BufferWriter();
-    (instance as any)._writer = writer;
-    (instance as any).args = parsedArgs;
-    (instance as any).flags = parsedFlags;
-    (instance as any).app = this._app;
+    Object.assign(instance, {
+      _writer: writer,
+      args: parsedArgs,
+      rest,
+      flags: parsedFlags,
+      app: this._app,
+    });
 
     const name = (Cmd as { commandName?: string }).commandName ?? commandName;
     const startedAt = performance.now();

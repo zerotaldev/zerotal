@@ -43,11 +43,17 @@ function _cacheDir(appRoot: string): string {
   return join(appRoot, COMPILED_DIR_NAME);
 }
 
-function _hashSource(source: string, cspSafe = false): string {
+function _hashSource(source: string, cspSafe = false, variant = ""): string {
   // Bun.hash returns a number or bigint depending on input type.
   // Using String() avoids any ambiguity. The cspSafe marker keeps CSP and
   // default builds in separate cache entries (their emitted output differs).
-  return String(Bun.hash(COMPILER_VERSION + (cspSafe ? "csp:" : "") + source));
+  // `variant` is the digest of whatever else the output was built from (constants read out of
+  // other files); empty for a page that used none, which keeps the key it always had.
+  return String(
+    Bun.hash(
+      COMPILER_VERSION + (cspSafe ? "csp:" : "") + (variant ? `with:${variant}:` : "") + source,
+    ),
+  );
 }
 
 /** Returns the cached compiled file path if up-to-date, otherwise null. */
@@ -56,8 +62,9 @@ export function getCachedPath(
   appRoot: string,
   cspSafe = false,
   ext = "ts",
+  variant = "",
 ): string | null {
-  const hash = _hashSource(source, cspSafe);
+  const hash = _hashSource(source, cspSafe, variant);
   const path = join(_cacheDir(appRoot), `${hash}.${ext}`);
   return existsSync(path) ? path : null;
 }
@@ -73,11 +80,12 @@ export async function writeCache(
   appRoot: string,
   cspSafe = false,
   ext = "ts",
+  variant = "",
 ): Promise<string> {
   const dir = _cacheDir(appRoot);
   await mkdir(dir, { recursive: true });
 
-  const hash = _hashSource(source, cspSafe);
+  const hash = _hashSource(source, cspSafe, variant);
   const outPath = join(dir, `${hash}.${ext}`);
   const header = `// @flow-compiled\n// Source: ${sourceFile}\n// Hash: ${hash}\n\n`;
 

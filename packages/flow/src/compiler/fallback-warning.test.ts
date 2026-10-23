@@ -30,7 +30,7 @@ export class DemoPage extends Component {
 
 const COMPILES = `<div class="ok">x</div>`;
 // A computed class is not a static string, so the compiler leaves the page to the runtime.
-const FALLS_BACK = `<div class={SUFFIX}>x</div>`;
+const FALLS_BACK = `<div class={SUFFIX.toUpperCase()}>x</div>`;
 
 let dir: string;
 let saved: Array<[string, PageEntry]>;

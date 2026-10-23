@@ -25,6 +25,7 @@ import {
   type BlockerReport,
 } from "./transform.ts";
 import { getCachedPath, writeCache } from "./cache.ts";
+import { resolveImportedStrings, staticStringsFingerprint } from "./constants.ts";
 
 /**
  * Set `ZT_FLOW_COMPILE_LOG=1` to have every page that falls back to the runtime
@@ -89,12 +90,16 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
 
     try {
       // ── Cache hit ────────────────────────────────────────────────────────
-      let compiledPath = getCachedPath(source, appRoot, cspSafe);
+      // Class lists imported from a shared module are folded into the output, so the values
+      // that were read are part of the cache key: editing that module must recompile its pages.
+      const constants = resolveImportedStrings(source, sourceFile);
+      const variant = staticStringsFingerprint(constants);
+      let compiledPath = getCachedPath(source, appRoot, cspSafe, "ts", variant);
 
       // ── Cache miss — transform and write ─────────────────────────────────
       if (!compiledPath) {
         const report: BlockerReport = {};
-        const result = transformFlowFile(source, sourceFile, { cspSafe, report });
+        const result = transformFlowFile(source, sourceFile, { cspSafe, report, constants });
         if (!result) {
           if (_explainFallbacks()) {
             frameworkLog("flow").info(
@@ -140,7 +145,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
           (result.preamble ? result.preamble + "\n\n" : "") +
           `export async function render() {\n${result.renderBody}\n}\n`;
 
-        compiledPath = await writeCache(source, code, sourceFile, appRoot, cspSafe);
+        compiledPath = await writeCache(source, code, sourceFile, appRoot, cspSafe, "ts", variant);
         compiled++;
       } else {
         cached++;

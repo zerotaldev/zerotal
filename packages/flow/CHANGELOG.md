@@ -11,6 +11,26 @@ change.
 
 ## [Unreleased]
 
+### Added
+
+- **A class list kept in a `const` compiles.** `class={CARD}` sent a page to the runtime renderer,
+  because the compiler saw an identifier and could not know what it held. It now reads string
+  constants out of the source: a `const` in the same file, or a named import from a relative
+  module (`import { CARD } from "../ui"`), on its own, joined with `+`, or inside a template
+  literal. In a template that also has a reactive part, such as `${this.open ? "a" : "b"}`, the
+  constants fold into the static `class` and the rest stays reactive as before. The compiled
+  output depends on the other file now, so the values it read are part of the cache key: editing
+  `ui.ts` recompiles the pages that use it. A `let`, a call, a name the page declares itself, and a
+  constant re-exported through a barrel file still fall back. It also means a page styled this way
+  can run under `cspSafe`, where a page that does not compile is fatal.
+
+### Fixed
+
+- **A `@url` field can be read in a compiled page.** `@url` implies `@expose`, but the check of
+  what a page may read did not know that, so `{this.token}` on a `@url token` field failed with
+  `"token" does not match any @expose, @locked, or @computed property`. Outside `cspSafe` the page
+  was skipped with a warning and rendered through the runtime; under it, the build stopped.
+
 ## [1.15.4] — 2026-10-23
 
 ### Fixed

@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`trustedProxies: n` reads the `n`-th entry from the right of `X-Forwarded-For`, which is the
+  client.** Each proxy appends the address it received the request from, so with one proxy the
+  client is the last entry. The count was off by one: `trustedProxies: 1` read the second to
+  last, which when the client sent an `X-Forwarded-For` of its own is an entry the client wrote,
+  so a client behind a proxy that appends could pick its own rate-limit bucket by varying the
+  header. An honest request, with no header of its own, was never affected: a single-entry
+  header fell back to its only entry. **Migration:** a proxy that appends only the address it
+  received the request from (nginx, Caddy, most load balancers) needs no change, and the count
+  you have is now right. A proxy that records two entries, its peer and its own address as some
+  cloud load balancers do, counts twice: raise `trustedProxies` by one. The same count now
+  governs the audit trail, the sign-in lockout and Flow's connection bookkeeping as well as the
+  throttles.
+
 ## [1.15.6] — 2026-10-28
 
 ### Fixed

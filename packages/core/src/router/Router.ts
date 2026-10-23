@@ -100,6 +100,9 @@ type RouteHandlerFn = (req: Request, server?: unknown) => Response | Promise<Res
  * failure mode is letting somebody in.
  */
 function _withGate(handler: RouteHandlerFn): RouteHandlerFn {
+  // `rest` carries the `Bun.serve` server. A raw handler may declare it as a second parameter
+  // to read the socket address (`server.requestIP(req)`), which Flow's HTTP fallback does, so
+  // every wrapper around a raw route must pass it on.
   return async (req: Request, ...rest: unknown[]) => {
     const gated = _gateResponse(req, false);
     if (gated) return gated;

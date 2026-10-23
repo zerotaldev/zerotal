@@ -214,7 +214,7 @@ function _resolverFor(
  * // In a ServiceProvider (boot time):
  * RateLimiter.for('api')
  *   .limit(120).every(60)
- *   .by(ctx => String(ctx.user?.id ?? ctx.request.headers.get('x-forwarded-for')))
+ *   .by(ctx => String(ctx.user?.id ?? ctx.ip()))
  *   .register();
  *
  * RateLimiter.for('login').limit(5).every(60).register();

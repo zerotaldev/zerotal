@@ -333,13 +333,28 @@ describe("named limiters honour trustedProxies", () => {
     RateLimiter.for("tp-on").limit(1).every(60).byIp().trustedProxies(1).register();
     const mw = new (RateLimiter.middleware("tp-on"))();
 
-    // One proxy: the client's address is the second-from-right. The leftmost entry
-    // is whatever the client sent, and must not decide the bucket.
+    // One proxy appends the address it received the request from, so the client is the LAST
+    // entry. Everything before it is whatever the client sent, and must not decide the bucket.
     expect(await withHeaders(mw, { "x-forwarded-for": "9.9.9.9, 5.5.5.5, 10.0.0.1" })).toBe(200);
-    expect(await withHeaders(mw, { "x-forwarded-for": "1.1.1.1, 5.5.5.5, 10.0.0.1" })).toBe(429);
 
-    // A genuinely different client — different second-from-right — is its own bucket.
-    expect(await withHeaders(mw, { "x-forwarded-for": "9.9.9.9, 6.6.6.6, 10.0.0.1" })).toBe(200);
+    // The same client writing something else in front is still the same client. This is the
+    // bypass: the entry one to the left of the real one is client-written, and keying on it
+    // let a rotating header buy a fresh bucket every request.
+    expect(await withHeaders(mw, { "x-forwarded-for": "1.1.1.1, 6.6.6.6, 10.0.0.1" })).toBe(429);
+    expect(await withHeaders(mw, { "x-forwarded-for": "spoof-1, 10.0.0.1" })).toBe(429);
+
+    // A genuinely different client, a different last entry, is its own bucket.
+    expect(await withHeaders(mw, { "x-forwarded-for": "9.9.9.9, 5.5.5.5, 10.0.0.2" })).toBe(200);
+  });
+
+  it("with two proxies the client is the second entry from the right", async () => {
+    RateLimiter.for("tp-two").limit(1).every(60).byIp().trustedProxies(2).register();
+    const mw = new (RateLimiter.middleware("tp-two"))();
+
+    // client, then the first proxy's address (appended by the second proxy).
+    expect(await withHeaders(mw, { "x-forwarded-for": "spoof-1, 8.8.8.8, 10.0.0.1" })).toBe(200);
+    expect(await withHeaders(mw, { "x-forwarded-for": "spoof-2, 8.8.8.8, 10.0.0.1" })).toBe(429);
+    expect(await withHeaders(mw, { "x-forwarded-for": "spoof-2, 8.8.4.4, 10.0.0.1" })).toBe(200);
   });
 
   it("applies the count however the builder was ordered", async () => {
@@ -349,6 +364,7 @@ describe("named limiters honour trustedProxies", () => {
     const mw = new (RateLimiter.middleware("tp-order"))();
 
     expect(await withHeaders(mw, { "x-forwarded-for": "9.9.9.9, 5.5.5.5, 10.0.0.1" })).toBe(200);
-    expect(await withHeaders(mw, { "x-forwarded-for": "1.1.1.1, 6.6.6.6, 10.0.0.1" })).toBe(200);
+    expect(await withHeaders(mw, { "x-forwarded-for": "1.1.1.1, 6.6.6.6, 10.0.0.1" })).toBe(429);
+    expect(await withHeaders(mw, { "x-forwarded-for": "1.1.1.1, 6.6.6.6, 10.0.0.2" })).toBe(200);
   });
 });

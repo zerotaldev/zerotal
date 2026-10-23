@@ -9,6 +9,7 @@ import { BaseMiddleware, deepMerge } from "./BaseMiddleware.ts";
 import { withHeaders } from "../http/withHeaders.ts";
 import { negotiate } from "../http/negotiate.ts";
 import { config } from "../helpers/config.ts";
+import { _clientAddress } from "../http/clientAddress.ts";
 
 export interface ThrottleOptions {
   /** Maximum number of requests allowed within the window. */
@@ -28,8 +29,11 @@ export interface ThrottleOptions {
    * attacker-controlled. Without it the unspoofable socket address is used.
    *
    * - `undefined` (default) / `0` — no trusted proxy; key on the socket address
-   * - `1` — one trusted proxy; the client IP is the second-to-last XFF entry
-   * - `n` — the client IP is `n` entries from the right
+   * - `1` — one trusted proxy; the client IP is the last XFF entry, the one that proxy appended
+   * - `n` — the client IP is the `n`-th entry from the right
+   *
+   * Count every hop that appends an entry. A proxy that records two (the address it received the
+   * request from and its own) counts twice.
    *
    * @example
    * // Behind one load balancer:
@@ -62,7 +66,7 @@ interface HitRecord {
  * ThrottleMiddleware.with({
  *   maxAttempts: 1000,
  *   windowSeconds: 3600,
- *   keyResolver: (ctx) => String(ctx.user?.id ?? _clientIp(ctx.request)),
+ *   keyResolver: (ctx) => String(ctx.user?.id ?? ctx.ip()),
  * })
  */
 export class ThrottleMiddleware extends BaseMiddleware<ThrottleOptions> {
@@ -280,26 +284,16 @@ export function _isIpDerived(resolver: unknown): boolean {
  * @internal
  */
 export function _clientIp(ctx: HttpContext, trustedProxies?: number): string {
-  // Default (undefined) and an explicit 0 both mean "not behind a trusted proxy": read the raw
-  // socket address, which cannot be spoofed.
-  //
-  // This used to fall through to the leftmost X-Forwarded-For entry when `trustedProxies` was
-  // undefined — and undefined is the default. Because the header was consulted *before* the
-  // socket address, even a direct connection could pick its own bucket, so rotating
-  // `X-Forwarded-For: 1.2.3.<n>` defeated every limiter built on this, including the documented
-  // login throttle. Trusting a forwarded header is now strictly opt-in, which matches how
-  // RateLimiter._resolveIp and LoginRateLimiter._ip already behaved.
-  if (trustedProxies === undefined || trustedProxies === 0) {
-    return ctx.ip() ?? ctx.header("x-real-ip") ?? "unknown";
-  }
-
-  // Behind one or more *trusted* reverse proxies — parse X-Forwarded-For.
-  const forwardedFor = ctx.header("x-forwarded-for");
-  if (!forwardedFor) return ctx.ip() ?? ctx.header("x-real-ip") ?? "unknown";
-
-  const addresses = forwardedFor.split(",").map((entry) => entry.trim());
-
-  // trustedProxies > 0: client IP is that many entries from the right.
-  const clientIndex = addresses.length - 1 - trustedProxies;
-  return (clientIndex >= 0 ? addresses[clientIndex] : addresses[0]) ?? "unknown";
+  // The rule itself lives in one place, `_clientAddress`, so the throttles, the audit trail and
+  // Flow cannot disagree about it. Trusting a forwarded header is strictly opt-in: with no count
+  // the socket address is the answer, because a client that can write the header picks its own
+  // bucket (rotating `X-Forwarded-For: 1.2.3.<n>` beat every limiter built on this once).
+  return _clientAddress(
+    {
+      socket: ctx.ip(),
+      forwardedFor: ctx.header("x-forwarded-for"),
+      realIp: ctx.header("x-real-ip"),
+    },
+    trustedProxies,
+  );
 }

@@ -483,7 +483,9 @@ Tell it how many proxies sit in front of the app:
 ThrottleMiddleware.with({ maxAttempts: 60, trustedProxies: 1 });
 ```
 
-The count is how many entries to skip from the right of `X-Forwarded-For`. It is opt-in and
+The count is how many proxies of yours the request went through: the client's address is
+that many entries from the right of `X-Forwarded-For`, which for one proxy is the last. It is
+opt-in and
 defaults to zero because the header is written by the client until something trusted
 overwrites it: trusting it by default would let anyone forge an address and walk around
 every limit you set. Zero is the safe default and the wrong answer once you deploy behind

@@ -37,5 +37,13 @@ export function browserEnvDefines(isProduction: boolean): Record<string, string>
       PROD: isProduction,
       MODE: isProduction ? "production" : "development",
     }),
+    // The other half of the convention, and the one that costs the most to miss.
+    // React and most of npm choose their production build with
+    // `process.env.NODE_ENV === "production"`, and Bun.build leaves the expression
+    // to the environment it runs in. A deploy that ran `inertia:build --production`
+    // without NODE_ENV set shipped React's development build — a 522 KB vendor
+    // chunk where 322 KB would do, the DevTools notice in every visitor's console,
+    // and full hydration diffs to anyone who looked. Stated here, the flag decides.
+    "process.env.NODE_ENV": JSON.stringify(isProduction ? "production" : "development"),
   };
 }

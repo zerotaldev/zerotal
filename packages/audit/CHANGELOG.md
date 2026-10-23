@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The audit trail records an address its subject cannot choose.** With `captureRequest`, the
+  entry's `ip_address` was the leftmost `X-Forwarded-For` entry, which the client writes, with no
+  reference to the socket or to `trustedProxies`. It is the socket address now, or, when
+  `app.throttle.trustedProxies` says how many proxies sit in front, the client counted from the
+  right of the header. Entries already recorded keep the address they were written with.
+
 ## [1.15.0] — 2026-09-04
 
 ### Changed

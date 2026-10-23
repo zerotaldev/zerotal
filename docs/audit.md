@@ -331,6 +331,12 @@ app.container.singleton(
 
 > **Note** — Grant read access to `audit_logs` only to admin roles.
 
+> **Note** — The `ip_address` recorded with `captureRequest` is the socket address, so the
+> person an entry is about cannot choose it. Behind a reverse proxy that is the proxy's
+> address; set `app.throttle.trustedProxies` to the number of proxies you run and it is the
+> client's, read from the right of `X-Forwarded-For`
+> ([Rate limiting](/docs/rate-limiting#trustedproxies) explains the count).
+
 ## References
 
 `Audit` facade — resolves the `Auditor` bound at `"audit"`:

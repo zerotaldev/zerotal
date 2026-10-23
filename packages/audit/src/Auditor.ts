@@ -1,4 +1,5 @@
 import { RequestContext } from "@zerotal/core";
+import { _clientAddress, _trustedProxyCount } from "@zerotal/core/http";
 import { BaseModel } from "@zerotal/orm";
 import type { ModelQueryBuilder } from "@zerotal/orm";
 import type { AuditDriver } from "./drivers/AuditDriver.ts";
@@ -148,7 +149,7 @@ export class Auditor {
 
     const req = ctx.request;
     return {
-      ip_address: payload.ip_address ?? this._extractIp(req),
+      ip_address: payload.ip_address ?? this._extractIp(ctx),
       user_agent: payload.user_agent ?? req.headers.get("user-agent"),
       url: payload.url ?? req.url,
       ...payload,
@@ -170,11 +171,23 @@ export class Auditor {
     };
   }
 
-  private _extractIp(req: Request): string | null {
-    return (
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      req.headers.get("x-real-ip") ??
-      null
+  /**
+   * The address the request came from, by the framework's one rule: the socket, unless the app
+   * says how many proxies sit in front of it (`app.throttle.trustedProxies`), in which case the
+   * client is read from the right of `X-Forwarded-For`. This used to take the leftmost entry of
+   * that header, which the client writes, so the source address in the trail could be set by
+   * the person it was about.
+   */
+  private _extractIp(ctx: NonNullable<ReturnType<typeof RequestContext.tryGet>>): string | null {
+    const headers = ctx.request.headers;
+    const address = _clientAddress(
+      {
+        socket: ctx.ip(),
+        forwardedFor: headers.get("x-forwarded-for"),
+        realIp: headers.get("x-real-ip"),
+      },
+      _trustedProxyCount(),
     );
+    return address === "unknown" ? null : address;
   }
 }

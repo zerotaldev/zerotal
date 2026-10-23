@@ -14,6 +14,7 @@ import {
   DEFAULT_MD_OPTIONS,
   type BunMarkdownOptions,
 } from "../helpers/markdown.ts";
+import { config } from "../helpers/config.ts";
 import type { SessionContract, TransactionContext } from "../contracts/index.ts";
 import type { ContextRegistry, ContextKey } from "./ContextRegistry.ts";
 
@@ -868,14 +869,24 @@ const _prototypeMethods: ReadonlyArray<[string, (...args: unknown[]) => unknown]
 })();
 
 /**
- * Return `url` only when it belongs to the same `origin`, otherwise `undefined`.
+ * Return `url` only when it belongs to the app, otherwise `undefined`.
  * Guards `ctx.back()` and similar helpers against open-redirect attacks by
  * rejecting absent, malformed, or cross-origin URLs.
  *
+ * "Belongs to the app" is the request's own `origin` **or the configured
+ * `app.url`'s**. The second matters behind a reverse proxy that terminates TLS:
+ * the request reaches the process as `http://…`, while every browser sends its
+ * `Referer` as `https://…`, so a same-origin check alone refused every one of
+ * them and `back()` — and `validate()`'s redirect on failure — fell back to "/"
+ * on every request in production. A form with one mistake in it sent the user
+ * to the home page, its errors flashed to a page that never shows them. The
+ * configured URL is the app's own address by definition, so accepting it opens
+ * nothing to anyone else.
+ *
  * @param url - Candidate redirect target (e.g. a `Referer` header value).
  * @param origin - The current request origin to match against.
- * @returns The same-origin `url`, or `undefined` when it is absent, unparseable,
- * or points to a different origin.
+ * @returns The `url`, or `undefined` when it is absent, unparseable, or points
+ * anywhere but this app.
  *
  * @internal
  */
@@ -885,7 +896,20 @@ export function safeRedirectPath(
 ): string | undefined {
   if (!url) return undefined;
   try {
-    return new URL(url).origin === origin ? url : undefined;
+    const target = new URL(url).origin;
+    if (target === origin) return url;
+    return target === configuredOrigin() ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The configured `app.url`'s origin, or `undefined` off-app or when it is unset or malformed. */
+function configuredOrigin(): string | undefined {
+  const base = config.safe("app.url", "") as string;
+  if (!base) return undefined;
+  try {
+    return new URL(base).origin;
   } catch {
     return undefined;
   }

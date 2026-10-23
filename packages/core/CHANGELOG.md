@@ -18,6 +18,16 @@ follows the Zerotal monorepo's unified versioning.
   every visitor's console, and full hydration diffs. The define now states it from the same
   flag. Found on a live consumer app (Trekly).
 
+- **`back()` works behind a proxy that terminates TLS.** `safeRedirectPath` — which
+  `ctx.back()`, `validate()`'s redirect on failure, `FormRequest`, the intended-URL helpers
+  and flow all use — accepted a Referer only from the request's own origin. Behind Caddy or
+  nginx the request reaches the process as `http://…` while every browser sends
+  `https://…`, so every Referer was refused and "back" was always `/`: a form with one
+  mistake in it sent the user to the home page, its errors flashed to a page that never
+  shows them. The configured `app.url`'s origin now counts as the app's own as well; every
+  other site is still refused. Found on a live consumer app (Trekly), which had worked
+  round it in its exception handler.
+
 ## [1.15.1] — 2026-09-13
 
 ### Added

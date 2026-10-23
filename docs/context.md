@@ -329,9 +329,11 @@ Returns `null` when no Bun server reference was injected (e.g. in unit tests cre
 with `HttpContext.fake()`).
 
 > **Warning** — `ctx.ip()` is the socket IP. Behind a trusted proxy it returns the
-> proxy's address, not the end-user's. Read the forwarded header yourself with
-> `ctx.header("x-forwarded-for")`, or let [`ThrottleMiddleware`](/docs/middleware)
-> resolve proxy-aware IPs via its `trustedProxies` option.
+> proxy's address, not the end-user's. Let [`ThrottleMiddleware`](/docs/middleware) resolve
+> proxy-aware IPs via its `trustedProxies` option, or set `app.throttle.trustedProxies` once for
+> everything that needs the client's address. `X-Forwarded-For` is written by the client as well
+> as by your proxies: only the entries counted from the right are yours, so never key on the
+> leftmost one.
 
 ## URL & matching helpers
 

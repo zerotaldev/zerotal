@@ -348,12 +348,12 @@ Router.group({ prefix: "/api", middleware: [RateLimiter.middleware("api")] }, ()
 });
 ```
 
-| Method               | Keys on                                       | Falls back to            |
-| -------------------- | --------------------------------------------- | ------------------------ |
-| `.byUser()`          | `ctx.user.id`                                 | IP when unauthenticated  |
-| `.byApiKey(header?)` | `x-api-key` header (or custom)                | IP when header is absent |
-| `.byIp()`            | Socket IP -> `X-Forwarded-For` -> `X-Real-IP` | `'unknown'`              |
-| `.by(fn)`            | Return value of your function                 | -                        |
+| Method               | Keys on                                                           | Falls back to            |
+| -------------------- | ----------------------------------------------------------------- | ------------------------ |
+| `.byUser()`          | `ctx.user.id`                                                     | IP when unauthenticated  |
+| `.byApiKey(header?)` | `x-api-key` header (or custom)                                    | IP when header is absent |
+| `.byIp()`            | Socket IP, or `X-Forwarded-For` from the right (`trustedProxies`) | `'unknown'`              |
+| `.by(fn)`            | Return value of your function                                     | -                        |
 
 Check or reset a limiter manually — e.g. clear failed login attempts after a
 successful sign-in:

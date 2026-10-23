@@ -72,11 +72,28 @@ address is used.
 
 **Counted from the right, and that is the whole of it.** Each proxy _appends_ the address
 it received the request from, so the rightmost entries are the ones your own
-infrastructure wrote and the leftmost is whatever the client sent. Reading the header
+infrastructure wrote and the leftmost is whatever the client sent. With
+`trustedProxies: 1` the client is the **last** entry, the one your proxy appended; with `2` it
+is the second from the right, and so on. Whatever the client wrote sits to the left of that
+and never decides the key. Count every hop that adds an entry: a proxy that records its own
+address as well as its peer's counts twice. Reading the header
 left-to-right — the obvious way, and how most hand-rolled versions do it — hands the
 limiter's key to the attacker: they set `X-Forwarded-For: <your CFO's IP>`, spend the
 budget, and the person whose address they borrowed is locked out of the form. A limiter
 that can be aimed is worse than no limiter, because it looks like it is working.
+
+With one proxy in front and `trustedProxies: 1`, whatever the client sends first, the key is
+the address the proxy saw:
+
+| The client sent            | The app receives `X-Forwarded-For` | The key       |
+| -------------------------- | ---------------------------------- | ------------- |
+| nothing                    | `203.0.113.9`                      | `203.0.113.9` |
+| `X-Forwarded-For: 6.6.6.6` | `6.6.6.6, 203.0.113.9`             | `203.0.113.9` |
+| `X-Forwarded-For: a, b, c` | `a, b, c, 203.0.113.9`             | `203.0.113.9` |
+
+The same count, `app.throttle.trustedProxies` in config or `trustedProxies` on a throttle,
+also decides the address the [audit trail](/docs/audit) records, the sign-in lockout counts
+against, and Flow attributes a connection to. Without it, all of them use the socket address.
 
 > **Danger** — That default is right, and it is the wrong answer the moment you deploy
 > behind a proxy. The socket address is then the _proxy's_ — `127.0.0.1` for every visitor

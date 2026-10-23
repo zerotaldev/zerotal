@@ -46,6 +46,15 @@ export interface AppCorsConfig {
 export interface AppThrottleConfig {
   maxAttempts: number;
   windowSeconds: number;
+  /**
+   * How many reverse proxies of yours sit in front of the app, for everything that needs the
+   * client's address and not the proxy's: every throttle, the sign-in lockout, the audit trail
+   * and Flow. Without it they all use the socket address, which behind a proxy is the proxy.
+   *
+   * `X-Forwarded-For` is counted from the right: with one proxy the client is the last entry.
+   * See [Rate limiting](/docs/rate-limiting#trustedproxies).
+   */
+  trustedProxies?: number | undefined;
 }
 
 /**

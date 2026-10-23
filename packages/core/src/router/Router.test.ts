@@ -816,6 +816,27 @@ describe("Router.raw()", () => {
     expect(await res.text()).toBe("echo:POST");
   });
 
+  it("hands the Bun server to the handler as its second argument, through the wrappers", async () => {
+    // Flow's HTTP fallback reads the socket address from it (`server.requestIP(req)`), because
+    // a raw route has no HttpContext to ask. The gate and the security-header wrappers sit
+    // between Bun and the handler, so each of them has to pass the argument on.
+    let seen: unknown;
+    Router.raw("POST", "/__who", (req: Request, server?: unknown) => {
+      seen = server;
+      return new Response("ok");
+    });
+    const compiled = Router.compile(new Container());
+    const handler = methods(compiled, "/__who")!["POST"]!;
+    const server = { requestIP: () => ({ address: "203.0.113.9" }) };
+
+    await (handler as (req: Request, server: unknown) => Promise<Response>)(
+      new Request("http://localhost/__who", { method: "POST" }),
+      server,
+    );
+
+    expect(seen).toBe(server);
+  });
+
   it("is still subject to the site gate", async () => {
     // `Router.raw()` opts out of *request handling* — CSRF on a transport
     // endpoint, session resolution on a relay — not out of whether the site is

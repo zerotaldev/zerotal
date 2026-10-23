@@ -17,8 +17,36 @@ describe('ZT_VERSION', () => {
     // succeeds, and only the install the user runs afterwards fails.
     const pkg = await Bun.file(join(import.meta.dir, '..', 'package.json')).json();
 
-    expect(ZT_VERSION).toBe(`^${pkg.version}`);
+    expect(ZT_VERSION).toBe(`~${pkg.version}`);
   });
+
+  it('is a tilde range, so a new app does not take a breaking minor unread', () => {
+    // Under docs/upgrade.md a minor is where a break lands. A caret would let the
+    // app's next install cross it silently; a tilde stops at the minor.
+    expect(ZT_VERSION).toMatch(/^~\d+\.\d+\.\d+$/);
+  });
+});
+
+// ── every template gets the same range ───────────────────────────────────────
+
+describe('scaffolded package.json', () => {
+  it.each(['minimal', 'api', 'admin', 'flow', 'react', 'vue'] as const)(
+    '%s pins every zerotal dependency to the tilde range',
+    async (template) => {
+      await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
+
+      const pkg = await Bun.file(join(TMP, 'package.json')).json();
+      const zerotal = Object.entries({ ...pkg.dependencies, ...pkg.devDependencies }).filter(
+        ([name]) => name === 'zerotal' || name.startsWith('@zerotal/'),
+      );
+
+      expect(zerotal.length).toBeGreaterThan(0);
+      for (const [name, range] of zerotal) {
+        expect({ name, range }).toEqual({ name, range: ZT_VERSION });
+        expect({ name, range }).toEqual({ name, range: expect.stringMatching(/^~\d/) });
+      }
+    },
+  );
 });
 
 afterEach(async () => {

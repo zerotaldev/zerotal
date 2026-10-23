@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
 import { SQL } from "bun";
 import { DB, _setDbConnection } from "./DB.ts";
 import { _setBaseModelConnection, BaseModel } from "../model/BaseModel.ts";
@@ -22,6 +22,22 @@ beforeEach(async () => {
   await db`DELETE FROM sqlite_sequence`;
 });
 
+// A test that fails between beginTransaction() and commit()/rollback() leaves the one
+// connection inside an open transaction. Every later begin() then collides with it: on
+// Bun 1.4.0 each fails with "cannot start a transaction within a transaction", and on
+// Bun 1.4.4 CI it surfaced as three 5-second timeouts and a run that never finished — one
+// failure turning into a whole suite that would not end. rollback() after commit() is a
+// no-op, so settling every handle here costs nothing when the test behaved.
+const handles: Array<Awaited<ReturnType<typeof DB.beginTransaction>>> = [];
+async function begin() {
+  const t = await DB.beginTransaction();
+  handles.push(t);
+  return t;
+}
+afterEach(async () => {
+  for (const t of handles.splice(0)) await t.rollback();
+});
+
 @table("tx_users", { timestamps: false })
 class TxUser extends BaseModel {
   @column() name!: string;
@@ -29,13 +45,13 @@ class TxUser extends BaseModel {
 
 describe("manual transactions", () => {
   it("commit persists", async () => {
-    const t = await DB.beginTransaction();
+    const t = await begin();
     await t.table("tx_users").insert({ name: "manual" });
     await t.commit();
     expect(await DB.table("tx_users").where("name", "manual").first()).not.toBeNull();
   });
   it("rollback discards", async () => {
-    const t = await DB.beginTransaction();
+    const t = await begin();
     await t.table("tx_users").insert({ name: "gone" });
     await t.rollback();
     expect(await DB.table("tx_users").where("name", "gone").first()).toBeNull();

@@ -199,7 +199,7 @@ The `ManualTransaction` handle returned by `DB.beginTransaction()`:
 | `t.commit()`    | Commit and release the transaction                     |
 | `t.rollback()`  | Roll back and release the transaction                  |
 
-> **Warning** — Prefer `DB.transaction(callback)`. Manual transactions require careful error handling to avoid leaving connections open.
+> **Warning** — Prefer `DB.transaction(callback)`. A handle you never commit or roll back keeps its connection inside the transaction: on SQLite every later transaction fails with "cannot start a transaction within a transaction", and on a pool it is a connection that never comes back. Settle the handle on every path. A `finally` that calls `t.rollback()` is safe after a commit, where it does nothing.
 
 ## Raw queries with DB
 

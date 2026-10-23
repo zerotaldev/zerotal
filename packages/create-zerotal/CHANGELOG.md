@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **New apps start on a tilde range.** `bun create zerotal` wrote `^X.Y.Z` into every scaffolded
+  app's `zerotal` and `@zerotal/*` dependencies. Under the versioning scheme in the upgrade
+  guide a minor is where a break lands, so a caret let the app's next install cross one without
+  anyone reading its notes. It writes `~X.Y.Z` now, which takes every patch and stops at the
+  minor. Apps already scaffolded keep what they have; changing `^` to `~` in their
+  `package.json` gives them the same protection.
+
 ## [1.14.2] — 2026-09-01
 
 ### Fixed

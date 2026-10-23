@@ -13,7 +13,14 @@ export type Template = 'minimal' | 'api' | 'admin' | 'flow' | 'react' | 'vue';
 // "^1.1.0" found for specifier "zerotal"` — the first thing anyone trying the
 // framework saw. `scaffold.test.ts` now asserts the two agree, so CI fails rather
 // than the user's install.
-export const ZT_VERSION = "^1.15.2";
+//
+// The range is a tilde, not a caret, on purpose. Under the versioning scheme in
+// `docs/upgrade.md` a minor is where a break lands, so `^1.15.2` would let a new
+// app take 1.16.0 and its breaking change on the next install, unread. `~1.15.2`
+// takes every patch (fixes and features) and stops at the minor, which the app then
+// crosses deliberately. The docs already call a tilde the right default; this is the
+// tool following its own advice.
+export const ZT_VERSION = "~1.15.2";
 
 export interface ScaffoldOptions {
   name:     string;

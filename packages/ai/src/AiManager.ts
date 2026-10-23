@@ -19,7 +19,7 @@ import { AiGenerated, AiRefused } from "./events.ts";
 import { estimateCost } from "./pricing.ts";
 import { redactPrompt } from "./redact.ts";
 import { _resolveSchema, type SchemaInput } from "./schema.ts";
-import { assertWithinLimits, recordSpend } from "./spend.ts";
+import { assertWithinLimits, recordSpend, warnIfUnpriced } from "./spend.ts";
 import type {
   AiAgentResult,
   AiConfigShape,
@@ -471,9 +471,12 @@ export class AiManager {
    */
   private async _guardSpend(driver: AiDriver, request: AiRequest): Promise<void> {
     const { limits } = this.config;
+    const model = request.model ?? driver.model;
+    // Before the early return: with no ceiling configured an unpriced model still reads as
+    // $0 in the spend panel, and that deserves the same sentence.
+    warnIfUnpriced(model, limits);
     if (limits.perRequestUsd <= 0 && limits.perDayUsd <= 0) return;
 
-    const model = request.model ?? driver.model;
     let inputTokens = 0;
 
     if (limits.perRequestUsd > 0) {

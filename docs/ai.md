@@ -111,8 +111,10 @@ negotiated rates pays less than the estimate. They are a guard against a runaway
 loop, not a billing system — the provider's dashboard remains the authority.
 
 A model this package has no price for is never blocked, because a ceiling with
-nothing to compare against should stand aside rather than refuse everything. Teach it
-a price with `registerModelPrice()`.
+nothing to compare against should stand aside rather than refuse everything. That also
+means both ceilings are **off** for it, and its spend reads $0, so the first request to
+such a model logs a warning saying so (once per model), and `zt ai:test` says so next to
+the model it reached. Teach it a price with `registerModelPrice()`.
 
 ## Generating text
 
@@ -319,8 +321,11 @@ history could not be — which is the case caching is most worth having for.
 
 ### What it costs
 
-`estimateCost` prices a cache read at 0.1× input and a **5-minute** write at 1.25×. A
-**1-hour** write costs 2×, and the two are tracked separately in `AiUsage`
+`estimateCost` prices a cache read at 0.1× input, unless the model's row says otherwise
+(Claude Opus 5.5 and Sonnet 5.5 bill 0.05×, Claude Fable 5.1 0.025×), and a **5-minute**
+write at 1.25×. Claude Haiku 5.5 is priced by prompt length: a request whose whole prompt,
+cache reads and writes included, is over 100,000 tokens is billed at five times the rates.
+A **1-hour** write costs 2×, and the two are tracked separately in `AiUsage`
 (`cacheWrite1hTokens`, counted inside `cacheWriteTokens`) because one number cannot be
 priced two ways.
 
@@ -510,6 +515,12 @@ instead.
 `ai:test` exists because AI configuration fails in ways unit tests cannot reach: a key
 with no access to the model, a model id that 404s because someone appended a date
 suffix, a gateway that rewrites the base URL.
+
+It tests the default driver, so an app that keeps a local fallback next to its real
+provider does not get a failure for the fallback being down. Name a driver to test that
+one, or pass `--all` to test every driver. The exit code is 1 when a driver it tested
+failed, so a deploy script can rely on it. It also prints the price of the model it
+reached, or says there is none.
 
 ## Adding a provider
 

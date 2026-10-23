@@ -1,6 +1,7 @@
-import type { Application, ArgDef } from "@zerotal/core";
+import type { Application, ArgDef, FlagDef } from "@zerotal/core";
 import { Command } from "@zerotal/core";
 import type { AiManager } from "../AiManager.ts";
+import { modelPrice } from "../pricing.ts";
 
 /**
  * `zt ai:test [driver]` — reach the provider once and print what came back.
@@ -20,6 +21,15 @@ export class AiTestCommand extends Command {
 
   static args: ArgDef[] = [{ name: "driver", required: false }];
 
+  static flags: FlagDef[] = [
+    {
+      name: "all",
+      type: "boolean",
+      description: "Test every configured driver, not only the default",
+      default: false,
+    },
+  ];
+
   async run(): Promise<void> {
     const app = this.app as Application | undefined;
     if (!app) {
@@ -29,25 +39,51 @@ export class AiTestCommand extends Command {
 
     const ai = app.container.makeSync("ai") as AiManager;
     const requested = this.args["driver"];
-    const names = requested ? [requested] : ai.drivers();
+    // The default driver, unless one is named or `--all` is passed. An app that declares a local
+    // fallback (Ollama, say) next to its real provider would otherwise get a red line, and a
+    // failing exit, on every run of a correct setup.
+    const names = requested ? [requested] : this.flags["all"] ? ai.drivers() : [ai.config.default];
 
-    if (names.length === 0) {
+    if (names.length === 0 || (!requested && ai.drivers().length === 0)) {
       this.error("No AI drivers are configured. Add one under drivers in config/ai.ts.");
+      process.exitCode = 1;
       return;
     }
 
     let failed = false;
+    const models: string[] = [];
 
     for (const name of names) {
       this.line(`${name}: contacting the provider…`);
       const status = await ai.verify(name);
 
       if (status.ok) {
+        models.push(status.model);
         this.info(`${name}: ok · model ${status.model} · ${status.detail}`);
       } else {
         failed = true;
+        // A script or CI step that runs this to check a key must be able to tell.
+        process.exitCode = 1;
         this.error(`${name}: failed · model ${status.model} · ${status.detail}`);
       }
+    }
+
+    // What a model costs is as much a part of the configuration as which model it is, and an
+    // unpriced one turns the spend ceilings off. This is where a person looks.
+    for (const model of new Set(models)) {
+      const price = modelPrice(model);
+      if (price) {
+        this.line(`${model}: priced at $${price.input}/$${price.output} per million tokens`);
+      } else {
+        this.warn(
+          `${model}: no price, so the spend ceilings do not apply to it. Add one with registerModelPrice().`,
+        );
+      }
+    }
+
+    if (!requested && !this.flags["all"] && ai.drivers().length > 1) {
+      const others = ai.drivers().filter((name) => !names.includes(name));
+      this.line(`Not tested: ${others.join(", ")}. Pass --all to test every driver.`);
     }
 
     if (!failed) {

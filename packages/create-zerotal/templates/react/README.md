@@ -11,13 +11,7 @@ Built with [Zerotal](https://zerotal.dev) — a full-stack TypeScript framework 
 
 ## Getting started
 
-```bash
-bun install
-bun run dev
-```
-
-The dev server prints a local URL and a network one, so you can open the app on
-another device on the same Wi-Fi.
+{{getting_started}}
 
 ## Scripts
 

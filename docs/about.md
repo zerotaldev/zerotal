@@ -82,12 +82,11 @@ Add `FlowProvider`. The provider list is the feature manifest for your app.
 # in your project's parent directory
 bun create zerotal my-app     # choose: API, Flow, React, Vue, or Minimal
 cd my-app
-cp .env.example .env         # APP_KEY is pre-generated for you
 bun zt migrate              # create the database schema (API template)
 bun zt dev                  # dev server + hot reload at http://localhost:3000
 ```
 
-The scaffolder writes a fresh `APP_KEY` into `.env.example` and installs
+The scaffolder writes a fresh `APP_KEY` into `.env` and installs
 dependencies. Pick a template at the prompt:
 
 - **API** — JSON REST API (core + ORM + auth + validation + testing). The default.

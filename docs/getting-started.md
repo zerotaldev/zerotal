@@ -152,20 +152,17 @@ no manual registration.
 
 ## Environment setup
 
-The scaffolder generates `.env.example` with a ready-made `APP_KEY`. Copy it to
-`.env`:
-
-```bash
-# in your project root
-cp .env.example .env
-```
+The scaffolder writes a `.env` with a freshly generated `APP_KEY`, so a new app boots
+straight away; there is nothing to copy. `.env` is git-ignored. `.env.example` is the
+copy you commit, and it holds placeholders on purpose: on another machine, copy it to
+`.env` and run `bun zt key:generate` to fill the key in.
 
 ```ini
 # .env
 APP_ENV=development
-APP_KEY=base64:…              # pre-generated; rotate with `bun zt key:generate`
+APP_KEY=…                     # generated for you; rotate with `bun zt key:generate`
 DATABASE_URL=./database/db.sqlite
-SESSION_SECRET=change-me-in-production
+SESSION_SECRET=…              # API template: generated for you; set your own before deploying
 ```
 
 The database is configured with a single **`DATABASE_URL`** — SQLite uses a file

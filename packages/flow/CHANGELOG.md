@@ -11,6 +11,15 @@ change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Flow's HTTP fallback attributes a call to the socket address, not to the client's header.**
+  The fallback used the whole `X-Forwarded-For` header as the caller's address, which feeds the
+  invalid-snapshot limiter and the connection list: a client chose its own bucket by writing the
+  header, and a request with no header was attributed to `unknown`, the same bucket as every
+  other. Both the fallback and the socket use the framework's one rule now: the socket address,
+  or the client counted from the right of the header when `app.throttle.trustedProxies` is set.
+
 ## [1.15.5] — 2026-10-27
 
 ### Added

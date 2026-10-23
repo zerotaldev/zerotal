@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.2] — 2026-10-23
+
 ### Fixed
 
 - **`SmtpDriver` transfer-encodes text and HTML parts.** They went on the wire raw,

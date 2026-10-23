@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.2] — 2026-10-23
+
+### Changed
+
+- **`@simplewebauthn/server` is now `^13.3.3`** (was `^13.1.0`). It is the library behind
+  both ceremonies in `PasskeyService`. The range stays within 13.x, so nothing in Zerotal's
+  own API moves; an install resolves to 13.3.3 or later.
+
 ## [1.9.0] — 2026-08-29
 
 ### Added

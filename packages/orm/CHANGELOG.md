@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.2] — 2026-10-23
+
 ### Fixed
 
 - **The ORM runs on Bun 1.4.4.** Every statement it assembled from a runtime string — the

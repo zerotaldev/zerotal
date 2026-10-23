@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.2] — 2026-10-23
+
 ### Fixed
 
 - **A production build ships React's production build.** `browserEnvDefines()` defined

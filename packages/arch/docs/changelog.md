@@ -27,6 +27,64 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.15.2 — 2026-10-23
+
+A patch, and if you run Bun 1.4.4 or later it is the one to take: that Bun stopped accepting the
+way the ORM hands it SQL, so most of what the ORM sent to the database failed. Three smaller
+faults ride with it, found running a live app on Zerotal, each of which that app had been
+working round in its own code.
+
+Nothing here breaks. Safe to take directly.
+
+### Fixed
+
+- **The ORM runs on Bun 1.4.4** (`@zerotal/orm`, with `@zerotal/notifications` and
+  `@zerotal/testing`). Bun's `sql` function refuses a template object whose `raw` property
+  is enumerable — "so it is not a template object" — and the ORM built every statement it
+  assembled from a string that way: the string form of `DB.raw()`, the query builder,
+  schema and migration DDL, the `SAVEPOINT` a nested transaction issues, the validator's
+  `unique` and `exists` rules. 1.4.4 is the first Bun known to refuse it, and on that version
+  and later none of those statements ran. They now come from one helper that builds the
+  object the way the language does. An app on Bun 1.4.2 or earlier was never affected, and
+  nothing about its behaviour changes.
+
+- **A production build ships React's production build** (`@zerotal/core`). The browser
+  build's defines stated `import.meta.env` but not `process.env.NODE_ENV`, which is the
+  switch React and most of npm read — and the bundler left that expression to whatever the
+  shell happened to have. An app that ran `inertia:build --production` without `NODE_ENV`
+  in its environment shipped React's development build: a 522 KB vendor chunk where 322 KB
+  would do, the DevTools notice in every visitor's console, and full hydration diffs. The
+  define now states `NODE_ENV` from the same flag, so the build no longer depends on the
+  shell it ran in.
+
+- **`back()` works behind a proxy that terminates TLS** (`@zerotal/core`). A redirect back
+  to the previous page accepted a `Referer` only from the request's own origin. Behind a
+  reverse proxy the request reaches the app as `http://…` while every browser sends
+  `https://…`, so every `Referer` was refused and "back" was always `/`. That is not only
+  `ctx.back()`: `validate()`'s redirect on failure, `FormRequest`, the intended-URL helpers
+  and Flow all use the same check, so a form with one mistake in it sent the user to the
+  home page with its errors flashed to a page that never shows them. The origin of the
+  configured `app.url` now counts as the app's own as well. Every other site is still
+  refused, and with no `app.url` set the behaviour is exactly what it was.
+
+- **`SmtpDriver` transfer-encodes text and HTML parts** (`@zerotal/notifications`). Both
+  went on the wire raw, with no `Content-Transfer-Encoding`. A body line over the 998-octet
+  limit of RFC 5322 was cut by a relay wherever the limit fell — a single-line HTML email
+  reached a customer reading "sup pliers" — and a non-ASCII body was sent as undeclared
+  8-bit on a connection that never negotiates `8BITMIME`. A part that is plain ASCII with
+  lines of 78 characters or fewer is still sent as written, now declared `7bit`; anything
+  else is quoted-printable, which keeps ASCII readable where base64 would not. A test that
+  asserts on the raw bytes the driver sent will see the new header, and for a long or
+  non-ASCII body, encoded text to decode before comparing.
+
+### Changed
+
+- **Three runtime dependencies move to newer minimums.** `alpinejs` and its seven plugins
+  (`@zerotal/flow`) are now `^3.17.4`, `@simplewebauthn/server` (`@zerotal/auth`) is now
+  `^13.3.3`, and `tailwind-merge` (`@zerotal/flow-ui`) is now `^3.7.0`. Each stays within
+  the major it was already on, and nothing in Zerotal's own API moves. The rest of the
+  weekly dependency update is development tooling and does not reach an installed app.
+
 ## 1.15.1 — 2026-09-13
 
 A patch, and its headline is an ORM bug as old as the option it breaks: a model keyed on

@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.2] — 2026-10-23
+
+### Changed
+
+- **`tailwind-merge` is now `^3.7.0`** (was `^3.3.1`). It is what the `cn` helper uses to
+  drop a class that a later one overrides. The range stays within 3.x.
+
 ## [1.9.0] — 2026-08-29
 
 ### Added

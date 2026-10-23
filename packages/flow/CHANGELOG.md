@@ -11,6 +11,14 @@ change.
 
 ## [Unreleased]
 
+## [1.15.2] — 2026-10-23
+
+### Changed
+
+- **Alpine is now `^3.17.4`** (was `^3.14.9`) — `alpinejs` and its `anchor`, `collapse`,
+  `focus`, `mask`, `morph`, `persist` and `resize` plugins, which move together. The
+  repository had been resolving 3.15.12; an install now resolves to 3.17.4 or later.
+
 ## [1.13.0] — 2026-08-31
 
 ### Removed — **BREAKING**

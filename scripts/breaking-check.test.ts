@@ -196,3 +196,34 @@ describe("isWidening — an additive change that reads as a removal", () => {
     ).toBe(false);
   });
 });
+
+describe("isWidening — a union printed in another order", () => {
+  it("accepts the same members in a different order", () => {
+    expect(
+      isWidening(
+        "status: 'dispatched' | 'completed' | 'failed'",
+        added("status: 'failed' | 'dispatched' | 'completed'"),
+      ),
+    ).toBe(true);
+  });
+
+  it("accepts the readonly form too", () => {
+    expect(
+      isWidening("readonly status: 'a' | 'b' | 'c'", added("readonly status: 'c' | 'a' | 'b'")),
+    ).toBe(true);
+  });
+
+  it("reports a union that lost a member, which is a narrowing", () => {
+    expect(isWidening("status: 'a' | 'b' | 'c'", added("status: 'c' | 'a'"))).toBe(false);
+  });
+
+  it("reports a union that changed a member", () => {
+    expect(isWidening("status: 'a' | 'b'", added("status: 'b' | 'z'"))).toBe(false);
+  });
+
+  it("does not rearrange a parameter list under cover of the rule", () => {
+    expect(isWidening("run: (a: A | B, c: C) => D", added("run: (c: C, a: A | B) => D"))).toBe(
+      false,
+    );
+  });
+});

@@ -93,6 +93,22 @@ export default AiConfig({
 Only the drivers you declare exist. An app that talks to Ollama alone declares no
 `anthropic` block, installs no SDK, and needs no API key.
 
+### A key that can change while the app runs
+
+If an operator enters the API key on a settings screen, give the driver a function instead
+of a string. It is asked on every request, so the next request after a change uses the new
+key, with no new manager to build:
+
+```ts fragment
+anthropic: {
+  apiKeyProvider: async () => (await Setting.find("ai_key"))?.value ?? Bun.env["ANTHROPIC_API_KEY"] ?? "",
+},
+```
+
+It wins over `apiKey` when both are given, nothing is rebuilt while it keeps returning the
+same string, and a request made while it returns an empty one fails with a clear error
+rather than going out unauthenticated.
+
 ### Why embeddings are configured separately
 
 Anthropic has no embeddings endpoint. If `embed()` hung off the generation driver,
@@ -405,6 +421,11 @@ ai.assertPromptCount(1);
 ai.restore(); // in afterEach
 ```
 
+`AiFake.install()` emits no events, because most tests are about what the app asked for.
+If a ledger, a monitor or your own listener subscribes to `AiGenerated`, pass
+`AiFake.install({ emit: true })` and it emits `AiGenerated` (and `AiRefused`, for
+`ai.refuse()`) as the real manager does, so that path can be tested without a provider.
+
 The assertions are about **what your application asked for** — the part you wrote and
 the part that can be wrong. Whether the model's prose is good is not a unit test.
 
@@ -499,6 +520,24 @@ Every generation emits `AiGenerated` on the framework event bus, and a decline a
 emits `AiRefused`. With `@zerotal/monitor` installed, the **AI** section shows spend
 against the daily ceiling, tokens in and out, cache reads, latency percentiles per
 model, and the refusal rate.
+
+**Say which part of the app asked.** `AiGenerated` carries the driver, model, tokens and
+cost, but not who called. Give a request a `meta` and it rides onto the event, verbatim and
+never sent to the provider, so a listener can bill a call to a feature:
+
+```ts fragment
+await Ai.object({ prompt, meta: { feature: "triage", householdId } }, schema);
+
+FrameworkEvents.on(AiGenerated, (e) => ledger.add(e.meta?.["feature"] ?? "unlabelled", e.costUsd));
+```
+
+A call nobody labelled has no `meta` and is counted all the same. Unlike the prompt
+preview, `meta` is not redacted, so keep user content out of it.
+
+**Only an unexpected failure is logged as an error.** A refusal is reported once, as a
+warning; a rate limit or a provider outage is a warning; a request your own code
+cancelled is not logged at all. Anything else is an error. `AiGenerated.failure` says
+which kind it was (`"refused"`, `"cancelled"`, `"transient"` or `"failed"`).
 
 **Prompts are redacted by default.** A prompt is user data, and the observability path
 is the one place it would otherwise be durably kept — so what is recorded is a shape,

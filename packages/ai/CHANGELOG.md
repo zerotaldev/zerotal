@@ -19,6 +19,21 @@ follows the Zerotal monorepo's unified versioning.
   is how Haiku 5.5 is priced (five times the rates past 100,000 tokens; cache reads and writes
   count toward the prompt).
 
+- **`meta` on a request, carried onto `AiGenerated`.** `Ai.object({ prompt, meta: { feature:
+"triage", householdId } })` puts the `meta` on the event for that call, verbatim and never sent
+  to the provider, so a listener can bill a call to a feature without wrapping every call site
+  in async context. A call nobody labelled has no `meta` and is counted all the same. It is not
+  redacted, unlike the prompt preview.
+- **`AiFake.install({ emit: true })`** emits `AiGenerated` (and `AiRefused`, for `refuse()`) as the
+  real manager does. `AiFake` replaces the manager, so none of the manager's events fired and
+  nothing that listens for them could be tested with it. Off by default.
+- **`apiKeyProvider` on the Anthropic driver**: a function asked on every request, for a key
+  somebody can change while the app runs. The next request after a change uses the new key; before
+  this, a changed key meant building a new manager and replacing the container binding.
+  `apiKey` may be empty when it is given.
+- **`AiGenerated.failure`** (`"refused" | "cancelled" | "transient" | "failed"`) for a failed call,
+  and the `AiFailureKind` type.
+
 ### Changed
 
 - **`zt ai:test` tests the default driver and exits 1 when a driver it tested failed.** With no
@@ -35,6 +50,12 @@ follows the Zerotal monorepo's unified versioning.
   accumulates, with nothing to show for it. The first request to such a model now logs a warning,
   once per model, naming the model and the ceilings it escapes and pointing at
   `registerModelPrice()`.
+
+- **Only an unexpected failure is logged as an error.** Every failed generation was logged at
+  ERROR, including the refusal that had just been reported as a warning, the rate limit the caller
+  retried and the request the caller cancelled, so the log became a place to stop looking. A
+  refusal is logged once, as a warning; a rate limit or provider outage is a warning; a cancel is
+  not logged. Anything else is still an error.
 
 ## [1.14.1] — 2026-09-01
 

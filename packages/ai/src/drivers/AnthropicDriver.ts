@@ -1,5 +1,6 @@
 import {
   AiCancelledError,
+  AiConfigError,
   AiDriverUnavailableError,
   AiRateLimitError,
   AiRefusedError,
@@ -67,6 +68,8 @@ export class AnthropicDriver implements AiDriver {
 
   private _loaded: LoadedAnthropic | undefined;
   private _loading: Promise<LoadedAnthropic> | undefined;
+  /** The key the current client was built with, so a provider's new answer is noticed. */
+  private _keyInUse: string;
   private _warnedSampling = false;
 
   /**
@@ -78,6 +81,7 @@ export class AnthropicDriver implements AiDriver {
     inject?: LoadedAnthropic,
   ) {
     this._loaded = inject;
+    this._keyInUse = config.apiKey;
   }
 
   get model(): string {
@@ -380,10 +384,34 @@ export class AnthropicDriver implements AiDriver {
 
   /** Load the optional SDK once, and keep both the class and the client. */
   private async _load(): Promise<LoadedAnthropic> {
-    if (this._loaded) return this._loaded;
-    this._loading ??= this._import();
-    this._loaded = await this._loading;
-    return this._loaded;
+    let loaded = this._loaded;
+    if (!loaded) {
+      this._loading ??= this._import();
+      loaded = this._loaded = await this._loading;
+    }
+
+    const provider = this.config.apiKeyProvider;
+    if (!provider) return loaded;
+
+    // Asked on every request, so a key changed while the app runs is the next request's key.
+    const key = await provider();
+    if (!key) {
+      throw new AiConfigError("drivers.anthropic.apiKeyProvider returned an empty key.");
+    }
+    if (key !== this._keyInUse) {
+      this._keyInUse = key;
+      this._loaded = loaded = { ctor: loaded.ctor, client: this._newClient(loaded.ctor, key) };
+    }
+    return loaded;
+  }
+
+  private _newClient(ctor: AnthropicConstructor, apiKey: string): AnthropicClient {
+    const options: { apiKey: string; timeout: number; baseURL?: string } = {
+      apiKey,
+      timeout: this.config.timeout,
+    };
+    if (this.config.baseUrl) options.baseURL = this.config.baseUrl;
+    return new ctor(options);
   }
 
   private async _import(): Promise<LoadedAnthropic> {
@@ -398,13 +426,7 @@ export class AnthropicDriver implements AiDriver {
     }
 
     const ctor = (loaded as AnthropicModule).default;
-    const options: { apiKey: string; timeout: number; baseURL?: string } = {
-      apiKey: this.config.apiKey,
-      timeout: this.config.timeout,
-    };
-    if (this.config.baseUrl) options.baseURL = this.config.baseUrl;
-
-    return { ctor, client: new ctor(options) };
+    return { ctor, client: this._newClient(ctor, this.config.apiKey) };
   }
 
   /** Run a provider call, translating its failure into this package's vocabulary. */

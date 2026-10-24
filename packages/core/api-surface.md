@@ -2315,7 +2315,7 @@ class TestCommand = {
   static args: {    name: string;    required: boolean;    default: string;}[]
   static commandName: string
   static description: string
-  static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'number';    description: string;    default: number;    short?: never;} | {    name: string;    type: 'string';    description: string;    default: string;    short?: never;})[]
+  static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'number';    description: string;    default: number;    short?: never;})[]
   static needsApp: boolean
   static readonly DEFAULT_TIMEOUT_MS: 30000
   _readLine: () => Promise<string>

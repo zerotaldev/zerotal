@@ -10,14 +10,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
-- **`zt test --isolate`, `--parallel` and `--shard`.** Bun can run each test file in a fresh
-  global, which is what makes a result independent of file order, and the only way to ask for it
-  through `zt test` was an option the command threw away: `zt test --isolate` ran normally,
-  printed nothing and had no effect. `--isolate` passes it on, `--parallel=N` runs N worker
-  processes (and implies it), and `--shard=1/3` runs a slice of the files for splitting CI. It is
-  off by default: each file boots its own app, so a suite that boots one in every file pays for it
-  once per file. Any other `bun test` flag goes after `--`. `Command.unknownFlags` lists the
-  options a command was given and does not declare.
+- **`zt test --isolate`.** Bun can run each test file in a fresh global, which is what makes a
+  result independent of file order, and the only way to ask for it through `zt test` was an option
+  the command threw away: `zt test --isolate` ran normally, printed nothing and had no effect. It
+  is off by default: each file boots its own app, so a suite that boots one in every file pays for
+  it once per file. Any other `bun test` flag, such as `--parallel=4` or `--shard=1/3` for
+  splitting CI, goes after `--`. `Command.unknownFlags` lists the options a command was given and
+  does not declare.
 
 - **`zt upgrade` points at config values that are what a default used to be.** It answered "No
   codemods apply to this version range" to an app that set `cors.origin` to `"*"`, the value

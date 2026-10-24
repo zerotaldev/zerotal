@@ -101,18 +101,11 @@ describe("zt test options", () => {
     expect(await run({})).not.toContain("--isolate");
   });
 
-  it("passes --shard and --parallel with their values", async () => {
-    const args = await run({ shard: "2/3", parallel: "4" });
+  it("hands --shard and --parallel to bun test when they come after --", async () => {
+    const args = await run({}, [], ["--shard=2/3", "--parallel=4"]);
 
     expect(args).toContain("--shard=2/3");
     expect(args).toContain("--parallel=4");
-  });
-
-  it("passes a bare --parallel as one worker per core", async () => {
-    const args = (await run({ parallel: true })) ?? [];
-
-    expect(args).toContain("--parallel");
-    expect(args.some((arg) => arg.startsWith("--parallel="))).toBe(false);
   });
 
   it("refuses an option it does not know, and does not run the suite", async () => {

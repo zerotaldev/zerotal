@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`.gitattributes` pinning line endings to LF**, in every template. On Windows git's default
+  rewrote each checkout to CRLF and printed `LF will be replaced by CRLF the next time Git
+  touches it` for every generated file on every commit (`types/routes.generated.ts`,
+  `resources/js/pages.generated.ts`, anything the framework scaffolds later). The files are LF where
+  they are deployed. An existing `.gitattributes` is left alone.
+
 ### Changed
 
 - **Every page of the Flow starter compiles ahead of time.** Five of its eight pages rendered

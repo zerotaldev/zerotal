@@ -125,3 +125,74 @@ describe("isWidening — a shape gaining an optional member", () => {
     );
   });
 });
+
+describe("isWidening — an additive change that reads as a removal", () => {
+  const frameworkEvents =
+    "const FrameworkEvents = {    on<E extends object>(t: string, h: Handler<E>): () => void;    emit<E extends object>(event: E): void;    clear(): void;}";
+
+  it("accepts a const that gained a method", () => {
+    const after =
+      "const FrameworkEvents = {    on<E extends object>(t: string, h: Handler<E>): () => void;    onAsync<E extends object>(t: string, h: Handler<E>): () => void;    emit<E extends object>(event: E): void;    clear(): void;}";
+    expect(isWidening(frameworkEvents, added(after))).toBe(true);
+  });
+
+  it("reports a const that lost a method while gaining another", () => {
+    const after =
+      "const FrameworkEvents = {    on<E extends object>(t: string, h: Handler<E>): () => void;    onAsync(): void;    clear(): void;}";
+    expect(isWidening(frameworkEvents, added(after))).toBe(false);
+  });
+
+  it("reports a const whose existing method changed while one was added", () => {
+    const after =
+      "const FrameworkEvents = {    on<E extends object>(t: string): () => void;    onAsync(): void;    emit<E extends object>(event: E): void;    clear(): void;}";
+    expect(isWidening(frameworkEvents, added(after))).toBe(false);
+  });
+
+  it("reports a type alias that gained a required member, which breaks every literal", () => {
+    expect(isWidening("type O = {    a: X;}", added("type O = {    a: X;    b: Y;}"))).toBe(false);
+  });
+
+  it("accepts a function that gained an optional parameter", () => {
+    expect(
+      isWidening(
+        "static install: () => AiFake",
+        added("static install: (options?: {    emit?: boolean;}) => AiFake"),
+      ),
+    ).toBe(true);
+  });
+
+  it("accepts a constructor that gained trailing optional parameters", () => {
+    expect(
+      isWidening(
+        "new (a: string, b: Record<string, unknown>, error?: string | undefined): E",
+        added(
+          "new (a: string, b: Record<string, unknown>, error?: string | undefined, meta?: Record<string, unknown> | undefined): E",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("reports a function that gained a required parameter", () => {
+    expect(
+      isWidening("static install: () => AiFake", added("static install: (options: X) => AiFake")),
+    ).toBe(false);
+  });
+
+  it("reports a parameter that changed type while another was added", () => {
+    expect(
+      isWidening("run: (a: string) => void", added("run: (a: number, b?: string) => void")),
+    ).toBe(false);
+  });
+
+  it("reports a function whose return type changed while it gained a parameter", () => {
+    expect(
+      isWidening("run: (a: string) => void", added("run: (a: string, b?: string) => string")),
+    ).toBe(false);
+  });
+
+  it("reports an optional parameter list that lost one", () => {
+    expect(
+      isWidening("run: (a: string, b?: string) => void", added("run: (a: string) => void")),
+    ).toBe(false);
+  });
+});

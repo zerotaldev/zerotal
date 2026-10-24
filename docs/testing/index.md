@@ -394,8 +394,8 @@ Bun can start each file from a fresh global, and `zt test` passes the request on
 
 ```bash
 bun zt test --isolate                  # a fresh global per file
-bun zt test --parallel=4               # four worker processes; implies --isolate
-bun zt test --shard=1/3                # the first of three slices of the files, for CI
+bun zt test -- --parallel=4            # four worker processes; implies --isolate
+bun zt test -- --shard=1/3             # the first of three slices of the files, for CI
 bun zt test -- --rerun-each=3          # anything else bun test takes goes after --
 ```
 

@@ -27,8 +27,8 @@ import { testEnvOverrides } from "../testEnv.ts";
  * bun zt test --coverage             # with coverage
  * bun zt test --watch                # watch mode
  * bun zt test --isolate              # a fresh global per test file
- * bun zt test --shard=1/3            # a third of the files, for splitting CI
- * bun zt test -- --rerun-each=3      # any other bun test flag, after --
+ * bun zt test -- --shard=1/3         # any other bun test flag, after --
+ * bun zt test -- --parallel=4        # worker processes; implies --isolate
  * ```
  *
  * @category Testing
@@ -81,18 +81,7 @@ export class TestCommand extends Command {
       description: "Run each test file in a fresh global, so one file cannot affect the next",
       default: false,
     },
-    {
-      name: "parallel",
-      type: "string" as const,
-      description: "Run test files in parallel in N worker processes (implies --isolate)",
-      default: "",
-    },
-    {
-      name: "shard",
-      type: "string" as const,
-      description: "Run a subset of the test files, e.g. 1/3 for the first of three",
-      default: "",
-    },
+
     {
       name: "migrate",
       type: "boolean" as const,
@@ -163,12 +152,6 @@ export class TestCommand extends Command {
     if (this.flags["watch"]) bunArguments.push("--watch");
     if (this.flags["bail"]) bunArguments.push("--bail");
     if (this.flags["isolate"]) bunArguments.push("--isolate");
-    // `--parallel` alone means "one worker per core"; with a value, that many.
-    const parallel = this.flags["parallel"];
-    if (parallel === true) bunArguments.push("--parallel");
-    else if (typeof parallel === "string" && parallel) bunArguments.push(`--parallel=${parallel}`);
-    const shard = this.flags["shard"];
-    if (typeof shard === "string" && shard) bunArguments.push(`--shard=${shard}`);
 
     // Bun's default is 5s and applies to hooks as well as tests — and `bunfig.toml`'s
     // `[test] timeout` does not cover hooks, only this flag does. A `beforeAll` that calls

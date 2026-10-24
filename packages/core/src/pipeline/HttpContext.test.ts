@@ -1,7 +1,8 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, afterEach } from "bun:test";
 import { HttpContext } from "./HttpContext.ts";
 import { Application } from "../application/Application.ts";
-import { withApp } from "../application/currentApp.ts";
+import { withApp, setDefaultApp } from "../application/currentApp.ts";
+import { _clientIp } from "../middleware/ThrottleMiddleware.ts";
 
 describe("HttpContext.json()", () => {
   it("sets a JSON response with default status 200", () => {
@@ -652,5 +653,70 @@ describe("HttpContext.back() behind a proxy that terminates TLS", () => {
     const ctx = proxied("https://shop.example/ops/settings");
     ctx.back(303);
     expect(ctx.response!.headers.get("Location")).toBe("/");
+  });
+});
+
+describe("HttpContext.clientIp()", () => {
+  const PEER = "10.0.0.1"; // the reverse proxy, from the app's side
+
+  afterEach(() => {
+    setDefaultApp(undefined);
+  });
+
+  function withProxies(trustedProxies: unknown): void {
+    const manager = {
+      get: (path: string, fallback?: unknown) =>
+        path === "app.throttle" ? { trustedProxies } : fallback,
+    };
+    setDefaultApp({ container: { makeSync: () => manager } } as never);
+  }
+
+  function request(headers: Record<string, string>, peer: string | null = PEER): HttpContext {
+    const ctx = HttpContext.fake("http://localhost/test", { headers });
+    ctx._server = {
+      requestIP: () => (peer ? { address: peer, family: "IPv4", port: 1234 } : null),
+    };
+    return ctx;
+  }
+
+  it("is the socket address with no proxies configured, whatever the client wrote", () => {
+    expect(request({ "x-forwarded-for": "6.6.6.6" }).clientIp()).toBe(PEER);
+  });
+
+  it("is the client, not the proxy, behind one trusted proxy", () => {
+    withProxies(1);
+
+    expect(request({ "x-forwarded-for": "203.0.113.9" }).clientIp()).toBe("203.0.113.9");
+  });
+
+  it("ignores what the client wrote in front of the address the proxy appended", () => {
+    withProxies(1);
+
+    expect(request({ "x-forwarded-for": "6.6.6.6, 203.0.113.9" }).clientIp()).toBe("203.0.113.9");
+  });
+
+  it("counts two proxies from the right", () => {
+    withProxies(2);
+
+    expect(request({ "x-forwarded-for": "6.6.6.6, 203.0.113.9, 10.0.0.9" }).clientIp()).toBe(
+      "203.0.113.9",
+    );
+  });
+
+  it("falls back to the socket when a trusted proxy sent no header", () => {
+    withProxies(1);
+
+    expect(request({}).clientIp()).toBe(PEER);
+  });
+
+  it("is null when the request offers no address at all", () => {
+    expect(HttpContext.fake("http://localhost/test").clientIp()).toBeNull();
+  });
+
+  it("agrees with the address the throttle keys on", () => {
+    withProxies(1);
+    const ctx = request({ "x-forwarded-for": "6.6.6.6, 203.0.113.9" });
+
+    expect(ctx.clientIp()).toBe(_clientIp(ctx, 1));
   });
 });

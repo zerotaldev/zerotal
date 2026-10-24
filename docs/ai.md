@@ -121,10 +121,36 @@ be expressed at all. So `embeddings` is its own block with its own `default`.
 count, and bounds the blast radius of one runaway prompt.
 `limits.perDayUsd` is checked from reported usage as it accumulates.
 
-Both are process-scoped and estimated from public list prices. That is a real
-limitation stated plainly: N workers hold N daily ceilings, and an account with
-negotiated rates pays less than the estimate. They are a guard against a runaway
-loop, not a billing system — the provider's dashboard remains the authority.
+Both are estimated from public list prices, so an account with negotiated rates pays less
+than the estimate. They are a guard against a runaway loop, not a billing system — the
+provider's dashboard remains the authority.
+
+#### One daily ceiling for every process
+
+When the app's cache is one other processes can see, the daily total is kept there as well as
+in the process: SQLite on a file (`cache.sqlite.path` set to a path, not `:memory:`), or Redis.
+Each completed request adds its cost to a counter for the UTC day with one atomic increment
+(see [Counters](cache.md#counters)), and the ceiling is checked against that counter, so the
+web server, the worker and every restart spend from the same limit. Without it, four workers
+held four ceilings and each deploy began the day again at zero.
+
+The counter is a refinement and never a gate on the request. If the cache cannot be reached,
+the process falls back to counting its own spend, warns once, and carries on, because refusing
+every request over a bookkeeping outage would be a worse failure than a ceiling that is
+briefly per process. The write after a request is not waited for, so a process that is killed
+the instant its last answer arrives can lose that request from the count.
+
+With no cache, the in-memory cache, or SQLite on `:memory:` (the default), the total is per
+process, as it always was. To keep it per process on purpose:
+
+```ts fragment
+// config/ai.ts
+import { AiConfig } from "@zerotal/ai";
+
+export default AiConfig({
+  limits: { perDayUsd: 25, shared: false },
+});
+```
 
 A model this package has no price for is never blocked, because a ceiling with
 nothing to compare against should stand aside rather than refuse everything. That also
@@ -549,7 +575,7 @@ instead.
 | Command               | What it does                                             |
 | --------------------- | -------------------------------------------------------- |
 | `zt ai:test [driver]` | Reach the provider once and print the **resolved model** |
-| `zt ai:spend`         | This process's token spend today, by model               |
+| `zt ai:spend`         | Token spend today (all processes when shared), by model  |
 
 `ai:test` exists because AI configuration fails in ways unit tests cannot reach: a key
 with no access to the model, a model id that 404s because someone appended a date
@@ -661,7 +687,7 @@ sections above; this is the index.
 
 | Name                 | Description                                               |
 | -------------------- | --------------------------------------------------------- |
-| `spentToday`         | USD recorded so far today, in this process.               |
+| `spentToday`         | USD recorded so far today; the shared total when shared.  |
 | `resetSpend`         | Reset the ledger. Tests, and the `ai:spend --reset` path. |
 | `AiDelivery`         | One recorded generation.                                  |
 | `modelStats`         | Per-model roll-up over everything still in the buffer.    |

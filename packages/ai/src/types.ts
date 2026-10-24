@@ -347,8 +347,20 @@ export interface EmbeddingsConfigShape {
 export interface AiLimitsConfigShape {
   /** Reject a single request whose estimated cost exceeds this, in USD. 0 = off. */
   perRequestUsd: number;
-  /** Reject once the process has spent this much today, in USD. 0 = off. */
+  /**
+   * Reject once the spend of today reaches this, in USD. 0 = off.
+   *
+   * Counted across every process that shares the cache of the app (the web server, the worker,
+   * and each restart) when that cache can be shared: SQLite on a file, or Redis. With none, or the
+   * in-memory cache, it is counted per process, which is why N workers held N ceilings and every
+   * deploy started a fresh one.
+   */
   perDayUsd: number;
+  /**
+   * Count the daily spend in the cache of the app when it can be shared. Default `true`; set
+   * `false` to keep the count per process.
+   */
+  shared?: boolean | undefined;
 }
 
 /** How the agent loop behaves. */

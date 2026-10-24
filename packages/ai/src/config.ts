@@ -101,6 +101,7 @@ function applyDriverDefaults(config: AiConfigShape): void {
     const given = drivers.anthropic as Partial<AnthropicConfigShape>;
     drivers.anthropic = {
       apiKey: given.apiKey ?? "",
+      apiKeyProvider: given.apiKeyProvider,
       // Exact model id, no date suffix. Never construct one.
       model: given.model ?? "claude-opus-5",
       // max_tokens caps thinking *plus* response text, and thinking is on by
@@ -214,9 +215,9 @@ export function validateAiConfig(config: AiConfigShape): void {
 
   if (drivers.anthropic) {
     const a = drivers.anthropic;
-    if (!a.apiKey) {
+    if (!a.apiKey && !a.apiKeyProvider) {
       throw new AiConfigError(
-        "drivers.anthropic.apiKey is empty. Set ANTHROPIC_API_KEY, or remove the anthropic block.",
+        "drivers.anthropic.apiKey is empty. Set ANTHROPIC_API_KEY, give apiKeyProvider, or remove the anthropic block.",
       );
     }
     if (/-\d{8}$/.test(a.model)) {

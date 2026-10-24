@@ -1,4 +1,6 @@
-import { Application, currentApp } from "@zerotal/core";
+import { Application, currentApp, FrameworkEvents } from "@zerotal/core";
+import { AiGenerated, AiRefused } from "./events.ts";
+import { redactPrompt } from "./redact.ts";
 import { AiRefusedError, AiSchemaError } from "./errors.ts";
 import { recheckAgainstSchema, _resolveSchema, type SchemaInput } from "./schema.ts";
 import type { RuleBuilder } from "@zerotal/validator";
@@ -64,13 +66,20 @@ export class AiFake {
   private constructor(
     private readonly _app: Application,
     private readonly _original: Binding,
+    private readonly _emit: boolean,
   ) {}
 
-  /** Replace the `ai` container binding with this fake. */
-  static install(): AiFake {
+  /**
+   * Replace the `ai` container binding with this fake.
+   *
+   * @param options.emit - Also emit `AiGenerated` (and `AiRefused`) for each call, as the real
+   *   manager does, so a ledger, a monitor or a test that listens for them can be exercised
+   *   without a provider. Off by default: most tests are about what the app asked for.
+   */
+  static install(options: { emit?: boolean } = {}): AiFake {
     const app = currentApp();
     const original = app.container.registry.get("ai");
-    const fake = new AiFake(app, original);
+    const fake = new AiFake(app, original, options.emit === true);
     app.container.value("ai", fake);
     return fake;
   }
@@ -122,9 +131,10 @@ export class AiFake {
   async generate(request: AiRequest | string): Promise<AiResponse> {
     const normalized = capture(request);
     this._record("text", normalized);
-    this._maybeRefuse();
+    this._maybeRefuse("text", normalized);
 
     const text = this._nextText();
+    this._announce("text", normalized);
     return {
       text,
       model: "fake",
@@ -138,7 +148,7 @@ export class AiFake {
   async *stream(request: AiRequest | string): AsyncIterable<AiStreamChunk> {
     const normalized = capture(request);
     this._record("stream", normalized);
-    this._maybeRefuse();
+    this._maybeRefuse("stream", normalized);
 
     const text = this._nextText();
     // Word by word, because a caller that only ever sees one chunk is not
@@ -147,6 +157,7 @@ export class AiFake {
       if (word) yield { type: "text", text: word };
     }
 
+    this._announce("stream", normalized);
     yield {
       type: "done",
       response: {
@@ -184,7 +195,7 @@ export class AiFake {
   ): Promise<T> {
     const normalized = capture(request);
     this._record("object", normalized);
-    this._maybeRefuse();
+    this._maybeRefuse("object", normalized);
 
     if (this._objects.length === 0) {
       throw new Error(
@@ -197,11 +208,16 @@ export class AiFake {
       this._objects.length > 1 ? this._objects.shift() : this._objects[0]
     ) as unknown;
 
-    if (schema === undefined) return scripted as T;
+    if (schema === undefined) {
+      this._announce("object", normalized);
+      return scripted as T;
+    }
 
     const resolved = await _resolveSchema(schema);
     try {
-      return recheckAgainstSchema<T>(resolved, scripted);
+      const checked = recheckAgainstSchema<T>(resolved, scripted);
+      this._announce("object", normalized);
+      return checked;
     } catch (error) {
       throw new AiSchemaError(
         `[Zerotal/ai] The object scripted with respondWithObject() does not satisfy the ` +
@@ -216,8 +232,9 @@ export class AiFake {
 
   async agent(request: AiAgentRequest): Promise<AiAgentResult> {
     this._record("agent", request);
-    this._maybeRefuse();
+    this._maybeRefuse("agent", request);
 
+    this._announce("agent", request);
     return {
       text: this._nextText(),
       model: "fake",
@@ -356,11 +373,55 @@ export class AiFake {
     return this._texts.length > 1 ? this._texts.shift()! : this._texts[0]!;
   }
 
-  private _maybeRefuse(): void {
+  /** Emit the success event the real manager would, when `emit` was asked for. */
+  private _announce(operation: string, request: AiRequest): void {
+    if (!this._emit) return;
+    FrameworkEvents.emit(
+      new AiGenerated(
+        "fake",
+        request.model ?? "fake",
+        operation,
+        0,
+        0,
+        0,
+        0,
+        0,
+        true,
+        redactPrompt(promptText(request), false),
+        undefined,
+        request.meta,
+      ),
+    );
+  }
+
+  private _maybeRefuse(operation: string, request: AiRequest): void {
     if (!this._refuseWith) return;
     const { category, explanation } = this._refuseWith;
     this._refuseWith = undefined;
-    throw new AiRefusedError(category, explanation);
+    const error = new AiRefusedError(category, explanation);
+
+    if (this._emit) {
+      const preview = redactPrompt(promptText(request), false);
+      FrameworkEvents.emit(new AiRefused("fake", request.model ?? "fake", category, preview));
+      FrameworkEvents.emit(
+        new AiGenerated(
+          "fake",
+          request.model ?? "fake",
+          operation,
+          0,
+          0,
+          0,
+          0,
+          0,
+          false,
+          preview,
+          error.message,
+          request.meta,
+          "refused",
+        ),
+      );
+    }
+    throw error;
   }
 }
 

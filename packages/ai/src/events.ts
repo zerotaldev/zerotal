@@ -1,3 +1,5 @@
+import type { AiFailureKind } from "./errors.ts";
+
 /**
  * The AI package's framework events, emitted on core's `FrameworkEvents` bus.
  * Observability packages subscribe to them by class; nothing here imports them.
@@ -25,6 +27,10 @@ export class AiGenerated {
     /** Redacted prompt preview — never the raw prompt. */
     readonly preview: string,
     readonly error?: string,
+    /** The request's `meta`, as given. Absent when the call carried none. */
+    readonly meta?: Record<string, unknown>,
+    /** What kind of failure this was, for a failed call; absent when it succeeded. */
+    readonly failure?: AiFailureKind,
   ) {}
 }
 

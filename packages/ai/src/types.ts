@@ -137,6 +137,15 @@ export interface AiRequest {
   temperature?: number;
   /** Which configured driver to use. Defaults to `ai.default`. */
   driver?: string;
+  /**
+   * Context about who is asking, carried verbatim onto the `AiGenerated` event for this call and
+   * never sent to the provider: `{ feature: "triage", householdId }`. It is how a listener bills
+   * a call to a feature without wrapping every call site in async context. A call nobody
+   * labelled has no `meta`, and is counted all the same.
+   *
+   * Not redacted, unlike the prompt preview: it is yours, so keep user content out of it.
+   */
+  meta?: Record<string, unknown>;
 }
 
 /** A finished, non-streaming generation. */
@@ -260,6 +269,13 @@ export interface JsonSchema {
 /** Anthropic driver settings. */
 export interface AnthropicConfigShape {
   apiKey: string;
+  /**
+   * Resolves the key on every request, and wins over {@link AnthropicConfigShape.apiKey} when
+   * given. For a key somebody can change while the app is running, such as one an operator
+   * enters on a settings screen: the next request uses the new one, with no new manager to build
+   * and no container binding to replace. Return the same string and nothing is rebuilt.
+   */
+  apiKeyProvider?: (() => string | Promise<string>) | undefined;
   /** Exact model id, no date suffix. */
   model: string;
   /** Cap for non-streaming calls. Covers thinking *and* response text. */

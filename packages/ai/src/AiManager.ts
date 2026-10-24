@@ -14,6 +14,7 @@ import {
   AiDriverUnavailableError,
   AiRefusedError,
   UnknownAiDriverError,
+  _failureKind,
 } from "./errors.ts";
 import { AiGenerated, AiRefused } from "./events.ts";
 import { estimateCost } from "./pricing.ts";
@@ -529,6 +530,8 @@ export class AiManager {
         cost,
         true,
         this._preview(request),
+        undefined,
+        request.meta,
       ),
     );
   }
@@ -560,6 +563,8 @@ export class AiManager {
         false,
         preview,
         error instanceof Error ? error.message : String(error),
+        request.meta,
+        _failureKind(error),
       ),
     );
   }

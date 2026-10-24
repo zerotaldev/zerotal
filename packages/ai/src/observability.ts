@@ -115,11 +115,24 @@ export function installAiObservability(app: Application): () => void {
       ),
       FrameworkEvents.on(AiGenerated, (e) => {
         if (e.ok) return;
-        log.error(
-          "AI generation failed",
-          { driver: e.driver, model: e.model, operation: e.operation, prompt: e.preview },
-          new Error(e.error ?? "unknown error"),
-        );
+        const context = {
+          driver: e.driver,
+          model: e.model,
+          operation: e.operation,
+          prompt: e.preview,
+        };
+        // Only an unexpected failure is an error. A refusal was just reported as one, a cancel is
+        // the caller's own doing, and a rate limit is a normal day: logging each of those at
+        // ERROR made the log a place to stop reading, and a handled failure is not an incident.
+        if (e.failure === "refused" || e.failure === "cancelled") return;
+        if (e.failure === "transient") {
+          log.warn(
+            `AI generation failed (will usually succeed on retry): ${e.error ?? ""}`,
+            context,
+          );
+          return;
+        }
+        log.error("AI generation failed", context, new Error(e.error ?? "unknown error"));
       }),
     );
   }

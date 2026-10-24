@@ -51,6 +51,24 @@ export class AiError extends ZerotalError {
 }
 
 /** Thrown for a driver name the manager does not know. */
+/**
+ * How whatever reports a failed call should treat it.
+ *
+ * - `refused`: the provider's safety classifiers declined; reported on its own as a refusal.
+ * - `cancelled`: the caller aborted; nobody needs telling.
+ * - `transient`: rate limit, dropped connection, overload; expected, and usually retried.
+ * - `failed`: anything else, which is a bug or a misconfiguration and deserves an error.
+ */
+export type AiFailureKind = "refused" | "cancelled" | "transient" | "failed";
+
+/** Classify a failed call; see {@link AiFailureKind}. @internal */
+export function _failureKind(error: unknown): AiFailureKind {
+  if (error instanceof AiRefusedError) return "refused";
+  if (error instanceof AiCancelledError) return "cancelled";
+  if (error instanceof AiError && error.transient) return "transient";
+  return "failed";
+}
+
 export class UnknownAiDriverError extends AiError {
   constructor(driver: string, known: string[] = []) {
     super(

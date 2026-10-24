@@ -142,6 +142,7 @@ class QueueFake = {
 
 class TestApp = {
   new (_app: Application, _errors?: TestExceptionHandler | undefined): TestApp
+  _resetClientState: () => void
   _shared: boolean
   actingAs: (user: {    id: number | string;}) => TestApp
   actingAsGuest: () => TestApp

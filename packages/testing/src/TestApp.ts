@@ -437,6 +437,24 @@ export class TestApp {
   _shared = false;
 
   /**
+   * @internal Forget everything a test set on this client: headers, cookies, the acting user and
+   * session data, redirect following and exception capture.
+   *
+   * The shared instance outlives the file that configured it, so this runs when a file closes it
+   * and when the next file asks for it. Doing both is deliberate: a file that never calls
+   * `close()` must not hand its `withHeaders()` to the file that runs after it.
+   */
+  _resetClientState(): void {
+    this._authCookie = undefined;
+    this._actingUser = undefined;
+    this._sessionData = undefined;
+    this._globalHeaders = {};
+    this._cookies = {};
+    this._followRedirects = false;
+    if (this._errors) this._errors.captureMode = false;
+  }
+
+  /**
    * Stop the test server and shut the app's providers down. Call in `afterAll()`.
    *
    * When this app is the per-process shared instance — the normal case, where each
@@ -465,6 +483,7 @@ export class TestApp {
     // as a CI-only flake for months.
     //
     // So the question to ask is about the Application, not the wrapper.
+    this._resetClientState();
     if (this._shared || _sharedApps.has(this._app)) {
       resetTestState();
       return;
@@ -658,6 +677,8 @@ export async function createTestApp(
     const existing = _sharedApps.get(booted);
     if (existing) {
       booted.adoptAsCurrent();
+      // The previous file may not have closed it, and what it set is not this file's.
+      existing._resetClientState();
       return existing;
     }
     // Not a shared app after all. Fall through — the module is cached now, so the

@@ -91,6 +91,23 @@ await Cache.forget("user:1");
 await Cache.flush();
 ```
 
+## Counters
+
+`increment()` adds to a number in one step and returns the new total. `decrement()` subtracts.
+
+```ts fragment
+// in a controller
+import { Cache } from "@zerotal/cache";
+
+const signups = await Cache.increment(`signups:${today}`, 1, 86_400); // 1, then 2, then 3
+await Cache.increment("credits:42", 0.5);
+await Cache.decrement("credits:42", 2);
+```
+
+The addition happens inside the driver (an upsert on SQLite, `INCRBYFLOAT` on Redis), so two processes counting at once do not lose an update. Reading with `get()`, adding, and writing back does lose one whenever the two interleave, and for a counter that is always an under-count.
+
+A key that is absent, expired, or holds something other than a number counts as `0`. The `ttl` applies when the call creates the entry and is not extended by later additions, so a daily counter expires with the day it started. A custom driver that does not implement `increment` gets a read followed by a write, which is correct in one process and not across several.
+
 ## remember — the primary workhorse
 
 `remember()` checks the cache and, on a miss, calls the factory, stores the result, and returns it. Under high concurrency, multiple callers for the same key coalesce — the factory runs exactly once:
@@ -326,17 +343,19 @@ afterEach(async () => {
 
 `Cache` is a facade over the bound `CacheManager`. Every method below is called as `Cache.xxx(...)` or on a manager you constructed yourself.
 
-| Method     | Signature                                                              | Description                                                            |
-| ---------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `get`      | `get<T>(key: string): Promise<T \| null>`                              | Read a value; `null` on miss.                                          |
-| `set`      | `set(key: string, value: unknown, ttl?: number): Promise<void>`        | Store a value; `ttl` in seconds, falls back to the configured default. |
-| `forever`  | `forever(key: string, value: unknown): Promise<void>`                  | Store a value with no expiry.                                          |
-| `has`      | `has(key: string): Promise<boolean>`                                   | Whether a (non-expired) key exists.                                    |
-| `forget`   | `forget(key: string): Promise<void>`                                   | Remove a single key.                                                   |
-| `flush`    | `flush(): Promise<void>`                                               | Remove every key under the current prefix.                             |
-| `remember` | `remember<T>(key, ttl: number, fn: () => Promise<T> \| T): Promise<T>` | Return the cached value, or compute, store, and return it.             |
-| `tags`     | `tags(tagNames: string[]): TaggedCache`                                | Scope subsequent operations to a tag group.                            |
-| `dispose`  | `dispose(): void`                                                      | Release driver resources (timers, connections).                        |
+| Method      | Signature                                                              | Description                                                            |
+| ----------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `get`       | `get<T>(key: string): Promise<T \| null>`                              | Read a value; `null` on miss.                                          |
+| `set`       | `set(key: string, value: unknown, ttl?: number): Promise<void>`        | Store a value; `ttl` in seconds, falls back to the configured default. |
+| `forever`   | `forever(key: string, value: unknown): Promise<void>`                  | Store a value with no expiry.                                          |
+| `has`       | `has(key: string): Promise<boolean>`                                   | Whether a (non-expired) key exists.                                    |
+| `forget`    | `forget(key: string): Promise<void>`                                   | Remove a single key.                                                   |
+| `flush`     | `flush(): Promise<void>`                                               | Remove every key under the current prefix.                             |
+| `increment` | `increment(key: string, by = 1, ttl?: number): Promise<number>`        | Add to a number atomically and return the total; see Counters.         |
+| `decrement` | `decrement(key: string, by = 1, ttl?: number): Promise<number>`        | Subtract; the same as `increment(key, -by, ttl)`.                      |
+| `remember`  | `remember<T>(key, ttl: number, fn: () => Promise<T> \| T): Promise<T>` | Return the cached value, or compute, store, and return it.             |
+| `tags`      | `tags(tagNames: string[]): TaggedCache`                                | Scope subsequent operations to a tag group.                            |
+| `dispose`   | `dispose(): void`                                                      | Release driver resources (timers, connections).                        |
 
 ### Commands
 

@@ -143,7 +143,7 @@ the instant its last answer arrives can lose that request from the count.
 With no cache, the in-memory cache, or SQLite on `:memory:` (the default), the total is per
 process, as it always was. To keep it per process on purpose:
 
-```ts fragment
+```ts
 // config/ai.ts
 import { AiConfig } from "@zerotal/ai";
 
@@ -641,17 +641,18 @@ sections above; this is the index.
 
 ### Errors
 
-| Name                       | Description                                                                 |
-| -------------------------- | --------------------------------------------------------------------------- |
-| `AiError`                  | Base class for all `@zerotal/ai` errors.                                    |
-| `AiConfigError`            | Thrown at boot, or on first use, for a config combination that cannot work. |
-| `AiRequestError`           | Thrown for any other non-2xx from the provider, carrying its status.        |
-| `AiRateLimitError`         | Thrown when the provider rate-limits. The SDKs already retried.             |
-| `AiSpendLimitError`        | Thrown when a request would breach a configured spend ceiling.              |
-| `AiAgentLimitError`        | Thrown when the agent loop hits its step or resume ceiling.                 |
-| `AiCancelledError`         | Thrown when the caller's `AbortSignal` fired before the call finished.      |
-| `AiDriverUnavailableError` | Thrown when a driver's optional peer package is not installed.              |
-| `UnknownAiDriverError`     | Thrown for a driver name the manager does not know.                         |
+| Name                       | Description                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `AiError`                  | Base class for all `@zerotal/ai` errors.                                                                      |
+| `AiConfigError`            | Thrown at boot, or on first use, for a config combination that cannot work.                                   |
+| `AiRequestError`           | Thrown for any other non-2xx from the provider, carrying its status.                                          |
+| `AiRateLimitError`         | Thrown when the provider rate-limits. The SDKs already retried.                                               |
+| `AiSpendLimitError`        | Thrown when a request would breach a configured spend ceiling.                                                |
+| `AiAgentLimitError`        | Thrown when the agent loop hits its step or resume ceiling.                                                   |
+| `AiCancelledError`         | Thrown when the caller's `AbortSignal` fired before the call finished.                                        |
+| `AiDriverUnavailableError` | Thrown when a driver's optional peer package is not installed.                                                |
+| `UnknownAiDriverError`     | Thrown for a driver name the manager does not know.                                                           |
+| `AiFailureKind`            | Which kind of failure `AiGenerated.failure` reports: `"refused"`, `"cancelled"`, `"transient"` or `"failed"`. |
 
 ### Configuration
 

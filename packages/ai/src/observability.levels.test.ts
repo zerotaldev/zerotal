@@ -28,7 +28,8 @@ class Failing implements AiDriver {
     throw this.error;
   }
   async *stream(): AsyncIterable<AiStreamChunk> {
-    throw this.error;
+    await Promise.reject(this.error);
+    yield { type: "text", text: "" }; // never reached; a generator must yield
   }
   async object<T>(): Promise<{ object: T; model: string; usage: AiUsage }> {
     throw this.error;

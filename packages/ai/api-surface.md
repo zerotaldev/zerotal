@@ -50,7 +50,7 @@ class AiError = {
 }
 
 class AiFake = {
-  new (_app: Application, _original: Binding, _emit: boolean): AiFake
+  new (_app: Application, _original: Binding): AiFake
   static install: (options?: {    emit?: boolean;}) => AiFake
   agent: (request: AiAgentRequest) => Promise<AiAgentResult>
   assertNotPrompted: (expected: string | RegExp | ((prompt: string) => boolean)) => void

@@ -33,7 +33,7 @@ function table(): Table {
   };
 }
 
-let servers: Array<{ stop(force?: boolean): void }> = [];
+const servers: Array<{ stop(force?: boolean): void }> = [];
 
 function serve(routes: Table, dirs = [] as Array<{ prefix: string; rootDir: string }>) {
   const server = Bun.serve({

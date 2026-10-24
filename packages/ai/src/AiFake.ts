@@ -62,11 +62,12 @@ export class AiFake {
   private readonly _objects: unknown[] = [];
   private readonly _handlers = new Map<string, AiQueueHandler>();
   private _refuseWith: { category: string | null; explanation: string | null } | undefined;
+  /** Set by {@link AiFake.install}; kept off the constructor so its signature did not change. */
+  private _emit = false;
 
   private constructor(
     private readonly _app: Application,
     private readonly _original: Binding,
-    private readonly _emit: boolean,
   ) {}
 
   /**
@@ -79,7 +80,8 @@ export class AiFake {
   static install(options: { emit?: boolean } = {}): AiFake {
     const app = currentApp();
     const original = app.container.registry.get("ai");
-    const fake = new AiFake(app, original, options.emit === true);
+    const fake = new AiFake(app, original);
+    fake._emit = options.emit === true;
     app.container.value("ai", fake);
     return fake;
   }

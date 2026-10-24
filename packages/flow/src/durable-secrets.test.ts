@@ -9,6 +9,10 @@ import { describe, it, expect } from "bun:test";
 import { stripPendingSecrets } from "./dehydrate.ts";
 import type { Snapshot } from "./types.ts";
 
+// Signing reads it. Other files set it first, which is why this passed in a shared process
+// and failed under `bun test --isolate`, where each file starts from a fresh environment.
+Bun.env["APP_KEY"] ??= "durable-secrets-test-key-aaaaaaaa";
+
 function snapshotWith(data: Snapshot["data"]): Snapshot {
   return {
     data,

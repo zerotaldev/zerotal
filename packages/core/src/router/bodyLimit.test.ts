@@ -162,10 +162,10 @@ describe("a server with one route that takes more than the rest", () => {
   });
 
   it("answers 411 for a body in chunks on a route below the ceiling, and allows it on the ceiling route", async () => {
-    const { sendChunked } = serve();
-
-    expect((await sendChunked("/api", 10)).status).toBe(411);
-    expect((await sendChunked("/hook", 10)).status).toBe(200);
+    // Two servers, so the second request cannot share a connection with the refused one: Bun 1.3
+    // answers the request after a refused chunked body with 400 once.
+    expect((await serve().sendChunked("/api", 10)).status).toBe(411);
+    expect((await serve().sendChunked("/hook", 10)).status).toBe(200);
   });
 
   it("does not touch a request that has no body", async () => {

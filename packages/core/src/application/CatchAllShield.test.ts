@@ -27,7 +27,9 @@ type Table = Parameters<typeof _shieldCatchAlls>[0];
 /** The routes a SPA app compiles to: a shell catch-all, one real page, one real asset. */
 function table(): Table {
   return {
-    "/*": { GET: shell, POST: () => new Response("posted") },
+    // HEAD is there because Router.compile() always adds one beside a GET; a table without it
+    // is answered differently from one Bun version to the next.
+    "/*": { GET: shell, HEAD: shell, POST: () => new Response("posted") },
     "/login": { GET: () => new Response("login page") },
     "/assets/app.js": new Response("entry", { headers: { "Content-Type": "text/javascript" } }),
   };

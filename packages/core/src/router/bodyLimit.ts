@@ -15,6 +15,12 @@ type Handler = (req: Request, server?: unknown) => Response | Promise<Response>;
 /** Bun's `routes` table as `Router.compile()` builds it. */
 export type BodyLimitedRoutes = Record<string, Record<string, Handler> | Response>;
 
+/**
+ * The answer is sent without the body having been read. Bun 1.4 discards the unread bytes; Bun
+ * 1.3 does not, and reads those of a chunked body as the start of the next request on the same
+ * connection, which is answered 400 once. Cancelling the body and closing the connection were
+ * both tried and neither helps there, so the quirk is documented rather than worked around.
+ */
 function _refuse(status: 411 | 413, message: string): Response {
   return new Response(message, {
     status,

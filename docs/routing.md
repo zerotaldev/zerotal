@@ -278,7 +278,7 @@ Router.post("/login", AuthController, "login").maxBodySize(16 * 1024);
 
 The server is started accepting the largest limit any route declared, and the framework holds every other route to its own, so `/login` above still refuses a 1 MiB body even though the server would take 25 MiB. An app that never calls `maxBodySize` starts the server exactly as before.
 
-The limit is judged by the `Content-Length` header, which the server holds the connection to: a client cannot send more than it declared. A body sent in chunks, with no declared length, cannot be measured without reading it, so once any route sets a limit, such a body is answered with `411 Length Required` on every route whose limit is below the server ceiling. Browsers, `fetch` with a string, form or blob, and reverse proxies that buffer request bodies all declare a length; only a streamed upload does not.
+The limit is judged by the `Content-Length` header, which the server holds the connection to: a client cannot send more than it declared. A body sent in chunks, with no declared length, cannot be measured without reading it, so once any route sets a limit, such a body is answered with `411 Length Required` on every route whose limit is below the server ceiling. Browsers, `fetch` with a string, form or blob, and reverse proxies that buffer request bodies all declare a length; only a streamed upload does not. On Bun 1.3 the next request on the same connection as a refused chunked body is answered `400` once; Bun 1.4 does not do that.
 
 A hot reload (`SIGUSR2`) re-applies the limits of the reloaded routes, but cannot raise the ceiling the server started with. A route that asks for more after a reload needs a restart, and the log says so.
 

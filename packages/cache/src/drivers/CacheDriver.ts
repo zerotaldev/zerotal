@@ -27,6 +27,17 @@ export interface CacheDriver {
   flush(prefix?: string): Promise<void>;
 
   /**
+   * Add `by` to the number stored at `key` and return the result, as one atomic step.
+   *
+   * A key that is absent, expired, or does not hold a number counts as 0. `ttl` (seconds) is
+   * applied only when the call creates the entry, so a counter keeps the expiry it started with.
+   *
+   * Optional: a driver without it gets a read-then-write fallback from {@link CacheManager},
+   * which is not safe across processes.
+   */
+  increment?(key: string, by: number, ttl?: number): Promise<number>;
+
+  /**
    * Release any background resources (timers, connections).
    * Called on graceful shutdown by CacheManager.dispose().
    */

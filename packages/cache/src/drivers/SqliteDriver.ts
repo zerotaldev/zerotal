@@ -61,6 +61,31 @@ export class SqliteDriver implements CacheDriver {
     `;
   }
 
+  async increment(key: string, by: number, ttl?: number): Promise<number> {
+    await this._ready;
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = ttl === undefined ? null : now + ttl;
+    // One statement, so two processes adding at once cannot lose an update. An expired row is
+    // replaced rather than added to, and keeps the expiry of the entry that is still live.
+    const rows = await this._sql<{ value: string }>`
+      INSERT INTO zerotal_cache (key, value, expires_at)
+      VALUES (${key}, ${String(by)}, ${expiresAt})
+      ON CONFLICT(key) DO UPDATE SET
+        value = CASE
+          WHEN zerotal_cache.expires_at IS NOT NULL AND zerotal_cache.expires_at <= ${now}
+            THEN excluded.value
+          ELSE CAST(CAST(zerotal_cache.value AS REAL) + ${by} AS TEXT)
+        END,
+        expires_at = CASE
+          WHEN zerotal_cache.expires_at IS NOT NULL AND zerotal_cache.expires_at <= ${now}
+            THEN excluded.expires_at
+          ELSE zerotal_cache.expires_at
+        END
+      RETURNING value
+    `;
+    return Number(rows[0]?.value ?? by);
+  }
+
   async forget(key: string): Promise<void> {
     await this._ready;
     await this._sql`

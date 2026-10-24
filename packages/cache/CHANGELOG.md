@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`Cache.increment()` and `Cache.decrement()`: a counter that several processes can share.**
+  Adding to a number with `get()` and `set()` loses an update whenever two processes interleave,
+  which for a spend ceiling or a rate counter is always an under-count. `increment(key, by = 1,
+ttl?)` does the addition inside the driver (an upsert on SQLite, `INCRBYFLOAT` on Redis, one
+  step in memory) and returns the new total. An absent, expired or non-numeric key counts as 0,
+  and `ttl` applies when the call creates the entry, so a daily counter expires with its day.
+  `CacheDriver.increment` is optional; a driver without it gets a read-then-write fallback.
+
 ### Fixed
 
 - **The cache is available in the worker, so the scheduler's heartbeat reaches `zt doctor`.**

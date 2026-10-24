@@ -20,7 +20,7 @@ import { AiGenerated, AiRefused } from "./events.ts";
 import { estimateCost } from "./pricing.ts";
 import { redactPrompt } from "./redact.ts";
 import { _resolveSchema, type SchemaInput } from "./schema.ts";
-import { assertWithinLimits, recordSpend, warnIfUnpriced } from "./spend.ts";
+import { assertWithinLimits, recordSpend, refreshSharedSpend, warnIfUnpriced } from "./spend.ts";
 import type {
   AiAgentResult,
   AiConfigShape,
@@ -477,6 +477,9 @@ export class AiManager {
     // $0 in the spend panel, and that deserves the same sentence.
     warnIfUnpriced(model, limits);
     if (limits.perRequestUsd <= 0 && limits.perDayUsd <= 0) return;
+
+    // Spend by the other processes, so the daily ceiling belongs to the app and not to this process.
+    if (limits.perDayUsd > 0) await refreshSharedSpend();
 
     let inputTokens = 0;
 

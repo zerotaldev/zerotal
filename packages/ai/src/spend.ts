@@ -6,10 +6,12 @@
  * - **Per-request** is checked *before* the call, from a token estimate, because
  *   after the call the money is already spent. It bounds the blast radius of one
  *   runaway prompt.
- * - **Per-day** is checked from actual reported usage, accumulated in-process.
- *   In-process is a real limitation — N workers get N ceilings — and it is
- *   stated rather than hidden, because the alternative (a shared counter behind
- *   the cache) buys precision for an availability dependency on the hot path.
+ * - **Per-day** is checked from actual reported usage. It is counted in this
+ *   process, and also in the cache of the app when that is shared (SQLite on a
+ *   file, Redis), so the web server, the worker and a restart all spend from
+ *   one ceiling. The cache refines the count and never gates the request: if
+ *   it cannot be reached, the spend of this process still counts and the
+ *   ceiling fails open to that, rather than refusing every request.
  *
  * A model with no price contributes 0 and is never blocked. See `pricing.ts`.
  */
@@ -56,6 +58,27 @@ export function _resetUnpricedWarnings(): void {
 let _day = "";
 let _spentUsd = 0;
 
+/**
+ * The slice of the cache the shared daily ledger needs. Structural: `@zerotal/ai` does not
+ * depend on `@zerotal/cache`, and anything with these two methods will do.
+ */
+export interface SharedSpendStore {
+  get<T>(key: string): Promise<T | null>;
+  increment(key: string, by: number, ttl?: number): Promise<number>;
+}
+
+/** Money is kept as whole micro-dollars in the store, so a float never drifts across additions. */
+const MICROS = 1_000_000;
+/** Two days, so a ledger outlives the UTC day it covers by a margin for clock skew. */
+const LEDGER_TTL_SECONDS = 172_800;
+
+let _shared: SharedSpendStore | undefined;
+/** The shared total as last seen, in micro-dollars: every process, this one included. */
+let _sharedMicros = 0;
+let _warnedSharedFailure = false;
+
+const ledgerKey = (day: string): string => `ai:spend:${day}`;
+
 /** UTC `YYYY-MM-DD`. UTC, not local, so a deploy across zones agrees with itself. */
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -66,20 +89,77 @@ function roll(): void {
   if (now !== _day) {
     _day = now;
     _spentUsd = 0;
+    _sharedMicros = 0;
   }
 }
 
-/** USD recorded so far today, in this process. */
-export function spentToday(): number {
-  roll();
-  return _spentUsd;
+/**
+ * Count the daily spend in `store` as well as in this process. The provider calls this when the
+ * app has a cache that other processes can see; pass `undefined` to go back to per process.
+ */
+export function useSharedSpend(store: SharedSpendStore | undefined): void {
+  _shared = store;
+  _sharedMicros = 0;
+  _warnedSharedFailure = false;
 }
 
-/** Add a completed request's cost to today's total. */
+/** Whether the daily spend is being counted in a shared store. */
+export function isSpendShared(): boolean {
+  return _shared !== undefined;
+}
+
+function warnSharedFailure(): void {
+  if (_warnedSharedFailure) return;
+  _warnedSharedFailure = true;
+  frameworkLog("ai").warn(
+    "The shared AI spend ledger cannot be reached, so the daily ceiling is counting this process only.",
+  );
+}
+
+/**
+ * Pull the shared total, so the ceiling is checked against what every process has spent.
+ * A cache that cannot be reached leaves the last figure standing: the spend of this process is
+ * still counted, and a ceiling that fails open on an outage is the lesser harm on a request path.
+ */
+export async function refreshSharedSpend(): Promise<void> {
+  if (!_shared) return;
+  roll();
+  const day = _day;
+  try {
+    const total = (await _shared.get<number>(ledgerKey(day))) ?? 0;
+    if (day === _day) _sharedMicros = total;
+  } catch {
+    warnSharedFailure();
+  }
+}
+
+/**
+ * USD recorded so far today. The spend of this process, or, when a shared ledger is in use, the
+ * larger of that and the shared total as last seen. The shared total already includes this
+ * process once it has been written, so the two are compared and never added.
+ */
+export function spentToday(): number {
+  roll();
+  return Math.max(_spentUsd, _sharedMicros / MICROS);
+}
+
+/** Add a completed request to the total of today. */
 export function recordSpend(model: string, usage: AiUsage): number {
   roll();
   const cost = estimateCost(model, usage);
   _spentUsd += cost;
+
+  // Written without waiting: the request has been answered and this is bookkeeping. The total the
+  // store returns covers every process, so it is also the freshest view of the others.
+  if (_shared && cost > 0) {
+    const day = _day;
+    _shared
+      .increment(ledgerKey(day), Math.round(cost * MICROS), LEDGER_TTL_SECONDS)
+      .then((total) => {
+        if (day === _day && total > _sharedMicros) _sharedMicros = total;
+      })
+      .catch(warnSharedFailure);
+  }
   return cost;
 }
 
@@ -93,6 +173,8 @@ export function recordSpend(model: string, usage: AiUsage): number {
 export function resetSpend(): void {
   _day = today();
   _spentUsd = 0;
+  _sharedMicros = 0;
+  _warnedSharedFailure = false;
 }
 
 /**

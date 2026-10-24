@@ -10,6 +10,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **The daily spend ceiling is shared by every process that shares the cache.** `limits.perDayUsd`
+  was counted in memory, so four workers held four ceilings and every deploy started the day
+  again at zero; the documentation said so, and an app with a worker could not rely on the
+  number it configured. With a cache other processes can see (SQLite on a file, or Redis), each
+  completed request now adds its cost, in whole micro-dollars, to a counter for the UTC day with
+  `Cache.increment`, and the ceiling and `zt ai:spend` read that counter. The cache refines the
+  count and never gates a request: if it cannot be reached the process counts its own spend,
+  warns once, and carries on. With no cache, the in-memory cache, or SQLite on `:memory:` (the
+  default) nothing changes. `limits.shared: false` keeps the count per process.
+
 - **Prices for Claude Fable 5.1, Mythos 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5**, and for Opus
   4.5 and Sonnet 4.5, which the capability table already knew. A request to any of them was
   estimated at $0, and $0 turns both spend ceilings off. `ModelPrice` gains two optional fields

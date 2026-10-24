@@ -14,6 +14,19 @@ follows the Zerotal monorepo's unified versioning.
   parser kept the declared ones and dropped the rest without a word, so a command taking any
   number of paths could only ever see the first.
 
+- **`APP_KEY` can be rotated without losing what it encrypted.** Changing `APP_KEY` made every
+  existing ciphertext unreadable at once, and an app with many encrypted columns could not rotate
+  after a leak without having every value entered again. `APP_PREVIOUS_KEYS` (comma-separated,
+  newest first) holds the old keys: `Crypt` encrypts with the current key only and decrypts with
+  the current one and then each previous one. `Crypt.usesCurrentKey()` and `Crypt.reencrypt()` find
+  and move stored values across, and `Crypt.setPreviousKeys()` is the programmatic form.
+  **`zt key:rotate`** does the `.env` side (new `APP_KEY`, old one into `APP_PREVIOUS_KEYS`) and
+  `zt key:rotate --forget` clears the list. Signed values (URLs, Flow snapshots, JWTs) are not
+  carried across: those issued under the old key stop validating.
+- **`zt init:env`** creates `.env` from `.env.example` and fills `APP_KEY` (and `SESSION_SECRET`,
+  where the example has one) with generated keys. What a fresh checkout on a server needs, in one
+  command instead of a copy and a `key:generate` per secret. It never touches an existing `.env`.
+
 ### Fixed
 
 - **`zt test a.test.ts b.test.ts` runs both.** The wrapper passed on only the first path, so a

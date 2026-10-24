@@ -43,10 +43,39 @@ const TAG_BYTES = 16;
 
 class CryptManager {
   private _key: Buffer | null = null;
+  /** Set explicitly with {@link setPreviousKeys}; otherwise `APP_PREVIOUS_KEYS` is read. */
+  private _previous: Buffer[] | null = null;
+  /** The last `APP_PREVIOUS_KEYS` value read, with the keys derived from it. */
+  private _previousFromEnv: { raw: string; keys: Buffer[] } | null = null;
 
   /** Override the key explicitly (otherwise derived from `APP_KEY`). */
   setKey(key: string): void {
     this._key = this._derive(key);
+  }
+
+  /**
+   * Keys to try after the current one when decrypting, newest first (otherwise read from
+   * `APP_PREVIOUS_KEYS`, a comma-separated list). New values are never encrypted with them.
+   *
+   * Rotating `APP_KEY` with one key makes everything already encrypted unreadable, and the only
+   * recovery is to have each value entered again. With the old key kept as a previous key,
+   * stored values keep decrypting, and {@link reencrypt} moves them to the new one at your pace.
+   */
+  setPreviousKeys(keys: string[]): void {
+    this._previous = keys.map((key) => this._derive(key));
+  }
+
+  private _previousKeys(): Buffer[] {
+    if (this._previous) return this._previous;
+    const raw = Bun.env["APP_PREVIOUS_KEYS"] ?? "";
+    if (this._previousFromEnv?.raw === raw) return this._previousFromEnv.keys;
+    const keys = raw
+      .split(",")
+      .map((key) => key.trim())
+      .filter((key) => key.length > 0)
+      .map((key) => this._derive(key));
+    this._previousFromEnv = { raw, keys };
+    return keys;
   }
 
   private _derive(key: string): Buffer {
@@ -84,23 +113,56 @@ class CryptManager {
    * @throws {CryptKeyMissingError} When no key is set and `APP_KEY` is absent.
    */
   decryptString(payload: string): string {
+    // The current key first, then each previous one. `_resolveKey()` stays outside the loop's
+    // try so a missing APP_KEY is still a CryptKeyMissingError, not a failure to decrypt.
+    const current = this._resolveKey();
+    for (const key of [current, ...this._previousKeys()]) {
+      const plain = this._tryDecrypt(payload, key);
+      if (plain !== null) return plain;
+    }
+    throw new DecryptionError();
+  }
+
+  /** The plaintext under `key`, or `null` when the payload is malformed or `key` is not its key. */
+  private _tryDecrypt(payload: string, key: Buffer): string | null {
     let data: Buffer;
     try {
       data = Buffer.from(payload, "base64");
     } catch {
-      throw new DecryptionError();
+      return null;
     }
-    if (data.length < IV_BYTES + TAG_BYTES) throw new DecryptionError();
+    if (data.length < IV_BYTES + TAG_BYTES) return null;
     const iv = data.subarray(0, IV_BYTES);
     const tag = data.subarray(IV_BYTES, IV_BYTES + TAG_BYTES);
     const ciphertext = data.subarray(IV_BYTES + TAG_BYTES);
     try {
-      const decipher = createDecipheriv("aes-256-gcm", this._resolveKey(), iv);
+      const decipher = createDecipheriv("aes-256-gcm", key, iv);
       decipher.setAuthTag(tag);
       return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
     } catch {
-      throw new DecryptionError();
+      return null;
     }
+  }
+
+  /**
+   * Whether `payload` was encrypted with the current key, as opposed to a previous one (or none
+   * of them). A `false` for a payload {@link decryptString} can read means it is due for
+   * {@link reencrypt}.
+   */
+  usesCurrentKey(payload: string): boolean {
+    return this._tryDecrypt(payload, this._resolveKey()) !== null;
+  }
+
+  /**
+   * Decrypt `payload` with whichever known key opens it, and encrypt it again with the current one.
+   * Idempotent: a payload already under the current key comes back as a fresh encryption of the
+   * same value.
+   *
+   * @throws {DecryptionError} When no known key opens it.
+   * @throws {CryptKeyMissingError} When no key is set and `APP_KEY` is absent.
+   */
+  reencrypt(payload: string): string {
+    return this.encryptString(this.decryptString(payload));
   }
 
   /**

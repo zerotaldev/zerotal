@@ -31,6 +31,8 @@ export { StartCommand } from "./StartCommand.ts";
 export { WorkerCommand } from "./WorkerCommand.ts";
 export { CompileCommand } from "./CompileCommand.ts";
 export { KeyGenerateCommand } from "./KeyGenerateCommand.ts";
+export { KeyRotateCommand } from "./KeyRotateCommand.ts";
+export { InitEnvCommand } from "./InitEnvCommand.ts";
 export { ReloadCommand } from "./ReloadCommand.ts";
 export { StatusCommand } from "./StatusCommand.ts";
 export { VersionCommand } from "./VersionCommand.ts";

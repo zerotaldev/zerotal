@@ -375,6 +375,8 @@ export class CommandRunner {
       WorkerCommand,
       CompileCommand,
       KeyGenerateCommand,
+      KeyRotateCommand,
+      InitEnvCommand,
       ReloadCommand,
       StatusCommand,
       VersionCommand,
@@ -464,6 +466,8 @@ export class CommandRunner {
       this.registerAll([
         WorkerCommand,
         KeyGenerateCommand,
+        KeyRotateCommand,
+        InitEnvCommand,
         MakeProviderCommand,
         MakeControllerCommand,
         MakeMiddlewareCommand,

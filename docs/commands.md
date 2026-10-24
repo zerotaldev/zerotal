@@ -326,6 +326,8 @@ Packages register their own — see
 | `bun zt route:types`   | Write `types/routes.generated.ts` (`--check` in CI)    |
 | `bun zt doctor`        | Check the app for silent misconfigurations             |
 | `bun zt key:generate`  | Generate a new `APP_KEY` and write it to `.env`        |
+| `bun zt key:rotate`    | Replace `APP_KEY`, keeping the old one to decrypt with |
+| `bun zt init:env`      | Create `.env` from `.env.example`, secrets generated   |
 | `bun zt lint:packages` | Check every workspace package against convention rules |
 | `bun zt upgrade`       | Apply the codemods for a version upgrade               |
 

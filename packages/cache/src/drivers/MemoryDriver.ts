@@ -37,6 +37,18 @@ export class MemoryDriver implements CacheDriver {
     this._store.set(key, { value, expiresAt });
   }
 
+  async increment(key: string, by: number, ttl?: number): Promise<number> {
+    const entry = this._store.get(key);
+    const live = entry !== undefined && (entry.expiresAt === null || entry.expiresAt > Date.now());
+    const held = live ? Number(entry.value) : 0;
+    const next = (Number.isFinite(held) ? held : 0) + by;
+    this._store.set(key, {
+      value: String(next),
+      expiresAt: live ? entry.expiresAt : ttl === undefined ? null : Date.now() + ttl * 1000,
+    });
+    return next;
+  }
+
   async forget(key: string): Promise<void> {
     this._store.delete(key);
   }

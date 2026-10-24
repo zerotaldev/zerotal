@@ -25,6 +25,15 @@ export class RedisDriver implements CacheDriver {
     await redis.set(namespaced, value, "EX", ttl);
   }
 
+  async increment(key: string, by: number, ttl?: number): Promise<number> {
+    const namespaced = this._key(key);
+    const next = Number(await redis.send("INCRBYFLOAT", [namespaced, String(by)]));
+    // Only an entry with no expiry yet gets one, so a counter keeps the expiry it started with.
+    if (ttl !== undefined && (await redis.ttl(namespaced)) === -1)
+      await redis.expire(namespaced, ttl);
+    return next;
+  }
+
   async forget(key: string): Promise<void> {
     await redis.del(this._key(key));
   }

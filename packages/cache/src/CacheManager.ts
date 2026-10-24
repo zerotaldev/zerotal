@@ -69,6 +69,39 @@ export class CacheManager {
     FrameworkEvents.emit(new CacheQueried("write", key, effectiveTtl, Date.now() - t0));
   }
 
+  /**
+   * Add `by` (default 1) to the number at `key` and return the result.
+   *
+   * Atomic on the SQLite, Redis and memory drivers, so two processes adding at once do not lose
+   * an update. A key that is absent, expired, or does not hold a number counts as 0, and `ttl`
+   * (default: the cache's) applies when the call creates the entry, not on later additions. On a
+   * custom driver without `increment` this is a read followed by a write, and is not safe across
+   * processes.
+   *
+   * @example
+   * await Cache.increment(`signups:${today}`, 1, 86_400);
+   */
+  async increment(key: string, by = 1, ttl?: number): Promise<number> {
+    const t0 = Date.now();
+    const effectiveTtl = ttl ?? this._defaultTtl;
+    let next: number;
+    if (this._driver.increment) {
+      next = await this._driver.increment(this._key(key), by, effectiveTtl);
+    } else {
+      const held = await this._driver.get(this._key(key));
+      const current = held === null ? 0 : Number(held);
+      next = (Number.isFinite(current) ? current : 0) + by;
+      await this._driver.set(this._key(key), this._encode(key, next), effectiveTtl);
+    }
+    FrameworkEvents.emit(new CacheQueried("write", key, effectiveTtl, Date.now() - t0));
+    return next;
+  }
+
+  /** Subtract `by` (default 1); see {@link increment}. */
+  async decrement(key: string, by = 1, ttl?: number): Promise<number> {
+    return this.increment(key, -by, ttl);
+  }
+
   async forget(key: string): Promise<void> {
     const t0 = Date.now();
     await this._driver.forget(this._key(key));

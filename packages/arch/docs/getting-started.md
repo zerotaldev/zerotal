@@ -245,8 +245,8 @@ bun zt make:model Post --migration
 ```
 
 This generates `app/models/Post.ts` and a migration for the same table,
-`database/migrations/NNN_create_posts_table.ts`, where `NNN` is the next free
-number. Models in `app/models/` are auto-discovered at boot — no manual
+`NNN_create_posts_table.ts` in `database/migrations/`, where `NNN` is the next
+free number. Models in `app/models/` are auto-discovered at boot — no manual
 registration, and the table name is derived by convention (`Post` → `posts`), so
 `@table` is optional; the generated model states it anyway, and the migration
 creates exactly that table. The same applies to observers, policies, and event

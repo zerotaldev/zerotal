@@ -8,6 +8,7 @@ import { RequestContext } from "../context/RequestContext.ts";
 import { getRequestSubdomains } from "../router/domain.ts";
 import { ScopedResolver } from "../container/ScopedResolver.ts";
 import { UploadedFile } from "../http/UploadedFile.ts";
+import { _clientAddress, _trustedProxyCount } from "../http/clientAddress.ts";
 import {
   markdownExtractTitle,
   markdownPage,
@@ -423,14 +424,43 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
    * or any context where the Bun server reference was not injected.
    *
    * When Bun sits behind a reverse proxy (nginx, Caddy, etc.) this returns
-   * the proxy's IP, not the end-user's. Use `ThrottleMiddleware`'s
-   * `trustedProxies` option together with `X-Forwarded-For` to resolve the
-   * real client IP in those deployments.
+   * the proxy's IP, not the end-user's. Use {@link HttpContext.clientIp} to
+   * resolve the real client IP in those deployments.
    *
    * @category Request data
    */
   ip(): string | null {
     return this._server?.requestIP(this.request)?.address ?? null;
+  }
+
+  /**
+   * The address of the client, behind however many proxies of yours the request came through.
+   *
+   * {@link HttpContext.ip} is the TCP peer, which behind a reverse proxy is the proxy. This is
+   * the rule the throttles, the audit trail, the sign-in lockout and Flow already use, so the
+   * address an app records or limits on is the address they do. With no `app.throttle.trustedProxies`
+   * it is the socket address and `X-Forwarded-For` is not read, because the client writes it.
+   * With `trustedProxies: n` the header is read from the right: each proxy appends the address
+   * it received the request from, so the `n`-th entry from the end is the client and anything
+   * to its left is whatever the client chose to send.
+   *
+   * @returns The address, or `null` when the request offers none (a unit test with no server).
+   *
+   * @example
+   * await audit.log("session.started", { ip: ctx.clientIp() });
+   *
+   * @category Request data
+   */
+  clientIp(): string | null {
+    const address = _clientAddress(
+      {
+        socket: this.ip(),
+        forwardedFor: this.header("x-forwarded-for"),
+        realIp: this.header("x-real-ip"),
+      },
+      _trustedProxyCount(),
+    );
+    return address === "unknown" ? null : address;
   }
 
   /**

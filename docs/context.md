@@ -322,18 +322,23 @@ registered auth model — see [Authentication](/docs/authentication).
 ## Client IP
 
 ```typescript fragment
-ctx.ip(); // string | null — socket-level IP from Bun's server.requestIP()
+ctx.clientIp(); // string | null — the client, behind however many proxies you run
+ctx.ip(); // string | null — the TCP peer, from Bun's server.requestIP()
 ```
 
-Returns `null` when no Bun server reference was injected (e.g. in unit tests created
-with `HttpContext.fake()`).
+`clientIp()` is the one to record and to limit on. With no `app.throttle.trustedProxies` it is the
+socket address. With `trustedProxies: n` it reads `X-Forwarded-For` from the right: each proxy
+appends the address it received the request from, so the `n`-th entry from the end is the client
+and everything to its left is whatever the client chose to send. It is the same rule the
+throttles, the audit trail, the sign-in lockout and Flow use, so an address you store and the
+address they limit on agree. It returns `null` when the request offers no address.
 
-> **Warning** — `ctx.ip()` is the socket IP. Behind a trusted proxy it returns the
-> proxy's address, not the end-user's. Let [`ThrottleMiddleware`](/docs/middleware) resolve
-> proxy-aware IPs via its `trustedProxies` option, or set `app.throttle.trustedProxies` once for
-> everything that needs the client's address. `X-Forwarded-For` is written by the client as well
-> as by your proxies: only the entries counted from the right are yours, so never key on the
-> leftmost one.
+`ip()` is the peer, and behind a reverse proxy the peer is the proxy. It returns `null` when no
+Bun server reference was injected (e.g. in unit tests created with `HttpContext.fake()`).
+
+> **Warning** — `X-Forwarded-For` is written by the client as well as by your proxies. Never key
+> on its leftmost entry, and do not read it yourself with `ctx.header()`: set
+> `app.throttle.trustedProxies` once and call `clientIp()`.
 
 ## URL & matching helpers
 
@@ -546,6 +551,7 @@ raw params and resolved model bindings you declare for a route.
 | `isJson`        | `(): boolean`              | True when the body is `application/json`.              |
 | `wantsJson`     | `(): boolean`              | True when `Accept` includes `application/json`.        |
 | `ip`            | `(): string \| null`       | Socket-level client IP, or `null`.                     |
+| `clientIp`      | `(): string \| null`       | Client IP behind your proxies; see Client IP.          |
 | `flash`         | `(key, value): void`       | Write a value to the session for the next request.     |
 | `flashed`       | `<T>(key): T \| undefined` | Read a value flashed in the previous request.          |
 | `afterResponse` | `(callback): this`         | Run a callback after the response is sent.             |

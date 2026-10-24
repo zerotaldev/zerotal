@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`ctx.clientIp()`: the client address, behind however many proxies you run.** `ctx.ip()` is the
+  TCP peer, which behind a reverse proxy is the proxy, so an app that recorded it recorded its own
+  infrastructure in every row, and one that wanted the client had to resolve `X-Forwarded-For`
+  itself, with the same mistakes the framework had made. `clientIp()` applies the one rule the
+  throttles, the audit trail, the sign-in lockout and Flow already use: the socket address with no
+  `app.throttle.trustedProxies`, otherwise the `n`-th entry from the right of the header.
+
 ### Changed
 
 - **`trustedProxies: n` reads the `n`-th entry from the right of `X-Forwarded-For`, which is the

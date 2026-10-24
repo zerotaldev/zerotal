@@ -74,6 +74,13 @@ failed was a correct one that merely ran second:
 [Zerotal ORM] No database connection. Is DatabaseProvider registered?
 ```
 
+`close()` also clears everything a file set on the client: `withHeaders()`, `withCookie()`,
+`actingAs()`, `withSession()`, `followingRedirects()` and `withoutExceptionHandling()`. The next
+`createTestApp()` clears it again, so a file that never calls `close()` cannot hand its
+`X-Inertia: true` to the file that runs after it. Inside one file the state persists from test to
+test, which is how a `beforeAll` configures the client; reset it in an `afterEach` with
+`actingAsGuest()` and `withoutCookies()` when each test needs its own.
+
 Keep calling `close()` in every file — it is what resets state between them. Passing a
 `setup` callback opts out of sharing (routes cannot be registered twice against a
 running server), and that app is torn down fully by its own `close()`. To tear the

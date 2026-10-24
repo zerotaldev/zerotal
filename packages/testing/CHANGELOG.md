@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **What one test file sets on the client no longer reaches the next file.** `createTestApp()`
+  hands every file in a process the same `TestApp`, and `withHeaders()`, `withCookie()`,
+  `actingAs()`, `withSession()`, `followingRedirects()` and `withoutExceptionHandling()` set state
+  on it that nothing cleared. The file that failed was whichever ran next, so each passed alone: an
+  `X-Inertia: true` set in one auth test failed seventeen unrelated tests in four other files, and
+  an `actingAs()` made a customer-facing test run as a signed-in consultant, so four assertions
+  passed for the wrong reason. `close()` now clears it, and so does the next `createTestApp()`, so
+  a file that never closes cannot leak either. Within one file the state still persists from test
+  to test, which is how a `beforeAll` configures the client.
+
 ## [1.15.2] — 2026-10-23
 
 ### Fixed

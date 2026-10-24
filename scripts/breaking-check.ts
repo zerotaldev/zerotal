@@ -151,6 +151,8 @@ export function isWidening(removed: string, added: Set<string>): boolean {
   // in that case has no `?:` of its own — it is the *added* one that grew.
   for (const candidate of added) {
     if (isOptionalMemberAddition(removed, candidate)) return true;
+    if (isMembersAdded(removed, candidate)) return true;
+    if (gainedOptionalParameters(removed, candidate)) return true;
   }
 
   // Nothing here is optional, so nothing here can have been widened.
@@ -210,6 +212,95 @@ function isOptionalMemberAddition(removed: string, added: string): boolean {
 
   // The frame around the members has to be the same declaration.
   return _withoutMembers(removed) === _withoutMembers(added);
+}
+
+/**
+ * Whether `added` is `removed` with members inserted and nothing else touched.
+ *
+ * A const or class snapshotted onto one line (`FrameworkEvents = { on(...): ...;    emit(...): ... }`)
+ * reads in a diff as one line gone and one line added when it gains a method, though every
+ * caller of the old shape is untouched. The members are compared as the text between `;`
+ * separators, in order: every one the old line had must appear, unchanged, in the new one, and
+ * the new one must have more. A member that changed, left or moved fails the match and is
+ * reported, as before.
+ *
+ * Only for a `const`, which callers read from. A type alias or interface is often something a
+ * caller builds, and a required member appearing there breaks every existing literal, which is
+ * what {@link isOptionalMemberAddition} exists to refuse.
+ */
+function isMembersAdded(removed: string, added: string): boolean {
+  if (!removed.startsWith("const ")) return false;
+  if (!removed.includes(";") || !added.includes(";")) return false;
+
+  const before = removed.split(";");
+  const after = added.split(";");
+  if (after.length <= before.length) return false;
+
+  let next = 0;
+  for (const piece of before) {
+    while (next < after.length && after[next] !== piece) next++;
+    if (next === after.length) return false;
+    next++;
+  }
+  return true;
+}
+
+/**
+ * Index of the `)` that closes the `(` at `open`, or -1. Parentheses only: that is all a
+ * parameter list nests, and counting braces or angle brackets as well would mistake the `>` of
+ * `=>` for a closer.
+ */
+function _closing(text: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    if (text[i] === "(") depth++;
+    else if (text[i] === ")" && --depth === 0) return i;
+  }
+  return -1;
+}
+
+/** Split a parameter list on the commas that are not inside a bracket, brace or type argument. */
+function _parameters(list: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < list.length; i++) {
+    const c = list[i];
+    // `>` of `=>` closes nothing.
+    if (c === "(" || c === "{" || c === "[" || c === "<") depth++;
+    else if (c === ")" || c === "}" || c === "]" || (c === ">" && list[i - 1] !== "=")) depth--;
+    else if (c === "," && depth === 0) {
+      out.push(list.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  const last = list.slice(start).trim();
+  if (last) out.push(last);
+  return out;
+}
+
+/**
+ * Whether `added` is `removed` with optional parameters appended to its first parameter list.
+ *
+ * `install: () => AiFake` becoming `install: (options?: {...}) => AiFake` breaks no caller:
+ * every call that compiled still does. The same declaration around the list, the old parameters
+ * unchanged and first, and every new one optional (`name?:`) is the whole of what is accepted.
+ */
+function gainedOptionalParameters(removed: string, added: string): boolean {
+  const open = removed.indexOf("(");
+  if (open === -1 || added.slice(0, open + 1) !== removed.slice(0, open + 1)) return false;
+
+  const closeBefore = _closing(removed, open);
+  const closeAfter = _closing(added, open);
+  if (closeBefore === -1 || closeAfter === -1) return false;
+  if (removed.slice(closeBefore) !== added.slice(closeAfter)) return false;
+
+  const before = _parameters(removed.slice(open + 1, closeBefore));
+  const after = _parameters(added.slice(open + 1, closeAfter));
+  if (after.length <= before.length) return false;
+  if (!before.every((parameter, index) => after[index] === parameter)) return false;
+
+  return after.slice(before.length).every((parameter) => /^\.{0,3}[\w$]+\?:/.test(parameter));
 }
 
 /** Members of an inline object type, as `name` (with a trailing `?` when optional) → type. */

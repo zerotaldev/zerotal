@@ -129,6 +129,27 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
       await Bun.write(dest, applyTokens(raw, { ...map, ...PLACEHOLDER_SECRETS }));
     }
   }
+
+  await writeGitAttributes(opts.target);
+}
+
+/**
+ * Pin line endings to LF.
+ *
+ * On Windows, git's default `autocrlf` rewrites every checkout to CRLF and prints `LF will be
+ * replaced by CRLF the next time Git touches it` for each generated file, every commit, forever:
+ * `types/routes.generated.ts`, `resources/js/pages.generated.ts` and anything the framework
+ * scaffolds later. The files are LF on the server they are deployed to, so a CRLF working copy is
+ * only ever noise, and a formatter that disagrees with it is the next thing to go wrong.
+ *
+ * `text=auto` leaves binary files alone. Written for every template rather than shipped in each,
+ * so there is one copy to keep right.
+ */
+async function writeGitAttributes(target: string): Promise<void> {
+  const path = join(target, '.gitattributes');
+  // An app that already has one has decided; a template that ships its own wins.
+  if (await Bun.file(path).exists()) return;
+  await Bun.write(path, '# Line endings are LF everywhere, on every machine.\n* text=auto eol=lf\n');
 }
 
 // ── Install ───────────────────────────────────────────────────────────────────

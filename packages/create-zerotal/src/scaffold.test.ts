@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'bun:test';
 import { join } from 'node:path';
 import { rm } from 'node:fs/promises';
 import { scaffold, ZT_VERSION } from './scaffold.ts';
+import { TEMPLATES } from './args.ts';
 
 const TMP = join(import.meta.dir, '..', '.test-output');
 
@@ -104,6 +105,15 @@ describe('scaffold — minimal template', () => {
     const env = await Bun.file(join(TMP, '.env')).text();
     expect(env).toMatch(/SESSION_SECRET=[A-Za-z0-9+/]+=*/);
     expect(env).not.toContain('change-me-in-production');
+  });
+
+  // On Windows git rewrites a checkout to CRLF and prints "LF will be replaced by CRLF" for
+  // every generated file on every commit. The files are LF where they are deployed.
+  it.each([...TEMPLATES])('pins line endings to LF in the %s template', async (template) => {
+    await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
+
+    const attributes = await Bun.file(join(TMP, '.gitattributes')).text();
+    expect(attributes).toContain('* text=auto eol=lf');
   });
 
   it('renames _gitignore to .gitignore', async () => {

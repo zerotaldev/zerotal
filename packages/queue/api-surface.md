@@ -337,6 +337,7 @@ class QueueFailedCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -366,6 +367,7 @@ class QueueFlushCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -395,6 +397,7 @@ class QueueRetryCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -424,6 +427,7 @@ class QueueWorkCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }

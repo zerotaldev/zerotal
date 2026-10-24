@@ -98,7 +98,9 @@ Add a `test` script so the suite runs the same way everywhere:
 `bun zt test` runs the same files with `APP_ENV=test` already set, which is
 what you want when a test boots the app through your own `bootstrap/app.ts`
 rather than through `createApp()`. It takes any number of paths or filters, as
-`bun test` does: `bun zt test tests/a.test.ts tests/b.test.ts` runs both.
+`bun test` does: `bun zt test tests/a.test.ts tests/b.test.ts` runs both. For its options and
+how to pass any other flag to `bun test`, see
+[Running each file in its own global](#running-each-file-in-its-own-global).
 
 ## The toolkit
 
@@ -380,6 +382,32 @@ the configured one, whatever it is — or boot a dedicated app for the case:
 const app = await createTestApp({ config: { app: { url: "https://example.test" } } });
 expect(page.canonical).toBe(config("app.url"));
 ```
+
+## Running each file in its own global
+
+`bun test` puts every file in one process and one global, so what one file leaves behind is
+there for the next: an environment variable, a booted app, a header set on the shared client.
+The file that fails is whichever runs next, and which that is depends on directory order,
+alphabetical on Windows and arbitrary on Linux. Each file passes alone.
+
+Bun can start each file from a fresh global, and `zt test` passes the request on:
+
+```bash
+bun zt test --isolate                  # a fresh global per file
+bun zt test -- --parallel=4            # four worker processes; implies --isolate
+bun zt test -- --shard=1/3             # the first of three slices of the files, for CI
+bun zt test -- --rerun-each=3          # anything else bun test takes goes after --
+```
+
+It is off by default. Each file then boots its own app, so a suite that boots one in every file
+pays for it once per file: in the framework's own packages it ran within a few seconds of the
+shared run, a little slower where every file boots an app. What you get for it is a result that
+does not depend on file order. The framework's suite found one test that relied on a variable
+another file had set, which only the isolated run could see.
+
+`zt test` refuses an option it does not know, with the list of the ones it does, rather than
+running the suite without whatever you asked for. Put a `bun test` flag after `--` to hand it
+through untouched.
 
 ## Running the suite from a script
 

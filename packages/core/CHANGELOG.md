@@ -10,6 +10,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`zt upgrade` points at config values that are what a default used to be.** It answered "No
+  codemods apply to this version range" to an app that set `cors.origin` to `"*"`, the value
+  older scaffolds wrote and the changelog calls unsafe, because there was nothing to rewrite. A new
+  `retired-defaults` codemod rewrites nothing and lists the lines (file, line, why) in
+  `config/app.ts`. Whether the value was meant is the author call: the same line is right for a
+  public read-only API.
+
 - **`Router.post(...).maxBodySize(bytes)`: a request body limit per route.** `app.maxRequestBodySize`
   (8 MiB) was the only limit, and it was the server limit, so a webhook that receives mail with a
   base64 attachment could only be accommodated by raising it for every route, the login form

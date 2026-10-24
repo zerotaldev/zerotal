@@ -1,11 +1,12 @@
 import { ServiceProvider } from "@zerotal/core";
-import type { AppEnvironment } from "@zerotal/core";
+import type { AppEnvironment, DoctorCheck } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { AiManager } from "../AiManager.ts";
 import { AiConfigFromEnv } from "../config.ts";
 import type { AiConfigShape } from "../types.ts";
 import { installAiObservability } from "../observability.ts";
 import { installAiMonitor } from "../monitor.ts";
+import { aiPriceCheck } from "../doctor.ts";
 import { modelStats, recentGenerations } from "../stats.ts";
 import { spentToday, useSharedSpend, type SharedSpendStore } from "../spend.ts";
 
@@ -86,6 +87,10 @@ export class AiProvider extends ServiceProvider {
     this._disposeObservability?.();
     this._disposeObservability = undefined;
     useSharedSpend(undefined);
+  }
+
+  override doctorChecks(): DoctorCheck[] {
+    return [aiPriceCheck];
   }
 
   /** What `zt repl` puts on the global scope. */

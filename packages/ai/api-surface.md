@@ -50,8 +50,8 @@ class AiError = {
 }
 
 class AiFake = {
-  new (_app: Application, _original: Binding): AiFake
-  static install: () => AiFake
+  new (_app: Application, _original: Binding, _emit: boolean): AiFake
+  static install: (options?: {    emit?: boolean;}) => AiFake
   agent: (request: AiAgentRequest) => Promise<AiAgentResult>
   assertNotPrompted: (expected: string | RegExp | ((prompt: string) => boolean)) => void
   assertNothingPrompted: () => void
@@ -78,13 +78,15 @@ class AiFake = {
 }
 
 class AiGenerated = {
-  new (driver: string, model: string, operation: string, inputTokens: number, outputTokens: number, cacheReadTokens: number, durationMs: number, costUsd: number, ok: boolean, preview: string, error?: string | undefined): AiGenerated
+  new (driver: string, model: string, operation: string, inputTokens: number, outputTokens: number, cacheReadTokens: number, durationMs: number, costUsd: number, ok: boolean, preview: string, error?: string | undefined, meta?: Record<string, unknown> | undefined, failure?: AiFailureKind | undefined): AiGenerated
   readonly cacheReadTokens: number
   readonly costUsd: number
   readonly driver: string
   readonly durationMs: number
   readonly error?: string | undefined
+  readonly failure?: AiFailureKind | undefined
   readonly inputTokens: number
+  readonly meta?: Record<string, unknown> | undefined
   readonly model: string
   readonly ok: boolean
   readonly operation: string
@@ -302,6 +304,7 @@ interface AiAgentRequest = {
   maxSteps?: number
   maxTokens?: number
   messages?: AiMessage[]
+  meta?: Record<string, unknown>
   model?: string
   prompt?: string
   providerOptions?: AiProviderOptions
@@ -379,6 +382,7 @@ interface AiEmbedResponse = {
 interface AiLimitsConfigShape = {
   perDayUsd: number
   perRequestUsd: number
+  shared?: boolean | undefined
 }
 
 interface AiMessage = {
@@ -409,6 +413,7 @@ interface AiRequest = {
   effort?: AiEffort
   maxTokens?: number
   messages?: AiMessage[]
+  meta?: Record<string, unknown>
   model?: string
   prompt?: string
   providerOptions?: AiProviderOptions
@@ -462,6 +467,7 @@ interface AiUsage = {
 
 interface AnthropicConfigShape = {
   apiKey: string
+  apiKeyProvider?: (() => string | Promise<string>) | undefined
   baseUrl?: string | undefined
   cacheSystem: boolean
   effort: AiEffort
@@ -553,6 +559,8 @@ interface OpenAiConfigShape = {
 type AiConfigInput = {    default?: string | undefined;    drivers?: DeepPartial<{        anthropic?: AnthropicConfigShape;        openai?: OpenAiConfigShape;        ollama?: OllamaConfigShape;    }> | undefined;    embeddings?: DeepPartial<EmbeddingsConfigShape> | undefined;    limits?: DeepPartial<AiLimitsConfigShape> | undefined;    redact?: boolean | undefined;    agent?: DeepPartial<AiAgentConfigShape> | undefined;}
 
 type AiEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
+type AiFailureKind = 'refused' | 'cancelled' | 'transient' | 'failed'
 
 type AiProviderOptions = {    [x: string]: Record<string, unknown>;}
 

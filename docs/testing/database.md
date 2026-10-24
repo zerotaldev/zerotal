@@ -25,6 +25,27 @@ import {
 > only run inside `bun test`. Install the package as a dev dependency if it isn't
 > already: `bun add -d @zerotal/testing`.
 
+## One database per run
+
+`bun test` runs every file in one process, and `createTestApp()` hands each of them the
+same booted app and so the same database. A row one file leaves behind is still there
+when the next file starts, and which file that is depends on the order the runner
+visits them. The symptom is a failure in a file that did nothing wrong, usually a
+`FOREIGN KEY constraint failed` in a `beforeEach` that deletes from a table an earlier
+file wrote to, with nothing in the message naming the file that left the row.
+
+If a file passes when you run it alone and fails in the full run, that is the cause.
+Three ways to keep a file's writes from reaching the next:
+
+- **`refreshDatabase()`** rolls every test back, so nothing is left. This is the default
+  choice: see [below](#which-rollback-helper-do-i-use).
+- **A private connection**, for a file that must commit, or one that a rollback cannot
+  wrap: `refreshDatabase({ connection: new SQL(":memory:"), migrate: true })`. Models use
+  that database for the suite and go back to the app's own connection when it ends.
+- **Clean up in dependency order** in an `afterAll`: children before parents. A table
+  whose foreign key is `restrictOnDelete` refuses to lose a parent while a child row
+  exists, which is the failure above.
+
 ## Building the schema
 
 A test needs tables before it needs rows. Build them by running the project's own

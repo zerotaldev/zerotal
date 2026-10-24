@@ -160,7 +160,7 @@ copy you commit, and it holds placeholders on purpose: on another machine, copy 
 ```ini
 # .env
 APP_ENV=development
-APP_KEY=…                     # generated for you; rotate with `bun zt key:generate`
+APP_KEY=…                     # generated for you; rotate with `bun zt key:rotate`
 DATABASE_URL=./database/db.sqlite
 SESSION_SECRET=…              # API template: generated for you; set your own before deploying
 ```

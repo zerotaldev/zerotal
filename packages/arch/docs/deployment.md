@@ -213,6 +213,11 @@ DATABASE_URL=postgres://user:pass@db-host:5432/app
 and a `base64:`-prefixed one are accepted. Generate it **on the server** — a key carried
 from a laptop is a key that has been in a shell history and a scrollback buffer.
 
+**After cloning, `bun zt init:env` does the whole step**: it creates `.env` from `.env.example`
+with `APP_KEY` (and `SESSION_SECRET`, where the example has one) generated, and leaves an
+existing `.env` alone. Like every `zt` command it needs the framework installed, so run
+`bun install` first; if you are preparing `.env` before that, read on.
+
 **On a first deploy you do not have to wait for the code.** `key:generate` is part of the
 application, so it only exists once the release is installed — which is awkward if you are
 preparing `.env` before that, since `migrate` wants the file and the file wants a key.

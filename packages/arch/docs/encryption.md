@@ -70,10 +70,38 @@ Crypt.decrypt<{ userId: number }>(blob).userId; // 7
 - A new IV is generated per call, so encrypting the same value twice yields
   different ciphertexts.
 
-> **Danger** — `APP_KEY` is the root of all `Crypt` security. Rotating it makes
-> every existing ciphertext undecryptable, and leaking it exposes every encrypted
-> payload. Keep it out of version control and set it per environment — see
+> **Danger** — `APP_KEY` is the root of all `Crypt` security. Leaking it exposes every
+> encrypted payload. Keep it out of version control and set it per environment — see
 > [Config system](/docs/config-system).
+
+### Rotating `APP_KEY`
+
+Changing `APP_KEY` on its own makes every existing ciphertext undecryptable, and the only
+recovery is to have each value entered again. Keep the old key as a **previous key** and
+nothing is lost:
+
+```bash
+# in your project root
+bun zt key:rotate
+```
+
+It generates a new `APP_KEY` and moves the old one to `APP_PREVIOUS_KEYS`, a comma-separated
+list in `.env`, newest first. From then on `Crypt` encrypts with the new key and decrypts with
+the new key and then each previous one, so stored values keep working. Move them across at
+your own pace:
+
+```ts fragment
+for (const row of await Secret.query().get()) {
+  if (!Crypt.usesCurrentKey(row.value)) await row.update({ value: Crypt.reencrypt(row.value) });
+}
+```
+
+When nothing is encrypted under an old key any more, `bun zt key:rotate --forget` clears
+`APP_PREVIOUS_KEYS`, and a value still under one stops decrypting.
+
+Only encryption is covered. Values that are _signed_ (signed URLs, Flow snapshots, JWTs) are
+short-lived and are not carried across: those issued under the old key stop validating when the
+new one is deployed.
 
 ## Hash — password hashing
 
@@ -339,13 +367,16 @@ One piece of environment setup applies to all of the above:
 
 ### `Crypt`
 
-| Method          | Signature                           | Description                                                                 |
-| --------------- | ----------------------------------- | --------------------------------------------------------------------------- |
-| `encryptString` | `(plain: string): string`           | Encrypt a UTF-8 string to an opaque base64 payload (iv + tag + ciphertext). |
-| `decryptString` | `(payload: string): string`         | Decrypt an `encryptString` payload; throws `DecryptionError` on failure.    |
-| `encrypt`       | `(value: unknown): string`          | JSON-serialize then encrypt any value.                                      |
-| `decrypt`       | `<T = unknown>(payload: string): T` | Decrypt and JSON-parse a value produced by `encrypt`.                       |
-| `setKey`        | `(key: string): void`               | Override the `APP_KEY`-derived key (raw or `base64:` prefixed).             |
+| Method            | Signature                           | Description                                                                 |
+| ----------------- | ----------------------------------- | --------------------------------------------------------------------------- |
+| `encryptString`   | `(plain: string): string`           | Encrypt a UTF-8 string to an opaque base64 payload (iv + tag + ciphertext). |
+| `decryptString`   | `(payload: string): string`         | Decrypt an `encryptString` payload; throws `DecryptionError` on failure.    |
+| `encrypt`         | `(value: unknown): string`          | JSON-serialize then encrypt any value.                                      |
+| `decrypt`         | `<T = unknown>(payload: string): T` | Decrypt and JSON-parse a value produced by `encrypt`.                       |
+| `setKey`          | `(key: string): void`               | Override the `APP_KEY`-derived key (raw or `base64:` prefixed).             |
+| `setPreviousKeys` | `(keys: string[]): void`            | Keys to decrypt with after the current one (otherwise `APP_PREVIOUS_KEYS`). |
+| `usesCurrentKey`  | `(payload: string): boolean`        | Whether a payload is under the current key, not a previous one.             |
+| `reencrypt`       | `(payload: string): string`         | Decrypt with any known key and encrypt again with the current one.          |
 
 `CryptKeyMissingError` and `DecryptionError` are exported from `zerotal/security`.
 

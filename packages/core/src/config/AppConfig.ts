@@ -185,8 +185,8 @@ export interface AppConfigShape {
    * ceiling on memory a single request can claim. Bun's own default is 128 MiB, which
    * twenty concurrent POSTs turn into 2.5 GB resident on any route, authenticated or not.
    *
-   * Raise it for an app that genuinely accepts large uploads, and prefer raising it on the
-   * upload route's proxy rather than globally.
+   * Raise it for one route with `Router.post(...).maxBodySize(bytes)` rather than here: this
+   * limit applies to every route, the login form included.
    */
   maxRequestBodySize: number;
   /**

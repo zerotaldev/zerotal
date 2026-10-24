@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "bun:test";
 import { rm } from "node:fs/promises";
-import { _shieldCatchAlls } from "./Application.ts";
+import { Application, _shieldCatchAlls } from "./Application.ts";
+import { Router } from "../router/Router.ts";
 
 /**
  * A single-page app's catch-all route answered for files that were not there.
@@ -153,5 +154,34 @@ describe("a file written after the server started, with a catch-all in the table
     const res = await serve(table(), dirs)("/assets/..%2f..%2fsecret.js");
 
     expect(await res.text()).not.toBe("secret");
+  });
+});
+
+describe("the server Application starts", () => {
+  const origServe = (Bun as unknown as Record<string, unknown>).serve;
+
+  afterEach(() => {
+    (Bun as unknown as Record<string, unknown>).serve = origServe;
+    Application._resetInstance();
+  });
+
+  it("is given the shielded table, so a missing script is a 404 and not the shell", async () => {
+    Application._resetInstance();
+    const app = Application.create({ env: "web" });
+    Router.get("/*", shell);
+    let routes: Table | undefined;
+    (Bun as unknown as Record<string, unknown>).serve = (opts: { routes: Table }) => {
+      routes = opts.routes;
+      return { stop: () => {} };
+    };
+
+    await app.start(0);
+
+    const handler = (routes!["/*"] as Record<string, (req: Request) => Promise<Response>>)["GET"]!;
+    const gone = await handler(new Request("http://localhost/assets/chunk-gone.js"));
+    const page = await handler(new Request("http://localhost/dashboard"));
+
+    expect(gone.status).toBe(404);
+    expect(page.status).toBe(200);
   });
 });

@@ -335,6 +335,24 @@ export interface RouteRegistration {
    *   .bind('post', (value) => Post.where('slug', value).firstOrFail());
    */
   bind(paramName: string, model: ModelClass | ModelBindingResolver): RouteRegistration;
+  /**
+   * Set the largest request body this route accepts, in bytes, in place of `app.maxRequestBodySize`.
+   *
+   * Larger than the app limit, for the route that needs room (an inbound-mail webhook carrying an
+   * attachment, an upload endpoint) without raising the limit for every route. Smaller, for a
+   * route that should never see much (a login form). A body over it is answered with 413 before
+   * a handler or middleware runs, and without being read.
+   *
+   * The limit is judged by `Content-Length`. Once any route sets one, a body sent in chunks with
+   * no declared length is answered with 411 on every route whose limit is below the server
+   * ceiling, because it cannot be measured without being read.
+   *
+   * @param bytes - A whole number of bytes, `0` or more.
+   *
+   * @example
+   * Router.post('/webhooks/inbound-mail', InboundMailController, 'store').maxBodySize(25 * 1024 * 1024);
+   */
+  maxBodySize(bytes: number): RouteRegistration;
 }
 
 /** Returned by {@link Router.view} — chain `.name()` and `.withLayout()` to configure the view route. */
@@ -488,6 +506,16 @@ export class Router {
         def.bindings.set(paramName, _toResolver(modelOrResolver));
         return registration;
       },
+      maxBodySize: (bytes: number) => {
+        if (!Number.isInteger(bytes) || bytes < 0) {
+          throw new RangeError(
+            `maxBodySize for ${method} ${fullPath} must be a whole number of bytes, 0 or more. ` +
+              `Got ${bytes}.`,
+          );
+        }
+        _s().routes.get(key)!.maxBodySize = bytes;
+        return registration;
+      },
     };
     return registration;
   }
@@ -547,6 +575,20 @@ export class Router {
       ...(domain ? { domain } : {}),
     });
     if (name) _s().namedRoutes.set(name, fullPath);
+  }
+
+  /**
+   * @internal The body limits routes declared with `.maxBodySize()`, keyed `"METHOD /path"`.
+   * Two definitions sharing a path under different domains share the larger limit.
+   */
+  static _bodyLimits(): Map<string, number> {
+    const limits = new Map<string, number>();
+    for (const { method, path, maxBodySize } of _s().routes.values()) {
+      if (maxBodySize === undefined) continue;
+      const key = `${method} ${path}`;
+      limits.set(key, Math.max(limits.get(key) ?? 0, maxBodySize));
+    }
+    return limits;
   }
 
   /** @internal Remove a single route by its map key. Used by ResourceRouteBuilder. */

@@ -10,6 +10,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`Router.post(...).maxBodySize(bytes)`: a request body limit per route.** `app.maxRequestBodySize`
+  (8 MiB) was the only limit, and it was the server limit, so a webhook that receives mail with a
+  base64 attachment could only be accommodated by raising it for every route, the login form
+  included. A route can now set its own, larger or smaller. The server is started accepting the
+  largest limit any route declared and the framework holds every other route to its own, answering
+  `413` before middleware or the handler runs and without reading the body (Bun runs a handler
+  when the headers arrive and streams the body, so nothing is buffered to refuse it). The limit is
+  judged by `Content-Length`; once any route sets one, a body sent in chunks with no declared
+  length is answered `411` on routes below the server ceiling, since it cannot be measured without
+  being read. An app that never calls it starts the server exactly as before.
+
 - **`Command.rest`**: the positional arguments past the ones a command declares, in order. The
   parser kept the declared ones and dropped the rest without a word, so a command taking any
   number of paths could only ever see the first.
@@ -44,7 +55,8 @@ follows the Zerotal monorepo's unified versioning.
   tab asking for a chunk a deploy had removed got the same. A catch-all now looks for the file
   first where the lookup applies (dev, and `eager: false` directories) and answers a missing
   `.js`, `.mjs`, `.css`, `.map` or `.wasm` with `404`. Pages, other extensions and any route with a
-  more specific path are unaffected.
+  more specific path are unaffected. The same wrapping is applied when routes are hot reloaded
+  (`SIGUSR2`), which built its table without it.
 - **`zt test a.test.ts b.test.ts` runs both.** The wrapper passed on only the first path, so a
   green run could be for a file that was not the one you meant and the count of tests was the only
   sign. Every path and filter goes to `bun test`, as `bun test` itself accepts.

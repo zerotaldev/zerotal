@@ -53,7 +53,7 @@ class JobRan = {
   readonly durationMs: number
   readonly error?: string | undefined
   readonly queue: string
-  readonly status: 'dispatched' | 'completed' | 'failed' | 'retried'
+  readonly status: 'failed' | 'dispatched' | 'completed' | 'retried'
 }
 
 class PendingBatch = {

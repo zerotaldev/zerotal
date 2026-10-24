@@ -251,7 +251,7 @@ interface MailEntry = {
   id: number
   mailer: string
   ms: number
-  status: 'queued' | 'failed' | 'sent'
+  status: 'failed' | 'queued' | 'sent'
   subject: string
   to: string
   when: string

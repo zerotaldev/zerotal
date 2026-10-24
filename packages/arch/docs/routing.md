@@ -262,6 +262,28 @@ Router.flow("/chat", ChatPage, [AuthMiddleware]);
 
 See the [Flow](/docs/flow) guide for full details.
 
+### Request body size
+
+Every route accepts a request body of up to `app.maxRequestBodySize` bytes, 8 MiB unless you set it. A body over the limit is answered with `413` before any middleware or handler runs, and without being read, so refusing it costs no memory.
+
+One route sometimes needs more than the rest of the app: a webhook that receives mail with an attachment, an upload endpoint. Raising `app.maxRequestBodySize` raises it for every route, including the login form. Say it on the route instead:
+
+```typescript fragment
+// routes/index.ts
+Router.post("/webhooks/inbound-mail", InboundMailController, "store").maxBodySize(25 * 1024 * 1024);
+
+// Or lower, for a route that should never see much.
+Router.post("/login", AuthController, "login").maxBodySize(16 * 1024);
+```
+
+The server is started accepting the largest limit any route declared, and the framework holds every other route to its own, so `/login` above still refuses a 1 MiB body even though the server would take 25 MiB. An app that never calls `maxBodySize` starts the server exactly as before.
+
+The limit is judged by the `Content-Length` header, which the server holds the connection to: a client cannot send more than it declared. A body sent in chunks, with no declared length, cannot be measured without reading it, so once any route sets a limit, such a body is answered with `411 Length Required` on every route whose limit is below the server ceiling. Browsers, `fetch` with a string, form or blob, and reverse proxies that buffer request bodies all declare a length; only a streamed upload does not.
+
+A hot reload (`SIGUSR2`) re-applies the limits of the reloaded routes, but cannot raise the ceiling the server started with. A route that asks for more after a reload needs a restart, and the log says so.
+
+> **Note** — The limit is on the whole request body. A multipart upload of a 20 MiB file is a body of a little over 20 MiB, and base64 inside JSON is a third larger than the bytes it carries. Set the limit above the size you mean to accept.
+
 ## Route groups
 
 Groups apply a shared prefix and/or middleware stack to a set of routes. Groups
@@ -1066,6 +1088,7 @@ Every route registration returns a chainable handle:
 | --------------------------------- | --------------------------------------------- | ---------------------------------------------------------- |
 | `.name(name)`                     | `(name): RouteRegistration`                   | Name the route for `route()` URL generation.               |
 | `.bind(param, target)`            | `(param, modelOrResolver): RouteRegistration` | Per-route model binding; overrides the global one.         |
+| `.maxBodySize(bytes)`             | `(bytes): RouteRegistration`                  | Per-route request body limit; see Request body size.       |
 | `.withLayout(layout)`             | `(layout): ViewRegistration`                  | Wrap a view route's output in a layout (view routes only). |
 | `.only([...])` / `.except([...])` | `(actions): this`                             | Limit which resource actions are registered.               |
 

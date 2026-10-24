@@ -392,6 +392,12 @@ not touch is listed with a file, a line and a reason:
 Run it again after applying: a second run should report no changes. Codemods are
 idempotent, and that is the cheapest way to confirm one did what it said.
 
+Some codemods rewrite nothing and only point. `retired-defaults` lists the lines in
+`config/app.ts` that set a value a default used to have and no longer does. Today that is
+`cors.origin` set to `"*"`, which older scaffolds wrote and which lets any website read your
+responses from a visitor's browser. Whether it was meant is your call, so it is reported with
+the file and line and left as it is.
+
 `doctor` runs every static sanity check against the booted app and prints each
 finding with its fix: APP_KEY strength, `database.synchronize` colliding with
 migration files, a `routes/` directory nothing loads, and class directories

@@ -109,7 +109,7 @@ interface JobEntry = {
   error?: string
   offsetMs: number
   queue: string
-  status: 'dispatched' | 'completed' | 'failed'
+  status: 'failed' | 'dispatched' | 'completed'
 }
 
 interface LogEntry = {

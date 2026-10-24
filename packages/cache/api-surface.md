@@ -30,12 +30,14 @@ class CacheEvicted = {
 
 class CacheManager = {
   new (_driver: CacheDriver, _prefix?: string, _defaultTtl?: number | undefined, _lock?: LockManager | null, _stampedeProtection?: boolean): CacheManager
+  decrement: (key: string, by?: number, ttl?: number) => Promise<number>
   dispose: () => void
   flush: () => Promise<void>
   forever: (key: string, value: unknown) => Promise<void>
   forget: (key: string) => Promise<void>
   get: <T>(key: string) => Promise<T | null>
   has: (key: string) => Promise<boolean>
+  increment: (key: string, by?: number, ttl?: number) => Promise<number>
   remember: <T>(key: string, ttl: number, fn: () => Promise<T> | T) => Promise<T>
   set: (key: string, value: unknown, ttl?: number) => Promise<void>
   tags: (tagNames: string[]) => TaggedCache
@@ -93,6 +95,7 @@ class MemoryDriver = {
   forget: (key: string) => Promise<void>
   get: (key: string) => Promise<string | null>
   has: (key: string) => Promise<boolean>
+  increment: (key: string, by: number, ttl?: number) => Promise<number>
   set: (key: string, value: string, ttl?: number) => Promise<void>
   size: number
   sweep: () => void
@@ -104,6 +107,7 @@ class RedisDriver = {
   forget: (key: string) => Promise<void>
   get: (key: string) => Promise<string | null>
   has: (key: string) => Promise<boolean>
+  increment: (key: string, by: number, ttl?: number) => Promise<number>
   set: (key: string, value: string, ttl?: number) => Promise<void>
 }
 
@@ -113,17 +117,20 @@ class SqliteDriver = {
   forget: (key: string) => Promise<void>
   get: (key: string) => Promise<string | null>
   has: (key: string) => Promise<boolean>
+  increment: (key: string, by: number, ttl?: number) => Promise<number>
   set: (key: string, value: string, ttl?: number) => Promise<void>
 }
 
 class TaggedCache = {
   new (_driver: CacheDriver, _prefix?: string, _defaultTtl?: number | undefined, _lock?: LockManager | null, _stampedeProtection?: boolean): TaggedCache
+  decrement: (key: string, by?: number, ttl?: number) => Promise<number>
   dispose: () => void
   flush: () => Promise<void>
   forever: (key: string, value: unknown) => Promise<void>
   forget: (key: string) => Promise<void>
   get: <T>(key: string) => Promise<T | null>
   has: (key: string) => Promise<boolean>
+  increment: (key: string, by?: number, ttl?: number) => Promise<number>
   remember: <T>(key: string, ttl: number, fn: () => Promise<T> | T) => Promise<T>
   set: (key: string, value: unknown, ttl?: number) => Promise<void>
   tags: (tagNames: string[]) => TaggedCache
@@ -147,6 +154,7 @@ interface CacheDriver = {
   forget: (key: string) => Promise<void>
   get: (key: string) => Promise<string | null>
   has: (key: string) => Promise<boolean>
+  increment?: (key: string, by: number, ttl?: number) => Promise<number>
   set: (key: string, value: string, ttl?: number) => Promise<void>
 }
 

@@ -507,6 +507,12 @@
     },
     {
       "file": "docs/ai.md",
+      "heading": "A key that can change while the app runs",
+      "ordinal": 0,
+      "hash": "2t391b0jphs7"
+    },
+    {
+      "file": "docs/ai.md",
       "heading": "Adding a provider",
       "ordinal": 0,
       "hash": "2oyi1h9uu3iw"
@@ -546,6 +552,12 @@
       "heading": "Locking a run",
       "ordinal": 0,
       "hash": "2ub51y7eokvi"
+    },
+    {
+      "file": "docs/ai.md",
+      "heading": "Observability",
+      "ordinal": 0,
+      "hash": "3rqku5gkkhsb"
     },
     {
       "file": "docs/ai.md",
@@ -1254,6 +1266,12 @@
       "heading": "Cache warming",
       "ordinal": 0,
       "hash": "1nh2gc0afzzy"
+    },
+    {
+      "file": "docs/cache.md",
+      "heading": "Counters",
+      "ordinal": 0,
+      "hash": "21q1zr51vkjv"
     },
     {
       "file": "docs/cache.md",
@@ -2769,6 +2787,12 @@
     },
     {
       "file": "docs/encryption.md",
+      "heading": "Rotating `APP_KEY`",
+      "ordinal": 0,
+      "hash": "3krwey2i9v5t"
+    },
+    {
+      "file": "docs/encryption.md",
       "heading": "Testing",
       "ordinal": 1,
       "hash": "2yf1jmg3j747"
@@ -2850,6 +2874,12 @@
       "heading": "Define an event and a listener",
       "ordinal": 0,
       "hash": "2lgxs3i6x9dc"
+    },
+    {
+      "file": "docs/events.md",
+      "heading": "Handler contract",
+      "ordinal": 0,
+      "hash": "2rpduirqekq8"
     },
     {
       "file": "docs/events.md",
@@ -6840,6 +6870,12 @@
       "heading": "Receiving bindings in controllers",
       "ordinal": 0,
       "hash": "22vi8xpkr42f"
+    },
+    {
+      "file": "docs/routing.md",
+      "heading": "Request body size",
+      "ordinal": 0,
+      "hash": "1fe6xftgta0t"
     },
     {
       "file": "docs/routing.md",

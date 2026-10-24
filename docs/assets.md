@@ -181,6 +181,21 @@ fall back to a per-request disk lookup. Dev mode applies that fallback to every
 static directory automatically, which is how a freshly-built chunk is served the
 moment it lands.
 
+#### A catch-all route and a file that is not there
+
+A single-page app has a catch-all route (`/*`) that renders the shell for any path no page
+claims. A catch-all would otherwise also answer for a script, stylesheet, source map or
+wasm file that does not exist, with the HTML shell and a `200`, and the browser reports
+that as _Expected a JavaScript module script but the server responded with a MIME type of
+text/html_. That is what a stale tab gets when it asks for a chunk a deploy removed, and
+what a dev rebuild's brand-new chunk got before the lookup above ran ahead of the
+catch-all.
+
+So a catch-all looks for the file on disk first (in dev, and for `eager: false`
+directories), and answers a missing `.js`, `.mjs`, `.css`, `.map` or `.wasm` with a plain
+`404`. Navigations, and paths with any other extension, still reach the catch-all, and a
+route you registered for a specific path always wins over it.
+
 ### The asset helper
 
 Hard-coding `/css/app.css` into a template works right up until you move the

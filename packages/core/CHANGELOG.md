@@ -29,6 +29,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **A catch-all route no longer answers for a script or stylesheet that does not exist.** Bun
+  matches its route table before it calls `fetch`, so a single-page app's `/*` answered every path
+  without an exact entry, with the HTML shell and a `200`. Two things followed: the dev server's
+  per-request lookup for files written after boot never ran (each rebuild's fresh `chunk-<hash>.js`
+  names came back as the shell, and the page died on its first dynamic import with "Expected a
+  JavaScript module script but the server responded with a MIME type of text/html"); and a stale
+  tab asking for a chunk a deploy had removed got the same. A catch-all now looks for the file
+  first where the lookup applies (dev, and `eager: false` directories) and answers a missing
+  `.js`, `.mjs`, `.css`, `.map` or `.wasm` with `404`. Pages, other extensions and any route with a
+  more specific path are unaffected.
 - **`zt test a.test.ts b.test.ts` runs both.** The wrapper passed on only the first path, so a
   green run could be for a file that was not the one you meant and the count of tests was the only
   sign. Every path and filter goes to `bun test`, as `bun test` itself accepts.

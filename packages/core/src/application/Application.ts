@@ -215,6 +215,69 @@ function _normaliseEnv(raw: string): Environment {
 /** A static directory mount, as recorded by {@link Router.static}. */
 type StaticMount = { prefix: string; rootDir: string; options?: StaticOptions | undefined };
 
+/** Bun's `routes` table as `Router.compile()` builds it. */
+type RouteTable = Record<
+  string,
+  Record<string, (req: Request, server?: unknown) => Response | Promise<Response>> | Response
+>;
+
+/** A URL that names a script, stylesheet, source map or wasm module. */
+const ASSET_FILE = /\.(?:m?js|css|map|wasm)$/i;
+
+/**
+ * @internal Exported for tests.
+ *
+ * Keep a catch-all route from answering for a file that is not there.
+ *
+ * Bun matches its `routes` table before it calls `fetch`, so an app with a catch-all (`/*`, the
+ * single-page-app shell) answers every path the table has no exact entry for. That broke two
+ * things at once. The per-request static lookup in `fetch` (the one that serves files written
+ * after boot, such as the fresh `chunk-<hash>.js` names each dev rebuild emits) never ran, because
+ * the catch-all answered first; and a request for a chunk that does not exist, a stale tab asking
+ * for a file a deploy removed, got the HTML shell with status 200. The browser reports that as
+ * "Expected a JavaScript module script but the server responded with a MIME type of text/html",
+ * which sends you looking at the bundler.
+ *
+ * So, for GET and HEAD on a catch-all: look for the file on disk first (`lazyDirs`, which is every
+ * static dir under the dev worker and any dir that opted out of eager registration), and answer
+ * 404 for a request that names a script, stylesheet, source map or wasm file and has none. A
+ * navigation to a page still reaches the catch-all, and so does everything with another
+ * extension; only requests no page can be the answer to are refused.
+ */
+export function _shieldCatchAlls(
+  routes: RouteTable,
+  lazyDirs: ReadonlyArray<StaticMount>,
+): RouteTable {
+  const shielded: RouteTable = {};
+  for (const [path, entry] of Object.entries(routes)) {
+    if (entry instanceof Response || !path.endsWith("/*")) {
+      shielded[path] = entry;
+      continue;
+    }
+
+    const wrapped: Record<
+      string,
+      (req: Request, server?: unknown) => Response | Promise<Response>
+    > = { ...entry };
+    for (const method of ["GET", "HEAD"]) {
+      const handler = entry[method];
+      if (typeof handler !== "function") continue;
+      wrapped[method] = async (req, server) => {
+        if (lazyDirs.length > 0) {
+          const file = await _lazyStaticResponse(req.url, lazyDirs);
+          if (file) return file;
+        }
+        if (ASSET_FILE.test(new URL(req.url).pathname)) {
+          return new Response("Not Found", { status: 404, headers: staticSecurityHeaders() });
+        }
+        return handler(req, server);
+      };
+    }
+    shielded[path] = wrapped;
+  }
+  return shielded;
+}
+
 /**
  * @internal Exported for tests.
  *
@@ -1610,7 +1673,7 @@ export class Application {
     this._static = Bun.serve({
       port,
       maxRequestBodySize,
-      routes: compiledRoutes,
+      routes: _shieldCatchAlls(compiledRoutes, lazyStaticDirs),
       ...(Object.keys(extraOptions).length
         ? (extraOptions as unknown as Parameters<typeof Bun.serve>[0])
         : {}),

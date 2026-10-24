@@ -16,7 +16,8 @@ import { testEnvOverrides } from "../testEnv.ts";
  *    session, cache) to their in-process defaults, and loads `.env.test` when
  *    the app has one. See `../testEnv.ts` for why, and `--keep-env` to opt out.
  *
- * All positional args and recognised flags are forwarded to bun test.
+ * All positional args and recognised flags are forwarded to bun test. A flag it does not
+ * recognise is refused rather than dropped; anything after `--` goes to `bun test` untouched.
  *
  * @example
  * ```bash
@@ -25,6 +26,9 @@ import { testEnvOverrides } from "../testEnv.ts";
  * bun zt test a.test.ts b.test.ts    # several paths
  * bun zt test --coverage             # with coverage
  * bun zt test --watch                # watch mode
+ * bun zt test --isolate              # a fresh global per test file
+ * bun zt test --shard=1/3            # a third of the files, for splitting CI
+ * bun zt test -- --rerun-each=3      # any other bun test flag, after --
  * ```
  *
  * @category Testing
@@ -72,6 +76,24 @@ export class TestCommand extends Command {
       default: false,
     },
     {
+      name: "isolate",
+      type: "boolean" as const,
+      description: "Run each test file in a fresh global, so one file cannot affect the next",
+      default: false,
+    },
+    {
+      name: "parallel",
+      type: "string" as const,
+      description: "Run test files in parallel in N worker processes (implies --isolate)",
+      default: "",
+    },
+    {
+      name: "shard",
+      type: "string" as const,
+      description: "Run a subset of the test files, e.g. 1/3 for the first of three",
+      default: "",
+    },
+    {
       name: "migrate",
       type: "boolean" as const,
       description: "Run database/migrations against the test database before the suite",
@@ -86,6 +108,19 @@ export class TestCommand extends Command {
   ];
 
   async run(): Promise<void> {
+    // An option this command does not know is not ignored: the parser would drop it, and the
+    // suite would run without whatever it asked for and report success. `zt test --isolate`
+    // did exactly that, with no sign anything was missing.
+    if (this.unknownFlags.length > 0) {
+      const known = TestCommand.flags.map((flag) => `--${flag.name}`).join(" ");
+      this.error(
+        `zt test does not take ${this.unknownFlags.join(", ")}. Its options: ${known}.\n` +
+          `Pass any other flag to bun test after --:  zt test -- ${this.unknownFlags[0]}`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+
     // Resolve DB URL — prefer an explicit ZT_DB_URL, then DATABASE_URL,
     // then fall back to :memory: (each createTestApp() call gets its own
     // in-process SQLite; preload is a no-op for that case anyway).
@@ -127,6 +162,13 @@ export class TestCommand extends Command {
     if (this.flags["coverage"]) bunArguments.push("--coverage");
     if (this.flags["watch"]) bunArguments.push("--watch");
     if (this.flags["bail"]) bunArguments.push("--bail");
+    if (this.flags["isolate"]) bunArguments.push("--isolate");
+    // `--parallel` alone means "one worker per core"; with a value, that many.
+    const parallel = this.flags["parallel"];
+    if (parallel === true) bunArguments.push("--parallel");
+    else if (typeof parallel === "string" && parallel) bunArguments.push(`--parallel=${parallel}`);
+    const shard = this.flags["shard"];
+    if (typeof shard === "string" && shard) bunArguments.push(`--shard=${shard}`);
 
     // Bun's default is 5s and applies to hooks as well as tests — and `bunfig.toml`'s
     // `[test] timeout` does not cover hooks, only this flag does. A `beforeAll` that calls

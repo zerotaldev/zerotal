@@ -148,6 +148,8 @@ function parseFlagsAndArgs(
   /** Positional arguments past the last declared one. */
   rest: string[];
   parsedFlags: Record<string, string | boolean | number>;
+  /** Options typed that the command does not declare, as `--name` or `-n`. */
+  unknownFlags: string[];
   /** Names of `required` arguments the caller omitted. */
   missingArgs: string[];
 } {
@@ -170,6 +172,13 @@ function parseFlagsAndArgs(
     }
   }
 
+  // `strict: false` keeps what it cannot place under its own name; whatever is left once the
+  // declared options are taken out was typed and means nothing to this command.
+  const declared = new Set((Cmd.flags ?? []).map((flag) => flag.name));
+  const unknownFlags = Object.keys(rawFlags)
+    .filter((name) => !declared.has(name))
+    .map((name) => (name.length === 1 ? `-${name}` : `--${name}`));
+
   const parsedArgs: Record<string, string> = {};
   const missingArgs: string[] = [];
   for (let index = 0; index < (Cmd.args ?? []).length; index++) {
@@ -182,7 +191,13 @@ function parseFlagsAndArgs(
     parsedArgs[argument.name] = value ?? "";
   }
 
-  return { parsedArgs, rest: positionals.slice((Cmd.args ?? []).length), parsedFlags, missingArgs };
+  return {
+    parsedArgs,
+    rest: positionals.slice((Cmd.args ?? []).length),
+    parsedFlags,
+    unknownFlags,
+    missingArgs,
+  };
 }
 
 /**
@@ -623,7 +638,10 @@ export class CommandRunner {
       return;
     }
 
-    const { parsedArgs, rest, parsedFlags, missingArgs } = parseFlagsAndArgs(Cmd, argv.slice(1));
+    const { parsedArgs, rest, parsedFlags, unknownFlags, missingArgs } = parseFlagsAndArgs(
+      Cmd,
+      argv.slice(1),
+    );
 
     if (missingArgs.length > 0) {
       console.error(
@@ -634,7 +652,13 @@ export class CommandRunner {
     }
 
     const instance = new Cmd();
-    Object.assign(instance, { args: parsedArgs, rest, flags: parsedFlags, app: this._app });
+    Object.assign(instance, {
+      args: parsedArgs,
+      rest,
+      flags: parsedFlags,
+      unknownFlags,
+      app: this._app,
+    });
 
     const name = (Cmd as { commandName?: string }).commandName ?? commandName;
     const startedAt = performance.now();
@@ -692,7 +716,7 @@ export class CommandRunner {
       }
     }
 
-    const { parsedArgs, rest, parsedFlags, missingArgs } = parseFlagsAndArgs(
+    const { parsedArgs, rest, parsedFlags, unknownFlags, missingArgs } = parseFlagsAndArgs(
       Cmd,
       fullArgv.slice(1),
     );
@@ -715,6 +739,7 @@ export class CommandRunner {
       args: parsedArgs,
       rest,
       flags: parsedFlags,
+      unknownFlags,
       app: this._app,
     });
 

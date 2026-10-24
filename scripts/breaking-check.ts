@@ -151,6 +151,7 @@ export function isWidening(removed: string, added: Set<string>): boolean {
   // in that case has no `?:` of its own — it is the *added* one that grew.
   for (const candidate of added) {
     if (isOptionalMemberAddition(removed, candidate)) return true;
+    if (isReordered(removed, candidate)) return true;
     if (isMembersAdded(removed, candidate)) return true;
     if (gainedOptionalParameters(removed, candidate)) return true;
   }
@@ -243,6 +244,32 @@ function isMembersAdded(removed: string, added: string): boolean {
     next++;
   }
   return true;
+}
+
+/**
+ * Whether `added` is `removed` with the members of a union in another order.
+ *
+ * The snapshot prints a union in the order the compiler created its members, which depends on
+ * what else is in the program: declaring a new `'failed'` literal elsewhere moved it to the front
+ * of three unrelated `status` unions. The set of members is what a caller sees. Limited to a
+ * plain property line, with no parentheses or braces, so that a parameter list or a shape cannot
+ * be rearranged under cover of it.
+ */
+function isReordered(removed: string, added: string): boolean {
+  if (removed === added || /[(){}]/.test(removed) || /[(){}]/.test(added)) return false;
+  if (!removed.includes(" | ")) return false;
+
+  // `name: ` stays where it is; only what follows it is a set.
+  const colon = removed.indexOf(": ");
+  if (colon === -1 || added.slice(0, colon + 2) !== removed.slice(0, colon + 2)) return false;
+
+  const members = (line: string): string =>
+    line
+      .slice(colon + 2)
+      .split(" | ")
+      .sort()
+      .join(" | ");
+  return members(removed) === members(added);
 }
 
 /**

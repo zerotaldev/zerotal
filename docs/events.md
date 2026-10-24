@@ -81,7 +81,23 @@ FrameworkEvents.handlerCount();
 handler errors** — a throwing subscriber can never affect the code that emitted the
 event. Because emission is on the hot path, handlers must be fast and must not
 perform I/O. If you need to do real work, buffer the data and hand it off (e.g.
-dispatch a queue job) from outside the handler.
+dispatch a queue job) from outside the handler, or subscribe with `onAsync`:
+
+```ts fragment
+// A ledger row is I/O. The request never waits for it.
+const off = FrameworkEvents.onAsync(AiGenerated, async (e) => {
+  await LedgerRow.create({ model: e.model, costUsd: e.costUsd });
+});
+
+// On shutdown, so the last rows are not lost to the process exiting:
+await FrameworkEvents.settled();
+```
+
+`onAsync` runs the handler after the emitter's current synchronous work, awaits it, and
+logs a failure to the `events` channel rather than throwing it at the emitter or leaving
+it as an unhandled rejection (which is what an `async` function passed to `on()` does when
+it fails). It is not durable: a handler still running when the process exits is lost, so
+use a queue job when the work must survive a crash.
 
 ### Subscribing from a provider
 
@@ -393,12 +409,14 @@ plain `await Events.emit(...)` is enough to observe their effects.
 
 **`FrameworkEvents`** (Tier 1 — instrumentation, from `zerotal`):
 
-| Method                           | Description                                            |
-| -------------------------------- | ------------------------------------------------------ |
-| `FrameworkEvents.on(Event, fn)`  | Subscribe a function; returns an unsubscribe function. |
-| `FrameworkEvents.emit(event)`    | Fire synchronously to all handlers; errors swallowed.  |
-| `FrameworkEvents.clear()`        | Drop every subscription (use in tests).                |
-| `FrameworkEvents.handlerCount()` | Count of live handlers, for leak assertions in tests.  |
+| Method                               | Description                                              |
+| ------------------------------------ | -------------------------------------------------------- |
+| `FrameworkEvents.on(Event, fn)`      | Subscribe a function; returns an unsubscribe function.   |
+| `FrameworkEvents.onAsync(Event, fn)` | Subscribe an async handler, run off the emitter's stack. |
+| `FrameworkEvents.settled()`          | Wait for every running async handler to finish.          |
+| `FrameworkEvents.emit(event)`        | Fire synchronously to all handlers; errors swallowed.    |
+| `FrameworkEvents.clear()`            | Drop every subscription (use in tests).                  |
+| `FrameworkEvents.handlerCount()`     | Count of live handlers, for leak assertions in tests.    |
 
 **Listener declaration fields** (Tier 2 listener classes):
 

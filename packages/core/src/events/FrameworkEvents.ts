@@ -6,8 +6,10 @@
  *
  * Handlers fire synchronously in the emitter's call stack — keep them fast
  * and side-effect-free (buffer pushes, counter increments). For I/O or heavy
- * work, dispatch a queue job from inside the handler instead.
+ * work, dispatch a queue job from inside the handler, or subscribe with
+ * `onAsync`, which runs the handler off the emitter's stack and awaits it.
  */
+import { frameworkLog } from "../logger/frameworkLog.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic "any event class" constructor bound; the args are never read through this type
 type EventCtor = new (...args: any[]) => object;
@@ -20,6 +22,9 @@ type Handler<E> = (event: E) => void;
 // `static kind`, defaulting to the class name.
 const _byClass = new Map<EventCtor, Set<Handler<object>>>();
 const _byKind = new Map<string, Set<Handler<object>>>();
+
+/** Async handlers that have started and not finished, so shutdown and tests can wait for them. */
+const _pending = new Set<Promise<void>>();
 
 /** The stable string key for an event class: its `static kind`, or its class name. */
 function _kindOf(ctor: EventCtor): string {
@@ -86,6 +91,63 @@ export const FrameworkEvents = {
     return () => {
       handlers.delete(handler as Handler<object>);
     };
+  },
+
+  /**
+   * Subscribe with a handler that does I/O.
+   *
+   * A handler given to {@link on} runs in the emitter's call stack, so a database insert there
+   * either blocks the request that caused the event or, fired and forgotten, fails with nothing to
+   * report it: a rejected promise returned from a synchronous handler is nobody's to catch. This
+   * runs the handler after the emitter's current synchronous work, awaits it, and logs a failure
+   * to the `events` channel instead of throwing it at the emitter or leaving it unhandled. The
+   * request never waits for it.
+   *
+   * It is not a durable queue: a handler still running when the process exits is lost, so use
+   * {@link settled} to wait for them on shutdown, and a queue job when the work must survive a
+   * crash.
+   *
+   * @param target   The event class, or its string kind, as for {@link on}.
+   * @param handler  Called with each emitted instance; may be async.
+   * @returns A function that removes this subscription when called.
+   * @category Subscription
+   */
+  onAsync<E extends object>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic "any event class" constructor bound
+    target: (new (...args: any[]) => E) | string,
+    handler: (event: E) => void | Promise<void>,
+  ): () => void {
+    const label = typeof target === "string" ? target : _kindOf(target as EventCtor);
+    return FrameworkEvents.on(target, (event: E) => {
+      const done = new Promise<void>((resolve) => {
+        queueMicrotask(async () => {
+          try {
+            await handler(event);
+          } catch (error) {
+            frameworkLog("events").error(
+              `An async handler for ${label} failed`,
+              { event: label },
+              error,
+            );
+          } finally {
+            resolve();
+          }
+        });
+      });
+      _pending.add(done);
+      void done.then(() => _pending.delete(done));
+    });
+  },
+
+  /**
+   * Resolve once every async handler started so far, and any they trigger in turn, has finished.
+   * For shutdown, so a ledger row is not lost to the process exiting, and for tests that assert on
+   * what an {@link onAsync} handler did.
+   *
+   * @category Dispatch
+   */
+  async settled(): Promise<void> {
+    while (_pending.size > 0) await Promise.all([..._pending]);
   },
 
   /**

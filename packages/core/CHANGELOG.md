@@ -14,6 +14,12 @@ follows the Zerotal monorepo's unified versioning.
   parser kept the declared ones and dropped the rest without a word, so a command taking any
   number of paths could only ever see the first.
 
+- **`FrameworkEvents.onAsync()` and `FrameworkEvents.settled()`.** A handler given to `on()` runs
+  in the emitter's call stack, so a database insert there blocked the request that caused the
+  event, or was fired and forgotten with nothing to report a failure: a promise rejected by a
+  synchronous handler is nobody's to catch. `onAsync` runs the handler after the emitter's current
+  synchronous work, awaits it, and logs a failure to the `events` channel. `settled()` waits for
+  the handlers still running, for shutdown and for tests. It is not a durable queue.
 - **`APP_KEY` can be rotated without losing what it encrypted.** Changing `APP_KEY` made every
   existing ciphertext unreadable at once, and an app with many encrypted columns could not rotate
   after a leak without having every value entered again. `APP_PREVIOUS_KEYS` (comma-separated,

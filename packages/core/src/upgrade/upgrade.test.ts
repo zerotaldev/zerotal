@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { planUpgrade, applyPlan, collectFiles, selectCodemods } from "./runner.ts";
 import { compareVersions } from "./types.ts";
 import type { Codemod } from "./types.ts";
-import { CODEMODS, deprecatedAliases, baseModelRename } from "./codemods/index.ts";
+import { CODEMODS, deprecatedAliases, baseModelRename, retiredDefaults } from "./codemods/index.ts";
 
 let root: string;
 
@@ -237,5 +237,62 @@ describe("deprecated-aliases (ledger #4, shipped 1.13.0)", () => {
     );
     expect(changes).toEqual([]);
     expect(manual).toEqual([]);
+  });
+});
+
+describe("retired-defaults (1.15.5)", () => {
+  const run = (file: string, contents: string) => retiredDefaults.run([{ file, contents }]);
+
+  it("points at the wildcard origin an older scaffold wrote, and rewrites nothing", () => {
+    const { changes, manual } = run(
+      "config/app.ts",
+      'export default AppConfig({\n  cors: { origin: env("CORS_ORIGIN", "*") },\n});\n',
+    );
+
+    expect(changes).toEqual([]);
+    expect(manual).toHaveLength(1);
+    expect(manual[0]).toMatchObject({ file: "config/app.ts", line: 2 });
+    expect(manual[0]!.reason).toContain("same-origin");
+  });
+
+  it("finds a plain origin: * as well", () => {
+    const { manual } = run("config/app.ts", 'cors: {\n  origin: "*",\n}\n');
+
+    expect(manual.map((m) => m.line)).toEqual([2]);
+  });
+
+  it.each([
+    ['origin: ["https://app.example.com"]'],
+    ['origin: env("CORS_ORIGIN", "https://app.example.com")'],
+    ["origin: []"],
+  ])("leaves %s alone", (line) => {
+    expect(run("config/app.ts", `cors: { ${line} }\n`).manual).toEqual([]);
+  });
+
+  it("leaves a commented-out line alone, since that is not a setting", () => {
+    expect(run("config/app.ts", 'cors: {\n  // origin: "*",\n}\n').manual).toEqual([]);
+  });
+
+  it("only looks in config/app.ts, where cors lives", () => {
+    expect(run("src/other.ts", 'const cors = { origin: "*" };\n').manual).toEqual([]);
+  });
+
+  it("is reached by an app upgrading across the release that carries it", () => {
+    expect(selectCodemods(CODEMODS, "1.15.4", "1.15.5").map((c) => c.name)).toContain(
+      "retired-defaults",
+    );
+    expect(selectCodemods(CODEMODS, "1.15.5", "1.16.0").map((c) => c.name)).not.toContain(
+      "retired-defaults",
+    );
+  });
+
+  it("reports through the runner instead of saying no codemods apply", async () => {
+    await write("config/app.ts", 'export default { cors: { origin: "*" } };\n');
+
+    const plan = await planUpgrade(root, CODEMODS, "1.15.4", "1.15.5");
+
+    expect(plan.changes.size).toBe(0);
+    expect(plan.manual).toHaveLength(1);
+    expect(plan.manual[0]!.file).toBe("config/app.ts");
   });
 });

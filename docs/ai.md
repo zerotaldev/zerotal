@@ -156,7 +156,8 @@ A model this package has no price for is never blocked, because a ceiling with
 nothing to compare against should stand aside rather than refuse everything. That also
 means both ceilings are **off** for it, and its spend reads $0, so the first request to
 such a model logs a warning saying so (once per model), and `zt ai:test` says so next to
-the model it reached. Teach it a price with `registerModelPrice()`.
+the model it reached. `zt doctor` says so before any request is made, from the configured
+models. Teach it a price with `registerModelPrice()`.
 
 ## Generating text
 

@@ -10,6 +10,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`zt doctor` warns when a configured model has no price.** The warning on the first request
+  comes after the fact, and a deploy that has made no request yet reads clean; a spend panel that
+  says $0.00 looks like a quiet day. The check reads the configured Anthropic and OpenAI models
+  and, for any the price table does not know, says that its spend is recorded as $0 (and that the
+  ceilings do not apply to it, when there are ceilings) and names the `registerModelPrice()` call
+  that fixes it. Ollama models are not checked: a local model costs nothing.
+
 - **The daily spend ceiling is shared by every process that shares the cache.** `limits.perDayUsd`
   was counted in memory, so four workers held four ceilings and every deploy started the day
   again at zero; the documentation said so, and an app with a worker could not rely on the

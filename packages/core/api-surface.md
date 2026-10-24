@@ -637,7 +637,7 @@ const Config = ConfigManager
 
 const Events = Emitter
 
-const FrameworkEvents = {    on<E extends object>(target: (new (...args: any[]) => E) | string, handler: Handler<E>): () => void;    emit<E extends object>(event: E): void;    clear(): void;    handlerCount(): number;    subscriptions(): Array<{        event: string;        handlers: number;    }>;}
+const FrameworkEvents = {    on<E extends object>(target: (new (...args: any[]) => E) | string, handler: Handler<E>): () => void;    onAsync<E extends object>(target: (new (...args: any[]) => E) | string, handler: (event: E) => void | Promise<void>): () => void;    settled(): Promise<void>;    emit<E extends object>(event: E): void;    clear(): void;    handlerCount(): number;    subscriptions(): Array<{        event: string;        handlers: number;    }>;}
 
 const route = RouteBuilder
 
@@ -911,6 +911,7 @@ interface RouteDefinition = {
   bindings: Map<string, ModelBindingResolver>
   controller: ControllerClass
   domain?: string
+  maxBodySize?: number | undefined
   method: HttpMethod
   middleware: MiddlewareClass[]
   name: string | undefined
@@ -919,6 +920,7 @@ interface RouteDefinition = {
 
 interface RouteRegistration = {
   bind: (paramName: string, model: ModelClass | ModelBindingResolver) => RouteRegistration
+  maxBodySize: (bytes: number) => RouteRegistration
   name: (routeName: string) => RouteRegistration
 }
 
@@ -1517,12 +1519,70 @@ class GateStatusCommand = {
   write: (msg: string) => void
 }
 
+class InitEnvCommand = {
+  new (): InitEnvCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: never[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  rest: string[]
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class KeyGenerateCommand = {
   new (): KeyGenerateCommand
   static args: never[]
   static commandName: string
   static description: string
   static flags: never[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  rest: string[]
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
+class KeyRotateCommand = {
+  new (): KeyRotateCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter

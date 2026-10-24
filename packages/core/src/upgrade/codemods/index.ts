@@ -10,7 +10,13 @@
 import type { Codemod } from "../types.ts";
 import { deprecatedAliases, baseModelRename } from "./deprecated-aliases.ts";
 import { clientTaggedTemplate } from "./client-tagged-template.ts";
+import { retiredDefaults } from "./retired-defaults.ts";
 
-export const CODEMODS: Codemod[] = [clientTaggedTemplate, deprecatedAliases, baseModelRename];
+export const CODEMODS: Codemod[] = [
+  clientTaggedTemplate,
+  deprecatedAliases,
+  baseModelRename,
+  retiredDefaults,
+];
 
-export { deprecatedAliases, baseModelRename, clientTaggedTemplate };
+export { deprecatedAliases, baseModelRename, clientTaggedTemplate, retiredDefaults };

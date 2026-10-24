@@ -33,6 +33,7 @@ GET /page  (initial render)            WebSocket action frame (subsequent)
   ├─ onMount(ctx)                        ├─ onHydrate()       ← state restored from snapshot
   ├─ onRendering()                       ├─ onUpdating/onUpdated ← per client-written property
   ├─ render()                            ├─ action()          ← the invoked exposed method
+                                         ├─ onMount(ctx)      ← only if the action called this.refresh()
   ├─ onRendered(html)                    ├─ onUpdate()        ← once, after action
   └─ onDehydrate()                       ├─ onRendering()
                                          ├─ render()

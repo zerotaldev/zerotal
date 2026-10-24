@@ -567,20 +567,23 @@ bun zt make:model Post --migration   # also create a migration
 bun zt make:model Post -m            # shorthand
 ```
 
-A generated model skeleton (`app/models/Post.ts`):
+A generated model skeleton (`app/models/Post.ts`, with the stub's explanatory comments left out):
 
 ```typescript
 // app/models/Post.ts
-import { Model, column, table } from "@zerotal/orm";
+import { BaseModel, column, table } from "@zerotal/orm";
 
-@(table("posts").withTimestamps())
-export class Post extends Model {
-  // Models guard every attribute by default — list the mass-assignable columns.
-  static fillable: string[] = ["name"];
+@table("posts")
+export class Post extends BaseModel {
+  static override fillable = ["name"] as const;
 
   @column() name!: string;
 }
 ```
+
+The table is the conventional name for the model (`Post` is `posts`, `BlogPost` is `blog_posts`),
+the same one [auto-discovery](#table-decorator) would derive. With `--migration`, the migration
+is named for it (`create_posts_table`) and creates it with a `name` column to match the model.
 
 ## Full model example
 

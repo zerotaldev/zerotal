@@ -244,13 +244,15 @@ export class PostController {
 bun zt make:model Post --migration
 ```
 
-This generates `app/models/Post.ts` and a matching migration. Models in
-`app/models/` are auto-discovered at boot — no manual registration, and the table
-name is derived by convention (`Post` → `posts`), so `@table` is optional. The
-same applies to observers, policies, and event listeners; see
-[Conventions](/docs/conventions).
+This generates `app/models/Post.ts` and a migration for the same table,
+`NNN_create_posts_table.ts` in `database/migrations/`, where `NNN` is the next
+free number. Models in `app/models/` are auto-discovered at boot — no manual
+registration, and the table name is derived by convention (`Post` → `posts`), so
+`@table` is optional; the generated model states it anyway, and the migration
+creates exactly that table. The same applies to observers, policies, and event
+listeners; see [Conventions](/docs/conventions).
 
-Open the migration and define your columns:
+Both start with a single `name` column. Open the migration and define your own:
 
 ```typescript
 // database/migrations/xxxx_create_posts_table.ts
@@ -272,6 +274,9 @@ export default class CreatePostsTable extends Migration {
   }
 }
 ```
+
+Then update `app/models/Post.ts` to match: declare each column with `@column()` and
+list the ones a form may set in `fillable` (see [Models](/docs/orm)).
 
 Run it:
 

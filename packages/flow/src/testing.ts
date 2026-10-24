@@ -236,6 +236,12 @@ export class FlowTest<T extends Component> {
 
     try {
       await (fn as (...a: unknown[]) => unknown).apply(this._page, args);
+      // As the server does: an action that called this.refresh() gets onMount() re-run before
+      // the render, so a test sees the list the action just changed.
+      if (this._page._shouldRefresh) {
+        this._page._shouldRefresh = false;
+        await this._page.onMount();
+      }
     } catch (error) {
       if (error instanceof ValidationError) {
         // Errors already stored on page._errors — a normal, assertable outcome.

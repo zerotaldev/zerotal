@@ -280,7 +280,16 @@ type FlowWsDeps = {
   globalMiddleware: () => MiddlewareClass[];
 };
 
-async function _handleFlowMessage(ws: FlowBunWs, raw: string, deps: FlowWsDeps): Promise<void> {
+/**
+ * Handle one call frame, exactly as the socket and the HTTP fallback do.
+ *
+ * @internal exported for tests.
+ */
+export async function _handleFlowMessage(
+  ws: FlowBunWs,
+  raw: string,
+  deps: FlowWsDeps,
+): Promise<void> {
   let frame: CallFrame;
   try {
     frame = JSON.parse(raw) as CallFrame;
@@ -808,6 +817,14 @@ async function _dispatchFrame(
         ...a: unknown[]
       ) => unknown;
       await fn.apply(page, frame.args ?? []);
+      // The action called this.refresh(): re-run onMount() now, on this same round trip, so the
+      // render below reads what it reloaded. The check before the action only sees a refresh an
+      // update hook asked for; one made by the action itself would otherwise be dropped, and a
+      // list the action just changed would render as it was.
+      if (page._shouldRefresh) {
+        page._shouldRefresh = false;
+        await page.onMount(ctx);
+      }
     } catch (error) {
       if (error instanceof ValidationError) {
         // Validation errors are NOT bugs — store them and continue to re-render.

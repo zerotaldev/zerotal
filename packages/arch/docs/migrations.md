@@ -60,6 +60,11 @@ export default class CreatePostsTable extends Migration {
 }
 ```
 
+A name of the form `create_<table>_table` also names the table the stub creates, so
+the command above starts with `Schema.create("posts", …)`. Any other name, such as
+`add_email_to_users`, leaves `table_name` as a placeholder for you to replace.
+`bun zt make:model Post --migration` generates the same pair already agreeing on `posts`.
+
 `Migration` is an abstract class with two abstract methods — `up()` and `down()`,
 both returning `Promise<void>`. The default export of every migration file must
 extend it.

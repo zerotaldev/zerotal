@@ -344,7 +344,7 @@ describe("MakeModelCommand.run()", () => {
 
     const keys = Object.keys(written);
     expect(keys.some((k) => k.includes("Comment.ts"))).toBe(true);
-    expect(keys.some((k) => k.includes("create_comment_table"))).toBe(true);
+    expect(keys.some((k) => k.includes("create_comments_table"))).toBe(true);
     (Bun as any).Glob = origGlob;
   });
 });

@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`make:model Post --migration` leaves a model and a migration that agree.** The model was
+  bound to `post`, the snake-cased class name, while the ORM's own convention and the Getting
+  Started guide say `posts`, and the migration created a placeholder table called `table_name`
+  whatever the model was. Following the guide, which has you put `posts` in the migration, ended
+  at `no such table: post` on the first query. The model now takes the same name auto-discovery
+  would derive (`BlogPost` is `blog_posts`), and the migration is named for it
+  (`create_posts_table`), creates it, and carries the `name` column the model declares.
+- **`make:migration create_<table>_table` creates `<table>`.** It used to write the `table_name`
+  placeholder for every name. Any other name, such as `add_email_to_users`, still does.
+
 ## [1.15.2] — 2026-10-23
 
 ### Fixed

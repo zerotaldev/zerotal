@@ -1,4 +1,4 @@
-import { Command, Str } from "@zerotal/core";
+import { Command, tableNameFor } from "@zerotal/core";
 import { createMigrationFile } from "./MakeMigrationCommand.ts";
 
 /**
@@ -31,9 +31,10 @@ export class ${name} extends BaseModel {
 /**
  * Scaffolds a new model class (`bun zt make:model`).
  *
- * Writes an `app/models/<Name>.ts` file containing a `BaseModel` subclass whose
- * table name is the snake-cased model name. Passing `--migration` (`-m`) also
- * generates a matching `create_<name>_table` migration.
+ * Writes an `app/models/<Name>.ts` file containing a `BaseModel` subclass bound to the
+ * conventional table name for the model (`Post` is `posts`), the same name auto-discovery
+ * derives. Passing `--migration` (`-m`) also generates a `create_<table>_table` migration that
+ * creates that table with the stub's `name` column.
  *
  * @example
  * ```bash
@@ -73,7 +74,9 @@ export class MakeModelCommand extends Command {
       return;
     }
 
-    const tableName = Str.snakeCase(name);
+    // The same function auto-discovery uses, so the table named here is the one the ORM would
+    // have picked had `@table` been left off.
+    const tableName = tableNameFor(name);
 
     // Bun.write() creates any missing parent directories, so no mkdir is needed.
     await Bun.write(path, modelStub(name, tableName));
@@ -81,8 +84,12 @@ export class MakeModelCommand extends Command {
 
     const withMigration = this.flags["migration"] as boolean;
     if (withMigration) {
-      const migrationName = `create_${Str.snakeCase(name)}_table`;
-      const result = await createMigrationFile(migrationName);
+      const migrationName = `create_${tableName}_table`;
+      // `name` is the column modelStub() declares and lists as fillable.
+      const result = await createMigrationFile(migrationName, {
+        table: tableName,
+        columns: ["table.string('name');"],
+      });
       if (!result.created) {
         this.error(`File already exists: ${result.path}`);
         return;

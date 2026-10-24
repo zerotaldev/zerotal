@@ -445,6 +445,7 @@ class MediaCleanCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -474,6 +475,7 @@ class MediaRegenerateCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }

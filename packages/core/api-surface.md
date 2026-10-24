@@ -169,6 +169,7 @@ class Command = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1311,6 +1312,7 @@ class AssetsBuildCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1340,6 +1342,7 @@ class AssetsPruneCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1369,6 +1372,7 @@ class CompileCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1398,6 +1402,7 @@ class CssBuildCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1428,6 +1433,7 @@ class DevCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1457,6 +1463,7 @@ class DoctorCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1486,6 +1493,7 @@ class DownCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1515,6 +1523,7 @@ class GateStatusCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1544,6 +1553,7 @@ class InitEnvCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1573,6 +1583,7 @@ class KeyGenerateCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1602,6 +1613,7 @@ class KeyRotateCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1631,6 +1643,7 @@ class LintPackagesCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1660,6 +1673,7 @@ class MakeCommandCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1689,6 +1703,7 @@ class MakeControllerCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1718,6 +1733,7 @@ class MakeEventCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1747,6 +1763,7 @@ class MakeJobCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1776,6 +1793,7 @@ class MakeListenerCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1805,6 +1823,7 @@ class MakeMiddlewareCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1834,6 +1853,7 @@ class MakeNotificationCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1863,6 +1883,7 @@ class MakeObserverCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1892,6 +1913,7 @@ class MakePackageCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1921,6 +1943,7 @@ class MakePolicyCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1950,6 +1973,7 @@ class MakeProviderCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1979,6 +2003,7 @@ class MakeRequestCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2008,6 +2033,7 @@ class MakeResourceCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2037,6 +2063,7 @@ class MakeTestCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2066,6 +2093,7 @@ class PreviewCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2095,6 +2123,7 @@ class ReloadCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2124,6 +2153,7 @@ class ReplCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2153,6 +2183,7 @@ class RouteListCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2182,6 +2213,7 @@ class RouteTypesCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2212,6 +2244,7 @@ class ServeCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2242,6 +2275,7 @@ class StartCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2271,6 +2305,7 @@ class StatusCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2280,7 +2315,7 @@ class TestCommand = {
   static args: {    name: string;    required: boolean;    default: string;}[]
   static commandName: string
   static description: string
-  static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'number';    description: string;    default: number;    short?: never;})[]
+  static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'number';    description: string;    default: number;    short?: never;} | {    name: string;    type: 'string';    description: string;    default: string;    short?: never;})[]
   static needsApp: boolean
   static readonly DEFAULT_TIMEOUT_MS: 30000
   _readLine: () => Promise<string>
@@ -2301,6 +2336,7 @@ class TestCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2330,6 +2366,7 @@ class UpCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2359,6 +2396,7 @@ class UpgradeCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2388,6 +2426,7 @@ class VersionCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -2418,6 +2457,7 @@ class WorkerCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }

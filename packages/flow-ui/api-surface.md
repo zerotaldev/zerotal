@@ -474,6 +474,7 @@ class FlowAddCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -503,6 +504,7 @@ class FlowInitCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -532,6 +534,7 @@ class FlowListCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }

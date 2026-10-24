@@ -78,6 +78,13 @@ export abstract class Command {
    * command that takes any number of paths could only ever see the first.
    */
   rest: string[] = [];
+  /**
+   * Options the caller typed that this command does not declare in {@link Command.flags}, as
+   * `--name` or `-n` — set by CommandRunner before run(). The parser ignores them, which is the
+   * right default for most commands and the wrong one for a command that wraps another: a
+   * `--coverge` that is dropped without a word runs the wrong thing and reports success.
+   */
+  unknownFlags: string[] = [];
   /** Parsed flags — set by CommandRunner before run(). */
   flags: Record<string, string | boolean | number> = {};
   /** Application instance — set by CommandRunner when needsApp is true. */

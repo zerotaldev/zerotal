@@ -1161,6 +1161,7 @@ class DbSeedCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1190,6 +1191,7 @@ class MakeFactoryCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1219,6 +1221,7 @@ class MakeMigrationCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1248,6 +1251,7 @@ class MakeModelCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1277,6 +1281,7 @@ class MakeSeederCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1307,6 +1312,7 @@ class MigrateCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1336,6 +1342,7 @@ class MigrateFreshCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1365,6 +1372,7 @@ class MigrateGenerateCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1394,6 +1402,7 @@ class MigrateRefreshCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1423,6 +1432,7 @@ class MigrateRollbackCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }
@@ -1452,6 +1462,7 @@ class MigrateStatusCommand = {
   secret: (question: string) => Promise<string>
   section: (title: string) => void
   table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
 }

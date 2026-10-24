@@ -76,4 +76,6 @@ export interface RouteDefinition {
   bindings: Map<string, ModelBindingResolver>;
   /** Host pattern from `Router.group({ domain })`; matched per request. */
   domain?: string;
+  /** Largest request body this route accepts, in bytes; set with `.maxBodySize()`. */
+  maxBodySize?: number | undefined;
 }

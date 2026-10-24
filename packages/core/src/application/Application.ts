@@ -48,6 +48,7 @@ import type { Pipe, NextFn } from "../pipeline/types.ts";
 import { NotFoundError } from "../errors/HttpError.ts";
 import type { ContainerBindings } from "../container/types.ts";
 import { dispatchRequest } from "../router/RouteHandler.ts";
+import { _bodyLimitResponse, _capRequestBodies } from "../router/bodyLimit.ts";
 import type { ProviderHooks } from "../router/RouteHandler.ts";
 import { isProdLike, deployEnv, runtimeMode } from "../support/env.ts";
 import { appKeyStrengthWarning } from "../support/appKey.ts";
@@ -438,6 +439,16 @@ export class Application {
   /** Per-provider boot cost and container provenance; see {@link providerReport}. */
   private _providerReport: ProviderReport[] = [];
   private _static?: ReturnType<typeof Bun.serve>;
+  /** Static dirs answered by per-request lookup rather than native routes; see `serve()`. */
+  private _lazyStaticDirs: ReadonlyArray<StaticMount> = [];
+  /**
+   * The limit a route without its own is held to (`app.maxRequestBodySize`) and the ceiling
+   * the server was started with, which is the largest limit any route declared at that time.
+   */
+  private _bodyLimits = {
+    default: DEFAULT_MAX_REQUEST_BODY_SIZE,
+    ceiling: DEFAULT_MAX_REQUEST_BODY_SIZE,
+  };
   private _configMap: Record<string, Record<string, unknown>> | undefined = undefined;
   /** Tracks where config came from, to reject conflicting overrides via useConfig(). */
   private _configSource: "create" | "useConfig" | undefined = undefined;
@@ -1657,6 +1668,7 @@ export class Application {
     const lazyStaticDirs = Router.staticDirs.filter(
       (dir) => devStatic || dir.options?.eager === false,
     );
+    this._lazyStaticDirs = lazyStaticDirs;
 
     const extraOptions: Record<string, unknown> = {};
     if (http3) extraOptions.http3 = true;
@@ -1669,15 +1681,27 @@ export class Application {
       "app.maxRequestBodySize",
       DEFAULT_MAX_REQUEST_BODY_SIZE,
     );
+    // A route that declared a larger limit raises what Bun accepts; everything else is held to
+    // its own limit by the framework (see `_capRequestBodies`).
+    const routeBodyLimits = Router._bodyLimits();
+    const bodyCeiling = Math.max(maxRequestBodySize, ...routeBodyLimits.values());
+    this._bodyLimits = { default: maxRequestBodySize, ceiling: bodyCeiling };
 
     this._static = Bun.serve({
       port,
-      maxRequestBodySize,
-      routes: _shieldCatchAlls(compiledRoutes, lazyStaticDirs),
+      maxRequestBodySize: bodyCeiling,
+      routes: this._serveTable(compiledRoutes),
       ...(Object.keys(extraOptions).length
         ? (extraOptions as unknown as Parameters<typeof Bun.serve>[0])
         : {}),
       fetch: async (req: Request, server: unknown): Promise<Response | undefined> => {
+        // The routes table above holds each route to its limit; this is every other request,
+        // which is held to the app limit once the server will accept more than that.
+        if (bodyCeiling > maxRequestBodySize) {
+          const refused = _bodyLimitResponse(req, maxRequestBodySize);
+          if (refused) return refused;
+        }
+
         // Lazy static file serving — for dirs registered with `eager: false`,
         // plus every dir under the dev worker (see `lazyStaticDirs` above).
         // Files already pre-registered are served by Bun as native routes and
@@ -1987,6 +2011,20 @@ export class Application {
   }
 
   /**
+   * What Bun is given as `routes`: the compiled table with its catch-alls shielded and each route
+   * held to its body limit. The same wrapping on boot and on a hot reload, so a reload cannot
+   * quietly drop either.
+   */
+  private _serveTable(compiled: RouteTable): RouteTable {
+    return _capRequestBodies(
+      _shieldCatchAlls(compiled, this._lazyStaticDirs),
+      Router._bodyLimits(),
+      this._bodyLimits.default,
+      this._bodyLimits.ceiling,
+    );
+  }
+
+  /**
    * Hot-reload route table triggered by SIGUSR2.
    */
   private async _reloadRoutes(): Promise<void> {
@@ -2022,7 +2060,15 @@ export class Application {
         this._exceptionHandler,
         this._providerHooks,
       );
-      this._static?.reload({ routes: newRoutes });
+      this._static?.reload({ routes: this._serveTable(newRoutes) });
+
+      const wanted = Math.max(0, ...Router._bodyLimits().values());
+      if (wanted > this._bodyLimits.ceiling) {
+        frameworkLog("app").warn(
+          `A route now asks for a request body of ${wanted} bytes, over the ${this._bodyLimits.ceiling} ` +
+            `the server was started with. A reload cannot raise that; restart to apply it.`,
+        );
+      }
 
       frameworkLog("app").info("Routes reloaded (zero downtime)");
     } catch (error) {

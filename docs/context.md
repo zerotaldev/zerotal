@@ -191,7 +191,9 @@ ctx.bearerToken(); // string | null — strips the "Bearer " prefix
 ### Uploaded files
 
 `file()` returns the first `UploadedFile` for a form field (or `null`); `files()`
-returns all of them. Both parse and cache the multipart body on first call.
+returns all of them. Both parse and cache the multipart body on first call. A body over the
+limit is refused before this runs; to let one route take a larger upload, see
+[Request body size](/docs/routing#request-body-size).
 
 ```typescript fragment
 const avatar = await ctx.file("avatar"); // UploadedFile | null

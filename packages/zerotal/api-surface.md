@@ -4079,8 +4079,9 @@ class WorkerCommand = {
 ## ./config  `(./src/config-reexport.ts)`
 
 class ConfigLoader = {
-  new (_map: ConfigMap, _validators?: ReadonlyArray<{ ns: string; fn: Validator; }>): ConfigLoader
+  new (_map: ConfigMap, _validators?: ReadonlyArray<{ ns: string; fn: Validator; }>, _failures?: ReadonlyArray<ConfigLoadFailure>): ConfigLoader
   all: () => ConfigMap
+  failures: () => ReadonlyArray<ConfigLoadFailure>
   get: <T = unknown>(key: string, fallback?: T) => T
   has: (key: string) => boolean
   validate: () => ConfigLoader
@@ -4112,7 +4113,7 @@ const DEFAULT_DEPLOY_TARGETS = Record<string, DeployTarget>
 
 function AppConfig = (options: {    name?: string;    env?: string;    key?: string;    debug?: boolean;    url?: string;    port?: number;    locale?: string;    timezone?: string;    http3?: boolean;    tls?: AppTlsConfig;    maxRequestBodySize?: number;    health?: boolean | HealthConfigShape;    allowedOrigins?: string[];    cors?: Partial<AppCorsConfig>;    throttle?: Partial<AppThrottleConfig>;    secureHeaders?: Partial<AppSecureHeadersConfig>;    assets?: {        entrypoint: string | string[];        outDir?: string;        prefix?: string;        minify?: boolean;        loader?: Record<string, AssetLoaderKind>;    };    dev?: DevConfigShape;    conventions?: {        enabled?: boolean;        paths?: Partial<ConventionsConfig['paths']>;    };}) => AppConfigShape
 
-function configLoader = (dir?: string) => ConfigLoader
+function configLoader = (dir?: string, options?: ConfigLoaderOptions) => ConfigLoader
 
 function DeployConfig = (options?: Partial<DeployConfigShape>) => DeployConfigShape
 

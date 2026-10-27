@@ -392,6 +392,24 @@ not touch is listed with a file, a line and a reason:
 Run it again after applying: a second run should report no changes. Codemods are
 idempotent, and that is the cheapest way to confirm one did what it said.
 
+#### What a release fixed for you
+
+`--notes` prints the changelog entries between two versions instead of running codemods, read
+from the changelogs the installed packages ship, so it covers exactly the packages your app has.
+It is read-only.
+
+```bash
+bun zt upgrade --notes                         # after the version package.json declares, up to the installed one
+bun zt upgrade --notes --from 1.9.0 --to 1.15.4
+bun zt upgrade --notes --grep smtp             # is my SMTP workaround still needed?
+bun zt upgrade --notes --json                  # for tooling and CI
+```
+
+Entries come grouped as the changelog groups them, breaking changes first, each with the package
+and the version that shipped it. `--grep` searches the whole text of each entry, and entries say
+what used to fail, so it is the quickest way to check whether a workaround you carry has outlived
+its reason. Install the newer version first: the notes are the ones its packages carry.
+
 Some codemods rewrite nothing and only point. `retired-defaults` lists the lines in
 `config/app.ts` that set a value a default used to have and no longer does. Today that is
 `cors.origin` set to `"*"`, which older scaffolds wrote and which lets any website read your

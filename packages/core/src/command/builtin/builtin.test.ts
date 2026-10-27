@@ -14,7 +14,7 @@ import { MakeObserverCommand } from "./MakeObserverCommand.ts";
 import { MakePolicyCommand, policyStub } from "./MakePolicyCommand.ts";
 import { MakeProviderCommand } from "./MakeProviderCommand.ts";
 import { MakeRequestCommand } from "./MakeRequestCommand.ts";
-import { MakeResourceCommand } from "./MakeResourceCommand.ts";
+import { MakeResourceCommand, _stub as apiResourceStub } from "./MakeResourceCommand.ts";
 import { RouteListCommand } from "./RouteListCommand.ts";
 import { StatusCommand } from "./StatusCommand.ts";
 import { TestCommand } from "./TestCommand.ts";
@@ -1014,6 +1014,23 @@ describe("MakeResourceCommand", () => {
     expect(out).toContain("extends Resource");
     expect(out).toContain("toArray()");
     expect(out).toContain("ResourceCollection");
+  });
+
+  // From the 1.15.4 adoption audit: the stub extended Resource<Post> without importing Post, so
+  // it failed to compile, imported two names it never used, and wrote the route as '/api/-post'.
+  it("imports the model it is typed against, and nothing it does not use", () => {
+    const stub = apiResourceStub("PostResource");
+
+    expect(stub).toContain("import type { Post } from '../models/Post';");
+    expect(stub).toContain("extends Resource<Post>");
+    expect(stub).toContain("import { Resource } from 'zerotal/http';");
+    expect(stub).not.toContain("PaginatedData");
+  });
+
+  it("writes the collection route plural and without a stray dash", () => {
+    expect(apiResourceStub("PostResource")).toContain("'/api/posts'");
+    expect(apiResourceStub("BlogPostResource")).toContain("'/api/blog-posts'");
+    expect(apiResourceStub("PostResource")).not.toContain("/-");
   });
 
   it("run() errors when file already exists", async () => {

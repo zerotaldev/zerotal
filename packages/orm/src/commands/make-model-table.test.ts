@@ -3,6 +3,7 @@ import { mkdtemp, rm, readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { tableNameFor } from "@zerotal/core";
+import { _nextMigrationPrefix } from "./MakeMigrationCommand.ts";
 import { MakeModelCommand } from "./MakeModelCommand.ts";
 import {
   MakeMigrationCommand,
@@ -156,5 +157,29 @@ describe("migrationStub", () => {
 
   it("still creates the placeholder when it is told nothing", () => {
     expect(migrationStub("CreateThings")).toContain("Schema.create('table_name'");
+  });
+});
+
+describe("the next migration number", () => {
+  // The starters number migrations 0001_; the generators wrote 003_ beside them.
+  it("is as wide as the migrations already there", () => {
+    expect(
+      _nextMigrationPrefix([
+        "database/migrations/0001_create_users_table.ts",
+        "database/migrations/0002_create_password_reset_tokens_table.ts",
+      ]),
+    ).toBe("0003");
+  });
+
+  it("is three digits in an app with none yet", () => {
+    expect(_nextMigrationPrefix([])).toBe("001");
+  });
+
+  it("is one past the highest, so a deleted migration's number is not reused", () => {
+    expect(_nextMigrationPrefix(["001_a.ts", "003_c.ts"])).toBe("004");
+  });
+
+  it("reads a Windows path", () => {
+    expect(_nextMigrationPrefix(["database\\migrations\\0009_x.ts"])).toBe("0010");
   });
 });

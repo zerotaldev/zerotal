@@ -10,6 +10,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **A generated migration is numbered like the ones beside it.** The starters number their
+  migrations `0001_`, and `make:migration`, `make:model --migration` and `migrate:generate` wrote
+  `003_` next to them. The number now takes the width already in use, and is one past the highest
+  rather than the count plus one, which reused a number once a migration had been deleted.
+
 - **`make:model Post --migration` leaves a model and a migration that agree.** The model was
   bound to `post`, the snake-cased class name, while the ORM's own convention and the Getting
   Started guide say `posts`, and the migration created a placeholder table called `table_name`

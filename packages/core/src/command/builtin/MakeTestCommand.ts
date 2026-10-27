@@ -38,6 +38,10 @@ beforeAll(async () => {
   app = await createTestApp(() => import('../../bootstrap/app.ts').then((m) => m.default));
   await migrateDatabase();
 });`;
+  // The write tests assume a JSON API, which the API starter is. In the other starters a page
+  // saves through its own actions, so they are left as todos to fill in, not as failures on a
+  // fresh app.
+  const write = options.helpers ? "it" : "it.todo";
   const imports = options.helpers
     ? "migrateDatabase, refreshDatabase, assertDatabaseHas"
     : "createTestApp, migrateDatabase, refreshDatabase, assertDatabaseHas";
@@ -59,14 +63,14 @@ describe('${subject}', () => {
     res.assertOk();
   });
 
-  it('rejects an invalid payload', async () => {
+  ${write}('rejects an invalid payload', async () => {
     const res = await app.asJson().post('/${route}', {});
 
     res.assertUnprocessable();
     res.assertInvalid();
   });
 
-  it('creates a record', async () => {
+  ${write}('creates a record', async () => {
     const res = await app.asJson().post('/${route}', { name: 'Example' });
 
     res.assertCreated();

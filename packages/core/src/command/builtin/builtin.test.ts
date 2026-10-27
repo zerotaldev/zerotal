@@ -166,6 +166,11 @@ describe("MakeTestCommand", () => {
     expect(stub).toContain("createTestApp, migrateDatabase");
   });
 
+  it("leaves the write tests as todos outside the API starter, so a fresh app is not red", () => {
+    expect(featureTestStub("Posts")).toContain("it.todo('creates a record'");
+    expect(featureTestStub("Posts", { helpers: true })).toContain("  it('creates a record'");
+  });
+
   it("does not pluralise a name that is already plural", () => {
     const stub = featureTestStub("Posts");
 

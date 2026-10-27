@@ -74,7 +74,12 @@ export class MakeFlowCommand extends Command {
     const baseDir = dirFlag
       ? dirFlag.replace(/\\/g, "/").replace(/\/+$/, "")
       : _pickDir(child ? CHILD_DIRS : PAGE_DIRS);
-    const path = `${baseDir}/${name}.tsx`;
+    // A page's file name is its URL, because file-based routing serves `pages/posts.tsx` at
+    // `/posts`, and the router is case-sensitive: `Posts.tsx` was served at `/Posts` while this
+    // command printed `/posts`, and the page 404'd at the address it was given. Pages are written
+    // in the starters' style (lowercase, kebab-case); a child component is not routed and keeps
+    // its class name.
+    const path = child ? `${baseDir}/${name}.tsx` : `${baseDir}/${_pageFile(name)}.tsx`;
 
     if (await Bun.file(path).exists()) {
       this.error(`File already exists: ${path}`);
@@ -141,14 +146,25 @@ function _pickDir(candidates: string[]): string {
 
 /** Derive a kebab-case URL path from a (possibly nested) class name. */
 function _urlFor(name: string): string {
-  const segments = name.split("/").map((seg) =>
-    seg
-      .replace(/Page$/, "")
-      .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-      .toLowerCase(),
-  );
+  // As the file router reads the file `_pageFile()` names: an `index` segment is the directory.
+  const segments = _pageFile(name)
+    .split("/")
+    .filter((segment) => segment !== "index");
   const path = segments.filter(Boolean).join("/");
   return "/" + path;
+}
+
+/** `Users/Index` → `users/index`, `BlogPostPage` → `blog-post`: the page's path under pages/. */
+function _pageFile(name: string): string {
+  return name
+    .split("/")
+    .map((seg) =>
+      seg
+        .replace(/Page$/, "")
+        .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+        .toLowerCase(),
+    )
+    .join("/");
 }
 
 /**

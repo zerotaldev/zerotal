@@ -72,13 +72,14 @@ describe("make:flow — layout + nesting", () => {
     const { c, col } = mk({ name: "Users/Index" }, { dir, layout: "AppLayout" });
     await c.run();
 
-    const path = join(dir, "Users", "Index.tsx");
+    const path = join(dir, "users", "index.tsx");
     expect(await Bun.file(path).exists()).toBe(true);
     const src = await Bun.file(path).text();
     // Two segments deep → two `../` up to the layouts folder, beside the pages folder.
     expect(src).toContain('import { AppLayout } from "../../layouts/AppLayout"');
     expect(src).toContain("static layout = AppLayout;");
-    expect(col.out).toContain('Router.flow("/users/index", Index)');
+    // users/index.tsx is served at /users, so that is the address it prints.
+    expect(col.out).toContain('Router.flow("/users", Index)');
     // There is no such layout in this directory, and the command says so.
     expect(col.out).toContain("No layout exports AppLayout");
   });
@@ -114,7 +115,7 @@ describe("make:flow in an app laid out like the starters", () => {
     const { c, col } = mk({ name: "Posts" }, { crud: true, layout: "AppLayout" });
     await c.run();
 
-    const src = await Bun.file(join(root, "app/flow/pages/Posts.tsx")).text();
+    const src = await Bun.file(join(root, "app/flow/pages/posts.tsx")).text();
     expect(src).toContain('import { AppLayout } from "../layouts/app";');
     expect(col.out).not.toContain("No layout exports");
   });
@@ -124,7 +125,7 @@ describe("make:flow in an app laid out like the starters", () => {
     const { c, col } = mk({ name: "Posts" }, { crud: true, layout: "AppLayout", model: "Post" });
     await c.run();
 
-    const src = await Bun.file(join(root, "app/flow/pages/Posts.tsx")).text();
+    const src = await Bun.file(join(root, "app/flow/pages/posts.tsx")).text();
     expect(src).toContain('import { Post } from "../../models/Post";');
     expect(src).toContain("@locked items: Post[] = [];");
     expect(src).toContain("this.items = await Post.all();");

@@ -15,6 +15,8 @@ import {
   type BunMarkdownOptions,
 } from "../helpers/markdown.ts";
 import { config } from "../helpers/config.ts";
+import { frameworkLog } from "../logger/frameworkLog.ts";
+import { deployEnv, isProdLike } from "../support/env.ts";
 import type { SessionContract, TransactionContext } from "../contracts/index.ts";
 import type { ContextRegistry, ContextKey } from "./ContextRegistry.ts";
 
@@ -695,7 +697,9 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
    *
    * Body data is only available here if `ctx.body()` was awaited earlier in
    * the lifecycle (e.g. by a FormRequest or validate() call). For guaranteed
-   * body access, use `await ctx.body()` or a FormRequest.
+   * body access, use `await ctx.body()` or a FormRequest. Outside production, a
+   * call that returns the fallback on a request whose body was never read logs a
+   * warning saying so, once per route and key.
    *
    * @example
    * ctx.input('id')          // route param :id or query ?id=
@@ -708,6 +712,7 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
     if (this._body !== undefined && key in this._body) return this._body[key] as T;
     const queryValue = this.url.searchParams.get(key);
     if (queryValue !== null) return queryValue as unknown as T;
+    if (this._body === undefined) _warnUnreadBody(this.request, this._routeDef?.pattern, key);
     return fallback as T;
   }
 
@@ -913,4 +918,48 @@ function configuredOrigin(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Routes and keys already warned about, so the warning is one line and not one per request. */
+const _warnedUnreadBody = new Set<string>();
+
+/** A request carries a form or JSON body that `input()` could have read, had it been parsed. */
+function _carriesBody(request: Request): boolean {
+  if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
+    return false;
+  }
+  const type = request.headers.get("content-type") ?? "";
+  return (
+    type.includes("json") ||
+    type.includes("application/x-www-form-urlencoded") ||
+    type.includes("multipart/form-data")
+  );
+}
+
+/**
+ * Say why `input()` found nothing, when the reason is that the body was never read.
+ *
+ * The fallback looks exactly like the answer for a field that was not sent, so the mistake reads
+ * as a correct result: a route read `ctx.input("proof_id")`, got `undefined`, turned it into
+ * `NaN` and answered 404 for a row that existed. Development only; production pays one branch.
+ */
+function _warnUnreadBody(request: Request, pattern: string | undefined, key: string): void {
+  if (!_carriesBody(request)) return;
+  if (isProdLike(deployEnv())) return;
+
+  const route = pattern ?? new URL(request.url).pathname;
+  const id = `${request.method} ${route} ${key}`;
+  if (_warnedUnreadBody.has(id)) return;
+  _warnedUnreadBody.add(id);
+
+  frameworkLog("http").warn(
+    `ctx.input("${key}") found nothing, and the body of this ${request.method} has not been read. ` +
+      `input() only sees body fields after \`await ctx.body()\` or \`validate()\`; read the body first.`,
+    { method: request.method, route, key },
+  );
+}
+
+/** @internal Forget which routes were warned about; backs this package's own tests. */
+export function _resetUnreadBodyWarnings(): void {
+  _warnedUnreadBody.clear();
 }

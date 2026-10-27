@@ -685,6 +685,29 @@ export class InvoicePaid extends Notification {
 }
 ```
 
+### Retries
+
+A queued notification that fails is tried again, three times in all and a second apart, unless it
+says otherwise. That rides out a blip; a mail host restarting or a provider having a bad few minutes
+outlasts it, and the notification then waits in the failed jobs until someone runs `queue:retry`.
+Set the policy on the notification:
+
+```ts fragment
+// app/notifications/PaymentDue.ts
+export class PaymentDue extends Notification {
+  override tries = 8; // attempts in all
+  override backoff = 5 * 60_000; // milliseconds between them
+
+  channels() {
+    return ["mail"];
+  }
+}
+```
+
+The values are read when the notification is queued and stored with the job, so the worker and
+`queue:retry` keep them. A notification sent immediately with `notify()` is not retried at all. A
+`tries` below 1 or a negative `backoff` is refused when the notification is queued.
+
 ## Testing
 
 `NotificationFake` swaps the `"notifications"` container binding for an

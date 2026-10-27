@@ -61,12 +61,12 @@ describe("ctx.input() on a request whose body has not been read", () => {
     const ctx = jsonPost();
     await ctx.body();
 
-    expect(ctx.input("proof_id")).toBe(7);
+    expect(ctx.input<number>("proof_id")).toBe(7);
     expect(out).toBe("");
   });
 
   it("says nothing for a field the query string has", () => {
-    expect(jsonPost("http://localhost/proofs?proof_id=3").input("proof_id")).toBe("3");
+    expect(jsonPost("http://localhost/proofs?proof_id=3").input<string>("proof_id")).toBe("3");
     expect(out).toBe("");
   });
 

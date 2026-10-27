@@ -423,6 +423,11 @@ useful for live, field-by-field client validation.
 
 ## Error handling
 
+A default message names the field the way a person reads it: `first_name` is "The first name
+field", whether the rule was written fluently or as a pipe string, and so are the other fields a
+rule depends on ("required when card number is present"). A message you pass to a rule is used
+exactly as written.
+
 ### JSON / API requests
 
 When `Accept: application/json` is present (and no `X-Inertia` header),

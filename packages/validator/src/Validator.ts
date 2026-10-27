@@ -7,7 +7,7 @@ import type {
 } from "./types.ts";
 import { runDbRule } from "./dbRules.ts";
 import type { UniqueOptions } from "./dbRules.ts";
-import { RULES } from "./stringRules.ts";
+import { RULES, _fieldName, _label } from "./stringRules.ts";
 
 /** Resolve whether a field is effectively required given its conditional modifiers. */
 /**
@@ -45,7 +45,7 @@ export function runValidation<S extends Schema>(
     const isProhibited = def.rules.some((r) => r.name === "prohibited");
     if (isProhibited && field in input) {
       const rule = def.rules.find((r) => r.name === "prohibited")!;
-      errors[field] ??= rule.message ?? `The ${field} field must not be present.`;
+      errors[field] ??= rule.message ?? `${_label(field)} must not be present.`;
       continue;
     }
     if (isProhibited) continue; // absent — OK
@@ -54,7 +54,8 @@ export function runValidation<S extends Schema>(
     if (def.prohibitedIf !== undefined) {
       const { field: f, value: v } = def.prohibitedIf;
       if (input[f] === v && field in input) {
-        errors[field] ??= `The ${field} field must not be present when ${f} is ${String(v)}.`;
+        errors[field] ??=
+          `${_label(field)} must not be present when ${_fieldName(f)} is ${String(v)}.`;
         continue;
       }
       if (input[f] === v) continue; // condition met but field absent — OK
@@ -64,7 +65,8 @@ export function runValidation<S extends Schema>(
     if (def.prohibitedUnless !== undefined) {
       const { field: f, value: v } = def.prohibitedUnless;
       if (input[f] !== v && field in input) {
-        errors[field] ??= `The ${field} field must not be present unless ${f} is ${String(v)}.`;
+        errors[field] ??=
+          `${_label(field)} must not be present unless ${_fieldName(f)} is ${String(v)}.`;
         continue;
       }
       if (input[f] !== v) continue; // condition met but field absent — OK
@@ -74,7 +76,7 @@ export function runValidation<S extends Schema>(
     const isPresent = def.rules.some((r) => r.name === "present");
     if (isPresent && !(field in input)) {
       const rule = def.rules.find((r) => r.name === "present")!;
-      errors[field] ??= rule.message ?? `The ${field} field must be present.`;
+      errors[field] ??= rule.message ?? `${_label(field)} must be present.`;
       continue;
     }
 
@@ -85,7 +87,7 @@ export function runValidation<S extends Schema>(
       );
       if (anyPresent && (value === undefined || value === null || value === "")) {
         errors[field] ??=
-          `The ${field} field is required when ${def.requiredWith.join(", ")} is present.`;
+          `${_label(field)} is required when ${def.requiredWith.map(_fieldName).join(", ")} is present.`;
         continue;
       }
     }
@@ -97,7 +99,7 @@ export function runValidation<S extends Schema>(
       );
       if (anyAbsent && (value === undefined || value === null || value === "")) {
         errors[field] ??=
-          `The ${field} field is required when ${def.requiredWithout.join(", ")} is not present.`;
+          `${_label(field)} is required when ${def.requiredWithout.map(_fieldName).join(", ")} is not present.`;
         continue;
       }
     }
@@ -109,7 +111,7 @@ export function runValidation<S extends Schema>(
       );
       if (allPresent && (value === undefined || value === null || value === "")) {
         errors[field] ??=
-          `The ${field} field is required when ${def.requiredWithAll.join(", ")} are all present.`;
+          `${_label(field)} is required when ${def.requiredWithAll.map(_fieldName).join(", ")} are all present.`;
         continue;
       }
     }
@@ -121,7 +123,7 @@ export function runValidation<S extends Schema>(
       );
       if (allAbsent && (value === undefined || value === null || value === "")) {
         errors[field] ??=
-          `The ${field} field is required when none of ${def.requiredWithoutAll.join(", ")} are present.`;
+          `${_label(field)} is required when none of ${def.requiredWithoutAll.map(_fieldName).join(", ")} are present.`;
         continue;
       }
     }
@@ -156,7 +158,7 @@ export function runValidation<S extends Schema>(
     }
 
     if (isRequired && (value === undefined || value === null || value === "")) {
-      errors[field] ??= def.requiredMessage ?? `The ${field} field is required.`;
+      errors[field] ??= def.requiredMessage ?? `${_label(field)} is required.`;
       continue;
     }
 
@@ -176,7 +178,7 @@ export function runValidation<S extends Schema>(
 
     if (value === null) {
       if (!def.nullable) {
-        errors[field] ??= `The ${field} field cannot be null.`;
+        errors[field] ??= `${_label(field)} cannot be null.`;
         continue;
       }
       output[field] = null;
@@ -221,7 +223,7 @@ function validateField(
         if (!isNaN(n)) coerced = n;
       }
       if (typeof coerced !== "number") {
-        return { error: `The ${field} field must be a number.` };
+        return { error: `${_label(field)} must be a number.` };
       }
       break;
 
@@ -234,19 +236,19 @@ function validateField(
         coerced = coerced !== 0;
       }
       if (typeof coerced !== "boolean") {
-        return { error: `The ${field} field must be a boolean.` };
+        return { error: `${_label(field)} must be a boolean.` };
       }
       break;
 
     case "array":
       if (!Array.isArray(coerced)) {
-        return { error: `The ${field} field must be an array.` };
+        return { error: `${_label(field)} must be an array.` };
       }
       break;
 
     case "object":
       if (typeof coerced !== "object" || Array.isArray(coerced) || coerced === null) {
-        return { error: `The ${field} field must be an object.` };
+        return { error: `${_label(field)} must be an object.` };
       }
       break;
 
@@ -254,7 +256,7 @@ function validateField(
       if (coerced instanceof Date) break;
       const d = new Date(coerced as string);
       if (isNaN(d.getTime())) {
-        return { error: `The ${field} field must be a valid date.` };
+        return { error: `${_label(field)} must be a valid date.` };
       }
       coerced = d;
       break;
@@ -267,7 +269,7 @@ function validateField(
         "name" in (coerced as object) &&
         "size" in (coerced as object);
       if (!isFile) {
-        return { error: `The ${field} field must be a file.` };
+        return { error: `${_label(field)} must be a file.` };
       }
       break;
     }
@@ -378,7 +380,7 @@ export async function runValidationAsync<S extends Schema>(
         if (rule.name === "custom" && rule.fn !== undefined) {
           const result = await rule.fn(fieldValue, input);
           if (result === false) {
-            asyncErrors[field] = rule.message ?? `The ${field} field is invalid.`;
+            asyncErrors[field] = rule.message ?? `${_label(field)} is invalid.`;
             break;
           }
           if (typeof result === "string") {
@@ -445,7 +447,7 @@ function applyRule(
   if (registryRule !== undefined) {
     const failure = registryRule(value, _registryParam(rule.name, rule.args), input);
     if (failure === null) return undefined;
-    return msg(failure.replaceAll(":attr", `The ${field} field`));
+    return msg(failure.replaceAll(":attr", `${_label(field)}`));
   }
 
   // Only rules that genuinely cannot live in the registry remain here:
@@ -455,7 +457,7 @@ function applyRule(
     case "confirmed": {
       const confirmation = input[`${field}_confirmation`];
       if (value !== confirmation) {
-        return msg(`The ${field} field confirmation does not match.`);
+        return msg(`${_label(field)} confirmation does not match.`);
       }
       break;
     }
@@ -473,7 +475,7 @@ function applyRule(
       const mimeType = file.type ?? "";
       const allowed = exts.map((e) => e.toLowerCase());
       if (!allowed.includes(ext) && !allowed.some((e) => mimeType.includes(e))) {
-        return msg(`The ${field} field must be a file of type: ${exts.join(", ")}.`);
+        return msg(`${_label(field)} must be a file of type: ${exts.join(", ")}.`);
       }
       break;
     }
@@ -482,7 +484,7 @@ function applyRule(
       const maxKb = rule.args[0] as number;
       const file = value as { size: number };
       if (file.size > maxKb * 1024) {
-        return msg(`The ${field} field must not be larger than ${maxKb} KB.`);
+        return msg(`${_label(field)} must not be larger than ${maxKb} KB.`);
       }
       break;
     }
@@ -491,7 +493,7 @@ function applyRule(
       const minKb = rule.args[0] as number;
       const file = value as { size: number };
       if (file.size < minKb * 1024) {
-        return msg(`The ${field} field must be at least ${minKb} KB.`);
+        return msg(`${_label(field)} must be at least ${minKb} KB.`);
       }
       break;
     }
@@ -501,7 +503,7 @@ function applyRule(
       const ref = new Date(rule.args[0] as string);
       const val = value instanceof Date ? value : new Date(value as string);
       if (val <= ref) {
-        return msg(`The ${field} field must be a date after ${rule.args[0]}.`);
+        return msg(`${_label(field)} must be a date after ${rule.args[0]}.`);
       }
       break;
     }
@@ -510,7 +512,7 @@ function applyRule(
       const ref = new Date(rule.args[0] as string);
       const val = value instanceof Date ? value : new Date(value as string);
       if (val >= ref) {
-        return msg(`The ${field} field must be a date before ${rule.args[0]}.`);
+        return msg(`${_label(field)} must be a date before ${rule.args[0]}.`);
       }
       break;
     }
@@ -519,7 +521,7 @@ function applyRule(
       const ref = new Date(rule.args[0] as string);
       const val = value instanceof Date ? value : new Date(value as string);
       if (val < ref) {
-        return msg(`The ${field} field must be a date on or after ${rule.args[0]}.`);
+        return msg(`${_label(field)} must be a date on or after ${rule.args[0]}.`);
       }
       break;
     }
@@ -528,7 +530,7 @@ function applyRule(
       const ref = new Date(rule.args[0] as string);
       const val = value instanceof Date ? value : new Date(value as string);
       if (val > ref) {
-        return msg(`The ${field} field must be a date on or before ${rule.args[0]}.`);
+        return msg(`${_label(field)} must be a date on or before ${rule.args[0]}.`);
       }
       break;
     }

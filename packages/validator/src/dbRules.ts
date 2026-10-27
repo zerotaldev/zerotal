@@ -1,3 +1,4 @@
+import { _fieldName } from "./stringRules.ts";
 /**
  * Inversion-of-control hook for DB-aware validation rules.
  *
@@ -62,8 +63,8 @@ export async function runDbRule(
 
   if (!passed) {
     if (message !== undefined) return message;
-    if (ruleName === "unique") return `The ${field ?? column} has already been taken.`;
-    return `The selected ${field ?? column} is invalid.`;
+    if (ruleName === "unique") return `The ${_fieldName(field ?? column)} has already been taken.`;
+    return `The selected ${_fieldName(field ?? column)} is invalid.`;
   }
 
   return undefined;

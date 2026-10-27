@@ -3,7 +3,7 @@ import { ServeCommand } from "./ServeCommand.ts";
 import { KeyGenerateCommand, generateKey, updateEnvContent } from "./KeyGenerateCommand.ts";
 import { MakeControllerCommand, basicStub, resourceStub } from "./MakeControllerCommand.ts";
 import { MakeMiddlewareCommand, middlewareStub } from "./MakeMiddlewareCommand.ts";
-import { MakeTestCommand, featureTestStub, unitTestStub } from "./MakeTestCommand.ts";
+import { MakeTestCommand, _testPath, featureTestStub, unitTestStub } from "./MakeTestCommand.ts";
 import { MakeCommandCommand, toKebab, commandStub } from "./MakeCommandCommand.ts";
 import { TerminalWriter, BufferWriter } from "../OutputWriter.ts";
 import { MakeEventCommand } from "./MakeEventCommand.ts";
@@ -143,8 +143,8 @@ describe("MakeTestCommand", () => {
     expect(MakeTestCommand.flags.map((f) => f.name)).toEqual(["unit"]);
   });
 
-  it("the feature stub boots the app through the shared helper", () => {
-    const stub = featureTestStub("PostTest");
+  it("the feature stub boots the app through the shared helper when the app has one", () => {
+    const stub = featureTestStub("PostTest", { helpers: true });
 
     expect(stub).toContain("import { createApp } from '../helpers.ts'");
     // The umbrella subpath, not the scoped package: no template installs the latter.
@@ -153,6 +153,32 @@ describe("MakeTestCommand", () => {
     expect(stub).toContain("describe('Post'");
     expect(stub).toContain("res.assertOk()");
     expect(stub).toContain("afterAll(() => app.close())");
+  });
+
+  // From the 1.15.4 adoption audit: `make:test Posts` wrote tests/feature/PostsTest.ts, which
+  // bun test never discovers; imported ../helpers.ts, which only the API starter has; and asked
+  // for `/postses`.
+  it("boots through bootstrap/app.ts when there is no helper, as the starters' own tests do", () => {
+    const stub = featureTestStub("Posts");
+
+    expect(stub).not.toContain("helpers.ts");
+    expect(stub).toContain("import('../../bootstrap/app.ts')");
+    expect(stub).toContain("createTestApp, migrateDatabase");
+  });
+
+  it("does not pluralise a name that is already plural", () => {
+    const stub = featureTestStub("Posts");
+
+    expect(stub).toContain("app.get('/posts')");
+    expect(stub).not.toContain("postses");
+    expect(featureTestStub("BlogPostTest")).toContain("assertDatabaseHas('blog_posts'");
+    expect(featureTestStub("BlogPostTest")).toContain("app.get('/blog-posts')");
+  });
+
+  it("names the file so bun test discovers it", () => {
+    expect(_testPath("Posts", false)).toBe("tests/feature/posts.test.ts");
+    expect(_testPath("PostTest", false)).toBe("tests/feature/post.test.ts");
+    expect(_testPath("BlogPost", true)).toBe("tests/unit/blog-post.test.ts");
   });
 
   it("the unit stub pulls in neither the app nor the database", () => {

@@ -139,13 +139,15 @@ how to pass any other flag to `bun test`, see
 
 ```bash
 # in your project root
-bun zt make:test PostTest         # tests/feature/PostTest.ts
-bun zt make:test SlugTest --unit  # tests/unit/SlugTest.ts
+bun zt make:test PostTest         # tests/feature/post.test.ts
+bun zt make:test SlugTest --unit  # tests/unit/slug.test.ts
 ```
 
-The feature stub boots the app through `tests/helpers.ts`, so a generated test
-runs against the same configured application as the rest of the suite rather than
-building its own.
+The file is named `*.test.ts`, which is what `bun test` discovers. The feature stub boots
+the app the way the starter's own tests do, through `bootstrap/app.ts` (or through
+`tests/helpers.ts` if your app has one, as the API starter does), so a generated test runs
+against the same configured application as the rest of the suite. Its requests assume the
+resource's routes (`Posts` is `/posts`) and a `name` column; edit them to match your app.
 
 ## A first test
 

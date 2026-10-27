@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A field key reads as words in every default message.** The fluent API wrote the raw key
+  ("The first_name field must not exceed 3 characters.") and the pipe-string engine a humanised one
+  ("The first name field…"), so the same field and failure read differently depending on the
+  syntax, and the fluent one, which `validate()` and every example use, put `snake_case` in a
+  sentence addressed to the person filling in the form. Both engines now use one label, and so do
+  the cross-field rules (`requiredWith` and the others name their fields as words) and the
+  `unique` and `exists` messages. A message passed to a rule is unchanged. An app whose tests
+  assert a default message for a field with an underscore will see the new wording. Closes #28.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

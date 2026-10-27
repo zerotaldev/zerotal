@@ -236,8 +236,18 @@ function _parseRules(raw: string | string[]): Array<{ name: string; param: strin
   });
 }
 
-function _label(field: string): string {
-  return `The ${field.replace(/_/g, " ")} field`;
+/**
+ * A field key as a person reads it: `first_name` is "first name".
+ *
+ * @internal Shared by both rule engines, so a message reads the same whichever syntax produced it.
+ */
+export function _fieldName(field: string): string {
+  return field.replace(/_/g, " ");
+}
+
+/** @internal `The first name field`, the subject of every message about one field. */
+export function _label(field: string): string {
+  return `The ${_fieldName(field)} field`;
 }
 
 /**

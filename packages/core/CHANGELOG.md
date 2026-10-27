@@ -18,6 +18,14 @@ follows the Zerotal monorepo's unified versioning.
   splitting CI, goes after `--`. `Command.unknownFlags` lists the options a command was given and
   does not declare.
 
+- **`ctx.input()` says when it found nothing because the body was never read.** It reads route
+  params, then the parsed body, then the query string, and skips the body when nothing has parsed
+  it, so the fallback came back exactly as it would for a field that was never sent. A route read
+  `ctx.input("proof_id")`, got `undefined`, turned it into `NaN` and answered 404 for a row that
+  existed. Outside production, a call that returns the fallback on a JSON or form request whose
+  body has not been read now logs a warning naming the key and the fix, once per route and key.
+  The return value is unchanged. Closes #32.
+
 - **`zt upgrade` points at config values that are what a default used to be.** It answered "No
   codemods apply to this version range" to an app that set `cors.origin` to `"*"`, the value
   older scaffolds wrote and the changelog calls unsafe, because there was nothing to rewrite. A new

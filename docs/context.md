@@ -178,7 +178,9 @@ ctx.input("q", "all"); // with fallback
 
 > **Warning** — `input()` only sees body data if `await ctx.body()` (or a
 > FormRequest) ran earlier in the lifecycle; otherwise it falls through to the query
-> string. For guaranteed body access, `await ctx.body()` first.
+> string. For guaranteed body access, `await ctx.body()` first. Outside production, a
+> call that comes back empty on a JSON or form request whose body was never read logs a
+> warning naming the key, once per route.
 
 Read a header with `header()` (case-insensitive) or pull a Bearer token with
 `bearerToken()`:

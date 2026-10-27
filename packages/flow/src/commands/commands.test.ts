@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "bun:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdtemp, rm } from "node:fs/promises";
+import { readdirSync } from "node:fs";
 import { MakeFlowCommand } from "./MakeFlowCommand.ts";
 
 class Collector {
@@ -45,8 +46,11 @@ describe("make:flow — page", () => {
     const { c, col } = mk({ name: "Dashboard" }, { dir });
     await c.run();
 
-    const path = join(dir, "Dashboard.tsx");
+    const path = join(dir, "dashboard.tsx");
     expect(await Bun.file(path).exists()).toBe(true);
+    // The exact name, which a case-insensitive file system (Windows, macOS) would not check:
+    // file routing is case-sensitive, so Dashboard.tsx would be served at /Dashboard.
+    expect(readdirSync(dir)).toContain("dashboard.tsx");
     const src = await Bun.file(path).text();
     expect(src).toContain("/** @jsxImportSource @zerotal/flow */");
     expect(src).toContain("export class Dashboard extends Component");
@@ -167,7 +171,7 @@ describe("make:flow — crud", () => {
     const { c } = mk({ name: "Posts" }, { dir, crud: true });
     await c.run();
 
-    const src = await Bun.file(join(dir, "Posts.tsx")).text();
+    const src = await Bun.file(join(dir, "posts.tsx")).text();
     expect(src).toContain("@validate((rule) => rule.required().min(2))");
     expect(src).toContain("async save()");
     expect(src).toContain("edit(id: number)");

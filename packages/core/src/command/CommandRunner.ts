@@ -619,7 +619,7 @@ export class CommandRunner {
       commandName === "--help" ||
       commandName === "-h"
     ) {
-      this._printList();
+      await this._printList();
       return;
     }
     if (commandName === "help") {
@@ -774,7 +774,7 @@ export class CommandRunner {
     }
   }
 
-  private _printList(): void {
+  private async _printList(): Promise<void> {
     const groups = new Map<CommandClass | CommandThunk, string[]>();
     for (const [name, entry] of this._registry) {
       const list = groups.get(entry) ?? [];
@@ -786,10 +786,20 @@ export class CommandRunner {
     const rows: Row[] = [];
     for (const [entry, names] of groups) {
       const isClass = typeof entry === "function" && "commandName" in entry;
-      const primary = isClass ? (entry as CommandClass).commandName : names[0]!;
-      const description = isClass
-        ? ((entry as CommandClass).description ?? "")
-        : "(lazy — run to load)";
+      // A lazy command is loaded to read its description. `zt list` used to print
+      // "(lazy — run to load)" for sixteen of them, `migrate` and `make:model` among them, which
+      // is the listing someone new reads to find out what the CLI does. A listing is not the hot
+      // path the laziness is for, and a module that fails to load still gets a line.
+      let Cmd: CommandClass | undefined = isClass ? (entry as CommandClass) : undefined;
+      if (!Cmd) {
+        try {
+          Cmd = await (entry as CommandThunk)();
+        } catch {
+          Cmd = undefined;
+        }
+      }
+      const primary = Cmd?.commandName ?? names[0]!;
+      const description = Cmd ? (Cmd.description ?? "") : "(could not be loaded)";
       const aliases = names.filter((registeredName) => registeredName !== primary);
       rows.push({ name: primary, description, aliases });
     }
@@ -806,7 +816,7 @@ export class CommandRunner {
 
   private async _printHelp(name: string): Promise<void> {
     if (!name) {
-      this._printList();
+      await this._printList();
       return;
     }
     const Cmd = await this._resolve(name);

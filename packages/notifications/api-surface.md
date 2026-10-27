@@ -97,6 +97,7 @@ class MessageSent = {
 
 class Notification = {
   new (): Notification
+  backoff?: number | undefined
   broadcastType: () => string
   channels: (notifiable?: Notifiable) => string[]
   payload: () => Record<string, unknown>
@@ -105,6 +106,7 @@ class Notification = {
   toMail: (_notifiable: Notifiable) => MailMessage | Promise<MailMessage>
   toSlack: (_notifiable: Notifiable) => SlackMessage | Promise<SlackMessage>
   toSms: (_notifiable: Notifiable) => SmsMessage | Promise<SmsMessage>
+  tries?: number | undefined
 }
 
 class NotificationChannelNotConfiguredError = {

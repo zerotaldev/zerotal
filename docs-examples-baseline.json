@@ -4721,13 +4721,13 @@
       "file": "docs/inertia/props.md",
       "heading": "What's provided",
       "ordinal": 0,
-      "hash": "318cspvg7a3m"
+      "hash": "331ylo20jdt2"
     },
     {
       "file": "docs/inertia/props.md",
       "heading": "What's provided",
       "ordinal": 1,
-      "hash": "12wsr9l81hvv"
+      "hash": "3u2ylhriweqr"
     },
     {
       "file": "docs/inertia/props.md",
@@ -5412,6 +5412,12 @@
       "heading": "Queued notifications",
       "ordinal": 1,
       "hash": "3b9gchm4iekz"
+    },
+    {
+      "file": "docs/notifications.md",
+      "heading": "Retries",
+      "ordinal": 0,
+      "hash": "1l18vr9yk0oi"
     },
     {
       "file": "docs/notifications.md",

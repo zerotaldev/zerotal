@@ -663,7 +663,17 @@ Run the worker as a **second** container/service from the same image with the co
 On a server with no Node installed, `bun install` can fail on a transitive package whose
 `postinstall` shells out to `node`. The `bun` npm package is the usual one — its
 `postinstall` downloads a Bun binary the box already has, and there is no `node` to run the
-script with. `--ignore-scripts` resolves it, but check what you are skipping first:
+script with. `--ignore-scripts` resolves it, but check what you are skipping first.
+
+If your own `package.json` declares `bun`, which is how the runtime check suggests pinning the
+runtime, skipping scripts skips that package's `postinstall` too, and that script is what puts the
+real binary at `node_modules/.bin/bun`; without it the file is a placeholder, and anything that runs
+it fails with a message about a postinstall script that did not run. Use `--ignore-scripts` only for
+an install that never runs `node_modules/.bin/bun`, such as a server with its own Bun on `PATH`.
+Otherwise leave scripts on, or, when the `bun` package arrives only as a peer of another package,
+install with `--omit=peer` instead.
+
+To see which packages run an install script:
 
 ```bash
 # every package with an install script, before you skip them all

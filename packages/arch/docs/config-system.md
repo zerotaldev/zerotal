@@ -177,6 +177,8 @@ Because every file is loaded as a normal module, a config file may `import` and 
 
 > **Warning** — Auto-discovery silently skips a config file that throws while importing. If a namespace seems to be missing all its values, check that the file imports cleanly and that its required env vars are set.
 
+Under `zt`, a file that fails is reported once the command is known. A command that boots the app reports it as an error, as before. A command that does not (`zt inertia:build`, the `make:*` scaffolders, `zt version`) prints one line saying the file did not load and why, and carries on; anything it reads from that file, such as a scaffolder's output path, falls back to its default. A build in CI needs no `APP_KEY`, and does not need a placeholder one to keep its log clean.
+
 ## Overriding config in tests
 
 ```typescript fragment
@@ -238,7 +240,7 @@ config.validate(); // runs each file's optional validate() export
 const app = Application.create({ config }); // …or app.useConfig(config)
 ```
 
-`configLoader(dir)` returns a `ConfigLoader` with `all()`, `get("dot.path", fallback)`, `has(path)`, and `validate()`. A config file may export a named `validate(config)` function; `ConfigLoader.validate()` runs them all and throws on the first failure.
+`configLoader(dir, options?)` returns a `ConfigLoader` with `all()`, `get("dot.path", fallback)`, `has(path)`, `validate()` and `failures()`. A file that throws while loading is logged as an error, or, with `{ deferFailures: true }`, kept in `failures()` for the caller to report once it knows whether anything needs it. A config file may export a named `validate(config)` function; `ConfigLoader.validate()` runs them all and throws on the first failure.
 
 **One source of truth.** If config was passed to `Application.create({ config })`, a later `useConfig(...)` is **ignored** (create wins) — so the framework-managed `zt.ts`, which always calls `useConfig(...)`, never conflicts with an app that prefers to pass config to `create()`. When neither is used, the app auto-discovers `config/*.ts` at boot as described above.
 

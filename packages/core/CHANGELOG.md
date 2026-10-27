@@ -86,6 +86,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`zt list` describes every command.** Sixteen commands registered lazily, `migrate` and
+  `make:model` among them, were listed as "(lazy — run to load)" in the listing someone new reads
+  to find out what the CLI does. Listing now loads them to read their descriptions; one that cannot
+  load says so.
+
 - **`make:resource` writes a resource that compiles.** `make:resource PostResource` extended
   `Resource<Post>` without importing `Post`, imported two names it never used, and wrote the
   collection route as `/api/-post`. It now imports the model type from `app/models/`, warns when

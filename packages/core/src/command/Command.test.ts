@@ -309,6 +309,39 @@ describe("CommandRunner.registerLazy()", () => {
     const r = await runner.callInProcess(["hi"]);
     expect(r.code).toBe(0);
   });
+
+  // From the 1.15.4 adoption audit: `zt list` showed "(lazy — run to load)" instead of a
+  // description for sixteen commands, `migrate` and `make:model` among them.
+  it("zt list shows a lazy command's own description, and a line for one that cannot load", async () => {
+    const { CommandRunner } = await import("./CommandRunner.ts");
+    const { Application } = await import("../application/Application.ts");
+
+    Application._resetInstance();
+    const app = Application.create({ env: "test" });
+    await app.boot();
+
+    const runner = new CommandRunner(app);
+    runner.registerLazy("greet", async () => GreetCommand, ["hi"]);
+    runner.registerLazy("broken", async () => {
+      throw new Error("optional peer not installed");
+    });
+
+    const printed: string[] = [];
+    const original = console.log;
+    console.log = (...parts: unknown[]) => printed.push(parts.join(" "));
+    try {
+      await runner.run(["list"]);
+    } finally {
+      console.log = original;
+    }
+    const out = printed.join("\n");
+
+    expect(out).not.toContain("lazy");
+    expect(out).toContain(GreetCommand.description);
+    expect(out).toContain("alias: hi");
+    expect(out).toContain("broken");
+    expect(out).toContain("(could not be loaded)");
+  });
 });
 
 // ── Application.create() reads APP_ENV ────────────────────────────────────

@@ -7,8 +7,8 @@
 export interface SharedProps {
   /** The signed-in user, or null. Populated once an auth provider is registered. */
   auth: { user: { id: number; name: string; email: string } | null };
-  /** One-request-only messages set with `http.flash("success" | "error", …)`. */
-  flash: { success: string | null; error: string | null };
+  /** One-request-only messages set with `http.flash("success" | "error" | "warning" | "info", …)`. */
+  flash: { success: string | null; error: string | null; warning: string | null; info: string | null };
   /** Field errors from a failed `validate()` call, keyed by field name. */
   errors: Record<string, string>;
   /** Submitted input from a failed `validate()`, so a form can repopulate itself. */

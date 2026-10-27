@@ -15,24 +15,36 @@ import type { SharedProps } from "../types";
 
 interface Toast {
   id: number;
-  kind: "success" | "error";
+  kind: "success" | "error" | "warning" | "info";
   message: string;
 }
 
 const TONE: Record<Toast["kind"], string> = {
   success: "border-success/40 text-success",
   error: "border-destructive/40 text-destructive",
+  warning: "border-warning/40 text-warning",
+  info: "border-border text-foreground",
 };
+
+const ICON = { success: "check", error: "close", warning: "alert", info: "info" } as const;
 
 const page = usePage<SharedProps>();
 const toasts = ref<Toast[]>([]);
 
 watch(
-  () => [page.props.flash?.success, page.props.flash?.error] as const,
-  ([success, error]) => {
+  () =>
+    [
+      page.props.flash?.success,
+      page.props.flash?.error,
+      page.props.flash?.warning,
+      page.props.flash?.info,
+    ] as const,
+  ([success, error, warning, info]) => {
     const next: Toast[] = [];
     if (success) next.push({ id: Date.now(), kind: "success", message: success });
     if (error) next.push({ id: Date.now() + 1, kind: "error", message: error });
+    if (warning) next.push({ id: Date.now() + 2, kind: "warning", message: warning });
+    if (info) next.push({ id: Date.now() + 3, kind: "info", message: info });
     if (next.length === 0) return;
 
     toasts.value = [...toasts.value, ...next];
@@ -65,7 +77,7 @@ function dismiss(id: number): void {
       "
     >
       <span class="mt-0.5 shrink-0">
-        <Icon :name="toast.kind === 'success' ? 'check' : 'close'" class="size-4.5" />
+        <Icon :name="ICON[toast.kind]" class="size-4.5" />
       </span>
       <p class="flex-1 text-sm text-card-foreground">{{ toast.message }}</p>
       <button

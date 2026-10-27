@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`ctx.flash("warning", …)` and `ctx.flash("info", …)` reach the page.** `ctx.flash()` takes any
+  key and the shared `flash` prop read two of them, so a `warning` or an `info` was stored, accepted
+  without an error, and never shown. The case that wants a third tone is the one where a missed
+  notice costs most: an import that read eight rows of ten flashed a `warning` naming the two it
+  could not, and nobody saw it. `flash` now carries `success`, `error`, `warning` and `info`, typed
+  as such; another key is shared with `Inertia.share()`. Closes #29.
+
 ## [1.15.0] — 2026-09-04
 
 ### Added

@@ -190,6 +190,24 @@ describe("sharedProps()", () => {
     expect((shared["flash"] as { error: string }).error).toBe("Failed!");
   });
 
+  it("includes flash warning and info, which were stored and then dropped", () => {
+    const ctx = fakeCtx();
+    (ctx as unknown as { session: unknown }).session = {
+      get: (key: string) => {
+        if (key === "warning") return "8 of 10 rows imported; rows 4 and 9 were unreadable.";
+        if (key === "info") return "Imports run overnight.";
+        return undefined;
+      },
+    };
+    const shared = inRequest(ctx, () => sharedProps());
+    expect(shared["flash"]).toEqual({
+      success: null,
+      error: null,
+      warning: "8 of 10 rows imported; rows 4 and 9 were unreadable.",
+      info: "Imports run overnight.",
+    });
+  });
+
   it("includes errors and old from session", () => {
     const ctx = fakeCtx();
     (ctx as unknown as { session: unknown }).session = {

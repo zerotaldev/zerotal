@@ -51,6 +51,9 @@
      the surface *under* the tint is what makes it look like it passes. */
   --success: oklch(0.504 0.11 158);
   --success-foreground: oklch(0.99 0.01 158);
+  /* Amber dark enough to read as text on its own 10% tint, for the same reason as above. */
+  --warning: oklch(0.555 0.163 49);
+  --warning-foreground: oklch(0.99 0.02 85);
 
   --destructive: oklch(0.577 0.245 27.3);
   --destructive-foreground: oklch(0.99 0.01 27.3);
@@ -86,6 +89,8 @@
 
   --success: oklch(0.72 0.15 158);
   --success-foreground: oklch(0.17 0.03 158);
+  --warning: oklch(0.828 0.189 84.4);
+  --warning-foreground: oklch(0.2 0.05 70);
 
   --destructive: oklch(0.704 0.191 22.2);
   --destructive-foreground: oklch(0.16 0.02 22.2);
@@ -116,6 +121,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);

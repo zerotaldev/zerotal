@@ -70,6 +70,27 @@ async function listMigrationFiles(): Promise<string[]> {
 }
 
 /**
+ * The number for the next migration, written as wide as the ones already there.
+ *
+ * The starters number their migrations `0001_`, and the generators wrote `003_` beside them, so a
+ * new app's migrations read in two widths. The next number is also one past the highest, not the
+ * count plus one, which reused a number once a migration had been deleted.
+ *
+ * @internal Exported for `migrate:generate` and tests.
+ */
+export function _nextMigrationPrefix(files: ReadonlyArray<string>): string {
+  let highest = 0;
+  let width = 3;
+  for (const file of files) {
+    const digits = /^(\d+)_/.exec(file.replace(/\\/g, "/").split("/").pop() ?? "")?.[1];
+    if (!digits) continue;
+    highest = Math.max(highest, Number(digits));
+    width = Math.max(width, digits.length);
+  }
+  return String(highest + 1).padStart(width, "0");
+}
+
+/**
  * Writes a new numbered migration file for `name` under `database/migrations/`,
  * returning its path and whether it was created (`false` if one already exists).
  *
@@ -79,9 +100,7 @@ export async function createMigrationFile(
   name: string,
   options: MigrationStubOptions = {},
 ): Promise<MigrationFileResult> {
-  const files = await listMigrationFiles();
-  const nextNumber = files.length + 1;
-  const prefix = String(nextNumber).padStart(3, "0");
+  const prefix = _nextMigrationPrefix(await listMigrationFiles());
   const fileName = `${prefix}_${name}.ts`;
   const path = `database/migrations/${fileName}`;
 

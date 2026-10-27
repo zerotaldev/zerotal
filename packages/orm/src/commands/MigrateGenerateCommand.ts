@@ -3,7 +3,7 @@ import { Command } from "@zerotal/core";
 import { ModelInspector } from "../schema/ModelInspector.ts";
 import { SchemaDiffer } from "../schema/SchemaDiffer.ts";
 import { generateMigrationContent } from "../schema/MigrationCodegen.ts";
-import { toMigrationClassName } from "./MakeMigrationCommand.ts";
+import { _nextMigrationPrefix, toMigrationClassName } from "./MakeMigrationCommand.ts";
 
 /**
  * Lists the existing `database/migrations/*.ts` file paths, used to derive the
@@ -87,9 +87,7 @@ export class MigrateGenerateCommand extends Command {
     const content = generateMigrationContent(className, diff);
 
     // ── 4. Write the migration file ──────────────────────────────────────────
-    const existing = await listMigrationFiles();
-    const nextNumber = existing.length + 1;
-    const prefix = String(nextNumber).padStart(3, "0");
+    const prefix = _nextMigrationPrefix(await listMigrationFiles());
     const filePath = path.join("database", "migrations", `${prefix}_${name}.ts`);
     const absPath = path.resolve(process.cwd(), filePath);
 

@@ -86,6 +86,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`make:resource` writes a resource that compiles.** `make:resource PostResource` extended
+  `Resource<Post>` without importing `Post`, imported two names it never used, and wrote the
+  collection route as `/api/-post`. It now imports the model type from `app/models/`, warns when
+  that model does not exist yet, and writes `/api/posts`.
+
 - **`make:test` writes a test that runs.** `make:test Posts` wrote `tests/feature/PostsTest.ts`,
   which `bun test` never discovers, so the suite stayed green with the new test missing from it;
   imported `../helpers.ts`, which only the API starter has; and requested `/postses`. It now

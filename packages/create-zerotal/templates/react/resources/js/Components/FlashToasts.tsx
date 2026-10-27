@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { cn } from "../lib/cn";
-import { CheckIcon, CloseIcon } from "./Icons";
+import { AlertIcon, CheckIcon, CloseIcon, InfoIcon } from "./Icons";
 import type { SharedProps } from "../types";
 
 /**
@@ -15,13 +15,15 @@ import type { SharedProps } from "../types";
 
 interface Toast {
   id: number;
-  kind: "success" | "error";
+  kind: "success" | "error" | "warning" | "info";
   message: string;
 }
 
 const TONE: Record<Toast["kind"], string> = {
   success: "border-success/40 text-success",
   error: "border-destructive/40 text-destructive",
+  warning: "border-warning/40 text-warning",
+  info: "border-border text-foreground",
 };
 
 export default function FlashToasts() {
@@ -32,6 +34,8 @@ export default function FlashToasts() {
     const next: Toast[] = [];
     if (flash?.success) next.push({ id: Date.now(), kind: "success", message: flash.success });
     if (flash?.error) next.push({ id: Date.now() + 1, kind: "error", message: flash.error });
+    if (flash?.warning) next.push({ id: Date.now() + 2, kind: "warning", message: flash.warning });
+    if (flash?.info) next.push({ id: Date.now() + 3, kind: "info", message: flash.info });
     if (next.length === 0) return;
 
     setToasts((prev) => [...prev, ...next]);
@@ -39,7 +43,7 @@ export default function FlashToasts() {
       setToasts((prev) => prev.filter((t) => !next.some((n) => n.id === t.id)));
     }, 5000);
     return () => clearTimeout(timer);
-  }, [flash?.success, flash?.error]);
+  }, [flash?.success, flash?.error, flash?.warning, flash?.info]);
 
   if (toasts.length === 0) return null;
 
@@ -59,6 +63,10 @@ export default function FlashToasts() {
           <span className="mt-0.5 shrink-0">
             {toast.kind === "success" ? (
               <CheckIcon className="size-4.5" />
+            ) : toast.kind === "warning" ? (
+              <AlertIcon className="size-4.5" />
+            ) : toast.kind === "info" ? (
+              <InfoIcon className="size-4.5" />
             ) : (
               <CloseIcon className="size-4.5" />
             )}

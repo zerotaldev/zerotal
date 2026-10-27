@@ -11,7 +11,7 @@
  */
 const props = withDefaults(defineProps<{ name: IconName; class?: string }>(), {});
 
-type IconName = "sun" | "moon" | "menu" | "close" | "check" | "arrow-right";
+type IconName = "sun" | "moon" | "menu" | "close" | "check" | "alert" | "info" | "arrow-right";
 
 const PATHS: Record<IconName, string> = {
   sun: "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
@@ -19,6 +19,8 @@ const PATHS: Record<IconName, string> = {
   menu: "M4 7h16M4 12h16M4 17h16",
   close: "M18 6 6 18M6 6l12 12",
   check: "m20 6-11 11-5-5",
+  alert: "M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z",
+  info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01",
   "arrow-right": "M5 12h14M13 6l6 6-6 6",
 };
 </script>

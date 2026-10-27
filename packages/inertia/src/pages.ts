@@ -77,7 +77,12 @@ export interface SharedProps {}
  */
 interface BuiltInSharedProps {
   auth: { user: unknown };
-  flash: { success: string | null; error: string | null };
+  flash: {
+    success: string | null;
+    error: string | null;
+    warning: string | null;
+    info: string | null;
+  };
   errors: Record<string, string>;
   old: Record<string, unknown>;
 }

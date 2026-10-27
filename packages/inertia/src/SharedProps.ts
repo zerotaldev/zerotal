@@ -37,9 +37,15 @@ export function sharedProps(): Record<string, unknown> {
       // to access the relation getter. A plain object is always safe to serialize.
       user: ctxUser ? _serializeUser(ctxUser as Record<string | symbol, unknown>) : null,
     },
+    // The four tones a flash UI has. `ctx.flash()` takes any key, and a key read here is the only
+    // kind that reaches the page: `warning` and `info` used to be stored and then dropped without a
+    // word, and the case that wants a third tone (an import that read eight rows of ten) is the one
+    // where a missed notice costs most. A key beyond these is shared with `Inertia.share()`.
     flash: {
       success: session?.get<string>("success") ?? null,
       error: session?.get<string>("error") ?? null,
+      warning: session?.get<string>("warning") ?? null,
+      info: session?.get<string>("info") ?? null,
     },
     errors: always(errors),
     old: session?.get<Record<string, unknown>>("old") ?? {},

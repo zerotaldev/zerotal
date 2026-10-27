@@ -375,11 +375,18 @@ same key wins.
   flash: {
     success: session.get("success") ?? null,
     error:   session.get("error")   ?? null,
+    warning: session.get("warning") ?? null,
+    info:    session.get("info")    ?? null,
   },
   errors: always(session.get("errors") ?? {}),  // from a validation redirect
   old:    session.get("old")    ?? {},          // previous form input
 }
 ```
+
+`flash` carries the four tones a flash UI usually has: `ctx.flash("warning", …)` and
+`ctx.flash("info", …)` reach the page as `flash.warning` and `flash.info`. `ctx.flash()` accepts
+any key, but only these four are in the shared bag; to carry another, share it from the session
+with [`Inertia.share()`](#adding-custom-shared-props).
 
 `errors` is wrapped in [`always()`](#optional-and-always-props) so it survives
 [partial reloads](#partial-reloads) — the Inertia client always expects an
@@ -396,7 +403,12 @@ import { usePage } from "@inertiajs/react";
 export default function Page() {
   const { auth, flash, errors } = usePage<{
     auth: { user: { name: string } | null };
-    flash: { success: string | null; error: string | null };
+    flash: {
+      success: string | null;
+      error: string | null;
+      warning: string | null;
+      info: string | null;
+    };
     errors: Record<string, string>;
   }>().props;
 

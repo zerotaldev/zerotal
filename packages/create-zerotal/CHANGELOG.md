@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The React and Vue starters show `warning` and `info` flashes.** Their toast component handled
+  `success` and `error`, the two keys the Inertia `flash` prop carried; it now carries four, and the
+  toasts render them with an alert and an info icon. A `--warning` colour token (amber, dark enough
+  to read as text on its own tint) joins `--success` and `--destructive`; `info` uses the neutral
+  border and text colours.
+
 ### Added
 
 - **`.gitattributes` pinning line endings to LF**, in every template. On Windows git's default

@@ -8,7 +8,8 @@
  * cover the common shapes.
  */
 import { Command } from "@zerotal/core";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 
 /** Where pages live, in preference order. Real apps use `app/flow/pages`. */
 const PAGE_DIRS = ["app/flow/pages", "app/flow"];
@@ -48,6 +49,12 @@ export class MakeFlowCommand extends Command {
       default: "",
     },
     {
+      name: "model",
+      type: "string" as const,
+      description: "With --crud, list, create, edit and delete this model, e.g. --model Post",
+      default: "",
+    },
+    {
       name: "dir",
       type: "string" as const,
       description: "Override the target directory (default: app/flow/pages or app/flow/components)",
@@ -60,6 +67,7 @@ export class MakeFlowCommand extends Command {
     const child = this.flags["child"] as boolean;
     const crud = this.flags["crud"] as boolean;
     const layout = ((this.flags["layout"] as string | undefined) ?? "").trim();
+    const model = ((this.flags["model"] as string | undefined) ?? "").trim();
     const dirFlag = ((this.flags["dir"] as string | undefined) ?? "").trim();
 
     const componentName = name.includes("/") ? name.split("/").pop()! : name;
@@ -73,30 +81,44 @@ export class MakeFlowCommand extends Command {
       return;
     }
 
-    // Depth relative to the pages dir, so the layout import resolves correctly:
-    // a page at app/flow/pages/Foo.tsx reaches app/flow/layouts/AppLayout.tsx via ../layouts/…
-    const depth = name.split("/").length;
-    const prefix = "../".repeat(depth);
+    // The layout is looked for where it actually is, not where its name suggests: the starters
+    // keep `AppLayout` in `layouts/app.tsx`, and an import of `layouts/AppLayout.tsx` failed to
+    // compile and, at boot, left the route a silent 404 behind one "Failed to import" log line.
+    const layoutsDir = join(dirname(baseDir), "layouts");
+    const layoutFile = layout && !child ? _findExport(layoutsDir, layout) : undefined;
+    const layoutImport = layout ? _importPath(path, layoutFile ?? join(layoutsDir, layout)) : "";
+
+    const modelFile = model && crud && !child ? _findExport("app/models", model) : undefined;
+    const modelImport = model ? _importPath(path, modelFile ?? join("app/models", model)) : "";
 
     let stub: string;
     if (child) {
-      if (crud || layout) {
-        this.warn("--crud and --layout are ignored for a child component.");
+      if (crud || layout || model) {
+        this.warn("--crud, --layout and --model are ignored for a child component.");
       }
       stub = _childStub(componentName);
     } else if (crud) {
-      stub = _crudStub(componentName, layout, prefix);
+      stub = model
+        ? _modelCrudStub(componentName, layout, layoutImport, model, modelImport)
+        : _crudStub(componentName, layout, layoutImport);
     } else {
-      stub = _pageStub(componentName, layout, prefix);
+      if (model) this.warn("--model is used with --crud; it is ignored for a plain page.");
+      stub = _pageStub(componentName, layout, layoutImport);
     }
 
     await Bun.write(path, stub);
     this.info(`Created: ${path}`);
 
-    if (layout && !child) {
-      this.dim(
-        `  Layout: assumes \`export { ${layout} }\` from ${prefix}layouts/${layout}.tsx — ` +
-          `adjust the import if your layout's path or export name differs.`,
+    if (layout && !child && !layoutFile) {
+      this.warn(
+        `  No layout exports ${layout} in ${layoutsDir}/. The page imports it from ` +
+          `${layoutImport}; create it there, or change the import.`,
+      );
+    }
+    if (model && crud && !child && !modelFile) {
+      this.warn(
+        `  No model exports ${model} in app/models/. The page imports it from ${modelImport}; ` +
+          `run \`bun zt make:model ${model} --migration\`, or change the import.`,
       );
     }
 
@@ -129,8 +151,38 @@ function _urlFor(name: string): string {
   return "/" + path;
 }
 
-function _layoutImport(layout: string, prefix: string): string {
-  return layout ? `import { ${layout} } from "${prefix}layouts/${layout}.tsx";\n` : "";
+/**
+ * The file in `dir` that exports `name` as a class, function or constant, without its extension.
+ * The name of a file says nothing reliable about what it exports, so its contents are read.
+ */
+function _findExport(dir: string, name: string): string | undefined {
+  let files: string[];
+  try {
+    files = readdirSync(dir).filter((file) => /\.tsx?$/.test(file) && !/\.test\./.test(file));
+  } catch {
+    return undefined;
+  }
+  const declares = new RegExp(
+    `export\\s+(?:default\\s+)?(?:abstract\\s+)?(?:class|function|const)\\s+${name}\\b|export\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`,
+  );
+  const exact = files.find((file) => file.replace(/\.tsx?$/, "") === name);
+  const ordered = exact ? [exact, ...files.filter((file) => file !== exact)] : files;
+  for (const file of ordered) {
+    if (declares.test(readFileSync(join(dir, file), "utf8"))) {
+      return join(dir, file.replace(/\.tsx?$/, ""));
+    }
+  }
+  return undefined;
+}
+
+/** A relative import from the page at `from` to the module at `to` (no extension). */
+function _importPath(from: string, to: string): string {
+  const path = relative(dirname(from), to).replace(/\\/g, "/");
+  return path.startsWith(".") ? path : `./${path}`;
+}
+
+function _layoutImport(layout: string, importPath: string): string {
+  return layout ? `import { ${layout} } from "${importPath}";\n` : "";
 }
 
 function _layoutStatic(layout: string): string {
@@ -138,10 +190,10 @@ function _layoutStatic(layout: string): string {
 }
 
 /** A minimal page: one exposed field, one action, a render. */
-function _pageStub(name: string, layout: string, prefix: string): string {
+function _pageStub(name: string, layout: string, layoutImport: string): string {
   return `/** @jsxImportSource @zerotal/flow */
 import { Component, expose } from "@zerotal/flow";
-${_layoutImport(layout, prefix)}
+${_layoutImport(layout, layoutImport)}
 export class ${name} extends Component {
 ${_layoutStatic(layout)}  @expose count = 0;
 
@@ -192,10 +244,10 @@ export class ${name} extends Component {
 }
 
 /** A resourceful page: list + create/edit/delete, validation, and a form. */
-function _crudStub(name: string, layout: string, prefix: string): string {
+function _crudStub(name: string, layout: string, layoutImport: string): string {
   return `/** @jsxImportSource @zerotal/flow */
 import { Component, expose, locked, validate } from "@zerotal/flow";
-${_layoutImport(layout, prefix)}
+${_layoutImport(layout, layoutImport)}
 // TODO: swap this shape for your model type.
 interface Item {
   id: number;
@@ -239,6 +291,106 @@ ${_layoutStatic(layout)}  @locked items: Item[] = [];
 
   @expose async destroy(id: number): Promise<void> {
     // TODO: delete — await Item.where("id", id).delete();
+    this.refresh();
+    this.flash("Deleted.");
+  }
+
+  @expose reset(): void {
+    this.editingId = null;
+    this.name = "";
+    this.resetValidation();
+  }
+
+  override async render() {
+    return (
+      <div class="max-w-xl mx-auto space-y-6 p-6">
+        <h1 class="text-2xl font-bold">${name}</h1>
+
+        <form onSubmit={this.save} class="flex items-start gap-2">
+          <div class="flex-1">
+            <input value={this.name} class="input w-full" placeholder="Name" />
+            <span error={this.errors.name} class="text-sm text-red-500" />
+          </div>
+          <button type="submit" loadingAttr="disabled">
+            {this.editingId === null ? "Add" : "Update"}
+          </button>
+          {this.editingId !== null && (
+            <button type="button" onClick={this.reset}>
+              Cancel
+            </button>
+          )}
+        </form>
+
+        <ul class="divide-y">
+          {this.items.map((item) => (
+            <li key={String(item.id)} class="flex items-center justify-between py-2">
+              <span>{item.name}</span>
+              <span class="flex gap-3">
+                <button onClick={() => this.edit(item.id)}>Edit</button>
+                <button onClick={() => this.destroy(item.id)} confirm="Delete this?" class="text-red-600">
+                  Delete
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+}
+`;
+}
+
+/**
+ * A resourceful page over a real model: list, create, edit and delete, with nothing left to fill
+ * in. It assumes a `name` column, which is what `make:model --migration` starts a model with.
+ */
+function _modelCrudStub(
+  name: string,
+  layout: string,
+  layoutImport: string,
+  model: string,
+  modelImport: string,
+): string {
+  return `/** @jsxImportSource @zerotal/flow */
+import { Component, expose, locked, validate } from "@zerotal/flow";
+${_layoutImport(layout, layoutImport)}import { ${model} } from "${modelImport}";
+
+export class ${name} extends Component {
+${_layoutStatic(layout)}  @locked items: ${model}[] = [];
+  @expose editingId: number | null = null;
+  @expose @validate((rule) => rule.required().min(2)) name = "";
+
+  override async onMount(): Promise<void> {
+    this.items = await ${model}.all();
+  }
+
+  @expose async save(): Promise<void> {
+    await this.validate();
+
+    if (this.editingId === null) {
+      await ${model}.create({ name: this.name });
+    } else {
+      const item = await ${model}.findOrFail(this.editingId);
+      item.name = this.name;
+      await item.save();
+    }
+
+    this.reset();
+    this.refresh(); // runs onMount() again, so the list shows the change
+    this.flash("Saved.");
+  }
+
+  @expose edit(id: number): void {
+    const item = this.items.find((i) => i.id === id);
+    if (!item) return;
+    this.editingId = id;
+    this.name = item.name;
+  }
+
+  @expose async destroy(id: number): Promise<void> {
+    const item = await ${model}.findOrFail(id);
+    await item.delete();
     this.refresh();
     this.flash("Deleted.");
   }

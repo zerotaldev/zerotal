@@ -11,9 +11,9 @@ Quick reference for all Flow JSX props, client expressions, and decorator combin
 
 `@zerotal/flow` ships one generator:
 
-| Command                    | What it does                                                                     |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| `bun zt make:flow Counter` | Create a Flow page or child component (`--child`, `--crud`, `--layout`, `--dir`) |
+| Command                    | What it does                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| `bun zt make:flow Counter` | Create a Flow page or child component (`--child`, `--crud`, `--model`, `--layout`, `--dir`) |
 
 ## JSX props reference
 

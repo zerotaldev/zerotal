@@ -75,10 +75,72 @@ describe("make:flow — layout + nesting", () => {
     const path = join(dir, "Users", "Index.tsx");
     expect(await Bun.file(path).exists()).toBe(true);
     const src = await Bun.file(path).text();
-    // Two segments deep → two `../` up to the layouts folder.
-    expect(src).toContain('import { AppLayout } from "../../layouts/AppLayout.tsx"');
+    // Two segments deep → two `../` up to the layouts folder, beside the pages folder.
+    expect(src).toContain('import { AppLayout } from "../../layouts/AppLayout"');
     expect(src).toContain("static layout = AppLayout;");
     expect(col.out).toContain('Router.flow("/users/index", Index)');
+    // There is no such layout in this directory, and the command says so.
+    expect(col.out).toContain("No layout exports AppLayout");
+  });
+});
+
+/**
+ * In a starter app: `AppLayout` lives in `app/flow/layouts/app.tsx`, and `make:flow --crud
+ * --layout AppLayout` imported `../layouts/AppLayout.tsx`. That failed to compile and, at boot,
+ * left the route a 404 behind one log line. The CRUD page was also all TODOs around an `Item`
+ * shape, with no way to point it at a model.
+ */
+describe("make:flow in an app laid out like the starters", () => {
+  const cwd = process.cwd();
+  afterEach(() => process.chdir(cwd));
+
+  async function starter(): Promise<string> {
+    const root = await freshDir();
+    await Bun.write(
+      join(root, "app/flow/layouts/app.tsx"),
+      "export class AppLayout extends Layout {}\n",
+    );
+    await Bun.write(join(root, "app/flow/pages/home.tsx"), "export class Home {}\n");
+    await Bun.write(
+      join(root, "app/models/Post.ts"),
+      "@table('posts')\nexport class Post extends Model {}\n",
+    );
+    process.chdir(root);
+    return root;
+  }
+
+  it("imports the layout from the file that exports it", async () => {
+    const root = await starter();
+    const { c, col } = mk({ name: "Posts" }, { crud: true, layout: "AppLayout" });
+    await c.run();
+
+    const src = await Bun.file(join(root, "app/flow/pages/Posts.tsx")).text();
+    expect(src).toContain('import { AppLayout } from "../layouts/app";');
+    expect(col.out).not.toContain("No layout exports");
+  });
+
+  it("with --model, lists, creates, edits and deletes that model, with nothing left to fill in", async () => {
+    const root = await starter();
+    const { c, col } = mk({ name: "Posts" }, { crud: true, layout: "AppLayout", model: "Post" });
+    await c.run();
+
+    const src = await Bun.file(join(root, "app/flow/pages/Posts.tsx")).text();
+    expect(src).toContain('import { Post } from "../../models/Post";');
+    expect(src).toContain("@locked items: Post[] = [];");
+    expect(src).toContain("this.items = await Post.all();");
+    expect(src).toContain("await Post.create({ name: this.name });");
+    expect(src).toContain("await item.delete();");
+    expect(src).not.toContain("TODO");
+    expect(col.out).not.toContain("No model exports");
+  });
+
+  it("says so when the model it was told to use does not exist", async () => {
+    await starter();
+    const { c, col } = mk({ name: "Tags" }, { crud: true, model: "Tag" });
+    await c.run();
+
+    expect(col.out).toContain("No model exports Tag in app/models/");
+    expect(col.out).toContain("make:model Tag --migration");
   });
 });
 

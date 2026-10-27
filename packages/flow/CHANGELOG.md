@@ -13,6 +13,10 @@ change.
 
 ### Added
 
+- **`make:flow --crud --model Post`: a CRUD page that works against a model.** The `--crud` page was
+  all TODOs around an `Item` shape, with no way to name a model. With `--model` it lists, creates,
+  edits and deletes records, with nothing left to fill in.
+
 - **A class list kept in a `const` compiles.** `class={CARD}` sent a page to the runtime renderer,
   because the compiler saw an identifier and could not know what it held. It now reads string
   constants out of the source: a `const` in the same file, or a named import from a relative
@@ -25,6 +29,12 @@ change.
   can run under `cspSafe`, where a page that does not compile is fatal.
 
 ### Fixed
+
+- **`make:flow --layout AppLayout` imports the layout from where it is.** It imported
+  `../layouts/AppLayout.tsx`, and the starters keep `AppLayout` in `layouts/app.tsx`, so the
+  generated page failed to compile and, at boot, its route was a 404 behind one "Failed to import"
+  log line. The layout, and the model for `--model`, are now found by what the files export, and
+  the command warns when nothing exports the name.
 
 - **`this.refresh()` inside an action re-runs `onMount()`, as documented.** The lifecycle, events
   and pagination guides all say an action can change the data and call `this.refresh()` to reload

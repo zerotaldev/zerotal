@@ -57,6 +57,26 @@ export abstract class Notification {
    */
   abstract channels(notifiable?: Notifiable): string[];
 
+  /**
+   * How many times a queued delivery is attempted before it is recorded as failed. Unset, the
+   * queue's default of 3. Read when the notification is queued, so it applies to `notifyLater()`
+   * and `Notify.queue()`, not to a notification sent immediately.
+   *
+   * @example
+   * override tries = 8;
+   */
+  declare tries?: number | undefined;
+
+  /**
+   * Milliseconds to wait between attempts of a queued delivery. Unset, the queue's default of 1000.
+   * A mail host restarting or a provider having a bad few minutes outlasts three attempts a second
+   * apart; minutes apart is what delivering mail usually needs.
+   *
+   * @example
+   * override backoff = 5 * 60_000;
+   */
+  declare backoff?: number | undefined;
+
   toMail(_notifiable: Notifiable): MailMessage | Promise<MailMessage> {
     throw new NotificationContractError(this.constructor.name, "toMail", "mail");
   }

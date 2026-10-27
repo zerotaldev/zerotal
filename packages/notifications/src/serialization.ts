@@ -31,6 +31,11 @@ export interface SerializedNotification {
   notifiable: SerializedNotifiable;
   type: string;
   data: Record<string, unknown>;
+  /**
+   * The notification's retry policy, kept beside its data so a job rebuilt from storage (by the
+   * worker, or by `queue:retry`) has it without a live notification to ask.
+   */
+  retry?: { tries?: number | undefined; backoff?: number | undefined } | undefined;
 }
 
 /** True for values that survive `JSON.stringify` without surprises. */

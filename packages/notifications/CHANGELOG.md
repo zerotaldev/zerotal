@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A notification sets its own retry policy for the queue: `tries` and `backoff`.** A queued
+  notification was always tried three times, a second apart, with no way to change it:
+  `SendNotificationJob` took the queue's defaults and `Notification` had nowhere to say otherwise.
+  A mail host restarting outlasts three seconds, so the notification went to the failed jobs, and
+  an app that queued its mail subclassed the framework's own job to get minutes between attempts.
+  `override tries = 8` and `override backoff = 5 * 60_000` on the notification now set the
+  attempts and the milliseconds between them; they are read when it is queued and stored with the
+  job, so the worker and `queue:retry` keep them. Unset, nothing changes. Closes #35.
+
 ## [1.15.2] — 2026-10-23
 
 ### Fixed

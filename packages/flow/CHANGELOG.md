@@ -34,7 +34,9 @@ change.
   `../layouts/AppLayout.tsx`, and the starters keep `AppLayout` in `layouts/app.tsx`, so the
   generated page failed to compile and, at boot, its route was a 404 behind one "Failed to import"
   log line. The layout, and the model for `--model`, are now found by what the files export, and
-  the command warns when nothing exports the name.
+  the command warns when nothing exports the name. A page is written lowercase
+  (`posts.tsx`, `users/index.tsx`), because file-based routing is case-sensitive and served
+  `Posts.tsx` at `/Posts` while the command printed `/posts`.
 
 - **`this.refresh()` inside an action re-runs `onMount()`, as documented.** The lifecycle, events
   and pagination guides all say an action can change the data and call `this.refresh()` to reload

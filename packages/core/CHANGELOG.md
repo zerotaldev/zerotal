@@ -100,7 +100,8 @@ follows the Zerotal monorepo's unified versioning.
   which `bun test` never discovers, so the suite stayed green with the new test missing from it;
   imported `../helpers.ts`, which only the API starter has; and requested `/postses`. It now
   writes `tests/feature/posts.test.ts`, boots the app the way the starter's own tests do (through
-  `tests/helpers.ts` only when the app has one), and leaves a name that is already plural alone.
+  `tests/helpers.ts` only when the app has one), and leaves a name that is already plural alone. Outside the API starter, the two tests that
+  assume a JSON API are `it.todo`, so a fresh app is not red.
 
 - **Two pieces of install advice no longer combine into a broken runtime.** The deployment guide
   suggests `bun install --ignore-scripts` on a server with no Node, and the runtime check suggests

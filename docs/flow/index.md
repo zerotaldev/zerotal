@@ -221,7 +221,7 @@ bun zt make:flow Billing --layout AppLayout   # a page wrapped in a layout
 
 `--layout` and `--model` are found by what the files export, so `--layout AppLayout` imports from `app/flow/layouts/app.tsx` in a starter app, and `--model Post` from `app/models/Post.ts`. If no file exports the name, the page imports it from where it would be and the command warns. With `--model`, the page lists, creates, edits and deletes records with nothing left to fill in; it assumes a `name` column, which is what `make:model --migration` starts a model with.
 
-The name may be nested (`Users/Index` → `app/flow/pages/Users/Index.tsx`), and the target directory is auto-detected (`app/flow/pages` for pages, `app/flow/components` for children) or set with `--dir`. Because Flow uses file-based routing, a generated page is served automatically — the command also prints the explicit `Router.flow(...)` line for apps that register routes by hand.
+The name may be nested (`Users/Index` → `app/flow/pages/users/index.tsx`, served at `/users`; pages are written lowercase because the file name is the URL), and the target directory is auto-detected (`app/flow/pages` for pages, `app/flow/components` for children) or set with `--dir`. Because Flow uses file-based routing, a generated page is served automatically — the command also prints the explicit `Router.flow(...)` line for apps that register routes by hand.
 
 The command lives on `FlowProvider`, so it's available in any app that registers the provider. (If `make:flow` isn't found, add `FlowProvider` to your `bootstrap/providers.ts` — an app that only pulls it in transitively through the admin panel won't have it in CLI runs.)
 

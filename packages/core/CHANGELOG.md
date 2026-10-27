@@ -18,6 +18,15 @@ follows the Zerotal monorepo's unified versioning.
   splitting CI, goes after `--`. `Command.unknownFlags` lists the options a command was given and
   does not declare.
 
+- **`zt upgrade --notes`: what a release fixed for you.** An app on an old version could not ask
+  which of its workarounds a release made unnecessary short of reading every changelog in
+  between, so it kept them, and their comments hardened into beliefs about the framework that were
+  no longer true (one app's preflight refused an SMTP setup that 1.11.0 had fixed). `--notes`
+  prints the changelog entries after the version `package.json` declares, up to the installed one
+  (or `--from` and `--to`), from the changelogs the installed packages ship, grouped breaking
+  changes first. `--grep smtp` searches the full text of each entry, and `--json` prints them for
+  tooling. Closes #30.
+
 - **`ctx.input()` says when it found nothing because the body was never read.** It reads route
   params, then the parsed body, then the query string, and skips the body when nothing has parsed
   it, so the fallback came back exactly as it would for a field that was never sent. A route read

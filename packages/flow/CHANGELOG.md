@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.15.5] — 2026-10-27
+
 ### Added
 
 - **`make:flow --crud --model Post`: a CRUD page that works against a model.** The `--crud` page was

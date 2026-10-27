@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.5] — 2026-10-27
+
 ### Fixed
 
 - **A field key reads as words in every default message.** The fluent API wrote the raw key

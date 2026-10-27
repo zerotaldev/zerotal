@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.5] — 2026-10-27
+
 ### Fixed
 
 - **A generated migration is numbered like the ones beside it.** The starters number their

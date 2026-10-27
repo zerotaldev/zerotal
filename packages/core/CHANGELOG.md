@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.5] — 2026-10-27
+
 ### Added
 
 - **`zt test --isolate`.** Bun can run each test file in a fresh global, which is what makes a

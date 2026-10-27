@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.5] — 2026-10-27
+
 ### Added
 
 - **`zt doctor` warns when a configured model has no price.** The warning on the first request

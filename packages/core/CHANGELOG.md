@@ -77,6 +77,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **A command that does not boot the app no longer prints a red error for config it never reads.**
+  `zt inertia:build` declares `needsApp = false` and still printed a `ConfigError` block for the
+  `APP_KEY` that `config/app.ts` requires, in a CI job that went on to succeed, because `zt` loads
+  config before it knows which command it is running. People read the block as something to fix,
+  and the fix they found was a placeholder secret in the build step. A failure is now held until the
+  command is known: a command that boots the app reports it as the error it always was, and one
+  that does not prints a single line naming the file and the reason. If the app fails to load or
+  boot at all, the failure is reported as an error. `configLoader()` gains `{ deferFailures }` and
+  `ConfigLoader.failures()` for this. Closes #33.
+
 - **A catch-all route no longer answers for a script or stylesheet that does not exist.** Bun
   matches its route table before it calls `fetch`, so a single-page app's `/*` answered every path
   without an exact entry, with the HTML shell and a `200`. Two things followed: the dev server's

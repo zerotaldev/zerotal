@@ -5,7 +5,7 @@
  * orchestration lives in one place.
  */
 import { CommandRunner } from "./CommandRunner.ts";
-import { configLoader } from "../config/ConfigLoader.ts";
+import { _reportConfigFailures, configLoader } from "../config/ConfigLoader.ts";
 import { setAppEnv } from "../helpers/index.ts";
 import {
   runtimeBelowFloor,
@@ -74,7 +74,12 @@ export async function startZerotal(
   assertOneRuntime();
 
   // Load + validate config synchronously — safe before the app boots.
-  const config = configLoader(options.configDir ?? "./config");
+  //
+  // A file that fails to load is held, not printed, until it is known whether this command boots
+  // the app. `zt inertia:build` declares that it does not, and still printed a red ConfigError for
+  // an `APP_KEY` it never reads, in a CI job that went on to succeed; the fix people found was to
+  // give the build a placeholder secret.
+  const config = configLoader(options.configDir ?? "./config", { deferFailures: true });
   config.validate();
 
   // Resolve the runtime boot mode (web / worker / console) from the command
@@ -82,13 +87,28 @@ export async function startZerotal(
   const command = process.argv[2] ?? "";
   setAppEnv(command);
 
+  let reported = false;
+  const report = (needed: boolean): void => {
+    if (reported) return;
+    reported = true;
+    _reportConfigFailures(config.failures(), needed);
+  };
+
   // Import the app now that APP_ENV is locked in, then inject the loaded config.
   // (Job classes self-register during boot via the `jobs` convention concern.)
-  const { default: app } = await loadApp();
-  app.useConfig(config.all());
+  let runner: CommandRunner;
+  try {
+    const { default: app } = await loadApp();
+    app.useConfig(config.all());
 
-  const runner = new CommandRunner(app);
-  await runner.boot(command);
+    runner = new CommandRunner(app);
+    await runner.boot(command);
+    report(app.booted);
+  } catch (error) {
+    // Whatever went wrong, a config file that did not load is part of the story.
+    report(true);
+    throw error;
+  }
   await runner.run(process.argv.slice(2));
 
   // A command that does work ends the process itself, and one that serves never returns. What

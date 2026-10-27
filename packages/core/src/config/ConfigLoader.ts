@@ -17,6 +17,24 @@ const requireModule = createRequire(import.meta.url);
 export type ConfigMap = Record<string, Record<string, unknown>>;
 type Validator = (value: Record<string, unknown>) => void;
 
+/** A config file that threw while loading, and what it threw. */
+export interface ConfigLoadFailure {
+  /** The file name, e.g. `app.ts`. */
+  file: string;
+  error: unknown;
+}
+
+/** Options for {@link configLoader}. */
+export interface ConfigLoaderOptions {
+  /**
+   * Keep a file that fails to load in {@link ConfigLoader.failures} instead of logging it at once,
+   * for a caller that decides later whether anything needed it. `zt` does this: a command that
+   * does not boot the app has no use for `config/app.ts`, and an `APP_KEY` it never reads should
+   * not print an error in a job that succeeds.
+   */
+  deferFailures?: boolean | undefined;
+}
+
 /**
  * A loaded set of config files, keyed by filename (`config/app.ts` → `app`). Pass `all()` (or the
  * loader itself) to `Application.create({ config })` / `app.useConfig(...)`.
@@ -25,11 +43,17 @@ export class ConfigLoader {
   constructor(
     private readonly _map: ConfigMap,
     private readonly _validators: ReadonlyArray<{ ns: string; fn: Validator }> = [],
+    private readonly _failures: ReadonlyArray<ConfigLoadFailure> = [],
   ) {}
 
   /** The full namespace → config map. */
   all(): ConfigMap {
     return this._map;
+  }
+
+  /** Files that threw while loading, when the loader was asked to defer them; otherwise empty. */
+  failures(): ReadonlyArray<ConfigLoadFailure> {
+    return this._failures;
   }
 
   /**
@@ -80,6 +104,7 @@ export class ConfigLoader {
  * export is collected and run by `ConfigLoader.validate()`.
  *
  * @param dir  Directory to scan, relative to `process.cwd()`. Defaults to `./config`.
+ * @param options  See {@link ConfigLoaderOptions}.
  * @returns A {@link ConfigLoader} over the discovered namespaces. A missing
  * directory yields an empty loader rather than throwing.
  *
@@ -90,10 +115,11 @@ export class ConfigLoader {
  * const app = Application.create({ config });   // or app.useConfig(config)
  * ```
  */
-export function configLoader(dir = "./config"): ConfigLoader {
+export function configLoader(dir = "./config", options: ConfigLoaderOptions = {}): ConfigLoader {
   const absoluteDirectory = path.resolve(process.cwd(), dir);
   const map: ConfigMap = {};
   const validators: Array<{ ns: string; fn: Validator }> = [];
+  const failures: ConfigLoadFailure[] = [];
   try {
     const glob = new Bun.Glob("*.{ts,js}");
     for (const file of glob.scanSync({ cwd: absoluteDirectory, onlyFiles: true })) {
@@ -111,11 +137,39 @@ export function configLoader(dir = "./config"): ConfigLoader {
           validators.push({ ns: namespace, fn: loadedModule["validate"] as Validator });
         }
       } catch (error) {
-        frameworkLog("config").error(`Config "${file}" failed to load`, { file }, error);
+        if (options.deferFailures) failures.push({ file, error });
+        else frameworkLog("config").error(`Config "${file}" failed to load`, { file }, error);
       }
     }
   } catch {
     // A missing config/ directory is fine — minimal apps may not have one.
   }
-  return new ConfigLoader(map, validators);
+  return new ConfigLoader(map, validators, failures);
+}
+
+/**
+ * Say which config files failed to load, once a caller knows whether it needed them.
+ *
+ * @param failures  From {@link ConfigLoader.failures}.
+ * @param needed  Whether the app booted. A booted app depends on its config, so a failure is the
+ *   error it always was; a command that never boots reads at most a path or two, with defaults, so
+ *   a failure is one line of context and not a red block in the log of a job that succeeds.
+ * @internal
+ */
+export function _reportConfigFailures(
+  failures: ReadonlyArray<ConfigLoadFailure>,
+  needed: boolean,
+): void {
+  for (const { file, error } of failures) {
+    if (needed) {
+      frameworkLog("config").error(`Config "${file}" failed to load`, { file }, error);
+    } else {
+      const reason = error instanceof Error ? error.message : String(error);
+      frameworkLog("config").info(
+        `Config "${file}" did not load (${reason}). This command does not boot the app; anything ` +
+          `it reads from that file falls back to its default.`,
+        { file },
+      );
+    }
+  }
 }

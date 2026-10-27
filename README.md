@@ -638,19 +638,25 @@ The full documentation lives in [`docs/`](docs). Start with **[Getting Started](
 
 **Core**
 
-| Guide                                                                | Description                               |
-| -------------------------------------------------------------------- | ----------------------------------------- |
-| [Getting Started](docs/getting-started.md)                           | Install, project structure, first route   |
-| [Project Structure](docs/structure.md)                               | Directory layout and conventions          |
-| [Container](docs/container.md)                                       | IoC container, binding, resolution        |
-| [Service Providers](docs/providers.md)                               | Registration, boot lifecycle              |
-| [Lifecycle](docs/lifecycle.md)                                       | Application boot phases                   |
-| [Routing](docs/routing.md)                                           | Route registration, groups, model binding |
-| [Controllers](docs/controllers.md)                                   | Controller classes and actions            |
-| [Middleware](docs/middleware.md)                                     | HTTP middleware pipeline                  |
-| [Requests Context](docs/context.md) / [Responses](docs/responses.md) | HttpContext, request input, responses     |
-| [Configuration](docs/config-system.md)                               | Config files, env binding, typed config   |
-| [Commands](docs/commands.md)                                         | The `zt` CLI and custom commands          |
+| Guide                                                                | Description                                              |
+| -------------------------------------------------------------------- | -------------------------------------------------------- |
+| [Getting Started](docs/getting-started.md)                           | Install, project structure, first route                  |
+| [Project Structure](docs/structure.md)                               | Directory layout and conventions                         |
+| [Container](docs/container.md)                                       | IoC container, binding, resolution                       |
+| [Service Providers](docs/providers.md)                               | Registration, boot lifecycle                             |
+| [Lifecycle](docs/lifecycle.md)                                       | Application boot phases                                  |
+| [Routing](docs/routing.md)                                           | Route registration, groups, model binding                |
+| [Controllers](docs/controllers.md)                                   | Controller classes and actions                           |
+| [Middleware](docs/middleware.md)                                     | HTTP middleware pipeline                                 |
+| [Requests Context](docs/context.md) / [Responses](docs/responses.md) | HttpContext, request input, responses                    |
+| [Configuration](docs/config-system.md)                               | Config files, env binding, typed config                  |
+| [Commands](docs/commands.md)                                         | The `zt` CLI and custom commands                         |
+| [The Application](docs/application.md)                               | The kernel: container, provider lifecycle, boot to serve |
+| [Events](docs/events.md)                                             | App events and the framework event bus                   |
+| [Error Handling](docs/errors.md)                                     | Exceptions to the right HTTP response                    |
+| [Helpers](docs/helpers.md)                                           | env, config, strings and response helpers                |
+| [Assets](docs/assets.md)                                             | CSS and JavaScript with Bun's bundler, hot reload        |
+| [Scaffolding](docs/scaffolding.md)                                   | The `make:*` generators                                  |
 
 **Data**
 
@@ -662,25 +668,36 @@ The full documentation lives in [`docs/`](docs). Start with **[Getting Started](
 | [Migrations](docs/migrations.md)       | Schema builder, running migrations                            |
 | [Seeding](docs/seeding.md)             | Database seeders and factories                                |
 | [Validation](docs/validator.md)        | FormRequest, RuleBuilder, available rules                     |
+| [Database](docs/database.md)           | Transactions, raw queries, replicas, locks                    |
+| [Pagination](docs/pagination.md)       | Paged results, metadata and URL helpers                       |
+| [Media Library](docs/media.md)         | Files attached to models, conversions, responsive images      |
+| [Carbon](docs/carbon.md)               | Timezone-aware dates and durations                            |
 
 **Frontend**
 
-| Guide                            | Description                                       |
-| -------------------------------- | ------------------------------------------------- |
-| [Flow](docs/flow/index.md)       | Reactive SSR — components, decorators, directives |
-| [Inertia](docs/inertia/index.md) | SPA pages, shared props, SSR                      |
-| [Views](docs/view.md)            | Server-rendered JSX views                         |
+| Guide                              | Description                                       |
+| ---------------------------------- | ------------------------------------------------- |
+| [Flow](docs/flow/index.md)         | Reactive SSR — components, decorators, directives |
+| [Inertia](docs/inertia/index.md)   | SPA pages, shared props, SSR                      |
+| [Views](docs/view.md)              | Server-rendered JSX views                         |
+| [Components](docs/components.md)   | Themeable UI components for Flow                  |
+| [Admin Panel](docs/admin/index.md) | Resources as classes: tables, forms, actions      |
 
 **Auth & security**
 
-| Guide                                      | Description                          |
-| ------------------------------------------ | ------------------------------------ |
-| [Session](docs/session.md)                 | Session drivers and configuration    |
-| [Authentication](docs/authentication.md)   | Login, tokens, guards                |
-| [Authorization](docs/authorization.md)     | Gates, policies                      |
-| [Roles & 2FA](docs/roles-and-2fa.md)       | Role management, TOTP, WebAuthn      |
-| [CSRF](docs/csrf.md)                       | CSRF protection                      |
-| [Encryption & Hashing](docs/encryption.md) | Crypt, password hashing, signed URLs |
+| Guide                                            | Description                                 |
+| ------------------------------------------------ | ------------------------------------------- |
+| [Session](docs/session.md)                       | Session drivers and configuration           |
+| [Authentication](docs/authentication.md)         | Login, tokens, guards                       |
+| [Authorization](docs/authorization.md)           | Gates, policies                             |
+| [Roles & 2FA](docs/roles-and-2fa.md)             | Role management, TOTP, WebAuthn             |
+| [CSRF](docs/csrf.md)                             | CSRF protection                             |
+| [Encryption & Hashing](docs/encryption.md)       | Crypt, password hashing, signed URLs        |
+| [Email Verification](docs/email-verification.md) | Signed, expiring verification links         |
+| [Password Reset](docs/password-reset.md)         | Hashed reset tokens by email                |
+| [Social Login](docs/social.md)                   | GitHub, Google and Apple OAuth2             |
+| [Rate Limiting](docs/rate-limiting.md)           | Per-actor request limits and 429s           |
+| [Cookies](docs/cookies.md)                       | Raw cookies when the session is not the fit |
 
 **Services**
 
@@ -697,6 +714,13 @@ The full documentation lives in [`docs/`](docs). Start with **[Getting Started](
 | [Logger](docs/logger.md)                   | Channels, drivers, structured logging                          |
 | [Telemetry](docs/telemetry.md)             | Tracing, spans, exporters                                      |
 | [Monitor](docs/monitor.md)                 | Health checks, metrics, dashboard                              |
+| [AI](docs/ai.md)                           | Text, structured output, tools and agents, any provider        |
+| [Audit](docs/audit.md)                     | Model writes and custom events with old/new values             |
+| [Internationalization](docs/i18n.md)       | Locale resolution and translations                             |
+| [Multi-Tenancy](docs/tenancy.md)           | Per-tenant data, files and cache                               |
+| [Health Checks](docs/health.md)            | A probe-friendly /health endpoint                              |
+| [Site Gate](docs/site-gate.md)             | Maintenance mode and private preview                           |
+| [DevTools](docs/devtools.md)               | Per-request SQL, logs, mail and jobs in the browser            |
 
 **Testing & deployment**
 
@@ -707,3 +731,14 @@ The full documentation lives in [`docs/`](docs). Start with **[Getting Started](
 | [Conventions](docs/conventions.md)   | Framework conventions and patterns       |
 | [Upgrade Guide](docs/upgrade.md)     | Version upgrade notes                    |
 | [Contributing](docs/contributing.md) | Development workflow                     |
+
+**Project**
+
+| Guide                                              | Description                                        |
+| -------------------------------------------------- | -------------------------------------------------- |
+| [About Zerotal](docs/about.md)                     | The whole framework in one tour                    |
+| [Release Notes](docs/changelog.md)                 | What changed in each release                       |
+| [Support Policy](docs/support-policy.md)           | Bun versions, databases, maturity levels           |
+| [Agent Surface](docs/arch.md)                      | Machine-readable framework truth for coding agents |
+| [Package Development](docs/package-development.md) | Building a first-party package                     |
+| [Inspirations](docs/inspirations.md)               | What shaped the design                             |

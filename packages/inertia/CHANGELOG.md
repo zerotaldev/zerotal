@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.5] — 2026-10-27
+
 ### Fixed
 
 - **`ctx.flash("warning", …)` and `ctx.flash("info", …)` reach the page.** `ctx.flash()` takes any

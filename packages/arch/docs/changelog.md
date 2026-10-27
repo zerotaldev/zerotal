@@ -27,6 +27,89 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.15.5 — 2026-10-27
+
+A patch built from three outside reports and our own first-week audit: one from an app in
+production, one from a team's review of their own app, and a walk through the starters doing what
+a newcomer does in week one. Most of it is things that failed quietly: a heartbeat that was never
+written, a spend ceiling counted per process, a test file the runner never found, a page served at
+an address nobody was given.
+
+No export was removed or narrowed. Four changes can still turn something red on upgrade, because
+something that used to fail silently now fails loudly; read them first.
+
+### Before you upgrade
+
+- **`zt test` refuses an option it does not know** (`@zerotal/core`), and exits 1 with the options
+  it takes. A script that passed a flag `zt test` never understood now fails instead of running
+  without it. Pass `bun test` flags after `--`: `zt test -- --shard=1/3`.
+- **`zt ai:test` exits 1 when the driver it tested failed, and tests only the default driver**
+  (`@zerotal/ai`). A deploy step that ran it passed on a dead provider. Use `--all` for every
+  declared driver.
+- **Default validation messages read the field as words** (`@zerotal/validator`): "The first name
+  field…", not "The first_name field…". A test that asserts a default message for a field with an
+  underscore will see the new wording.
+- **`Notification` declares `tries` and `backoff`** (`@zerotal/notifications`). A notification
+  class that already has a field by either name needs `override` on it.
+
+### Added
+
+- **A request body limit per route**: `Router.post(...).maxBodySize(bytes)` (`@zerotal/core`). A
+  webhook that receives mail with an attachment no longer means raising the limit for the login
+  form. See [Routing](/docs/routing#request-body-size).
+- **The daily AI spend ceiling is shared** by every process that shares a file-backed or Redis
+  cache, so four workers no longer hold four ceilings and a deploy no longer starts the day at
+  zero (`@zerotal/ai`). Built on the new **`Cache.increment()` / `Cache.decrement()`**
+  (`@zerotal/cache`).
+- **`APP_PREVIOUS_KEYS` and `zt key:rotate`**: rotate `APP_KEY` without losing what it encrypted;
+  **`zt init:env`** creates `.env` in one command (`@zerotal/core`). See
+  [Encryption](/docs/encryption).
+- **`zt upgrade --notes`**: the changelog entries between two versions, from the packages you have
+  installed, with `--grep` and `--json`; and a **`retired-defaults`** codemod that points at
+  `cors.origin "*"` (`@zerotal/core`). See [Commands](/docs/commands).
+- **`zt test --isolate`**, a fresh global per test file (`@zerotal/core`).
+- **`FrameworkEvents.onAsync()`** for a handler that does I/O, and **`Command.rest`** and
+  **`Command.unknownFlags`** for commands (`@zerotal/core`).
+- **`ctx.input()` warns** outside production when it returns nothing because the body was never
+  read (`@zerotal/core`).
+- **A notification sets its own queue retry policy**: `tries` and `backoff`
+  (`@zerotal/notifications`).
+- **`make:flow --crud --model Post`** writes a page that lists, creates, edits and deletes the
+  model (`@zerotal/flow`).
+- **AI**: prices for Fable 5.1, Mythos 5.1 and the 5.5 family; `meta` on a request carried onto
+  `AiGenerated`; `AiFake.install({ emit: true })`; `apiKeyProvider` for a key that changes at
+  runtime; `AiGenerated.failure`; and a `zt doctor` warning for a configured model with no price
+  (`@zerotal/ai`).
+- **The Inertia `flash` prop carries `warning` and `info`**, and the React and Vue starters show
+  them (`@zerotal/inertia`, `create-zerotal`).
+- **New apps get a `.gitattributes`** pinning line endings to LF (`create-zerotal`).
+
+### Fixed
+
+- **The scheduler's heartbeat reaches `zt doctor`**: the cache is registered in the worker, where
+  the scheduler runs (`@zerotal/cache`).
+- **A catch-all route answers 404 for a script or stylesheet that does not exist**, instead of the
+  app shell with a 200, which killed the page with a MIME error after every dev rebuild
+  (`@zerotal/core`).
+- **What one test file sets on the shared test client no longer reaches the next file**
+  (`@zerotal/testing`), and **`zt test a.test.ts b.test.ts` runs both** (`@zerotal/core`).
+- **The generators write code that compiles and runs** in a fresh starter: `make:model --migration`
+  leaves a model and migration that agree on the table, and migrations are numbered like the ones
+  beside them (`@zerotal/orm`); `make:flow --layout` imports the layout from the file that exports
+  it and writes pages at the URL it prints (`@zerotal/flow`); `make:test` writes a file `bun test`
+  discovers; `make:resource` imports its model (`@zerotal/core`).
+- **`this.refresh()` inside a Flow action re-runs `onMount()`**, as documented, and two Flow
+  compile fixes let more pages compile ahead of time (`@zerotal/flow`).
+- **`zt list` describes every command**, and **a command that does not boot the app no longer
+  prints a red error** for config it never reads, such as an `APP_KEY` in a CI build step
+  (`@zerotal/core`).
+- **`ctx.flash("warning", …)` and `ctx.flash("info", …)` reach an Inertia page** instead of being
+  dropped (`@zerotal/inertia`).
+- **Only an unexpected AI failure is logged as an error**; a refusal, a cancellation and a
+  transient provider error are not (`@zerotal/ai`).
+- **The deployment guide says when `--ignore-scripts` breaks the installed `bun` binary**
+  (`@zerotal/core`).
+
 ## 1.15.4 — 2026-10-23
 
 A patch, and its headline is a safety fix: `zt <command> --help` ran the command. Two pieces of

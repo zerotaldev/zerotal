@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.5] — 2026-10-27
+
 ### Added
 
 - **A notification sets its own retry policy for the queue: `tries` and `backoff`.** A queued

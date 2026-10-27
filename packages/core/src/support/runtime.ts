@@ -176,7 +176,8 @@ export function runtimeMismatchMessage(mismatch: RuntimeMismatch): string {
     head +
     `  Fix it by picking one:\n` +
     `    bun update bun          # move the installed one to match your shell\n` +
-    `    node_modules/.bin/bun   # or run everything through the installed one\n\n` +
+    `    node_modules/.bin/bun   # or run everything through the installed one\n` +
+    `                            # (its postinstall links the binary: not with --ignore-scripts)\n\n` +
     `  To boot anyway, set ${RUNTIME_MISMATCH_ESCAPE}=1 — it downgrades this to a warning.`
   );
 }

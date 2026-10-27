@@ -77,6 +77,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **Two pieces of install advice no longer combine into a broken runtime.** The deployment guide
+  suggests `bun install --ignore-scripts` on a server with no Node, and the runtime check suggests
+  declaring `bun` and running through `node_modules/.bin/bun`. Followed together, the `bun`
+  package's own postinstall never ran and `node_modules/.bin/bun` was a placeholder. The guide now
+  says when skipping scripts is safe and what to do instead, and the runtime message says the
+  installed binary needs install scripts on. Closes #31.
+
 - **A command that does not boot the app no longer prints a red error for config it never reads.**
   `zt inertia:build` declares `needsApp = false` and still printed a `ConfigError` block for the
   `APP_KEY` that `config/app.ts` requires, in a CI job that went on to succeed, because `zt` loads

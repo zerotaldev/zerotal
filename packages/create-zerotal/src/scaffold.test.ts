@@ -149,6 +149,19 @@ describe('scaffold — minimal template', () => {
     expect(collected).toEqual([]);
   });
 
+  it('keeps the Bun that bun-plugin-tailwind names as a peer out of every starter using it', async () => {
+    // Installed as a peer, it put a second Bun in node_modules and a warning on every command.
+    for (const template of TEMPLATES) {
+      const dir = join(import.meta.dir, '..', 'templates', template);
+      const manifest = await Bun.file(join(dir, 'package.json')).json();
+      const deps = { ...manifest.dependencies, ...manifest.devDependencies };
+      if (!('bun-plugin-tailwind' in deps)) continue;
+
+      const bunfig = await Bun.file(join(dir, 'bunfig.toml')).text().catch(() => '');
+      expect({ template, peer: /^\s*peer\s*=\s*false\b/m.test(bunfig) }).toEqual({ template, peer: true });
+    }
+  });
+
   it('leaves no unreplaced {{tokens}}', async () => {
     await scaffold({ name: 'test-app', template: 'minimal', db: 'sqlite', target: TMP });
     const files = ['package.json', 'zt.ts', 'config/app.ts', '.env.example',

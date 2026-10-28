@@ -119,6 +119,9 @@ export async function startZerotal(
   process.exit(Number(process.exitCode ?? 0));
 }
 
+/** Set once the stray-runtime warning has been printed, so the processes this one starts skip it. */
+const STRAY_RUNTIME_WARNED = "ZT_STRAY_RUNTIME_WARNED";
+
 /**
  * Refuse to run on a Bun the project does not agree with.
  *
@@ -159,6 +162,11 @@ function assertOneRuntime(): void {
   // for this cause. Loud, because the version skew is still real if anything ever
   // *does* run it.
   if (mismatch.chosen === false) {
+    // Once per process tree: `zt dev` boots a server that boots through here too, and the same
+    // ten lines twice read as two problems. Children inherit the environment, so the mark
+    // reaches them.
+    if (Bun.env[STRAY_RUNTIME_WARNED] === "1") return;
+    process.env[STRAY_RUNTIME_WARNED] = "1";
     console.warn(`
 ⚠  ${runtimeMismatchMessage(mismatch)}
 `);

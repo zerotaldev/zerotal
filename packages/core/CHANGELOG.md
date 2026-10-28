@@ -88,6 +88,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **The warning about a Bun installed as a peer says what is true, once.** When `node_modules/bun`
+  arrives as a transitive peer, nothing runs it and the boot only warns, but the warning said the
+  other copy was "still running something else" and offered `ZT_ALLOW_RUNTIME_MISMATCH` to boot
+  anyway. It is a few lines now, naming the peer and the `bunfig.toml` setting that stops it, and a
+  process started by one that printed it (the server under `zt dev`) does not print it again. A
+  Bun the project declares is unchanged: that is still a refusal.
+
 - **`zt list` describes every command.** Sixteen commands registered lazily, `migrate` and
   `make:model` among them, were listed as "(lazy — run to load)" in the listing someone new reads
   to find out what the CLI does. Listing now loads them to read their descriptions; one that cannot

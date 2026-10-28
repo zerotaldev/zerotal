@@ -109,6 +109,9 @@ something that used to fail silently now fails loudly; read them first.
   transient provider error are not (`@zerotal/ai`).
 - **The deployment guide says when `--ignore-scripts` breaks the installed `bun` binary**
   (`@zerotal/core`).
+- **A new app installs one Bun**: the starters that use Tailwind no longer install Bun as a peer
+  of `bun-plugin-tailwind`, which printed a warning about two runtimes on every command
+  (`create-zerotal`), and that warning is shorter and printed once (`@zerotal/core`).
 
 ## 1.15.4 — 2026-10-23
 

@@ -1,0 +1,5 @@
+# Bun installs a package's peer dependencies unless told not to. bun-plugin-tailwind names Bun
+# itself as one, which put a second copy of Bun in node_modules and a warning on every command.
+# Everything this app uses is listed in package.json, so nothing else is lost.
+[install]
+peer = false

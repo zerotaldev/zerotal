@@ -298,6 +298,48 @@ doing something quiet.
    If it really is a new migration, give it a name that does not collide once the
    leading digits are removed.
 
+## 1.15 to 1.16
+
+One breaking change, to what `app.throttle.trustedProxies` counts, and one place that now
+follows it.
+
+### `trustedProxies` counts from the right, and the client is the last entry
+
+Each proxy appends the address it received the request from to `X-Forwarded-For`, so behind
+one proxy the client is the last entry. `trustedProxies: 1` used to read the entry before it,
+which is one the client can write. It reads the last entry now, and the same count is used
+everywhere the framework needs the client's address: every throttle, the sign-in lockout,
+the audit trail and Flow.
+
+| Your proxy                                                                         | Before | After          |
+| ---------------------------------------------------------------------------------- | ------ | -------------- |
+| Appends one entry (nginx `$proxy_add_x_forwarded_for`, Caddy, most load balancers) | `1`    | `1`, no change |
+| Appends two entries, its peer and its own address                                  | `1`    | `2`            |
+| Two proxies, one entry each                                                        | `2`    | `2`, no change |
+
+**What to change.** Look at one request's `X-Forwarded-For` as your app receives it, with no
+header sent by the client. If it has one entry per proxy, leave the count alone. If it has
+more entries than you have proxies, the count goes up by the difference. Getting it wrong
+the other way is easy to see: every request reads as your load balancer's address, and the
+first throttle to fill refuses everyone.
+
+### The audit trail stops reading `X-Forwarded-For` unless you say how many proxies there are
+
+With `captureRequest`, an audit entry's `ip_address` was the leftmost `X-Forwarded-For`
+entry, whatever `trustedProxies` said. It now follows the same rule as the throttles: the
+socket address with no `trustedProxies`, otherwise the client counted from the right.
+
+**What to change.** Nothing, if `app.throttle.trustedProxies` is already set. An app behind a
+proxy without it will start recording the proxy's address on new entries; set the count, as
+[Deployment](/docs/deployment#behind-a-reverse-proxy) describes, and `zt doctor` warns about.
+Entries already written keep the address they were written with.
+
+### Also worth knowing (not breaking)
+
+- **`ctx.clientIp()`** returns the client's address by the same rule, or `null` when the
+  request offers none. Use it where you used to read `X-Forwarded-For` yourself; `ctx.ip()` is
+  still the socket, which behind a proxy is the proxy.
+
 ## 1.14 to 1.15
 
 Two breaking changes. Both replace something that was quietly wrong with something that

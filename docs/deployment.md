@@ -671,7 +671,7 @@ real binary at `node_modules/.bin/bun`; without it the file is a placeholder, an
 it fails with a message about a postinstall script that did not run. Use `--ignore-scripts` only for
 an install that never runs `node_modules/.bin/bun`, such as a server with its own Bun on `PATH`.
 Otherwise leave scripts on, or, when the `bun` package arrives only as a peer of another package,
-install with `--omit=peer` instead. Starters that use Tailwind (from 1.15.5) set `peer = false`
+install with `--omit=peer` instead. Starters that use Tailwind (from 1.15.6) set `peer = false`
 under `[install]` in `bunfig.toml`, so it never arrives; an older app can add the same two lines.
 
 To see which packages run an install script:

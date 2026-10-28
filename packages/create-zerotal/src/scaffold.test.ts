@@ -157,9 +157,37 @@ describe('scaffold — minimal template', () => {
       const deps = { ...manifest.dependencies, ...manifest.devDependencies };
       if (!('bun-plugin-tailwind' in deps)) continue;
 
-      const bunfig = await Bun.file(join(dir, 'bunfig.toml')).text().catch(() => '');
+      const bunfig = await Bun.file(join(dir, '_bunfig.toml')).text().catch(() => '');
       expect({ template, peer: /^\s*peer\s*=\s*false\b/m.test(bunfig) }).toEqual({ template, peer: true });
     }
+  });
+
+  it('writes the template bunfig as bunfig.toml', async () => {
+    await scaffold({ name: 'app', template: 'flow', db: 'sqlite', target: TMP });
+
+    expect(await Bun.file(join(TMP, 'bunfig.toml')).text()).toContain('peer = false');
+    expect(await Bun.file(join(TMP, '_bunfig.toml')).exists()).toBe(false);
+  });
+
+  it('publishes every template file', async () => {
+    // A starter is only what reaches npm. `bun pm pack` drops some names on its own
+    // (bunfig.toml among them), and a scaffold run from this repository reads the templates
+    // directly, so nothing else here would notice a file that never ships.
+    const { Glob } = await import('bun');
+    const root = join(import.meta.dir, '..');
+    const pack = Bun.spawnSync(['bun', 'pm', 'pack', '--dry-run'], { cwd: root });
+    const packed = new Set(
+      [...pack.stdout.toString().matchAll(/^packed \S+ (templates\/\S+)$/gm)].map((m) => m[1]),
+    );
+
+    const missing: string[] = [];
+    for await (const rel of new Glob('**/*').scan({ cwd: join(root, 'templates'), onlyFiles: true, dot: true })) {
+      const path = `templates/${rel.replace(/\\/g, '/')}`;
+      if (!packed.has(path)) missing.push(path);
+    }
+
+    expect(packed.size).toBeGreaterThan(0);
+    expect(missing).toEqual([]);
   });
 
   it('leaves no unreplaced {{tokens}}', async () => {

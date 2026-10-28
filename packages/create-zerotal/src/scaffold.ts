@@ -93,7 +93,9 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
   for await (const rel of walk(templateDir)) {
     const src  = join(templateDir, rel);
     // Rename underscore-prefixed dotfiles — npm and Bun glob both skip real dotfiles
-    // inside published/scanned directories. _gitignore → .gitignore, etc.
+    // inside published/scanned directories. _gitignore → .gitignore, etc. `bunfig.toml` is
+    // not a dotfile, but `bun pm pack` leaves it out of a package as well, so 1.15.5 shipped
+    // its starters without one; it is `_bunfig.toml` here for the same reason.
     //
     // Test files carry a trailing `.tmpl` that is stripped here, so Bun does not
     // discover them while this package is developed inside the monorepo — where their
@@ -105,6 +107,7 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
     const dest = join(opts.target, rel
       .replace('_gitignore',   '.gitignore')
       .replace('_env.example', '.env.example')
+      .replace('_bunfig.toml', 'bunfig.toml')
       .replace(/\.tmpl$/,      ''),
     );
 

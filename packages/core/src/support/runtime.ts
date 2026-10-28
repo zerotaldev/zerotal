@@ -157,11 +157,12 @@ export function runtimeMismatchMessage(mismatch: RuntimeMismatch): string {
       `node_modules/bun is Bun ${mismatch.installed}, and this process is Bun ${mismatch.running}.\n` +
       `  Nothing runs the installed copy: nothing in this project depends on "bun", so it is a\n` +
       `  peer dependency Bun installed for you, usually bun-plugin-tailwind's.\n\n` +
-      `  To stop installing it, add this to bunfig.toml and run bun install:\n` +
+      `  To stop installing it, add this to bunfig.toml:\n` +
       `    [install]\n` +
       `    peer = false   # safe when the packages you use are direct dependencies\n\n` +
-      `  Do NOT remove node_modules/bun by hand: its postinstall runs during install, and the\n` +
-      `  next install fails without it. (${mismatch.manifest})`
+      `  then delete node_modules (all of it) and run bun install. Installing over the old\n` +
+      `  node_modules keeps the copy, and removing node_modules/bun alone breaks the next\n` +
+      `  install, because its postinstall runs during install. (${mismatch.manifest})`
     );
   }
 

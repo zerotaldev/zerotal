@@ -336,6 +336,7 @@ class HttpContext = {
   bearerToken: () => string | null
   body: <T extends Record<string, unknown> = Record<string, unknown>>() => Promise<T>
   boolean: (key: string, fallback?: boolean) => boolean
+  clientIp: () => string | null
   deleteInternal: (key: ContextKey | (string & {})) => HttpContext<TParams>
   file: (field: string) => Promise<UploadedFile | null>
   files: (field: string) => Promise<UploadedFile[]>

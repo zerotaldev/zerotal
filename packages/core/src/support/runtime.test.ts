@@ -254,7 +254,9 @@ describe("a chosen runtime versus a stray one", () => {
     });
     expect(message).toContain("bun-plugin-tailwind");
     expect(message).toContain("peer = false");
-    expect(message).toContain("Do NOT remove node_modules/bun");
+    // An install over the old node_modules keeps the stray copy, so the whole tree goes.
+    expect(message).toContain("delete node_modules (all of it) and run bun install");
+    expect(message).toContain("removing node_modules/bun alone breaks the next");
     // Nothing runs the stray copy, and this case is only ever a warning.
     expect(message).not.toContain("still running something else");
     expect(message).not.toContain("ZT_ALLOW_RUNTIME_MISMATCH");

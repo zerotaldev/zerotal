@@ -15,7 +15,8 @@ follows the Zerotal monorepo's unified versioning.
   package, so the published starters had none and still installed Bun as a peer of
   `bun-plugin-tailwind`. The file ships as `_bunfig.toml` and is renamed when an app is scaffolded,
   as `_gitignore` is. A test now checks that every template file reaches the package. An app made
-  with 1.15.5 can add the file itself: `[install]` and `peer = false`, then `bun install`.
+  with 1.15.5 can add the file itself: `[install]` and `peer = false`, then delete `node_modules`
+  and run `bun install`. An install over the existing `node_modules` keeps the second Bun.
 
 ## [1.15.5] — 2026-10-27
 

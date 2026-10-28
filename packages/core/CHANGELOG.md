@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The stray-Bun warning gives steps that remove the copy.** It said to add `peer = false` to
+  `bunfig.toml` and run `bun install`, but an install over the existing `node_modules` keeps the
+  copy it already put there. It now says to delete `node_modules` and then install, and still warns
+  against removing `node_modules/bun` alone.
+
 ## [1.15.5] — 2026-10-27
 
 ### Added

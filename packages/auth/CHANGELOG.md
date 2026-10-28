@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-10-28
+
 ### Fixed
 
 - **The sign-in lockout no longer reads a header the client writes.** When there was no socket

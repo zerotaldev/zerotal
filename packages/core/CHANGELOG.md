@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-10-28
+
 ### Added
 
 - **`ctx.clientIp()`: the client address, behind however many proxies you run.** `ctx.ip()` is the

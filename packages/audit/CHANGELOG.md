@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-10-28
+
 ### Fixed
 
 - **The audit trail records an address its subject cannot choose.** With `captureRequest`, the

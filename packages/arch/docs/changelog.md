@@ -27,6 +27,40 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.16.0 — 2026-10-28
+
+A minor, for one rule: how the framework works out a client's address behind a proxy. Every place
+that needs it (the throttles, the sign-in lockout, the audit trail and Flow) now uses the same
+rule, and `trustedProxies` counts the way proxies actually append to `X-Forwarded-For`.
+
+### Before you upgrade
+
+Read [1.15 to 1.16](/docs/upgrade#115-to-116) in the upgrade guide. Two changes can alter what an
+app records or how it throttles:
+
+- **`trustedProxies: n` reads the `n`-th entry from the right of `X-Forwarded-For`**
+  (`@zerotal/core`). Behind nginx, Caddy or most load balancers, which append one entry, the count
+  you have is now right and needs no change. Behind a load balancer that appends two entries, its
+  peer and its own address, raise it by one. The upgrade guide has a table.
+- **The audit trail reads `X-Forwarded-For` only when `trustedProxies` is set**
+  (`@zerotal/audit`). An app behind a proxy without the setting will record the proxy's address on
+  new entries until it sets the count. Entries already written are unchanged.
+
+### Added
+
+- **`ctx.clientIp()`** returns the client's address by the same rule, or `null` when the request
+  offers none. `ctx.ip()` is still the socket, which behind a proxy is the proxy
+  (`@zerotal/core`).
+
+### Fixed
+
+- **A client can no longer choose its own address by writing `X-Forwarded-For`.** With one
+  proxy, `trustedProxies: 1` read an entry the client could write, so a client could pick its own
+  rate-limit bucket (`@zerotal/core`). The sign-in lockout fell back to the header's leftmost
+  entry when there was no socket address (`@zerotal/auth`). The audit trail recorded the leftmost
+  entry whatever the setting (`@zerotal/audit`). And Flow's HTTP fallback used the whole header as
+  the caller's address (`@zerotal/flow`). All four use the one rule now.
+
 ## 1.15.6 — 2026-10-28
 
 A patch for one fix in 1.15.5 that did not reach the published package, and for the advice that

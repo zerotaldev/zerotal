@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.16.0] — 2026-10-28
+
 ### Fixed
 
 - **Flow's HTTP fallback attributes a call to the socket address, not to the client's header.**

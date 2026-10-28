@@ -27,6 +27,22 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.15.6 — 2026-10-28
+
+A patch for one fix in 1.15.5 that did not reach the published package, and for the advice that
+went with it.
+
+### Fixed
+
+- **A new app installs one Bun, as 1.15.5 said it would.** The `bunfig.toml` that stops the
+  Tailwind starters installing Bun as a peer of `bun-plugin-tailwind` was left out of the
+  published package, so apps made with 1.15.5 still have a second Bun in `node_modules/bun` and
+  print the runtime warning. New apps get the file (`create-zerotal`).
+- **The stray-Bun warning gives steps that work.** Adding `peer = false` and running `bun install`
+  keeps the copy that is already there. For an app made with 1.15.5, add a `bunfig.toml` with an
+  `[install]` table holding `peer = false`, delete `node_modules`, then run `bun install`
+  (`@zerotal/core`).
+
 ## 1.15.5 — 2026-10-27
 
 A patch built from three outside reports and our own first-week audit: one from an app in

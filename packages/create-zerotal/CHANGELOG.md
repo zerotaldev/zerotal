@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The starters really do install one Bun.** 1.15.5 added a `bunfig.toml` with `peer = false` to the
+  flow, minimal, react and vue starters, but `bun pm pack` leaves any file of that name out of a
+  package, so the published starters had none and still installed Bun as a peer of
+  `bun-plugin-tailwind`. The file ships as `_bunfig.toml` and is renamed when an app is scaffolded,
+  as `_gitignore` is. A test now checks that every template file reaches the package. An app made
+  with 1.15.5 can add the file itself: `[install]` and `peer = false`, then `bun install`.
+
 ## [1.15.5] — 2026-10-27
 
 ### Added

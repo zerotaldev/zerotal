@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.6] — 2026-10-28
+
 ### Fixed
 
 - **The starters really do install one Bun.** 1.15.5 added a `bunfig.toml` with `peer = false` to the

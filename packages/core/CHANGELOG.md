@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.15.6] — 2026-10-28
+
 ### Fixed
 
 - **The stray-Bun warning gives steps that remove the copy.** It said to add `peer = false` to

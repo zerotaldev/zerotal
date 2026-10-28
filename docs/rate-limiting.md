@@ -58,12 +58,14 @@ ThrottleMiddleware.with({
 });
 ```
 
-| Option           | Required | Default     | Description                                                 |
-| ---------------- | -------- | ----------- | ----------------------------------------------------------- |
-| `maxAttempts`    | yes      | —           | Max requests within the window.                             |
-| `windowSeconds`  | no       | `60`        | Window length in seconds.                                   |
-| `keyResolver`    | no       | client IP   | Function returning the rate-limit key for a request.        |
-| `trustedProxies` | no       | `undefined` | Number of trusted upstream proxies (see the warning below). |
+| Option           | Required | Default     | Description                                          |
+| ---------------- | -------- | ----------- | ---------------------------------------------------- |
+| `maxAttempts`    | yes      | —           | Max requests within the window.                      |
+| `windowSeconds`  | no       | `60`        | Window length in seconds.                            |
+| `keyResolver`    | no       | client IP   | Function returning the rate-limit key for a request. |
+| `trustedProxies` | no       | `undefined` | Number of trusted upstream proxies (see below).      |
+
+### `trustedProxies`
 
 `X-Forwarded-For` is written by the client, so it is consulted **only** when
 `trustedProxies` says how many proxies sit in front of the app — the count is what says

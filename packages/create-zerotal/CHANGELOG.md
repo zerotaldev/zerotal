@@ -10,14 +10,6 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [1.15.5] — 2026-10-27
 
-### Changed
-
-- **The React and Vue starters show `warning` and `info` flashes.** Their toast component handled
-  `success` and `error`, the two keys the Inertia `flash` prop carried; it now carries four, and the
-  toasts render them with an alert and an info icon. A `--warning` colour token (amber, dark enough
-  to read as text on its own tint) joins `--success` and `--destructive`; `info` uses the neutral
-  border and text colours.
-
 ### Added
 
 - **`.gitattributes` pinning line endings to LF**, in every template. On Windows git's default
@@ -28,12 +20,28 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Changed
 
+- **The React and Vue starters show `warning` and `info` flashes.** Their toast component handled
+  `success` and `error`, the two keys the Inertia `flash` prop carried; it now carries four, and the
+  toasts render them with an alert and an info icon. A `--warning` colour token (amber, dark enough
+  to read as text on its own tint) joins `--success` and `--destructive`; `info` uses the neutral
+  border and text colours.
+
 - **Every page of the Flow starter compiles ahead of time.** Five of its eight pages rendered
   through the runtime fallback, because they are styled with the class lists in `ui.ts`
   (`class={CARD}`), which the compiler could not read until now. `reset-password` also returned
   from `render()` twice, which the compiler cannot read either; it returns once now, with the
   confirmation and the form as the two branches of a conditional inside the card. A test checks
   that all of them compile, under `cspSafe` too. Apps already scaffolded are not touched.
+
+### Fixed
+
+- **A new app installs one Bun.** `bun-plugin-tailwind` names Bun itself as a peer dependency, and
+  Bun installs peers, so the flow, minimal, react and vue starters put a second copy of Bun in
+  `node_modules`, and every `zt` command printed a dozen lines about two runtimes (twice under
+  `zt dev`) whenever it differed from the one on `PATH`, which is most of the time. The four starters
+  ship a `bunfig.toml` with `peer = false` under `[install]`; everything they use is a direct
+  dependency, and every peer a Zerotal package declares is optional. Apps already scaffolded are not
+  touched: add the same two lines and run `bun install`.
 
 ## [1.15.3] — 2026-10-23
 

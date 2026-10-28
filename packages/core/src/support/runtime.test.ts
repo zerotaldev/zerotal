@@ -253,8 +253,11 @@ describe("a chosen runtime versus a stray one", () => {
       chosen: false,
     });
     expect(message).toContain("bun-plugin-tailwind");
-    expect(message).toContain("--omit=peer");
+    expect(message).toContain("peer = false");
     expect(message).toContain("Do NOT remove node_modules/bun");
+    // Nothing runs the stray copy, and this case is only ever a warning.
+    expect(message).not.toContain("still running something else");
+    expect(message).not.toContain("ZT_ALLOW_RUNTIME_MISMATCH");
     // The advice for a chosen runtime would be actively misleading here.
     expect(message).not.toContain("bun update bun");
   });

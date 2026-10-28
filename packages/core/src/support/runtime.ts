@@ -146,31 +146,31 @@ export function declaresBunDependency(cwd: string): boolean {
  * @param mismatch - The disagreement to describe.
  */
 export function runtimeMismatchMessage(mismatch: RuntimeMismatch): string {
+  // Nothing named `bun`, so it arrived as a transitive peer and nothing runs it. Said in a few
+  // lines rather than the full warning, which says the other copy is running something and
+  // offers an escape hatch from a refusal that does not happen here, and which every starter
+  // using Tailwind printed on every command. Naming the culprit is most of the fix, because the
+  // remedies for a chosen runtime are the wrong ones for this cause, and following those cost
+  // an app two production outages.
+  if (mismatch.chosen === false) {
+    return (
+      `node_modules/bun is Bun ${mismatch.installed}, and this process is Bun ${mismatch.running}.\n` +
+      `  Nothing runs the installed copy: nothing in this project depends on "bun", so it is a\n` +
+      `  peer dependency Bun installed for you, usually bun-plugin-tailwind's.\n\n` +
+      `  To stop installing it, add this to bunfig.toml and run bun install:\n` +
+      `    [install]\n` +
+      `    peer = false   # safe when the packages you use are direct dependencies\n\n` +
+      `  Do NOT remove node_modules/bun by hand: its postinstall runs during install, and the\n` +
+      `  next install fails without it. (${mismatch.manifest})`
+    );
+  }
+
   const head =
     `Two Bun runtimes are in play. This process is Bun ${mismatch.running}, but the ` +
     `project installs Bun ${mismatch.installed} (${mismatch.manifest}).\n\n` +
     `  Whichever one is not running this command is still running something else — ` +
     `the server, the suite, a deploy step — and a test that passes under one is not ` +
     `evidence about the other.\n\n`;
-
-  // Nothing named `bun`, so it arrived as a transitive peer. Naming the usual
-  // culprit is most of the fix, because the remedies below are the opposite of the
-  // ones for a runtime somebody chose — and following those instead cost an app two
-  // production outages.
-  if (mismatch.chosen === false) {
-    return (
-      head +
-      `  Nothing in this project depends on "bun", so it arrived as a transitive peer —\n` +
-      `  usually bun-plugin-tailwind, which declares "bun" as a required peer dependency\n` +
-      `  and has Bun auto-install it as a second runtime.\n\n` +
-      `  Fix it by not installing it:\n` +
-      `    bun install --omit=peer   # skips every peer; safe when yours are direct deps\n\n` +
-      `  Do NOT remove node_modules/bun after installing. That package's postinstall runs\n` +
-      `  *during* install, so deleting it afterwards leaves the tree incomplete and the\n` +
-      `  next install fails — which is its own outage.\n\n` +
-      `  To boot anyway, set ${RUNTIME_MISMATCH_ESCAPE}=1 — it downgrades this to a warning.`
-    );
-  }
 
   return (
     head +

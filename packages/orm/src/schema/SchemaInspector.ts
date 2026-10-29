@@ -1,6 +1,7 @@
 import { _getDbConnection } from "../db/DB.ts";
 import { _getDialect } from "../model/BaseModel.ts";
-import { _templateStrings } from "../db/templateStrings.ts";
+import { _splitPlaceholders, _templateStrings } from "../db/templateStrings.ts";
+import { dialectFor } from "../db/QueryBuilder.ts";
 
 // ── DB column descriptor (normalised across dialects) ─────────────────────────
 
@@ -31,7 +32,7 @@ async function queryRaw<T>(sql: string): Promise<T[]> {
 /** Execute a query with exactly one bound parameter and return typed rows. */
 async function queryParam<T>(sql: string, value: unknown): Promise<T[]> {
   const conn = _getDbConnection();
-  const parts = sql.split("?");
+  const parts = _splitPlaceholders(sql, dialectFor(conn));
   const tpl = _templateStrings(parts);
   return conn<T>(tpl, value);
 }

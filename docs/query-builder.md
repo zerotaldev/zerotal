@@ -98,7 +98,9 @@ Most filters have an `orX` partner (`orWhereIn`, `orWhereNull`, `orWhereLike`, �
 that joins with `OR` instead of `AND`, plus date helpers (`whereDate`, `whereMonth`,
 `whereYear`) and subquery filters (`whereExists`, `whereNotExists`). For anything the
 fluent methods don't cover, drop to `whereRaw(sql, bindings)` — bindings keep it
-parameterized.
+parameterized. It finds its `?` placeholders the way the string form of
+[`DB.raw`](/docs/database#dbraw) does, so a `?` inside quotes or a comment is text, but it does
+not count them: a `?` with no binding left is passed through as written.
 
 > **Warning** — `whereBetween`, `whereLike`, `whereColumn`, and `whereJson` validate
 > the column name as a SQL identifier and throw on anything outside

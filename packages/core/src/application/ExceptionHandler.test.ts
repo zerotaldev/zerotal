@@ -129,6 +129,39 @@ describe("ExceptionHandler.defaultRender() — HTML client (browser Accept heade
     expect(res.status).toBe(500);
   });
 
+  // The validator answers 422 JSON exactly when Accept prefers application/json to text/html, so
+  // the handler makes the same call: a client that got a JSON validation error gets a JSON 404,
+  // and one that got a redirect gets the HTML page.
+  const formatFor = async (accept: string, headers: Record<string, string> = {}) => {
+    const ctx = new HttpContext(
+      new Request("http://localhost/", { headers: { Accept: accept, ...headers } }),
+      new ScopedResolver(),
+    );
+    const res = await ExceptionHandler.defaultRender(new NotFoundError(), ctx);
+    expect(res.status).toBe(404);
+    return (res.headers.get("Content-Type") ?? "").split(";")[0];
+  };
+
+  it("answers JSON when application/json is listed before text/html", async () => {
+    expect(await formatFor("application/json, text/html")).toBe("application/json");
+  });
+
+  it("answers HTML when text/html is listed before application/json at the same q", async () => {
+    expect(await formatFor("text/html, application/json")).toBe("text/html");
+  });
+
+  it("answers JSON when application/json has the higher q, wherever it is listed", async () => {
+    expect(await formatFor("text/html;q=0.5, application/json")).toBe("application/json");
+  });
+
+  it("answers HTML when application/json is listed first at a lower q", async () => {
+    expect(await formatFor("application/json;q=0.4, text/html")).toBe("text/html");
+  });
+
+  it("answers JSON to application/json with X-Inertia", async () => {
+    expect(await formatFor("application/json", { "X-Inertia": "true" })).toBe("application/json");
+  });
+
   it("returns false from _wantsHtml when Accept is application/json (line 127)", async () => {
     const res = await ExceptionHandler.defaultRender(new NotFoundError(), jsonCtx());
     expect(res.status).toBe(404);

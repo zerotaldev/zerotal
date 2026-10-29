@@ -1564,10 +1564,10 @@ describe("validate() — failure paths", () => {
     expect(stored["errors"]).toBeDefined();
   });
 
-  it("throws ValidationRedirectError for Inertia requests (not JSON error)", async () => {
+  it("throws ValidationRedirectError for an Inertia visit (not JSON error)", async () => {
     const ctx = makeCtx({
       body: "{}",
-      headers: { "X-Inertia": "true", Accept: "application/json" },
+      headers: { "X-Inertia": "true", Accept: "text/html, application/xhtml+xml" },
     });
     await expect(validate(ctx, (r) => ({ name: r.string() }))).rejects.toBeInstanceOf(
       ValidationRedirectError,

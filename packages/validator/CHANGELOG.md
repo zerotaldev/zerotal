@@ -20,6 +20,15 @@ follows the Zerotal monorepo's unified versioning.
   and not the query string a GET merges in. A context built by hand in a test, a plain object
   holding only a `request`, has no cache to share and is still read straight off the request,
   and a failed form on one redirects back by the request's own origin.
+- **A request whose `Accept` prefers JSON gets a 422, even with `X-Inertia`, and only then.**
+  Both validators answered any request carrying `X-Inertia: true` with a redirect, whatever it
+  asked for, so a shared test client that kept the Inertia header made JSON tests fail with a 303
+  that passed on their own. They now answer JSON when `Accept` prefers `application/json` to
+  `text/html`, by q-value and then by order, the same rule the exception handler uses, so a client
+  gets one format for a validation error and a 404 alike. `application/json` and
+  `application/json, text/html` get the 422; `text/html, application/json`, which used to get it,
+  is now redirected like a browser. Inertia's own client sends
+  `Accept: text/html, application/xhtml+xml`, so a real visit still redirects back.
 
 ## [1.15.5] — 2026-10-27
 

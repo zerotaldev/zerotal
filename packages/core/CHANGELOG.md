@@ -38,6 +38,14 @@ follows the Zerotal monorepo's unified versioning.
   threw on it, so such a body sent to a route that validates optional fields and then calls
   `ctx.input()` was a 500. A JSON array is still returned as sent; `ctx.input()` reads no field
   from it.
+- **An error answers JSON when `Accept` prefers `application/json` to `text/html`.** The
+  exception handler answered JSON only when `Accept` started with `application/json`, ignoring
+  q-values, while the validator chose between a 422 and a redirect by a different rule, so one
+  client could get a JSON validation error and an HTML 404 from the same route. Both now ask
+  whether `application/json` has a higher q-value than `text/html`, or the same and comes first,
+  with or without `X-Inertia`: `text/html;q=0.5, application/json` now gets JSON, and
+  `application/json;q=0.5, text/html` the HTML page. Browsers and Inertia's own visits list
+  `text/html` first and still get the HTML page.
 
 ## [1.16.0] — 2026-10-28
 

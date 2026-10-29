@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { HttpContext } from "../pipeline/HttpContext.ts";
-import { negotiate, detectChannel } from "./negotiate.ts";
+import { negotiate, detectChannel, _prefersJson } from "./negotiate.ts";
 import type { WebContext, ApiContext, CliContext } from "./negotiate.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -384,5 +384,30 @@ describe("negotiate — middleware pattern", () => {
     expect(ctx.response?.status).toBe(500);
     const body = await ctx.response!.text();
     expect(body).toContain("Authentication required.");
+  });
+});
+
+// ── _prefersJson ──────────────────────────────────────────────────────────────
+
+describe("_prefersJson", () => {
+  it.each([
+    ["application/json", true],
+    ["application/json, text/html", true],
+    ["application/json, text/plain, */*", true],
+    ["text/html;q=0.9, application/json", true],
+    ["text/html, application/json", false],
+    ["application/json;q=0.5, text/html", false],
+    ["text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", false],
+    ["text/html, application/xhtml+xml", false],
+    ["*/*", false],
+    ["application/json;q=0", false],
+    ["", false],
+  ])("%p → %p", (accept, expected) => {
+    expect(_prefersJson(accept)).toBe(expected);
+  });
+
+  it("is false with no Accept header at all", () => {
+    expect(_prefersJson(null)).toBe(false);
+    expect(_prefersJson(undefined)).toBe(false);
   });
 });

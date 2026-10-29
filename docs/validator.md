@@ -106,11 +106,19 @@ fields. A multipart form's files are validated from the same parse that `ctx.fil
 On failure, `validate()` stores `errors` and `old` (previous input) in the
 session, then branches on the request type:
 
-| Request type | Detected by                                            | Error thrown              | HTTP result                                     |
-| ------------ | ------------------------------------------------------ | ------------------------- | ----------------------------------------------- |
-| JSON / API   | `Accept: application/json` (and no `X-Inertia` header) | `ValidationJsonError`     | 422 JSON with field errors                      |
-| Inertia      | `X-Inertia: true` header                               | `ValidationRedirectError` | Redirect back; errors surfaced via shared props |
-| HTML form    | neither header                                         | `ValidationRedirectError` | Redirect back; errors in session                |
+| Request type | Detected by                                                               | Error thrown              | HTTP result                                     |
+| ------------ | ------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------- |
+| JSON / API   | `Accept` prefers `application/json` to `text/html`, even with `X-Inertia` | `ValidationJsonError`     | 422 JSON with field errors                      |
+| Inertia      | `X-Inertia: true` header, `Accept` that does not prefer JSON              | `ValidationRedirectError` | Redirect back; errors surfaced via shared props |
+| HTML form    | neither                                                                   | `ValidationRedirectError` | Redirect back; errors in session                |
+
+`Accept` prefers JSON when `application/json` has a higher q-value than `text/html`, or the same
+q-value and comes first: `application/json` and `application/json, text/html` do,
+`text/html, application/json` and a browser's `Accept` do not. The
+[exception handler](/docs/errors) uses the same rule, so a client gets one format for a
+validation error and a 404 alike. An Inertia visit sends
+`Accept: text/html, application/xhtml+xml`, so it redirects; a client that keeps the
+`X-Inertia` header on a call asking for JSON gets the 422 it asked for.
 
 Both `ValidationJsonError` and `ValidationRedirectError` are exported from
 `@zerotal/validator`. The exception handler renders them appropriately — you
@@ -435,8 +443,8 @@ exactly as written.
 
 ### JSON / API requests
 
-When `Accept: application/json` is present (and no `X-Inertia` header),
-validation throws `ValidationJsonError`:
+When `Accept` prefers `application/json` to `text/html`, validation throws
+`ValidationJsonError`, whether or not the request carries `X-Inertia`:
 
 ```json
 {
@@ -453,9 +461,9 @@ the error and renders this automatically.
 
 ### Inertia / HTML form requests
 
-When the request is an Inertia request or has no JSON `Accept` header, validation
-throws `ValidationRedirectError`. `ExceptionHandler` converts this to a redirect
-back to the previous page.
+When `Accept` does not prefer JSON (a form post, a browser, or an Inertia visit),
+validation throws `ValidationRedirectError`. `ExceptionHandler` converts this to a
+redirect back to the previous page.
 
 Errors and old input are stored in the [session](/docs/session) under the keys
 `'errors'` and `'old'`. Read them on the next request:
@@ -512,14 +520,17 @@ guards. The status tells you which failure mode you got:
 
 ```typescript fragment
 // tests/http/register.test.ts
-const res = await app.post("/register", { email: "not-an-email" });
+const res = await testApp.asJson().post("/register", { email: "not-an-email" });
 
-res.assertUnprocessable(); // 422 for a JSON request
+res.assertUnprocessable().assertInvalid("email"); // 422: Accept asked for JSON
 ```
 
-> **Note** — The same failure redirects with flashed errors for a form request
-> and returns `422` for a JSON one. Assert the shape your route actually serves;
-> a test posting JSON to a form endpoint will pass for the wrong reason.
+> **Note** — What picks the failure mode is the request's `Accept` header, not its
+> body. A request whose `Accept` prefers JSON gets the `422`. Anything else is
+> redirected back with the errors flashed, as a form submit is, and that includes
+> `post()` without `asJson()`: it sends a JSON body with `Accept: */*`. Assert the
+> shape your route actually serves;
+> [HTTP Tests](/docs/testing/http#validation-whichever-shape-it-arrives-in) shows both.
 
 **A context you build by hand works too.** `validate()` and `FormRequest` accept a plain
 object holding just a `request`, and read the body straight off that request, since there

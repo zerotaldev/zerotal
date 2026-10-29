@@ -8,6 +8,7 @@ import type { ZerotalError } from "../errors/ZerotalError.ts";
 import { _ABORTED, _HTTP_ERROR } from "../errors/HttpError.ts";
 import { renderDevErrorPage, renderHttpErrorPage } from "./DevErrorPage.ts";
 import { devSurfacesEnabled } from "../support/env.ts";
+import { _prefersJson } from "../http/negotiate.ts";
 
 /**
  * Errors that are an ordinary outcome of a request rather than a fault: a URL nothing
@@ -101,8 +102,8 @@ export abstract class ExceptionHandler {
    * Response format depends on what the client accepts:
    *
    *   Browser (Accept: text/html)  → styled HTML page (all error classes)
-   *   Inertia XHR (X-Inertia: true) → JSON (Inertia shows its own modal)
-   *   API client (Accept: application/json) → JSON
+   *   Inertia visit (Accept: text/html, …) → HTML, shown in Inertia's error modal
+   *   Accept prefers application/json to text/html (X-Inertia or not) → JSON
    *
    * Error-class routing:
    *   1. ValidationRedirectError → 303 redirect (always, any client)
@@ -201,14 +202,17 @@ async function _withHeaders(
  * `Accept: text/html` and shows non-Inertia HTML responses in its error
  * modal (iframe overlay), which is exactly what we want for the dev page.
  *
- * Returns false only for pure JSON clients (`Accept: application/json`).
+ * Returns false when `Accept` prefers `application/json` to `text/html`, by q-value and then by
+ * order: the same rule as the validator's 422-or-redirect choice, so a request that gets a JSON
+ * validation error also gets a JSON 404. `X-Inertia` does not change it: Inertia's own visits
+ * send `Accept: text/html, application/xhtml+xml`.
  */
 function _wantsHtml(ctx?: HttpContext): boolean {
   try {
     if (!ctx?.request) return false;
     const accept = ctx.request.headers.get("Accept") ?? "";
-    // Pure JSON clients — return JSON.
-    if (accept.startsWith("application/json")) return false;
+    // A client that prefers JSON to HTML gets JSON.
+    if (_prefersJson(accept)) return false;
     // Browsers and Inertia XHR both include text/html in Accept.
     return accept.includes("text/html");
   } catch {

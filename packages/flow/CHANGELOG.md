@@ -11,6 +11,33 @@ change.
 
 ## [Unreleased]
 
+## [1.16.1] — 2026-10-29
+
+### Fixed
+
+- **`flow:navigate` to or from a static page swaps the whole page.** Within one layout the
+  client took the first `[data-flow-root]` as the page, and on a `static interactive = false`
+  page that is its first island. Navigating there left only the island on screen; navigating
+  away replaced only the island, so the static page stayed around the new one. Neither logged
+  anything. A static page is now wrapped in `<div data-flow-page>`, which the swap looks for
+  first.
+
+### Changed
+
+- **A binding on a static component is an error in development.** `onClick={this.save}`,
+  `value={this.name}` and the other bindings rendered on a static component that nothing
+  interactive encloses did nothing when used, without a word. Rendering one now throws, naming
+  the element and the component, and so does a static component with an `@on` listener, which
+  no event can reach. A static child of an interactive parent may still bind: the parent's
+  client runs the action. Production skips the check, and an AOT-compiled render does not make
+  it.
+- **A static page has a wrapper element.** It is `<div data-flow-page>`, in the place an
+  interactive page has its `<div data-flow-root>`. CSS that expected the page's own top element
+  to be a direct child of the layout's slot now finds the wrapper between them, as it already
+  did on an interactive page.
+- The `static interactive` docblock no longer says the socket always opens; it has opened only
+  when something registers since 1.8.0.
+
 ## [1.16.0] — 2026-10-28
 
 ### Fixed

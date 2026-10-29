@@ -27,6 +27,34 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.16.1 — 2026-10-29
+
+A Flow patch for static pages: navigation between them and interactive pages, and an error
+where a binding on one used to do nothing.
+
+### Fixed
+
+- **`navigate` to or from a static page swaps the whole page.** Between two pages in one layout,
+  the client took the first interactive element as the page, and on a `static interactive =
+false` page that is its first island. Going there left only the island on screen; leaving
+  replaced only the island, so the static page stayed around the new one. Nothing was logged.
+  A static page now has its own marker, `<div data-flow-page>`, and the swap uses it
+  (`@zerotal/flow`).
+
+### Changed
+
+- **A binding on a static component is an error in development.** `onClick={this.save}`,
+  `value={this.name}` and the other bindings on a static component with nothing interactive
+  above it did nothing when used. Rendering one now throws, naming the element and the
+  component, as does an `@on` listener on a static component. A static child of an interactive
+  parent may still bind, and production skips the check. See
+  [A binding needs something interactive above it](/docs/flow/layouts#a-binding-needs-something-interactive-above-it)
+  (`@zerotal/flow`).
+- **A static page has a wrapper element**, `<div data-flow-page>`, where an interactive page has
+  its `<div data-flow-root>`. CSS that expected the page's top element directly inside the
+  layout's slot finds the wrapper in between, as it already did on an interactive page
+  (`@zerotal/flow`).
+
 ## 1.16.0 — 2026-10-28
 
 A minor, for one rule: how the framework works out a client's address behind a proxy. Every place

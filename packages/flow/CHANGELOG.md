@@ -11,6 +11,11 @@ change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A route group's middleware runs once on a Flow file page.** The fix is in `@zerotal/core`'s
+  file scanner; this package only gains the test fixtures that prove it for a Flow page.
+
 ## [1.16.1] — 2026-10-29
 
 ### Fixed

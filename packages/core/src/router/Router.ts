@@ -449,10 +449,6 @@ export class Router {
   static get _activePrefix(): string {
     return _s().prefix;
   }
-  /** @internal Current group middleware — read by FileRouter to support groupAsync wrapping. */
-  static get _activeMiddleware(): MiddlewareClass[] {
-    return _s().groupMiddleware;
-  }
 
   // ── Internal helpers ──────────────────────────────────────────────────
 

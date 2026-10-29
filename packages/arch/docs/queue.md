@@ -306,7 +306,11 @@ const batch = await Bus.batch(rows.map((row) => new ImportCsvRowJob(row)))
 
 > **Note** — `then`, `catch`, and `finally` accept `Job | Job[]`. They are
 > serialized as class name + payload and stored in the batch row, so they survive
-> process restarts.
+> process restarts. Each one is queued under its own class's `queue`, `maxAttempts`
+> and `retryDelay`, as if you had dispatched it yourself. One whose class is not
+> registered in the worker, or whose `fromPayload()` throws, goes to `default` with
+> three attempts and a one-second delay, and ends up in the failed jobs, as a
+> [chain](#job-chaining) link does.
 
 > **Warning** — Batching requires `SqliteDriver`. `SyncDriver` and `RedisDriver`
 > do not implement the batch table, so `Bus.batch(...).dispatch()` throws a
@@ -349,7 +353,16 @@ await Bus.chain([
 ```
 
 The chain is stored in the payload of each job under `__chain` — no extra table is
-needed, so chaining works with any driver.
+needed, so chaining works with any driver. Each job is queued under its own class's
+`queue`, `maxAttempts` and `retryDelay`, not the previous job's.
+
+A job whose class is not registered in the worker, or whose `fromPayload()` throws, has
+no policy to read. It is queued anyway, on the previous job's queue with the previous
+job's `maxAttempts` and `retryDelay`, and the worker logs a warning naming it. The worker
+then moves it to the failed jobs (an unregistered class as `Unknown job class`), where
+you can see it and retry it with `queue:retry` or from the
+[admin panel](#in-the-admin-panel) once the class is registered. The job before it still
+counts as done.
 
 ## Processing jobs
 
@@ -431,9 +444,12 @@ When [`@zerotal/admin`](/docs/admin) is installed, the queue puts a **Jobs**
 console in the panel — no configuration, just both providers registered. It has a
 tab each for failed jobs, pending jobs, per-queue depth, and this process's
 throughput counters, and it offers the same operations as the CLI commands: retry
-or forget a single failed job, clear all of them, flush the pending queue. The
-sidebar entry carries a failed-job count, which is the number you want to notice
-without going looking for it.
+or forget a single failed job, clear all of them, flush the pending queue. A retried
+job goes back on the queue it failed on with its class's own `maxAttempts` and
+`retryDelay`, from the panel, the [monitor](/docs/monitor) or `queue:retry` alike;
+one whose class is no longer registered stays in the failed list, and the panel and
+the monitor say why. The sidebar entry carries a failed-job count, which is the
+number you want to notice without going looking for it.
 
 Access is gated on the `queue.view` ability, checked both when the sidebar is
 drawn and again on every action. To keep the queue provider but drop the console,
@@ -574,12 +590,13 @@ Every queue error extends `QueueError`, which extends the framework's
 `ZerotalError` — so `catch (e) { if (e instanceof QueueError) … }` catches the lot
 while leaving unrelated failures alone.
 
-| Error                           | Code                           | Raised when                                                       |
-| ------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
-| `QueueError`                    | `E_QUEUE`                      | Base class — catch this to handle any queue failure.              |
-| `QueueNotInitializedError`      | `E_QUEUE_NOT_INITIALIZED`      | Dispatching before `QueueProvider` is registered.                 |
-| `QueueShuttingDownError`        | `E_QUEUE_SHUTTING_DOWN`        | Dispatching during a graceful shutdown — the manager is draining. |
-| `QueueBatchingUnsupportedError` | `E_QUEUE_BATCHING_UNSUPPORTED` | Using batches on a driver that has no batch support.              |
+| Error                           | Code                           | Raised when                                                                          |
+| ------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------ |
+| `QueueError`                    | `E_QUEUE`                      | Base class — catch this to handle any queue failure.                                 |
+| `QueueNotInitializedError`      | `E_QUEUE_NOT_INITIALIZED`      | Dispatching before `QueueProvider` is registered.                                    |
+| `QueueShuttingDownError`        | `E_QUEUE_SHUTTING_DOWN`        | Dispatching during a graceful shutdown — the manager is draining.                    |
+| `QueueBatchingUnsupportedError` | `E_QUEUE_BATCHING_UNSUPPORTED` | Using batches on a driver that has no batch support.                                 |
+| `QueueError`                    | `E_QUEUE_UNKNOWN_JOB`          | `retryFailed()` on a failed job whose class is not registered; the failed row stays. |
 
 ```typescript fragment
 // in a controller or service

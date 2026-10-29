@@ -86,7 +86,7 @@ Override precedence is: definition defaults → relation FKs → your overrides 
 wins).
 
 > **Tip** — Both `count(n).create()` and `createMany(n)` insert sequentially (not in
-> parallel) so they stay correct on SQLite's single-write `last_insert_rowid()`.
+> parallel), so the instances come back in the order they were created.
 
 ## Relating models
 

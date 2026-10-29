@@ -258,6 +258,15 @@ const tagged = await DB.raw<{ count: number }>`
 const [{ version }] = await DB.raw<{ version: string }>("SELECT version()");
 ```
 
+Prefer the tagged form: each value sits where it is used, and there is nothing to count. The
+string form is for SQL assembled at runtime. In it, a `?` inside quotes, a quoted identifier or a
+comment is text, not a placeholder (`WHERE title = 'Why?' AND id = ?` has one), and `DB.raw()`
+throws when the number of placeholders and the number of bindings differ, naming both. The
+string form reads the SQL the way your database does: on MySQL, `#` starts a comment and `--`
+does only when whitespace follows; on PostgreSQL, a dollar-quoted body (`$$...$$`) is text, and the
+jsonb operators `?|` and `?&` are not placeholders. Write PostgreSQL's bare `?` key-existence
+operator in the tagged form.
+
 ### JSON column queries
 
 `whereJson` takes the column and a JSON path joined with `->`, then the value to match:

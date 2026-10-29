@@ -325,6 +325,7 @@ class HttpContext = {
   __: (key: string, replacements?: Replacements, locale?: string) => string
   _afterResponseCallbacks: (() => Promise<void>)[]
   _pageResolver?: (pageName: string) => number | undefined
+  _parseFormData: () => Promise<FormData | null>
   _primeBody: (data: Record<string, unknown>) => void
   _responseFinalizers: ((response: Response) => Promise<void>)[]
   _routeDef?: {    pattern: string;    controller: string;    action: string;}
@@ -486,10 +487,11 @@ class RequestContext = {
 }
 
 class RequestFailed = {
-  new (ctx: object, startMs: number, durationMs: number, error: string, status: number, type?: string | undefined, stack?: string | undefined): RequestFailed
+  new (ctx: object, startMs: number, durationMs: number, error: string, status: number, type?: string | undefined, stack?: string | undefined, expected?: boolean | undefined): RequestFailed
   readonly ctx: object
   readonly durationMs: number
   readonly error: string
+  readonly expected?: boolean | undefined
   readonly stack?: string | undefined
   readonly startMs: number
   readonly status: number
@@ -1907,7 +1909,7 @@ function AuthConfig = (options?: Partial<AuthConfigShape>) => AuthConfigShape
 
 function Authenticatable = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): Authenticatable;    prototype: Authenticatable<any>.Authenticatable;} & TBase
 
-function createToken = (options: {    tokenableId: number;    tokenableType?: string;    name: string;    abilities?: string[];    expiresAt?: Date;}) => Promise<NewToken>
+function createToken = (options: {    tokenableId: number;    tokenableType?: string;    name: string;    abilities?: string[];    expiresAt?: Date;    store?: (row: NewToken['row']) => Promise<unknown>;}) => Promise<NewToken>
 
 function definePermission = (...names: (string | string[])[]) => void
 

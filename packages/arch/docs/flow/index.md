@@ -188,7 +188,7 @@ surprise rather than the failure — which is why the list is here.
 
 `title` used to be on it, and was the name that caught people most: an obvious field for a
 row representing a media item, a guide or a review. The document title is
-[`static title`](#the-page-title) now, so the instance name is yours.
+[`static title`](/docs/flow/routing#the-page-title) now, so the instance name is yours.
 
 The names in use:
 
@@ -564,9 +564,11 @@ Flow is a large surface. Each section below is its own page.
 | [Lifecycle Hooks](/docs/flow/lifecycle)           | Where to run code as a component mounts, updates, and tears down.                                     |
 | [Events & Broadcasting](/docs/flow/events)        | Component events, browser events, and multiplayer state shared over WebSockets.                       |
 | [Forms, Validation & Uploads](/docs/flow/forms)   | Two-way bound inputs, real-time validation, and server-handled file uploads.                          |
+| [Models in Components](/docs/flow/models)         | An ORM model on a component: what crosses the wire, and what the client may change.                   |
 | [Pagination](/docs/flow/pagination)               | The Pagination mixin, URL-synced pages, and named paginators.                                         |
-| [Built-in Components](/docs/flow/components)      | The component library that ships with Flow — forms, overlays, tables, and feedback.                   |
-| [Layouts & Composition](/docs/flow/layouts)       | Wrap pages in layouts, compose behaviour with mixins, nest components, and pass markup between them.  |
+| [Built-in Components](/docs/flow/components)      | The component library that ships with Flow — forms, overlays, tables, feedback — and CSP-safe mode.   |
+| [Icons](/docs/flow/icons)                         | 2,060 icons by name, rendered on the server, nothing to install.                                      |
+| [Layouts & Composition](/docs/flow/layouts)       | Layouts, mixins, nested components, static pages with interactive islands, and `@task` streaming.     |
 | [Transport & Performance](/docs/flow/performance) | How updates reach the browser, what to do on hostile networks, and the polish that hides latency.     |
 | [Testing](/docs/flow/testing)                     | Drive a component in-process, assert on its state, and test the rendered markup.                      |
 | [Reference](/docs/flow/references)                | Every decorator, prop, directive, and client global in one table.                                     |

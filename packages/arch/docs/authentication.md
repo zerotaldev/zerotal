@@ -1088,7 +1088,7 @@ above with the calls that emit them.
 | `Auth.authorize(ability)`             | `(ability: string): void`                                      | Throws `ForbiddenError` if user lacks the ability    |
 | `Auth.roles()`                        | `(): string[]`                                                 | Array of role names (empty for guests)               |
 
-> **Note** — The role and permission helpers (`hasRole`, `can`, `authorize`, …) require a user model that composes the relevant mixins. See [Authorization](/docs/authorization) and [Roles & 2FA](/docs/roles-and-2fa).
+> **Note** — The role and permission helpers (`hasRole`, `can`, `authorize`, …) require a user model that composes the relevant mixins. See [Authorization](/docs/authorization).
 
 ### Two-factor API
 

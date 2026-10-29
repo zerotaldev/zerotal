@@ -354,7 +354,7 @@ Gate.authorize("update", post); // throws 403 unless the policy allows it
 
 Password reset, email verification, roles, 2FA (TOTP/WebAuthn), and OAuth are all
 included. See [Authentication](/docs/authentication),
-[Authorization](/docs/authorization), and [Roles & 2FA](/docs/roles-and-2fa).
+[Authorization](/docs/authorization), and [Two-Factor Auth](/docs/roles-and-2fa).
 
 ## Pick your frontend
 
@@ -642,17 +642,17 @@ More in [Commands](/docs/commands).
 Zerotal is a monorepo of composable `@zerotal/*` packages — register only what you
 need:
 
-| Area                | Packages / features                                                                                                                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **HTTP core**       | Container, router, middleware, events, config, facades, JSX views (`@zerotal/core`)                                                                                                 |
-| **Data**            | ORM, migrations, query builder, [validation](/docs/validator)                                                                                                                       |
-| **Auth & security** | [Sessions](/docs/session), [auth](/docs/authentication), tokens, [policies](/docs/authorization), [roles & 2FA](/docs/roles-and-2fa), WebAuthn, OAuth, [CSRF](/docs/csrf)           |
-| **Frontend**        | Flow, flow-ui component library, Inertia                                                                                                                                            |
-| **Services**        | [Cache](/docs/cache), [queue](/docs/queue), [scheduler](/docs/scheduler), [storage](/docs/storage), [broadcasting](/docs/broadcasting), [notifications & mail](/docs/notifications) |
-| **Cross-cutting**   | [Telemetry](/docs/telemetry), [HTTP client](/docs/client), [i18n](/docs/i18n), [tenancy](/docs/tenancy), [audit](/docs/audit), [monitor](/docs/monitor)                             |
-| **Tooling**         | Admin panel, devtools, [testing](/docs/testing) helpers, `create-zerotal` scaffolder                                                                                                |
+| Area                | Packages / features                                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **HTTP core**       | Container, router, middleware, events, config, facades, JSX views (`@zerotal/core`)                                                                                                                          |
+| **Data**            | ORM, migrations, query builder, [validation](/docs/validator)                                                                                                                                                |
+| **Auth & security** | [Sessions](/docs/session), [auth](/docs/authentication), tokens, [roles and policies](/docs/authorization), [2FA](/docs/roles-and-2fa), [passkeys](/docs/authentication#passkeys), OAuth, [CSRF](/docs/csrf) |
+| **Frontend**        | Flow, flow-ui component library, Inertia                                                                                                                                                                     |
+| **Services**        | [Cache](/docs/cache), [queue](/docs/queue), [scheduler](/docs/scheduler), [storage](/docs/storage), [broadcasting](/docs/broadcasting), [notifications & mail](/docs/notifications)                          |
+| **Cross-cutting**   | [Telemetry](/docs/telemetry), [HTTP client](/docs/client), [i18n](/docs/i18n), [tenancy](/docs/tenancy), [audit](/docs/audit), [monitor](/docs/monitor)                                                      |
+| **Tooling**         | Admin panel, devtools, [testing](/docs/testing) helpers, `create-zerotal` scaffolder                                                                                                                         |
 
-The [README](../README.md) has a package-by-package table with links.
+The [README](https://github.com/zerotaldev/zerotal#packages) has a package-by-package table with links.
 
 ## Working in the codebase
 

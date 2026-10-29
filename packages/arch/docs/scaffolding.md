@@ -35,6 +35,10 @@ Every generator is idempotent: if the target file already exists it reports
 | `make:admin-resource` | `app/admin/<Name>Resource.ts`     | Admin panel resource for a model           |
 | `make:provider`       | `app/providers/<Name>Provider.ts` | Auto-registers in `bootstrap/providers.ts` |
 | `make:package`        | `packages/<name>/…`               | Full `@zerotal/*` package skeleton         |
+| `make:model`          | `app/models/<Name>.ts`            | See [ORM](/docs/orm#generating-models)     |
+| `make:migration`      | `database/migrations/…`           | See [Migrations](/docs/migrations)         |
+| `make:factory`        | `database/factories/<Name>.ts`    | See [Factories](/docs/orm/factories)       |
+| `make:seeder`         | `database/seeders/<Name>.ts`      | See [Seeding](/docs/seeding)               |
 
 ## make:controller
 

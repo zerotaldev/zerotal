@@ -524,6 +524,6 @@ async writes refresh the memo for you.
 ## Next steps
 
 - [Authentication](/docs/authentication) — sign users in before authorizing them.
-- [Roles and 2FA](/docs/roles-and-2fa) — deeper coverage of role workflows.
+- [Two-Factor Auth](/docs/roles-and-2fa) — a second factor at login, with TOTP codes.
 - [Middleware](/docs/middleware) — how the route-guard middleware fits the pipeline.
 - [Conventions](/docs/conventions) — auto-discovery rules for policies.

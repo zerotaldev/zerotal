@@ -104,15 +104,16 @@ how to pass any other flag to `bun test`, see
 
 ## The toolkit
 
-| Area                                   | What it covers                                                                        |
-| -------------------------------------- | ------------------------------------------------------------------------------------- |
-| [HTTP Tests](/docs/testing/http)       | Boot the app, send requests, assert on `TestResponse`; forms, uploads, auth, session. |
-| [Console Tests](/docs/testing/console) | Run CLI commands in-process with `Artisan.call()` and assert output/exit code.        |
-| [Browser Tests](/docs/testing/browser) | End-to-end Playwright tests against a live server (Flow/Inertia UIs).                 |
-| [Database](/docs/testing/database)     | Migrations, transactional rollback per test, and `assertDatabase*`.                   |
-| [Mocking](/docs/testing/mocking)       | Event/queue/notification/broadcast/storage/HTTP fakes, the test clock, and `fake`.    |
-| [Flow Tests](/docs/flow/testing)       | Drive a component's own lifecycle in-process — no server, no browser.                 |
-| [Admin Tests](/docs/admin/testing)     | Mount a panel resource's List / View / Form pages with resource-aware assertions.     |
+| Area                                      | What it covers                                                                          |
+| ----------------------------------------- | --------------------------------------------------------------------------------------- |
+| [HTTP Tests](/docs/testing/http)          | Boot the app, send requests, assert on `TestResponse`; forms, uploads, auth, session.   |
+| [Console Tests](/docs/testing/console)    | Run CLI commands in-process with `Artisan.call()` and assert output/exit code.          |
+| [Browser Tests](/docs/testing/browser)    | End-to-end Playwright tests against a live server (Flow/Inertia UIs).                   |
+| [FlowBrowser](/docs/testing/flow-browser) | A real page against a real server inside `bun test`, asserting on the WebSocket bridge. |
+| [Database](/docs/testing/database)        | Migrations, transactional rollback per test, and `assertDatabase*`.                     |
+| [Mocking](/docs/testing/mocking)          | Event/queue/notification/broadcast/storage/HTTP fakes, the test clock, and `fake`.      |
+| [Flow Tests](/docs/flow/testing)          | Drive a component's own lifecycle in-process — no server, no browser.                   |
+| [Admin Tests](/docs/admin/testing)        | Mount a panel resource's List / View / Form pages with resource-aware assertions.       |
 
 ## Which test should I write?
 

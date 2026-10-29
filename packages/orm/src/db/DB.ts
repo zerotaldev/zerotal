@@ -17,7 +17,7 @@ import {
   allowNPlusOne as _allowNPlusOne,
   type NPlusOneOptions,
 } from "./NPlusOneDetector.ts";
-import { _templateStrings } from "./templateStrings.ts";
+import { _splitPlaceholders, _templateStrings } from "./templateStrings.ts";
 
 // Test-override escape hatch — set by _setDbConnection() in test files.
 // Production code resolves the connection from the container instead.
@@ -160,7 +160,7 @@ export function _rawStatement(sql: string): Promise<unknown> {
 
 /** Run a parameterised statement (`?` placeholders) on a specific connection. */
 function _runParams(conn: SQLInstance, sql: string, params: unknown[]): Promise<unknown> {
-  const parts = sql.split("?");
+  const parts = _splitPlaceholders(sql, dialectFor(conn));
   const tpl = _templateStrings(parts);
   return conn(tpl, ...params);
 }
@@ -230,12 +230,15 @@ export const DB = {
   /**
    * Execute raw SQL.
    *
-   * Tagged-template form (parameterized, safe):
+   * Tagged-template form (parameterized, safe, preferred):
    *   await DB.raw`SELECT * FROM users WHERE id = ${id}`
    *
-   * String form (splits on `?` placeholders, same safety):
+   * String form, with `?` placeholders and one binding for each:
    *   await DB.raw('SELECT * FROM users WHERE id = ?', [id])
    *   await DB.raw('SELECT 1 + 1 AS n')
+   *
+   * A `?` inside quotes or a comment is not a placeholder. Throws when the number of
+   * placeholders and the number of bindings differ.
    * @category Queries
    */
   async raw<T = Record<string, unknown>>(
@@ -246,7 +249,15 @@ export const DB = {
     const startMs = Date.now();
     if (typeof sql === "string") {
       const bindings: unknown[] = Array.isArray(rest[0]) ? (rest[0] as unknown[]) : rest;
-      const parts = sql.split("?");
+      const parts = _splitPlaceholders(sql, dialectFor(conn));
+      if (parts.length - 1 !== bindings.length) {
+        throw new Error(
+          `[Zerotal ORM] DB.raw() found ${parts.length - 1} placeholder(s) in the SQL but was ` +
+            `given ${bindings.length} binding(s). A "?" inside quotes or a comment is not a ` +
+            "placeholder. Pass one binding per placeholder, or use the tagged form: " +
+            "DB.raw`... ${value}`.",
+        );
+      }
       const tpl = _templateStrings(parts);
       const rows = await conn<T>(tpl, ...bindings);
       FrameworkEvents.emit(

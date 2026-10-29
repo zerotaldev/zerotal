@@ -2,7 +2,8 @@ import { _getScopedDbConnection } from "../db/DB.ts";
 import { _getDialect } from "../model/BaseModel.ts";
 import { getDialect } from "../db/dialects/index.ts";
 import { Blueprint } from "./Blueprint.ts";
-import { _templateStrings } from "../db/templateStrings.ts";
+import { _splitPlaceholders, _templateStrings } from "../db/templateStrings.ts";
+import { dialectFor } from "../db/QueryBuilder.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ async function query<T = Record<string, unknown>>(sql: string, params: unknown[]
   // Same connection as `ddl()` above: `hasTable()` inside a transaction must see
   // the tables that transaction has created, which a pooled connection cannot.
   const conn = _getScopedDbConnection();
-  const parts = sql.split("?");
+  const parts = _splitPlaceholders(sql, dialectFor(conn));
   const tpl = _templateStrings(parts);
   return conn<T>(tpl, ...params);
 }

@@ -20,7 +20,7 @@ import type {
   SimplePaginateResult,
 } from "./types.ts";
 import { withPaginationHelpers, withSimplePaginationHelpers } from "./types.ts";
-import { _templateStrings } from "./templateStrings.ts";
+import { _splitPlaceholders, _templateStrings } from "./templateStrings.ts";
 
 /**
  * The comparison operators accepted in a value-comparison slot. Exported so
@@ -2213,7 +2213,7 @@ export class QueryBuilder {
 
     for (const u of this._state.unions) {
       segs.push(` UNION ${u.all ? "ALL " : ""}`);
-      _pushSqlWithBindings(segs, u.sql, u.bindings);
+      _pushSqlWithBindings(segs, u.sql, u.bindings, dialectFor(this._sql));
     }
 
     if (this._state.orders.length > 0) {
@@ -2250,7 +2250,7 @@ export class QueryBuilder {
       }
       const kw = j.type === "left" ? "LEFT JOIN" : j.type === "right" ? "RIGHT JOIN" : "INNER JOIN";
       segs.push(` ${kw} `);
-      _pushSqlWithBindings(segs, j.table, j.bindings ?? []);
+      _pushSqlWithBindings(segs, j.table, j.bindings ?? [], dialectFor(this._sql));
       segs.push(` ON ${j.first} ${j.operator} ${j.second}`);
     }
   }
@@ -2371,7 +2371,7 @@ export class QueryBuilder {
       if (w.operator === "__raw__") {
         // whereRaw: column holds the SQL fragment, value holds the bindings array.
         // One shared splicer — this used to be a second copy that dropped an unbound `?`.
-        _pushSqlWithBindings(segs, w.column, w.value as unknown[]);
+        _pushSqlWithBindings(segs, w.column, w.value as unknown[], dialectFor(this._sql));
       } else if (w.operator === "is null") {
         segs.push(`${w.column} IS NULL`);
       } else if (w.operator === "is not null") {
@@ -2436,17 +2436,24 @@ export class QueryBuilder {
 
 // ── Module-private helpers ────────────────────────────────────────────────────
 
-/** Split a SQL fragment on `?` and interleave binding segments. */
 /**
- * Split raw SQL on `?` and interleave the supplied bindings.
+ * Split raw SQL at its `?` placeholders and interleave the supplied bindings.
  *
- * A `?` with no binding left to consume is emitted back as a literal `?`. Dropping it — the
- * previous behaviour — silently rewrote the SQL: `whereRaw("name LIKE 'Who?%'")` became
- * `LIKE 'Who%'` and returned the wrong rows with no error, and PostgreSQL's jsonb
- * key-existence operator (`data ? 'key'`) was destroyed outright.
+ * A `?` inside quotes or a comment is not a placeholder (see {@link _splitPlaceholders}), so
+ * `whereRaw("title = 'Why?' AND n = ?", [1])` binds `1` to `n`. It used to split on every `?`
+ * and bind `1` to the literal.
+ *
+ * A `?` with no binding left to consume is emitted back as a literal `?`, which is how
+ * PostgreSQL's jsonb key-existence operator (`data ? 'key'`) gets through. Dropping it — an
+ * earlier behaviour — destroyed that operator outright.
  */
-function _pushSqlWithBindings(segs: Segment[], sql: string, bindings: unknown[]): void {
-  const parts = sql.split("?");
+function _pushSqlWithBindings(
+  segs: Segment[],
+  sql: string,
+  bindings: unknown[],
+  dialect: Dialect,
+): void {
+  const parts = _splitPlaceholders(sql, dialect);
   parts.forEach((part, idx) => {
     segs.push(part);
     if (idx === parts.length - 1) return; // trailing fragment — no `?` followed it

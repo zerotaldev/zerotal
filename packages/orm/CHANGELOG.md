@@ -10,6 +10,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **String-form SQL finds its placeholders the way the database does.** `DB.raw(string)`,
+  `whereRaw()`, joins and unions built from raw SQL, and the schema and migration helpers split
+  their SQL on every `?`. A `?` inside a string literal or a comment became a placeholder, so
+  `title = 'Why?' AND n = ?` bound its value to the literal, and the query returned no rows
+  instead of failing. One shared splitter now skips quoted text (with doubled-quote escapes),
+  quoted identifiers (`` `…` `` on MySQL and SQLite, `[…]` on SQLite), and comments: block
+  comments, `--` (on MySQL only when whitespace follows, so `5--1` stays arithmetic) and `#` on
+  MySQL. On PostgreSQL it also skips dollar-quoted bodies and the jsonb operators `?|` and `?&`.
+  `DB.raw(string)` also throws when the number of placeholders and the number of bindings
+  differ, naming both; it used to send the mismatch on to the driver, or bind what it could.
+  `whereRaw()` still passes a `?` with no binding left through as written, which is how
+  PostgreSQL's jsonb `?` operator reaches the database.
+
 - **A model insert on SQLite reads back its own row.** The insert read its new id with a
   second statement, `SELECT last_insert_rowid()`, which answers for the connection, and on
   SQLite every request shares one. An INSERT from another request that ran between the two

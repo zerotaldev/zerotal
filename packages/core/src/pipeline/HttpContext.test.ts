@@ -363,6 +363,53 @@ describe("HttpContext.body()", () => {
   });
 });
 
+// A client can send any JSON value. A bare number, string, boolean or null has no fields: cached
+// as is, it broke the Record body() promises and made input() throw on `key in 5`, a 500.
+describe("HttpContext body() and input() on a JSON body that is not an object", () => {
+  const send = (raw: string) =>
+    HttpContext.fake("http://localhost/items?q=fromquery", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: raw,
+    });
+
+  for (const raw of ["5", '"str"', "true", "null"]) {
+    it(`body() returns {} and input() falls back to the query for ${raw}`, async () => {
+      const ctx = send(raw);
+      expect(await ctx.body()).toEqual({});
+      expect(ctx.input("q")).toBe("fromquery");
+      expect(ctx.input("missing", "fallback")).toBe("fallback");
+    });
+  }
+
+  it("body() returns {} for a null body, so destructuring it is safe", async () => {
+    const { title } = await send("null").body<{ title?: string }>();
+    expect(title).toBeUndefined();
+  });
+
+  it("body() returns a JSON array as sent, and input() reads no field from it", async () => {
+    const ctx = send("[1,2]");
+    expect(await ctx.body<Record<string, unknown>>()).toEqual([1, 2]);
+    expect(ctx.input("q")).toBe("fromquery");
+    expect(ctx.input("0", "fallback")).toBe("fallback");
+    expect(ctx.input("length", "fallback")).toBe("fallback");
+  });
+
+  it("an object body still wins over the query", async () => {
+    const ctx = send(JSON.stringify({ q: "frombody" }));
+    expect(await ctx.body()).toEqual({ q: "frombody" });
+    expect(ctx.input("q")).toBe("frombody");
+  });
+
+  it("a primed body that is not an object caches as {}", async () => {
+    const ctx = send("5");
+    const primed: unknown = 5;
+    ctx._primeBody(primed as Record<string, unknown>);
+    expect(await ctx.body()).toEqual({});
+    expect(ctx.input("q")).toBe("fromquery");
+  });
+});
+
 describe("HttpContext.took", () => {
   it("returns a non-negative number of elapsed milliseconds", () => {
     const ctx = HttpContext.fake("http://localhost/");

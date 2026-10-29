@@ -1454,6 +1454,7 @@ describe("FormRequest — macro() and base rules()", () => {
 // ── validate() HTTP helper ────────────────────────────────────────────────────
 
 import { validate } from "./validate.ts";
+import { HttpContext } from "@zerotal/core";
 
 function makeCtx(opts: {
   method?: string;
@@ -1472,19 +1473,13 @@ function makeCtx(opts: {
     ...opts.headers,
   };
 
-  const request = new Request(url, {
+  const ctx = HttpContext.fake(url, {
     method,
     headers,
-    body: method !== "GET" ? body : undefined,
+    ...(method !== "GET" ? { body } : {}),
   });
-
-  const ctx = {
-    request,
-    url: new URL(url),
-    response: undefined as Response | undefined,
-    session: opts.session,
-  };
-  return ctx as unknown as import("@zerotal/core").HttpContext;
+  if (opts.session) Object.assign(ctx, { session: opts.session });
+  return ctx;
 }
 
 describe("validate() — success paths", () => {
@@ -1590,14 +1585,7 @@ describe("validate() — failure paths", () => {
   it("reads multipart/form-data body fields", async () => {
     const formData = new FormData();
     formData.append("title", "hello");
-    const req = new Request("http://localhost/upload", {
-      method: "POST",
-      body: formData,
-    });
-    const ctx = {
-      request: req,
-      url: new URL("http://localhost/upload"),
-    } as unknown as import("@zerotal/core").HttpContext;
+    const ctx = HttpContext.fake("http://localhost/upload", { method: "POST", body: formData });
     const data = await validate(ctx, (r) => ({ title: r.string() }));
     expect((data as unknown as { title: string }).title).toBe("hello");
   });

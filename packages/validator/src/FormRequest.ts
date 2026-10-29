@@ -7,6 +7,7 @@ import { RuleBuilder } from "./RuleBuilder.ts";
 import { runValidationAsync } from "./Validator.ts";
 import { ValidationRedirectError, ValidationJsonError } from "./ValidationError.ts";
 import { PrecognitionResponseError } from "./PrecognitionError.ts";
+import { _readRequestBody, _requestOrigin } from "./requestBody.ts";
 
 // Maps { title: StringRule; body: StringRule } → { title: StringRuleDef; body: StringRuleDef }
 // The same pattern used by the top-level validate() function.
@@ -184,30 +185,8 @@ export abstract class FormRequest {
       throw new ForbiddenError("This action is not authorized.");
     }
 
-    // Parse request body
-    let body: Record<string, unknown> = {};
-    try {
-      const ct = ctx.request.headers.get("Content-Type") ?? "";
-      if (ct.includes("application/json")) {
-        body = (await ctx.request.json()) as Record<string, unknown>;
-      } else if (
-        ct.includes("application/x-www-form-urlencoded") ||
-        ct.includes("multipart/form-data")
-      ) {
-        const fd = await ctx.request.formData();
-        fd.forEach((val, key) => {
-          body[key] = val;
-        });
-      }
-    } catch {
-      body = {};
-    }
-
-    if (ctx.request.method === "GET") {
-      ctx.url.searchParams.forEach((val, key) => {
-        body[key] ??= val;
-      });
-    }
+    // Read through the context's body cache, which ctx.body() and ctx.input() share.
+    let body = await _readRequestBody(ctx);
 
     // Build schema from the instance rules() method — same pipeline as validate()
     const builder = new RuleBuilder();
@@ -256,7 +235,8 @@ export abstract class FormRequest {
         throw new ValidationJsonError(result.errors);
       } else {
         // Same origin check as validate() — see the note there. Referer is client input.
-        const back = safeRedirectPath(ctx.request.headers.get("Referer"), ctx.url.origin) ?? "/";
+        const back =
+          safeRedirectPath(ctx.request.headers.get("Referer"), _requestOrigin(ctx)) ?? "/";
         throw new ValidationRedirectError(back, result.errors);
       }
     }

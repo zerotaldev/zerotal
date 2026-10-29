@@ -626,7 +626,8 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
   /**
    * Parse and cache the JSON request body.
    * Subsequent calls return the cached result — safe to call multiple times.
-   * Returns `{}` when the body is absent or not valid JSON.
+   * Returns `{}` when the body is absent, not valid JSON, or a JSON value with no fields (a bare
+   * number, string, boolean or `null`). A JSON array is returned as sent.
    *
    * @example
    * const { title, body } = await ctx.body<{ title: string; body: string }>();
@@ -640,7 +641,7 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
 
     if (contentType.includes("application/json")) {
       try {
-        this._body = (await this.request.json()) as Record<string, unknown>;
+        this._body = _asBody(await this.request.json());
       } catch {
         this._body = {};
       }
@@ -664,7 +665,14 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
     return this._body as T;
   }
 
-  private async _parseFormData(): Promise<FormData | null> {
+  /**
+   * The request's parsed form, read once and shared by `body()`, `file()`, `files()` and the
+   * validator, so whichever reads first leaves it for the rest. `null` when the body is not a
+   * form or was already consumed.
+   *
+   * @internal
+   */
+  async _parseFormData(): Promise<FormData | null> {
     if (this._formData !== undefined) return this._formData;
     try {
       this._formData = await this.request.formData();
@@ -676,7 +684,7 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
 
   /** @internal Seed the body cache with already-parsed data, for middleware that reads the raw body. */
   _primeBody(data: Record<string, unknown>): void {
-    this._body = data;
+    this._body = _asBody(data);
   }
 
   /**
@@ -739,7 +747,8 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
    */
   input<T = unknown>(key: string, fallback?: T): T {
     if (key in this.params) return this.params[key] as unknown as T;
-    if (this._body !== undefined && key in this._body) return this._body[key] as T;
+    const body = this._body;
+    if (body !== undefined && !Array.isArray(body) && key in body) return body[key] as T;
     const queryValue = this.url.searchParams.get(key);
     if (queryValue !== null) return queryValue as unknown as T;
     if (this._body === undefined) _warnUnreadBody(this.request, this._routeDef?.pattern, key);
@@ -948,6 +957,18 @@ function configuredOrigin(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * A parsed JSON body as the cache holds it. `JSON.parse` returns whatever the client sent, and a
+ * bare `5`, `"str"`, `true` or `null` has no fields: kept as is, it broke the `Record` that
+ * `body()` promises (`const { title } = await ctx.body()` threw on `null`) and made `input()` throw
+ * evaluating `key in 5`, so one odd request body was a 500. Such a body caches as `{}`, as an
+ * absent one does. An array is an object and is kept, so a route that takes a JSON array still
+ * gets it from `body()`; `input()` reads no field from it.
+ */
+function _asBody(parsed: unknown): Record<string, unknown> {
+  return parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
 }
 
 /** Routes and keys already warned about, so the warning is one line and not one per request. */

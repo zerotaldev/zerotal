@@ -4,7 +4,7 @@
  * — plus the fluent `ResponseBuilder` / `MarkdownBuilder` they return.
  */
 import { RequestContext } from "../context/RequestContext.ts";
-import { HttpError, NotFoundError } from "../errors/HttpError.ts";
+import { HttpError, NotFoundError, _ABORTED } from "../errors/HttpError.ts";
 import { route } from "../router/Router.ts";
 import type { RouteParamValues, RouteParamsArg, RouteTarget } from "../router/registry.ts";
 import { safeRedirectPath } from "../pipeline/HttpContext.ts";
@@ -420,10 +420,16 @@ export function abort(
   message?: string,
 ): never {
   if (typeof statusOrMessageOrError === "function") {
-    throw new (statusOrMessageOrError as new () => ZerotalError)();
+    throw _aborted(new (statusOrMessageOrError as new () => ZerotalError)());
   }
   if (typeof statusOrMessageOrError === "string") {
-    throw new HttpError(statusOrMessageOrError, 500);
+    throw _aborted(new HttpError(statusOrMessageOrError, 500));
   }
-  throw new HttpError(message ?? "Aborted", statusOrMessageOrError);
+  throw _aborted(new HttpError(message ?? "Aborted", statusOrMessageOrError));
+}
+
+/** Mark `error` as thrown by `abort()`, non-enumerable so a copy of its fields leaves it behind. */
+function _aborted(error: ZerotalError): ZerotalError {
+  Object.defineProperty(error, _ABORTED, { value: true });
+  return error;
 }

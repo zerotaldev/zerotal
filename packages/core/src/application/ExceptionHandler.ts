@@ -5,6 +5,7 @@
  */
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import type { ZerotalError } from "../errors/ZerotalError.ts";
+import { _ABORTED, _HTTP_ERROR } from "../errors/HttpError.ts";
 import { renderDevErrorPage, renderHttpErrorPage } from "./DevErrorPage.ts";
 import { devSurfacesEnabled } from "../support/env.ts";
 
@@ -29,11 +30,25 @@ const _EXPECTED_OUTCOMES: ReadonlySet<string> = new Set([
  * as `ERROR Unhandled error`, stack trace and all: a mistyped URL, or a bot probing
  * `/wp-admin`, or a form with one mistake in it.
  *
+ * So is an error the framework raises to answer the client, when its status is below 500: an
+ * `HttpError` (a `ForbiddenError`, a `ConflictError`) or whatever `abort()` threw. Those are
+ * thrown on purpose, and the client is told why. An error that merely carries a status is not
+ * one: an `HttpClientError` from an upstream 401, or an API or AI client's error, is a fault in
+ * this request whatever the status it repeats. `HttpError` and `abort()` are each found by a
+ * registered symbol rather than by `instanceof`, because an app can hold two copies of core and
+ * an error built by one is not an instance of the other's class. Not by a class name: an app's
+ * own class named `HttpError` is not the framework answering the client. It must still be an
+ * `Error`, which is what `defaultRender()` answers with that status: anything else (a thrown
+ * `Response`, a plain object) is answered with a 500.
+ *
  * @internal
  */
 export function _isExpectedOutcome(error: unknown): boolean {
-  const name = (error as { name?: string } | null)?.name;
-  return name !== undefined && _EXPECTED_OUTCOMES.has(name);
+  if (error === null || typeof error !== "object") return false;
+  const { name, status } = error as { name?: unknown; status?: unknown };
+  if (typeof name === "string" && _EXPECTED_OUTCOMES.has(name)) return true;
+  if (!(error instanceof Error) || !(_ABORTED in error || _HTTP_ERROR in error)) return false;
+  return typeof status === "number" && status >= 100 && status < 500;
 }
 
 /**

@@ -323,6 +323,14 @@ export class RequestFailed {
      * this event should not be the thing that decides how a frame is spelled.
      */
     readonly stack?: string,
+    /**
+     * Whether the error is one the framework raises to answer the client (an `HttpError`
+     * below 500, an `abort()`, a failed validation, a `NotFoundError`) rather than a fault.
+     *
+     * The response status cannot say so on its own: an `HttpClientError` from an upstream
+     * 401 is answered with a 401 too, and it is a fault. Absent means not expected.
+     */
+    readonly expected?: boolean,
   ) {}
 }
 

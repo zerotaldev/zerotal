@@ -8,7 +8,7 @@ import { RequestContext } from "../context/RequestContext.ts";
 import { HttpContext } from "../pipeline/HttpContext.ts";
 import type { RequestIPProvider } from "../pipeline/HttpContext.ts";
 import { Pipeline } from "../pipeline/Pipeline.ts";
-import { ExceptionHandler } from "../application/ExceptionHandler.ts";
+import { ExceptionHandler, _isExpectedOutcome } from "../application/ExceptionHandler.ts";
 import { recordHttp, beginHttp, endHttp } from "../metrics/HttpMetrics.ts";
 import { FrameworkEvents, RequestHandled, RequestFailed } from "../events/FrameworkEvents.ts";
 import { injectRegistry } from "../container/inject.ts";
@@ -177,6 +177,7 @@ export async function dispatchRequest(
             // time the event is emitted the error is the only place they exist.
             failure instanceof Error ? failure.name : undefined,
             failure instanceof Error ? failure.stack : undefined,
+            _isExpectedOutcome(failure),
           ),
         );
       } else {

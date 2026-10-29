@@ -186,20 +186,32 @@ export default Application.create({ providers }).withExceptionHandler(Handler);
 
 `report()` is for errors you want tracked externally. Errors that are normal user
 behaviour (404, 403, validation) should not page anyone. The base handler already
-silences a few by name — `ValidationRedirectError`, `ValidationJsonError`,
-`ValidationError`, `PrecognitionResponse`, and `NotFoundError` — so they never
+silences the ones the framework raises to answer the client: every `HttpError`
+below 500 (a `ForbiddenError`, a `ConflictError`, a `NotFoundError`), whatever
+`abort()` throws with a 4xx, and by name `ValidationRedirectError`,
+`ValidationJsonError`, `ValidationError` and `PrecognitionResponse`. They never
 reach `console.error`.
+
+An error that only repeats a status from somewhere else is still reported. An
+`HttpClientError` thrown by `.throw()` on a 401 from an upstream API is answered
+with a 401, but the request did not refuse anyone: something it depends on
+failed. The same goes for an API client's or an AI provider's error, and for any
+other error you give a `status` of your own. Throw an `HttpError`, or call
+`abort()`, when the 4xx is the answer you mean to give. That means the
+framework's `HttpError` or a subclass of it: a class of your own that is only
+named `HttpError` is reported like any other error.
 
 To silence your own classes, list them on the `dontReport` array instead of
 filtering by hand:
 
 ```typescript fragment
 // app/exceptions/Handler.ts
-import { ExceptionHandler, ForbiddenError } from "zerotal";
+import { ExceptionHandler } from "zerotal";
+import { CardDeclinedError } from "./CardDeclinedError.ts";
 import { PaymentFailedError } from "./PaymentFailedError.ts";
 
 export class Handler extends ExceptionHandler {
-  protected override dontReport = [ForbiddenError, PaymentFailedError];
+  protected override dontReport = [CardDeclinedError, PaymentFailedError];
 }
 ```
 

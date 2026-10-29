@@ -34,6 +34,24 @@ function _ctx(raw: object) {
   };
 }
 
+/** `ForbiddenError: Forbidden`, or the bare message when the failure was not an `Error`. */
+function _describe(e: RequestFailed): string {
+  return e.type ? `${e.type}: ${e.error}` : e.error;
+}
+
+/**
+ * The failure as the error that was thrown: its own class name and stack. A `new Error(message)`
+ * built here would log a stack that points into this listener rather than at the throw, so a
+ * failure that carried no stack (something other than an `Error` was thrown) logs its message.
+ */
+function _failure(e: RequestFailed): Error | string {
+  if (!e.stack) return e.error;
+  const error = new Error(e.error);
+  if (e.type) error.name = e.type;
+  error.stack = e.stack;
+  return error;
+}
+
 /**
  * Service provider that wires logging into the application.
  *
@@ -116,16 +134,23 @@ export class LogProvider extends ServiceProvider {
 
       FrameworkEvents.on<RequestFailed>("RequestFailed", (e) => {
         const c = _ctx(e.ctx);
-        log.error(
-          "Request pipeline error",
-          {
-            method: c.request?.method ?? "?",
-            path: c.url?.pathname ?? "?",
-            status: e.status,
-            durationMs: e.durationMs,
-          },
-          new Error(e.error),
-        );
+        const ctx = {
+          method: c.request?.method ?? "?",
+          path: c.url?.pathname ?? "?",
+          status: e.status,
+          durationMs: e.durationMs,
+        };
+        // Thrown control flow answered below 400 (a form's validation redirect, a passing
+        // precognition check) is not logged, as a returned 2xx or 3xx is not.
+        if (e.status < 400) return;
+        // A 4xx the framework threw to answer the client (a 403, a 409, an `abort(422)`) reads
+        // like any other 4xx: one warning, with the reason and without a stack. An error that
+        // only repeats an upstream status, an `HttpClientError` from a 401, is still a fault.
+        if (e.expected === true && e.status < 500) {
+          log.warn("Request warning", { ...ctx, error: _describe(e) });
+          return;
+        }
+        log.error("Request pipeline error", ctx, _failure(e));
       }),
     );
   }

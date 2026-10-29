@@ -5,8 +5,9 @@ import type { HtmlNode } from "./jsx-runtime.ts";
  *
  * @remarks
  * A layout wraps page content with shell UI (nav, sidebars, footers) that outlives page
- * navigation. On `flow:navigate`, pages that share the same layout class only swap their
- * `[data-flow-root]` content; the layout shell stays mounted and is never re-rendered or
+ * navigation. On `flow:navigate`, pages that share the same layout class only swap the
+ * page itself (its `[data-flow-root]`, or `[data-flow-page]` for a static page); the layout
+ * shell stays mounted and is never re-rendered or
  * re-sent over the socket. Attach one with `static layout = AppLayout` on a {@link Component}
  * (or override {@link Component.layout} for the JSX-native form).
  *
@@ -39,7 +40,8 @@ export abstract class Layout {
   /**
    * Render the layout shell around a page.
    *
-   * @param slot  the page's pre-rendered `[data-flow-root]` component node. Place it with
+   * @param slot  the page's pre-rendered node: its `[data-flow-root]` element, or a
+   *   `[data-flow-page]` wrapper when the page is `static interactive = false`. Place it with
    *   `{slot}` in JSX — its HTML is emitted verbatim without escaping.
    * @returns the shell markup wrapping `slot`.
    */

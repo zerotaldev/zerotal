@@ -58,6 +58,9 @@ export class NavHomePage extends Component {
         <a id="to-about" href="/nav/about" flow:navigate>
           About
         </a>
+        <a id="to-static" href="/nav/static" flow:navigate>
+          Static
+        </a>
         <button id="bump" type="button" onClick={this.bump}>
           Bump
         </button>
@@ -87,6 +90,51 @@ export class NavAboutPage extends Component {
         <button id="bump" type="button" onClick={this.bump}>
           Bump
         </button>
+      </div>
+    );
+  }
+}
+
+/** An island that takes a click, so a static page has something live in it. */
+export class NavCounterIsland extends Component {
+  @expose seats = 1;
+
+  @expose add(): void {
+    this.seats += 1;
+  }
+
+  override async render() {
+    return (
+      <div class="calc">
+        <p class="seats">{this.seats}</p>
+        <button class="add" type="button" onClick={this.add}>
+          +
+        </button>
+      </div>
+    );
+  }
+}
+
+/**
+ * A static page in the same layout, with prose around one island.
+ *
+ * The prose is the assertion's other half. On a static page the first
+ * `[data-flow-root]` is the island, so a swap that looks for a root finds the
+ * island and either replaces the page with it or replaces only it.
+ */
+export class NavStaticPage extends Component {
+  static override interactive = false;
+  static layout = NavLayout;
+
+  override async render() {
+    return (
+      <div>
+        <h1 id="page">static</h1>
+        <p id="prose">static prose</p>
+        <section id="island">{await this.child(NavCounterIsland)}</section>
+        <a id="to-home" href="/nav/home" flow:navigate>
+          Home
+        </a>
       </div>
     );
   }

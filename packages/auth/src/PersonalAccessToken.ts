@@ -76,28 +76,32 @@ export async function hashToken(plaintext: string): Promise<string> {
  *
  * @remarks
  * Returns the plaintext **once** — it is never persisted. Only its SHA-256 hash
- * goes into `row.token`. Persist `row` yourself and hand `plaintext` back to the
- * client to use as an `Authorization: Bearer <plaintext>` credential. A
- * {@link TokenIssued} framework event is emitted (keyed by the token hash, since
- * no numeric DB id exists until the row is inserted). Omitting `abilities`
- * records `null` on the row, which {@link tokenCan} treats as full access.
+ * goes into `row.token`. Pass `store` to persist the row (inside your own
+ * transaction if you like), and hand `plaintext` back to the client to use as an
+ * `Authorization: Bearer <plaintext>` credential. A {@link TokenIssued} framework
+ * event is emitted, keyed by the token hash: after `store` resolves when one is
+ * given, so a listener can read the row, and when the token is generated
+ * otherwise. Omitting `abilities` records `null` on the row, which
+ * {@link tokenCan} treats as full access.
  *
  * @param options.tokenableId - Primary key of the owning subject (e.g. `user.id`).
  * @param options.tokenableType - Polymorphic subject type; defaults to `"user"`.
  * @param options.name - Human label for the token (shown in a token-management UI).
  * @param options.abilities - Scopes granted; omit or use `['*']` for full access.
  * @param options.expiresAt - Optional absolute expiry; omit for a non-expiring token.
- * @returns A {@link NewToken} — the one-time `plaintext` and the `row` to insert.
+ * @param options.store - Persists the row. When it throws, the error propagates and no
+ *   event is emitted.
+ * @returns A {@link NewToken} — the one-time `plaintext` and the `row`.
  * @category Creating
  * @example
  * ```ts
- * const { plaintext, row } = await createToken({
+ * const { plaintext } = await createToken({
  *   tokenableId: user.id,
  *   name:        'mobile-app',
  *   abilities:   ['read', 'write'],
+ *   store:       (row) => PersonalAccessToken.query().insert(row),
  * });
- * // Persist the row, then return `plaintext` to the client once — it is never stored.
- * await PersonalAccessToken.query().insert(row);
+ * // Return `plaintext` to the client once — it is never stored.
  *
  * // The client then authenticates with it:
  * //   fetch('/api/posts', { headers: { Authorization: `Bearer ${plaintext}` } });
@@ -109,6 +113,7 @@ export async function createToken(options: {
   name: string;
   abilities?: string[];
   expiresAt?: Date;
+  store?: (row: NewToken["row"]) => Promise<unknown>;
 }): Promise<NewToken> {
   const plaintext = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
   const hash = await hashToken(plaintext);
@@ -123,9 +128,13 @@ export async function createToken(options: {
     expires_at: options.expiresAt ? options.expiresAt.toISOString() : null,
   };
 
+  // Stored first, so a listener that reads the row (an audit trail, the monitor) finds it,
+  // and a failed insert issues nothing.
+  if (options.store) await options.store(row);
+
   const abilities = options.abilities ?? ["*"];
-  // No numeric DB id exists until the row is inserted; the token hash is the
-  // stable unique identifier available at issue time.
+  // The token hash, not a database id: it is the identifier this function knows whether or
+  // not it stored the row, and it is unique.
   FrameworkEvents.emit(new TokenIssued(hash, abilities, options.tokenableId));
 
   return { plaintext, row };

@@ -752,6 +752,7 @@ function createToken(options: {
   name: string;
   abilities?: string[];
   expiresAt?: Date;
+  store?: (row: Omit<TokenRow, "id" | "created_at" | "updated_at">) => Promise<unknown>;
 }): Promise<{ plaintext: string; row: Omit<TokenRow, "id" | "created_at" | "updated_at"> }>;
 ```
 
@@ -766,22 +767,24 @@ async issue(ctx: HttpContext) {
   const user = Auth.user();
   const { name, abilities } = await ctx.body<{ name: string; abilities?: string[] }>();
 
-  const { plaintext, row } = await createToken({
+  const { plaintext } = await createToken({
     tokenableId: user.id,
     name,
     abilities:  abilities ?? ["*"],
     expiresAt:  new Date(Date.now() + 90 * 86400 * 1000),
+    store:      (row) => DB.table("personal_access_tokens").insert(row),
   });
-
-  await DB.table("personal_access_tokens").insert(row);
 
   // Return the plain-text token ONCE — it is never stored
   ctx.json({ token: plaintext }, 201);
 }
 ```
 
-`createToken` builds the row but does not persist it, which is what lets you insert
-it inside the same transaction as whatever else the request creates.
+`createToken` builds the row and hands it to `store`, so the insert is yours: run
+it inside the same transaction as whatever else the request creates. The
+`TokenIssued` event is emitted after `store` resolves, so a listener can read the
+row, and not at all when the insert throws. Without `store`, `createToken` only
+returns the row, and the event is emitted before you have inserted it.
 
 #### Setting up BearerTokenMiddleware
 
@@ -946,8 +949,11 @@ import { DB } from "@zerotal/orm";
 
 it("serves the API with a valid token", async () => {
   const user = await UserFactory.create();
-  const { plaintext, row } = await createToken({ tokenableId: user.id, name: "tests" });
-  await DB.table("personal_access_tokens").insert(row);
+  const { plaintext } = await createToken({
+    tokenableId: user.id,
+    name: "tests",
+    store: (row) => DB.table("personal_access_tokens").insert(row),
+  });
 
   const res = await testApp
     .withHeaders({ Authorization: `Bearer ${plaintext}` })

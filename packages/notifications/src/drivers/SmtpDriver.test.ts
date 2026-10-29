@@ -696,6 +696,71 @@ describe("SmtpDriver — message structure", () => {
   });
 });
 
+describe("SmtpDriver — line endings", () => {
+  /**
+   * Every CR in the DATA block followed by LF and every LF preceded by CR, and the
+   * end-of-data line only once, at the end.
+   */
+  function expectCanonical(data: string): void {
+    expect(data.match(/\r(?!\n)/g) ?? []).toEqual([]);
+    expect(data.match(/(?<!\r)\n/g) ?? []).toEqual([]);
+    expect(data.indexOf("\r\n.\r\n")).toBe(data.length - 5);
+  }
+
+  // A period after a lone CR, a lone LF and a CRLF; the first is the one the
+  // receiving server and a relay after it may disagree about.
+  const body = "hi\r.\r\nnext\r\nthen\n.\nlast\r";
+
+  it("sends a lone CR in a plain body as a line break, never on its own", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ text: body }));
+
+    expect(server.body).toContain("Content-Transfer-Encoding: 7bit");
+    expectCanonical(server.body);
+    expect(singlePartBody(server.body)).toBe("hi\r\n.\r\nnext\r\nthen\r\n.\r\nlast\r\n");
+  });
+
+  it("does the same for an encoded body", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ text: `Café ${body}` }));
+
+    expect(server.body).toContain("Content-Transfer-Encoding: quoted-printable");
+    expectCanonical(server.body);
+    expect(decodeQuotedPrintable(singlePartBody(server.body))).toBe(
+      "Café hi\r\n.\r\nnext\r\nthen\r\n.\r\nlast\r\n",
+    );
+  });
+
+  it("does the same for html, both alternatives and a message with attachments", async () => {
+    const { to, from, subject } = payload();
+    const cases: MailPayload[] = [
+      { to, from, subject, html: `<p>${body}</p>` },
+      { to, from, subject, text: body, html: `<p>${body}</p>` },
+      {
+        to,
+        from,
+        subject,
+        text: body,
+        html: `<p>${body}</p>`,
+        attachments: [{ filename: "a\r.txt", content: `x${body}`, contentType: "text/plain" }],
+      },
+    ];
+    for (const message of cases) {
+      const server = serve({});
+      const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+      await driver.send(message);
+
+      expectCanonical(server.body);
+      expect(server.body).toContain("\r\n..\r\n");
+    }
+  });
+});
+
 describe("SmtpDriver — connection failures", () => {
   it("names the host and port when the connection is refused", async () => {
     // Port 1 is reserved and never listening.

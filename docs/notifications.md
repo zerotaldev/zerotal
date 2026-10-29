@@ -407,6 +407,10 @@ Writing a custom transport? The payload it is handed holds bare addresses and th
 names as they were given; call `assertMailAddress()` on each address, and quote or
 encode each name rather than writing it bare beside the address.
 
+The SMTP driver sends every line of a text or HTML body ending in CRLF, whatever the
+body used: a CR on its own and an LF on its own each become a line break. Mail servers
+disagree about whether either ends a line, so neither is left on the wire.
+
 Attach files with `attach()` when you already have the bytes, or `attachFile()`
 to read one from disk. `embed()` places an image in the body rather than listing
 it as a download — reference it from your HTML as `cid:the-id`:

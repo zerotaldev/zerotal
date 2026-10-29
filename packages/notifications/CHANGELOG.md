@@ -36,6 +36,15 @@ follows the Zerotal monorepo's unified versioning.
   printable ASCII name as a quoted string with `\` and `"` escaped, and any other name as RFC 2047
   encoded-words. `mail.from.address` may be bare or carry its name, and `NotificationConfig()`
   refuses at boot an address or a `mail.from.name` that every send would refuse, naming the key.
+- **A CR on its own in a mail body is sent as a line break, never as a bare CR.** `SmtpDriver`
+  turned a lone LF into CRLF but left a lone CR as it was, and a short ASCII body goes out as
+  written, so the CR reached the DATA block on its own. Mail servers disagree about whether a lone
+  CR ends a line, and dot-stuffing only looked for a period after an LF, so a period following one
+  was not escaped: a server that reads a bare CR as a line ending could take the body to end there
+  and read what followed as the next commands. Every line ending in a text or HTML part, lone CR,
+  lone LF or CRLF, is now made CRLF before the encoding is chosen, so a lone CR is a line break in
+  a 7bit part and in a quoted-printable one (where it was sent as `=0D` before), and dot-stuffing
+  runs once over the finished message, after the line endings are final.
 
 ## [1.15.5] — 2026-10-27
 

@@ -104,7 +104,8 @@ export class SmtpDriver implements MailDriver {
       conn.send("DATA");
       await conn.expect(354);
 
-      conn.write(`${buildRawMessage(message)}\r\n.\r\n`);
+      // Stuffed last, over the whole message, so it sees the lines the server will.
+      conn.write(`${dotStuff(buildRawMessage(message))}\r\n.\r\n`);
       await conn.expect(250);
 
       conn.send("QUIT");
@@ -603,17 +604,28 @@ function formatAddr(a: MailAddress): string {
 /**
  * Escape a line beginning with a period.
  *
- * A bare `.` on its own line ends the DATA block, so any body line starting with
- * one is doubled on the wire and halved again by the receiver (RFC 5321 §4.5.2).
- * Without this a message containing such a line is silently truncated.
+ * A bare `.` on its own line ends the DATA block, so any line starting with one is
+ * doubled on the wire and halved again by the receiver (RFC 5321 §4.5.2). Without
+ * this a message containing such a line is silently truncated.
+ *
+ * Expects a message already passed through {@link toCrlf}, so every line ends in
+ * CRLF and none is missed.
  */
-function dotStuff(body: string): string {
-  return body.replace(/\r?\n\./g, "\r\n..").replace(/^\./, "..");
+function dotStuff(message: string): string {
+  return message.replace(/\r\n\./g, "\r\n..").replace(/^\./, "..");
 }
 
-/** Normalise bare LF to CRLF — SMTP requires canonical line endings. */
+/**
+ * Normalise every line ending to CRLF: a lone CR and a lone LF each become one, and
+ * a CRLF stays one.
+ *
+ * SMTP requires canonical line endings (RFC 5321 §2.3.8), and a CR or LF on its own
+ * is not one. Servers disagree about whether either ends a line, so one left on the
+ * wire would let the message read differently to each server it passes through,
+ * down to where it ends.
+ */
 function toCrlf(text: string): string {
-  return text.replace(/\r\n/g, "\n").replace(/\n/g, "\r\n");
+  return text.replace(/\r\n|\r|\n/g, "\r\n");
 }
 
 function buildRawMessage(msg: MailPayload): string {
@@ -724,18 +736,17 @@ const PLAIN_LINE_LIMIT = 78;
  * leaves ASCII readable, which base64 would not — and spam filters score a
  * base64-wrapped ASCII body as disguised.
  *
- * The result is dot-stuffed, since quoted-printable lines can still begin with
- * a period.
+ * Line endings are made CRLF first, whatever form the text used, so a CR or LF on
+ * its own is a line break in either encoding rather than a byte on the wire.
+ * Dot-stuffing is left to `send()`, which does it once for the whole message.
  */
 function encodeTextPart(text: string): { encoding: "7bit" | "quoted-printable"; content: string } {
-  const lines = text.split(/\r?\n/);
+  const canonical = toCrlf(text);
+  const lines = canonical.split("\r\n");
   // eslint-disable-next-line no-control-regex -- matching non-ASCII by definition
   const plain = !/[^\x00-\x7F]/.test(text) && lines.every((l) => l.length <= PLAIN_LINE_LIMIT);
-  if (plain) return { encoding: "7bit", content: dotStuff(text) };
-  return {
-    encoding: "quoted-printable",
-    content: dotStuff(lines.map(quotedPrintableLine).join("\r\n")),
-  };
+  if (plain) return { encoding: "7bit", content: canonical };
+  return { encoding: "quoted-printable", content: lines.map(quotedPrintableLine).join("\r\n") };
 }
 
 /**

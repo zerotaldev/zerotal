@@ -123,10 +123,42 @@ function payload(overrides: Partial<MailPayload> = {}): MailPayload {
   };
 }
 
-/** The first header line of the raw message with this name. */
+/** The physical lines of the first header with this name: its own and its continuations. */
+function headerLines(raw: string, name: string): string[] {
+  const lines = raw.slice(0, raw.indexOf("\r\n\r\n")).split("\r\n");
+  const start = lines.findIndex((l) => l.startsWith(`${name}:`));
+  if (start === -1) return [];
+  let end = start + 1;
+  while (end < lines.length && /^[ \t]/.test(lines[end]!)) end++;
+  return lines.slice(start, end);
+}
+
+/** The first header of the raw message with this name, unfolded (RFC 5322 §2.2.3). */
 function headerLine(raw: string, name: string): string {
-  const headers = raw.slice(0, raw.indexOf("\r\n\r\n")).split("\r\n");
-  return headers.find((l) => l.startsWith(`${name}: `)) ?? "";
+  return headerLines(raw, name).join("");
+}
+
+/**
+ * The display names and addresses in an unfolded address header, read the way a
+ * mail client does and written independently of the driver: encoded-words decoded,
+ * the whitespace between two adjacent ones dropped, quoted-pairs undone.
+ */
+function parseMailboxes(header: string): Array<{ name: string; address: string }> {
+  const value = header.slice(header.indexOf(":") + 1);
+  const out: Array<{ name: string; address: string }> = [];
+  const mailbox =
+    /\s*((?:"(?:[^"\\]|\\.)*"|=\?UTF-8\?B\?[A-Za-z0-9+/=]*\?=|\s+)*?)\s*(?:<([^<>]*)>|([^\s,<>"]+))\s*(?:,|$)/gy;
+  let match: RegExpExecArray | null;
+  while (mailbox.lastIndex < value.length && (match = mailbox.exec(value))) {
+    const phrase = (match[1] ?? "")
+      .replace(/\?=\s+=\?/g, "?==?")
+      .replace(/=\?UTF-8\?B\?([A-Za-z0-9+/=]*)\?=/g, (_, b64: string) =>
+        Buffer.from(b64, "base64").toString("utf8"),
+      )
+      .replace(/^"((?:[^"\\]|\\.)*)"$/, (_, quoted: string) => quoted.replace(/\\(.)/g, "$1"));
+    out.push({ name: phrase, address: match[2] ?? match[3] ?? "" });
+  }
+  return out;
 }
 
 /**
@@ -478,6 +510,108 @@ describe("SmtpDriver — header safety", () => {
     // The lone dot is doubled on the wire, so the body is not truncated.
     expect(server.body).toContain("\r\n..\r\n");
     expect(server.body).toContain("last line");
+  });
+});
+
+describe("SmtpDriver — address header folding", () => {
+  /**
+   * Every line of the header block either starts a field or continues one, every
+   * line of the message fits RFC 5322's 998-octet limit, and the lines of each
+   * address header keep to 76, RFC 2047's limit for a line holding an encoded-word.
+   */
+  function expectFolded(raw: string): void {
+    const headers = raw.slice(0, raw.indexOf("\r\n\r\n")).split("\r\n");
+    for (const line of headers) expect(line).toMatch(/^(?:[!-9;-~]+:|[ \t])/);
+    for (const line of raw.split("\r\n")) {
+      expect(Buffer.byteLength(line, "utf8")).toBeLessThanOrEqual(998);
+    }
+    for (const field of ["From", "To", "Cc", "Reply-To"]) {
+      for (const line of headerLines(raw, field)) expect(line.length).toBeLessThanOrEqual(76);
+    }
+  }
+
+  const longAscii = `Ada "the" Countess \\ of Lovelace, <spy@evil.test> `.repeat(25).trim();
+  const longUnicode = "Jörg Müller ☕ 日本語の名前 ".repeat(60).trim();
+
+  it("folds a 1200-character ASCII name and reads it back unchanged", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+    expect(longAscii.length).toBeGreaterThanOrEqual(1200);
+
+    await driver.send(
+      payload({
+        to: [{ address: "ada@test.local", name: longAscii }],
+        replyTo: { address: "help@test.local", name: longAscii },
+      }),
+    );
+
+    expectFolded(server.body);
+    expect(headerLines(server.body, "To").length).toBeGreaterThan(1);
+    expect(parseMailboxes(headerLine(server.body, "To"))).toEqual([
+      { name: longAscii, address: "ada@test.local" },
+    ]);
+    expect(parseMailboxes(headerLine(server.body, "Reply-To"))).toEqual([
+      { name: longAscii, address: "help@test.local" },
+    ]);
+  });
+
+  it("folds a long non-ASCII name between its encoded-words", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+    expect(longUnicode.length).toBeGreaterThanOrEqual(1200);
+
+    await driver.send(payload({ from: { address: "app@test.local", name: longUnicode } }));
+
+    expectFolded(server.body);
+    expect(parseMailboxes(headerLine(server.body, "From"))).toEqual([
+      { name: longUnicode, address: "app@test.local" },
+    ]);
+  });
+
+  it("puts each of many recipients on a line of its own", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+    const to = Array.from({ length: 60 }, (_, i) => ({
+      address: `user${i}@test.local`,
+      name: i % 2 === 0 ? `User ${i}, "Team"` : `Ünïcode ${i}`,
+    }));
+    const cc = Array.from({ length: 40 }, (_, i) => ({ address: `cc${i}@test.local` }));
+
+    await driver.send(payload({ to, cc }));
+
+    expectFolded(server.body);
+    expect(headerLines(server.body, "To")).toHaveLength(60);
+    expect(headerLines(server.body, "Cc")).toHaveLength(40);
+    expect(parseMailboxes(headerLine(server.body, "To"))).toEqual(to);
+    expect(parseMailboxes(headerLine(server.body, "Cc"))).toEqual(
+      cc.map((c) => ({ name: "", address: c.address })),
+    );
+  });
+
+  it("keeps a line holding an encoded-word and an address within 76", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+    // 19 two-byte characters make one encoded-word of 64 characters; with `To: `, the
+    // address and the comma that ends the mailbox the line would be 78.
+    const to = [
+      { address: "a@b.cd", name: "é".repeat(19) },
+      { address: "c@d.test", name: "ü" },
+    ];
+
+    await driver.send(payload({ to }));
+
+    expectFolded(server.body);
+    expect(parseMailboxes(headerLine(server.body, "To"))).toEqual(to);
+  });
+
+  it("leaves a single short mailbox on one line, quoted as before", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload());
+
+    expect(headerLines(server.body, "To")).toEqual(['To: "Ada" <ada@test.local>']);
+    expect(headerLines(server.body, "From")).toEqual(['From: "Zerotal" <app@test.local>']);
   });
 });
 

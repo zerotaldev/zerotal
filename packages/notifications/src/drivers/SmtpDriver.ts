@@ -3,7 +3,7 @@ import {
   resolveHeaders,
   _assertPayloadAddresses,
   _encodeWord,
-  _formatMailbox,
+  _mailboxWords,
 } from "./MailDriver.ts";
 import { SmtpResponseError, SmtpConnectionError } from "../errors.ts";
 
@@ -593,12 +593,59 @@ function encodeHeaderValue(value: string): string {
 }
 
 /**
- * A mailbox for the From, To, Cc and Reply-To headers. The address was checked
- * before connecting; the name is quoted with `\` and `"` escaped, or encoded when it
- * is not printable ASCII (an encoded-word inside quotes is not decoded).
+ * The line length address headers fold to: RFC 2047's limit for a line holding an
+ * encoded-word, two short of RFC 5322's recommended 78. A line can hold an encoded-word
+ * and an address together, so the stricter limit is the one every line keeps to.
  */
-function formatAddr(a: MailAddress): string {
-  return _formatMailbox(a);
+const HEADER_LINE_TARGET = 76;
+
+/**
+ * The longest display name kept as a quoted-string in an address header. `Reply-To: `
+ * and a name this long make 76 characters, and an encoded-word is shorter still, so a
+ * name word of either kind fits on the first line or a folded one. A longer name is
+ * encoded instead, since an encoded name comes apart into words and a quoted-string
+ * cannot be split.
+ */
+const QUOTED_NAME_LIMIT = 66;
+
+/**
+ * Write a From, To, Cc or Reply-To header, folded so that no line reaches RFC 5322's
+ * 998-octet limit and lines keep to 76 characters where the words allow.
+ *
+ * A relay that meets a longer line cuts it wherever the limit falls, which can land
+ * inside a name or an address. So each mailbox after the first starts a line of its
+ * own, and within a mailbox a word goes on the current line while it fits and on a
+ * new one otherwise: an encoded-word of the name, a quoted name, `<address>`. Every
+ * new line starts with a space, which is what makes it a continuation, and every
+ * break falls where the header already has a space, so the header unfolds to the
+ * one-line form. Between two encoded-words the space is dropped by the decoder, so the
+ * name reads back as written.
+ *
+ * Addresses were checked before connecting; a name is quoted with `\` and `"`
+ * escaped, or encoded when it is not printable ASCII or too long to quote (an
+ * encoded-word inside quotes is not decoded).
+ */
+function formatAddressHeader(field: string, mailboxes: readonly MailAddress[]): string {
+  let header = `${field}:`;
+  let lineLength = header.length;
+  let empty = true;
+  mailboxes.forEach((mailbox, index) => {
+    const words = _mailboxWords(mailbox, QUOTED_NAME_LIMIT);
+    if (index < mailboxes.length - 1) words[words.length - 1] += ",";
+    words.forEach((word, position) => {
+      const startsMailbox = index > 0 && position === 0;
+      const fits = lineLength + 1 + word.length <= HEADER_LINE_TARGET;
+      if (!empty && (startsMailbox || !fits)) {
+        header += `\r\n ${word}`;
+        lineLength = 1 + word.length;
+      } else {
+        header += ` ${word}`;
+        lineLength += 1 + word.length;
+      }
+      empty = false;
+    });
+  });
+  return header;
 }
 
 /**
@@ -631,10 +678,10 @@ function toCrlf(text: string): string {
 function buildRawMessage(msg: MailPayload): string {
   const lines: string[] = [];
 
-  lines.push(`From: ${formatAddr(msg.from)}`);
-  lines.push(`To: ${msg.to.map(formatAddr).join(", ")}`);
-  if (msg.cc?.length) lines.push(`Cc: ${msg.cc.map(formatAddr).join(", ")}`);
-  if (msg.replyTo) lines.push(`Reply-To: ${formatAddr(msg.replyTo)}`);
+  lines.push(formatAddressHeader("From", [msg.from]));
+  lines.push(formatAddressHeader("To", msg.to));
+  if (msg.cc?.length) lines.push(formatAddressHeader("Cc", msg.cc));
+  if (msg.replyTo) lines.push(formatAddressHeader("Reply-To", [msg.replyTo]));
   lines.push(`Subject: ${encodeHeaderValue(msg.subject)}`);
   lines.push(`Date: ${new Date().toUTCString()}`);
   lines.push(

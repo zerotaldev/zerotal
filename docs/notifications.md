@@ -403,6 +403,12 @@ SMTP and Resend drivers write a name in printable ASCII as a quoted string with 
 `"` escaped, and any other name as RFC 2047 encoded-words, so a profile name such as
 `x <spy@example.com>, y` names one recipient and never adds a second.
 
+The SMTP driver folds the From, To, Cc and Reply-To headers so that a long name or a
+long recipient list never makes a line a relay would cut: each recipient after the
+first starts a line of its own, and a name is folded between its encoded-words. A
+printable ASCII name longer than 64 characters, counting a backslash before each `"`
+and `\`, is encoded too, so that it can fold; mail clients show it as written.
+
 Writing a custom transport? The payload it is handed holds bare addresses and the
 names as they were given; call `assertMailAddress()` on each address, and quote or
 encode each name rather than writing it bare beside the address.

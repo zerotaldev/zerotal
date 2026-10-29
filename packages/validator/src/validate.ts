@@ -1,5 +1,6 @@
 import type { HttpContext } from "@zerotal/core";
 import { safeRedirectPath } from "@zerotal/core";
+import { _prefersJson } from "@zerotal/core/http";
 import type { Schema, Infer, FieldRuleDefinition } from "./types.ts";
 import type { FieldRule } from "./FieldRule.ts";
 import { RuleBuilder } from "./RuleBuilder.ts";
@@ -22,9 +23,10 @@ type ExtractDefs<S extends Record<string, FieldRule>> = {
  * Validate the HTTP request body against the given schema.
  *
  * On success: returns the validated, typed data object (only schema fields).
- * On failure (Inertia or web form): stores errors in session + throws
+ * On failure (Inertia visit or web form): stores errors in session + throws
  *   ValidationRedirectError → global handler converts to 303 redirect.
- * On failure (JSON API): throws ValidationJsonError → global handler → 422.
+ * On failure (`Accept` prefers `application/json` to `text/html`, X-Inertia or not): throws
+ *   ValidationJsonError → global handler → 422.
  */
 export async function validate<S extends Record<string, FieldRule>>(
   ctx: HttpContext,
@@ -50,11 +52,10 @@ export async function validate<S extends Record<string, FieldRule>>(
     session?.set("errors", errors);
     session?.set("old", body);
 
-    const isInertia = ctx.request.headers.get("X-Inertia") === "true";
-    const accept = ctx.request.headers.get("Accept") ?? "";
-    const isJson = accept.includes("application/json") && !isInertia;
-
-    if (isJson) {
+    // A client whose Accept prefers JSON to HTML gets JSON, X-Inertia or not: the exception
+    // handler's rule, so the two agree. Inertia's own visits send
+    // `Accept: text/html, application/xhtml+xml`, so they still redirect back.
+    if (_prefersJson(ctx.request.headers.get("Accept"))) {
       throw new ValidationJsonError(errors);
     } else {
       // Referer is attacker-controllable and this is a redirect target, so it must go

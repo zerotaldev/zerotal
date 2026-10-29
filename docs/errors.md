@@ -21,8 +21,12 @@ HTTP errors (`NotFoundError`, `ForbiddenError`, etc.) always produce a
 status-code-appropriate response regardless of environment.
 
 > **Note** — The client type is decided by the `Accept` header. A request whose
-> `Accept` starts with `application/json` gets JSON; anything that includes
-> `text/html` (regular browsers and Inertia XHR) gets the HTML page.
+> `Accept` prefers `application/json` to `text/html` gets JSON, with or without
+> `X-Inertia`: a higher q-value, or the same q-value and listed first, so
+> `application/json, text/html` gets JSON and `text/html, application/json` does not.
+> Otherwise anything that includes `text/html` (regular browsers and Inertia visits)
+> gets the HTML page. [Validation](/docs/validator) makes the same choice between a
+> 422 and a redirect.
 
 ## Built-in HTTP errors
 

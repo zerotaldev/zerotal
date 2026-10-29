@@ -39,7 +39,7 @@ export { HttpClientResponse, HttpClientError, PendingRequest } from "./HttpClien
 export type { FakeStub } from "./HttpClient.ts";
 export { Resource, ResourceCollection } from "./Resource.ts";
 export type { PaginatedData } from "./Resource.ts";
-export { negotiate } from "./negotiate.ts";
+export { negotiate, _prefersJson } from "./negotiate.ts";
 export type {
   Channel,
   AnsiColor,

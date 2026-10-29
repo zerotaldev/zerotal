@@ -1,6 +1,7 @@
 import { RequestContext, ForbiddenError } from "@zerotal/core";
 import type { HttpContext } from "@zerotal/core";
 import { safeRedirectPath } from "@zerotal/core";
+import { _prefersJson } from "@zerotal/core/http";
 import type { FieldRule } from "./FieldRule.ts";
 import type { FieldRuleDefinition, Infer, Schema } from "./types.ts";
 import { RuleBuilder } from "./RuleBuilder.ts";
@@ -166,8 +167,9 @@ export abstract class FormRequest {
    * AsyncLocalStorage automatically (zero arguments).
    *
    * On success: returns the validated, typed data object.
-   * On failure: throws ValidationRedirectError (Inertia / web form) or
-   *   ValidationJsonError (JSON API), and stores errors in the session.
+   * On failure: throws ValidationRedirectError (Inertia visit / web form) or
+   *   ValidationJsonError (`Accept` prefers JSON to HTML, even with X-Inertia), and stores
+   *   errors in the session.
    *
    * @example
    * const data = await StorePostRequest.validate();
@@ -227,11 +229,9 @@ export abstract class FormRequest {
       session?.set("errors", result.errors);
       session?.set("old", body);
 
-      const isInertia = ctx.request.headers.get("X-Inertia") === "true";
-      const accept = ctx.request.headers.get("Accept") ?? "";
-      const isJson = accept.includes("application/json") && !isInertia;
-
-      if (isJson) {
+      // Same rule as validate() and the exception handler: JSON when Accept prefers it to HTML,
+      // X-Inertia or not.
+      if (_prefersJson(ctx.request.headers.get("Accept"))) {
         throw new ValidationJsonError(result.errors);
       } else {
         // Same origin check as validate() — see the note there. Referer is client input.

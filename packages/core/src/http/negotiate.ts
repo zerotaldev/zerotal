@@ -49,6 +49,54 @@ export function detectChannel(ctx: HttpContext): Channel {
   return "web";
 }
 
+// ── JSON or HTML ───────────────────────────────────────────────────────────────
+
+/** The q-value and position of the most specific `Accept` range that matches `type`. */
+function acceptanceOf(
+  ranges: { type: string; q: number }[],
+  type: string,
+): { q: number; index: number } {
+  const [major] = type.split("/");
+  let best: { q: number; index: number; specificity: number } = {
+    q: 0,
+    index: Infinity,
+    specificity: -1,
+  };
+  ranges.forEach((range, index) => {
+    const specificity =
+      range.type === type ? 2 : range.type === `${major}/*` ? 1 : range.type === "*/*" ? 0 : -1;
+    if (specificity > best.specificity) best = { q: range.q, index, specificity };
+  });
+  return best;
+}
+
+/**
+ * Whether an `Accept` header prefers `application/json` to `text/html`: a higher q-value, or
+ * the same q-value and listed first. A wildcard range counts for whichever type it is the most
+ * specific match for. A browser's Accept (`text/html` first, a wildcard at a lower q last) does
+ * not, nor does an Inertia visit's `text/html, application/xhtml+xml`; `application/json` alone,
+ * or `application/json, text/html`, does.
+ *
+ * Used where one response has to be picked between an error page or redirect and a JSON body:
+ * the exception handler and the validator's choice between a 422 and a redirect, so a client gets
+ * the same format from both. `ctx.wantsJson()` stays the looser "names JSON at all" test.
+ *
+ * @internal
+ */
+export function _prefersJson(accept: string | null | undefined): boolean {
+  if (!accept) return false;
+  const ranges = accept.split(",").map((part) => {
+    const [type = "", ...params] = part.split(";").map((s) => s.trim().toLowerCase());
+    const qParam = params.find((p) => p.startsWith("q="));
+    const q = qParam === undefined ? 1 : Number(qParam.slice(2));
+    return { type, q: Number.isFinite(q) ? q : 0 };
+  });
+  const json = acceptanceOf(ranges, "application/json");
+  const html = acceptanceOf(ranges, "text/html");
+  if (json.q <= 0) return false;
+  return json.q > html.q || (json.q === html.q && json.index < html.index);
+}
+
 // ── Channel-specific context interfaces ───────────────────────────────────────
 
 /**

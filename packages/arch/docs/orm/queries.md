@@ -341,18 +341,10 @@ const post = await Post.query().where("id", postId).sharedLock().first();
 
 ## Pagination
 
-### Which pagination should I use?
-
-| Strategy          | Method           | Best for                                                |
-| ----------------- | ---------------- | ------------------------------------------------------- |
-| Offset (page no.) | `paginate`       | Small/medium tables where users jump to any page        |
-| Cursor (last ID)  | `cursorPaginate` | Simple "load more" feeds, stable across inserts         |
-| Keyset (indexed)  | `keysetPaginate` | Infinite scroll and large datasets — scales to any size |
-
-### Offset pagination
-
-Classic page-number pagination. Best for small-to-medium tables where users jump to
-arbitrary pages:
+A model query ends in one of four paginators: `paginate(perPage, page)` for numbered pages,
+`simplePaginate` for previous and next, `cursorPaginate` for infinite scroll keyed on `id`,
+and `keysetPaginate` for cursor paging on another column. They return hydrated models, with
+eager-loaded relations, and work the same on a `DB.table()` query.
 
 ```typescript fragment
 // in a controller
@@ -360,58 +352,10 @@ const page = await Post.query()
   .where("status", "published")
   .orderBy("published_at", "desc")
   .paginate(10, pageNumber); // (perPage, page)
-
-// page.data     — Post[]
-// page.total    — total row count
-// page.page     — current page number
-// page.perPage  — rows per page
-// page.lastPage — last page number
 ```
 
-### Cursor pagination
-
-Simple, performant pagination using the last-seen ID as a cursor. Stable against
-inserts/deletes between pages:
-
-```typescript fragment
-// in a controller
-const p1 = await Post.query().cursorPaginate({ limit: 20 });
-const p2 = await Post.query().cursorPaginate({ cursor: p1.nextCursor, limit: 20 });
-
-// p1.data       — Post[]
-// p1.nextCursor — number | null
-```
-
-### Keyset pagination
-
-Scales to any table size. Uses an indexed column value as the cursor instead of an
-offset. The best choice for infinite scroll and large datasets:
-
-```typescript fragment
-// in a controller
-const p1 = await Post.query()
-  .where("status", "published")
-  .keysetPaginate({ column: "published_at", direction: "desc", limit: 20 });
-
-const p2 = await Post.query()
-  .where("status", "published")
-  .keysetPaginate({ column: "published_at", direction: "desc", limit: 20, cursor: p1.nextCursor });
-
-// p1.data       — Post[]
-// p1.nextCursor — opaque base64 string | null
-```
-
-`keysetPaginate` options:
-
-| Option      | Default | Description                                         |
-| ----------- | ------- | --------------------------------------------------- |
-| `column`    | `'id'`  | The indexed column to paginate by                   |
-| `direction` | `'asc'` | `'asc'` or `'desc'`                                 |
-| `limit`     | `15`    | Rows per page                                       |
-| `cursor`    | —       | Opaque string from the previous page's `nextCursor` |
-
-Non-unique columns automatically get a compound `id` tiebreaker to ensure stable
-ordering.
+[Pagination](/docs/pagination) covers which one to choose, what each returns, and the URL
+helpers a page of links needs.
 
 ## Chunking and streaming
 

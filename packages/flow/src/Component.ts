@@ -14,6 +14,7 @@ import {
   getValidateRules,
   getReactiveProps,
   getModelableProps,
+  getListeners,
 } from "./decorators.ts";
 import { _renderFlowPage } from "./jsx-runtime.ts";
 import { getStreamStore, queueStream } from "./streaming.ts";
@@ -700,11 +701,20 @@ export abstract class Component {
    * what decides whether a hydrated parent emits a child as an empty stub, and a
    * stub for something with no live DOM blanks the region.
    *
-   * ## What it does not do yet
+   * ## A static page
    *
-   * The socket is still opened unconditionally, so a page whose every component
-   * is static still connects. That is the other half of render modes and it is
-   * separate work — see `_connect()` in the client bridge.
+   * A routed page can be static too. Its interactive children are then islands,
+   * each with its own snapshot, and the client opens a socket only when it finds
+   * one. A static page with no interactive child never connects.
+   *
+   * ## Bindings need a client
+   *
+   * `onClick={this.save}`, `value={this.name}` and the like compile to bindings
+   * the client acts on, and nothing acts on them in markup no interactive
+   * component encloses. In development rendering one there is an error; so is an
+   * `@on` listener on a static component, which nothing can deliver an event to.
+   * A static child of an interactive parent may still bind: the parent's
+   * client picks the binding up and runs the parent's action of that name.
    *
    * @category Rendering
    */
@@ -725,6 +735,37 @@ export abstract class Component {
 
   /** Set by {@link clearDurable}; the dispatcher deletes the durable entry after the request. @internal */
   _clearDurable = false;
+
+  /**
+   * Whether an interactive component encloses this one. Set by a parent's
+   * {@link child} on a static child, so the JSX runtime can tell a binding the
+   * parent's client will pick up from one nothing will ever act on.
+   * @internal
+   */
+  _flowEnclosedLive = false;
+
+  /**
+   * In development, refuse a static component that declares `@on` listeners.
+   *
+   * No event can reach one: listeners are delivered to a component the client
+   * registered, and a static component is never registered, whatever encloses it.
+   * Production skips the check, as it does every other development error.
+   * @internal
+   */
+  _refuseDeadListeners(): void {
+    if (this.isInteractive || _isProduction()) return;
+    const first = getListeners(this.constructor as typeof Component)
+      .entries()
+      .next().value;
+    if (first === undefined) return;
+    const [event, method] = first;
+    throw new Error(
+      `[Flow] <${this.constructor.name}> is \`static interactive = false\` but declares ` +
+        `@on("${String(event)}") on ${method}(). A static component is never registered ` +
+        `with the client, so no event can reach it. Move the listener into an ` +
+        `interactive child, or make the component interactive.`,
+    );
+  }
 
   /**
    * Forget this component's durable snapshot at the end of the current request — call it when a
@@ -878,7 +919,8 @@ export abstract class Component {
 
   /**
    * Wrap the rendered page root in a layout shell. `page` is the already-rendered
-   * `<div data-flow-root>…</div>` node; return whatever JSX wraps it. The default is
+   * `<div data-flow-root>…</div>` node (`<div data-flow-page>…</div>` on a static
+   * page); return whatever JSX wraps it. The default is
    * no layout (returns `page` unchanged).
    *
    * This is the JSX-native alternative to `static layout = SomeLayout`: a layout is
@@ -896,7 +938,7 @@ export abstract class Component {
    *   return <AppLayout title={ProfilePage.title} actions={<Save />}>{page}</AppLayout>;
    * }
    *
-   * @param page  the already-rendered `<div data-flow-root>` page node to wrap.
+   * @param page  the already-rendered page node to wrap (`data-flow-root`, or `data-flow-page` when static).
    * @returns the wrapping shell (or `page` unchanged for no layout).
    * @category Rendering
    */
@@ -1769,6 +1811,9 @@ export abstract class Component {
     if (opts.props) {
       _assignChildProps(childPage, opts.props as Record<string, unknown>);
     }
+
+    childPage._flowEnclosedLive = this.isInteractive || this._flowEnclosedLive;
+    childPage._refuseDeadListeners();
 
     const ctx = HttpContext.tryGet();
     await childPage.onBoot(ctx);

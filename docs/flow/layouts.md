@@ -429,6 +429,57 @@ over HTTP.
 A page with a single interactive component still connects, as before. One is
 enough.
 
+### Islands on a static page
+
+A static page can still hold interactive children. Each one is an island: it has
+its own snapshot and its own round trips, and the rest of the page sends nothing.
+
+```tsx fragment
+export class PricingPage extends Component {
+  static interactive = false;
+
+  override async render() {
+    return (
+      <main>
+        <h1>Pricing</h1>
+        <p>{/* … long, unchanging copy … */}</p>
+        {await this.child(PriceCalculator)}
+      </main>
+    );
+  }
+}
+```
+
+The page's content is sent once, as HTML, and is not repeated in a snapshot. Only
+`PriceCalculator` has a snapshot, and only it re-renders when it is clicked. Its
+neighbours are left as they are. This is the shape for a page that is mostly
+reading with one or two controls in it.
+
+`navigate` works between static and interactive pages that share a layout, as it
+does between any two pages.
+
+### A binding needs something interactive above it
+
+`onClick={this.save}`, `value={this.name}` and the other bindings are carried out
+by the client of the nearest interactive component. In markup with none above it,
+the binding cannot work, so in development rendering one is an error that names
+the element and the component:
+
+```text
+[Flow] <button onClick={…}> in <PricingPage> renders flow:click, but <PricingPage>
+is `static interactive = false` and nothing interactive encloses it, …
+```
+
+Move the control into an interactive child, as `PriceCalculator` is above, or make
+the component interactive. The same goes for an `@on` listener on a static
+component: a static component is never registered with the client, so no event
+can reach it.
+
+A static child of an **interactive** parent may bind. The parent's client picks
+the binding up and runs the parent's action of that name.
+
+Production skips these checks.
+
 ### Slots
 
 Where props pass **data** into a child, slots pass **markup**. A child component's plain children become its **default slot**; a `slots={{ … }}` prop supplies **named slots**. Inside the child, place each with `this.slot(name)` (or `this.slot()` for the default), and branch on `this.hasSlot(name)` to drop an optional wrapper entirely. This is the pattern for reusable shells — cards, modals, panels, page headers — where the container is fixed but the contents vary per use.

@@ -3639,6 +3639,12 @@
     },
     {
       "file": "docs/flow/layouts.md",
+      "heading": "Islands on a static page",
+      "ordinal": 0,
+      "hash": "1ottmviom3gx"
+    },
+    {
+      "file": "docs/flow/layouts.md",
       "heading": "Layout head",
       "ordinal": 0,
       "hash": "hrikym89p2pk"

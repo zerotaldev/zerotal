@@ -22,6 +22,14 @@ export interface SessionContract {
   id(): string;
 
   /**
+   * Whether the client sent this session back: the request carried a session cookie the
+   * store accepted, and this is the session it named (and its ID has not been regenerated
+   * since). `false` for a session started on this request. Optional, so a store that
+   * cannot tell leaves it out, and callers treat a missing method as `false`.
+   */
+  resumed?(): boolean;
+
+  /**
    * Read the value stored under `key`, or `undefined` if absent.
    *
    * Defaults to `unknown`, so the safe form — read, then narrow — still works

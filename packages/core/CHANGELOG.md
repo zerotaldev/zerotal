@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`SessionContract.resumed?()`: whether the client sent the session back.** Optional, so an
+  existing session store still satisfies the contract; code that reads it treats a missing method
+  as `false`. `@zerotal/session` implements it.
+
 ### Fixed
 
 - **`ctx.input()` reads only the body's and the route's own fields.** It tested `key in body`,

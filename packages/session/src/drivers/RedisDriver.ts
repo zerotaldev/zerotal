@@ -85,22 +85,26 @@ export class RedisDriver implements SessionDriver {
     let id: string;
     if (!raw) {
       // No cookie present — start a fresh session
-      id = crypto.randomUUID();
+      return { id: crypto.randomUUID(), data: {} };
     } else if (this.secret) {
       // Verify HMAC signature before touching Redis.
       // A forged/replayed cookie returns null → fresh session, no Redis hit.
-      id = _verifyId(raw, this.secret) ?? crypto.randomUUID();
+      const verified = _verifyId(raw, this.secret);
+      if (verified === null) return { id: crypto.randomUUID(), data: {} };
+      id = verified;
     } else {
       // No secret configured — fall back to trusting the raw cookie value
       id = raw;
     }
 
+    // The client returned this id, so the session is resumed even when its record has
+    // expired from Redis: the id is the one the client will keep sending.
     const stored = await this.redis.get(`session:${id}`);
-    if (!stored) return { id, data: {} };
+    if (!stored) return { id, data: {}, resumed: true };
     try {
-      return { id, data: JSON.parse(stored) as Record<string, unknown> };
+      return { id, data: JSON.parse(stored) as Record<string, unknown>, resumed: true };
     } catch {
-      return { id, data: {} };
+      return { id, data: {}, resumed: true };
     }
   }
 

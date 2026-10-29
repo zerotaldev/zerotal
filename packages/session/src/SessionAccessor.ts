@@ -181,6 +181,18 @@ export class SessionAccessor {
   }
 
   /**
+   * Whether the client sent the current session back, rather than the session
+   * starting on this request. See `SessionManager.resumed()`.
+   *
+   * @returns `false` when no session is active on the current request.
+   *
+   * @category Reading
+   */
+  resumed(): boolean {
+    return _session()?.resumed() ?? false;
+  }
+
+  /**
    * Consume the previously captured "intended" URL (see {@link captureIntended}).
    *
    * The stored URL is pulled (read once and removed), so after a redirect the

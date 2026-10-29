@@ -722,3 +722,90 @@ describe("SessionAccessor", () => {
     });
   });
 });
+
+// ── resumed() ─────────────────────────────────────────────────────────────────
+
+describe("a session says whether the client sent it back", () => {
+  // Load a request through the middleware and hand back its session and the cookie it set.
+  async function visit(
+    middleware: SessionMiddleware,
+    cookie?: string,
+  ): Promise<{ session: SessionManager; cookie: string }> {
+    const ctx = HttpContext.fake(
+      "http://localhost/",
+      cookie ? { headers: { Cookie: cookie } } : {},
+    );
+    const response = makeResponse();
+    ctx.response = response;
+    await runWithDispatcher(middleware, ctx, async () => response);
+    const value = extractCookieValue(response.headers.get("Set-Cookie")!, "session")!;
+    return { session: ctx.session as SessionManager, cookie: `session=${value}` };
+  }
+
+  it("is false for a session started on this request and true once the cookie comes back", async () => {
+    const middleware = new SessionMiddleware(new CookieDriver("resume-secret"));
+    const first = await visit(middleware);
+    const second = await visit(middleware, first.cookie);
+
+    expect(first.session.resumed()).toBe(false);
+    expect(second.session.resumed()).toBe(true);
+    expect(second.session.id()).toBe(first.session.id());
+  });
+
+  it("is false for every request from a client that never returns the cookie", async () => {
+    const middleware = new SessionMiddleware(new CookieDriver("resume-secret"));
+    const one = await visit(middleware);
+    const two = await visit(middleware);
+
+    expect([one.session.resumed(), two.session.resumed()]).toEqual([false, false]);
+    expect(two.session.id()).not.toBe(one.session.id());
+  });
+
+  it("is false when the cookie is not one the driver accepts", async () => {
+    const cookieDriver = new CookieDriver("resume-secret");
+    const signed = new RedisDriver(makeMockRedis(), "session", 86400, "redis-secret");
+    const forged = makeRequest("session=real-id.not-the-signature");
+
+    expect((await cookieDriver.loadFromRequest(forged)).resumed).not.toBe(true);
+    expect((await signed.loadFromRequest(forged)).resumed).not.toBe(true);
+  });
+
+  it("is reported by the Redis driver for a returned id, even once its record has expired", async () => {
+    const redis = makeMockRedis();
+    const driver = new RedisDriver(redis, "session", 86400, "redis-secret");
+    const res = makeResponse();
+    await driver.saveSession("kept-id", { a: 1 }, res);
+    const cookie = `session=${extractCookieValue(res.headers.get("Set-Cookie")!, "session")!}`;
+
+    expect(await driver.loadFromRequest(makeRequest(cookie))).toMatchObject({
+      id: "kept-id",
+      resumed: true,
+    });
+    await redis.del("session:kept-id");
+    expect(await driver.loadFromRequest(makeRequest(cookie))).toMatchObject({
+      id: "kept-id",
+      resumed: true,
+    });
+    expect((await driver.loadFromRequest(makeRequest())).resumed).not.toBe(true);
+  });
+
+  it("is false after regenerate(), whose new id the client has not seen", () => {
+    const session = new SessionManager("returned-id", {}, new CookieDriver("resume-secret"), true);
+    expect(session.resumed()).toBe(true);
+    session.regenerate();
+    expect(session.resumed()).toBe(false);
+  });
+
+  it("defaults to false for a session built without the flag", () => {
+    expect(new SessionManager("id", {}, new CookieDriver("resume-secret")).resumed()).toBe(false);
+  });
+
+  it("is answered by the Session facade for the current request", async () => {
+    const accessor = new SessionAccessor();
+    expect(accessor.resumed()).toBe(false);
+    const session = new SessionManager("returned-id", {}, new CookieDriver("resume-secret"), true);
+    await RequestContext.run({ session } as never, async () => {
+      expect(accessor.resumed()).toBe(true);
+    });
+  });
+});

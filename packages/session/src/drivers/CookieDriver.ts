@@ -10,6 +10,13 @@ export interface SessionPayload {
   id: string;
   /** Decoded session data; `{}` for a new or unreadable session. */
   data: Record<string, unknown>;
+  /**
+   * `true` when the request carried a session cookie this driver accepted and `id` is the
+   * session it names; absent or `false` when the driver started a new session because the
+   * cookie was missing, unreadable, forged or expired. Read through
+   * `SessionManager.resumed()`.
+   */
+  resumed?: boolean | undefined;
 }
 
 /**
@@ -181,10 +188,8 @@ export class CookieDriver implements SessionDriver {
     const data = typeof parsed.data === "object" && parsed.data !== null ? parsed.data : {};
     if (iat !== null) data[SESSION_ISSUED_AT_KEY] = iat;
 
-    return {
-      id: typeof parsed.id === "string" ? parsed.id : crypto.randomUUID(),
-      data,
-    };
+    if (typeof parsed.id !== "string") return { id: crypto.randomUUID(), data };
+    return { id: parsed.id, data, resumed: true };
   }
 
   /**

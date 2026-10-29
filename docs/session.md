@@ -143,6 +143,13 @@ async action(ctx: HttpContext) {
 }
 ```
 
+Every request has a session, including the first one from a client that has no cookie yet, and
+every one from a client that never keeps cookies. `ctx.session.resumed()` tells them apart: it is
+`true` only when the request carried a session cookie the driver accepted, so the next request
+from the same client will bring the same ID. A session started on this request, or one whose ID
+was just [regenerated](#session-fixation-protection), is not resumed, and anything keyed on its ID
+for a later request to find will be missed.
+
 ## Flash data
 
 Flash stores a value for **one subsequent request only** — it is automatically
@@ -392,6 +399,7 @@ methods anywhere. The facade is generic (`Session.get<T>(key)`), while
 | `ctx.session.flash(key, value)` / `Session.flash(...)` | `(key: string, value: unknown) => void` | Write a one-request-only value.          |
 | `ctx.session.regenerate()` / `Session.regenerate()`    | `() => void`                            | Issue a new session ID (data preserved). |
 | `ctx.session.id()` / `Session.id()`                    | `() => string`                          | Return the current session ID.           |
+| `ctx.session.resumed()` / `Session.resumed()`          | `() => boolean`                         | Whether the client returned the session. |
 
 ### HttpContext helpers
 

@@ -29,6 +29,15 @@ follows the Zerotal monorepo's unified versioning.
   (a form's validation redirect, a passing precognition check) is no longer logged at all, as a
   returned one is not. A 5xx is still logged at error level, now with the thrown error's own name
   and stack.
+- **`ctx.body()` and `ctx.input()` see a body the validator read.** The validator parsed the
+  stream itself, so after `validate()` or a `FormRequest` the context's cache was empty and
+  `ctx.body()` returned `{}`. The validator now reads through the same cache, including the parsed
+  form `ctx.file()` uses, so the order of the two no longer matters. See `@zerotal/validator`.
+  A JSON body that is a bare number, string, boolean or `null` now caches as `{}`, as an absent
+  body does: kept as is it broke the object `ctx.body()` is typed to return, and `ctx.input()`
+  threw on it, so such a body sent to a route that validates optional fields and then calls
+  `ctx.input()` was a 500. A JSON array is still returned as sent; `ctx.input()` reads no field
+  from it.
 
 ## [1.16.0] — 2026-10-28
 

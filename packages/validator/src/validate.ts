@@ -5,6 +5,7 @@ import type { FieldRule } from "./FieldRule.ts";
 import { RuleBuilder } from "./RuleBuilder.ts";
 import { runValidationAsync } from "./Validator.ts";
 import { ValidationRedirectError, ValidationJsonError } from "./ValidationError.ts";
+import { _readRequestBody, _requestOrigin } from "./requestBody.ts";
 
 type SessionLike = {
   set(key: string, value: unknown): void;
@@ -38,29 +39,7 @@ export async function validate<S extends Record<string, FieldRule>>(
     schema[key] = rule._def;
   }
 
-  let body: Record<string, unknown> = {};
-  try {
-    const contentType = ctx.request.headers.get("Content-Type") ?? "";
-    if (contentType.includes("application/json")) {
-      body = (await ctx.request.json()) as Record<string, unknown>;
-    } else if (
-      contentType.includes("application/x-www-form-urlencoded") ||
-      contentType.includes("multipart/form-data")
-    ) {
-      const formData = await ctx.request.formData();
-      formData.forEach((val, key) => {
-        body[key] = val;
-      });
-    }
-  } catch {
-    body = {};
-  }
-
-  if (ctx.request.method === "GET") {
-    ctx.url.searchParams.forEach((val, key) => {
-      body[key] ??= val;
-    });
-  }
+  const body = await _readRequestBody(ctx);
 
   const result = await runValidationAsync(schema as Schema, body);
 
@@ -82,7 +61,7 @@ export async function validate<S extends Record<string, FieldRule>>(
       // through the same origin check every other redirect in the framework uses. Without it,
       // a plain <a href="https://app.com/search"> on an attacker's page bounced the victim
       // straight back off-site under the app's own domain — no CSRF token involved.
-      const back = safeRedirectPath(ctx.request.headers.get("Referer"), ctx.url.origin) ?? "/";
+      const back = safeRedirectPath(ctx.request.headers.get("Referer"), _requestOrigin(ctx)) ?? "/";
       throw new ValidationRedirectError(back, errors);
     }
   }

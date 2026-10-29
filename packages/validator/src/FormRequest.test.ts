@@ -1,8 +1,7 @@
 import { describe, it, expect } from "bun:test";
-import { RequestContext } from "@zerotal/core";
+import { HttpContext, RequestContext } from "@zerotal/core";
 import { FormRequest } from "./FormRequest.ts";
 import { RuleBuilder } from "./RuleBuilder.ts";
-import type { HttpContext } from "@zerotal/core";
 
 // ── Test subclasses ───────────────────────────────────────────────────────────
 
@@ -54,17 +53,22 @@ function makeCtx(
     ...extraHeaders,
   };
 
-  return {
-    request: {
-      method: "POST",
-      headers: { get: (k: string) => headers[k] ?? null },
-      json: async () => body,
-      formData: async () => new FormData(),
-    },
-    url: new URL("http://localhost/posts"),
-    user: overrides.user,
-    session: undefined as unknown,
-  } as unknown as HttpContext;
+  const ctx = HttpContext.fake("http://localhost/posts", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (overrides.user) Object.assign(ctx, { user: overrides.user });
+  return ctx;
+}
+
+/** A form-urlencoded POST, the shape a plain HTML form sends. */
+function formPost(fields: Record<string, string>) {
+  return HttpContext.fake("http://localhost/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(fields).toString(),
+  });
 }
 
 /** Run a validate() call inside an ALS-backed request context. */
@@ -195,45 +199,18 @@ class ShortFormRequest extends FormRequest {
 
 describe("FormRequest.validate() — form-urlencoded body", () => {
   it("parses application/x-www-form-urlencoded body", async () => {
-    const fd = new FormData();
-    fd.append("name", "Alice");
-
-    const ctx = {
-      request: {
-        method: "POST",
-        headers: {
-          get: (k: string) => (k === "Content-Type" ? "application/x-www-form-urlencoded" : null),
-        },
-        json: async () => ({}),
-        formData: async () => fd,
-      },
-      url: new URL("http://localhost/test"),
-      session: undefined as unknown,
-    } as unknown as HttpContext;
+    const ctx = formPost({ name: "Alice" });
 
     const data = await withCtx(ctx, () => ShortFormRequest.validate());
     expect((data as any).name).toBe("Alice");
   });
 
   it("falls back to empty body when body parsing throws", async () => {
-    const ctx = {
-      request: {
-        method: "POST",
-        headers: {
-          get: (k: string) => {
-            if (k === "Content-Type") return "application/json";
-            if (k === "Accept") return "application/json";
-            return null;
-          },
-        },
-        json: async () => {
-          throw new Error("bad json");
-        },
-        formData: async () => new FormData(),
-      },
-      url: new URL("http://localhost/test"),
-      session: undefined as unknown,
-    } as unknown as HttpContext;
+    const ctx = HttpContext.fake("http://localhost/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: "{bad json",
+    });
 
     let err: unknown;
     try {
@@ -267,46 +244,27 @@ class NullableSelectRequest extends FormRequest {
   }
 }
 
-const formCtx = (fd: FormData) =>
-  ({
-    request: {
-      method: "POST",
-      headers: {
-        get: (k: string) => (k === "Content-Type" ? "application/x-www-form-urlencoded" : null),
-      },
-      json: async () => ({}),
-      formData: async () => fd,
-    },
-    url: new URL("http://localhost/test"),
-    session: undefined as unknown,
-  }) as unknown as HttpContext;
-
 describe("FormRequest.prepareForValidation()", () => {
   it("normalises the body before the rules run", async () => {
-    const fd = new FormData();
-    fd.append("assigneeId", "");
-
     // Two bugs met here. Without the hook, `""` fails `number()` and the form
     // bounces; and until `optional().nullable()` was fixed to let an explicit
     // null through, the value arrived as `undefined` — which `fill()` reads as
     // "leave this column", so "unassign" saved nothing and still said it had.
-    const data = await withCtx(formCtx(fd), () => NullableSelectRequest.validate());
+    const data = await withCtx(formPost({ assigneeId: "" }), () =>
+      NullableSelectRequest.validate(),
+    );
     expect((data as any).assigneeId).toBeNull();
   });
 
   it("leaves a real value alone", async () => {
-    const fd = new FormData();
-    fd.append("assigneeId", "7");
-
-    const data = await withCtx(formCtx(fd), () => NullableSelectRequest.validate());
+    const data = await withCtx(formPost({ assigneeId: "7" }), () =>
+      NullableSelectRequest.validate(),
+    );
     expect((data as any).assigneeId).toBe(7);
   });
 
   it("defaults to identity, so an unhooked request is unaffected", async () => {
-    const fd = new FormData();
-    fd.append("name", "Alice");
-
-    const data = await withCtx(formCtx(fd), () => ShortFormRequest.validate());
+    const data = await withCtx(formPost({ name: "Alice" }), () => ShortFormRequest.validate());
     expect((data as any).name).toBe("Alice");
   });
 });
@@ -315,17 +273,9 @@ describe("FormRequest.prepareForValidation()", () => {
 
 describe("FormRequest.validate() — GET with query params", () => {
   it("merges query string params into body for GET requests", async () => {
-    const url = new URL("http://localhost/test?name=Bob");
-    const ctx = {
-      request: {
-        method: "GET",
-        headers: { get: (k: string) => (k === "Accept" ? "application/json" : null) },
-        json: async () => ({}),
-        formData: async () => new FormData(),
-      },
-      url,
-      session: undefined as unknown,
-    } as unknown as HttpContext;
+    const ctx = HttpContext.fake("http://localhost/test?name=Bob", {
+      headers: { Accept: "application/json" },
+    });
 
     const data = await withCtx(ctx, () => ShortFormRequest.validate());
     expect((data as any).name).toBe("Bob");

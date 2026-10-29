@@ -8,6 +8,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`validate()` and `FormRequest` read the body `ctx.body()` reads.** Both parsed the request
+  body straight off the stream, which can be read once, so each emptied it for the other: a route
+  that awaited `ctx.body()` first had a valid body fail validation as "name is required",
+  `ctx.body()` after a validation returned `{}` and `ctx.input()` fell through to the query string,
+  and a body `WebhookMiddleware` had read to check its signature was invisible to the rules. They
+  now read through the context's body cache, and a multipart form's files come from the same parse
+  `ctx.file()` uses. Afterwards `ctx.body()` returns the body as sent, not the validated fields
+  and not the query string a GET merges in. A context built by hand in a test, a plain object
+  holding only a `request`, has no cache to share and is still read straight off the request,
+  and a failed form on one redirects back by the request's own origin.
+
 ## [1.15.5] — 2026-10-27
 
 ### Fixed

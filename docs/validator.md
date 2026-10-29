@@ -98,6 +98,11 @@ data.body; // string
 data.tags; // string[] | undefined
 ```
 
+The body is read through the same cache as [`ctx.body()`](/docs/context#the-request-body), so
+the two work in either order, and after middleware that has already read the body. Afterwards
+`ctx.body()` and `ctx.input()` return the body as the client sent it, not just the validated
+fields. A multipart form's files are validated from the same parse that `ctx.file()` reads.
+
 On failure, `validate()` stores `errors` and `old` (previous input) in the
 session, then branches on the request type:
 
@@ -515,6 +520,13 @@ res.assertUnprocessable(); // 422 for a JSON request
 > **Note** — The same failure redirects with flashed errors for a form request
 > and returns `422` for a JSON one. Assert the shape your route actually serves;
 > a test posting JSON to a form endpoint will pass for the wrong reason.
+
+**A context you build by hand works too.** `validate()` and `FormRequest` accept a plain
+object holding just a `request`, and read the body straight off that request, since there
+is no body cache on it to share. A failure throws the same errors as on a real context: a
+`ValidationJsonError` when `Accept` prefers JSON, otherwise a `ValidationRedirectError` back
+to the `Referer` when it is on the request's own origin, and to `/` when it is not. With no
+session on the object, nothing is flashed. `HttpContext.fake()` gives you a real one.
 
 ## References
 

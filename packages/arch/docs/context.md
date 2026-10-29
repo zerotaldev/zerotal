@@ -162,14 +162,16 @@ ctx.boolean("active", true); // absent → true (custom fallback)
 ### The request body
 
 `body()` parses and caches the body (JSON, form-urlencoded, or multipart fields) so
-repeated calls are free, and returns `{}` on an absent or invalid body:
+repeated calls are free, and returns `{}` on an absent or invalid body, or on a JSON body
+with no fields (a bare number, string, boolean or `null`). A JSON array is returned as
+sent:
 
 ```typescript fragment
 const data = await ctx.body<{ title: string; body: string }>();
 ```
 
 `input()` reads a single merged value in priority order — route params → cached
-body → query string — without awaiting:
+body → query string — without awaiting. It reads no field from an array body:
 
 ```typescript fragment
 ctx.input("id"); // route :id or ?id=
@@ -177,7 +179,7 @@ ctx.input("q", "all"); // with fallback
 ```
 
 > **Warning** — `input()` only sees body data if `await ctx.body()` (or a
-> FormRequest) ran earlier in the lifecycle; otherwise it falls through to the query
+> [validation](/docs/validator)) ran earlier in the lifecycle; otherwise it falls through to the query
 > string. For guaranteed body access, `await ctx.body()` first. Outside production, a
 > call that comes back empty on a JSON or form request whose body was never read logs a
 > warning naming the key, once per route.

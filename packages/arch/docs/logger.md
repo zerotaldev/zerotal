@@ -476,7 +476,16 @@ Once `LogProvider.onBooted()` runs, it subscribes to the
 | `LoggedOut`             | `info`         | A user logs out                                     |
 | `AuthorizationDenied`   | `warn`         | An ability check is denied                          |
 | `RequestHandled`        | `warn`/`error` | A request returns a 4xx (`warn`) or 5xx (`error`)   |
-| `RequestFailed`         | `error`        | The request pipeline throws                         |
+| `RequestFailed`         | `warn`/`error` | A thrown 4xx answer (`warn`) or fault (`error`)     |
+
+A 4xx the framework throws to answer the client (a `ForbiddenError`, a
+`ConflictError`, an `abort(422)`) is logged as one warning that names the error,
+without a stack. Anything else is logged at `error` with the stack of the throw:
+a 5xx, and an error that only repeats an upstream status, such as an
+`HttpClientError` from a 401, even though the client is answered with that 4xx.
+[Silencing expected errors](/docs/errors#silencing-expected-errors) lists which
+errors count. A throw answered below 400 (a form's validation redirect, a passing
+precognition check) is not logged, as a returned 2xx or 3xx is not.
 
 > **Tip** — Requests to internal paths (`/__zerotal/`, `/__flow/`, `/__dev/`)
 > are skipped, so the dev tooling doesn't flood your logs.

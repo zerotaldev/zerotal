@@ -138,6 +138,12 @@ Every event class is exported from `zerotal`. Events carry the active
 | `RequestFailed`     | `ctx, startMs, durationMs, error, status` | dispatcher / server catch blocks         |
 | `MiddlewareSkipped` | `name, reason, ctx`                       | a middleware short-circuits the pipeline |
 
+`RequestFailed` also carries the thrown error's `type` and `stack`, and `expected`,
+which is `true` when the error is one the framework raised to answer the client
+([which ones](/docs/errors#silencing-expected-errors)). The `status` alone cannot
+tell a refused request from a fault: an `HttpClientError` from an upstream 401 is
+answered with a 401 too.
+
 **ORM** (`@zerotal/orm`)
 
 | Event                   | Fields                                              |

@@ -446,18 +446,23 @@ Middleware nests like layers of an onion: outer layers run first on the way in,
 and last on the way out (after `await next()`).
 
 ```text
-Global (app.use)          ← outermost, first in / last out
-  Provider auto-middleware  ← Session, Auth, etc.
-    Switch middleware        ← CORS, Throttle, SecureHeaders
+Kernel                    ← outermost: the maintenance gate, then SecureHeaders
+  Provider middleware       ← Session, Auth, Inertia, … (registered by providers)
+    Global (app.use)          ← CORS, Throttle, your own
       Group middleware        ← Router.group({ middleware })
         Route middleware       ← Router.get(path, C, a, [M])
           Controller action    ← innermost
         ← route mw unwind
       ← group mw unwind
-    ← switch mw unwind
+    ← global mw unwind
   ← provider mw unwind      ← session saved here
-← global mw unwind
+← kernel unwind
 ```
+
+So middleware you add with `app.use()` already sees the session and the signed-in user. If
+you register your own `SecureHeadersMiddleware` (configured with `.with()`, or a subclass), it
+replaces the kernel's copy of the headers and runs where you registered it. The maintenance gate
+stays in the kernel and still runs first.
 
 ## Testing
 

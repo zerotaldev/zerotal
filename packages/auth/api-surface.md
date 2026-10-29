@@ -873,7 +873,7 @@ function AuthConfig = (options?: Partial<AuthConfigShape>) => AuthConfigShape
 
 function Authenticatable = <TBase extends Constructor>(Base: TBase) => {    new (...args: any[]): Authenticatable;    prototype: Authenticatable<any>.Authenticatable;} & TBase
 
-function createToken = (options: {    tokenableId: number;    tokenableType?: string;    name: string;    abilities?: string[];    expiresAt?: Date;}) => Promise<NewToken>
+function createToken = (options: {    tokenableId: number;    tokenableType?: string;    name: string;    abilities?: string[];    expiresAt?: Date;    store?: (row: NewToken['row']) => Promise<unknown>;}) => Promise<NewToken>
 
 function definePermission = (...names: (string | string[])[]) => void
 

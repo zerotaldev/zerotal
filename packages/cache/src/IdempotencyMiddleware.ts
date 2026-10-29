@@ -1,5 +1,5 @@
 import type { NextFn, HttpContext } from "@zerotal/core";
-import { currentApp, BaseMiddleware } from "@zerotal/core";
+import { currentApp, BaseMiddleware, sha256Hex } from "@zerotal/core";
 import type { LockManager } from "@zerotal/core/lock";
 import { LockNotAcquiredError } from "@zerotal/core/lock";
 import type { CacheManager } from "./CacheManager.ts";
@@ -64,6 +64,43 @@ export interface IdempotencyOptions {
    * resolved from the container's `lock` binding at request time.
    */
   lock?: LockManager | undefined;
+
+  /**
+   * Whose key this is. A stored response is replayed only to a request with the same scope,
+   * method, host, path, query string and key, so two callers who pick the same key never see
+   * each other's answer.
+   *
+   * The default is the authenticated user (`ctx.user`): `user:<type>:<id>` when the request
+   * authenticated with a personal access token, whose subject type the token carries, and
+   * `user:<id>` otherwise. With no user it is `session:<id>`, but only when the client sent an
+   * existing session back (`ctx.session.resumed()`); a session started on this request is not a
+   * scope, because a client that does not keep cookies is given a new one every time and its
+   * retry would never find its own answer. Anything else is `undefined`, which means unscoped:
+   * every such caller shares one key space per method, host, path and query. The default reads
+   * what the auth and session middleware put on the context, so this middleware must run after
+   * them.
+   *
+   * A handler can change who the caller is, so when it runs, its answer is also stored under
+   * the scope the client's retry will have, read after the handler: the user the session's
+   * `user_id` names if the handler changed it (the session auth middleware signs the retry in
+   * from it, whatever `ctx.user` still says), else the user on `ctx.user`, else the session
+   * whose cookie the response carries, whether it was regenerated or started for a
+   * first request that sent no cookie. A retry of a registration, a sign-in, a sign-out or a
+   * second-factor step that carries the cookie its answer set is therefore replayed. A request
+   * that was replayed or waited on another stores nothing, so the cache does not grow with
+   * replays; the cost is that a client with no cookie that is replayed its answer and then
+   * retries with the cookie that replay set runs the handler again. An answer is never copied
+   * under the unscoped key, and a scoped request never falls back to it. A `scope` you pass
+   * turns this off.
+   *
+   * Only the token middleware exposes a subject type. A user set by the session, a JWT or any
+   * other guard is scoped by id alone, so two kinds of subject with the same id, authenticated
+   * that way, share a scope; pass a `scope` that includes the type if that can happen.
+   *
+   * Return something the request has proved about its caller, such as a verified API client
+   * id, when the default does not identify it; never a value the client can choose freely.
+   */
+  scope?: ((http: HttpContext) => string | undefined) | undefined;
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
@@ -75,6 +112,13 @@ export interface IdempotencyOptions {
  * On the first request the handler executes normally and the response is
  * stored in the cache. All subsequent requests with the same key receive the
  * stored response without re-running the handler.
+ *
+ * A key belongs to its caller and its endpoint: the stored response, the in-flight
+ * slot and the lock are all named from the {@link IdempotencyOptions.scope | scope}
+ * (by default the authenticated user, else a session the client sent back, else none),
+ * the method, the host, the URL path, the query string and the client's key, so the same
+ * key from another user, or sent to another host, path or query, is a different key. Run it
+ * after the auth and session middleware so the default scope can see them.
  *
  * Concurrent requests for the same key are coalesced: within a process via an
  * in-flight map, and across processes via a cross-process lock (the lock
@@ -110,9 +154,12 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
     useLock: true,
   };
 
-  // Per-process in-flight map — coalesces concurrent requests with the same key
-  // so only one handler execution runs at a time within this process.
-  private static readonly _inFlight = new Map<string, Promise<Response>>();
+  // Per-process in-flight requests, one table per CacheManager: coalesces concurrent
+  // requests with the same key so only one handler execution runs at a time within this
+  // process. Per manager because two managers are two namespaces (a tenant's prefixed
+  // cache, say), and a request must never wait on, or be handed, another namespace's
+  // response.
+  private static _inFlight = new WeakMap<CacheManager, Map<string, Promise<Response>>>();
 
   async handle(http: HttpContext, next: NextFn): Promise<Response | void> {
     const method = http.request.method.toUpperCase();
@@ -124,7 +171,41 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
     const { cache, ttl, validateBody } = this.options;
     if (!cache) return next();
 
-    const cacheKey = `idempotency:${idempotencyKey.trim().slice(0, 512)}`;
+    // One key names the stored response, the in-flight slot and the lock. It is a digest
+    // so that no part (a scope, host, path or query containing the separator) can
+    // impersonate another, and so the session id behind a session scope never sits in the
+    // cache in clear. The host keeps two tenants on subdomains of one app apart, and the
+    // query keeps `?account=1` and `?account=2` apart.
+    const clientKey = idempotencyKey.trim().slice(0, 512);
+    const keyFor = (scope: string | undefined): string =>
+      `idempotency:${sha256Hex(
+        JSON.stringify([
+          scope ?? null,
+          method,
+          http.url.host.toLowerCase(),
+          http.url.pathname,
+          http.url.search,
+          clientKey,
+        ]),
+      )}`;
+    const scope = (this.options.scope ?? _defaultScope)(http);
+    const cacheKey = keyFor(scope);
+
+    // A browser's first request carries no session cookie, so it is unscoped, but the
+    // session middleware started a session for it and sends that cookie with this
+    // response, so the browser's retry is scoped to the new session. A retry that arrives
+    // while this request is still running waits on it under that scope too. A lookup never
+    // falls back from a scoped key to the unscoped one.
+    const startedSessionKey = (): string | undefined => {
+      if (this.options.scope || scope !== undefined) return undefined;
+      const session = http.session;
+      if (!session || session.resumed?.() === true) return undefined;
+      return keyFor(`session:${session.id()}`);
+    };
+
+    const inFlightRequests =
+      IdempotencyMiddleware._inFlight.get(cache) ?? new Map<string, Promise<Response>>();
+    IdempotencyMiddleware._inFlight.set(cache, inFlightRequests);
 
     // Compute body hash now — before next() can consume the stream.
     const bodyHash = validateBody ? await _hashBody(http.request) : null;
@@ -144,7 +225,7 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
     }
 
     // ── Coalesce within process ───────────────────────────────────────────────
-    const inFlight = IdempotencyMiddleware._inFlight.get(cacheKey);
+    const inFlight = inFlightRequests.get(cacheKey);
     if (inFlight) {
       const replayed = (await inFlight).clone();
       replayed.headers.set("Idempotency-Replay", "true");
@@ -170,6 +251,7 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
         return replay;
       }
 
+      const signedInBefore = http.session?.get("user_id");
       await next();
 
       if (http.response && http.response.status < 500) {
@@ -178,6 +260,18 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
         // by anything downstream that still needs to read it.
         http.response = _rehydrate(serialized, false);
         await cache.set(cacheKey, serialized, ttl);
+        // The handler may have changed who the caller is: signed them in or out, finished a
+        // second factor, regenerated their session, or (on a first request with no cookie)
+        // started the session its retry will carry. The retry is scoped by what the auth and
+        // session middleware make of the cookie this response sends, so the answer is stored
+        // under that scope too. Only here, where the handler ran: a replay or a wait answers
+        // with what is already stored, and copying it again would let a client that keeps no
+        // cookies write a full response to the cache with every replay.
+        if (!this.options.scope) {
+          for (const after of _scopesAfter(http, signedInBefore)) {
+            if (after !== scope) await cache.set(keyFor(after), serialized, ttl);
+          }
+        }
         return http.response;
       }
 
@@ -191,7 +285,10 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
     const runGuarded = async (): Promise<Response> => {
       if (!lock) return executeOnce();
       try {
-        return await lock.block(`idempotency:lock:${cacheKey}`, IDEMPOTENCY_LOCK_TTL, executeOnce, {
+        // The lock is shared by every process and every cache on its backend, so its name
+        // carries the cache's own prefix as well as the key.
+        const lockName = `idempotency:lock:${cache.prefix}${cacheKey}`;
+        return await lock.block(lockName, IDEMPOTENCY_LOCK_TTL, executeOnce, {
           timeout: IDEMPOTENCY_LOCK_WAIT,
           retryDelay: 50,
         });
@@ -206,7 +303,14 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
     const inFlightPromise = new Promise<Response>((resolve) => {
       resolveInFlight = resolve;
     });
-    IdempotencyMiddleware._inFlight.set(cacheKey, inFlightPromise);
+    inFlightRequests.set(cacheKey, inFlightPromise);
+    // A retry that already carries the new session's cookie waits on this request too.
+    const sessionInFlightKey = startedSessionKey();
+    const joinable =
+      sessionInFlightKey !== undefined && !inFlightRequests.has(sessionInFlightKey)
+        ? sessionInFlightKey
+        : undefined;
+    if (joinable) inFlightRequests.set(joinable, inFlightPromise);
 
     try {
       const result = await runGuarded();
@@ -216,7 +320,10 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
       resolveInFlight(new Response("", { status: 500 }));
       throw err;
     } finally {
-      IdempotencyMiddleware._inFlight.delete(cacheKey);
+      inFlightRequests.delete(cacheKey);
+      if (joinable && inFlightRequests.get(joinable) === inFlightPromise) {
+        inFlightRequests.delete(joinable);
+      }
     }
   }
 
@@ -233,8 +340,66 @@ export class IdempotencyMiddleware extends BaseMiddleware<IdempotencyOptions> {
 
   /** @internal — expose for testing only */
   static _clearInFlight(): void {
-    IdempotencyMiddleware._inFlight.clear();
+    IdempotencyMiddleware._inFlight = new WeakMap();
   }
+}
+
+// ── Scope ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The default {@link IdempotencyOptions.scope}: the authenticated user, else a session the
+ * client sent back, else unscoped. `ctx.user` is declared by the auth package, which this one
+ * does not depend on, so it is read by shape, along with the token row `BearerTokenMiddleware`
+ * attaches to it as `_token`, whose `tokenable_type` names the kind of subject.
+ */
+function _defaultScope(http: HttpContext): string | undefined {
+  const user = _userScope(http);
+  if (user !== undefined) return user;
+  // A session started on this request is not a scope: its id will not come back, so a
+  // client that does not keep cookies would never be replayed its own answer.
+  const session = http.session;
+  if (session?.resumed?.() === true) return `session:${session.id()}`;
+  return undefined;
+}
+
+/** `user:<type>:<id>` for a token's subject, `user:<id>` for any other user, else undefined. */
+function _userScope(http: HttpContext): string | undefined {
+  const user = (
+    http as { user?: { id?: unknown; _token?: { tokenable_type?: unknown } | null } | null }
+  ).user;
+  const userId = user?.id;
+  if (typeof userId !== "string" && typeof userId !== "number" && typeof userId !== "bigint") {
+    return undefined;
+  }
+  const type = user?._token?.tokenable_type;
+  return typeof type === "string" ? `user:${type}:${String(userId)}` : `user:${String(userId)}`;
+}
+
+/**
+ * The default scopes a retry of this request can arrive with, read once the handler has run:
+ * the scope the auth and session middleware will give it from the cookie this response sends.
+ *
+ * The session auth middleware signs the retry in as the session's `user_id`, so a handler
+ * that changed it (`signedInBefore` is what it held before) decides the scope, whatever
+ * `ctx.user` still says: a handler that signs in or out through the session alone does not
+ * always update `ctx.user`. A new `user_id` gives that user's scope, unless `ctx.user` already
+ * names the same user, together with the scope of the session whose cookie this response
+ * carries, because a session still waiting on its second factor holds a `user_id` that does
+ * not sign the retry in. A `user_id` taken away gives that session's guest scope. When the
+ * handler left `user_id` alone, the user on the context is the scope, else that session's
+ * guest, whether it was regenerated or newly started. Never `undefined`: an answer given to a
+ * scoped caller is not copied into the unscoped key space.
+ */
+function _scopesAfter(http: HttpContext, signedInBefore: unknown): string[] {
+  const user = _userScope(http);
+  const session = http.session;
+  if (!session) return user === undefined ? [] : [user];
+  const guest = `session:${session.id()}`;
+  const signedIn = session.get("user_id");
+  if (signedIn === signedInBefore) return [user ?? guest];
+  if (typeof signedIn !== "string" && typeof signedIn !== "number") return [guest];
+  const sessionUser = `user:${String(signedIn)}`;
+  return sessionUser === user ? [user] : [sessionUser, guest];
 }
 
 // ── Serialization helpers ─────────────────────────────────────────────────────

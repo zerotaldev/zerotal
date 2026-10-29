@@ -3,6 +3,7 @@ import { IdempotencyMiddleware } from "./IdempotencyMiddleware.ts";
 import { CacheManager } from "./CacheManager.ts";
 import { MemoryDriver } from "./drivers/MemoryDriver.ts";
 import { HttpContext } from "@zerotal/core";
+import type { LockManager } from "@zerotal/core/lock";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,19 @@ function makeCtx(method = "POST", headers: Record<string, string> = {}, body = "
     headers: { "Content-Type": "application/json", ...headers },
     body,
   });
+}
+
+// Records every write the middleware makes to a cache. The stored key is a digest of the
+// caller's scope, the method, the host, the path, the query and the client's key, so tests
+// look for the write rather than spell out the name.
+function recordWrites(cache: CacheManager): Array<{ key: string; ttl: number | undefined }> {
+  const writes: Array<{ key: string; ttl: number | undefined }> = [];
+  const set = cache.set.bind(cache);
+  cache.set = async (key: string, value: unknown, ttl?: number): Promise<void> => {
+    writes.push({ key, ttl });
+    await set(key, value, ttl);
+  };
+  return writes;
 }
 
 function makeMiddleware(opts: Partial<Parameters<typeof IdempotencyMiddleware.with>[0]> = {}) {
@@ -131,25 +145,27 @@ describe("IdempotencyMiddleware — first request", () => {
   });
 
   it("stores the response in cache after execution", async () => {
+    const writes = recordWrites(cache);
     const ctx = makeCtx("POST", { "Idempotency-Key": "store-test" });
     await run(mw, ctx, okHandler(ctx, { id: 99 }));
-    const cached = await cache.get("idempotency:store-test");
-    expect(cached).not.toBeNull();
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.key).toStartWith("idempotency:");
+    expect(await cache.get(writes[0]!.key)).not.toBeNull();
   });
 
   it("does NOT cache 5xx responses", async () => {
+    const writes = recordWrites(cache);
     const ctx = makeCtx("POST", { "Idempotency-Key": "err-key" });
     await run(mw, ctx, errorHandler(ctx, 503));
-    const cached = await cache.get("idempotency:err-key");
-    expect(cached).toBeNull();
+    expect(writes).toHaveLength(0);
   });
 
   it("does NOT cache 4xx responses that indicate transient errors — caches 4xx client errors", async () => {
     // 4xx (e.g. 422 validation) IS cached — the input was invalid, retrying with same body should replay
+    const writes = recordWrites(cache);
     const ctx = makeCtx("POST", { "Idempotency-Key": "val-key" });
     await run(mw, ctx, errorHandler(ctx, 422));
-    const cached = await cache.get("idempotency:val-key");
-    expect(cached).not.toBeNull(); // 422 < 500 → cached
+    expect(writes).toHaveLength(1); // 422 < 500 → cached
   });
 });
 
@@ -243,13 +259,11 @@ describe("IdempotencyMiddleware — TTL", () => {
 
   it("respects custom TTL when storing responses", async () => {
     const cache = makeCache();
-    // We can't mock time easily, but verify the cache.set path is called with ttl
-    // by confirming the value is present immediately after
+    const writes = recordWrites(cache);
     const mw = makeMiddleware({ cache, ttl: 1 });
     const ctx = makeCtx("POST", { "Idempotency-Key": "ttl-key" });
     await run(mw, ctx, okHandler(ctx));
-    const cached = await cache.get("idempotency:ttl-key");
-    expect(cached).not.toBeNull();
+    expect(writes.map((w) => w.ttl)).toEqual([1]);
   });
 });
 
@@ -449,5 +463,763 @@ describe("IdempotencyMiddleware — custom header", () => {
     await run(mw, ctxA, handler(ctxA));
     await run(mw, ctxB, handler(ctxB));
     expect(count).toBe(1);
+  });
+});
+
+// ── Whose key it is ───────────────────────────────────────────────────────────
+
+describe("IdempotencyMiddleware — scope", () => {
+  afterEach(() => IdempotencyMiddleware._clearInFlight());
+
+  interface Caller {
+    user?: { id: unknown; _token?: { tokenable_type: string } };
+    // The session the client sent back in its cookie. Without one, the request gets a session
+    // started for it, with a new id, as the session middleware gives a client with no cookie.
+    sessionId?: string;
+    // The id of the session started for a request that sent no cookie, which the response's
+    // cookie carries and the client's retry sends back as `sessionId`. Random when omitted.
+    startedSessionId?: string;
+    // What the session holds when the request arrives, such as the `user_id` of a sign-in.
+    sessionData?: Record<string, unknown>;
+    host?: string;
+    headers?: Record<string, string>;
+    method?: string;
+  }
+
+  // A request as the pipeline hands it over once auth and session have run.
+  function request(path: string, key: string, caller: Caller = {}): HttpContext {
+    const ctx = HttpContext.fake(`http://${caller.host ?? "localhost"}${path}`, {
+      method: caller.method ?? "POST",
+      headers: { "Content-Type": "application/json", "Idempotency-Key": key, ...caller.headers },
+      body: "{}",
+    });
+    if (caller.user) Object.assign(ctx, { user: caller.user });
+    const session = {
+      _id: caller.sessionId ?? caller.startedSessionId ?? crypto.randomUUID(),
+      resumedId: caller.sessionId,
+      data: new Map<string, unknown>(Object.entries(caller.sessionData ?? {})),
+      id(): string {
+        return this._id;
+      },
+      resumed(): boolean {
+        return this.resumedId !== undefined && this.resumedId === this._id;
+      },
+      regenerate(): void {
+        this._id = crypto.randomUUID();
+      },
+      get(key: string): unknown {
+        return this.data.get(key);
+      },
+      set(key: string, value: unknown): void {
+        this.data.set(key, value);
+      },
+      forget(key: string): void {
+        this.data.delete(key);
+      },
+    };
+    Object.assign(ctx, { session });
+    return ctx;
+  }
+
+  // The session `request()` gave a context, for a handler that signs the caller in or out.
+  interface FakeSession {
+    id(): string;
+    regenerate(): void;
+    set(key: string, value: unknown): void;
+    forget(key: string): void;
+  }
+  function sessionOf(ctx: HttpContext): FakeSession {
+    return ctx.session as unknown as FakeSession;
+  }
+
+  // A handler that changes who the caller is before it answers, as a sign-in, sign-out or
+  // registration does, and counts its runs.
+  function changesCaller(
+    ctx: HttpContext,
+    body: unknown,
+    runs: { count: number },
+    change: () => void,
+  ): () => Promise<Response | void> {
+    return async () => {
+      change();
+      return handler(ctx, body, runs)();
+    };
+  }
+
+  // A handler that answers with `body` and counts its runs, optionally after a delay.
+  function handler(ctx: HttpContext, body: unknown, runs: { count: number }, delayMs = 0) {
+    return async (): Promise<Response | void> => {
+      runs.count++;
+      if (delayMs) await Bun.sleep(delayMs);
+      ctx.response = Response.json(body, { status: 201 });
+      return ctx.response;
+    };
+  }
+
+  // A lock manager that records the name of every lock taken and runs the callback.
+  function recordingLock(): { lock: LockManager; names: string[] } {
+    const names: string[] = [];
+    const lock = {
+      async block<T>(name: string, _ttl: number, fn: () => Promise<T>): Promise<T> {
+        names.push(name);
+        return fn();
+      },
+    };
+    return { lock: lock as unknown as LockManager, names };
+  }
+
+  it("two tenants' caches never share an in-flight request for the same key", async () => {
+    const driver = new MemoryDriver();
+    const tenantA = makeMiddleware({
+      cache: new CacheManager(driver, "tenant:a:"),
+      useLock: false,
+    });
+    const tenantB = makeMiddleware({
+      cache: new CacheManager(driver, "tenant:b:"),
+      useLock: false,
+    });
+    const runsA = { count: 0 };
+    const runsB = { count: 0 };
+
+    const ctxA = request("/api/invoices", "same-key", { user: { id: 1 } });
+    const ctxB = request("/api/invoices", "same-key", { user: { id: 1 } });
+    const first = run(tenantA, ctxA, handler(ctxA, { tenant: "A" }, runsA, 50));
+    await Bun.sleep(5); // tenant A's request is now in flight
+    await run(tenantB, ctxB, handler(ctxB, { tenant: "B" }, runsB));
+    await first;
+
+    expect(runsB.count).toBe(1);
+    expect(ctxB.response?.headers.get("Idempotency-Replay")).toBeNull();
+    expect(await ctxB.response!.json()).toEqual({ tenant: "B" });
+    expect(await ctxA.response!.json()).toEqual({ tenant: "A" });
+  });
+
+  it("two unrelated caches never share an in-flight request for the same key", async () => {
+    const one = makeMiddleware({ cache: makeCache(), useLock: false });
+    const other = makeMiddleware({ cache: makeCache(), useLock: false });
+    const runs = { count: 0 };
+
+    const ctx1 = request("/api/invoices", "same-key");
+    const ctx2 = request("/api/invoices", "same-key");
+    const first = run(one, ctx1, handler(ctx1, { from: 1 }, runs, 50));
+    await Bun.sleep(5);
+    await run(other, ctx2, handler(ctx2, { from: 2 }, runs));
+    await first;
+
+    expect(runs.count).toBe(2);
+    expect(await ctx2.response!.json()).toEqual({ from: 2 });
+  });
+
+  it("does not replay one user's response to another user who sends the same key", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const ctx1 = request("/api/orders", "k-123", { user: { id: 1 } });
+    await run(mw, ctx1, handler(ctx1, { user: 1, secret: "user-1-data" }, runs));
+    const ctx2 = request("/api/orders", "k-123", { user: { id: 2 } });
+    await run(mw, ctx2, handler(ctx2, { user: 2 }, runs));
+
+    expect(runs.count).toBe(2);
+    expect(ctx2.response?.headers.get("Idempotency-Replay")).toBeNull();
+    expect(await ctx2.response!.json()).toEqual({ user: 2 });
+  });
+
+  it("scopes a request that sent its session cookie back to that session", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const ctx1 = request("/api/cart", "k-1", { sessionId: "session-one" });
+    await run(mw, ctx1, handler(ctx1, { cart: 1 }, runs));
+    const ctx2 = request("/api/cart", "k-1", { sessionId: "session-two" });
+    await run(mw, ctx2, handler(ctx2, { cart: 2 }, runs));
+    const cookieless = request("/api/cart", "k-1");
+    await run(mw, cookieless, handler(cookieless, { cart: "anonymous" }, runs));
+    const retry = request("/api/cart", "k-1", { sessionId: "session-one" });
+    await run(mw, retry, handler(retry, { cart: "again" }, runs));
+
+    expect(runs.count).toBe(3);
+    expect(await ctx2.response!.json()).toEqual({ cart: 2 });
+    expect(await cookieless.response!.json()).toEqual({ cart: "anonymous" });
+    expect(retry.response?.headers.get("Idempotency-Replay")).toBe("true");
+    expect(await retry.response!.json()).toEqual({ cart: 1 });
+  });
+
+  it("replays a retry from a client that sends no session cookie", async () => {
+    // Each request is given a session of its own, so scoping by it would run the handler
+    // again on every retry.
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const ctx1 = request("/api/checkout", "anon-retry");
+    await run(mw, ctx1, handler(ctx1, { charged: 1 }, runs));
+    const ctx2 = request("/api/checkout", "anon-retry");
+    await run(mw, ctx2, handler(ctx2, { charged: 2 }, runs));
+
+    expect(ctx1.session?.id()).not.toBe(ctx2.session?.id());
+    expect(runs.count).toBe(1);
+    expect(ctx2.response?.headers.get("Idempotency-Replay")).toBe("true");
+    expect(await ctx2.response!.json()).toEqual({ charged: 1 });
+  });
+
+  it("coalesces concurrent retries from a client that sends no session cookie", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const ctx1 = request("/api/checkout", "anon-concurrent");
+    const ctx2 = request("/api/checkout", "anon-concurrent");
+    await Promise.all([
+      run(mw, ctx1, handler(ctx1, { charged: 1 }, runs, 30)),
+      run(mw, ctx2, handler(ctx2, { charged: 2 }, runs)),
+    ]);
+
+    expect(runs.count).toBe(1);
+    expect(await ctx2.response!.json()).toEqual({ charged: 1 });
+  });
+
+  it("replays a browser's retry that carries the cookie its first request was given", async () => {
+    // The first request had no cookie, so it was unscoped; its response set the cookie for
+    // the session started for it, and the retry, now scoped to that session, finds it.
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/api/checkout", "browser-retry", { startedSessionId: "s-new" });
+    await run(mw, first, handler(first, { charged: 1 }, runs));
+    const retry = request("/api/checkout", "browser-retry", { sessionId: "s-new" });
+    await run(mw, retry, handler(retry, { charged: 2 }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(retry.response?.headers.get("Idempotency-Replay")).toBe("true");
+    expect(await retry.response!.json()).toEqual({ charged: 1 });
+  });
+
+  it("does not replay a first request's response to a different session", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/api/checkout", "browser-key", { startedSessionId: "s-new" });
+    await run(mw, first, handler(first, { charged: "first" }, runs));
+    const other = request("/api/checkout", "browser-key", { sessionId: "s-other" });
+    await run(mw, other, handler(other, { charged: "other" }, runs));
+
+    expect(runs.count).toBe(2);
+    expect(other.response?.headers.get("Idempotency-Replay")).toBeNull();
+    expect(await other.response!.json()).toEqual({ charged: "other" });
+  });
+
+  it("joins a retry with the new cookie to a first request still running", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/api/checkout", "browser-overlap", { startedSessionId: "s-new" });
+    const retry = request("/api/checkout", "browser-overlap", { sessionId: "s-new" });
+    const running = run(mw, first, handler(first, { charged: 1 }, runs, 50));
+    await Bun.sleep(5); // the first request is now in flight
+    await run(mw, retry, handler(retry, { charged: 2 }, runs));
+    await running;
+
+    expect(runs.count).toBe(1);
+    expect(await retry.response!.json()).toEqual({ charged: 1 });
+  });
+
+  it("stores a first request's response under the id a regenerated session ends with", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/api/login", "browser-login", { startedSessionId: "s-before" });
+    const session = first.session as unknown as { regenerate(): void; id(): string };
+    await run(mw, first, async () => {
+      session.regenerate();
+      return handler(first, { signedIn: true }, runs)();
+    });
+    const retry = request("/api/login", "browser-login", { sessionId: session.id() });
+    await run(mw, retry, handler(retry, { signedIn: "again" }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(await retry.response!.json()).toEqual({ signedIn: true });
+  });
+
+  it("replays a registration's retry that carries the cookie its answer set", async () => {
+    // The first request sent no cookie and signed the new account in through the session
+    // alone; the retry carries that session's cookie, so the session auth middleware has made
+    // it the new user's request.
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/register", "register", { startedSessionId: "s-new" });
+    await run(
+      mw,
+      first,
+      changesCaller(first, { registered: 5 }, runs, () => sessionOf(first).set("user_id", 5)),
+    );
+    const retry = request("/register", "register", {
+      sessionId: "s-new",
+      sessionData: { user_id: 5 },
+      user: { id: 5 },
+    });
+    await run(mw, retry, handler(retry, { registered: "again" }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(retry.response?.headers.get("Idempotency-Replay")).toBe("true");
+    expect(await retry.response!.json()).toEqual({ registered: 5 });
+  });
+
+  it("replays a sign-in's retry on a guest session the client sent back", async () => {
+    // Signing in regenerates the session and sets the user, so the retry is scoped to the
+    // user rather than to the guest session the first request was scoped to.
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/login", "login", { sessionId: "s-guest" });
+    await run(
+      mw,
+      first,
+      changesCaller(first, { signedIn: 7 }, runs, () => {
+        sessionOf(first).regenerate();
+        sessionOf(first).set("user_id", 7);
+        Object.assign(first, { user: { id: 7 } });
+      }),
+    );
+    const retry = request("/login", "login", {
+      sessionId: sessionOf(first).id(),
+      sessionData: { user_id: 7 },
+      user: { id: 7 },
+    });
+    await run(mw, retry, handler(retry, { signedIn: "again" }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(retry.response?.headers.get("Idempotency-Replay")).toBe("true");
+    expect(await retry.response!.json()).toEqual({ signedIn: 7 });
+  });
+
+  it("replays a sign-in's retry when the handler only wrote the session", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/checkout", "guest-checkout", { sessionId: "s-guest" });
+    await run(
+      mw,
+      first,
+      changesCaller(first, { order: 1 }, runs, () => {
+        sessionOf(first).set("user_id", 7);
+        sessionOf(first).regenerate();
+      }),
+    );
+    const retry = request("/checkout", "guest-checkout", {
+      sessionId: sessionOf(first).id(),
+      sessionData: { user_id: 7 },
+      user: { id: 7 },
+    });
+    await run(mw, retry, handler(retry, { order: 2 }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(await retry.response!.json()).toEqual({ order: 1 });
+  });
+
+  it("replays a sign-in's retry whose session still waits on its second factor", async () => {
+    // The session holds the user's id but does not sign the retry in, so the retry is the
+    // regenerated session's guest.
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/login", "login-2fa", { sessionId: "s-guest" });
+    await run(
+      mw,
+      first,
+      changesCaller(first, { challenge: true }, runs, () => {
+        sessionOf(first).regenerate();
+        sessionOf(first).set("user_id", 7);
+        sessionOf(first).set("two_factor_pending", true);
+      }),
+    );
+    const retry = request("/login", "login-2fa", {
+      sessionId: sessionOf(first).id(),
+      sessionData: { user_id: 7, two_factor_pending: true },
+    });
+    await run(mw, retry, handler(retry, { challenge: "again" }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(await retry.response!.json()).toEqual({ challenge: true });
+  });
+
+  it("does not store a guest's answer under the user its session names but has not signed in", async () => {
+    // A session waiting on its second factor holds the user's id, but its requests are a
+    // guest's; only a handler that signs a user in makes the retry that user's.
+    const cache = makeCache();
+    const writes = recordWrites(cache);
+    const mw = makeMiddleware({ cache, useLock: false });
+    const runs = { count: 0 };
+
+    const pending = request("/api/cart", "pending", {
+      sessionId: "s-pending",
+      sessionData: { user_id: 7, two_factor_pending: true },
+    });
+    await run(mw, pending, handler(pending, { cart: "guest" }, runs));
+    const user = request("/api/cart", "pending", {
+      sessionId: "s-user",
+      sessionData: { user_id: 7 },
+      user: { id: 7 },
+    });
+    await run(mw, user, handler(user, { cart: "user" }, runs));
+
+    expect(runs.count).toBe(2);
+    expect(await user.response!.json()).toEqual({ cart: "user" });
+    expect(writes).toHaveLength(2); // one each, under its own scope
+  });
+
+  it("replays a sign-out's retry that carries the new session's cookie", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/logout", "logout", {
+      sessionId: "s-user",
+      sessionData: { user_id: 7 },
+      user: { id: 7 },
+    });
+    await run(
+      mw,
+      first,
+      changesCaller(first, { signedOut: true }, runs, () => {
+        sessionOf(first).forget("user_id");
+        sessionOf(first).regenerate();
+        Object.assign(first, { user: undefined });
+      }),
+    );
+    const retry = request("/logout", "logout", { sessionId: sessionOf(first).id() });
+    await run(mw, retry, handler(retry, { signedOut: "again" }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(await retry.response!.json()).toEqual({ signedOut: true });
+  });
+
+  it("replays a sign-out's retry when the handler only forgot the session's user", async () => {
+    // The user the session auth middleware loaded stays on the context, but the retry, with
+    // the same cookie and no `user_id`, is that session's guest.
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/account", "close-account", {
+      sessionId: "s-user",
+      sessionData: { user_id: 7 },
+      user: { id: 7 },
+      method: "DELETE",
+    });
+    await run(
+      mw,
+      first,
+      changesCaller(first, { closed: true }, runs, () => sessionOf(first).forget("user_id")),
+    );
+    const retry = request("/account", "close-account", { sessionId: "s-user", method: "DELETE" });
+    await run(mw, retry, handler(retry, { message: "Unauthenticated." }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(retry.response?.headers.get("Idempotency-Replay")).toBe("true");
+    expect(await retry.response!.json()).toEqual({ closed: true });
+  });
+
+  it("replays a sign-in as another user that only wrote the session", async () => {
+    // The previous user is still on the context; the retry is the new one's.
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/login", "switch-user", {
+      sessionId: "s-user",
+      sessionData: { user_id: 7 },
+      user: { id: 7 },
+    });
+    await run(
+      mw,
+      first,
+      changesCaller(first, { signedIn: 8 }, runs, () => sessionOf(first).set("user_id", 8)),
+    );
+    const retry = request("/login", "switch-user", {
+      sessionId: "s-user",
+      sessionData: { user_id: 8 },
+      user: { id: 8 },
+    });
+    await run(mw, retry, handler(retry, { signedIn: "again" }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(await retry.response!.json()).toEqual({ signedIn: 8 });
+  });
+
+  it("does not replay a sign-in's answer to another user or another guest", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/login", "same-key", { startedSessionId: "s-new" });
+    await run(
+      mw,
+      first,
+      changesCaller(first, { signedIn: 7 }, runs, () => {
+        sessionOf(first).regenerate();
+        sessionOf(first).set("user_id", 7);
+        Object.assign(first, { user: { id: 7 } });
+      }),
+    );
+    const otherUser = request("/login", "same-key", {
+      sessionId: "s-eight",
+      sessionData: { user_id: 8 },
+      user: { id: 8 },
+    });
+    await run(mw, otherUser, handler(otherUser, { signedIn: 8 }, runs));
+    const otherGuest = request("/login", "same-key", { sessionId: "s-other" });
+    await run(mw, otherGuest, handler(otherGuest, { signedIn: "guest" }, runs));
+
+    expect(runs.count).toBe(3);
+    expect(otherUser.response?.headers.get("Idempotency-Replay")).toBeNull();
+    expect(await otherUser.response!.json()).toEqual({ signedIn: 8 });
+    expect(await otherGuest.response!.json()).toEqual({ signedIn: "guest" });
+  });
+
+  it("does not grow the cache when a client with no cookie is replayed", async () => {
+    // Each replay is given a session of its own, so storing the answer under it again would
+    // write a full response to the cache for every replay.
+    const cache = makeCache();
+    const writes = recordWrites(cache);
+    const mw = makeMiddleware({ cache, useLock: false });
+    const runs = { count: 0 };
+
+    const first = request("/api/search", "replayed");
+    await run(mw, first, handler(first, { results: [] }, runs));
+    const written = writes.length;
+    for (let i = 0; i < 20; i++) {
+      const replay = request("/api/search", "replayed");
+      await run(mw, replay, handler(replay, { results: i }, runs));
+      expect(replay.response?.headers.get("Idempotency-Replay")).toBe("true");
+    }
+
+    expect(runs.count).toBe(1);
+    expect(written).toBe(2); // the unscoped key and the first request's new session
+    expect(writes).toHaveLength(written);
+  });
+
+  it("writes nothing to the cache for a request that waited on another", async () => {
+    const cache = makeCache();
+    const writes = recordWrites(cache);
+    const mw = makeMiddleware({ cache, useLock: false });
+    const runs = { count: 0 };
+
+    const click = request("/api/checkout", "double-click");
+    const again = request("/api/checkout", "double-click");
+    const running = run(mw, click, handler(click, { charged: 1 }, runs, 50));
+    await Bun.sleep(5); // the first click is now in flight
+    await run(mw, again, handler(again, { charged: 2 }, runs));
+    await running;
+
+    expect(runs.count).toBe(1);
+    expect(await again.response!.json()).toEqual({ charged: 1 });
+    expect(writes).toHaveLength(2);
+  });
+
+  it("writes nothing to the cache for a request that waited on the lock", async () => {
+    // Two processes share the cache and the lock; the second request waits on the lock,
+    // then finds the first one's answer stored.
+    const driver = new MemoryDriver();
+    let held: Promise<void> = Promise.resolve();
+    const lock = {
+      async block<T>(_name: string, _ttl: number, fn: () => Promise<T>): Promise<T> {
+        const before = held;
+        let release!: () => void;
+        held = new Promise<void>((resolve) => (release = resolve));
+        await before;
+        try {
+          return await fn();
+        } finally {
+          release();
+        }
+      },
+    } as unknown as LockManager;
+    const cacheOne = new CacheManager(driver);
+    const cacheTwo = new CacheManager(driver);
+    const writesOne = recordWrites(cacheOne);
+    const writesTwo = recordWrites(cacheTwo);
+    const one = makeMiddleware({ cache: cacheOne, lock });
+    const two = makeMiddleware({ cache: cacheTwo, lock });
+    const runs = { count: 0 };
+
+    const first = request("/api/checkout", "locked");
+    const second = request("/api/checkout", "locked");
+    const running = run(one, first, handler(first, { charged: 1 }, runs, 50));
+    await Bun.sleep(5); // the first process now holds the lock
+    await run(two, second, handler(second, { charged: 2 }, runs));
+    await running;
+
+    expect(runs.count).toBe(1);
+    expect(await second.response!.json()).toEqual({ charged: 1 });
+    expect(writesOne).toHaveLength(2);
+    expect(writesTwo).toHaveLength(0);
+  });
+
+  it("stores a response under one key only when the scope option is given", async () => {
+    const cache = makeCache();
+    const writes = recordWrites(cache);
+    const mw = makeMiddleware({ cache, useLock: false, scope: () => undefined });
+
+    const first = request("/api/checkout", "explicit", { startedSessionId: "s-new" });
+    await run(mw, first, handler(first, { charged: 1 }, { count: 0 }));
+    const login = request("/api/login", "explicit", { sessionId: "s-guest" });
+    await run(
+      mw,
+      login,
+      changesCaller(login, { signedIn: 7 }, { count: 0 }, () => {
+        sessionOf(login).regenerate();
+        sessionOf(login).set("user_id", 7);
+        Object.assign(login, { user: { id: 7 } });
+      }),
+    );
+
+    expect(writes).toHaveLength(2);
+  });
+
+  it("does not replay a response from another host under the same key", async () => {
+    // Two tenants served on subdomains of one app, each with its own user 1.
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+    const user = { id: 1 };
+
+    const acme = request("/api/orders", "order-1001", { host: "acme.app.test", user });
+    await run(mw, acme, handler(acme, { tenant: "acme" }, runs));
+    const globex = request("/api/orders", "order-1001", { host: "globex.app.test", user });
+    await run(mw, globex, handler(globex, { tenant: "globex" }, runs));
+    const again = request("/api/orders", "order-1001", { host: "ACME.app.test", user });
+    await run(mw, again, handler(again, { tenant: "acme again" }, runs));
+
+    expect(runs.count).toBe(2);
+    expect(globex.response?.headers.get("Idempotency-Replay")).toBeNull();
+    expect(await globex.response!.json()).toEqual({ tenant: "globex" });
+    expect(await again.response!.json()).toEqual({ tenant: "acme" });
+  });
+
+  it("does not replay a response from another query string under the same key", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+    const user = { id: 7 };
+
+    const one = request("/api/charge?account=1", "k-charge", { user });
+    await run(mw, one, handler(one, { account: 1 }, runs));
+    const two = request("/api/charge?account=2", "k-charge", { user });
+    await run(mw, two, handler(two, { account: 2 }, runs));
+    const again = request("/api/charge?account=1", "k-charge", { user });
+    await run(mw, again, handler(again, { account: "1 again" }, runs));
+
+    expect(runs.count).toBe(2);
+    expect(two.response?.headers.get("Idempotency-Replay")).toBeNull();
+    expect(await two.response!.json()).toEqual({ account: 2 });
+    expect(await again.response!.json()).toEqual({ account: 1 });
+  });
+
+  it("keeps two kinds of token subject with the same id apart", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const asUser = request("/api/orders", "k-type", {
+      user: { id: 1, _token: { tokenable_type: "user" } },
+    });
+    await run(mw, asUser, handler(asUser, { subject: "user 1" }, runs));
+    const asTeam = request("/api/orders", "k-type", {
+      user: { id: 1, _token: { tokenable_type: "team" } },
+    });
+    await run(mw, asTeam, handler(asTeam, { subject: "team 1" }, runs));
+    const again = request("/api/orders", "k-type", {
+      user: { id: 1, _token: { tokenable_type: "team" } },
+    });
+    await run(mw, again, handler(again, { subject: "team 1 again" }, runs));
+
+    expect(runs.count).toBe(2);
+    expect(await asTeam.response!.json()).toEqual({ subject: "team 1" });
+    expect(await again.response!.json()).toEqual({ subject: "team 1" });
+  });
+
+  it("does not replay a response from another path or method under the same key", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+    const user = { id: 7 };
+
+    const order = request("/api/orders", "k1", { user });
+    await run(mw, order, handler(order, { order: 1 }, runs));
+    const refund = request("/api/payments/refund", "k1", { user });
+    await run(mw, refund, handler(refund, { refund: "ok" }, runs));
+    const first = request("/api/accounts/1/charge", "k2", { user });
+    await run(mw, first, handler(first, { account: 1 }, runs));
+    const other = request("/api/accounts/2/charge", "k2", { user });
+    await run(mw, other, handler(other, { account: 2 }, runs));
+    const put = request("/api/orders", "k1", { user, method: "PUT" });
+    await run(mw, put, handler(put, { put: true }, runs));
+
+    expect(runs.count).toBe(5);
+    expect(await refund.response!.json()).toEqual({ refund: "ok" });
+    expect(await other.response!.json()).toEqual({ account: 2 });
+    expect(await put.response!.json()).toEqual({ put: true });
+  });
+
+  it("still replays to the same user on the same path, in sequence and concurrently", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const ctx1 = request("/api/orders", "k-9", { user: { id: 3 } });
+    const ctx2 = request("/api/orders", "k-9", { user: { id: 3 } });
+    await Promise.all([
+      run(mw, ctx1, handler(ctx1, { id: 1 }, runs, 30)),
+      run(mw, ctx2, handler(ctx2, { id: 2 }, runs)),
+    ]);
+    const ctx3 = request("/api/orders", "k-9", { user: { id: 3 } });
+    await run(mw, ctx3, handler(ctx3, { id: 3 }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(await ctx2.response!.json()).toEqual({ id: 1 });
+    expect(ctx3.response?.headers.get("Idempotency-Replay")).toBe("true");
+    expect(await ctx3.response!.json()).toEqual({ id: 1 });
+  });
+
+  it("uses the scope option when one is given", async () => {
+    const mw = makeMiddleware({
+      useLock: false,
+      scope: (http: HttpContext) => http.header("X-Api-Client") ?? undefined,
+    });
+    const runs = { count: 0 };
+
+    const a1 = request("/api/orders", "k", { headers: { "X-Api-Client": "client-a" } });
+    await run(mw, a1, handler(a1, { client: "a" }, runs));
+    const b = request("/api/orders", "k", { headers: { "X-Api-Client": "client-b" } });
+    await run(mw, b, handler(b, { client: "b" }, runs));
+    const a2 = request("/api/orders", "k", { headers: { "X-Api-Client": "client-a" } });
+    await run(mw, a2, handler(a2, { client: "a again" }, runs));
+
+    expect(runs.count).toBe(2);
+    expect(await b.response!.json()).toEqual({ client: "b" });
+    expect(await a2.response!.json()).toEqual({ client: "a" });
+  });
+
+  it("leaves a request with no user, no returned session and no scope unscoped", async () => {
+    const mw = makeMiddleware({ useLock: false });
+    const runs = { count: 0 };
+
+    const ctx1 = request("/api/ping", "anon-key");
+    await run(mw, ctx1, handler(ctx1, { n: 1 }, runs));
+    const ctx2 = request("/api/ping", "anon-key");
+    await run(mw, ctx2, handler(ctx2, { n: 2 }, runs));
+
+    expect(runs.count).toBe(1);
+    expect(await ctx2.response!.json()).toEqual({ n: 1 });
+  });
+
+  it("names the lock from the cache's prefix and the scoped key", async () => {
+    const driver = new MemoryDriver();
+    const { lock, names } = recordingLock();
+    const cacheA = new CacheManager(driver, "tenant:a:");
+    const writes = recordWrites(cacheA);
+    const tenantA = makeMiddleware({ cache: cacheA, lock });
+    const tenantB = makeMiddleware({ cache: new CacheManager(driver, "tenant:b:"), lock });
+    const runs = { count: 0 };
+
+    const ctxA = request("/api/invoices", "same-key", { user: { id: 1 } });
+    await run(tenantA, ctxA, handler(ctxA, { tenant: "A" }, runs));
+    const ctxB = request("/api/invoices", "same-key", { user: { id: 1 } });
+    await run(tenantB, ctxB, handler(ctxB, { tenant: "B" }, runs));
+
+    expect(names).toHaveLength(2);
+    expect(names[0]).toBe(`idempotency:lock:tenant:a:${writes[0]!.key}`);
+    expect(names[1]).toStartWith("idempotency:lock:tenant:b:");
+    expect(new Set(names).size).toBe(2);
   });
 });

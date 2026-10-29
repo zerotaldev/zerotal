@@ -746,9 +746,11 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
    * @category Request data
    */
   input<T = unknown>(key: string, fallback?: T): T {
-    if (key in this.params) return this.params[key] as unknown as T;
+    if (Object.hasOwn(this.params, key)) return this.params[key] as unknown as T;
     const body = this._body;
-    if (body !== undefined && !Array.isArray(body) && key in body) return body[key] as T;
+    if (body !== undefined && !Array.isArray(body) && Object.hasOwn(body, key)) {
+      return body[key] as T;
+    }
     const queryValue = this.url.searchParams.get(key);
     if (queryValue !== null) return queryValue as unknown as T;
     if (this._body === undefined) _warnUnreadBody(this.request, this._routeDef?.pattern, key);

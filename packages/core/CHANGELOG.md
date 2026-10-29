@@ -10,6 +10,10 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`ctx.input()` reads only the body's and the route's own fields.** It tested `key in body`,
+  which also matches what every object inherits, so `ctx.input("toString")` or
+  `ctx.input("constructor")` returned a function from `Object.prototype` instead of the query
+  value or the fallback. It now checks own properties only.
 - **Registering your own `SecureHeadersMiddleware` keeps the maintenance gate.** An app that
   registered its own copy, usually `SecureHeadersMiddleware.with({ secure: true })` or a subclass,
   dropped the whole kernel instead of the kernel's copy of the headers, so `GateMiddleware` went

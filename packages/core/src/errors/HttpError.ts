@@ -6,6 +6,25 @@
 import { ZerotalError } from "./ZerotalError.ts";
 
 /**
+ * Set on every error `abort()` throws, so it counts as an answer to the client whatever class
+ * it is: `abort(ErrorClass)` can throw any `ZerotalError`. A registered symbol, so an error
+ * thrown by a second copy of core carries the same key.
+ *
+ * @internal
+ */
+export const _ABORTED: unique symbol = Symbol.for("zerotal.aborted");
+
+/**
+ * Set on `HttpError.prototype`, so every `HttpError` and every subclass of it carries it, and
+ * nothing else does: an app's own class that happens to be named `HttpError` is not one. A
+ * registered symbol, so an error built by a second copy of core carries the same key, and a
+ * non-enumerable prototype property, so a copy of the error's fields leaves it behind.
+ *
+ * @internal
+ */
+export const _HTTP_ERROR: unique symbol = Symbol.for("zerotal.httpError");
+
+/**
  * An error that maps directly onto an HTTP response.
  *
  * @param code - Defaults to `E_HTTP_<status>` when omitted.
@@ -13,6 +32,10 @@ import { ZerotalError } from "./ZerotalError.ts";
  */
 export class HttpError extends ZerotalError {
   headers?: Record<string, string>;
+
+  static {
+    Object.defineProperty(this.prototype, _HTTP_ERROR, { value: true });
+  }
 
   constructor(message: string, status: number, code?: string, headers?: Record<string, string>) {
     super(message, code ?? `E_HTTP_${status}`, status);

@@ -1170,6 +1170,27 @@ describe("Application._handleErrorAsync() — the log line on the default path",
     expect(logged).toEqual([]);
   });
 
+  // Thrown on purpose and answered with the status they carry. Logged at error level with a
+  // stack, they buried the real faults.
+  it("does not log a thrown 403, 409 or abort(422) as an unhandled error", async () => {
+    const { ForbiddenError, ConflictError } = await import("../errors/HttpError.ts");
+    const { abort } = await import("../helpers/response.ts");
+    const logged: string[] = [];
+    const app = await appLoggingTo(logged);
+
+    let aborted: unknown;
+    try {
+      abort(422, "nope");
+    } catch (error) {
+      aborted = error;
+    }
+
+    expect((await handle(app, new ForbiddenError())).status).toBe(403);
+    expect((await handle(app, new ConflictError())).status).toBe(409);
+    expect((await handle(app, aborted)).status).toBe(422);
+    expect(logged).toEqual([]);
+  });
+
   it("still logs a genuine fault, once", async () => {
     const logged: string[] = [];
     const app = await appLoggingTo(logged);
@@ -1177,6 +1198,23 @@ describe("Application._handleErrorAsync() — the log line on the default path",
     const res = await handle(app, new Error("boom"));
 
     expect(res.status).toBe(500);
+    expect(logged).toEqual(["Unhandled error"]);
+  });
+
+  // Answered with the upstream's status, but nothing here chose to refuse the client.
+  it("logs an HttpClientError from an upstream 401 as an unhandled error", async () => {
+    const { HttpClientResponse } = await import("../http/HttpClient.ts");
+    const logged: string[] = [];
+    const app = await appLoggingTo(logged);
+
+    let upstream: unknown;
+    try {
+      new HttpClientResponse(new Response(null, { status: 401 })).throw();
+    } catch (error) {
+      upstream = error;
+    }
+
+    expect((await handle(app, upstream)).status).toBe(401);
     expect(logged).toEqual(["Unhandled error"]);
   });
 });
@@ -1196,9 +1234,121 @@ describe("_isExpectedOutcome()", () => {
     }
   });
 
+  it("is true for a 4xx HttpError, whichever copy of core built it", async () => {
+    const { _isExpectedOutcome } = await import("./ExceptionHandler.ts");
+    const { ForbiddenError, ConflictError, UnauthorizedError, HttpError } =
+      await import("../errors/HttpError.ts");
+
+    expect(_isExpectedOutcome(new UnauthorizedError())).toBe(true);
+    expect(_isExpectedOutcome(new ForbiddenError())).toBe(true);
+    expect(_isExpectedOutcome(new ConflictError())).toBe(true);
+    expect(_isExpectedOutcome(new HttpError("Payment required", 402))).toBe(true);
+    // An app's own subclass of core's HttpError is one too.
+    class PaymentRequiredError extends HttpError {
+      constructor() {
+        super("Payment required", 402);
+      }
+    }
+    expect(_isExpectedOutcome(new PaymentRequiredError())).toBe(true);
+    // An app can hold a second copy of core, whose errors are not instances of this one's
+    // classes. Its HttpError brands its prototype with the same registered symbol, and that is
+    // what is looked for.
+    class ForeignHttpError extends Error {
+      status = 403;
+    }
+    Object.defineProperty(ForeignHttpError.prototype, Symbol.for("zerotal.httpError"), {
+      value: true,
+    });
+    class ForeignForbidden extends ForeignHttpError {}
+    expect(_isExpectedOutcome(new ForeignForbidden("Forbidden"))).toBe(true);
+    // The brand is not one of the error's fields: a copy of them does not carry it.
+    expect(Object.getOwnPropertySymbols({ ...new ForbiddenError() })).toEqual([]);
+  });
+
+  it("is false for an app's own class that is merely named HttpError", async () => {
+    // Matching by name silenced an app's own HttpError, say one wrapping an upstream API's
+    // failures, as if the framework had refused the request on purpose.
+    const { _isExpectedOutcome } = await import("./ExceptionHandler.ts");
+    const AppErrors = {
+      HttpError: class HttpError extends Error {
+        status = 403;
+      },
+    };
+    class UpstreamForbidden extends AppErrors.HttpError {}
+
+    expect(AppErrors.HttpError.name).toBe("HttpError");
+    expect(_isExpectedOutcome(new AppErrors.HttpError("Forbidden"))).toBe(false);
+    expect(_isExpectedOutcome(new UpstreamForbidden("Forbidden"))).toBe(false);
+  });
+
+  it("is true for whatever abort() threw with a 4xx, whatever its class", async () => {
+    const { _isExpectedOutcome } = await import("./ExceptionHandler.ts");
+    const { ZerotalError } = await import("../errors/ZerotalError.ts");
+    const { abort } = await import("../helpers/response.ts");
+    class PaymentRequiredError extends ZerotalError {
+      constructor() {
+        super("Payment required", "E_PAYMENT_REQUIRED", 402);
+      }
+    }
+
+    const thrown: unknown[] = [];
+    for (const fire of [() => abort(403, "nope"), () => abort(PaymentRequiredError)]) {
+      try {
+        fire();
+      } catch (error) {
+        thrown.push(error);
+      }
+    }
+
+    expect(thrown.map(_isExpectedOutcome)).toEqual([true, true]);
+    // Not a ZerotalError the framework raised: the same class thrown directly is a fault.
+    expect(_isExpectedOutcome(new PaymentRequiredError())).toBe(false);
+    // The mark is not one of the error's fields: a copy of them, as a log context or a JSON
+    // body is built, does not carry it.
+    expect(Object.getOwnPropertySymbols({ ...(thrown[1] as object) })).toEqual([]);
+  });
+
+  // These carry a status because something upstream answered with it, not because this
+  // request chose to refuse the client.
+  it("is false for an error that only repeats an upstream status", async () => {
+    const { _isExpectedOutcome } = await import("./ExceptionHandler.ts");
+    const { HttpClientResponse } = await import("../http/HttpClient.ts");
+    const { ZerotalError } = await import("../errors/ZerotalError.ts");
+
+    let upstream: unknown;
+    try {
+      new HttpClientResponse(new Response(null, { status: 401 })).throw();
+    } catch (error) {
+      upstream = error;
+    }
+    expect(upstream).toHaveProperty("status", 401);
+    expect(_isExpectedOutcome(upstream)).toBe(false);
+    // The shape of an API client's or an AI provider's error: a ZerotalError with a 4xx.
+    expect(_isExpectedOutcome(new ZerotalError("rate limited", "E_AI_RATE_LIMIT", 429))).toBe(
+      false,
+    );
+    expect(_isExpectedOutcome(Object.assign(new Error("x"), { status: 403 }))).toBe(false);
+  });
+
   it("is false for anything else, including what is not an error at all", async () => {
     const { _isExpectedOutcome } = await import("./ExceptionHandler.ts");
+    const { HttpError, ServiceUnavailableError } = await import("../errors/HttpError.ts");
 
+    expect(_isExpectedOutcome(new HttpError("down", 500))).toBe(false);
+    expect(_isExpectedOutcome(new ServiceUnavailableError())).toBe(false);
+    expect(_isExpectedOutcome(Object.assign(new HttpError("x", 403), { status: "403" }))).toBe(
+      false,
+    );
+    // Thrown with a status but not an Error: the default renderer answers these with a 500.
+    expect(_isExpectedOutcome(new Response(null, { status: 403 }))).toBe(false);
+    expect(_isExpectedOutcome({ status: 409 })).toBe(false);
+    expect(
+      _isExpectedOutcome(
+        new (class HttpError {
+          status = 403;
+        })(),
+      ),
+    ).toBe(false);
     expect(_isExpectedOutcome(new Error("boom"))).toBe(false);
     expect(_isExpectedOutcome(new TypeError("boom"))).toBe(false);
     expect(_isExpectedOutcome(null)).toBe(false);
@@ -1216,6 +1366,10 @@ describe("_isExpectedOutcome()", () => {
     const probe = new Probe();
 
     expect(probe.reports(Object.assign(new Error("x"), { name: "NotFoundError" }))).toBe(false);
+    const { ConflictError } = await import("../errors/HttpError.ts");
+    const { ZerotalError } = await import("../errors/ZerotalError.ts");
+    expect(probe.reports(new ConflictError())).toBe(false);
+    expect(probe.reports(new ZerotalError("upstream said 401", "E_HTTP_CLIENT", 401))).toBe(true);
     expect(probe.reports(new Error("boom"))).toBe(true);
   });
 });

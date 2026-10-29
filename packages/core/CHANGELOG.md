@@ -16,6 +16,19 @@ follows the Zerotal monorepo's unified versioning.
   view page and a Flow page: a throttle allowed half its budget, and anything with a side effect
   did it twice. Classic routes and `_middleware.ts` middleware were not affected. The scanner now
   leaves the group's middleware to the registrar, which applies it once.
+- **A thrown 4xx is logged as one warning, without a stack.** A `ForbiddenError`, a
+  `ConflictError` or an `abort(422)` is thrown on purpose, but `LogProvider` logged every failed
+  request as an ERROR `Request pipeline error` with a stack built inside its own listener, and an
+  app's exception handler reported it as `Unhandled error`, so the real faults were buried. An
+  `HttpError` below 500 (core's, or a subclass of it, but not an app's own class that is only
+  named `HttpError`) and whatever `abort()` throws with a 4xx are now expected outcomes
+  (recognised across a second copy of core too): the log has one `Request warning` that names the
+  error, and `report()` skips it. An error that only repeats an upstream status, such as an
+  `HttpClientError` from a 401 or an API or AI client's error, is still logged at error level and
+  reported. `RequestFailed` carries the verdict as `expected`. A thrown outcome answered below 400
+  (a form's validation redirect, a passing precognition check) is no longer logged at all, as a
+  returned one is not. A 5xx is still logged at error level, now with the thrown error's own name
+  and stack.
 
 ## [1.16.0] — 2026-10-28
 

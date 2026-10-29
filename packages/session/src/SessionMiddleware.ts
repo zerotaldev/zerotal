@@ -85,8 +85,8 @@ export class SessionMiddleware extends BaseMiddleware<SessionOptions> {
       this.options.driver = (await rootContainer.make("session.driver" as never)) as SessionDriver;
     }
 
-    const { id, data } = await this.options.driver.loadFromRequest(http.request);
-    const session = new SessionManager(id, data, this.options.driver);
+    const { id, data, resumed } = await this.options.driver.loadFromRequest(http.request);
+    const session = new SessionManager(id, data, this.options.driver, resumed === true);
     // http.session is declared on HttpContext (typed as SessionContract, which
     // SessionManager implements), so the assignment needs no cast.
     http.session = session;

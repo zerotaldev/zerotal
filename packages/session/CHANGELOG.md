@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`ctx.session.resumed()`: whether the client sent the session back.** Every request gets a
+  session, so a client that does not keep cookies is handed a new one, with a new ID, on every
+  request, and nothing told that apart from a returning session. `resumed()` is `true` only when
+  the request carried a session cookie the driver accepted and the ID has not been regenerated
+  since, which is the case where the next request from that client will bring the same ID. Both
+  drivers report it through the new optional `SessionPayload.resumed`; a custom driver that does
+  not set it gets sessions that report `false`. The `Session` facade has it too.
+
 ## [1.10.0] — 2026-08-30
 
 ### Fixed

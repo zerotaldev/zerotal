@@ -41,11 +41,21 @@ export class SessionManager implements SessionContract {
   readonly #sweepKeys: Set<string>;
   // Keys flashed in THIS request — written to `_flash_keys` by _prepareForSave().
   readonly #flashKeys = new Set<string>();
+  // The id the request's cookie named, when the driver accepted it; see resumed().
+  readonly #returnedId: string | undefined;
 
-  constructor(id: string, data: Record<string, unknown>, driver: SessionDriver) {
+  /**
+   * @param id - The session ID.
+   * @param data - The session's stored data.
+   * @param driver - The driver that loaded it and will save it.
+   * @param resumed - `true` when the request carried a cookie naming this session (the
+   *   driver's `SessionPayload.resumed`); defaults to `false`, a session started here.
+   */
+  constructor(id: string, data: Record<string, unknown>, driver: SessionDriver, resumed = false) {
     this._id = id;
     this._data = { ...data };
     this._driver = driver;
+    this.#returnedId = resumed ? id : undefined;
 
     // Keys stored under '_flash_keys' by the previous request's _prepareForSave()
     // will be swept after this request's response is sent.
@@ -62,6 +72,21 @@ export class SessionManager implements SessionContract {
    */
   id(): string {
     return this._id;
+  }
+
+  /**
+   * Whether the client sent this session back: the request carried a session cookie the
+   * driver accepted, and the session it named is this one. `false` for a session started
+   * on this request, which is what a client that does not keep cookies gets every time,
+   * and after {@link regenerate}, since the new ID is one the client has not yet seen.
+   *
+   * Code that keys something on the session ID and expects the next request from the same
+   * client to find it, such as a retry, checks this first: the ID of a session that was
+   * not resumed will not come back.
+   * @category Reading
+   */
+  resumed(): boolean {
+    return this.#returnedId !== undefined && this.#returnedId === this._id;
   }
 
   /**

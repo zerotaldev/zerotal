@@ -94,7 +94,11 @@ export interface FileRouteContext {
   urlPath: string;
   /** The imported module's exports. */
   module: Record<string, unknown>;
-  /** Middleware collected from _middleware.ts files (outermost first). */
+  /**
+   * Middleware collected from _middleware.ts files (outermost first), then the file's own
+   * `export const middleware`. The enclosing group's middleware is not included: register
+   * through a `Router` registrar, which prepends it.
+   */
   middleware: MiddlewareClass[];
   /** Auto-generated GET route name for this path. */
   name: string;
@@ -499,8 +503,10 @@ export async function scanFileRoutes(baseDir: string, reloadId?: string): Promis
     if (_shouldSkip(normalised)) continue;
 
     // Apply any active group prefix (set by Router.groupAsync wrapping scanFileRoutes).
+    // The group's middleware is not read here: every registrar a file route reaches
+    // (`_registerFileHandler`, `_registerAbsolute`, `Router.get`) prepends it itself, so
+    // copying it into the route's own list ran each group middleware twice per request.
     const groupPrefix = Router._activePrefix;
-    const groupMiddleware = Router._activeMiddleware;
 
     const rawPath = filePathToRoutePath(normalised);
     const urlPath = groupPrefix + rawPath;
@@ -509,9 +515,10 @@ export async function scanFileRoutes(baseDir: string, reloadId?: string): Promis
     // `index.ts` files are collection endpoints (GET → .index suffix in auto-names).
     const isIndex = /(?:^|\/)index\.(tsx?)$/.test(normalised);
     const fileMiddleware = await _collectMiddleware(absoluteBase, normalised, reloadId);
-    // Stacked directory middleware: group prefix, then `_middleware.ts` chain. A route
-    // file's own `export const middleware` is layered on per-verb after the import below.
-    const baseMiddleware = [...groupMiddleware, ...fileMiddleware];
+    // Stacked directory middleware: the `_middleware.ts` chain. A route file's own
+    // `export const middleware` is layered on per-verb after the import below, and the
+    // registrar puts the group's middleware in front of both.
+    const baseMiddleware = fileMiddleware;
 
     const layout = _layoutsEnabled
       ? await _collectLayout(absoluteBase, normalised, reloadId)

@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A route group's middleware runs once on a file route.** The file scanner copied the group's
+  middleware into each route's own list, and the registrar it then called put the group's
+  middleware in front of that list again, so every group middleware ran twice on a file route, a
+  view page and a Flow page: a throttle allowed half its budget, and anything with a side effect
+  did it twice. Classic routes and `_middleware.ts` middleware were not affected. The scanner now
+  leaves the group's middleware to the registrar, which applies it once.
+
 ## [1.16.0] — 2026-10-28
 
 ### Added

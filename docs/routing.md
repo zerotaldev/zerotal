@@ -761,6 +761,10 @@ For `app/routes/api/v2/me/posts.ts` the stack would be:
 3. `app/routes/api/v2/_middleware.ts` (if present)
 4. `app/routes/api/v2/me/_middleware.ts` ← adds `RequireAuthMiddleware`
 
+The route group's own middleware (the `web` group's, or the `middleware` of an
+entry passed to `fileBasedRouting()`) runs once, ahead of this stack, and the
+file's own `export const middleware` runs after it.
+
 #### Route groups in file trees
 
 Use `(group)` directory names to apply shared `_middleware.ts` without affecting

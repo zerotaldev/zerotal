@@ -5735,7 +5735,7 @@
       "file": "docs/orm/index.md",
       "heading": "Testing",
       "ordinal": 2,
-      "hash": "1jm33t1y89nn"
+      "hash": "2kpr3orvxouz"
     },
     {
       "file": "docs/orm/index.md",
@@ -5865,12 +5865,6 @@
     },
     {
       "file": "docs/orm/queries.md",
-      "heading": "Cursor pagination",
-      "ordinal": 0,
-      "hash": "lveejsss6fsy"
-    },
-    {
-      "file": "docs/orm/queries.md",
       "heading": "Debugging queries",
       "ordinal": 0,
       "hash": "1zps8sevfmcu"
@@ -5919,12 +5913,6 @@
     },
     {
       "file": "docs/orm/queries.md",
-      "heading": "Keyset pagination",
-      "ordinal": 0,
-      "hash": "1nostux4b8ml"
-    },
-    {
-      "file": "docs/orm/queries.md",
       "heading": "Loading and refreshing",
       "ordinal": 0,
       "hash": "2jh6oyfq3b7c"
@@ -5937,15 +5925,15 @@
     },
     {
       "file": "docs/orm/queries.md",
-      "heading": "Offset pagination",
-      "ordinal": 0,
-      "hash": "1k8z0ubpnxn6"
-    },
-    {
-      "file": "docs/orm/queries.md",
       "heading": "Ordering and limits",
       "ordinal": 0,
       "hash": "b99tvcg5r1an"
+    },
+    {
+      "file": "docs/orm/queries.md",
+      "heading": "Pagination",
+      "ordinal": 0,
+      "hash": "392y0leasnlw"
     },
     {
       "file": "docs/orm/queries.md",
@@ -7866,6 +7854,12 @@
       "heading": "1.13 to 1.14",
       "ordinal": 0,
       "hash": "2iclnbrmuks0"
+    },
+    {
+      "file": "docs/upgrade.md",
+      "heading": "1.7.2 and 1.7.3",
+      "ordinal": 0,
+      "hash": "3vryxxmejov4"
     },
     {
       "file": "docs/upgrade.md",

@@ -9,6 +9,7 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { escapeHtml } from "@zerotal/core/helpers";
+import { isProdLike, deployEnv } from "@zerotal/core";
 import { getExposedProps, getLockedProps } from "./decorators.ts";
 import {
   _setExposedKeyCapture,
@@ -323,6 +324,31 @@ const _renderCtxStorage = new AsyncLocalStorage<_RenderCtx>();
 /** @internal — returns the render context for the current async execution. */
 function _getRenderCtx(): _RenderCtx | undefined {
   return _renderCtxStorage.getStore();
+}
+
+/**
+ * In development, refuse a binding that no client will ever act on.
+ *
+ * `onClick={this.save}` on a static component used to render `flow:click="save"`
+ * and do nothing: a static page is not registered with the client, so a click
+ * there finds no component to send to, and nothing said so on either side. A
+ * static child of an interactive parent is not refused, because the parent's
+ * client picks the binding up and runs the parent's action of that name.
+ *
+ * Only the runtime renderer checks. An AOT-compiled render never reaches `jsx()`.
+ */
+function _refuseDeadBinding(tag: string, prop: string, binding: string): void {
+  const page = _getRenderCtx()?.page as
+    | { isInteractive?: boolean; _flowEnclosedLive?: boolean; constructor: { name: string } }
+    | undefined;
+  if (!page || page.isInteractive !== false || page._flowEnclosedLive) return;
+  if (isProdLike(deployEnv()) || Bun.env["NODE_ENV"] === "production") return;
+  throw new Error(
+    `[Flow] <${tag} ${prop}={…}> in <${page.constructor.name}> renders ${binding}, but ` +
+      `<${page.constructor.name}> is \`static interactive = false\` and nothing interactive ` +
+      `encloses it, so no client will act on it. Move the control into an interactive ` +
+      `child (this.child(...)), or make the component interactive.`,
+  );
 }
 
 // ── Nested component thunks ───────────────────────────────────────────────────
@@ -1105,6 +1131,7 @@ export function jsx(
         const event = k.slice(2).toLowerCase();
         const base = `flow:${event}`;
         const attr = modifiers ? `${base}.${modifiers}` : base;
+        _refuseDeadBinding(type, k, attr);
         attrs.push(`${attr}="${escapeAttr(body)}"`);
         continue;
       }
@@ -1130,6 +1157,7 @@ export function jsx(
             );
 
       const attrName = modifiers ? `${baseKey}.${modifiers}` : baseKey;
+      _refuseDeadBinding(type, k, attrName);
       attrs.push(`${attrName}="${escapeAttr(targetName)}"`);
       continue;
     }
@@ -1146,6 +1174,7 @@ export function jsx(
       const isArrow =
         !src.startsWith("function") && /^\s*(async\s+)?(\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/.test(src);
       const fnName = (v as { name?: string }).name;
+      _refuseDeadBinding(type, k, `flow:${event}`);
       if (!isArrow && fnName && fnName !== "anonymous" && fnName !== "") {
         // Method reference — onClick={this.save} → server action.
         attrs.push(`flow:${event}="${escapeAttr(fnName)}"`);
@@ -1196,6 +1225,7 @@ export function jsx(
       }
       const bound = _resolveValueBind(v);
       if (bound) {
+        _refuseDeadBinding(type, k, bound.locked ? `:${k}` : "flow:model");
         if (bound.locked) {
           attrs.push(`:${k}="$flow.${bound.name}"`);
           if (k === "value") attrs.push(`value="${escapeAttr(String(v ?? ""))}" readonly`);
@@ -1223,6 +1253,7 @@ export function jsx(
     if (k === "show" || k === "showImportant") {
       const bound = _resolveValueBind(v);
       if (bound) {
+        _refuseDeadBinding(type, k, String(PULSE_PROP_MAP[k]));
         attrs.push(`${PULSE_PROP_MAP[k]}="${escapeAttr(bound.name)}"`);
         continue;
       }

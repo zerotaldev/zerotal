@@ -30,6 +30,7 @@ class Component = {
   _events: {    name: string;    data: Record<string, unknown>;    to?: string;    self?: boolean;}[]
   _exposedData: () => Record<string, unknown>
   _flashes: FlashMessage[]
+  _flowEnclosedLive: boolean
   _flowId: string
   _flowPath: string
   _flowSlots: Record<string, string>
@@ -37,6 +38,7 @@ class Component = {
   _prevChildIds: string[]
   _redirectStatus: number | null
   _redirectUrl: string | null
+  _refuseDeadListeners: () => void
   _renderStaticChild: <C extends Component>(ChildClass: new () => C, opts: {    props?: Partial<C>;    slots?: Record<string, string>;}) => Promise<string>
   _resolveTitle: () => string | null
   _shouldRefresh: boolean

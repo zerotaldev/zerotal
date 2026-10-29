@@ -10,6 +10,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **Registering your own `SecureHeadersMiddleware` keeps the maintenance gate.** An app that
+  registered its own copy, usually `SecureHeadersMiddleware.with({ secure: true })` or a subclass,
+  dropped the whole kernel instead of the kernel's copy of the headers, so `GateMiddleware` went
+  with it and a closed site answered every request. Only the kernel's `SecureHeadersMiddleware` is
+  replaced now; the gate still runs first.
 - **A route group's middleware runs once on a file route.** The file scanner copied the group's
   middleware into each route's own list, and the registrar it then called put the group's
   middleware in front of that list again, so every group middleware ran twice on a file route, a

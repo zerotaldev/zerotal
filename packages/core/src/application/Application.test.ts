@@ -695,10 +695,24 @@ describe("Application.globalMiddleware", () => {
     expect(app.globalMiddleware).toEqual([GateMiddleware]);
   });
 
-  it("does not stack a second copy when the app registers its own", () => {
+  it("does not stack a second copy when the app registers its own, and keeps the gate first", () => {
+    // Replacing the headers replaces the kernel's copy of them and nothing else. Dropping the
+    // whole kernel here silently turned off maintenance mode for every app that customised
+    // its security headers.
     const Configured = SecureHeadersMiddleware.with({ secure: true });
     const app = Application.create({ env: "test" }).use(Configured);
-    expect(app.globalMiddleware).toEqual([Configured]);
+    expect(app.globalMiddleware).toEqual([GateMiddleware, Configured]);
+  });
+
+  it("keeps the gate first when the app registers a SecureHeaders subclass", () => {
+    class AppHeaders extends SecureHeadersMiddleware {}
+    class PipeA {
+      handle(_ctx: unknown, next: () => Promise<Response | void>) {
+        return next();
+      }
+    }
+    const app = Application.create({ env: "test" }).use([PipeA, AppHeaders]);
+    expect(app.globalMiddleware).toEqual([GateMiddleware, PipeA, AppHeaders]);
   });
 
   it("includes middleware added via use()", () => {

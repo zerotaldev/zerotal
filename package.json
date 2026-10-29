@@ -56,14 +56,14 @@
   "devDependencies": {
     "@eslint/js": "^9.13.0",
     "@zerotal/core": "workspace:*",
-    "@types/bun": "^1.4.2",
+    "@types/bun": "^1.4.4",
     "eslint": "^9.13.0",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.9.9",
+    "prettier": "^3.9.10",
     "typedoc": "^0.28.20",
-    "typedoc-plugin-markdown": "^4.13.1",
+    "typedoc-plugin-markdown": "^4.14.1",
     "typescript": "^5.8.0",
-    "typescript-eslint": "^8.71.1"
+    "typescript-eslint": "^8.72.0"
   },
   "workspaces": [
     "packages/*",

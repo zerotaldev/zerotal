@@ -1,5 +1,6 @@
 import { deepMerge } from "@zerotal/core";
-import { NotificationConfigError } from "./errors.ts";
+import { resolveAddress } from "./drivers/MailDriver.ts";
+import { InvalidMailAddressError, NotificationConfigError } from "./errors.ts";
 import type { NotificationConfigShape } from "./types.ts";
 
 /** Recursively-optional view of the config, so callers can override just the keys they care about. */
@@ -89,7 +90,35 @@ export function validateNotificationConfig(config: NotificationConfigShape): voi
     }
   }
 
-  if (!mail.from.address.includes("@")) {
+  // Every message is sent from this address, so one the mail check refuses would
+  // fail every send. Saying so here names the key, once, at boot. It is resolved the
+  // way a send resolves it, so "App <app@example.com>" is accepted here as there.
+  let sender: string;
+  try {
+    sender = resolveAddress({ address: mail.from.address }).address;
+  } catch (error) {
+    if (!(error instanceof InvalidMailAddressError)) throw error;
+    throw new NotificationConfigError(
+      `mail.from.address ${JSON.stringify(mail.from.address)} cannot be used as the sender: ` +
+        `${String(error.context?.["reason"])}. Write a bare address and put the sender's name ` +
+        `in mail.from.name, or write both as "Name <address>".`,
+      { address: mail.from.address },
+    );
+  }
+  // The name is checked on its own, so the error names the key that holds it.
+  try {
+    resolveAddress(mail.from);
+  } catch (error) {
+    if (!(error instanceof InvalidMailAddressError)) throw error;
+    throw new NotificationConfigError(
+      `mail.from.name cannot be used as the sender's name: ` +
+        `${String(error.context?.["reason"])}. A sender's name may not contain a line break ` +
+        `or any other control character.`,
+      { address: mail.from.address },
+    );
+  }
+
+  if (!sender.includes("@")) {
     throw new NotificationConfigError(
       `mail.from.address '${mail.from.address}' is not an email address.`,
       { address: mail.from.address },

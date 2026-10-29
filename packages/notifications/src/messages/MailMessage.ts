@@ -1,5 +1,6 @@
 import { tryCurrentApp } from "@zerotal/core";
 import {
+  _assertPayloadAddresses,
   resolveAddress,
   resolveHeaders,
   type AddressInput,
@@ -346,14 +347,23 @@ export class MailMessage {
 
   /**
    * Resolve to the wire payload a driver sends. `defaultFrom` and `fallbackTo` come from
-   * MailChannel (config default sender + the notifiable's address).
+   * MailChannel (config default sender + the notifiable's address). Either may be written
+   * as `Name <address>`; it is split as {@link resolveAddress} splits it.
+   *
+   * @throws {InvalidMailAddressError} When an address on the payload, `defaultFrom` and
+   *   `fallbackTo` included, contains a character no address may hold.
    */
   toPayload(defaultFrom: MailAddress, fallbackTo: MailAddress[]): MailPayload {
     const html = this._html ?? this._renderHtml();
     const text = this._text ?? this._renderText();
-    return {
-      to: this._to.length > 0 ? this._to : fallbackTo,
-      from: this._from ?? defaultFrom,
+    // The builder methods resolve and check what they are given, but the default
+    // sender comes from config and the fallback recipient is the notifiable's own
+    // `email` or routed address, and neither passed through them. Each is resolved
+    // here instead, `Name <address>` included, so every driver refuses the same
+    // addresses, not only SMTP.
+    const payload: MailPayload = {
+      to: this._to.length > 0 ? this._to : fallbackTo.map(resolveAddress),
+      from: this._from ?? resolveAddress(defaultFrom),
       subject: this._subject,
       ...(html ? { html } : {}),
       ...(text ? { text } : {}),
@@ -363,6 +373,8 @@ export class MailMessage {
       ...(this._attachments.length > 0 ? { attachments: this._attachments } : {}),
       ...(Object.keys(this._headers).length > 0 ? { headers: this._headers } : {}),
     };
+    _assertPayloadAddresses(payload);
+    return payload;
   }
 
   // ── Rendering ──────────────────────────────────────────────────────────────

@@ -40,8 +40,8 @@ export type {
 } from "./drivers/MailDriver.ts";
 // Exported for the same reason the drivers above are: writing a custom transport
 // is a supported thing to do, and a custom transport has to refuse the same header
-// names the built-in ones refuse.
-export { RESERVED_MAIL_HEADERS, resolveHeaders } from "./drivers/MailDriver.ts";
+// names the built-in ones refuse, and the same addresses.
+export { RESERVED_MAIL_HEADERS, resolveHeaders, assertMailAddress } from "./drivers/MailDriver.ts";
 
 export { SendNotificationJob } from "./SendNotificationJob.ts";
 export { BroadcastNotificationJob } from "./BroadcastNotificationJob.ts";

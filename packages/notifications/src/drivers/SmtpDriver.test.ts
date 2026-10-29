@@ -1,7 +1,10 @@
 import { describe, it, expect, afterEach } from "bun:test";
 import { SmtpDriver } from "./SmtpDriver.ts";
-import { SmtpResponseError, SmtpConnectionError } from "../errors.ts";
+import { SmtpResponseError, SmtpConnectionError, InvalidMailAddressError } from "../errors.ts";
 import type { MailPayload } from "./MailDriver.ts";
+import { MailMessage } from "../messages/MailMessage.ts";
+import { MailChannel } from "../MailChannel.ts";
+import { Notification } from "../Notification.ts";
 
 /**
  * A scripted SMTP server.
@@ -118,6 +121,20 @@ function payload(overrides: Partial<MailPayload> = {}): MailPayload {
     text: "Plain body",
     ...overrides,
   };
+}
+
+/** The first header line of the raw message with this name. */
+function headerLine(raw: string, name: string): string {
+  const headers = raw.slice(0, raw.indexOf("\r\n\r\n")).split("\r\n");
+  return headers.find((l) => l.startsWith(`${name}: `)) ?? "";
+}
+
+/**
+ * The addresses a reader of a To or Cc header finds: quoted strings (with their
+ * quoted-pairs) skipped, then every `<…>` left over.
+ */
+function mailboxes(header: string): string[] {
+  return [...header.replace(/"(?:[^"\\]|\\.)*"/g, "").matchAll(/<([^>]*)>/g)].map((m) => m[1]!);
 }
 
 /** The body of a single-part message as the receiver sees it, dot-stuffing undone. */
@@ -343,15 +360,103 @@ describe("SmtpDriver — header safety", () => {
     expect(lines).toContain("Subject: Hi Bcc: attacker@evil.test X-Injected: yes");
   });
 
-  it("strips CRLF from a display name", async () => {
+  it("refuses a display name with a line break before connecting", async () => {
+    const breaks = [
+      "\r\n",
+      "\n",
+      "\r",
+      ...[0x85, 0x2028, 0x2029].map((c) => String.fromCharCode(c)),
+    ];
+    for (const lineBreak of breaks) {
+      const server = serve({});
+      const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false, { timeoutMs: 2000 });
+
+      const error = await driver
+        .send(
+          payload({ from: { address: "app@test.local", name: `App${lineBreak}Bcc: evil@test` } }),
+        )
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(InvalidMailAddressError);
+      expect(server.received).toEqual([]);
+    }
+  });
+
+  it("writes a profile name holding a comma and a bracketed address as one recipient", async () => {
+    const server = serve({});
+    const channel = new MailChannel({
+      driver: "smtp",
+      from: { address: "app@test.local", name: "App" },
+      smtp: { host: "127.0.0.1", port: server.port, secure: false, username: "", password: "" },
+      resend: { apiKey: "" },
+      log: { channel: "console" },
+    });
+
+    await channel.send(
+      { id: 1, email: "victim@test.local", name: "x <spy@evil.test>, y" },
+      new (class extends Notification {
+        channels() {
+          return ["mail"];
+        }
+        toMail(): MailMessage {
+          return new MailMessage().subject("Your reset link").text("secret");
+        }
+      })(),
+    );
+
+    expect(server.received.filter((l) => l.startsWith("RCPT TO:"))).toEqual([
+      "RCPT TO:<victim@test.local>",
+    ]);
+    const to = headerLine(server.body, "To");
+    expect(to).toBe('To: "x <spy@evil.test>, y" <victim@test.local>');
+    expect(mailboxes(to)).toEqual(["victim@test.local"]);
+  });
+
+  it("escapes a trailing backslash so the quoted name still ends", async () => {
     const server = serve({});
     const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
 
     await driver.send(
-      payload({ from: { address: "app@test.local", name: "App\r\nBcc: evil@test" } }),
+      payload({
+        to: [
+          { address: "ada@test.local", name: "Victim\\" },
+          { address: "bo@test.local", name: "x" },
+        ],
+        replyTo: { address: "user@test.local", name: "Bob\\" },
+      }),
     );
 
-    expect(server.body).not.toMatch(/\r\nBcc: evil@test/);
+    // Unescaped, `"Victim\" <ada@test.local>, "x" <bo@test.local>` is one quoted
+    // string running on into the next mailbox; escaped, each mailbox stands alone.
+    const to = headerLine(server.body, "To");
+    expect(to).toBe(String.raw`To: "Victim\\" <ada@test.local>, "x" <bo@test.local>`);
+    expect(headerLine(server.body, "Reply-To")).toBe(
+      String.raw`Reply-To: "Bob\\" <user@test.local>`,
+    );
+    expect(mailboxes(to)).toEqual(["ada@test.local", "bo@test.local"]);
+  });
+
+  it("escapes a double quote in the name instead of dropping it", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ to: [{ address: "ada@test.local", name: 'Ada "the" Countess' }] }));
+
+    expect(headerLine(server.body, "To")).toBe(
+      String.raw`To: "Ada \"the\" Countess" <ada@test.local>`,
+    );
+  });
+
+  it("encodes a non-ASCII name as encoded-words outside quotes", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ to: [{ address: "j@test.local", name: "Jörg" }] }));
+
+    // An encoded-word inside a quoted-string is not decoded by a mail client.
+    expect(headerLine(server.body, "To")).toBe(
+      `To: =?UTF-8?B?${Buffer.from("Jörg").toString("base64")}?= <j@test.local>`,
+    );
   });
 
   it("encodes a non-ASCII subject as RFC 2047 rather than raw UTF-8", async () => {
@@ -373,6 +478,73 @@ describe("SmtpDriver — header safety", () => {
     // The lone dot is doubled on the wire, so the body is not truncated.
     expect(server.body).toContain("\r\n..\r\n");
     expect(server.body).toContain("last line");
+  });
+});
+
+describe("SmtpDriver — envelope safety", () => {
+  // A line break in an address would end MAIL FROM or RCPT TO early and put the
+  // rest on the wire as a command of its own. Each case runs against a fresh
+  // recording server, so anything that reached it is in `received`.
+  const smuggled = "ada@test.local>\r\nRCPT TO:<spy@evil.test";
+  const cases: Array<[string, Partial<MailPayload>]> = [
+    ["to", { to: [{ address: smuggled }] }],
+    ["from", { from: { address: smuggled } }],
+    ["cc", { cc: [{ address: smuggled }] }],
+    ["bcc", { bcc: [{ address: smuggled }] }],
+    ["replyTo", { replyTo: { address: smuggled } }],
+    ["to, bare LF", { to: [{ address: "ada@test.local>\nRCPT TO:<spy@evil.test" }] }],
+    ["to, bare CR", { to: [{ address: "ada@test.local>\rRCPT TO:<spy@evil.test" }] }],
+  ];
+
+  for (const [field, overrides] of cases) {
+    it(`refuses a line break in ${field} before connecting`, async () => {
+      const server = serve({});
+      const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false, { timeoutMs: 2000 });
+
+      const error = await driver.send(payload(overrides)).catch((e: unknown) => e);
+
+      expect(server.received.filter((l) => /spy@evil\.test/i.test(l))).toEqual([]);
+      expect(server.received).toEqual([]);
+      expect(error).toBeInstanceOf(InvalidMailAddressError);
+    });
+  }
+
+  it("refuses an address it was handed with a space or angle bracket in it", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false, { timeoutMs: 2000 });
+
+    for (const address of ["ada @test.local", "Ada <ada@test.local>"]) {
+      const error = await driver.send(payload({ to: [{ address }] })).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(InvalidMailAddressError);
+    }
+    expect(server.received).toEqual([]);
+  });
+
+  it("sends 'Name <address>' once MailMessage has split it", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(
+      new MailMessage()
+        .subject("Hello")
+        .text("Plain body")
+        .from("Billing <billing@test.local>")
+        .toPayload({ address: "app@test.local" }, [{ address: "Ada Lovelace <ada@test.local>" }]),
+    );
+
+    expect(server.received).toContain("MAIL FROM:<billing@test.local>");
+    expect(server.received).toContain("RCPT TO:<ada@test.local>");
+    expect(server.body).toContain('To: "Ada Lovelace" <ada@test.local>');
+    expect(server.body).toContain('From: "Billing" <billing@test.local>');
+  });
+
+  it("still sends to a quoted local part containing a second @", async () => {
+    const server = serve({});
+    const driver = new SmtpDriver("127.0.0.1", server.port, "", "", false);
+
+    await driver.send(payload({ to: [{ address: '"ada@home"@test.local' }] }));
+
+    expect(server.received).toContain('RCPT TO:<"ada@home"@test.local>');
   });
 });
 

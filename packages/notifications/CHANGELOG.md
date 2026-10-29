@@ -8,6 +8,35 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Security
+
+- **A mail address or display name with a line break in it is refused instead of sent, and a
+  display name can no longer add a recipient.** `SmtpDriver` wrote each address into `MAIL FROM`
+  and `RCPT TO` as given, so a CR or LF in a recipient, sender, cc or bcc address ended that
+  command and put the rest of the address on the wire as further commands, inside a session the
+  driver had already authenticated. Subjects and header values were already folded to one line;
+  addresses were not, and folding cannot rescue one. `MailMessage` now checks each address as it
+  is set and again when it builds the payload, which covers the notifiable's own `email` and a
+  routed address, and `SmtpDriver.send` and `ResendDriver.send` check the sender, every recipient
+  and the reply-to before they connect or call the API, since a payload can reach a driver without
+  passing through `MailMessage`. An address
+  holding a control character (NEL and the C1 range included), whitespace, `<`, `>`, `,` or `;`
+  throws `InvalidMailAddressError`; the last two would turn one address into a list on Resend. So does one longer than the 254
+  characters an SMTP path holds. The check is exported as `assertMailAddress()` for custom transports.
+  A second `@` is still accepted, because a quoted local part may hold one. An address written
+  with its display name, `"Ada Lovelace <ada@example.com>"` (the name optionally quoted), is
+  still accepted everywhere an address is: it is split into `{ name, address }` before the
+  address is checked; a name written that way may not hold `<`, `>` or a `"` of its own, and
+  anything else with `<` or `>` in it is refused. Every display name is checked too, including
+  an object's `name`, the notifiable's `name` and `mail.from.name`: one holding a control
+  character or a Unicode line or paragraph separator is refused. The drivers wrote names unsafely
+  as well: `ResendDriver` put the name bare into `"Name <addr>"`, so a profile name such as
+  `x <spy@example.com>, y` became a second recipient, and `SmtpDriver` quoted it but stripped
+  `"` without escaping `\`, so a trailing backslash escaped the closing quote. Both now write a
+  printable ASCII name as a quoted string with `\` and `"` escaped, and any other name as RFC 2047
+  encoded-words. `mail.from.address` may be bare or carry its name, and `NotificationConfig()`
+  refuses at boot an address or a `mail.from.name` that every send would refuse, naming the key.
+
 ## [1.15.5] — 2026-10-27
 
 ### Added

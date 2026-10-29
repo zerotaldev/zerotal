@@ -1,5 +1,5 @@
 import type { MailDriver, MailPayload } from "./MailDriver.ts";
-import { resolveHeaders } from "./MailDriver.ts";
+import { resolveHeaders, _assertPayloadAddresses, _formatMailbox } from "./MailDriver.ts";
 import { NotificationDeliveryError } from "../errors.ts";
 
 /**
@@ -10,12 +10,17 @@ export class ResendDriver implements MailDriver {
   constructor(private _apiKey: string) {}
 
   async send(message: MailPayload): Promise<void> {
-    const formatAddr = (a: { address: string; name?: string }) =>
-      a.name ? `${a.name} <${a.address}>` : a.address;
+    // Checked before the request: a payload can reach a driver without being built
+    // by MailMessage, and Resend reads a recipient string as a list, so an address
+    // holding a comma would be delivered to every address in it.
+    _assertPayloadAddresses(message);
 
+    // Resend reads "Name <addr>" back apart, so a name written into it bare could
+    // carry a comma and a bracketed address of its own and become a second
+    // recipient. The name is quoted or encoded, as it is in an SMTP header.
     const body: Record<string, unknown> = {
-      from: formatAddr(message.from),
-      to: message.to.map(formatAddr),
+      from: _formatMailbox(message.from),
+      to: message.to.map(_formatMailbox),
       subject: message.subject,
     };
 

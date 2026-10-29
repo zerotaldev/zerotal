@@ -4,6 +4,7 @@ import { MailChannel } from "../MailChannel.ts";
 import { Notification } from "../Notification.ts";
 import type { MailConfigShape, Notifiable } from "../types.ts";
 import type { MailDriver, MailPayload } from "../drivers/MailDriver.ts";
+import { InvalidMailAddressError } from "../errors.ts";
 
 const from = { address: "app@test.local", name: "Zerotal" };
 
@@ -158,6 +159,170 @@ describe("MailMessage — recipients", () => {
     await channel.send({ id: 1, email: "ada@test.local" }, new Explicit());
 
     expect(sent[0]!.to[0]!.address).toBe("someone@else.local");
+  });
+});
+
+describe("MailMessage — address checks", () => {
+  class Simple extends Notification {
+    channels() {
+      return ["mail"];
+    }
+    toMail(): MailMessage {
+      return new MailMessage().subject("Hi");
+    }
+  }
+
+  it("refuses an address with a line break when it is set", () => {
+    const bad = "ada@test.local\r\nRSET";
+    expect(() => new MailMessage().to(bad)).toThrow(InvalidMailAddressError);
+    expect(() => new MailMessage().cc([{ address: bad }])).toThrow(InvalidMailAddressError);
+    expect(() => new MailMessage().bcc(bad)).toThrow(InvalidMailAddressError);
+    expect(() => new MailMessage().from(bad)).toThrow(InvalidMailAddressError);
+    expect(() => new MailMessage().replyTo(bad)).toThrow(InvalidMailAddressError);
+  });
+
+  it("refuses a notifiable's email that never passed through to()", async () => {
+    const { channel, sent } = capturing(new MailChannel(config));
+
+    const error = await channel
+      .send({ id: 1, email: "ada@test.local\r\nRSET" }, new Simple())
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(InvalidMailAddressError);
+    expect(sent).toEqual([]);
+  });
+
+  it("refuses a notifiable's email that holds a list of addresses", async () => {
+    const { channel, sent } = capturing(new MailChannel(config));
+
+    const error = await channel
+      .send({ id: 1, email: "ada@test.local,eve@evil.test" }, new Simple())
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(InvalidMailAddressError);
+    expect(sent).toEqual([]);
+  });
+
+  it("refuses a routed address the same way", async () => {
+    const { channel, sent } = capturing(new MailChannel(config));
+
+    const error = await channel
+      .send({ id: 1, routeNotificationFor: () => "billing@test.local\nRSET" }, new Simple())
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(InvalidMailAddressError);
+    expect(sent).toEqual([]);
+  });
+
+  it("accepts 'Name <address>' on to, cc, bcc, from and replyTo", () => {
+    const payload = new MailMessage()
+      .subject("Hi")
+      .to("Ada Lovelace <ada@test.local>")
+      .cc(['"Babbage, Charles" <charles@test.local>'])
+      .bcc("  Audit <audit@test.local>  ")
+      .from("Billing <billing@test.local>")
+      .replyTo({ address: "Support <support@test.local>" })
+      .toPayload(from, []);
+
+    expect(payload.to).toEqual([{ address: "ada@test.local", name: "Ada Lovelace" }]);
+    expect(payload.cc).toEqual([{ address: "charles@test.local", name: "Babbage, Charles" }]);
+    expect(payload.bcc).toEqual([{ address: "audit@test.local", name: "Audit" }]);
+    expect(payload.from).toEqual({ address: "billing@test.local", name: "Billing" });
+    expect(payload.replyTo).toEqual({ address: "support@test.local", name: "Support" });
+  });
+
+  it("accepts a notifiable's email and the default sender written as 'Name <address>'", async () => {
+    const { channel, sent } = capturing(
+      new MailChannel({ ...config, from: { address: "App <app@test.local>", name: "Default" } }),
+    );
+
+    await channel.send({ id: 1, email: "Ada <ada@test.local>", name: "A. L." }, new Simple());
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.to).toEqual([{ address: "ada@test.local", name: "Ada" }]);
+    expect(sent[0]!.from).toEqual({ address: "app@test.local", name: "App" });
+  });
+
+  it("refuses 'Name <address>' with a line break in the name or the address", async () => {
+    for (const bad of [
+      "Ada\r\nBcc: spy@test.local <ada@test.local>",
+      "Ada <ada@test.local\r\nRSET>",
+      "Ada\n<ada@test.local>",
+    ]) {
+      expect(() => new MailMessage().to(bad)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().cc([bad])).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().bcc(bad)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().from(bad)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().replyTo(bad)).toThrow(InvalidMailAddressError);
+
+      const { channel, sent } = capturing(new MailChannel(config));
+      const error = await channel.send({ id: 1, email: bad }, new Simple()).catch((e) => e);
+      expect(error).toBeInstanceOf(InvalidMailAddressError);
+      expect(sent).toEqual([]);
+    }
+  });
+
+  it("refuses malformed angle brackets", () => {
+    for (const bad of [
+      "Ada <ada@test.local",
+      "Ada ada@test.local>",
+      "Ada <<ada@test.local>>",
+      "Ada <ada@test.local> <spy@test.local>",
+    ]) {
+      expect(() => new MailMessage().to(bad)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().from(bad)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().subject("Hi").toPayload({ address: bad }, [])).toThrow(
+        InvalidMailAddressError,
+      );
+      expect(() => new MailMessage().subject("Hi").toPayload(from, [{ address: bad }])).toThrow(
+        InvalidMailAddressError,
+      );
+    }
+  });
+
+  it("refuses a default sender with whitespace in it", () => {
+    expect(() =>
+      new MailMessage().subject("Hi").toPayload({ address: "app @test.local" }, []),
+    ).toThrow(InvalidMailAddressError);
+  });
+
+  it("refuses a line break in any display name, the notifiable's and the default sender's included", async () => {
+    const breaks = ["\r\n", "\n", ...[0x85, 0x2028, 0x2029].map((c) => String.fromCharCode(c))];
+    for (const lineBreak of breaks) {
+      const name = `Ada${lineBreak}Bcc: spy@test.local`;
+      const mailbox = { address: "ada@test.local", name };
+      expect(() => new MailMessage().to(mailbox)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().cc([mailbox])).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().bcc(mailbox)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().from(mailbox)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().replyTo(mailbox)).toThrow(InvalidMailAddressError);
+      expect(() => new MailMessage().subject("Hi").toPayload(mailbox, [])).toThrow(
+        InvalidMailAddressError,
+      );
+      expect(() => new MailMessage().subject("Hi").toPayload(from, [mailbox])).toThrow(
+        InvalidMailAddressError,
+      );
+
+      // The profile name on a notifiable is user data, and MailChannel makes it the
+      // recipient's display name.
+      const { channel, sent } = capturing(new MailChannel(config));
+      const error = await channel
+        .send({ id: 1, email: "ada@test.local", name }, new Simple())
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(InvalidMailAddressError);
+      expect(sent).toEqual([]);
+    }
+  });
+
+  it("keeps a profile name with quotes, a comma or angle brackets as the name", async () => {
+    const { channel, sent } = capturing(new MailChannel(config));
+
+    await channel.send(
+      { id: 1, email: "ada@test.local", name: 'x <spy@evil.test>, "y"\\' },
+      new Simple(),
+    );
+
+    expect(sent[0]!.to).toEqual([{ address: "ada@test.local", name: 'x <spy@evil.test>, "y"\\' }]);
   });
 });
 

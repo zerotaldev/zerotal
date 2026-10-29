@@ -143,6 +143,39 @@ export class SmtpConnectionError extends NotificationError {
   }
 }
 
+/**
+ * Thrown when a mail address contains a character that has no place in one: a
+ * control character (CR and LF among them), whitespace, `<` or `>`. Also thrown
+ * when a display name, written into the address or set as an object's `name`,
+ * holds a control character or a Unicode line or paragraph separator, and for a
+ * value with `<` or `>` in it that is not exactly `Display Name <local@domain>`.
+ *
+ * An address is written into the SMTP envelope as the argument of a command, so
+ * any of these would end the command early or start another. The message quotes
+ * the address as a JSON string, with NEL and the Unicode separators escaped as
+ * well, so a line break in it cannot split a log line. A refused `name` is not
+ * quoted at all; the message names the address it belongs to.
+ */
+export class InvalidMailAddressError extends NotificationError {
+  constructor(address: unknown, reason: string) {
+    const shown =
+      typeof address === "string"
+        ? JSON.stringify(address.slice(0, 120)).replace(
+            /[\x7f-\x9f\u2028\u2029]/g,
+            (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+          )
+        : `(${typeof address})`;
+    super(
+      `[Zerotal/notifications] Refusing the mail address ${shown}: ${reason}. Write a bare ` +
+        `address or 'Name <address>'; the address may not contain whitespace, control ` +
+        `characters, '<' or '>'.`,
+      "E_NOTIFICATION_INVALID_ADDRESS",
+      500,
+      { address, reason },
+    );
+  }
+}
+
 /** Thrown when `config/notifications.ts` is internally inconsistent. */
 export class NotificationConfigError extends NotificationError {
   constructor(message: string, context?: Record<string, unknown>) {

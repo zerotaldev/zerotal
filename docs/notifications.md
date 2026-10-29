@@ -101,9 +101,12 @@ export default NotificationConfig({
 
 `NotificationConfig()` checks the result before returning it, so combinations
 that could only fail at send time fail at boot instead: a `resend` driver with no
-API key, an `smtp` driver with no host, a username without a password, a `from`
-that is not an address, or an SMS driver missing its credential block. Each
-raises a `NotificationConfigError` naming the key to fix.
+API key, an `smtp` driver with no host, a username without a password, a
+`from.address` that is not an address, a `from.name` with a line break in it, or an
+SMS driver missing its credential block. Each raises a `NotificationConfigError`
+naming the key to fix.
+`from.address` may be a bare address or `"App <app@example.com>"`; a name written
+there is used in place of `from.name`.
 
 ### SMTP transport security
 
@@ -374,6 +377,35 @@ toMail(n: Notifiable): MailMessage {
     .action("Track package", "https://app.test/orders/123");
 }
 ```
+
+`to()`, `cc()`, `bcc()`, `from()` and `replyTo()` take a bare address, an address
+with its display name written as `"Ada Lovelace <ada@example.com>"` (the name may be
+quoted), or an object with an `address` and a `name`. The display form is split into
+the two, and a name written that way takes the place of the object's `name`.
+
+The address itself is written into the SMTP envelope as given, so one containing
+whitespace, a control character (a line break among them), `<`, `>`, `,` or `;` is
+refused with an `InvalidMailAddressError`; a comma or semicolon would turn one address
+into a list on an API driver. An address longer than 254 characters, the most an SMTP
+path holds, is refused too. So is anything with `<` or `>` in it that is not exactly
+`Name <address>`, and a name written that way that holds `<`, `>` or a `"` of its
+own, since such a string can be split more than one way. The same rules apply to the
+notifiable's `email` or routed address when it becomes the recipient, and the SMTP
+and Resend drivers check every address and name once more before they send.
+
+Every display name is checked as well: one written into the address, the `name` of an
+object, the notifiable's `name` that becomes the recipient's, and `mail.from.name`.
+A name usually comes from user data, so one holding a control character or a Unicode
+line or paragraph separator (U+2028, U+2029) is refused with an
+`InvalidMailAddressError`, as an address would be. Anything else may stay in the
+`name` of an object, quotes, a backslash, a comma and angle brackets included: the
+SMTP and Resend drivers write a name in printable ASCII as a quoted string with `\` and
+`"` escaped, and any other name as RFC 2047 encoded-words, so a profile name such as
+`x <spy@example.com>, y` names one recipient and never adds a second.
+
+Writing a custom transport? The payload it is handed holds bare addresses and the
+names as they were given; call `assertMailAddress()` on each address, and quote or
+encode each name rather than writing it bare beside the address.
 
 Attach files with `attach()` when you already have the bytes, or `attachFile()`
 to read one from disk. `embed()` places an image in the body rather than listing
@@ -894,6 +926,7 @@ durable record is the database channel.
 | `NotificationChannelUnavailableError` | A declared channel is not registered or is missing config.    |
 | `UnknownNotificationTypeError`        | A queued notification's stored type cannot be resolved back.  |
 | `UnknownSmsDriverError`               | The configured SMS driver name is not recognised.             |
+| `InvalidMailAddressError`             | A mail address or its written name holds a bad character.     |
 | `SmtpConnectionError`                 | The SMTP server could not be reached or the handshake failed. |
 | `SmtpResponseError`                   | The SMTP server rejected a command, carrying its reply code.  |
 

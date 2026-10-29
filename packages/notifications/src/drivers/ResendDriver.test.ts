@@ -12,8 +12,12 @@
  */
 import { describe, it, expect, afterEach } from "bun:test";
 import { ResendDriver } from "./ResendDriver.ts";
-import { NotificationDeliveryError } from "../errors.ts";
+import { InvalidMailAddressError, NotificationDeliveryError } from "../errors.ts";
 import type { MailPayload } from "./MailDriver.ts";
+import { MailChannel } from "../MailChannel.ts";
+import { MailMessage } from "../messages/MailMessage.ts";
+import { Notification } from "../Notification.ts";
+import type { MailConfigShape } from "../types.ts";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -53,7 +57,7 @@ describe("ResendDriver — request", () => {
     expect(headers["Content-Type"]).toBe("application/json");
   });
 
-  it("formats named addresses as `Name <addr>` and bare ones as the address", async () => {
+  it("formats a named address as a quoted name and the address, a bare one as the address", async () => {
     const calls = capture();
     await new ResendDriver("k").send(
       payload({
@@ -63,8 +67,8 @@ describe("ResendDriver — request", () => {
     );
 
     const body = sentBody(calls);
-    expect(body.from).toBe("Acme Billing <sender@example.com>");
-    expect(body.to).toEqual(["Alice <a@example.com>", "b@example.com"]);
+    expect(body.from).toBe('"Acme Billing" <sender@example.com>');
+    expect(body.to).toEqual(['"Alice" <a@example.com>', "b@example.com"]);
   });
 
   it("omits optional fields entirely rather than sending empty ones", async () => {
@@ -221,4 +225,107 @@ describe("ResendDriver — custom headers", () => {
 
     expect(sentBody(calls).headers).toEqual({ "X-Trace": "a b" });
   });
+});
+
+describe("ResendDriver — display names", () => {
+  class Welcome extends Notification {
+    channels() {
+      return ["mail"];
+    }
+    toMail(): MailMessage {
+      return new MailMessage().subject("Your reset link").line("secret");
+    }
+  }
+
+  /**
+   * The addresses a reader of `"Name" <addr>, …` finds: quoted strings (with their
+   * quoted-pairs) skipped, then every `<…>` left over.
+   */
+  const mailboxes = (value: string): string[] =>
+    [...value.replace(/"(?:[^"\\]|\\.)*"/g, "").matchAll(/<([^>]*)>/g)].map((m) => m[1]!);
+
+  const config: MailConfigShape = {
+    driver: "resend",
+    from: { address: "app@example.com", name: "App" },
+    smtp: { host: "localhost", port: 1025, secure: false, username: "", password: "" },
+    resend: { apiKey: "k" },
+    log: { channel: "console" },
+  };
+
+  it("sends to one recipient when a profile name holds a comma and a bracketed address", async () => {
+    // Resend reads "Name <addr>" back apart. Written bare, this name was a second
+    // recipient: `x <spy@evil.test>, y <victim@example.com>`.
+    const calls = capture();
+    await new MailChannel(config).send(
+      { id: 1, email: "victim@example.com", name: "x <spy@evil.test>, y" },
+      new Welcome(),
+    );
+
+    const body = sentBody(calls);
+    expect(body.to).toEqual(['"x <spy@evil.test>, y" <victim@example.com>']);
+    expect(mailboxes(body.to[0])).toEqual(["victim@example.com"]);
+  });
+
+  it("escapes a quote and a trailing backslash in the name", async () => {
+    const calls = capture();
+    await new ResendDriver("k").send(
+      payload({
+        from: { address: "sender@example.com", name: 'Acme "Billing"' },
+        to: [{ address: "a@example.com", name: "Alice\\" }],
+      }),
+    );
+
+    const body = sentBody(calls);
+    expect(body.from).toBe(String.raw`"Acme \"Billing\"" <sender@example.com>`);
+    expect(body.to).toEqual([String.raw`"Alice\\" <a@example.com>`]);
+    expect(mailboxes(body.to[0])).toEqual(["a@example.com"]);
+  });
+
+  it("encodes a name outside printable ASCII rather than writing it raw", async () => {
+    const calls = capture();
+    await new ResendDriver("k").send(
+      payload({ to: [{ address: "j@example.com", name: "Jörg, <spy@evil.test>" }] }),
+    );
+
+    const [to] = sentBody(calls).to as string[];
+    expect(to).toMatch(/^=\?UTF-8\?B\?[A-Za-z0-9+/=]+\?= <j@example\.com>$/);
+  });
+
+  it("refuses a profile name with a Unicode line separator before sending", async () => {
+    const calls = capture();
+    const error = await new MailChannel(config)
+      .send(
+        { id: 1, email: "victim@example.com", name: `Ada${String.fromCharCode(0x2028)}x` },
+        new Welcome(),
+      )
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(InvalidMailAddressError);
+    expect(calls).toEqual([]);
+  });
+});
+
+describe("ResendDriver — addresses", () => {
+  // A payload can reach the driver without passing through MailMessage: a custom
+  // channel or a job builds or deserialises one itself. Resend reads a recipient
+  // string as a list, so the driver checks every address again before the request.
+  const listed = "a@x.test,b@y.test";
+  const unchecked: Array<[string, Partial<MailPayload>]> = [
+    ["to", { to: [{ address: listed }] }],
+    ["from", { from: { address: listed } }],
+    ["cc", { cc: [{ address: "a@x.test;b@y.test" }] }],
+    ["bcc", { bcc: [{ address: listed }] }],
+    ["replyTo", { replyTo: { address: listed } }],
+    ["to name", { to: [{ address: "a@x.test", name: "Ada\r\nBcc: spy@evil.test" }] }],
+  ];
+
+  for (const [field, overrides] of unchecked) {
+    it(`refuses a payload whose ${field} was never checked, before any request`, async () => {
+      const calls = capture();
+      const error = await new ResendDriver("k").send(payload(overrides)).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(InvalidMailAddressError);
+      expect(calls).toEqual([]);
+    });
+  }
 });

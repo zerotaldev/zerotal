@@ -1,5 +1,10 @@
 import type { MailDriver, MailPayload, MailAddress } from "./MailDriver.ts";
-import { resolveHeaders } from "./MailDriver.ts";
+import {
+  resolveHeaders,
+  _assertPayloadAddresses,
+  _encodeWord,
+  _formatMailbox,
+} from "./MailDriver.ts";
 import { SmtpResponseError, SmtpConnectionError } from "../errors.ts";
 
 /** How long to wait for any single SMTP reply before giving up. */
@@ -47,6 +52,11 @@ export class SmtpDriver implements MailDriver {
   ) {}
 
   async send(message: MailPayload): Promise<void> {
+    // Checked before connecting: an address goes into MAIL FROM and RCPT TO as
+    // written, and one carrying a line break would be read as a second command
+    // inside a session this driver has already authenticated.
+    _assertPayloadAddresses(message);
+
     const conn = await SmtpConnection.open(this._host, this._port, {
       tls: this._secure,
       rejectUnauthorized: this._options.rejectUnauthorized ?? true,
@@ -578,13 +588,16 @@ function encodeHeaderValue(value: string): string {
   const clean = sanitizeHeader(value);
   // eslint-disable-next-line no-control-regex -- matching non-ASCII by definition
   if (!/[^\x00-\x7F]/.test(clean)) return clean;
-  const base64 = Buffer.from(clean, "utf8").toString("base64");
-  return `=?UTF-8?B?${base64}?=`;
+  return _encodeWord(clean);
 }
 
+/**
+ * A mailbox for the From, To, Cc and Reply-To headers. The address was checked
+ * before connecting; the name is quoted with `\` and `"` escaped, or encoded when it
+ * is not printable ASCII (an encoded-word inside quotes is not decoded).
+ */
 function formatAddr(a: MailAddress): string {
-  const address = sanitizeHeader(a.address);
-  return a.name ? `"${encodeHeaderValue(a.name).replace(/"/g, "")}" <${address}>` : address;
+  return _formatMailbox(a);
 }
 
 /**

@@ -55,6 +55,65 @@ describe("validateNotificationConfig", () => {
     );
   });
 
+  it("accepts a from address written as 'Name <address>'", () => {
+    for (const address of ["App <app@test.local>", '"App, Inc." <app@test.local>']) {
+      expect(() => NotificationConfig({ mail: { from: { address, name: "X" } } })).not.toThrow();
+    }
+  });
+
+  it("rejects 'Name <address>' whose address is not an address", () => {
+    expect(() =>
+      NotificationConfig({ mail: { from: { address: "App <nope>", name: "X" } } }),
+    ).toThrow("is not an email address");
+  });
+
+  it("rejects at boot a from address that every send would refuse", () => {
+    for (const address of [
+      "app@test.local\r\nRSET",
+      " app@test.local",
+      "App <app@test.local\r\nRSET>",
+      "App\r\nBcc: spy@test.local <app@test.local>",
+      "App <app@test.local",
+      "App <<app@test.local>>",
+    ]) {
+      let caught: unknown;
+      try {
+        NotificationConfig({ mail: { from: { address, name: "X" } } });
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(NotificationConfigError);
+      expect((caught as Error).message).toContain("mail.from.address");
+      expect((caught as Error).message).not.toMatch(/[\r\n]/);
+    }
+  });
+
+  it("rejects at boot a from name with a line break, naming mail.from.name", () => {
+    const breaks = ["\r\n", "\n", ...[0x85, 0x2028, 0x2029].map((c) => String.fromCharCode(c))];
+    for (const lineBreak of breaks) {
+      let caught: unknown;
+      try {
+        NotificationConfig({
+          mail: { from: { address: "app@test.local", name: `App${lineBreak}Bcc: spy@test.local` } },
+        });
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(NotificationConfigError);
+      expect((caught as Error).message).toContain("mail.from.name");
+      expect((caught as Error).message).not.toContain("mail.from.address");
+      expect((caught as Error).message).not.toContain("spy@test.local");
+    }
+  });
+
+  it("accepts a from name with quotes, a comma or angle brackets", () => {
+    expect(() =>
+      NotificationConfig({
+        mail: { from: { address: "app@test.local", name: 'Acme "Billing", <Support>' } },
+      }),
+    ).not.toThrow();
+  });
+
   it("rejects twilio without its credential block", () => {
     expect(() => NotificationConfig({ sms: { driver: "twilio" } })).toThrow(
       "sms.twilio is missing",

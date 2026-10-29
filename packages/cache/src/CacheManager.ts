@@ -30,6 +30,16 @@ export class CacheManager {
     private _stampedeProtection: boolean = true,
   ) {}
 
+  /**
+   * The prefix this manager puts in front of every key it reads or writes: the namespace
+   * that keeps it apart from other managers on the same backend. Code that derives names
+   * for other shared resources from cache keys, such as a lock, includes it so that two
+   * namespaces never share one.
+   */
+  get prefix(): string {
+    return this._prefix;
+  }
+
   private _key(key: string): string {
     return this._prefix + key;
   }

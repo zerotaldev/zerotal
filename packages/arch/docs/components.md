@@ -8,7 +8,9 @@ description: Themeable UI components for Flow that you install via the CLI or im
 `@zerotal/flow-ui` ships 53 themeable components for [Flow](/docs/flow). They are
 built on accessible headless primitives and design tokens, so they follow your theme
 (light / dark) out of the box. Add them with the CLI (copy the source into your app) or
-import them straight from the package.
+import them straight from the package. The handful that ship inside `@zerotal/flow` itself
+(`Link`, `Modal`, `Flash`, `Table` and the headless primitives) are in
+[Flow's built-in components](/docs/flow/components).
 
 The catalogue covers what an application actually needs rather than only the obvious
 primitives:

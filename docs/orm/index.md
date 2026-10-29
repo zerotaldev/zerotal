@@ -8,10 +8,11 @@ description: Map model classes to database tables with an Active Record layer ov
 Zerotal's ORM is an Active Record layer built on top of Bun's native SQL client. Each model class maps to a database table, columns are declared with decorators, and queries read fluently in TypeScript. The same model code runs on SQLite, PostgreSQL, and MySQL.
 
 - [Casts & Mutators](/docs/orm/casts) — column types, custom casts, reactive JSON, the `static casts` map.
-- [Queries](/docs/orm/queries) — the query builder, instance methods, scopes, and pagination.
+- [Queries](/docs/orm/queries) — the query builder, writes and upserts, soft deletes, instance methods, and scopes.
 - [Relationships](/docs/orm/relationships) — `belongsTo`/`hasMany`/etc., eager loading, and pivot operations.
 - [Serialization](/docs/orm/serialization) — `hidden`/`visible`/`appends` and JSON output.
 - [Lifecycle & Events](/docs/orm/lifecycle) — hooks, observers, state machines, `dispatchesEvents`, pruning.
+- [Factories](/docs/orm/factories) — realistic model instances on demand, for seeders and tests.
 - [Migrations](/docs/migrations) — evolving your tables as models change.
 - [Seeding](/docs/seeding) — populating tables with factory and seeder data.
 
@@ -169,7 +170,7 @@ export class LedgerEntry extends Model {
 > **Tip** — Soft deletes are **not** a `@table` option. Opt in per model with the `SoftDeletes`
 > mixin: `class Post extends Model.using(SoftDeletes) {}`. It adds `deletedAt`, `restore()`,
 > `forceDelete()`, `trashed()`, and the `withTrashed()` / `onlyTrashed()` scopes. See
-> [Lifecycle & Events](/docs/orm/lifecycle).
+> [Queries](/docs/orm/queries#create-update-delete).
 
 #### A primary key that isn't `id`
 
@@ -333,19 +334,19 @@ inside-out and repeats the base.
 
 The mixins the framework ships:
 
-| Mixin                                       | Package                  | Adds                                                       |
-| ------------------------------------------- | ------------------------ | ---------------------------------------------------------- |
-| [`SoftDeletes`](/docs/orm/lifecycle)        | `@zerotal/orm`           | `deletedAt`, `restore()`, `withTrashed()`, `onlyTrashed()` |
-| [`State`](/docs/orm/lifecycle)              | `@zerotal/orm`           | `transitionTo()`, guarded state machines                   |
-| [`Authenticatable`](/docs/authentication)   | `@zerotal/auth`          | the auth contract `Auth.attempt()` resolves against        |
-| [`Roles`](/docs/authorization)              | `@zerotal/auth`          | `assignRole()`, `hasRole()`                                |
-| [`Permissions`](/docs/authorization)        | `@zerotal/auth`          | `givePermissionTo()`, `can()`                              |
-| [`EmailVerification`](/docs/authentication) | `@zerotal/auth`          | verification links and state                               |
-| [`PasswordReset`](/docs/authentication)     | `@zerotal/auth`          | reset tokens                                               |
-| [`Notifiable`](/docs/notifications)         | `@zerotal/notifications` | `notify()` and the notification channels                   |
-| [`Tenantable`](/docs/tenancy)               | `@zerotal/tenancy`       | automatic per-tenant scoping                               |
-| [`Auditable`](/docs/audit)                  | `@zerotal/audit`         | change history                                             |
-| [`Media`](/docs/media)                      | `@zerotal/media`         | file attachments, collections, image conversions           |
+| Mixin                                                   | Package                  | Adds                                                       |
+| ------------------------------------------------------- | ------------------------ | ---------------------------------------------------------- |
+| [`SoftDeletes`](/docs/orm/queries#create-update-delete) | `@zerotal/orm`           | `deletedAt`, `restore()`, `withTrashed()`, `onlyTrashed()` |
+| [`State`](/docs/orm/lifecycle)                          | `@zerotal/orm`           | `transitionTo()`, guarded state machines                   |
+| [`Authenticatable`](/docs/authentication)               | `@zerotal/auth`          | the auth contract `Auth.attempt()` resolves against        |
+| [`Roles`](/docs/authorization)                          | `@zerotal/auth`          | `assignRole()`, `hasRole()`                                |
+| [`Permissions`](/docs/authorization)                    | `@zerotal/auth`          | `givePermissionTo()`, `can()`                              |
+| [`EmailVerification`](/docs/authentication)             | `@zerotal/auth`          | verification links and state                               |
+| [`PasswordReset`](/docs/authentication)                 | `@zerotal/auth`          | reset tokens                                               |
+| [`Notifiable`](/docs/notifications)                     | `@zerotal/notifications` | `notify()` and the notification channels                   |
+| [`Tenantable`](/docs/tenancy)                           | `@zerotal/tenancy`       | automatic per-tenant scoping                               |
+| [`Auditable`](/docs/audit)                              | `@zerotal/audit`         | change history                                             |
+| [`Media`](/docs/media)                                  | `@zerotal/media`         | file attachments, collections, image conversions           |
 
 #### Composing onto a shared base
 
@@ -684,7 +685,7 @@ ambiguous. Assert on both sides — gone from the normal query, present with
 await post.delete();
 
 expect(await Post.find(post.id)).toBeNull();
-expect(await Post.query().withTrashed().where("id", post.id).first()).not.toBeNull();
+expect(await Post.withTrashed().where("id", post.id).first()).not.toBeNull();
 ```
 
 `assertDatabaseMissing("posts", { id })` would **fail** here, because the row is

@@ -28,20 +28,20 @@ cd my-app && bun dev
 
 ## Find your way around
 
-| If you want to…                    | Read                                                                                                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Handle a request                   | [Routing](/docs/routing) · [Controllers](/docs/controllers) · [Middleware](/docs/middleware) · [Requests Context](/docs/context)                  |
-| Talk to a database                 | [Database](/docs/database) · [ORM](/docs/orm) · [Migrations](/docs/migrations) · [Query Builder](/docs/query-builder)                             |
-| Build a UI                         | [Views](/docs/view) · [Flow](/docs/flow) · [Inertia](/docs/inertia) · [Assets](/docs/assets)                                                      |
-| Give staff a back office           | [Admin Panel](/docs/admin) · [Components](/docs/components)                                                                                       |
-| Sign users in                      | [Authentication](/docs/authentication) · [Authorization](/docs/authorization) · [Roles & 2FA](/docs/roles-and-2fa) · [Social Login](/docs/social) |
-| Do work in the background          | [Queue](/docs/queue) · [Scheduler](/docs/scheduler) · [Broadcasting](/docs/broadcasting)                                                          |
-| Understand how the framework boots | [The Application](/docs/application) · [Lifecycle](/docs/lifecycle) · [Container](/docs/container) · [Providers](/docs/providers)                 |
-| Test what you built                | [Testing](/docs/testing) · [HTTP Tests](/docs/testing/http) · [Database Tests](/docs/testing/database)                                            |
-| See what's running in production   | [Logger](/docs/logger) · [Monitor](/docs/monitor) · [Telemetry](/docs/telemetry) · [Health](/docs/health)                                         |
-| Debug what it just did             | [DevTools](/docs/devtools) · [Errors](/docs/errors)                                                                                               |
-| Work with a coding agent           | [Agent Surface](/docs/arch)                                                                                                                       |
-| Ship it                            | [Deployment](/docs/deployment) · [Site gate](/docs/site-gate) · [Commands](/docs/commands)                                                        |
+| If you want to…                    | Read                                                                                                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Handle a request                   | [Routing](/docs/routing) · [Controllers](/docs/controllers) · [Middleware](/docs/middleware) · [Requests Context](/docs/context)                      |
+| Talk to a database                 | [Database](/docs/database) · [ORM](/docs/orm) · [Migrations](/docs/migrations) · [Query Builder](/docs/query-builder)                                 |
+| Build a UI                         | [Views](/docs/view) · [Flow](/docs/flow) · [Inertia](/docs/inertia) · [Assets](/docs/assets)                                                          |
+| Give staff a back office           | [Admin Panel](/docs/admin) · [Components](/docs/components)                                                                                           |
+| Sign users in                      | [Authentication](/docs/authentication) · [Authorization](/docs/authorization) · [Two-Factor Auth](/docs/roles-and-2fa) · [Social Login](/docs/social) |
+| Do work in the background          | [Queue](/docs/queue) · [Scheduler](/docs/scheduler) · [Broadcasting](/docs/broadcasting)                                                              |
+| Understand how the framework boots | [The Application](/docs/application) · [Lifecycle](/docs/lifecycle) · [Container](/docs/container) · [Providers](/docs/providers)                     |
+| Test what you built                | [Testing](/docs/testing) · [HTTP Tests](/docs/testing/http) · [Database Tests](/docs/testing/database)                                                |
+| See what's running in production   | [Logger](/docs/logger) · [Monitor](/docs/monitor) · [Telemetry](/docs/telemetry) · [Health](/docs/health)                                             |
+| Debug what it just did             | [DevTools](/docs/devtools) · [Errors](/docs/errors)                                                                                                   |
+| Work with a coding agent           | [Agent Surface](/docs/arch)                                                                                                                           |
+| Ship it                            | [Deployment](/docs/deployment) · [Site gate](/docs/site-gate) · [Commands](/docs/commands)                                                            |
 
 ## Choosing a frontend
 

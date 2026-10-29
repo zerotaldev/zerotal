@@ -252,15 +252,15 @@ res.assertHeader("X-Inertia-Location");
 
 ## The rest of the guide
 
-| Page                                                | What it covers                                                                                            |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [Rendering Pages](/docs/inertia/rendering)          | Return a page from a controller, choose a component, and control the response.                            |
-| [Props](/docs/inertia/props)                        | Pass data to a page — eager, lazy, deferred, and merged props, plus the shared props every page receives. |
-| [Middleware & Versioning](/docs/inertia/middleware) | The Inertia middleware, asset versioning, and forcing a full reload after a deploy.                       |
-| [Server-Side Rendering](/docs/inertia/ssr)          | Render the first paint on the server, and what changes when you do.                                       |
-| [DevTools](/docs/inertia/devtools)                  | Record each request's component, props, and timing for the Inertia DevTools extension.                    |
-| [CLI & Build](/docs/inertia/build)                  | The page registry, the bundler pipeline, and building for production.                                     |
-| [Reference](/docs/inertia/references)               | Every helper, prop type, and config key in one table.                                                     |
+| Page                                                | What it covers                                                                                         |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [Rendering Pages](/docs/inertia/rendering)          | Return a page, resolve its component, persistent layouts, typed `route()` URLs, and redirects.         |
+| [Props](/docs/inertia/props)                        | Eager, lazy, deferred, merged and shared props, infinite scroll, history encryption, and precognition. |
+| [Middleware & Versioning](/docs/inertia/middleware) | The Inertia middleware, asset versioning, and forcing a full reload after a deploy.                    |
+| [Server-Side Rendering](/docs/inertia/ssr)          | Render the first paint on the server, and what changes when you do.                                    |
+| [DevTools](/docs/inertia/devtools)                  | Record each request's component, props, and timing for the Inertia DevTools extension.                 |
+| [CLI & Build](/docs/inertia/build)                  | The page registry, the bundler pipeline, and building for production.                                  |
+| [Reference](/docs/inertia/references)               | Every helper, prop type, and config key in one table.                                                  |
 
 ## Next steps
 

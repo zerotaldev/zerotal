@@ -296,7 +296,7 @@ inside a plain string is not interpolated: `@on("socket-private:issues.${this.is
 subscribes to a channel whose name contains those characters, and receives nothing.
 
 Pass a resolver instead. It is called with the component when the snapshot is built, exactly as
-[`@presence`](#presence--whos-here-multiplayer) and [`@shared`](#shared-state--everyone-converges-multiplayer)
+[`@presence`](#presence-whos-here-multiplayer) and [`@shared`](#shared-state-everyone-converges-multiplayer)
 resolve theirs:
 
 ```typescript fragment

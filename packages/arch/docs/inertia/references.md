@@ -23,7 +23,7 @@ A consolidated cheat-sheet for `@zerotal/inertia`. Each entry links to the secti
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `inertia(component, props?)`                         | Render an Inertia page from a controller action. See [the inertia helper](/docs/inertia/rendering#the-inertia-helper).                            |
 | `inertia.dynamic(component, props?)`                 | Render a page whose name is only known at runtime — no compile-time checking. See [what is not checked](/docs/inertia/props#what-is-not-checked). |
-| `inertiaStream(component, props?)`                   | Streaming SSR alternative to `inertia()`. See [Streaming SSR](/docs/inertia/ssr#streaming-ssr).                                                   |
+| `inertiaStream(component, props?)`                   | Streaming SSR alternative to `inertia()`. See [Streaming SSR](/docs/inertia/ssr#streaming-ssr-a-different-question).                              |
 | `inertiaStream.dynamic(component, props?)`           | The streaming counterpart of `inertia.dynamic()`.                                                                                                 |
 | `optional(fn)` / `lazy(fn)`                          | Prop sent only on a partial reload that requests it. See [optional and always props](/docs/inertia/props#optional-and-always-props).              |
 | `always(value)`                                      | Prop always sent, even when a partial reload would exclude it.                                                                                    |

@@ -130,7 +130,7 @@ provider's dashboard remains the authority.
 When the app's cache is one other processes can see, the daily total is kept there as well as
 in the process: SQLite on a file (`cache.sqlite.path` set to a path, not `:memory:`), or Redis.
 Each completed request adds its cost to a counter for the UTC day with one atomic increment
-(see [Counters](cache.md#counters)), and the ceiling is checked against that counter, so the
+(see [Counters](/docs/cache#counters)), and the ceiling is checked against that counter, so the
 web server, the worker and every restart spend from the same limit. Without it, four workers
 held four ceilings and each deploy began the day again at zero.
 

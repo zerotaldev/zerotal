@@ -34,6 +34,7 @@
     "release:notes:check": "bun run scripts/release-notes-check.ts",
     "docs:current": "bun run scripts/docs-current.ts",
     "retired:check": "bun run scripts/retired-commands-check.ts",
+    "docs:links": "bun run scripts/docs-links.ts",
     "cast:check": "bun run scripts/cast-audit.ts",
     "exact:optional": "bun run scripts/exact-optional.ts --write",
     "exact:optional:check": "bun run scripts/exact-optional.ts",

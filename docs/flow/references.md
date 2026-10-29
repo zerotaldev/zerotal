@@ -219,7 +219,7 @@ override async render() {
 ## Plain-form enhancement
 
 For forms on pages with no Flow component. See
-[Forms](/docs/flow/forms#enhancing-a-plain-form--no-component).
+[Forms](/docs/flow/forms#enhancing-a-plain-form-no-component).
 
 | Attribute / export    | Meaning                                                                                |
 | --------------------- | -------------------------------------------------------------------------------------- |

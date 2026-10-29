@@ -119,7 +119,7 @@ const dbUrl = env("DATABASE_URL", "sqlite://./database.sqlite");
 
 - [Application lifecycle](../../docs/application.md)
 - [Container](../../docs/container.md)
-- [Routing](../../docs/routing)
+- [Routing](../../docs/routing.md)
 - [Controllers](../../docs/controllers.md)
 - [Middleware](../../docs/middleware.md)
 - [Context](../../docs/context.md)

@@ -106,4 +106,4 @@ bun run typecheck
 
 ## Documentation
 
-- [Component reference](../../docs/components) — one page per component (install, preview, usage, props)
+- [Component reference](../../docs/components.md) — one page per component (install, preview, usage, props)

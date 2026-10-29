@@ -384,7 +384,7 @@ Nothing here breaks. Safe to take directly.
 
 - **A `_layout` file that could not apply rendered its pages without one**
   (`@zerotal/core`). The same fail-open the `_middleware` loader had in
-  [1.15.0](#1150--2026-09-04), one function up in the same file: an import error was
+  [1.15.0](#1150-2026-09-04), one function up in the same file: an import error was
   swallowed together with the not-found case. A `_layout.tsx` with a typo rendered every
   page beneath it stripped of its chrome, with no error and no log. Absence stays silent;
   a file that exists and threw now stops the boot with its path and the original error.
@@ -524,7 +524,7 @@ project, including one that never ran the scaffolder.
 ### Fixed
 
 - **Twenty pages taught a retired command.** `serve --dev` was retired in
-  [1.13.0](#1130--2026-08-31), and that release updated the runner, the codemod,
+  [1.13.0](#1130-2026-08-31), and that release updated the runner, the codemod,
   `docs/commands.md` and `docs/upgrade.md` — leaving the form in the getting-started guide,
   the assets guide, two Flow pages, the logger page, and both READMEs. For three weeks the
   front door told newcomers to run a command that exits 1.
@@ -560,7 +560,7 @@ walking the first-run path as a newcomer would, rather than reasoning about it.
 
 - **The scaffold templates shipped a retired command.** Every template's `package.json`
   carried `"dev": "bun zt.ts serve --dev"`, and `serve --dev` was retired in
-  [1.13.0](#1130--2026-08-31) — deliberately failing loudly rather than silently starting a
+  [1.13.0](#1130-2026-08-31) — deliberately failing loudly rather than silently starting a
   plain server with no watcher. So the first command a new user runs exited 1 and told them
   to use something else.
 
@@ -641,7 +641,7 @@ Two entries on the 2.0 ledger were filed as alias retirements and are mass renam
   The "trivial" codemod in the ledger is the app-side rewrite, which is genuinely trivial
   and already written; the framework side was never sized.
 - **Prefixing the 269 `@internal` exports with `_`** is the same shape, minus the classes
-  that [cannot be renamed at all](#1131--2026-08-31).
+  that [cannot be renamed at all](#1131-2026-08-31).
 
 Both move to 2.0 on the ledger's own rule — a break worth taking once, wanting one
 migration and one `zt upgrade` run rather than hundreds of app-visible type positions
@@ -673,7 +673,7 @@ says so.
   The endpoint exists because upstream Inertia runs on hosts with no JavaScript runtime:
   PHP cannot import a `.tsx`, so it posts `{ component, props, url }` to a Node process and
   gets `{ body, head }` back. That hop is forced by the host language, not chosen. Bun _is_
-  a JavaScript runtime, so [1.13.5](#1135--2026-09-01) made `ssr` import the component and
+  a JavaScript runtime, so [1.13.5](#1135-2026-09-01) made `ssr` import the component and
   render it inline — no serialisation, no second process, no network.
 
   So the endpoint solves a problem this framework does not have, and it stays only for the
@@ -924,7 +924,7 @@ The rename is re-scoped. The hazard it exposed is fixed here.
   ```
 
   It defaults to the class name, so a job that declares nothing behaves exactly as before.
-  This is the same tool [`Migration.id`](/docs/upgrade#1-10-to-1-11) is for a migration's
+  This is the same tool [`Migration.id`](/docs/upgrade#110-to-111) is for a migration's
   filename, shipped in 1.11.0 for the same reason: an identity the framework derived from a
   name someone was free to change, with no way to say otherwise.
 
@@ -1042,7 +1042,7 @@ the database was doing exactly what it had been asked to.
   read against the property types beside them, is the reliable way.
 - **The rows you already wrote are still text.** This stops new bad writes; it does not
   migrate old ones. Those rows keep reading truthy until they are converted. The
-  [upgrade guide](/docs/upgrade#1-11-to-1-12) has the statement.
+  [upgrade guide](/docs/upgrade#111-to-112) has the statement.
 
 ### Added
 
@@ -1143,7 +1143,7 @@ A custom `AiDriver` implementation compiles unchanged — returning `number` sti
 satisfies `Promise<number | null>`. It is callers who need the check.
 
 **This should have been a minor.** It shipped in a patch, which the versioning scheme
-says cannot carry a break; see [the note in the upgrade guide](/docs/upgrade#1-11-2).
+says cannot carry a break; see [the note in the upgrade guide](/docs/upgrade#1112).
 
 #### **INTERNAL** — four `@zerotal/ai` exports left the promised surface
 
@@ -1264,7 +1264,7 @@ Read the two items below before you take it.
   and exits non-zero, so a release script can gate on it.
 - **If you have ever renamed a migration file**, `migrate` will now stop rather than
   re-run it. That is the intended behaviour and the message says what to do; see
-  [the upgrade guide](/docs/upgrade#1-10-to-1-11).
+  [the upgrade guide](/docs/upgrade#110-to-111).
 
 ### Changed — BREAKING
 
@@ -1391,7 +1391,7 @@ for everybody. None of them logged anything.
   by nothing. Its default moved from the literal `"UTC"` to **the system zone**, so an app
   that never set the key keeps doing exactly what it did — but an app that set it now gets
   what it asked for. If you set it to `"UTC"` on a server that is not on UTC, your
-  schedules will move. See [the upgrade guide](/docs/upgrade#1-9-to-1-10).
+  schedules will move. See [the upgrade guide](/docs/upgrade#19-to-110).
 - **Named rate limiters need `.trustedProxies(n)` behind a proxy.** `.byIp()`, `.byUser()`
   and `.byApiKey()` now ignore `X-Forwarded-For` unless told how many proxies sit in
   front, which is the same rule `ThrottleMiddleware` already followed. `zt doctor` reports
@@ -1405,7 +1405,7 @@ for everybody. None of them logged anything.
   over `public/` there. Extracting merges, so every deploy adds another set of
   content-hashed chunks and none are ever removed. One app reached 225 chunk files for the
   49 its entry point references. Ship `.zerotal/` with the release and this removes what
-  the build record does not claim. See [Deployment](/docs/deployment#assetsprune--clearing-up-after-the-extract-instead-of-before-it).
+  the build record does not claim. See [Deployment](/docs/deployment#assetsprune-clearing-up-after-the-extract-instead-of-before-it).
 
 - **`zt deploy:<env> --check`** — the preflight gate on its own, for the point in a release
   script where the new code is on disk and the service has not restarted. Exit 0 and
@@ -1574,7 +1574,7 @@ if they do not apply to you.
   `pluralize`, `Str`, and new `formatMoney` / `formatNumber` / `formatDate`. A total that reads
   `R 39 147` on screen and `R39,147.00` on the invoice looks like two different numbers to the
   person paying it, and maintaining that in two files is how it happens. See
-  [Helpers](/docs/helpers#sharing-helpers-with-the-browser--zerotalshared).
+  [Helpers](/docs/helpers#sharing-helpers-with-the-browser-zerotalshared).
 
 - **`<form data-enhance>`** — a plain server-rendered page, with no Flow component on it, can
   submit without the page flashing. It posts through `fetch` and the matching form in the

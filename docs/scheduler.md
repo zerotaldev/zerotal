@@ -389,7 +389,7 @@ Configure it under `runLog` in `config/scheduler.ts` — `enabled` (default: on,
 except under `APP_ENV=test`), `path`, and `keep` (records retained after
 compaction, default 500). The store is bound in the container as
 `scheduler.runs`; rebind it to keep the history somewhere else, such as Redis.
-The [monitoring panel's](monitor.md) scheduled-tasks section reads the same
+The [monitoring panel's](/docs/monitor) scheduled-tasks section reads the same
 record, so a task that last ran before a deploy shows that run — marked
 "(recorded)" — instead of "Never run".
 

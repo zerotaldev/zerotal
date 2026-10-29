@@ -109,6 +109,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun run retired:check
 
+      # A link is checked against the page as the site renders it. On 29 Oct 2026
+      # twenty-two links went nowhere: anchors guessed by hand (`#1-10-to-1-11` for a
+      # heading that renders as `110-to-111`), and relative `.md` links that work on
+      # GitHub and 404 on zerotal.dev.
+      - name: Docs links arrive
+        if: ${{ !cancelled() }}
+        run: bun run docs:links
+
       - name: Docs coverage
         if: ${{ !cancelled() }}
         run: bun run docs:coverage

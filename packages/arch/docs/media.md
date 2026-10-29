@@ -276,7 +276,7 @@ await media.getTemporaryUrl(300); // the original, for 5 minutes
 await media.getTemporaryUrl(300, "thumb"); // a conversion
 ```
 
-See [Storage](storage.md) for how disks are configured and served.
+See [Storage](/docs/storage) for how disks are configured and served.
 
 ## Where files live
 

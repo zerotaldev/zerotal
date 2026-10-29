@@ -79,7 +79,7 @@ a renderer on another host.
 
 > **`ssr: true` does not register it, since 1.14.0.** It used to, which meant turning
 > rendering on opened a route the app never asked for. See
-> [the upgrade note](/docs/upgrade#1-13-to-1-14).
+> [the upgrade note](/docs/upgrade#113-to-114).
 
 ## Streaming SSR — a different question
 

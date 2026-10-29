@@ -179,7 +179,7 @@ is the client IP.
 > address**, including `.byUser()` and `.byApiKey()` — for a request with no user and
 > no key, which on a login form is every request that matters. So a named limiter
 > behind a reverse proxy needs `.trustedProxies(n)` for exactly the reason
-> [`ThrottleMiddleware` does](#throttlemiddleware--inline): without it the address is
+> [`ThrottleMiddleware` does](#throttlemiddleware-inline): without it the address is
 > the socket's, which is the _proxy's_, and every visitor shares one bucket. A
 > `login` limiter of five attempts a minute becomes five attempts a minute for your
 > whole user base, and one attacker locks everybody out.

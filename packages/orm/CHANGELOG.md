@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A model insert on SQLite reads back its own row.** The insert read its new id with a
+  second statement, `SELECT last_insert_rowid()`, which answers for the connection, and on
+  SQLite every request shares one. An INSERT from another request that ran between the two
+  handed the model that row's id, so `create()` returned someone else's row with its values,
+  and a later `save()` on the instance updated that row. The INSERT now reports its own key
+  with `RETURNING`, as on PostgreSQL. An insert through a view's `INSTEAD OF` trigger reports no
+  key, so the instance keeps the values it was given; it used to load whichever row the
+  connection had inserted before. MySQL is unchanged.
+
 ## [1.15.5] — 2026-10-27
 
 ### Fixed

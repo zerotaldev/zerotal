@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`createMany()`'s docblock no longer cites `last_insert_rowid()`.** Documentation only: the
+  ORM now reads an insert's key with `RETURNING` (see `@zerotal/orm`), so the docblock says the
+  inserts run one at a time to keep their order.
+
 ## [1.15.5] — 2026-10-27
 
 ### Fixed

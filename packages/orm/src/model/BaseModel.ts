@@ -1940,11 +1940,14 @@ export class BaseModel {
           }
         }
       } else {
-        await runSegs(conn, segs);
-        const [lastRow] = await runQuery<{ id: number }>(conn, [
-          "SELECT last_insert_rowid() as id",
-        ]);
-        newId = lastRow!.id;
+        // SQLite. The INSERT reports its own key. A separate `SELECT last_insert_rowid()`
+        // answered for the connection, which every request shares, so an INSERT from another
+        // async context between the two statements handed this model that row's id, and
+        // create() returned someone else's row. An insert through a view's INSTEAD OF trigger
+        // reports a null key, and the re-read below then finds nothing, as it should.
+        segs.push(` RETURNING ${ModelClass.primaryKey}`);
+        const [returning] = await runQuery<Record<string, unknown>>(conn, segs);
+        newId = returning?.[ModelClass.primaryKey as string];
       }
 
       const rows = await runQuery<Record<string, unknown>>(conn, [

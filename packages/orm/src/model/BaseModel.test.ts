@@ -617,8 +617,7 @@ describe("@manyToMany eager loading via .with()", () => {
   it("no N+1 — 3 posts with tags runs exactly 3 queries (posts + pivot + tags)", async () => {
     // Structural proof: 3 posts, 2 tags each — N+1 would be 1 + 3 = 4 queries.
     // With Two-Query Dictionary Match for pivot it is always exactly 3 regardless of count.
-    // Sequential seeding is required — SQLite's last_insert_rowid() is per-connection
-    // and races when concurrent Promise.all writes share the same connection.
+    // Sequential seeding keeps the ids in title order.
     const p1 = await seedPost(1, "P1");
     const p2 = await seedPost(1, "P2");
     const p3 = await seedPost(1, "P3");

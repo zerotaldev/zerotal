@@ -274,9 +274,8 @@ export class FactoryBatch<T extends BaseModel> {
   /**
    * Insert `n` instances sequentially and return them as an array.
    *
-   * Sequential (not parallel) to stay compatible with SQLite's single-write
-   * `last_insert_rowid()` behaviour. For Postgres this constraint doesn't apply
-   * but serial inserts are correct on all databases.
+   * Sequential (not parallel), so the instances are created in order and come
+   * back in it.
    */
   async create(overrides: Partial<InsertPayload<T>> = {}): Promise<T[]> {
     const results: T[] = [];

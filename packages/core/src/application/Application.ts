@@ -991,13 +991,16 @@ export class Application {
   /** Resolved middleware pipeline: kernel → provider auto → explicit .use() */
   private get _pipeline(): PipeClass[] {
     // An app that registers its own SecureHeadersMiddleware — usually `.with({ secure: true })`
-    // or a subclass — replaces the kernel copy rather than stacking a second one on top.
+    // or a subclass — replaces the kernel copy rather than stacking a second one on top. Only
+    // that copy: the gate stays first, so custom headers never reopen a closed site.
     const overridden = [...this._autoMiddleware, ...this._middleware].some(
       (registered) =>
         registered === SecureHeadersMiddleware ||
         registered.prototype instanceof SecureHeadersMiddleware,
     );
-    const kernel = overridden ? [] : this._kernelMiddleware;
+    const kernel = overridden
+      ? this._kernelMiddleware.filter((pipe) => pipe !== SecureHeadersMiddleware)
+      : this._kernelMiddleware;
     return [...kernel, ...this._autoMiddleware, ...this._middleware];
   }
 

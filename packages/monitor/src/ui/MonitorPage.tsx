@@ -460,15 +460,33 @@ export class MonitorPage extends Component {
   }
 
   @expose async retryJob(id: number): Promise<void> {
-    await this._store().retryFailed(id);
-    await this._load();
-    this.flash("Job re-queued for retry.", "success");
+    await this._requeue(id, () => this._store().retryFailed(id), "Job re-queued for retry.");
   }
 
   @expose async requeueDead(id: number): Promise<void> {
-    await this._store().requeueDead(id);
+    await this._requeue(id, () => this._store().requeueDead(id), "Dead-letter job requeued.");
+  }
+
+  /**
+   * Put a failed job back on its queue, and say what happened: the queue can refuse (a job class
+   * this process has not registered), and then the row stays and the reason is shown, rather
+   * than a success over a job that is still failed.
+   */
+  private async _requeue(id: number, run: () => Promise<boolean>, done: string): Promise<void> {
+    let message = done;
+    let level: "success" | "warning" | "error" = "success";
+    try {
+      if (!(await run())) {
+        message = `Job #${id} is no longer in the failed list.`;
+        level = "warning";
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      message = `Job #${id} was not retried: ${reason}`;
+      level = "error";
+    }
     await this._load();
-    this.flash("Dead-letter job requeued.", "success");
+    this.flash(message, level);
   }
 
   /** Prune data past the retention window now (delete or archive per config). */

@@ -418,6 +418,7 @@ describe("MonitorStore persistence", () => {
 
   it("surfaces exhausted jobs as the dead-letter list from the live queue", async () => {
     const fakeQueue = {
+      retryFailed: async () => true,
       failed: async () => [
         {
           id: 1,
@@ -574,6 +575,70 @@ describe("MonitorStore persistence", () => {
     const grp = snap.exceptions.find((e) => e.type === "TypeError");
     expect(grp!.count).toBe(4);
     expect(grp!.users).toBe(2); // alice + bob; duplicate collapsed, anonymous excluded
+    s.dispose();
+  });
+});
+
+/**
+ * A queue whose failed table the retry really changes: a registered class is taken back and its
+ * row deleted, and an unregistered one is refused the way `QueueManager.retryFailed()` refuses
+ * it, leaving the row.
+ */
+function failedQueue() {
+  const rows = [
+    { id: 1, queue: "default", className: "SendInvoice", attempts: 3, maxAttempts: 3 },
+    { id: 2, queue: "default", className: "Unregistered", attempts: 3, maxAttempts: 3 },
+  ].map((r) => ({ ...r, error: "boom", failedAt: "1m ago" }));
+  const queue = {
+    queues: async () => [{ queue: "default", pending: 0 }],
+    failed: async () => [...rows],
+    retryFailed: async (id: number) => {
+      const index = rows.findIndex((r) => r.id === id);
+      if (index === -1) return false;
+      if (rows[index]!.className === "Unregistered") {
+        throw Object.assign(
+          new Error(`Cannot retry failed job ${id}: "Unregistered" is not a registered job class`),
+          { code: "E_QUEUE_UNKNOWN_JOB" },
+        );
+      }
+      rows.splice(index, 1);
+      return true;
+    },
+  };
+  return { container: { tryMake: (n: string) => (n === "queue" ? queue : null) } };
+}
+
+describe("MonitorStore retry", () => {
+  it("drops a failed job from the list once the queue has taken it back", async () => {
+    const s = new MonitorStore({ storage: ":memory:" });
+    s.bindApp(failedQueue() as never);
+
+    expect(await s.retryFailed(1)).toBe(true);
+    const ids = (await s.snapshot("live")).failedJobs.map((j) => j.id);
+    expect(ids).toEqual([2]);
+    s.dispose();
+  });
+
+  it("keeps a job the queue refused, and throws the queue's reason", async () => {
+    // The monitor swallowed the refusal into `false` and hid the row before asking, so the
+    // panel reported a retry and dropped a job that was still in the failed table.
+    const s = new MonitorStore({ storage: ":memory:" });
+    s.bindApp(failedQueue() as never);
+
+    await expect(s.retryFailed(2)).rejects.toThrow(/not a registered job class/);
+    await expect(s.requeueDead(2)).rejects.toThrow(/not a registered job class/);
+    const snap = await s.snapshot("live");
+    expect(snap.failedJobs.map((j) => j.id)).toEqual([1, 2]);
+    expect(snap.deadLetter.map((d) => d.id)).toEqual([1, 2]);
+    s.dispose();
+  });
+
+  it("keeps the list as it is when there was nothing to retry", async () => {
+    const s = new MonitorStore({ storage: ":memory:" });
+    s.bindApp(failedQueue() as never);
+
+    expect(await s.retryFailed(99)).toBe(false);
+    expect((await s.snapshot("live")).failedJobs.map((j) => j.id)).toEqual([1, 2]);
     s.dispose();
   });
 });

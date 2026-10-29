@@ -90,7 +90,7 @@ Expand a card to see why it fired:
 
 **Logs** is every application log entry, level-filterable and request-correlated, rendered like a terminal.
 
-**Queues** shows workers, queue depth and throughput, failed jobs with a retry button, scheduled and delayed jobs, the dead-letter list (jobs that exhausted their retries) with a requeue button, and the slowest jobs. It is live data from `@zerotal/queue` when that package is installed, and degrades to empty otherwise.
+**Queues** shows workers, queue depth and throughput, failed jobs with a retry button, scheduled and delayed jobs, the dead-letter list (jobs that exhausted their retries) with a requeue button, and the slowest jobs. A job leaves the list once the queue has taken it back; when the queue refuses a retry, as it does for a job class this process has not registered, the job stays and the toast says why. It is live data from `@zerotal/queue` when that package is installed, and degrades to empty otherwise.
 
 **Mail** is the mail log — every message sent, queued, or failed, with its subject, recipients, mailer, render time, and body.
 

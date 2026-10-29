@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A retry the queue refuses keeps the job in the list and says why.** The **Retry** and
+  **Requeue** buttons hid the row before asking the queue, and a refusal (`retryFailed()` throws
+  `E_QUEUE_UNKNOWN_JOB` for a job class this process has not registered) was read as "nothing to
+  retry", so the panel said the job was re-queued and hid a job that was still failed. The row is
+  now hidden only once the queue has taken the job back, and a refusal shows its reason in the
+  toast. `MonitorStore.retryFailed()` and `requeueDead()` throw the queue's error instead of
+  returning `false`; `false` still means there was nothing to retry.
+
 ## [1.10.0] — 2026-08-30
 
 ### Fixed

@@ -1,9 +1,8 @@
 import type { Application } from "@zerotal/core";
 import { Command } from "@zerotal/core";
 import type { QueueManager } from "../QueueManager.ts";
+import { _requeue } from "../QueueManager.ts";
 import type { QueueDriver } from "../drivers/QueueDriver.ts";
-import { JobRegistry } from "../JobRegistry.ts";
-import type { Job } from "../Job.ts";
 
 export class QueueRetryCommand extends Command {
   static override commandName = "queue:retry";
@@ -36,35 +35,12 @@ export class QueueRetryCommand extends Command {
 
     let retried = 0;
     for (const record of targets) {
-      const JobClass = JobRegistry.resolve(record.className);
-
-      let instance: Job;
-      if (!JobClass) {
+      // The job's own maxAttempts and retryDelay, on the queue it failed on: the same helper
+      // the admin and monitor retry buttons go through.
+      if (!(await _requeue(driver, record.className, record.payload, record.queue))) {
         this.warn(`Unknown job class "${record.className}" — skipping ID ${record.id}.`);
         continue;
       }
-
-      const payload = JSON.parse(record.payload) as Record<string, unknown>;
-      if (
-        "fromPayload" in JobClass &&
-        typeof (JobClass as Record<string, unknown>)["fromPayload"] === "function"
-      ) {
-        instance = (JobClass as { fromPayload(p: Record<string, unknown>): Job }).fromPayload(
-          payload,
-        );
-      } else {
-        instance = new (JobClass as new () => Job)();
-      }
-
-      await driver.push({
-        queue: record.queue,
-        className: record.className,
-        payload: record.payload,
-        attempts: 0,
-        maxAttempts: instance.maxAttempts,
-        retryDelay: instance.retryDelay,
-        availableAt: Math.floor(Date.now() / 1000),
-      });
 
       await driver.deleteFailedRecord(record.id);
       retried++;

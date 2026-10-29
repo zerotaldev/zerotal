@@ -2,6 +2,13 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { SQL } from "bun";
 import { SqliteDriver } from "./drivers/SqliteDriver.ts";
 import { QueueManager, queueStats } from "./QueueManager.ts";
+import { Job } from "./Job.ts";
+import { JobRegistry } from "./JobRegistry.ts";
+
+class AdminRetryJob extends Job {
+  async handle() {}
+}
+JobRegistry.register(AdminRetryJob);
 
 type Any = any;
 
@@ -51,7 +58,7 @@ describe("Queue admin introspection", () => {
   });
 
   it("retryFailed re-dispatches and clears the failed row", async () => {
-    await driver.push(record("default", "X", 0, 1));
+    await driver.push(record("default", "AdminRetryJob", 0, 1));
     const popped = await driver.pop("default");
     await driver.fail(popped!, "boom");
 

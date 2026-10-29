@@ -342,12 +342,19 @@ export class MonitorStore {
     return true;
   }
 
-  /** Retry a failed job (real if a queue is bound) and drop it from the list. */
+  /**
+   * Retry a failed job, and drop it from the list once the queue has taken it back.
+   *
+   * @returns `false` when no queue is bound or the job is no longer in the failed table.
+   * @throws whatever the queue refused the retry with, such as `E_QUEUE_UNKNOWN_JOB` for a job
+   *   class this process has not registered. The job stays in the list, still failed.
+   */
   async retryFailed(id: number): Promise<boolean> {
     this._invalidate();
-    this._removedFailed.add(id);
     const { retryFailedJob } = await import("./sources/live.ts");
-    return retryFailedJob(this._app, id);
+    const retried = await retryFailedJob(this._app, id);
+    if (retried) this._removedFailed.add(id);
+    return retried;
   }
 
   /** Permanently forget a failed job. */
@@ -358,12 +365,18 @@ export class MonitorStore {
     return forgetFailedJob(this._app, id);
   }
 
-  /** Requeue a dead-letter job: re-dispatch it (if a queue is bound) and drop it from the view. */
+  /**
+   * Requeue a dead-letter job, and drop it from the view once the queue has taken it back.
+   *
+   * @returns `false` when no queue is bound or the job is no longer in the failed table.
+   * @throws whatever the queue refused the retry with, as {@link MonitorStore.retryFailed} does.
+   */
   async requeueDead(id: number): Promise<boolean> {
     this._invalidate();
-    this._removedDead.add(id);
     const { retryFailedJob } = await import("./sources/live.ts");
-    return retryFailedJob(this._app, id);
+    const requeued = await retryFailedJob(this._app, id);
+    if (requeued) this._removedDead.add(id);
+    return requeued;
   }
 
   // ── Retention / cleanup ──────────────────────────────────────────────────────

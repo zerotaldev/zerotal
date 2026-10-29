@@ -151,14 +151,15 @@ export function liveQueueStats(app?: AppShape): QueueStatsShape | null {
   }
 }
 
+/**
+ * Retry a failed job. False when no queue is bound or the row is already gone; a refusal from
+ * the queue, such as a job class this process has not registered, is thrown with its reason
+ * rather than read as "nothing to retry", so the row stays and the panel can say why.
+ */
 export async function retryFailedJob(app: AppShape | undefined, id: number): Promise<boolean> {
   const mgr = queueManager(app);
   if (!mgr) return false;
-  try {
-    return await mgr.retryFailed(id);
-  } catch {
-    return false;
-  }
+  return mgr.retryFailed(id);
 }
 
 export async function forgetFailedJob(app: AppShape | undefined, id: number): Promise<boolean> {

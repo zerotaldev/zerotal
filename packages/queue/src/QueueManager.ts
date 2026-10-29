@@ -1,5 +1,6 @@
 import { randomUUIDv7 } from "bun";
 import {
+  QueueError,
   QueueShuttingDownError,
   QueueBatchingUnsupportedError,
   QueueDebounceUnsupportedError,
@@ -80,6 +81,68 @@ export function queueStats(): QueueStats {
     processedLast5m: p,
     failedLast5m: f,
   };
+}
+
+// ── Re-queueing a stored job ──────────────────────────────────────────────────
+
+/**
+ * Rebuild a job from its stored class name and payload, the way a worker does before it runs it:
+ * through `fromPayload()` when the class declares one, otherwise a bare `new`. `undefined` when the
+ * class is not registered in this process.
+ *
+ * @internal
+ */
+export function _resolveJob(className: string, payload: Record<string, unknown>): Job | undefined {
+  const JobClass = JobRegistry.resolve(className);
+  if (!JobClass) return undefined;
+  const fromPayload = (JobClass as unknown as { fromPayload?: (p: Record<string, unknown>) => Job })
+    .fromPayload;
+  if (typeof fromPayload === "function") return fromPayload.call(JobClass, payload);
+  return new (JobClass as new () => Job)();
+}
+
+/**
+ * Queue a failed job afresh under its own class's policy: its `maxAttempts` and `retryDelay`,
+ * with the attempt count reset, on `queue` (where it failed) or else the class's own. Used by
+ * `retryFailed()` and `queue:retry`; the first used to push with three attempts and no delay, so a
+ * job that declared one attempt, or a minute between attempts, did not get it on a retry.
+ *
+ * Returns `false`, and pushes nothing, when the class is not registered here: the job is already
+ * in the failed table, and queueing it again under invented numbers would only put it back there.
+ * The caller reports it.
+ *
+ * @internal
+ */
+export async function _requeue(
+  driver: QueueDriver,
+  className: string,
+  payload: string,
+  queue?: string,
+): Promise<boolean> {
+  const job = _resolveJob(className, JSON.parse(payload) as Record<string, unknown>);
+  if (!job) return false;
+  await pushUnderOwnPolicy(driver, job, className, payload, queue);
+  return true;
+}
+
+/** Push a stored job's payload with the policy read off the job rebuilt from it. */
+async function pushUnderOwnPolicy(
+  driver: QueueDriver,
+  job: Job,
+  className: string,
+  payload: string,
+  queue?: string,
+): Promise<void> {
+  await driver.push({
+    queue: queue ?? job.queue,
+    className,
+    payload,
+    attempts: 0,
+    maxAttempts: job.maxAttempts,
+    retryDelay: job.retryDelay,
+    availableAt: Math.floor(Date.now() / 1000),
+    batchId: undefined,
+  });
 }
 
 // ── QueueManager ──────────────────────────────────────────────────────────────
@@ -262,20 +325,25 @@ export class QueueManager {
     return this._driver.listFailed(queue);
   }
 
-  /** Re-dispatch a failed job and remove it from the failed list. */
+  /**
+   * Re-dispatch a failed job, with its class's own `maxAttempts` and `retryDelay`, on the queue
+   * it failed on, and remove it from the failed list. `false` when no failed job has that id.
+   *
+   * Throws a {@link QueueError} (`E_QUEUE_UNKNOWN_JOB`), and leaves the failed row in place, when
+   * the job's class is not registered in this process — the same case `queue:retry` skips.
+   */
   async retryFailed(id: number): Promise<boolean> {
     const rec = (await this._driver.listFailed()).find((r) => r.id === id);
     if (!rec) return false;
-    await this._driver.push({
-      queue: rec.queue,
-      className: rec.className,
-      payload: rec.payload,
-      attempts: 0,
-      maxAttempts: 3,
-      retryDelay: 0,
-      availableAt: Math.floor(Date.now() / 1000),
-      batchId: undefined,
-    });
+    if (!(await _requeue(this._driver, rec.className, rec.payload, rec.queue))) {
+      throw new QueueError(
+        `Cannot retry failed job ${id}: "${rec.className}" is not a registered job class, so ` +
+          `there is no retry policy to queue it with. Register it with JobRegistry.register().`,
+        "E_QUEUE_UNKNOWN_JOB",
+        500,
+        { id, className: rec.className },
+      );
+    }
     await this._driver.deleteFailedRecord(id);
     return true;
   }
@@ -362,16 +430,12 @@ export class QueueManager {
     if (chain?.length) {
       const next = chain[0]!;
       const rest = chain.slice(1);
-      await this._driver.push({
-        queue: record.queue,
-        className: next.className,
-        payload: JSON.stringify(rest.length ? { ...next.payload, __chain: rest } : next.payload),
-        attempts: 0,
-        maxAttempts: record.maxAttempts,
-        retryDelay: record.retryDelay,
-        availableAt: Math.floor(Date.now() / 1000),
-        batchId: undefined,
-      });
+      await this._queueStored(
+        next.className,
+        JSON.stringify(rest.length ? { ...next.payload, __chain: rest } : next.payload),
+        `the next job in ${record.className}'s chain`,
+        { queue: record.queue, maxAttempts: record.maxAttempts, retryDelay: record.retryDelay },
+      );
     }
 
     if (record.batchId && this._driver.recordBatchJobComplete) {
@@ -409,33 +473,62 @@ export class QueueManager {
   }
 
   private async _dispatchSerialized(serialized: SerializedJob): Promise<void> {
+    await this._queueStored(
+      serialized.className,
+      JSON.stringify(serialized.payload),
+      "a batch callback job",
+      { queue: "default", maxAttempts: 3, retryDelay: 1000 },
+    );
+  }
+
+  /**
+   * Queue a chained or batch-callback job under its own policy.
+   *
+   * One whose class this process does not know, or whose `fromPayload()` throws, has no policy to
+   * read. It is queued anyway, under `fallback` (the numbers these paths always used), so that the
+   * worker fails it into the failed-jobs table, where it can be seen and retried, instead of the
+   * job disappearing into a log line. A warning names it.
+   *
+   * Rebuilding the job runs its own `fromPayload()` or constructor, and here that happens while
+   * the previous job is completing. An error from it must not reach `_processRecord`'s catch,
+   * which would retry or fail a job that already succeeded, so it is caught here.
+   */
+  private async _queueStored(
+    className: string,
+    payload: string,
+    what: string,
+    fallback: { queue: string; maxAttempts: number; retryDelay: number },
+  ): Promise<void> {
+    let job: Job | undefined;
+    let problem = "is not a registered job class; register it with JobRegistry.register()";
+    try {
+      job = _resolveJob(className, JSON.parse(payload) as Record<string, unknown>);
+    } catch (err) {
+      problem = `could not be rebuilt from its payload (${err instanceof Error ? err.message : String(err)})`;
+    }
+    if (job) {
+      await pushUnderOwnPolicy(this._driver, job, className, payload);
+      return;
+    }
+    frameworkLog("queue").warn(
+      `Queued ${what} on "${fallback.queue}" without its own policy: "${className}" ${problem}. ` +
+        `The worker will move it to the failed jobs.`,
+      { job: className, queue: fallback.queue },
+    );
     await this._driver.push({
-      queue: "default",
-      className: serialized.className,
-      payload: JSON.stringify(serialized.payload),
+      queue: fallback.queue,
+      className,
+      payload,
       attempts: 0,
-      maxAttempts: 3,
-      retryDelay: 1000,
+      maxAttempts: fallback.maxAttempts,
+      retryDelay: fallback.retryDelay,
       availableAt: Math.floor(Date.now() / 1000),
       batchId: undefined,
     });
   }
 
   private _instantiate(record: JobRecord): Job | undefined {
-    const JobClass = JobRegistry.resolve(record.className);
-    if (!JobClass) return undefined;
-
-    const payload = JSON.parse(record.payload) as Record<string, unknown>;
-    if (
-      "fromPayload" in JobClass &&
-      typeof (JobClass as unknown as { fromPayload?: (p: Record<string, unknown>) => Job })
-        .fromPayload === "function"
-    ) {
-      return (
-        JobClass as unknown as { fromPayload: (p: Record<string, unknown>) => Job }
-      ).fromPayload(payload);
-    }
-    return new (JobClass as new () => Job)();
+    return _resolveJob(record.className, JSON.parse(record.payload) as Record<string, unknown>);
   }
 
   private _isSyncDriver(): boolean {

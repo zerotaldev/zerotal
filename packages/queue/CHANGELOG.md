@@ -8,6 +8,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A retried, chained or batch-callback job runs under its own `queue`, `maxAttempts` and
+  `retryDelay`.** These are the three places the queue pushes a job from a stored class name
+  rather than from an instance, and each made the numbers up: `retryFailed()`, behind the admin
+  and monitor retry buttons, used three attempts and no delay; the next job in a chain inherited
+  the previous job's queue and policy; and a batch's `then`, `catch` and `finally` jobs went to
+  `default` with three attempts and one second. A job that declared one attempt, a minute between
+  attempts or its own queue did not get them. All three now resolve the class the way
+  `queue:retry` always did, through one helper that the command uses too. A retry still goes back
+  on the queue it failed on. A failed job whose class is not registered is no longer requeued with
+  invented numbers: `retryFailed()` throws a `QueueError` (`E_QUEUE_UNKNOWN_JOB`) and leaves the
+  failed row, which the admin panel and the monitor show. A chain link or batch callback whose
+  class is not registered, or whose `fromPayload()` throws, has no policy to read either; it is
+  queued with the numbers that path used before, with a warning in the log, so the worker moves it
+  to the failed jobs where it can be seen and retried, and the job that just finished is not
+  retried for it.
+
 ## [1.13.3] — 2026-08-31
 
 ### Added

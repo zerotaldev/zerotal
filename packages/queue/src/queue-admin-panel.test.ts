@@ -106,6 +106,27 @@ describe("queue console data", () => {
     expect(failed[0]!.error).toBe("boom");
   });
 
+  it("fails a refused retry with the queue's reason, for the console to show", async () => {
+    // The console flashes whatever a row action throws and reloads the table, so the reason
+    // reaches the user and the row is still there: no "queued for retry" over a failed job.
+    const { Application } = await import("@zerotal/core");
+    const app = Application.create({ env: "test" });
+    app.container.value("queue", mgr);
+    try {
+      await driver.push(record("default", "NotRegisteredHere"));
+      const job = await driver.pop("default");
+      await driver.fail(job!, "boom");
+      const failedTab = console.tabs.find((t) => t.key === "failed")!;
+      const [row] = await failedTab.rows();
+      const retry = failedTab.rowActions!.find((a) => a.key === "retry")!;
+
+      await expect(retry.run(row!)).rejects.toThrow(/not a registered job class/);
+      expect(await failedTab.rows()).toHaveLength(1);
+    } finally {
+      (Application as unknown as { _resetInstance(): void })._resetInstance();
+    }
+  });
+
   it("exposes retry and forget as row actions on the failed tab", () => {
     const failedTab = console.tabs.find((t) => t.key === "failed")!;
     expect(failedTab.rowActions?.map((a) => a.key)).toEqual(["retry", "forget"]);

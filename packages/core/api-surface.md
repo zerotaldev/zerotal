@@ -2590,6 +2590,7 @@ interface SessionContract = {
   id: () => string
   pull: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   regenerate: () => void
+  resumed?: () => boolean
   set: (key: string, value: unknown) => void
 }
 

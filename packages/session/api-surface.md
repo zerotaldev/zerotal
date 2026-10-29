@@ -52,6 +52,7 @@ class SessionAccessor = {
   intended: (defaultUrl?: string) => string
   pull: <T = unknown>(key: string) => T | undefined
   regenerate: () => void
+  resumed: () => boolean
   set: (key: string, value: unknown) => void
 }
 
@@ -77,7 +78,7 @@ class SessionError = {
 }
 
 class SessionManager = {
-  new (id: string, data: Record<string, unknown>, driver: SessionDriver): SessionManager
+  new (id: string, data: Record<string, unknown>, driver: SessionDriver, resumed?: boolean): SessionManager
   _data: Record<string, unknown>
   _driver: SessionDriver
   _id: string
@@ -91,6 +92,7 @@ class SessionManager = {
   pull: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   readonly _abandonedIds: string[]
   regenerate: () => void
+  resumed: () => boolean
   set: (key: string, value: unknown) => void
 }
 
@@ -162,4 +164,5 @@ interface SessionOptions = {
 interface SessionPayload = {
   data: Record<string, unknown>
   id: string
+  resumed?: boolean | undefined
 }

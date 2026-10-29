@@ -2850,6 +2850,20 @@ interface NavigateOptions {
   restoreScroll?: readonly [number, number] | undefined;
 }
 
+/**
+ * The element holding the page inside a layout: the `[data-flow-page]` wrapper of a
+ * static page, or else the page's own root, which is the first `[data-flow-root]` in
+ * document order because it encloses every island the page renders.
+ *
+ * The marker is checked first because on a static page the first root is an island.
+ */
+function _pageElement(layout: HTMLElement): HTMLElement | null {
+  return (
+    layout.querySelector<HTMLElement>("[data-flow-page]") ??
+    layout.querySelector<HTMLElement>("[data-flow-root]")
+  );
+}
+
 async function _navigateTo(href: string, options: NavigateOptions = {}): Promise<void> {
   const { push = true } = options;
   const scrollIntent = _scrollIntent(options);
@@ -2893,16 +2907,19 @@ async function _navigateTo(href: string, options: NavigateOptions = {}): Promise
     return;
   }
 
-  const incomingRoot = incomingLayout.querySelector<HTMLElement>("[data-flow-root]");
-  const currentRoot = currentLayout.querySelector<HTMLElement>("[data-flow-root]");
+  const incomingRoot = _pageElement(incomingLayout);
+  const currentRoot = _pageElement(currentLayout);
   if (!incomingRoot || !currentRoot) {
     window.location.href = href;
     return;
   }
 
+  // A static page has no snapshot of its own; its islands carry theirs inside the
+  // markup. An interactive page without one is a response this cannot swap.
+  const isStaticPage = incomingRoot.hasAttribute("data-flow-page");
   const newId = incomingRoot.dataset["flowId"] ?? "";
-  const incomingState = doc.getElementById(`flow-state-${newId}`);
-  if (!incomingState) {
+  const incomingState = isStaticPage ? null : doc.getElementById(`flow-state-${newId}`);
+  if (!isStaticPage && !incomingState) {
     window.location.href = href;
     return;
   }
@@ -2938,7 +2955,7 @@ async function _navigateTo(href: string, options: NavigateOptions = {}): Promise
     for (const stale of document.querySelectorAll('body > script[id^="flow-state-"]')) {
       stale.remove();
     }
-    document.body.appendChild(incomingState.cloneNode(true));
+    if (incomingState) document.body.appendChild(incomingState.cloneNode(true));
     currentRoot.replaceWith(incomingClone);
     _cleanupDisconnected();
     _scanComponents();

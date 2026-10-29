@@ -172,6 +172,7 @@ export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
             // with the default when the room is new). No-op unless the component has @shared props.
             populateShared(page);
 
+            page._refuseDeadListeners();
             const innerHtml = await _renderFlowPage(page, () => page.render());
 
             // A page can opt out of interactivity as a child can — and it is the page
@@ -200,10 +201,19 @@ export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
             // A static page is not marked as a flow root: the attribute is what makes
             // the client morph skip a subtree, and it is also what `_scanComponents`
             // looks for. Neither applies to markup that will never be patched.
+            //
+            // It is still wrapped, in `data-flow-page`, because client navigation has
+            // to find the page to swap it. Without a marker it took the first
+            // `[data-flow-root]` in the layout, which on a static page is the first
+            // island: navigating there replaced the old page with that island alone,
+            // and navigating away replaced only the island and left the static page
+            // around the new one. An interactive page needs no marker, since it is
+            // itself the outermost root, and it cannot carry one: a patch morphs the
+            // root to the server's fresh markup, which would strip the attribute.
             const flowRoot: HtmlNode = {
               html: interactive
                 ? `<div data-flow-root x-data="{}" data-flow-id="${compId}" data-flow-name="${compName}">${innerHtml}</div>`
-                : innerHtml,
+                : `<div data-flow-page>${innerHtml}</div>`,
             };
 
             // Layout resolution. The JSX-native `layout(page)` instance hook wins; otherwise

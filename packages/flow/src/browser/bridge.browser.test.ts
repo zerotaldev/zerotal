@@ -27,7 +27,7 @@ import { Application, Router } from "@zerotal/core";
 import { FlowProvider } from "../provider/FlowProvider.ts";
 import { FlowBrowser } from "./FlowBrowser.ts";
 import { CounterPage } from "./__fixtures__/CounterPage.tsx";
-import { NavAboutPage, NavHomePage } from "./__fixtures__/NavPages.tsx";
+import { NavAboutPage, NavHomePage, NavStaticPage } from "./__fixtures__/NavPages.tsx";
 import { FileModelPage } from "./__fixtures__/FileModelPage.tsx";
 
 /**
@@ -60,6 +60,7 @@ beforeAll(async () => {
   Router.flow("/counter", CounterPage);
   Router.flow("/nav/home", NavHomePage);
   Router.flow("/nav/about", NavAboutPage);
+  Router.flow("/nav/static", NavStaticPage);
   Router.flow("/file-model", FileModelPage);
   await app.start(0);
 
@@ -248,6 +249,68 @@ describeBrowser("Flow bridge — real browser, real socket", () => {
 
         // …and the one left is the live one: an action still round-trips, which
         // it would not if the swap had kept the wrong script.
+        await page.click("#bump");
+        await page.waitForText("#count", "1", T);
+        expect(page.consoleErrors()).toEqual([]);
+        expect(page.pageErrors()).toEqual([]);
+      } finally {
+        await page.close();
+      }
+    },
+    T,
+  );
+
+  /**
+   * SPA navigation to and from a static page used to swap the wrong element.
+   *
+   * The swap took the first `[data-flow-root]` under the layout as the page. On
+   * a static page that is the first island, since the page itself is not a root.
+   * Going there replaced the live page with the island alone, so the heading and
+   * prose vanished; coming back replaced only the island, so both headings showed
+   * and the static prose stayed. Nothing was logged either way.
+   *
+   * Counting headings is the assertion: either half of the bug leaves zero or
+   * two of them.
+   */
+  it(
+    "swaps the whole page when navigating between a live page and a static one",
+    async () => {
+      const page = await FlowBrowser.open(navUrl, { timeout: T });
+      const headings = (): Promise<string[]> =>
+        page.evaluate<string[]>(
+          `[...document.querySelectorAll("#page")].map((e) => e.textContent)`,
+        );
+      const has = (selector: string): Promise<boolean> =>
+        page.evaluate<boolean>(`document.querySelector(${JSON.stringify(selector)}) !== null`);
+      try {
+        // The realm marker, as above: without it a fallback to a real
+        // navigation would pass this test whatever the swap did.
+        await page.evaluate(`(window.__navMarker = "kept")`);
+
+        await page.click("#to-static");
+        await page.waitForText("#page", "static", T);
+        expect(await page.evaluate<string | null>(`window.__navMarker ?? null`)).toBe("kept");
+        expect(await headings()).toEqual(["static"]);
+        expect(await has("#prose")).toBe(true);
+        expect(await has("#count")).toBe(false);
+        // A static page has no snapshot of its own; the island's is inside it.
+        expect(
+          await page.evaluate<number>(
+            `document.querySelectorAll('body > script[id^="flow-state-"]').length`,
+          ),
+        ).toBe(0);
+
+        // The island arrived live, not just as markup.
+        await page.click("#island .add");
+        await page.waitForText("#island .seats", "2", T);
+
+        await page.click("#to-home");
+        await page.waitForText("#page", "home", T);
+        expect(await page.evaluate<string | null>(`window.__navMarker ?? null`)).toBe("kept");
+        expect(await headings()).toEqual(["home"]);
+        expect(await has("#prose")).toBe(false);
+        expect(await has(".calc")).toBe(false);
+
         await page.click("#bump");
         await page.waitForText("#count", "1", T);
         expect(page.consoleErrors()).toEqual([]);

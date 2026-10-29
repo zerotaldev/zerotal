@@ -321,6 +321,17 @@ describe("HttpContext.input()", () => {
     const ctx = HttpContext.fake("http://localhost/posts?page=3");
     expect(ctx.input("page")).toBe("3");
   });
+  it("reads only own fields, not ones every object inherits", async () => {
+    const ctx = HttpContext.fake("http://localhost/posts?toString=from-query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Hello" }),
+    });
+    await ctx.body();
+    expect(ctx.input("toString")).toBe("from-query");
+    expect(ctx.input("constructor", "fallback")).toBe("fallback");
+    expect(ctx.input("hasOwnProperty")).toBeUndefined();
+  });
   it("returns fallback when key is absent everywhere", () => {
     const ctx = HttpContext.fake("http://localhost/posts");
     expect(ctx.input("missing", "default")).toBe("default");

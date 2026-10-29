@@ -136,6 +136,8 @@ export class OtherDeviceLogout {
 
 /**
  * Emitted after a personal access token is issued, carrying the granted abilities.
+ * `tokenId` is the token's SHA-256 hash. When `createToken` is given `store`, this is
+ * emitted after the row is stored.
  * @category Auth
  */
 export class TokenIssued {

@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { Model, BaseModel, columnsFor } from "@zerotal/orm";
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "bun:test";
+import { SQL } from "bun";
+import { Model, BaseModel, columnsFor, DB, _setDbConnection } from "@zerotal/orm";
 import { HashService } from "./HashService.ts";
 import { PersistUserMiddleware } from "./PersistUserMiddleware.ts";
 import { AuthMiddleware } from "./AuthMiddleware.ts";
@@ -352,11 +353,12 @@ describe("GuestMiddleware", () => {
 // ── PersonalAccessToken ───────────────────────────────────────────────────────
 
 import { createToken, hashToken, tokenCan } from "./PersonalAccessToken.ts";
+import { TokenIssued } from "./events.ts";
 import { TwoFactorService, RECOVERY_CODE_BITS } from "./TwoFactorService.ts";
 import { GateService } from "./GateService.ts";
 import { MakePolicyCommand, policyStub } from "./commands/MakePolicyCommand.ts";
 import { BearerTokenMiddleware } from "./BearerTokenMiddleware.ts";
-import { HttpContext } from "@zerotal/core";
+import { HttpContext, FrameworkEvents } from "@zerotal/core";
 import { Container } from "@zerotal/core";
 import { ScopedResolver } from "@zerotal/core";
 import type { TokenRow } from "./PersonalAccessToken.ts";
@@ -389,6 +391,66 @@ describe("createToken()", () => {
   it("hash of plaintext matches stored hash", async () => {
     const { plaintext, row } = await createToken({ tokenableId: 1, name: "t" });
     expect(await hashToken(plaintext)).toBe(row.token);
+  });
+});
+
+describe("createToken() with store — TokenIssued follows the insert", () => {
+  let db: SQL;
+
+  beforeAll(async () => {
+    db = new SQL(":memory:");
+    _setDbConnection(db);
+    await db`CREATE TABLE personal_access_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, tokenable_id INTEGER, tokenable_type TEXT,
+      name TEXT, token TEXT UNIQUE, abilities TEXT, last_used_at TEXT, expires_at TEXT,
+      created_at TEXT, updated_at TEXT)`;
+  });
+
+  afterAll(async () => {
+    _setDbConnection(null);
+    await db.end();
+  });
+
+  // An audit trail or the monitor that looks the token up when it is issued must find it.
+  // The event used to be emitted before createToken returned, so before anything was stored.
+  it("lets a TokenIssued listener read the stored row", async () => {
+    // The lookup starts inside the listener, at the moment the event is emitted.
+    const lookups: Array<Promise<unknown>> = [];
+    const off = FrameworkEvents.on(TokenIssued, (e) => {
+      lookups.push(DB.table("personal_access_tokens").where("token", e.tokenId).first());
+    });
+    try {
+      const { row } = await createToken({
+        tokenableId: 7,
+        name: "ledger-cli",
+        store: (r) => DB.table("personal_access_tokens").insert(r),
+      });
+      const seen = await Promise.all(lookups);
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toMatchObject({ token: row.token, tokenable_id: 7, name: "ledger-cli" });
+    } finally {
+      off();
+    }
+  });
+
+  it("issues nothing when the insert fails", async () => {
+    const issued: string[] = [];
+    const off = FrameworkEvents.on(TokenIssued, (e) => {
+      issued.push(e.tokenId);
+    });
+    try {
+      const failing = createToken({
+        tokenableId: 7,
+        name: "broken",
+        store: () => Promise.reject(new Error("disk full")),
+      });
+
+      await expect(failing).rejects.toThrow("disk full");
+      expect(issued).toEqual([]);
+    } finally {
+      off();
+    }
   });
 });
 

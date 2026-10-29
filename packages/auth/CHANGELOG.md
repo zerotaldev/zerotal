@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`TokenIssued` can follow the token's insert.** `createToken` emitted the event while it built
+  the row, before the caller could store it, so a listener that looked the token up (an audit
+  trail, the monitor) found nothing, and a token whose insert then failed had still been
+  announced. `createToken` takes an optional `store(row)`: it awaits it, then emits the event, and
+  emits nothing when it throws. Without `store` nothing changes: the event is emitted as before,
+  and the caller inserts the row.
+
 ## [1.16.0] — 2026-10-28
 
 ### Fixed

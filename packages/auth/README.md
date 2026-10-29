@@ -106,13 +106,15 @@ Gate.authorize("update", post);
 
 ```ts
 import { createToken, BearerTokenMiddleware } from "@zerotal/auth";
+import { DB } from "@zerotal/orm";
 
-const { plaintext, row } = await createToken({
+const { plaintext } = await createToken({
   tokenableId: user.id,
   name: "cli",
   abilities: ["*"],
+  store: (row) => DB.table("personal_access_tokens").insert(row),
 });
-// store `row`, return `plaintext` to the client once
+// return `plaintext` to the client once
 
 Router.group({ prefix: "/api", middleware: [BearerTokenMiddleware] }, () => {
   Router.get("/me", UserController, "show");

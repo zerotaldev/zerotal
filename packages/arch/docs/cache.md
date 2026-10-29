@@ -252,15 +252,18 @@ new CacheManager(driver: CacheDriver, prefix?: string, defaultTtl?: number)
 ```ts fragment
 // routes/api.ts
 import { IdempotencyMiddleware, CacheManager } from "@zerotal/cache";
+import { BearerTokenMiddleware } from "@zerotal/auth";
 
 const cache = app.container.makeSync("cache") as CacheManager;
 
-// Per-route (recommended — protects only mutation endpoints)
+// Per-route (recommended — protects only mutation endpoints).
+// After the middleware that authenticates the route, so the key is scoped to its user.
 Router.post("/api/orders", [OrderController, "store"], {
-  middleware: [IdempotencyMiddleware.with({ cache })],
+  middleware: [BearerTokenMiddleware, IdempotencyMiddleware.with({ cache })],
 });
 
-// Global — applied to all matching methods
+// Global — applied to all matching methods. It runs after the session and the session's
+// user, but before any route middleware, so it never sees a user a route's token sets.
 app.use([
   IdempotencyMiddleware.with({
     cache,
@@ -282,6 +285,27 @@ Content-Type: application/json
 
 A replayed response includes `Idempotency-Replay: true` so clients can distinguish a live response from a cached one.
 
+### Whose key it is
+
+A key belongs to the caller who sent it and to the endpoint it was sent to. A stored response is replayed only to a request with the same **scope**, method, host, URL path, query string and key, so another user who picks the same key, or the same user sending it to a different host, path or query (`/charge?account=1` and `/charge?account=2`, or two tenants on `acme.example.com` and `globex.example.com`), runs the handler and gets their own answer. The stored response, the in-process wait and the cross-process lock all use that one key, and the lock name also carries the cache's prefix, so two caches never share any of them.
+
+The default scope is the authenticated user (`ctx.user`), else a session the client sent back, else none. A user who signed in with a personal access token is scoped by the token's subject type as well as the id, so a `team` and a `user` that share an id never share a key; a user set any other way, by the session or a JWT, is scoped by id alone, so if two kinds of subject with the same id can reach the route that way, pass a `scope` that includes the type. A session counts only when the request carried its cookie and the driver accepted it ([`ctx.session.resumed()`](/docs/session#reading-and-writing)): a session started for this request is a new one each time, and scoping by it would make every retry run the handler again. The scope is read when the request reaches this middleware, so register it **after** whatever sets them. Middleware you add with `app.use()` already runs after the session middleware and the one that loads the logged-in user, which providers install. On a route that authenticates with a token, list it after the token middleware, as above. Registered before them, every request looks anonymous.
+
+A request with no user and no returned session is unscoped: any such caller who sends the same key to the same method, host, path and query is handed the stored response. That is what lets a client that keeps no cookies have its retry replayed, and it is also why clients should send random keys (a UUID v4). An endpoint whose anonymous responses are private should not take idempotency keys from anonymous callers, or should pass a `scope`.
+
+A handler can change who the caller is. A registration or a sign-in signs them in, a sign-out signs them out, a second-factor step finishes a sign-in, and each of those can give the session a new id. A browser's first request has no session cookie at all, so it is unscoped, but the session middleware starts a session for it. Either way the client's retry carries the cookie this response set, and the auth and session middleware give it a different scope from the one the first request had. So when the handler runs, its answer is also stored under the scope read after it has finished. The session auth middleware signs the retry in from the session's `user_id`, so a handler that changed it decides that scope even if `ctx.user` still names the caller it started with: a new `user_id` stores the answer under that user and under the session whose cookie the response carries (a session waiting on its second factor holds a `user_id` that does not sign the retry in), and a removed one under that session. A handler that left `user_id` alone has its answer stored under the user on `ctx.user`, else that session. A retry that reaches the same process with a new session's cookie while a cookieless first request is still running waits for it.
+
+Only a request whose handler ran stores anything. One that was replayed, or that waited on another request with the same key, is answered from what is already stored and writes nothing, so replaying a client that keeps no cookies never grows the cache. The cost falls on a client with no cookie whose first answer was lost, or that sent the key twice at once: the request that is replayed or waits is given a session of its own, and a retry that carries that session's cookie runs the handler again. Pass a `scope` if such clients matter. An answer is never copied to the unscoped key and a scoped request never falls back to it, so another user or session sending the same key runs the handler. All of this applies only to the default scope; a `scope` you pass is used as it is.
+
+Pass `scope` when the caller is identified some other way, for example by an API key that your own middleware has already verified:
+
+```ts fragment
+// ApiKeyMiddleware (yours, listed earlier) stored the verified client's id
+IdempotencyMiddleware.with({ cache, scope: (ctx) => ctx.getInternal<string>("apiClientId") });
+```
+
+Return a value the request has proved, never a header the client can set to anything. Returning `undefined` makes the request unscoped.
+
 ### Options
 
 | Option         | Default                           | Description                                                                |
@@ -291,12 +315,13 @@ A replayed response includes `Idempotency-Replay: true` so clients can distingui
 | `methods`      | `["POST","PUT","PATCH","DELETE"]` | Methods subject to idempotency checks.                                     |
 | `header`       | `"Idempotency-Key"`               | Header name the client sends.                                              |
 | `validateBody` | `false`                           | Return 422 if the same key arrives with a different request body.          |
+| `scope`        | user, else resumed session        | `(ctx) => string \| undefined`: whose key it is. See above.                |
 
 ### Behaviour details
 
 - **5xx responses are never cached** — transient errors don't permanently block retries.
-- **Concurrent in-process requests** with the same key coalesce — the second caller waits for the first to finish and receives the same response.
-- **Cross-process requests** are serialized by a distributed lock (the [lock primitive](/docs/lock)) when a lock driver is configured, so only one node executes the handler per key. This is on by default; pass `useLock: false` to disable. Without a lock driver it degrades to shared-backend replay (Redis or SQLite).
+- **Concurrent in-process requests** with the same key, from the same scope to the same method, host, path and query, coalesce — the second caller waits for the first to finish and receives the same response.
+- **Cross-process requests** are serialized by a distributed lock (the [lock primitive](/docs/lock)) when a lock driver is configured, so only one node executes the handler per key. This is on by default; pass `useLock: false` to disable. Without a lock driver it degrades to shared-backend replay (Redis or SQLite). The host is part of the key, so behind a proxy every node must receive the client's `Host` header, not its own address, for the nodes to share a key.
 
 ## Cache warming
 
@@ -402,8 +427,8 @@ does.
 
 ## Types
 
-`IdempotencyOptions` configures `Cache.idempotent()` — the key, the window, and what happens to
-a second identical request that arrives while the first is still running.
+`IdempotencyOptions` configures `IdempotencyMiddleware.with()`: the cache, the window, the methods
+and header it watches, and whose key a request's key is.
 
 ## Next steps
 

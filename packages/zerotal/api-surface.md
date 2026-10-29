@@ -2256,6 +2256,7 @@ class CacheManager = {
   get: <T>(key: string) => Promise<T | null>
   has: (key: string) => Promise<boolean>
   increment: (key: string, by?: number, ttl?: number) => Promise<number>
+  prefix: string
   remember: <T>(key: string, ttl: number, fn: () => Promise<T> | T) => Promise<T>
   set: (key: string, value: unknown, ttl?: number) => Promise<void>
   tags: (tagNames: string[]) => TaggedCache
@@ -2349,6 +2350,7 @@ class TaggedCache = {
   get: <T>(key: string) => Promise<T | null>
   has: (key: string) => Promise<boolean>
   increment: (key: string, by?: number, ttl?: number) => Promise<number>
+  prefix: string
   remember: <T>(key: string, ttl: number, fn: () => Promise<T> | T) => Promise<T>
   set: (key: string, value: unknown, ttl?: number) => Promise<void>
   tags: (tagNames: string[]) => TaggedCache
@@ -2381,6 +2383,7 @@ interface IdempotencyOptions = {
   header: string
   lock?: LockManager | undefined
   methods: string[]
+  scope?: ((http: HttpContext) => string | undefined) | undefined
   ttl: number
   useLock: boolean
   validateBody: boolean
@@ -4204,6 +4207,7 @@ interface SessionContract = {
   id: () => string
   pull: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   regenerate: () => void
+  resumed?: () => boolean
   set: (key: string, value: unknown) => void
 }
 
@@ -7083,6 +7087,7 @@ class SessionAccessor = {
   intended: (defaultUrl?: string) => string
   pull: <T = unknown>(key: string) => T | undefined
   regenerate: () => void
+  resumed: () => boolean
   set: (key: string, value: unknown) => void
 }
 
@@ -7108,7 +7113,7 @@ class SessionError = {
 }
 
 class SessionManager = {
-  new (id: string, data: Record<string, unknown>, driver: SessionDriver): SessionManager
+  new (id: string, data: Record<string, unknown>, driver: SessionDriver, resumed?: boolean): SessionManager
   _data: Record<string, unknown>
   _driver: SessionDriver
   _id: string
@@ -7122,6 +7127,7 @@ class SessionManager = {
   pull: {    (key: string): unknown;    <T>(key: string): T | undefined;}
   readonly _abandonedIds: string[]
   regenerate: () => void
+  resumed: () => boolean
   set: (key: string, value: unknown) => void
 }
 
@@ -7193,6 +7199,7 @@ interface SessionOptions = {
 interface SessionPayload = {
   data: Record<string, unknown>
   id: string
+  resumed?: boolean | undefined
 }
 
 ## ./shared  `(./src/shared.ts)`

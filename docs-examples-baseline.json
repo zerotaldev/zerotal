@@ -1283,7 +1283,7 @@
       "file": "docs/cache.md",
       "heading": "Idempotency middleware",
       "ordinal": 0,
-      "hash": "1kj9160qsfe5"
+      "hash": "amkqlx69bt9d"
     },
     {
       "file": "docs/cache.md",
@@ -1326,6 +1326,12 @@
       "heading": "Testing",
       "ordinal": 0,
       "hash": "26io2fnsh33i"
+    },
+    {
+      "file": "docs/cache.md",
+      "heading": "Whose key it is",
+      "ordinal": 0,
+      "hash": "199zcizhl4vf"
     },
     {
       "file": "docs/carbon.md",

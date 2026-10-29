@@ -38,6 +38,7 @@ class CacheManager = {
   get: <T>(key: string) => Promise<T | null>
   has: (key: string) => Promise<boolean>
   increment: (key: string, by?: number, ttl?: number) => Promise<number>
+  prefix: string
   remember: <T>(key: string, ttl: number, fn: () => Promise<T> | T) => Promise<T>
   set: (key: string, value: unknown, ttl?: number) => Promise<void>
   tags: (tagNames: string[]) => TaggedCache
@@ -131,6 +132,7 @@ class TaggedCache = {
   get: <T>(key: string) => Promise<T | null>
   has: (key: string) => Promise<boolean>
   increment: (key: string, by?: number, ttl?: number) => Promise<number>
+  prefix: string
   remember: <T>(key: string, ttl: number, fn: () => Promise<T> | T) => Promise<T>
   set: (key: string, value: unknown, ttl?: number) => Promise<void>
   tags: (tagNames: string[]) => TaggedCache
@@ -163,6 +165,7 @@ interface IdempotencyOptions = {
   header: string
   lock?: LockManager | undefined
   methods: string[]
+  scope?: ((http: HttpContext) => string | undefined) | undefined
   ttl: number
   useLock: boolean
   validateBody: boolean

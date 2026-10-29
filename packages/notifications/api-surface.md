@@ -37,6 +37,13 @@ class DatabaseChannel = {
   unreadCount: (notifiable: Notifiable) => Promise<number>
 }
 
+class InvalidMailAddressError = {
+  new (address: unknown, reason: string): InvalidMailAddressError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly status: number
+}
+
 class LogDriver = {
   new (_channel?: 'console' | string): LogDriver
   send: (message: MailPayload) => Promise<void>
@@ -311,6 +318,8 @@ const NotificationRegistry = {    _map: Map<string, NotificationClass>;    regis
 const Notify = NotificationManager
 
 const RESERVED_MAIL_HEADERS = readonly string[]
+
+function assertMailAddress = (address: unknown) => asserts address is string
 
 function channelStats = () => ChannelStat[]
 

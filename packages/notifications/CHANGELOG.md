@@ -46,6 +46,20 @@ follows the Zerotal monorepo's unified versioning.
   a 7bit part and in a quoted-printable one (where it was sent as `=0D` before), and dot-stuffing
   runs once over the finished message, after the line endings are final.
 
+### Fixed
+
+- **`SmtpDriver` folds long From, To, Cc and Reply-To headers instead of leaving a relay to cut
+  them.** Each address header was written as one line: every recipient joined by `, `, a printable
+  ASCII name as one quoted-string however long, and a non-ASCII name as encoded-words joined by
+  spaces. A long profile name or a long recipient list passed RFC 5322's 998-octet line limit, and
+  a relay cuts such a line wherever the limit falls, inside a name or an address. The headers are
+  now folded: each recipient after the first starts a line of its own, a name's encoded-words are
+  folded between, and every line keeps to 76 characters unless a single address is longer. A
+  printable ASCII name longer than 64 characters (counting the escapes) is sent as encoded-words
+  so that it can fold, and encoded-words carry 39 bytes each rather than 45, so that `Reply-To: `
+  and one word stay within RFC 2047's 76 characters. Resend still receives each mailbox on one
+  line, as `"Name" <address>`.
+
 ## [1.15.5] — 2026-10-27
 
 ### Added

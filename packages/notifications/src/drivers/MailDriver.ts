@@ -176,8 +176,12 @@ export function _encodeWord(text: string): string {
   return `=?UTF-8?B?${Buffer.from(text, "utf8").toString("base64")}?=`;
 }
 
-/** Bytes of UTF-8 per encoded-word: 45 bytes is 60 base64 characters, 72 with the wrapper. */
-const ENCODED_WORD_BYTES = 45;
+/**
+ * Bytes of UTF-8 per encoded-word: 39 bytes is 52 base64 characters, 64 with the
+ * wrapper. Short enough that `Reply-To: ` and one word stay within the 76 characters
+ * RFC 2047 allows a line holding an encoded-word.
+ */
+const ENCODED_WORD_BYTES = 39;
 
 /**
  * Write a display name so that nothing in it can be read as header syntax.
@@ -191,7 +195,24 @@ const ENCODED_WORD_BYTES = 45;
  * @internal
  */
 export function _formatDisplayName(name: string): string {
-  if (/^[\x20-\x7e]*$/.test(name)) return `"${name.replace(/[\\"]/g, "\\$&")}"`;
+  return _displayNameWords(name).join(" ");
+}
+
+/**
+ * A display name as the words {@link _formatDisplayName} writes it in, for a caller
+ * that joins them itself — the SMTP driver folds a header between them.
+ *
+ * @param name - The display name, already checked and trimmed.
+ * @param maxQuoted - The longest quoted-string to write. A printable ASCII name whose
+ *   quoted form is longer is encoded instead, so that it comes apart into words a
+ *   header can fold between; a quoted-string cannot be split.
+ * @internal
+ */
+export function _displayNameWords(name: string, maxQuoted = Infinity): string[] {
+  if (/^[\x20-\x7e]*$/.test(name)) {
+    const quoted = `"${name.replace(/[\\"]/g, "\\$&")}"`;
+    if (quoted.length <= maxQuoted) return [quoted];
+  }
   const words: string[] = [];
   let current = "";
   let bytes = 0;
@@ -206,21 +227,33 @@ export function _formatDisplayName(name: string): string {
     bytes += size;
   }
   if (current !== "") words.push(_encodeWord(current));
-  return words.join(" ");
+  return words;
 }
 
 /**
  * Write one mailbox as `"Name" <address>`, or the bare address when it has no name.
  *
- * Both the SMTP header and Resend's `"Name <addr>"` strings are built here, so a
- * name holding `x <spy@example.com>, y` names one recipient in both rather than
- * adding a second.
+ * Resend's `"Name <addr>"` strings are built here, and the SMTP headers from the same
+ * {@link _mailboxWords}, so a name holding `x <spy@example.com>, y` names one
+ * recipient in both rather than adding a second.
  *
  * @internal
  */
 export function _formatMailbox(mailbox: MailAddress): string {
+  return _mailboxWords(mailbox).join(" ");
+}
+
+/**
+ * One mailbox as the words {@link _formatMailbox} joins: the display name's words and
+ * then `<address>`, or the bare address alone when it has no name.
+ *
+ * @param maxQuoted - Passed to {@link _displayNameWords}.
+ * @internal
+ */
+export function _mailboxWords(mailbox: MailAddress, maxQuoted = Infinity): string[] {
   const name = typeof mailbox.name === "string" ? mailbox.name.trim() : "";
-  return name !== "" ? `${_formatDisplayName(name)} <${mailbox.address}>` : mailbox.address;
+  if (name === "") return [mailbox.address];
+  return [..._displayNameWords(name, maxQuoted), `<${mailbox.address}>`];
 }
 
 /**

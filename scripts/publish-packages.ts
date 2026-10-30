@@ -11,7 +11,8 @@
  *
  * Packages are published in dependency order (core before the packages that
  * depend on it), so a half-failed release never leaves a package on the registry
- * whose dependencies do not resolve.
+ * whose dependencies do not resolve. A re-run of a half-failed release skips the
+ * packages already on npm and publishes the rest.
  *
  *   bun run scripts/publish-packages.ts --dry-run          # verify + pack only
  *   bun run scripts/publish-packages.ts --tag v1.1.0       # verify tag matches, pack, publish
@@ -84,6 +85,26 @@ function assertInternalDepsMatch(name: string, tarball: string, version: string)
   }
 }
 
+/**
+ * Whether `name@version` is already on the registry.
+ *
+ * A release that fails partway leaves every package before the failure
+ * published, and npm refuses a version it already has — so without this a re-run
+ * fails on the first package and the release can never finish. 1.16.2 stopped
+ * after four packages on a transparency-log error and could not be resumed.
+ *
+ * Only a positive answer skips. A 404, a network error or anything else leaves
+ * the decision to `npm publish`, which is the authority on duplicates.
+ */
+function alreadyPublished(name: string, version: string): boolean {
+  const view = Bun.spawnSync(["npm", "view", `${name}@${version}`, "version"], {
+    cwd: ROOT,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  return view.exitCode === 0 && view.stdout.toString().trim() === version;
+}
+
 /** Every publishable package under packages/, keyed by npm name. */
 function publicPackages(): Map<string, { dir: string; manifest: PackageManifest }> {
   const out = new Map<string, { dir: string; manifest: PackageManifest }>();
@@ -144,6 +165,7 @@ console.log(
 rmSync(OUT_DIR, { recursive: true, force: true });
 mkdirSync(OUT_DIR, { recursive: true });
 
+let skipped = 0;
 for (const name of order) {
   const { dir } = packages.get(name)!;
 
@@ -161,6 +183,12 @@ for (const name of order) {
 
   if (dryRun) continue;
 
+  if (alreadyPublished(name, version)) {
+    console.log(`  \x1b[33mskipped\x1b[0m ${name}@${version} — already on npm`);
+    skipped++;
+    continue;
+  }
+
   const publish = Bun.spawnSync(["npm", "publish", tarball, "--provenance", "--access", "public"], {
     cwd: ROOT,
     stdout: "inherit",
@@ -169,7 +197,7 @@ for (const name of order) {
   if (publish.exitCode !== 0) {
     fail(
       `npm publish failed for ${name} — packages published before it are live; ` +
-        `fix the cause and re-run (npm rejects duplicate versions, so re-publishing is safe)`,
+        `fix the cause and re-run (packages already on npm are skipped)`,
     );
   }
   console.log(`  \x1b[32mpublished\x1b[0m ${name}@${version}`);
@@ -178,5 +206,6 @@ for (const name of order) {
 console.log(
   dryRun
     ? `\x1b[32m✓\x1b[0m dry run complete: ${packages.size} tarball(s) in ${OUT_DIR}`
-    : `\x1b[32m✓\x1b[0m released ${packages.size} package(s) at ${version}`,
+    : `\x1b[32m✓\x1b[0m released ${packages.size} package(s) at ${version}` +
+        (skipped > 0 ? ` (${packages.size - skipped} now, ${skipped} already on npm)` : ""),
 );

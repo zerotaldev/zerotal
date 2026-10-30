@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Fixed
 
 - **A route group's middleware runs once on a Flow file page.** The fix is in `@zerotal/core`'s

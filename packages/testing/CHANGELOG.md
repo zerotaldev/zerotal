@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Changed
 
 - **`createMany()`'s docblock no longer cites `last_insert_rowid()`.** Documentation only: the

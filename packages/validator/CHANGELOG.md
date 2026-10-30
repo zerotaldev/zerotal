@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Fixed
 
 - **`validate()` and `FormRequest` read the body `ctx.body()` reads.** Both parsed the request

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Fixed
 
 - **A retry the queue refuses keeps the job in the list and says why.** The **Retry** and

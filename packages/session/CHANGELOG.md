@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Added
 
 - **`ctx.session.resumed()`: whether the client sent the session back.** Every request gets a

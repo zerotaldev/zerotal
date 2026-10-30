@@ -27,6 +27,72 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.16.2 — 2026-10-30
+
+A patch from one team's review of the framework under a large accounting app. Two fixes close
+security gaps, in outgoing mail and in idempotent requests; the rest are things that failed
+quietly: a middleware that ran twice, a retry that forgot its job's policy, a body the validator
+and the controller could not both read.
+
+### Before you upgrade
+
+Read [1.16.2](/docs/upgrade#1162) in the upgrade guide. Five changes can alter what an app sees:
+
+- **Mail refuses an address or display name it cannot send as written** (`@zerotal/notifications`).
+  `InvalidMailAddressError` is thrown for an address holding a control character, whitespace, `<`,
+  `>`, `,` or `;`, or longer than 254 characters, and for a name holding a line break.
+  `"Ada <ada@example.com>"` is still accepted and split into a name and an address.
+- **An idempotency key is scoped to who sent it and where** (`@zerotal/cache`). Responses stored
+  before the upgrade are not replayed, and the same key from another user or to another URL runs
+  the handler.
+- **A validation error answers JSON only when `Accept` prefers it** (`@zerotal/validator`,
+  `@zerotal/core`). `text/html, application/json` now gets the redirect; `X-Inertia` with
+  `Accept: application/json` gets the 422.
+- **`DB.raw(sql, bindings)` throws when the counts differ**, and a `?` inside quotes or a comment
+  is no longer a placeholder anywhere string SQL is accepted (`@zerotal/orm`).
+- **A thrown 4xx is not reported** (`@zerotal/core`): `report()`, and any error tracker wired to
+  it, no longer sees an `HttpError` below 500 or an `abort(4xx)`.
+
+### Security
+
+- **Mail cannot carry a second command or recipient in an address or name.** `SmtpDriver` wrote
+  addresses into the SMTP envelope as given, and both drivers wrote display names without
+  escaping them, so an address or name taken from user data could change what was sent. Addresses
+  and names are now checked when they are set and again by each driver, display names are quoted
+  or encoded so they read as one name, a CR on its own in a body is sent as a line break, and long
+  address headers are folded (`@zerotal/notifications`).
+- **One caller cannot be answered with another's idempotent response.** The middleware keyed its
+  stored responses, its in-flight table and its lock by the client's key alone. They are now keyed
+  by the signed-in user or the session the client sent back, the method, host, path and query,
+  and the key; a retry after the request that signed the caller in still replays
+  (`@zerotal/cache`).
+
+### Added
+
+- **`ctx.session.resumed()`** says whether the client sent the session back, as opposed to one
+  started for this request (`@zerotal/session`, `@zerotal/core`).
+- **`CacheManager.prefix`**, the prefix a manager puts in front of its keys (`@zerotal/cache`).
+
+### Fixed
+
+- **A route group's middleware runs once on a file route**, a view route and a Flow file page; it
+  ran twice, so a throttle allowed half its budget (`@zerotal/core`, `@zerotal/flow`).
+- **Registering your own `SecureHeadersMiddleware` keeps the maintenance gate**, which it used to
+  remove along with the built-in copy (`@zerotal/core`).
+- **`validate()`, `FormRequest` and `ctx.body()` read one body.** Each read the stream itself, so
+  whichever ran second saw an empty body. A JSON body that is not an object now reads as `{}`, and
+  `ctx.input()` reads only own fields (`@zerotal/validator`, `@zerotal/core`).
+- **A thrown 4xx is logged as one warning without a stack**, not as an error
+  (`@zerotal/core`).
+- **A retried, chained or batch-callback job runs under its own `queue`, `maxAttempts` and
+  `retryDelay`**, and a failed job whose class is not registered is no longer requeued with
+  invented numbers; the monitor says why it refused (`@zerotal/queue`, `@zerotal/monitor`).
+- **A model insert on SQLite reads back its own row.** Under concurrent writes `create()` could
+  return another request's row; the insert now reports its key with `RETURNING`
+  (`@zerotal/orm`).
+- **`TokenIssued` can follow the token's insert**, through `createToken({ store })`
+  (`@zerotal/auth`).
+
 ## 1.16.1 — 2026-10-29
 
 A Flow patch for static pages: navigation between them and interactive pages, and an error

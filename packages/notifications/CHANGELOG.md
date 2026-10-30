@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Security
 
 - **A mail address or display name with a line break in it is refused instead of sent, and a

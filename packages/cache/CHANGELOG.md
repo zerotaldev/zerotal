@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Security
 
 - **An idempotency key belongs to the caller who sent it and the endpoint it was sent to.**

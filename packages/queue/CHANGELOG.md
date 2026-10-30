@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Fixed
 
 - **A retried, chained or batch-callback job runs under its own `queue`, `maxAttempts` and

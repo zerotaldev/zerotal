@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.2] — 2026-10-30
+
 ### Fixed
 
 - **`TokenIssued` can follow the token's insert.** `createToken` emitted the event while it built

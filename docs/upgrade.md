@@ -77,6 +77,73 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.16.2
+
+A patch, but five of its fixes change what an app can see. None needs a code change unless it
+relied on the old behaviour.
+
+### Mail refuses what it cannot send as written
+
+An address that holds a control character, whitespace, `<`, `>`, `,` or `;`, or that is longer
+than 254 characters, throws `InvalidMailAddressError`, and so does a display name holding a line
+break. The check runs when the address is set on a `MailMessage`, when a notifiable's `email`
+becomes the recipient, and again in each driver. `"Ada <ada@example.com>"` is still accepted and
+split into a name and an address, and `mail.from.address` may be written that way.
+
+**What to change.** Validate addresses where users type them, with the validator's `email` rule,
+so a bad one is a 422 on the form and not an exception when the mail goes out. A configured
+sender the check would refuse now fails at boot, naming the key. See
+[Notifications](/docs/notifications#mail).
+
+### Idempotency keys are scoped
+
+`IdempotencyMiddleware` keys a stored response by the signed-in user, or the session the client
+sent back, plus the method, host, path, query string and the client's key. It used the key alone,
+so one caller could be answered with another's response.
+
+**What to change.** Nothing, for clients that retry the same request with the same key. Responses
+stored before the upgrade are not replayed, so a retry that straddles the deploy runs its handler.
+Register the middleware after session and authentication for the default scope to see the user,
+or pass `scope`. See [Cache](/docs/cache#idempotency-middleware).
+
+### A validation error answers JSON when `Accept` prefers it
+
+`validate()`, `FormRequest` and the exception handler now agree: JSON when `application/json` has
+a higher q-value than `text/html`, or the same and comes first, with or without `X-Inertia`.
+`text/html, application/json` used to get a 422 from the validator and now gets the redirect;
+`X-Inertia` with `Accept: application/json` used to get a redirect and now gets the 422. Browsers
+and Inertia's own visits are unchanged.
+
+**What to change.** A test that posts and expects a 422 should send `Accept: application/json`.
+
+### String SQL counts its placeholders
+
+A `?` inside a string literal, a quoted identifier or a comment is no longer a placeholder in
+`DB.raw()`, `whereRaw()` and the other string-SQL paths, and `DB.raw(sql, bindings)` throws when
+the number of placeholders and bindings differ. A query that bound the wrong values before now
+binds the right ones or fails loudly.
+
+**What to change.** Nothing, if your queries worked. Write PostgreSQL's bare `?` jsonb operator in
+the tagged form. See [Database](/docs/database).
+
+### A thrown 4xx is not reported
+
+An `HttpError` below 500 and an `abort(4xx)` are expected outcomes: logged as one warning, and not
+passed to `report()`. An error that only carries an upstream status, such as an `HttpClientError`
+from a 401, is still reported.
+
+**What to change.** If an error tracker counted 4xx responses through `report()`, count them from
+the access log or `RequestFailed` instead, which carries `expected`.
+
+### Also worth knowing
+
+- **Queue:** a chained job and a batch's `then`, `catch` and `finally` jobs go to their own
+  class's queue; make sure a worker polls it. `retryFailed()` throws `E_QUEUE_UNKNOWN_JOB` for a
+  job whose class is not registered.
+- **`ctx.body()`** returns `{}` for a JSON body that is a number, string, boolean or `null`.
+- **A file-route resolver's `ctx.middleware`** no longer includes the group's middleware; the
+  registrar adds it.
+
 ## 1.15 to 1.16
 
 One breaking change, to what `app.throttle.trustedProxies` counts, and one place that now

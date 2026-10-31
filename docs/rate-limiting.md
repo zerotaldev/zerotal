@@ -251,6 +251,9 @@ line for CLI requests.
 
 Set your suite up once as described in [Testing](/docs/testing). A rate limiter
 is only proven by the request that gets refused, so the test has to exhaust it.
+Assert only that the attempts get through: what a failed sign-in answers — a
+redirect, a `401`, a `422` — is the login route's business, and the limiter counts
+the attempt either way.
 
 ```typescript fragment
 // tests/http/throttle.test.ts
@@ -261,7 +264,8 @@ test("the sixth attempt in a minute is refused", async () => {
   const app = await createApp();
 
   for (let i = 0; i < 5; i++) {
-    (await app.post("/login", { email: "a@b.c", password: "wrong" })).assertStatus(422);
+    const attempt = await app.post("/login", { email: "a@b.c", password: "wrong" });
+    expect(attempt.status).not.toBe(429);
   }
 
   const blocked = await app.post("/login", { email: "a@b.c", password: "wrong" });
@@ -284,11 +288,13 @@ blocked.assertHeader("X-RateLimit-Remaining", "0");
 ```
 
 **The counter is shared state**, so a limiter test contaminates whatever runs
-next in the same window. Give each test a distinct key — a different route, IP
-header, or user — rather than relying on ordering:
+next in the same window. Give each test a distinct key — its own route, or its
+own user on a limiter keyed by user — rather than relying on ordering. Every test
+request comes from the same socket address, so an `X-Forwarded-For` header
+separates them only on a limiter with [`trustedProxies`](#trustedproxies) set:
 
 ```typescript fragment
-// tests/http/throttle.test.ts
+// tests/http/throttle.test.ts — the limiter on /login has trustedProxies: 1
 await app.post("/login", { email: "a@b.c" }, { "X-Forwarded-For": "10.0.0.7" });
 ```
 

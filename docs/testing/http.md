@@ -208,7 +208,8 @@ res.assertOk(); // landed on the dashboard
 testApp.withoutFollowingRedirects(); // restore default
 ```
 
-These chain off `testApp` and apply to the request that follows.
+These chain off `testApp` and stay in effect for every request after them, until
+`close()` resets them.
 
 `asJson()` is worth reaching for whenever a test asserts on a JSON body. The
 framework negotiates error responses off the `Accept` header, so without it a

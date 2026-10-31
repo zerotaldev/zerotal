@@ -27,12 +27,15 @@
  *
  * Stable packages only. `beta` and `experimental` say in their own README that
  * their surface may move; holding them to this would teach people to write
- * BREAKING notes that mean nothing, which is how a gate becomes noise.
+ * BREAKING notes that mean nothing, which is how a gate becomes noise. Stable at
+ * both ends of the comparison: the release that promotes a package carries every
+ * removal it made while experimental, and those were allowed when they were made.
  *
  * ## Usage
  *
- *     bun run scripts/breaking-check.ts            # against origin/main
+ *     bun run scripts/breaking-check.ts                 # against the last release
  *     bun run scripts/breaking-check.ts --base <ref>
+ *     bun run scripts/breaking-check.ts --tag vX.Y.Z    # while releasing vX.Y.Z
  */
 import { Glob } from "bun";
 import { join } from "node:path";
@@ -93,6 +96,11 @@ function run(...args: string[]): string {
  * On a pull request the branch point is still right — that is the cumulative
  * effect the PR proposes for the next release, which is the question a reviewer
  * is asking.
+ *
+ * **`--tag vX.Y.Z` while releasing it.** The tag being released points at
+ * `HEAD`, so the newest tag is the release itself and the diff is empty — every
+ * release from 1.11.2 to 1.16.2 passed this gate having compared nothing. The base
+ * is then the newest tag other than that one.
  */
 function baseRef(): string {
   const flag = Bun.argv.indexOf("--base");
@@ -101,12 +109,15 @@ function baseRef(): string {
   const branch = Bun.env["GITHUB_BASE_REF"];
   if (branch) return `origin/${branch}`;
 
+  const tagFlag = Bun.argv.indexOf("--tag");
+  const releasing = tagFlag !== -1 ? Bun.argv[tagFlag + 1] : undefined;
+
   // `--merged` so a tag on some other branch cannot be picked; sorted by version
   // rather than by date, because a patch can be tagged after a later minor.
   const tag = run("tag", "--list", "v*", "--merged", "HEAD", "--sort=-v:refname")
     .split(SPLIT_LINES)
     .map((line) => line.trim())
-    .find(Boolean);
+    .find((line) => line !== "" && line !== releasing);
   if (tag) return tag;
 
   const merged = run("merge-base", "HEAD", "origin/main").trim();
@@ -125,6 +136,18 @@ async function maturities(): Promise<Map<string, string>> {
     out.set(dir, pkg.maturity ?? "stable");
   }
   return out;
+}
+
+/** Whether a package was stable at `ref`; false when it did not exist there. */
+function stableAt(ref: string, dir: string): boolean {
+  try {
+    const pkg = JSON.parse(run("show", `${ref}:packages/${dir}/package.json`)) as {
+      maturity?: string;
+    };
+    return (pkg.maturity ?? "stable") === "stable";
+  } catch {
+    return false;
+  }
 }
 
 interface Removal {
@@ -466,7 +489,9 @@ if (import.meta.main) await _main();
 async function _main(): Promise<void> {
   const base = baseRef();
   const maturity = await maturities();
-  const stable = new Set([...maturity].filter(([, m]) => m === "stable").map(([dir]) => dir));
+  const stable = new Set(
+    [...maturity].filter(([dir, m]) => m === "stable" && stableAt(base, dir)).map(([dir]) => dir),
+  );
 
   // The policy names the breaks that have shipped; the changelog is where they are
   // recorded. One of those is derived from the other, so they cannot be allowed to

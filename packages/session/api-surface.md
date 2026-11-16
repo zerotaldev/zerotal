@@ -57,7 +57,7 @@ class SessionAccessor = {
 }
 
 class SessionCookieOverflowError = {
-  new (size: number, limit: number): SessionCookieOverflowError
+  new (size: number, limit: number, largest?: ReadonlyArray<[key: string, bytes: number]>): SessionCookieOverflowError
   readonly code: string
   readonly context?: Record<string, unknown> | undefined
   readonly status: number

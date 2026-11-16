@@ -8,6 +8,29 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **A thrown `ValidationError` answers the way `validate()` does.** The Errors page promised a
+  redirect back with the errors flashed for a browser, and `{ message, errors }` with a `422` for an
+  API client. What it got was the handling every other 4xx gets: a styled `422` page for a browser,
+  and for anyone else a `422` whose JSON had no `errors` at all. It now follows `validate()`'s rule:
+  a client whose `Accept` prefers JSON gets `422` with every message per field; anything else, a
+  request with no `Accept` included, is redirected back with `303`, the first message per field
+  flashed as `errors` and the body as `old`. A test that throws one and posts without `asJson()`
+  now sees the redirect, as it already did for `validate()`.
+- **A response finalizer that fails replaces the response in development and tests.** It was logged
+  and the response went out anyway, so a session past the cookie limit lost every flash, error and
+  old input while the page looked fine. Where development surfaces are on, the error's own response
+  is sent instead. Production is unchanged: logged, and the response goes out.
+
+### Fixed
+
+- **A failed rebuild says which file and line.** A build routine that threw printed only
+  `AggregateError: Bundle failed`; the reasons are listed now, each as `file:line:column message`,
+  and so are the messages of a build that reported its failure instead of throwing.
+- **`HttpContext.ip()`'s docblock said it returns `null` in tests.** `TestApp` serves over a real
+  socket, so it returns the loopback address there; only a context with no server returns `null`.
+
 ## [1.16.2] — 2026-10-30
 
 ### Added

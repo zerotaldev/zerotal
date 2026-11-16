@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Router } from "./Router.ts";
 import { createRouteHandler, runMiddleware } from "./RouteHandler.ts";
 import { HttpContext } from "../pipeline/HttpContext.ts";
@@ -293,5 +293,53 @@ describe("createRouteHandler() — afterResponse callbacks", () => {
     // afterResponse is fire-and-forget; give it a tick to run
     await new Promise<void>((r) => setTimeout(r, 20));
     expect(fired).toEqual(["done"]);
+  });
+});
+
+describe("createRouteHandler() — a response finalizer that fails", () => {
+  const env = Bun.env as Record<string, string | undefined>;
+  let savedAppEnv: string | undefined;
+
+  beforeEach(() => {
+    Router.reset();
+    savedAppEnv = env["APP_ENV"];
+  });
+  afterEach(() => {
+    if (savedAppEnv === undefined) delete env["APP_ENV"];
+    else env["APP_ENV"] = savedAppEnv;
+  });
+
+  /** A route whose response a finalizer cannot finish, as a session past the cookie limit cannot. */
+  function failingRoute(): (req: Request) => Promise<Response> {
+    class SaveController {
+      store(http: HttpContext) {
+        http.onResponseReady(async () => {
+          throw new Error("session cookie is 18000 bytes");
+        });
+        http.response = new Response(null, { status: 303, headers: { Location: "/back" } });
+      }
+    }
+    Router.post("/save", SaveController, "store");
+    return createRouteHandler(Router.routes.get("POST /save")!, new Container());
+  }
+
+  it("replaces the response in development, so the loss shows", async () => {
+    env["APP_ENV"] = "development";
+
+    const res = await failingRoute()(
+      new Request("http://localhost/save", { method: "POST", headers: { Accept: "text/html" } }),
+    );
+
+    expect(res.status).toBe(500);
+    expect(await res.text()).toContain("session cookie is 18000 bytes");
+  });
+
+  it("sends the response it had in production", async () => {
+    env["APP_ENV"] = "production";
+
+    const res = await failingRoute()(new Request("http://localhost/save", { method: "POST" }));
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("/back");
   });
 });

@@ -156,6 +156,9 @@ export class InertiaProvider extends ServiceProvider {
         // development one by construction — which is what turns on the Inertia
         // client hooks the DevTools extension reads.
         define: browserEnvDefines(false),
+        // Report a failure through `logs`, each with its file and line, rather than throwing an
+        // AggregateError whose message is only "Bundle failed".
+        throw: false,
         ...(plugins.length > 0 ? { plugins } : {}),
       });
 

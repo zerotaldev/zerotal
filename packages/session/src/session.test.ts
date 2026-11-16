@@ -236,6 +236,17 @@ describe("CookieDriver", () => {
     expect(response.headers.get("Set-Cookie")).toBeNull();
   });
 
+  it("names the biggest keys in the overflow, so the message says what to move", async () => {
+    const data = { user_id: 42, errors: { certificate: "y".repeat(3000) }, old: "x".repeat(1500) };
+
+    const error = await driver.saveSession("sid", data, makeResponse()).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(SessionCookieOverflowError);
+    const { message } = error as SessionCookieOverflowError;
+    expect(message).toMatch(/Largest keys: errors \(\d+ bytes\), old \(\d+ bytes\), user_id/);
+    expect(message).toContain("flash, errors, old input");
+  });
+
   it("stays under the limit for normal payloads", async () => {
     const response = makeResponse();
     await driver.saveSession("sid", { user_id: 42, theme: "dark" }, response);

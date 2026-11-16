@@ -8,7 +8,7 @@
  *
  * @packageDocumentation
  */
-export { registerDevBuildHook } from "./DevBuildHook.ts";
+export { registerDevBuildHook, _describeBuildLog } from "./DevBuildHook.ts";
 // The dev-process registry and its runners. The definition *types* are on the
 // main barrel (a provider's `devProcesses()` signature needs to name them);
 // everything that runs them is here, with the rest of the dev-server wiring.

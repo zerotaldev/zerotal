@@ -2864,6 +2864,12 @@
       "hash": "30awy7zxvifm"
     },
     {
+      "file": "docs/errors.md",
+      "heading": "Validation errors",
+      "ordinal": 1,
+      "hash": "383awyvzxxbo"
+    },
+    {
       "file": "docs/events.md",
       "heading": "API",
       "ordinal": 0,
@@ -7133,7 +7139,7 @@
       "file": "docs/session.md",
       "heading": "Errors",
       "ordinal": 0,
-      "hash": "32fe3pu5fzrm"
+      "hash": "28vuwvem7t2r"
     },
     {
       "file": "docs/session.md",

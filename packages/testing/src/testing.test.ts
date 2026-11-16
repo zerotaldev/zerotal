@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
+import { rm } from "node:fs/promises";
 import { SQL } from "bun";
 import { _setBaseModelConnection, BaseModel, column, table } from "@zerotal/orm";
 import {
@@ -50,6 +51,8 @@ beforeAll(async () => {
 afterAll(async () => {
   _setBaseModelConnection(null);
   await db.end();
+  // The storage root this suite points local disks at; each disk deletes its own files, not it.
+  await rm(".tmp-testing-storage", { recursive: true, force: true });
 });
 
 beforeEach(async () => {

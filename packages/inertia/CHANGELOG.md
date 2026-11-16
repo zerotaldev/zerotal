@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A redirect to a `#fragment` moves an Inertia visit.** The `409` that carries
+  `X-Inertia-Redirect` was also marked `X-Inertia: true`, and the client takes any response so
+  marked for a page: it never reached the redirect, threw on the empty body, and left the screen
+  where it was after the write had happened. The `409` no longer carries `X-Inertia`, including one
+  the handler set on its redirect.
+- **`zt dev` and `inertia:build` name the file and line a bundle failed on.** Both called the bundler
+  in the mode that throws an `AggregateError` saying only "Bundle failed", so the dev log said that
+  and the build command's own error list never ran. They report each message with its position now.
+
 ## [1.15.5] — 2026-10-27
 
 ### Fixed

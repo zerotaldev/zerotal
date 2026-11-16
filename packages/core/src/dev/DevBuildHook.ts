@@ -64,6 +64,42 @@ export function _resetDevBuildHooks(): void {
 }
 
 /**
+ * @internal One line for a bundler message: where it is, then what it says.
+ *
+ * `String()` of a `Bun.build()` message is only `BuildMessage: Unexpected ;`; the file, line and
+ * column sit on its `position`, and without them a failed rebuild names nothing to open.
+ *
+ * @param entry - A `Bun.build()` log entry, or anything a build routine reported.
+ * @returns `file:line:column message`, or the entry as text when it carries no position.
+ */
+export function _describeBuildLog(entry: unknown): string {
+  if (entry === null || typeof entry !== "object") return String(entry);
+  const { message, position } = entry as {
+    message?: unknown;
+    position?: { file?: unknown; line?: unknown; column?: unknown } | null;
+  };
+  if (typeof message !== "string") return String(entry);
+  if (!position || typeof position.file !== "string" || position.file === "") return message;
+  return `${position.file}:${String(position.line)}:${String(position.column)} ${message}`;
+}
+
+/**
+ * @internal The lines a thrown build error should print.
+ *
+ * `Bun.build()` throws an `AggregateError` whose message is only "Bundle failed"; the reasons are
+ * its `errors`. Printing the error alone told a developer that the bundle failed and nothing about
+ * why, while the server went on serving the last good one.
+ *
+ * @param error - Whatever a build routine threw.
+ * @returns One line per reason, or the error itself when it carries none.
+ */
+export function _describeBuildFailure(error: unknown): string[] {
+  const reasons = (error as { errors?: unknown } | null)?.errors;
+  if (Array.isArray(reasons) && reasons.length > 0) return reasons.map(_describeBuildLog);
+  return [String(error)];
+}
+
+/**
  * @internal Run every registered build routine and merge the outcomes.
  *
  * Routines run concurrently — they write to separate output directories — and
@@ -77,11 +113,14 @@ export async function runDevBuildHooks(): Promise<BuildResult> {
         const result = await fn();
         return {
           success: result.success,
-          logs: (result.logs ?? []).map((l) => `[${name}] ${l}`),
+          logs: (result.logs ?? []).map((l) => `[${name}] ${_describeBuildLog(l)}`),
           ...(result.skipped === true ? { skipped: true } : {}),
         };
       } catch (error) {
-        return { success: false, logs: [`[${name}] ${error}`] };
+        return {
+          success: false,
+          logs: _describeBuildFailure(error).map((line) => `[${name}] ${line}`),
+        };
       }
     }),
   );

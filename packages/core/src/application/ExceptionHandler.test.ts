@@ -1,6 +1,13 @@
 import { describe, it, expect, afterEach, beforeEach } from "bun:test";
 import { ExceptionHandler } from "./ExceptionHandler.ts";
-import { NotFoundError, ForbiddenError, UnauthorizedError, HttpError } from "../errors/index.ts";
+import {
+  NotFoundError,
+  ForbiddenError,
+  UnauthorizedError,
+  HttpError,
+  ValidationError,
+} from "../errors/index.ts";
+import type { SessionContract } from "../contracts/session.ts";
 import { HttpContext } from "../pipeline/HttpContext.ts";
 import { ScopedResolver } from "../container/ScopedResolver.ts";
 
@@ -283,5 +290,86 @@ describe("ExceptionHandler.defaultRender() — _wantsHtml catch path", () => {
     } as unknown as HttpContext;
     const res = await ExceptionHandler.defaultRender(new Error("test"), badCtx);
     expect(res.status).toBe(500);
+  });
+});
+
+// ── A thrown ValidationError answers as validate() does ──────────────────────
+
+/** A session that keeps what it is given, so a test can read the flash back. */
+function memorySession(): SessionContract & { values: Map<string, unknown> } {
+  const values = new Map<string, unknown>();
+  return {
+    values,
+    id: () => "test-session",
+    get: (key: string) => values.get(key),
+    pull: (key: string) => {
+      const value = values.get(key);
+      values.delete(key);
+      return value;
+    },
+    set: (key: string, value: unknown) => void values.set(key, value),
+    has: (key: string) => values.has(key),
+    forget: (key: string) => void values.delete(key),
+    flush: () => values.clear(),
+    flash: (key: string, value: unknown) => void values.set(key, value),
+    regenerate: () => {},
+  };
+}
+
+describe("ExceptionHandler.defaultRender() — a thrown ValidationError", () => {
+  const error = () =>
+    new ValidationError("Check the form", { email: ["is required", "too short"] });
+
+  it("redirects back with the errors flashed when there is no Accept, as validate() does", async () => {
+    const ctx = HttpContext.fake("http://localhost/signup", {
+      method: "POST",
+      headers: { Referer: "http://localhost/signup", "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "" }),
+    });
+    const session = memorySession();
+    ctx.session = session;
+
+    const res = await ExceptionHandler.defaultRender(error(), ctx);
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("http://localhost/signup");
+    // The first message per field: the shape validate() flashes and pages read.
+    expect(session.values.get("errors")).toEqual({ email: "is required" });
+    expect(session.values.get("old")).toEqual({ email: "" });
+  });
+
+  it("redirects a browser too, and never off-site", async () => {
+    const ctx = HttpContext.fake("http://localhost/signup", {
+      method: "POST",
+      headers: { Accept: "text/html", Referer: "https://elsewhere.example/" },
+    });
+
+    const res = await ExceptionHandler.defaultRender(error(), ctx);
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("/");
+  });
+
+  it("answers 422 with every message when Accept prefers JSON", async () => {
+    const res = await ExceptionHandler.defaultRender(error(), jsonCtx());
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { message: string; errors: Record<string, string[]> };
+    expect(body.message).toBe("Check the form");
+    expect(body.errors["email"]).toEqual(["is required", "too short"]);
+  });
+
+  it("is recognised by its code when it comes from another copy of core", async () => {
+    const foreign = Object.assign(new Error("Check the form"), {
+      name: "ValidationError",
+      code: "E_VALIDATION_FAILED",
+      status: 422,
+      errors: { email: ["is required"] },
+    });
+
+    const res = await ExceptionHandler.defaultRender(foreign, jsonCtx());
+
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { errors: unknown }).errors).toEqual({ email: ["is required"] });
   });
 });

@@ -114,7 +114,20 @@ function baseRef(): string {
 
   // `--merged` so a tag on some other branch cannot be picked; sorted by version
   // rather than by date, because a patch can be tagged after a later minor.
-  const tag = run("tag", "--list", "v*", "--merged", "HEAD", "--sort=-v:refname")
+  // `--no-contains HEAD` so a tag on HEAD itself is never the base: the push of a
+  // release commit to main, or any re-run on a tagged commit, otherwise compared
+  // the release with itself and passed having checked nothing (CI did exactly
+  // that on v1.16.2's own commit).
+  const tag = run(
+    "tag",
+    "--list",
+    "v*",
+    "--merged",
+    "HEAD",
+    "--no-contains",
+    "HEAD",
+    "--sort=-v:refname",
+  )
     .split(SPLIT_LINES)
     .map((line) => line.trim())
     .find((line) => line !== "" && line !== releasing);

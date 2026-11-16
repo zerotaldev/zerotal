@@ -422,35 +422,33 @@ Session errors extend `SessionError`, which extends the framework's
 configuration faults, and failing loudly at startup beats silently losing
 sessions.
 
-| Error                        | Code                       | Raised when                                                |
-| ---------------------------- | -------------------------- | ---------------------------------------------------------- |
-| `SessionError`               | `E_SESSION`                | Base class — catch this to handle any session failure.     |
-| `SessionSecretMissingError`  | `E_SESSION_SECRET_MISSING` | No `SESSION_SECRET` is configured. Raised at boot.         |
-| `SessionDriverMissingError`  | `E_SESSION_DRIVER_MISSING` | The configured driver name matches nothing registered.     |
-| `SessionCookieOverflowError` | —                          | The serialised session exceeds the 4 KB a cookie can hold. |
+| Error                        | Code                        | Raised when                                                |
+| ---------------------------- | --------------------------- | ---------------------------------------------------------- |
+| `SessionError`               | `E_SESSION`                 | Base class — catch this to handle any session failure.     |
+| `SessionSecretMissingError`  | `E_SESSION_SECRET_MISSING`  | No `SESSION_SECRET` is configured. Raised at boot.         |
+| `SessionDriverMissingError`  | `E_SESSION_DRIVER_MISSING`  | The configured driver name matches nothing registered.     |
+| `SessionCookieOverflowError` | `E_SESSION_COOKIE_OVERFLOW` | The serialised session exceeds the 4 KB a cookie can hold. |
 
 `SessionCookieOverflowError` is the one you meet in real use. The `cookie` driver
-stores the whole session in the cookie itself, so putting a user object — or a
-flash message with a stack trace — into the session overflows a hard browser
-limit:
+stores the whole session in the cookie itself, so a user object, or a long list of
+validation errors flashed back to a form, can push it past a hard browser limit.
+
+The check runs when the response is ready, after your handler has returned, so
+there is nothing to catch around `session.set()`. The error's message names the
+three biggest session keys and their sizes. In development and tests the request
+answers with the error. In production it is logged and the response goes out
+without the cookie, so nothing written to the session on that request (a flash,
+errors, old input) reaches the next one.
+
+The fix is nearly always to store an identifier rather than the object, or to
+move to a server-side driver where the cookie holds only the session id:
 
 ```typescript fragment
 // in a controller
-import { SessionCookieOverflowError } from "@zerotal/session";
-
-try {
-  http.session.put("report", hugeObject);
-} catch (error) {
-  if (error instanceof SessionCookieOverflowError) {
-    // Keep a key in the session, the payload somewhere with room.
-    const id = await Cache.set(hugeObject);
-    http.session.put("reportId", id);
-  } else throw error;
-}
+const reportId = crypto.randomUUID();
+await Cache.set(`report:${reportId}`, hugeObject, 600);
+http.session.set("reportId", reportId);
 ```
-
-The fix is nearly always to store an identifier rather than the object, or to
-move to a server-side driver where the cookie holds only the session id.
 
 ## Types
 

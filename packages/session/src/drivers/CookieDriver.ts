@@ -67,6 +67,25 @@ const TAG_BYTES = 16;
 const MAX_COOKIE_BYTES = 4096;
 
 /**
+ * The three biggest session keys by serialized size, largest first, so an overflow names what to
+ * move instead of only how far over it is. Flash data sits under its own keys, so a flashed list
+ * of errors shows up here by name.
+ */
+function _largestKeys(data: Record<string, unknown>): Array<[string, number]> {
+  const sizes: Array<[string, number]> = [];
+  for (const [key, value] of Object.entries(data)) {
+    let bytes = 0;
+    try {
+      bytes = Buffer.byteLength(JSON.stringify(value) ?? "");
+    } catch {
+      continue;
+    }
+    sizes.push([key, bytes]);
+  }
+  return sizes.sort((a, b) => b[1] - a[1]).slice(0, 3);
+}
+
+/**
  * Reserved data key carrying the session's original issue time (epoch seconds).
  *
  * It rides in the data bag because that is the only thing a driver gets handed back on
@@ -216,7 +235,7 @@ export class CookieDriver implements SessionDriver {
 
     const size = Buffer.byteLength(cookie);
     if (size > MAX_COOKIE_BYTES) {
-      throw new SessionCookieOverflowError(size, MAX_COOKIE_BYTES);
+      throw new SessionCookieOverflowError(size, MAX_COOKIE_BYTES, _largestKeys(data));
     }
 
     response.headers.append("Set-Cookie", cookie);

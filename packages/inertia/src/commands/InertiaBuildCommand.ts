@@ -1,5 +1,10 @@
 import { Command } from "@zerotal/core";
-import { pruneBuildOutput, cleanBuildOutput, browserEnvDefines } from "@zerotal/core/dev";
+import {
+  pruneBuildOutput,
+  cleanBuildOutput,
+  browserEnvDefines,
+  _describeBuildLog,
+} from "@zerotal/core/dev";
 import { generatePageRegistry } from "../PageRegistry.ts";
 import { detectCssPlugins } from "../css.ts";
 import { detectVuePlugin } from "../vuePlugin.ts";
@@ -69,12 +74,15 @@ export class InertiaBuildCommand extends Command {
       // extension reads are never enabled, and the panel tells you to start a Vite
       // server that a Zerotal app does not have.
       define: browserEnvDefines(isProd),
+      // Without it a failure throws an AggregateError saying only "Bundle failed", and the
+      // branch below, which names each file and line, never runs.
+      throw: false,
       ...(plugins.length > 0 ? { plugins } : {}),
     });
 
     if (!result.success) {
       for (const log of result.logs) {
-        this.error(String(log));
+        this.error(_describeBuildLog(log));
       }
       throw new Error("Frontend build failed.");
     }

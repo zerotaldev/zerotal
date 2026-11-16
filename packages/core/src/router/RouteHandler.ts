@@ -10,6 +10,7 @@ import type { RequestIPProvider } from "../pipeline/HttpContext.ts";
 import { Pipeline } from "../pipeline/Pipeline.ts";
 import { ExceptionHandler, _isExpectedOutcome } from "../application/ExceptionHandler.ts";
 import { recordHttp, beginHttp, endHttp } from "../metrics/HttpMetrics.ts";
+import { devSurfacesEnabled } from "../support/env.ts";
 import { FrameworkEvents, RequestHandled, RequestFailed } from "../events/FrameworkEvents.ts";
 import { injectRegistry } from "../container/inject.ts";
 import type { Pipe, NextFn } from "../pipeline/types.ts";
@@ -158,6 +159,11 @@ export async function dispatchRequest(
           await finalize(response!);
         } catch (error) {
           console.error("[Zerotal] response finalizer failed:", error);
+          // In development and tests the failure replaces the response. Sent as it was, the
+          // page looks fine and whatever the finalizer was writing is simply gone: a session
+          // past the cookie limit lost every flash, error and old input with nothing on the
+          // page to say so. In production the response still goes out, as documented.
+          if (devSurfacesEnabled()) response = await ExceptionHandler.defaultRender(error, ctx);
         }
       }
 

@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A session cookie over the browser limit names what filled it.** `SessionCookieOverflowError`
+  now lists the three biggest session keys with their sizes, and says that nothing written to the
+  session on that request reaches the next one. In development and tests the request now answers
+  with this error instead of sending its response without the cookie (see `@zerotal/core`).
+
 ## [1.16.2] — 2026-10-30
 
 ### Added

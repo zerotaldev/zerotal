@@ -4,6 +4,7 @@ import {
   hasDevBuildHooks,
   runDevBuildHooks,
   _resetDevBuildHooks,
+  _describeBuildLog,
 } from "./DevBuildHook.ts";
 import { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
 import * as DevWsServer from "./DevWsServer.ts";
@@ -75,6 +76,41 @@ describe("DevBuildHook", () => {
     const result = await runDevBuildHooks();
     expect(result.success).toBe(false);
     expect(String(result.logs?.[0])).toContain("bundler exploded");
+  });
+
+  it("names the file, line and reason when the bundler throws, not only 'Bundle failed'", async () => {
+    const bad = join(import.meta.dir, `.tmp-bad-bundle-${Date.now()}.ts`);
+    await Bun.write(bad, "export const a = ;\n");
+    try {
+      // The default `throw: true`: what a build routine that forgets `throw: false` sees.
+      registerDevBuildHook("inertia", async () => Bun.build({ entrypoints: [bad] }));
+      const logs = (await runDevBuildHooks()).logs?.map(String) ?? [];
+
+      expect(logs.join("\n")).not.toContain("Bundle failed");
+      expect(logs[0]).toStartWith("[inertia] ");
+      expect(logs[0]).toContain(`${bad}:1:`);
+      expect(logs[0]).toContain("Unexpected");
+    } finally {
+      await unlink(bad);
+    }
+  });
+
+  it("gives a reported bundler message its position too", async () => {
+    const bad = join(import.meta.dir, `.tmp-bad-log-${Date.now()}.ts`);
+    await Bun.write(bad, "export const a = ;\n");
+    try {
+      registerDevBuildHook("flow", async () => Bun.build({ entrypoints: [bad], throw: false }));
+      const [line] = (await runDevBuildHooks()).logs?.map(String) ?? [];
+
+      expect(line).toContain(`[flow] ${bad}:1:`);
+    } finally {
+      await unlink(bad);
+    }
+  });
+
+  it("describes an entry with no position as its text", () => {
+    expect(_describeBuildLog("plain words")).toBe("plain words");
+    expect(_describeBuildLog({ message: "no file", position: null })).toBe("no file");
   });
 
   it("succeeds trivially when nothing is registered", async () => {

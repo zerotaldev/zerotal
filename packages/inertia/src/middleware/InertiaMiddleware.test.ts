@@ -141,7 +141,19 @@ describe("a redirect to a fragment", () => {
     expect(out.headers.get("X-Inertia-Redirect")).toBe("/report#totals");
     // Left in, the browser would follow it before the client could act.
     expect(out.headers.get("Location")).toBeNull();
-    expect(out.headers.get("X-Inertia")).toBe("true");
+    // The client reads X-Inertia-Redirect only on a response that is not marked as a page.
+    expect(out.headers.get("X-Inertia")).toBeNull();
+  });
+
+  it("drops an X-Inertia the handler set, so the client still follows it", async () => {
+    const marked = redirect(303, "/budget/7#import");
+    marked.headers.set("X-Inertia", "true");
+
+    const out = await run({ method: "POST" }, marked);
+
+    expect(out.status).toBe(409);
+    expect(out.headers.get("X-Inertia")).toBeNull();
+    expect(out.headers.get("X-Inertia-Redirect")).toBe("/budget/7#import");
   });
 });
 

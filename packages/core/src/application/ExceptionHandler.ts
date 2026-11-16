@@ -9,6 +9,8 @@ import { _ABORTED, _HTTP_ERROR } from "../errors/HttpError.ts";
 import { renderDevErrorPage, renderHttpErrorPage } from "./DevErrorPage.ts";
 import { devSurfacesEnabled } from "../support/env.ts";
 import { _prefersJson } from "../http/negotiate.ts";
+import { ValidationError } from "../errors/ValidationError.ts";
+import { safeRedirectPath } from "../pipeline/HttpContext.ts";
 
 /**
  * Errors that are an ordinary outcome of a request rather than a fault: a URL nothing
@@ -108,8 +110,9 @@ export abstract class ExceptionHandler {
    * Error-class routing:
    *   1. ValidationRedirectError → 303 redirect (always, any client)
    *   2. ValidationJsonError     → 422 JSON (always — the errors object IS the response)
-   *   3. ZerotalError 4xx           → styled 4xx HTML or JSON depending on client
-   *   4. Everything else         → dev stack-trace page or minimal 500
+   *   3. ValidationError         → as validate(): 422 JSON when Accept prefers it, else 303 back
+   *   4. ZerotalError 4xx           → styled 4xx HTML or JSON depending on client
+   *   5. Everything else         → dev stack-trace page or minimal 500
    */
   static async defaultRender(error: unknown, ctx?: HttpContext): Promise<Response> {
     // Fail closed for debug output: the dev stack-trace page needs either a
@@ -141,6 +144,10 @@ export abstract class ExceptionHandler {
       const { errors } = error as { errors: Record<string, string> };
       return Response.json({ message: "Validation failed", errors }, { status: 422 });
     }
+
+    // ── A thrown ValidationError: the answer validate() gives ────────────────
+    const fieldErrors = _validationErrors(error);
+    if (fieldErrors) return _renderValidationError(error as Error, fieldErrors, ctx);
 
     // ── Named HTTP errors (4xx / 5xx ZerotalError subclasses) ────────────────
     if (error instanceof Error && "status" in error) {
@@ -181,6 +188,66 @@ export abstract class ExceptionHandler {
     }
     return Response.json({ message: "Internal Server Error" }, { status: 500 });
   }
+}
+
+/**
+ * The field errors of a `ValidationError` from `@zerotal/core/errors`, or `undefined` for any
+ * other error.
+ *
+ * By its code as well as by class, because an app can hold two copies of core. Flow's own
+ * `ValidationError` carries `E_VALIDATION` and is answered by Flow, so it never matches.
+ */
+function _validationErrors(error: unknown): Record<string, string[]> | undefined {
+  if (error instanceof ValidationError) return error.errors;
+  const candidate = error as { code?: unknown; errors?: unknown } | null;
+  if (candidate?.code !== "E_VALIDATION_FAILED") return undefined;
+  const { errors } = candidate;
+  return errors !== null && typeof errors === "object"
+    ? (errors as Record<string, string[]>)
+    : undefined;
+}
+
+/**
+ * Answer a thrown `ValidationError` the way `validate()` answers a failed rule set, so a check a
+ * controller makes by hand fails exactly like one the validator makes.
+ *
+ * A client whose `Accept` prefers JSON to HTML gets `422` with the field errors. Anything else
+ * (a form post, a browser, an Inertia visit, a request with no `Accept`) is redirected back with
+ * `303`, the first message per field flashed as `errors` and the submitted body as `old`, which
+ * is the shape `validate()` leaves in the session and the shape pages read.
+ */
+async function _renderValidationError(
+  error: Error,
+  errors: Record<string, string[]>,
+  ctx?: HttpContext,
+): Promise<Response> {
+  if (_prefersJson(ctx?.request.headers.get("Accept"))) {
+    return Response.json({ message: error.message, errors }, { status: 422 });
+  }
+
+  if (ctx?.session) {
+    const firsts: Record<string, string> = {};
+    for (const [field, messages] of Object.entries(errors)) {
+      const first = Array.isArray(messages) ? messages[0] : messages;
+      if (first !== undefined) firsts[field] = String(first);
+    }
+    ctx.session.set("errors", firsts);
+
+    const method = ctx.request.method;
+    if (method !== "GET" && method !== "HEAD") {
+      try {
+        ctx.session.set("old", await ctx.body());
+      } catch {
+        // A body that cannot be read leaves nothing to refill the form with; the errors
+        // still reach the page.
+      }
+    }
+  }
+
+  const back = ctx
+    ? (safeRedirectPath(ctx.request.headers.get("Referer"), ctx.url.origin) ?? "/")
+    : "/";
+  return new Response(null, { status: 303, headers: { Location: back } });
 }
 
 /** Merge extra headers into a (possibly pending) Response and return it. */

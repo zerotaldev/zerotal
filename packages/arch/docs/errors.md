@@ -250,6 +250,21 @@ through the handler:
 const data = await StorePostRequest.validate();
 ```
 
+A check the validator cannot make, such as one that needs the database, can throw
+`ValidationError` from `@zerotal/core/errors` and get the same answer. A client
+whose `Accept` prefers JSON gets a `422` with your message and every message per
+field. Anything else, a request with no `Accept` included, is redirected back with
+the first message per field flashed as `errors` and the submitted body as `old`:
+
+```typescript fragment
+// in a controller
+import { ValidationError } from "@zerotal/core/errors";
+
+if (await User.where("email", email).exists()) {
+  throw new ValidationError("That address is taken", { email: ["is already registered"] });
+}
+```
+
 See the [Validator](/docs/validator) guide for details.
 
 ## Error codes

@@ -73,7 +73,11 @@ export class InertiaMiddleware extends BaseMiddleware {
         const headers = new Headers(response.headers);
         headers.delete("Location");
         headers.set("X-Inertia-Redirect", target);
-        headers.set("X-Inertia", "true");
+        // Never `X-Inertia` on this one. The client takes any response carrying it for a page,
+        // and only looks for `X-Inertia-Redirect` on a response without it, so marking the 409
+        // left it throwing on an empty page: the write had happened and the screen stayed put.
+        headers.delete("X-Inertia");
+        if (!headers.has("Vary")) headers.set("Vary", "X-Inertia");
         return new Response(null, { status: 409, headers });
       }
 

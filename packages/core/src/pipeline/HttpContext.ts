@@ -420,8 +420,10 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
   /**
    * The raw client IP address taken directly from the TCP socket.
    *
-   * Available when running inside `Bun.serve()` — returns `null` in tests
-   * or any context where the Bun server reference was not injected.
+   * Available when running inside `Bun.serve()`, and that includes `TestApp`,
+   * which serves its requests over a real socket: there it is the loopback
+   * address, usually `::1`. Returns `null` only where no server was injected,
+   * such as a context built with `HttpContext.fake()`.
    *
    * When Bun sits behind a reverse proxy (nginx, Caddy, etc.) this returns
    * the proxy's IP, not the end-user's. Use {@link HttpContext.clientIp} to
@@ -803,8 +805,10 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
    * silently drops flashed validation errors on the redirect that carries them.
    *
    * Finalizers run in registration order and are awaited. An error thrown by one
-   * is logged and swallowed, because a failed finalizer must not turn a rendered
-   * response into a crash.
+   * is logged. In production it is then swallowed, because a failed finalizer must
+   * not turn a rendered response into a crash; in development and tests it
+   * replaces the response with the error's, so what the finalizer failed to write
+   * (a session past the cookie limit, say) is not lost without a sign.
    *
    * @example
    * ctx.onResponseReady(async (response) => {

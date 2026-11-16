@@ -161,7 +161,9 @@ describe("resolveLocale / parseAcceptLanguage", () => {
 });
 
 describe("loadCatalogs", () => {
-  const TMP = `./.tmp-lang-${Date.now()}`;
+  // No `./` prefix: on Windows `rm("./dir", { recursive: true })` resolves and deletes nothing,
+  // which left one of these behind after every run.
+  const TMP = `.tmp-lang-${Date.now()}`;
   beforeAll(async () => {
     await Bun.write(`${TMP}/en.json`, JSON.stringify({ hi: "Hi" }));
     await Bun.write(`${TMP}/fr.json`, JSON.stringify({ hi: "Salut" }));

@@ -50,14 +50,25 @@ export class SessionCookieOverflowError extends SessionError {
   /**
    * @param size - Serialized cookie size in bytes.
    * @param limit - The enforced maximum (4096) in bytes.
+   * @param largest - The biggest session keys, largest first, with their serialized sizes,
+   *   so the message says what to move. Optional; the driver passes it.
    */
-  constructor(size: number, limit: number) {
+  constructor(
+    size: number,
+    limit: number,
+    largest: ReadonlyArray<[key: string, bytes: number]> = [],
+  ) {
+    const culprits =
+      largest.length > 0
+        ? ` Largest keys: ${largest.map(([key, bytes]) => `${key} (${bytes} bytes)`).join(", ")}.`
+        : "";
     super(
-      `[Zerotal Session] Serialized session cookie is ${size} bytes, exceeding the ${limit}-byte browser limit. ` +
+      `[Zerotal Session] Serialized session cookie is ${size} bytes, exceeding the ${limit}-byte browser limit, ` +
+        `so it was not sent and nothing written to the session on this request (flash, errors, old input) reaches the next one.${culprits} ` +
         "Move large values out of the cookie session (use the Redis driver or a server-side store).",
       "E_SESSION_COOKIE_OVERFLOW",
       500,
-      { size, limit },
+      { size, limit, largest: largest.map(([key]) => key) },
     );
   }
 }

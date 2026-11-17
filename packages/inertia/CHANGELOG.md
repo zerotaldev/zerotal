@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.3] — 2026-11-17
+
 ### Fixed
 
 - **A redirect to a `#fragment` moves an Inertia visit.** The `409` that carries

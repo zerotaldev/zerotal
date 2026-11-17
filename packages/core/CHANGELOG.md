@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.3] — 2026-11-17
+
 ### Changed
 
 - **A thrown `ValidationError` answers the way `validate()` does.** The Errors page promised a

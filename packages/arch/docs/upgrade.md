@@ -77,6 +77,36 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.16.3
+
+A patch. Two of its fixes change what an app can see; neither needs a code change unless a test
+relied on the old answer.
+
+### A thrown `ValidationError` answers the way `validate()` does
+
+A `ValidationError` from `@zerotal/core/errors` used to get the handling of any other 4xx: a styled
+`422` page for a browser, and for every other client a `422` whose JSON had no `errors`. It now
+follows `validate()`. A client whose `Accept` prefers JSON gets a `422` with your message and
+every message per field. Anything else, a request with no `Accept` included, is redirected back
+with `303`, the first message per field flashed as `errors` and the body as `old`.
+
+**What to change.** A test that throws one and expects a `422` should send
+`Accept: application/json`, with `asJson()`. A test that expects the redirect needs nothing. See
+[Errors](/docs/errors#validation-errors).
+
+### A failing response finalizer shows in development and tests
+
+A callback registered with `ctx.onResponseReady()` that throws was logged and the response went
+out anyway. Where development surfaces are on, which includes `zt test`, the error's response now
+replaces it. The finalizer the framework registers is the session's, so the case you will meet is
+a session too big for the cookie driver: the request answers with `SessionCookieOverflowError`,
+whose message names the biggest keys, instead of sending the page without the cookie and losing
+every flash, error and old input on it. Production still logs and sends the response.
+
+**What to change.** Nothing, unless a test was passing over an overflowing session. Store an
+identifier rather than the object, or move to a server-side driver. See
+[Session](/docs/session#errors).
+
 ## 1.16.2
 
 A patch, but five of its fixes change what an app can see. None needs a code change unless it
@@ -109,7 +139,8 @@ or pass `scope`. See [Cache](/docs/cache#idempotency-middleware).
 ### A validation error answers JSON when `Accept` prefers it
 
 `validate()`, `FormRequest` and the exception handler now agree: JSON when `application/json` has
-a higher q-value than `text/html`, or the same and comes first, with or without `X-Inertia`.
+a higher q-value than `text/html`, or the same and comes first, with or without `X-Inertia`. A
+`ValidationError` you throw yourself joined them only in [1.16.3](#1163).
 `text/html, application/json` used to get a 422 from the validator and now gets the redirect;
 `X-Inertia` with `Accept: application/json` used to get a redirect and now gets the 422. Browsers
 and Inertia's own visits are unchanged.

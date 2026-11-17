@@ -27,6 +27,42 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.16.3 — 2026-11-17
+
+A patch for things that failed without saying so: a redirect that left an Inertia page where it
+was, a validation error that did not answer as the documentation said, a session that dropped what
+it carried, and a bundle failure that named nothing.
+
+### Before you upgrade
+
+Read [1.16.3](/docs/upgrade#1163) in the upgrade guide. Two changes can alter what an app sees:
+
+- **A thrown `ValidationError` answers the way `validate()` does** (`@zerotal/core`). A client
+  whose `Accept` does not prefer JSON, including a request with no `Accept`, is redirected back
+  with `303` and the errors flashed, where it used to get a `422`. A client that prefers JSON gets
+  a `422` whose body now carries `errors`.
+- **A response finalizer that fails replaces the response in development and tests**
+  (`@zerotal/core`). A session too big for its cookie now answers with
+  `SessionCookieOverflowError` there, instead of sending the page without the cookie. Production
+  is unchanged.
+
+### Fixed
+
+- **A redirect to a `#fragment` moves an Inertia visit.** The `409` carrying `X-Inertia-Redirect`
+  was also marked `X-Inertia`, so the client took it for a page, threw on the empty body and left
+  the screen where it was after the write had happened (`@zerotal/inertia`).
+- **A thrown `ValidationError` answers as the [Errors](/docs/errors#validation-errors) page says:**
+  redirected back with the errors and old input flashed, or a `422` with every message per field
+  when `Accept` prefers JSON. It used to get the handling of any other 4xx (`@zerotal/core`).
+- **A session cookie over the browser limit names what filled it**, the three biggest keys with
+  their sizes, and says that nothing written on that request reaches the next one
+  (`@zerotal/session`).
+- **A failed bundle names the file and line.** `zt dev` printed only that the bundle
+  failed, and `inertia:build`'s own error list never ran; each message is now printed as
+  `file:line:column message` (`@zerotal/core`, `@zerotal/inertia`).
+- **`HttpContext.ip()`'s documentation** said it returns `null` in tests; under `TestApp` it is
+  the loopback address (`@zerotal/core`).
+
 ## 1.16.2 — 2026-10-30
 
 A patch from one team's review of the framework under a large accounting app. Two fixes close
@@ -47,7 +83,9 @@ Read [1.16.2](/docs/upgrade#1162) in the upgrade guide. Five changes can alter w
   the handler.
 - **A validation error answers JSON only when `Accept` prefers it** (`@zerotal/validator`,
   `@zerotal/core`). `text/html, application/json` now gets the redirect; `X-Inertia` with
-  `Accept: application/json` gets the 422.
+  `Accept: application/json` gets the 422. This held for `validate()` and `FormRequest`; a
+  `ValidationError` you throw yourself followed the same rule only from
+  [1.16.3](#1163-2026-11-17).
 - **`DB.raw(sql, bindings)` throws when the counts differ**, and a `?` inside quotes or a comment
   is no longer a placeholder anywhere string SQL is accepted (`@zerotal/orm`).
 - **A thrown 4xx is not reported** (`@zerotal/core`): `report()`, and any error tracker wired to

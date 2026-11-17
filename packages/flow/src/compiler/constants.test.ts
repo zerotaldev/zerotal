@@ -433,7 +433,10 @@ export class Home extends Component {
   const compiledFiles = async (): Promise<Record<string, string>> => {
     const cache = join(dir, ".zerotal", "compiled");
     const out: Record<string, string> = {};
-    for (const name of await readdir(cache)) out[name] = await readFile(join(cache, name), "utf8");
+    // Compiled renders only: each page's cache manifest (`.json`) sits beside them.
+    for (const name of await readdir(cache)) {
+      if (!name.endsWith(".json")) out[name] = await readFile(join(cache, name), "utf8");
+    }
     return out;
   };
 

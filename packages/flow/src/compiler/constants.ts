@@ -23,11 +23,15 @@
  * shared file would leave every page that uses it serving its old classes.
  */
 import * as ts from "typescript";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import {
+  moduleDigest,
+  readModuleText,
+  resolveRelativeModule,
+  type StaticImport,
+  type StaticStrings,
+} from "./static-imports.ts";
 
-/** Names mapped to the string they are known to hold. */
-export type StaticStrings = ReadonlyMap<string, string>;
+export { staticStringsFingerprint, type StaticStrings } from "./static-imports.ts";
 
 /** Strip the wrappers that do not change a value: parentheses, `as`, `satisfies`, `!`. */
 function _unwrap(node: ts.Expression): ts.Expression {
@@ -128,30 +132,6 @@ export function exportedStringConstants(sf: ts.SourceFile): Map<string, string> 
   return exported;
 }
 
-/** Resolve a relative import specifier to the TypeScript file it names, if there is one. */
-function _resolveModule(fromFile: string, specifier: string): string | undefined {
-  if (!specifier.startsWith("./") && !specifier.startsWith("../")) return undefined;
-  const base = resolve(dirname(fromFile), specifier);
-  const candidates = [
-    base,
-    `${base}.ts`,
-    `${base}.tsx`,
-    join(base, "index.ts"),
-    join(base, "index.tsx"),
-    // `import … from "../ui.js"` is how ESM TypeScript spells a .ts file.
-    base.replace(/\.js$/, ".ts"),
-    base.replace(/\.jsx$/, ".tsx"),
-  ];
-  return candidates.find((candidate) => {
-    if (!/\.(ts|tsx)$/.test(candidate) || !existsSync(candidate)) return false;
-    try {
-      return statSync(candidate).isFile();
-    } catch {
-      return false;
-    }
-  });
-}
-
 /**
  * The string constants `source` imports from other files, keyed by the name it imports them as.
  *
@@ -160,7 +140,20 @@ function _resolveModule(fromFile: string, specifier: string): string | undefined
  * the runtime renderer exactly as it did before this existed.
  */
 export function resolveImportedStrings(source: string, filename: string): Map<string, string> {
+  return readImportedStrings(source, filename).strings;
+}
+
+/**
+ * {@link resolveImportedStrings}, plus every relative import it read through and what it found
+ * there. The compile cache keeps the imports, so that a later boot can tell the constants are
+ * unchanged without parsing anything.
+ */
+export function readImportedStrings(
+  source: string,
+  filename: string,
+): { strings: Map<string, string>; imports: StaticImport[] } {
   const imported = new Map<string, string>();
+  const imports: StaticImport[] = [];
   const sf = ts.createSourceFile(
     filename,
     source,
@@ -181,12 +174,15 @@ export function resolveImportedStrings(source: string, filename: string): Map<st
     )
       continue;
 
-    const file = _resolveModule(filename, statement.moduleSpecifier.text);
-    if (!file) continue;
+    const specifier = statement.moduleSpecifier.text;
+    if (!specifier.startsWith("./") && !specifier.startsWith("../")) continue;
+    const file = resolveRelativeModule(filename, specifier);
+    const text = file ? readModuleText(file) : null;
+    imports.push({ specifier, file: file ?? null, digest: moduleDigest(text) });
+    if (!file || text === null) continue;
 
     let exports: Map<string, string>;
     try {
-      const text = readFileSync(file, "utf8");
       const kind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
       exports = exportedStringConstants(
         ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false, kind),
@@ -201,17 +197,7 @@ export function resolveImportedStrings(source: string, filename: string): Map<st
       if (value !== undefined) imported.set(element.name.text, value);
     }
   }
-  return imported;
-}
-
-/**
- * A short digest of the values a page's compile depended on, for the cache key. Empty when the
- * page uses none, so such a page keeps the key it always had.
- */
-export function staticStringsFingerprint(strings: StaticStrings): string {
-  if (strings.size === 0) return "";
-  const entries = [...strings].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  return String(Bun.hash(JSON.stringify(entries)));
+  return { strings: imported, imports };
 }
 
 /** A class list with its whitespace collapsed to single spaces, as the browser reads it. */

@@ -13,7 +13,7 @@
 import * as ts from "typescript";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
-import { ZerotalError } from "@zerotal/core";
+import { FlowValidationError } from "./errors.ts";
 import {
   BOOLEAN_DIRECTIVES,
   STRING_DIRECTIVES,
@@ -26,6 +26,8 @@ import {
   normalizeClassList,
   type StaticStrings,
 } from "./constants.ts";
+
+export { FlowValidationError };
 
 // Component base class names that trigger compilation.
 const BASE_CLASSES = new Set(["Component"]);
@@ -101,8 +103,9 @@ export interface TransformResult {
 /**
  * Run only the validation pass for a Flow page source file.
  * Throws FlowValidationError on @expose/@locked violations.
- * Called unconditionally by the compiler orchestrator — even on cache hits —
- * so violations always surface regardless of cached compiled output.
+ * Called by the compiler orchestrator for every page it parses, cached output or not, so
+ * violations always surface. The one page it skips is one the cache manifest vouches for, and
+ * the manifest is only written for text that already passed this function.
  */
 export function validateFlowFile(source: string, filename: string): void {
   const sf = ts.createSourceFile(
@@ -758,18 +761,6 @@ function _findFlowArrow(expr: ts.Expression): ts.ArrowFunction | null {
 
 // ── Validation error ──────────────────────────────────────────────────────────
 
-/**
- * Thrown by the pre-compilation validation pass.
- * Unlike ordinary compile failures (which bail to runtime), this is FATAL —
- * the orchestrator rethrows it so the server refuses to start with invalid code.
- */
-export class FlowValidationError extends ZerotalError {
-  constructor(message: string) {
-    super(message, "E_PULSE_VALIDATION", 500);
-    this.name = "FlowValidationError";
-  }
-}
-
 // ── Pre-compilation validation pass ──────────────────────────────────────────
 //
 // Runs BEFORE AOT compilation so it fires even on pages the compiler bails on
@@ -832,7 +823,7 @@ function _validateFlowCallbacks(sf: ts.SourceFile, members: MemberInfo, filename
 
       // onClick={this.method} / onSubmit={flow(this.method)} — the method must be
       // @expose'd or it is not in the action allowlist. Checked here, in the pass that
-      // runs unconditionally and whose errors are fatal, rather than during transform:
+      // runs before the transform and whose errors are fatal, rather than during transform:
       // a transform error is caught and downgraded to a runtime fallback, which would
       // leave the page rendering and the button still silently dead.
       if (attrName.startsWith("on") || attrName === "submit") {

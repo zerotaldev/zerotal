@@ -38,6 +38,25 @@ It's a graceful degrade, not a mode you configure. WebSocket reconnection keeps 
 
 Everything driven by your own actions still works. Nothing is sent over HTTP until the socket has actually failed; the happy path is unchanged.
 
+## Compiling at boot
+
+Flow compiles your pages' JSX into string-building render functions when the server starts,
+not in a build step. It reads each page with the TypeScript compiler API, which is why
+`typescript` is a production dependency of `@zerotal/flow` rather than a development one: the
+packages ship TypeScript source, so the compile runs on the server that boots the app.
+
+The output is cached in `.zerotal/compiled/`. A boot where no page has changed reads every page
+from the cache and never loads the TypeScript compiler, which makes it noticeably faster and
+lighter; only a boot with something to compile pays for it. A page is compiled again when:
+
+- its own source changes;
+- a module it imports class lists from changes, or the import starts resolving to another file;
+- the cached file for it is missing;
+- Flow itself is upgraded, or you switch [`cspSafe`](/docs/flow/components#csp-safe-mode) on or off.
+
+You never need to clear the cache by hand. `ZT_FLOW_COMPILE_LOG=1` (below) also bypasses it for
+pages that fall back, since it has to compile them to say why.
+
 ## What forces the runtime fallback
 
 Every page is AOT-compiled at boot where it can be. A page the compiler cannot handle still works —

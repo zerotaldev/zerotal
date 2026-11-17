@@ -60,8 +60,9 @@ describe("a handler pointing at an un-@exposed method", () => {
   // The check has to live in the validation pass, not the transform. A transform error is
   // caught by the compiler orchestrator and downgraded to a runtime fallback, which would
   // leave the page rendering and the button still silently dead — the exact outcome being
-  // fixed. `validateFlowFile` runs unconditionally (even on a cache hit) and propagates,
-  // so the server refuses to start.
+  // fixed. `validateFlowFile` runs on every boot that parses the page and propagates, so the
+  // server refuses to start. (A boot that skips the parse does so only for text that already
+  // passed it: see warm-boot.test.ts.)
   it("is fatal through validateFlowFile, the path the server boots on", () => {
     expect(() =>
       validateFlowFile(

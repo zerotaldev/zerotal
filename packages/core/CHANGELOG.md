@@ -21,6 +21,16 @@ follows the Zerotal monorepo's unified versioning.
   builds with `bun build --compile` when the package is absent, and that still type-checks in an
   app that never installed it. Package Development has the details.
 
+### Fixed
+
+- **Carbon takes Bun's built-in `Temporal` values.** On Bun 1.4 and later, where `Temporal` is a
+  global, `new Carbon(Temporal.Now.instant())` (the call the Carbon page shows) threw
+  `input.trim is not a function`, and so did a date from `Bun.TOML.parse`. Carbon runs on
+  `@js-temporal/polyfill` and recognised only the polyfill's own objects. It now takes an `Instant`,
+  `ZonedDateTime`, `PlainDateTime` or `PlainDate` from either, and `CarbonInterval` takes either's
+  `Duration`, including as `cascade()`'s reference date. A Temporal type Carbon cannot place in time,
+  such as a `PlainTime`, or any other object, now throws a `TypeError` that names it.
+
 ## [1.16.3] — 2026-11-17
 
 ### Changed
@@ -40,13 +50,6 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
-- **Carbon takes Bun's built-in `Temporal` values.** On Bun 1.4 and later, where `Temporal` is a
-  global, `new Carbon(Temporal.Now.instant())` (the call the Carbon page shows) threw
-  `input.trim is not a function`, and so did a date from `Bun.TOML.parse`. Carbon runs on
-  `@js-temporal/polyfill` and recognised only the polyfill's own objects. It now takes an `Instant`,
-  `ZonedDateTime`, `PlainDateTime` or `PlainDate` from either, and `CarbonInterval` takes either's
-  `Duration`, including as `cascade()`'s reference date. A Temporal type Carbon cannot place in time,
-  such as a `PlainTime`, or any other object, now throws a `TypeError` that names it.
 - **A failed rebuild says which file and line.** A build routine that threw printed only
   `AggregateError: Bundle failed`; the reasons are listed now, each as `file:line:column message`,
   and so are the messages of a build that reported its failure instead of throwing.

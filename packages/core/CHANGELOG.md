@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.4] — 2026-11-17
+
 ### Added
 
 - **`optionalPeer()` and `OptionalPeerMissingError`, for loading a package only some apps

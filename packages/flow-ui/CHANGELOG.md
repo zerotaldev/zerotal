@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.4] — 2026-11-17
+
 ### Changed
 
 - **`clsx` is no longer a dependency.** `cn()` flattened its input with `clsx` before handing it to

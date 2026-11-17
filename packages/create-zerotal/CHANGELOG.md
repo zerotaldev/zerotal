@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.4] — 2026-11-17
+
 ### Changed
 
 - **Every starter ships the same baseline.** The Vue starter now depends on `@zerotal/devtools` and

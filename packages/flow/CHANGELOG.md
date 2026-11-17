@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.16.4] — 2026-11-17
+
 ### Changed
 
 - **A boot with nothing to compile no longer loads TypeScript.** The compile cache served the

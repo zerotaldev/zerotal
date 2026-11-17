@@ -1,4 +1,7 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, beforeAll } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // ── Mock @simplewebauthn/server before Passkeys.ts is loaded ─────────────────
 
@@ -108,6 +111,14 @@ function makeFakeCtx(sessionData: Record<string, unknown> = {}) {
   };
 }
 
+/** An error shaped like the library's own, which names itself and carries a `code`. */
+function libraryError(code: string): Error {
+  const err = new Error(`library said ${code}`) as Error & { code: string };
+  err.name = "SimpleWebAuthnError";
+  err.code = code;
+  return err;
+}
+
 // ── Constructor ───────────────────────────────────────────────────────────────
 
 describe("PasskeyService — constructor", () => {
@@ -171,6 +182,14 @@ describe("PasskeyService.registrationOptions()", () => {
     const [passedOpts] = _mockGenerateRegistrationOptions.mock.calls[0]!;
     expect((passedOpts as any).timeout).toBe(30_000);
   });
+
+  it("offers EdDSA, ES256 and RS256, whatever the library would default to", async () => {
+    const svc = new PasskeyService(makeOpts());
+    await svc.registrationOptions(makeUser());
+
+    const [passedOpts] = _mockGenerateRegistrationOptions.mock.calls[0]!;
+    expect((passedOpts as any).supportedAlgorithmIDs).toEqual([-8, -7, -257]);
+  });
 });
 
 // ── verifyRegistration() ──────────────────────────────────────────────────────
@@ -185,6 +204,44 @@ describe("PasskeyService.verifyRegistration()", () => {
   it("returns passkey.invalid when verifyRegistrationResponse throws", async () => {
     _mockVerifyRegistrationResponse.mockImplementation(async () => {
       throw new Error("bad request");
+    });
+    const svc = new PasskeyService(makeOpts());
+    const result = await svc.verifyRegistration(
+      makeUser(),
+      fakeResponse,
+      "challenge",
+      makeFakeCtx() as any,
+    );
+    expect(result).toBe("passkey.invalid");
+  });
+
+  it("accepts only the algorithms it offered", async () => {
+    _mockVerifyRegistrationResponse.mockImplementation(async () => ({ verified: false }));
+    const svc = new PasskeyService(makeOpts());
+    await svc.verifyRegistration(makeUser(), fakeResponse, "challenge", makeFakeCtx() as any);
+
+    const [passedOpts] = _mockVerifyRegistrationResponse.mock.calls[0]!;
+    expect((passedOpts as any).supportedAlgorithmIDs).toEqual([-8, -7, -257]);
+  });
+
+  it("throws a misconfigured rpId or origin rather than calling it invalid", async () => {
+    const misconfigured = libraryError("BAD_ARGUMENT");
+    _mockVerifyRegistrationResponse.mockImplementation(async () => {
+      throw misconfigured;
+    });
+    const svc = new PasskeyService(makeOpts());
+    const result = svc.verifyRegistration(
+      makeUser(),
+      fakeResponse,
+      "challenge",
+      makeFakeCtx() as any,
+    );
+    await expect(result).rejects.toBe(misconfigured);
+  });
+
+  it("returns passkey.invalid for the library's verification failures", async () => {
+    _mockVerifyRegistrationResponse.mockImplementation(async () => {
+      throw libraryError("UNEXPECTED_ORIGIN");
     });
     const svc = new PasskeyService(makeOpts());
     const result = await svc.verifyRegistration(
@@ -408,6 +465,29 @@ describe("PasskeyService.verifyAuthentication()", () => {
     expect(result).toBe("passkey.invalid");
   });
 
+  it("throws a misconfigured rpId or origin rather than calling it invalid", async () => {
+    const storedCred = {
+      id: 1,
+      user_id: 1,
+      credential_id: "cred-abc",
+      public_key: Buffer.from([1, 2, 3]).toString("base64url"),
+      counter: 0,
+      device_type: "singleDevice",
+      backed_up: false,
+      transports: null,
+      name: null,
+    } as any;
+    const findCredential = mock(async (_id: string) => storedCred);
+    const misconfigured = libraryError("BAD_ARGUMENT");
+    _mockVerifyAuthenticationResponse.mockImplementation(async () => {
+      throw misconfigured;
+    });
+
+    const svc = new PasskeyService(makeOpts({ findCredential }));
+    const result = svc.verifyAuthentication(fakeAssertion, "challenge", makeFakeCtx() as any);
+    await expect(result).rejects.toBe(misconfigured);
+  });
+
   it("returns passkey.invalid when verified is false", async () => {
     const storedCred = {
       id: 1,
@@ -487,4 +567,68 @@ describe("PasskeyService.verifyAuthentication()", () => {
 
     expect(result).toMatchObject({ userId: 1 });
   });
+});
+
+// ── Against the real library ──────────────────────────────────────────────────
+
+describe("PasskeyService against the real @simplewebauthn/server", () => {
+  /**
+   * This file mocks the library for the whole process, so the real one is driven by a fixture in
+   * a process of its own. It prints one JSON line; see the fixture for what each field means.
+   */
+  async function runScript(path: string): Promise<string> {
+    const proc = Bun.spawn([process.execPath, path], { stdout: "pipe", stderr: "pipe" });
+    const [out, err, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    if (code !== 0) throw new Error(`${path} exited ${code}: ${err}`);
+    return out.trim().split("\n").at(-1)!;
+  }
+
+  async function runFixture(): Promise<Record<string, any>> {
+    return JSON.parse(await runScript(`${import.meta.dir}/__fixtures__/passkeys-real-library.ts`));
+  }
+
+  let result: Record<string, any>;
+
+  beforeAll(async () => {
+    result = await runFixture();
+  }, 30_000);
+
+  it("is not loaded by importing @zerotal/auth, only by the first ceremony", () => {
+    expect(result.loadedOnImport).toBe(0);
+    expect(result.loadedAfterCeremony).toBe(true);
+  });
+
+  it("offers the three algorithms on any runtime", () => {
+    expect(result.algorithms).toEqual([-8, -7, -257]);
+  });
+
+  it("throws a malformed origin from both verifications", () => {
+    const misconfigured = { threw: "SimpleWebAuthnError", code: "BAD_ARGUMENT" };
+    expect(result.registration.misconfigured).toEqual(misconfigured);
+    expect(result.authentication.misconfigured).toEqual(misconfigured);
+  });
+
+  it("still answers passkey.invalid when the response comes from another origin", () => {
+    expect(result.registration.wrongOrigin).toBe("passkey.invalid");
+    expect(result.authentication.wrongOrigin).toBe("passkey.invalid");
+  });
+
+  it("loads in a bundle, as a compiled app runs it", async () => {
+    const outdir = mkdtempSync(join(tmpdir(), "zerotal-passkeys-bundle-"));
+    try {
+      const build = await Bun.build({
+        entrypoints: [`${import.meta.dir}/__fixtures__/passkeys-bundled.ts`],
+        target: "bun",
+        outdir,
+      });
+      expect(build.success).toBe(true);
+      expect(JSON.parse(await runScript(build.outputs[0]!.path))).toEqual([-8, -7, -257]);
+    } finally {
+      rmSync(outdir, { recursive: true, force: true });
+    }
+  }, 60_000);
 });

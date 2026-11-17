@@ -8,6 +8,30 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`@simplewebauthn/server` is now `^14.1.0`** (was `^13.3.3`), and `PasskeyService` loads it
+  on its first ceremony rather than when `@zerotal/auth` is imported. An app that never uses
+  passkeys no longer loads it; it is still installed with every app. `PasskeyService`'s methods
+  and option shapes are unchanged, and `PasskeyCredential.transports` takes the same values as
+  before: 14.x dropped the type of that name, so Zerotal declares it.
+- **`reflect-metadata` (`^0.2.2`) is declared as a dependency.** The WebAuthn library already
+  installed it, so an install adds nothing. `PasskeyService` loads it before the library, because
+  in a bundle Bun starts the library's modules before the polyfill they need, and a compiled app
+  failed on its first ceremony without it.
+- **Registration offers EdDSA, ES256 and RS256 on every runtime.** Left to its default, 14.x
+  also offers ML-DSA-44 where WebCrypto supports it, which is Bun 1.4 and not Bun 1.3.14, so one
+  app would accept different keys depending on where it was deployed. `registrationOptions` and
+  `verifyRegistration` both name the three.
+
+### Fixed
+
+- **A misconfigured `rpId` or `origin` is thrown, not answered as `"passkey.invalid"`.** An
+  `origin` ending in `/`, or a domain in non-ASCII letters rather than punycode, failed every
+  ceremony while looking like a bad response from the browser. `verifyRegistration` and
+  `verifyAuthentication` now rethrow the library's error, whose message names the fix. A
+  response that fails verification is still `"passkey.invalid"`.
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

@@ -1021,6 +1021,11 @@ what your store holds.
 or the ceremony fails with an error that does not say why. `origin` takes an array when the same
 deployment answers on more than one.
 
+A value that cannot be compared at all is thrown from `verifyRegistration` and
+`verifyAuthentication` rather than answered as `"passkey.invalid"`, because it fails every
+ceremony and the message names the fix. Two cases are thrown: an `origin` with a trailing `/`, and
+a domain written with non-ASCII letters rather than its punycode form.
+
 ## References
 
 ### Types

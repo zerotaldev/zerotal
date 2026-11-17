@@ -12,7 +12,11 @@
  * verification the stored credential's signature `counter` is advanced (cloned-
  * authenticator detection) and the session is regenerated and bound to the user.
  * Verification failures are returned as the string `"passkey.invalid"` rather than
- * thrown — the underlying library errors are caught internally.
+ * thrown. A misconfigured service is thrown instead: an `rpId` or `origin` the library
+ * cannot compare against fails every ceremony, and that is not the browser's fault.
+ *
+ * `@simplewebauthn/server` is loaded on the first ceremony, not when `@zerotal/auth` is
+ * imported, so an app that never uses passkeys never loads it.
  *
  * @example
  * ```ts
@@ -33,12 +37,6 @@
  * ```
  */
 
-import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-} from "@simplewebauthn/server";
 import type {
   GenerateRegistrationOptionsOpts,
   VerifyRegistrationResponseOpts,
@@ -46,12 +44,73 @@ import type {
   VerifyAuthenticationResponseOpts,
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
-  AuthenticatorTransportFuture,
   CredentialDeviceType,
 } from "@simplewebauthn/server";
 import type { HttpContext } from "@zerotal/core";
 
+// -- Library loading ----------------------------------------------------------
+
+/**
+ * The WebAuthn library, loaded on the first ceremony rather than when `@zerotal/auth` is
+ * imported, so an app that never uses passkeys never loads it.
+ *
+ * The specifiers are literals on purpose: `bun zt compile` embeds a literal `import()` in the
+ * binary, and a specifier held in a variable is left out of it.
+ *
+ * `reflect-metadata` is loaded first, and on its own, for the bundled case. The library's
+ * certificate code imports it and then `tsyringe`, which throws at load unless the polyfill has
+ * run. In a module graph reached through `import()`, Bun's bundler starts the ES modules before
+ * the CommonJS polyfill whatever order the source imports them in, so a compiled app failed on
+ * its first ceremony. Loaded ahead of the library, the polyfill is in place before any of it runs.
+ */
+let _library: Promise<typeof import("@simplewebauthn/server")> | undefined;
+
+/** @internal Load the WebAuthn library once; a failed load is retried on the next call. */
+function _webauthn(): Promise<typeof import("@simplewebauthn/server")> {
+  _library ??= import("reflect-metadata")
+    .then(() => import("@simplewebauthn/server"))
+    .catch((err: unknown) => {
+      _library = undefined;
+      throw err;
+    });
+  return _library;
+}
+
+/**
+ * The public-key algorithms offered at registration and accepted when it is verified, as COSE
+ * identifiers, most preferred first: EdDSA (-8), ES256 (-7), RS256 (-257).
+ *
+ * Fixed here rather than left to the library's default, which since 14.0 adds ML-DSA-44 on
+ * runtimes whose WebCrypto supports it. Which algorithms an app accepts should not depend on the
+ * runtime it happens to be deployed on, and a key registered there could not be verified after a
+ * move to one without it.
+ */
+const SUPPORTED_ALGORITHM_IDS: number[] = [-8, -7, -257];
+
+/**
+ * @internal Whether a library error means the service is configured wrongly rather than that the
+ * browser's response failed verification. The library raises `BAD_ARGUMENT` for an `rpId` or
+ * `origin` it cannot compare against, such as a non-ASCII domain or an origin ending in `/`.
+ */
+function _isConfigurationError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    err.name === "SimpleWebAuthnError" &&
+    (err as Error & { code?: unknown }).code === "BAD_ARGUMENT"
+  );
+}
+
 // -- Stored credential shape --------------------------------------------------
+
+/**
+ * A transport an authenticator says it can be reached over, as the browser reports it.
+ *
+ * Declared here since `@simplewebauthn/server` 14 dropped its type of this name. Its
+ * replacement leaves out `"cable"` and `"smart-card"`, which browsers still report and stored
+ * credentials may hold, so the list a {@link PasskeyCredential} can carry is unchanged.
+ */
+type AuthenticatorTransportFuture =
+  "ble" | "cable" | "hybrid" | "internal" | "nfc" | "smart-card" | "usb";
 
 export interface PasskeyCredential {
   id: number;
@@ -130,7 +189,9 @@ export class PasskeyService {
   async registrationOptions(
     user: PasskeyUser,
     existingCredentials?: PasskeyCredential[],
-  ): Promise<Awaited<ReturnType<typeof generateRegistrationOptions>>> {
+  ): Promise<
+    Awaited<ReturnType<typeof import("@simplewebauthn/server").generateRegistrationOptions>>
+  > {
     const creds = existingCredentials ?? (await this._opts.findUserCredentials(user.id));
 
     const opts: GenerateRegistrationOptionsOpts = {
@@ -150,8 +211,10 @@ export class PasskeyService {
         userVerification: this._requireUv ? "required" : "preferred",
         authenticatorAttachment: "platform",
       },
+      supportedAlgorithmIDs: SUPPORTED_ALGORITHM_IDS,
     };
 
+    const { generateRegistrationOptions } = await _webauthn();
     return generateRegistrationOptions(opts);
   }
 
@@ -165,7 +228,10 @@ export class PasskeyService {
    * @param challenge - The challenge previously issued by {@link registrationOptions}.
    * @param ctx - The request context (used to bind the session).
    * @param credentialName - Optional friendly name stored with the credential.
-   * @returns `"passkey.registered"` on success, `"passkey.invalid"` on any failure.
+   * @returns `"passkey.registered"` on success, `"passkey.invalid"` when the response fails
+   *   verification.
+   * @throws The library's `SimpleWebAuthnError` (code `BAD_ARGUMENT`) when `rpId` or `origin`
+   *   is not a value it can compare against.
    * @category Registration
    */
   async verifyRegistration(
@@ -181,12 +247,15 @@ export class PasskeyService {
       expectedOrigin: this._opts.origin,
       expectedRPID: this._opts.rpId,
       requireUserVerification: this._requireUv,
+      supportedAlgorithmIDs: SUPPORTED_ALGORITHM_IDS,
     };
 
+    const { verifyRegistrationResponse } = await _webauthn();
     let verification: Awaited<ReturnType<typeof verifyRegistrationResponse>>;
     try {
       verification = await verifyRegistrationResponse(opts);
-    } catch {
+    } catch (err) {
+      if (_isConfigurationError(err)) throw err;
       return "passkey.invalid";
     }
 
@@ -230,7 +299,9 @@ export class PasskeyService {
    */
   async authenticationOptions(
     userId?: number,
-  ): Promise<Awaited<ReturnType<typeof generateAuthenticationOptions>>> {
+  ): Promise<
+    Awaited<ReturnType<typeof import("@simplewebauthn/server").generateAuthenticationOptions>>
+  > {
     const allowCredentials = userId
       ? (await this._opts.findUserCredentials(userId)).map((c) => ({
           id: c.credential_id,
@@ -245,6 +316,7 @@ export class PasskeyService {
       userVerification: this._requireUv ? "required" : "preferred",
     };
 
+    const { generateAuthenticationOptions } = await _webauthn();
     return generateAuthenticationOptions(opts);
   }
 
@@ -259,6 +331,8 @@ export class PasskeyService {
    * @param ctx - The request context (used to bind the session).
    * @returns `{ credential, userId }` of the signed-in user on success, or
    *   `"passkey.invalid"` when the credential is unknown or verification fails.
+   * @throws The library's `SimpleWebAuthnError` (code `BAD_ARGUMENT`) when `rpId` or `origin`
+   *   is not a value it can compare against.
    * @category Authentication
    */
   async verifyAuthentication(
@@ -283,10 +357,12 @@ export class PasskeyService {
       requireUserVerification: this._requireUv,
     };
 
+    const { verifyAuthenticationResponse } = await _webauthn();
     let verification: Awaited<ReturnType<typeof verifyAuthenticationResponse>>;
     try {
       verification = await verifyAuthenticationResponse(opts);
-    } catch {
+    } catch (err) {
+      if (_isConfigurationError(err)) throw err;
       return "passkey.invalid";
     }
 

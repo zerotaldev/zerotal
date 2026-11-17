@@ -13,3 +13,8 @@ preload = ["./scripts/test-preload.ts"]
 
 [install]
 frozenLockfile = false
+# Bun installs a package's peer dependencies unless told not to. bun-plugin-tailwind names Bun
+# itself as one, which put a second Bun (whatever npm had at lock time) in node_modules. Every
+# peer a workspace package relies on is a devDependency, and every peer a Zerotal package
+# declares is optional, so nothing is lost. The starters ship the same setting.
+peer = false

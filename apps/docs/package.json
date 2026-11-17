@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@tailwindcss/typography": "latest",
+    "@tailwindcss/typography": "0.5.20",
     "@zerotal/ai": "workspace:*",
     "@zerotal/arch": "workspace:*",
     "@zerotal/auth": "workspace:*",
@@ -27,7 +27,7 @@
     "@zerotal/flow": "workspace:*",
     "@zerotal/flow-ui": "workspace:*",
     "@zerotal/inertia": "workspace:*",
-    "bun-plugin-tailwind": "latest",
+    "bun-plugin-tailwind": "0.1.2",
     "prismjs": "^1.29.0",
     "tailwindcss": "^4.3.0",
     "zerotal": "workspace:*"

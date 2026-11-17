@@ -23,7 +23,7 @@
     "apps/docs": {
       "name": "@zerotal/docs",
       "dependencies": {
-        "@tailwindcss/typography": "latest",
+        "@tailwindcss/typography": "0.5.20",
         "@zerotal/ai": "workspace:*",
         "@zerotal/arch": "workspace:*",
         "@zerotal/auth": "workspace:*",
@@ -35,7 +35,7 @@
         "@zerotal/orm": "workspace:*",
         "@zerotal/session": "workspace:*",
         "@zerotal/testing": "workspace:*",
-        "bun-plugin-tailwind": "latest",
+        "bun-plugin-tailwind": "0.1.2",
         "prismjs": "^1.29.0",
         "tailwindcss": "^4.3.0",
         "zerotal": "workspace:*",

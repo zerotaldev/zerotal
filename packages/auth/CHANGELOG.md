@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.4] — 2026-11-17
+
 ### Changed
 
 - **`@simplewebauthn/server` is now `^14.1.0`** (was `^13.3.3`), and `PasskeyService` loads it

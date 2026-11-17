@@ -77,6 +77,33 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.16.4
+
+A patch. Two of its changes can alter what an app sees; neither needs a code change in an app that
+configures passkeys correctly and lists what it imports.
+
+### A misconfigured passkey setup is thrown
+
+`PasskeyService.verifyRegistration()` and `verifyAuthentication()` answered `"passkey.invalid"` for
+every failure, including an `origin` ending in `/` or an `rpId` written in non-ASCII letters rather
+than punycode. Those failed every ceremony while looking like a bad response from the browser. They
+are now thrown, with a message that names the fix. A response that fails verification is still
+`"passkey.invalid"`.
+
+**What to change.** Nothing, if passkeys work today. If they never have, the error now says why.
+See [Authentication](/docs/authentication).
+
+### `@zerotal/flow-ui` no longer installs `clsx`
+
+`cn()` flattens its input itself, with the same output. The `lib/cn.ts` that `flow:add` and
+`flow:init` copy into an app imported `clsx`, and the commands asked you to add it only when it
+did not already resolve, which in an app with flow-ui installed it usually did. Such an app was
+using flow-ui's copy, and that copy is gone.
+
+**What to change.** If your code imports `clsx` and your `package.json` does not list it, run
+`bun add clsx`, or replace a copied `lib/cn.ts` with the new one, which needs only
+`tailwind-merge`.
+
 ## 1.16.3
 
 A patch. Two of its fixes change what an app can see; neither needs a code change unless a test

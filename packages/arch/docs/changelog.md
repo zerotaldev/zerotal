@@ -27,6 +27,52 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.16.4 — 2026-11-17
+
+A patch that makes the dependency policy explicit and puts less into a running app: passkeys load
+their library only when used, a warm Flow boot no longer loads TypeScript, flow-ui drops `clsx`,
+and Carbon takes the `Temporal` values Bun 1.4 hands out.
+
+### Before you upgrade
+
+Read [1.16.4](/docs/upgrade#1164) in the upgrade guide. Two changes can alter what an app sees:
+
+- **A misconfigured passkey `rpId` or `origin` is thrown** (`@zerotal/auth`). It used to fail every
+  ceremony as `"passkey.invalid"`.
+- **`@zerotal/flow-ui` no longer installs `clsx`.** A `lib/cn.ts` copied by `flow:add` or `flow:init`
+  imports it, and often found flow-ui's copy: an app that imports `clsx` without listing it in its
+  own `package.json` needs to add it.
+
+### Added
+
+- **A written dependency policy, and a check that holds it.** Every third-party package Zerotal
+  installs into an app is listed with its reason in
+  [Support Policy](/docs/support-policy#dependencies), and CI fails when a package gains one that is
+  not. [Package Development](/docs/package-development#dependencies) has the rules.
+- **`optionalPeer()` and `OptionalPeerMissingError`** (`@zerotal/core`, on `zerotal/runtime`), for
+  loading a package only some apps install: a missing package raises an error naming the feature,
+  the install command and the alternative.
+
+### Changed
+
+- **Passkeys run on `@simplewebauthn/server` 14.x, loaded on the first ceremony** (`@zerotal/auth`).
+  An app that never uses passkeys no longer loads it. Registration offers EdDSA, ES256 and RS256 on
+  every runtime, where the library's default would differ between Bun 1.3 and 1.4.
+- **A warm Flow boot no longer loads TypeScript** (`@zerotal/flow`). Each cached page carries a
+  manifest of what its compile read, so a boot with nothing changed takes every page from the cache
+  without parsing it. A page is recompiled in exactly the cases it was before.
+- **`@zerotal/flow-ui` flattens class names itself** and no longer depends on `clsx`. `cn()` gives the
+  same output for every input.
+- **Every starter ships the same baseline** (`create-zerotal`): the Vue starter gains the dev panel and
+  lists `@vue/compiler-sfc` under `dependencies`, and the admin and api starters set `peer = false`.
+  Apps already scaffolded are not touched.
+
+### Fixed
+
+- **Carbon takes Bun's built-in `Temporal` values** (`@zerotal/core`). On Bun 1.4,
+  `new Carbon(Temporal.Now.instant())`, the call the [Carbon](/docs/carbon) page shows, threw
+  `input.trim is not a function`, and so did a date from `Bun.TOML.parse`.
+
 ## 1.16.3 — 2026-11-17
 
 A patch for things that failed without saying so: a redirect that left an Inertia page where it

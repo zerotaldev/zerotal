@@ -74,6 +74,7 @@ in turn:
 | ------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@js-temporal/polyfill`  | `@zerotal/core` | Carbon, the date type, is built on Temporal. Bun only ships Temporal itself from 1.4, and the supported floor is lower. It goes once the floor ships Temporal. |
 | `@simplewebauthn/server` | `@zerotal/auth` | Passkey registration and sign-in. Under review: most apps never use passkeys, and they install it anyway.                                                      |
+| `reflect-metadata`       | `@zerotal/auth` | Loaded before the passkey library, which needs it in place first. It comes with that library anyway, and goes with it.                                         |
 
 Flow apps also get these, through `@zerotal/flow` and `@zerotal/flow-ui`:
 
@@ -82,7 +83,6 @@ Flow apps also get these, through `@zerotal/flow` and `@zerotal/flow-ui`:
 | `typescript`                               | `@zerotal/flow`    | The ahead-of-time component compiler reads TypeScript's syntax tree, which Bun's transpiler does not expose.            |
 | `alpinejs` and seven `@alpinejs/*` plugins | `@zerotal/flow`    | Flow's browser runtime, bundled for the page when the app boots. Under review: it could ship prebuilt with the package. |
 | `tailwind-merge`                           | `@zerotal/flow-ui` | Resolving conflicting Tailwind classes needs Tailwind's own class grammar, which a rewrite would let drift.             |
-| `clsx`                                     | `@zerotal/flow-ui` | Joining class names. Being replaced by a few lines inside flow-ui.                                                      |
 
 The seven plugins are `@alpinejs/anchor`, `@alpinejs/collapse`, `@alpinejs/focus`,
 `@alpinejs/mask`, `@alpinejs/morph`, `@alpinejs/persist` and `@alpinejs/resize`.

@@ -5,7 +5,7 @@
  * formats via `Intl.DateTimeFormat` with no external dependencies.
  */
 
-import { Temporal } from "./temporal-shim.ts";
+import { Temporal, adoptTemporal, temporalBrand } from "./temporal-shim.ts";
 import { CarbonInterval } from "./CarbonInterval.ts";
 import { _nowIn, _setTestInstant, _getTestInstant } from "./clock.ts";
 
@@ -55,6 +55,7 @@ function systemTz(): string {
   return Temporal.Now.timeZoneId();
 }
 
+/** `input` must already have been through {@link adoptTemporal}. */
 function toZdt(input: CarbonInput, tz: string): Temporal.ZonedDateTime {
   if (input instanceof Carbon) return input._zdt;
 
@@ -78,6 +79,15 @@ function toZdt(input: CarbonInput, tz: string): Temporal.ZonedDateTime {
 
   if (typeof input === "number") {
     return Temporal.Instant.fromEpochMilliseconds(input).toZonedDateTimeISO(tz);
+  }
+
+  if (typeof input !== "string") {
+    const brand = temporalBrand(input);
+    throw new TypeError(
+      brand === null
+        ? `[Carbon] Cannot create a date from ${Object.prototype.toString.call(input)}`
+        : `[Carbon] Cannot create a date from a Temporal.${brand}: it has no date or no time of day`,
+    );
   }
 
   // string — try Temporal parsers in order of specificity
@@ -162,14 +172,16 @@ export class Carbon {
    * @category Construction
    */
   constructor(input: CarbonInput = new Date(), timezone?: string) {
+    // A native Temporal value (Bun 1.4+) becomes the polyfill's own object first.
+    const value = adoptTemporal(input);
     const tz =
       timezone ??
-      (input instanceof Temporal.ZonedDateTime
-        ? input.timeZoneId
-        : input instanceof Carbon
-          ? input._zdt.timeZoneId
+      (value instanceof Temporal.ZonedDateTime
+        ? value.timeZoneId
+        : value instanceof Carbon
+          ? value._zdt.timeZoneId
           : systemTz());
-    this._zdt = toZdt(input, tz);
+    this._zdt = toZdt(value, tz);
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────

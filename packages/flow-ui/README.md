@@ -57,7 +57,7 @@ bun zt flow:init                  # drop cn/gva utils + wire the theme import
 bun zt flow:add button,card,dialog  # copy components into app/flow/components/ui/
 bun zt flow:add --all             # copy everything
 bun zt flow:add button --force    # overwrite an existing file
-bun add clsx tailwind-merge          # the copied cn util needs these (the CLI reminds you)
+bun add tailwind-merge               # the copied cn util needs it (the CLI reminds you)
 ```
 
 Copied files land in `app/flow/components/ui/` with the shared utils in `ui/lib/`;
@@ -66,8 +66,8 @@ and edit the result — you own the code outright.
 
 ## Utilities
 
-- `cn(...inputs)` — `clsx` + `tailwind-merge`; conflicting Tailwind utilities resolve so the
-  last one wins.
+- `cn(...inputs)` — flattens strings, arrays and `{ class: condition }` objects, drops falsy
+  values, then runs `tailwind-merge` so the last of two conflicting Tailwind utilities wins.
 - `gva(base, config)` — a tiny `class-variance-authority` clone: `variants`, `defaultVariants`,
   and `compoundVariants`. Used to author component variant maps.
 

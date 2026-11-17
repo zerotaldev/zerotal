@@ -1,7 +1,8 @@
 // ── gva() — flow variant authority ────────────────────────────────────────
 //
-// A tiny, dependency-free `class-variance-authority` clone for server-rendered
-// Flow components. Build a class string from a `base` plus named `variants`
+// A tiny `class-variance-authority` clone for server-rendered Flow components.
+// It adds no dependency of its own; the final string goes through `cn()`, so it
+// needs what `cn()` needs (tailwind-merge). Build a class string from a `base` plus named `variants`
 // (e.g. `variant`, `size`), `defaultVariants`, and `compoundVariants`. The
 // returned function takes the chosen variant props (+ an optional `class`/
 // `className` override) and returns the final merged class string.

@@ -114,7 +114,7 @@ export class FlowAddCommand extends Command {
     this._warnMissingDeps();
   }
 
-  /** The copied `cn` util needs clsx + tailwind-merge in the host app. */
+  /** The copied `cn` util needs tailwind-merge in the host app. */
   private _warnMissingDeps(): void {
     const missing = missingRuntimeDeps();
     if (missing.length === 0) return;

@@ -158,7 +158,7 @@ Browse everything available with `flow:list`:
 bun zt flow:list
 ```
 
-> **Tip** — The copied `cn` util needs `clsx` and `tailwind-merge` in your app. `flow:add` and `flow:init` warn you with the exact `bun add` command if they are missing.
+> **Tip** — The copied `cn` util needs `tailwind-merge` in your app. `flow:add` and `flow:init` warn you with the exact `bun add` command if they are missing.
 
 ## Copy-in vs import — which should I use?
 
@@ -2480,7 +2480,7 @@ The full export surface of `@zerotal/flow-ui`:
 | --------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------- |
 | `FlowUiProvider`                                                                                          | provider   | Registers the `flow:list` / `flow:add` / `flow:init` commands.                        |
 | `COMPONENTS`, `UTILS`, `findComponent`                                                                    | registry   | The manifest behind `flow:add`.                                                       |
-| `cn(...classes)`                                                                                          | util       | Merge class strings (clsx + tailwind-merge).                                          |
+| `cn(...classes)`                                                                                          | util       | Merge class strings; conflicting Tailwind utilities resolve via tailwind-merge.       |
 | `gva(base, config)`                                                                                       | util       | Build token-backed variant class functions.                                           |
 | `Button`, `Badge`, `Card` (+ parts), `Input`, `Textarea`, `Label`                                         | components | Styled leaf and composite components.                                                 |
 | `Separator`, `Skeleton`, `Avatar`                                                                         | components | Styled leaf components.                                                               |

@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`clsx` is no longer a dependency.** `cn()` flattened its input with `clsx` before handing it to
+  `tailwind-merge`; the flattening is twenty lines and now lives in `utils/cn.ts`, with the same
+  output for every input: strings and non-zero numbers kept, `false`, `null`, `undefined`, `0`,
+  `""` and bigints dropped, arrays flattened at any depth, and an object contributing each key whose
+  value is truthy. A test compares it with `clsx` 2.1.1 case by case. `ClassValue` keeps its shape.
+  `tailwind-merge` stays: it is the one dependency, and what makes a caller's class win over the
+  component's. `flow:add` and `flow:init` now ask a copy-in app for `tailwind-merge` only; an app that
+  already added `clsx` for the copied `lib/cn.ts` can remove it once it has copied the new one, or
+  keep it, since the old file still works.
+- The `gva()` header no longer calls it dependency-free. It adds none of its own, but its result
+  goes through `cn()` and so needs `tailwind-merge`.
+
 ## [1.15.2] — 2026-10-23
 
 ### Changed

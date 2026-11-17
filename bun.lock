@@ -224,11 +224,11 @@
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/flow": "workspace:*",
-        "clsx": "^2.1.1",
         "tailwind-merge": "^3.7.0",
       },
       "devDependencies": {
         "bun-types": "^1.3.14",
+        "clsx": "^2.1.1",
         "typescript": "^5.8.0",
       },
     },

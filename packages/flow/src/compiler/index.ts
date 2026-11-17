@@ -5,27 +5,47 @@
  * For each page that has a __sourceFile stored on it (set by the file-route
  * resolver), we:
  *   1. Read the source
- *   2. Hash it and check .zerotal/compiled/ cache
- *   3. On miss: transform() → write to cache
+ *   2. Ask the cache manifest whether the last compile still holds (no parsing)
+ *   3. Otherwise: validate, transform() → write to cache and manifest
  *   4. dynamic-import the compiled file
  *   5. Patch PageClass.prototype.render + set __flowCompiled = true
  *
  * Pages that fall back (unsupported JSX patterns, manually-registered routes
  * without __sourceFile) continue using the standard runtime transparently.
+ *
+ * The parser behind step 3 (`transform.ts`, `constants.ts`, and through them the `typescript`
+ * package) is the heaviest thing a Flow app loads, so it is imported only once a page actually
+ * misses. A boot where every page is served from the manifest never loads it. Keep those imports
+ * literal (`import("./transform.ts")`): `bun zt compile` can only bundle a specifier it can read.
  */
 
 import { pathToFileURL } from "node:url";
 import { frameworkLog } from "@zerotal/core/logger";
+import type { BlockerReport } from "./transform.ts";
+import { FlowValidationError } from "./errors.ts";
 import {
-  transformFlowFile,
-  buildBindInjectedRender,
-  validateFlowFile,
-  describeBlocker,
-  FlowValidationError,
-  type BlockerReport,
-} from "./transform.ts";
-import { getCachedPath, writeCache } from "./cache.ts";
-import { resolveImportedStrings, staticStringsFingerprint } from "./constants.ts";
+  getCachedPath,
+  writeCache,
+  lookupManifest,
+  writeManifest,
+  type CompileOutcome,
+} from "./cache.ts";
+import { staticStringsFingerprint } from "./static-imports.ts";
+
+/** The parser-backed half of the compiler, loaded the first time a page misses the cache. */
+async function _loadCompiler() {
+  const [transform, constants] = await Promise.all([
+    import("./transform.ts"),
+    import("./constants.ts"),
+  ]);
+  return {
+    validateFlowFile: transform.validateFlowFile,
+    transformFlowFile: transform.transformFlowFile,
+    buildBindInjectedRender: transform.buildBindInjectedRender,
+    describeBlocker: transform.describeBlocker,
+    readImportedStrings: constants.readImportedStrings,
+  };
+}
 
 /**
  * Set `ZT_FLOW_COMPILE_LOG=1` to have every page that falls back to the runtime
@@ -82,29 +102,77 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
 
     const source = await Bun.file(sourceFile).text();
 
-    // Validate unconditionally — runs even on cache hits.
+    /** A failure that leaves this page on the runtime renderer, or stops the boot under CSP. */
+    const fallBack = (err: unknown): void => {
+      // In CSP-safe mode there is no safe runtime fallback — surface the error so
+      // the server refuses to boot and the developer fixes the page.
+      if (cspSafe) throw err;
+      // Otherwise a non-fatal compile failure falls back to the runtime renderer.
+      // Compiler errors already carry a `[Flow]` tag; strip it so the line reads
+      // as one message rather than two stacked prefixes.
+      const detail = (err as Error).message.replace(/^\[Flow\]\s*/, "");
+      frameworkLog("flow").warn(`${PageClass.name} skipped — ${detail}`);
+      skipped++;
+    };
+
+    // ── Manifest hit: nothing this page's compile reads has changed ──────
+    // Decided from file digests alone, so a boot where every page hits never loads the parser.
+    // The entry was written after this exact text passed validation, so that is skipped too.
+    // A fallback is compiled again when ZT_FLOW_COMPILE_LOG asks for its reason.
+    const hit = lookupManifest(source, sourceFile, appRoot, cspSafe);
+    if (hit && (hit.outcome === "compiled" || !_explainFallbacks())) {
+      if (hit.path === null) {
+        skipped++;
+        continue;
+      }
+      try {
+        const mod = (await import(pathToFileURL(hit.path).href)) as {
+          render: (...a: unknown[]) => unknown;
+        };
+        PageClass.prototype.render = mod.render;
+        if (hit.outcome === "compiled") {
+          PageClass.__flowCompiled = true;
+          cached++;
+        } else {
+          injected++;
+        }
+      } catch (err) {
+        fallBack(err);
+      }
+      continue;
+    }
+
+    const compiler = await _loadCompiler();
+
+    // Validate on every boot that compiles, cache hit or not.
     // FlowValidationError propagates here (not caught below) so the server
     // refuses to start when a page references @locked props or non-@expose members
     // from a client callback.
-    validateFlowFile(source, sourceFile);
+    compiler.validateFlowFile(source, sourceFile);
 
     try {
       // ── Cache hit ────────────────────────────────────────────────────────
       // Class lists imported from a shared module are folded into the output, so the values
       // that were read are part of the cache key: editing that module must recompile its pages.
-      const constants = resolveImportedStrings(source, sourceFile);
+      const { strings: constants, imports } = compiler.readImportedStrings(source, sourceFile);
       const variant = staticStringsFingerprint(constants);
+      const record = (outcome: CompileOutcome) =>
+        writeManifest(source, sourceFile, appRoot, cspSafe, outcome, variant, imports);
       let compiledPath = getCachedPath(source, appRoot, cspSafe, "ts", variant);
 
       // ── Cache miss — transform and write ─────────────────────────────────
       if (!compiledPath) {
         const report: BlockerReport = {};
-        const result = transformFlowFile(source, sourceFile, { cspSafe, report, constants });
+        const result = compiler.transformFlowFile(source, sourceFile, {
+          cspSafe,
+          report,
+          constants,
+        });
         if (!result) {
           if (_explainFallbacks()) {
             frameworkLog("flow").info(
               `${PageClass.name} renders through the runtime.\n` +
-                describeBlocker(report.blocker, sourceFile).trimEnd(),
+                compiler.describeBlocker(report.blocker, sourceFile).trimEnd(),
             );
           }
           // CSP-safe mode cannot fall back to the runtime renderer (it emits
@@ -122,8 +190,9 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
           // catch below falls back to the untouched runtime render.
           let injPath = getCachedPath(source, appRoot, cspSafe, "tsx");
           if (!injPath) {
-            const injectedCode = buildBindInjectedRender(source, sourceFile);
+            const injectedCode = compiler.buildBindInjectedRender(source, sourceFile);
             if (!injectedCode) {
+              await record("runtime");
               skipped++;
               continue; // nothing to inject — plain runtime render
             }
@@ -136,6 +205,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
           // still uses jsx() and needs the runtime getter instrumentation for the
           // non-component bindings (value=/checked=/text= on intrinsic elements).
           PageClass.prototype.render = injMod.render;
+          await record("injected");
           injected++;
           continue;
         }
@@ -158,16 +228,9 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
       };
       PageClass.prototype.render = mod.render;
       PageClass.__flowCompiled = true;
+      await record("compiled");
     } catch (err) {
-      // In CSP-safe mode there is no safe runtime fallback — surface the error so
-      // the server refuses to boot and the developer fixes the page.
-      if (cspSafe) throw err;
-      // Otherwise a non-fatal compile failure falls back to the runtime renderer.
-      // Compiler errors already carry a `[Flow]` tag; strip it so the line reads
-      // as one message rather than two stacked prefixes.
-      const detail = (err as Error).message.replace(/^\[Flow\]\s*/, "");
-      frameworkLog("flow").warn(`${PageClass.name} skipped — ${detail}`);
-      skipped++;
+      fallBack(err);
     }
   }
 

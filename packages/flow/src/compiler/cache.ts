@@ -6,12 +6,18 @@
  *
  * On a cache hit the compiled file is imported directly.
  * On a miss the caller compiles, calls setCached, then imports the returned path.
+ *
+ * Beside the compiled files sits one small manifest per page (`<key>.json`, see
+ * {@link lookupManifest}). It records how the page's last compile came out and what it was
+ * computed from, so that a boot where nothing changed can be served without parsing a single page,
+ * which is to say without loading the TypeScript parser at all.
  */
 
 import { join } from "node:path";
 import { mkdir, unlink, readdir } from "node:fs/promises";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { staticImportsUnchanged, type StaticImport } from "./static-imports.ts";
 
 const COMPILED_DIR_NAME = join(".zerotal", "compiled");
 
@@ -93,6 +99,117 @@ export async function writeCache(
   return outPath;
 }
 
+// ── Manifest ─────────────────────────────────────────────────────────────────
+
+/**
+ * How a page's compile came out:
+ * - `compiled`: an AOT render, in `<key>.ts`;
+ * - `injected`: the runtime render with its bindings named, in `<key>.tsx`;
+ * - `runtime`: neither, the page renders through the runtime untouched.
+ */
+export type CompileOutcome = "compiled" | "injected" | "runtime";
+
+/** Bumped whenever the shape below changes; an entry of another version is a miss. */
+const MANIFEST_VERSION = 1;
+
+interface ManifestEntry {
+  v: number;
+  sourceFile: string;
+  outcome: CompileOutcome;
+  /** The `variant` the compiled file was keyed with ({@link getCachedPath}). */
+  variant: string;
+  imports: StaticImport[];
+}
+
+/**
+ * One manifest per page, keyed on everything the page's compile reads from the page itself: the
+ * compiler's own source, the CSP mode, the page's path (the output resolves the page's relative
+ * imports against it) and its text. What the compile reads from other files is in the entry.
+ */
+function _manifestPath(
+  source: string,
+  sourceFile: string,
+  appRoot: string,
+  cspSafe: boolean,
+): string {
+  const key = String(
+    Bun.hash(`${COMPILER_VERSION}${cspSafe ? "csp:" : ""}page:${sourceFile}\0${source}`),
+  );
+  return join(_cacheDir(appRoot), `${key}.json`);
+}
+
+/**
+ * The outcome of this page's last compile, when it is still exactly what compiling it now would
+ * give, or `null` when it has to be compiled (or validated) again.
+ *
+ * An entry is only ever written after the page passed validation and compiled without error, and
+ * both depend on nothing but the page's text and the constants it imports. The key covers the
+ * first; for the second, every relative import the page read constants through must still resolve
+ * to the same file, holding the same text. Anything else (no entry, an unreadable one, a compiled
+ * file that has gone) is a miss, and the caller does what it did before this existed.
+ *
+ * Returns the compiled file to import, or `null` for a page that renders through the runtime.
+ */
+export function lookupManifest(
+  source: string,
+  sourceFile: string,
+  appRoot: string,
+  cspSafe: boolean,
+): { outcome: CompileOutcome; path: string | null } | null {
+  let entry: ManifestEntry;
+  try {
+    entry = JSON.parse(readFileSync(_manifestPath(source, sourceFile, appRoot, cspSafe), "utf8"));
+  } catch {
+    return null;
+  }
+  if (
+    entry?.v !== MANIFEST_VERSION ||
+    entry.sourceFile !== sourceFile ||
+    !Array.isArray(entry.imports) ||
+    typeof entry.variant !== "string"
+  ) {
+    return null;
+  }
+  if (!staticImportsUnchanged(sourceFile, entry.imports)) return null;
+
+  switch (entry.outcome) {
+    case "compiled": {
+      const path = getCachedPath(source, appRoot, cspSafe, "ts", entry.variant);
+      return path ? { outcome: "compiled", path } : null;
+    }
+    case "injected": {
+      const path = getCachedPath(source, appRoot, cspSafe, "tsx");
+      return path ? { outcome: "injected", path } : null;
+    }
+    case "runtime":
+      return { outcome: "runtime", path: null };
+    default:
+      return null;
+  }
+}
+
+/**
+ * Record how a page compiled, for {@link lookupManifest}. Never throws: a manifest that cannot be
+ * written costs the next boot a parse, and nothing else.
+ */
+export async function writeManifest(
+  source: string,
+  sourceFile: string,
+  appRoot: string,
+  cspSafe: boolean,
+  outcome: CompileOutcome,
+  variant: string,
+  imports: StaticImport[],
+): Promise<void> {
+  const entry: ManifestEntry = { v: MANIFEST_VERSION, sourceFile, outcome, variant, imports };
+  try {
+    await mkdir(_cacheDir(appRoot), { recursive: true });
+    await Bun.write(_manifestPath(source, sourceFile, appRoot, cspSafe), JSON.stringify(entry));
+  } catch {
+    // The cache directory is not writable (a read-only deploy); every boot compiles, as before.
+  }
+}
+
 /**
  * Clear all compiled cache entries.
  * Called by the dev server on full restart or when flow itself is updated.
@@ -103,7 +220,7 @@ export async function clearCache(appRoot: string): Promise<void> {
   const files = await readdir(dir);
   await Promise.all(
     files
-      .filter((f) => f.endsWith(".js") || f.endsWith(".ts") || f.endsWith(".tsx"))
+      .filter((f) => /\.(js|ts|tsx|json)$/.test(f))
       .map((f) => unlink(join(dir, f)).catch(() => undefined)),
   );
 }

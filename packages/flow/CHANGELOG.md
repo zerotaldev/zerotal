@@ -11,6 +11,20 @@ change.
 
 ## [Unreleased]
 
+### Changed
+
+- **A boot with nothing to compile no longer loads TypeScript.** The compile cache served the
+  output, but every boot still parsed every page: once to validate it, and once to read the
+  class lists it imports, which are part of the cache key. So `typescript`, the heaviest thing a
+  Flow app loads, was loaded on each start. Each cached page now carries a small manifest of what
+  its compile read: its own text, and the file and contents behind each relative import. A boot
+  where all of that is unchanged takes the page straight from the cache, and the parser is loaded
+  only when some page needs compiling. A page is recompiled in exactly the cases it was before.
+  On the starter's eight pages, copied five times (40 pages), a warm boot's compile step fell from
+  about 700 ms to about 140 ms, and the process's memory from about 120 MB to about 67 MB (Bun
+  1.4.0, Windows). Nothing changes in your app. The cache directory, `.zerotal/compiled/`, now
+  holds a `.json` file beside each compiled page.
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

@@ -16,13 +16,7 @@ Part of the [Zerotal](../../README.md) framework. Requires **Bun ≥ 1.3.14**.
 bun add @zerotal/flow
 ```
 
-> **Why `typescript` is a production dependency.** Flow ahead-of-time compiles
-> your `Component` classes' JSX into string-concatenation render functions **at
-> application boot** (`FlowProvider.onStarting()`), using the TypeScript
-> compiler API to parse each page's source. Zerotal packages ship TypeScript
-> source rather than build output, so this compile step runs on the server that
-> boots the app — the compiler is genuinely needed at runtime, not only at dev
-> time.
+This installs `typescript` too: Flow compiles pages when the app boots. [Compiling at boot](../../docs/flow/performance.md#compiling-at-boot) explains why, and when a boot skips it.
 
 Register `FlowProvider` in `bootstrap/providers.ts`. It mounts the WebSocket handler at `/__flow`, builds the client runtime (Alpine + the Flow bridge), and injects it on every page response:
 

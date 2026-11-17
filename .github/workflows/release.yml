@@ -128,6 +128,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun run docs:coverage
 
+      - name: Dependency policy
+        if: ${{ !cancelled() }}
+        run: bun run deps:check
+
+      - name: Script tests
+        if: ${{ !cancelled() }}
+        run: bun run test:scripts
+
       - name: Vendored docs corpus
         if: ${{ !cancelled() }}
         run: bun run arch:docs:check

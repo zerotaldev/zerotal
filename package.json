@@ -48,7 +48,10 @@
     "docs:coverage:update": "bun run scripts/docs-coverage.ts --update",
     "docs:api:watch": "bun run scripts/api/collect-entrypoints.ts && bunx typedoc --options typedoc.json --watch",
     "internal:prefix": "bun run scripts/internal-prefix.ts --update",
-    "internal:prefix:check": "bun run scripts/internal-prefix.ts"
+    "internal:prefix:check": "bun run scripts/internal-prefix.ts",
+    "deps:check": "bun run scripts/deps-check.ts",
+    "deps:check:update": "bun run scripts/deps-check.ts --update",
+    "test:scripts": "bun test ./scripts"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1"

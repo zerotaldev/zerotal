@@ -58,6 +58,39 @@ course?", so this is it:
 Redis-backed drivers (cache, session, queue, broadcasting) build on
 `Bun.RedisClient` and are tested against the protocol surface it provides.
 
+## Dependencies
+
+Zerotal keeps the third-party code it puts into your app as small as it can, and
+every package it does install has a stated reason. Where Bun or the web platform
+provides a feature, or the code is short enough to own, Zerotal writes it itself.
+A package that only some apps need is an optional peer and is not installed for
+you: you add it when you turn on the feature that needs it, and the feature's own
+page says which. The tables below mark the exceptions still under review.
+
+Installing `zerotal` brings in these third-party packages, and what they depend on
+in turn:
+
+| Package                  | Comes with      | Why every app gets it                                                                                                                                          |
+| ------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@js-temporal/polyfill`  | `@zerotal/core` | Carbon, the date type, is built on Temporal. Bun only ships Temporal itself from 1.4, and the supported floor is lower. It goes once the floor ships Temporal. |
+| `@simplewebauthn/server` | `@zerotal/auth` | Passkey registration and sign-in. Under review: most apps never use passkeys, and they install it anyway.                                                      |
+
+Flow apps also get these, through `@zerotal/flow` and `@zerotal/flow-ui`:
+
+| Package                                    | Comes with         | Why                                                                                                                     |
+| ------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `typescript`                               | `@zerotal/flow`    | The ahead-of-time component compiler reads TypeScript's syntax tree, which Bun's transpiler does not expose.            |
+| `alpinejs` and seven `@alpinejs/*` plugins | `@zerotal/flow`    | Flow's browser runtime, bundled for the page when the app boots. Under review: it could ship prebuilt with the package. |
+| `tailwind-merge`                           | `@zerotal/flow-ui` | Resolving conflicting Tailwind classes needs Tailwind's own class grammar, which a rewrite would let drift.             |
+| `clsx`                                     | `@zerotal/flow-ui` | Joining class names. Being replaced by a few lines inside flow-ui.                                                      |
+
+The seven plugins are `@alpinejs/anchor`, `@alpinejs/collapse`, `@alpinejs/focus`,
+`@alpinejs/mask`, `@alpinejs/morph`, `@alpinejs/persist` and `@alpinejs/resize`.
+
+This list is checked: CI fails when a package gains a dependency that is not on it.
+The rules a package follows are in
+[Package Development](/docs/package-development#dependencies).
+
 ## Releases and versioning
 
 All `@zerotal/*` packages and `create-zerotal` share **one version line and

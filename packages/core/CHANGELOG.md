@@ -8,6 +8,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`optionalPeer()` and `OptionalPeerMissingError`, for loading a package only some apps
+  install.** Both are on `@zerotal/core/runtime` (and so `zerotal/runtime`), and the error is on
+  `@zerotal/core/errors` too. Attach the handler to the import:
+  `import("sharp" as string).catch(optionalPeer("sharp", { feature, alternative }))`. When the
+  package is missing it throws `OptionalPeerMissingError` (`E_OPTIONAL_PEER_MISSING`), which names
+  the feature that needs the package, the install command and the alternative, and keeps the
+  resolver's error as `cause`. Every other failure is rethrown unchanged, including an installed
+  package that is missing one of its own dependencies. The import shape is the one that still
+  builds with `bun build --compile` when the package is absent, and that still type-checks in an
+  app that never installed it. Package Development has the details.
+
 ## [1.16.3] — 2026-11-17
 
 ### Changed

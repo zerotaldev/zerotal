@@ -57,6 +57,11 @@ const d7 = new Carbon(new Date());
 const d8 = new Carbon(Temporal.Now.instant());
 ```
 
+`Temporal` here is the global one, built into Bun 1.4 and later. Carbon takes its
+values, including the dates `Bun.TOML.parse` returns, as well as values from
+`@js-temporal/polyfill`, which Carbon itself is built on. Bun 1.3 has no global
+`Temporal`: add `@js-temporal/polyfill` to your app and import `Temporal` from it.
+
 Named static factories cover the common boundary cases (all accept an optional
 timezone string):
 

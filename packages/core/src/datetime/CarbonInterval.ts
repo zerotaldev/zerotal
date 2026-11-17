@@ -4,7 +4,7 @@
  * calendar-aware (months of varying length resolve correctly).
  */
 
-import { Temporal } from "./temporal-shim.ts";
+import { Temporal, adoptTemporal } from "./temporal-shim.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,20 +46,22 @@ export class CarbonInterval {
   readonly _duration: Temporal.Duration;
 
   constructor(duration: Temporal.Duration | DurationLike = {}) {
-    if (duration instanceof Temporal.Duration) {
-      this._duration = duration;
+    // A native Temporal.Duration (Bun 1.4+) becomes the polyfill's own object first.
+    const value = adoptTemporal(duration);
+    if (value instanceof Temporal.Duration) {
+      this._duration = value;
     } else {
       this._duration = new Temporal.Duration(
-        duration.years ?? 0,
-        duration.months ?? 0,
-        duration.weeks ?? 0,
-        duration.days ?? 0,
-        duration.hours ?? 0,
-        duration.minutes ?? 0,
-        duration.seconds ?? 0,
-        duration.milliseconds ?? 0,
-        duration.microseconds ?? 0,
-        duration.nanoseconds ?? 0,
+        value.years ?? 0,
+        value.months ?? 0,
+        value.weeks ?? 0,
+        value.days ?? 0,
+        value.hours ?? 0,
+        value.minutes ?? 0,
+        value.seconds ?? 0,
+        value.milliseconds ?? 0,
+        value.microseconds ?? 0,
+        value.nanoseconds ?? 0,
       );
     }
   }
@@ -285,7 +287,7 @@ export class CarbonInterval {
    * // → CarbonInterval { hours: 1, minutes: 30 }
    */
   cascade(relativeTo?: Temporal.ZonedDateTime): CarbonInterval {
-    const ref = relativeTo ?? Temporal.Now.zonedDateTimeISO("UTC");
+    const ref = relativeTo ? adoptTemporal(relativeTo) : Temporal.Now.zonedDateTimeISO("UTC");
     const balanced = this._duration.round({
       largestUnit: "years",
       relativeTo: ref,

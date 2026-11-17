@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.16.3] — 2026-11-17
+
 ### Fixed
 
 - **A session cookie over the browser limit names what filled it.** `SessionCookieOverflowError`

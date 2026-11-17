@@ -18,6 +18,12 @@
  *   bun run scripts/release-notes-check.ts                 # against [Unreleased]
  *   bun run scripts/release-notes-check.ts --tag v1.14.0   # against [1.14.0]
  *
+ * Without `--tag` it is the pull-request form, and CI runs it on every change, so a
+ * missing note is found before the merge rather than after the tag. A release in
+ * preparation has already moved its notes from `[Unreleased]` to its version
+ * (`changelog:release`), and its tag does not exist yet. So while the root
+ * manifest's version is untagged, a section under that version counts too.
+ *
  * @module
  */
 import { readFileSync, existsSync } from "node:fs";
@@ -37,7 +43,7 @@ function git(...args: string[]): string {
  * being released points at `HEAD` and diffing a commit against itself finds
  * nothing — which is exactly how a check like this passes while proving nothing.
  */
-function range(tag: string | undefined): { base: string; heading: string } {
+function range(tag: string | undefined): { base: string; headings: string[] } {
   const tags = git("tag", "--list", "v*", "--merged", "HEAD", "--sort=-v:refname")
     .split(/\r?\n/)
     .map((t) => t.trim())
@@ -45,9 +51,24 @@ function range(tag: string | undefined): { base: string; heading: string } {
 
   if (tag) {
     const base = tags.find((t) => t !== tag);
-    return { base: base ?? tags[tags.length - 1] ?? "", heading: tag.replace(/^v/, "") };
+    return { base: base ?? tags[tags.length - 1] ?? "", headings: [tag.replace(/^v/, "")] };
   }
-  return { base: tags[0] ?? "", heading: "Unreleased" };
+  const pending = pendingVersion();
+  return { base: tags[0] ?? "", headings: pending ? ["Unreleased", pending] : ["Unreleased"] };
+}
+
+/**
+ * The version a release in preparation is being cut as: the root manifest's,
+ * while no tag carries it. `null` once it is tagged, because from then on its
+ * section describes a release that has shipped, and new work belongs under
+ * `[Unreleased]`.
+ */
+function pendingVersion(): string | null {
+  const { version } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
+    version?: string;
+  };
+  if (!version) return null;
+  return git("tag", "--list", `v${version}`) === "" ? version : null;
 }
 
 /**
@@ -111,7 +132,8 @@ function hasEntry(pkg: string, heading: string): boolean {
 
 const flagIndex = Bun.argv.indexOf("--tag");
 const tag = flagIndex === -1 ? undefined : Bun.argv[flagIndex + 1];
-const { base, heading } = range(tag);
+const { base, headings } = range(tag);
+const heading = headings[0]!;
 
 if (!base) {
   console.log("✓ no previous tag to compare against — nothing to check.");
@@ -119,11 +141,13 @@ if (!base) {
 }
 
 const changed = changedPackages(base);
-const missing = changed.filter((pkg) => !hasEntry(pkg, heading));
+const missing = changed.filter((pkg) => !headings.some((h) => hasEntry(pkg, h)));
 
 console.log(`\n── Release notes vs. ${base}..HEAD ──\n`);
 console.log(`  ${changed.length} package(s) changed: ${changed.join(", ") || "(none)"}`);
-console.log(`  checking for a \`## [${heading}]\` entry in each\n`);
+console.log(
+  `  checking for a ${headings.map((h) => `\`## [${h}]\``).join(" or ")} entry in each\n`,
+);
 
 if (missing.length === 0) {
   console.log("\x1b[32m✓\x1b[0m every changed package says what changed.");

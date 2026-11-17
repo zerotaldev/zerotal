@@ -19,6 +19,9 @@
  * one the project installed, so `bun update bun` moves it and nothing here needs
  * editing. What it enforces is that there is only one.
  *
+ * It is also where a package loads what only some apps install: `optionalPeer()`,
+ * the handler for an optional peer's `import()`.
+ *
  * @module
  */
 import { readFileSync } from "node:fs";
@@ -301,3 +304,8 @@ export function runtimeBelowFloorMessage(floor: RuntimeFloor): string {
     `  To run anyway, set ${RUNTIME_MISMATCH_ESCAPE}=1 — it downgrades this to a warning.`
   );
 }
+
+export { optionalPeer } from "./optionalPeer.ts";
+export type { OptionalPeerHint } from "./optionalPeer.ts";
+export { OptionalPeerMissingError } from "../errors/OptionalPeerMissingError.ts";
+export type { OptionalPeerMissing } from "../errors/OptionalPeerMissingError.ts";

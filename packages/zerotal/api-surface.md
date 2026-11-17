@@ -6736,6 +6736,14 @@ type RouteTarget = string
 
 ## ./runtime  `(./src/runtime.ts)`
 
+class OptionalPeerMissingError = {
+  new (missing: OptionalPeerMissing, cause?: unknown): OptionalPeerMissingError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly missing: OptionalPeerMissing
+  readonly status: number
+}
+
 const RUNTIME_MISMATCH_ESCAPE = 'ZT_ALLOW_RUNTIME_MISMATCH'
 
 function bunBinary = () => string
@@ -6746,6 +6754,8 @@ function declaresBunDependency = (cwd: string) => boolean
 
 function installedBunVersion = (cwd: string) => {    version: string;    manifest: string;} | null
 
+function optionalPeer = (spec: string, hint: OptionalPeerHint) => (error: unknown) => never
+
 function runtimeBelowFloor = (cwd?: string) => RuntimeFloor | null
 
 function runtimeBelowFloorMessage = (floor: RuntimeFloor) => string
@@ -6755,6 +6765,19 @@ function runtimeMismatch = (cwd?: string) => RuntimeMismatch | null
 function runtimeMismatchAllowed = () => boolean
 
 function runtimeMismatchMessage = (mismatch: RuntimeMismatch) => string
+
+interface OptionalPeerHint = {
+  alternative?: string | undefined
+  feature: string
+  install?: string | undefined
+}
+
+interface OptionalPeerMissing = {
+  alternative?: string | undefined
+  feature: string
+  install: string
+  peer: string
+}
 
 interface RuntimeFloor = {
   manifest: string

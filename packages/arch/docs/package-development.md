@@ -80,6 +80,147 @@ commits to, and state the same level in the package's README and CHANGELOG so it
 visible from npm. A package cannot be more mature than what it depends on. Subpath
 exports like `./commands` keep CLI code out of the main bundle until it's needed.
 
+## Dependencies
+
+Everything in `dependencies` is installed into every app that installs your
+package, so keep it short and justify each entry. In order of preference:
+
+1. **No dependency.** Use what Bun and the web platform provide (`fetch`,
+   `crypto.subtle`, `Bun.password`, `Bun.Image`), and write small helpers yourself.
+   About fifty lines is a fair limit.
+2. **A required dependency**, only when every app that installs your package needs
+   it at runtime and writing it yourself would be unsafe or unreasonable.
+3. **An optional peer**, for a feature only some apps use. The app installs it when
+   it turns the feature on.
+4. **Another Zerotal package:**
+   - a dependency when you import it statically;
+   - an optional peer when you only ever load it lazily.
+
+   Either way it is declared. Only a service you resolve from the container needs
+   no declaration.
+
+The framework's own required dependencies, and the reason for each, are listed in
+the [Support Policy](/docs/support-policy#dependencies).
+
+### Declaring an optional peer
+
+An optional peer needs three entries in `package.json`:
+
+- in `peerDependencies`, with a range that has an upper bound;
+- in `peerDependenciesMeta`, marked optional;
+- in `devDependencies`, so your own tests run against a version the peer range
+  accepts.
+
+```json
+// packages/imaging/package.json
+{
+  "peerDependencies": { "sharp": "^0.35" },
+  "peerDependenciesMeta": { "sharp": { "optional": true } },
+  "devDependencies": { "sharp": "^0.35.5" }
+}
+```
+
+### Loading an optional peer
+
+Load it where the feature runs, with `import()`, and hand failures to
+`optionalPeer()` from `@zerotal/core/runtime`:
+
+```typescript
+// packages/imaging/src/sharp.ts
+import { optionalPeer } from "@zerotal/core/runtime";
+
+/** The part of sharp this driver uses. */
+interface SharpModule {
+  default: (input: Uint8Array) => { metadata(): Promise<{ width?: number }> };
+}
+
+export async function loadSharp(): Promise<SharpModule> {
+  return import("sharp" as string).catch(
+    optionalPeer("sharp", {
+      feature: 'config/imaging.ts driver: "sharp"',
+      alternative: 'the built-in driver, driver: "bun"',
+    }),
+  );
+}
+```
+
+Each part of that expression does a job:
+
+- **The name is written in the `import()` itself.** `bun build --compile` embeds a
+  package only when it can read the name there. A name held in a variable builds a
+  binary without the package.
+- **`.catch()` is attached to the `import()`.** The bundler builds an app that lacks
+  the package only when it can see the failure handled at the import: a `.catch()`
+  there, or a surrounding `try`. Passing `() => import("sharp")` to a helper
+  instead stops every compiled app without `sharp` from building.
+- **`as string` keeps TypeScript from looking the package up.** Your package ships
+  TypeScript source, so an app's type-check reads this line too, and it would fail
+  on a package the app never installed. Bun removes the `as string`, so the bundler
+  still sees the name.
+
+The import comes back untyped. Describe the part of the package you use with your
+own interface, as `SharpModule` does above, and never `import type` from the peer:
+an app without it fails its type-check on that line.
+
+`optionalPeer(spec, hint)` returns the handler. Pass it the same name the
+`import()` uses. The hint is an `OptionalPeerHint`:
+
+| Field         | Required | Meaning                                                                                                       |
+| ------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
+| `feature`     | yes      | What the app asked for that needs the package, in the words the app used: a config value, a method, a driver. |
+| `install`     | no       | The install command. Defaults to `bun add <package>`.                                                         |
+| `alternative` | no       | What to do instead, when the feature has a built-in alternative.                                              |
+
+When the package is not installed, the handler throws `OptionalPeerMissingError`.
+It carries:
+
+- the code `E_OPTIONAL_PEER_MISSING`;
+- an `OptionalPeerMissing` record on `missing`: the package, the feature, the
+  install command and the alternative;
+- the resolver's original error as `cause`.
+
+Every other failure is rethrown unchanged. That covers a peer that throws while
+loading and an installed peer that is missing one of its own dependencies, so a
+broken install is never reported as a missing one. The handler decides this from
+the error's `code` and `specifier`, never from its message.
+
+For a synchronous `require()`, call the handler from the `catch` block:
+
+```typescript
+import { optionalPeer } from "@zerotal/core/runtime";
+
+export function loadCache(): unknown {
+  try {
+    return require("@zerotal/cache");
+  } catch (error) {
+    return optionalPeer("@zerotal/cache", { feature: "tenantCache()" })(error);
+  }
+}
+```
+
+Two more rules keep a missing peer visible:
+
+- **When the app asked for the feature, never turn a missing package into `null`,
+  `false` or a quiet fallback.** The feature cannot run, and the error is the
+  only thing that tells the developer what to install.
+- **Check at boot when the app's config turns the feature on.** Register a
+  [doctor check](#registering-a-doctor-check), so the missing package is reported
+  before the first request needs it.
+
+### Changing dependencies
+
+A change to any dependency block goes in the package's CHANGELOG, in the same
+pull request.
+
+Moving a required dependency to an optional peer breaks every app that relied on
+getting it for free. So it ships in a minor release, with:
+
+- a **BREAKING** note;
+- a section in the [Upgrade Guide](/docs/upgrade);
+- a doctor check that names the missing package.
+
+In this repository, `bun run deps:check` enforces these rules on every pull request.
+
 ## The public barrel
 
 Everything a consumer should import is re-exported from `index.ts`. Keep
@@ -510,10 +651,12 @@ bun zt lint:packages
 4. Add `src/config.ts` with an `XConfig()` factory using `deepMerge`, documenting
    each default in JSDoc.
 5. Make errors extend `ZerotalError`.
-6. Contribute a concern descriptor if you introduce a new `app/*` directory.
-7. Export everything public from `src/index.ts`.
-8. Write tests.
-9. `bun zt lint:packages` until clean.
+6. Keep `dependencies` to what every app needs; anything else is an optional peer
+   loaded through `optionalPeer()`.
+7. Contribute a concern descriptor if you introduce a new `app/*` directory.
+8. Export everything public from `src/index.ts`.
+9. Write tests.
+10. `bun zt lint:packages` until clean.
 
 ## References
 
@@ -527,6 +670,7 @@ bun zt lint:packages
 | `deepMerge`           | `deepMerge<T extends object>(base: T, override: Partial<T>): T`                 | Canonical deep-merge for config factories.                            |
 | `ZerotalError`        | `class ZerotalError extends Error`                                              | Base for all package error vocabularies.                              |
 | `registerConcern`     | `registerConcern(descriptor: ConcernDescriptor): this`                          | Register an auto-discovery concern from a provider.                   |
+| `optionalPeer`        | `optionalPeer(spec: string, hint: OptionalPeerHint): (error: unknown) => never` | The `.catch()` handler for loading an optional peer.                  |
 
 ## Next steps
 

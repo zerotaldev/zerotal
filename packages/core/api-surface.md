@@ -2784,6 +2784,14 @@ class NotFoundError = {
   readonly status: number
 }
 
+class OptionalPeerMissingError = {
+  new (missing: OptionalPeerMissing, cause?: unknown): OptionalPeerMissingError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly missing: OptionalPeerMissing
+  readonly status: number
+}
+
 class RuntimeMismatchError = {
   new (message: string, mismatch: RuntimeMismatch): RuntimeMismatchError
   readonly code: string
@@ -2867,6 +2875,13 @@ interface BootCheckFailure = {
   provider: string
   reason: string
   token: string
+}
+
+interface OptionalPeerMissing = {
+  alternative?: string | undefined
+  feature: string
+  install: string
+  peer: string
 }
 
 ## ./facades  `(./src/facade/facades/index.ts)`
@@ -3557,6 +3572,14 @@ type RouteTarget = string
 
 ## ./runtime  `(./src/support/runtime.ts)`
 
+class OptionalPeerMissingError = {
+  new (missing: OptionalPeerMissing, cause?: unknown): OptionalPeerMissingError
+  readonly code: string
+  readonly context?: Record<string, unknown> | undefined
+  readonly missing: OptionalPeerMissing
+  readonly status: number
+}
+
 const RUNTIME_MISMATCH_ESCAPE = 'ZT_ALLOW_RUNTIME_MISMATCH'
 
 function bunBinary = () => string
@@ -3567,6 +3590,8 @@ function declaresBunDependency = (cwd: string) => boolean
 
 function installedBunVersion = (cwd: string) => {    version: string;    manifest: string;} | null
 
+function optionalPeer = (spec: string, hint: OptionalPeerHint) => (error: unknown) => never
+
 function runtimeBelowFloor = (cwd?: string) => RuntimeFloor | null
 
 function runtimeBelowFloorMessage = (floor: RuntimeFloor) => string
@@ -3576,6 +3601,19 @@ function runtimeMismatch = (cwd?: string) => RuntimeMismatch | null
 function runtimeMismatchAllowed = () => boolean
 
 function runtimeMismatchMessage = (mismatch: RuntimeMismatch) => string
+
+interface OptionalPeerHint = {
+  alternative?: string | undefined
+  feature: string
+  install?: string | undefined
+}
+
+interface OptionalPeerMissing = {
+  alternative?: string | undefined
+  feature: string
+  install: string
+  peer: string
+}
 
 interface RuntimeFloor = {
   manifest: string

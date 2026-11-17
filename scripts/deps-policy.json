@@ -1,0 +1,14 @@
+{
+  "$comment": "Third-party packages a @zerotal package may list in `dependencies`, each with the reason every app installing that package needs it. Anything else is an optional peer, written in-house, or a devDependency. Read by scripts/deps-check.ts; the public version is the Dependencies table in docs/support-policy.md, and the two must agree. The rules: docs/package-development.md#dependencies.",
+  "allowedDependencies": {
+    "@zerotal/core": {
+      "@js-temporal/polyfill": "Carbon is built on Temporal, which Bun ships natively only from 1.4. Transitional: it goes when the supported floor reaches a Bun with Temporal."
+    },
+    "@zerotal/flow": {
+      "typescript": "The ahead-of-time component compiler reads the TypeScript syntax tree, which Bun's transpiler does not expose."
+    },
+    "@zerotal/flow-ui": {
+      "tailwind-merge": "Resolving conflicting Tailwind classes needs Tailwind's own class grammar; a reimplementation would drift from every Tailwind release."
+    }
+  }
+}

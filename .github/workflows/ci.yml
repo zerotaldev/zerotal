@@ -192,6 +192,26 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun run docs:coverage
 
+      # Everything in `dependencies` is installed into every app, and an optional peer
+      # loaded the wrong way is left out of a compiled binary, fails an app's
+      # type-check, or reports a missing package as `null`. The 17 Nov 2026 audit found
+      # shipped code doing the first and the last, and the policy they broke written
+      # nowhere. The rules are in
+      # docs/package-development.md#dependencies; `deps-baseline.json` holds the
+      # violations that existed when this landed, and only a new one fails.
+      - name: Dependency policy
+        if: ${{ !cancelled() }}
+        run: bun run deps:check
+
+      # The pull-request form of the release workflow's check: a package whose source
+      # changed needs a CHANGELOG entry. Until this ran here it ran only after a tag was
+      # pushed, when a missing note can no longer be added to what was published.
+      # A release branch has moved its notes under the version it is cutting, and the
+      # check accepts that heading while the version is untagged.
+      - name: Release notes cover what changed
+        if: ${{ !cancelled() }}
+        run: bun run release:notes:check
+
       # types/routes.generated.ts is what makes `route()` type-checked, and it is
       # only correct if it is regenerated when routes change. `zt dev` refreshes it,
       # but a route added in an editor-only session (or by a provider) would ship
@@ -249,6 +269,15 @@ jobs:
 
       - name: Test
         run: bun run test
+
+      # The gates' own tests. `bunfig.toml` roots `bun test` at `packages/`, and
+      # `bun run test` runs each workspace, so nothing ever ran `scripts/*.test.ts`:
+      # the breaking-check, docs-coverage and internal-prefix tests sat unexecuted
+      # until 17 Nov 2026. A gate whose detector is wrong fails innocent changes or
+      # passes guilty ones, so its tests run on both Bun versions like the rest.
+      - name: Script tests
+        if: ${{ !cancelled() }}
+        run: bun run test:scripts
 
   # The ORM's real query execution is all against SQLite :memory:, while deployment docs
   # point DATABASE_URL at PostgreSQL. Dialect coverage is substring-matching on the SQL a

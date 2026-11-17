@@ -8,7 +8,7 @@ import { resolveSource, rewriteImports, UTILS } from "../registry.ts";
 export const DEFAULT_UI_DIR = "app/flow/components/ui";
 
 /** npm deps the copied `cn` util needs the host app to provide. */
-export const RUNTIME_DEPS = ["clsx", "tailwind-merge"] as const;
+export const RUNTIME_DEPS = ["tailwind-merge"] as const;
 
 /**
  * Return the RUNTIME_DEPS that don't resolve from `cwd` — i.e. the app must add

@@ -5,7 +5,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { FlowAddCommand } from "./FlowAddCommand.ts";
 import { FlowInitCommand } from "./FlowInitCommand.ts";
 import { FlowListCommand } from "./FlowListCommand.ts";
-import { missingRuntimeDeps } from "./support.ts";
+import { missingRuntimeDeps, RUNTIME_DEPS } from "./support.ts";
 import { COMPONENTS } from "../registry.ts";
 
 class Collector {
@@ -142,8 +142,9 @@ describe("flow:init", () => {
 });
 
 describe("runtime deps", () => {
-  it("reports nothing missing when clsx + tailwind-merge resolve (flow-ui's own cwd)", () => {
-    // flow-ui depends on both, so from its package root they always resolve.
+  it("asks only for tailwind-merge, which resolves from flow-ui's own cwd", () => {
+    expect(RUNTIME_DEPS).toEqual(["tailwind-merge"]);
+    // flow-ui depends on it, so from its package root it always resolves.
     expect(missingRuntimeDeps(import.meta.dir)).toEqual([]);
   });
 });

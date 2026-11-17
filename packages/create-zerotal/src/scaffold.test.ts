@@ -50,6 +50,62 @@ describe('scaffolded package.json', () => {
   );
 });
 
+// ── every template shares one baseline ───────────────────────────────────────
+
+describe('starter parity', () => {
+  // Packages an app needs to build or compile on the server. A deploy that installs with
+  // --production and then builds has no devDependencies, so these belong in dependencies.
+  const BUILD_TIME = ['tailwindcss', 'bun-plugin-tailwind', '@vue/compiler-sfc'];
+
+  const manifest = (template: string) =>
+    Bun.file(join(import.meta.dir, '..', 'templates', template, 'package.json')).json() as Promise<{
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    }>;
+
+  it('covers every template', () => {
+    expect([...TEMPLATES].sort()).toEqual(['admin', 'api', 'flow', 'minimal', 'react', 'vue']);
+  });
+
+  it.each([...TEMPLATES])('%s depends on zerotal and @zerotal/devtools', async (template) => {
+    const deps = (await manifest(template)).dependencies ?? {};
+    expect({ template, zerotal: deps['zerotal'], devtools: deps['@zerotal/devtools'] }).toEqual({
+      template,
+      zerotal: '{{zerotal_version}}',
+      devtools: '{{zerotal_version}}',
+    });
+  });
+
+  it.each([...TEMPLATES])('%s registers DevtoolsProvider', async (template) => {
+    const dir = join(import.meta.dir, '..', 'templates', template, 'bootstrap');
+    const sources = await Promise.all(
+      ['providers.ts', 'app.ts'].map((f) => Bun.file(join(dir, f)).text().catch(() => '')),
+    );
+    // Imported from the package, then named again in the provider list.
+    const registered = sources.some(
+      (s) =>
+        /import \{ DevtoolsProvider \} from ["']@zerotal\/devtools["']/.test(s) &&
+        /^(?!\s*(?:import|\/\/)).*\bDevtoolsProvider\s*[,\]]/m.test(s),
+    );
+    expect({ template, registered }).toEqual({ template, registered: true });
+  });
+
+  it.each([...TEMPLATES])('%s ships [install] peer = false', async (template) => {
+    const bunfig = await Bun.file(join(import.meta.dir, '..', 'templates', template, '_bunfig.toml'))
+      .text()
+      .catch(() => '');
+    expect({ template, peer: /^\[install\][^[]*^\s*peer\s*=\s*false\b/m.test(bunfig) }).toEqual({
+      template,
+      peer: true,
+    });
+  });
+
+  it.each([...TEMPLATES])('%s keeps build-time packages out of devDependencies', async (template) => {
+    const dev = Object.keys((await manifest(template)).devDependencies ?? {});
+    expect({ template, dev: dev.filter((d) => BUILD_TIME.includes(d)) }).toEqual({ template, dev: [] });
+  });
+});
+
 afterEach(async () => {
   await rm(TMP, { recursive: true, force: true });
 });
@@ -448,7 +504,7 @@ describe('scaffold — vue template', () => {
     expect(pkg.name).toBe('vue-app');
     expect(pkg.dependencies['@inertiajs/vue3']).toBeDefined();
     expect(pkg.dependencies['vue']).toBeDefined();
-    expect(pkg.devDependencies['@vue/compiler-sfc']).toBeDefined();
+    expect(pkg.dependencies['@vue/compiler-sfc']).toBeDefined();
 
     const providers = await Bun.file(join(TMP, 'bootstrap/providers.ts')).text();
     expect(providers).toContain('InertiaProvider');

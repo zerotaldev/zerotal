@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **Every starter ships the same baseline.** The Vue starter now depends on `@zerotal/devtools` and
+  registers `DevtoolsProvider` last, as the other five do; it was the one starter without the dev
+  panel. The admin and api starters now ship `bunfig.toml` with `peer = false` under `[install]`, as
+  the four Tailwind starters have since 1.15.6: nothing they install today changes, and a dependency
+  added later cannot pull an unlisted peer in. A test checks every template for `zerotal`,
+  `@zerotal/devtools`, `DevtoolsProvider` and `peer = false`.
+- **The Vue starter lists `@vue/compiler-sfc` under `dependencies`.** It compiles `.vue` files when
+  the app builds and when the server renders a page, so a deploy that installs with `--production`
+  and then builds had no compiler; `tailwindcss` and `bun-plugin-tailwind` moved for the same reason
+  in 1.11.0. A test keeps build-time packages out of every starter's `devDependencies`.
+
+  Apps already scaffolded are not touched. A Vue app can move `@vue/compiler-sfc` itself, and add
+  `@zerotal/devtools` and `DevtoolsProvider`; an admin or api app can add the two `bunfig.toml`
+  lines.
+
 ## [1.15.6] — 2026-10-28
 
 ### Fixed

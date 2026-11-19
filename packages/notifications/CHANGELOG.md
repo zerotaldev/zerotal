@@ -11,10 +11,15 @@ follows the Zerotal monorepo's unified versioning.
 ### Changed
 
 - **`@zerotal/broadcasting` is declared as an optional peer.** The broadcast channel loaded it
-  without declaring it. Sending on the `broadcast` channel without the package now throws
-  `OptionalPeerMissingError` with `bun add @zerotal/broadcasting`, where it threw
-  `NotificationChannelUnavailableError`. A broadcasting package that throws while loading is
-  rethrown as its own error. The queued broadcast job reports a missing package the same way.
+  without declaring it.
+- **BREAKING: the `broadcast` channel without `@zerotal/broadcasting` throws
+  `OptionalPeerMissingError`, not `NotificationChannelUnavailableError`.** The new error names
+  `bun add @zerotal/broadcasting`. A broadcasting package that throws while loading is rethrown as
+  its own error, where it was also wrapped in `NotificationChannelUnavailableError`. The queued
+  broadcast job reports a missing package the same way. An app that catches
+  `NotificationChannelUnavailableError` to detect a missing broadcasting package must catch
+  `OptionalPeerMissingError` from `zerotal/runtime` instead; the SMS channel's missing
+  credentials still throw `NotificationChannelUnavailableError`.
 
 ## [1.16.2] — 2026-10-30
 

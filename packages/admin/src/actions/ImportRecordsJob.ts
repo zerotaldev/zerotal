@@ -90,8 +90,14 @@ export async function runQueuedImport(payload: ImportRecordsPayload): Promise<Im
 }
 
 /**
- * Push an import onto the queue, returning false when no queue is available so
- * the caller can fall back to importing inline.
+ * Push an import onto the queue.
+ *
+ * Returns `false` when `@zerotal/queue` is installed but has no driver to take
+ * the job, so the caller can fall back to importing inline. Throws
+ * `OptionalPeerMissingError` naming the install command when `@zerotal/queue`
+ * is not installed at all: the app asked for a queued import, and running it
+ * inline instead would hide that it never could be queued. Any other error
+ * while loading the package is rethrown.
  */
 export async function dispatchImport(payload: ImportRecordsPayload): Promise<boolean> {
   // `@zerotal/queue` is an optional peer, loaded only when an import is queued.

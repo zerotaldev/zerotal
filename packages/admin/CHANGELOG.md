@@ -19,14 +19,17 @@ follows the Zerotal monorepo's unified versioning.
 - **`@zerotal/notifications` and `@zerotal/audit` are declared optional peers**, alongside
   `@zerotal/queue`. They were imported without being declared. An app that uses database
   notifications, record history or queued imports installs the package itself.
-- **A missing optional package now throws `OptionalPeerMissingError` with the install command,
-  where it used to be silent.** `databaseNotifications()` without `@zerotal/notifications`
-  showed an empty bell, a resource with `static history = true` without `@zerotal/audit`
-  showed no history, and `importAction({ queue: true })` without `@zerotal/queue` imported
-  inline. Each looked like it was working. The bell in the layout still fails soft, so only the
-  notifications page throws. A queue package that is installed with no driver configured still
-  falls back to an inline import, as before. If your app relied on one of these doing nothing,
-  install the package or remove the option.
+- **BREAKING: a missing optional package now throws `OptionalPeerMissingError` with the install
+  command, where it used to be silent.** `databaseNotifications()` without
+  `@zerotal/notifications` showed an empty bell, a resource with `static history = true` without
+  `@zerotal/audit` showed no history, and `importAction({ queue: true })` without
+  `@zerotal/queue` imported inline. Each looked like it was working. Now the notifications page,
+  every View page of a resource with history, and every queued import throw. The bell in the
+  layout still fails soft. `dispatchImport()` throws too, where it returned `false`; it still
+  returns `false` when the queue package is installed with no driver configured, so that case
+  still falls back to an inline import. An app that used one of these options without the
+  package must install it (`bun add @zerotal/notifications`, `bun add @zerotal/audit` or
+  `bun add @zerotal/queue`) or remove the option. `bun zt doctor` names the first two.
 
 ### Added
 

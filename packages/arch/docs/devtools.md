@@ -497,8 +497,9 @@ registered — which the provider skips entirely in production:
 
 The two bundles ship prebuilt with the package. Under `assets/` their file names carry a hash of
 their content, so the browser keeps them between page loads (`Cache-Control: private`, for a year)
-and fetches them again only after an upgrade. They are inside a binary built by `bun zt compile`
-too, so a compiled app behind a `gate` serves the dashboard.
+and fetches them again only after an upgrade. They are embedded in a binary built by
+`bun zt compile` too; [Deployment](/docs/deployment#compile-to-a-single-binary) says what such a
+binary runs today.
 
 > **Danger** — These endpoints expose request headers, SQL with its bindings,
 > session key names, stack traces, and rendered mail. They are all behind one

@@ -69,9 +69,9 @@ What follows from that:
   one of its plugins, declare it in your app's dependencies.
 - **Turning [`cspSafe`](/docs/flow/components#csp-safe-mode) on or off changes the runtime's
   URL**, because it serves a different build.
-- **A compiled app carries the runtime inside the binary**, so
-  [`bun zt compile`](/docs/deployment#compile-to-a-single-binary) needs nothing shipped beside it
-  for Flow.
+- **A binary built by [`bun zt compile`](/docs/deployment#compile-to-a-single-binary) carries the
+  runtime inside it.** A compiled Flow app does not serve its pages yet; that page says what a
+  binary runs today.
 - **A page rendered before a deploy keeps working.** It asks for a hash the new server does not
   have, and is redirected to the current file.
 
@@ -85,6 +85,11 @@ The scripts under `/__flow/assets/` are [raw routes](/docs/routing#raw-routes): 
 for every visitor, so your global middleware does not run for them. The route table is an ordinary
 route, so your global middleware runs for it exactly as it does for your pages: a visitor it turns
 away from the pages does not get the table either.
+
+If your app has global middleware that turns away every request except an allowlist of public
+paths, such as a sign-in gate, add `/__flow/*` to that allowlist. Otherwise a public page is
+served but its route table is not: `$route(...)` on that page stops working, and so does every
+`navigate` link built with it.
 
 ## Compiling at boot
 

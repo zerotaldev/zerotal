@@ -21,11 +21,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
-- **A compiled app serves the inspector.** Inside a binary built by `bun zt compile` there was no
-  source to bundle, so the panel and dashboard bundles were build-failure comments, and the
-  dashboard page, read from a file beside the module, could not be read at all. The bundles are
-  now embedded in the binary and the page is generated, so a compiled app behind a `gate` serves
-  a working dashboard.
+- **The inspector's files are inside a compiled binary.** Inside a binary built by
+  `bun zt compile` there was no source to bundle, so the panel and dashboard bundles were
+  build-failure comments, and the dashboard page, read from a file beside the module, could not
+  be read at all. The bundles are now embedded in the binary and the page is generated, so
+  neither depends on a file beside the binary. A compiled binary does not serve an app's routes
+  yet; Deployment's "Compile to a single binary" section says what it runs today.
 
 ### Testing
 

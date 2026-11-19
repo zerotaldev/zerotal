@@ -55,7 +55,10 @@ follows the Zerotal monorepo's unified versioning.
 - **`bun zt compile` embeds the framework packages.** They were loaded through specifiers held
   in variables, which the bundler cannot see, so a compiled binary contained none of them. The
   `.vue` compiler loads from its self-contained ES build: its CommonJS entry point requires
-  template engines nobody installs, and with it in the graph the compile failed outright.
+  template engines nobody installs, and with it in the graph the compile failed outright. A
+  compiled app still does not render pages on the server, since the page components are loaded
+  from disk at run time; Deployment's "Compile to a single binary" section says what a binary
+  runs today.
 
 ### Dependencies
 

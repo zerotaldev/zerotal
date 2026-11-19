@@ -7,7 +7,8 @@ import { TEMPLATES } from './args.ts';
  * Invariants of the template sources — the first-run faults of 1.15.2, held in place.
  *
  * A scaffolded app cannot be booted from inside this workspace (the umbrella `zerotal`
- * package is not linked here), so these read the sources instead. They are narrow on
+ * package is not linked here), so these read the sources instead; `boot.test.ts` boots one
+ * outside it, with the workspace packages linked in. They are narrow on
  * purpose: each one names a rule a template broke, and that a newcomer found by running
  * `zt doctor` or opening the URL the dev server printed.
  */

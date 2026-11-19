@@ -711,7 +711,9 @@ describe("PasskeyService against the real @simplewebauthn/server", () => {
   });
 
   it("loads in a bundle, as a compiled app runs it", async () => {
-    const outdir = mkdtempSync(join(tmpdir(), "zerotal-passkeys-bundle-"));
+    // Run from a directory with nothing installed, and with auto-install off, so only what the
+    // bundle carries can answer: a package fetched on import would make a broken bundle pass.
+    const outdir = emptyApp("zerotal-passkeys-bundle-");
     try {
       const build = await Bun.build({
         entrypoints: [`${FIXTURES}/passkeys-bundled.ts`],
@@ -719,7 +721,10 @@ describe("PasskeyService against the real @simplewebauthn/server", () => {
         outdir,
       });
       expect(build.success).toBe(true);
-      expect(JSON.parse(await runScript(build.outputs[0]!.path))).toEqual(ALGORITHMS);
+      const bundle = build.outputs[0]!.path;
+      expect(
+        JSON.parse(await runProcess([process.execPath, "--no-install", bundle], outdir)),
+      ).toEqual(ALGORITHMS);
     } finally {
       rmSync(outdir, { recursive: true, force: true });
     }

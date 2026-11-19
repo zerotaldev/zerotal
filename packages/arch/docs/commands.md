@@ -173,7 +173,7 @@ const token = await this.secret("API token:"); // input hidden on a Unix TTY
 | `bun zt worker --queue email` | Process a specific queue                                        |
 | `bun zt worker --once`        | Process one job then exit                                       |
 | `bun zt test`                 | Run the test suite in the `test` environment                    |
-| `bun zt compile`              | Compile the app to a self-contained binary (alias: `build`)     |
+| `bun zt compile`              | Compile to a binary; Deployment has its limits (alias: `build`) |
 | `bun zt css:build`            | Build the Tailwind CSS bundle for production                    |
 
 #### When the port is already taken

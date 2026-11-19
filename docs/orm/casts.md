@@ -62,9 +62,80 @@ A stored date-time with no zone of its own, such as that MySQL text or SQLite's
 saved whatever the server's `TZ` is.
 
 A MySQL `DATE`, `DATETIME` or `TIMESTAMP` column reads back as the same instant on
-every supported Bun. A PostgreSQL `infinity` cannot become a `Carbon`, so a `datetime`
-cast on one throws a `RangeError` that names the column; read such a column through a
+every supported Bun, and so does a PostgreSQL `timestamp`. A PostgreSQL `infinity`
+cannot become a `Carbon`, so a `datetime` cast on one throws a `RangeError` that names
+the column; read such a column through a
 [custom cast](#custom-cast-full-getset-control) instead.
+
+`table.dateTime()` and `table.timestamps()` create a text column on every database, so
+the two sections below matter for columns you declared with the database's own date
+types, and for values the database fills in itself.
+
+### The MySQL server's time zone
+
+The ORM writes and reads UTC. MySQL uses the connection's time zone in two places the
+ORM cannot see: `NOW()` and `CURRENT_TIMESTAMP` give the wall-clock time in that zone,
+and a `TIMESTAMP` column is converted through it on the way in and on the way out.
+
+Bun 1.4.1 and later open every MySQL connection with its time zone set to UTC. Bun
+1.3 and 1.4.0 leave it at the server's default, and offer no way to set it on each
+pooled connection, so on those Buns the server itself has to run in UTC. `bun zt
+doctor` warns when the app's connection, or the server's default zone, is not UTC in
+January or in July, so a zone such as `Europe/London`, which is UTC only in winter, is
+caught in any season. On Bun 1.4.1 and later the connection is always UTC, and the
+warning is about the server: rows that Bun 1.3, Bun 1.4.0 or another client wrote
+through it still carry its zone.
+
+On a server whose zone is `+02:00`, under Bun 1.3 or 1.4.0:
+
+| Column, and what wrote it                  | Reads back   | Once connections run in UTC         |
+| ------------------------------------------ | ------------ | ----------------------------------- |
+| `DATETIME` or text, written by the ORM     | as saved     | as saved                            |
+| `DATETIME`, filled by `NOW()`              | 2 hours late | old rows 2 hours late, new correct  |
+| `TIMESTAMP`, written by the ORM            | as saved     | old rows 2 hours early, new correct |
+| `TIMESTAMP`, filled by `CURRENT_TIMESTAMP` | 2 hours late | as saved, old rows included         |
+
+A comparison with `NOW()` in a `whereRaw()` is off by the same two hours. "Once
+connections run in UTC" is what changing the server's zone does, and also what moving
+the app to Bun 1.4.1 or later does on a server you leave as it is.
+
+To run the server in UTC, set `default-time-zone = '+00:00'` under `[mysqld]`, or run
+`SET GLOBAL time_zone = '+00:00'`, and restart the app so its connections reopen. Rows
+written before the change keep the old zone. With connections in UTC, and `'+02:00'`
+standing for the old zone (a named zone needs MySQL's time zone tables loaded):
+
+- a `DATETIME` that `NOW()` filled: `SET col = CONVERT_TZ(col, '+02:00', '+00:00')`
+- a `TIMESTAMP` the ORM wrote: `SET col = CONVERT_TZ(col, '+00:00', '+02:00')`
+
+Pick the rows each statement touches: a column usually holds only one of the two
+kinds, but one written both ways needs a `WHERE` that tells them apart.
+
+### What Bun 1.3 cannot read back exactly
+
+Bun 1.3 decodes a MySQL `DATE`, `DATETIME` or `TIMESTAMP` as local time before the ORM
+sees it, and the ORM turns that back into the UTC value stored. Two values do not
+survive that trip:
+
+- **A time in the process zone's daylight-saving gap.** `2026-03-08 02:30:00` never
+  happens in `America/New_York`, so Bun 1.3 moves it to 03:30 before the ORM can
+  correct it, and it reads back an hour late. Bun 1.4 reads it correctly, and a zone
+  with no daylight saving has no gap: run Bun 1.3 with `TZ=UTC`.
+- **The zero date.** Bun 1.3 returns a MySQL zero date (`0000-00-00`) as
+  `1970-01-01T00:00:00Z` in every zone, and the ORM leaves it there; Bun 1.4 returns an
+  invalid date, which a date cast refuses with a `RangeError`. Under a zone that is not
+  UTC, Bun 1.3 returns the same value for the stored time whose fields are the epoch in
+  that zone, `1969-12-31 19:00:00` in `America/New_York`, so that time reads as
+  `1970-01-01T00:00:00Z` too, five hours late.
+
+On Bun 1.3 with PostgreSQL and a `TZ` that is not UTC, a query that binds no values and
+returns rows is sent with one the database never reads, as `WITH zt_bind AS (SELECT
+$1::int) SELECT …`, and you will see that form in the server's logs. Without it, Bun 1.3
+read a `timestamp` column as local time on the query's first run on each connection.
+That covers a statement whose first word, after any comments and opening parentheses, is
+`SELECT`, `WITH`, `VALUES` or `TABLE`, and an `INSERT`, `UPDATE`, `DELETE` or `MERGE`
+with a `RETURNING` clause; a write that returns nothing is sent as written. Any other
+statement that returns a `timestamp`, such as a `FETCH` from a cursor, still reads it as
+local time on its first run: bind a value in it, or run Bun 1.3 with `TZ=UTC`.
 
 ### Scalars in a json column
 

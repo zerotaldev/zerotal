@@ -38,6 +38,7 @@ import { BaseModel } from "./model/BaseModel.ts";
 import { column } from "./model/decorators/column.ts";
 import { table } from "./model/decorators/table.ts";
 import { _resetMysqlDateDecoding } from "./db/driverDates.ts";
+import { currentZone } from "./__fixtures__/processZone.ts";
 import { Carbon } from "@zerotal/core/carbon";
 
 type Dialect = "postgres" | "mysql";
@@ -248,11 +249,12 @@ for (const { dialect, url } of SERVERS.length
     // zone is set here, and this block runs on both Bun versions in CI's matrix.
     describe("dates and JSON under a zone that is not UTC", () => {
       const INSTANT = new Date("2026-08-20T03:00:00.000Z");
-      let previousTz: string | undefined;
+      let previousTz = "UTC";
 
       beforeAll(async () => {
         if (!url) return;
-        previousTz = process.env.TZ;
+        // Put back by assignment, never `delete`: see __fixtures__/processZone.ts.
+        previousTz = process.env.TZ ?? currentZone();
         // Ahead of UTC with no daylight saving, so the expected offset is fixed.
         process.env.TZ = "Asia/Kolkata";
         _resetMysqlDateDecoding();
@@ -262,8 +264,7 @@ for (const { dialect, url } of SERVERS.length
 
       afterAll(async () => {
         if (!url) return;
-        if (previousTz === undefined) delete process.env.TZ;
-        else process.env.TZ = previousTz;
+        process.env.TZ = previousTz;
         _resetMysqlDateDecoding();
         await DB.raw("DROP TABLE IF EXISTS zt_smoke_moments");
       });
@@ -316,6 +317,31 @@ for (const { dialect, url } of SERVERS.length
             0,
           );
         }
+      });
+
+      // A statement with no bound parameters runs differently the first time on each
+      // connection: Bun sends it before it knows the column types, and PostgreSQL answers
+      // in text, which Bun 1.3 parsed as local time for `timestamp`. Each statement here
+      // is new to the connection, so this is its first run.
+      it("reads the same instant from a statement with no parameters, on its first run", async () => {
+        const fresh = `zt_${Date.now()}`;
+        // get(), not first(): first() binds its LIMIT.
+        const [viaBuilder] = await DB.table("zt_smoke_moments")
+          .select(`at_native AS ${fresh}`)
+          .whereRaw("label = 'saved'")
+          .get<Record<string, Date>>();
+        expect(new Date(viaBuilder![fresh]!).getTime()).toBe(INSTANT.getTime());
+
+        const [viaRaw] = await DB.raw<Record<string, Date>>(
+          `SELECT at_native AS ${fresh}_r FROM zt_smoke_moments WHERE label = 'saved'`,
+        );
+        expect(new Date(viaRaw![`${fresh}_r`]!).getTime()).toBe(INSTANT.getTime());
+
+        const [viaWith] = await DB.raw<Record<string, Date>>(
+          `WITH s AS (SELECT at_native FROM zt_smoke_moments WHERE label = 'saved') ` +
+            `SELECT at_native AS ${fresh}_w FROM s`,
+        );
+        expect(new Date(viaWith![`${fresh}_w`]!).getTime()).toBe(INSTANT.getTime());
       });
 
       if (dialect === "postgres") {

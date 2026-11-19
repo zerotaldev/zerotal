@@ -12,7 +12,8 @@
  * `Carbon` can hold fails the same way on every Bun, and a JSON document reads the
  * same whether the driver parsed it (MariaDB on Bun 1.4) or returned it as text.
  */
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "bun:test";
+import { describe, it, expect, afterAll, afterEach } from "bun:test";
+import { useProcessZone } from "../__fixtures__/processZone.ts";
 import { SQL } from "bun";
 import { Carbon } from "@zerotal/core/carbon";
 import { BaseModel, _setBaseModelConnection, _setBaseModelDialect } from "./BaseModel.ts";
@@ -37,16 +38,9 @@ const INSTANT = Date.UTC(2026, 7, 20, 3, 0, 0);
 /** How the ORM writes that instant on MySQL. */
 const MYSQL_TEXT = "2026-08-20 03:00:00";
 
-let previousTz: string | undefined;
-
-beforeAll(() => {
-  previousTz = process.env.TZ;
-  process.env.TZ = "America/New_York";
-});
+useProcessZone("America/New_York");
 
 afterAll(() => {
-  if (previousTz === undefined) delete process.env.TZ;
-  else process.env.TZ = previousTz;
   _resetMysqlDateDecoding();
 });
 

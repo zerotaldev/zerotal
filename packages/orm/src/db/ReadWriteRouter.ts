@@ -78,6 +78,11 @@ export function createReadWriteRouter(primary: SQLInstance, replicas: SQLInstanc
  * are classified as writes — a row lock taken on a replica is useless, so
  * they must reach the primary even outside a transaction.
  *
+ * A `WITH` statement that names `INSERT`, `UPDATE`, `DELETE` or `MERGE` anywhere
+ * is a write too: `WITH old AS (…) DELETE …`, or `WITH d AS (DELETE … RETURNING *)
+ * SELECT …`. The test is on the word, so a read that only mentions one, in a
+ * string or a column name, goes to the primary as well, which is never wrong.
+ *
  * Anything not matched here is treated as a write and routed to the primary.
  */
 export function _isReadQuery(sql: string): boolean {
@@ -86,6 +91,10 @@ export function _isReadQuery(sql: string): boolean {
     .replace(/--[^\n]*/g, "") // -- line comments
     .trimStart();
   if (!/^(select|with\b|explain\b|pragma\b|show\b|describe\b)/i.test(stripped)) return false;
+  // A data-modifying statement under a WITH clause changes rows on the primary.
+  if (/^with\b/i.test(stripped) && /\b(insert|update|delete|merge)\b/i.test(stripped)) {
+    return false;
+  }
   // Pessimistic-lock clauses defeat replication — route to the primary.
   if (
     /\bfor\s+(update|share|no\s+key\s+update|key\s+share)\b|\block\s+in\s+share\s+mode\b/i.test(

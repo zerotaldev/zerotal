@@ -21,7 +21,7 @@ import type {
 } from "./types.ts";
 import { withPaginationHelpers, withSimplePaginationHelpers } from "./types.ts";
 import { _splitPlaceholders, _templateStrings } from "./templateStrings.ts";
-import { _normalizeMysqlRows } from "./driverDates.ts";
+import { _normalizeMysqlRows, _pgBoundStatement } from "./driverDates.ts";
 
 /**
  * The comparison operators accepted in a value-comparison slot. Exported so
@@ -202,7 +202,7 @@ function _assertSelectExpression(s: string, where: string): void {
   }
 }
 
-function _getCachedTemplate(strings: string[]): TemplateStringsArray {
+function _getCachedTemplate(strings: readonly string[]): TemplateStringsArray {
   const key = strings.join("\x00");
   let tpl = _tplCache.get(key);
   if (!tpl) {
@@ -271,7 +271,11 @@ export async function _runSegments<T = Record<string, unknown>>(
   strings.push(current);
 
   const cacheKey = strings.join("\x00");
-  const tpl = _getCachedTemplate(strings);
+  // On PostgreSQL under Bun 1.3, a statement with no parameters gets an unused one,
+  // so its timestamps are read the same on its first run as on every later one.
+  const [sendStrings, sendValues] =
+    dialect === "postgres" ? _pgBoundStatement(strings, values) : [strings, values];
+  const tpl = _getCachedTemplate(sendStrings);
   const ctx = RequestContext.tryGet();
   // Bindings go through too: without them the detector groups a six-month
   // reporting loop — identical SQL, a different `period` each time — with a
@@ -280,7 +284,7 @@ export async function _runSegments<T = Record<string, unknown>>(
   if (trackNPlusOne) trackQuery(ctx, cacheKey, values);
 
   const startMs = Date.now();
-  let rows = await conn<T>(tpl, ...values);
+  let rows = await conn<T>(tpl, ...sendValues);
   const durationMs = Date.now() - startMs;
   if (dialect === "mysql") rows = await _normalizeMysqlRows(conn, rows);
   FrameworkEvents.emit(

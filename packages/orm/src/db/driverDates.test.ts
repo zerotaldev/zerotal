@@ -12,7 +12,8 @@
  * does, so both behaviours run on every Bun. `server.smoke.test.ts` repeats the
  * round trip against a real server in CI.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, afterAll, beforeEach } from "bun:test";
+import { useProcessZone } from "../__fixtures__/processZone.ts";
 import {
   _dbDateString,
   _isUnrepresentableDate,
@@ -25,16 +26,9 @@ import { registerConnectionDialect } from "./QueryBuilder.ts";
 import type { SQLInstance } from "./sql-types.ts";
 
 const ZONE = "America/New_York";
-let previousTz: string | undefined;
-
-beforeAll(() => {
-  previousTz = process.env.TZ;
-  process.env.TZ = ZONE;
-});
+useProcessZone(ZONE);
 
 afterAll(() => {
-  if (previousTz === undefined) delete process.env.TZ;
-  else process.env.TZ = previousTz;
   _resetMysqlDateDecoding();
   _setDbConnection(null);
 });
@@ -113,8 +107,18 @@ describe("_localFieldsAsUtc", () => {
     expect(_localFieldsAsUtc(local).getTime()).toBe(Date.UTC(...fields) + 123);
   });
 
-  it("turns Bun 1.3's zero date (the epoch) into the invalid Date 1.4 returns", () => {
-    expect(Number.isNaN(_localFieldsAsUtc(new Date(0)).getTime())).toBe(true);
+  it("cannot recover a time in the zone's daylight-saving gap, as the casts guide says", () => {
+    // 02:30 on 8 March 2026 never happens in New York; building it as local time moves it
+    // to 03:30 before the ORM sees it, and the stored fields are gone.
+    const decoded = new Date(2026, 2, 8, 2, 30);
+    expect(_localFieldsAsUtc(decoded).toISOString()).toBe("2026-03-08T03:30:00.000Z");
+  });
+
+  it("leaves the epoch, which Bun 1.3 returns for a zero date, as the epoch", () => {
+    // Bun 1.3 hands back 0 for `0000-00-00` in every zone. Read through the local
+    // fields, it became a different instant in each zone; made invalid, it took the real
+    // 1970-01-01 a UTC process reads correctly along with it.
+    expect(_localFieldsAsUtc(new Date(0)).getTime()).toBe(0);
     expect(Number.isNaN(_localFieldsAsUtc(new Date(NaN)).getTime())).toBe(true);
   });
 });
@@ -185,6 +189,22 @@ describe("_normalizeMysqlRows", () => {
       const out = await _normalizeMysqlRows(conn, [{ at: decode(STORED, "local") }]);
       expect(out[0]!.at.getTime()).toBe(INSTANT);
       expect(probes()).toBe(0);
+    } finally {
+      process.env.TZ = ZONE;
+    }
+  });
+
+  it("reads Bun 1.3's zero date as the epoch whatever the process zone", async () => {
+    const readZero = async (): Promise<number> => {
+      _resetMysqlDateDecoding();
+      const { conn } = stubMysql("local", () => []);
+      const out = await _normalizeMysqlRows(conn, [{ at: new Date(0) }]);
+      return out[0]!.at.getTime();
+    };
+    expect(await readZero()).toBe(0);
+    process.env.TZ = "UTC";
+    try {
+      expect(await readZero()).toBe(0);
     } finally {
       process.env.TZ = ZONE;
     }

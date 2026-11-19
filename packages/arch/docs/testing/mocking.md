@@ -113,8 +113,7 @@ runs through `Notify`, so faking notifications also covers email side effects.
 
 ```typescript fragment
 // src/tests/InvoiceTest.ts
-import { NotificationFake } from "@zerotal/testing"; // re-exported from @zerotal/notifications
-import { Notify } from "@zerotal/notifications";
+import { NotificationFake, Notify } from "@zerotal/notifications";
 
 let notify: NotificationFake;
 beforeEach(() => {

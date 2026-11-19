@@ -9,26 +9,7 @@
     "dependency-not-allowed flow: @alpinejs/persist (package.json)",
     "dependency-not-allowed flow: @alpinejs/resize (package.json)",
     "dependency-not-allowed flow: alpinejs (package.json)",
-    "dev-only arch: @zerotal/orm (packages/arch/src/probe/topics.ts)",
-    "dev-only flow: @zerotal/broadcasting (packages/flow/src/presence.ts)",
-    "dev-only flow: @zerotal/broadcasting (packages/flow/src/shared.ts)",
-    "dev-only notifications: @zerotal/broadcasting (packages/notifications/src/BroadcastChannel.ts)",
-    "dev-only notifications: @zerotal/broadcasting (packages/notifications/src/BroadcastNotificationJob.ts)",
-    "optional-peer-shape admin: @zerotal/auth (packages/admin/src/authRoles.ts)",
-    "optional-peer-shape admin: @zerotal/auth (packages/admin/src/databaseNotifications.ts)",
-    "optional-peer-shape admin: @zerotal/auth (packages/admin/src/impersonation.ts)",
-    "optional-peer-shape admin: @zerotal/orm (packages/admin/src/databaseMedia.ts)",
-    "optional-peer-shape admin: @zerotal/queue (packages/admin/src/actions/ImportRecordsJob.ts)",
-    "optional-peer-static admin: @zerotal/auth (packages/admin/src/auth/pages/LoginPage.tsx)",
-    "optional-peer-static admin: @zerotal/auth (packages/admin/src/auth/pages/ProfilePage.tsx)",
-    "optional-peer-static admin: @zerotal/auth (packages/admin/src/auth/pages/VerifyEmailPage.tsx)",
-    "optional-peer-type-import admin: @zerotal/orm (packages/admin/src/provider/AdminProvider.ts)",
-    "undeclared admin: @zerotal/audit (packages/admin/src/history.ts)",
-    "undeclared admin: @zerotal/notifications (packages/admin/src/databaseNotifications.ts)",
     "undeclared core: @zerotal/orm (packages/core/src/command/builtin/TestCommand.ts)",
-    "undeclared tenancy: @zerotal/cache (packages/tenancy/src/tenantStorage.ts)",
-    "variable-specifier core: @zerotal/orm (packages/core/src/command/builtin/TestCommand.ts)",
-    "variable-specifier flow: @zerotal/broadcasting (packages/flow/src/presence.ts)",
-    "variable-specifier flow: @zerotal/broadcasting (packages/flow/src/shared.ts)"
+    "variable-specifier core: @zerotal/orm (packages/core/src/command/builtin/TestCommand.ts)"
   ]
 }

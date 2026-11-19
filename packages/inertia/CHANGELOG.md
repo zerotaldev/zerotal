@@ -59,6 +59,10 @@ follows the Zerotal monorepo's unified versioning.
   compiled app still does not render pages on the server, since the page components are loaded
   from disk at run time; Deployment's "Compile to a single binary" section says what a binary
   runs today.
+- **A page the DevTools recorder rewrites no longer keeps the original's `Content-Length`.** The
+  recorder writes its discovery tag into the HTML and copied every header across, so a page that
+  declared its length carried one shorter than the body it now had, and a `HEAD` to it reported
+  that length. The header is dropped when the page is rewritten.
 
 ### Dependencies
 

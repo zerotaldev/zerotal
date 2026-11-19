@@ -63,7 +63,8 @@ jobs:
       # and still pass. Baselined per package: the existing failures are
       # grandfathered, new ones fail.
       #
-      # **The recorded 252 is real, and it is not a backlog.** Audited: most of it
+      # **The recorded total (`typecheck-tests-baseline.json`) is real, and it is
+      # not a backlog.** Audited: most of it
       # is tests asserting a literal against a generically-typed return —
       # `expect(config.get("app.debug")).toBe(false)`, where `get()` gives back
       # `unknown`. That is signal about the *API's* types, not a broken test: an
@@ -71,7 +72,7 @@ jobs:
       # control flow — a variable assigned inside a callback and asserted after,
       # which TypeScript cannot follow through the closure.
       #
-      # Both are mechanical to fix and there are ~250 of them, so this is a
+      # Both are mechanical to fix and there are a couple of hundred, so this is a
       # dedicated pass rather than something to do a little of. Until that pass
       # happens the number stands, and the ratchet is what earns its keep: a *new*
       # error fails naming its package and delta, unobscured by the grandfathered

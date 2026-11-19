@@ -27,6 +27,10 @@ follows the Zerotal monorepo's unified versioning.
   be read at all. The bundles are now embedded in the binary and the page is generated, so
   neither depends on a file beside the binary. A compiled binary does not serve an app's routes
   yet; Deployment's "Compile to a single binary" section says what it runs today.
+- **A page the inspector marks no longer keeps the original's `Content-Length`.** Writing the
+  `zerotal-devtools` marker into the HTML copied every header across, so a page that declared its
+  length carried one shorter than the body it now had, and a `HEAD` to it reported that length.
+  The header is dropped when the page is rewritten.
 
 ### Testing
 

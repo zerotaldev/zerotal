@@ -1056,6 +1056,47 @@ describe("Router.raw() — HEAD", () => {
     );
     expect(response.status).toBe(204);
   });
+
+  it("leaves a HEAD the app registered before its GET alone", async () => {
+    Router.raw("HEAD" as never, "/__internal/doc", () => new Response(null, { status: 204 }));
+    Router.raw("GET", "/__internal/doc", () => new Response("body"));
+    const compiled = Router.compile(new Container());
+    const head = methods(compiled, "/__internal/doc")!["HEAD"]!;
+
+    const response = await (head as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/__internal/doc", { method: "HEAD" }),
+    );
+    expect(response.status).toBe(204);
+  });
+
+  /**
+   * A raw `GET` takes over the path from a markdown dir or a pipeline route on it. The `HEAD`
+   * derived from the one it replaced stayed, so `HEAD` answered from a handler `GET` no longer
+   * ran: here a 404 from the markdown dir, for a page the raw route serves.
+   */
+  it.each([
+    ["a markdown dir", () => Router.markdown("/docs", `${import.meta.dir}/.no-such-markdown-dir`)],
+    [
+      "a pipeline route",
+      () => Router.get("/docs/*", () => new Response("pipeline", { status: 418 })),
+    ],
+  ])("answers HEAD from a raw GET that replaced %s on the same path", async (_label, register) => {
+    register();
+    Router.raw(
+      "GET",
+      "/docs/*",
+      () => new Response("raw page", { headers: { "X-Raw": "1", "Content-Type": "text/plain" } }),
+    );
+    const compiled = Router.compile(new Container());
+    const head = methods(compiled, "/docs/*")!["HEAD"]!;
+
+    const response = await (head as (req: Request) => Promise<Response>)(
+      new Request("http://localhost/docs/intro", { method: "HEAD" }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Raw")).toBe("1");
+    expect(response.headers.get("Content-Length")).toBe("8");
+  });
 });
 
 describe("Router.raw() — security headers", () => {

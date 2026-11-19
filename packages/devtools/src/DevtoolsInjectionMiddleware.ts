@@ -258,9 +258,14 @@ async function _markPage(http: HttpContext, response: Response): Promise<Respons
   if (!(await devtoolsAuthorized(http.request))) return response;
 
   const html = await response.text();
+  // The body is written afresh either way, so the original's `Content-Length` no longer
+  // describes it: with the marker in, it is short by the marker's length.
+  const headers = new Headers(response.headers);
+  headers.delete("Content-Length");
+  const init = { status: response.status, statusText: response.statusText, headers };
   const head = html.indexOf("</head>");
-  if (head === -1) return new Response(html, response);
+  if (head === -1) return new Response(html, init);
 
   const marker = `<meta name="zerotal-devtools" content="${DEVTOOLS_PREFIX}">`;
-  return new Response(html.slice(0, head) + marker + html.slice(head), response);
+  return new Response(html.slice(0, head) + marker + html.slice(head), init);
 }

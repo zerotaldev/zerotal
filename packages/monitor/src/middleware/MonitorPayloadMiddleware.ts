@@ -47,6 +47,49 @@ function redactBody(raw: string, maxBytes: number): string {
   }
 }
 
+/** How many reads {@link capturableBody} makes before it stops waiting for a body to end. */
+const READ_LIMIT = 256;
+
+/**
+ * The response body as text, read from a clone, when the whole of it is there now; `null` for a
+ * body still arriving.
+ *
+ * The response is not handed on until this returns, so waiting for a body that has not finished
+ * holds the request: an event stream never finishes, and its `GET` (and `HEAD`) hung for as long
+ * as the stream lived. An event stream is not read at all. Any other body is read for as long as
+ * its reads settle before the next turn of the event loop, which a body held in memory (a string,
+ * JSON, rendered HTML) always does; a stream that is still producing is left to the client, and
+ * the clone is cancelled, which leaves the original to the client.
+ */
+async function capturableBody(response: Response): Promise<string | null> {
+  if ((response.headers.get("Content-Type") ?? "").startsWith("text/event-stream")) return null;
+  const body = response.clone().body;
+  if (body === null) return "";
+  const reader = body.getReader();
+  let late = false;
+  const nextTurn = new Promise<null>((resolve) =>
+    setImmediate(() => {
+      late = true;
+      resolve(null);
+    }),
+  );
+  const read = async (): Promise<string | null> => {
+    const decoder = new TextDecoder();
+    let text = "";
+    for (let reads = 0; reads < READ_LIMIT && !late; reads++) {
+      const { done, value } = await reader.read();
+      if (done) return text + decoder.decode();
+      text += decoder.decode(value, { stream: true });
+    }
+    return null;
+  };
+  const text = await Promise.race([read().catch(() => null), nextTurn]);
+  // Not awaited: cancelling one branch of a clone settles only once the other branch, the one
+  // the client is still reading, is cancelled too.
+  if (text === null) void reader.cancel().catch(() => {});
+  return text;
+}
+
 export class MonitorPayloadMiddleware implements Pipe<HttpContext> {
   async handle(http: HttpContext, next: NextFn): Promise<Response | void> {
     let maxBytes = 65536;
@@ -80,7 +123,7 @@ export class MonitorPayloadMiddleware implements Pipe<HttpContext> {
 
     let resBody = "";
     try {
-      if (http.response) resBody = await http.response.clone().text();
+      if (http.response) resBody = (await capturableBody(http.response)) ?? "";
     } catch {
       /* streamed / binary response — skip */
     }

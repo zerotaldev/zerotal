@@ -280,13 +280,28 @@ function _routeKey(method: HttpMethod, fullPath: string, domain: string | undefi
  * the real handler and dropping the body is the only way to keep the headers honest;
  * `Content-Length` is preserved explicitly, since constructing a bodiless Response otherwise
  * loses it.
+ *
+ * The body is only read when nothing else says how long it is. A handler that set its own
+ * `Content-Length` is taken at its word, and an event stream is never read at all: it does not
+ * end, so measuring it held the `HEAD` request (and its connection) open for as long as the
+ * stream lived — forever, for a server-sent-events endpoint. Either way the stream is
+ * cancelled, so the handler's `cancel()` runs and nothing it registered is left behind.
+ *
+ * Explicit on purpose: Bun 1.4 answers `HEAD` from a `GET` route by itself, Bun 1.3 sends it on
+ * to `fetch`. Deriving it here makes every route answer the same way on both.
  */
 function _headFrom(get: RouteHandlerFn): RouteHandlerFn {
   return async (req: Request, server?: unknown): Promise<Response> => {
     const response = await get(req, server);
-    const body = await response.arrayBuffer();
     const headers = new Headers(response.headers);
-    headers.set("Content-Length", String(body.byteLength));
+    const declared = response.headers.get("Content-Length");
+    const streaming = (response.headers.get("Content-Type") ?? "").startsWith("text/event-stream");
+    if (declared !== null || streaming) {
+      await response.body?.cancel().catch(() => {});
+    } else {
+      const body = await response.arrayBuffer();
+      headers.set("Content-Length", String(body.byteLength));
+    }
     return new Response(null, {
       status: response.status,
       statusText: response.statusText,
@@ -1160,7 +1175,7 @@ export class Router {
       const stripped = prefix.replace(/\/$/, "");
       const pattern = stripped + "/*";
       const mdMap = (compiled[pattern] ??= {}) as Record<string, RouteHandlerFn>;
-      mdMap["GET"] = async (req: Request): Promise<Response> => {
+      const page = async (req: Request): Promise<Response> => {
         const pathname = new URL(req.url).pathname;
         const relative = pathname.slice(stripped.length).replace(/^\//, "") || "index";
         const candidates = [`${rootDir}/${relative}.md`, `${rootDir}/${relative}/index.md`];
@@ -1178,6 +1193,10 @@ export class Router {
         }
         return new Response("Not Found", { status: 404 });
       };
+      // Without its own `HEAD`, a markdown page answered `HEAD` with 404 on Bun 1.3 (the request
+      // went on to `fetch`, which has no route for it) and 200 on Bun 1.4 (which runs the `GET`).
+      mdMap["GET"] = page;
+      mdMap["HEAD"] = _headFrom(page);
     }
 
     // Raw routes bypass the middleware pipeline entirely — added last so they

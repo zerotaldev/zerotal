@@ -54,6 +54,11 @@ jobs:
         with:
           bun-version: 1.3.14
 
+      # Before Install, which would otherwise fail on a lockfile a newer Bun wrote with an
+      # error that does not say so. See the same step in ci.yml.
+      - name: Lockfile format
+        run: bun run lockfile:check
+
       - name: Install
         run: bun install --frozen-lockfile
 

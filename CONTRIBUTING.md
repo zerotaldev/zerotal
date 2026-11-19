@@ -24,6 +24,7 @@ bun run lint:packages:ci   # package-convention linter
 bun run format:check       # prettier
 bun run cast:check         # cast ratchet — casts may not grow
 bun run api:surface:check  # public API snapshots — diffs are reviewed, not incidental
+bun run lockfile:check     # bun.lock stays in the format Bun 1.3.14 reads
 bun run test               # all workspace tests
 ```
 

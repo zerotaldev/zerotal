@@ -21,6 +21,7 @@ import type {
 } from "./types.ts";
 import { withPaginationHelpers, withSimplePaginationHelpers } from "./types.ts";
 import { _splitPlaceholders, _templateStrings } from "./templateStrings.ts";
+import { _normalizeMysqlRows } from "./driverDates.ts";
 
 /**
  * The comparison operators accepted in a value-comparison slot. Exported so
@@ -279,8 +280,9 @@ export async function _runSegments<T = Record<string, unknown>>(
   if (trackNPlusOne) trackQuery(ctx, cacheKey, values);
 
   const startMs = Date.now();
-  const rows = await conn<T>(tpl, ...values);
+  let rows = await conn<T>(tpl, ...values);
   const durationMs = Date.now() - startMs;
+  if (dialect === "mysql") rows = await _normalizeMysqlRows(conn, rows);
   FrameworkEvents.emit(
     new QueryExecuted(
       cacheKey.replaceAll("\x00", "?"),

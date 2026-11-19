@@ -8,6 +8,40 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A date reads back as the instant that was saved when the server's `TZ` is not UTC.** On
+  MySQL the ORM writes dates as UTC in `YYYY-MM-DD HH:MM:SS`, which carries no zone, and read
+  that text back as local time, so every MySQL date moved by the server's offset between a save
+  and the next load. A zone-less date-time is now read as UTC, which also fixes SQLite's
+  `CURRENT_TIMESTAMP`, written the same way. Covers `datetime`, `immutable_datetime` and `date`
+  casts, `@column({ type: "datetime" })`, and `createdAt`, `updatedAt` and `deletedAt`.
+
+- **MySQL `DATE`, `DATETIME` and `TIMESTAMP` columns read the same on Bun 1.3 and 1.4.** Bun
+  binds a `Date` as UTC, and Bun 1.3 decoded those columns back as local time where 1.4 decodes
+  UTC, so on 1.3 under a non-UTC `TZ` a value came back moved by the offset. The ORM now asks the
+  server once which way the runtime decodes and corrects the local reading, for rows from the
+  query builder, models and `DB.raw()`.
+
+- **A `Carbon` in a `where` binds the way a save stores it.** It bound as ISO 8601 on every
+  dialect, so on MySQL `where("created_at", ">=", Carbon.today())` compared
+  `2026-08-05T00:00:00Z` with `2026-08-05 10:00:00` as text and missed every row from the same
+  day. On SQLite and PostgreSQL it bound without milliseconds, so `where(column, "=", carbon)`
+  missed a row saved from that same value.
+
+- **A date column holding PostgreSQL `infinity` fails naming the column.** The driver returns it
+  as an invalid `Date` on Bun 1.3 and as `Infinity` on 1.4, and either failed inside the date
+  library with a message naming neither the column nor the value. It is now a `RangeError` that
+  names the model and property, on both.
+
+- **`DB.raw()` refuses an object of named parameters with a message that says so.**
+  `DB.raw("... WHERE id = :id", { id })` failed with a placeholder-count error that did not
+  mention the object. It now names the positional form to use instead. The ORM never hands such
+  an object to the driver, whose own handling of one differs between Bun 1.3 and 1.4.
+
+- **`hashable` is documented as argon2id.** The docblock and the ORM guide said fields were
+  hashed with bcrypt; `Bun.password.hash()` uses argon2id by default, which is what they get.
+
 ### Changed
 
 - **BREAKING: `@zerotal/validator` is an optional peer, no longer a dependency.** The ORM uses it

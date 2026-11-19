@@ -34,8 +34,36 @@ import { _setQueryBuilderDialect, registerConnectionDialect } from "./db/QueryBu
 import { _setBaseModelConnection, _setBaseModelDialect } from "./model/BaseModel.ts";
 import { Schema } from "./schema/Schema.ts";
 import { SchemaInspector } from "./schema/SchemaInspector.ts";
+import { BaseModel } from "./model/BaseModel.ts";
+import { column } from "./model/decorators/column.ts";
+import { table } from "./model/decorators/table.ts";
+import { _resetMysqlDateDecoding } from "./db/driverDates.ts";
+import { Carbon } from "@zerotal/core/carbon";
 
 type Dialect = "postgres" | "mysql";
+
+/**
+ * One instant in every kind of column a date can live in: the Blueprint's TEXT,
+ * the server's own date-time type, and its zone-aware one — plus a native JSON
+ * column, which the driver parses itself.
+ */
+@table("zt_smoke_moments", { timestamps: false })
+class Moment extends BaseModel {
+  @column() label!: string;
+  @column({ type: "datetime", nullable: true }) atText?: Carbon | null;
+  @column({ type: "datetime", nullable: true }) atNative?: Carbon | null;
+  @column({ type: "datetime", nullable: true }) atZoned?: Carbon | null;
+  @column({ type: "json", nullable: true }) doc?: unknown;
+}
+
+const MOMENTS_DDL: Record<Dialect, string> = {
+  mysql:
+    "CREATE TABLE zt_smoke_moments (id INT AUTO_INCREMENT PRIMARY KEY, label VARCHAR(40) NOT NULL, " +
+    "at_text TEXT NULL, at_native DATETIME NULL, at_zoned TIMESTAMP NULL, doc JSON NULL)",
+  postgres:
+    "CREATE TABLE zt_smoke_moments (id SERIAL PRIMARY KEY, label VARCHAR(40) NOT NULL, " +
+    "at_text TEXT NULL, at_native TIMESTAMP NULL, at_zoned TIMESTAMPTZ NULL, doc JSONB NULL)",
+};
 
 const SERVERS: { dialect: Dialect; url: string }[] = [
   { dialect: "postgres", url: Bun.env["ZT_PG_URL"] ?? "" },
@@ -211,6 +239,95 @@ for (const { dialect, url } of SERVERS.length
         expect(await DB.table(T).count()).toBe(before);
         expect(await DB.table(T).where("name", "doomed").count()).toBe(0);
       });
+    });
+
+    // The ORM writes dates as UTC. Under a zone that is not UTC they came back moved by
+    // its offset: MySQL's zone-less text was parsed as local time on every Bun, and Bun
+    // 1.3 decoded MySQL's own DATETIME and TIMESTAMP as local fields where 1.4 reads UTC.
+    // CI's `TZ` is unset, which is UTC, where every one of those readings agrees — so the
+    // zone is set here, and this block runs on both Bun versions in CI's matrix.
+    describe("dates and JSON under a zone that is not UTC", () => {
+      const INSTANT = new Date("2026-08-20T03:00:00.000Z");
+      let previousTz: string | undefined;
+
+      beforeAll(async () => {
+        if (!url) return;
+        previousTz = process.env.TZ;
+        // Ahead of UTC with no daylight saving, so the expected offset is fixed.
+        process.env.TZ = "Asia/Kolkata";
+        _resetMysqlDateDecoding();
+        await DB.raw("DROP TABLE IF EXISTS zt_smoke_moments");
+        await DB.raw(MOMENTS_DDL[dialect]);
+      });
+
+      afterAll(async () => {
+        if (!url) return;
+        if (previousTz === undefined) delete process.env.TZ;
+        else process.env.TZ = previousTz;
+        _resetMysqlDateDecoding();
+        await DB.raw("DROP TABLE IF EXISTS zt_smoke_moments");
+      });
+
+      it("reads a saved model's dates back as the instant written", async () => {
+        await Moment.create({
+          label: "saved",
+          atText: Carbon.create(INSTANT),
+          atNative: Carbon.create(INSTANT),
+          atZoned: Carbon.create(INSTANT),
+          doc: { tags: ["a", "b"], n: 2 },
+        });
+
+        const m = (await Moment.query().where("label", "saved").first())!;
+        expect(m.atText!.valueOf()).toBe(INSTANT.getTime());
+        expect(m.atNative!.valueOf()).toBe(INSTANT.getTime());
+        expect(m.atZoned!.valueOf()).toBe(INSTANT.getTime());
+        expect(m.doc).toEqual({ tags: ["a", "b"], n: 2 });
+      });
+
+      it("returns the same Date from the query builder and from DB.raw", async () => {
+        const row = (await DB.table("zt_smoke_moments").where("label", "saved").first()) as {
+          at_native: Date;
+          at_zoned: Date;
+        };
+        expect(new Date(row.at_native).getTime()).toBe(INSTANT.getTime());
+        expect(new Date(row.at_zoned).getTime()).toBe(INSTANT.getTime());
+
+        const [raw] = await DB.raw<{ at_native: Date }>(
+          "SELECT at_native FROM zt_smoke_moments WHERE label = ?",
+          ["saved"],
+        );
+        expect(new Date(raw!.at_native).getTime()).toBe(INSTANT.getTime());
+      });
+
+      it("reads a Date bound by the driver itself as the instant bound", async () => {
+        await DB.raw`INSERT INTO zt_smoke_moments (label, at_native, at_zoned) VALUES (${"bound"}, ${INSTANT}, ${INSTANT})`;
+        const m = (await Moment.query().where("label", "bound").first())!;
+        expect(m.atNative!.valueOf()).toBe(INSTANT.getTime());
+        expect(m.atZoned!.valueOf()).toBe(INSTANT.getTime());
+      });
+
+      it("finds the row by comparing against the same instant", async () => {
+        const at = Carbon.create(INSTANT);
+        const later = Carbon.create(new Date(INSTANT.getTime() + 1000));
+        for (const col of ["atText", "atNative", "atZoned"] as const) {
+          expect(await Moment.query().where("label", "saved").where(col, ">=", at).count()).toBe(1);
+          expect(await Moment.query().where("label", "saved").where(col, "=", at).count()).toBe(1);
+          expect(await Moment.query().where("label", "saved").where(col, ">=", later).count()).toBe(
+            0,
+          );
+        }
+      });
+
+      if (dialect === "postgres") {
+        it("fails naming the column on an infinite timestamp, on every Bun", async () => {
+          await DB.raw(
+            "INSERT INTO zt_smoke_moments (label, at_native) VALUES ('forever', 'infinity')",
+          );
+          await expect(Moment.query().where("label", "forever").first()).rejects.toThrow(
+            /Moment\.atNative holds/,
+          );
+        });
+      }
     });
 
     describe("schema teardown", () => {

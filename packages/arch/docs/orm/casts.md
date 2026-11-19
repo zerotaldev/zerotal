@@ -53,6 +53,19 @@ export class Post extends Model {
 > `@column("datetime")` reads back a [Carbon](/docs/carbon) instance. Type the
 > property accordingly.
 
+### Dates are stored as UTC
+
+Every date is written as UTC: ISO 8601 with a `Z` on SQLite and PostgreSQL, and
+`YYYY-MM-DD HH:MM:SS` on MySQL, whose `DATETIME` does not accept the `T` or the `Z`.
+A stored date-time with no zone of its own, such as that MySQL text or SQLite's
+`CURRENT_TIMESTAMP`, reads back as UTC, so a value comes back as the instant you
+saved whatever the server's `TZ` is.
+
+A MySQL `DATE`, `DATETIME` or `TIMESTAMP` column reads back as the same instant on
+every supported Bun. A PostgreSQL `infinity` cannot become a `Carbon`, so a `datetime`
+cast on one throws a `RangeError` that names the column; read such a column through a
+[custom cast](#custom-cast-full-getset-control) instead.
+
 ### Scalars in a json column
 
 `json` and `array` encode on write and parse on read, in both directions, so a value
@@ -71,6 +84,12 @@ type would change between write and read, silently, for some values and not othe
 
 If you are reading rows written by an older version that stored bare scalars, a value that
 was a numeric string may come back as a number; coerce on read where it matters.
+
+This holds for the column `table.json()` creates, which stores JSON as text. A column
+you declare with the database's own JSON type (`JSON` on MySQL and MariaDB, `jsonb` on
+PostgreSQL) is parsed by the driver before the cast sees it, and a top-level string that
+is itself valid JSON, such as `"62812345678"`, is then parsed a second time. Keep scalar
+strings in a `table.json()` column, or wrap them in an object.
 
 ## Advanced cast options
 

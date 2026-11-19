@@ -86,6 +86,7 @@ export type { TableProps, TableColumn, TableGroup } from "./components/Table.tsx
 export {
   flowUiHead,
   flowTokensCss,
+  flowTailwindCss,
   flowTailwindConfig,
   THEME_STORAGE_KEY,
   THEME_TOGGLE_SCRIPT,

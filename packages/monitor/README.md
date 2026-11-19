@@ -164,7 +164,7 @@ src/
   config.ts              MonitorConfig()
 ```
 
-> Tailwind is loaded from the Play CDN in `MonitorLayout` so the panel is styled
+> Tailwind's browser build is loaded from a CDN in `MonitorLayout` so the panel is styled
 > with zero build setup — fine for an internal ops tool. Swap it for a compiled
 > stylesheet in `MonitorLayout.head` for production hardening.
 

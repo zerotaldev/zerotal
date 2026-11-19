@@ -10,7 +10,7 @@ import { AuthLayout } from "../AuthLayout.tsx";
 import { Icon } from "../../ui/icons.tsx";
 
 const INPUT =
-  "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring";
+  "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-hidden transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring";
 
 export class LoginPage extends Component {
   static layout = AuthLayout;
@@ -111,7 +111,7 @@ export class LoginPage extends Component {
         <button
           type="submit"
           loadingAttr="disabled"
-          class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
+          class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-60"
         >
           Sign in
         </button>

@@ -49,7 +49,7 @@ function Arrow({ dir }: { dir: "prev" | "next" }): HtmlNode {
 }
 
 const controlClass =
-  "absolute top-1/2 z-10 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background shadow-sm transition-opacity hover:bg-accent disabled:pointer-events-none disabled:opacity-0";
+  "absolute top-1/2 z-10 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background shadow-xs transition-opacity hover:bg-accent disabled:pointer-events-none disabled:opacity-0";
 
 export function Carousel(props: CarouselProps): HtmlNode {
   const {

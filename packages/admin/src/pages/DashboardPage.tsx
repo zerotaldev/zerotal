@@ -212,7 +212,7 @@ export class DashboardPage extends Component {
               <a
                 href={r.indexUrl(panel.base())}
                 navigate
-                class="group relative overflow-hidden rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm transition hover:border-primary/40 hover:shadow-md"
+                class="group relative overflow-hidden rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs transition hover:border-primary/40 hover:shadow-md"
               >
                 <div class="flex items-center gap-3">
                   <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">

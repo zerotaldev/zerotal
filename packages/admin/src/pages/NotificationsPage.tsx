@@ -93,7 +93,7 @@ export class NotificationsPage extends Component {
             <p class="mt-3 text-sm font-medium">You're all caught up</p>
           </div>
         ) : (
-          <div class="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div class="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xs">
             <ul class="divide-y divide-border">
               {items.map((n) => (
                 <li class={`flex items-start gap-3 px-4 py-3 ${n.read ? "" : "bg-primary/5"}`}>

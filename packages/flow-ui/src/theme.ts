@@ -8,8 +8,9 @@
  *   - **A real Tailwind build.** Import `@zerotal/flow-ui/theme.css` after
  *     `tailwindcss` and the tokens arrive as CSS custom properties.
  *   - **No build at all.** Inject {@link flowUiHead} into a Layout's `head`. It
- *     loads the Tailwind Play CDN, configures it with the same token mapping,
- *     and emits the palette inline.
+ *     loads Tailwind v4's browser build from a pinned CDN URL, gives it the same
+ *     token mapping as a `text/tailwindcss` stylesheet, and emits the palette
+ *     inline.
  *
  * This module is the second path, and it exists so that every panel Zerotal ships
  * — the admin, the monitor — is themed from one place rather than each
@@ -26,7 +27,7 @@ export const THEME_STORAGE_KEY = "zerotal-theme";
 export interface FlowUiThemeConfig {
   /** A prebuilt stylesheet URL/path to link instead of (or alongside) the CDN. */
   stylesheet?: string | undefined;
-  /** Keep loading the Tailwind Play CDN. Defaults to `true` unless `stylesheet` is set. */
+  /** Keep loading Tailwind's browser build from the CDN. Defaults to `true` unless `stylesheet` is set. */
   cdn?: boolean | undefined;
   /** Extra token CSS appended after the defaults — override `:root` / `.dark` here. */
   tokensCss?: string | undefined;
@@ -36,7 +37,110 @@ export interface FlowUiThemeConfig {
   extraHead?: string | undefined;
 }
 
-/** Inline Tailwind config: class-based dark mode + token → CSS-var color mapping. */
+/**
+ * Tailwind's browser build, pinned to one release so a page never changes under a
+ * deploy it didn't make. The integrity hash is of that exact file: jsDelivr serves
+ * npm files byte-for-byte, so the browser refuses anything else.
+ */
+const TAILWIND_BROWSER_SRC =
+  "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.5/dist/index.global.js";
+const TAILWIND_BROWSER_INTEGRITY =
+  "sha384-t+qLIxS5zM/KF99/doWY+dxTsavdvgayaZt8A9ntLsUjEkiXzYl5M3Ij8zVFPL9j";
+
+/** Every border defaults to the border token. */
+const BORDER_CSS = `*, ::after, ::before, ::backdrop, ::file-selector-button { border-color: hsl(var(--border)); }`;
+
+/**
+ * Page-level rules under the components: the body takes the background and
+ * foreground tokens.
+ *
+ * These and {@link BORDER_CSS} always sit in a `base` cascade layer. Tailwind v4
+ * emits every utility inside a layer, and a rule outside any layer beats all of
+ * them, so an unlayered `* { border-color }` would override `border-primary` on
+ * every element.
+ */
+const PAGE_CSS = `
+html { scroll-behavior: smooth; }
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+`.trim();
+
+/**
+ * The theme as Tailwind v4 CSS: what the browser build reads from a
+ * `<style type="text/tailwindcss">`, and what a v4 build can import.
+ *
+ * - `dark:` follows a `.dark` class on an ancestor, the same selector the toggle
+ *   and the no-flash script write.
+ * - `@theme inline` maps each token to a utility (`bg-card`, `rounded-lg`,
+ *   `animate-fade-in`). `inline` keeps `hsl(var(--card))` in the utility itself,
+ *   so a `.dark` subtree or a `tokensCss` override recolours it where it is used.
+ * - `container` is centred with 1.5rem of padding and one 1400px step.
+ * - The `base` layer keeps Tailwind v3's defaults the components were drawn
+ *   against: token borders, grey placeholders, pointer cursors on buttons, and
+ *   centred dialogs.
+ */
+const TAILWIND_CSS = `
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --animate-fade-in: fade-in .25s ease-out both;
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@layer utilities {
+  .container { margin-inline: auto; padding-inline: 1.5rem; max-width: none; }
+  @media (width >= 1400px) { .container { max-width: 1400px; } }
+}
+
+@layer base {
+  ${BORDER_CSS}
+  input::placeholder, textarea::placeholder { color: #9ca3af; }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+  dialog { margin: auto; }
+${PAGE_CSS.replace(/^/gm, "  ")}
+}
+`.trim();
+
+/**
+ * The same theme as a Tailwind v3 config (`tailwind.config = { … }`), kept for an
+ * app whose own build is still on Tailwind v3.
+ */
 const TAILWIND_CONFIG = `
 tailwind.config = {
   darkMode: "class",
@@ -63,6 +167,7 @@ tailwind.config = {
         success: { DEFAULT: "hsl(var(--success))", foreground: "hsl(var(--success-foreground))" },
         warning: { DEFAULT: "hsl(var(--warning))", foreground: "hsl(var(--warning-foreground))" },
       },
+      borderColor: { DEFAULT: "hsl(var(--border))" },
       borderRadius: { lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
       keyframes: {
         "fade-in": { from: { opacity: "0", transform: "translateY(4px)" }, to: { opacity: "1", transform: "none" } },
@@ -85,7 +190,7 @@ tailwind.config = {
  * belong in the theme so a chart re-brands with everything else. SVG `stroke` and
  * `fill` can't take Tailwind classes, so reference them as `hsl(var(--chart-2))`.
  */
-const TOKENS_CSS = `
+const VARS_CSS = `
 :root {
   --background: 0 0% 100%;
   --foreground: 222 47% 11%;
@@ -152,21 +257,32 @@ const TOKENS_CSS = `
   --chart-6: 340 82% 70%;
   --chart-7: 43 96% 62%;
 }
-* { border-color: hsl(var(--border)); }
-html { scroll-behavior: smooth; }
-body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
+`.trim();
+
+/** Cloaking, a numeric helper and the scrollbar: none of them compete with a utility. */
+const EXTRAS_CSS = `
 [x-cloak],[flow\\:cloak] { display: none !important; }
 .tabular { font-variant-numeric: tabular-nums; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.35); border-radius: 9999px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.55); background-clip: content-box; }
 `.trim();
+
+/**
+ * Tokens plus the border and page rules: the form a page without the CDN gets.
+ *
+ * The rules go in `@layer base`. In a Tailwind v4 stylesheet that is the layer its
+ * own base rules use, which sorts before `utilities`, so `border-primary` and
+ * `bg-muted` still win. A Tailwind v3 build turns `@layer base` into plain CSS
+ * after its preflight. Linked beside a v3 stylesheet, the native layer loses to
+ * that preflight's border colour, which is why {@link flowTailwindConfig} sets
+ * `borderColor.DEFAULT` to the token.
+ */
+const TOKENS_CSS = [
+  VARS_CSS,
+  `@layer base {\n  ${BORDER_CSS}\n${PAGE_CSS.replace(/^/gm, "  ")}\n}`,
+  EXTRAS_CSS,
+].join("\n");
 
 /** Runs before paint: apply the saved theme (or OS preference) to <html>. */
 const NO_FLASH_SCRIPT = `
@@ -200,15 +316,31 @@ window.__zerotalCopy = function (el) {
 };
 `.trim();
 
-/** The design-token CSS (`:root` + `.dark` custom properties + base styles). */
+/**
+ * The design-token CSS: the `:root` and `.dark` custom properties, the token
+ * border and the body colours in `@layer base`, and the cloak and scrollbar rules.
+ */
 export function flowTokensCss(): string {
   return TOKENS_CSS;
 }
 
 /**
- * The Tailwind config (token → CSS-var mappings, fonts, radius, animations) as a
- * JS string. Reuse it in your own `tailwind.config.js` when building real CSS so
- * a compiled build matches the CDN look exactly.
+ * The theme as Tailwind v4 CSS: the `dark` variant, the token → utility mapping
+ * (`@theme inline`), the `container` and the base layer. It is exactly what
+ * {@link flowUiHead} hands the CDN, so a v4 build that includes it after
+ * `@import "tailwindcss";`, with {@link flowTokensCss} beside it, matches the CDN
+ * look.
+ */
+export function flowTailwindCss(): string {
+  return TAILWIND_CSS;
+}
+
+/**
+ * The theme as a Tailwind v3 config (token → CSS-var mappings, fonts, radius,
+ * animations), for an app whose own build is still on Tailwind v3. The CDN runs
+ * Tailwind v4 and reads {@link flowTailwindCss} instead, and the components use
+ * v4 class names (`shadow-xs`, `outline-hidden`, `data-checked:`), which a v3
+ * build doesn't generate.
  */
 export function flowTailwindConfig(): string {
   return TAILWIND_CONFIG;
@@ -236,16 +368,21 @@ export function flowUiHead(title = "Zerotal", theme: FlowUiThemeConfig = {}): st
     );
   }
   if (useCdn) {
+    // The browser build compiles every `text/tailwindcss` style it finds, including
+    // one parsed after the script, and writes the result into a <style> of its own.
     parts.push(
-      `<script src="https://cdn.tailwindcss.com"></script>`,
-      `<script>${TAILWIND_CONFIG}</script>`,
+      `<script src="${TAILWIND_BROWSER_SRC}" integrity="${TAILWIND_BROWSER_INTEGRITY}" crossorigin="anonymous"></script>`,
+      `<style type="text/tailwindcss">${TAILWIND_CSS}</style>`,
     );
   }
   if (theme.stylesheet) {
     parts.push(`<link rel="stylesheet" href="${theme.stylesheet}" />`);
   }
-  // Tokens are plain CSS (vars + base styles), valid with or without the CDN.
-  parts.push(`<style>${TOKENS_CSS}${theme.tokensCss ? `\n${theme.tokensCss}` : ""}</style>`);
+  // The tokens are plain CSS, valid with or without the CDN. With it, the base rules
+  // already sit in the theme's base layer; without it, they come along in a base
+  // layer of their own, which joins a v4 stylesheet's base layer.
+  const tokens = useCdn ? `${VARS_CSS}\n${EXTRAS_CSS}` : TOKENS_CSS;
+  parts.push(`<style>${tokens}${theme.tokensCss ? `\n${theme.tokensCss}` : ""}</style>`);
   parts.push(`<script>${THEME_TOGGLE_SCRIPT}</script>`);
   if (theme.extraHead) parts.push(theme.extraHead);
   return parts.join("\n");

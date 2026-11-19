@@ -224,7 +224,7 @@ export class RecordViewPage extends Component {
   private _historyCard(entries: HistoryEntry[]): HtmlNode | null {
     if (entries.length === 0) return null;
     return (
-      <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+      <div class="rounded-xl border border-border bg-card text-card-foreground shadow-xs">
         <div class="flex items-center gap-2 border-b border-border px-5 py-3">
           <Icon name="calendar" class="h-4 w-4 text-muted-foreground" />
           <h2 class="text-sm font-semibold tracking-tight">History</h2>
@@ -584,7 +584,7 @@ export class RecordViewPage extends Component {
     });
 
     return (
-      <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+      <div class="rounded-xl border border-border bg-card text-card-foreground shadow-xs">
         <div class="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
           <h2 class="flex items-center gap-2 text-sm font-semibold tracking-tight">
             {rel._icon ? <Icon name={rel._icon} class="h-4 w-4 text-muted-foreground" /> : null}
@@ -690,7 +690,7 @@ export class RecordViewPage extends Component {
     const relName = rel._relationName ?? "";
 
     return (
-      <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+      <div class="rounded-xl border border-border bg-card text-card-foreground shadow-xs">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
           <h2 class="flex items-center gap-2 text-sm font-semibold tracking-tight">
             {rel._icon ? <Icon name={rel._icon} class="h-4 w-4 text-muted-foreground" /> : null}
@@ -703,7 +703,7 @@ export class RecordViewPage extends Component {
             <div class="flex items-center gap-2">
               <select
                 value={this.attachDraft[relName]}
-                class="h-8 rounded-lg border border-input bg-background px-2 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+                class="h-8 rounded-lg border border-input bg-background px-2 text-sm outline-hidden transition focus:ring-2 focus:ring-ring"
               >
                 <option value="">Attach {related.getLabel().toLowerCase()}…</option>
                 {options.map((o) => (
@@ -876,7 +876,7 @@ export class RecordViewPage extends Component {
             ) : null;
 
           const cardClass =
-            "rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-6";
+            "rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6";
 
           if (s._collapsible) {
             return (

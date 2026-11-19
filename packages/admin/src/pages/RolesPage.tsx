@@ -158,7 +158,7 @@ export class RolesPage extends Component {
                 <input
                   {...{ "flow:model": "newName" }}
                   placeholder="Editor"
-                  class="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  class="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-hidden focus:ring-2 focus:ring-ring"
                 />
               </label>
               <label class="block">
@@ -166,7 +166,7 @@ export class RolesPage extends Component {
                 <input
                   {...{ "flow:model": "newDescription" }}
                   placeholder="Can publish, but not delete"
-                  class="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  class="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-hidden focus:ring-2 focus:ring-ring"
                 />
               </label>
             </div>

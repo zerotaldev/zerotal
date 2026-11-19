@@ -114,7 +114,7 @@ Panel.configure({
 | `tagline`    | `"Admin"`   | Small text under the brand.                                            |
 | `middleware` | `[]`        | Middleware guarding every panel route. **Set this before production.** |
 | `userMenu`   | —           | Top-bar dropdown: `{ label?, items: [{ label, href, icon? }] }`.       |
-| `theme`      | CDN         | Styling source — Tailwind Play CDN or a prebuilt stylesheet.           |
+| `theme`      | CDN         | Styling source — Tailwind's browser build from a CDN, or a stylesheet. |
 | `auth`       | —           | Built-in login / profile / reset / verify pages.                       |
 | `authorize`  | —           | Decide the abilities pages and contributions name.                     |
 | `plugins`    | `{}`        | Switch contributing packages off by id, e.g. `{ monitor: false }`.     |

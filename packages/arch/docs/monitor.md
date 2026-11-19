@@ -256,7 +256,7 @@ All three are available on the store programmatically, as `store.prune()`,
 
 ## Theming
 
-The panel is built from [`@zerotal/flow-ui`](/docs/components) and themed with its design tokens, so it follows light and dark mode and looks like the same product as the [admin](/docs/admin) rather than a separate tool. There is no build step: the layout injects the kit's theme, which loads the Tailwind Play CDN and emits the palette inline.
+The panel is built from [`@zerotal/flow-ui`](/docs/components) and themed with its design tokens, so it follows light and dark mode and looks like the same product as the [admin](/docs/admin) rather than a separate tool. There is no build step: the layout injects the kit's [theme head](/docs/components#without-a-build-step), which loads Tailwind's browser build from a CDN and emits the palette inline.
 
 Every colour in the panel resolves to a token — `bg-card`, `text-muted-foreground`, `text-success`, `text-destructive`, `hsl(var(--chart-3))` — so the only thing the monitor overrides is its own orange `--primary`. That one variable recolours the whole panel, and an app can push it further by appending its own token CSS.
 

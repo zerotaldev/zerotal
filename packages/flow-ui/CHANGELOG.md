@@ -8,6 +8,52 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** `flowUiHead()` loads Tailwind v4's browser build instead of the Tailwind v3 Play
+  CDN. The script is `@tailwindcss/browser@4.3.5` from `cdn.jsdelivr.net`, pinned and loaded with an
+  integrity hash, and the theme reaches it as a `<style type="text/tailwindcss">` (`@theme inline`,
+  a `dark` variant on a `.dark` ancestor, the 1400px `container`) rather than a
+  `tailwind.config = { … }` script. The components were already written against Tailwind v4 (the
+  class model `tailwind-merge` uses), so the CDN now generates what they ask for: a checked
+  `Switch` and `Checkbox` fill in, `aria-invalid` fields turn red, and `Input` gets its `shadow-xs`.
+  The default border colour in dark mode is now the dark `--border` token; under the v3 CDN its
+  preflight overrode the token with a light grey. An app must change two things if they apply:
+  - A Content-Security-Policy that allows `https://cdn.tailwindcss.com` for the head must allow
+    `https://cdn.jsdelivr.net` instead.
+  - The app's own markup under `flowUiHead()` is now compiled by Tailwind v4. Rename the v3
+    classes whose meaning moved: `shadow-sm` → `shadow-xs`, `blur-sm` → `blur-xs`,
+    `backdrop-blur-sm` → `backdrop-blur-xs`, `drop-shadow-sm` → `drop-shadow-xs`, bare `ring` →
+    `ring-3` (v4's is 1px and `currentColor`), `outline-none` → `outline-hidden`, and
+    `bg-opacity-*` / `text-opacity-*` / `border-opacity-*` → an opacity modifier such as
+    `bg-black/50`. Stacked variants now read left to right (`hover:file:` → `file:hover:`).
+    `hover:` applies only on devices that can hover, and the default palette (`red-500`,
+    `amber-500`, `gray-*`) is v4's, which is close to v3's but not identical.
+- The head's base rules (token borders, the body background and colour) sit in Tailwind's `base`
+  layer when the CDN is on, so a utility such as `border-primary` still beats them; v4 emits every
+  utility inside a cascade layer, and an unlayered rule would win. The layer also keeps v3's grey
+  placeholders, pointer cursor on buttons and centred `<dialog>`.
+- **BREAKING:** without the CDN (`stylesheet` set), the head and `flowTokensCss()` put the token
+  border colour and the body background and text colour in `@layer base` rather than emitting them
+  unlayered, so a Tailwind v4 stylesheet's utilities (`border-primary`, `aria-invalid:border-destructive`,
+  a `bg-*` on `<body>`) beat them as they do under the CDN. Every border rule now also covers
+  `::before`, `::after`, `::backdrop` and `::file-selector-button`. `flowTailwindConfig()` sets
+  `borderColor.DEFAULT` to the border token, so a Tailwind v3 build's preflight draws the same
+  default border. An app that links a Tailwind v3 stylesheet built from its own config must add
+  `borderColor: { DEFAULT: "hsl(var(--border))" }` under `theme.extend`, or dark-mode borders turn
+  light grey. An app's own unlayered `body` or `*` rules now win over the token ones.
+- Components use the v4 names for what they rendered under v3: `shadow-sm` → `shadow-xs`,
+  `outline-none` → `outline-hidden`, `bg-gradient-to-*` → `bg-linear-to-*` (`ScrollArea`), and the
+  `Slider` thumb grows on `hover:[&::-webkit-slider-thumb]:scale-110`. A copied-in component in an
+  app's own Tailwind v4 build renders a lighter shadow than before, matching the CDN.
+
+### Added
+
+- `flowTailwindCss()`: the theme as Tailwind v4 CSS, exactly what the head hands the CDN. Put it
+  after `@import "tailwindcss";` in a v4 build, with `flowTokensCss()`, to match the CDN look; a
+  utility in that build overrides the token border and page colours as it does under the CDN.
+  `flowTailwindConfig()` still returns the v3 config, for an app whose build is on Tailwind v3.
+
 ## [1.16.4] — 2026-11-17
 
 ### Changed

@@ -24,7 +24,7 @@ import { cn } from "../utils/cn.ts";
 import { gva } from "../utils/gva.ts";
 
 export const toggleVariants = gva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 hover:bg-muted hover:text-muted-foreground",
+  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 hover:bg-muted hover:text-muted-foreground",
   {
     variants: {
       variant: {

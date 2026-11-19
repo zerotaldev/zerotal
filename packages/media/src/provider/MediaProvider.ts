@@ -1,6 +1,8 @@
 import { ServiceProvider } from "@zerotal/core";
-import type { AppEnvironment } from "@zerotal/core";
+import type { AppEnvironment, ContainerBindings, DoctorCheck } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
+import { OptionalPeerMissingError } from "@zerotal/core/runtime";
+import { mediaDriverCheck } from "../doctor.ts";
 import { MediaManager } from "../MediaManager.ts";
 import { BunImageDriver } from "../conversions/BunImageDriver.ts";
 import { SharpImageDriver } from "../conversions/SharpImageDriver.ts";
@@ -61,9 +63,13 @@ export class MediaProvider extends ServiceProvider {
     // shared state is installed before the first request rather than on it.
     const manager = (await this.app.container.make("media")) as MediaManager;
 
-    this.installQueueDispatcher();
+    await this.installQueueDispatcher();
     await this.probeCodecs(manager);
     this.registerCommands();
+  }
+
+  override doctorChecks(): DoctorCheck[] {
+    return [mediaDriverCheck];
   }
 
   override async onStopping(): Promise<void> {
@@ -80,21 +86,22 @@ export class MediaProvider extends ServiceProvider {
   /**
    * Wire queued conversions, but only when a queue actually exists.
    *
-   * This is what keeps `@zerotal/media` free of a dependency on
-   * `@zerotal/queue`: the job class is imported lazily, inside the branch that
-   * already knows the binding is there.
+   * `@zerotal/queue` is an optional peer: the bridge loads it here, inside the
+   * branch that already knows the binding is there, and registers the job class
+   * so that a worker process can run jobs it did not dispatch itself.
    */
-  private installQueueDispatcher(): void {
-    const queue = this.app.container.tryMake("queue");
+  private async installQueueDispatcher(): Promise<void> {
+    // A `string` first: "queue" is a binding key only when @zerotal/queue's types
+    // are in the program, and in an app without the queue they are not.
+    const token: string = "queue";
+    const queue = this.app.container.tryMake(token as keyof ContainerBindings);
     if (!queue) {
       setConversionDispatcher(null);
       return;
     }
 
-    setConversionDispatcher(async (mediaId, conversions) => {
-      const { dispatchConversionJob } = await import("../conversions/queueBridge.ts");
-      await dispatchConversionJob(mediaId, conversions);
-    });
+    const { queuedConversions } = await import("../conversions/queueBridge.ts");
+    setConversionDispatcher(await queuedConversions());
   }
 
   /**
@@ -112,8 +119,17 @@ export class MediaProvider extends ServiceProvider {
       { warn(message: string): void } | null | undefined;
     const missing: string[] = [];
 
-    for (const format of ["avif", "heic"] as const) {
-      if (!(await manager.driver.canEncode(format))) missing.push(format);
+    try {
+      for (const format of ["avif", "heic"] as const) {
+        if (!(await manager.driver.canEncode(format))) missing.push(format);
+      }
+    } catch (error) {
+      // `driver: "sharp"` without sharp installed. Booting on is right: conversions
+      // throw the same error when they run, and `zt doctor` fails on it. The log
+      // line is for whoever is watching this deploy.
+      if (!(error instanceof OptionalPeerMissingError)) throw error;
+      logger?.warn(`[media] ${error.message}`);
+      return;
     }
 
     if (missing.length > 0) {

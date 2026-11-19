@@ -5,6 +5,7 @@ import {
   type ImageMetadata,
   type ImageResult,
 } from "./ImageDriver.ts";
+import { optionalPeer } from "@zerotal/core/runtime";
 import { MediaError } from "../errors.ts";
 import { resolveGeometry } from "./raster.ts";
 import type { ConversionFormat } from "../types.ts";
@@ -35,33 +36,33 @@ interface SharpPipeline {
 
 type SharpFactory = (input: Uint8Array) => SharpPipeline;
 
+type SharpModule = { default?: SharpFactory } & SharpFactory;
+
 let _sharp: SharpFactory | null = null;
 
 /**
  * Load `sharp` once, with an error that says what to install if it is absent.
  *
- * The specifier goes through a variable so the compiler does not try to resolve
- * it: `sharp` is genuinely optional, and a literal `import("sharp")` would fail
- * `tsc` in every app that has not installed it — including all the ones using
- * the default driver, which is most of them.
+ * A missing `sharp` is an `OptionalPeerMissingError` naming the install command
+ * and the built-in driver. Anything else (sharp installed but its native binary
+ * missing for this platform, say) is rethrown as sharp reported it, because
+ * "install sharp" is the wrong advice for a package that is already there.
+ *
+ * The specifier is a literal so `bun zt compile` embeds sharp in an app that has
+ * it; `as string` keeps `tsc` from resolving it in the many apps that do not.
  */
 async function loadSharp(): Promise<SharpFactory> {
   if (_sharp) return _sharp;
-  const specifier = "sharp";
-  try {
-    const module = (await import(specifier)) as {
-      default?: SharpFactory;
-    } & SharpFactory;
-    _sharp = module.default ?? module;
-    return _sharp;
-  } catch {
-    throw new MediaError(
-      'config/media.ts sets driver: "sharp" but the sharp package is not installed.\n' +
-        "Fix: `bun add sharp`, or switch back to the built-in driver with " +
-        'driver: "bun" — which supports every manipulation this one does, ' +
-        'including fit: "cover".',
-    );
-  }
+  const module: SharpModule = await import("sharp" as string).catch(
+    optionalPeer("sharp", {
+      feature: 'config/media.ts driver: "sharp"',
+      alternative:
+        'driver: "bun", the built-in driver, which supports every manipulation this one ' +
+        'does, fit: "cover" included',
+    }),
+  );
+  _sharp = module.default ?? module;
+  return _sharp;
 }
 
 /**
@@ -81,9 +82,13 @@ export class SharpImageDriver implements ImageDriver {
   readonly name = "SharpImageDriver";
   readonly supportsCrop = true;
 
+  // Each method loads sharp outside its `try`: a missing sharp is the app's
+  // configuration, not an image this driver could not read, so it is thrown as an
+  // `OptionalPeerMissingError` rather than coming back as `null` or `false`.
+
   async metadata(bytes: Uint8Array): Promise<ImageMetadata | null> {
+    const sharp = await loadSharp();
     try {
-      const sharp = await loadSharp();
       const meta = await sharp(bytes).metadata();
       if (meta.width === undefined || meta.height === undefined) return null;
       return { width: meta.width, height: meta.height, format: meta.format ?? "unknown" };
@@ -163,8 +168,8 @@ export class SharpImageDriver implements ImageDriver {
   }
 
   async placeholder(bytes: Uint8Array): Promise<string | null> {
+    const sharp = await loadSharp();
     try {
-      const sharp = await loadSharp();
       // No ThumbHash in sharp, so a tiny blurred WebP stands in. Larger than
       // Bun.Image's placeholder, and still small enough to inline.
       const { data } = await sharp(bytes)
@@ -178,8 +183,8 @@ export class SharpImageDriver implements ImageDriver {
   }
 
   async canEncode(format: ConversionFormat): Promise<boolean> {
+    const sharp = await loadSharp();
     try {
-      const sharp = await loadSharp();
       await _applyFormat(sharp(_PROBE_PNG).resize({ width: 2 }), format, 60).toBuffer({
         resolveWithObject: true,
       });

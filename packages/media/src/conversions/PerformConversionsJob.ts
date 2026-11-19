@@ -1,45 +1,59 @@
-import { Job } from "@zerotal/queue";
 import { performConversions } from "./queueBridge.ts";
+import type { QueueJob, QueueJobBase } from "./queueBridge.ts";
 import { mediaState } from "../state.ts";
 
+/** The job's name on the wire, written into every queued payload. */
+const JOB_NAME = "PerformConversionsJob";
+
 /**
- * Generates a media item's conversions on a worker instead of in the request.
+ * Build the job that generates a media item's conversions on a worker instead
+ * of in the request.
  *
- * Only reachable when `@zerotal/queue` is installed — `MediaProvider` imports
- * this module lazily, inside the branch that has already found a `queue`
- * binding. Apps without a queue generate every conversion inline and never load
- * this file.
+ * A factory rather than a class that `extends Job` at the top of the file:
+ * `@zerotal/queue` is an optional peer, so this package may not import it
+ * statically, nor for its types. The queue bridge loads it, then hands its
+ * `Job` base class in here. Apps without a queue never load this file.
+ *
+ * The class declares its `jobName`, because the name is in every payload already
+ * queued and must not depend on how the class came to be defined.
+ *
+ * @param Job - `Job` from `@zerotal/queue`.
+ * @returns The job class, ready to register and dispatch.
  */
-export class PerformConversionsJob extends Job {
-  override readonly queue: string;
+export function definePerformConversionsJob(Job: QueueJobBase) {
+  return class PerformConversionsJob extends Job {
+    static jobName = JOB_NAME;
 
-  constructor(
-    readonly mediaId: number,
-    readonly conversions: string[],
-    queue?: string,
-  ) {
-    super();
-    this.queue = queue ?? mediaState().config.queue;
-  }
+    override readonly queue: string;
 
-  override payload(): Record<string, unknown> {
-    return { mediaId: this.mediaId, conversions: this.conversions, queue: this.queue };
-  }
+    constructor(
+      readonly mediaId: number,
+      readonly conversions: string[],
+      queue?: string,
+    ) {
+      super();
+      this.queue = queue ?? mediaState().config.queue;
+    }
 
-  static fromPayload(payload: Record<string, unknown>): PerformConversionsJob {
-    return new PerformConversionsJob(
-      Number(payload["mediaId"]),
-      (payload["conversions"] as string[] | undefined) ?? [],
-      payload["queue"] as string | undefined,
-    );
-  }
+    override payload(): Record<string, unknown> {
+      return { mediaId: this.mediaId, conversions: this.conversions, queue: this.queue };
+    }
 
-  /**
-   * A media row deleted between dispatch and execution makes this a no-op, not a
-   * failure: retrying cannot bring the row back, so throwing would just burn
-   * every attempt before landing in the failed queue for no one to act on.
-   */
-  async handle(): Promise<void> {
-    await performConversions(this.mediaId, this.conversions);
-  }
+    static fromPayload(payload: Record<string, unknown>): QueueJob {
+      return new PerformConversionsJob(
+        Number(payload["mediaId"]),
+        (payload["conversions"] as string[] | undefined) ?? [],
+        payload["queue"] as string | undefined,
+      );
+    }
+
+    /**
+     * A media row deleted between dispatch and execution makes this a no-op, not a
+     * failure: retrying cannot bring the row back, so throwing would just burn
+     * every attempt before landing in the failed queue for no one to act on.
+     */
+    async handle(): Promise<void> {
+      await performConversions(this.mediaId, this.conversions);
+    }
+  };
 }

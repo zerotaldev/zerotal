@@ -108,7 +108,7 @@ export function Command(props: CommandProps): HtmlNode {
             {...{ "x-on:keydown.arrow-down.prevent": "move(1)" }}
             {...{ "x-on:keydown.arrow-up.prevent": "move(-1)" }}
             {...{ "x-on:keydown.enter.prevent": "choose()" }}
-            class="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            class="h-12 w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
           />
         </div>
 

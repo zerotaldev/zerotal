@@ -30,7 +30,7 @@ export function Checkbox(props: CheckboxProps): HtmlNode {
   return HeadlessCheckbox({
     bind,
     class: cn(
-      "grid h-4 w-4 shrink-0 place-items-center rounded-sm border border-primary text-transparent shadow outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-checked:bg-primary data-checked:text-primary-foreground",
+      "grid h-4 w-4 shrink-0 place-items-center rounded-sm border border-primary text-transparent shadow outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-checked:bg-primary data-checked:text-primary-foreground",
       cls,
     ),
     children: (

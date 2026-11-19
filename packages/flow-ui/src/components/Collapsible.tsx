@@ -40,7 +40,7 @@ export function Collapsible(props: CollapsibleProps): HtmlNode {
       {...(defaultOpen ? { defaultOpen } : {})}
       buttonClass={cn(
         "inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-foreground",
-        "transition-colors hover:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "transition-colors hover:text-muted-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         "[&[data-open]>svg]:rotate-180",
         triggerClass,
       )}

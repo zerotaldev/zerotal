@@ -47,6 +47,8 @@ function findComponent = (name: string) => ComponentEntry | undefined
 
 function flowTailwindConfig = () => string
 
+function flowTailwindCss = () => string
+
 function flowTokensCss = () => string
 
 function flowUiHead = (title?: string, theme?: FlowUiThemeConfig) => string

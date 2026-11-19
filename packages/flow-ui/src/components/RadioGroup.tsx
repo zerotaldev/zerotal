@@ -31,7 +31,7 @@ export function RadioGroup(props: RadioGroupProps): HtmlNode {
     options,
     class: cn("grid gap-2", cls),
     optionClass: cn(
-      "flex cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring data-[checked]:border-primary data-[checked]:bg-primary data-[checked]:text-primary-foreground",
+      "flex cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-ring data-[checked]:border-primary data-[checked]:bg-primary data-[checked]:text-primary-foreground",
       optionClass,
     ),
     ...rest,

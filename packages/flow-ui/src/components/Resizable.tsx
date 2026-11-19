@@ -107,7 +107,7 @@ export function Resizable(props: ResizableProps): HtmlNode {
         {...{ "x-bind:class": "dragging && 'bg-primary'" }}
         class={cn(
           "group relative shrink-0 bg-border transition-colors hover:bg-primary/50",
-          "outline-none focus-visible:bg-primary",
+          "outline-hidden focus-visible:bg-primary",
           horizontal ? "w-px cursor-col-resize" : "h-px cursor-row-resize",
         )}
       >

@@ -67,7 +67,7 @@ export function HoverCard(props: HoverCardProps): HtmlNode {
         tabindex={0}
         x-on:focus="open = true"
         x-on:blur="hide()"
-        class="cursor-default outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm"
+        class="cursor-default outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-sm"
       >
         {trigger}
       </span>

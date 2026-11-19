@@ -45,9 +45,9 @@ export function Tabs(props: TabsProps): HtmlNode {
         ":tabindex": `tab === ${jsLiteral(names[i])} ? 0 : -1`,
         "x-on:click": `tab = ${jsLiteral(names[i])}`,
         // Active tab gets the raised "pill" look; inactive stays muted.
-        ":class": `tab === ${jsLiteral(names[i])} ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'`,
+        ":class": `tab === ${jsLiteral(names[i])} ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground'`,
         class:
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium outline-hidden transition-all focus-visible:ring-2 focus-visible:ring-ring",
         children: it.label,
       }),
     ),
@@ -61,7 +61,7 @@ export function Tabs(props: TabsProps): HtmlNode {
       tabindex: 0,
       "x-show": `tab === ${jsLiteral(names[i])}`,
       "x-cloak": true,
-      class: "mt-2 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md",
+      class: "mt-2 outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-md",
       children: it.content,
     }),
   );

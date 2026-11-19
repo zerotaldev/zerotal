@@ -94,7 +94,7 @@ export function Dialog(props: DialogProps): HtmlNode {
         type: "button",
         "aria-label": "Close",
         class:
-          "absolute right-4 top-4 rounded-sm opacity-70 text-foreground/70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring text-xl leading-none",
+          "absolute right-4 top-4 rounded-sm opacity-70 text-foreground/70 transition-opacity hover:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring text-xl leading-none",
         children: "×",
         ...closeProps,
       })

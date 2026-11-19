@@ -51,8 +51,8 @@ export function Combobox(props: ComboboxProps): HtmlNode {
       {...(placeholder ? { placeholder } : {})}
       class="relative"
       inputClass={cn(
-        "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors",
-        "placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors",
+        "placeholder:text-muted-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         "focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
         cls,
       )}
@@ -61,7 +61,7 @@ export function Combobox(props: ComboboxProps): HtmlNode {
       // the chosen one with data-selected, so both states are styled from CSS
       // with no extra state to track here.
       optionClass={cn(
-        "cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none",
+        "cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-hidden",
         "data-active:bg-accent data-active:text-accent-foreground",
         "data-selected:font-medium",
         "data-disabled:pointer-events-none data-disabled:opacity-50",

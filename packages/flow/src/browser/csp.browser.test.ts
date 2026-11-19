@@ -10,7 +10,7 @@
  * until somebody clicks.
  *
  * So this clicks. The counter only moves if the route table and the CSP runtime
- * both loaded from `/__flow/assets/`, the runtime ran without `eval`, and the
+ * both loaded from the app's own origin, the runtime ran without `eval`, and the
  * socket the policy's `'self'` allows carried the action.
  *
  * Skips where no browser is installed, like the suites beside it.
@@ -78,7 +78,7 @@ describeBrowser("Flow under script-src 'self'", () => {
           `[...document.querySelectorAll("script[src]")].map((s) => s.getAttribute("src"))`,
         );
         expect(scripts).toHaveLength(2);
-        expect(scripts[0]).toMatch(/^\/__flow\/assets\/routes\.[0-9a-f]{16}\.js$/);
+        expect(scripts[0]).toMatch(/^\/__flow\/routes\/[0-9a-f]{16}\.js$/);
         expect(scripts[1]).toMatch(/^\/__flow\/assets\/runtime\.csp\.[0-9a-f]{16}\.js$/);
         // Both ran: the table is installed and Alpine is up.
         expect(await page.evaluate<boolean>(`typeof window.__zerotalRoutes === "object"`)).toBe(

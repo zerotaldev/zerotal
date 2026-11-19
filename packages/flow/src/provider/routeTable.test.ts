@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Router } from "@zerotal/core";
 import { route, resetRoutes } from "@zerotal/core/routes";
-import { _clientAssetResponse, _routeTablePrelude, _routesAsset } from "../clientAssets.ts";
+import { _routeTableResponse, _routeTablePrelude, _routesAsset } from "../clientAssets.ts";
 import { installClientRoutes } from "../client/routes.ts";
 
 describe("Flow route table — serve-time prelude", () => {
@@ -39,7 +39,7 @@ describe("Flow route table — its own script", () => {
     class C {}
     Router.get("/posts/:slug", C, "show").name("posts.show");
     const first = _routesAsset();
-    expect(first.path).toMatch(/^\/__flow\/assets\/routes\.[0-9a-f]{16}\.js$/);
+    expect(first.path).toMatch(/^\/__flow\/routes\/[0-9a-f]{16}\.js$/);
     expect(new TextDecoder().decode(first.body)).toBe(_routeTablePrelude());
 
     // Nothing changed: the same script, so a browser's cached copy still applies.
@@ -55,7 +55,7 @@ describe("Flow route table — its own script", () => {
 
   it("keeps the current table answerable however often the routes change", () => {
     const status = (path: string) =>
-      _clientAssetResponse(new Request(`http://localhost${path}`)).status;
+      _routeTableResponse(new Request(`http://localhost${path}`)).status;
     class C {}
     Router.get("/a", C, "handle").name("a");
     const first = _routesAsset();

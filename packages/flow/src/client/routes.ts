@@ -5,7 +5,7 @@
  * their bundle entry. Flow apps don't: the runtime is built by the framework from
  * `client/index.ts`, and ships prebuilt, so it cannot import a file that lives in
  * the application. The table is handed over as a script of its own instead —
- * `/__flow/assets/routes.<hash>.js`, which sets `window.__zerotalRoutes = {...}`
+ * `/__flow/routes/<hash>.js`, which sets `window.__zerotalRoutes = {...}`
  * — and this reads it back.
  *
  * A separate script rather than part of the runtime, so the runtime is the same

@@ -44,9 +44,11 @@ import { isAllowedOrigin, _clientAddress, _trustedProxyCount } from "@zerotal/co
 import { _loadClientBundle, type ClientBundleName } from "../clientBundles.ts";
 import {
   _FLOW_ASSET_PREFIX,
+  _FLOW_ROUTES_PREFIX,
   _clientAssetResponse,
   _enhanceAsset,
   _installClientAssets,
+  _routeTableResponse,
   _routeTablePrelude,
   _runtimeAsset,
 } from "../clientAssets.ts";
@@ -976,7 +978,8 @@ function _isPersistentMiddleware(mw: MiddlewareClass): boolean {
  *
  * It registers the `Router.flow()` route macro and the file-route resolver (so `flow` page
  * Components become routes), and in web/worker/test envs stands up the runtime: serves the
- * prebuilt client bundles under `/__flow/assets/`, mounts the WebSocket action handler at
+ * prebuilt client bundles under `/__flow/assets/` and the app's route table under
+ * `/__flow/routes/`, mounts the WebSocket action handler at
  * `/__flow/ws` (plus the `/__flow/http` fallback, `/__flow/upload`, and the session-relay
  * endpoint), and AOT-compiles registered `render()` methods. In `console`/`repl` envs it boots
  * only far enough to enumerate routes and register the `make:flow` generator. Add it to your
@@ -1091,11 +1094,24 @@ export class FlowProvider extends ServiceProvider {
     // evaluator for the eval-free interpreter. Toggled by config or env.
     await _loadClientAssets(_isCspSafe());
 
-    // The runtime, the plain-form enhancement and the route table, each at a URL
-    // named after its content (see clientAssets.ts), cacheable for a year. Raw: a
-    // script that is the same for every visitor has no use for the session, and a
-    // response cached `public` must not carry the cookie a session would set.
+    // The runtime and the plain-form enhancement, each at a URL named after its
+    // content (see clientAssets.ts), cacheable for a year. Raw: a script that is the
+    // same for every visitor has no use for the session, and a response cached
+    // `public` must not carry the cookie a session would set.
     Router.raw("GET", `${_FLOW_ASSET_PREFIX}:file`, (req: Request) => _clientAssetResponse(req));
+
+    // The route table, hashed the same way but not raw: it lists every named route
+    // of this app, so it goes through the same middleware as the pages it belongs
+    // to, and only the visitor's own browser may cache it.
+    Router.get(
+      `${_FLOW_ROUTES_PREFIX}:file`,
+      class FlowRouteTableHandler {
+        handle(http: HttpContext): void {
+          http.response = _routeTableResponse(http.request);
+        }
+      },
+      "handle",
+    );
 
     // The URLs these scripts had before they carried a hash. Nothing Flow renders
     // links them any more; they stay, for a layout or a proxy rule that names them

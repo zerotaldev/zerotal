@@ -1,8 +1,10 @@
 /**
  * Serving Flow's browser scripts at URLs named after their content.
  *
- * Every script a Flow page loads is served from `/__flow/assets/<name>.<hash>.js`,
- * where the hash is taken from the bytes served. A URL therefore names exactly
+ * Every script a Flow page loads is served at a URL that carries a hash of the
+ * bytes served: the runtime and the plain-form enhancement from
+ * `/__flow/assets/<name>.<hash>.js`, the app's route table from
+ * `/__flow/routes/<hash>.js`. A URL therefore names exactly
  * one version of a script, so the response can be cached for a year and never
  * revalidated: a browser fetches the runtime once per Zerotal upgrade, not once
  * per page load. Before this the runtime was `/__flow/runtime.js`, sent
@@ -13,6 +15,14 @@
  * The table is now a script of its own, hashed the same way, so the runtime is
  * the same bytes for every app on a release and the table changes only when the
  * routes do.
+ *
+ * The two are served differently because their audiences differ. The runtime and
+ * the enhancement are the same for every visitor of every app, so they are raw
+ * routes cached `public`. The route table describes this app — every named route,
+ * admin ones included — so it goes through the app's middleware like the pages it
+ * belongs to, and is cached `private`: an app whose global middleware keeps its
+ * pages to signed-in users keeps its table to them too, and no shared cache holds
+ * a copy.
  *
  * Both are same-origin files, so a policy of `script-src 'self'` allows them,
  * with no nonce, no `'unsafe-inline'`, and, under `cspSafe`, no `'unsafe-eval'`.
@@ -30,8 +40,20 @@ import type { ClientBundleName } from "./clientBundles.ts";
  */
 export const _FLOW_ASSET_PREFIX = "/__flow/assets/";
 
-/** How long a browser may keep a hashed script: a year, without asking again. */
+/**
+ * Where Flow serves the app's route table, as `<hash>.js`. Its own prefix rather
+ * than a name under `/__flow/assets/`, so it can be an ordinary route, with the
+ * app's middleware, beside the raw one that serves the bundles.
+ *
+ * @internal
+ */
+export const _FLOW_ROUTES_PREFIX = "/__flow/routes/";
+
+/** How long a browser or a shared cache may keep a hashed bundle: a year, without asking again. */
 const IMMUTABLE = "public, max-age=31536000, immutable";
+
+/** The same for the route table, which only the visitor's own browser may keep. */
+const IMMUTABLE_PRIVATE = "private, max-age=31536000, immutable";
 
 const JAVASCRIPT = "text/javascript; charset=utf-8";
 
@@ -46,7 +68,7 @@ export interface ClientAsset {
   readonly body: Uint8Array<ArrayBuffer>;
   /** The first sixteen hex digits of the SHA-256 of `body`. */
   readonly hash: string;
-  /** Where it is served: `/__flow/assets/<name>.<hash>.js`. */
+  /** Where it is served: `/__flow/assets/<name>.<hash>.js`, or `/__flow/routes/<hash>.js`. */
   readonly path: string;
 }
 
@@ -69,7 +91,7 @@ export function _clientAsset(name: string, content: string | Uint8Array<ArrayBuf
 /** The bundles the asset route answers for, by file name (`runtime.<hash>.js`). */
 const _bundles = new Map<string, ClientAsset>();
 
-/** The route tables it answers for, by file name, the most recent last. */
+/** The route tables the route-table route answers for, by file name (`<hash>.js`), the most recent last. */
 const _routeTables = new Map<string, ClientAsset>();
 
 /** The runtime this process serves (one of the two variants), and the enhancement. */
@@ -80,7 +102,7 @@ let _enhance: ClientAsset | null = null;
 let _routes: { asset: ClientAsset; source: string } | null = null;
 
 function _fileOf(asset: ClientAsset): string {
-  return asset.path.slice(_FLOW_ASSET_PREFIX.length);
+  return asset.path.slice(asset.path.lastIndexOf("/") + 1);
 }
 
 /**
@@ -152,7 +174,8 @@ export function _routesAsset(): ClientAsset {
   const source = _routeTablePrelude();
   if (_routes?.source === source) return _routes.asset;
 
-  const asset = _clientAsset("routes", source);
+  const hashed = _clientAsset("routes", source);
+  const asset = { ...hashed, path: `${_FLOW_ROUTES_PREFIX}${hashed.hash}.js` };
   _routes = { asset, source };
   // Deleted first so a table that comes back (routes changed, then changed back)
   // moves to the end, and the current table is never the one evicted.
@@ -198,7 +221,9 @@ function _alreadyHeld(request: Request, etag: string): boolean {
 }
 
 /**
- * Answer a request under `/__flow/assets/`.
+ * The response for a hashed script: the asset itself when the URL names one this
+ * process serves, a redirect to the current version when it names an older one,
+ * 404 otherwise.
  *
  * - A file this process serves: the bytes, cacheable for a year. The URL can only
  *   ever name these bytes, so there is nothing to revalidate.
@@ -207,26 +232,19 @@ function _alreadyHeld(request: Request, etag: string): boolean {
  *   version rather than left with a 404, as it would have been given the current
  *   runtime when the URL did not carry a hash; the redirect itself is `no-store`,
  *   so no cache remembers a URL standing for bytes it does not name.
- * - Anything else: 404.
- *
- * @param request - The request.
- * @internal
  */
-export function _clientAssetResponse(request: Request): Response {
-  const file = new URL(request.url).pathname.slice(_FLOW_ASSET_PREFIX.length);
-  const asset = _bundles.get(file) ?? _routeTables.get(file);
+function _hashedResponse(
+  request: Request,
+  asset: ClientAsset | undefined,
+  current: ClientAsset | null | undefined,
+  cacheControl: string,
+): Response {
   if (asset) {
     const etag = `"${asset.hash}"`;
-    const headers = { "Content-Type": JAVASCRIPT, "Cache-Control": IMMUTABLE, ETag: etag };
+    const headers = { "Content-Type": JAVASCRIPT, "Cache-Control": cacheControl, ETag: etag };
     if (_alreadyHeld(request, etag)) return new Response(null, { status: 304, headers });
     return new Response(asset.body, { status: 200, headers });
   }
-
-  const name = _nameOf(file);
-  const current =
-    name === "routes"
-      ? _routesAsset()
-      : [_runtime, _enhance].find((candidate) => candidate?.name === name);
   if (current) {
     return new Response(null, {
       status: 302,
@@ -237,4 +255,40 @@ export function _clientAssetResponse(request: Request): Response {
     status: 404,
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
   });
+}
+
+/**
+ * Answer a request under `/__flow/assets/`: the runtime and the plain-form
+ * enhancement, the same for every visitor, cached `public`.
+ *
+ * Served from a raw route, outside the app's middleware. The route table is not
+ * one of these: it is answered by {@link _routeTableResponse}, through the app's
+ * middleware, and a `routes.<hash>.js` here is a 404.
+ *
+ * @param request - The request.
+ * @internal
+ */
+export function _clientAssetResponse(request: Request): Response {
+  const file = new URL(request.url).pathname.slice(_FLOW_ASSET_PREFIX.length);
+  const name = _nameOf(file);
+  const current = [_runtime, _enhance].find((candidate) => candidate?.name === name);
+  return _hashedResponse(request, _bundles.get(file), current, IMMUTABLE);
+}
+
+/**
+ * Answer a request under `/__flow/routes/`: the app's route table, cached
+ * `private`.
+ *
+ * Served from an ordinary route, after the app's middleware has let the request
+ * through, so the table reaches exactly the visitors the pages do. An unknown
+ * hash is sent to the current table, which is safe for the same reason: whoever
+ * gets the redirect was already allowed to read it.
+ *
+ * @param request - The request.
+ * @internal
+ */
+export function _routeTableResponse(request: Request): Response {
+  const file = new URL(request.url).pathname.slice(_FLOW_ROUTES_PREFIX.length);
+  const current = /^[0-9a-f]{16}\.js$/.test(file) ? _routesAsset() : null;
+  return _hashedResponse(request, _routeTables.get(file), current, IMMUTABLE_PRIVATE);
 }

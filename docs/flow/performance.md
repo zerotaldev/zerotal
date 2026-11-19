@@ -48,16 +48,19 @@ boots.
 Every Flow page ends with two scripts:
 
 ```html
-<script src="/__flow/assets/routes.3c5e1f2a9b7d4c60.js" defer></script>
+<script src="/__flow/routes/3c5e1f2a9b7d4c60.js" defer></script>
 <script src="/__flow/assets/runtime.0f73789126a43e14.js" defer></script>
 ```
 
 The first hands the runtime your app's [named routes](/docs/routing#named-routes), for
-`$route(...)`. The second is the runtime. The part of each name after the dot is a hash of the
-file's content, so a URL only ever names one version of a script, and both are sent with
-`Cache-Control: public, max-age=31536000, immutable`. A browser downloads the runtime once and
-keeps it until you upgrade Zerotal, and the route table until your routes change; a CDN in front
-of the app can cache them for the same reason.
+`$route(...)`. The second is the runtime. Each file name is a hash of the file's content, so a URL
+only ever names one version of a script, and both can be cached for a year
+(`max-age=31536000, immutable`). A browser downloads the runtime once and keeps it until you
+upgrade Zerotal, and the route table until your routes change.
+
+The runtime is the same for every visitor, so it is sent `public`: a CDN in front of the app can
+cache it too. The route table lists your app's routes, so it is sent `private`, and only the
+visitor's browser keeps it.
 
 What follows from that:
 
@@ -79,7 +82,9 @@ hash, `/__flow/runtime.js` and `/__flow/enhance.js`, still answer for anything t
 hand.
 
 The scripts under `/__flow/assets/` are [raw routes](/docs/routing#raw-routes): they are the same
-for every visitor, so your global middleware does not run for them.
+for every visitor, so your global middleware does not run for them. The route table is an ordinary
+route, so your global middleware runs for it exactly as it does for your pages: a visitor it turns
+away from the pages does not get the table either.
 
 ## Compiling at boot
 

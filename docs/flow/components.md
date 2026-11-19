@@ -848,7 +848,7 @@ Content-Security-Policy:
 
 `script-src 'self'` is enough. The scripts Flow puts on a page are files from your own origin
 — the [client runtime](/docs/flow/performance#the-client-runtime) and your route table, both
-under `/__flow/assets/` — so the policy needs no nonce, no hash and no `'unsafe-inline'`, and in
+under `/__flow/` — so the policy needs no nonce, no hash and no `'unsafe-inline'`, and in
 CSP-safe mode no `'unsafe-eval'` either.
 
 The one exception is a child rendered with

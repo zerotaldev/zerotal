@@ -21,7 +21,7 @@ import { join } from "node:path";
 import { Application, BaseMiddleware, Router, type HttpContext, type NextFn } from "@zerotal/core";
 import { FlowProvider } from "./provider/FlowProvider.ts";
 import { CounterPage } from "./browser/__fixtures__/CounterPage.tsx";
-import { _clientAsset, _routeTablePrelude, _runtimeAsset } from "./clientAssets.ts";
+import { _clientAsset, _routeTablePrelude, _routesAsset, _runtimeAsset } from "./clientAssets.ts";
 import {
   _buildClientBundle,
   _CLIENT_BUNDLE_NAMES,
@@ -32,6 +32,7 @@ import { flowEnhanceTag } from "./enhanceTag.ts";
 
 const PKG = join(import.meta.dir, "..");
 const IMMUTABLE = "public, max-age=31536000, immutable";
+const IMMUTABLE_PRIVATE = "private, max-age=31536000, immutable";
 const SLOW = 180_000;
 
 /** Run a command to completion, failing with its output when it exits non-zero. */
@@ -116,7 +117,7 @@ describe("serving the scripts", () => {
   it("links the route table, then the runtime, both at hashed URLs", () => {
     const [routes, runtime, ...rest] = scriptSources(page);
     expect(rest).toEqual([]);
-    expect(routes).toMatch(/^\/__flow\/assets\/routes\.[0-9a-f]{16}\.js$/);
+    expect(routes).toMatch(/^\/__flow\/routes\/[0-9a-f]{16}\.js$/);
     expect(runtime).toBe(_runtimeAsset()!.path);
     // Both deferred, so they run in document order once parsing is done: the
     // table is installed before the runtime reads it.
@@ -136,18 +137,25 @@ describe("serving the scripts", () => {
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(runtime.body);
   });
 
-  it("serves every script outside the app's pipeline, so nothing per-visitor rides on it", async () => {
+  it("serves the shared scripts outside the app's pipeline, so nothing per-visitor rides on them", async () => {
     // The control: the page went through the pipeline and carries the stamp.
     expect((await fetch(`${base}/assets/counter`)).headers.get("set-cookie")).toBe(
       "session=per-visitor",
     );
-    const [routes, runtime] = scriptSources(page);
+    const [, runtime] = scriptSources(page);
     const [enhance] = scriptSources(flowEnhanceTag());
-    for (const path of [routes!, runtime!, enhance!, "/__flow/enhance.js"]) {
+    for (const path of [runtime!, enhance!, "/__flow/enhance.js"]) {
       const res = await fetch(base + path);
       expect(res.status).toBe(200);
       expect(res.headers.get("set-cookie")).toBeNull();
     }
+  });
+
+  it("serves the route table through the app's pipeline, like the page it belongs to", async () => {
+    const [routes] = scriptSources(page);
+    const res = await fetch(base + routes!);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toBe("session=per-visitor");
   });
 
   it("answers a browser that already holds it with 304", async () => {
@@ -166,12 +174,21 @@ describe("serving the scripts", () => {
     expect(res.headers.get("content-length")).toBe(String(runtime.body.byteLength));
   });
 
-  it("serves the route table as the script the page linked", async () => {
+  it("serves the route table as the script the page linked, kept by the browser alone", async () => {
     const [routes] = scriptSources(page);
     const res = await fetch(base + routes!);
     expect(res.status).toBe(200);
-    expect(res.headers.get("cache-control")).toBe(IMMUTABLE);
+    expect(res.headers.get("cache-control")).toBe(IMMUTABLE_PRIVATE);
     expect(await res.text()).toBe(_routeTablePrelude());
+  });
+
+  it("does not serve the route table from the shared scripts' route", async () => {
+    const [routes] = scriptSources(page);
+    const hash = routes!.slice("/__flow/routes/".length, -".js".length);
+    for (const file of [`routes.${hash}.js`, "routes.0123456789abcdef.js"]) {
+      const res = await fetch(`${base}/__flow/assets/${file}`, { redirect: "manual" });
+      expect(res.status).toBe(404);
+    }
   });
 
   it("sends a page from an earlier deploy to the current runtime, uncached", async () => {
@@ -210,6 +227,58 @@ describe("serving the scripts", () => {
     expect(body.slice(_routeTablePrelude().length)).toBe(
       new TextDecoder().decode(_runtimeAsset()!.body),
     );
+  });
+});
+
+/** A global middleware that turns every request away, the way a sign-in wall does. */
+class TurnEveryoneAway extends BaseMiddleware {
+  protected options = {};
+  async handle(_ctx: HttpContext, _next: NextFn): Promise<Response | void> {
+    return new Response("sign in first", { status: 401 });
+  }
+}
+
+describe("an app whose middleware keeps every page private", () => {
+  let app: Application;
+  let base: string;
+
+  beforeAll(async () => {
+    Bun.env.APP_KEY = "test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa";
+    Application._resetInstance();
+    app = Application.create({ env: "web", providers: [FlowProvider] }).use([TurnEveryoneAway]);
+    await app.boot();
+    class Reports {
+      index(): Response {
+        return new Response("reports");
+      }
+    }
+    Router.get("/admin/reports", Reports, "index").name("admin.reports");
+    await app.start(0);
+    const server = (app as unknown as { _static?: { port: number } })._static;
+    base = `http://localhost:${server?.port}`;
+  }, SLOW);
+
+  afterAll(async () => {
+    await app?.close?.();
+  });
+
+  it("keeps its route table from a visitor it turns away, under any hash", async () => {
+    for (const path of [_routesAsset().path, "/__flow/routes/0123456789abcdef.js"]) {
+      const res = await fetch(base + path, { redirect: "manual" });
+      expect(res.status).toBe(401);
+      expect(await res.text()).not.toContain("admin.reports");
+    }
+    // Nor does the route that serves the shared scripts hand it out, or send there.
+    const shared = await fetch(`${base}/__flow/assets/routes.0123456789abcdef.js`, {
+      redirect: "manual",
+    });
+    expect(shared.status).toBe(404);
+    expect(shared.headers.get("location")).toBeNull();
+  });
+
+  it("still serves the runtime, which is the same for everyone", async () => {
+    const res = await fetch(base + _runtimeAsset()!.path);
+    expect(res.status).toBe(200);
   });
 });
 

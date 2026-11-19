@@ -29,17 +29,20 @@ change.
   bytes, sent with `Cache-Control: public, max-age=31536000, immutable`; a browser fetches it once
   per upgrade. The CSP-safe runtime is served the same way, as `runtime.csp.<hash>.js`.
 - **The route table is a script of its own.** It was prepended to the runtime per request,
-  which is what forced `no-store` on the runtime. Pages now load
-  `/__flow/assets/routes.<hash>.js` just before the runtime; it sets `window.__zerotalRoutes` as
-  before, and its hash changes when your named routes do. `/__flow/runtime.js` still answers,
-  with the table prepended and `no-store`, for anything that names it by hand.
+  which is what forced `no-store` on the runtime. Pages now load `/__flow/routes/<hash>.js` just
+  before the runtime; it sets `window.__zerotalRoutes` as before, and its hash changes when your
+  named routes do. It is sent `Cache-Control: private, max-age=31536000, immutable`, so the
+  visitor's browser keeps it and no shared cache does. `/__flow/runtime.js` still answers, with
+  the table prepended and `no-store`, for anything that names it by hand.
 - **`flowEnhanceTag()` links the plain-form enhancement by its hash**, as
   `/__flow/assets/enhance.<hash>.js`, cached for a year. `FLOW_ENHANCE_PATH`,
   `/__flow/enhance.js`, still serves the same bundle with the same caching.
-- **Flow's scripts are served outside your middleware pipeline.** The hashed scripts and
-  `/__flow/enhance.js` are the same for every visitor, so they are answered before global
-  middleware runs, and nothing it adds to a response, a session cookie included, is sent with
-  them. `/__flow/runtime.js`, which carries your route table, still goes through the pipeline.
+- **The runtime and the enhancement are served outside your middleware pipeline.** The scripts
+  under `/__flow/assets/` and `/__flow/enhance.js` are the same for every visitor, so they are
+  answered before global middleware runs, and nothing it adds to a response, a session cookie
+  included, is sent with them. The route table, at `/__flow/routes/<hash>.js` and inside
+  `/__flow/runtime.js`, lists your app's routes, so it still goes through the pipeline like your
+  pages do.
 - **A request for a hash the server does not have is redirected to the current file** (302,
   `no-store`), so a page rendered before a deploy still gets a runtime.
 - **The unminified runtime is gone from development.** An installed package serves the minified

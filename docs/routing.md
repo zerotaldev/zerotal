@@ -69,6 +69,12 @@ Each call returns a `RouteRegistration` you can chain:
 Router.get("/posts/:slug", PostController, "show").name("posts.show").bind("post", Post);
 ```
 
+Every `GET` route also answers `HEAD` — explicit, raw, view and markdown routes alike — so an
+uptime probe or `curl -I` gets the status and headers the `GET` would, with no body. The `GET`
+handler runs to produce them. `Content-Length` is the length of the body it returned, or the one
+it declared itself; an event stream (`text/event-stream`) is answered at once without a length and
+then cancelled, rather than read to an end it never reaches.
+
 #### Per-route middleware
 
 Pass middleware classes as the fourth argument:

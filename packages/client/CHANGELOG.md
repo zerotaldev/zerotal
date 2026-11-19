@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Testing
+
+- A test pins what this package's suites assume of `bun:test` mocks on both Bun 1.3 and Bun 1.4:
+  `mock.restore()` puts the real `fetch` back after `spyOn`, and a spy set up afterwards starts
+  with no calls and no queued responses. Bun 1.4 also drops a `mock()`'s implementation on
+  restore; no suite here relies on it surviving.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

@@ -53,19 +53,23 @@ async function runBundled(
       writeFileSync(join(pkg, "index.js"), `throw new Error("${peer} failed to initialise");\n`);
     }
   }
-  const bundle = join(dir, "app.js");
+  // An output directory, not a single file: Bun 1.4 writes the Flow browser bundles the panel
+  // imports as files of their own beside the entry, and refuses `--outfile` when there is more
+  // than one file to write. Bun 1.3 writes the one.
+  const out = join(dir, "dist");
   await run(
     [
       process.execPath,
       "build",
       "--target=bun",
       FIXTURE,
-      `--outfile=${bundle}`,
+      `--outdir=${out}`,
+      "--entry-naming=app.js",
       ...external.flatMap((name) => ["--external", name]),
     ],
     dir,
   );
-  return JSON.parse(await run([process.execPath, "--no-install", bundle], dir));
+  return JSON.parse(await run([process.execPath, "--no-install", join(out, "app.js")], dir));
 }
 
 /** What a missing `peer` looks like from the fixture. */

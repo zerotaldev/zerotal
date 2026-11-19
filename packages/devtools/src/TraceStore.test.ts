@@ -113,6 +113,23 @@ describe("TraceStore — persistence", () => {
     second.dispose();
   });
 
+  it("keeps persisting when used again after dispose()", () => {
+    // Closing a bun:sqlite database finalizes the statements prepared on it, and Bun 1.4 says
+    // so as "Database has closed" where 1.3 said "Statement has finalized". A store that kept
+    // its prepared insert across a dispose would drop every later write into the catch.
+    const path = tempDb();
+
+    const store = new TraceStore({ dbPath: path });
+    store.push(trace({ path: "/before", startMs: Date.now() - 1_000 }));
+    store.dispose();
+    store.push(trace({ path: "/after", startMs: Date.now() }));
+    store.dispose();
+
+    const reader = new TraceStore({ dbPath: path });
+    expect(reader.all().map((t) => t.path)).toEqual(["/after", "/before"]);
+    reader.dispose();
+  });
+
   it("clear() empties the persisted history too", () => {
     const path = tempDb();
 

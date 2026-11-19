@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The unused `@zerotal/queue`, `@zerotal/scheduler` and `@zerotal/telemetry` peer
+  declarations are gone.** The monitor reads those services from the container and never imports
+  the packages, so the declarations described a coupling that does not exist. The panel shows
+  their sections when the app registers their providers, as before. Nothing changes for an app.
+
 ### Fixed
 
 - **A compiled binary that loads the monitor starts.** The monitor read its `package.json` from a

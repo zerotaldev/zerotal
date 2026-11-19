@@ -172,5 +172,6 @@ src/
 
 `maturity: stable` — the public API follows SemVer strictly for the rest of the 1.x
 line, and its shape is snapshotted in `api-surface.md`, which CI diffs on every change.
-The live adapters degrade gracefully when an optional peer (`queue`, `scheduler`,
-`telemetry`) isn't installed.
+The live adapters degrade gracefully when the app does not register the queue,
+scheduler or telemetry provider: they read those services from the container, so
+the panel needs none of those packages itself.

@@ -41,7 +41,8 @@
     "react-dom": "^18 || ^19",
     "vue": "^3",
     "@inertiajs/react": "^1 || ^2 || ^3",
-    "@inertiajs/vue3": "^1 || ^2 || ^3"
+    "@inertiajs/vue3": "^1 || ^2 || ^3",
+    "@vue/compiler-sfc": "^3.3.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -58,13 +59,19 @@
     },
     "@inertiajs/vue3": {
       "optional": true
+    },
+    "@vue/compiler-sfc": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@inertiajs/react": "^3.11.0",
+    "@inertiajs/vue3": "^3.11.0",
+    "@vue/compiler-sfc": "^3.5.45",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vue": "^3.5.45"
   },
   "description": "Inertia.js adapter for Zerotal — server-driven React/Vue single-page apps.",
   "keywords": [

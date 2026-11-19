@@ -26,8 +26,10 @@ let resolved: TemporalNamespace | undefined;
  * polyfill otherwise. Resolved on the first call and kept.
  *
  * Synchronous, because Carbon's API is. The polyfill is reached with a literal
- * `require()`, which Bun allows in an ES module and which `bun build --compile`
- * sees and embeds.
+ * `require()` of `./temporal-polyfill.ts`, which Bun allows in an ES module and
+ * which `bun build --compile` sees and embeds. That module imports the
+ * polyfill's ES build, so an app that imports the polyfill itself shares
+ * Carbon's copy.
  */
 export function temporal(): TemporalNamespace {
   if (resolved !== undefined) return resolved;
@@ -36,7 +38,7 @@ export function temporal(): TemporalNamespace {
     resolved = native;
   } else {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const polyfill = require("@js-temporal/polyfill") as { Temporal: TemporalNamespace };
+    const polyfill = require("./temporal-polyfill.ts") as { Temporal: TemporalNamespace };
     resolved = polyfill.Temporal;
   }
   return resolved;

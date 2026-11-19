@@ -82,6 +82,39 @@ describe("temporal()", () => {
     );
     expect(out).toBe("2024-04-15T10:30:45Z 26 true false");
   });
+
+  it("is the app's own import of the polyfill when there is no native Temporal", async () => {
+    const out = await probe(
+      [
+        'const { Temporal: P } = await import("@js-temporal/polyfill");',
+        'const c = Carbon.create("2024-03-15T10:30:45Z", "Europe/Paris");',
+        "const own = c.toInstant() instanceof P.Instant && c.toZonedDateTime() instanceof P.ZonedDateTime;",
+        'const cmp = P.ZonedDateTime.compare(c.toZonedDateTime(), P.ZonedDateTime.from("2024-01-01T00:00:00+01:00[Europe/Paris]"));',
+        'const files = Object.keys(require.cache).filter((k) => k.includes("js-temporal")).length;',
+        "console.log(own, cmp, files);",
+      ].join("\n"),
+      true,
+    );
+    expect(out).toBe("true 1 1");
+  });
+});
+
+describe("the Temporal an app picks to match Carbon's", () => {
+  /** The pattern docs/carbon.md gives an app that runs on Bun 1.3 and 1.4. */
+  const AppTemporal = Native ?? Polyfill;
+
+  it("is the one Carbon runs on", () => {
+    expect(AppTemporal).toBe(Own);
+  });
+
+  it("takes the ZonedDateTime values Carbon hands back", () => {
+    const c = Carbon.create("2024-03-15T10:30:45Z", "Europe/Paris");
+    const zdt = AppTemporal.ZonedDateTime.from("2024-01-01T00:00:00+01:00[Europe/Paris]");
+    expect(c.toZonedDateTime()).toBeInstanceOf(AppTemporal.ZonedDateTime);
+    expect(AppTemporal.ZonedDateTime.compare(c.toZonedDateTime(), zdt)).toBe(1);
+    expect(zdt.until(c.toZonedDateTime()).toString()).toBe("PT1787H30M45S");
+    expect(c.toInstant()).toBeInstanceOf(AppTemporal.Instant);
+  });
 });
 
 describe("adoptTemporal()", () => {

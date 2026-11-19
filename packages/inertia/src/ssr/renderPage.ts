@@ -7,10 +7,10 @@
  * runtime — React via `@inertiajs/react` + `react-dom/server`, Vue via
  * `@inertiajs/vue3` + `vue/server-renderer`.
  *
- * Every framework runtime is resolved from the *app's* node_modules (not
- * @zerotal/inertia's), so an app only needs the libraries for the framework it
- * actually uses. Vue `.vue` files additionally require the `.vue` runtime loader
- * registered by InertiaProvider (see `registerVueRuntimeLoader`).
+ * Every framework runtime is an optional peer, loaded through `peers.ts`, so an app
+ * only installs the libraries for the framework it actually uses, and one without
+ * them is told what to install. Vue `.vue` files additionally need the `.vue` runtime
+ * loader (see `registerVueRuntimeLoader`).
  *
  * ## Why React goes through `<App>` rather than the page component
  *
@@ -31,6 +31,16 @@
  * @module
  */
 import { pageScript, rootOpen, ROOT_CLOSE } from "../pageScript.ts";
+import {
+  _loadInertiaReact,
+  _loadInertiaVue,
+  _loadReact,
+  _loadReactDomServer,
+  _loadVue,
+  _loadVueServerRenderer,
+} from "../peers.ts";
+import type { InertiaReactModule, ReactModule } from "../peers.ts";
+import { _requireVueRuntimeLoader } from "../vuePlugin.ts";
 
 export type Framework = "vue" | "react";
 
@@ -108,20 +118,16 @@ export async function renderInertiaPage(
 }
 
 async function _renderVue(page: SsrPage, modPath: string): Promise<SsrResult> {
-  const cwd = process.cwd();
+  // The page is a `.vue` file, which Bun's runtime cannot import until the compiler is
+  // registered as a loader: without one, Bun imports it as its own file path and the
+  // page "renders" as that string. Boot registers the loader when it can; this says
+  // what is missing when it could not.
+  await _requireVueRuntimeLoader();
 
-  // Resolve Vue + the Inertia Vue adapter from the app's install.
   const [inertiaVue, serverRenderer, vue, pageMod] = await Promise.all([
-    import(Bun.resolveSync("@inertiajs/vue3", cwd)) as Promise<{
-      createInertiaApp: (options: Record<string, unknown>) => Promise<SsrResult>;
-    }>,
-    import(Bun.resolveSync("vue/server-renderer", cwd)) as Promise<{
-      renderToString: (app: unknown) => Promise<string>;
-    }>,
-    import(Bun.resolveSync("vue", cwd)) as Promise<{
-      createSSRApp: (options: unknown) => { use: (plugin: unknown) => unknown };
-      h: (type: unknown, props: unknown) => unknown;
-    }>,
+    _loadInertiaVue(),
+    _loadVueServerRenderer(),
+    _loadVue(),
     import(modPath) as Promise<{ default: unknown }>,
   ]);
 
@@ -139,16 +145,6 @@ async function _renderVue(page: SsrPage, modPath: string): Promise<SsrResult> {
   return { head: result.head ?? [], body: result.body };
 }
 
-/** Minimal shape of the `@inertiajs/react` exports this module uses. */
-interface InertiaReactModule {
-  App: unknown;
-}
-
-/** Minimal shape of the `react` exports this module uses. */
-interface ReactModule {
-  createElement: (type: unknown, props: unknown) => unknown;
-}
-
 /**
  * Build the `<App>` element for a React page and wire a head collector to it.
  *
@@ -158,8 +154,9 @@ interface ReactModule {
  * @param page - The `{ component, props, url }` page to render.
  * @param modPath - Absolute path to the page component module.
  * @returns The element and a `head()` accessor, valid after the element is rendered.
- * @throws {@link Error} When the page module has no default export, or the app does
- *   not install `@inertiajs/react`.
+ * @throws {@link Error} When the page module has no default export.
+ * @throws {@link OptionalPeerMissingError} When the app does not install `react` or
+ *   `@inertiajs/react`.
  * @internal
  */
 export async function _prepareReactRender(
@@ -170,19 +167,7 @@ export async function _prepareReactRender(
   if (pageMod.default === undefined || pageMod.default === null) {
     throw new Error(`SSR component "${page.component}" has no default export`);
   }
-
-  // Specifiers via variables so TypeScript does not resolve them: React and its
-  // Inertia adapter are *optional* peers, and a Vue app type-checking this package
-  // must not be asked for modules it will never install. Both results are cast.
-  const reactSpecifier = "react";
-  const inertiaReactSpecifier = "@inertiajs/react";
-
-  const [reactMod, inertiaReact] = await Promise.all([
-    import(reactSpecifier) as Promise<ReactModule>,
-    _importInertiaReact(inertiaReactSpecifier),
-  ]);
-
-  return _elementFor(reactMod, inertiaReact, page, pageMod.default);
+  return _prepareComponentRender(page, pageMod.default);
 }
 
 /**
@@ -221,57 +206,28 @@ function _elementFor(
 /**
  * Build the `<App>` element for a component the caller already has.
  *
+ * `@inertiajs/react` is loaded alongside `react` because its `<App>` is what makes
+ * `<Head>` work on the server. React SSR did not need it until then, so an app
+ * upgrading into it can meet the missing-package error without having changed
+ * anything of its own; the error names the package and the command that adds it.
+ *
  * @param page - The `{ component, props, url }` page to render.
  * @param component - The page component itself.
+ * @throws {@link OptionalPeerMissingError} When the app does not install `react` or
+ *   `@inertiajs/react`.
  * @internal
  */
 export async function _prepareComponentRender(
   page: SsrPage,
   component: unknown,
 ): Promise<PreparedReactRender> {
-  const reactSpecifier = "react";
-  const inertiaReactSpecifier = "@inertiajs/react";
-  const [reactMod, inertiaReact] = await Promise.all([
-    import(reactSpecifier) as Promise<ReactModule>,
-    _importInertiaReact(inertiaReactSpecifier),
-  ]);
+  const [reactMod, inertiaReact] = await Promise.all([_loadReact(), _loadInertiaReact()]);
   return _elementFor(reactMod, inertiaReact, page, component);
-}
-
-/**
- * Import `@inertiajs/react`, turning "not installed" into a sentence that says what
- * to do about it.
- *
- * A bare specifier rather than `Bun.resolveSync(spec, cwd)`, matching how `react`
- * and `react-dom/server` are already loaded here. Node resolution walks up from this
- * module, so a normal flat install finds the app's own copy — and a workspace that
- * keeps the adapter beside the framework instead of at the app root still resolves,
- * which the cwd form does not.
- *
- * The raw failure names a module path and a package, which reads like a bug in the
- * framework rather than a missing dependency in the app — and React SSR did not need
- * this package until `<Head>` started working, so an app upgrading into it meets the
- * error without having changed anything of its own.
- */
-async function _importInertiaReact(specifier: string): Promise<InertiaReactModule> {
-  try {
-    return (await import(specifier)) as InertiaReactModule;
-  } catch (err) {
-    throw new Error(
-      `Inertia SSR needs "@inertiajs/react" installed. Install it with: bun add @inertiajs/react\n` +
-        `  Cause: ${(err as Error).message ?? String(err)}`,
-    );
-  }
 }
 
 async function _renderReact(page: SsrPage, modPath: string): Promise<SsrResult> {
   const { element, head } = await _prepareReactRender(page, modPath);
-
-  const reactServerSpecifier = "react-dom/server";
-  const serverMod = (await import(reactServerSpecifier)) as {
-    renderToString: (element: unknown) => string;
-  };
-
+  const serverMod = await _loadReactDomServer();
   const html = serverMod.renderToString(element);
   return { head: head(), body: pageScript(page) + rootOpen(true) + html + ROOT_CLOSE };
 }

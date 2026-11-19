@@ -8,6 +8,62 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed — **BREAKING**
+
+- **BREAKING: `.vue` pages need `@vue/compiler-sfc` 3.3 or later.** The `.vue` plugin now
+  asks the compiler for a named component (`genDefaultAs`, added in 3.3), which is what fixes
+  scoped styles and `<script lang="ts">` below. An app on Vue 3.2 or older upgrades `vue` and
+  `@vue/compiler-sfc` together: `bun add vue@^3.5 @vue/compiler-sfc@^3.5`. The starters
+  already install 3.5.
+- **BREAKING: a Vue app with `inertia.ssr` on does not boot without `@vue/compiler-sfc`.**
+  Without the compiler Bun has no loader for a `.vue` file and imports it as its file path,
+  so the server rendered that string in place of the page component and sent the result as
+  server-rendered markup. The boot now stops with an error naming the package and the
+  command that adds it, and a render that meets the missing compiler raises the same error. Install it (`bun add @vue/compiler-sfc`) or turn `inertia.ssr` off.
+  A client-rendered Vue app, and any React app, boots without it as before.
+
+### Changed
+
+- **Every framework package loads through one loader, and a missing one says what to
+  install.** React, `react-dom/server`, `@inertiajs/react`, Vue, `vue/server-renderer`,
+  `@inertiajs/vue3` and `@vue/compiler-sfc` are optional peers loaded with `optionalPeer()`.
+  A missing one throws `OptionalPeerMissingError` (`E_OPTIONAL_PEER_MISSING`) with the install
+  command, where server rendering a React page without `@inertiajs/react` used to throw a plain
+  `Error`, and a Vue render or a `.vue` build failed on a resolver message. An installed package
+  that fails to load is reported as itself instead of as "not installed".
+- **Vue packages resolve from `@zerotal/inertia`, not from the working directory.** As React's
+  already did. In an app's own install the two find the same copy; the difference is that a
+  binary from `bun zt compile` now contains them, below.
+- **A `.vue` file under `resources/` without `@vue/compiler-sfc` stops `inertia:build` and
+  `zt dev`** with the command that adds it, rather than the bundler's "no loader is configured
+  for .vue files".
+
+### Added
+
+- **`zt doctor` checks the framework packages the app needs** (`inertia-peers`): the compiler
+  when `resources/` holds a `.vue` file, and the framework's server renderer and Inertia adapter
+  when `inertia.ssr` is on.
+
+### Fixed
+
+- **Scoped styles apply to `<script setup>` components.** The component was exported before the
+  scope id was attached to it, so `<style scoped>` compiled to selectors no element carried,
+  in the browser and on the server.
+- **A `.vue` page with a plain `<script lang="ts">` compiles.** Its `export default` was
+  rewritten by a parser that did not read TypeScript, so the first type annotation was a syntax
+  error.
+- **`bun zt compile` embeds the framework packages.** They were loaded through specifiers held
+  in variables, which the bundler cannot see, so a compiled binary contained none of them. The
+  `.vue` compiler loads from its self-contained ES build: its CommonJS entry point requires
+  template engines nobody installs, and with it in the graph the compile failed outright.
+
+### Dependencies
+
+- `@vue/compiler-sfc` is declared as an optional peer, `^3.3.0`. It was loaded without being
+  declared.
+- `vue`, `@inertiajs/vue3` and `@vue/compiler-sfc` are devDependencies, so the Vue code is
+  tested: a new suite server-renders `.vue` pages through the real adapter.
+
 ## [1.16.3] — 2026-11-17
 
 ### Fixed

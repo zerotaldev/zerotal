@@ -37,6 +37,7 @@
  * @module
  */
 import { _prepareComponentRender } from "./ssr/renderPage.ts";
+import { _loadReactDomServer } from "./peers.ts";
 
 /** Extras a page render may need beyond its own props. */
 export interface RenderPageOptions {
@@ -86,12 +87,6 @@ export async function renderPage(
 
   const { element } = await _prepareComponentRender(page, component);
 
-  // Specifier via a variable: `react-dom/server` is an optional peer, and a Vue app
-  // type-checking this package must not be asked for a module it will never install.
-  const reactServerSpecifier = "react-dom/server";
-  const serverMod = (await import(reactServerSpecifier)) as {
-    renderToString: (element: unknown) => string;
-  };
-
+  const serverMod = await _loadReactDomServer();
   return serverMod.renderToString(element);
 }

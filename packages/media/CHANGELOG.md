@@ -22,7 +22,9 @@ line, and `api-surface.md` is diffed by CI on every change.
   `SharpImageDriver` methods now throw `OptionalPeerMissingError` (code
   `E_OPTIONAL_PEER_MISSING`), whose message names `bun add sharp` and the built-in driver. So
   `addMedia()` into a collection with conversions throws it, after the original is stored, and a
-  queued conversion job fails with it. An image sharp cannot read still answers `null`. **What to
+  queued conversion job fails with it. A sharp that is installed but does not load on this
+  platform fails the same way, with sharp's own error. An image sharp cannot read still answers
+  `null`. **What to
   change:** run `bun add sharp`, or set `driver: "bun"` in `config/media.ts`; `zt doctor` says
   which apps need it. Code that caught `MediaError` for a missing sharp catches
   `OptionalPeerMissingError` instead.
@@ -37,7 +39,7 @@ line, and `api-surface.md` is diffed by CI on every change.
 - **`zt doctor` fails when `config/media.ts` sets `driver: "sharp"` and sharp is not installed**
   (check `media-image-driver`), or is installed and does not load on this platform. With
   `allowHostFormats: true` the boot log says the same, where it used to report AVIF and HEIC as
-  unencodable.
+  unencodable, and the app still boots in both cases.
 
 ### Fixed
 

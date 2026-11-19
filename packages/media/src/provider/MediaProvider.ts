@@ -124,11 +124,20 @@ export class MediaProvider extends ServiceProvider {
         if (!(await manager.driver.canEncode(format))) missing.push(format);
       }
     } catch (error) {
-      // `driver: "sharp"` without sharp installed. Booting on is right: conversions
-      // throw the same error when they run, and `zt doctor` fails on it. The log
-      // line is for whoever is watching this deploy.
-      if (!(error instanceof OptionalPeerMissingError)) throw error;
-      logger?.warn(`[media] ${error.message}`);
+      // The driver itself did not load: `driver: "sharp"` without sharp installed, or
+      // installed with no native binary for this platform (node_modules copied from
+      // another OS, say). Booting on is right either way: conversions throw the same
+      // error when they run, and `zt doctor`, which boots the app first, fails on it.
+      // The log line is for whoever is watching this deploy.
+      if (error instanceof OptionalPeerMissingError) {
+        logger?.warn(`[media] ${error.message}`);
+      } else {
+        const reason = error instanceof Error ? error.message : String(error);
+        logger?.warn(
+          `[media] The image driver did not load, so conversions will fail: ${reason}\n` +
+            "Run `zt doctor` for the fix.",
+        );
+      }
       return;
     }
 

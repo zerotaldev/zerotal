@@ -20,12 +20,12 @@ export class AuthLayout extends Layout {
       <div class="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12 text-foreground">
         <div class="w-full max-w-sm">
           <div class="mb-6 flex flex-col items-center gap-2 text-center">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground shadow-sm">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-lg font-bold text-primary-foreground shadow-xs">
               {cfg.brand.slice(0, 1).toUpperCase()}
             </div>
             <div class="text-lg font-semibold tracking-tight">{cfg.auth?.heading ?? cfg.brand}</div>
           </div>
-          <div class="rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm sm:p-7">
+          <div class="rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xs sm:p-7">
             {slot}
           </div>
         </div>

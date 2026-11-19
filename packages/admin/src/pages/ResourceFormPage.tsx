@@ -74,7 +74,7 @@ export function registerResourceForm(panelId: string, slug: string, meta: FormMe
 
 const SPAN_CLASS = ["", "", "sm:col-span-2", "sm:col-span-3", "sm:col-span-4"];
 const INPUT_CLASS =
-  "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
+  "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-hidden transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
 
 /** @internal */
 export class ResourceFormPage extends Component {
@@ -372,7 +372,7 @@ export class ResourceFormPage extends Component {
             <input
               {...{ "flow:model.live": "pickerSearch" }}
               placeholder="Search…"
-              class="ml-auto h-8 w-48 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              class="ml-auto h-8 w-48 rounded-lg border border-input bg-background px-3 text-sm outline-hidden focus:ring-2 focus:ring-ring"
             />
             <label class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-input px-3 text-sm font-medium transition hover:bg-accent">
               <Icon name="upload" class="h-4 w-4" />
@@ -402,7 +402,7 @@ export class ResourceFormPage extends Component {
                     onClick={this.chooseMedia}
                     data-args={JSON.stringify([item.path])}
                     title={item.name}
-                    class="overflow-hidden rounded-lg border border-border transition hover:border-primary hover:shadow-sm"
+                    class="overflow-hidden rounded-lg border border-border transition hover:border-primary hover:shadow-xs"
                   >
                     <div class="flex aspect-square items-center justify-center bg-muted/40">
                       {isImage(item) && this._mediaUrls[item.path] ? (
@@ -933,7 +933,7 @@ export class ResourceFormPage extends Component {
             value={this.tagDraft[f._key] ?? ""}
             placeholder={f._placeholder ?? "Add…"}
             disabled={disabled}
-            class="min-w-[6rem] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            class="min-w-[6rem] flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
           />
           <button
             type="button"
@@ -979,7 +979,7 @@ export class ResourceFormPage extends Component {
             accept={f._accept}
             multiple={f._multiple}
             disabled={disabled}
-            class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+            class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground file:hover:bg-primary/90"
           />
           {fileName ? (
             <div class="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1075,7 +1075,7 @@ export class ResourceFormPage extends Component {
                 disabled={disabled}
                 class={`rounded-md px-3 py-1 text-sm font-medium transition ${
                   on
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -1132,7 +1132,7 @@ export class ResourceFormPage extends Component {
             rows={f._rows}
             disabled={disabled}
             placeholder={f._placeholder}
-            class="block w-full resize-y bg-background px-3 py-2 font-mono text-xs outline-none placeholder:text-muted-foreground"
+            class="block w-full resize-y bg-background px-3 py-2 font-mono text-xs outline-hidden placeholder:text-muted-foreground"
           />
         </div>
       );
@@ -1168,7 +1168,7 @@ export class ResourceFormPage extends Component {
           <div
             id={edId}
             contenteditable={disabled ? "false" : "true"}
-            class="prose-sm min-h-[8rem] max-w-none bg-background px-3 py-2 text-sm outline-none [&_*]:my-1"
+            class="prose-sm min-h-[8rem] max-w-none bg-background px-3 py-2 text-sm outline-hidden [&_*]:my-1"
           />
           <script dangerouslySetInnerHTML={{ __html: `__kRich('${edId}','${hId}')` }} />
         </div>
@@ -1494,7 +1494,7 @@ export class ResourceFormPage extends Component {
     }
 
     return (
-      <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-6">
+      <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
         {section._heading ? (
           <div class="mb-4 flex items-start gap-3 border-b border-border pb-4">
             {section._icon ? (
@@ -1574,7 +1574,7 @@ export class ResourceFormPage extends Component {
         </span>
       ),
       content: (
-        <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-6">
+        <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
           {this._fieldsGrid(this._visibleFields(t.getFields(), data), t._columns, data)}
         </div>
       ),
@@ -1617,7 +1617,7 @@ export class ResourceFormPage extends Component {
           ))}
         </ol>
 
-        <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-6">
+        <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
           {step?._description ? (
             <p class="mb-4 text-sm text-muted-foreground">{step._description}</p>
           ) : null}
@@ -1645,7 +1645,7 @@ export class ResourceFormPage extends Component {
             <button
               type="submit"
               loadingAttr="disabled"
-              class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
+              class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-60"
             >
               {last ? (
                 <>
@@ -1671,7 +1671,7 @@ export class ResourceFormPage extends Component {
         {wiz._steps.map((s) => {
           const fields = this._visibleFields(s.getFields(), data);
           return fields.length === 0 ? null : (
-            <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-6">
+            <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6">
               <h2 class="mb-4 text-sm font-semibold">{s._label}</h2>
               {this._fieldsGrid(fields, s._columns, data)}
             </div>
@@ -1847,7 +1847,7 @@ export class ResourceFormPage extends Component {
               <button
                 type="submit"
                 loadingAttr="disabled"
-                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
+                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-60"
               >
                 <Icon name="check-circle" class="h-4 w-4" />
                 {this.mode === "edit" ? "Save changes" : "Create"}

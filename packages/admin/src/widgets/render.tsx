@@ -99,7 +99,7 @@ export async function renderWidgets(
           class={`grid grid-cols-1 gap-4 ${STAT_COLS[group.columns] ?? "sm:grid-cols-2 lg:grid-cols-4"}`}
         >
           {group.stats.map((s) => (
-            <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+            <div class="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs">
               <div class="flex items-center justify-between">
                 <p class="text-sm font-medium text-muted-foreground">{s._label}</p>
                 {s._icon ? (
@@ -123,7 +123,7 @@ export async function renderWidgets(
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {charts.map((c) => (
             <div
-              class={`rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm ${c.wide ? "lg:col-span-2" : ""}`}
+              class={`rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs ${c.wide ? "lg:col-span-2" : ""}`}
             >
               <h3 class="text-sm font-semibold">{c.title}</h3>
               <div class="mt-3" style={`position:relative;height:${c.height}px`}>
@@ -137,7 +137,7 @@ export async function renderWidgets(
 
       {tables.map((t) => (
         <div
-          class={`overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm ${t.wide ? "" : "lg:max-w-2xl"}`}
+          class={`overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xs ${t.wide ? "" : "lg:max-w-2xl"}`}
         >
           <div class="border-b border-border px-5 py-3">
             <h3 class="text-sm font-semibold">{t.title}</h3>

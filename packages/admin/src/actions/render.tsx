@@ -11,7 +11,7 @@ import type { Action, ActionColor, ActionContext, ActionGroup } from "./Action.t
 const COLOR: Record<ActionColor, string> = {
   default:
     "border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-  primary: "border-transparent bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
+  primary: "border-transparent bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs",
   success: "border-input bg-background text-success hover:bg-success/10 hover:border-success/40",
   muted: "border-input bg-background text-muted-foreground hover:bg-accent",
   destructive:
@@ -148,7 +148,7 @@ export function renderActionMenuItem(
     a._color === "destructive"
       ? "text-destructive hover:bg-destructive/10"
       : "hover:bg-accent hover:text-accent-foreground";
-  const cls = `flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors ${tone}`;
+  const cls = `flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden transition-colors ${tone}`;
   const inner = (
     <>
       {a._icon ? <Icon name={a._icon} class="h-4 w-4" /> : null}

@@ -183,13 +183,13 @@ export class MediaPage extends Component {
                 <input
                   {...{ "flow:model.live": "search" }}
                   placeholder="Search files…"
-                  class="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+                  class="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-hidden transition focus:ring-2 focus:ring-ring"
                 />
               </div>
               {folders.length > 0 ? (
                 <select
                   {...{ "flow:model.live": "folder" }}
-                  class="h-9 rounded-lg border border-input bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  class="h-9 rounded-lg border border-input bg-background px-2 text-sm outline-hidden focus:ring-2 focus:ring-ring"
                 >
                   <option value="">All folders</option>
                   {folders.map((f) => (
@@ -217,7 +217,7 @@ export class MediaPage extends Component {
                     {...{ "flow:key": item.id }}
                     onClick={this.openDetails}
                     data-args={JSON.stringify([item.id])}
-                    class="group overflow-hidden rounded-lg border border-border bg-card text-left transition hover:border-primary/50 hover:shadow-sm"
+                    class="group overflow-hidden rounded-lg border border-border bg-card text-left transition hover:border-primary/50 hover:shadow-xs"
                   >
                     <div class="flex aspect-square items-center justify-center bg-muted/40">
                       {isImage(item) && urls.get(item.id) ? (
@@ -301,7 +301,7 @@ export class MediaPage extends Component {
                 <input
                   {...{ "flow:model": "alt" }}
                   placeholder="What the image shows"
-                  class="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  class="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-hidden focus:ring-2 focus:ring-ring"
                 />
               </label>
               <label class="block">
@@ -309,7 +309,7 @@ export class MediaPage extends Component {
                 <input
                   {...{ "flow:model": "editFolder" }}
                   placeholder="products"
-                  class="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  class="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-hidden focus:ring-2 focus:ring-ring"
                 />
               </label>
             </div>

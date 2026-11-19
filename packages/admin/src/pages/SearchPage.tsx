@@ -89,7 +89,7 @@ export class SearchPage extends Component {
         ) : null}
 
         {groups.map((g) => (
-          <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div class="rounded-xl border border-border bg-card text-card-foreground shadow-xs">
             <div class="flex items-center gap-2 border-b border-border px-4 py-2.5">
               <Icon name={g.resource.navigationIcon} class="h-4 w-4 text-muted-foreground" />
               <span class="text-sm font-semibold">{g.resource.getPluralLabel()}</span>
@@ -124,7 +124,7 @@ export class SearchPage extends Component {
         ))}
 
         {contributed.map((g) => (
-          <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div class="rounded-xl border border-border bg-card text-card-foreground shadow-xs">
             <div class="flex items-center gap-2 border-b border-border px-4 py-2.5">
               <Icon name={g.provider.icon ?? "search"} class="h-4 w-4 text-muted-foreground" />
               <span class="text-sm font-semibold">{g.provider.label}</span>

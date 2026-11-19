@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** the panel is styled by Tailwind v4's browser build, through `@zerotal/flow-ui`'s
+  head, instead of the Tailwind v3 Play CDN; a Content-Security-Policy in front of `/monitor` that allowed
+  `https://cdn.tailwindcss.com` must allow `https://cdn.jsdelivr.net` instead. The panel's markup
+  uses the v4 names for what it rendered before (`shadow-xs`, `outline-hidden`), so it looks the
+  same, except that default borders in dark mode now take the dark `--border` token rather than a
+  light grey and the status colours use v4's palette.
+
 ### Fixed
 
 - **A compiled binary that loads the monitor starts.** The monitor read its `package.json` from a

@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** the panel is styled by Tailwind v4's browser build, through `@zerotal/flow-ui`'s
+  head, instead of the Tailwind v3 Play CDN. An app must change two things if they apply: a
+  Content-Security-Policy that allowed `https://cdn.tailwindcss.com` for the panel must allow
+  `https://cdn.jsdelivr.net` instead, and custom pages, widgets or infolist entries that use v3
+  class names whose meaning moved in v4 (`shadow-sm`, bare `ring`, `outline-none`,
+  `bg-opacity-*`) need the v4 names listed in `@zerotal/flow-ui`'s changelog. The panel's own
+  markup already uses them (`shadow-xs`, `outline-hidden`, `file:hover:`), so it looks the same,
+  except that default borders in dark mode now take the dark `--border` token rather than a light
+  grey and the amber, emerald and red accents use v4's palette.
+
+### Added
+
+- `adminTailwindCss()`: the theme as Tailwind v4 CSS, for a `theme.stylesheet` built with Tailwind
+  v4 to match the CDN look. `adminTailwindConfig()` still returns the Tailwind v3 config.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

@@ -11,9 +11,9 @@ import { AdminLayout } from "../../ui/AdminLayout.tsx";
 import { Icon } from "../../ui/icons.tsx";
 
 const INPUT =
-  "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring";
+  "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-hidden transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring";
 const PRIMARY_BTN =
-  "inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60";
+  "inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-60";
 
 export class ProfilePage extends Component {
   static layout = AdminLayout;
@@ -104,7 +104,7 @@ export class ProfilePage extends Component {
     const verify = cfg.emailVerification;
     const unverified = !!verify && !!u && !verify.isVerified(u);
     const card =
-      "rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-6";
+      "rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs sm:p-6";
 
     return (
       <div class="mx-auto w-full max-w-2xl space-y-6">

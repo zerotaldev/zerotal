@@ -87,7 +87,7 @@ export interface AdminConfigShape {
   middleware?: MiddlewareClass[] | undefined;
   /** Optional top-bar user menu (Profile / Logout / …). */
   userMenu?: UserMenu | undefined;
-  /** Styling source — Tailwind Play CDN (default) or a prebuilt stylesheet. */
+  /** Styling source — Tailwind's browser build from a CDN (default) or a prebuilt stylesheet. */
   theme?: AdminThemeConfig | undefined;
   /** Auth pages (login / profile / password-reset / email-verification). */
   auth?: AdminAuthConfig | undefined;

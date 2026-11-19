@@ -213,7 +213,7 @@ export class AdminLayout extends Layout {
                   type="search"
                   name="q"
                   placeholder="Search…"
-                  class="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-12 text-sm outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+                  class="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-12 text-sm outline-hidden transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
                 />
                 <button
                   type="button"
@@ -298,7 +298,7 @@ export class AdminLayout extends Layout {
                   <a
                     href={it.href}
                     navigate
-                    class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+                    class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     {it.icon ? <Icon name={it.icon} class="h-4 w-4" /> : null}
                     {it.label}

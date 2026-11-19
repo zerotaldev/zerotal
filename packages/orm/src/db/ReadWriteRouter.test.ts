@@ -69,7 +69,7 @@ describe("_isReadQuery()", () => {
     "ALTER TABLE users ADD COLUMN bio TEXT",
     // A WITH clause in front of a write leaves it a write.
     "WITH old AS (SELECT id FROM jobs WHERE done) DELETE FROM jobs USING old",
-    "WITH zt_bind AS (SELECT $1::int) DELETE FROM sessions RETURNING id",
+    "WITH cutoff AS (SELECT $1::timestamptz AS at) DELETE FROM sessions USING cutoff RETURNING id",
     "with s as (select 1) update counters set n = n + 1",
     "WITH v AS (SELECT 1) INSERT INTO t SELECT * FROM v",
     "WITH d AS (DELETE FROM jobs RETURNING *) SELECT count(*) FROM d",

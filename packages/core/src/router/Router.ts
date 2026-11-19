@@ -281,21 +281,23 @@ function _routeKey(method: HttpMethod, fullPath: string, domain: string | undefi
  * `Content-Length` is preserved explicitly, since constructing a bodiless Response otherwise
  * loses it.
  *
+ * `Content-Length` is sent only when it is the length of the body the `GET` sends, measured. A
+ * declared one is never passed on unchecked: it can be stale (a middleware that rewrote the body
+ * kept the original's headers, or a proxied `fetch()` whose body Bun decompressed kept the
+ * compressed length), and Bun sends a body it holds in memory at its real length whatever the
+ * header says. A body without a declared length is read to its end, as it always was. One with a
+ * declared length is measured only if it is all there at once (see {@link _drainsAtOnce}); a body
+ * still arriving — a stream that is producing, a file, a large proxied response — is not waited
+ * for, and the `HEAD` is sent with no length. Bun sends such a `GET` chunked, without the declared
+ * length, so neither one states a length.
+ *
  * An event stream is never read: it does not end, so measuring it held the `HEAD` request (and
  * its connection) open for as long as the stream lived — forever, for a server-sent-events
- * endpoint. It is answered at once with `Transfer-Encoding: chunked` and no length, as its `GET`
- * is sent; without that header Bun writes `Content-Length: 0` on a bodiless response.
+ * endpoint. It is answered at once with no length, as its `GET` is.
  *
- * A declared `Content-Length` is what Bun sends only when the body is a stream. A body Bun holds
- * in memory goes out at its real length whatever the header says, and a header can be stale: a
- * middleware that rewrote the body kept the original's headers, or a proxied `fetch()` whose body
- * Bun decompressed kept the compressed length. So a declared length is checked against the body
- * when the body is all there: what arrives before the next turn of the event loop is measured,
- * and only a body still arriving after that is taken at its declared length (see
- * {@link _drainsAtOnce}).
- *
- * Whenever the body is not read to its end, it is cancelled, so the handler's `cancel()` runs and
- * nothing it registered is left behind.
+ * A `HEAD` with no length carries `Transfer-Encoding: chunked`, as its `GET` does; without it Bun
+ * writes `Content-Length: 0` on a bodiless response. Whenever the body is not read to its end, it
+ * is cancelled, so the handler's `cancel()` runs and nothing it registered is left behind.
  *
  * Explicit on purpose: Bun 1.4 answers `HEAD` from a `GET` route by itself, Bun 1.3 sends it on
  * to `fetch`. Deriving it here makes every route answer the same way on both.
@@ -306,15 +308,20 @@ function _headFrom(get: RouteHandlerFn): RouteHandlerFn {
     const headers = new Headers(response.headers);
     const declared = response.headers.get("Content-Length");
     const streaming = (response.headers.get("Content-Type") ?? "").startsWith("text/event-stream");
+    let length: number | null;
     if (streaming) {
       await response.body?.cancel().catch(() => {});
-      if (declared === null) headers.set("Transfer-Encoding", "chunked");
+      length = null;
     } else if (declared !== null) {
-      const measured = await _drainsAtOnce(response);
-      if (measured !== null) headers.set("Content-Length", String(measured));
+      length = await _drainsAtOnce(response);
     } else {
-      const body = await response.arrayBuffer();
-      headers.set("Content-Length", String(body.byteLength));
+      length = (await response.arrayBuffer()).byteLength;
+    }
+    if (length === null) {
+      headers.delete("Content-Length");
+      headers.set("Transfer-Encoding", "chunked");
+    } else {
+      headers.set("Content-Length", String(length));
     }
     return new Response(null, {
       status: response.status,
@@ -334,9 +341,11 @@ const DRAIN_READ_LIMIT = 256;
  * "All there" means the reads settle before the next turn of the event loop. A body Bun holds in
  * memory does: a string, bytes, JSON, a `fetch()` response already received, and any of those
  * passed through `new Response(res.body, …)`. A stream that is still producing does not, nor does
- * a file. Nothing visible from JavaScript tells the two apart without reading — `res.body` is a
- * `ReadableStream` either way — so the first read is attempted; a stream that was going to answer
- * it later is cancelled instead.
+ * a file, nor a `fetch()` body still arriving or still being decompressed; where that line falls
+ * for a large proxied body differs between Bun versions. Nothing visible from JavaScript tells the
+ * two apart without reading — `res.body` is a `ReadableStream` either way — so the first read is
+ * attempted; a stream that was going to answer it later is cancelled instead. `null` never stands
+ * for a length: the caller sends none.
  *
  * The read limit stops a stream that answers every read at once, and never ends, from holding the
  * loop: Bun hands an in-memory body over in a few chunks of about 2 MB.

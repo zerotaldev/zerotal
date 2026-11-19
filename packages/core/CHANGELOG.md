@@ -70,11 +70,13 @@ follows the Zerotal monorepo's unified versioning.
   no end to measure to, so the request waited, and held its connection, for as long as the stream
   lived. A `GET` that returns `Content-Type: text/event-stream` is now answered at once, with its
   headers, `Transfer-Encoding: chunked` and no `Content-Length`, as the `GET` is sent, and the
-  stream is cancelled so its `cancel()` runs. A streamed body that declares its own
-  `Content-Length` and is still arriving is answered at that length and cancelled, rather than
-  waited for. Every other response is measured as before, including one whose declared
-  `Content-Length` is stale, such as a proxied `fetch()` response Bun decompressed: the `HEAD`
-  reports the length the `GET` sends.
+  stream is cancelled so its `cancel()` runs. A `Content-Length` the handler declared is no
+  longer passed on unchecked, since it can be stale, such as one a middleware kept after
+  rewriting the body, or a proxied `fetch()` response Bun decompressed. The body is measured when
+  it is all there at once, and the `HEAD` reports that length. A body with a declared length that
+  is still arriving (a stream still producing, a file, a large proxied response) is not waited
+  for: the `HEAD` is answered at once, chunked and with no `Content-Length`, and the body is
+  cancelled. A body with no declared length is measured as before.
 - **`Router.markdown()` pages answer `HEAD` the same on Bun 1.3 and Bun 1.4.** They had no `HEAD`
   of their own, so on Bun 1.3 one went on to the app's fallback and was answered 404, while Bun
   1.4 ran the `GET`. They now derive one from the `GET`, like every other route, and answer with

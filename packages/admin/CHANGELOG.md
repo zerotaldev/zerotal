@@ -25,11 +25,37 @@ follows the Zerotal monorepo's unified versioning.
   Tailwind v3 stylesheet is built from its own config must add
   `borderColor: { DEFAULT: "hsl(var(--border))" }` under `theme.extend`, or dark-mode borders turn
   light grey.
+- **`@zerotal/auth` and `@zerotal/orm` are dependencies.** The auth pages import auth, and the
+  panel's provider uses the ORM's types, so both were needed already; they were declared as
+  optional peers, which an isolated install does not provide. Every app installing the admin
+  package already had the ORM through `@zerotal/flow`. Auth is still loaded only by the
+  features that use it (the auth pages, the roles page, impersonation, the notification bell), so
+  a panel without them does not register auth's models.
+- **`@zerotal/notifications` and `@zerotal/audit` are declared optional peers**, alongside
+  `@zerotal/queue`. They were imported without being declared. An app that uses database
+  notifications, record history or queued imports installs the package itself.
+- **BREAKING: a missing optional package now throws `OptionalPeerMissingError` with the install
+  command, where it used to be silent.** `databaseNotifications()` without
+  `@zerotal/notifications` showed an empty bell, a resource with `static history = true` without
+  `@zerotal/audit` showed no history, and `importAction({ queue: true })` without
+  `@zerotal/queue` imported inline. Each looked like it was working. Now the notifications page,
+  every View page of a resource with history, and every queued import throw. The bell in the
+  layout still fails soft. `dispatchImport()` throws too, where it returned `false`; it still
+  returns `false` when the queue package is installed with no driver configured, so that case
+  still falls back to an inline import. An app that used one of these options without the
+  package must install it (`bun add @zerotal/notifications`, `bun add @zerotal/audit` or
+  `bun add @zerotal/queue`) or remove the option. `bun zt doctor` names the first two.
 
 ### Added
 
 - `adminTailwindCss()`: the theme as Tailwind v4 CSS, for a `theme.stylesheet` built with Tailwind
   v4 to match the CDN look. `adminTailwindConfig()` still returns the Tailwind v3 config.
+- **`bun zt doctor` reports a panel feature whose package is missing.** The
+  `admin-optional-packages` check fails when a panel uses `databaseNotifications()` without
+  `@zerotal/notifications`, or registers a resource with `static history = true` without
+  `@zerotal/audit`, and prints the install command. It loads the app's panel wiring
+  (`app/admin.ts` or `app/admin/index.ts`) to see what the panel serves. Queued imports are not
+  covered, because that option is only visible once a page builds its actions.
 
 ## [1.9.0] — 2026-08-29
 

@@ -393,7 +393,7 @@ Recording never sits on the request hot path. Each `record*` call pushes a row i
 
 Snapshots are cached for `snapshotCacheMs` (one second by default), keyed by range. This de-duplicates the overlapping reads that happen when the panel poll, the alert loop, and a Prometheus scrape all ask for the live snapshot at once, and any action that changes data invalidates the cache immediately so you never see a stale count after clicking. A single operator polling every few seconds sees little benefit; the win is under concurrent access. Set it to `0` to always build fresh.
 
-Per-request and per-action memory is the process heap at completion, not an isolated per-request figure — Bun shares one heap across concurrent work, so treat it as indicative rather than exact. The live queue, scheduler, and health adapters degrade gracefully: if the optional peer package is not installed, that section reads empty rather than throwing. And the panel never invents data — if a number is zero, nothing happened.
+Per-request and per-action memory is the process heap at completion, not an isolated per-request figure — Bun shares one heap across concurrent work, so treat it as indicative rather than exact. The live queue, scheduler, and health adapters degrade gracefully: they read those services from the container, so when the app does not register the provider, that section reads empty rather than throwing. And the panel never invents data — if a number is zero, nothing happened.
 
 ## References
 

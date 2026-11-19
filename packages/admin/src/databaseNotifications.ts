@@ -13,11 +13,14 @@
  * Everything is optional and adjustable: which user the notifications belong to,
  * how a stored row becomes a title and a link, and which table to read.
  *
- * `@zerotal/notifications` and `@zerotal/auth` are resolved lazily, so neither
- * becomes a hard dependency of the admin package for apps that don't use this.
+ * `@zerotal/notifications` is an optional peer: an app that uses this installs
+ * it, and one that does not never loads it. Without it, the bell throws an
+ * `OptionalPeerMissingError` naming the install command, rather than showing an
+ * empty list that looks like nobody has been notified.
  */
 import type { AdminNotification, NotificationProvider } from "./notifications.ts";
 import { frameworkLog } from "@zerotal/core/logger";
+import { optionalPeer, OptionalPeerMissingError } from "@zerotal/core/runtime";
 
 /** A stored notification row, as `DatabaseChannel` writes it. */
 export interface StoredNotification {
@@ -78,12 +81,40 @@ function defaultPresent(row: StoredNotification, data: Record<string, unknown>):
   };
 }
 
+/** The part of `@zerotal/notifications` the bell uses. */
+interface NotificationsModule {
+  DatabaseChannel?: new (table?: string) => DatabaseChannelLike;
+}
+
+/**
+ * Load `@zerotal/notifications`, or throw `OptionalPeerMissingError` when it is
+ * not installed. Shared with the doctor check, so both name the same feature.
+ */
+export async function loadNotifications(): Promise<NotificationsModule> {
+  return import("@zerotal/notifications" as string).catch(
+    optionalPeer("@zerotal/notifications", {
+      feature: "Panel.notifications(databaseNotifications())",
+      alternative: "pass Panel.notifications() a provider of your own",
+    }),
+  );
+}
+
+/** Providers built by {@link databaseNotifications}, so the doctor check can find them. */
+const built = new WeakSet<NotificationProvider>();
+
+/** Whether `provider` came from {@link databaseNotifications}, and so needs the package. */
+export function isDatabaseNotifications(provider: NotificationProvider): boolean {
+  return built.has(provider);
+}
+
 /**
  * Build a {@link NotificationProvider} reading from the notifications table.
  *
  * Every method fails soft: a missing table, an unconfigured database or a
  * signed-out user yields an empty bell rather than a broken panel, because a
- * notification centre is never worth taking the page down for.
+ * notification centre is never worth taking the page down for. The one
+ * exception is `@zerotal/notifications` not being installed, which throws
+ * `OptionalPeerMissingError`: no amount of waiting fixes that.
  */
 export function databaseNotifications(
   options: DatabaseNotificationOptions = {},
@@ -95,25 +126,20 @@ export function databaseNotifications(
   let channel: Promise<DatabaseChannelLike | null> | null = null;
   const getChannel = (): Promise<DatabaseChannelLike | null> => {
     channel ??= (async () => {
-      try {
-        const mod = (await import(/* @vite-ignore */ "@zerotal/notifications" as string)) as {
-          DatabaseChannel?: new (table?: string) => DatabaseChannelLike;
-        };
-        if (!mod.DatabaseChannel) return null;
-        return new mod.DatabaseChannel(options.table);
-      } catch {
-        return null;
-      }
+      const mod = await loadNotifications();
+      if (!mod.DatabaseChannel) return null;
+      return new mod.DatabaseChannel(options.table);
     })();
     return channel;
   };
 
   const getNotifiable = async (): Promise<unknown> => {
     if (options.notifiable) return options.notifiable();
+    // A dependency, loaded on first use so a panel without a bell never loads it.
+    const mod = (await import("@zerotal/auth" as string)) as {
+      Auth?: { user?: () => unknown };
+    };
     try {
-      const mod = (await import(/* @vite-ignore */ "@zerotal/auth" as string)) as {
-        Auth?: { user?: () => unknown };
-      };
       return mod.Auth?.user?.() ?? null;
     } catch {
       return null;
@@ -130,12 +156,14 @@ export function databaseNotifications(
       if (!c || !notifiable || typeof notifiable !== "object") return fallback;
       return await fn(c, notifiable);
     } catch (error) {
+      // Not installed is a setup mistake, not a bad moment: say what to install.
+      if (error instanceof OptionalPeerMissingError) throw error;
       frameworkLog("admin").warn("Database notifications unavailable", undefined, error);
       return fallback;
     }
   };
 
-  return {
+  const provider: NotificationProvider = {
     async resolve(): Promise<AdminNotification[]> {
       return withChannel(async (c, notifiable) => {
         const rows = await c.all(notifiable);
@@ -159,6 +187,8 @@ export function databaseNotifications(
       }, undefined);
     },
   };
+  built.add(provider);
+  return provider;
 }
 
 /** The slice of `DatabaseChannel` this bridge uses. */

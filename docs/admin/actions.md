@@ -145,9 +145,11 @@ import { ImportRecordsJob } from "@zerotal/admin";
 JobRegistry.register(ImportRecordsJob);
 ```
 
-With no queue configured, a queued import falls back to running inline rather
-than silently doing nothing. `@zerotal/queue` stays an optional peer: it is
-imported only when an import is actually queued.
+With no queue driver configured, a queued import falls back to running inline
+rather than silently doing nothing. The panel does not install `@zerotal/queue`:
+add it with `bun add @zerotal/queue`. It is loaded only when an import is actually
+queued, and without it a queued import throws `OptionalPeerMissingError` with that
+command.
 
 ## Relations
 

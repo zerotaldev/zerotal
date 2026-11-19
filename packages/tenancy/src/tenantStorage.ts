@@ -16,6 +16,7 @@
  * const hit = await tenantCache().get<Stats>('stats');
  */
 
+import { optionalPeer } from "@zerotal/core/runtime";
 import { TenantContext } from "./TenantContext.ts";
 import { TenancyConfigError, TenantStoragePathError } from "./errors.ts";
 
@@ -167,16 +168,23 @@ export function tenantCache(store?: string, cacheResolver?: CacheResolverLike): 
   });
 }
 
+/**
+ * The `Cache` facade from `@zerotal/cache`, an optional peer.
+ *
+ * Loaded with `require()` because this resolver is synchronous. When the
+ * package is not installed it throws `OptionalPeerMissingError` naming the
+ * install command; anything else the package throws while loading is rethrown.
+ */
 function _resolveCache(): CacheResolverLike {
+  let cache: { Cache: CacheResolverLike };
   try {
-    // Optional peer probed synchronously — a static import would fail when the
-    // package is absent, and this resolver cannot be async.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Cache } = require("@zerotal/cache") as { Cache: CacheResolverLike };
-    return Cache;
-  } catch {
-    throw new TenancyConfigError(
-      "tenantCache() requires @zerotal/cache to be installed and configured.",
-    );
+    cache = require("@zerotal/cache");
+  } catch (error) {
+    return optionalPeer("@zerotal/cache", {
+      feature: "tenantCache()",
+      alternative: "pass tenantCache() a cache manager as its second argument",
+    })(error);
   }
+  return cache.Cache;
 }

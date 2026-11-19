@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Deprecated
+
+- **`NotificationFake` from `@zerotal/testing` (and `zerotal/testing`).** Import it from
+  `@zerotal/notifications`, where it lives. The re-export is the only reason this package depends
+  on notifications, so every app installing it gets that package whether it sends notifications
+  or not. It is marked `@deprecated`, so editors flag the old import, and it is scheduled for
+  removal in 1.18.
+
 ## [1.16.2] — 2026-10-30
 
 ### Changed

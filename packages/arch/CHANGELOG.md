@@ -13,6 +13,13 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Changed
+
+- **`@zerotal/orm` is declared as an optional peer.** The schema report loads it when the app has
+  it, and it was declared only as a devDependency. An app without the ORM still gets the report
+  with its "not installed" note. An ORM that is installed but fails to load is now reported as its
+  own error rather than as "not installed".
+
 ## [1.8.0] — 2026-08-24
 
 ### Added

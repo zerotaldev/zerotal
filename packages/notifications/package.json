@@ -38,6 +38,14 @@
     "@zerotal/broadcasting": "workspace:*",
     "typescript": "^5.8.0"
   },
+  "peerDependencies": {
+    "@zerotal/broadcasting": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@zerotal/broadcasting": {
+      "optional": true
+    }
+  },
   "description": "Multi-channel notifications for Zerotal — mail (SMTP/Resend), database, broadcast, Slack, and SMS.",
   "keywords": [
     "zerotal",

@@ -16,6 +16,10 @@ follows the Zerotal monorepo's unified versioning.
   uses the v4 names for what it rendered before (`shadow-xs`, `outline-hidden`), so it looks the
   same, except that default borders in dark mode now take the dark `--border` token rather than a
   light grey and the status colours use v4's palette.
+- **The unused `@zerotal/queue`, `@zerotal/scheduler` and `@zerotal/telemetry` peer
+  declarations are gone.** The monitor reads those services from the container and never imports
+  the packages, so the declarations described a coupling that does not exist. The panel shows
+  their sections when the app registers their providers, as before. Nothing changes for an app.
 
 ### Fixed
 

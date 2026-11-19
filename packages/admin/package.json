@@ -32,27 +32,29 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@zerotal/auth": "workspace:*",
     "@zerotal/cache": "workspace:*",
     "@zerotal/core": "workspace:*",
     "@zerotal/flow": "workspace:*",
     "@zerotal/flow-ui": "workspace:*",
+    "@zerotal/orm": "workspace:*",
     "@zerotal/validator": "workspace:*"
   },
   "devDependencies": {
-    "@zerotal/orm": "workspace:*",
-    "@zerotal/auth": "workspace:*",
+    "@zerotal/audit": "workspace:*",
+    "@zerotal/notifications": "workspace:*",
     "@zerotal/queue": "workspace:*"
   },
   "peerDependencies": {
-    "@zerotal/orm": "^1.0.0",
-    "@zerotal/auth": "^1.0.0",
+    "@zerotal/audit": "^1.0.0",
+    "@zerotal/notifications": "^1.0.0",
     "@zerotal/queue": "^1.0.0"
   },
   "peerDependenciesMeta": {
-    "@zerotal/orm": {
+    "@zerotal/audit": {
       "optional": true
     },
-    "@zerotal/auth": {
+    "@zerotal/notifications": {
       "optional": true
     },
     "@zerotal/queue": {

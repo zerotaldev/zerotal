@@ -113,15 +113,15 @@ The pieces behind `mediaPicker` and the media library, for driving uploads yours
 
 ## Import and export
 
-| Export             | Signature                                                        | Description                                                                       |
-| ------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `importCsv`        | `(resource, csv, mapping?, { limit? }) => Promise<ImportResult>` | Import rows into a resource, honouring the column mapping.                        |
-| `parseCsv`         | `(text) => string[][]`                                           | Parse CSV text into rows of cells.                                                |
-| `toCsv`            | `(rows, columns) => string`                                      | Render rows as CSV using a resource's columns.                                    |
-| `toXlsx`           | `(rows, columns, { sheet? }) => Uint8Array`                      | Render rows as a spreadsheet.                                                     |
-| `dispatchImport`   | `(payload) => Promise<boolean>`                                  | Queue an import; `false` when no queue is bound, so the caller can run it inline. |
-| `runQueuedImport`  | `(payload) => Promise<ImportResult>`                             | Run a queued import — exported so an app can drive it from its own job class.     |
-| `ImportRecordsJob` | job class                                                        | The built-in job `dispatchImport` enqueues.                                       |
+| Export             | Signature                                                        | Description                                                                                                                                      |
+| ------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `importCsv`        | `(resource, csv, mapping?, { limit? }) => Promise<ImportResult>` | Import rows into a resource, honouring the column mapping.                                                                                       |
+| `parseCsv`         | `(text) => string[][]`                                           | Parse CSV text into rows of cells.                                                                                                               |
+| `toCsv`            | `(rows, columns) => string`                                      | Render rows as CSV using a resource's columns.                                                                                                   |
+| `toXlsx`           | `(rows, columns, { sheet? }) => Uint8Array`                      | Render rows as a spreadsheet.                                                                                                                    |
+| `dispatchImport`   | `(payload) => Promise<boolean>`                                  | Queue an import; `false` when no queue driver is configured, so the caller can run it inline, and throws when `@zerotal/queue` is not installed. |
+| `runQueuedImport`  | `(payload) => Promise<ImportResult>`                             | Run a queued import — exported so an app can drive it from its own job class.                                                                    |
+| `ImportRecordsJob` | job class                                                        | The built-in job `dispatchImport` enqueues.                                                                                                      |
 
 ## Builder classes
 
@@ -142,12 +142,12 @@ the like-named factory documented in its own guide.
 
 ## History and permissions
 
-| Export             | Signature                                | Description                                                                                        |
-| ------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `recordHistory`    | `(options) => Promise<HistoryEntry[]>`   | A record's audit history, newest first; empty rather than throwing when the audit table is absent. |
-| `panelPermissions` | `(panel: PanelInstance) => Permission[]` | Every permission a panel checks, derived from what it has registered — use it to seed roles.       |
-| `roleHas`          | `(role, held: string) => boolean`        | Whether a role holds a permission; a superuser holds everything by definition.                     |
-| `authRoles`        | roles helper                             | The role set the auth pages recognise.                                                             |
+| Export             | Signature                                | Description                                                                                                                      |
+| ------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `recordHistory`    | `(options) => Promise<HistoryEntry[]>`   | A record's audit history, newest first; empty when the audit table is absent, and throws when `@zerotal/audit` is not installed. |
+| `panelPermissions` | `(panel: PanelInstance) => Permission[]` | Every permission a panel checks, derived from what it has registered — use it to seed roles.                                     |
+| `roleHas`          | `(role, held: string) => boolean`        | Whether a role holds a permission; a superuser holds everything by definition.                                                   |
+| `authRoles`        | roles helper                             | The role set the auth pages recognise.                                                                                           |
 
 ## Subpaths
 

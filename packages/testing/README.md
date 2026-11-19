@@ -94,18 +94,19 @@ The package exposes two subpaths:
 
 ### `@zerotal/testing` (`.`)
 
-| Export                                                              | Kind           | Description                                                                                       |
-| ------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
-| `createTestApp`, `TestApp`                                          | helper / class | Boot the app and drive HTTP requests (`actingAs`, `get`/`post`/…).                                |
-| `TestResponse`                                                      | class          | Fluent assertions on responses (`assertCreated`, `assertOk`, …).                                  |
-| `withDatabase`                                                      | helper         | Run a callback against a temporary connection.                                                    |
-| `refreshDatabase`                                                   | helper         | Suite-level transactional rollback. Type: `RefreshDatabaseOptions`.                               |
-| `resetTestState`                                                    | helper         | Dispose the `Application` and clear router/ORM observers/global scopes.                           |
-| `assertDatabaseHas`, `assertDatabaseMissing`, `assertDatabaseCount` | assertions     | Row-level database assertions.                                                                    |
-| `assertStoredFile`, `assertMissingFile`                             | assertions     | Storage assertions.                                                                               |
-| `Factory`, `FactoryBatch`                                           | classes        | Model factories. Type: `FactoryPayload`.                                                          |
-| `fake`                                                              | object         | Random data generator for arranging state.                                                        |
-| `MailFake`, `QueueFake`, `NotificationFake`                         | fakes          | In-memory fakes re-exported from `@zerotal/mail`, `@zerotal/queue`, and `@zerotal/notifications`. |
+| Export                                                              | Kind           | Description                                                                            |
+| ------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------- |
+| `createTestApp`, `TestApp`                                          | helper / class | Boot the app and drive HTTP requests (`actingAs`, `get`/`post`/…).                     |
+| `TestResponse`                                                      | class          | Fluent assertions on responses (`assertCreated`, `assertOk`, …).                       |
+| `withDatabase`                                                      | helper         | Run a callback against a temporary connection.                                         |
+| `refreshDatabase`                                                   | helper         | Suite-level transactional rollback. Type: `RefreshDatabaseOptions`.                    |
+| `resetTestState`                                                    | helper         | Dispose the `Application` and clear router/ORM observers/global scopes.                |
+| `assertDatabaseHas`, `assertDatabaseMissing`, `assertDatabaseCount` | assertions     | Row-level database assertions.                                                         |
+| `assertStoredFile`, `assertMissingFile`                             | assertions     | Storage assertions.                                                                    |
+| `Factory`, `FactoryBatch`                                           | classes        | Model factories. Type: `FactoryPayload`.                                               |
+| `fake`                                                              | object         | Random data generator for arranging state.                                             |
+| `QueueFake`                                                         | fake           | In-memory queue fake, re-exported from `@zerotal/queue`.                               |
+| `NotificationFake`                                                  | fake           | Deprecated: import it from `@zerotal/notifications`. The re-export is removed in 1.18. |
 
 ### `@zerotal/testing/preload` (`./preload`)
 

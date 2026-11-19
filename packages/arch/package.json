@@ -41,6 +41,14 @@
     "typescript": "^5.8.0",
     "@zerotal/orm": "workspace:*"
   },
+  "peerDependencies": {
+    "@zerotal/orm": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@zerotal/orm": {
+      "optional": true
+    }
+  },
   "description": "The Zerotal agent surface — an MCP server that hands coding agents the framework's machine-readable truth: exact API signatures, live routes and schema, version-matched docs, and `zt doctor`.",
   "keywords": [
     "zerotal",

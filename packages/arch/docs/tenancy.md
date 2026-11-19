@@ -445,6 +445,10 @@ await tenantCache().forget("dashboard:stats");
 const redisCache = tenantCache("redis");
 ```
 
+The cache is a separate package, and tenancy does not install it for you. Add it
+with `bun add @zerotal/cache` before calling `tenantCache()`. Without it, the first
+call throws `OptionalPeerMissingError` with that install command.
+
 ## Multi-database strategy
 
 Set `strategy: "multi-database"` and supply a `connect` factory. `TenancyProvider` builds the per-tenant connection pool and registers an ORM connection resolver, so every model query inside a tenant boundary is routed to that tenant's database automatically — app models stay plain:

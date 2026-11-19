@@ -1,4 +1,5 @@
 import { Job, JobRegistry } from "@zerotal/queue";
+import { optionalPeer } from "@zerotal/core/runtime";
 
 /**
  * Delivers one broadcast notification from a queue.
@@ -43,10 +44,14 @@ export class BroadcastNotificationJob extends Job {
   }
 
   async handle(): Promise<void> {
-    const { Broadcast } = (await import("@zerotal/broadcasting" as string)) as {
+    // The worker is a process of its own, so it needs @zerotal/broadcasting
+    // installed as much as the web process that queued the job.
+    const broadcasting: {
       Broadcast: { to(channel: string, event: string, data: unknown): void };
-    };
-    Broadcast.to(this._channel, this._event, this._data);
+    } = await import("@zerotal/broadcasting" as string).catch(
+      optionalPeer("@zerotal/broadcasting", { feature: "a queued broadcast notification" }),
+    );
+    broadcasting.Broadcast.to(this._channel, this._event, this._data);
   }
 }
 

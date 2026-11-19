@@ -635,7 +635,9 @@ bun zt compile --outfile=zerotal-app
 
 This produces a portable binary ideal for slim containers and edge hosts. Ship your
 `config/`, migrations, and built `public/` assets alongside it, and provide the same
-environment variables at runtime.
+environment variables at runtime. The framework's own browser scripts — the
+[Flow runtime](/docs/flow/performance#the-client-runtime) and the devtools panel — are
+inside the binary already.
 
 ## A minimal Dockerfile
 

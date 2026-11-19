@@ -12,6 +12,7 @@ import {
   checkManifest,
   checkSource,
   isPackageSpecifier,
+  isShipped,
   isUnbounded,
   lockResolver,
   packageOf,
@@ -130,6 +131,36 @@ describe("specifiers", () => {
     expect(packageOf("react-dom/server")).toBe("react-dom");
     expect(packageOf("@zerotal/core/runtime")).toBe("@zerotal/core");
     expect(packageOf("sharp")).toBe("sharp");
+  });
+});
+
+describe("isShipped", () => {
+  // Flow's own `files`: everything in src/ but the tests, fixtures and the browser
+  // entries, whose imports are devDependencies bundled at pack time.
+  const files = [
+    "CHANGELOG.md",
+    "dist",
+    "src",
+    "!src/client/index.ts",
+    "!src/**/*.test.ts",
+    "!src/**/__fixtures__/**",
+  ];
+
+  it("ships what a directory entry covers", () => {
+    expect(isShipped("src/router.ts", files)).toBe(true);
+    expect(isShipped("src/client/url.ts", files)).toBe(true);
+    expect(isShipped("dist/runtime.js", files)).toBe(true);
+  });
+
+  it("leaves out what a `!` entry names, by path or by glob", () => {
+    expect(isShipped("src/client/index.ts", files)).toBe(false);
+    expect(isShipped("src/client/url.test.ts", files)).toBe(false);
+    expect(isShipped("src/__fixtures__/app.ts", files)).toBe(false);
+  });
+
+  it("leaves out what no entry includes, and ships everything without `files`", () => {
+    expect(isShipped("scripts/build-client.ts", files)).toBe(false);
+    expect(isShipped("scripts/build-client.ts", undefined)).toBe(true);
   });
 });
 

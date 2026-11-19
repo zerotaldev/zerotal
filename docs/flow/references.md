@@ -226,8 +226,8 @@ For forms on pages with no Flow component. See
 | `data-enhance`        | Submit through `fetch` and patch the response in. `"false"` opts out.                  |
 | `data-enhance-target` | CSS selector for what to replace, instead of the form itself.                          |
 | `data-enhance-busy`   | Set on the form while a submission is in flight. Styling hook and re-entry guard.      |
-| `flowEnhanceTag()`    | The `<script>` tag to put in a non-Flow layout.                                        |
-| `FLOW_ENHANCE_PATH`   | `/__flow/enhance.js` — the path the bundle is served at.                               |
+| `flowEnhanceTag()`    | The `<script>` tag to put in a non-Flow layout. It links the bundle by content hash.   |
+| `FLOW_ENHANCE_PATH`   | `/__flow/enhance.js` — the unhashed path the bundle is also served at.                 |
 | `flow:enhanced`       | Window event after each swap; `detail.navigated` says whether a redirect was followed. |
 
 ## Client expressions

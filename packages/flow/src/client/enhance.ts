@@ -1,12 +1,13 @@
 // ── @zerotal/flow plain-form enhancement bundle ─────────────────────────────────
 //
-// The entry point for the second Bun.build() in FlowProvider.onBooting(). It
-// produces /__flow/enhance.js.
+// The entry for the `enhance` bundle (see ../clientBundles.ts), built into
+// dist/enhance.js when the package is packed and served at
+// /__flow/assets/enhance.<hash>.js (and, unhashed, at /__flow/enhance.js).
 //
 // **Deliberately separate from the runtime bundle, and deliberately tiny.** The
 // whole point of this feature is a page with *no Flow component on it* — an
 // ordinary server-rendered form, on a route that is not `Router.flow`. Such a page
-// is never served `/__flow/runtime.js`, so there is no script to hook into; and
+// is never served the Flow runtime, so there is no script to hook into; and
 // pulling Alpine and the WebSocket bridge onto a page with no component to drive
 // would be paying the entire framework's client cost for a submit handler.
 //

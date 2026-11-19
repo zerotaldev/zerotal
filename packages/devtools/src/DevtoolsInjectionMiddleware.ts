@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import type { NextFn, HttpContext } from "@zerotal/core";
 import { BaseMiddleware, tryCurrentApp } from "@zerotal/core";
 import { traceStore } from "./TraceStore.ts";
@@ -6,41 +5,35 @@ import { traceChannels } from "./tracing.ts";
 import { devtoolsAuthorized, devtoolsSettings } from "./enabled.ts";
 import { buildFrameworkMap } from "./map.ts";
 import { activityFeed } from "./activity.ts";
+import {
+  _DEVTOOLS_ASSET_PREFIX,
+  _devtoolsAssetResponse,
+  _loadDevtoolsAssets,
+  type DevtoolsBundleName,
+} from "./clientAssets.ts";
+import { _panelHtml } from "./panel.ts";
 
-// ── Injected browser client bundle ────────────────────────────────────────────
-// The in-page devtools panel is bundled for the browser on first request and
-// cached for the process lifetime (dev only — the provider is a no-op in prod).
-let _clientJs: string | null = null;
+// ── Browser bundles ───────────────────────────────────────────────────────────
+// The in-page panel and the standalone dashboard ship prebuilt (see clientAssets.ts)
+// and are served at hashed URLs under `/__zerotal/devtools/assets/`. The two paths
+// below are where they lived before they had a hash, kept for anything that names
+// them by hand.
 
-async function _buildClientJs(): Promise<string> {
-  if (_clientJs !== null) return _clientJs;
-  try {
-    const entry = fileURLToPath(new URL("./client-auto.ts", import.meta.url));
-    const result = await Bun.build({ entrypoints: [entry], target: "browser", minify: true });
-    const out = result.outputs[0];
-    _clientJs =
-      result.success && out ? await out.text() : "/* [Zerotal DevTools] client build failed */";
-  } catch (error) {
-    _clientJs = `/* [Zerotal DevTools] client build error: ${String(error)} */`;
-  }
-  return _clientJs;
-}
+/** Where a bundle is served under a name that never changes. */
+const UNHASHED: Record<string, DevtoolsBundleName> = {
+  "/__zerotal/devtools/client.js": "client",
+  "/__zerotal/devtools/dashboard.js": "dashboard",
+};
 
-/** The standalone dashboard bundle — the same panel, mounted full-window. */
-let _dashboardJs: string | null = null;
-
-async function _buildDashboardJs(): Promise<string> {
-  if (_dashboardJs !== null) return _dashboardJs;
-  try {
-    const entry = fileURLToPath(new URL("./dashboard-auto.ts", import.meta.url));
-    const result = await Bun.build({ entrypoints: [entry], target: "browser", minify: true });
-    const out = result.outputs[0];
-    _dashboardJs =
-      result.success && out ? await out.text() : "/* [Zerotal DevTools] dashboard build failed */";
-  } catch (error) {
-    _dashboardJs = `/* [Zerotal DevTools] dashboard build error: ${String(error)} */`;
-  }
-  return _dashboardJs;
+/** A bundle at its unhashed path: revalidated on every load, as it always was. */
+async function _unhashedBundle(name: DevtoolsBundleName): Promise<Response> {
+  const asset = (await _loadDevtoolsAssets())[name];
+  return new Response(asset?.body ?? `/* [Zerotal DevTools] ${name} bundle unavailable */`, {
+    headers: {
+      "Content-Type": "text/javascript; charset=utf-8",
+      "Cache-Control": "no-cache",
+    },
+  });
 }
 
 /** @internal */
@@ -216,27 +209,16 @@ export class DevtoolsInjectionMiddleware extends BaseMiddleware<DevtoolsInjectio
       });
     }
 
-    if (pathname === "/__zerotal/devtools/client.js") {
-      return new Response(await _buildClientJs(), {
-        headers: {
-          "Content-Type": "text/javascript; charset=utf-8",
-          "Cache-Control": "no-cache",
-        },
-      });
+    if (pathname.startsWith(_DEVTOOLS_ASSET_PREFIX)) {
+      return await _devtoolsAssetResponse(http.request);
     }
 
-    if (pathname === "/__zerotal/devtools/dashboard.js") {
-      return new Response(await _buildDashboardJs(), {
-        headers: {
-          "Content-Type": "text/javascript; charset=utf-8",
-          "Cache-Control": "no-cache",
-        },
-      });
-    }
+    const unhashed = UNHASHED[pathname];
+    if (unhashed) return await _unhashedBundle(unhashed);
 
     if (pathname === "/__zerotal/devtools" || pathname === "/__zerotal/devtools/") {
-      const html = await Bun.file(new URL("./panel.html", import.meta.url)).text();
-      return new Response(html, {
+      const dashboard = (await _loadDevtoolsAssets()).dashboard;
+      return new Response(_panelHtml(dashboard?.path ?? "/__zerotal/devtools/dashboard.js"), {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }

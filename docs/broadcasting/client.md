@@ -11,7 +11,8 @@ description: Subscribe from the browser and react to events as they arrive.
 protocol and exposes a familiar realtime-client API — no external client library, and it works
 with the lightweight `ws` and `redis` drivers (no Pusher credentials needed).
 
-**Flow apps need none of this.** The client is bundled into `/__flow/runtime.js` and created the
+**Flow apps need none of this.** The client is bundled into the
+[Flow runtime](/docs/flow/performance#the-client-runtime) and created the
 first time a page declares a [`@on('socket:…')`](/docs/flow/events) listener, so those listeners
 are live with no script of your own. Read on only if you want a configured client — a different
 host, your own auth endpoint — or if you are subscribing from code that is not a Flow component.

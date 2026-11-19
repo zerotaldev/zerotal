@@ -6,7 +6,7 @@
  * a `Component` would be testing a different feature: those pages already have the
  * runtime, a socket and a morph. These routes are ordinary `Router.get` /
  * `Router.post` handlers returning strings, which is what an app's non-Flow pages
- * are, and they pull in `/__flow/enhance.js` by hand the way a layout would.
+ * are, and they pull in the enhancement with `flowEnhanceTag()` the way a layout would.
  */
 import { Router, type HttpContext } from "@zerotal/core";
 import { flowEnhanceTag } from "../../enhanceTag.ts";

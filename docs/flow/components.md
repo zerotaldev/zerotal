@@ -842,9 +842,26 @@ In CSP mode, **every page must AOT-compile** — an unsupported expression fails
 ```http
 Content-Security-Policy:
   default-src 'self';
-  script-src 'nonce-<random>' 'strict-dynamic';
+  script-src 'self';
   style-src 'self' 'unsafe-inline';
 ```
+
+`script-src 'self'` is enough. The scripts Flow puts on a page are files from your own origin
+— the [client runtime](/docs/flow/performance#the-client-runtime) and your route table, both
+under `/__flow/` — so the policy needs no nonce, no hash and no `'unsafe-inline'`, and in
+CSP-safe mode no `'unsafe-eval'` either.
+
+The one exception is a child rendered with
+[`stream`](/docs/flow/layouts#streaming-the-initial-render), which swaps itself into the page
+with an inline script. This policy blocks that script, so the child's placeholder stays; under a
+strict policy, load slow children with `lazy` or `defer` instead.
+
+Do not use a nonce-only policy, one with `'strict-dynamic'`. Flow does not put a nonce on its
+script tags, and under such a policy a browser ignores `'self'`, so it blocks the runtime and
+nothing on the page responds.
+
+The `style-src 'unsafe-inline'` is for the small `<style>` block Flow puts in each page's head,
+which hides `cloak`ed elements until the runtime starts.
 
 ### View Transitions
 

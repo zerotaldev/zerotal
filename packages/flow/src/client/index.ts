@@ -1,7 +1,11 @@
 // ── @zerotal/flow client bundle entry point ─────────────────────────────────────
 //
-// This file is the entry point for Bun.build() in FlowProvider.onBooting().
-// It produces /__flow/runtime.js served to browsers.
+// The entry for the `runtime` bundle (see ../clientBundles.ts): built into
+// dist/runtime.js when the package is packed, and from here at boot in a checkout
+// of the repository. Served at /__flow/assets/runtime.<hash>.js.
+//
+// This file is not in the published package — only what is built from it is — so
+// it may import devDependencies, which is what Alpine and its plugins are.
 //
 // Includes:
 //   - Alpine.js core

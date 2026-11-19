@@ -192,4 +192,48 @@ describe("the bundler and the import shape", () => {
       ),
     ).toBe(false);
   });
+
+  // A bundled require() of a package that was absent at build time throws the
+  // bundler's own stub error, with no code and no specifier — what a compiled
+  // app without the peer sees.
+  test("a bundled require() of an absent package is still reported as missing", async () => {
+    const entry = join(dir, "requireEntry.ts");
+    writeFileSync(
+      entry,
+      `import { optionalPeer } from ${JSON.stringify(join(import.meta.dir, "optionalPeer.ts"))};\n` +
+        `export function load(): unknown {\n` +
+        `  try {\n` +
+        `    return require("${ABSENT}");\n` +
+        `  } catch (error) {\n` +
+        `    return optionalPeer("${ABSENT}", { feature: "f" })(error);\n` +
+        `  }\n` +
+        `}\n` +
+        `export function loadOther(): unknown {\n` +
+        `  try {\n` +
+        `    return require("${ABSENT}");\n` +
+        `  } catch (error) {\n` +
+        `    return optionalPeer("some-other-package", { feature: "f" })(error);\n` +
+        `  }\n` +
+        `}\n`,
+    );
+    const outdir = join(dir, "requireBundle");
+    const result = await Bun.build({ entrypoints: [entry], target: "bun", outdir, throw: false });
+    expect(result.success).toBe(true);
+
+    const bundled = (await import(pathToFileURL(join(outdir, "requireEntry.js")).href)) as {
+      load: () => unknown;
+      loadOther: () => unknown;
+    };
+    // The bundle carries its own copy of the error class, so compare the code.
+    const codeOf = (fn: () => unknown): unknown => {
+      try {
+        fn();
+      } catch (error) {
+        return (error as { code?: unknown }).code;
+      }
+      return "did not throw";
+    };
+    expect(codeOf(bundled.load)).toBe("E_OPTIONAL_PEER_MISSING");
+    expect(codeOf(bundled.loadOther)).toBeUndefined();
+  });
 });

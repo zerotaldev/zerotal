@@ -62,11 +62,26 @@ function packageName(spec: string): string {
  * that is missing one of *its own* dependencies — a broken install, which must be
  * reported as itself and not as "install the package you already have". Bun puts
  * the unresolved name in `specifier`, so that case names a different package.
+ *
+ * One failure carries neither. `bun build` (and so `bun zt compile`) cannot leave
+ * a `require()` it failed to resolve in the bundle, and writes
+ * `throw new Error("Cannot require module " + "<name>")` in its place: a plain
+ * `Error`, no `code`, no `specifier`, the same on Bun 1.3.14 and 1.4. That text is
+ * the bundler's own, not a resolver message, and it is compared whole with this
+ * peer's name in it, so a nested package missing still names a different one.
  */
 function isMissing(error: unknown, spec: string): boolean {
   if (typeof error !== "object" || error === null) return false;
   const { code, specifier } = error as { code?: unknown; specifier?: unknown };
-  return (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") && specifier === spec;
+  if ((code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") && specifier === spec) {
+    return true;
+  }
+  return (
+    error instanceof Error &&
+    error.constructor === Error &&
+    code === undefined &&
+    error.message === `Cannot require module ${spec}`
+  );
 }
 
 /**

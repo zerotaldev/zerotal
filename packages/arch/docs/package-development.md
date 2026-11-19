@@ -182,9 +182,13 @@ It carries:
 Every other failure is rethrown unchanged. That covers a peer that throws while
 loading and an installed peer that is missing one of its own dependencies, so a
 broken install is never reported as a missing one. The handler decides this from
-the error's `code` and `specifier`, never from its message.
+the error's `code` and `specifier`, never from the resolver's message, which
+differs between Bun releases.
 
-For a synchronous `require()`, call the handler from the `catch` block:
+For a synchronous `require()`, call the handler from the `catch` block. In a
+bundled or compiled app built without the package, that `require()` throws the
+bundler's own `Cannot require module <name>` error instead, with no `code`. The
+handler recognises that one by its exact text and the peer's name:
 
 ```typescript
 import { optionalPeer } from "@zerotal/core/runtime";

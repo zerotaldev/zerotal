@@ -10,6 +10,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`optionalPeer()` reports a missing package loaded with `require()` in a compiled app.** A
+  bundle built without the package replaces that `require()` with the bundler's own
+  `Cannot require module <name>` error, which has no `code` and no `specifier`, so the handler
+  rethrew it as it came instead of throwing `OptionalPeerMissingError` with the install command.
+  It now recognises that error when it names the peer being loaded. A `require()` of an installed
+  package that is missing one of its own dependencies still names that other package, and is
+  still rethrown.
+
 - **A binary built by `bun zt compile` starts.** Loading `@zerotal/core` read the framework's
   `package.json` from a path beside the module to learn its own version, and inside a compiled
   binary that path points nowhere, so every binary exited with `ENOENT` before the app booted, on

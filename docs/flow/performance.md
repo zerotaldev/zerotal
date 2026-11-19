@@ -69,9 +69,9 @@ What follows from that:
   one of its plugins, declare it in your app's dependencies.
 - **Turning [`cspSafe`](/docs/flow/components#csp-safe-mode) on or off changes the runtime's
   URL**, because it serves a different build.
-- **A compiled app carries the runtime inside the binary**, so
-  [`bun zt compile`](/docs/deployment#compile-to-a-single-binary) needs nothing shipped beside it
-  for Flow.
+- **A binary built by [`bun zt compile`](/docs/deployment#compile-to-a-single-binary) carries the
+  runtime inside it.** A compiled Flow app does not serve its pages yet; that page says what a
+  binary runs today.
 - **A page rendered before a deploy keeps working.** It asks for a hash the new server does not
   have, and is redirected to the current file.
 

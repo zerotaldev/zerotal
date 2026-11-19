@@ -64,6 +64,9 @@ change.
   `src/client/`, so the boot-time `Bun.build` failed with `ENOENT` inside it, and every page was
   served without a runtime: rendered, and inert. The prebuilt bundles are now read through an
   import the bundler follows, so the binary embeds them and serves them like any other install.
+  A compiled Flow app still does not serve its pages: they are transpiled from disk at boot
+  without the app's `tsconfig.json`, so each fails to load and answers 404. Deploy a Flow app
+  with Bun and an installed `node_modules`, as the Deployment page describes.
 
 ## [1.16.4] — 2026-11-17
 

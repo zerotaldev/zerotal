@@ -49,7 +49,11 @@ follows the Zerotal monorepo's unified versioning.
   any command. The version now comes from importing the manifest, which the bundler embeds, so
   `ZEROTAL_VERSION` is the same in a source run and in a binary. `installedCoreVersion()` still
   reads `node_modules` on purpose, since it reports what is installed rather than what is
-  running, and returns `null` when nothing is installed beside the binary.
+  running, and returns `null` when nothing is installed beside the binary. A binary runs the
+  console commands that need none of the app's files, such as `list` and `version`; it does not
+  serve an app yet, because `config/`, routes, migrations and pages are still loaded from disk
+  when it runs. Deployment's "Compile to a single binary" section says what works and how to
+  deploy instead.
 - **`bun zt compile` finds the starters' entry point.** With no `--entry` it compiled
   `zerotal.ts`, which no starter has, so it failed with `ModuleNotFound` in every new app. It now
   compiles `zt.ts`, and falls back to `zerotal.ts` in a project that has no `zt.ts`. On Windows

@@ -133,7 +133,8 @@ Router.group({ prefix: "/api", middleware: [BearerTokenMiddleware] }, () => {
 - **Password reset** — `PasswordBroker`, `PASSWORDS`
 - **Magic links** — `MagicLinkBroker`, `MAGIC`
 - **Two-factor** — `TwoFactorService`, `TwoFactor`
-- **WebAuthn / passkeys** — `PasskeyService`
+- **WebAuthn / passkeys** — `PasskeyService`. Its library is not installed with this package:
+  an app that uses passkeys adds it with `bun add @simplewebauthn/server reflect-metadata`.
 
 ## Documentation
 

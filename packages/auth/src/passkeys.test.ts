@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeEach, beforeAll } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -76,7 +76,22 @@ mock.module("@simplewebauthn/server", () => ({
 // ── Import after mocks are registered ────────────────────────────────────────
 
 import { PasskeyService } from "./Passkeys.ts";
-import type { PasskeyCredential } from "./Passkeys.ts";
+import type {
+  PasskeyAuthenticationOptionsJSON,
+  PasskeyAuthenticationResponseJSON,
+  PasskeyCredential,
+  PasskeyDeviceType,
+  PasskeyRegistrationOptionsJSON,
+  PasskeyRegistrationResponseJSON,
+  _WebAuthnLibrary,
+} from "./Passkeys.ts";
+import type {
+  AuthenticationResponseJSON,
+  CredentialDeviceType,
+  PublicKeyCredentialCreationOptionsJSON as LibraryCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON as LibraryRequestOptionsJSON,
+  RegistrationResponseJSON,
+} from "@simplewebauthn/server";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -190,6 +205,31 @@ describe("PasskeyService.registrationOptions()", () => {
     const [passedOpts] = _mockGenerateRegistrationOptions.mock.calls[0]!;
     expect((passedOpts as any).supportedAlgorithmIDs).toEqual([-8, -7, -257]);
   });
+
+  it("lets the browser offer every kind of authenticator unless told otherwise", async () => {
+    const svc = new PasskeyService(makeOpts());
+    await svc.registrationOptions(makeUser());
+
+    const [passedOpts] = _mockGenerateRegistrationOptions.mock.calls[0]!;
+    expect((passedOpts as any).authenticatorSelection).not.toHaveProperty(
+      "authenticatorAttachment",
+    );
+  });
+
+  it.each(["platform", "cross-platform"] as const)(
+    "asks for a %s authenticator when authenticatorAttachment says so",
+    async (attachment) => {
+      const svc = new PasskeyService(makeOpts({ authenticatorAttachment: attachment }));
+      await svc.registrationOptions(makeUser());
+
+      const [passedOpts] = _mockGenerateRegistrationOptions.mock.calls[0]!;
+      expect((passedOpts as any).authenticatorSelection).toMatchObject({
+        authenticatorAttachment: attachment,
+        residentKey: "preferred",
+        userVerification: "required",
+      });
+    },
+  );
 });
 
 // ── verifyRegistration() ──────────────────────────────────────────────────────
@@ -569,26 +609,71 @@ describe("PasskeyService.verifyAuthentication()", () => {
   });
 });
 
+// ── Running a fixture in a process of its own ─────────────────────────────────
+
+/**
+ * This file mocks the library for the whole process, so the real one, and its absence, are
+ * driven by fixtures in processes of their own. Each prints one JSON line, the last of its
+ * output; see the fixture for what each field means.
+ */
+async function runProcess(cmd: string[], cwd?: string): Promise<string> {
+  const proc = Bun.spawn(cmd, { ...(cwd ? { cwd } : {}), stdout: "pipe", stderr: "pipe" });
+  const [out, err, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  if (code !== 0) throw new Error(`${cmd.join(" ")} exited ${code}: ${err}`);
+  return out.trim().split("\n").at(-1)!;
+}
+
+async function runScript(path: string): Promise<string> {
+  return runProcess([process.execPath, path]);
+}
+
+/**
+ * A directory with nothing installed in it or above it, standing in for an app that never added
+ * a package. The empty `node_modules` turns Bun's auto-install off, which would otherwise fetch a
+ * missing package on import instead of reporting it.
+ *
+ * With `usesPasskeys`, the app has a source file that constructs `PasskeyService`, which is what
+ * the doctor check looks for.
+ */
+function emptyApp(prefix: string, usesPasskeys = false): string {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  mkdirSync(join(dir, "node_modules"));
+  if (usesPasskeys) {
+    mkdirSync(join(dir, "app", "auth"), { recursive: true });
+    writeFileSync(
+      join(dir, "app", "auth", "passkeys.ts"),
+      `import { PasskeyService } from "zerotal/auth";\nexport const passkeys = new PasskeyService(options);\n`,
+    );
+  }
+  return dir;
+}
+
+/** Compile `entry` the way `bun zt compile` does, leaving the `external` packages out. */
+async function compile(entry: string, outfile: string, external: string[] = []): Promise<void> {
+  await runProcess([
+    process.execPath,
+    "build",
+    "--compile",
+    "--target=bun",
+    entry,
+    `--outfile=${outfile}`,
+    ...external.flatMap((name) => ["--external", name]),
+  ]);
+}
+
+const FIXTURES = `${import.meta.dir}/__fixtures__`;
+const BINARY = process.platform === "win32" ? "app.exe" : "app";
+const ALGORITHMS = [-8, -7, -257];
+
 // ── Against the real library ──────────────────────────────────────────────────
 
 describe("PasskeyService against the real @simplewebauthn/server", () => {
-  /**
-   * This file mocks the library for the whole process, so the real one is driven by a fixture in
-   * a process of its own. It prints one JSON line; see the fixture for what each field means.
-   */
-  async function runScript(path: string): Promise<string> {
-    const proc = Bun.spawn([process.execPath, path], { stdout: "pipe", stderr: "pipe" });
-    const [out, err, code] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited,
-    ]);
-    if (code !== 0) throw new Error(`${path} exited ${code}: ${err}`);
-    return out.trim().split("\n").at(-1)!;
-  }
-
   async function runFixture(): Promise<Record<string, any>> {
-    return JSON.parse(await runScript(`${import.meta.dir}/__fixtures__/passkeys-real-library.ts`));
+    return JSON.parse(await runScript(`${FIXTURES}/passkeys-real-library.ts`));
   }
 
   let result: Record<string, any>;
@@ -603,7 +688,15 @@ describe("PasskeyService against the real @simplewebauthn/server", () => {
   });
 
   it("offers the three algorithms on any runtime", () => {
-    expect(result.algorithms).toEqual([-8, -7, -257]);
+    expect(result.algorithms).toEqual(ALGORITHMS);
+  });
+
+  it("asks the browser for no particular kind of authenticator by default", () => {
+    expect(result.authenticatorSelection).toEqual({
+      residentKey: "preferred",
+      requireResidentKey: false,
+      userVerification: "required",
+    });
   });
 
   it("throws a malformed origin from both verifications", () => {
@@ -621,14 +714,152 @@ describe("PasskeyService against the real @simplewebauthn/server", () => {
     const outdir = mkdtempSync(join(tmpdir(), "zerotal-passkeys-bundle-"));
     try {
       const build = await Bun.build({
-        entrypoints: [`${import.meta.dir}/__fixtures__/passkeys-bundled.ts`],
+        entrypoints: [`${FIXTURES}/passkeys-bundled.ts`],
         target: "bun",
         outdir,
       });
       expect(build.success).toBe(true);
-      expect(JSON.parse(await runScript(build.outputs[0]!.path))).toEqual([-8, -7, -257]);
+      expect(JSON.parse(await runScript(build.outputs[0]!.path))).toEqual(ALGORITHMS);
     } finally {
       rmSync(outdir, { recursive: true, force: true });
     }
   }, 60_000);
+
+  it("is embedded in a binary built by bun build --compile, and runs there", async () => {
+    // The import is written as a literal so the compiler can see it and embed the library. The
+    // binary runs from a directory with nothing installed, so only an embedded copy can answer.
+    const dir = emptyApp("zerotal-passkeys-compiled-");
+    try {
+      await compile(`${FIXTURES}/passkeys-bundled.ts`, join(dir, BINARY));
+      expect(JSON.parse(await runProcess([join(dir, BINARY)], dir))).toEqual(ALGORITHMS);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 120_000);
+});
+
+// ── Without the library ───────────────────────────────────────────────────────
+
+describe("PasskeyService in an app without @simplewebauthn/server", () => {
+  const INSTALL = "bun add @simplewebauthn/server reflect-metadata";
+
+  /**
+   * Bundle the fixture with `external` left out, then run it where nothing is installed.
+   *
+   * Bundled by `bun build` in a process of its own: on Bun 1.3.14 for Windows, `Bun.build()`
+   * run inside this test process stopped with "Unexpected reading file" on core's sources.
+   */
+  async function runBundledWithout(external: string[]): Promise<Record<string, any>> {
+    const dir = emptyApp("zerotal-passkeys-without-", true);
+    try {
+      const bundle = join(dir, "app.js");
+      await runProcess([
+        process.execPath,
+        "build",
+        "--target=bun",
+        `${FIXTURES}/passkeys-without-library.ts`,
+        `--outfile=${bundle}`,
+        ...external.flatMap((name) => ["--external", name]),
+      ]);
+      return JSON.parse(await runProcess([process.execPath, "--no-install", bundle], dir));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  /** Both packages left out: the app that installed neither. Bundled and run once. */
+  let withoutEither: Promise<Record<string, any>> | undefined;
+  const runWithoutEither = (): Promise<Record<string, any>> =>
+    (withoutEither ??= runBundledWithout(["@simplewebauthn/server", "reflect-metadata"]));
+
+  it("loads @zerotal/auth and runs what does not need passkeys", async () => {
+    const result = await runWithoutEither();
+    expect(result.hashedLength).toBe(64);
+  }, 60_000);
+
+  it("throws OptionalPeerMissingError from a ceremony, naming the command", async () => {
+    const result = await runBundledWithout(["@simplewebauthn/server"]);
+    expect(result.ceremony).toEqual({
+      threw: "OptionalPeerMissingError",
+      code: "E_OPTIONAL_PEER_MISSING",
+      missing: { peer: "@simplewebauthn/server", feature: "PasskeyService", install: INSTALL },
+      message: expect.stringContaining(`Install it: ${INSTALL}`),
+    });
+  }, 60_000);
+
+  it("names the same command when reflect-metadata is missing too", async () => {
+    // The polyfill is loaded first, so its absence is the one reported; the command installs both.
+    const result = await runWithoutEither();
+    expect(result.ceremony).toMatchObject({
+      threw: "OptionalPeerMissingError",
+      missing: { peer: "reflect-metadata", install: INSTALL },
+    });
+  }, 60_000);
+
+  it("fails `zt doctor` for an app whose source uses PasskeyService", async () => {
+    const result = await runWithoutEither();
+    expect(result.doctor).toEqual({
+      status: "fail",
+      message: expect.stringContaining("app/auth/passkeys.ts uses PasskeyService"),
+      fix: INSTALL,
+    });
+  }, 60_000);
+
+  it("builds into a binary without it, and the binary says what to install", async () => {
+    const dir = emptyApp("zerotal-passkeys-compiled-without-");
+    try {
+      await compile(`${FIXTURES}/passkeys-without-library.ts`, join(dir, BINARY), [
+        "@simplewebauthn/server",
+        "reflect-metadata",
+      ]);
+      const result = JSON.parse(await runProcess([join(dir, BINARY)], dir));
+      expect(result.hashedLength).toBe(64);
+      expect(result.ceremony).toMatchObject({
+        threw: "OptionalPeerMissingError",
+        code: "E_OPTIONAL_PEER_MISSING",
+        missing: { install: INSTALL },
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 120_000);
+});
+
+// ── Zerotal's own WebAuthn types ──────────────────────────────────────────────
+
+describe("Zerotal's WebAuthn types", () => {
+  /**
+   * Each entry is an assignment the type-checker has to accept, so `bun run typecheck:tests`
+   * fails when Zerotal's types and the real ones stop agreeing:
+   *
+   * - the library still accepts what the ceremonies pass it and returns what they read;
+   * - a response typed by the library (as its browser half types it) passes the verify methods;
+   * - the options the service returns can be handed to the browser's own JSON parsers and to the
+   *   library's types for them.
+   */
+  const agreements = {
+    library: (real: typeof import("@simplewebauthn/server")): _WebAuthnLibrary => real,
+    registrationResponse: (response: RegistrationResponseJSON): PasskeyRegistrationResponseJSON =>
+      response,
+    authenticationResponse: (
+      response: AuthenticationResponseJSON,
+    ): PasskeyAuthenticationResponseJSON => response,
+    registrationOptionsForTheBrowser: (
+      options: PasskeyRegistrationOptionsJSON,
+    ): PublicKeyCredentialCreationOptionsJSON => options,
+    registrationOptionsAsTheLibraryTypesThem: (
+      options: PasskeyRegistrationOptionsJSON,
+    ): LibraryCreationOptionsJSON => options,
+    authenticationOptionsForTheBrowser: (
+      options: PasskeyAuthenticationOptionsJSON,
+    ): PublicKeyCredentialRequestOptionsJSON => options,
+    authenticationOptionsAsTheLibraryTypesThem: (
+      options: PasskeyAuthenticationOptionsJSON,
+    ): LibraryRequestOptionsJSON => options,
+    deviceType: (type: CredentialDeviceType): PasskeyDeviceType => type,
+  };
+
+  it("agree with the library's and the browser's, as the type-checker sees them", () => {
+    expect(Object.keys(agreements)).toHaveLength(8);
+  });
 });

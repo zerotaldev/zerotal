@@ -838,7 +838,7 @@ interface CorsOptions = {
 }
 
 interface DevProcessDefinition = {
-  after?: 'server' | 'none'
+  after?: 'none' | 'server'
   color?: DevProcessColor
   command?: string | string[] | (() => string[])
   enabled?: boolean | (() => boolean | Promise<boolean>)

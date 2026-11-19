@@ -117,16 +117,24 @@
       "name": "@zerotal/auth",
       "version": "1.16.4",
       "dependencies": {
-        "@simplewebauthn/server": "^14.1.0",
         "@zerotal/cache": "workspace:*",
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
         "@zerotal/session": "workspace:*",
-        "reflect-metadata": "^0.2.2",
       },
       "devDependencies": {
+        "@simplewebauthn/server": "^14.1.0",
+        "reflect-metadata": "^0.2.2",
         "typescript": "^5.8.0",
       },
+      "peerDependencies": {
+        "@simplewebauthn/server": "^14.1.0",
+        "reflect-metadata": "^0.2.2",
+      },
+      "optionalPeers": [
+        "@simplewebauthn/server",
+        "reflect-metadata",
+      ],
     },
     "packages/broadcasting": {
       "name": "@zerotal/broadcasting",

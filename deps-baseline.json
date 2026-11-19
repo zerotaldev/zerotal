@@ -1,7 +1,6 @@
 {
   "note": "Dependency-policy violations that existed when deps:check landed. The gate fails only on one not listed here. Fix one, then run `bun run deps:check --update` to drop it; never add to this list to make the gate pass.",
   "violations": [
-    "dependency-not-allowed auth: @simplewebauthn/server (package.json)",
     "dependency-not-allowed flow: @alpinejs/anchor (package.json)",
     "dependency-not-allowed flow: @alpinejs/collapse (package.json)",
     "dependency-not-allowed flow: @alpinejs/focus (package.json)",

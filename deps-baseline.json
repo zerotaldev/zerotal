@@ -23,18 +23,12 @@
     "optional-peer-static admin: @zerotal/auth (packages/admin/src/auth/pages/ProfilePage.tsx)",
     "optional-peer-static admin: @zerotal/auth (packages/admin/src/auth/pages/VerifyEmailPage.tsx)",
     "optional-peer-type-import admin: @zerotal/orm (packages/admin/src/provider/AdminProvider.ts)",
-    "peer-without-dev inertia: @inertiajs/vue3 (package.json)",
-    "peer-without-dev inertia: vue (package.json)",
     "undeclared admin: @zerotal/audit (packages/admin/src/history.ts)",
     "undeclared admin: @zerotal/notifications (packages/admin/src/databaseNotifications.ts)",
     "undeclared core: @zerotal/orm (packages/core/src/command/builtin/TestCommand.ts)",
     "undeclared tenancy: @zerotal/cache (packages/tenancy/src/tenantStorage.ts)",
     "variable-specifier core: @zerotal/orm (packages/core/src/command/builtin/TestCommand.ts)",
     "variable-specifier flow: @zerotal/broadcasting (packages/flow/src/presence.ts)",
-    "variable-specifier flow: @zerotal/broadcasting (packages/flow/src/shared.ts)",
-    "variable-specifier inertia: react (packages/inertia/src/ssr/renderPage.ts)",
-    "variable-specifier inertia: react-dom (packages/inertia/src/inertia.ts)",
-    "variable-specifier inertia: react-dom (packages/inertia/src/ssr/renderPage.ts)",
-    "variable-specifier inertia: react-dom (packages/inertia/src/testing.ts)"
+    "variable-specifier flow: @zerotal/broadcasting (packages/flow/src/shared.ts)"
   ]
 }

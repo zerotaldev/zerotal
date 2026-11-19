@@ -81,8 +81,10 @@ something, and puts the work where it is useful: reading the notes for each mino
 
 A minor that installs less into an app. The packages it stops installing for you are the ones
 only some apps use, so most of the steps below apply only to apps that use the feature. After
-upgrading, run `bun zt doctor`. It names every optional package your app uses but has not
-installed, and gives the command to install it.
+upgrading, run `bun zt doctor`. It names a missing passkey library, image driver, AI provider
+SDK, Inertia framework package, and the admin panel's audit and notifications packages, each
+with the command to install it. The other optional packages below are not checked: read their
+steps.
 
 ### Passkeys need their library installed
 
@@ -124,7 +126,8 @@ phone reached by QR code, can now enrol. Sign-in is unchanged.
 
 1. **Content-Security-Policy.** If yours allows `https://cdn.tailwindcss.com` in `script-src`, replace
    it with `https://cdn.jsdelivr.net`. These pages also run two small inline scripts (dark mode and
-   the copy buttons), so their `script-src` needs `'unsafe-inline'`.
+   the copy buttons), so their `script-src` needs `'unsafe-inline'`, and outside CSP-safe mode
+   `'unsafe-eval'` as on every Flow page.
    [Recommended CSP header](/docs/flow/components#pages-rendered-with-flowuihead) has the policy.
 2. **Your own markup under `flowUiHead()`**: custom admin pages, widgets, infolist entries and Flow
    pages are now compiled by v4. Rename the v3 classes whose meaning changed:
@@ -144,9 +147,12 @@ phone reached by QR code, can now enrol. Sign-in is unchanged.
 3. **Your own stylesheet** (`theme.stylesheet`).
    - **With your own v4 build:** put `flowTailwindCss()` (or `adminTailwindCss()`) and
      `flowTokensCss()` (or `adminTokensCss()`) in your entry, after `@import "tailwindcss";`.
-   - **With a v3 build from a hand-written config:** add
-     `borderColor: { DEFAULT: "hsl(var(--border))" }` under `theme.extend`, or default borders turn
-     light grey in dark mode. `flowTailwindConfig()` and `adminTailwindConfig()` already do this.
+   - **With your own v3 build:** move it to v4. The components now use class names that v3 does
+     not generate (`outline-hidden`, `shadow-xs`, `bg-linear-to-*`), so under a v3 stylesheet
+     focused buttons show the browser's outline, inputs lose their shadow and scroll areas their
+     fade. Until you move, add `borderColor: { DEFAULT: "hsl(var(--border))" }` under
+     `theme.extend` in a hand-written config, or default borders turn light grey in dark mode;
+     `flowTailwindConfig()` and `adminTailwindConfig()` already do this.
 4. **Your own `body` or `*` rules.** The token border and page colours now sit in `@layer base`. An
    unlayered `body { background }` or `* { border-color }` rule of your own now wins over them.
 
@@ -166,11 +172,17 @@ bun add alpinejs
 
 Add any plugins you import as well.
 
-Flow's scripts now load from content-hashed URLs, and the route table is its own script at
-`/__flow/routes/<hash>.js`. A proxy rule that names `/__flow/runtime.js` or `/__flow/enhance.js`
-keeps working. Keep `/__flow/*` open at the proxy, as before. The route table passes through your
-app's global middleware like a page. If your own middleware turns away everything outside an
-allowlist, allow `/__flow/*`; otherwise `route()` and `navigate` stop working on public pages.
+### Flow's route table has its own URL
+
+Pages now load the app's route table from `/__flow/routes/<hash>.js`. In 1.16 it came inside
+`/__flow/runtime.js`. Like that script, it passes through your app's global middleware, so it is
+refused wherever a page would be.
+
+**What to change.** If your own middleware turns away everything outside an allowlist of public
+paths, add `/__flow/*` to the allowlist. Otherwise `route()` and `navigate` links stop working on
+public pages, without an error on the page itself. Keep `/__flow/*` open at the proxy, as before.
+A proxy rule or layout that names `/__flow/runtime.js` or `/__flow/enhance.js` keeps working; the
+other scripts now load from content-hashed URLs.
 
 ### A missing optional package throws
 

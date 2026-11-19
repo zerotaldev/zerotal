@@ -73,17 +73,20 @@ most apps need only some of them:
   with an integrity hash, in place of `cdn.tailwindcss.com`. The components' v4 classes now render,
   so checked switches fill in and invalid fields turn red. An app's own markup under the head is
   compiled by v4, and v3 class names whose meaning changed (`shadow-sm`, bare `ring`,
-  `outline-none`, `bg-opacity-*`) need renaming. The token border and page colours now sit in
+  `outline-none`, `bg-opacity-*`) need renaming. The components now use class names a Tailwind v3
+  build does not generate, so a stylesheet built with v3 has to move to v4. The token border and page colours now sit in
   `@layer base`. A Content-Security-Policy for these pages needs `cdn.jsdelivr.net` and
   `'unsafe-inline'` in `script-src`; [Recommended CSP header](/docs/flow/components#pages-rendered-with-flowuihead)
   has the whole policy.
 - **BREAKING (`@zerotal/flow`): Alpine is no longer installed into apps.** Flow's client runtime is
   prebuilt in the package, so an app whose own code imports `alpinejs` or an `@alpinejs/*` plugin
   adds it. The Alpine version is fixed for each Zerotal release.
+- **BREAKING (`@zerotal/flow`): the route table is its own script, at `/__flow/routes/<hash>.js`.**
+  Like `/__flow/runtime.js`, it passes through the app's global middleware and is cached privately.
+  An app whose own middleware turns away everything outside an allowlist must allow it, or
+  `route()` and `navigate` stop working on public pages.
 - **Flow's scripts are served at content-hashed URLs and cached for a year** (`@zerotal/flow`).
-  `/__flow/runtime.js` and `/__flow/enhance.js` still answer. The route table is its own script at
-  `/__flow/routes/<hash>.js`, cached privately. Unlike the other `/__flow/*` scripts, it passes
-  through the app's global middleware.
+  `/__flow/runtime.js` and `/__flow/enhance.js` still answer.
 - **BREAKING (`@zerotal/media`): a missing sharp fails conversions loudly.** With `driver: "sharp"`
   and sharp missing or unloadable, `addMedia()` into a collection with conversions now throws. It
   throws after storing the original, where it used to skip the conversions silently. sharp 0.35 is

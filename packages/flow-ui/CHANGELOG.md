@@ -45,7 +45,10 @@ follows the Zerotal monorepo's unified versioning.
 - Components use the v4 names for what they rendered under v3: `shadow-sm` → `shadow-xs`,
   `outline-none` → `outline-hidden`, `bg-gradient-to-*` → `bg-linear-to-*` (`ScrollArea`), and the
   `Slider` thumb grows on `hover:[&::-webkit-slider-thumb]:scale-110`. A copied-in component in an
-  app's own Tailwind v4 build renders a lighter shadow than before, matching the CDN.
+  app's own Tailwind v4 build renders a lighter shadow than before, matching the CDN. **BREAKING
+  for an app that links a Tailwind v3 stylesheet:** v3 does not generate these names, so focused
+  buttons show the browser's outline, inputs lose their shadow and `ScrollArea` its fade until the
+  stylesheet moves to v4 with `flowTailwindCss()`.
 
 ### Added
 

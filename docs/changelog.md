@@ -44,6 +44,8 @@ most apps need only some of them:
   compiled by Tailwind v4, and the script comes from `cdn.jsdelivr.net`.
 - **Importing `alpinejs` in your own code?** Add it to your `package.json`.
 - **Using `driver: "sharp"` for media?** Make sure sharp is installed.
+- **Running with a `TZ` other than UTC, or MySQL outside UTC?** Some dates read differently; run
+  `bun zt doctor`.
 
 ### Added
 
@@ -54,6 +56,8 @@ most apps need only some of them:
 - **`zt doctor` checks for optional packages.** It reports a missing WebAuthn library in an app that
   uses passkeys, a missing image driver, the AI provider SDK, the Inertia framework packages, and the
   admin panel's optional packages. Each report includes the install command.
+- **`zt doctor` checks MySQL's time zone** (`@zerotal/orm`). It warns when the app's connection
+  or the server's default zone is not UTC, in January or in July.
 - **Releases can publish with npm trusted publishing.** Packages not yet linked fall back to the
   token. This changes release tooling only.
 
@@ -106,6 +110,17 @@ most apps need only some of them:
   polyfill's `ZonedDateTime` methods and fails `instanceof` against its classes. Use the global
   `Temporal`. On Bun 1.3, the polyfill loads the first time Carbon needs a date, and nothing else
   changes.
+- **BREAKING (`@zerotal/orm`): dates read back as the instant saved, whatever the server's `TZ`.**
+  Zone-less date-time text, such as MySQL's `YYYY-MM-DD HH:MM:SS` or SQLite's
+  `CURRENT_TIMESTAMP`, is read as UTC, and MySQL `DATE`, `DATETIME` and `TIMESTAMP` columns read
+  the same on Bun 1.3 and 1.4. In 1.16, under a `TZ` other than UTC, every MySQL date moved by the
+  offset between a save and the next load. A value something else wrote as local time, such as a
+  column `NOW()` filled on a server outside UTC, now reads as UTC too, and code that added the
+  offset back now corrects twice. Nothing stored changes.
+- **A `Carbon` in `where()` binds the way a save stores it** (`@zerotal/orm`). On MySQL it bound as
+  ISO text and missed rows; on SQLite and PostgreSQL it dropped milliseconds, so
+  `where(column, "=", carbon)` missed a row saved from the same value. Such a query can now return
+  different rows.
 - **`@zerotal/ai` bounds the Anthropic SDK to `>=0.70.0 <2`**, and `bun zt compile` embeds it.
 - **The `NotificationFake` re-export from `@zerotal/testing` is deprecated.** Import it from
   `@zerotal/notifications`. The re-export is removed in 1.18.
@@ -120,10 +135,19 @@ most apps need only some of them:
 - **`bun zt compile` with no `--entry` compiles `zt.ts`**, the entry every starter ships.
 - **Vue pages render the way they should.** Scoped styles apply to `<script setup>` components, and
   a page with a plain `<script lang="ts">` compiles.
+- **With read replicas, a `WITH` statement that writes goes to the primary** (`@zerotal/orm`).
+  `WITH old AS (…) DELETE …` and `WITH d AS (DELETE … RETURNING *) SELECT …` were sent to a replica.
+- **A PostgreSQL `infinity` in a date column throws a `RangeError` naming the model and property**
+  (`@zerotal/orm`), the same on every Bun, and `DB.raw()` refuses an object of named parameters
+  with a message naming the positional form.
 - **Flow's `@presence` and `@shared` work in a compiled app** when broadcasting is installed.
-- **A `HEAD` request to an event-stream route answers at once** (`@zerotal/core`). It used to read
-  the endless body and never answer. Markdown pages now answer `HEAD` on Bun 1.3 as they do on
-  Bun 1.4.
+- **`HEAD` answers the way `GET` would** (`@zerotal/core`). A `HEAD` request to an event-stream
+  route answers at once instead of reading the endless body, and reports the length `GET` actually
+  sends, even when a middleware rewrote the page or a proxied response was decompressed. When a raw
+  `GET` takes over a path, `HEAD` follows it there. Markdown pages answer `HEAD` on Bun 1.3 as they
+  do on Bun 1.4.
+- **With `capturePayloads` on, event-stream routes answer again** (`@zerotal/monitor`). The
+  middleware no longer waits for a body that does not end.
 - **Signing in works in new Vue and api apps**, and the Vue starter registers `StorageProvider`.
   Apps already scaffolded can apply the same three-line change; see the upgrade guide.
 

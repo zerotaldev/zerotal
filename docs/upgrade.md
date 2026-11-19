@@ -244,6 +244,38 @@ export const Temporal = (globalThis as { Temporal?: typeof Polyfill }).Temporal 
 
 That is always the implementation Carbon runs on. See [Carbon](/docs/carbon).
 
+### The ORM reads dates back as the instant saved
+
+The ORM writes every date as UTC. It now reads them back that way too, whatever the server's `TZ`:
+zone-less date-time text, such as MySQL's `YYYY-MM-DD HH:MM:SS` or SQLite's `CURRENT_TIMESTAMP`,
+is read as UTC, and MySQL `DATE`, `DATETIME` and `TIMESTAMP` columns read the same on Bun 1.3 and
+1.4. In 1.16, under a `TZ` other than UTC, a MySQL date moved by the zone's offset between a save
+and the next load.
+
+A value that something else wrote as local time is now read as UTC as well, so under a `TZ` other
+than UTC it reads differently from 1.16. That covers a MySQL column that `NOW()` or
+`CURRENT_TIMESTAMP` filled on a server outside UTC, and text written as local time by another
+program or by hand-written SQL. Nothing stored changes.
+
+**What to change.**
+
+1. If `TZ` is unset or UTC and your MySQL server runs in UTC, nothing.
+2. Otherwise run `bun zt doctor`. If it warns about MySQL's time zone, run the server in UTC
+   (`default-time-zone = '+00:00'` under `[mysqld]`, or `SET GLOBAL time_zone = '+00:00'`), then
+   restart the app so its connections reopen. Bun 1.4.1 and later open every connection in UTC;
+   Bun 1.3 and 1.4.0 keep the server's zone and cannot set one per connection.
+3. Convert rows written in the old zone with `CONVERT_TZ`, or read such a column through a custom
+   cast. [The MySQL server's time zone](/docs/orm/casts#the-mysql-servers-time-zone) shows which rows move and the statement for each.
+4. Remove any code that added the zone offset back to dates the ORM read. It now corrects twice.
+5. On Bun 1.3, prefer `TZ=UTC`. Bun 1.3 cannot read back a MySQL time in the zone's
+   daylight-saving gap, and it reads a PostgreSQL `timestamp without time zone` column queried with
+   no bound values shifted the first time that query runs on a connection. Bun 1.4 reads both
+   correctly.
+
+A `Carbon` in `where()` now binds the way a save stores it, so a query that compared against a
+`Carbon` can return different rows: on MySQL it now finds rows it used to miss, and on SQLite and
+PostgreSQL an equality keeps its milliseconds.
+
 ### Also worth knowing (not breaking)
 
 - **`NotificationFake` moves.** Change `import { NotificationFake } from "zerotal/testing"` to

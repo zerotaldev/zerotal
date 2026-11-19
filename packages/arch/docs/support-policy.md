@@ -107,7 +107,7 @@ dependency order, from CI. Never mix versions across packages.
   tilde if you would rather cross a minor deliberately.
 - **A break is never silent.** Every one is called out in the release notes as
   **BREAKING**, with the reason and the migration steps, and the version gets its
-  own section in the Upgrade Guide. Nine have shipped so far — the
+  own section in the Upgrade Guide. Ten have shipped so far — the
   `ComponentWith` / `BaseModelWith` removal in 1.3.0, Flow's `socket:` listener
   prefix in 1.7.2, the removal of Flow's `this.title(…)` in 1.7.3, SQLite
   foreign-key enforcement in 1.11.0, `countTokens` returning `number | null` in
@@ -115,8 +115,14 @@ dependency order, from CI. Never mix versions across packages.
   Flow's `Component.client(…)` alongside two retired aliases in 1.13.0, and
   `inertia.ssr` no longer registering `POST /__ssr` in 1.14.0, and the model
   timestamps `createdAt` / `updatedAt` / `deletedAt` being typed `Carbon` rather
-  than `Date` in 1.15.0.
-- **One of those nine is in the wrong place, and it stays on the record.** 1.11.2
+  than `Date` in 1.15.0, and in 1.17.0 a group of changes to what an app must
+  install: the passkey library and Alpine are no longer installed for you, a
+  missing sharp or optional Zerotal package throws, and `.vue` pages need
+  `@vue/compiler-sfc` 3.3. The same release moved the panels to Tailwind v4,
+  gave Flow's route table its own URL, let passkey registration accept any
+  authenticator, handed out Bun's own `Temporal` from Carbon, and changed how the
+  ORM reads dates.
+- **One of those ten is in the wrong place, and it stays on the record.** 1.11.2
   is a patch, and by the rule above a patch cannot carry a break. It did: the
   `countTokens` signature changed in the same release that promoted `@zerotal/ai`
   to `stable`, and the reasoning that allowed it — the package was still

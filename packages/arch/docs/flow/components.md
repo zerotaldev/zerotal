@@ -871,9 +871,11 @@ policy above:
 
 - **Two inline scripts.** One applies the saved light or dark theme before the page paints; the
   other defines the theme toggle and copy-to-clipboard helpers. `flowUiHead()` takes no nonce, so
-  `script-src` needs `'unsafe-inline'` on these pages. A hash of each script in its place also
-  works, but the scripts can change in any release, so the hashes have to be taken again after
-  every upgrade.
+  `script-src` needs `'unsafe-inline'` on these pages. A hash of each script in its place works
+  only on a page that carries nothing else inline: the admin panel also writes scripts with
+  per-render data, for chart widgets and rich-text fields, which cannot be hashed ahead of time.
+  Hashes also have to be taken again after every upgrade, because the scripts can change in any
+  release.
 - **The Tailwind browser build**, a script from `https://cdn.jsdelivr.net` loaded with an
   integrity hash, which writes its CSS into an inline `<style>`. Setting `stylesheet` to a
   prebuilt file drops it, and with it this source.
@@ -882,10 +884,14 @@ policy above:
 ```http
 Content-Security-Policy:
   default-src 'self';
-  script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com;
 ```
+
+The `'unsafe-eval'` is there because outside [CSP-safe mode](#csp-safe-mode) the Flow runtime
+evaluates expressions with `new Function`, on these pages as on any other. Drop it only if the app
+runs in CSP-safe mode and every page it serves, the panels included, compiles ahead of time.
 
 A single policy for the whole app has to include these sources if the app serves any of these
 pages.

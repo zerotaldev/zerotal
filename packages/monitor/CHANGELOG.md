@@ -23,6 +23,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **An event-stream route answers with `capturePayloads` on.** `MonitorPayloadMiddleware` read
+  the whole response body before handing the response on, and an event stream has no end, so a
+  `GET` or `HEAD` to one never got a response. An event stream is no longer read, and any other
+  body is captured only when it is all there at once, as a string, JSON or rendered page is; a
+  stream that is still producing goes to the client with no body on the trace.
 - **A compiled binary that loads the monitor starts.** The monitor read its `package.json` from a
   path beside the module to report the framework version, which points nowhere inside a binary
   built by `bun zt compile`, so the binary exited with `ENOENT` at start-up. The version now comes

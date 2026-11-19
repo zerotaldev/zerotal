@@ -50,7 +50,9 @@ Click a row to expand its full trace — a span waterfall, the exact SQL that ra
 (correlated to that request), and its log lines. A failed request shows its
 exception message inline, so the trace explains why it failed. With
 `capturePayloads` on, the trace also carries the request and response headers and
-bodies, with sensitive headers and keys redacted.
+bodies, with sensitive headers and keys redacted. A response body is captured when it
+is all there at once, as a string, JSON or a rendered page is; an event stream, or any
+other stream still producing, goes to the client unread and the trace shows no body.
 
 Three widgets sit alongside: Slow requests, Application usage (busiest users),
 and Top memory (heaviest routes). Search by path or method, filter by status

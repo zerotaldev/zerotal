@@ -17,6 +17,11 @@ follows the Zerotal monorepo's unified versioning.
   `ZEROTAL_VERSION` is the same in a source run and in a binary. `installedCoreVersion()` still
   reads `node_modules` on purpose, since it reports what is installed rather than what is
   running, and returns `null` when nothing is installed beside the binary.
+- **`bun zt compile` finds the starters' entry point.** With no `--entry` it compiled
+  `zerotal.ts`, which no starter has, so it failed with `ModuleNotFound` in every new app. It now
+  compiles `zt.ts`, and falls back to `zerotal.ts` in a project that has no `zt.ts`. On Windows
+  the closing line names the file Bun actually wrote, `zerotal-app.exe`. The `status` and `reload`
+  hints say `bun zt` too.
 
 ## [1.16.4] — 2026-11-17
 

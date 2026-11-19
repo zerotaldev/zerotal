@@ -2972,7 +2972,7 @@ class CompileCommand = {
   static args: ArgDef[]
   static commandName: string
   static description: string
-  static flags: {    name: string;    type: 'string';    description: string;    default: string;}[]
+  static flags: FlagDef[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter

@@ -48,7 +48,7 @@ export class StatusCommand extends Command {
       data = (await res.json()) as Record<string, unknown>;
     } catch {
       this.error(`Could not reach ${url}`);
-      this.dim("Start the server with: bun zerotal.ts serve");
+      this.dim("Start the server with: bun zt serve");
       process.exit(1);
     }
 

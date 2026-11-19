@@ -19,7 +19,7 @@
  */
 import { ServiceProvider, Router, FrameworkEvents } from "@zerotal/core";
 import type { ModelChanged } from "@zerotal/orm";
-import type { AppEnvironment, MiddlewareClass, HttpContext } from "@zerotal/core";
+import type { AppEnvironment, DoctorCheck, MiddlewareClass, HttpContext } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { FlowProvider } from "@zerotal/flow";
 import { Panel } from "../Panel.ts";
@@ -41,6 +41,7 @@ import { makeConsolePage } from "../pages/ConsolePage.tsx";
 import { makeResourceForm } from "../form/index.ts";
 import { forgetTabCounts } from "../support/countCache.ts";
 import { hostedPage } from "../support/hostPage.ts";
+import { adminPackagesCheck } from "../doctor.ts";
 import { frameworkLog } from "@zerotal/core/logger";
 
 declare module "@zerotal/core" {
@@ -170,6 +171,14 @@ export class AdminProvider extends ServiceProvider {
   override async onStopping(): Promise<void> {
     this._disposeCountInvalidation?.();
     this._disposeCountInvalidation = undefined;
+  }
+
+  /**
+   * The doctor reads the panels the app serves, so it loads the app's panel
+   * wiring first: `zt doctor` boots as a console app, where `onBooting` skips it.
+   */
+  override doctorChecks(): DoctorCheck[] {
+    return [adminPackagesCheck({ prepare: () => this._autodiscover() })];
   }
 
   /**

@@ -14,7 +14,9 @@
  * a box calls `syncPermissions`, so the same checks that already guard the app
  * start passing immediately.
  *
- * `@zerotal/auth` is resolved lazily, so it stays an optional peer.
+ * `@zerotal/auth` is a dependency of this package, but it is loaded on first
+ * use: importing it registers its `Role` and `Permission` models, and a panel
+ * that never shows roles has no reason to carry them.
  */
 import { frameworkLog } from "@zerotal/core/logger";
 import type { Role, RoleProvider } from "./roles.ts";
@@ -35,7 +37,7 @@ export interface AuthRolesOptions {
   superusers?: string[] | undefined;
 }
 
-/** The role surface this needs, kept structural so `auth` stays optional. */
+/** The role surface this needs. */
 interface RoleModelLike {
   id: unknown;
   name: string;
@@ -59,15 +61,10 @@ interface RoleStatics {
   resolve(name: string, guard?: string): Promise<RoleModelLike>;
 }
 
-async function roleModel(): Promise<RoleStatics | null> {
-  try {
-    const mod = (await import(/* @vite-ignore */ "@zerotal/auth" as string)) as {
-      Role?: RoleStatics;
-    };
-    return mod.Role ?? null;
-  } catch {
-    return null;
-  }
+/** `@zerotal/auth`'s `Role` model, loaded the first time the roles page needs it. */
+async function roleModel(): Promise<RoleStatics> {
+  const mod = (await import("@zerotal/auth" as string)) as { Role: RoleStatics };
+  return mod.Role;
 }
 
 /**
@@ -89,7 +86,6 @@ export function authRoles(options: AuthRolesOptions = {}): RoleProvider {
     async list(): Promise<Role[]> {
       try {
         const Role = await roleModel();
-        if (!Role) return [];
         const rows = await Role.query().where("guard", guard).orderBy("name", "asc").get();
         return rows.map((row) => ({
           id: String(row.id),
@@ -105,7 +101,7 @@ export function authRoles(options: AuthRolesOptions = {}): RoleProvider {
     async permissionsFor(roleId): Promise<string[]> {
       try {
         const Role = await roleModel();
-        const role = await Role?.find(roleId);
+        const role = await Role.find(roleId);
         return (await role?.permissionNames()) ?? [];
       } catch (error) {
         frameworkLog("admin").warn("Could not read a role's permissions", { roleId }, error);
@@ -115,7 +111,6 @@ export function authRoles(options: AuthRolesOptions = {}): RoleProvider {
 
     async setPermissions(roleId, keys): Promise<void> {
       const Role = await roleModel();
-      if (!Role) throw new Error("Roles need @zerotal/auth.");
       const role = await Role.find(roleId);
       if (!role) return;
       // Names that do not exist yet are created by `syncPermissions`, which is
@@ -125,13 +120,11 @@ export function authRoles(options: AuthRolesOptions = {}): RoleProvider {
 
     async create(role): Promise<void> {
       const Role = await roleModel();
-      if (!Role) throw new Error("Roles need @zerotal/auth.");
       await Role.resolve(role.name, guard);
     },
 
     async remove(roleId): Promise<void> {
       const Role = await roleModel();
-      if (!Role) throw new Error("Roles need @zerotal/auth.");
       const role = await Role.find(roleId);
       // A superuser role is the one nobody should be able to delete themselves
       // out of, so it is refused here rather than only hidden in the UI.

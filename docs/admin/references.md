@@ -142,12 +142,12 @@ the like-named factory documented in its own guide.
 
 ## History and permissions
 
-| Export             | Signature                                | Description                                                                                        |
-| ------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `recordHistory`    | `(options) => Promise<HistoryEntry[]>`   | A record's audit history, newest first; empty rather than throwing when the audit table is absent. |
-| `panelPermissions` | `(panel: PanelInstance) => Permission[]` | Every permission a panel checks, derived from what it has registered — use it to seed roles.       |
-| `roleHas`          | `(role, held: string) => boolean`        | Whether a role holds a permission; a superuser holds everything by definition.                     |
-| `authRoles`        | roles helper                             | The role set the auth pages recognise.                                                             |
+| Export             | Signature                                | Description                                                                                                                      |
+| ------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `recordHistory`    | `(options) => Promise<HistoryEntry[]>`   | A record's audit history, newest first; empty when the audit table is absent, and throws when `@zerotal/audit` is not installed. |
+| `panelPermissions` | `(panel: PanelInstance) => Permission[]` | Every permission a panel checks, derived from what it has registered — use it to seed roles.                                     |
+| `roleHas`          | `(role, held: string) => boolean`        | Whether a role holds a permission; a superuser holds everything by definition.                                                   |
+| `authRoles`        | roles helper                             | The role set the auth pages recognise.                                                                                           |
 
 ## Subpaths
 

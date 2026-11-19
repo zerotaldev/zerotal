@@ -25,8 +25,20 @@ bun add @zerotal/admin
 ```
 
 The panel renders with Flow and flow-ui, and reads/writes through your
-[`@zerotal/orm`](/docs/orm) models. `@zerotal/auth` is an **optional** peer —
-needed only if you enable the built-in auth pages.
+[`@zerotal/orm`](/docs/orm) models. `@zerotal/auth` comes with it, for the built-in
+auth pages and the roles page.
+
+Three features use a package that the panel does not install for you. Add the
+package when you turn the feature on:
+
+| Feature                                                                       | Package                  |
+| ----------------------------------------------------------------------------- | ------------------------ |
+| [Database notifications](/docs/admin/dashboard#database-backed-notifications) | `@zerotal/notifications` |
+| [Record history](/docs/admin/operations#record-history)                       | `@zerotal/audit`         |
+| [Queued imports](/docs/admin/actions#large-files)                             | `@zerotal/queue`         |
+
+Without it, the feature throws `OptionalPeerMissingError` with the install command.
+`bun zt doctor` reports the first two before any page is opened.
 
 ## Register the providers
 

@@ -6,8 +6,9 @@ description: The built-in login and profile screens, and how to restyle the pane
 # Auth pages
 
 Opt in with `Panel.auth({...})` (or `Panel.configure({ auth: {...} })`). The pages
-live behind the `@zerotal/admin/auth` subpath, so the `@zerotal/auth` dependency
-stays optional unless you enable them.
+live behind the `@zerotal/admin/auth` subpath and sign people in with
+[`@zerotal/auth`](/docs/authentication), which comes with the admin package. A
+panel that leaves them off never loads them.
 
 ```ts fragment
 import { Panel } from "@zerotal/admin";

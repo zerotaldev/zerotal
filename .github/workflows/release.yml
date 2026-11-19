@@ -7,15 +7,23 @@ name: Release
 # consumers can verify each tarball came from this repository's CI), and creates
 # a GitHub Release pointing at the changelog.
 #
-# Requires the `NPM_TOKEN` repository secret (an npm automation token with
-# publish rights to the @zerotal scope and create-zerotal).
+# npm authenticates each package with trusted publishing: it trades this
+# workflow's OIDC identity for a short-lived token scoped to that one package,
+# so nothing long-lived has to be stored or renewed. A package that is not yet
+# linked to this workflow on npmjs.com falls back to the `NPM_TOKEN` repository
+# secret (an npm automation token with publish rights to the @zerotal scope,
+# create-zerotal and zerotal), and the publish log names which path each
+# package took. Publishing stops needing the secret once a release reports
+# every package on trusted publishing (deprecate.yml still uses it); the steps
+# are in docs/contributing.md under "Publishing".
 
 on:
   push:
     tags: ["v*"]
 
 permissions:
-  # Provenance attestation is signed against the workflow's OIDC identity.
+  # The workflow's OIDC identity: trusted publishing exchanges it for a
+  # publish token, and provenance attestation is signed against it.
   id-token: write
   # gh release create.
   contents: write
@@ -181,9 +189,21 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing needs npm 11.5.1 or later, and Node 22 bundles npm 10,
+      # which would publish every package with the token and never try OIDC.
+      # Pinned to a major, so a new npm major changes how releases publish only
+      # through a commit here.
+      - name: Upgrade npm
+        run: |
+          npm install -g npm@11
+          npm --version
+
       - name: Install
         run: bun install --frozen-lockfile
 
+      # NODE_AUTH_TOKEN stays while any package is still unlinked: npm tries OIDC
+      # first and uses the token only when the exchange fails. Once the secret is
+      # deleted this expression is empty and npm relies on OIDC alone.
       - name: Publish
         run: bun run scripts/publish-packages.ts --tag "${GITHUB_REF_NAME}"
         env:

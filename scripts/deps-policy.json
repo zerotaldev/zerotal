@@ -1,9 +1,6 @@
 {
   "$comment": "Third-party packages a @zerotal package may list in `dependencies`, each with the reason every app installing that package needs it. Anything else is an optional peer, written in-house, or a devDependency. Read by scripts/deps-check.ts; the public version is the Dependencies table in docs/support-policy.md, and the two must agree. The rules: docs/package-development.md#dependencies.",
   "allowedDependencies": {
-    "@zerotal/auth": {
-      "reflect-metadata": "@simplewebauthn/server needs its global installed first, and Bun's bundler runs the library's ES modules before the polyfill when passkeys load lazily, so a compiled app crashed. Already in that package's own install, so declaring it adds nothing an app did not get. Goes with @simplewebauthn/server if that becomes an optional peer."
-    },
     "@zerotal/core": {
       "@js-temporal/polyfill": "Carbon is built on Temporal, which Bun ships natively only from 1.4. Transitional: it goes when the supported floor reaches a Bun with Temporal."
     },

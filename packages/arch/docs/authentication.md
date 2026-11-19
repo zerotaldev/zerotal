@@ -981,33 +981,72 @@ A passkey replaces the password with a key pair held by the device: the private 
 leaves the authenticator, so there is nothing on your server worth stealing and nothing for a
 user to reuse across sites. `PasskeyService` implements both WebAuthn ceremonies.
 
-You supply where credentials are stored — the service does not assume a schema:
+The WebAuthn library behind it is not installed with Zerotal, because most apps never use it.
+Add it to an app that does:
 
-```typescript fragment
-import { PasskeyService } from "@zerotal/auth";
+```bash
+# in your project root
+bun add @simplewebauthn/server reflect-metadata
+```
 
-const passkeys = new PasskeyService({
+Without it the app builds, boots and serves as before, and the first ceremony throws
+`OptionalPeerMissingError` with that command in its message. `bun zt doctor` fails sooner, for
+an app whose source names `PasskeyService`.
+
+You supply where credentials are stored, so the service assumes no schema. Here a model holds
+them, one column for each field of `PasskeyCredential`:
+
+```typescript
+// app/auth/passkeys.ts
+import { PasskeyService } from "zerotal/auth";
+import type { PasskeyDeviceType, PasskeyTransport } from "zerotal/auth";
+import { Model, column, table } from "zerotal/orm";
+
+@table("passkeys")
+class Passkey extends Model {
+  @column("integer") user_id!: number;
+  @column("string", { unique: true }) credential_id!: string;
+  @column("text") public_key!: string;
+  @column("integer") counter!: number;
+  @column("string") device_type!: PasskeyDeviceType;
+  @column("boolean") backed_up!: boolean;
+  @column("json", { nullable: true }) transports!: PasskeyTransport[] | null;
+  @column("string", { nullable: true }) name!: string | null;
+}
+
+export const passkeys = new PasskeyService({
   rpName: "Acme",
   rpId: "acme.test", // the domain, no scheme and no port
   origin: "https://acme.test", // or an array, for staging alongside production
-  store: {
-    findUserCredentials: (userId) => Credential.where("user_id", userId).all(),
-    findCredential: (credentialId) => Credential.where("credential_id", credentialId).first(),
-    saveCredential: (credential) => Credential.create(credential),
-    updateCounter: (id, counter) => Credential.where("id", id).update({ counter }),
+  findUserCredentials: (userId) => Passkey.where("user_id", userId).get(),
+  findCredential: (credentialId) => Passkey.where("credential_id", credentialId).first(),
+  saveCredential: async (credential) => {
+    await Passkey.forceCreate(credential);
   },
+  updateCounter: (id, counter) => Passkey.where("id", id).update({ counter }),
 });
 ```
+
+The service writes what it has verified, which is why `saveCredential` can use `forceCreate()`
+rather than a `fillable` list. The model can live in `app/models/` like any other; see
+[ORM](/docs/orm) for models and their columns.
 
 Each ceremony is two calls — options out, response verified in. The challenge you hand back to
 `verify…` is the one you issued, which is what stops a replay:
 
-| Call                                                 | What it does                                                                                                                                          |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `registrationOptions(user, existing?)`               | Options for enrolment. Pass the user's existing credentials so the browser refuses to register the same authenticator twice.                          |
-| `verifyRegistration(user, response, challenge, ctx)` | Verifies enrolment and stores the credential.                                                                                                         |
-| `authenticationOptions(userId?)`                     | Options for sign-in. Omit `userId` for a usernameless flow, where the authenticator offers the account.                                               |
-| `verifyAuthentication(assertion, challenge, ctx)`    | Returns `{ credential, userId }`, or the string `"passkey.invalid"` — a value rather than a throw, because a failed assertion is an ordinary outcome. |
+| Call                                                 | What it does                                                                                                                                                                                            |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `registrationOptions(user, existing?)`               | `PasskeyRegistrationOptionsJSON` for enrolment. Pass the user's existing credentials so the browser refuses to register the same authenticator twice.                                                   |
+| `verifyRegistration(user, response, challenge, ctx)` | Verifies the `PasskeyRegistrationResponseJSON` the browser sends back and stores the credential.                                                                                                        |
+| `authenticationOptions(userId?)`                     | `PasskeyAuthenticationOptionsJSON` for sign-in. Omit `userId` for a usernameless flow, where the authenticator offers the account.                                                                      |
+| `verifyAuthentication(assertion, challenge, ctx)`    | Verifies the `PasskeyAuthenticationResponseJSON`. Returns `{ credential, userId }`, or the string `"passkey.invalid"` — a value rather than a throw, because a failed assertion is an ordinary outcome. |
+
+The four types are WebAuthn's JSON forms, with every binary value a base64url string, and they
+are Zerotal's own, so an app type-checks whether or not the library is installed. In the
+browser, the static `parseCreationOptionsFromJSON()` on `PublicKeyCredential` turns the
+registration options into what `navigator.credentials.create()` takes, and the new credential's
+`toJSON()` is the response to send back. Sign-in pairs `parseRequestOptionsFromJSON()` with
+`navigator.credentials.get()`.
 
 `PasskeyUser` is the minimum the ceremonies need (`id`, `name`, `email`); `PasskeyCredential` is
 what your store holds.

@@ -15,6 +15,7 @@ import type { AuthConfigShape } from "../config.ts";
 import { policiesConcern } from "../conventions.ts";
 import { authSchemaConcern } from "../authSchemaConcern.ts";
 import { authSchemaCheck } from "../authSchemaDoctor.ts";
+import { passkeyLibraryCheck } from "../passkeysDoctor.ts";
 import { rbacSchemaConcern } from "../rbacSchemaConcern.ts";
 import "../augment.ts";
 
@@ -77,9 +78,12 @@ export class AuthProvider extends ServiceProvider {
    * which makes "no migration needed" true for a model-first app and false for a
    * migration-first one. The doctor runs as a console command, where that boot
    * concern has not run — so what it sees is what a migration actually built.
+   *
+   * Passkeys need a library the app installs itself, and an app without it fails on
+   * its first ceremony rather than at boot, so the doctor checks for it too.
    */
   override doctorChecks(): DoctorCheck[] {
-    return [authSchemaCheck];
+    return [authSchemaCheck, passkeyLibraryCheck];
   }
 
   override onRegister(): void {

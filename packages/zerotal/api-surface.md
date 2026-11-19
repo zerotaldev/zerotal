@@ -838,7 +838,7 @@ interface CorsOptions = {
 }
 
 interface DevProcessDefinition = {
-  after?: 'server' | 'none'
+  after?: 'none' | 'server'
   color?: DevProcessColor
   command?: string | string[] | (() => string[])
   enabled?: boolean | (() => boolean | Promise<boolean>)
@@ -1496,10 +1496,10 @@ class OtherDeviceLogout = {
 
 class PasskeyService = {
   new (opts: PasskeysOptions): PasskeyService
-  authenticationOptions: (userId?: number) => Promise<Awaited<ReturnType<typeof generateAuthenticationOptions>>>
-  registrationOptions: (user: PasskeyUser, existingCredentials?: PasskeyCredential[]) => Promise<Awaited<ReturnType<typeof generateRegistrationOptions>>>
-  verifyAuthentication: (assertion: AuthenticationResponseJSON, challenge: string, ctx: HttpContext) => Promise<{    credential: PasskeyCredential;    userId: number;} | 'passkey.invalid'>
-  verifyRegistration: (user: PasskeyUser, response: RegistrationResponseJSON, challenge: string, ctx: HttpContext, credentialName?: string) => Promise<'passkey.registered' | 'passkey.invalid'>
+  authenticationOptions: (userId?: number) => Promise<PasskeyAuthenticationOptionsJSON>
+  registrationOptions: (user: PasskeyUser, existingCredentials?: PasskeyCredential[]) => Promise<PasskeyRegistrationOptionsJSON>
+  verifyAuthentication: (assertion: PasskeyAuthenticationResponseJSON, challenge: string, ctx: HttpContext) => Promise<{    credential: PasskeyCredential;    userId: number;} | 'passkey.invalid'>
+  verifyRegistration: (user: PasskeyUser, response: PasskeyRegistrationResponseJSON, challenge: string, ctx: HttpContext, credentialName?: string) => Promise<'passkey.registered' | 'passkey.invalid'>
 }
 
 class PasswordBroker = {
@@ -2043,16 +2043,55 @@ interface OAuth2Config = {
   scopes?: string[] | undefined
 }
 
+interface PasskeyAuthenticationOptionsJSON = {
+  allowCredentials?: {    id: string;    type: string;    transports?: string[];}[]
+  challenge: string
+  rpId?: string
+  timeout?: number
+  userVerification?: 'discouraged' | 'preferred' | 'required'
+}
+
+interface PasskeyAuthenticationResponseJSON = {
+  authenticatorAttachment?: 'platform' | 'cross-platform'
+  clientExtensionResults: object
+  id: string
+  rawId: string
+  response: {    clientDataJSON: string;    authenticatorData: string;    signature: string;    userHandle?: string;}
+  type: 'public-key'
+}
+
 interface PasskeyCredential = {
   backed_up: boolean
   counter: number
   credential_id: string
-  device_type: CredentialDeviceType
+  device_type: PasskeyDeviceType
   id: number
   name: string | null
   public_key: string
-  transports: AuthenticatorTransportFuture[] | null
+  transports: PasskeyTransport[] | null
   user_id: number
+}
+
+interface PasskeyRegistrationOptionsJSON = {
+  attestation?: 'direct' | 'enterprise' | 'indirect' | 'none'
+  authenticatorSelection?: {    authenticatorAttachment?: 'platform' | 'cross-platform';    requireResidentKey?: boolean;    residentKey?: 'discouraged' | 'preferred' | 'required';    userVerification?: 'discouraged' | 'preferred' | 'required';}
+  challenge: string
+  excludeCredentials?: {    id: string;    type: string;    transports?: string[];}[]
+  extensions?: {    credProps?: boolean;}
+  hints?: ('hybrid' | 'security-key' | 'client-device')[]
+  pubKeyCredParams: {    alg: number;    type: 'public-key';}[]
+  rp: {    name: string;    id?: string;}
+  timeout?: number
+  user: {    id: string;    name: string;    displayName: string;}
+}
+
+interface PasskeyRegistrationResponseJSON = {
+  authenticatorAttachment?: 'platform' | 'cross-platform'
+  clientExtensionResults: object
+  id: string
+  rawId: string
+  response: {    clientDataJSON: string;    attestationObject: string;    authenticatorData?: string;    transports?: string[];    publicKeyAlgorithm?: number;    publicKey?: string;}
+  type: 'public-key'
 }
 
 interface PasskeysOptions = {
@@ -2203,6 +2242,10 @@ type Credentials = {    [x: string]: unknown;}
 type JwtPayload = {    [x: string]: unknown;}
 
 type MagicLinkBrokerResult = 'magic.sent' | 'magic.user_not_found' | 'magic.ok' | 'magic.invalid'
+
+type PasskeyDeviceType = 'singleDevice' | 'multiDevice'
+
+type PasskeyTransport = 'ble' | 'cable' | 'hybrid' | 'internal' | 'nfc' | 'smart-card' | 'usb'
 
 type PasswordBrokerResult = 'passwords.sent' | 'passwords.token' | 'passwords.reset'
 

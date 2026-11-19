@@ -33,11 +33,23 @@
     "@zerotal/core": "workspace:*",
     "@zerotal/session": "workspace:*",
     "@zerotal/orm": "workspace:*",
-    "@zerotal/cache": "workspace:*",
+    "@zerotal/cache": "workspace:*"
+  },
+  "peerDependencies": {
     "@simplewebauthn/server": "^14.1.0",
     "reflect-metadata": "^0.2.2"
   },
+  "peerDependenciesMeta": {
+    "@simplewebauthn/server": {
+      "optional": true
+    },
+    "reflect-metadata": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@simplewebauthn/server": "^14.1.0",
+    "reflect-metadata": "^0.2.2",
     "typescript": "^5.8.0"
   },
   "description": "Authentication and authorization for Zerotal — sessions, tokens, 2FA, OAuth, gates, and policies.",

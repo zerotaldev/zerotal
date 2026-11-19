@@ -67,14 +67,12 @@ A package that only some apps need is an optional peer and is not installed for
 you: you add it when you turn on the feature that needs it, and the feature's own
 page says which. The tables below mark the exceptions still under review.
 
-Installing `zerotal` brings in these third-party packages, and what they depend on
-in turn:
+Installing `zerotal` brings in this third-party package, and what it depends on in
+turn:
 
-| Package                  | Comes with      | Why every app gets it                                                                                                                                          |
-| ------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@js-temporal/polyfill`  | `@zerotal/core` | Carbon, the date type, is built on Temporal. Bun only ships Temporal itself from 1.4, and the supported floor is lower. It goes once the floor ships Temporal. |
-| `@simplewebauthn/server` | `@zerotal/auth` | Passkey registration and sign-in. Under review: most apps never use passkeys, and they install it anyway.                                                      |
-| `reflect-metadata`       | `@zerotal/auth` | Loaded before the passkey library, which needs it in place first. It comes with that library anyway, and goes with it.                                         |
+| Package                 | Comes with      | Why every app gets it                                                                                                                                          |
+| ----------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@js-temporal/polyfill` | `@zerotal/core` | Carbon, the date type, is built on Temporal. Bun only ships Temporal itself from 1.4, and the supported floor is lower. It goes once the floor ships Temporal. |
 
 Flow apps also get these, through `@zerotal/flow` and `@zerotal/flow-ui`:
 

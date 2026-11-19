@@ -498,7 +498,7 @@ await post.save();
 
 ## Password hashing
 
-Fields listed in `hashable` are automatically hashed with `Bun.password.hash()` (bcrypt) before every `INSERT`, and on `UPDATE` only when the value has changed since the last load:
+Fields listed in `hashable` are automatically hashed with `Bun.password.hash()` (argon2id, its default) before every `INSERT`, and on `UPDATE` only when the value has changed since the last load:
 
 ```typescript fragment
 // app/models/User.ts

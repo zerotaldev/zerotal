@@ -18,6 +18,7 @@ import {
   type NPlusOneOptions,
 } from "./NPlusOneDetector.ts";
 import { _splitPlaceholders, _templateStrings } from "./templateStrings.ts";
+import { _normalizeMysqlRows } from "./driverDates.ts";
 
 // Test-override escape hatch — set by _setDbConnection() in test files.
 // Production code resolves the connection from the container instead.
@@ -165,6 +166,20 @@ function _runParams(conn: SQLInstance, sql: string, params: unknown[]): Promise<
   return conn(tpl, ...params);
 }
 
+/**
+ * Rows as `DB.raw()` returns them: on MySQL, with dates decoded the same on every
+ * Bun (see `_normalizeMysqlRows`).
+ */
+function _rows<T>(conn: SQLInstance, rows: T[]): Promise<T[]> | T[] {
+  return dialectFor(conn) === "mysql" ? _normalizeMysqlRows(conn, rows) : rows;
+}
+
+function _isPlainObject(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  const proto = Object.getPrototypeOf(value) as unknown;
+  return proto === Object.prototype || proto === null;
+}
+
 /** Heuristic: does this error look like a deadlock / serialization failure worth retrying? */
 function _isDeadlock(err: unknown): boolean {
   const msg = String((err as { message?: string })?.message ?? err).toLowerCase();
@@ -251,6 +266,16 @@ export const DB = {
       const bindings: unknown[] = Array.isArray(rest[0]) ? (rest[0] as unknown[]) : rest;
       const parts = _splitPlaceholders(sql, dialectFor(conn));
       if (parts.length - 1 !== bindings.length) {
+        // An object of named parameters (`{ id: 1 }` for `:id`) is the shape the driver's
+        // own unsafe-query API takes, and it binds them on one Bun and NULL on another.
+        // Here it is never passed on: it is refused, the same on every Bun.
+        if (rest.length === 1 && _isPlainObject(rest[0])) {
+          throw new Error(
+            "[Zerotal ORM] DB.raw() takes positional bindings, not an object of named " +
+              "parameters. Write each value as a ? and pass them in order: " +
+              "DB.raw('... WHERE id = ?', [id]), or use the tagged form: DB.raw`... ${id}`.",
+          );
+        }
         throw new Error(
           `[Zerotal ORM] DB.raw() found ${parts.length - 1} placeholder(s) in the SQL but was ` +
             `given ${bindings.length} binding(s). A "?" inside quotes or a comment is not a ` +
@@ -259,7 +284,7 @@ export const DB = {
         );
       }
       const tpl = _templateStrings(parts);
-      const rows = await conn<T>(tpl, ...bindings);
+      const rows = await _rows(conn, await conn<T>(tpl, ...bindings));
       FrameworkEvents.emit(
         new QueryExecuted(
           sql,
@@ -272,7 +297,7 @@ export const DB = {
       );
       return rows;
     }
-    const rows = await conn<T>(sql, ...rest);
+    const rows = await _rows(conn, await conn<T>(sql, ...rest));
     const rawSql = Array.isArray((sql as TemplateStringsArray).raw)
       ? (sql as TemplateStringsArray).raw.join("?")
       : String(sql);

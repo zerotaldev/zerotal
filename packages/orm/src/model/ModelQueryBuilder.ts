@@ -47,17 +47,15 @@ function _getCasts(ctor: ClassRef): Record<string, CastOption> {
 function _applyCastSet(value: unknown, cast: StringCast): unknown {
   if (value === null || value === undefined) return value;
   switch (cast) {
+    // Dates are left for the caller, which knows the dialect: MySQL stores them as
+    // `YYYY-MM-DD HH:MM:SS`, and an ISO bound against that compares as text and
+    // misses every row on the same day.
     case "datetime":
-      if (value instanceof Carbon) return value.toDatabase();
-      if (value instanceof Date) return value.toISOString();
+    case "date":
       return value;
     case "array":
     case "json":
       if (typeof value !== "string") return JSON.stringify(value);
-      return value;
-    case "date":
-      if (value instanceof Carbon) return value.toDatabase();
-      if (value instanceof Date) return value.toISOString();
       return value;
     case "boolean":
       return value ? 1 : 0;
@@ -1285,7 +1283,7 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
       return castOpt.set(value);
     }
     if (typeof castOpt === "string") {
-      return _applyCastSet(value, castOpt as StringCast);
+      return this._dateForDb(_applyCastSet(value, castOpt as StringCast));
     }
     if (colType === "boolean") {
       return value ? 1 : 0;
@@ -1296,21 +1294,31 @@ export class ModelQueryBuilder<M extends BaseModel> extends QueryBuilder {
       // who knows to pre-encode the quotes themselves.
       return JSON.stringify(value);
     }
-    // Carbon instances always serialize to ISO string regardless of column metadata.
-    if (value instanceof Carbon) return value.toDatabase();
-    // …and so does a plain Date. Without this, a comparison against a column the cast
+    // A Carbon or a plain Date serializes the way writes do, regardless of column
+    // metadata. Without this, a comparison against a column the cast
     // lookup above can't see — most importantly the framework-managed `created_at` /
     // `updated_at` / `deleted_at`, which carry no `@column` metadata — bound the Date
     // object itself and matched nothing. `where("created_at", ">=", monthStart)` is the
     // commonest reporting query there is, and it silently returned zero rows: a
     // dashboard reading "0 this month" looks like a quiet month, not a broken query.
     // A Date in a comparison is unambiguous intent, so serialize it the way writes do.
-    if (value instanceof Date) {
-      return dialectFor(this._sql) === "mysql"
-        ? value.toISOString().replace("T", " ").slice(0, 19)
-        : value.toISOString();
-    }
-    return value;
+    return this._dateForDb(value);
+  }
+
+  /**
+   * A Carbon or Date as this connection's writes store it; anything else unchanged.
+   *
+   * MySQL's form is `YYYY-MM-DD HH:MM:SS` (UTC), the others ISO 8601. A Carbon used
+   * to bind as ISO on every dialect, so on MySQL `where("created_at", ">=", today)`
+   * compared `2026-08-05T00:00:00Z` with `2026-08-05 10:00:00` as text — a space
+   * sorts before a `T` — and missed every row from the same day.
+   */
+  private _dateForDb(value: unknown): unknown {
+    const date = value instanceof Carbon ? value.toDate() : value;
+    if (!(date instanceof Date)) return value;
+    return dialectFor(this._sql) === "mysql"
+      ? date.toISOString().replace("T", " ").slice(0, 19)
+      : date.toISOString();
   }
 
   /**

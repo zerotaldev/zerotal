@@ -20,6 +20,10 @@ against. `mcp-surface.md` is diffed alongside it.
   with its "not installed" note. An ORM that is installed but fails to load is now reported as its
   own error rather than as "not installed".
 
+- **The vendored docs include the ORM's date and JSON reading rules.** `search_docs` answers from
+  the updated casts page: dates are stored as UTC and read back as UTC whatever the server's
+  `TZ`, and a top-level JSON string in a native JSON column is parsed by the driver first.
+
 ## [1.8.0] — 2026-08-24
 
 ### Added

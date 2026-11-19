@@ -5,6 +5,11 @@ import { ModelChanged } from "../events.ts";
 import { Carbon } from "@zerotal/core/carbon";
 import { toCamelKey as toCamel, toSnakeColumn as toSnake } from "../support/identifiers.ts";
 import { resolveContainerConnection } from "../db/resolver.ts";
+import {
+  _dbDateString,
+  _isUnrepresentableDate,
+  _unrepresentableDateError,
+} from "../db/driverDates.ts";
 import { currentOrmContext } from "./OrmContext.ts";
 import {
   ModelQueryBuilder,
@@ -221,6 +226,20 @@ function _serializeDate(date: Date): string {
   return date.toISOString();
 }
 
+/**
+ * A stored date as a `Carbon`, read the way the ORM wrote it.
+ *
+ * Zone-less text is UTC (see `_dbDateString`): MySQL's `YYYY-MM-DD HH:MM:SS` was
+ * otherwise read as local time and moved by the server's offset. A value no
+ * `Carbon` can hold — PostgreSQL `infinity` — fails naming the column, the same way
+ * on every Bun.
+ */
+function _carbonFromDb(value: unknown, label: string): Carbon {
+  if (value instanceof Carbon) return value;
+  if (_isUnrepresentableDate(value)) throw _unrepresentableDateError(label, value);
+  return new Carbon(typeof value === "string" ? _dbDateString(value) : (value as number | Date));
+}
+
 function serializeVal(v: unknown): unknown {
   if (v instanceof Carbon) return _serializeDate(v.toDate());
   if (v instanceof Date) return _serializeDate(v);
@@ -272,13 +291,10 @@ function applyCastGet(value: unknown, cast: StringCast, label: string): unknown 
     const n = parseInt(cstr.slice(8), 10) || 0;
     return Number(value).toFixed(n);
   }
-  if (cstr === "immutable_datetime") {
-    return value instanceof Carbon ? value : new Carbon(value as string | number | Date);
-  }
+  if (cstr === "immutable_datetime") return _carbonFromDb(value, label);
   switch (cast) {
     case "datetime":
-      if (value instanceof Carbon) return value;
-      return new Carbon(value as string | number | Date);
+      return _carbonFromDb(value, label);
     case "array":
     case "json":
       if (typeof value === "string") {
@@ -292,7 +308,8 @@ function applyCastGet(value: unknown, cast: StringCast, label: string): unknown 
     case "date":
       if (value instanceof Date) return value;
       if (value instanceof Carbon) return value.toDate();
-      if (typeof value === "string" || typeof value === "number") return new Date(value);
+      if (typeof value === "string") return new Date(_dbDateString(value));
+      if (typeof value === "number") return new Date(value);
       return value;
     case "boolean":
       if (typeof value === "boolean") return value;
@@ -552,7 +569,7 @@ export type Columns<T> = {
  *
  * `@column({ cast })` / {@link casts} coerce values on read and write
  * (booleans, JSON/array, dates via `Carbon`, decimals, enums). {@link hashable}
- * fields are bcrypt-hashed transparently on save. {@link hidden} / {@link visible}
+ * fields are hashed (argon2id) transparently on save. {@link hidden} / {@link visible}
  * / {@link appends} shape {@link toJSON} output.
  *
  * @example
@@ -849,8 +866,8 @@ export class BaseModel {
   static connection?: string;
 
   /**
-   * Fields that are automatically hashed with `Bun.password.hash()` (bcrypt)
-   * before every INSERT and whenever the field changes on UPDATE.
+   * Fields that are automatically hashed with `Bun.password.hash()` (argon2id, its
+   * default) before every INSERT and whenever the field changes on UPDATE.
    *
    * The hash is applied transparently in `save()` — the plaintext value is
    * never written to the database.  Use `Bun.password.verify()` to check
@@ -1783,7 +1800,7 @@ export class BaseModel {
     // ── Auto-hash hashable fields ─────────────────────────────────────────
     // On INSERT: hash every hashable field that holds a non-empty string.
     // On UPDATE: only hash hashable fields whose value changed since the last
-    //            save (avoids re-hashing an already-stored bcrypt hash).
+    //            save (avoids re-hashing an already-stored hash).
     // One keyed view of the instance for the whole method: the hashable pass and the
     // insert's default-filling both need to read and write columns by name.
     const self = this as unknown as Record<string, unknown>;
@@ -2683,14 +2700,15 @@ function _applyRow(inst: BaseModel, row: Record<string, unknown>): void {
       // Auto-cast based on @column({ type: 'boolean' }) — SQLite stores 0/1
       finalVal = rawVal === 1 || rawVal === "1" || rawVal === true;
     } else if (colType === "datetime" && rawVal !== null && rawVal !== undefined) {
-      finalVal = new Carbon(rawVal as string | number);
+      finalVal = _carbonFromDb(rawVal, `${ModelClass.name}.${propKey}`);
     } else if (colType === "json" && rawVal !== null && rawVal !== undefined) {
       // Auto-cast based on @column({ type: 'json' }) — SQLite stores JSON strings
       finalVal = typeof rawVal === "string" ? tryParseJson(rawVal) : rawVal;
     } else if (camelKey === "createdAt" || camelKey === "updatedAt") {
-      finalVal = rawVal != null ? new Carbon(rawVal as string | number) : undefined;
+      finalVal =
+        rawVal != null ? _carbonFromDb(rawVal, `${ModelClass.name}.${propKey}`) : undefined;
     } else if (camelKey === "deletedAt") {
-      finalVal = rawVal != null ? new Carbon(rawVal as string | number) : null;
+      finalVal = rawVal != null ? _carbonFromDb(rawVal, `${ModelClass.name}.${propKey}`) : null;
     } else {
       finalVal = rawVal;
     }

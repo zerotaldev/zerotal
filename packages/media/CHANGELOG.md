@@ -10,6 +10,48 @@ line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
 
+### Changed
+
+- **The `sharp` peer range is `^0.33 || ^0.34 || ^0.35`** (was `^0.33 || ^0.34`). sharp 0.35 is
+  current, the package's own tests already ran against 0.35.5, and an app on it got a peer
+  warning for a version that works.
+- **BREAKING: with `driver: "sharp"` and no sharp installed, conversions throw instead of
+  silently not happening.** `metadata()` and `placeholder()` answered `null` and `canEncode()`
+  answered `false` when sharp was missing, so an upload stored its original, generated no
+  conversions, and reported nothing; only `convert()` threw, a plain `MediaError`. All four
+  `SharpImageDriver` methods now throw `OptionalPeerMissingError` (code
+  `E_OPTIONAL_PEER_MISSING`), whose message names `bun add sharp` and the built-in driver. So
+  `addMedia()` into a collection with conversions throws it, after the original is stored, and a
+  queued conversion job fails with it. A sharp that is installed but does not load on this
+  platform fails the same way, with sharp's own error. An image sharp cannot read still answers
+  `null`. **What to
+  change:** run `bun add sharp`, or set `driver: "bun"` in `config/media.ts`; `zt doctor` says
+  which apps need it. Code that caught `MediaError` for a missing sharp catches
+  `OptionalPeerMissingError` instead.
+- **`@zerotal/queue` is an optional peer in name and in code.** It was declared one, but the
+  conversions job imported it statically and the bridge loaded it with a bare `import()`. Media
+  now declares the part of the queue it uses itself, so an app without the queue neither loads
+  nor type-checks against it, and loads the queue with `optionalPeer()`. The job's name on the
+  wire is still `PerformConversionsJob`, so jobs already queued run.
+
+### Added
+
+- **`zt doctor` fails when `config/media.ts` sets `driver: "sharp"` and sharp is not installed**
+  (check `media-image-driver`), or is installed and does not load on this platform. With
+  `allowHostFormats: true` the boot log says the same, where it used to report AVIF and HEIC as
+  unencodable, and the app still boots in both cases.
+
+### Fixed
+
+- **A worker runs conversion jobs that another process queued.** The job class was registered
+  only when a process dispatched one, so a `zt worker` that had not dispatched any failed each
+  with "Unknown job class: PerformConversionsJob". `MediaProvider` registers it at boot whenever
+  a queue is bound.
+- **sharp is embedded in a compiled app's binary.** It was loaded through a variable, which
+  `bun zt compile` cannot see. sharp still does not run inside a compiled binary, since its
+  native library is not embedded, and it now says so in its own words instead of reporting
+  sharp as not installed; the docs say to use `driver: "bun"` there.
+
 ## [1.5.0] — 2026-08-15
 
 ### Changed

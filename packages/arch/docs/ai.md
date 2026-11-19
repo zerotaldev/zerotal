@@ -29,6 +29,10 @@ use:
 bun add @anthropic-ai/sdk    # only for the anthropic driver
 ```
 
+Any `@anthropic-ai/sdk` from 0.70 up to, but not including, 2.0 works. Without it, a
+request to the anthropic driver throws `AiDriverUnavailableError`, and `zt doctor` fails
+when `drivers.anthropic` is configured, so you find out before the first request.
+
 The OpenAI and Ollama drivers use `fetch` directly and need nothing extra.
 
 ## Register the provider

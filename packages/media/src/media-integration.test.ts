@@ -17,7 +17,9 @@ import { MediaItem, setPathGenerator } from "./MediaItem.ts";
 import { Media } from "./Media.ts";
 import { MediaManager } from "./MediaManager.ts";
 import { BunImageDriver } from "./conversions/BunImageDriver.ts";
-import { performConversions, ownerClassFor } from "./conversions/queueBridge.ts";
+import { OptionalPeerMissingError } from "@zerotal/core/runtime";
+import { Job, JobRegistry } from "@zerotal/queue";
+import { performConversions, ownerClassFor, queuedConversions } from "./conversions/queueBridge.ts";
 import { setConversionDispatcher } from "./conversions/dispatch.ts";
 import { mediaSchemaConcern } from "./mediaSchemaConcern.ts";
 import { mediaDefaults } from "./config.ts";
@@ -320,6 +322,38 @@ describe("MediaManager.clean", () => {
   });
 });
 
+// ── A driver whose package is missing ─────────────────────────────────────────
+
+describe("a driver whose optional package is not installed", () => {
+  function missingSharp(): never {
+    throw new OptionalPeerMissingError({
+      peer: "sharp",
+      feature: 'config/media.ts driver: "sharp"',
+      install: "bun add sharp",
+    });
+  }
+
+  it("fails the upload's conversions loudly, after the original is stored", async () => {
+    // Before, a missing sharp answered "cannot read this image", and the upload
+    // succeeded with no conversions and nothing said.
+    const driver = Object.assign(new BunImageDriver(), {
+      metadata: missingSharp,
+      placeholder: missingSharp,
+      canEncode: missingSharp,
+    });
+    setMediaState({ config: { ...mediaDefaults(), disk: "local" }, driver });
+
+    const article = await Article.create({ title: "Hello" });
+    await expect(article.addMedia(PNG_4x4, "a.png").toCollection("images")).rejects.toBeInstanceOf(
+      OptionalPeerMissingError,
+    );
+
+    const stored = await MediaItem.query().get();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]!.hasConversion("thumb")).toBe(false);
+  });
+});
+
 // ── Queue bridge ──────────────────────────────────────────────────────────────
 
 describe("queue bridge", () => {
@@ -347,6 +381,62 @@ describe("queue bridge", () => {
   it("is a no-op for a media row that no longer exists", async () => {
     const result = await performConversions(999_999, ["thumb"]);
     expect(result).toEqual({ generated: [], failed: [] });
+  });
+
+  it("registers the job at boot under a fixed name, so a worker can run what it never dispatched", async () => {
+    await queuedConversions();
+
+    const JobClass = JobRegistry.resolve("PerformConversionsJob") as unknown as {
+      fromPayload(payload: Record<string, unknown>): Job;
+    };
+    expect(JobClass).toBeDefined();
+
+    // The worker's side: rebuild from the stored payload, and agree on the name.
+    const rebuilt = JobClass.fromPayload({ mediaId: 7, conversions: ["thumb"], queue: "media" });
+    expect(rebuilt).toBeInstanceOf(Job);
+    expect(rebuilt.className).toBe("PerformConversionsJob");
+    expect(rebuilt.queue).toBe("media");
+    expect(rebuilt.payload()).toEqual({ mediaId: 7, conversions: ["thumb"], queue: "media" });
+  });
+
+  it("dispatches through the queue the bridge loaded", async () => {
+    const dispatched: Array<Record<string, unknown>> = [];
+    const queue = await import("@zerotal/queue");
+    const dispatch = await queuedConversions({
+      Job: queue.Job,
+      JobRegistry: queue.JobRegistry,
+      Queue: {
+        dispatch: async (job) => {
+          dispatched.push(job.payload());
+        },
+      },
+    });
+
+    await dispatch(3, ["thumb"]);
+
+    expect(dispatched).toEqual([{ mediaId: 3, conversions: ["thumb"], queue: "default" }]);
+  });
+
+  it("runs the conversion inline when the dispatch itself fails", async () => {
+    const queue = await import("@zerotal/queue");
+    const dispatch = await queuedConversions({
+      Job: queue.Job,
+      JobRegistry: queue.JobRegistry,
+      Queue: {
+        dispatch: async () => {
+          throw new Error("the queue's Redis went away");
+        },
+      },
+    });
+
+    const article = await Article.create({ title: "Hello" });
+    const media = await article.addMedia(PNG_4x4, "a.png").toCollection("images");
+    media.generatedConversions = {};
+    await media.save();
+
+    await dispatch(Number(media.id), ["thumb"]);
+
+    expect((await MediaItem.find(media.id as number))!.hasConversion("thumb")).toBe(true);
   });
 
   it("is a no-op when the owning model type is gone", async () => {

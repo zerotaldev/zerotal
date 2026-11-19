@@ -35,7 +35,11 @@ change.
   with the table prepended and `no-store`, for anything that names it by hand.
 - **`flowEnhanceTag()` links the plain-form enhancement by its hash**, as
   `/__flow/assets/enhance.<hash>.js`, cached for a year. `FLOW_ENHANCE_PATH`,
-  `/__flow/enhance.js`, still serves the same bundle.
+  `/__flow/enhance.js`, still serves the same bundle with the same caching.
+- **Flow's scripts are served outside your middleware pipeline.** The hashed scripts and
+  `/__flow/enhance.js` are the same for every visitor, so they are answered before global
+  middleware runs, and nothing it adds to a response, a session cookie included, is sent with
+  them. `/__flow/runtime.js`, which carries your route table, still goes through the pipeline.
 - **A request for a hash the server does not have is redirected to the current file** (302,
   `no-store`), so a page rendered before a deploy still gets a runtime.
 - **The unminified runtime is gone from development.** An installed package serves the minified

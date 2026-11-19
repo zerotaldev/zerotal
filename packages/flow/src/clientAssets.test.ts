@@ -18,7 +18,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Application, Router } from "@zerotal/core";
+import { Application, BaseMiddleware, Router, type HttpContext, type NextFn } from "@zerotal/core";
 import { FlowProvider } from "./provider/FlowProvider.ts";
 import { CounterPage } from "./browser/__fixtures__/CounterPage.tsx";
 import { _clientAsset, _routeTablePrelude, _runtimeAsset } from "./clientAssets.ts";
@@ -76,6 +76,22 @@ describe("a script's URL", () => {
   });
 });
 
+/**
+ * A global middleware that stamps every response it sees, the way a session
+ * middleware writes its cookie. A response that carries the stamp went through the
+ * app's pipeline.
+ */
+class StampEveryResponse extends BaseMiddleware {
+  protected options = {};
+  async handle(_ctx: HttpContext, next: NextFn): Promise<Response | void> {
+    const response = await next();
+    if (!response) return;
+    const headers = new Headers(response.headers);
+    headers.append("Set-Cookie", "session=per-visitor");
+    return new Response(response.body, { status: response.status, headers });
+  }
+}
+
 describe("serving the scripts", () => {
   let app: Application;
   let base: string;
@@ -84,7 +100,7 @@ describe("serving the scripts", () => {
   beforeAll(async () => {
     Bun.env.APP_KEY = "test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa";
     Application._resetInstance();
-    app = Application.create({ env: "web", providers: [FlowProvider] });
+    app = Application.create({ env: "web", providers: [FlowProvider] }).use([StampEveryResponse]);
     await app.boot();
     Router.flow("/assets/counter", CounterPage);
     await app.start(0);
@@ -118,6 +134,20 @@ describe("serving the scripts", () => {
     // A raw route still carries the security headers the pipeline would add.
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(runtime.body);
+  });
+
+  it("serves every script outside the app's pipeline, so nothing per-visitor rides on it", async () => {
+    // The control: the page went through the pipeline and carries the stamp.
+    expect((await fetch(`${base}/assets/counter`)).headers.get("set-cookie")).toBe(
+      "session=per-visitor",
+    );
+    const [routes, runtime] = scriptSources(page);
+    const [enhance] = scriptSources(flowEnhanceTag());
+    for (const path of [routes!, runtime!, enhance!, "/__flow/enhance.js"]) {
+      const res = await fetch(base + path);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("set-cookie")).toBeNull();
+    }
   });
 
   it("answers a browser that already holds it with 304", async () => {

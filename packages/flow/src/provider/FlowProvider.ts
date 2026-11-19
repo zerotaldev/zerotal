@@ -1098,32 +1098,28 @@ export class FlowProvider extends ServiceProvider {
     Router.raw("GET", `${_FLOW_ASSET_PREFIX}:file`, (req: Request) => _clientAssetResponse(req));
 
     // The URLs these scripts had before they carried a hash. Nothing Flow renders
-    // links them any more; they stay, answering as they always did, for a layout or
-    // a proxy rule that names them by hand.
-    Router.get(
-      FLOW_ENHANCE_PATH,
-      class FlowEnhanceHandler {
-        handle(http: HttpContext): void {
-          const bundle = _enhanceAsset();
-          if (!bundle) {
-            http.response = new Response("// Flow enhancement unavailable", {
-              status: 503,
-              headers: { "Content-Type": "text/javascript; charset=utf-8" },
-            });
-            return;
-          }
-          http.response = new Response(bundle.body, {
-            status: 200,
-            headers: {
-              "Content-Type": "text/javascript; charset=utf-8",
-              "Cache-Control": "public, max-age=3600",
-            },
-          });
-        }
-      },
-      "handle",
-    );
+    // links them any more; they stay, for a layout or a proxy rule that names them
+    // by hand. The enhancement is raw for the same reason the hashed scripts are:
+    // it is the same for every visitor, and cached `public`.
+    Router.raw("GET", FLOW_ENHANCE_PATH, (): Response => {
+      const bundle = _enhanceAsset();
+      if (!bundle) {
+        return new Response("// Flow enhancement unavailable", {
+          status: 503,
+          headers: { "Content-Type": "text/javascript; charset=utf-8" },
+        });
+      }
+      return new Response(bundle.body, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/javascript; charset=utf-8",
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
+    });
 
+    // The route table travels with this one, so it keeps the pipeline the page it
+    // describes has, and is never stored.
     Router.get(
       "/__flow/runtime.js",
       class FlowRuntimeHandler {

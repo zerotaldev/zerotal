@@ -130,6 +130,8 @@ describe("the endpoints behind the gate", () => {
     "http://localhost/__zerotal/devtools/api/channels",
     "http://localhost/__zerotal/devtools/client.js",
     "http://localhost/__zerotal/devtools/dashboard.js",
+    // The hashed bundles too: under the same prefix, so behind the same gate.
+    "http://localhost/__zerotal/devtools/assets/client.0123456789abcdef.js",
   ];
 
   it("refuses every one of them when unauthorized", async () => {

@@ -31,11 +31,19 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@zerotal/core": "workspace:*",
-    "@zerotal/validator": "workspace:*"
+    "@zerotal/core": "workspace:*"
   },
   "devDependencies": {
+    "@zerotal/validator": "workspace:*",
     "typescript": "^5.8.0"
+  },
+  "peerDependencies": {
+    "@zerotal/validator": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@zerotal/validator": {
+      "optional": true
+    }
   },
   "description": "Active Record ORM for Zerotal built on Bun.sql — models, relations, query builder, migrations, and schema.",
   "keywords": [

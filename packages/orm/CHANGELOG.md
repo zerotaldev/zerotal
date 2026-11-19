@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: `@zerotal/validator` is an optional peer, no longer a dependency.** The ORM uses it
+  only to connect the validator's `unique()` and `exists()` rules to the database, and only when
+  the validator is installed, so an app using the ORM alone no longer installs it. Apps that
+  install `zerotal` get the validator from it and need do nothing. An app that installs
+  `@zerotal/orm` on its own and imports `@zerotal/validator` without listing it must add it:
+  `bun add @zerotal/validator`. A validator that is installed but fails to load now stops the
+  boot with its own error; it was silently skipped, which left `unique()` and `exists()`
+  failing later with no reason given.
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

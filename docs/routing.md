@@ -71,9 +71,14 @@ Router.get("/posts/:slug", PostController, "show").name("posts.show").bind("post
 
 Every `GET` route also answers `HEAD` — explicit, raw, view and markdown routes alike — so an
 uptime probe or `curl -I` gets the status and headers the `GET` would, with no body. The `GET`
-handler runs to produce them. `Content-Length` is the length of the body it returned, or the one
-it declared itself; an event stream (`text/event-stream`) is answered at once without a length and
-then cancelled, rather than read to an end it never reaches.
+handler runs to produce them. `Content-Length` is the length the `GET` sends: the length of the
+body it returned, measured, even where the handler declared another. Only a streamed body that is
+still arriving is taken at the length it declared, and then cancelled rather than waited for. An
+event stream (`text/event-stream`) is answered at once with `Transfer-Encoding: chunked` and no
+length, as its `GET` is, and then cancelled, rather than read to an end it never reaches.
+
+When `Router.raw()` registers a `GET` on a path a markdown dir or another route already serves,
+its `HEAD` follows it there too, unless a `Router.raw("HEAD", …)` of its own is registered.
 
 #### Per-route middleware
 

@@ -281,11 +281,21 @@ function _routeKey(method: HttpMethod, fullPath: string, domain: string | undefi
  * `Content-Length` is preserved explicitly, since constructing a bodiless Response otherwise
  * loses it.
  *
- * The body is only read when nothing else says how long it is. A handler that set its own
- * `Content-Length` is taken at its word, and an event stream is never read at all: it does not
- * end, so measuring it held the `HEAD` request (and its connection) open for as long as the
- * stream lived — forever, for a server-sent-events endpoint. Either way the stream is
- * cancelled, so the handler's `cancel()` runs and nothing it registered is left behind.
+ * An event stream is never read: it does not end, so measuring it held the `HEAD` request (and
+ * its connection) open for as long as the stream lived — forever, for a server-sent-events
+ * endpoint. It is answered at once with `Transfer-Encoding: chunked` and no length, as its `GET`
+ * is sent; without that header Bun writes `Content-Length: 0` on a bodiless response.
+ *
+ * A declared `Content-Length` is what Bun sends only when the body is a stream. A body Bun holds
+ * in memory goes out at its real length whatever the header says, and a header can be stale: a
+ * middleware that rewrote the body kept the original's headers, or a proxied `fetch()` whose body
+ * Bun decompressed kept the compressed length. So a declared length is checked against the body
+ * when the body is all there: what arrives before the next turn of the event loop is measured,
+ * and only a body still arriving after that is taken at its declared length (see
+ * {@link _drainsAtOnce}).
+ *
+ * Whenever the body is not read to its end, it is cancelled, so the handler's `cancel()` runs and
+ * nothing it registered is left behind.
  *
  * Explicit on purpose: Bun 1.4 answers `HEAD` from a `GET` route by itself, Bun 1.3 sends it on
  * to `fetch`. Deriving it here makes every route answer the same way on both.
@@ -296,8 +306,12 @@ function _headFrom(get: RouteHandlerFn): RouteHandlerFn {
     const headers = new Headers(response.headers);
     const declared = response.headers.get("Content-Length");
     const streaming = (response.headers.get("Content-Type") ?? "").startsWith("text/event-stream");
-    if (declared !== null || streaming) {
+    if (streaming) {
       await response.body?.cancel().catch(() => {});
+      if (declared === null) headers.set("Transfer-Encoding", "chunked");
+    } else if (declared !== null) {
+      const measured = await _drainsAtOnce(response);
+      if (measured !== null) headers.set("Content-Length", String(measured));
     } else {
       const body = await response.arrayBuffer();
       headers.set("Content-Length", String(body.byteLength));
@@ -308,6 +322,49 @@ function _headFrom(get: RouteHandlerFn): RouteHandlerFn {
       headers,
     });
   };
+}
+
+/** How many reads {@link _drainsAtOnce} makes before it stops waiting for a body to end. */
+const DRAIN_READ_LIMIT = 256;
+
+/**
+ * Read a response body to its end if it is all there now, and return its length; otherwise cancel
+ * it and return `null`.
+ *
+ * "All there" means the reads settle before the next turn of the event loop. A body Bun holds in
+ * memory does: a string, bytes, JSON, a `fetch()` response already received, and any of those
+ * passed through `new Response(res.body, …)`. A stream that is still producing does not, nor does
+ * a file. Nothing visible from JavaScript tells the two apart without reading — `res.body` is a
+ * `ReadableStream` either way — so the first read is attempted; a stream that was going to answer
+ * it later is cancelled instead.
+ *
+ * The read limit stops a stream that answers every read at once, and never ends, from holding the
+ * loop: Bun hands an in-memory body over in a few chunks of about 2 MB.
+ */
+async function _drainsAtOnce(response: Response): Promise<number | null> {
+  const body = response.body;
+  if (body === null) return 0;
+  const reader = body.getReader();
+  let late = false;
+  const nextTurn = new Promise<null>((resolve) =>
+    setImmediate(() => {
+      late = true;
+      resolve(null);
+    }),
+  );
+  const drain = async (): Promise<number | null> => {
+    let size = 0;
+    for (let reads = 0; reads < DRAIN_READ_LIMIT && !late; reads++) {
+      const { done, value } = await reader.read();
+      if (done) return size;
+      size += value.byteLength;
+    }
+    return null;
+  };
+  const measured = await Promise.race([drain().catch(() => null), nextTurn]);
+  // Not awaited: the handler's `cancel()` runs now, and the `HEAD` need not wait for it to settle.
+  if (measured === null) void reader.cancel().catch(() => {});
+  return measured;
 }
 
 /** Extract `:param` names from a route path pattern. */
@@ -1225,7 +1282,14 @@ export class Router {
       // so every link checker and uptime probe pointed at them was told the page
       // did not exist. Derived from the wrapped handler, so the headers above
       // ride along.
-      if (method === "GET") rawMap["HEAD"] ??= _headFrom(rawMap[method]!);
+      //
+      // Replaced, not kept: a `HEAD` already in the map was derived from the `GET`
+      // this raw `GET` just took over (a markdown dir or a pipeline route on the same
+      // path), and would answer from a handler `GET` no longer runs. Only a `HEAD`
+      // the app registered with `Router.raw()` itself is left alone.
+      if (method === "GET" && !_s().rawRoutes.has(`HEAD ${path}`)) {
+        rawMap["HEAD"] = _headFrom(rawMap[method]!);
+      }
     }
 
     return compiled;

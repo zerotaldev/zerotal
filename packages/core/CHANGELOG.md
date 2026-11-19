@@ -69,13 +69,17 @@ follows the Zerotal monorepo's unified versioning.
   answers is built by running the `GET` handler and measuring its body, and an event stream has
   no end to measure to, so the request waited, and held its connection, for as long as the stream
   lived. A `GET` that returns `Content-Type: text/event-stream` is now answered at once, with its
-  headers and no `Content-Length`, and the stream is cancelled so its `cancel()` runs. A handler
-  that sets its own `Content-Length` is no longer read to check it. Every other response is
-  measured as before.
+  headers, `Transfer-Encoding: chunked` and no `Content-Length`, as the `GET` is sent, and the
+  stream is cancelled so its `cancel()` runs. A streamed body that declares its own
+  `Content-Length` and is still arriving is answered at that length and cancelled, rather than
+  waited for. Every other response is measured as before, including one whose declared
+  `Content-Length` is stale, such as a proxied `fetch()` response Bun decompressed: the `HEAD`
+  reports the length the `GET` sends.
 - **`Router.markdown()` pages answer `HEAD` the same on Bun 1.3 and Bun 1.4.** They had no `HEAD`
   of their own, so on Bun 1.3 one went on to the app's fallback and was answered 404, while Bun
   1.4 ran the `GET`. They now derive one from the `GET`, like every other route, and answer with
-  its status and headers on both.
+  its status and headers on both. A `Router.raw()` `GET` on the same path takes the `HEAD` with
+  it, as it does from any route it replaces, unless the app registered a raw `HEAD` there itself.
 
 ### Testing
 

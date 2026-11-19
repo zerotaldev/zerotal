@@ -37,12 +37,52 @@ function eventStream(): Response {
   return new Response(body, { headers: { "Content-Type": "text/event-stream" } });
 }
 
-/** Send one request over a raw socket and return everything the server wrote, as text. */
+/**
+ * A body that declares its length and never delivers it: its one read never settles. Measuring
+ * it would hold a `HEAD` open forever, so only the declared length can answer it.
+ */
+const declared = { reads: 0, cancelled: 0 };
+function declaredStream(): Response {
+  const body = new ReadableStream<Uint8Array>(
+    {
+      pull() {
+        declared.reads++;
+        return new Promise<void>(() => {});
+      },
+      cancel() {
+        declared.cancelled++;
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  return new Response(body, { headers: { "Content-Length": "5" } });
+}
+
+/** An upstream that sends a gzip body, so a `fetch()` of it decompresses and keeps the length. */
+let upstream: ReturnType<typeof Bun.serve>;
+
+/**
+ * Send one request over a raw socket and return everything the server wrote, as text.
+ *
+ * Done when the server closes the connection, or, for a response that is not to a `HEAD`, once
+ * the `Content-Length` it declared has arrived: Bun leaves the connection open after a `GET`
+ * answered with a `fetch()` response, `Connection: close` or not.
+ */
 async function wire(port: number, method: string, path: string): Promise<string> {
   return await new Promise<string>((resolve) => {
     let received = "";
     const finish = (): void => resolve(received);
     const timer = setTimeout(finish, 3_000);
+    const complete = (): boolean => {
+      if (method === "HEAD") return false;
+      const split = received.indexOf("\r\n\r\n");
+      const length = /\r\ncontent-length: *(\d+)/i.exec(received.slice(0, split));
+      return (
+        split !== -1 &&
+        length !== null &&
+        Buffer.byteLength(received.slice(split + 4)) >= Number(length[1])
+      );
+    };
     void Bun.connect({
       hostname: "127.0.0.1",
       port,
@@ -52,8 +92,13 @@ async function wire(port: number, method: string, path: string): Promise<string>
             `${method} ${path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n`,
           );
         },
-        data(_socket, chunk) {
+        data(socket, chunk) {
           received += new TextDecoder().decode(chunk);
+          if (complete()) {
+            clearTimeout(timer);
+            socket.end();
+            finish();
+          }
         },
         close() {
           clearTimeout(timer);
@@ -90,6 +135,14 @@ let port: number;
 
 beforeAll(async () => {
   await Bun.write(`${TMP}/guide/intro.md`, "# Intro\n\nHello from markdown.\n");
+  upstream = Bun.serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    fetch: () =>
+      new Response(Bun.gzipSync(new TextEncoder().encode("proxied ".repeat(64))), {
+        headers: { "Content-Type": "text/plain", "Content-Encoding": "gzip" },
+      }),
+  });
   Application._resetInstance();
   Router.reset();
   app = Application.create({ env: "test" });
@@ -101,11 +154,13 @@ beforeAll(async () => {
     "/raw",
     () => new Response("raw body", { headers: { "Content-Type": "text/plain", "X-Raw": "1" } }),
   );
+  Router.raw("GET", "/declared", () => declaredStream());
   Router.raw(
     "GET",
-    "/declared",
-    () => new Response("12345", { headers: { "Content-Length": "5" } }),
+    "/stale",
+    () => new Response("abc", { headers: { "Content-Type": "text/plain", "Content-Length": "5" } }),
   );
+  Router.raw("GET", "/proxied", () => fetch(`http://127.0.0.1:${upstream.port}/`));
   Router.raw("GET", "/events", () => eventStream());
   Router.markdown("/guide", `${TMP}/guide`);
   await app.start(0);
@@ -116,6 +171,7 @@ afterAll(async () => {
   await app.stop({ exit: false });
   Router.reset();
   Application._resetInstance();
+  upstream.stop(true);
   await rm(TMP, { recursive: true, force: true });
 });
 
@@ -149,13 +205,33 @@ describe("HEAD on a running app", () => {
     expect(head.body).toBe("");
   });
 
-  it("takes a Content-Length the handler declared at its word", async () => {
+  it("answers a streamed body at the length it declared, without waiting for it, and cancels it", async () => {
+    const before = { ...declared };
+    const started = performance.now();
+
     const head = parse(await wire(port, "HEAD", "/declared"));
 
+    expect(performance.now() - started).toBeLessThan(2_000);
     expect(head.status).toBe(200);
     expect(head.headers.get("content-length")).toBe("5");
     expect(head.body).toBe("");
+    expect(declared.reads - before.reads).toBeLessThanOrEqual(1);
+    expect(declared.cancelled).toBe(before.cancelled + 1);
   });
+
+  it.each(["/stale", "/proxied"])(
+    "answers %s with the length GET sends, not a stale declared one",
+    async (path) => {
+      const get = parse(await wire(port, "GET", path));
+      const head = parse(await wire(port, "HEAD", path));
+
+      expect(get.status).toBe(200);
+      expect(get.headers.get("content-length")).toBe(String(Buffer.byteLength(get.body)));
+      expect(head.status).toBe(200);
+      expect(head.headers.get("content-length")).toBe(get.headers.get("content-length"));
+      expect(head.body).toBe("");
+    },
+  );
 
   it("answers an event stream at once instead of reading it to the end, and cancels it", async () => {
     const before = { ...streams };
@@ -166,6 +242,7 @@ describe("HEAD on a running app", () => {
     expect(performance.now() - started).toBeLessThan(2_000);
     expect(head.status).toBe(200);
     expect(head.headers.get("content-type")).toBe("text/event-stream");
+    expect(head.headers.has("content-length")).toBe(false);
     expect(head.body).toBe("");
     expect(streams.opened).toBe(before.opened + 1);
     expect(streams.cancelled).toBe(before.cancelled + 1);

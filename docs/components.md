@@ -119,7 +119,7 @@ flowUiHead("Acme", {
 });
 ```
 
-The browser build is a script from `https://cdn.jsdelivr.net` that writes its CSS into a `<style>` element, so a page that sends a [Content-Security-Policy](/docs/flow/components#recommended-csp-header) has to allow that origin in `script-src` and inline styles in `style-src`. To drop the CDN, set `stylesheet` to a prebuilt file.
+The browser build is a script from `https://cdn.jsdelivr.net` that writes its CSS into a `<style>` element. A page that sends a Content-Security-Policy has to allow it, and the head's inline scripts too; [Pages rendered with `flowUiHead()`](/docs/flow/components#pages-rendered-with-flowuihead) has the policy. To drop the CDN, set `stylesheet` to a prebuilt file.
 
 This is the path both panels Zerotal ships take. The [admin](/docs/admin) uses it through `adminHead()`, and the [monitor](/docs/monitor) uses it directly with an orange `--primary` — which is the whole reason the two look like the same product rather than two.
 

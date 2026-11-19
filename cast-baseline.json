@@ -103,7 +103,6 @@
     "packages/inertia/src/historyState.ts": 2,
     "packages/inertia/src/provider/InertiaProvider.ts": 1,
     "packages/inertia/src/SharedProps.ts": 2,
-    "packages/inertia/src/vuePlugin.ts": 1,
     "packages/monitor/src/provider/MonitorProvider.ts": 1,
     "packages/monitor/src/store/MonitorDb.ts": 1,
     "packages/notifications/src/admin.ts": 1,
@@ -136,7 +135,7 @@
     "packages/queue/src/observability.ts": 4,
     "packages/queue/src/provider/QueueProvider.ts": 1,
     "packages/queue/src/QueueFake.ts": 1,
-    "packages/queue/src/QueueManager.ts": 2,
+    "packages/queue/src/QueueManager.ts": 1,
     "packages/scheduler/src/monitor.ts": 1,
     "packages/scheduler/src/observability.ts": 3,
     "packages/session/src/AuthSessionMiddleware.ts": 1,
@@ -154,5 +153,5 @@
     "packages/validator/src/FormRequest.ts": 2,
     "packages/validator/src/validate.ts": 2
   },
-  "updatedAt": "2026-10-24T00:59:24.531Z"
+  "updatedAt": "2026-11-19T22:02:40.806Z"
 }

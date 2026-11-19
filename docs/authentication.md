@@ -1051,6 +1051,13 @@ registration options into what `navigator.credentials.create()` takes, and the n
 `PasskeyUser` is the minimum the ceremonies need (`id`, `name`, `email`); `PasskeyCredential` is
 what your store holds.
 
+Registration lets the browser offer any kind of authenticator: the device's own (Touch ID,
+Windows Hello, a phone's screen lock) or a roaming one, such as a USB or NFC security key or a
+phone reached by QR code. The `authenticatorAttachment` option narrows that: `"platform"` asks
+for the device's own only and `"cross-platform"` for a roaming one only, and either shuts out a
+user whose only authenticator is the other kind. Sign-in accepts any credential the user has
+registered.
+
 > **`requireUserVerification` defaults to `true`, and that is what makes a passkey a second
 > factor.** With it off, an assertion succeeds on possession of an unlocked authenticator alone
 > — whoever picks up the phone is the user. Turn it off only for a deliberate "the device is the

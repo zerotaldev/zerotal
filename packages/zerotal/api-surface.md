@@ -2095,6 +2095,7 @@ interface PasskeyRegistrationResponseJSON = {
 }
 
 interface PasskeysOptions = {
+  authenticatorAttachment?: 'platform' | 'cross-platform' | undefined
   findCredential: (credentialId: string) => Promise<PasskeyCredential | null | undefined>
   findUserCredentials: (userId: number) => Promise<PasskeyCredential[]>
   origin: string | string[]

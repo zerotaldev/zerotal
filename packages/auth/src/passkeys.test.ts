@@ -205,6 +205,31 @@ describe("PasskeyService.registrationOptions()", () => {
     const [passedOpts] = _mockGenerateRegistrationOptions.mock.calls[0]!;
     expect((passedOpts as any).supportedAlgorithmIDs).toEqual([-8, -7, -257]);
   });
+
+  it("lets the browser offer every kind of authenticator unless told otherwise", async () => {
+    const svc = new PasskeyService(makeOpts());
+    await svc.registrationOptions(makeUser());
+
+    const [passedOpts] = _mockGenerateRegistrationOptions.mock.calls[0]!;
+    expect((passedOpts as any).authenticatorSelection).not.toHaveProperty(
+      "authenticatorAttachment",
+    );
+  });
+
+  it.each(["platform", "cross-platform"] as const)(
+    "asks for a %s authenticator when authenticatorAttachment says so",
+    async (attachment) => {
+      const svc = new PasskeyService(makeOpts({ authenticatorAttachment: attachment }));
+      await svc.registrationOptions(makeUser());
+
+      const [passedOpts] = _mockGenerateRegistrationOptions.mock.calls[0]!;
+      expect((passedOpts as any).authenticatorSelection).toMatchObject({
+        authenticatorAttachment: attachment,
+        residentKey: "preferred",
+        userVerification: "required",
+      });
+    },
+  );
 });
 
 // ── verifyRegistration() ──────────────────────────────────────────────────────
@@ -664,6 +689,14 @@ describe("PasskeyService against the real @simplewebauthn/server", () => {
 
   it("offers the three algorithms on any runtime", () => {
     expect(result.algorithms).toEqual(ALGORITHMS);
+  });
+
+  it("asks the browser for no particular kind of authenticator by default", () => {
+    expect(result.authenticatorSelection).toEqual({
+      residentKey: "preferred",
+      requireResidentKey: false,
+      userVerification: "required",
+    });
   });
 
   it("throws a malformed origin from both verifications", () => {

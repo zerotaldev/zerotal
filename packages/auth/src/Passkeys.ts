@@ -332,6 +332,16 @@ export interface PasskeysOptions {
    * then do not count the passkey as a second factor.
    */
   requireUserVerification?: boolean | undefined;
+  /**
+   * Which kind of authenticator registration asks for. Unset, the default, the browser offers
+   * both: the device's own (Touch ID, Windows Hello, a phone's screen lock) and a roaming one,
+   * such as a USB or NFC security key or a phone reached by QR code.
+   *
+   * `"platform"` asks for the device's own only, and `"cross-platform"` for a roaming one only.
+   * Either shuts out a user whose authenticator is the other kind. It applies to
+   * {@link PasskeyService.registrationOptions}; signing in accepts any registered credential.
+   */
+  authenticatorAttachment?: "platform" | "cross-platform" | undefined;
   findUserCredentials(userId: number): Promise<PasskeyCredential[]>;
   findCredential(credentialId: string): Promise<PasskeyCredential | null | undefined>;
   saveCredential(credential: Omit<PasskeyCredential, "id">): Promise<void>;
@@ -373,6 +383,7 @@ export class PasskeyService {
     existingCredentials?: PasskeyCredential[],
   ): Promise<PasskeyRegistrationOptionsJSON> {
     const creds = existingCredentials ?? (await this._opts.findUserCredentials(user.id));
+    const attachment = this._opts.authenticatorAttachment;
 
     const { generateRegistrationOptions } = await _webauthn();
     return generateRegistrationOptions({
@@ -390,7 +401,7 @@ export class PasskeyService {
       authenticatorSelection: {
         residentKey: "preferred",
         userVerification: this._requireUv ? "required" : "preferred",
-        authenticatorAttachment: "platform",
+        ...(attachment ? { authenticatorAttachment: attachment } : {}),
       },
       supportedAlgorithmIDs: SUPPORTED_ALGORITHM_IDS,
     });

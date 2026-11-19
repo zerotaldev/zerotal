@@ -27,9 +27,16 @@ follows the Zerotal monorepo's unified versioning.
   unchanged. The options types leave out `attestationFormats`, which Zerotal never sends, and
   list only `credProps` under `extensions`. `PasskeyCredential.device_type` and `.transports`
   take the same values as before, typed `PasskeyDeviceType` and `PasskeyTransport`.
+- **Registration lets the browser offer any kind of authenticator.** It asked for the device's
+  own only (`authenticatorAttachment: "platform"`), so a USB or NFC security key, or a phone
+  reached by QR code, could not be registered. An app that wants the old behaviour sets
+  `authenticatorAttachment: "platform"` on `PasskeysOptions`.
 
 ### Added
 
+- **`PasskeysOptions.authenticatorAttachment`**: `"platform"` asks registration for the device's
+  own authenticator only, `"cross-platform"` for a roaming one only. Unset, the browser offers
+  both.
 - **`zt doctor` checks the WebAuthn library**, and so does the doctor pass in `zt deploy`. When a
   file in the app's source names `PasskeyService`, the check loads the library as a ceremony
   would, and fails with the install command when it is missing or does not load.

@@ -99,6 +99,9 @@ package, so keep it short and justify each entry. In order of preference:
    Either way it is declared. Only a service you resolve from the container needs
    no declaration.
 
+A library that only runs in the browser is none of these: it ships inside a bundle
+you build, as [Shipping a browser bundle](#shipping-a-browser-bundle) describes.
+
 The framework's own required dependencies, and the reason for each, are listed in
 the [Support Policy](/docs/support-policy#dependencies).
 
@@ -206,6 +209,32 @@ Two more rules keep a missing peer visible:
 - **Check at boot when the app's config turns the feature on.** Register a
   [doctor check](#registering-a-doctor-check), so the missing package is reported
   before the first request needs it.
+
+### Shipping a browser bundle
+
+A browser library your package puts on the page is not something the app should
+install. Build the bundle when the package is packed, ship the output, and keep the
+library a devDependency:
+
+- **Build it in `prepack`.** `bun pm pack`, and so the release, runs a package's
+  `prepack` script, so a `scripts/build-client.ts` that writes `dist/` puts a fresh
+  build in every tarball. Add `dist` to `files`.
+- **Leave the entry out of the tarball.** List the file the bundle is built from
+  with a `!` in `files`. It is a build input, not code an app runs, and the
+  dependency check only reads files that ship.
+- **Load it through an index the bundler can follow.** `dist/assets.js` imports each
+  bundle `with { type: "file" }`, and the package loads the index with a literal
+  `import("../dist/assets.js" as string)` and a `.catch` on it. `bun build --compile`
+  then embeds the files, and the paths the index returns read them inside the
+  binary. A file read by a path you build yourself is not there in a compiled app.
+- **Build from source in a checkout.** When the entry file exists, build it at boot
+  rather than reading `dist/`, which may be older than the code beside it.
+- **Serve it at a URL named after its content**, with
+  `Cache-Control: max-age=31536000, immutable`: the URL changes exactly when the
+  bytes do.
+
+`@zerotal/flow` and `@zerotal/devtools` both work this way; `scripts/browser-bundles.ts`
+writes the `dist/` both of them ship.
 
 ### Changing dependencies
 

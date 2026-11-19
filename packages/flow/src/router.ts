@@ -16,7 +16,7 @@ import { restoreDurable, persistDurable } from "./durable.ts";
 import { createSectionStore, runWithSections, resolveSections } from "./sections.ts";
 import { createStreamStore, runWithStreaming, streamChunk } from "./streaming.ts";
 import type { HtmlNode } from "./jsx-runtime.ts";
-import { _runtimeJs } from "./provider/FlowProvider.ts";
+import { _clientScriptTags } from "./clientAssets.ts";
 import { randomComponentId, toScriptJson } from "./utils.ts";
 import type { Layout } from "./Layout.ts";
 import {
@@ -253,8 +253,8 @@ export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
             // Component head takes precedence; layout head provides global resources.
             const headExtra = [PageClass.head ?? "", layoutHead].filter(Boolean).join("\n  ");
 
-            const runtimeSrc = _runtimeJs() ? "/__flow/runtime.js" : "";
-            const runtimeTag = runtimeSrc ? `<script src="${runtimeSrc}" defer></script>` : "";
+            // The route table, then the runtime, each at a URL named after its content.
+            const runtimeTag = _clientScriptTags();
 
             const html = `<!DOCTYPE html>
 <html lang="en">
@@ -360,7 +360,7 @@ export function _renderBootErrorPage(error: unknown, compName: string): string {
     action: "initial render",
     component: compName,
   });
-  const runtimeTag = _runtimeJs() ? `<script src="/__flow/runtime.js" defer></script>` : "";
+  const runtimeTag = _clientScriptTags();
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Error — ${compName}</title></head>

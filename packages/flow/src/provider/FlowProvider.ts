@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import {
   ServiceProvider,
   type Application,
@@ -42,23 +41,16 @@ import { getTaskMethods } from "../decorators.ts";
 import { ValidationError } from "../validation.ts";
 import { makeSignedRef } from "../uploads/TemporaryUploadedFile.ts";
 import { isAllowedOrigin, _clientAddress, _trustedProxyCount } from "@zerotal/core/http";
-
-// ── In-memory runtime.js bundle (built once at boot) ─────────────────────────
-
-/**
- * The `window.__zerotalRoutes = {...}` line prepended to the served runtime
- * bundle, which `installClientRoutes()` reads back on load.
- *
- * Served as JavaScript, not embedded in HTML, so the `</script>` hazard the
- * state island guards against does not apply here — this response is never
- * parsed as markup. Plain `JSON.stringify` is enough.
- *
- * @internal exported for tests.
- */
-export function _routeTablePrelude(): string {
-  const table = Object.fromEntries(Router.namedRoutes);
-  return `window.__zerotalRoutes=${JSON.stringify(table)};\n`;
-}
+import { _loadClientBundle, type ClientBundleName } from "../clientBundles.ts";
+import {
+  _FLOW_ASSET_PREFIX,
+  _clientAssetResponse,
+  _enhanceAsset,
+  _installClientAssets,
+  _routeTablePrelude,
+  _runtimeAsset,
+} from "../clientAssets.ts";
+import { FLOW_ENHANCE_PATH } from "../enhanceTag.ts";
 
 /** True when this process is the `serve --dev-worker` (dev fast refresh gates on it). */
 const _isDevWorker = Bun.argv.includes("--dev-worker");
@@ -97,19 +89,6 @@ export function _devErrorInfo(error: unknown, action: string): DevErrorInfo {
   return { name: e.name || "Error", message: e.message, stack: e.stack, action };
 }
 
-let _runtimeBundle: string | null = null;
-
-/**
- * The `/__flow/enhance.js` bundle — the standalone plain-form enhancement.
- *
- * Separate from the runtime bundle on purpose. `/__flow/runtime.js` is injected
- * only by `Router.flow` routes, and the whole point of `<form data-enhance>` is a
- * page with no Flow component on it, which is therefore never served that script.
- * It is also tiny and dependency-free, so an app that wants a form not to flash
- * does not pay for Alpine and a WebSocket bridge to get it.
- */
-let _enhanceBundle: string | null = null;
-
 /**
  * CSP-safe mode flag (no 'unsafe-eval'). Set `flow.cspSafe` in `config/flow.ts`,
  * or the ZT_FLOW_CSP_SAFE / APP_CSP_SAFE env flag when there is no config file.
@@ -119,54 +98,58 @@ function _isCspSafe(): boolean {
   return config.safe("flow.cspSafe", fromEnv === "true" || fromEnv === "1");
 }
 
-/** @internal — read by router.ts to build <script> tags. */
-export function _runtimeJs(): string | null {
-  return _runtimeBundle;
-}
-
-/** @internal — the built plain-form enhancement bundle, or null when it failed to build. */
-export function _enhanceJs(): string | null {
-  return _enhanceBundle;
-}
-
-/** In-flight build, so concurrent first requests share one rather than racing. */
-let _enhanceBuild: Promise<string | null> | null = null;
-
 /**
- * Build the enhancement bundle once, on first request.
+ * Load the runtime variant this process serves and the plain-form enhancement,
+ * and put them on the asset route.
  *
- * No CSP variant: it has no expression evaluator to swap, because it evaluates
- * nothing — it reads attributes and calls `fetch`.
+ * The enhancement is separate from the runtime on purpose: the whole point of
+ * `<form data-enhance>` is a page with no Flow component on it, which is never
+ * given the runtime. It is also tiny and dependency-free, so an app that wants a
+ * form not to flash does not pay for Alpine and a WebSocket bridge to get it. No
+ * CSP variant: it evaluates nothing, it reads attributes and calls `fetch`.
  *
- * @internal
+ * Loaded at boot rather than on first request because `flowEnhanceTag()` names the
+ * enhancement by its hash while a page renders, and reading two prebuilt files is
+ * cheap. A checkout builds them from source instead, once per process.
  */
-async function _buildEnhanceBundle(): Promise<string | null> {
-  if (_enhanceBundle) return _enhanceBundle;
-  // Cache the promise, not the result — two requests arriving together would
-  // otherwise both bundle.
-  _enhanceBuild ??= (async () => {
-    try {
-      const entry = fileURLToPath(new URL("../client/enhance.ts", import.meta.url));
-      const result = await Bun.build({
-        entrypoints: [entry],
-        target: "browser",
-        minify: isProdLike(deployEnv()),
-        format: "esm",
-      });
-      if (result.success && result.outputs.length > 0) {
-        _enhanceBundle = await result.outputs[0]!.text();
-        return _enhanceBundle;
-      }
-      console.warn("[Flow] Enhancement bundle build failed:", result.logs);
-    } catch (e) {
-      console.warn("[Flow] Could not build enhancement bundle:", e);
+async function _loadClientAssets(cspSafe: boolean): Promise<void> {
+  // `deployEnv()` — comparing APP_ENV ran the check against the runtime mode
+  // ("web"), so the client bundle shipped UNMINIFIED to every production visitor.
+  // Only a build from source reads it: the prebuilt bundles are always minified.
+  const minify = isProdLike(deployEnv());
+  const runtimeName: ClientBundleName = cspSafe ? "runtime.csp" : "runtime";
+  const [runtime, enhance] = await Promise.all([
+    _loadClientBundle(runtimeName, minify),
+    _loadClientBundle("enhance", minify),
+  ]);
+
+  if (!runtime.ok) {
+    if (runtime.reason === "build-failed") {
+      console.error(
+        "[Flow] The client runtime did not build, so Flow pages will render without it:",
+        ...runtime.logs,
+      );
+    } else {
+      console.error(
+        "[Flow] There is no client runtime to serve. This copy of @zerotal/flow has neither " +
+          "its prebuilt dist/ nor the src/client/ entries to build one, so Flow pages will " +
+          "render but nothing on them will respond. Reinstall @zerotal/flow. A binary " +
+          "compiled from a checkout of the Zerotal repository needs `bun run build:client` " +
+          "in packages/flow before `bun zt compile`.",
+      );
     }
-    // A failed build is not cached: the next request tries again, which is right
-    // for a dev-time transient and harmless for a real one.
-    _enhanceBuild = null;
-    return null;
-  })();
-  return _enhanceBuild;
+  }
+  if (!enhance.ok) {
+    console.warn(
+      "[Flow] The plain-form enhancement is unavailable; `<form data-enhance>` posts natively.",
+      ...(enhance.reason === "build-failed" ? enhance.logs : []),
+    );
+  }
+
+  _installClientAssets(
+    runtime.ok ? { name: runtimeName, code: runtime.code } : null,
+    enhance.ok ? { name: "enhance", code: enhance.code } : null,
+  );
 }
 
 // ── Rate limiter for HMAC failures ───────────────────────────────────────────
@@ -992,8 +975,8 @@ function _isPersistentMiddleware(mw: MiddlewareClass): boolean {
  * The service provider that wires Flow (reactive SSR over WebSocket) into a Zerotal app.
  *
  * It registers the `Router.flow()` route macro and the file-route resolver (so `flow` page
- * Components become routes), and in web/worker/test envs stands up the runtime: builds and
- * serves the client bundle at `/__flow/runtime.js`, mounts the WebSocket action handler at
+ * Components become routes), and in web/worker/test envs stands up the runtime: serves the
+ * prebuilt client bundles under `/__flow/assets/`, mounts the WebSocket action handler at
  * `/__flow/ws` (plus the `/__flow/http` fallback, `/__flow/upload`, and the session-relay
  * endpoint), and AOT-compiles registered `render()` methods. In `console`/`repl` envs it boots
  * only far enough to enumerate routes and register the `make:flow` generator. Add it to your
@@ -1104,45 +1087,24 @@ export class FlowProvider extends ServiceProvider {
     // skip the HTTP/WS server wiring below.
     if (!this._isWebRuntime()) return;
 
-    // CSP-safe mode (no 'unsafe-eval'): select the CSP client entry, which swaps
-    // Alpine's evaluator for the eval-free interpreter. Toggled by env.
-    const cspSafe = _isCspSafe();
+    // CSP-safe mode (no 'unsafe-eval'): serve the CSP runtime, which swaps Alpine's
+    // evaluator for the eval-free interpreter. Toggled by config or env.
+    await _loadClientAssets(_isCspSafe());
 
-    // Build the client-side runtime bundle
-    try {
-      const entryPath = cspSafe ? "../client/index.csp.ts" : "../client/index.ts";
-      const entry = fileURLToPath(new URL(entryPath, import.meta.url));
-      const result = await Bun.build({
-        entrypoints: [entry],
-        target: "browser",
-        // `deployEnv()` — comparing APP_ENV ran the check against the runtime mode
-        // ("web"), so the client bundle shipped UNMINIFIED to every production visitor.
-        minify: isProdLike(deployEnv()),
-        format: "esm",
-      });
+    // The runtime, the plain-form enhancement and the route table, each at a URL
+    // named after its content (see clientAssets.ts), cacheable for a year. Raw: a
+    // script that is the same for every visitor has no use for the session, and a
+    // response cached `public` must not carry the cookie a session would set.
+    Router.raw("GET", `${_FLOW_ASSET_PREFIX}:file`, (req: Request) => _clientAssetResponse(req));
 
-      if (result.success && result.outputs.length > 0) {
-        _runtimeBundle = await result.outputs[0]!.text();
-      } else {
-        console.warn("[Flow] Client bundle build failed:", result.logs);
-      }
-    } catch (e) {
-      console.warn("[Flow] Could not build client bundle:", e);
-    }
-
-    // Serve the plain-form enhancement bundle. Deliberately cacheable, unlike the
-    // runtime: it carries no per-app route table, so there is nothing in it that can
-    // go stale between deploys of the same framework version.
-    //
-    // Built on first request rather than at boot. Most apps never serve a page that
-    // uses `<form data-enhance>` — it is for the pages Flow does not otherwise touch
-    // — so building it at boot spends time on an artefact nobody asks for, in every
-    // process, including every test that boots a provider.
+    // The URLs these scripts had before they carried a hash. Nothing Flow renders
+    // links them any more; they stay, answering as they always did, for a layout or
+    // a proxy rule that names them by hand.
     Router.get(
-      "/__flow/enhance.js",
+      FLOW_ENHANCE_PATH,
       class FlowEnhanceHandler {
-        async handle(http: HttpContext): Promise<void> {
-          const bundle = await _buildEnhanceBundle();
+        handle(http: HttpContext): void {
+          const bundle = _enhanceAsset();
           if (!bundle) {
             http.response = new Response("// Flow enhancement unavailable", {
               status: 503,
@@ -1150,7 +1112,7 @@ export class FlowProvider extends ServiceProvider {
             });
             return;
           }
-          http.response = new Response(bundle, {
+          http.response = new Response(bundle.body, {
             status: 200,
             headers: {
               "Content-Type": "text/javascript; charset=utf-8",
@@ -1162,31 +1124,31 @@ export class FlowProvider extends ServiceProvider {
       "handle",
     );
 
-    // Serve the client-side runtime bundle
     Router.get(
       "/__flow/runtime.js",
       class FlowRuntimeHandler {
         handle(http: HttpContext): void {
-          if (!_runtimeBundle) {
+          const runtime = _runtimeAsset();
+          if (!runtime) {
             http.response = new Response("// Flow runtime unavailable", {
               status: 503,
               headers: { "Content-Type": "text/javascript; charset=utf-8" },
             });
             return;
           }
-          // Prepend the named-route table so `$route(...)` resolves the same
-          // names the server renders with. Serialised here rather than baked
-          // into the bundle because the bundle is built in onBooting(), before
-          // providers registered after Flow have added their routes; this
-          // handler runs per request, so the table is complete. `no-store`
-          // above means there is no cached copy to go stale.
-          http.response = new Response(`${_routeTablePrelude()}${_runtimeBundle}`, {
-            status: 200,
-            headers: {
-              "Content-Type": "text/javascript; charset=utf-8",
-              "Cache-Control": "no-store",
+          // The route table travels with the runtime here, as it did before it had a
+          // script of its own, so a page that loads only this URL still gets
+          // `$route(...)`. Per request, and `no-store`, because the table is.
+          http.response = new Response(
+            new Blob([_routeTablePrelude(), runtime.body], { type: "text/javascript" }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "text/javascript; charset=utf-8",
+                "Cache-Control": "no-store",
+              },
             },
-          });
+          );
         }
       },
       "handle",

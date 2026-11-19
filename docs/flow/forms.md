@@ -567,16 +567,19 @@ what the person typed is still there.
 
 ### Include the script
 
-The enhancement is a separate, dependency-free bundle. Flow pages get
-`/__flow/runtime.js`; a plain page gets nothing, which is the whole reason this exists. Put the
-tag in the layout that renders your non-Flow pages:
+The enhancement is a separate, dependency-free bundle. Flow pages get the Flow runtime; a plain
+page gets nothing, which is the whole reason this exists. Put the tag in the layout that renders
+your non-Flow pages:
 
 ```tsx
 import { flowEnhanceTag } from "@zerotal/flow";
 
 // in your layout's <head>
-flowEnhanceTag(); // <script src="/__flow/enhance.js" defer></script>
+flowEnhanceTag(); // <script src="/__flow/assets/enhance.<hash>.js" defer></script>
 ```
+
+The file name carries a hash of the bundle, so browsers cache it for good and fetch it again only
+when an upgrade changes it — see [the client runtime](/docs/flow/performance#the-client-runtime).
 
 Nothing fails if you forget it — the forms simply post the way they always did. That is the
 design, and it is also why the tag is easy to leave out and never notice.

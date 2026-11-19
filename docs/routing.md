@@ -591,10 +591,10 @@ import { hasRoute, route } from "zerotal/routes";
 {hasRoute("admin.index") && <a href={route("admin.index")}>Admin</a>}
 ```
 
-**In Flow**, the table arrives on its own. `/__flow/runtime.js` is built by the
+**In Flow**, the table arrives on its own. Flow's client runtime is built by the
 framework rather than by your app, so it cannot import your generated file;
-Flow serialises the table onto the runtime it serves instead, and exposes the
-helper to Alpine expressions as `$route`:
+Flow serves the table as a small script of its own, loaded just before the
+runtime, and exposes the helper to Alpine expressions as `$route`:
 
 ```html
 <a :href="$route('posts.show', { slug: post.slug })">Read</a>

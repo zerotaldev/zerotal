@@ -9,16 +9,25 @@
  *
  * @module
  */
+import { _enhanceAsset } from "./clientAssets.ts";
 
-/** The path `FlowProvider` serves the enhancement bundle at. */
+/**
+ * The path `FlowProvider` serves the enhancement bundle at under a name that never
+ * changes. `flowEnhanceTag()` links the copy named after its content instead,
+ * which a browser can keep without asking again.
+ */
 export const FLOW_ENHANCE_PATH = "/__flow/enhance.js";
 
 /**
  * A `<script>` tag loading the plain-form enhancement.
  *
  * Put it in the layout that renders your non-Flow pages. Flow pages already get
- * `/__flow/runtime.js`, which does not include this — the two are separate because
- * the enhancement exists for pages that have no Flow component to run a runtime.
+ * the runtime, which does not include this — the two are separate because the
+ * enhancement exists for pages that have no Flow component to run a runtime.
+ *
+ * The tag points at `/__flow/assets/enhance.<hash>.js`, a URL that changes only
+ * when the bundle does, so a browser caches it for good. Before `FlowProvider` has
+ * booted it falls back to {@link FLOW_ENHANCE_PATH}.
  *
  * `defer` so it never blocks the parse, and the listener is delegated on
  * `document`, so a form that appears later is picked up without re-running
@@ -32,5 +41,5 @@ export const FLOW_ENHANCE_PATH = "/__flow/enhance.js";
  * ```
  */
 export function flowEnhanceTag(): string {
-  return `<script src="${FLOW_ENHANCE_PATH}" defer></script>`;
+  return `<script src="${_enhanceAsset()?.path ?? FLOW_ENHANCE_PATH}" defer></script>`;
 }

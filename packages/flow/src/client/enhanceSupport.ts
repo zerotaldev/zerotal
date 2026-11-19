@@ -2,7 +2,7 @@
  * The parts of the plain-form enhancement that are decisions rather than effects.
  *
  * Split out of `enhance.ts` for a reason worth recording. That file is served as a
- * **classic script** — `<script src="/__flow/enhance.js" defer>` on pages that have
+ * **classic script** — the `<script defer>` that `flowEnhanceTag()` writes, on pages that have
  * no module loader and no framework on them. A bundle ending in an `export`
  * statement is a `SyntaxError` in that position, and the browser discards the whole
  * file. It does so *silently*: the forms fall back to native posts and the page

@@ -11,6 +11,47 @@ change.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: Alpine and its seven plugins are no longer installed into your app.** `alpinejs`,
+  `@alpinejs/anchor`, `@alpinejs/collapse`, `@alpinejs/focus`, `@alpinejs/mask`,
+  `@alpinejs/morph`, `@alpinejs/persist` and `@alpinejs/resize` move from `dependencies` to
+  `devDependencies`: the browser runtime is now built when the package is packed and ships in
+  `dist/`, so nothing in an app needs them, and with them go the seven packages they depend on.
+  Flow itself needs no change. **What an app must change:** if your own code imports `alpinejs`
+  or one of those plugins, which until now resolved through Flow, add it to your app's own
+  dependencies (`bun add alpinejs`). The Alpine version is fixed by each Zerotal release; an
+  Alpine fix reaches your app in a release, not through `bun update`.
+- **The client runtime ships prebuilt, and is served at a URL named after its content.** It was
+  bundled by `Bun.build` from `src/client/` at every boot, and served at `/__flow/runtime.js` with
+  `Cache-Control: no-store`, so every full page load downloaded all 67 KB (gzipped) of it again.
+  A page now loads `/__flow/assets/runtime.<hash>.js`, where the hash is taken from the file's
+  bytes, sent with `Cache-Control: public, max-age=31536000, immutable`; a browser fetches it once
+  per upgrade. The CSP-safe runtime is served the same way, as `runtime.csp.<hash>.js`.
+- **The route table is a script of its own.** It was prepended to the runtime per request,
+  which is what forced `no-store` on the runtime. Pages now load
+  `/__flow/assets/routes.<hash>.js` just before the runtime; it sets `window.__zerotalRoutes` as
+  before, and its hash changes when your named routes do. `/__flow/runtime.js` still answers,
+  with the table prepended and `no-store`, for anything that names it by hand.
+- **`flowEnhanceTag()` links the plain-form enhancement by its hash**, as
+  `/__flow/assets/enhance.<hash>.js`, cached for a year. `FLOW_ENHANCE_PATH`,
+  `/__flow/enhance.js`, still serves the same bundle.
+- **A request for a hash the server does not have is redirected to the current file** (302,
+  `no-store`), so a page rendered before a deploy still gets a runtime.
+- **The unminified runtime is gone from development.** An installed package serves the minified
+  prebuilt bundle in every environment. A checkout of the Zerotal repository still builds from
+  `src/client/` at boot, minified only where the deployment is production-like.
+- **No runtime is reported as an error.** When neither a prebuilt bundle nor a source build is
+  available, the boot logs it with `console.error` and says what to do, rather than a
+  `console.warn` that left every page rendered but unresponsive.
+
+### Fixed
+
+- **An app built with `bun zt compile` serves the client runtime.** The binary carries no
+  `src/client/`, so the boot-time `Bun.build` failed with `ENOENT` inside it, and every page was
+  served without a runtime: rendered, and inert. The prebuilt bundles are now read through an
+  import the bundler follows, so the binary embeds them and serves them like any other install.
+
 ## [1.16.4] — 2026-11-17
 
 ### Changed

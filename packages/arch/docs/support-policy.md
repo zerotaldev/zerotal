@@ -78,14 +78,15 @@ in turn:
 
 Flow apps also get these, through `@zerotal/flow` and `@zerotal/flow-ui`:
 
-| Package                                    | Comes with         | Why                                                                                                                     |
-| ------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `typescript`                               | `@zerotal/flow`    | The ahead-of-time component compiler reads TypeScript's syntax tree, which Bun's transpiler does not expose.            |
-| `alpinejs` and seven `@alpinejs/*` plugins | `@zerotal/flow`    | Flow's browser runtime, bundled for the page when the app boots. Under review: it could ship prebuilt with the package. |
-| `tailwind-merge`                           | `@zerotal/flow-ui` | Resolving conflicting Tailwind classes needs Tailwind's own class grammar, which a rewrite would let drift.             |
+| Package          | Comes with         | Why                                                                                                          |
+| ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `typescript`     | `@zerotal/flow`    | The ahead-of-time component compiler reads TypeScript's syntax tree, which Bun's transpiler does not expose. |
+| `tailwind-merge` | `@zerotal/flow-ui` | Resolving conflicting Tailwind classes needs Tailwind's own class grammar, which a rewrite would let drift.  |
 
-The seven plugins are `@alpinejs/anchor`, `@alpinejs/collapse`, `@alpinejs/focus`,
-`@alpinejs/mask`, `@alpinejs/morph`, `@alpinejs/persist` and `@alpinejs/resize`.
+Flow's browser runtime is not on the list because nothing installs it. Alpine and the plugins
+Flow uses are built into the runtime when `@zerotal/flow` is published, and arrive as that one
+file, at the versions that release was built with — see
+[the client runtime](/docs/flow/performance#the-client-runtime).
 
 This list is checked: CI fails when a package gains a dependency that is not on it.
 The rules a package follows are in

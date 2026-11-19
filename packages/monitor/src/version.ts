@@ -11,12 +11,12 @@
  * framework version, and it ships inside the tarball — which the repository root does
  * not. The release script verifies the root version against the tag, so this follows
  * the thing that is actually checked at publish time.
+ *
+ * The manifest is imported rather than read from a path beside this module, because
+ * that path points nowhere inside a binary built by `bun zt compile`; the bundler
+ * embeds an import.
  */
-import { readFileSync } from "node:fs";
-
-const pkg: { version: string } = JSON.parse(
-  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
-) as { version: string };
+import pkg from "../package.json" with { type: "json" };
 
 /** Full version, e.g. `1.1.0`. */
 export const ZEROTAL_VERSION: string = pkg.version;

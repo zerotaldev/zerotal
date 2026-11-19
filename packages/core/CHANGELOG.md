@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A binary built by `bun zt compile` starts.** Loading `@zerotal/core` read the framework's
+  `package.json` from a path beside the module to learn its own version, and inside a compiled
+  binary that path points nowhere, so every binary exited with `ENOENT` before the app booted, on
+  any command. The version now comes from importing the manifest, which the bundler embeds, so
+  `ZEROTAL_VERSION` is the same in a source run and in a binary. `installedCoreVersion()` still
+  reads `node_modules` on purpose, since it reports what is installed rather than what is
+  running, and returns `null` when nothing is installed beside the binary.
+
 ## [1.16.4] — 2026-11-17
 
 ### Added

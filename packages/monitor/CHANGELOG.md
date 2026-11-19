@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A compiled binary that loads the monitor starts.** The monitor read its `package.json` from a
+  path beside the module to report the framework version, which points nowhere inside a binary
+  built by `bun zt compile`, so the binary exited with `ENOENT` at start-up. The version now comes
+  from importing the manifest, which the bundler embeds.
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

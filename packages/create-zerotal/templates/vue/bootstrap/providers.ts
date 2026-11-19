@@ -23,6 +23,7 @@ import { DevtoolsProvider } from "@zerotal/devtools";
 const providers = [
   LogProvider,
   DatabaseProvider,
+  StorageProvider,
   SessionProvider,
   AuthProvider,
   InertiaProvider,

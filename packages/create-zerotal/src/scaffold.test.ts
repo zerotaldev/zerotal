@@ -76,19 +76,82 @@ describe('starter parity', () => {
     });
   });
 
-  it.each([...TEMPLATES])('%s registers DevtoolsProvider', async (template) => {
+  // The providers each starter must register, beyond what its own feature needs. Every
+  // starter with a database registers the same five: one without StorageProvider fails
+  // on its first `Storage.disk()` call, which usually sits behind auth and an upload and
+  // so is first reached in production.
+  const WITH_DATABASE = ['LogProvider', 'DatabaseProvider', 'StorageProvider', 'SessionProvider', 'AuthProvider'];
+  const PROVIDERS: Record<string, readonly string[]> = {
+    minimal: ['LogProvider', 'DevtoolsProvider'],
+    api: [...WITH_DATABASE, 'NotificationProvider', 'QueueProvider', 'DevtoolsProvider'],
+    admin: [...WITH_DATABASE, 'CacheProvider', 'FlowProvider', 'AdminProvider', 'DevtoolsProvider'],
+    flow: [...WITH_DATABASE, 'FlowProvider', 'DevtoolsProvider'],
+    react: [...WITH_DATABASE, 'InertiaProvider', 'DevtoolsProvider'],
+    vue: [...WITH_DATABASE, 'InertiaProvider', 'DevtoolsProvider'],
+  };
+
+  const bootstrap = async (template: string) => {
     const dir = join(import.meta.dir, '..', 'templates', template, 'bootstrap');
     const sources = await Promise.all(
       ['providers.ts', 'app.ts'].map((f) => Bun.file(join(dir, f)).text().catch(() => '')),
     );
-    // Imported from the package, then named again in the provider list.
-    const registered = sources.some(
-      (s) =>
-        /import \{ DevtoolsProvider \} from ["']@zerotal\/devtools["']/.test(s) &&
-        /^(?!\s*(?:import|\/\/)).*\bDevtoolsProvider\s*[,\]]/m.test(s),
-    );
-    expect({ template, registered }).toEqual({ template, registered: true });
+    return sources.join('\n');
+  };
+
+  /** Providers named in an import, and providers named again outside one: the list. */
+  const providersIn = (source: string) => ({
+    imported: [...source.matchAll(/^import \{([^}]*)\} from/gm)]
+      .flatMap((m) => m[1]!.split(',').map((n) => n.trim()))
+      .filter((n) => n.endsWith('Provider')),
+    registered: source
+      .split('\n')
+      .filter((line) => !/^\s*(?:import\b|\/\/)/.test(line))
+      .flatMap((line) => [...line.matchAll(/\b(\w+Provider)\s*[,\]]/g)].map((m) => m[1]!)),
   });
+
+  it('has a provider list for every template', () => {
+    expect(Object.keys(PROVIDERS).sort()).toEqual([...TEMPLATES].sort());
+  });
+
+  it.each([...TEMPLATES])('%s imports and registers every provider its baseline names', async (template) => {
+    const { imported, registered } = providersIn(await bootstrap(template));
+    const expected = PROVIDERS[template] ?? [];
+    expect({ template, missing: expected.filter((p) => !imported.includes(p) || !registered.includes(p)) }).toEqual({
+      template,
+      missing: [],
+    });
+  });
+
+  it.each([...TEMPLATES])('%s registers every provider it imports', async (template) => {
+    // An import that never reaches the list is a provider somebody meant to register.
+    const { imported, registered } = providersIn(await bootstrap(template));
+    expect({ template, unregistered: imported.filter((p) => !registered.includes(p)) }).toEqual({
+      template,
+      unregistered: [],
+    });
+  });
+
+  it.each([...TEMPLATES])('%s registers DevtoolsProvider from @zerotal/devtools', async (template) => {
+    const source = await bootstrap(template);
+    expect({ template, imported: /import \{ DevtoolsProvider \} from ["']@zerotal\/devtools["']/.test(source) }).toEqual({
+      template,
+      imported: true,
+    });
+  });
+
+  it.each([...TEMPLATES].filter((t) => PROVIDERS[t]?.includes('AuthProvider')))(
+    '%s brands its User model Authenticatable',
+    async (template) => {
+      // A plain `Model` saves and hashes as usual, but auth resolves no user model from
+      // it: a correct password signs nobody in, and a session's user_id loads nobody.
+      // The column the mixin adds is checked in templates.test.ts.
+      const model = await Bun.file(join(import.meta.dir, '..', 'templates', template, 'app/models/User.ts')).text();
+      expect({ template, branded: /extends Model\.using\([^)]*\bAuthenticatable\b/.test(model) }).toEqual({
+        template,
+        branded: true,
+      });
+    },
+  );
 
   it.each([...TEMPLATES])('%s ships [install] peer = false', async (template) => {
     const bunfig = await Bun.file(join(import.meta.dir, '..', 'templates', template, '_bunfig.toml'))

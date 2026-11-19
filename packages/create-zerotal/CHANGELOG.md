@@ -8,6 +8,26 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Vue starter registers `StorageProvider`.** It imported the provider but left it out of the
+  list, so the first `Storage.disk()` call failed with `Could not resolve the "storage" facade`. The
+  other four starters with a database already registered it.
+- **Signing in works in the Vue and api starters.** Their `User` model extended a plain `Model`, so
+  auth found no user model: in the Vue starter a correct password was refused (and registration
+  signed nobody in, then redirected to a guarded page that sent the visitor back to `/login`), and
+  in the api starter `GET /me` answered 401 straight after a successful `POST /login`. Both now
+  extend `Model.using(Authenticatable)` and add `table.rememberToken()` to the users migration, as
+  the flow and react starters do. The Vue starter's register route also checks the sign-in result,
+  as the react starter's does.
+- A test now names the providers each starter must register, and fails if any starter leaves one
+  out, imports a provider it never registers, or has a `User` model without `Authenticatable`.
+
+  Apps already scaffolded are not touched. A Vue app can add `StorageProvider` to
+  `bootstrap/providers.ts`. A Vue or api app can change `User` to
+  `extends Model.using(Authenticatable)` (imported from `zerotal/auth`), then run `bun zt doctor`,
+  which names a migration if the `remember_token` column is missing.
+
 ## [1.16.4] — 2026-11-17
 
 ### Changed

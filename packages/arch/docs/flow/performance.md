@@ -78,6 +78,9 @@ way, from `/__flow/assets/enhance.<hash>.js`. The URLs these scripts had before 
 hash, `/__flow/runtime.js` and `/__flow/enhance.js`, still answer for anything that names them by
 hand.
 
+The scripts under `/__flow/assets/` are [raw routes](/docs/routing#raw-routes): they are the same
+for every visitor, so your global middleware does not run for them.
+
 ## Compiling at boot
 
 Flow compiles your pages' JSX into string-building render functions when the server starts,

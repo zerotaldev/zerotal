@@ -1,14 +1,6 @@
 {
   "note": "Dependency-policy violations that existed when deps:check landed. The gate fails only on one not listed here. Fix one, then run `bun run deps:check --update` to drop it; never add to this list to make the gate pass.",
   "violations": [
-    "dependency-not-allowed flow: @alpinejs/anchor (package.json)",
-    "dependency-not-allowed flow: @alpinejs/collapse (package.json)",
-    "dependency-not-allowed flow: @alpinejs/focus (package.json)",
-    "dependency-not-allowed flow: @alpinejs/mask (package.json)",
-    "dependency-not-allowed flow: @alpinejs/morph (package.json)",
-    "dependency-not-allowed flow: @alpinejs/persist (package.json)",
-    "dependency-not-allowed flow: @alpinejs/resize (package.json)",
-    "dependency-not-allowed flow: alpinejs (package.json)",
     "undeclared core: @zerotal/orm (packages/core/src/command/builtin/TestCommand.ts)",
     "variable-specifier core: @zerotal/orm (packages/core/src/command/builtin/TestCommand.ts)"
   ]

@@ -27,6 +27,95 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.17.0 — 2026-11-19
+
+A minor that installs less into an app. Passkeys' WebAuthn library, Alpine, and the packages one
+Zerotal package loads from another are now installed only by the apps that use them, and a missing
+one says what to install. The panels move to Tailwind v4, Carbon runs on Bun's own `Temporal`, and
+a binary built by `bun zt compile` starts again.
+
+### Before you upgrade
+
+Read [1.16 to 1.17](/docs/upgrade#116-to-117) in the upgrade guide. It has a step for each breaking change, and
+most apps need only some of them:
+
+- **Using passkeys?** Run `bun add @simplewebauthn/server reflect-metadata`.
+- **Rendering your own markup under `flowUiHead()`**, the admin panel or `/monitor`? It is now
+  compiled by Tailwind v4, and the script comes from `cdn.jsdelivr.net`.
+- **Importing `alpinejs` in your own code?** Add it to your `package.json`.
+- **Using `driver: "sharp"` for media?** Make sure sharp is installed.
+
+### Added
+
+- **Passkey registration takes `authenticatorAttachment`** (`@zerotal/auth`), so you can choose
+  which authenticators may enrol: any (the default), `"platform"` or `"cross-platform"`.
+- **`flowTailwindCss()` and `adminTailwindCss()`** (`@zerotal/flow-ui`, `@zerotal/admin`) give an
+  app's own Tailwind v4 build the theme that the panels use.
+- **`zt doctor` checks for optional packages.** It reports a missing WebAuthn library in an app that
+  uses passkeys, a missing image driver, the AI provider SDK, the Inertia framework packages, and the
+  admin panel's optional packages. Each report includes the install command.
+- **Releases can publish with npm trusted publishing.** Packages not yet linked fall back to the
+  token. This changes release tooling only.
+
+### Changed
+
+- **BREAKING (`@zerotal/auth`): passkeys' WebAuthn library is an optional peer.** An app that uses
+  `PasskeyService` installs `@simplewebauthn/server` and `reflect-metadata` itself, and other apps
+  no longer install them. Without the library, the app still boots, but the first ceremony throws
+  `OptionalPeerMissingError`, and `zt doctor` and `zt deploy` fail with the install command.
+  `PasskeyService` takes and returns Zerotal's own WebAuthn types, so code that read
+  `attestationFormats` from the returned options no longer compiles.
+- **BREAKING (`@zerotal/auth`): passkey registration lets the browser offer any authenticator,**
+  including security keys and phones reached by QR code. Set `authenticatorAttachment: "platform"`
+  to keep 1.16's platform-only registration.
+- **BREAKING (`@zerotal/flow-ui`, `@zerotal/admin`, `@zerotal/monitor`): `flowUiHead()` runs
+  Tailwind v4.** The browser build is pinned to `@tailwindcss/browser` 4.3.5 on `cdn.jsdelivr.net`,
+  with an integrity hash, in place of `cdn.tailwindcss.com`. The components' v4 classes now render,
+  so checked switches fill in and invalid fields turn red. An app's own markup under the head is
+  compiled by v4, and v3 class names whose meaning changed (`shadow-sm`, bare `ring`,
+  `outline-none`, `bg-opacity-*`) need renaming. The token border and page colours now sit in
+  `@layer base`.
+- **BREAKING (`@zerotal/flow`): Alpine is no longer installed into apps.** Flow's client runtime is
+  prebuilt in the package, so an app whose own code imports `alpinejs` or an `@alpinejs/*` plugin
+  adds it. The Alpine version is fixed for each Zerotal release.
+- **Flow's scripts are served at content-hashed URLs and cached for a year** (`@zerotal/flow`).
+  `/__flow/runtime.js` and `/__flow/enhance.js` still answer. The route table is its own script at
+  `/__flow/routes/<hash>.js`, cached privately. Unlike the other `/__flow/*` scripts, it passes
+  through the app's global middleware.
+- **BREAKING (`@zerotal/media`): a missing sharp fails conversions loudly.** With `driver: "sharp"`
+  and sharp missing or unloadable, `addMedia()` into a collection with conversions now throws. It
+  throws after storing the original, where it used to skip the conversions silently. sharp 0.35 is
+  supported.
+- **BREAKING (`@zerotal/admin`, `@zerotal/tenancy`, `@zerotal/notifications`, `@zerotal/orm`): a
+  missing optional Zerotal package throws `OptionalPeerMissingError`.** Each package now declares the
+  packages it loads from another. Admin's `static history`, `databaseNotifications()` and queued
+  imports throw without audit, notifications or queue; they used to do nothing. `tenantCache()`
+  throws without cache. The broadcast channel throws without broadcasting. `@zerotal/validator` is
+  an optional peer of the ORM. Admin now depends on `@zerotal/auth` and `@zerotal/orm`.
+- **BREAKING (`@zerotal/inertia`): `.vue` pages need `@vue/compiler-sfc` 3.3 or later.** A Vue app
+  with `inertia.ssr` on fails at boot without the compiler; before, it server-rendered the page's
+  file path. React, Vue, their adapters and the compiler load as optional peers and are embedded by
+  `bun zt compile`.
+- **BREAKING (`@zerotal/core`): on Bun 1.4, Carbon's values are Bun's own `Temporal`.** Carbon no
+  longer loads `@js-temporal/polyfill` there. A `ZonedDateTime` from Carbon is rejected by the
+  polyfill's `ZonedDateTime` methods and fails `instanceof` against its classes. Use the global
+  `Temporal`. On Bun 1.3, the polyfill loads the first time Carbon needs a date, and nothing else
+  changes.
+- **`@zerotal/ai` bounds the Anthropic SDK to `>=0.70.0 <2`**, and `bun zt compile` embeds it.
+- **The `NotificationFake` re-export from `@zerotal/testing` is deprecated.** Import it from
+  `@zerotal/notifications`. The re-export is removed in 1.18.
+
+### Fixed
+
+- **A binary built by `bun zt compile` starts** (`@zerotal/core`, `@zerotal/monitor`). Loading
+  either package read `package.json` from disk, which crashed every compiled binary before boot.
+- **`bun zt compile` with no `--entry` compiles `zt.ts`**, the entry every starter ships.
+- **Vue pages render the way they should.** Scoped styles apply to `<script setup>` components, and
+  a page with a plain `<script lang="ts">` compiles.
+- **Flow's `@presence` and `@shared` work in a compiled app** when broadcasting is installed.
+- **Signing in works in new Vue and api apps**, and the Vue starter registers `StorageProvider`.
+  Apps already scaffolded can apply the same three-line change; see the upgrade guide.
+
 ## 1.16.4 — 2026-11-17
 
 A patch that makes the dependency policy explicit and puts less into a running app: passkeys load

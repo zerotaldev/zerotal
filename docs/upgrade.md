@@ -77,6 +77,173 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.16 to 1.17
+
+A minor that installs less into an app. The packages it stops installing for you are the ones
+only some apps use, so most of the steps below apply only to apps that use the feature. After
+upgrading, run `bun zt doctor`. It names every optional package your app uses but has not
+installed, and gives the command to install it.
+
+### Passkeys need their library installed
+
+`@zerotal/auth` no longer installs `@simplewebauthn/server` or `reflect-metadata`. An app that never
+uses passkeys no longer carries them.
+
+**What to change.** If your app constructs `PasskeyService`, run:
+
+```bash
+bun add @simplewebauthn/server reflect-metadata
+```
+
+Without them the app still boots and serves. The first ceremony throws `OptionalPeerMissingError`
+with that command in its message, and `zt doctor` and `zt deploy` fail until the packages are
+installed.
+
+`PasskeyService` now takes and returns Zerotal's own types, exported from `zerotal/auth`:
+`PasskeyRegistrationOptionsJSON`, `PasskeyRegistrationResponseJSON`,
+`PasskeyAuthenticationOptionsJSON` and `PasskeyAuthenticationResponseJSON`. Code typed with the
+library's types still compiles. Code that reads `attestationFormats`, or `extensions` other than
+`credProps`, from the returned options must drop the read.
+
+### Passkey registration accepts any authenticator
+
+Registration no longer asks only for a platform authenticator, so a USB or NFC security key, or a
+phone reached by QR code, can now enrol. Sign-in is unchanged.
+
+**What to change.** Nothing, if you want this. To keep 1.16's behaviour, pass
+`authenticatorAttachment: "platform"` in the `PasskeyService` options. See
+[Authentication](/docs/authentication#passkeys).
+
+### The panels run Tailwind v4
+
+`flowUiHead()`, and so the admin panel and `/monitor`, loads Tailwind v4's browser build from
+`https://cdn.jsdelivr.net` with an integrity hash, in place of the v3 script from
+`cdn.tailwindcss.com`.
+
+**What to change.**
+
+1. **Content-Security-Policy.** If yours allows `https://cdn.tailwindcss.com` in `script-src`, replace
+   it with `https://cdn.jsdelivr.net`.
+2. **Your own markup under `flowUiHead()`**: custom admin pages, widgets, infolist entries and Flow
+   pages are now compiled by v4. Rename the v3 classes whose meaning changed:
+
+   | v3                                       | v4                                   |
+   | ---------------------------------------- | ------------------------------------ |
+   | `shadow-sm`, `blur-sm`                   | `shadow-xs`, `blur-xs`               |
+   | `drop-shadow-sm`, `backdrop-blur-sm`     | `drop-shadow-xs`, `backdrop-blur-xs` |
+   | bare `ring`                              | `ring-3`                             |
+   | `outline-none`                           | `outline-hidden`                     |
+   | `bg-opacity-50` (and `text-`, `border-`) | an opacity modifier, `bg-black/50`   |
+   | `bg-gradient-to-r`                       | `bg-linear-to-r`                     |
+   | `hover:file:…`                           | `file:hover:…`                       |
+
+   `hover:` now applies only on devices that can hover, and the default palette is v4's.
+
+3. **Your own stylesheet** (`theme.stylesheet`).
+   - **With your own v4 build:** put `flowTailwindCss()` (or `adminTailwindCss()`) and
+     `flowTokensCss()` (or `adminTokensCss()`) in your entry, after `@import "tailwindcss";`.
+   - **With a v3 build from a hand-written config:** add
+     `borderColor: { DEFAULT: "hsl(var(--border))" }` under `theme.extend`, or default borders turn
+     light grey in dark mode. `flowTailwindConfig()` and `adminTailwindConfig()` already do this.
+4. **Your own `body` or `*` rules.** The token border and page colours now sit in `@layer base`. An
+   unlayered `body { background }` or `* { border-color }` rule of your own now wins over them.
+
+See [Components](/docs/components).
+
+### Flow no longer installs Alpine
+
+Flow's client runtime ships prebuilt in `@zerotal/flow`, so `alpinejs` and the `@alpinejs/*` plugins
+are no longer installed into your app.
+
+**What to change.** Nothing, unless your own code imports `alpinejs` or an `@alpinejs/*` plugin.
+Until now that import resolved through Flow. Add it to your app:
+
+```bash
+bun add alpinejs
+```
+
+Add any plugins you import as well.
+
+Flow's scripts now load from content-hashed URLs, and the route table is its own script at
+`/__flow/routes/<hash>.js`. A proxy rule that names `/__flow/runtime.js` or `/__flow/enhance.js`
+keeps working. Keep `/__flow/*` open at the proxy, as before. The route table passes through your
+app's global middleware like a page. If your own middleware turns away everything outside an
+allowlist, allow `/__flow/*`; otherwise `route()` and `navigate` stop working on public pages.
+
+### A missing optional package throws
+
+Zerotal packages now declare what they load from one another. An optional package that is missing
+raises `OptionalPeerMissingError`, exported from `zerotal/runtime`. Its message includes the
+command that installs the package. Before, the feature quietly did nothing.
+
+**What to change.**
+
+- **Admin.** A resource with `static history = true` needs `@zerotal/audit`.
+  `Panel.notifications(databaseNotifications())` needs `@zerotal/notifications`.
+  `importAction({ queue: true })` and `dispatchImport()` need `@zerotal/queue`. Install each one,
+  or remove the option.
+- **Tenancy.** If you catch `TenancyConfigError` around `tenantCache()` to detect a missing cache,
+  catch `OptionalPeerMissingError` instead, or install `@zerotal/cache`.
+- **Notifications.** If you catch `NotificationChannelUnavailableError` from the broadcast channel
+  to detect missing broadcasting, catch `OptionalPeerMissingError` instead, or install
+  `@zerotal/broadcasting`.
+- **ORM without `zerotal`.** If your app installs `@zerotal/orm` on its own and uses the validator,
+  run `bun add @zerotal/validator`. Apps on the `zerotal` package need nothing.
+
+### A missing sharp fails conversions
+
+With `driver: "sharp"` in `config/media.ts`, a missing or unloadable sharp used to produce no
+conversions, without an error. Now `addMedia()` into a collection with conversions throws
+`OptionalPeerMissingError` once the original is stored, and queued conversions fail.
+
+**What to change.** Run `bun add sharp` (0.33, 0.34 or 0.35 are supported), or set `driver: "bun"`.
+Code that caught `MediaError` for a missing sharp should catch `OptionalPeerMissingError`. See
+[Media](/docs/media).
+
+### `.vue` pages need `@vue/compiler-sfc` 3.3 or later
+
+**What to change.** Install the compiler at the same version as `vue`:
+
+```bash
+bun add vue@^3.5 @vue/compiler-sfc@^3.5
+```
+
+New starters already have it. A Vue app with `inertia.ssr: true` and no compiler now fails at boot
+instead of rendering the page's file path. React apps need nothing. Code that matched the old React
+SSR error message should catch `OptionalPeerMissingError` instead.
+
+### On Bun 1.4, Carbon hands out Bun's own `Temporal` values
+
+Carbon now uses the runtime's `Temporal` when there is one, and loads `@js-temporal/polyfill` only on
+Bun 1.3.
+
+**What to change.** Nothing on Bun 1.3. On Bun 1.4, an app that imports `Temporal` from
+`@js-temporal/polyfill` and passes a Carbon `ZonedDateTime` to that import's `ZonedDateTime` methods
+(`compare`, `from`, `until`, `since`, `equals`), or checks Carbon's values with `instanceof` against
+it, must use the global `Temporal`. An app that runs on both Buns can define its own:
+
+```ts
+import { Temporal as Polyfill } from "@js-temporal/polyfill";
+
+export const Temporal = (globalThis as { Temporal?: typeof Polyfill }).Temporal ?? Polyfill;
+```
+
+That is always the implementation Carbon runs on. See [Carbon](/docs/carbon).
+
+### Also worth knowing (not breaking)
+
+- **`NotificationFake` moves.** Change `import { NotificationFake } from "zerotal/testing"` to
+  `from "@zerotal/notifications"`. The old import is removed in 1.18.
+- **`@zerotal/ai` bounds the Anthropic SDK to `>=0.70.0 <2`**, so an app on SDK 2.x gets a peer
+  warning.
+- **Vue and api apps scaffolded before 1.17** can apply the starters' sign-in fix.
+  1. In `app/models/User.ts`, import `Authenticatable` from `zerotal/auth` and extend
+     `Model.using(Authenticatable)`.
+  2. Add the `remember_token` migration that `bun zt doctor` prints.
+  3. In a Vue app, also add `StorageProvider` after `DatabaseProvider` in `bootstrap/providers.ts`.
+- **`bun zt compile` with no `--entry`** now compiles `zt.ts`, so the `--entry=zt.ts` workaround can
+  go.
+
 ## 1.16.4
 
 A patch. Two of its changes can alter what an app sees; neither needs a code change in an app that

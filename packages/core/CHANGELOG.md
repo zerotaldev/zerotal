@@ -8,6 +8,31 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **Carbon runs on Bun's own `Temporal` where Bun has one.** On Bun 1.4 and later Carbon and
+  CarbonInterval use the global `Temporal` and never load `@js-temporal/polyfill`. On Bun 1.3,
+  which has no `Temporal`, the polyfill is loaded the first time Carbon needs a date rather than
+  when `@zerotal/core/carbon` is imported, and `bun build --compile` still embeds it. Carbon takes
+  values from either implementation on either Bun, as before, and the polyfill stays a dependency
+  of `@zerotal/core`.
+
+  On Bun 1.3 nothing else changes: Carbon loads the same ES build of the polyfill an app's own
+  `import { Temporal } from "@js-temporal/polyfill"` does, so there is one copy and Carbon's
+  values are `instanceof` the app's classes.
+
+  On Bun 1.4 the values Carbon hands back (`toInstant()`, `toZonedDateTime()`, `toDuration()` and
+  the rest) are now the global `Temporal`'s. Passing them to the global `Temporal`, as the Carbon
+  guide shows, now works; before, a Carbon `ZonedDateTime` given to
+  `globalThis.Temporal.ZonedDateTime.compare()` threw. Passing them to `Temporal` imported from
+  `@js-temporal/polyfill` now fails instead: a `ZonedDateTime` given to the polyfill's
+  `ZonedDateTime.compare()`, `from()`, `until()`, `since()` or `equals()` throws
+  `required property 'timeZone' missing`, and no Carbon value is `instanceof` a polyfill class.
+  An app that imports the polyfill and runs on Bun 1.4 should use the global `Temporal` there; an
+  app that runs on both Buns can use `globalThis.Temporal ?? Polyfill`, which is always the one
+  Carbon runs on. `Instant`, `PlainDate`, `PlainDateTime` and `Duration` values still cross
+  between the two.
+
 ### Fixed
 
 - **A binary built by `bun zt compile` starts.** Loading `@zerotal/core` read the framework's

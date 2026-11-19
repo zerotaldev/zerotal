@@ -1,7 +1,9 @@
 import { describe, it, expect } from "bun:test";
 import { Carbon } from "./Carbon.ts";
 import { CarbonInterval } from "./CarbonInterval.ts";
-import { Temporal } from "./temporal-shim.ts";
+import { temporal } from "./temporal-shim.ts";
+
+const Temporal = temporal();
 
 // Fixed base: 2024-03-15 10:30:45.123 UTC (a Friday)
 const BASE = "2024-03-15T10:30:45.123Z";

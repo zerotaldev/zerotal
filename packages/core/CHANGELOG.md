@@ -10,7 +10,7 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Changed
 
-- **Carbon runs on Bun's own `Temporal` where Bun has one.** On Bun 1.4 and later Carbon and
+- **BREAKING (on Bun 1.4): Carbon runs on Bun's own `Temporal` where Bun has one.** On Bun 1.4 and later Carbon and
   CarbonInterval use the global `Temporal` and never load `@js-temporal/polyfill`. On Bun 1.3,
   which has no `Temporal`, the polyfill is loaded the first time Carbon needs a date rather than
   when `@zerotal/core/carbon` is imported, and `bun build --compile` still embeds it. Carbon takes

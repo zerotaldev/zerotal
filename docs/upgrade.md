@@ -123,7 +123,9 @@ phone reached by QR code, can now enrol. Sign-in is unchanged.
 **What to change.**
 
 1. **Content-Security-Policy.** If yours allows `https://cdn.tailwindcss.com` in `script-src`, replace
-   it with `https://cdn.jsdelivr.net`.
+   it with `https://cdn.jsdelivr.net`. These pages also run two small inline scripts (dark mode and
+   the copy buttons), so their `script-src` needs `'unsafe-inline'`.
+   [Recommended CSP header](/docs/flow/components#pages-rendered-with-flowuihead) has the policy.
 2. **Your own markup under `flowUiHead()`**: custom admin pages, widgets, infolist entries and Flow
    pages are now compiled by v4. Rename the v3 classes whose meaning changed:
 
@@ -242,7 +244,11 @@ That is always the implementation Carbon runs on. See [Carbon](/docs/carbon).
   2. Add the `remember_token` migration that `bun zt doctor` prints.
   3. In a Vue app, also add `StorageProvider` after `DatabaseProvider` in `bootstrap/providers.ts`.
 - **`bun zt compile` with no `--entry`** now compiles `zt.ts`, so the `--entry=zt.ts` workaround can
-  go.
+  go. The binary starts and runs console commands, but cannot serve an app yet: keep deploying with
+  Bun and an installed `node_modules`, as
+  [Deployment](/docs/deployment#compile-to-a-single-binary) describes.
+- **On Bun 1.4, `bun build --outfile` fails for an app that uses Flow or devtools**, because their
+  prebuilt scripts are written as separate files. Use `--outdir`, or `bun zt compile`.
 
 ## 1.16.4
 

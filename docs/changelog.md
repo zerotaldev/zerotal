@@ -74,7 +74,9 @@ most apps need only some of them:
   so checked switches fill in and invalid fields turn red. An app's own markup under the head is
   compiled by v4, and v3 class names whose meaning changed (`shadow-sm`, bare `ring`,
   `outline-none`, `bg-opacity-*`) need renaming. The token border and page colours now sit in
-  `@layer base`.
+  `@layer base`. A Content-Security-Policy for these pages needs `cdn.jsdelivr.net` and
+  `'unsafe-inline'` in `script-src`; [Recommended CSP header](/docs/flow/components#pages-rendered-with-flowuihead)
+  has the whole policy.
 - **BREAKING (`@zerotal/flow`): Alpine is no longer installed into apps.** Flow's client runtime is
   prebuilt in the package, so an app whose own code imports `alpinejs` or an `@alpinejs/*` plugin
   adds it. The Alpine version is fixed for each Zerotal release.
@@ -109,10 +111,16 @@ most apps need only some of them:
 
 - **A binary built by `bun zt compile` starts** (`@zerotal/core`, `@zerotal/monitor`). Loading
   either package read `package.json` from disk, which crashed every compiled binary before boot.
+  The binary runs console commands such as `list` and `version`. It cannot serve an app yet,
+  because routes, config, migrations and pages still load from disk;
+  [Deployment](/docs/deployment#compile-to-a-single-binary) says what to deploy instead.
 - **`bun zt compile` with no `--entry` compiles `zt.ts`**, the entry every starter ships.
 - **Vue pages render the way they should.** Scoped styles apply to `<script setup>` components, and
   a page with a plain `<script lang="ts">` compiles.
 - **Flow's `@presence` and `@shared` work in a compiled app** when broadcasting is installed.
+- **A `HEAD` request to an event-stream route answers at once** (`@zerotal/core`). It used to read
+  the endless body and never answer. Markdown pages now answer `HEAD` on Bun 1.3 as they do on
+  Bun 1.4.
 - **Signing in works in new Vue and api apps**, and the Vue starter registers `StorageProvider`.
   Apps already scaffolded can apply the same three-line change; see the upgrade guide.
 

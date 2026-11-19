@@ -1,3 +1,4 @@
+import { optionalPeer, OptionalPeerMissingError } from "@zerotal/core/runtime";
 import {
   AiCancelledError,
   AiConfigError,
@@ -33,6 +34,34 @@ import type {
   AnthropicUsage,
   LoadedAnthropic,
 } from "./anthropic-sdk.ts";
+
+/**
+ * Load `@anthropic-ai/sdk`, the optional peer the anthropic driver runs on.
+ *
+ * A missing SDK is an {@link AiDriverUnavailableError}, permanent like every other "this
+ * machine cannot do this", with the resolver's error as its `cause`. Anything else the load
+ * throws (the SDK installed but broken, or missing one of its own dependencies) is rethrown
+ * as it arrived: reporting that as "install the package" would send someone to install what
+ * they already have.
+ *
+ * The specifier is a literal so `bun zt compile` embeds the SDK when the app has it, and
+ * `as string` keeps TypeScript from resolving it in an app that does not.
+ *
+ * @internal Shared by the driver and the `ai-provider-sdk` doctor check.
+ */
+export async function _loadAnthropicSdk(): Promise<AnthropicModule> {
+  try {
+    const sdk: AnthropicModule = await import("@anthropic-ai/sdk" as string).catch(
+      optionalPeer("@anthropic-ai/sdk", { feature: 'The AI driver "anthropic"' }),
+    );
+    return sdk;
+  } catch (error) {
+    if (!(error instanceof OptionalPeerMissingError)) throw error;
+    const unavailable = new AiDriverUnavailableError("anthropic", "@anthropic-ai/sdk");
+    unavailable.cause = error;
+    throw unavailable;
+  }
+}
 
 /** Opts into the server-side refusal fallback. */
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
@@ -415,17 +444,7 @@ export class AnthropicDriver implements AiDriver {
   }
 
   private async _import(): Promise<LoadedAnthropic> {
-    // A non-literal specifier: the package is an optional peer, so the compiler
-    // must not try to resolve it in apps that never installed it.
-    const specifier = "@anthropic-ai/sdk";
-    let loaded: unknown;
-    try {
-      loaded = await import(specifier);
-    } catch {
-      throw new AiDriverUnavailableError("anthropic", "@anthropic-ai/sdk");
-    }
-
-    const ctor = (loaded as AnthropicModule).default;
+    const { default: ctor } = await _loadAnthropicSdk();
     return { ctor, client: this._newClient(ctor, this.config.apiKey) };
   }
 

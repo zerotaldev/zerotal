@@ -258,15 +258,6 @@ describe("AnthropicDriver — refusals", () => {
   });
 });
 
-describe("AnthropicDriver — the optional SDK", () => {
-  it("names the package to install when it is missing", async () => {
-    // No injected client, so the driver tries the real dynamic import. The SDK is
-    // an optional peer and this repo does not install it — which is the case.
-    const driver = new AnthropicDriver(BASE);
-    await expect(driver.text({ prompt: "x" })).rejects.toThrow(/bun add @anthropic-ai\/sdk/);
-  });
-});
-
 describe("AnthropicDriver — model-aware request shape", () => {
   it("sends effort and adaptive thinking to a current model", async () => {
     const { driver, requests } = harness({ model: "claude-opus-5" });

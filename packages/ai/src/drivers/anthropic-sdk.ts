@@ -4,13 +4,15 @@
  * The SDK is an **optional** peer dependency: an app that only talks to Ollama
  * should install nothing. That rules out importing its types, because a missing
  * package is a `tsc` failure for every consumer, not just the ones using it. So
- * the shape lives here instead, and the module is loaded through a non-literal
- * specifier so the compiler never tries to resolve it.
+ * the shape lives here instead, and the module is loaded as
+ * `import("@anthropic-ai/sdk" as string)`, which the compiler does not resolve.
  *
  * The cost is that this file, alone in the package, is only as correct as the
  * SDK's documented wire format. Everything it touches is exercised by
- * `AnthropicDriver.test.ts` against an injected stub built to these same types —
- * which pins our *use* of the shapes, not the shapes themselves. Keep it small.
+ * `AnthropicDriver.test.ts` against an injected stub built to these same types,
+ * which pins our *use* of the shapes. `AnthropicDriver.sdk.test.ts` loads the
+ * real SDK (a devDependency here) and checks that the constructor, its error
+ * classes and the client methods are where this file says. Keep it small.
  */
 
 /** A content block in a response. Unknown block types keep their raw fields. */

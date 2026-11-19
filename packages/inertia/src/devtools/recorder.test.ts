@@ -128,6 +128,20 @@ describe("devtools recorder — middleware", () => {
     expect(html).toContain("<body>hi</body>");
   });
 
+  it("drops the page's Content-Length once the tag makes it longer", async () => {
+    const page = "<html><head><title>x</title></head><body>hi</body></html>";
+    const response = await record(
+      HttpContext.fake("http://localhost/"),
+      () =>
+        new Response(page, {
+          headers: { "Content-Type": "text/html", "Content-Length": String(page.length) },
+        }),
+    );
+
+    expect(response.headers.has("Content-Length")).toBe(false);
+    expect((await response.text()).length).toBeGreaterThan(page.length);
+  });
+
   it("leaves a JSON response body untouched", async () => {
     const response = await record(
       HttpContext.fake("http://localhost/a", { headers: { "X-Inertia": "true" } }),

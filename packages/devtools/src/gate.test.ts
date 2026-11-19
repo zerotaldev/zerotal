@@ -204,6 +204,20 @@ describe("the page marker", () => {
     expect(text.indexOf("zerotal-devtools")).toBeLessThan(text.indexOf("</head>"));
   });
 
+  it("drops the page's Content-Length once the marker makes it longer", async () => {
+    setEnv("development");
+    const page = "<html><head><title>x</title></head><body>hi</body></html>";
+    const res = await pass(
+      async () =>
+        new Response(page, {
+          headers: { "content-type": "text/html", "content-length": String(page.length) },
+        }),
+    );
+
+    expect(res!.headers.has("content-length")).toBe(false);
+    expect((await res!.text()).length).toBeGreaterThan(page.length);
+  });
+
   it("writes nothing on a page the viewer could not use it on", async () => {
     // Production, unauthorized. This is the case that put a devtools request in
     // every visitor's console: the marker is what the client now looks for, so its

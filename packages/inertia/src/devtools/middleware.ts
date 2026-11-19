@@ -68,10 +68,13 @@ export class InertiaDevtoolsMiddleware extends BaseMiddleware {
     // extension learns the id before the first XHR.
     if (contentType.includes("text/html")) {
       const html = await response.text();
+      // The original's `Content-Length` measured the page before the tag went in.
+      const headers = new Headers(response.headers);
+      headers.delete("Content-Length");
       out = new Response(injectScriptTag(html, id), {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers,
+        headers,
       });
     }
 

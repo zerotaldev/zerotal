@@ -3,7 +3,7 @@ import { MonitorLayout } from "./MonitorLayout.tsx";
 import { flowTailwindCss, flowTokensCss } from "@zerotal/flow-ui";
 
 /** flow-ui's `:root` and `.dark` palettes, without the base rules that follow them. */
-const PALETTE = flowTokensCss().slice(0, flowTokensCss().indexOf("\n* {"));
+const PALETTE = flowTokensCss().slice(0, flowTokensCss().indexOf("\n@layer base {"));
 
 describe("MonitorLayout theme", () => {
   it("takes its palette from flow-ui rather than defining its own", () => {

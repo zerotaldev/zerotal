@@ -48,16 +48,16 @@ const TAILWIND_BROWSER_INTEGRITY =
   "sha384-t+qLIxS5zM/KF99/doWY+dxTsavdvgayaZt8A9ntLsUjEkiXzYl5M3Ij8zVFPL9j";
 
 /** Every border defaults to the border token. */
-const BORDER_CSS = `* { border-color: hsl(var(--border)); }`;
+const BORDER_CSS = `*, ::after, ::before, ::backdrop, ::file-selector-button { border-color: hsl(var(--border)); }`;
 
 /**
  * Page-level rules under the components: the body takes the background and
  * foreground tokens.
  *
- * With the CDN these and {@link BORDER_CSS} go into Tailwind's `base` layer.
- * Tailwind v4 emits every utility inside a cascade layer, and a rule outside any
- * layer beats all of them, so an unlayered `* { border-color }` would override
- * `border-primary` on every element.
+ * These and {@link BORDER_CSS} always sit in a `base` cascade layer. Tailwind v4
+ * emits every utility inside a layer, and a rule outside any layer beats all of
+ * them, so an unlayered `* { border-color }` would override `border-primary` on
+ * every element.
  */
 const PAGE_CSS = `
 html { scroll-behavior: smooth; }
@@ -129,7 +129,7 @@ const TAILWIND_CSS = `
 }
 
 @layer base {
-  *, ::after, ::before, ::backdrop, ::file-selector-button { border-color: hsl(var(--border)); }
+  ${BORDER_CSS}
   input::placeholder, textarea::placeholder { color: #9ca3af; }
   button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
   dialog { margin: auto; }
@@ -167,6 +167,7 @@ tailwind.config = {
         success: { DEFAULT: "hsl(var(--success))", foreground: "hsl(var(--success-foreground))" },
         warning: { DEFAULT: "hsl(var(--warning))", foreground: "hsl(var(--warning-foreground))" },
       },
+      borderColor: { DEFAULT: "hsl(var(--border))" },
       borderRadius: { lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
       keyframes: {
         "fade-in": { from: { opacity: "0", transform: "translateY(4px)" }, to: { opacity: "1", transform: "none" } },
@@ -267,8 +268,21 @@ const EXTRAS_CSS = `
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.55); background-clip: content-box; }
 `.trim();
 
-/** Tokens plus every base rule, unlayered: the form a page without the CDN gets. */
-const TOKENS_CSS = [VARS_CSS, BORDER_CSS, PAGE_CSS, EXTRAS_CSS].join("\n");
+/**
+ * Tokens plus the border and page rules: the form a page without the CDN gets.
+ *
+ * The rules go in `@layer base`. In a Tailwind v4 stylesheet that is the layer its
+ * own base rules use, which sorts before `utilities`, so `border-primary` and
+ * `bg-muted` still win. A Tailwind v3 build turns `@layer base` into plain CSS
+ * after its preflight. Linked beside a v3 stylesheet, the native layer loses to
+ * that preflight's border colour, which is why {@link flowTailwindConfig} sets
+ * `borderColor.DEFAULT` to the token.
+ */
+const TOKENS_CSS = [
+  VARS_CSS,
+  `@layer base {\n  ${BORDER_CSS}\n${PAGE_CSS.replace(/^/gm, "  ")}\n}`,
+  EXTRAS_CSS,
+].join("\n");
 
 /** Runs before paint: apply the saved theme (or OS preference) to <html>. */
 const NO_FLASH_SCRIPT = `
@@ -302,7 +316,10 @@ window.__zerotalCopy = function (el) {
 };
 `.trim();
 
-/** The design-token CSS (`:root` + `.dark` custom properties + base styles). */
+/**
+ * The design-token CSS: the `:root` and `.dark` custom properties, the token
+ * border and the body colours in `@layer base`, and the cloak and scrollbar rules.
+ */
 export function flowTokensCss(): string {
   return TOKENS_CSS;
 }
@@ -362,7 +379,8 @@ export function flowUiHead(title = "Zerotal", theme: FlowUiThemeConfig = {}): st
     parts.push(`<link rel="stylesheet" href="${theme.stylesheet}" />`);
   }
   // The tokens are plain CSS, valid with or without the CDN. With it, the base rules
-  // already sit in Tailwind's base layer; without it, they come along unlayered.
+  // already sit in the theme's base layer; without it, they come along in a base
+  // layer of their own, which joins a v4 stylesheet's base layer.
   const tokens = useCdn ? `${VARS_CSS}\n${EXTRAS_CSS}` : TOKENS_CSS;
   parts.push(`<style>${tokens}${theme.tokensCss ? `\n${theme.tokensCss}` : ""}</style>`);
   parts.push(`<script>${THEME_TOGGLE_SCRIPT}</script>`);

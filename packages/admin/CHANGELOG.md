@@ -19,6 +19,12 @@ follows the Zerotal monorepo's unified versioning.
   markup already uses them (`shadow-xs`, `outline-hidden`, `file:hover:`), so it looks the same,
   except that default borders in dark mode now take the dark `--border` token rather than a light
   grey and the amber, emerald and red accents use v4's palette.
+- **BREAKING:** with `theme.stylesheet` set, `adminTokensCss()` and the head put the token border
+  colour and the page colours in `@layer base`, so a Tailwind v4 stylesheet's utilities override
+  them. `adminTailwindConfig()` sets `borderColor.DEFAULT` to the border token; an app whose
+  Tailwind v3 stylesheet is built from its own config must add
+  `borderColor: { DEFAULT: "hsl(var(--border))" }` under `theme.extend`, or dark-mode borders turn
+  light grey.
 
 ### Added
 

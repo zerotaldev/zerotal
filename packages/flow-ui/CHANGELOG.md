@@ -32,8 +32,16 @@ follows the Zerotal monorepo's unified versioning.
 - The head's base rules (token borders, the body background and colour) sit in Tailwind's `base`
   layer when the CDN is on, so a utility such as `border-primary` still beats them; v4 emits every
   utility inside a cascade layer, and an unlayered rule would win. The layer also keeps v3's grey
-  placeholders, pointer cursor on buttons and centred `<dialog>`. Without the CDN (`stylesheet`
-  set) the head and `flowTokensCss()` emit the same unlayered CSS as before.
+  placeholders, pointer cursor on buttons and centred `<dialog>`.
+- **BREAKING:** without the CDN (`stylesheet` set), the head and `flowTokensCss()` put the token
+  border colour and the body background and text colour in `@layer base` rather than emitting them
+  unlayered, so a Tailwind v4 stylesheet's utilities (`border-primary`, `aria-invalid:border-destructive`,
+  a `bg-*` on `<body>`) beat them as they do under the CDN. Every border rule now also covers
+  `::before`, `::after`, `::backdrop` and `::file-selector-button`. `flowTailwindConfig()` sets
+  `borderColor.DEFAULT` to the border token, so a Tailwind v3 build's preflight draws the same
+  default border. An app that links a Tailwind v3 stylesheet built from its own config must add
+  `borderColor: { DEFAULT: "hsl(var(--border))" }` under `theme.extend`, or dark-mode borders turn
+  light grey. An app's own unlayered `body` or `*` rules now win over the token ones.
 - Components use the v4 names for what they rendered under v3: `shadow-sm` → `shadow-xs`,
   `outline-none` → `outline-hidden`, `bg-gradient-to-*` → `bg-linear-to-*` (`ScrollArea`), and the
   `Slider` thumb grows on `hover:[&::-webkit-slider-thumb]:scale-110`. A copied-in component in an
@@ -42,7 +50,8 @@ follows the Zerotal monorepo's unified versioning.
 ### Added
 
 - `flowTailwindCss()`: the theme as Tailwind v4 CSS, exactly what the head hands the CDN. Put it
-  after `@import "tailwindcss";` in a v4 build, with `flowTokensCss()`, to match the CDN look.
+  after `@import "tailwindcss";` in a v4 build, with `flowTokensCss()`, to match the CDN look; a
+  utility in that build overrides the token border and page colours as it does under the CDN.
   `flowTailwindConfig()` still returns the v3 config, for an app whose build is on Tailwind v3.
 
 ## [1.16.4] — 2026-11-17

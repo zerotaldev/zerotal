@@ -5,9 +5,9 @@ import { compile } from "tailwindcss";
 import { flowTailwindCss, flowTokensCss, flowUiHead } from "./theme.ts";
 
 /** Compile the theme CSS with Tailwind v4, the compiler the browser build bundles. */
-async function build(candidates: string[]): Promise<string> {
+async function build(candidates: string[], extra = ""): Promise<string> {
   const root = dirname(require.resolve("tailwindcss/package.json"));
-  const compiler = await compile(`@import "tailwindcss";\n${flowTailwindCss()}`, {
+  const compiler = await compile(`@import "tailwindcss";\n${flowTailwindCss()}\n${extra}`, {
     base: root,
     loadStylesheet: async (id: string) => {
       const file = id === "tailwindcss" ? "index.css" : id.replace(/^tailwindcss\//, "");
@@ -19,6 +19,32 @@ async function build(candidates: string[]): Promise<string> {
     },
   });
   return compiler.build(candidates);
+}
+
+/** The CSS left once every `@layer name { … }` block is cut out: the unlayered rules. */
+function unlayered(css: string): string {
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const at = css.indexOf("@layer", i);
+    const open = at < 0 ? -1 : css.indexOf("{", at);
+    // A bare `@layer a, b;` statement has no block.
+    if (at < 0 || open < 0) return out + css.slice(i);
+    const semi = css.indexOf(";", at);
+    if (semi >= 0 && semi < open) {
+      out += css.slice(i, semi + 1);
+      i = semi + 1;
+      continue;
+    }
+    out += css.slice(i, at);
+    let depth = 0;
+    let j = open;
+    for (; j < css.length; j++) {
+      if (css[j] === "{") depth++;
+      else if (css[j] === "}" && --depth === 0) break;
+    }
+    i = j + 1;
+  }
 }
 
 /** The text of the first `<style>` whose opening tag matches. */
@@ -63,7 +89,7 @@ describe("flowUiHead()", () => {
     expect(tokens.endsWith(":root { --primary: 1 2% 3%; }")).toBe(true);
   });
 
-  it("drops the CDN for a stylesheet and keeps every base rule unlayered", () => {
+  it("drops the CDN for a stylesheet and emits the tokens with their base layer", () => {
     const head = flowUiHead("Acme", { stylesheet: "/app.css" });
     expect(head).not.toContain("@tailwindcss/browser");
     expect(head).not.toContain("text/tailwindcss");
@@ -73,10 +99,24 @@ describe("flowUiHead()", () => {
 });
 
 describe("flowTokensCss()", () => {
-  it("still carries the base rules for a page without the CDN", () => {
+  it("still carries the base rules for a page without the CDN, inside @layer base", () => {
     const css = flowTokensCss();
-    expect(css).toContain("* { border-color: hsl(var(--border)); }");
-    expect(css).toContain("background-color: hsl(var(--background));");
+    const base = css.slice(css.indexOf("@layer base {"));
+    expect(base).toContain("border-color: hsl(var(--border));");
+    expect(base).toContain("background-color: hsl(var(--background));");
+    expect(unlayered(css)).not.toContain("border-color");
+    expect(unlayered(css)).not.toContain("body {");
+    expect(unlayered(css)).toContain("--primary: 243 75% 59%;");
+  });
+
+  it("loses to the utilities when a Tailwind v4 build includes it", async () => {
+    const css = await build(["border-primary", "bg-muted"], flowTokensCss());
+    expect(unlayered(css)).not.toContain("border-color");
+    expect(unlayered(css)).not.toContain("background-color");
+    // `base` is declared before `utilities`, so the token rules sort first.
+    expect(css.indexOf("@layer theme, base, components, utilities;")).toBeGreaterThan(-1);
+    const utilities = css.slice(css.indexOf("@layer utilities {"));
+    expect(utilities).toContain("border-color: hsl(var(--primary));");
   });
 });
 

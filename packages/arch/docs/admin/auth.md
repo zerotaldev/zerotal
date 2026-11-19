@@ -80,10 +80,12 @@ Panel.configure({
 ```
 
 `adminTailwindCss()` returns the Tailwind v4 CSS that maps the tokens to utilities (the
-same CSS the CDN reads) and `adminTokensCss()` the `:root`/`.dark` custom properties —
-put both in your Tailwind v4 entry, after `@import "tailwindcss";`, so a compiled
-stylesheet renders identically. `adminTailwindConfig()` is the same mapping as a
-Tailwind v3 config, for an app whose build is still on v3.
+same CSS the CDN reads). `adminTokensCss()` returns the `:root`/`.dark` custom properties,
+plus the default border colour and the page background and text colour in `@layer base`,
+so utilities such as `border-primary` still override them. Put both in your Tailwind v4
+entry, after `@import "tailwindcss";`, so a compiled stylesheet renders identically.
+`adminTailwindConfig()` is the same mapping as a Tailwind v3 config, for an app whose
+build is still on v3.
 
 ## Types
 

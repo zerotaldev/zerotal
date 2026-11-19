@@ -2420,7 +2420,8 @@ class set rather than re-deriving it: `buttonVariants`, `badgeVariants`, `alertV
 `spinnerVariants`, `toggleVariants`, and `popoverSurface` for the floating surfaces.
 `GvaConfig` is the shape they are built from.
 
-Theming is `flowTokensCss` (the CSS custom properties), `flowTailwindCss` (the Tailwind v4
+Theming is `flowTokensCss` (the CSS custom properties, with the default border and page
+colours in `@layer base`), `flowTailwindCss` (the Tailwind v4
 CSS that maps them to utilities, the same CSS the CDN reads), `flowTailwindConfig` (the same
 mapping as a Tailwind v3 config, for an app still on v3), and `FlowUiThemeConfig` for
 `config/flow-ui.ts`. `THEME`,

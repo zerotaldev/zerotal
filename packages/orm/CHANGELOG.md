@@ -10,12 +10,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
-- **`zt doctor` warns when a MySQL connection's time zone is not UTC.** MySQL fills `NOW()` and
+- **`zt doctor` warns when MySQL's time zone is not UTC.** MySQL fills `NOW()` and
   `CURRENT_TIMESTAMP` with the session zone's wall-clock time and converts `TIMESTAMP` columns
   through it, which the ORM cannot see or correct. Bun 1.4.1 and later open every MySQL
   connection in UTC; Bun 1.3 and 1.4.0 keep the server's zone, and the driver takes no session
   setting and runs no hook on each pooled connection, so on those the server itself has to run in
-  UTC. The check names the zone and the offset, and the fix.
+  UTC. The check measures the app's connection and the server's default zone in January and in
+  July, so a zone that is UTC only in winter is reported in summer and winter alike, and a server
+  zone is reported on Bun 1.4.1 too, where the connection itself is UTC. It names the zone, the
+  offset and the fix.
 
 ### Fixed
 

@@ -80,7 +80,11 @@ and a `TIMESTAMP` column is converted through it on the way in and on the way ou
 Bun 1.4.1 and later open every MySQL connection with its time zone set to UTC. Bun
 1.3 and 1.4.0 leave it at the server's default, and offer no way to set it on each
 pooled connection, so on those Buns the server itself has to run in UTC. `bun zt
-doctor` warns when a connection does not.
+doctor` warns when the app's connection, or the server's default zone, is not UTC in
+January or in July, so a zone such as `Europe/London`, which is UTC only in winter, is
+caught in any season. On Bun 1.4.1 and later the connection is always UTC, and the
+warning is about the server: rows that Bun 1.3, Bun 1.4.0 or another client wrote
+through it still carry its zone.
 
 On a server whose zone is `+02:00`, under Bun 1.3 or 1.4.0:
 

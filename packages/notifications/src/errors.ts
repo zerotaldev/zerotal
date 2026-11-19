@@ -47,9 +47,10 @@ export class NotificationDeliveryError extends NotificationError {
 }
 
 /**
- * Thrown when a channel cannot run because an optional peer package or required
- * config is missing (e.g. the broadcast channel without `@zerotal/broadcasting`,
- * or the SMS driver's credential block).
+ * Thrown when a channel cannot run because its required config is missing (e.g.
+ * the SMS driver's credential block). A channel whose package is not installed,
+ * such as the broadcast channel without `@zerotal/broadcasting`, throws core's
+ * `OptionalPeerMissingError` instead.
  */
 export class NotificationChannelUnavailableError extends NotificationError {
   constructor(message: string) {

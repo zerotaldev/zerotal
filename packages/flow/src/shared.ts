@@ -5,11 +5,12 @@
 // prop is refilled from the store (read-latest), and after an action that changed it the
 // new value is written back and broadcast to the channel so other subscribers converge.
 //
-// Broadcasting is an OPTIONAL peer: flow does not depend on it. We resolve `Broadcast`
-// through a variable-specifier dynamic import (not type-checked, so no hard dependency)
-// and no-op gracefully when it isn't installed — the store still works in-process, so a
-// single-tab app converges within its own round-trips even without broadcasting.
+// Broadcasting is an OPTIONAL peer: flow does not depend on it. We load `Broadcast`
+// with core's optionalPeer() loader and no-op gracefully when it isn't installed —
+// the store still works in-process, so a single-tab app converges within its own
+// round-trips even without broadcasting.
 
+import { optionalPeer, OptionalPeerMissingError } from "@zerotal/core/runtime";
 import type { Component } from "./Component.ts";
 import { getSharedProps, resolveSharedChannel } from "./decorators.ts";
 
@@ -139,11 +140,15 @@ let _broadcast: BroadcastFacade | null | undefined;
 async function _resolveBroadcast(): Promise<BroadcastFacade | null> {
   if (_broadcast !== undefined) return _broadcast;
   try {
-    const spec = "@zerotal/broadcasting";
-    const mod = (await import(spec)) as { Broadcast?: BroadcastFacade };
+    const mod: { Broadcast?: BroadcastFacade } = await import(
+      "@zerotal/broadcasting" as string
+    ).catch(optionalPeer("@zerotal/broadcasting", { feature: "a @shared property" }));
     _broadcast = mod.Broadcast ?? null;
-  } catch {
-    _broadcast = null; // broadcasting not installed → in-process convergence only
+  } catch (error) {
+    // Not installed → in-process convergence only, which is what @shared promises
+    // without broadcasting. An installed package that fails to load is rethrown.
+    if (!(error instanceof OptionalPeerMissingError)) throw error;
+    _broadcast = null;
   }
   return _broadcast;
 }

@@ -16,6 +16,7 @@
  */
 import { Router, deployEnv, runDoctor } from "@zerotal/core";
 import type { Application } from "@zerotal/core";
+import { optionalPeer, OptionalPeerMissingError } from "@zerotal/core/runtime";
 
 /** The topics `zt arch:probe` can be asked for. */
 export const PROBE_TOPICS = ["doctor", "routes", "schema", "app-info"] as const;
@@ -175,20 +176,45 @@ export function routeReport(): RouteReport {
   return { routes, total: routes.length };
 }
 
+/** The part of `@zerotal/orm` the schema report reads. */
+interface OrmModule {
+  ModelInspector: {
+    all(): {
+      table: string;
+      primaryKey: string;
+      timestamps: boolean;
+      softDeletes: boolean;
+      columns: {
+        name: string;
+        type?: string | undefined;
+        nullable: boolean;
+        primary: boolean;
+        unique?: boolean | undefined;
+        index?: boolean | undefined;
+      }[];
+    }[];
+  };
+}
+
 /**
  * Model schemas as the ORM understands them.
  *
- * `@zerotal/orm` is imported dynamically because an app is not required to have
+ * `@zerotal/orm` is an optional peer, because an app is not required to have
  * one. A missing ORM is a report with a note, not a failure — the alternative is
- * a hard dependency that every API-only app pays for.
+ * a hard dependency that every API-only app pays for. Any other error while
+ * loading it is a broken install, and is rethrown.
  */
 export async function schemaReport(): Promise<SchemaReport> {
-  let inspector: typeof import("@zerotal/orm").ModelInspector;
+  let orm: OrmModule;
   try {
-    ({ ModelInspector: inspector } = await import("@zerotal/orm"));
-  } catch {
+    orm = await import("@zerotal/orm" as string).catch(
+      optionalPeer("@zerotal/orm", { feature: "the schema report" }),
+    );
+  } catch (error) {
+    if (!(error instanceof OptionalPeerMissingError)) throw error;
     return { models: [], total: 0, note: "@zerotal/orm is not installed in this app." };
   }
+  const inspector = orm.ModelInspector;
 
   const models: SchemaModel[] = inspector
     .all()

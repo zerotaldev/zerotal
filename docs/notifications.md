@@ -555,7 +555,11 @@ sending nothing.
 Push a notification to a connected client in real time via
 [`@zerotal/broadcasting`](/docs/broadcasting). Implement `toBroadcast(notifiable)`
 returning a `BroadcastMessage` (or a plain data object), and optionally
-`broadcastType()` to set the wire `type`:
+`broadcastType()` to set the wire `type`.
+
+Broadcasting is a separate package that notifications does not install. Add it with
+`bun add @zerotal/broadcasting`. Without it, sending on this channel throws
+`OptionalPeerMissingError` with that command.
 
 ```ts fragment
 // app/notifications/InvoicePaid.ts

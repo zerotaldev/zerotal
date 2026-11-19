@@ -11,6 +11,15 @@ change.
 
 ## [Unreleased]
 
+### Changed
+
+- **`@zerotal/broadcasting` is declared as an optional peer.** `@presence` and `@shared` loaded
+  it through a name held in a variable, which `bun build --compile` cannot see, so a compiled app
+  lost real-time presence and shared state even with broadcasting installed. It is now loaded by
+  name and embedded. Without the package, both still fall back as documented: `@presence` keeps
+  its default and `@shared` converges within one process. A broadcasting package that is
+  installed but fails to load is now rethrown instead of being treated as absent.
+
 ## [1.16.4] — 2026-11-17
 
 ### Changed

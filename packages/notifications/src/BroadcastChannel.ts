@@ -1,7 +1,7 @@
 import type { Notifiable } from "./types.ts";
 import type { Notification } from "./Notification.ts";
 import { BroadcastMessage } from "./BroadcastMessage.ts";
-import { NotificationChannelUnavailableError } from "./errors.ts";
+import { optionalPeer } from "@zerotal/core/runtime";
 
 /** The wire event name used for every broadcast notification; the payload `type` distinguishes them. */
 export const BROADCAST_NOTIFICATION_EVENT = "notification";
@@ -14,7 +14,11 @@ export const BROADCAST_NOTIFICATION_EVENT = "notification";
  */
 export class BroadcastChannel {
   async send(notifiable: Notifiable, notification: Notification): Promise<void> {
-    // Lazy import so @zerotal/notifications has no hard dependency on @zerotal/broadcasting.
+    // @zerotal/broadcasting is an optional peer, loaded the first time a
+    // notification goes out on this channel. Not installed throws
+    // OptionalPeerMissingError with the install command; an installed package
+    // that throws while loading is rethrown as itself, so nobody is sent to
+    // install what they already have.
     interface BroadcastApi {
       Broadcast: {
         to(channel: string, event: string, data: unknown): void;
@@ -26,21 +30,11 @@ export class BroadcastChannel {
         ): Promise<void> | void;
       };
     }
-    let broadcasting: BroadcastApi;
-    try {
-      broadcasting = (await import("@zerotal/broadcasting" as string)) as BroadcastApi;
-    } catch (error) {
-      // Distinguish "not installed" from "installed but threw on import" — the
-      // second reported as the first sends people to fix the wrong thing.
-      const detail = error instanceof Error ? error.message : String(error);
-      const missing = /cannot find (module|package)|module not found/i.test(detail);
-      throw new NotificationChannelUnavailableError(
-        missing
-          ? "[Zerotal] Notifications broadcast channel requires @zerotal/broadcasting. " +
-              "Register BroadcastProvider in bootstrap/providers.ts."
-          : `[Zerotal] Notifications broadcast channel could not load @zerotal/broadcasting — ${detail}`,
-      );
-    }
+    const broadcasting: BroadcastApi = await import("@zerotal/broadcasting" as string).catch(
+      optionalPeer("@zerotal/broadcasting", {
+        feature: 'a notification with "broadcast" in its channels()',
+      }),
+    );
 
     const result = await notification.toBroadcast(notifiable);
     const message = result instanceof BroadcastMessage ? result : new BroadcastMessage(result);

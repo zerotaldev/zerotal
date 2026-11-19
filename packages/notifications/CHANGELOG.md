@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`@zerotal/broadcasting` is declared as an optional peer.** The broadcast channel loaded it
+  without declaring it. Sending on the `broadcast` channel without the package now throws
+  `OptionalPeerMissingError` with `bun add @zerotal/broadcasting`, where it threw
+  `NotificationChannelUnavailableError`. A broadcasting package that throws while loading is
+  rethrown as its own error. The queued broadcast job reports a missing package the same way.
+
 ## [1.16.2] — 2026-10-30
 
 ### Security

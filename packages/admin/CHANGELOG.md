@@ -57,6 +57,13 @@ follows the Zerotal monorepo's unified versioning.
   (`app/admin.ts` or `app/admin/index.ts`) to see what the panel serves. Queued imports are not
   covered, because that option is only visible once a page builds its actions.
 
+### Testing
+
+- The optional-peer tests bundle their fixture into a directory rather than a single file, so they
+  run on Bun 1.4 as well as Bun 1.3. Bun 1.4 writes the Flow browser bundles the panel imports as
+  files of their own beside the entry, and refuses `--outfile` when there is more than one file to
+  write.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

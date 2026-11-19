@@ -44,6 +44,12 @@ follows the Zerotal monorepo's unified versioning.
   `PasskeyRegistrationResponseJSON`, `PasskeyAuthenticationOptionsJSON`,
   `PasskeyAuthenticationResponseJSON`, `PasskeyTransport` and `PasskeyDeviceType`.
 
+### Testing
+
+- A test pins that `HashService` hashes argon2id at Bun's default cost. Bun 1.4 refuses an argon2
+  memory cost under 8 KiB, where Bun 1.3 accepted one; `auth.algorithm` is the only hashing
+  setting, so the cost is always Bun's own and both versions accept it.
+
 ## [1.16.4] — 2026-11-17
 
 ### Changed

@@ -27,6 +27,12 @@ follows the Zerotal monorepo's unified versioning.
   now embedded in the binary and the page is generated, so a compiled app behind a `gate` serves
   a working dashboard.
 
+### Testing
+
+- A store used again after `dispose()` keeps persisting, pinned by a test that passes on Bun 1.3
+  and Bun 1.4. Closing a `bun:sqlite` database finalizes its prepared statements, and the store
+  prepares its insert afresh after a close rather than keeping the old one.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

@@ -3,7 +3,8 @@
  * `Temporal`. Exposes the immutable {@link Carbon} date-time value object and
  * the {@link CarbonInterval} duration object. Isolated from the kernel barrel
  * (the `@zerotal/core/carbon` subpath) so consumers that don't need dates
- * avoid pulling in the Temporal polyfill.
+ * avoid loading it. Carbon uses the runtime's own `Temporal` where there is
+ * one (Bun 1.4 and later) and loads the polyfill on Bun 1.3, on first use.
  *
  * @example
  * ```ts

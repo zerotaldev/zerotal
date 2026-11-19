@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **Carbon runs on Bun's own `Temporal` where Bun has one.** On Bun 1.4 and later Carbon and
+  CarbonInterval use the global `Temporal` and never load `@js-temporal/polyfill`, so the values
+  they hand back (`toInstant()`, `toZonedDateTime()`, `toDuration()` and the rest) are native and
+  pass `instanceof globalThis.Temporal.Instant`. On Bun 1.3, which has no `Temporal`, the polyfill
+  is loaded the first time Carbon needs a date rather than when `@zerotal/core/carbon` is
+  imported, and it is still embedded by `bun build --compile`. Carbon takes values from either
+  implementation on either Bun, as before. The polyfill stays a dependency of `@zerotal/core`.
+  On Bun 1.3 the values Carbon hands back are not `instanceof` the classes an app imports from
+  `@js-temporal/polyfill` itself; check `Symbol.toStringTag` instead.
+
 ### Fixed
 
 - **A binary built by `bun zt compile` starts.** Loading `@zerotal/core` read the framework's

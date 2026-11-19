@@ -5,7 +5,7 @@
  * formats via `Intl.DateTimeFormat` with no external dependencies.
  */
 
-import { Temporal, adoptTemporal, temporalBrand } from "./temporal-shim.ts";
+import { type Temporal, temporal, adoptTemporal, temporalBrand } from "./temporal-shim.ts";
 import { CarbonInterval } from "./CarbonInterval.ts";
 import { _nowIn, _setTestInstant, _getTestInstant } from "./clock.ts";
 
@@ -52,33 +52,36 @@ interface DiffForHumansOptions {
 // ── Parse helpers ─────────────────────────────────────────────────────────────
 
 function systemTz(): string {
-  return Temporal.Now.timeZoneId();
+  return temporal().Now.timeZoneId();
 }
 
 /** `input` must already have been through {@link adoptTemporal}. */
 function toZdt(input: CarbonInput, tz: string): Temporal.ZonedDateTime {
   if (input instanceof Carbon) return input._zdt;
 
-  if (input instanceof Temporal.ZonedDateTime) return input;
+  if (input instanceof temporal().ZonedDateTime) return input;
 
-  if (input instanceof Temporal.Instant) {
+  if (input instanceof temporal().Instant) {
     return input.toZonedDateTimeISO(tz);
   }
 
-  if (input instanceof Temporal.PlainDateTime) {
+  if (input instanceof temporal().PlainDateTime) {
     return input.toZonedDateTime(tz);
   }
 
-  if (input instanceof Temporal.PlainDate) {
-    return input.toZonedDateTime({ timeZone: tz, plainTime: Temporal.PlainTime.from("00:00:00") });
+  if (input instanceof temporal().PlainDate) {
+    return input.toZonedDateTime({
+      timeZone: tz,
+      plainTime: temporal().PlainTime.from("00:00:00"),
+    });
   }
 
   if (input instanceof Date) {
-    return Temporal.Instant.fromEpochMilliseconds(input.valueOf()).toZonedDateTimeISO(tz);
+    return temporal().Instant.fromEpochMilliseconds(input.valueOf()).toZonedDateTimeISO(tz);
   }
 
   if (typeof input === "number") {
-    return Temporal.Instant.fromEpochMilliseconds(input).toZonedDateTimeISO(tz);
+    return temporal().Instant.fromEpochMilliseconds(input).toZonedDateTimeISO(tz);
   }
 
   if (typeof input !== "string") {
@@ -94,29 +97,31 @@ function toZdt(input: CarbonInput, tz: string): Temporal.ZonedDateTime {
   const text = input.trim();
   try {
     // Full ZonedDateTime with bracket timezone e.g. "2024-01-01T12:00:00+01:00[Europe/Paris]"
-    return Temporal.ZonedDateTime.from(text);
+    return temporal().ZonedDateTime.from(text);
   } catch {
     /* fall through */
   }
   try {
     // Instant (with Z or numeric offset) e.g. "2024-01-01T12:00:00Z"
-    return Temporal.Instant.from(text).toZonedDateTimeISO(tz);
+    return temporal().Instant.from(text).toZonedDateTimeISO(tz);
   } catch {
     /* fall through */
   }
   try {
     // PlainDateTime (no offset) e.g. "2024-01-01T12:00:00" or "2024-01-01 12:00:00"
     const normalised = text.replace(" ", "T");
-    return Temporal.PlainDateTime.from(normalised).toZonedDateTime(tz);
+    return temporal().PlainDateTime.from(normalised).toZonedDateTime(tz);
   } catch {
     /* fall through */
   }
   try {
     // PlainDate e.g. "2024-01-01"
-    return Temporal.PlainDate.from(text).toZonedDateTime({
-      timeZone: tz,
-      plainTime: Temporal.PlainTime.from("00:00:00"),
-    });
+    return temporal()
+      .PlainDate.from(text)
+      .toZonedDateTime({
+        timeZone: tz,
+        plainTime: temporal().PlainTime.from("00:00:00"),
+      });
   } catch {
     /* fall through */
   }
@@ -124,7 +129,7 @@ function toZdt(input: CarbonInput, tz: string): Temporal.ZonedDateTime {
   // Last resort: native Date parse (handles locale strings, RFC 2822, etc.)
   const native = new Date(text);
   if (!isNaN(native.valueOf())) {
-    return Temporal.Instant.fromEpochMilliseconds(native.valueOf()).toZonedDateTimeISO(tz);
+    return temporal().Instant.fromEpochMilliseconds(native.valueOf()).toZonedDateTimeISO(tz);
   }
 
   throw new RangeError(`[Carbon] Cannot parse date: "${input}"`);
@@ -172,11 +177,11 @@ export class Carbon {
    * @category Construction
    */
   constructor(input: CarbonInput = new Date(), timezone?: string) {
-    // A native Temporal value (Bun 1.4+) becomes the polyfill's own object first.
+    // A Temporal value from another implementation becomes Carbon's own first.
     const value = adoptTemporal(input);
     const tz =
       timezone ??
-      (value instanceof Temporal.ZonedDateTime
+      (value instanceof temporal().ZonedDateTime
         ? value.timeZoneId
         : value instanceof Carbon
           ? value._zdt.timeZoneId
@@ -404,7 +409,7 @@ export class Carbon {
    * @category Construction
    */
   static fromTimestamp(ts: number, timezone?: string): Carbon {
-    return new Carbon(Temporal.Instant.fromEpochMilliseconds(ts * 1000), timezone);
+    return new Carbon(temporal().Instant.fromEpochMilliseconds(ts * 1000), timezone);
   }
 
   /**
@@ -412,7 +417,7 @@ export class Carbon {
    * @category Construction
    */
   static fromMilliseconds(ms: number, timezone?: string): Carbon {
-    return new Carbon(Temporal.Instant.fromEpochMilliseconds(ms), timezone);
+    return new Carbon(temporal().Instant.fromEpochMilliseconds(ms), timezone);
   }
 
   // ── Timezone ──────────────────────────────────────────────────────────────
@@ -938,28 +943,28 @@ export class Carbon {
   /** Whether this date falls on the current calendar day. @category Comparison */
   isToday(): boolean {
     const now = _nowIn(this._zdt.timeZoneId);
-    return Temporal.PlainDate.compare(this._zdt.toPlainDate(), now.toPlainDate()) === 0;
+    return temporal().PlainDate.compare(this._zdt.toPlainDate(), now.toPlainDate()) === 0;
   }
 
   /** Whether this date falls on tomorrow's calendar day. @category Comparison */
   isTomorrow(): boolean {
     const tom = _nowIn(this._zdt.timeZoneId).add({ days: 1 });
-    return Temporal.PlainDate.compare(this._zdt.toPlainDate(), tom.toPlainDate()) === 0;
+    return temporal().PlainDate.compare(this._zdt.toPlainDate(), tom.toPlainDate()) === 0;
   }
 
   /** Whether this date falls on yesterday's calendar day. @category Comparison */
   isYesterday(): boolean {
     const yes = _nowIn(this._zdt.timeZoneId).subtract({ days: 1 });
-    return Temporal.PlainDate.compare(this._zdt.toPlainDate(), yes.toPlainDate()) === 0;
+    return temporal().PlainDate.compare(this._zdt.toPlainDate(), yes.toPlainDate()) === 0;
   }
 
   /** Whether this instant is before now. @category Comparison */
   isPast(): boolean {
-    return Temporal.ZonedDateTime.compare(this._zdt, _nowIn(this._zdt.timeZoneId)) < 0;
+    return temporal().ZonedDateTime.compare(this._zdt, _nowIn(this._zdt.timeZoneId)) < 0;
   }
   /** Whether this instant is after now. @category Comparison */
   isFuture(): boolean {
-    return Temporal.ZonedDateTime.compare(this._zdt, _nowIn(this._zdt.timeZoneId)) > 0;
+    return temporal().ZonedDateTime.compare(this._zdt, _nowIn(this._zdt.timeZoneId)) > 0;
   }
 
   /**
@@ -981,7 +986,7 @@ export class Carbon {
 
   /** Whether both fall on the same calendar day. @category Comparison */
   isSameDay(other: Carbon): boolean {
-    return Temporal.PlainDate.compare(this._zdt.toPlainDate(), other._zdt.toPlainDate()) === 0;
+    return temporal().PlainDate.compare(this._zdt.toPlainDate(), other._zdt.toPlainDate()) === 0;
   }
 
   /** Whether both fall in the same calendar month and year. @category Comparison */
@@ -996,17 +1001,17 @@ export class Carbon {
 
   /** Whether this instant is strictly before `other`. @category Comparison */
   isBefore(other: Carbon): boolean {
-    return Temporal.ZonedDateTime.compare(this._zdt, other._zdt) < 0;
+    return temporal().ZonedDateTime.compare(this._zdt, other._zdt) < 0;
   }
 
   /** Whether this instant is strictly after `other`. @category Comparison */
   isAfter(other: Carbon): boolean {
-    return Temporal.ZonedDateTime.compare(this._zdt, other._zdt) > 0;
+    return temporal().ZonedDateTime.compare(this._zdt, other._zdt) > 0;
   }
 
   /** Whether this instant equals `other`. @category Comparison */
   isEqual(other: Carbon): boolean {
-    return Temporal.ZonedDateTime.compare(this._zdt, other._zdt) === 0;
+    return temporal().ZonedDateTime.compare(this._zdt, other._zdt) === 0;
   }
 
   /**

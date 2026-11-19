@@ -70,11 +70,11 @@ page says which. The tables below mark the exceptions still under review.
 Installing `zerotal` brings in these third-party packages, and what they depend on
 in turn:
 
-| Package                  | Comes with      | Why every app gets it                                                                                                                                          |
-| ------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@js-temporal/polyfill`  | `@zerotal/core` | Carbon, the date type, is built on Temporal. Bun only ships Temporal itself from 1.4, and the supported floor is lower. It goes once the floor ships Temporal. |
-| `@simplewebauthn/server` | `@zerotal/auth` | Passkey registration and sign-in. Under review: most apps never use passkeys, and they install it anyway.                                                      |
-| `reflect-metadata`       | `@zerotal/auth` | Loaded before the passkey library, which needs it in place first. It comes with that library anyway, and goes with it.                                         |
+| Package                  | Comes with      | Why every app gets it                                                                                                                                                                                 |
+| ------------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@js-temporal/polyfill`  | `@zerotal/core` | Carbon, the date type, is built on Temporal, which Bun only ships itself from 1.4. Carbon loads it on Bun 1.3 alone, the first time it needs a date. It goes once the supported floor ships Temporal. |
+| `@simplewebauthn/server` | `@zerotal/auth` | Passkey registration and sign-in. Under review: most apps never use passkeys, and they install it anyway.                                                                                             |
+| `reflect-metadata`       | `@zerotal/auth` | Loaded before the passkey library, which needs it in place first. It comes with that library anyway, and goes with it.                                                                                |
 
 Flow apps also get these, through `@zerotal/flow` and `@zerotal/flow-ui`:
 

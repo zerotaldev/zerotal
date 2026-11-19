@@ -39,9 +39,9 @@ instead of abstracting over several.
 
 The TC39 `Temporal` proposal directly underpins `Carbon`, Zerotal's date library. All
 date arithmetic uses `Temporal.PlainDate`, `Temporal.ZonedDateTime`, and friends — never
-the legacy `Date` object. `Carbon` runs on the `@js-temporal/polyfill` implementation
-rather than wrapping `Date`, so it works the same on every supported Bun, and it also
-takes values from the `Temporal` that Bun 1.4 and later build in.
+the legacy `Date` object. `Carbon` runs on the `Temporal` that Bun 1.4 and later build in, and on the
+`@js-temporal/polyfill` implementation on Bun 1.3, rather than wrapping `Date`, so it
+works the same on every supported Bun.
 
 Where we diverged: `Carbon` is a thin ergonomic layer over `Temporal`, not a Moment/Day.js
 clone — it tracks the proposal toward stable rather than inventing its own date model.

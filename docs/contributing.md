@@ -22,6 +22,11 @@ bun install            # installs all workspaces
 The repo is a Bun workspace (`packages/*` and `apps/*`), so a single `bun install` at
 the root wires every package together via `workspace:*` links.
 
+Change dependencies with Bun 1.3.x. Bun 1.4 rewrites `bun.lock` in a format Bun 1.3.14
+cannot read, and CI, the release workflow and the docs server all install with 1.3.14.
+`bun run lockfile:check` fails on a rewritten lockfile; restore the committed one and
+run `bun install` again with Bun 1.3.x.
+
 ## Repository layout
 
 ```text

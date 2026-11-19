@@ -45,6 +45,13 @@ jobs:
         with:
           bun-version: 1.3.14
 
+      # Before Install, because a lockfile this Bun cannot read fails there with a parse
+      # error that says nothing about why. Bun 1.4 writes `lockfileVersion` 2 (3 with
+      # nested overrides), which 1.3.14 — this job, the release workflow and the docs
+      # server — cannot read, and one `bun install` on a newer Bun is all it takes.
+      - name: Lockfile format
+        run: bun run lockfile:check
+
       - name: Install
         run: bun install --frozen-lockfile
 

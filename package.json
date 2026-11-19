@@ -51,6 +51,7 @@
     "internal:prefix:check": "bun run scripts/internal-prefix.ts",
     "deps:check": "bun run scripts/deps-check.ts",
     "deps:check:update": "bun run scripts/deps-check.ts --update",
+    "lockfile:check": "bun run scripts/lockfile-check.ts",
     "test:scripts": "bun test ./scripts"
   },
   "dependencies": {

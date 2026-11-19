@@ -8,6 +8,11 @@
  */
 import { describe, it, expect, spyOn, mock } from "bun:test";
 
+/** A stand-in for `fetch` that answers every request with `body`. */
+function answering(body: string): typeof fetch {
+  return Object.assign(async () => new Response(body), { preconnect: fetch.preconnect });
+}
+
 describe("mock.restore() with a spy on fetch", () => {
   it("puts the real fetch back", () => {
     const real = globalThis.fetch;
@@ -36,11 +41,15 @@ describe("mock.restore() with a spy on fetch", () => {
     mock.restore();
   });
 
-  it("keeps an implementation installed after a reset, which is the order the suites use", async () => {
-    const fn = mock(async () => "old");
-    fn.mockReset();
-    fn.mockImplementation(async () => "new");
+  it("runs the implementation a later spy installs, not the one restored away", async () => {
+    spyOn(globalThis, "fetch").mockImplementation(answering("old"));
+    expect(await (await fetch("http://example.test/a")).text()).toBe("old");
+    mock.restore();
 
-    expect(await fn()).toBe("new");
+    const second = spyOn(globalThis, "fetch").mockImplementation(answering("new"));
+
+    expect(await (await fetch("http://example.test/b")).text()).toBe("new");
+    expect(second).toHaveBeenCalledTimes(1);
+    mock.restore();
   });
 });

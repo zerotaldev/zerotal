@@ -33,6 +33,12 @@ follows the Zerotal monorepo's unified versioning.
   Carbon runs on. `Instant`, `PlainDate`, `PlainDateTime` and `Duration` values still cross
   between the two.
 
+- **`CompileCommand.flags` is typed `FlagDef[]`**, the type the base `Command` class declares
+  for every command's flags. It was the array's inferred literal type, in which every flag had a
+  `default: string`. The `entry` flag no longer has a `default`, because the entry is now chosen
+  when the command runs (below). Not breaking: the property widens to the base class's type, and
+  `bun zt compile` behaves as before apart from the new default entry.
+
 ### Fixed
 
 - **`optionalPeer()` reports a missing package loaded with `require()` in a compiled app.** A

@@ -8,6 +8,7 @@ export default class CreateUsersTable extends Migration {
       table.string("email").unique();
       table.string("password");
       table.string("role").nullable().default("user");
+      table.rememberToken();
       table.timestamps();
     });
   }

@@ -19,6 +19,7 @@ import { startFakePostgres, type FakePostgres } from "../__fixtures__/fakePostgr
 import { useProcessZone } from "../__fixtures__/processZone.ts";
 import { DB, _setDbConnection } from "./DB.ts";
 import { registerConnectionDialect } from "./QueryBuilder.ts";
+import { createReadWriteRouter } from "./ReadWriteRouter.ts";
 import { _pgBoundStatement, _setPgBoundParameter } from "./driverDates.ts";
 import type { SQLInstance } from "./sql-types.ts";
 
@@ -78,6 +79,25 @@ describe("a PostgreSQL timestamp from a statement with no parameters", () => {
     });
   });
 
+  it("reads correctly when the SQL opens with a comment or a parenthesis", async () => {
+    await withServer(async (server) => {
+      expect(at(await DB.raw<{ at: Date }>("/* report */ SELECT at FROM events"))).toBe(ISO);
+      expect(at(await DB.raw<{ at: Date }>("-- report\nSELECT at FROM events e"))).toBe(ISO);
+      expect(at(await DB.raw<{ at: Date }>("(SELECT at FROM events) LIMIT 1"))).toBe(ISO);
+      if (BUN_1_3) expect(server.executions.map((e) => e.params)).toEqual([1, 1, 1]);
+    });
+  });
+
+  it("leaves a write that returns nothing as written", async () => {
+    _setPgBoundParameter(true);
+    await withServer(async (server) => {
+      await DB.raw("DELETE FROM sessions WHERE expires_at < NOW()");
+      await DB.table("sessions").delete();
+      await DB.raw("UPDATE counters SET n = n + 1");
+      expect(server.executions.map((e) => e.params)).toEqual([0, 0, 0]);
+    });
+  });
+
   it("is sent as written when the runtime does not need it", async () => {
     _setPgBoundParameter(false);
     await withServer(async (server) => {
@@ -101,6 +121,32 @@ describe("_pgBoundStatement", () => {
     });
     expect(send("DELETE FROM events RETURNING id").sql).toBe(
       "WITH zt_bind AS (SELECT $1::int) DELETE FROM events RETURNING id",
+    );
+  });
+
+  it("keeps leading comments first and looks past opening parentheses", () => {
+    expect(send("/* report */ SELECT 1").sql).toBe(
+      "/* report */ WITH zt_bind AS (SELECT $1::int) SELECT 1",
+    );
+    expect(send("-- a\n/* b /* nested */ c */\n  with s AS (SELECT 1) SELECT * FROM s").sql).toBe(
+      "-- a\n/* b /* nested */ c */\n  WITH zt_bind AS (SELECT $1::int), s AS (SELECT 1) SELECT * FROM s",
+    );
+    expect(send("( (SELECT 1) UNION (SELECT 2))").sql).toBe(
+      "WITH zt_bind AS (SELECT $1::int) ( (SELECT 1) UNION (SELECT 2))",
+    );
+  });
+
+  it("changes a write only when it returns rows", () => {
+    for (const sql of [
+      "DELETE FROM sessions WHERE expires_at < NOW()",
+      "UPDATE counters SET n = n + 1",
+      "INSERT INTO log (at) VALUES (NOW())",
+      "/* c */ DELETE FROM jobs",
+    ]) {
+      expect(send(sql)).toEqual({ sql, values: [] });
+    }
+    expect(send("UPDATE counters SET n = n + 1 RETURNING n, at").sql).toBe(
+      "WITH zt_bind AS (SELECT $1::int) UPDATE counters SET n = n + 1 RETURNING n, at",
     );
   });
 
@@ -140,6 +186,44 @@ describe("_pgBoundStatement", () => {
       expect(_pgBoundStatement(strings, [])[0]).toBe(strings);
     } finally {
       process.env.TZ = "America/New_York";
+    }
+  });
+});
+
+describe("a statement given a parameter, behind read replicas", () => {
+  it("still sends writes to the primary and reads to a replica", async () => {
+    // Forced on: the rewritten form is what Bun 1.3 under a zone with an offset sends.
+    _setPgBoundParameter(true);
+    const primary = startFakePostgres({ column: "at", oid: 1114, iso: ISO });
+    const replica = startFakePostgres({ column: "at", oid: 1114, iso: ISO });
+    const url = (port: number) => `postgres://u:p@127.0.0.1:${port}/db`;
+    const p = new SQL({ url: url(primary.port), tls: false, max: 1 });
+    const r = new SQL({ url: url(replica.port), tls: false, max: 1 });
+    const router = createReadWriteRouter(p as unknown as SQLInstance, [
+      r as unknown as SQLInstance,
+    ]);
+    registerConnectionDialect(router, "postgres");
+    _setDbConnection(router);
+    try {
+      await DB.raw("DELETE FROM sessions WHERE expires_at < NOW()");
+      await DB.table("sessions").delete();
+      await DB.raw("UPDATE counters SET n = n + 1 RETURNING n, at");
+      await DB.raw("WITH old AS (SELECT 1) DELETE FROM jobs");
+      await DB.raw("SELECT at FROM events");
+      expect(primary.executions.map((e) => e.sql.replace(/\s+/g, " "))).toEqual([
+        "DELETE FROM sessions WHERE expires_at < NOW()",
+        "DELETE FROM sessions",
+        "WITH zt_bind AS (SELECT $1 ::int) UPDATE counters SET n = n + 1 RETURNING n, at",
+        "WITH zt_bind AS (SELECT $1 ::int), old AS (SELECT 1) DELETE FROM jobs",
+      ]);
+      expect(replica.executions.map((e) => e.sql.replace(/\s+/g, " "))).toEqual([
+        "WITH zt_bind AS (SELECT $1 ::int) SELECT at FROM events",
+      ]);
+    } finally {
+      await p.close();
+      await r.close();
+      primary.stop();
+      replica.stop();
     }
   });
 });

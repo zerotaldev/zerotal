@@ -246,9 +246,46 @@ export function _setPgBoundParameter(on: boolean | null): void {
   _pgBindOverride = on;
 }
 
-/** A statement that can return rows, which a `WITH` clause can precede. */
-const PG_ROW_STATEMENT = /^\s*(?:select|values|table|insert|update|delete)\b/i;
-const PG_WITH = /^\s*with(\s+recursive)?\s/i;
+/** Statements that return rows and can follow a `WITH` clause. */
+const PG_ROW_STATEMENT = /^(?:select|values|table|with)\b/i;
+/** Statements that change rows, which they return only through `RETURNING`. */
+const PG_WRITE_STATEMENT = /^(?:insert|update|delete|merge)\b/i;
+const PG_RETURNING = /\breturning\b/i;
+const PG_WITH = /^with(\s+recursive)?\s/i;
+
+/**
+ * Where the SQL from `from` on stops being whitespace and comments: `-- …` to the
+ * end of the line, and `/* … *\/`, which PostgreSQL lets nest.
+ */
+function pgSkipTrivia(sql: string, from: number): number {
+  let i = from;
+  while (i < sql.length) {
+    const c = sql[i]!;
+    if (c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\f") {
+      i++;
+    } else if (c === "-" && sql[i + 1] === "-") {
+      const end = sql.indexOf("\n", i);
+      i = end === -1 ? sql.length : end + 1;
+    } else if (c === "/" && sql[i + 1] === "*") {
+      let depth = 1;
+      i += 2;
+      while (i < sql.length && depth > 0) {
+        if (sql[i] === "/" && sql[i + 1] === "*") {
+          depth++;
+          i += 2;
+        } else if (sql[i] === "*" && sql[i + 1] === "/") {
+          depth--;
+          i += 2;
+        } else {
+          i++;
+        }
+      }
+    } else {
+      break;
+    }
+  }
+  return i;
+}
 
 /**
  * The `strings` and values to send for a PostgreSQL statement, with one unused bound
@@ -264,9 +301,13 @@ const PG_WITH = /^\s*with(\s+recursive)?\s/i;
  * A statement with a parameter is described before it is bound, so Bun asks for
  * binary from its first run. The parameter goes in a `WITH` clause nothing reads:
  * `WITH zt_bind AS (SELECT $1::int) SELECT …`, which PostgreSQL never evaluates.
- * Only a statement that starts with `SELECT`, `WITH`, `VALUES`, `TABLE`, `INSERT`,
- * `UPDATE` or `DELETE` is changed; anything else, and every statement on Bun 1.4 or
- * under a process zone with no offset, is returned as it was.
+ * Leading comments stay first, and a statement that opens with parentheses is
+ * looked into. What is changed: a statement whose first keyword is `SELECT`,
+ * `WITH`, `VALUES` or `TABLE`, and an `INSERT`, `UPDATE`, `DELETE` or `MERGE` with a
+ * `RETURNING` clause. A write that returns nothing has no timestamp to read and is
+ * sent as written, as is anything else, and every statement on Bun 1.4 or under a
+ * process zone with no offset. A rewritten write starts with `WITH`, which the
+ * read/write router still sends to the primary (see `_isReadQuery`).
  *
  * @internal
  */
@@ -278,13 +319,23 @@ export function _pgBoundStatement(
     return [strings, values];
   }
   const sql = strings[0]!;
-  const withClause = PG_WITH.exec(sql);
+  const start = pgSkipTrivia(sql, 0);
+  const lead = sql.slice(0, start);
+  const body = sql.slice(start);
+  const withClause = PG_WITH.exec(body);
   if (withClause) {
-    const rest = sql.slice(withClause[0].length);
-    return [[`WITH${withClause[1] ?? ""} zt_bind AS (SELECT `, `::int), ${rest}`], [1]];
+    const rest = body.slice(withClause[0].length);
+    return [[`${lead}WITH${withClause[1] ?? ""} zt_bind AS (SELECT `, `::int), ${rest}`], [1]];
   }
-  if (!PG_ROW_STATEMENT.test(sql)) return [strings, values];
-  return [["WITH zt_bind AS (SELECT ", `::int) ${sql}`], [1]];
+  // Past any opening parentheses, `(SELECT …) UNION (SELECT …)`, to the first keyword.
+  let at = start;
+  while (sql[at] === "(") at = pgSkipTrivia(sql, at + 1);
+  const keyword = sql.slice(at);
+  const returnsRows =
+    PG_ROW_STATEMENT.test(keyword) ||
+    (at === start && PG_WRITE_STATEMENT.test(keyword) && PG_RETURNING.test(keyword));
+  if (!returnsRows) return [strings, values];
+  return [[`${lead}WITH zt_bind AS (SELECT `, `::int) ${body}`], [1]];
 }
 
 /** Rewritten templates by the one they replace, so Bun can reuse its prepared statement. */

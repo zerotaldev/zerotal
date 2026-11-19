@@ -67,6 +67,13 @@ describe("_isReadQuery()", () => {
     "CREATE TABLE foo (id INT)",
     "DROP TABLE foo",
     "ALTER TABLE users ADD COLUMN bio TEXT",
+    // A WITH clause in front of a write leaves it a write.
+    "WITH old AS (SELECT id FROM jobs WHERE done) DELETE FROM jobs USING old",
+    "WITH zt_bind AS (SELECT $1::int) DELETE FROM sessions RETURNING id",
+    "with s as (select 1) update counters set n = n + 1",
+    "WITH v AS (SELECT 1) INSERT INTO t SELECT * FROM v",
+    "WITH d AS (DELETE FROM jobs RETURNING *) SELECT count(*) FROM d",
+    "/* note */ WITH s AS (SELECT 1) MERGE INTO t USING s ON true WHEN MATCHED THEN DO NOTHING",
   ])("classifies %s as write", (sql) => {
     expect(_isReadQuery(sql)).toBe(false);
   });

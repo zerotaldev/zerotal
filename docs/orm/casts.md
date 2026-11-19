@@ -123,10 +123,15 @@ survive that trip:
   that zone, `1969-12-31 19:00:00` in `America/New_York`, so that time reads as
   `1970-01-01T00:00:00Z` too, five hours late.
 
-On Bun 1.3 with PostgreSQL and a `TZ` that is not UTC, a query that binds no values is
-sent with one the database never reads, as `WITH zt_bind AS (SELECT $1::int) SELECT …`,
-and you will see that form in the server's logs. Without it, Bun 1.3 read a `timestamp`
-column as local time on the query's first run on each connection.
+On Bun 1.3 with PostgreSQL and a `TZ` that is not UTC, a query that binds no values and
+returns rows is sent with one the database never reads, as `WITH zt_bind AS (SELECT
+$1::int) SELECT …`, and you will see that form in the server's logs. Without it, Bun 1.3
+read a `timestamp` column as local time on the query's first run on each connection.
+That covers a statement whose first word, after any comments and opening parentheses, is
+`SELECT`, `WITH`, `VALUES` or `TABLE`, and an `INSERT`, `UPDATE`, `DELETE` or `MERGE`
+with a `RETURNING` clause; a write that returns nothing is sent as written. Any other
+statement that returns a `timestamp`, such as a `FETCH` from a cursor, still reads it as
+local time on its first run: bind a value in it, or run Bun 1.3 with `TZ=UTC`.
 
 ### Scalars in a json column
 

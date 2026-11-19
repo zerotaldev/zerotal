@@ -62,9 +62,10 @@ A stored date-time with no zone of its own, such as that MySQL text or SQLite's
 saved whatever the server's `TZ` is.
 
 A MySQL `DATE`, `DATETIME` or `TIMESTAMP` column reads back as the same instant on
-every supported Bun, and so does a PostgreSQL `timestamp`. A PostgreSQL `infinity`
-cannot become a `Carbon`, so a `datetime` cast on one throws a `RangeError` that names
-the column; read such a column through a
+every supported Bun, and so does a PostgreSQL `timestamp`, with the exceptions in
+[What Bun 1.3 cannot read back exactly](#what-bun-13-cannot-read-back-exactly). A
+PostgreSQL `infinity` cannot become a `Carbon`, so a `datetime` cast on one throws a
+`RangeError` that names the column; read such a column through a
 [custom cast](#custom-cast-full-getset-control) instead.
 
 `table.dateTime()` and `table.timestamps()` create a text column on every database, so
@@ -127,15 +128,17 @@ survive that trip:
   that zone, `1969-12-31 19:00:00` in `America/New_York`, so that time reads as
   `1970-01-01T00:00:00Z` too, five hours late.
 
-On Bun 1.3 with PostgreSQL and a `TZ` that is not UTC, a query that binds no values and
-returns rows is sent with one the database never reads, as `WITH zt_bind AS (SELECT
-$1::int) SELECT …`, and you will see that form in the server's logs. Without it, Bun 1.3
-read a `timestamp` column as local time on the query's first run on each connection.
-That covers a statement whose first word, after any comments and opening parentheses, is
-`SELECT`, `WITH`, `VALUES` or `TABLE`, and an `INSERT`, `UPDATE`, `DELETE` or `MERGE`
-with a `RETURNING` clause; a write that returns nothing is sent as written. Any other
-statement that returns a `timestamp`, such as a `FETCH` from a cursor, still reads it as
-local time on its first run: bind a value in it, or run Bun 1.3 with `TZ=UTC`.
+Bun 1.3 also reads one PostgreSQL value differently:
+
+- **A `timestamp` read by a query with no bound values, the first time it runs.** On Bun
+  1.3 under a `TZ` that is not UTC, a PostgreSQL `timestamp without time zone` column
+  read by a query that binds no values, such as `Model.query().get()` with no `where` or
+  `DB.raw("SELECT …")` with no bindings, can come back moved by the zone's offset the
+  first time that query runs on a connection. Later runs on the same connection, and any
+  query that binds a value, read it correctly. Declare the column `timestamptz`, bind a
+  value in the query, or run Bun 1.3 with `TZ=UTC`. Bun 1.4 reads it correctly. The
+  columns `table.dateTime()` and `table.timestamps()` create are text, and are not
+  affected.
 
 ### Scalars in a json column
 

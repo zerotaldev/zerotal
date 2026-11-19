@@ -36,18 +36,12 @@ follows the Zerotal monorepo's unified versioning.
   query builder, models and `DB.raw()`. Two values Bun 1.3 hands over cannot be corrected: a time
   in the process zone's daylight-saving gap, which it has already moved an hour, and the zero
   date `0000-00-00`, which it returns as `1970-01-01T00:00:00Z` in every zone and the ORM leaves
-  there (Bun 1.4 returns an invalid date). Both are described in the casts guide.
-
-- **A PostgreSQL `timestamp` reads the same on a query's first run under Bun 1.3.** Bun asks
-  PostgreSQL for text the first time a statement with no bound values runs on a connection, and
-  Bun 1.3 parsed `timestamp without time zone` text as local time. Under a `TZ` that is not UTC,
-  `Model.query().get()` with no `where`, or `DB.raw("SELECT …")` with no bindings, read such a
-  column moved by the offset once per connection and correctly after. On Bun 1.3 under such a
-  zone, the ORM now sends a statement with no bound values that returns rows with one the
-  database never reads, `WITH zt_bind AS (SELECT $1::int) …`, which makes Bun ask for binary from
-  the first run: a `SELECT`, `WITH`, `VALUES` or `TABLE` after any comments and opening
-  parentheses, and a write with `RETURNING`. Other statements are sent as written; the casts
-  guide lists them. Columns `table.dateTime()` creates are text and were not affected.
+  there (Bun 1.4 returns an invalid date). Both are described in the casts guide, next to one
+  PostgreSQL read Bun 1.3 gets wrong that the ORM does not correct: under a `TZ` that is not
+  UTC, a `timestamp without time zone` column read by a query with no bound values can come back
+  moved by the zone's offset the first time that query runs on a connection. Use `timestamptz`,
+  bind a value, or run Bun 1.3 with `TZ=UTC`; Bun 1.4 reads it correctly, and the columns
+  `table.dateTime()` creates are text and are not affected.
 
 - **A `WITH` statement that changes rows goes to the primary.** With read replicas configured,
   any statement starting with `WITH` was sent to a replica, including `WITH old AS (…) DELETE …`

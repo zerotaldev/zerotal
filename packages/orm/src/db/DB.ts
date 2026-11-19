@@ -18,7 +18,7 @@ import {
   type NPlusOneOptions,
 } from "./NPlusOneDetector.ts";
 import { _splitPlaceholders, _templateStrings } from "./templateStrings.ts";
-import { _normalizeMysqlRows } from "./driverDates.ts";
+import { _normalizeMysqlRows, _pgBoundStatement, _pgBoundTemplate } from "./driverDates.ts";
 
 // Test-override escape hatch — set by _setDbConnection() in test files.
 // Production code resolves the connection from the container instead.
@@ -283,8 +283,10 @@ export const DB = {
             "DB.raw`... ${value}`.",
         );
       }
-      const tpl = _templateStrings(parts);
-      const rows = await _rows(conn, await conn<T>(tpl, ...bindings));
+      const [sendParts, sendBindings] =
+        dialectFor(conn) === "postgres" ? _pgBoundStatement(parts, bindings) : [parts, bindings];
+      const tpl = _templateStrings(sendParts);
+      const rows = await _rows(conn, await conn<T>(tpl, ...sendBindings));
       FrameworkEvents.emit(
         new QueryExecuted(
           sql,
@@ -297,7 +299,9 @@ export const DB = {
       );
       return rows;
     }
-    const rows = await _rows(conn, await conn<T>(sql, ...rest));
+    const [tpl, values] =
+      dialectFor(conn) === "postgres" ? _pgBoundTemplate(sql, rest) : [sql, rest];
+    const rows = await _rows(conn, await conn<T>(tpl, ...values));
     const rawSql = Array.isArray((sql as TemplateStringsArray).raw)
       ? (sql as TemplateStringsArray).raw.join("?")
       : String(sql);

@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`zt doctor` warns when a MySQL connection's time zone is not UTC.** MySQL fills `NOW()` and
+  `CURRENT_TIMESTAMP` with the session zone's wall-clock time and converts `TIMESTAMP` columns
+  through it, which the ORM cannot see or correct. Bun 1.4.1 and later open every MySQL
+  connection in UTC; Bun 1.3 and 1.4.0 keep the server's zone, and the driver takes no session
+  setting and runs no hook on each pooled connection, so on those the server itself has to run in
+  UTC. The check names the zone and the offset, and the fix.
+
 ### Fixed
 
 - **A date reads back as the instant that was saved when the server's `TZ` is not UTC.** On
@@ -21,7 +30,19 @@ follows the Zerotal monorepo's unified versioning.
   binds a `Date` as UTC, and Bun 1.3 decoded those columns back as local time where 1.4 decodes
   UTC, so on 1.3 under a non-UTC `TZ` a value came back moved by the offset. The ORM now asks the
   server once which way the runtime decodes and corrects the local reading, for rows from the
-  query builder, models and `DB.raw()`.
+  query builder, models and `DB.raw()`. Two values Bun 1.3 hands over cannot be corrected: a time
+  in the process zone's daylight-saving gap, which it has already moved an hour, and the zero
+  date `0000-00-00`, which it returns as `1970-01-01T00:00:00Z` in every zone and the ORM leaves
+  there (Bun 1.4 returns an invalid date). Both are described in the casts guide.
+
+- **A PostgreSQL `timestamp` reads the same on a query's first run under Bun 1.3.** Bun asks
+  PostgreSQL for text the first time a statement with no bound values runs on a connection, and
+  Bun 1.3 parsed `timestamp without time zone` text as local time. Under a `TZ` that is not UTC,
+  `Model.query().get()` with no `where`, or `DB.raw("SELECT …")` with no bindings, read such a
+  column moved by the offset once per connection and correctly after. On Bun 1.3 under such a
+  zone, the ORM now sends a statement with no bound values with one the database never reads,
+  `WITH zt_bind AS (SELECT $1::int) …`, which makes Bun ask for binary from the first run. Columns
+  `table.dateTime()` creates are text and were not affected.
 
 - **A `Carbon` in a `where` binds the way a save stores it.** It bound as ISO 8601 on every
   dialect, so on MySQL `where("created_at", ">=", Carbon.today())` compared
@@ -43,6 +64,23 @@ follows the Zerotal monorepo's unified versioning.
   hashed with bcrypt; `Bun.password.hash()` uses argon2id by default, which is what they get.
 
 ### Changed
+
+- **BREAKING: a date-time the database holds as local wall-clock time now reads as UTC.** The
+  fixes above make every date the ORM wrote read back as saved. A value something else wrote as
+  local time is read as UTC too, so under a `TZ` that is not UTC it reads differently from 1.16:
+  late by the zone's offset when the zone is ahead of UTC.
+  - A MySQL column filled by `NOW()` or `CURRENT_TIMESTAMP` on a server in the same zone as the
+    app, under Bun 1.3 or 1.4.0, whose connections keep the server's zone: a text column on
+    either, and a `DATETIME` or `TIMESTAMP` on Bun 1.3. These read correctly in 1.16 by
+    coincidence. Bun 1.4.1 and later fill them in UTC, which now reads correctly.
+  - Text written as local time by another program or by hand-written SQL, on any database.
+  - An app that added the offset back itself, to make up for 1.16 reading its own MySQL or
+    SQLite dates as local time, now corrects twice and has to stop.
+
+  Nothing stored changes, and with `TZ` unset or UTC and a MySQL server in UTC no row reads
+  differently. Otherwise: run MySQL in UTC (`zt doctor` warns when it is not), convert the rows
+  `NOW()` wrote with `CONVERT_TZ(col, '<old zone>', '+00:00')`, or read such a column through a
+  custom cast. The casts guide has a table of which rows move.
 
 - **BREAKING: `@zerotal/validator` is an optional peer, no longer a dependency.** The ORM uses it
   only to connect the validator's `unique()` and `exists()` rules to the database, and only when

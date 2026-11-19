@@ -20,6 +20,12 @@
  * by asking the server for a known value, and corrects the local reading to the
  * UTC one, so a row holds the same `Date` on both.
  *
+ * **A PostgreSQL `timestamp` the driver read as text.** Bun 1.3 parses
+ * `timestamp without time zone` text as local time, and it asks for text on the
+ * first run, per connection, of a statement with no bound parameters.
+ * {@link _pgBoundStatement} gives such a statement one, so Bun asks for binary,
+ * which it decodes as UTC like every other run.
+ *
  * @module
  */
 import { _templateStrings } from "./templateStrings.ts";
@@ -159,16 +165,26 @@ export function _resetMysqlDateDecoding(): void {
 /**
  * The instant a MySQL date means, given a `Date` the driver read as local time.
  *
- * The local fields of `date` are the fields MySQL stored, and the ORM stores UTC.
- * Bun 1.3 returns the zero date `0000-00-00` as the epoch rather than through this
- * reading, and 1.4 returns it as an invalid `Date`, so the epoch becomes that.
+ * The local fields of `date` are the fields MySQL stored, and the ORM stores UTC —
+ * except for stored fields in the process zone's daylight-saving gap, which no local
+ * time has: the runtime moved them forward an hour before this sees them, and the
+ * value reads back an hour late. Bun 1.4, or `TZ=UTC` on 1.3, never takes this path.
+ *
+ * The epoch is returned as it is. Bun 1.3 returns the zero date `0000-00-00` as the
+ * epoch itself rather than through the local reading, in every zone, and it is the
+ * same number as a stored value whose fields are the epoch's wall-clock time in the
+ * process zone (`1969-12-31 19:00:00` under `America/New_York`). Nothing tells the
+ * two apart, so both stay the epoch: a zero date reads as `1970-01-01T00:00:00Z` on
+ * Bun 1.3 in every zone, as it did before this correction existed, and that one
+ * stored value reads the same. Turning the epoch into an invalid `Date` instead, as
+ * Bun 1.4 returns a zero date, would also turn `1970-01-01` into one under a UTC
+ * process zone, where Bun 1.3 reads it correctly.
  *
  * @internal
  */
 export function _localFieldsAsUtc(date: Date): Date {
   const ms = date.getTime();
-  if (Number.isNaN(ms)) return date;
-  if (ms === 0) return new Date(NaN);
+  if (Number.isNaN(ms) || ms === 0) return date;
   const utc = new Date(0);
   utc.setUTCFullYear(date.getFullYear(), date.getMonth(), date.getDate());
   utc.setUTCHours(date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
@@ -202,6 +218,96 @@ export async function _normalizeMysqlRows<T>(conn: SQLInstance, rows: T[]): Prom
     }
   }
   return rows;
+}
+
+// ── PostgreSQL result format ─────────────────────────────────────────────────
+
+/** Bun before 1.4 parses `timestamp without time zone` text as local time. */
+const BUN_PARSES_PG_TEXT_AS_LOCAL = ((): boolean => {
+  const [major = 0, minor = 0] = Bun.version.split(".").map(Number);
+  return major < 1 || (major === 1 && minor < 4);
+})();
+
+let _pgBindOverride: boolean | null = null;
+
+/** Whether a PostgreSQL statement with no parameters needs one added, now. */
+function pgNeedsBoundParameter(): boolean {
+  if (_pgBindOverride !== null) return _pgBindOverride;
+  return BUN_PARSES_PG_TEXT_AS_LOCAL && probeFields() !== null;
+}
+
+/**
+ * Decide for tests whether {@link _pgBoundStatement} adds a parameter: `true` or
+ * `false` as on a Bun that needs it or not, `null` to go back to asking the runtime.
+ *
+ * @internal For tests.
+ */
+export function _setPgBoundParameter(on: boolean | null): void {
+  _pgBindOverride = on;
+}
+
+/** A statement that can return rows, which a `WITH` clause can precede. */
+const PG_ROW_STATEMENT = /^\s*(?:select|values|table|insert|update|delete)\b/i;
+const PG_WITH = /^\s*with(\s+recursive)?\s/i;
+
+/**
+ * The `strings` and values to send for a PostgreSQL statement, with one unused bound
+ * parameter added when it has none and this runtime needs one.
+ *
+ * Bun asks PostgreSQL for results in binary, which it decodes as UTC — except on the
+ * first run, on each connection, of a statement with no parameters, which it sends
+ * in one go before it knows the column types, and so asks for text. Bun 1.3 parses
+ * `timestamp without time zone` text as local time: under a `TZ` that is not UTC,
+ * `Model.query().get()` or a `DB.raw()` with no bindings read such a column moved by
+ * the offset the first time and correctly after. Bun 1.4 parses the text as UTC.
+ *
+ * A statement with a parameter is described before it is bound, so Bun asks for
+ * binary from its first run. The parameter goes in a `WITH` clause nothing reads:
+ * `WITH zt_bind AS (SELECT $1::int) SELECT …`, which PostgreSQL never evaluates.
+ * Only a statement that starts with `SELECT`, `WITH`, `VALUES`, `TABLE`, `INSERT`,
+ * `UPDATE` or `DELETE` is changed; anything else, and every statement on Bun 1.4 or
+ * under a process zone with no offset, is returned as it was.
+ *
+ * @internal
+ */
+export function _pgBoundStatement(
+  strings: readonly string[],
+  values: readonly unknown[],
+): [readonly string[], readonly unknown[]] {
+  if (values.length > 0 || strings.length !== 1 || !pgNeedsBoundParameter()) {
+    return [strings, values];
+  }
+  const sql = strings[0]!;
+  const withClause = PG_WITH.exec(sql);
+  if (withClause) {
+    const rest = sql.slice(withClause[0].length);
+    return [[`WITH${withClause[1] ?? ""} zt_bind AS (SELECT `, `::int), ${rest}`], [1]];
+  }
+  if (!PG_ROW_STATEMENT.test(sql)) return [strings, values];
+  return [["WITH zt_bind AS (SELECT ", `::int) ${sql}`], [1]];
+}
+
+/** Rewritten templates by the one they replace, so Bun can reuse its prepared statement. */
+const _pgTemplates = new WeakMap<TemplateStringsArray, TemplateStringsArray>();
+
+/**
+ * {@link _pgBoundStatement} for a tagged-template call: the same template object
+ * back for the same call site, as Bun's statement cache needs.
+ *
+ * @internal
+ */
+export function _pgBoundTemplate(
+  strings: TemplateStringsArray,
+  values: readonly unknown[],
+): [TemplateStringsArray, readonly unknown[]] {
+  const [sendStrings, sendValues] = _pgBoundStatement(strings, values);
+  if (sendStrings === strings) return [strings, values];
+  let tpl = _pgTemplates.get(strings);
+  if (!tpl) {
+    tpl = _templateStrings(sendStrings);
+    _pgTemplates.set(strings, tpl);
+  }
+  return [tpl, sendValues];
 }
 
 /**

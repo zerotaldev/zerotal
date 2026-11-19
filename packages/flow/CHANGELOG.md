@@ -42,7 +42,10 @@ change.
   answered before global middleware runs, and nothing it adds to a response, a session cookie
   included, is sent with them. The route table, at `/__flow/routes/<hash>.js` and inside
   `/__flow/runtime.js`, lists your app's routes, so it still goes through the pipeline like your
-  pages do.
+  pages do. **What an app must change:** if your global middleware turns away every request
+  except an allowlist of public paths, such as a sign-in gate, add `/__flow/*` to the allowlist.
+  Otherwise a public page is served without its route table, and `$route(...)` on it, with every
+  `navigate` link built from it, stops working.
 - **A request for a hash the server does not have is redirected to the current file** (302,
   `no-store`), so a page rendered before a deploy still gets a runtime.
 - **The unminified runtime is gone from development.** An installed package serves the minified

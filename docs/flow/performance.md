@@ -86,6 +86,11 @@ for every visitor, so your global middleware does not run for them. The route ta
 route, so your global middleware runs for it exactly as it does for your pages: a visitor it turns
 away from the pages does not get the table either.
 
+If your app has global middleware that turns away every request except an allowlist of public
+paths, such as a sign-in gate, add `/__flow/*` to that allowlist. Otherwise a public page is
+served but its route table is not: `$route(...)` on that page stops working, and so does every
+`navigate` link built with it.
+
 ## Compiling at boot
 
 Flow compiles your pages' JSX into string-building render functions when the server starts,

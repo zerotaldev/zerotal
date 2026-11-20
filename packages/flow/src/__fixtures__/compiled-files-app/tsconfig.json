@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@zerotal/flow",
+    "paths": {
+      "@zerotal/flow/jsx-runtime": ["../../jsx-runtime.ts"],
+      "@zerotal/flow/jsx-dev-runtime": ["../../jsx-dev-runtime.ts"],
+      "@zerotal/flow/compiler-helpers": ["../../compiler/helpers.ts"]
+    }
+  }
+}

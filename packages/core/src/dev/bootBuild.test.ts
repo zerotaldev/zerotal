@@ -3,6 +3,7 @@ import { chmodSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { bootBuildDecision, isWritableDir } from "./bootBuild.ts";
+import { _embedAppFiles } from "../support/appFiles.ts";
 
 let root: string;
 
@@ -84,6 +85,19 @@ describe.skipIf(process.platform === "win32")("bootBuildDecision on a chmod'd di
       expect((await bootBuildDecision([dir], "production")).build).toBe(false);
     } finally {
       chmodSync(dir, 0o700);
+    }
+  });
+});
+
+describe("bootBuildDecision in a compiled binary", () => {
+  afterEach(() => _embedAppFiles(null));
+
+  it("never builds, whatever the environment: the binary serves what it was shipped with", async () => {
+    _embedAppFiles({ "config/app.ts": async () => ({ default: {} }) });
+    for (const env of ["development", "production"]) {
+      const decision = await bootBuildDecision([tmpdir()], env);
+      expect(decision.build).toBe(false);
+      expect(decision.reason).toContain("compiled binary");
     }
   });
 });

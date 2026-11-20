@@ -11,6 +11,12 @@ change.
 
 ## [Unreleased]
 
+### Added
+
+- **`bun zt compile` compiles Flow pages ahead of time**, with and without CSP-safe mode, and the
+  binary boots from the compiled pages it carries. A page that a CSP-safe compile refuses stops a
+  CSP-safe boot of the binary, as it does on disk.
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

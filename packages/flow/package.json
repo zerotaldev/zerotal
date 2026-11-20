@@ -12,6 +12,7 @@
     "./jsx-runtime": "./src/jsx-runtime.ts",
     "./jsx-dev-runtime": "./src/jsx-dev-runtime.ts",
     "./compiler-helpers": "./src/compiler/helpers.ts",
+    "./compile": "./src/compile.ts",
     "./store": "./src/store.ts",
     "./testing": "./src/testing.ts",
     "./browser": "./src/browser/index.ts"

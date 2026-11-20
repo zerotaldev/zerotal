@@ -1,4 +1,5 @@
 import { ServiceProvider, Router, type Application, type Emitter } from "@zerotal/core";
+import { _appFileExists, _importAppFile } from "@zerotal/core/runtime";
 import type { AppEnvironment } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import type { HttpContext } from "@zerotal/core";
@@ -121,7 +122,7 @@ export class BroadcastProvider extends ServiceProvider {
     // `app/routes/channels.ts` instead of growing a second `routes/` directory.
     const path = isAbsolutePath(configured) ? configured : `${process.cwd()}/${configured}`;
     try {
-      if (await Bun.file(path).exists()) await import(path);
+      if (await _appFileExists(path)) await _importAppFile(path);
     } catch (err) {
       frameworkLog("broadcast").error(`Failed to load ${configured}`, undefined, err);
     }

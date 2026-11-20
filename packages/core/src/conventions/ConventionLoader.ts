@@ -11,6 +11,7 @@
 import type { Application } from "../application/Application.ts";
 import type { AppEnvironment } from "../provider/ServiceProvider.ts";
 import { frameworkLog } from "../logger/frameworkLog.ts";
+import { _importAppFile, _scanAppFiles } from "../support/appFiles.ts";
 
 /**
  * The context a concern receives while registering discovered modules.
@@ -61,13 +62,8 @@ function _shouldSkip(relativePath: string): boolean {
 }
 
 async function _scanDir(absoluteDirectory: string): Promise<string[]> {
-  // glob.scan yields nothing for a missing directory; the try/catch is belt-and-suspenders.
-  try {
-    const glob = new Bun.Glob("**/*.{ts,tsx}");
-    return await Array.fromAsync(glob.scan({ cwd: absoluteDirectory, onlyFiles: true }));
-  } catch {
-    return [];
-  }
+  // A missing directory yields nothing; that is not an error.
+  return _scanAppFiles(absoluteDirectory, "**/*.{ts,tsx}");
 }
 
 /**
@@ -83,10 +79,7 @@ export async function importConventionModules(
   for (const file of await _scanDir(absoluteDirectory)) {
     if (_shouldSkip(file)) continue;
     try {
-      const loadedModule = (await import(`${absoluteDirectory}/${file}`)) as Record<
-        string,
-        unknown
-      >;
+      const loadedModule = await _importAppFile(`${absoluteDirectory}/${file}`);
       await onModule(loadedModule, file);
     } catch (error) {
       frameworkLog("app").error(`${label} discovery failed for ${file}`, { file }, error);

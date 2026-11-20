@@ -110,6 +110,9 @@ lighter; only a boot with something to compile pays for it. A page is compiled a
 You never need to clear the cache by hand. `ZT_FLOW_COMPILE_LOG=1` (below) also bypasses it for
 pages that fall back, since it has to compile them to say why.
 
+A binary built by `bun zt compile` compiles its pages while it is built, and boots from what it
+carries. See [Compile to a single binary](/docs/deployment#compile-to-a-single-binary).
+
 ## What forces the runtime fallback
 
 Every page is AOT-compiled at boot where it can be. A page the compiler cannot handle still works —

@@ -309,3 +309,15 @@ export { optionalPeer } from "./optionalPeer.ts";
 export type { OptionalPeerHint } from "./optionalPeer.ts";
 export { OptionalPeerMissingError } from "../errors/OptionalPeerMissingError.ts";
 export type { OptionalPeerMissing } from "../errors/OptionalPeerMissingError.ts";
+export {
+  _embedAppFiles,
+  _appFilesEmbedded,
+  _scanAppFiles,
+  _scanAppFilesSync,
+  _importAppFileSync,
+  _preloadAppFiles,
+  _importAppFile,
+  _readAppFileText,
+  _appFileExists,
+  _appDirectoryExists,
+} from "./appFiles.ts";

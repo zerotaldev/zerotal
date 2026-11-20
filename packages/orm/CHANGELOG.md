@@ -8,6 +8,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Migrations and seeders load in a binary built by `bun zt compile`.** `migrate` used to report
+  nothing to migrate.
+
 ## [1.17.0] — 2026-11-20
 
 ### Added

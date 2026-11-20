@@ -6,6 +6,7 @@
 import path from "node:path";
 import { createRequire } from "node:module";
 import { frameworkLog } from "../logger/frameworkLog.ts";
+import { _importAppFileSync, _scanAppFilesSync } from "../support/appFiles.ts";
 
 const requireModule = createRequire(import.meta.url);
 
@@ -121,14 +122,12 @@ export function configLoader(dir = "./config", options: ConfigLoaderOptions = {}
   const validators: Array<{ ns: string; fn: Validator }> = [];
   const failures: ConfigLoadFailure[] = [];
   try {
-    const glob = new Bun.Glob("*.{ts,js}");
-    for (const file of glob.scanSync({ cwd: absoluteDirectory, onlyFiles: true })) {
+    for (const file of _scanAppFilesSync(absoluteDirectory, "*.{ts,js}")) {
       const namespace = file.replace(/\.(ts|js)$/, "");
       try {
-        const loadedModule = requireModule(path.join(absoluteDirectory, file)) as Record<
-          string,
-          unknown
-        >;
+        const filePath = path.join(absoluteDirectory, file);
+        const loadedModule =
+          _importAppFileSync(filePath) ?? (requireModule(filePath) as Record<string, unknown>);
         const value = loadedModule["default"] ?? loadedModule;
         if (value && typeof value === "object" && !Array.isArray(value)) {
           map[namespace] = value as Record<string, unknown>;

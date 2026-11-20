@@ -1,4 +1,5 @@
 import { ServiceProvider, Router, ConfigError, ThrottleMiddleware } from "@zerotal/core";
+import { _readAppFileText } from "@zerotal/core/runtime";
 import { registerTypeGenerator } from "@zerotal/core/commands";
 import {
   registerDevBuildHook,
@@ -64,7 +65,7 @@ export class InertiaProvider extends ServiceProvider {
     );
 
     try {
-      let html = await Bun.file(templatePath).text();
+      let html = await _readAppFileText(templatePath);
 
       // In dev-worker mode bake the live-reload client into the cached template.
       // DevReloadMiddleware would inject it for us, but only by buffering the

@@ -17,6 +17,7 @@
  * search providers from its own `onBooting` without depending on this package.
  * Routes are mounted in `onBooted`, once every contribution is in.
  */
+import { _appFileExists, _importAppFile } from "@zerotal/core/runtime";
 import { ServiceProvider, Router, FrameworkEvents } from "@zerotal/core";
 import type { ModelChanged } from "@zerotal/orm";
 import type { AppEnvironment, DoctorCheck, MiddlewareClass, HttpContext } from "@zerotal/core";
@@ -194,8 +195,8 @@ export class AdminProvider extends ServiceProvider {
     const candidates = [`${process.cwd()}/app/admin.ts`, `${process.cwd()}/app/admin/index.ts`];
     for (const file of candidates) {
       try {
-        if (!(await Bun.file(file).exists())) continue;
-        await import(file);
+        if (!(await _appFileExists(file))) continue;
+        await _importAppFile(file);
         return;
       } catch (err) {
         frameworkLog("admin").warn(`Failed to load ${file}`, { file }, err);

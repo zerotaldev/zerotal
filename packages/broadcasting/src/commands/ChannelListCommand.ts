@@ -1,4 +1,5 @@
 import { Command } from "@zerotal/core";
+import { _appFileExists, _importAppFile } from "@zerotal/core/runtime";
 import { Broadcast } from "../facades/Broadcast.ts";
 
 export class ChannelListCommand extends Command {
@@ -9,9 +10,9 @@ export class ChannelListCommand extends Command {
   async run(): Promise<void> {
     // Ensure routes/channels.ts has registered its rules.
     const channelsFile = `${process.cwd()}/routes/channels.ts`;
-    if (await Bun.file(channelsFile).exists()) {
+    if (await _appFileExists(channelsFile)) {
       try {
-        await import(channelsFile);
+        await _importAppFile(channelsFile);
       } catch (err) {
         this.warn(`Failed to load routes/channels.ts: ${(err as Error).message}`);
       }

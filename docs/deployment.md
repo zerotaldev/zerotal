@@ -623,38 +623,52 @@ production.
 
 ## Compile to a single binary
 
-`bun zt compile` builds the Bun runtime, the framework and the entry file (`zt.ts`) into one
-executable:
+`bun zt compile` builds the Bun runtime, the framework, your app and its entry file (`zt.ts`) into
+one executable:
 
 ```bash
 # in your project root
+bun zt assets:build                # or inertia:build --production
 bun zt compile --outfile=zerotal-app
-./zerotal-app version
 ```
 
-What the binary does today:
+Copy the binary to the server with what it reads at runtime: `.env`, `public/`, and the
+directories it writes to, such as `storage/` and an SQLite database. Run it from that directory,
+since it finds them relative to where it starts:
 
-- **It starts, and runs the console commands that need none of your app's files**, such as
-  `list` and `version`. The framework's own browser scripts — the
-  [Flow runtime](/docs/flow/performance#the-client-runtime) and the devtools panel — are embedded,
-  as are the optional packages that were installed when it was built.
+```bash
+# on the server, in the app's directory
+./zerotal-app migrate
+./zerotal-app serve --port=3000
+./zerotal-app worker
+```
 
-What it does not do yet:
+The binary carries:
 
-- **Serve your routes.** `config/`, your route file, migrations and models are loaded from disk
-  when the binary runs, not embedded, so their `import ... from "zerotal"` has to resolve from a
-  `node_modules` beside the binary, and that loads a second copy of the framework next to the
-  embedded one. Commands that read those files, `serve` and `migrate` among them, do not work
-  from the binary.
-- **Serve Flow pages.** The pages under `app/flow/pages/` are read and transpiled from disk at
-  boot without the app's `tsconfig.json`, so each one fails to load and every page answers 404.
-- **Render Inertia pages on the server.** Server rendering loads the page components from disk
-  in the same way.
+- **Your app's files**: `app/`, `bootstrap/`, `config/`, `database/` and `routes/`, Inertia's
+  pages under `resources/js/pages/`, translation catalogs under `resources/lang/` or `lang/`, and
+  the HTML templates directly in `resources/`. Another directory the framework should find goes in
+  with `--include=src,modules`. Test files and `.d.ts` files are left out.
+- **Your Flow pages, compiled.** Each page is compiled when the binary is built, with and without
+  [CSP-safe mode](/docs/flow/components#csp-safe-mode), using your `tsconfig.json`. A page that the CSP-safe compile
+  refuses stops a CSP-safe boot of the binary, as it would stop `bun zt serve`.
+- **The framework's browser scripts**: the [Flow runtime](/docs/flow/performance#the-client-runtime)
+  and the devtools panel, and the optional packages that were installed when it was built.
 
-Until a binary can carry the app's own files, deploy with Bun and an installed
-`node_modules`: run `bun install --frozen-lockfile` and `bun zt serve` on the server, as in
-[Start the server](#start-the-server), or build an image from the
-[Dockerfile below](#a-minimal-dockerfile).
+It does not carry, and does not build:
+
+- **Front-end assets.** `serve` does not build them in a binary. It serves the `public/` beside it,
+  so build them before you compile.
+- **Vue pages for server rendering.** `.vue` files need a compiler at build time that the binary
+  build does not run. Inertia falls back to rendering a Vue page in the browser. React pages are
+  server-rendered.
+- **Queue worker threads.** With `queue.workers` above zero, each thread loads its jobs from disk.
+  Run `./zerotal-app worker` as its own process instead.
+
+Changing a file under `app/` or `config/` changes nothing in a built binary: compile again.
+
+The build writes its entry to `.zerotal/compile/entry.ts`, which is rewritten on every compile and
+is ignored by the starters' `.gitignore`.
 
 ## A minimal Dockerfile
 

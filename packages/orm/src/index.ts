@@ -114,6 +114,7 @@ export {
 export type { ManualTransaction } from "./db/DB.ts";
 export { createReadWriteRouter } from "./db/ReadWriteRouter.ts";
 export { TransactionContext } from "./db/TransactionContext.ts";
+export { _unwrapSqlite } from "./db/sqliteExclusive.ts";
 export {
   _setBaseModelConnection,
   _getModelConnection,

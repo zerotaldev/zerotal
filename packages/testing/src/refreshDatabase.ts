@@ -1,4 +1,9 @@
-import { _getModelConnection, _setBaseModelConnection, type SQLInstance } from "@zerotal/orm";
+import {
+  _getModelConnection,
+  _setBaseModelConnection,
+  _unwrapSqlite,
+  type SQLInstance,
+} from "@zerotal/orm";
 import { migrateDatabase } from "./migrateDatabase.ts";
 
 interface TestHooks {
@@ -66,7 +71,10 @@ export function refreshDatabase(options: RefreshDatabaseOptions = {}): void {
 
   beforeEach(async () => {
     prevConn = _getModelConnection();
-    const conn = prevConn as unknown as {
+    // The test's transaction is meant to hold everything the test does, including what reaches
+    // the app's connection through `DB` rather than through a model. On SQLite that connection
+    // otherwise lets no one but the transaction's own callback in while it is open.
+    const conn = (prevConn ? _unwrapSqlite(prevConn) : prevConn) as unknown as {
       begin<T>(cb: (tx: unknown) => Promise<T>): Promise<T>;
     };
 

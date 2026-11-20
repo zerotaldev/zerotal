@@ -849,7 +849,7 @@ interface DatabaseConfigShape = {
   driver: 'sqlite' | 'postgres' | 'mysql'
   pool?: {    max?: number;    idleTimeout?: number;} | undefined
   replicas?: string[] | undefined
-  sqlite: {    path: string;    foreignKeys?: boolean | undefined;}
+  sqlite: {    path: string;    foreignKeys?: boolean | undefined;    busyTimeout?: number | undefined;}
   synchronize?: boolean | {    enabled: boolean;    disruptive?: boolean;} | undefined
   url: string
 }

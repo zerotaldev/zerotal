@@ -182,13 +182,16 @@ refused wherever a page would be.
 paths, add `/__flow/*` to the allowlist. Otherwise `route()` and `navigate` links stop working on
 public pages, without an error on the page itself. Keep `/__flow/*` open at the proxy, as before.
 A proxy rule or layout that names `/__flow/runtime.js` or `/__flow/enhance.js` keeps working; the
-other scripts now load from content-hashed URLs.
+other scripts now load from content-hashed URLs. Those hashed scripts and `/__flow/enhance.js` are
+answered before your global middleware runs, so headers it adds, such as CORS or security headers,
+no longer reach them; set those at the proxy if you need them on every response.
 
 ### A missing optional package throws
 
 Zerotal packages now declare what they load from one another. An optional package that is missing
 raises `OptionalPeerMissingError`, exported from `zerotal/runtime`. Its message includes the
-command that installs the package. Before, the feature quietly did nothing.
+command that installs the package. Before, the admin panel's options quietly did nothing, and
+tenancy and notifications threw an error of their own.
 
 **What to change.**
 
@@ -279,7 +282,8 @@ PostgreSQL an equality keeps its milliseconds.
 ### Also worth knowing (not breaking)
 
 - **`NotificationFake` moves.** Change `import { NotificationFake } from "zerotal/testing"` to
-  `from "@zerotal/notifications"`. The old import is removed in 1.18.
+  `from "@zerotal/notifications"`, and run `bun add -d @zerotal/notifications` if your
+  `package.json` does not list it. The old import is removed in 1.18.
 - **`@zerotal/ai` bounds the Anthropic SDK to `>=0.70.0 <2`**, so an app on SDK 2.x gets a peer
   warning.
 - **Vue and api apps scaffolded before 1.17** can apply the starters' sign-in fix.

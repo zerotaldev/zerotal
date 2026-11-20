@@ -8,7 +8,7 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
-## [1.17.0] — 2026-11-19
+## [1.17.0] — 2026-11-20
 
 ### Changed
 

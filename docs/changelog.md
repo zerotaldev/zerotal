@@ -46,6 +46,10 @@ most apps need only some of them:
 - **Using `driver: "sharp"` for media?** Make sure sharp is installed.
 - **Running with a `TZ` other than UTC, or MySQL outside UTC?** Some dates read differently; run
   `bun zt doctor`.
+- **Does your own middleware turn away everything outside an allowlist?** Allow `/__flow/*`, or
+  `route()` and `navigate` stop working on public pages without an error.
+- **Vue pages server-rendered, or admin history, notifications or queued imports?** Each needs a
+  package installed; the upgrade guide names it.
 
 ### Added
 
@@ -86,11 +90,15 @@ most apps need only some of them:
   prebuilt in the package, so an app whose own code imports `alpinejs` or an `@alpinejs/*` plugin
   adds it. The Alpine version is fixed for each Zerotal release.
 - **BREAKING (`@zerotal/flow`): the route table is its own script, at `/__flow/routes/<hash>.js`.**
-  Like `/__flow/runtime.js`, it passes through the app's global middleware and is cached privately.
+  It passes through the app's global middleware, as `/__flow/runtime.js` does, and is cached
+  privately.
   An app whose own middleware turns away everything outside an allowlist must allow it, or
   `route()` and `navigate` stop working on public pages.
 - **Flow's scripts are served at content-hashed URLs and cached for a year** (`@zerotal/flow`).
-  `/__flow/runtime.js` and `/__flow/enhance.js` still answer.
+  `/__flow/runtime.js` and `/__flow/enhance.js` still answer. The hashed scripts and
+  `/__flow/enhance.js` are answered before global middleware runs, so headers, logging or rate
+  limits your middleware adds no longer apply to them. Development serves the same minified
+  runtime as production.
 - **BREAKING (`@zerotal/media`): a missing sharp fails conversions loudly.** With `driver: "sharp"`
   and sharp missing or unloadable, `addMedia()` into a collection with conversions now throws. It
   throws after storing the original, where it used to skip the conversions silently. sharp 0.35 is
@@ -99,8 +107,9 @@ most apps need only some of them:
   missing optional Zerotal package throws `OptionalPeerMissingError`.** Each package now declares the
   packages it loads from another. Admin's `static history`, `databaseNotifications()` and queued
   imports throw without audit, notifications or queue; they used to do nothing. `tenantCache()`
-  throws without cache. The broadcast channel throws without broadcasting. `@zerotal/validator` is
-  an optional peer of the ORM. Admin now depends on `@zerotal/auth` and `@zerotal/orm`.
+  throws without cache. The broadcast channel throws without broadcasting. Admin now depends on
+  `@zerotal/auth` and `@zerotal/orm`. `@zerotal/validator` becomes an optional peer of the ORM, so
+  an app that installs the ORM without `zerotal` and imports the validator must list it.
 - **BREAKING (`@zerotal/inertia`): `.vue` pages need `@vue/compiler-sfc` 3.3 or later.** A Vue app
   with `inertia.ssr` on fails at boot without the compiler; before, it server-rendered the page's
   file path. React, Vue, their adapters and the compiler load as optional peers and are embedded by

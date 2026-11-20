@@ -10,7 +10,7 @@ line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
 
-## [1.17.0] — 2026-11-19
+## [1.17.0] — 2026-11-20
 
 ### Changed
 

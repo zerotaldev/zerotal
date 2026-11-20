@@ -30,6 +30,7 @@
  *
  * @module
  */
+import { _appFileExists, _importAppFile } from "@zerotal/core/runtime";
 import { pageScript, rootOpen, ROOT_CLOSE } from "../pageScript.ts";
 import {
   _loadInertiaReact,
@@ -85,7 +86,7 @@ export async function resolvePageModule(
   component: string,
 ): Promise<{ modPath: string; framework: Framework }> {
   const vuePath = `${pagesDir}/${component}.vue`;
-  if (await Bun.file(vuePath).exists()) {
+  if (await _appFileExists(vuePath)) {
     return { modPath: vuePath, framework: "vue" };
   }
   return { modPath: `${pagesDir}/${component}.tsx`, framework: "react" };
@@ -128,7 +129,7 @@ async function _renderVue(page: SsrPage, modPath: string): Promise<SsrResult> {
     _loadInertiaVue(),
     _loadVueServerRenderer(),
     _loadVue(),
-    import(modPath) as Promise<{ default: unknown }>,
+    _importAppFile<{ default: unknown }>(modPath),
   ]);
 
   const { createSSRApp, h } = vue;
@@ -163,7 +164,7 @@ export async function _prepareReactRender(
   page: SsrPage,
   modPath: string,
 ): Promise<PreparedReactRender> {
-  const pageMod = (await import(modPath)) as { default: unknown };
+  const pageMod = await _importAppFile<{ default: unknown }>(modPath);
   if (pageMod.default === undefined || pageMod.default === null) {
     throw new Error(`SSR component "${page.component}" has no default export`);
   }

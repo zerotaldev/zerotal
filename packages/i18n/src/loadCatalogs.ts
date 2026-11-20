@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+import { _appFilesEmbedded, _importAppFile, _scanAppFiles } from "@zerotal/core/runtime";
 import type { Catalogs, Messages } from "./types.ts";
 import { CatalogLoadError } from "./errors.ts";
 
@@ -10,15 +12,9 @@ import { CatalogLoadError } from "./errors.ts";
  */
 export async function loadCatalogs(dir: string): Promise<Catalogs> {
   const out: Catalogs = {};
-  const entries: string[] = [];
-  try {
-    const glob = new Bun.Glob("*.json");
-    for await (const rel of glob.scan({ cwd: dir, onlyFiles: true })) {
-      entries.push(rel);
-    }
-  } catch {
-    return out; // no directory — nothing to load
-  }
+  // A missing directory yields nothing to load. In a binary built by `bun zt compile`, the
+  // catalogs are carried in it and come from there.
+  const entries = await _scanAppFiles(dir, "*.json");
   for (const rel of entries) {
     const locale = rel
       .replace(/\.json$/, "")
@@ -26,7 +22,9 @@ export async function loadCatalogs(dir: string): Promise<Catalogs> {
       .split("/")
       .pop()!;
     try {
-      out[locale] = (await Bun.file(`${dir}/${rel}`).json()) as Messages;
+      out[locale] = _appFilesEmbedded()
+        ? (await _importAppFile<{ default: Messages }>(resolve(dir, rel))).default
+        : ((await Bun.file(`${dir}/${rel}`).json()) as Messages);
     } catch (err) {
       throw new CatalogLoadError(`${dir}/${rel}`, err);
     }

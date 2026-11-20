@@ -1,3 +1,4 @@
+import { _appFileExists, _importAppFile } from "@zerotal/core/runtime";
 import type { Seeder } from "../seeding/Seeder.ts";
 import { DB, _getDbConnectionOverride } from "../db/DB.ts";
 
@@ -55,14 +56,14 @@ async function _inTransaction(body: () => Promise<void>): Promise<void> {
 export async function runSeeders(cwd: string = process.cwd()): Promise<SeedOutcome> {
   const seederPath = `${cwd}/database/seeders/DatabaseSeeder.ts`;
 
-  if (!(await Bun.file(seederPath).exists())) {
+  if (!(await _appFileExists(seederPath))) {
     const legacyPath = `${cwd}/database/seeders/index.ts`;
-    if (!(await Bun.file(legacyPath).exists())) {
+    if (!(await _appFileExists(legacyPath))) {
       return { status: "missing", path: seederPath };
     }
 
     try {
-      const module = (await import(legacyPath)) as { default?: () => Promise<void> };
+      const module = await _importAppFile<{ default?: () => Promise<void> }>(legacyPath);
       const seed = module.default;
       if (!seed) {
         return { status: "invalid", message: "Seeder index must export a default async function." };
@@ -77,10 +78,10 @@ export async function runSeeders(cwd: string = process.cwd()): Promise<SeedOutco
   }
 
   try {
-    const module = (await import(seederPath)) as {
+    const module = await _importAppFile<{
       DatabaseSeeder?: new () => Seeder;
       default?: new () => Seeder;
-    };
+    }>(seederPath);
     const SeederClass = module.DatabaseSeeder ?? module.default;
 
     if (!SeederClass) {

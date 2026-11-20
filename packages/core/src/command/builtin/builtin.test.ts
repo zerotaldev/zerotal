@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { ServeCommand } from "./ServeCommand.ts";
 import { KeyGenerateCommand, generateKey, updateEnvContent } from "./KeyGenerateCommand.ts";
 import { MakeControllerCommand, basicStub, resourceStub } from "./MakeControllerCommand.ts";
@@ -20,7 +23,7 @@ import { StatusCommand } from "./StatusCommand.ts";
 import { TestCommand } from "./TestCommand.ts";
 import { WorkerCommand } from "./WorkerCommand.ts";
 import { ReloadCommand } from "./ReloadCommand.ts";
-import { CompileCommand } from "./CompileCommand.ts";
+import { CompileCommand, _appModules, _generatedEntry } from "./CompileCommand.ts";
 import { CssBuildCommand } from "./CssBuildCommand.ts";
 import { ReplCommand } from "./ReplCommand.ts";
 
@@ -1692,7 +1695,7 @@ describe("CompileCommand", () => {
     expect(CompileCommand.description).toBe("Compile to a self-contained binary");
     expect(CompileCommand.needsApp).toBe(false);
     // Assert the flags the command actually reads, not a count that drifts.
-    expect(CompileCommand.flags.map((f) => f.name)).toEqual(["outfile", "entry"]);
+    expect(CompileCommand.flags.map((f) => f.name)).toEqual(["outfile", "entry", "include"]);
     expect(CompileCommand.flags[0]!.name).toBe("outfile");
     expect(CompileCommand.flags[0]!.default).toBe("zerotal-app");
     expect(CompileCommand.flags[1]!.name).toBe("entry");
@@ -1700,11 +1703,18 @@ describe("CompileCommand", () => {
 });
 
 describe("CompileCommand entry point", () => {
+  /** The app entry the generated build entry runs, by name. */
   async function compiledEntry(existing: string[]): Promise<string> {
     const origSpawn = Bun.spawn;
     const origFileLocal = Bun.file;
+    const origWrite = Bun.write;
     let args: string[] = [];
+    let generated = "";
     (Bun as any).file = (path: string) => ({ exists: async () => existing.includes(path) });
+    (Bun as any).write = async (_path: string, content: string) => {
+      generated = content;
+      return content.length;
+    };
     (Bun as any).spawn = (spawnArgs: string[]) => {
       args = spawnArgs;
       return { exited: Promise.resolve(0) };
@@ -1715,10 +1725,13 @@ describe("CompileCommand entry point", () => {
       cmd.flags = { outfile: "my-app" };
       cmd._writer = noop;
       await cmd.run();
-      return args[4]!;
+      // Bun builds the generated entry, which runs the app's own last.
+      expect(args[4]).toEndWith("entry.ts");
+      return /await import\("(?:\.\.\/)+([^"]+)"\);\n$/.exec(generated)?.[1] ?? "";
     } finally {
       (Bun as any).spawn = origSpawn;
       (Bun as any).file = origFileLocal;
+      (Bun as any).write = origWrite;
     }
   }
 
@@ -1732,6 +1745,64 @@ describe("CompileCommand entry point", () => {
 
   it("names zt.ts when neither exists, so the build error points at the right file", async () => {
     expect(await compiledEntry([])).toBe("zt.ts");
+  });
+});
+
+describe("CompileCommand's generated entry", () => {
+  it("imports each app file with a literal import(), text files as text", () => {
+    const root = process.cwd();
+    const entry = _generatedEntry(
+      `${root}/.zerotal/compile/entry.ts`,
+      `${root}/zt.ts`,
+      ["config/app.ts", "resources/app.html"],
+      ["// flow\n"],
+    );
+    expect(entry).toContain(`"config/app.ts": () => import("../../config/app.ts"),`);
+    expect(entry).toContain(
+      `"resources/app.html": () => import("../../resources/app.html", { with: { type: "text" } }),`,
+    );
+    // Config is loaded before the app's entry, which reads it synchronously.
+    expect(entry.indexOf(`_preloadAppFiles(["config"])`)).toBeLessThan(
+      entry.indexOf(`await import("../../zt.ts")`),
+    );
+    expect(entry).toContain("// flow\n");
+    expect(entry.trimEnd().endsWith(`await import("../../zt.ts");`)).toBe(true);
+  });
+
+  it("carries modules and catalogs, and leaves tests and declarations out", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "zt-compile-files-"));
+    const cwd = process.cwd();
+    try {
+      for (const [file, body] of [
+        ["config/app.ts", ""],
+        ["app/models/User.ts", ""],
+        ["app/models/User.test.ts", ""],
+        ["app/env.d.ts", ""],
+        ["resources/lang/en.json", "{}"],
+        ["resources/app.html", ""],
+        ["resources/css/app.css", ""],
+      ] as const) {
+        mkdirSync(dirname(join(dir, file)), { recursive: true });
+        writeFileSync(join(dir, file), body);
+      }
+      process.chdir(dir);
+      expect(
+        await _appModules([
+          { directory: "app", pattern: "**/*.{ts,tsx}" },
+          { directory: "config", pattern: "**/*.ts" },
+          { directory: "resources/lang", pattern: "**/*.json" },
+          { directory: "resources", pattern: "*.html" },
+        ]),
+      ).toEqual([
+        "app/models/User.ts",
+        "config/app.ts",
+        "resources/app.html",
+        "resources/lang/en.json",
+      ]);
+    } finally {
+      process.chdir(cwd);
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -1779,6 +1850,8 @@ describe("CompileCommand.run()", () => {
   it("spawns bun build --compile and succeeds on exit code 0", async () => {
     const origSpawn = Bun.spawn;
     const origFileLocal = Bun.file;
+    const origWrite = Bun.write;
+    (Bun as any).write = async () => 0;
     (Bun as any).file = () => ({ exists: async () => true });
     (Bun as any).spawn = (_args: string[], _opts: unknown) => ({
       exited: Promise.resolve(0),
@@ -1800,12 +1873,15 @@ describe("CompileCommand.run()", () => {
     } finally {
       (Bun as any).spawn = origSpawn;
       (Bun as any).file = origFileLocal;
+      (Bun as any).write = origWrite;
     }
   });
 
   it("throws when bun build exits with non-zero code", async () => {
     const origSpawn = Bun.spawn;
     const origFileLocal = Bun.file;
+    const origWrite = Bun.write;
+    (Bun as any).write = async () => 0;
     (Bun as any).file = () => ({ exists: async () => true });
     (Bun as any).spawn = (_args: string[], _opts: unknown) => ({
       exited: Promise.resolve(1),
@@ -1819,6 +1895,7 @@ describe("CompileCommand.run()", () => {
     } finally {
       (Bun as any).spawn = origSpawn;
       (Bun as any).file = origFileLocal;
+      (Bun as any).write = origWrite;
     }
   });
 });

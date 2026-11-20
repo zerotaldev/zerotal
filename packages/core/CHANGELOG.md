@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A binary built by `bun zt compile` carries the app's own files.** It builds through a generated
+  entry, `.zerotal/compile/entry.ts`, that bundles `app/`, `bootstrap/`, `config/`, `database/`,
+  `routes/`, Inertia's pages, translation catalogs and the HTML templates in `resources/`. The
+  binary reads them from inside itself, so `serve`, `migrate`, `worker` and the other commands that
+  read the app's files now work from it. `--include` adds more directories.
+
+### Changed
+
+- **`serve` does not build front-end assets in a compiled binary.** It serves the `public/` shipped
+  beside it.
+- **`bun zt compile` runs `bun build` with the Bun that runs it**, not the first `bun` on `PATH`.
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

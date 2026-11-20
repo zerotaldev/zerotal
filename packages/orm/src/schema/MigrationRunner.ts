@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { _importAppFile, _scanAppFiles } from "@zerotal/core/runtime";
 import { pathToFileURL } from "node:url";
 import type { SQLInstance } from "../db/sql-types.ts";
 import type { Migration } from "./Migration.ts";
@@ -406,11 +407,9 @@ export class MigrationRunner {
   }
 
   private async _loadDirectory(dir: string): Promise<MigrationEntry[]> {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { readdirSync } = require("node:fs") as typeof import("node:fs");
-    const files = readdirSync(dir)
-      .filter((f: string) => f.endsWith(".ts") || f.endsWith(".js"))
-      .sort();
+    // Only the directory's own files, not its subdirectories: a migration is named after its
+    // file, and a nested one would be listed under a name with a slash in it.
+    const files = await _scanAppFiles(resolve(dir), "*.{ts,js}");
 
     const entries: MigrationEntry[] = [];
     for (const file of files) {
@@ -422,7 +421,7 @@ export class MigrationRunner {
       // drive letters from being read as a protocol.
       const fullPath = pathToFileURL(resolve(dir, file)).href;
       // Dynamic import — each migration file must have a default export
-      const mod = (await import(fullPath)) as { default: new () => Migration };
+      const mod = await _importAppFile<{ default: new () => Migration }>(fullPath);
       const Ctor = mod.default;
       // A declared `static id` wins over the filename — see `Migration.id`. Without
       // it, renaming a file makes an applied migration look pending.

@@ -30,6 +30,7 @@ import { compileDomain, matchDomain, setRequestSubdomains } from "./domain.ts";
 import type { ProviderHooks } from "./RouteHandler.ts";
 import { tryCurrentApp } from "../application/currentApp.ts";
 import { frameworkLog } from "../logger/frameworkLog.ts";
+import { _importAppFile, _scanAppFiles } from "../support/appFiles.ts";
 import { staticSecurityHeaders } from "../middleware/SecureHeadersMiddleware.ts";
 import { _gateResponse } from "../gate/GateMiddleware.ts";
 import {
@@ -952,18 +953,12 @@ export class Router {
    */
   static async controllers(dir: string): Promise<number> {
     let count = 0;
-    let glob: { scan(options: { cwd: string; onlyFiles: boolean }): AsyncIterable<string> };
     try {
-      glob = new Bun.Glob("**/*.{ts,js}");
-    } catch {
-      return 0;
-    }
-    try {
-      for await (const file of glob.scan({ cwd: dir, onlyFiles: true })) {
+      for (const file of await _scanAppFiles(dir, "**/*.{ts,js}")) {
         if (file.endsWith(".test.ts") || file.endsWith(".test.js")) continue;
         let loadedModule: Record<string, unknown>;
         try {
-          loadedModule = (await import(`${dir}/${file}`)) as Record<string, unknown>;
+          loadedModule = await _importAppFile(`${dir}/${file}`);
         } catch {
           continue;
         }

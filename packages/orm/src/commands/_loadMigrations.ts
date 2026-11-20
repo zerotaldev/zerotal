@@ -1,3 +1,4 @@
+import { _importAppFile, _scanAppFiles } from "@zerotal/core/runtime";
 import type { MigrationRecord } from "../schema/MigrationRunner.ts";
 
 /**
@@ -12,18 +13,14 @@ import type { MigrationRecord } from "../schema/MigrationRunner.ts";
  * @internal
  */
 export async function loadMigrations(): Promise<MigrationRecord[]> {
-  const glob = new Bun.Glob("database/migrations/*.ts");
-  const files: string[] = [];
-
-  for await (const file of glob.scan({ cwd: process.cwd() })) {
-    files.push(file);
-  }
-
-  files.sort();
+  // Sorted by the scan, and root-relative with forward slashes on every platform.
+  const files = (await _scanAppFiles(`${process.cwd()}/database/migrations`, "*.ts")).map(
+    (file) => `database/migrations/${file}`,
+  );
 
   const records: MigrationRecord[] = [];
   for (const file of files) {
-    const mod = await import(`${process.cwd()}/${file}`);
+    const mod = await _importAppFile(`${process.cwd()}/${file}`);
     const Ctor = mod.default as (new () => MigrationRecord["instance"]) | undefined;
     if (!Ctor) continue;
     // A declared `static id` wins over the filename — see `Migration.id`.

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Fixed
 
 - **The Vue starter registers `StorageProvider`.** It imported the provider but left it out of the

@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed
 
 - **BREAKING: Alpine and its seven plugins are no longer installed into your app.** `alpinejs`,

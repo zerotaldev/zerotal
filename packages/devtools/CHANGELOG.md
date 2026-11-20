@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed
 
 - **The panel and dashboard ship prebuilt, at URLs named after their content.** Both were

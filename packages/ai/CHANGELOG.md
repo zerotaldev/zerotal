@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed
 
 - **The `@anthropic-ai/sdk` peer range is `>=0.70.0 <2`** (was `>=0.70.0`). Every 0.x from 0.70

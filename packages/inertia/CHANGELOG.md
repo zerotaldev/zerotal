@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed — **BREAKING**
 
 - **BREAKING: `.vue` pages need `@vue/compiler-sfc` 3.3 or later.** The `.vue` plugin now

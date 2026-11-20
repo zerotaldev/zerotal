@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Added
 
 - **`zt doctor` warns when MySQL's time zone is not UTC.** MySQL fills `NOW()` and

@@ -13,6 +13,8 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed
 
 - **`@zerotal/orm` is declared as an optional peer.** The schema report loads it when the app has

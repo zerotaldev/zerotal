@@ -27,7 +27,7 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
-## 1.17.0 — 2026-11-19
+## 1.17.0 — 2026-11-20
 
 A minor that installs less into an app. Passkeys' WebAuthn library, Alpine, and the packages one
 Zerotal package loads from another are now installed only by the apps that use them, and a missing

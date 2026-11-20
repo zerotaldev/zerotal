@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed
 
 - **BREAKING (on Bun 1.4): Carbon runs on Bun's own `Temporal` where Bun has one.** On Bun 1.4 and later Carbon and

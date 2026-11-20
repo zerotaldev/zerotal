@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed
 
 - **BREAKING: `@simplewebauthn/server` and `reflect-metadata` are optional peers, no longer

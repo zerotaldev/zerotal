@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed
 
 - **BREAKING:** the panel is styled by Tailwind v4's browser build, through `@zerotal/flow-ui`'s

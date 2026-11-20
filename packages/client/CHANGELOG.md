@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Testing
 
 - A test pins what this package's suites assume of `bun:test` mocks on both Bun 1.3 and Bun 1.4:

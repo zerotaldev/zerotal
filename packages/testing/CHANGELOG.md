@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Deprecated
 
 - **`NotificationFake` from `@zerotal/testing` (and `zerotal/testing`).** Import it from

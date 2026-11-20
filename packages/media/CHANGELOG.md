@@ -10,6 +10,8 @@ line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-19
+
 ### Changed
 
 - **The `sharp` peer range is `^0.33 || ^0.34 || ^0.35`** (was `^0.33 || ^0.34`). sharp 0.35 is

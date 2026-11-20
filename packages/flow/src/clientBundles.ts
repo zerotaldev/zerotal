@@ -117,6 +117,49 @@ export async function _buildClientBundle(
   }
 }
 
+/**
+ * Build one bundle in a fresh Bun process, and read back what that process built.
+ *
+ * On Bun 1.3, `Bun.build` refuses a file this process has already loaded through
+ * another path ("Unexpected reading file"): once anything here has imported
+ * `client/bridge.ts`, which reaches `@zerotal/core/routes`, the CSP runtime no
+ * longer builds in-process. A fresh process has loaded nothing, so it builds what
+ * the in-process call would have. Only a checkout gets here; an installed package
+ * serves `dist/`.
+ */
+async function _buildInFreshProcess(name: ClientBundleName, minify: boolean): Promise<BuildResult> {
+  const module = JSON.stringify(fileURLToPath(import.meta.url));
+  const script =
+    `const { _buildClientBundle } = await import(${module});` +
+    `const r = await _buildClientBundle(${JSON.stringify(name)}, ${minify});` +
+    `process.stdout.write(JSON.stringify(r.ok ? r : { ok: false, logs: r.logs.map(String) }));`;
+  try {
+    const proc = Bun.spawn([process.execPath, "-e", script], { stdout: "pipe", stderr: "pipe" });
+    const [out, err, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    if (code !== 0) return { ok: false, logs: [err || `exited ${code}`] };
+    return JSON.parse(out) as BuildResult;
+  } catch (error) {
+    return { ok: false, logs: [error] };
+  }
+}
+
+/**
+ * Build a bundle in this process, and once more in a fresh one if that fails.
+ *
+ * A bundle that fails in both is a real error in the source, and its log is the
+ * in-process one, which is the more detailed.
+ */
+async function _buildFromSource(name: ClientBundleName, minify: boolean): Promise<BuildResult> {
+  const here = await _buildClientBundle(name, minify);
+  if (here.ok) return here;
+  const fresh = await _buildInFreshProcess(name, minify);
+  return fresh.ok ? fresh : here;
+}
+
 /** Builds in flight or finished, by bundle and minification, so a process bundles each once. */
 const _sourceBuilds = new Map<string, Promise<BuildResult>>();
 
@@ -132,7 +175,7 @@ function _sourceBuild(name: ClientBundleName, minify: boolean): Promise<BuildRes
   const key = `${name}:${minify}`;
   let build = _sourceBuilds.get(key);
   if (!build) {
-    build = _buildClientBundle(name, minify);
+    build = _buildFromSource(name, minify);
     _sourceBuilds.set(key, build);
     void build.then((result) => {
       if (!result.ok) _sourceBuilds.delete(key);

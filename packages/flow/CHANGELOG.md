@@ -65,6 +65,7 @@ change.
 
 ### Fixed
 
+- **A checkout on Bun 1.3 builds the client bundles in any process.** Once something in the process had loaded `client/bridge.ts`, Bun 1.3 refused to bundle the CSP runtime, and the page was served with no runtime. A source build that fails in-process is now tried once more in a fresh Bun process. Installed apps serve the prebuilt `dist/` and never reach this path.
 - **An app built with `bun zt compile` serves the client runtime.** The binary carries no
   `src/client/`, so the boot-time `Bun.build` failed with `ENOENT` inside it, and every page was
   served without a runtime: rendered, and inert. The prebuilt bundles are now read through an

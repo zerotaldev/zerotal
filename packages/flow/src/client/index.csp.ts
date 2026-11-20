@@ -1,8 +1,10 @@
 // ── @zerotal/flow CSP-safe client bundle entry point ─────────────────────────
 //
-// Built by FlowProvider.onBooting() when `flow.cspSafe` is enabled, producing
-// the `/__flow/runtime.js` served to browsers under a strict Content-Security-
-// Policy (no `'unsafe-eval'`).
+// The entry for the `runtime.csp` bundle (see ../clientBundles.ts), which Flow
+// serves instead of `runtime` when `flow.cspSafe` is enabled: the runtime for a
+// strict Content-Security-Policy (no `'unsafe-eval'`). Built into
+// dist/runtime.csp.js when the package is packed; like index.ts, this file is not
+// in the published package.
 //
 // Identical to ./index.ts except it installs the eval-free CSP evaluator
 // (cspAdapter) before Alpine.start() and puts the bridge in CSP mode.

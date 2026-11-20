@@ -892,6 +892,8 @@ function adminHead = (title?: string, theme?: AdminThemeConfig) => string
 
 function adminTailwindConfig = () => string
 
+function adminTailwindCss = () => string
+
 function adminTokensCss = () => string
 
 function authRoles = (options?: AuthRolesOptions) => RoleProvider

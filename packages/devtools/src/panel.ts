@@ -1,0 +1,39 @@
+/**
+ * The standalone inspector's page, served at `/__zerotal/devtools`.
+ *
+ * A shell, not a second panel. The dashboard is the injected panel mounted
+ * full-window, so both surfaces share one set of tabs, renderers, and styles and
+ * a package that contributes a tab gets it in both.
+ *
+ * Written here rather than read from an HTML file beside this one: a compiled app
+ * has no file beside a module to read, and the page has to name the dashboard
+ * bundle by its hash anyway.
+ *
+ * @param dashboardSrc - Where the dashboard bundle is served.
+ * @returns The page.
+ * @internal
+ */
+export function _panelHtml(dashboardSrc: string): string {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Zerotal Inspector</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #1a1b26;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module" src="${dashboardSrc}"></script>
+  </body>
+</html>
+`;
+}

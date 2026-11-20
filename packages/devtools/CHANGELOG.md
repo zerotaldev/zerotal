@@ -8,6 +8,38 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-20
+
+### Changed
+
+- **The panel and dashboard ship prebuilt, at URLs named after their content.** Both were
+  bundled by `Bun.build` on the first request to each, which paused the first page, and served
+  with `Cache-Control: no-cache`, so every page load downloaded the panel again. They are now
+  built when the package is packed, ship in `dist/`, and are served from
+  `/__zerotal/devtools/assets/<name>.<hash>.js` with
+  `Cache-Control: private, max-age=31536000, immutable` — `private` because they sit behind the
+  same gate as every other devtools endpoint. The injected tag and the dashboard page link those
+  URLs. `/__zerotal/devtools/client.js` and `/dashboard.js` still serve the same bundles.
+
+### Fixed
+
+- **The inspector's files are inside a compiled binary.** Inside a binary built by
+  `bun zt compile` there was no source to bundle, so the panel and dashboard bundles were
+  build-failure comments, and the dashboard page, read from a file beside the module, could not
+  be read at all. The bundles are now embedded in the binary and the page is generated, so
+  neither depends on a file beside the binary. A compiled binary does not serve an app's routes
+  yet; Deployment's "Compile to a single binary" section says what it runs today.
+- **A page the inspector marks no longer keeps the original's `Content-Length`.** Writing the
+  `zerotal-devtools` marker into the HTML copied every header across, so a page that declared its
+  length carried one shorter than the body it now had, and a `HEAD` to it reported that length.
+  The header is dropped when the page is rewritten.
+
+### Testing
+
+- A store used again after `dispose()` keeps persisting, pinned by a test that passes on Bun 1.3
+  and Bun 1.4. Closing a `bun:sqlite` database finalizes its prepared statements, and the store
+  prepares its insert afresh after a close rather than keeping the old one.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

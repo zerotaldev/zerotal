@@ -8,6 +8,33 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-20
+
+### Changed
+
+- **BREAKING:** the panel is styled by Tailwind v4's browser build, through `@zerotal/flow-ui`'s
+  head, instead of the Tailwind v3 Play CDN; a Content-Security-Policy in front of `/monitor` that allowed
+  `https://cdn.tailwindcss.com` must allow `https://cdn.jsdelivr.net` instead. The panel's markup
+  uses the v4 names for what it rendered before (`shadow-xs`, `outline-hidden`), so it looks the
+  same, except that default borders in dark mode now take the dark `--border` token rather than a
+  light grey and the status colours use v4's palette.
+- **The unused `@zerotal/queue`, `@zerotal/scheduler` and `@zerotal/telemetry` peer
+  declarations are gone.** The monitor reads those services from the container and never imports
+  the packages, so the declarations described a coupling that does not exist. The panel shows
+  their sections when the app registers their providers, as before. Nothing changes for an app.
+
+### Fixed
+
+- **An event-stream route answers with `capturePayloads` on.** `MonitorPayloadMiddleware` read
+  the whole response body before handing the response on, and an event stream has no end, so a
+  `GET` or `HEAD` to one never got a response. An event stream is no longer read, and any other
+  body is captured only when it is all there at once, as a string, JSON or rendered page is; a
+  stream that is still producing goes to the client with no body on the trace.
+- **A compiled binary that loads the monitor starts.** The monitor read its `package.json` from a
+  path beside the module to report the framework version, which points nowhere inside a binary
+  built by `bun zt compile`, so the binary exited with `ENOENT` at start-up. The version now comes
+  from importing the manifest, which the bundler embeds.
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

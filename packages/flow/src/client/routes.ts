@@ -2,17 +2,18 @@
  * Install the route table into the Flow client runtime.
  *
  * Inertia apps hand `route()` their table by static import, because they own
- * their bundle entry. Flow apps don't: `/__flow/runtime.js` is built by the
- * framework from `client/index.ts`, so it cannot import a file that lives in
- * the application. The table is handed over at serve time instead — the runtime
- * handler prepends `window.__zerotalRoutes = {...}` to the bundle it returns
- * (see `FlowProvider`), and this reads it back.
+ * their bundle entry. Flow apps don't: the runtime is built by the framework from
+ * `client/index.ts`, and ships prebuilt, so it cannot import a file that lives in
+ * the application. The table is handed over as a script of its own instead —
+ * `/__flow/routes/<hash>.js`, which sets `window.__zerotalRoutes = {...}`
+ * — and this reads it back.
  *
- * Prepending rather than embedding at build time is deliberate: the bundle is
- * built in `onBooting()`, when providers registered after Flow have not added
- * their routes yet. The handler runs per request, long after boot, so the table
- * it serialises is the complete one. The bundle is already `no-store`, so there
- * is no cache to invalidate.
+ * A separate script rather than part of the runtime, so the runtime is the same
+ * bytes for every app and can be cached for good. The page links the table
+ * before the runtime, both `defer`, so it is in place by the time this runs. The
+ * table is serialised when a page renders, long after boot, so it includes routes
+ * that providers registered after Flow. (`/__flow/runtime.js`, the old unhashed
+ * URL, still prepends the table to the runtime it returns.)
  */
 import { defineRoutes } from "@zerotal/core/routes";
 
@@ -21,7 +22,7 @@ import { defineRoutes } from "@zerotal/core/routes";
 // everywhere instead of an assertion each time.
 declare global {
   interface Window {
-    /** The route table the runtime handler prepends to the bundle. */
+    /** The route table, set by the `routes` script the page loads before the runtime. */
     __zerotalRoutes?: Readonly<Record<string, string>>;
   }
 }

@@ -3,8 +3,8 @@
  *
  * `passkeys.test.ts` mocks the library for the whole test process, so what only the real one can
  * show runs here and is printed as one JSON line for the test to read: whether importing
- * `@zerotal/auth` loads the library, and how a misconfigured service and a mismatched response
- * come back from each verification.
+ * `@zerotal/auth` loads the library, how a misconfigured service and a mismatched response
+ * come back from each verification, and what registration asks the browser for.
  */
 const loaded = (): number =>
   Object.keys(require.cache).filter((key) => key.includes("simplewebauthn")).length;
@@ -66,6 +66,8 @@ const user = { id: 1, name: "Fixture", email: "fixture@example.com" };
 const ctx = {} as never;
 const MISCONFIGURED = "https://example.com/";
 
+const registrationOptions = await service("https://example.com").registrationOptions(user, []);
+
 const result = {
   loadedOnImport,
   registration: {
@@ -102,9 +104,8 @@ const result = {
       ),
     ),
   },
-  algorithms: (
-    await service("https://example.com").registrationOptions(user, [])
-  ).pubKeyCredParams.map((param) => param.alg),
+  algorithms: registrationOptions.pubKeyCredParams.map((param) => param.alg),
+  authenticatorSelection: registrationOptions.authenticatorSelection,
   loadedAfterCeremony: loaded() > 0,
 };
 

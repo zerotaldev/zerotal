@@ -57,10 +57,31 @@ const d7 = new Carbon(new Date());
 const d8 = new Carbon(Temporal.Now.instant());
 ```
 
-`Temporal` here is the global one, built into Bun 1.4 and later. Carbon takes its
-values, including the dates `Bun.TOML.parse` returns, as well as values from
-`@js-temporal/polyfill`, which Carbon itself is built on. Bun 1.3 has no global
-`Temporal`: add `@js-temporal/polyfill` to your app and import `Temporal` from it.
+`Temporal` here is the global one, built into Bun 1.4 and later. Carbon runs on
+it there, so the values Carbon hands back (`toInstant()`, `toZonedDateTime()`,
+`toDuration()` and the rest) are the global `Temporal`'s own, and it takes the
+dates `Bun.TOML.parse` returns as they are.
+
+Bun 1.3 has no global `Temporal`. There Carbon loads `@js-temporal/polyfill`, which
+`@zerotal/core` installs, the first time it needs a date, so an app that never
+touches one never loads it. To build Temporal values yourself on Bun 1.3, add
+`@js-temporal/polyfill` to your app and import `Temporal` from it: that is the copy
+Carbon runs on, so its values and Carbon's are the same classes.
+
+Carbon takes Temporal values from either implementation on either Bun, but the
+values it hands back belong to the one it runs on. On Bun 1.4 that is the global
+`Temporal`, so a `ZonedDateTime` from Carbon passed to the polyfill's
+`ZonedDateTime.compare()`, `from()`, `until()`, `since()` or `equals()` throws, and
+none of Carbon's values are `instanceof` the polyfill's classes. Use the global
+`Temporal` there. An app that runs on both Buns can pick the one Carbon uses:
+
+```typescript
+// src/temporal.ts
+import { Temporal as Polyfill } from "@js-temporal/polyfill";
+
+// TypeScript has no types for the global yet, so it borrows the polyfill's.
+export const Temporal = (globalThis as { Temporal?: typeof Polyfill }).Temporal ?? Polyfill;
+```
 
 Named static factories cover the common boundary cases (all accept an optional
 timezone string):

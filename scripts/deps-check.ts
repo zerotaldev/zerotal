@@ -30,6 +30,10 @@
  * - a package loaded through a variable specifier, which `bun build --compile`
  *   cannot see and so does not embed (`variable-specifier`).
  *
+ * Source is read as it ships: a file the manifest's `files` leaves out of the
+ * tarball never runs in an app, so its imports are not checked. That is what lets
+ * a browser library be a devDependency of the entry it is bundled from.
+ *
  * It landed with a baseline of the violations that already existed, so it fails
  * only on new ones. Fixing one moves it out of the baseline with `--update`.
  *
@@ -274,6 +278,8 @@ export interface Manifest {
   name: string;
   version?: string;
   private?: boolean;
+  /** What the tarball carries; absent means everything. */
+  files?: string[];
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
@@ -520,6 +526,34 @@ export function checkSource(
   return out;
 }
 
+/** Whether a `files` pattern names this path: the path itself, a directory above it, or a glob. */
+function filesPatternMatches(pattern: string, rel: string): boolean {
+  const trimmed = pattern.replace(/^\.\//, "").replace(/\/+$/, "");
+  return rel === trimmed || rel.startsWith(`${trimmed}/`) || new Glob(trimmed).match(rel);
+}
+
+/**
+ * Whether a file reaches the tarball, read from the manifest's `files` the way a
+ * pack reads it: included by an entry naming it or a directory above it, and not
+ * excluded by a `!` entry.
+ *
+ * Only a shipped file can import anything in an app. One the tarball leaves out is
+ * a build input, and what it imports is the package's own business at pack time.
+ * That is how a browser library stays a devDependency: the entry that imports it
+ * does not ship, and the bundle built from it does (docs/package-development.md,
+ * "Shipping a browser bundle"). If `files` ever started shipping that entry, its
+ * imports would be checked again, and fail.
+ *
+ * @param rel - The file, relative to the package directory.
+ * @param files - The manifest's `files`.
+ */
+export function isShipped(rel: string, files: readonly string[] | undefined): boolean {
+  if (!files) return true;
+  const included = files.some((p) => !p.startsWith("!") && filesPatternMatches(p, rel));
+  const excluded = files.some((p) => p.startsWith("!") && filesPatternMatches(p.slice(1), rel));
+  return included && !excluded;
+}
+
 /** Whether a package is one of this repository's own. */
 function isFirstParty(name: string): boolean {
   return name === "zerotal" || name === "create-zerotal" || name.startsWith("@zerotal/");
@@ -573,7 +607,7 @@ export function collectViolations(): Violation[] {
   for (const [dir, manifest] of manifests) {
     if (manifest.private) continue;
     violations.push(...checkManifest(dir, manifest, policy, resolve, supportPolicyText));
-    for (const rel of sourceFiles(dir)) {
+    for (const rel of sourceFiles(dir).filter((file) => isShipped(file, manifest.files))) {
       const path = join(ROOT, "packages", dir, rel);
       const sites = scanImports(readFileSync(path, "utf8"), rel);
       const file = relative(ROOT, path).replace(/\\/g, "/");

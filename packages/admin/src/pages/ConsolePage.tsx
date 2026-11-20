@@ -218,7 +218,7 @@ export class ConsolePage extends Component {
           </div>
         ) : null}
 
-        <div class="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+        <div class="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xs">
           <div class="overflow-x-auto p-1.5">
             {this.rows.length > 0 ? (
               <Table columns={columns} rows={this.rows} hover />

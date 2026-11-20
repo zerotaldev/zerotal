@@ -77,6 +77,227 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.16 to 1.17
+
+A minor that installs less into an app. The packages it stops installing for you are the ones
+only some apps use, so most of the steps below apply only to apps that use the feature. After
+upgrading, run `bun zt doctor`. It names a missing passkey library, image driver, AI provider
+SDK, Inertia framework package, and the admin panel's audit and notifications packages, each
+with the command to install it. The other optional packages below are not checked: read their
+steps.
+
+### Passkeys need their library installed
+
+`@zerotal/auth` no longer installs `@simplewebauthn/server` or `reflect-metadata`. An app that never
+uses passkeys no longer carries them.
+
+**What to change.** If your app constructs `PasskeyService`, run:
+
+```bash
+bun add @simplewebauthn/server reflect-metadata
+```
+
+Without them the app still boots and serves. The first ceremony throws `OptionalPeerMissingError`
+with that command in its message, and `zt doctor` and `zt deploy` fail until the packages are
+installed.
+
+`PasskeyService` now takes and returns Zerotal's own types, exported from `zerotal/auth`:
+`PasskeyRegistrationOptionsJSON`, `PasskeyRegistrationResponseJSON`,
+`PasskeyAuthenticationOptionsJSON` and `PasskeyAuthenticationResponseJSON`. Code typed with the
+library's types still compiles. Code that reads `attestationFormats`, or `extensions` other than
+`credProps`, from the returned options must drop the read.
+
+### Passkey registration accepts any authenticator
+
+Registration no longer asks only for a platform authenticator, so a USB or NFC security key, or a
+phone reached by QR code, can now enrol. Sign-in is unchanged.
+
+**What to change.** Nothing, if you want this. To keep 1.16's behaviour, pass
+`authenticatorAttachment: "platform"` in the `PasskeyService` options. See
+[Authentication](/docs/authentication#passkeys).
+
+### The panels run Tailwind v4
+
+`flowUiHead()`, and so the admin panel and `/monitor`, loads Tailwind v4's browser build from
+`https://cdn.jsdelivr.net` with an integrity hash, in place of the v3 script from
+`cdn.tailwindcss.com`.
+
+**What to change.**
+
+1. **Content-Security-Policy.** If yours allows `https://cdn.tailwindcss.com` in `script-src`, replace
+   it with `https://cdn.jsdelivr.net`. These pages also run two small inline scripts (dark mode and
+   the copy buttons), so their `script-src` needs `'unsafe-inline'`, and outside CSP-safe mode
+   `'unsafe-eval'` as on every Flow page.
+   [Recommended CSP header](/docs/flow/components#pages-rendered-with-flowuihead) has the policy.
+2. **Your own markup under `flowUiHead()`**: custom admin pages, widgets, infolist entries and Flow
+   pages are now compiled by v4. Rename the v3 classes whose meaning changed:
+
+   | v3                                       | v4                                   |
+   | ---------------------------------------- | ------------------------------------ |
+   | `shadow-sm`, `blur-sm`                   | `shadow-xs`, `blur-xs`               |
+   | `drop-shadow-sm`, `backdrop-blur-sm`     | `drop-shadow-xs`, `backdrop-blur-xs` |
+   | bare `ring`                              | `ring-3`                             |
+   | `outline-none`                           | `outline-hidden`                     |
+   | `bg-opacity-50` (and `text-`, `border-`) | an opacity modifier, `bg-black/50`   |
+   | `bg-gradient-to-r`                       | `bg-linear-to-r`                     |
+   | `hover:file:…`                           | `file:hover:…`                       |
+
+   `hover:` now applies only on devices that can hover, and the default palette is v4's.
+
+3. **Your own stylesheet** (`theme.stylesheet`).
+   - **With your own v4 build:** put `flowTailwindCss()` (or `adminTailwindCss()`) and
+     `flowTokensCss()` (or `adminTokensCss()`) in your entry, after `@import "tailwindcss";`.
+   - **With your own v3 build:** move it to v4. The components now use class names that v3 does
+     not generate (`outline-hidden`, `shadow-xs`, `bg-linear-to-*`), so under a v3 stylesheet
+     focused buttons show the browser's outline, inputs lose their shadow and scroll areas their
+     fade. Until you move, add `borderColor: { DEFAULT: "hsl(var(--border))" }` under
+     `theme.extend` in a hand-written config, or default borders turn light grey in dark mode;
+     `flowTailwindConfig()` and `adminTailwindConfig()` already do this.
+4. **Your own `body` or `*` rules.** The token border and page colours now sit in `@layer base`. An
+   unlayered `body { background }` or `* { border-color }` rule of your own now wins over them.
+
+See [Components](/docs/components).
+
+### Flow no longer installs Alpine
+
+Flow's client runtime ships prebuilt in `@zerotal/flow`, so `alpinejs` and the `@alpinejs/*` plugins
+are no longer installed into your app.
+
+**What to change.** Nothing, unless your own code imports `alpinejs` or an `@alpinejs/*` plugin.
+Until now that import resolved through Flow. Add it to your app:
+
+```bash
+bun add alpinejs
+```
+
+Add any plugins you import as well.
+
+### Flow's route table has its own URL
+
+Pages now load the app's route table from `/__flow/routes/<hash>.js`. In 1.16 it came inside
+`/__flow/runtime.js`. Like that script, it passes through your app's global middleware, so it is
+refused wherever a page would be.
+
+**What to change.** If your own middleware turns away everything outside an allowlist of public
+paths, add `/__flow/*` to the allowlist. Otherwise `route()` and `navigate` links stop working on
+public pages, without an error on the page itself. Keep `/__flow/*` open at the proxy, as before.
+A proxy rule or layout that names `/__flow/runtime.js` or `/__flow/enhance.js` keeps working; the
+other scripts now load from content-hashed URLs. Those hashed scripts and `/__flow/enhance.js` are
+answered before your global middleware runs, so headers it adds, such as CORS or security headers,
+no longer reach them; set those at the proxy if you need them on every response.
+
+### A missing optional package throws
+
+Zerotal packages now declare what they load from one another. An optional package that is missing
+raises `OptionalPeerMissingError`, exported from `zerotal/runtime`. Its message includes the
+command that installs the package. Before, the admin panel's options quietly did nothing, and
+tenancy and notifications threw an error of their own.
+
+**What to change.**
+
+- **Admin.** A resource with `static history = true` needs `@zerotal/audit`.
+  `Panel.notifications(databaseNotifications())` needs `@zerotal/notifications`.
+  `importAction({ queue: true })` and `dispatchImport()` need `@zerotal/queue`. Install each one,
+  or remove the option.
+- **Tenancy.** If you catch `TenancyConfigError` around `tenantCache()` to detect a missing cache,
+  catch `OptionalPeerMissingError` instead, or install `@zerotal/cache`.
+- **Notifications.** If you catch `NotificationChannelUnavailableError` from the broadcast channel
+  to detect missing broadcasting, catch `OptionalPeerMissingError` instead, or install
+  `@zerotal/broadcasting`.
+- **ORM without `zerotal`.** If your app installs `@zerotal/orm` on its own and uses the validator,
+  run `bun add @zerotal/validator`. Apps on the `zerotal` package need nothing.
+
+### A missing sharp fails conversions
+
+With `driver: "sharp"` in `config/media.ts`, a missing or unloadable sharp used to produce no
+conversions, without an error. Now `addMedia()` into a collection with conversions throws
+`OptionalPeerMissingError` once the original is stored, and queued conversions fail.
+
+**What to change.** Run `bun add sharp` (0.33, 0.34 or 0.35 are supported), or set `driver: "bun"`.
+Code that caught `MediaError` for a missing sharp should catch `OptionalPeerMissingError`. See
+[Media](/docs/media).
+
+### `.vue` pages need `@vue/compiler-sfc` 3.3 or later
+
+**What to change.** Install the compiler at the same version as `vue`:
+
+```bash
+bun add vue@^3.5 @vue/compiler-sfc@^3.5
+```
+
+New starters already have it. A Vue app with `inertia.ssr: true` and no compiler now fails at boot
+instead of rendering the page's file path. React apps need nothing. Code that matched the old React
+SSR error message should catch `OptionalPeerMissingError` instead.
+
+### On Bun 1.4, Carbon hands out Bun's own `Temporal` values
+
+Carbon now uses the runtime's `Temporal` when there is one, and loads `@js-temporal/polyfill` only on
+Bun 1.3.
+
+**What to change.** Nothing on Bun 1.3. On Bun 1.4, an app that imports `Temporal` from
+`@js-temporal/polyfill` and passes a Carbon `ZonedDateTime` to that import's `ZonedDateTime` methods
+(`compare`, `from`, `until`, `since`, `equals`), or checks Carbon's values with `instanceof` against
+it, must use the global `Temporal`. An app that runs on both Buns can define its own:
+
+```ts
+import { Temporal as Polyfill } from "@js-temporal/polyfill";
+
+export const Temporal = (globalThis as { Temporal?: typeof Polyfill }).Temporal ?? Polyfill;
+```
+
+That is always the implementation Carbon runs on. See [Carbon](/docs/carbon).
+
+### The ORM reads dates back as the instant saved
+
+The ORM writes every date as UTC. It now reads them back that way too, whatever the server's `TZ`:
+zone-less date-time text, such as MySQL's `YYYY-MM-DD HH:MM:SS` or SQLite's `CURRENT_TIMESTAMP`,
+is read as UTC, and MySQL `DATE`, `DATETIME` and `TIMESTAMP` columns read the same on Bun 1.3 and
+1.4. In 1.16, under a `TZ` other than UTC, a MySQL date moved by the zone's offset between a save
+and the next load.
+
+A value that something else wrote as local time is now read as UTC as well, so under a `TZ` other
+than UTC it reads differently from 1.16. That covers a MySQL column that `NOW()` or
+`CURRENT_TIMESTAMP` filled on a server outside UTC, and text written as local time by another
+program or by hand-written SQL. Nothing stored changes.
+
+**What to change.**
+
+1. If `TZ` is unset or UTC and your MySQL server runs in UTC, nothing.
+2. Otherwise run `bun zt doctor`. If it warns about MySQL's time zone, run the server in UTC
+   (`default-time-zone = '+00:00'` under `[mysqld]`, or `SET GLOBAL time_zone = '+00:00'`), then
+   restart the app so its connections reopen. Bun 1.4.1 and later open every connection in UTC;
+   Bun 1.3 and 1.4.0 keep the server's zone and cannot set one per connection.
+3. Convert rows written in the old zone with `CONVERT_TZ`, or read such a column through a custom
+   cast. [The MySQL server's time zone](/docs/orm/casts#the-mysql-servers-time-zone) shows which rows move and the statement for each.
+4. Remove any code that added the zone offset back to dates the ORM read. It now corrects twice.
+5. On Bun 1.3, prefer `TZ=UTC`. Bun 1.3 cannot read back a MySQL time in the zone's
+   daylight-saving gap, and it reads a PostgreSQL `timestamp without time zone` column queried with
+   no bound values shifted the first time that query runs on a connection. Bun 1.4 reads both
+   correctly.
+
+A `Carbon` in `where()` now binds the way a save stores it, so a query that compared against a
+`Carbon` can return different rows: on MySQL it now finds rows it used to miss, and on SQLite and
+PostgreSQL an equality keeps its milliseconds.
+
+### Also worth knowing (not breaking)
+
+- **`NotificationFake` moves.** Change `import { NotificationFake } from "zerotal/testing"` to
+  `from "@zerotal/notifications"`, and run `bun add -d @zerotal/notifications` if your
+  `package.json` does not list it. The old import is removed in 1.18.
+- **`@zerotal/ai` bounds the Anthropic SDK to `>=0.70.0 <2`**, so an app on SDK 2.x gets a peer
+  warning.
+- **Vue and api apps scaffolded before 1.17** can apply the starters' sign-in fix.
+  1. In `app/models/User.ts`, import `Authenticatable` from `zerotal/auth` and extend
+     `Model.using(Authenticatable)`.
+  2. Add the `remember_token` migration that `bun zt doctor` prints.
+  3. In a Vue app, also add `StorageProvider` after `DatabaseProvider` in `bootstrap/providers.ts`.
+- **`bun zt compile` with no `--entry`** now compiles `zt.ts`, so the `--entry=zt.ts` workaround can
+  go. The binary starts and runs console commands, but cannot serve an app yet: keep deploying with
+  Bun and an installed `node_modules`, as
+  [Deployment](/docs/deployment#compile-to-a-single-binary) describes.
+- **On Bun 1.4, `bun build --outfile` fails for an app that uses Flow or devtools**, because their
+  prebuilt scripts are written as separate files. Use `--outdir`, or `bun zt compile`.
+
 ## 1.16.4
 
 A patch. Two of its changes can alter what an app sees; neither needs a code change in an app that

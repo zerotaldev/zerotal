@@ -12,6 +12,7 @@ import { readHistoryFlags } from "./historyState.ts";
 import { allSharedKeys } from "./share.ts";
 import { recordPage } from "./devtools/recorder.ts";
 import { resolvePageModule, renderInertiaPage, _prepareReactRender } from "./ssr/renderPage.ts";
+import { _loadReactDomServer } from "./peers.ts";
 import { injectHead } from "./ssr/head.ts";
 import { pageScript, rootOpen, ROOT_CLOSE } from "./pageScript.ts";
 import type { PageObject } from "./types.ts";
@@ -297,15 +298,7 @@ async function _inertiaStream(component: string, props: Record<string, unknown>)
     // and can go into the `<head>` that is about to be flushed.
     const { element, head } = await _prepareReactRender(pageObject, modPath);
 
-    // Specifier via a variable, not a literal. `react-dom/server` is an *optional*
-    // peer — a Vue app never installs it — but a literal `import()` is still
-    // resolved by TypeScript, so type-checking a Vue project failed on a module it
-    // will never have. The result is cast below; this branch only runs on React.
-    const reactServerSpecifier = "react-dom/server";
-    const serverMod = (await import(reactServerSpecifier)) as {
-      renderToReadableStream(el: unknown): Promise<ReadableStream<Uint8Array>>;
-    };
-
+    const serverMod = await _loadReactDomServer();
     const reactStream = await serverMod.renderToReadableStream(element);
     const openBlock = injectHead(prefix, head()) + pageScript(pageObject) + rootOpen(true);
 

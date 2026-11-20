@@ -8,13 +8,13 @@
  *
  * @module
  */
-import { Temporal } from "./temporal-shim.ts";
+import { type Temporal, temporal } from "./temporal-shim.ts";
 
 let _testInstant: Temporal.Instant | null = null;
 
 /** The current zoned date-time in `tz` — the frozen instant when one is set. */
 export function _nowIn(tz: string): Temporal.ZonedDateTime {
-  return _testInstant ? _testInstant.toZonedDateTimeISO(tz) : Temporal.Now.zonedDateTimeISO(tz);
+  return _testInstant ? _testInstant.toZonedDateTimeISO(tz) : temporal().Now.zonedDateTimeISO(tz);
 }
 
 /** Freeze the clock at `instant`, or release it with `null`. @internal */

@@ -8,6 +8,30 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-20
+
+### Changed
+
+- **The `@anthropic-ai/sdk` peer range is `>=0.70.0 <2`** (was `>=0.70.0`). Every 0.x from 0.70
+  and every 1.x install as before; a 2.0, which nothing here has been tested against, now draws
+  a peer warning instead of installing silently. The package's own tests run against 1.10.
+- **The anthropic driver loads the SDK by name, so `bun zt compile` embeds it.** It was loaded
+  through a variable, which a compiled binary cannot see, so a compiled app with the SDK
+  installed threw `AiDriverUnavailableError` on its first request.
+
+### Added
+
+- **`zt doctor` fails when `drivers.anthropic` is configured and `@anthropic-ai/sdk` is not
+  installed** (check `ai-provider-sdk`), so a deploy finds out before its first request rather
+  than on it.
+
+### Fixed
+
+- **An SDK that is installed but cannot load is reported as itself.** Any failure to import the
+  SDK became `AiDriverUnavailableError` ("not installed. Run: bun add @anthropic-ai/sdk"), which
+  sent someone with a broken install to install what they had. Only a missing SDK is that error
+  now, with the resolver's error as `cause`; anything else is rethrown as it arrived.
+
 ## [1.15.5] — 2026-10-27
 
 ### Added

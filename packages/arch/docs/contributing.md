@@ -22,6 +22,11 @@ bun install            # installs all workspaces
 The repo is a Bun workspace (`packages/*` and `apps/*`), so a single `bun install` at
 the root wires every package together via `workspace:*` links.
 
+Change dependencies with Bun 1.3.x. Bun 1.4 rewrites `bun.lock` in a format Bun 1.3.14
+cannot read, and CI, the release workflow and the docs server all install with 1.3.14.
+`bun run lockfile:check` fails on a rewritten lockfile; restore the committed one and
+run `bun install` again with Bun 1.3.x.
+
 ## Repository layout
 
 ```text
@@ -229,6 +234,54 @@ Skipping it is how `[Unreleased]` came to hold four releases of shipped work —
 `@zerotal/flow-ui`'s newest heading read `[1.5.0]` while 1.7.3 was on npm. Someone
 upgrading reads "Unreleased" and concludes none of it is in the version they are
 taking, when all of it is.
+
+## Publishing
+
+A release is a tag. Pushing `v1.7.4` runs the release workflow
+(`.github/workflows/release.yml`), which re-runs every gate and then publishes each
+public package with `scripts/publish-packages.ts`. Nothing is published from a
+laptop.
+
+### Trusted publishing
+
+npm authenticates each package with trusted publishing: it trades the release
+workflow's GitHub identity for a token that lasts one publish and covers one
+package. A package that is not linked yet falls back to the `NPM_TOKEN` repository
+secret, which expires. The publish log prints which path each package took, ending
+with a line such as `27 via trusted publishing, 0 via NODE_AUTH_TOKEN`.
+
+Link every package whose `package.json` is not `"private": true`. On npmjs.com,
+open the package, then **Settings**, then **Trusted publishing**, and choose
+**GitHub Actions**:
+
+- **Organization or user:** `zerotaldev`
+- **Repository:** `zerotal`
+- **Workflow filename:** `release.yml` (the file name only, not the path)
+- **Environment name:** leave it empty; the publish job uses no environment
+- **Allowed actions:** allow `npm publish`, because the workflow publishes directly
+  rather than staging
+
+npm 11.15.0 or later does the same from a terminal, signed in to an account with
+two-factor authentication and write access to every package:
+
+```bash
+# in your project root
+for manifest in packages/*/package.json; do
+  name=$(bun -e "const m = require('./$manifest'); if (!m.private) console.log(m.name)")
+  [ -n "$name" ] && npm trust github "$name" --file release.yml --repo zerotaldev/zerotal --allow-publish
+done
+```
+
+> **Warning** — npm checks nothing when you save. A link that has not published
+> within two days expires and has to be deleted and created again, so link the
+> packages shortly before tagging. An expired or mistyped link fails quietly: the
+> package publishes with the token, and the publish log says why.
+
+Delete the `NPM_TOKEN` secret only after a release reports every package via
+trusted publishing. Publishing no longer needs it then, but the deprecate workflow
+(`.github/workflows/deprecate.yml`) does, because npm has no trusted path for
+`npm deprecate`. Without the secret, deprecate from a terminal with the same loop,
+running `npm deprecate "$name@<range>" "<message>"` in place of `npm trust`.
 
 ## Pull requests
 

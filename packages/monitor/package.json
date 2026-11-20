@@ -1,6 +1,6 @@
 {
   "name": "@zerotal/monitor",
-  "version": "1.16.4",
+  "version": "1.17.0",
   "license": "MIT",
   "maturity": "stable",
   "private": false,
@@ -33,27 +33,6 @@
     "@zerotal/core": "workspace:*",
     "@zerotal/flow-ui": "workspace:*",
     "@zerotal/flow": "workspace:*"
-  },
-  "devDependencies": {
-    "@zerotal/queue": "workspace:*",
-    "@zerotal/scheduler": "workspace:*",
-    "@zerotal/telemetry": "workspace:*"
-  },
-  "peerDependencies": {
-    "@zerotal/queue": "^1.0.0",
-    "@zerotal/scheduler": "^1.0.0",
-    "@zerotal/telemetry": "^1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@zerotal/queue": {
-      "optional": true
-    },
-    "@zerotal/scheduler": {
-      "optional": true
-    },
-    "@zerotal/telemetry": {
-      "optional": true
-    }
   },
   "description": "Operational monitoring panel and metrics for Zerotal — requests, exceptions, queries, and alerts.",
   "keywords": [

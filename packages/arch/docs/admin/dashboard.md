@@ -138,6 +138,11 @@ It fails soft throughout. A missing table, an unconfigured database or a
 signed-out user yields an empty bell rather than a broken panel — a notification
 centre is never worth taking the page down for.
 
+The one thing it does not forgive is the package itself. The panel does not install
+`@zerotal/notifications`: add it with `bun add @zerotal/notifications`. Without it,
+the notifications page throws `OptionalPeerMissingError` with that command, because
+an empty bell would look like nobody had been notified.
+
 ## Navigation
 
 The sidebar is derived from each resource's `navigationGroup`, `navigationSort`,

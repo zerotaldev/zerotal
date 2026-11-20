@@ -45,7 +45,7 @@ export class ReloadCommand extends Command {
       this.info(`↺  SIGUSR2 sent to PID ${pid} — routes are reloading.`);
     } catch (error) {
       this.error(`Failed to signal process ${pid}: ${(error as Error).message}`);
-      this.dim("Is the server still running? Check with: bun zerotal.ts status");
+      this.dim("Is the server still running? Check with: bun zt status");
       process.exit(1);
     }
   }

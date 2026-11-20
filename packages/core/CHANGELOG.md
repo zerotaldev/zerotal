@@ -8,6 +8,91 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-20
+
+### Changed
+
+- **BREAKING (on Bun 1.4): Carbon runs on Bun's own `Temporal` where Bun has one.** On Bun 1.4 and later Carbon and
+  CarbonInterval use the global `Temporal` and never load `@js-temporal/polyfill`. On Bun 1.3,
+  which has no `Temporal`, the polyfill is loaded the first time Carbon needs a date rather than
+  when `@zerotal/core/carbon` is imported, and `bun build --compile` still embeds it. Carbon takes
+  values from either implementation on either Bun, as before, and the polyfill stays a dependency
+  of `@zerotal/core`.
+
+  On Bun 1.3 nothing else changes: Carbon loads the same ES build of the polyfill an app's own
+  `import { Temporal } from "@js-temporal/polyfill"` does, so there is one copy and Carbon's
+  values are `instanceof` the app's classes.
+
+  On Bun 1.4 the values Carbon hands back (`toInstant()`, `toZonedDateTime()`, `toDuration()` and
+  the rest) are now the global `Temporal`'s. Passing them to the global `Temporal`, as the Carbon
+  guide shows, now works; before, a Carbon `ZonedDateTime` given to
+  `globalThis.Temporal.ZonedDateTime.compare()` threw. Passing them to `Temporal` imported from
+  `@js-temporal/polyfill` now fails instead: a `ZonedDateTime` given to the polyfill's
+  `ZonedDateTime.compare()`, `from()`, `until()`, `since()` or `equals()` throws
+  `required property 'timeZone' missing`, and no Carbon value is `instanceof` a polyfill class.
+  An app that imports the polyfill and runs on Bun 1.4 should use the global `Temporal` there; an
+  app that runs on both Buns can use `globalThis.Temporal ?? Polyfill`, which is always the one
+  Carbon runs on. `Instant`, `PlainDate`, `PlainDateTime` and `Duration` values still cross
+  between the two.
+
+- **`CompileCommand.flags` is typed `FlagDef[]`**, the type the base `Command` class declares
+  for every command's flags. It was the array's inferred literal type, in which every flag had a
+  `default: string`. The `entry` flag no longer has a `default`, because the entry is now chosen
+  when the command runs (below). Not breaking: the property widens to the base class's type, and
+  `bun zt compile` behaves as before apart from the new default entry.
+
+### Fixed
+
+- **`optionalPeer()` reports a missing package loaded with `require()` in a compiled app.** A
+  bundle built without the package replaces that `require()` with the bundler's own
+  `Cannot require module <name>` error, which has no `code` and no `specifier`, so the handler
+  rethrew it as it came instead of throwing `OptionalPeerMissingError` with the install command.
+  It now recognises that error when it names the peer being loaded. A `require()` of an installed
+  package that is missing one of its own dependencies still names that other package, and is
+  still rethrown.
+
+- **A binary built by `bun zt compile` starts.** Loading `@zerotal/core` read the framework's
+  `package.json` from a path beside the module to learn its own version, and inside a compiled
+  binary that path points nowhere, so every binary exited with `ENOENT` before the app booted, on
+  any command. The version now comes from importing the manifest, which the bundler embeds, so
+  `ZEROTAL_VERSION` is the same in a source run and in a binary. `installedCoreVersion()` still
+  reads `node_modules` on purpose, since it reports what is installed rather than what is
+  running, and returns `null` when nothing is installed beside the binary. A binary runs the
+  console commands that need none of the app's files, such as `list` and `version`; it does not
+  serve an app yet, because `config/`, routes, migrations and pages are still loaded from disk
+  when it runs. Deployment's "Compile to a single binary" section says what works and how to
+  deploy instead.
+- **`bun zt compile` finds the starters' entry point.** With no `--entry` it compiled
+  `zerotal.ts`, which no starter has, so it failed with `ModuleNotFound` in every new app. It now
+  compiles `zt.ts`, and falls back to `zerotal.ts` in a project that has no `zt.ts`. On Windows
+  the closing line names the file Bun actually wrote, `zerotal-app.exe`. The `status` and `reload`
+  hints say `bun zt` too.
+- **A `HEAD` request to an event-stream route is answered.** The `HEAD` every `GET` route
+  answers is built by running the `GET` handler and measuring its body, and an event stream has
+  no end to measure to, so the request waited, and held its connection, for as long as the stream
+  lived. A `GET` that returns `Content-Type: text/event-stream` is now answered at once, with its
+  headers, `Transfer-Encoding: chunked` and no `Content-Length`, as the `GET` is sent, and the
+  stream is cancelled so its `cancel()` runs. A `Content-Length` the handler declared is no
+  longer passed on unchecked, since it can be stale, such as one a middleware kept after
+  rewriting the body, or a proxied `fetch()` response Bun decompressed. The body is measured when
+  it is all there at once, and the `HEAD` reports that length. A body with a declared length that
+  is still arriving (a stream still producing, a file, a large proxied response) is not waited
+  for: the `HEAD` is answered at once, chunked and with no `Content-Length`, and the body is
+  cancelled. A body with no declared length is measured as before.
+- **`Router.markdown()` pages answer `HEAD` the same on Bun 1.3 and Bun 1.4.** They had no `HEAD`
+  of their own, so on Bun 1.3 one went on to the app's fallback and was answered 404, while Bun
+  1.4 ran the `GET`. They now derive one from the `GET`, like every other route, and answer with
+  its status and headers on both. A `Router.raw()` `GET` on the same path takes the `HEAD` with
+  it, as it does from any route it replaces, unless the app registered a raw `HEAD` there itself.
+
+### Testing
+
+- The behaviours that differ between Bun 1.3 and Bun 1.4 and that a running app depends on are
+  pinned by tests that pass on both: `HEAD` on every kind of route, read off the socket so a body
+  sent where none belongs is caught; `app.stop({ exit: false })` returning promptly while an event
+  stream is still open; cookies written with `Max-Age` and never `Expires`, and read the same off
+  Bun's cookie map as off the `Cookie` header; and argon2 hashes made at Bun's default cost.
+
 ## [1.16.4] — 2026-11-17
 
 ### Added

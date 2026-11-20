@@ -50,7 +50,9 @@ Click a row to expand its full trace — a span waterfall, the exact SQL that ra
 (correlated to that request), and its log lines. A failed request shows its
 exception message inline, so the trace explains why it failed. With
 `capturePayloads` on, the trace also carries the request and response headers and
-bodies, with sensitive headers and keys redacted.
+bodies, with sensitive headers and keys redacted. A response body is captured when it
+is all there at once, as a string, JSON or a rendered page is; an event stream, or any
+other stream still producing, goes to the client unread and the trace shows no body.
 
 Three widgets sit alongside: Slow requests, Application usage (busiest users),
 and Top memory (heaviest routes). Search by path or method, filter by status
@@ -256,7 +258,7 @@ All three are available on the store programmatically, as `store.prune()`,
 
 ## Theming
 
-The panel is built from [`@zerotal/flow-ui`](/docs/components) and themed with its design tokens, so it follows light and dark mode and looks like the same product as the [admin](/docs/admin) rather than a separate tool. There is no build step: the layout injects the kit's theme, which loads the Tailwind Play CDN and emits the palette inline.
+The panel is built from [`@zerotal/flow-ui`](/docs/components) and themed with its design tokens, so it follows light and dark mode and looks like the same product as the [admin](/docs/admin) rather than a separate tool. There is no build step: the layout injects the kit's [theme head](/docs/components#without-a-build-step), which loads Tailwind's browser build from a CDN and emits the palette inline.
 
 Every colour in the panel resolves to a token — `bg-card`, `text-muted-foreground`, `text-success`, `text-destructive`, `hsl(var(--chart-3))` — so the only thing the monitor overrides is its own orange `--primary`. That one variable recolours the whole panel, and an app can push it further by appending its own token CSS.
 
@@ -393,7 +395,7 @@ Recording never sits on the request hot path. Each `record*` call pushes a row i
 
 Snapshots are cached for `snapshotCacheMs` (one second by default), keyed by range. This de-duplicates the overlapping reads that happen when the panel poll, the alert loop, and a Prometheus scrape all ask for the live snapshot at once, and any action that changes data invalidates the cache immediately so you never see a stale count after clicking. A single operator polling every few seconds sees little benefit; the win is under concurrent access. Set it to `0` to always build fresh.
 
-Per-request and per-action memory is the process heap at completion, not an isolated per-request figure — Bun shares one heap across concurrent work, so treat it as indicative rather than exact. The live queue, scheduler, and health adapters degrade gracefully: if the optional peer package is not installed, that section reads empty rather than throwing. And the panel never invents data — if a number is zero, nothing happened.
+Per-request and per-action memory is the process heap at completion, not an isolated per-request figure — Bun shares one heap across concurrent work, so treat it as indicative rather than exact. The live queue, scheduler, and health adapters degrade gracefully: they read those services from the container, so when the app does not register the provider, that section reads empty rather than throwing. And the panel never invents data — if a number is zero, nothing happened.
 
 ## References
 

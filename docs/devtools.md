@@ -483,16 +483,23 @@ published protocol has its markers specified for it.
 request before it reaches your routes). They exist only when the middleware is
 registered — which the provider skips entirely in production:
 
-| Path                               | Method | Description                                        |
-| ---------------------------------- | ------ | -------------------------------------------------- |
-| `/__zerotal/devtools`              | `GET`  | Standalone inspector dashboard (opens in new tab)  |
-| `/__zerotal/devtools/client.js`    | `GET`  | The injected floating-panel bundle                 |
-| `/__zerotal/devtools/dashboard.js` | `GET`  | The same panel, mounted full-window                |
-| `/__zerotal/devtools/sse`          | `GET`  | Server-sent events stream — `EventSource` endpoint |
-| `/__zerotal/devtools/api/traces`   | `GET`  | Recent request traces (JSON)                       |
-| `/__zerotal/devtools/api/channels` | `GET`  | Declared trace channels (JSON)                     |
-| `/__zerotal/devtools/api/map`      | `GET`  | The framework map — routes, config, container, …   |
-| `/__zerotal/devtools/api/clear`    | `POST` | Clear all stored traces                            |
+| Path                                             | Method | Description                                        |
+| ------------------------------------------------ | ------ | -------------------------------------------------- |
+| `/__zerotal/devtools`                            | `GET`  | Standalone inspector dashboard (opens in new tab)  |
+| `/__zerotal/devtools/assets/client.<hash>.js`    | `GET`  | The injected floating-panel bundle                 |
+| `/__zerotal/devtools/assets/dashboard.<hash>.js` | `GET`  | The same panel, mounted full-window                |
+| `/__zerotal/devtools/client.js`, `/dashboard.js` | `GET`  | The same two bundles, at paths without a hash      |
+| `/__zerotal/devtools/sse`                        | `GET`  | Server-sent events stream — `EventSource` endpoint |
+| `/__zerotal/devtools/api/traces`                 | `GET`  | Recent request traces (JSON)                       |
+| `/__zerotal/devtools/api/channels`               | `GET`  | Declared trace channels (JSON)                     |
+| `/__zerotal/devtools/api/map`                    | `GET`  | The framework map — routes, config, container, …   |
+| `/__zerotal/devtools/api/clear`                  | `POST` | Clear all stored traces                            |
+
+The two bundles ship prebuilt with the package. Under `assets/` their file names carry a hash of
+their content, so the browser keeps them between page loads (`Cache-Control: private`, for a year)
+and fetches them again only after an upgrade. They are embedded in a binary built by
+`bun zt compile` too; [Deployment](/docs/deployment#compile-to-a-single-binary) says what such a
+binary runs today.
 
 > **Danger** — These endpoints expose request headers, SQL with its bindings,
 > session key names, stack traces, and rendered mail. They are all behind one

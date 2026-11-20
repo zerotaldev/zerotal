@@ -13,7 +13,7 @@
  * | Subpath | What it provides |
  * | --- | --- |
  * | `@zerotal/core/contracts` | Interface-only seams packages implement and the kernel consumes (session, transaction, authenticatable user) |
- * | `@zerotal/core/carbon` | Date/time via {@link Carbon} (pulls the Temporal polyfill) |
+ * | `@zerotal/core/carbon` | Date/time via {@link Carbon} (the Temporal polyfill, on Bun 1.3 only) |
  * | `@zerotal/core/http` | Outbound HTTP client, URL building, uploads, API resources, content negotiation |
  * | `@zerotal/core/view` | Server-side JSX runtime + authoring helpers |
  * | `@zerotal/core/env` | Typed environment-variable schema |

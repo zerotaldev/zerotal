@@ -26,4 +26,17 @@ describe("Hash", () => {
     const argonHash = await Hash.make("x");
     expect(Hash.needsRehash(argonHash)).toBe(false);
   });
+  // Bun 1.4 refuses an argon2 memory cost under 8 KiB, where Bun 1.3 accepted it. Hash takes no
+  // cost options and leaves Bun's own (64 MiB, two passes), so neither version can refuse it.
+  it.each(["argon2id", "argon2i", "argon2d"] as const)(
+    "hashes with %s at Bun's default cost",
+    async (algorithm) => {
+      const h = await Hash.make("secret123", { algorithm });
+      const cost = /\$m=(\d+),t=(\d+),p=(\d+)\$/.exec(h);
+      expect(cost).not.toBeNull();
+      expect(Number(cost![1])).toBeGreaterThanOrEqual(8);
+      expect(Number(cost![2])).toBeGreaterThanOrEqual(1);
+      expect(await Hash.verify("secret123", h)).toBe(true);
+    },
+  );
 });

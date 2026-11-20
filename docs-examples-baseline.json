@@ -981,12 +981,6 @@
     },
     {
       "file": "docs/authentication.md",
-      "heading": "Passkeys",
-      "ordinal": 0,
-      "hash": "278pehd31y87"
-    },
-    {
-      "file": "docs/authentication.md",
       "heading": "Password confirmation",
       "ordinal": 0,
       "hash": "16nuusa3lwgy"
@@ -1384,7 +1378,7 @@
     {
       "file": "docs/carbon.md",
       "heading": "Creating a Carbon",
-      "ordinal": 1,
+      "ordinal": 2,
       "hash": "2vni4hqmpkov"
     },
     {
@@ -7787,7 +7781,7 @@
       "file": "docs/testing/mocking.md",
       "heading": "Notifications",
       "ordinal": 0,
-      "hash": "9b7o5sk0aqkn"
+      "hash": "dws7p80evm61"
     },
     {
       "file": "docs/testing/mocking.md",

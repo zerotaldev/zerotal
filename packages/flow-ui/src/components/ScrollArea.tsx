@@ -67,13 +67,13 @@ export function ScrollArea(props: ScrollAreaProps): HtmlNode {
       {/* Pointer-events off, so the fade never eats a click on what it covers. */}
       {orientation !== "horizontal" ? (
         <>
-          <div class="pointer-events-none absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-background to-transparent" />
-          <div class="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-background to-transparent" />
+          <div class="pointer-events-none absolute inset-x-0 top-0 h-4 bg-linear-to-b from-background to-transparent" />
+          <div class="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-linear-to-t from-background to-transparent" />
         </>
       ) : (
         <>
-          <div class="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-background to-transparent" />
-          <div class="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-background to-transparent" />
+          <div class="pointer-events-none absolute inset-y-0 left-0 w-4 bg-linear-to-r from-background to-transparent" />
+          <div class="pointer-events-none absolute inset-y-0 right-0 w-4 bg-linear-to-l from-background to-transparent" />
         </>
       )}
     </div>

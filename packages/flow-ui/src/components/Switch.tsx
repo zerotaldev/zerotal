@@ -31,7 +31,7 @@ export function Switch(props: SwitchProps): HtmlNode {
   return HeadlessSwitch({
     bind,
     class: cn(
-      "inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background bg-input data-checked:bg-primary",
+      "inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-xs transition-colors outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background bg-input data-checked:bg-primary",
       cls,
     ),
     children: (

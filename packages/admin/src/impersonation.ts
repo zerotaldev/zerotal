@@ -44,22 +44,21 @@ async function currentSession(): Promise<SessionLike | null> {
   }
 }
 
-/** Auth, resolved lazily so it stays an optional peer. */
+/**
+ * `@zerotal/auth`'s `Auth` facade. A dependency of this package, loaded on first
+ * use so a panel that never impersonates does not load auth's models.
+ */
 async function auth(): Promise<{
   user: () => { id?: unknown; name?: unknown } | null;
   loginUsingId?: (id: unknown) => Promise<unknown> | unknown;
 } | null> {
-  try {
-    const mod = (await import(/* @vite-ignore */ "@zerotal/auth" as string)) as {
-      Auth?: {
-        user: () => { id?: unknown; name?: unknown } | null;
-        loginUsingId?: (id: unknown) => Promise<unknown> | unknown;
-      };
+  const mod = (await import("@zerotal/auth" as string)) as {
+    Auth?: {
+      user: () => { id?: unknown; name?: unknown } | null;
+      loginUsingId?: (id: unknown) => Promise<unknown> | unknown;
     };
-    return mod.Auth ?? null;
-  } catch {
-    return null;
-  }
+  };
+  return mod.Auth ?? null;
 }
 
 /** Whether this request is running as somebody else. */

@@ -12,6 +12,7 @@ import {
   startDevtoolsStream,
 } from "../DevtoolsInjectionMiddleware.ts";
 import { DevtoolsConfig, type DevtoolsConfigShape } from "../config.ts";
+import { _loadDevtoolsAssets, _loadedDevtoolsAsset } from "../clientAssets.ts";
 import { TraceStore, _setTraceStore } from "../TraceStore.ts";
 import {
   startDevtoolsTracing,
@@ -56,7 +57,8 @@ const RESET = "\x1b[0m";
  *
  * Routes served automatically:
  *   GET  /__zerotal/devtools              standalone inspector dashboard
- *   GET  /__zerotal/devtools/client.js    injected in-page panel bundle
+ *   GET  /__zerotal/devtools/assets/*     the panel and dashboard bundles, by content hash
+ *   GET  /__zerotal/devtools/client.js    injected in-page panel bundle (unhashed)
  *   GET  /__zerotal/devtools/sse          SSE stream (EventSource)
  *   GET  /__zerotal/devtools/api/traces   recent request traces (JSON)
  *   GET  /__zerotal/devtools/api/channels declared trace channels (JSON)
@@ -121,6 +123,11 @@ export class DevtoolsProvider extends ServiceProvider {
 
     this.app.useOnce(DevtoolsInjectionMiddleware);
 
+    // The panel and dashboard bundles, loaded now so the tag below can name the
+    // panel by its hash, which lets the browser keep it between page loads instead
+    // of downloading it on every one.
+    await _loadDevtoolsAssets();
+
     // Auto-inject the in-page panel into HTML responses via the core dev
     // injector — no `DevTools.start()` needed in the app's own bundle. Also
     // register the injector so this works under a plain `serve` (not only
@@ -132,10 +139,14 @@ export class DevtoolsProvider extends ServiceProvider {
     // the dashboard at `/__zerotal/devtools`, which the gate answers for.
     if (devSurfacesEnabled()) {
       this.app.useOnce(DevReloadMiddleware);
+      // Registered once per process and read per page, so it always names the
+      // bundle this boot loaded.
       registerDevHtmlSnippet("zerotal-devtools", (ctx: HttpContext) =>
         ctx.url.pathname.startsWith("/__zerotal")
           ? "" // don't inject the panel into the devtools' own pages
-          : `<script type="module" src="/__zerotal/devtools/client.js"></script>`,
+          : `<script type="module" src="${
+              _loadedDevtoolsAsset("client")?.path ?? "/__zerotal/devtools/client.js"
+            }"></script>`,
       );
     }
   }

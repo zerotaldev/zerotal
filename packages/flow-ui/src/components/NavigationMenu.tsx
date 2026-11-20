@@ -42,7 +42,7 @@ export interface NavigationMenuProps {
 }
 
 const triggerClass =
-  "inline-flex h-9 items-center gap-1 rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "inline-flex h-9 items-center gap-1 rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 
 export function NavigationMenu(props: NavigationMenuProps): HtmlNode {
   const { items, class: cls, ...rest } = props;

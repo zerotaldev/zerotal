@@ -63,7 +63,7 @@ const ALIGN: Record<PopoverSide, Record<PopoverAlign, string>> = {
 
 /** The panel surface, shared with the components built on this one. */
 export const popoverSurface =
-  "z-50 min-w-[8rem] rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md outline-none";
+  "z-50 min-w-[8rem] rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md outline-hidden";
 
 export function Popover(props: PopoverProps): HtmlNode {
   const {
@@ -81,7 +81,7 @@ export function Popover(props: PopoverProps): HtmlNode {
     <HeadlessPopover
       {...rest}
       class={cn("relative inline-block", rest["wrapperClass"] as string)}
-      buttonClass={cn("cursor-pointer outline-none", triggerClass)}
+      buttonClass={cn("cursor-pointer outline-hidden", triggerClass)}
       panelClass={cn("absolute", SIDE[side], ALIGN[side][align], popoverSurface, cls)}
       {...(trigger ? { trigger } : {})}
       {...(label !== undefined ? { label } : {})}

@@ -280,19 +280,100 @@ function _routeKey(method: HttpMethod, fullPath: string, domain: string | undefi
  * the real handler and dropping the body is the only way to keep the headers honest;
  * `Content-Length` is preserved explicitly, since constructing a bodiless Response otherwise
  * loses it.
+ *
+ * `Content-Length` is sent only when it is the length of the body the `GET` sends, measured. A
+ * declared one is never passed on unchecked: it can be stale (a middleware that rewrote the body
+ * kept the original's headers, or a proxied `fetch()` whose body Bun decompressed kept the
+ * compressed length), and Bun sends a body it holds in memory at its real length whatever the
+ * header says. A body without a declared length is read to its end, as it always was. One with a
+ * declared length is measured only if it is all there at once (see {@link _drainsAtOnce}); a body
+ * still arriving — a stream that is producing, a file, a large proxied response — is not waited
+ * for, and the `HEAD` is sent with no length. Bun sends such a `GET` chunked, without the declared
+ * length, so neither one states a length.
+ *
+ * An event stream is never read: it does not end, so measuring it held the `HEAD` request (and
+ * its connection) open for as long as the stream lived — forever, for a server-sent-events
+ * endpoint. It is answered at once with no length, as its `GET` is.
+ *
+ * A `HEAD` with no length carries `Transfer-Encoding: chunked`, as its `GET` does; without it Bun
+ * writes `Content-Length: 0` on a bodiless response. Whenever the body is not read to its end, it
+ * is cancelled, so the handler's `cancel()` runs and nothing it registered is left behind.
+ *
+ * Explicit on purpose: Bun 1.4 answers `HEAD` from a `GET` route by itself, Bun 1.3 sends it on
+ * to `fetch`. Deriving it here makes every route answer the same way on both.
  */
 function _headFrom(get: RouteHandlerFn): RouteHandlerFn {
   return async (req: Request, server?: unknown): Promise<Response> => {
     const response = await get(req, server);
-    const body = await response.arrayBuffer();
     const headers = new Headers(response.headers);
-    headers.set("Content-Length", String(body.byteLength));
+    const declared = response.headers.get("Content-Length");
+    const streaming = (response.headers.get("Content-Type") ?? "").startsWith("text/event-stream");
+    let length: number | null;
+    if (streaming) {
+      await response.body?.cancel().catch(() => {});
+      length = null;
+    } else if (declared !== null) {
+      length = await _drainsAtOnce(response);
+    } else {
+      length = (await response.arrayBuffer()).byteLength;
+    }
+    if (length === null) {
+      headers.delete("Content-Length");
+      headers.set("Transfer-Encoding", "chunked");
+    } else {
+      headers.set("Content-Length", String(length));
+    }
     return new Response(null, {
       status: response.status,
       statusText: response.statusText,
       headers,
     });
   };
+}
+
+/** How many reads {@link _drainsAtOnce} makes before it stops waiting for a body to end. */
+const DRAIN_READ_LIMIT = 256;
+
+/**
+ * Read a response body to its end if it is all there now, and return its length; otherwise cancel
+ * it and return `null`.
+ *
+ * "All there" means the reads settle before the next turn of the event loop. A body Bun holds in
+ * memory does: a string, bytes, JSON, a `fetch()` response already received, and any of those
+ * passed through `new Response(res.body, …)`. A stream that is still producing does not, nor does
+ * a file, nor a `fetch()` body still arriving or still being decompressed; where that line falls
+ * for a large proxied body differs between Bun versions. Nothing visible from JavaScript tells the
+ * two apart without reading — `res.body` is a `ReadableStream` either way — so the first read is
+ * attempted; a stream that was going to answer it later is cancelled instead. `null` never stands
+ * for a length: the caller sends none.
+ *
+ * The read limit stops a stream that answers every read at once, and never ends, from holding the
+ * loop: Bun hands an in-memory body over in a few chunks of about 2 MB.
+ */
+async function _drainsAtOnce(response: Response): Promise<number | null> {
+  const body = response.body;
+  if (body === null) return 0;
+  const reader = body.getReader();
+  let late = false;
+  const nextTurn = new Promise<null>((resolve) =>
+    setImmediate(() => {
+      late = true;
+      resolve(null);
+    }),
+  );
+  const drain = async (): Promise<number | null> => {
+    let size = 0;
+    for (let reads = 0; reads < DRAIN_READ_LIMIT && !late; reads++) {
+      const { done, value } = await reader.read();
+      if (done) return size;
+      size += value.byteLength;
+    }
+    return null;
+  };
+  const measured = await Promise.race([drain().catch(() => null), nextTurn]);
+  // Not awaited: the handler's `cancel()` runs now, and the `HEAD` need not wait for it to settle.
+  if (measured === null) void reader.cancel().catch(() => {});
+  return measured;
 }
 
 /** Extract `:param` names from a route path pattern. */
@@ -1160,7 +1241,7 @@ export class Router {
       const stripped = prefix.replace(/\/$/, "");
       const pattern = stripped + "/*";
       const mdMap = (compiled[pattern] ??= {}) as Record<string, RouteHandlerFn>;
-      mdMap["GET"] = async (req: Request): Promise<Response> => {
+      const page = async (req: Request): Promise<Response> => {
         const pathname = new URL(req.url).pathname;
         const relative = pathname.slice(stripped.length).replace(/^\//, "") || "index";
         const candidates = [`${rootDir}/${relative}.md`, `${rootDir}/${relative}/index.md`];
@@ -1178,6 +1259,10 @@ export class Router {
         }
         return new Response("Not Found", { status: 404 });
       };
+      // Without its own `HEAD`, a markdown page answered `HEAD` with 404 on Bun 1.3 (the request
+      // went on to `fetch`, which has no route for it) and 200 on Bun 1.4 (which runs the `GET`).
+      mdMap["GET"] = page;
+      mdMap["HEAD"] = _headFrom(page);
     }
 
     // Raw routes bypass the middleware pipeline entirely — added last so they
@@ -1206,7 +1291,14 @@ export class Router {
       // so every link checker and uptime probe pointed at them was told the page
       // did not exist. Derived from the wrapped handler, so the headers above
       // ride along.
-      if (method === "GET") rawMap["HEAD"] ??= _headFrom(rawMap[method]!);
+      //
+      // Replaced, not kept: a `HEAD` already in the map was derived from the `GET`
+      // this raw `GET` just took over (a markdown dir or a pipeline route on the same
+      // path), and would answer from a handler `GET` no longer runs. Only a `HEAD`
+      // the app registered with `Router.raw()` itself is left alone.
+      if (method === "GET" && !_s().rawRoutes.has(`HEAD ${path}`)) {
+        rawMap["HEAD"] = _headFrom(rawMap[method]!);
+      }
     }
 
     return compiled;

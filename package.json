@@ -1,6 +1,6 @@
 {
   "name": "zerotal",
-  "version": "1.16.4",
+  "version": "1.17.0",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -51,6 +51,7 @@
     "internal:prefix:check": "bun run scripts/internal-prefix.ts",
     "deps:check": "bun run scripts/deps-check.ts",
     "deps:check:update": "bun run scripts/deps-check.ts --update",
+    "lockfile:check": "bun run scripts/lockfile-check.ts",
     "test:scripts": "bun test ./scripts"
   },
   "dependencies": {
@@ -62,11 +63,11 @@
     "@types/bun": "^1.4.4",
     "eslint": "^9.13.0",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "^4.14.1",
     "typescript": "^5.8.0",
-    "typescript-eslint": "^8.72.0"
+    "typescript-eslint": "^8.72.2"
   },
   "workspaces": [
     "packages/*",

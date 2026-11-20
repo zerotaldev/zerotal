@@ -39,10 +39,15 @@ the server package works against whichever you choose:
 
 ```bash
 # in your project root
-bun add @inertiajs/react react react-dom   # React
+bun add @inertiajs/react react react-dom        # React
 # or
-bun add @inertiajs/vue3 vue                # Vue
+bun add @inertiajs/vue3 vue @vue/compiler-sfc   # Vue
 ```
+
+`@vue/compiler-sfc` compiles your `.vue` files, for the browser build and for
+[server rendering](/docs/inertia/ssr). A feature that needs a package you have not
+installed stops with an error that names it and the command that adds it, and
+`bun zt doctor` checks for them before you get that far.
 
 `@zerotal/inertia` itself ships with the framework. If you're adding it to an
 existing app, `bun add @zerotal/inertia`.

@@ -187,12 +187,13 @@ runtime, no native module, nothing to install.
 held to the same output dimensions by a shared parity suite, so switching is a
 performance decision rather than a feature one:
 
-| Criterion                   | `bun` (default)         | `sharp`                          |
-| --------------------------- | ----------------------- | -------------------------------- |
-| Install                     | Nothing                 | `bun add sharp`, a native module |
-| `fit: "cover"`              | Yes                     | Yes                              |
-| Throughput on large batches | Good                    | Better — libvips                 |
-| AVIF / HEIC                 | Host codecs (see below) | Bundled                          |
+| Criterion                   | `bun` (default)         | `sharp`                                         |
+| --------------------------- | ----------------------- | ----------------------------------------------- |
+| Install                     | Nothing                 | `bun add sharp` (0.33 to 0.35), a native module |
+| `fit: "cover"`              | Yes                     | Yes                                             |
+| Throughput on large batches | Good                    | Better — libvips                                |
+| AVIF / HEIC                 | Host codecs (see below) | Bundled                                         |
+| Compiled binary             | Yes                     | No                                              |
 
 Switch with:
 
@@ -201,6 +202,15 @@ Switch with:
 import { MediaConfig } from "zerotal/media";
 export default MediaConfig({ driver: "sharp" });
 ```
+
+If `sharp` is not installed, every conversion throws `OptionalPeerMissingError`,
+whose message names the install command. `addMedia()` into a collection with
+conversions throws it too, after the original is stored. `zt doctor` fails on the
+`media-image-driver` check, so you can find out before the first upload.
+
+A [compiled binary](/docs/deployment#compile-to-a-single-binary) carries sharp's
+JavaScript but not the native library sharp loads for the platform at run time,
+so sharp fails to start inside one. Use the `bun` driver in an app you compile.
 
 ### AVIF and HEIC are host-dependent
 
@@ -212,8 +222,13 @@ and the boot log will warn if this machine cannot. Stick to `jpeg`, `png` and
 ### Queued conversions
 
 Mark a conversion `queued: true` and it runs on a worker instead of in the
-request. This needs `@zerotal/queue` registered; with no queue bound, every
-conversion runs inline — late is better than a thumbnail that never appears.
+request. This needs `@zerotal/queue` installed and its provider registered; with
+no queue bound, every conversion runs inline — late is better than a thumbnail
+that never appears. A dispatch that fails, such as a Redis that is down, runs
+that conversion inline too.
+
+The job registers itself when the app boots, so a worker process runs conversion
+jobs that a web process queued.
 
 ## Responsive images
 
@@ -524,7 +539,7 @@ new BunImageDriver(maxPixels?, maxCropPixels?);
 new SharpImageDriver();
 ```
 
-`SharpImageDriver` also loads `sharp` lazily, through a variable specifier, so `tsc` does not try to resolve it in the apps that never installed it — which is most of them. Selecting the driver without the package installed fails at first use with a message naming the install command.
+`SharpImageDriver` loads `sharp` on first use, and its types do not name the package, so `tsc` passes in the apps that never installed it, which is most of them. Without the package, `metadata()`, `convert()`, `placeholder()` and `canEncode()` all throw `OptionalPeerMissingError` rather than answering `null` or `false`; an image sharp cannot read still answers `null`.
 
 Three lookup tables are exported for reading — to label a download, or to check a type before offering an upload. They are frozen, because they are shared module state: an app that mutated one would change how conversions behave for every other caller in the process, including ones it does not own.
 

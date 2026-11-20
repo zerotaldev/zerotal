@@ -831,7 +831,7 @@ export class MonitorPage extends Component {
                 class={[
                   "px-2.5 py-1 rounded-md text-xs font-semibold transition-colors capitalize",
                   this.range === r
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground",
                 ]}
               >
@@ -1336,7 +1336,7 @@ export class MonitorPage extends Component {
       <section class="space-y-6">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {s.queueStats.map((m) => (
-            <div key={m.label} class="rounded-xl bg-card border border-border p-4 shadow-sm">
+            <div key={m.label} class="rounded-xl bg-card border border-border p-4 shadow-xs">
               <div class="text-xs font-medium text-muted-foreground">{m.label}</div>
               <div class={["mt-1.5 text-2xl font-bold tabular font-mono", toneText(m.tone)]}>
                 {m.value}
@@ -1644,7 +1644,7 @@ export class MonitorPage extends Component {
               live
               type="text"
               placeholder="Filter by path or method…"
-              class="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+              class="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
             />
           </div>
           <div class="flex items-center p-0.5 rounded-lg bg-muted border border-border">
@@ -1659,7 +1659,7 @@ export class MonitorPage extends Component {
                 class={[
                   "px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
                   this.statusFilter === f[0]
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground",
                 ]}
               >
@@ -2243,7 +2243,7 @@ export class MonitorPage extends Component {
         {this.snap.exceptions.map((e) => {
           const open = this.openExc === e.type;
           return (
-            <div key={e.type} class="rounded-xl bg-card border border-border shadow-sm p-4">
+            <div key={e.type} class="rounded-xl bg-card border border-border shadow-xs p-4">
               <div
                 class="flex items-start gap-3 cursor-pointer"
                 onClick={() => this.toggleExc(e.type)}
@@ -2320,7 +2320,7 @@ export class MonitorPage extends Component {
       <section class="space-y-6">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {s.dbStats.map((m) => (
-            <div key={m.label} class="rounded-xl bg-card border border-border p-4 shadow-sm">
+            <div key={m.label} class="rounded-xl bg-card border border-border p-4 shadow-xs">
               <div class="text-xs font-medium text-muted-foreground">{m.label}</div>
               <div class={["mt-1.5 text-2xl font-bold tabular font-mono", toneText(m.tone)]}>
                 {m.value}
@@ -2615,7 +2615,7 @@ export class MonitorPage extends Component {
           return (
             <div
               key={m.id}
-              class="rounded-xl bg-card border border-border shadow-sm overflow-hidden"
+              class="rounded-xl bg-card border border-border shadow-xs overflow-hidden"
             >
               <div
                 class="flex items-center gap-3 px-5 py-3 text-sm cursor-pointer hover:bg-accent/60"
@@ -2706,7 +2706,7 @@ export class MonitorPage extends Component {
             live
             type="text"
             placeholder={placeholder}
-            class="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
+            class="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary/50"
           />
         </div>
         {showStatus ? (
@@ -2722,7 +2722,7 @@ export class MonitorPage extends Component {
                 class={[
                   "px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
                   this.feedStatus === f[0]
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground",
                 ]}
               >
@@ -2944,7 +2944,7 @@ export class MonitorPage extends Component {
           {s.health.map((h) => (
             <div
               key={h.name}
-              class="rounded-xl bg-card border border-border p-4 shadow-sm flex items-center gap-3"
+              class="rounded-xl bg-card border border-border p-4 shadow-xs flex items-center gap-3"
             >
               <span
                 class={[
@@ -2988,7 +2988,7 @@ export class MonitorPage extends Component {
 
         <div class="grid lg:grid-cols-3 gap-4">
           {s.gauges.map((g) => (
-            <div key={g.label} class="rounded-xl bg-card border border-border p-5 shadow-sm">
+            <div key={g.label} class="rounded-xl bg-card border border-border p-5 shadow-xs">
               <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-medium text-muted-foreground">{g.label}</span>
                 <span class={["tabular font-bold", gaugeText(g.value)]}>{g.value}%</span>
@@ -3265,7 +3265,7 @@ export class MonitorPage extends Component {
             return (
               <div
                 key={a.id}
-                class="rounded-xl bg-card border border-border shadow-sm overflow-hidden"
+                class="rounded-xl bg-card border border-border shadow-xs overflow-hidden"
               >
                 <div
                   class="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-accent/60"
@@ -3452,7 +3452,7 @@ export class MonitorPage extends Component {
               class={[
                 "px-2.5 py-1 rounded-md text-xs font-semibold capitalize transition-colors",
                 this.logLevel === lv
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
               ]}
             >
@@ -3460,7 +3460,7 @@ export class MonitorPage extends Component {
             </button>
           ))}
         </div>
-        <div class="rounded-xl bg-foreground shadow-sm overflow-hidden">
+        <div class="rounded-xl bg-foreground shadow-xs overflow-hidden">
           <div class="px-5 py-2.5 border-b border-border flex items-center justify-between">
             <span class="font-semibold text-muted-foreground text-sm">Application logs</span>
             <span class="text-[11px] text-muted-foreground">{lines.length} lines</span>
@@ -3509,7 +3509,7 @@ export class MonitorPage extends Component {
       <section class="space-y-6">
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {cards.map(([label, value, sub]) => (
-            <div key={label} class="rounded-xl bg-card border border-border p-5 shadow-sm">
+            <div key={label} class="rounded-xl bg-card border border-border p-5 shadow-xs">
               <div class="text-sm text-muted-foreground">{label}</div>
               <div class="text-2xl font-bold text-foreground tabular mt-1">{value}</div>
               <div class="text-[11px] text-muted-foreground mt-1">{sub}</div>

@@ -8,6 +8,50 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-20
+
+### Changed
+
+- **BREAKING: `@simplewebauthn/server` and `reflect-metadata` are optional peers, no longer
+  dependencies.** An app that uses passkeys installs them itself:
+  `bun add @simplewebauthn/server reflect-metadata`. Every other app stops installing the
+  library and everything it depends on. Without them `@zerotal/auth` loads and runs as before,
+  and a passkey ceremony throws `OptionalPeerMissingError` (`E_OPTIONAL_PEER_MISSING`) whose
+  message names that command. A binary built by `bun zt compile` embeds the library when it was
+  installed at build time, and builds without it when it was not.
+- **`PasskeyService` takes and returns Zerotal's own WebAuthn types**, so an app type-checks
+  without the library installed. `registrationOptions()` returns
+  `PasskeyRegistrationOptionsJSON`, `authenticationOptions()` returns
+  `PasskeyAuthenticationOptionsJSON`, `verifyRegistration()` takes a
+  `PasskeyRegistrationResponseJSON` and `verifyAuthentication()` a
+  `PasskeyAuthenticationResponseJSON`. They describe the same JSON as the library's types, and a
+  value of the library's types is accepted where they are expected, so a call site compiles
+  unchanged. The options types leave out `attestationFormats`, which Zerotal never sends, and
+  list only `credProps` under `extensions`. `PasskeyCredential.device_type` and `.transports`
+  take the same values as before, typed `PasskeyDeviceType` and `PasskeyTransport`.
+- **Registration lets the browser offer any kind of authenticator.** It asked for the device's
+  own only (`authenticatorAttachment: "platform"`), so a USB or NFC security key, or a phone
+  reached by QR code, could not be registered. An app that wants the old behaviour sets
+  `authenticatorAttachment: "platform"` on `PasskeysOptions`.
+
+### Added
+
+- **`PasskeysOptions.authenticatorAttachment`**: `"platform"` asks registration for the device's
+  own authenticator only, `"cross-platform"` for a roaming one only. Unset, the browser offers
+  both.
+- **`zt doctor` checks the WebAuthn library**, and so does the doctor pass in `zt deploy`. When a
+  file in the app's source names `PasskeyService`, the check loads the library as a ceremony
+  would, and fails with the install command when it is missing or does not load.
+- **The WebAuthn types are exported**: `PasskeyRegistrationOptionsJSON`,
+  `PasskeyRegistrationResponseJSON`, `PasskeyAuthenticationOptionsJSON`,
+  `PasskeyAuthenticationResponseJSON`, `PasskeyTransport` and `PasskeyDeviceType`.
+
+### Testing
+
+- A test pins that `HashService` hashes argon2id at Bun's default cost. Bun 1.4 refuses an argon2
+  memory cost under 8 KiB, where Bun 1.3 accepted one; `auth.algorithm` is the only hashing
+  setting, so the cost is always Bun's own and both versions accept it.
+
 ## [1.16.4] — 2026-11-17
 
 ### Changed

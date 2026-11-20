@@ -1,6 +1,8 @@
 /**
- * Auto-start entry for the standalone inspector dashboard, bundled on demand and
- * served at `GET /__zerotal/devtools/dashboard.js`.
+ * Auto-start entry for the standalone inspector dashboard — the `dashboard` bundle
+ * (see `clientAssets.ts`), built into `dist/dashboard.js` when the package is packed
+ * and served at `/__zerotal/devtools/assets/dashboard.<hash>.js`. Not in the
+ * published package; only what is built from it is.
  *
  * The dashboard is the same panel as the injected one, mounted full-window. It
  * used to be a second implementation living in `panel.html` — a thousand lines

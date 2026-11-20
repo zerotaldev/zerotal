@@ -59,7 +59,9 @@ The build:
 - entrypoint `resources/js/app.tsx` → output `public/assets/`,
 - targets the browser with **code splitting on** (each page becomes its own chunk
   from the registry's dynamic imports, so navigation only loads what it needs),
-- auto-detects and applies CSS (and Vue) plugins present in your project,
+- auto-detects and applies CSS (and Vue) plugins present in your project — a `.vue`
+  file under `resources/` without `@vue/compiler-sfc` installed stops the build with
+  the command that adds it,
 - prints a table of output files and sizes.
 
 | Flag                 | Effect                                              |

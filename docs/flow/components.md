@@ -842,9 +842,59 @@ In CSP mode, **every page must AOT-compile** — an unsupported expression fails
 ```http
 Content-Security-Policy:
   default-src 'self';
-  script-src 'nonce-<random>' 'strict-dynamic';
+  script-src 'self';
   style-src 'self' 'unsafe-inline';
 ```
+
+`script-src 'self'` is enough. The scripts Flow puts on a page are files from your own origin
+— the [client runtime](/docs/flow/performance#the-client-runtime) and your route table, both
+under `/__flow/` — so the policy needs no nonce, no hash and no `'unsafe-inline'`, and in
+CSP-safe mode no `'unsafe-eval'` either.
+
+The one exception is a child rendered with
+[`stream`](/docs/flow/layouts#streaming-the-initial-render), which swaps itself into the page
+with an inline script. This policy blocks that script, so the child's placeholder stays; under a
+strict policy, load slow children with `lazy` or `defer` instead.
+
+Do not use a nonce-only policy, one with `'strict-dynamic'`. Flow does not put a nonce on its
+script tags, and under such a policy a browser ignores `'self'`, so it blocks the runtime and
+nothing on the page responds.
+
+The `style-src 'unsafe-inline'` is for the small `<style>` block Flow puts in each page's head,
+which hides `cloak`ed elements until the runtime starts.
+
+#### Pages rendered with `flowUiHead()`
+
+The head that [`flowUiHead()`](/docs/components#without-a-build-step) writes, which the
+[admin panel](/docs/admin) and the [monitor](/docs/monitor) use as well, needs more than the
+policy above:
+
+- **Two inline scripts.** One applies the saved light or dark theme before the page paints; the
+  other defines the theme toggle and copy-to-clipboard helpers. `flowUiHead()` takes no nonce, so
+  `script-src` needs `'unsafe-inline'` on these pages. A hash of each script in its place works
+  only on a page that carries nothing else inline: the admin panel also writes scripts with
+  per-render data, for chart widgets and rich-text fields, which cannot be hashed ahead of time.
+  Hashes also have to be taken again after every upgrade, because the scripts can change in any
+  release.
+- **The Tailwind browser build**, a script from `https://cdn.jsdelivr.net` loaded with an
+  integrity hash, which writes its CSS into an inline `<style>`. Setting `stylesheet` to a
+  prebuilt file drops it, and with it this source.
+- **Inter from Google Fonts**, unless `noFonts` is set.
+
+```http
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+```
+
+The `'unsafe-eval'` is there because outside [CSP-safe mode](#csp-safe-mode) the Flow runtime
+evaluates expressions with `new Function`, on these pages as on any other. Drop it only if the app
+runs in CSP-safe mode and every page it serves, the panels included, compiles ahead of time.
+
+A single policy for the whole app has to include these sources if the app serves any of these
+pages.
 
 ### View Transitions
 

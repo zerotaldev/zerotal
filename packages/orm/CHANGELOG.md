@@ -8,6 +8,95 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-20
+
+### Added
+
+- **`zt doctor` warns when MySQL's time zone is not UTC.** MySQL fills `NOW()` and
+  `CURRENT_TIMESTAMP` with the session zone's wall-clock time and converts `TIMESTAMP` columns
+  through it, which the ORM cannot see or correct. Bun 1.4.1 and later open every MySQL
+  connection in UTC; Bun 1.3 and 1.4.0 keep the server's zone, and the driver takes no session
+  setting and runs no hook on each pooled connection, so on those the server itself has to run in
+  UTC. The check measures the app's connection and the server's default zone in January and in
+  July, so a zone that is UTC only in winter is reported in summer and winter alike, and a server
+  zone is reported on Bun 1.4.1 too, where the connection itself is UTC. It names the zone, the
+  offset and the fix.
+
+### Fixed
+
+- **A date reads back as the instant that was saved when the server's `TZ` is not UTC.** On
+  MySQL the ORM writes dates as UTC in `YYYY-MM-DD HH:MM:SS`, which carries no zone, and read
+  that text back as local time, so every MySQL date moved by the server's offset between a save
+  and the next load. A zone-less date-time is now read as UTC, which also fixes SQLite's
+  `CURRENT_TIMESTAMP`, written the same way. Covers `datetime`, `immutable_datetime` and `date`
+  casts, `@column({ type: "datetime" })`, and `createdAt`, `updatedAt` and `deletedAt`.
+
+- **MySQL `DATE`, `DATETIME` and `TIMESTAMP` columns read the same on Bun 1.3 and 1.4.** Bun
+  binds a `Date` as UTC, and Bun 1.3 decoded those columns back as local time where 1.4 decodes
+  UTC, so on 1.3 under a non-UTC `TZ` a value came back moved by the offset. The ORM now asks the
+  server once which way the runtime decodes and corrects the local reading, for rows from the
+  query builder, models and `DB.raw()`. Two values Bun 1.3 hands over cannot be corrected: a time
+  in the process zone's daylight-saving gap, which it has already moved an hour, and the zero
+  date `0000-00-00`, which it returns as `1970-01-01T00:00:00Z` in every zone and the ORM leaves
+  there (Bun 1.4 returns an invalid date). Both are described in the casts guide, next to one
+  PostgreSQL read Bun 1.3 gets wrong that the ORM does not correct: under a `TZ` that is not
+  UTC, a `timestamp without time zone` column read by a query with no bound values can come back
+  moved by the zone's offset the first time that query runs on a connection. Use `timestamptz`,
+  bind a value, or run Bun 1.3 with `TZ=UTC`; Bun 1.4 reads it correctly, and the columns
+  `table.dateTime()` creates are text and are not affected.
+
+- **A `WITH` statement that changes rows goes to the primary.** With read replicas configured,
+  any statement starting with `WITH` was sent to a replica, including `WITH old AS (…) DELETE …`
+  and `WITH d AS (DELETE … RETURNING *) SELECT …`, which a read-only replica refuses. A `WITH`
+  that contains `INSERT`, `UPDATE`, `DELETE` or `MERGE` is now routed as a write.
+
+- **A `Carbon` in a `where` binds the way a save stores it.** It bound as ISO 8601 on every
+  dialect, so on MySQL `where("created_at", ">=", Carbon.today())` compared
+  `2026-08-05T00:00:00Z` with `2026-08-05 10:00:00` as text and missed every row from the same
+  day. On SQLite and PostgreSQL it bound without milliseconds, so `where(column, "=", carbon)`
+  missed a row saved from that same value.
+
+- **A date column holding PostgreSQL `infinity` fails naming the column.** The driver returns it
+  as an invalid `Date` on Bun 1.3 and as `Infinity` on 1.4, and either failed inside the date
+  library with a message naming neither the column nor the value. It is now a `RangeError` that
+  names the model and property, on both.
+
+- **`DB.raw()` refuses an object of named parameters with a message that says so.**
+  `DB.raw("... WHERE id = :id", { id })` failed with a placeholder-count error that did not
+  mention the object. It now names the positional form to use instead. The ORM never hands such
+  an object to the driver, whose own handling of one differs between Bun 1.3 and 1.4.
+
+- **`hashable` is documented as argon2id.** The docblock and the ORM guide said fields were
+  hashed with bcrypt; `Bun.password.hash()` uses argon2id by default, which is what they get.
+
+### Changed
+
+- **BREAKING: a date-time the database holds as local wall-clock time now reads as UTC.** The
+  fixes above make every date the ORM wrote read back as saved. A value something else wrote as
+  local time is read as UTC too, so under a `TZ` that is not UTC it reads differently from 1.16:
+  late by the zone's offset when the zone is ahead of UTC.
+  - A MySQL column filled by `NOW()` or `CURRENT_TIMESTAMP` on a server in the same zone as the
+    app, under Bun 1.3 or 1.4.0, whose connections keep the server's zone: a text column on
+    either, and a `DATETIME` or `TIMESTAMP` on Bun 1.3. These read correctly in 1.16 by
+    coincidence. Bun 1.4.1 and later fill them in UTC, which now reads correctly.
+  - Text written as local time by another program or by hand-written SQL, on any database.
+  - An app that added the offset back itself, to make up for 1.16 reading its own MySQL or
+    SQLite dates as local time, now corrects twice and has to stop.
+
+  Nothing stored changes, and with `TZ` unset or UTC and a MySQL server in UTC no row reads
+  differently. Otherwise: run MySQL in UTC (`zt doctor` warns when it is not), convert the rows
+  `NOW()` wrote with `CONVERT_TZ(col, '<old zone>', '+00:00')`, or read such a column through a
+  custom cast. The casts guide has a table of which rows move.
+
+- **BREAKING: `@zerotal/validator` is an optional peer, no longer a dependency.** The ORM uses it
+  only to connect the validator's `unique()` and `exists()` rules to the database, and only when
+  the validator is installed, so an app using the ORM alone no longer installs it. Apps that
+  install `zerotal` get the validator from it and need do nothing. An app that installs
+  `@zerotal/orm` on its own and imports `@zerotal/validator` without listing it must add it:
+  `bun add @zerotal/validator`. A validator that is installed but fails to load now stops the
+  boot with its own error; it was silently skipped, which left `unique()` and `exists()`
+  failing later with no reason given.
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

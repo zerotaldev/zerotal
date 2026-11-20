@@ -69,6 +69,18 @@ Each call returns a `RouteRegistration` you can chain:
 Router.get("/posts/:slug", PostController, "show").name("posts.show").bind("post", Post);
 ```
 
+Every `GET` route also answers `HEAD` — explicit, raw, view and markdown routes alike — so an
+uptime probe or `curl -I` gets the status and headers the `GET` would, with no body. The `GET`
+handler runs to produce them. Where the `HEAD` has a `Content-Length`, it is the length of the
+body the handler returned, measured, even where the handler declared another. A body that
+declares a length but is still arriving, such as a stream still producing, a file, or a large
+proxied `fetch()` response, is not waited for: the `HEAD` is answered with
+`Transfer-Encoding: chunked` and no length, and the body is cancelled. An event stream
+(`text/event-stream`) is answered the same way, rather than read to an end it never reaches.
+
+When `Router.raw()` registers a `GET` on a path a markdown dir or another route already serves,
+its `HEAD` follows it there too, unless a `Router.raw("HEAD", …)` of its own is registered.
+
 #### Per-route middleware
 
 Pass middleware classes as the fourth argument:
@@ -591,10 +603,10 @@ import { hasRoute, route } from "zerotal/routes";
 {hasRoute("admin.index") && <a href={route("admin.index")}>Admin</a>}
 ```
 
-**In Flow**, the table arrives on its own. `/__flow/runtime.js` is built by the
+**In Flow**, the table arrives on its own. Flow's client runtime is built by the
 framework rather than by your app, so it cannot import your generated file;
-Flow serialises the table onto the runtime it serves instead, and exposes the
-helper to Alpine expressions as `$route`:
+Flow serves the table as a small script of its own, loaded just before the
+runtime, and exposes the helper to Alpine expressions as `$route`:
 
 ```html
 <a :href="$route('posts.show', { slug: post.slug })">Read</a>

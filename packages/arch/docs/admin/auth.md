@@ -6,8 +6,9 @@ description: The built-in login and profile screens, and how to restyle the pane
 # Auth pages
 
 Opt in with `Panel.auth({...})` (or `Panel.configure({ auth: {...} })`). The pages
-live behind the `@zerotal/admin/auth` subpath, so the `@zerotal/auth` dependency
-stays optional unless you enable them.
+live behind the `@zerotal/admin/auth` subpath and sign people in with
+[`@zerotal/auth`](/docs/authentication), which comes with the admin package. A
+panel that leaves them off never loads them.
 
 ```ts fragment
 import { Panel } from "@zerotal/admin";
@@ -59,15 +60,15 @@ Panel.auth({ enabled: true }); // login lives outside that guard automatically
 
 ## Theming
 
-By default the panel themes everything with the **Tailwind Play CDN** plus shadcn-style
-design tokens and a no-flash dark/light script — zero build step. The toggle in the
+By default the panel themes everything with Tailwind v4's **browser build**, loaded from
+a pinned CDN URL, plus design tokens and a no-flash dark/light script — zero build step. The toggle in the
 top bar flips `.dark` on `<html>` and persists the choice.
 
 To ship a real build, point `theme.stylesheet` at your compiled CSS (the CDN is then
-dropped) and reuse the exported config + tokens so your build matches the default look:
+dropped) and reuse the exported theme CSS + tokens so your build matches the default look:
 
 ```ts
-import { Panel, adminTailwindConfig, adminTokensCss } from "@zerotal/admin";
+import { Panel, adminTailwindCss, adminTokensCss } from "@zerotal/admin";
 
 Panel.configure({
   theme: {
@@ -79,9 +80,13 @@ Panel.configure({
 });
 ```
 
-`adminTailwindConfig()` returns the token→CSS-var Tailwind config and
-`adminTokensCss()` the `:root`/`.dark` custom properties — feed both into your own
-`tailwind.config` so a compiled stylesheet renders identically.
+`adminTailwindCss()` returns the Tailwind v4 CSS that maps the tokens to utilities (the
+same CSS the CDN reads). `adminTokensCss()` returns the `:root`/`.dark` custom properties,
+plus the default border colour and the page background and text colour in `@layer base`,
+so utilities such as `border-primary` still override them. Put both in your Tailwind v4
+entry, after `@import "tailwindcss";`, so a compiled stylesheet renders identically.
+`adminTailwindConfig()` is the same mapping as a Tailwind v3 config, for an app whose
+build is still on v3.
 
 ## Types
 

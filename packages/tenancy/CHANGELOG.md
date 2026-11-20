@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-20
+
+### Changed
+
+- **`@zerotal/cache` is declared as an optional peer.** `tenantCache()` loaded it without
+  declaring it.
+- **BREAKING: `tenantCache()` without `@zerotal/cache` throws `OptionalPeerMissingError`, not
+  `TenancyConfigError`.** The new error names `bun add @zerotal/cache`. A cache package that is
+  installed but fails to load is rethrown as its own error, where it was also reported as
+  `TenancyConfigError`. An app that catches `TenancyConfigError` around `tenantCache()` to detect
+  a missing cache must catch `OptionalPeerMissingError` from `zerotal/runtime` instead.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

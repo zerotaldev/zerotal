@@ -312,7 +312,13 @@ export { AdminAbilityMiddleware } from "./provider/AdminAbilityMiddleware.ts";
 // UI building blocks (for custom pages / theming).
 export { AdminLayout, makeAdminLayout } from "./ui/AdminLayout.tsx";
 export { Icon } from "./ui/icons.tsx";
-export { adminHead, adminTokensCss, adminTailwindConfig, THEME_STORAGE_KEY } from "./theme.ts";
+export {
+  adminHead,
+  adminTokensCss,
+  adminTailwindCss,
+  adminTailwindConfig,
+  THEME_STORAGE_KEY,
+} from "./theme.ts";
 export type { AdminThemeConfig } from "./theme.ts";
 
 // Pages (for advanced customization / custom routing).

@@ -9,10 +9,28 @@
  *     static override history = true;
  *   }
  *
- * The audit package is resolved lazily, so it stays an optional peer: a resource
- * that asks for history without it installed simply shows nothing.
+ * `@zerotal/audit` is an optional peer, loaded only when a record's history is
+ * read. A resource that asks for history without it installed throws an
+ * `OptionalPeerMissingError` naming the install command: showing nothing would
+ * read as "this record never changed".
  */
 import { frameworkLog } from "@zerotal/core/logger";
+import { optionalPeer } from "@zerotal/core/runtime";
+
+/** The part of `@zerotal/audit` this reads. */
+interface AuditModule {
+  AuditLog?: {
+    forModel?: (
+      type: string,
+      id: unknown,
+    ) => {
+      orderBy: (
+        c: string,
+        d: string,
+      ) => { limit: (n: number) => { get: () => Promise<AuditRow[]> } };
+    };
+  };
+}
 
 /** One entry in a record's history, already shaped for display. */
 export interface HistoryEntry {
@@ -55,32 +73,30 @@ export interface HistoryOptions {
   resolveActor?: ((id: number) => Promise<string | null> | string | null) | undefined;
 }
 
+/**
+ * Load `@zerotal/audit`, or throw `OptionalPeerMissingError` when it is not
+ * installed. Shared with the doctor check, so both name the same feature.
+ */
+export async function loadAudit(): Promise<AuditModule> {
+  return import("@zerotal/audit" as string).catch(
+    optionalPeer("@zerotal/audit", { feature: "a resource with `static history = true`" }),
+  );
+}
+
 /** Fields that change on every write and say nothing about intent. */
 const NOISE = new Set(["updated_at", "updatedAt", "created_at", "createdAt"]);
 
 /**
  * Read a record's history, newest first.
  *
- * Returns an empty list rather than throwing when the audit package isn't
- * installed or its table doesn't exist yet — a missing history is a missing
- * section, not a broken page.
+ * Returns an empty list rather than throwing when the audit table doesn't exist
+ * yet — a missing history is a missing section, not a broken page. Throws
+ * `OptionalPeerMissingError` when `@zerotal/audit` is not installed at all.
  */
 export async function recordHistory(options: HistoryOptions): Promise<HistoryEntry[]> {
   const limit = options.limit ?? 25;
+  const mod = await loadAudit();
   try {
-    const mod = (await import(/* @vite-ignore */ "@zerotal/audit" as string)) as {
-      AuditLog?: {
-        forModel?: (
-          type: string,
-          id: unknown,
-        ) => {
-          orderBy: (
-            c: string,
-            d: string,
-          ) => { limit: (n: number) => { get: () => Promise<AuditRow[]> } };
-        };
-      };
-    };
     const model = mod.AuditLog;
     if (!model?.forModel) return [];
 

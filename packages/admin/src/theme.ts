@@ -15,6 +15,7 @@
 import {
   flowUiHead,
   flowTokensCss,
+  flowTailwindCss,
   flowTailwindConfig,
   THEME_STORAGE_KEY as FLOW_THEME_STORAGE_KEY,
   THEME_TOGGLE_SCRIPT as FLOW_THEME_TOGGLE_SCRIPT,
@@ -30,16 +31,16 @@ export const THEME_STORAGE_KEY = FLOW_THEME_STORAGE_KEY;
 export const THEME_TOGGLE_SCRIPT = FLOW_THEME_TOGGLE_SCRIPT;
 
 /**
- * Styling source for the admin shell. By default the Tailwind **Play CDN** themes
- * everything with zero build step. To ship a real build, point `stylesheet` at
- * your compiled CSS (built from your own `tailwind.config` — reuse
- * {@link adminTailwindConfig} + {@link adminTokensCss}); the CDN is then dropped
+ * Styling source for the admin shell. By default Tailwind v4's **browser build**,
+ * loaded from a pinned CDN URL, themes everything with zero build step. To ship a
+ * real build, point `stylesheet` at your compiled CSS (built with Tailwind v4 from
+ * {@link adminTailwindCss} + {@link adminTokensCss}); the CDN is then dropped
  * automatically (set `cdn: true` to keep both during migration).
  */
 export interface AdminThemeConfig {
   /** A prebuilt stylesheet URL/path to link instead of (or alongside) the CDN. */
   stylesheet?: string | undefined;
-  /** Keep loading the Tailwind Play CDN. Defaults to `true` unless `stylesheet` is set. */
+  /** Keep loading Tailwind's browser build from the CDN. Defaults to `true` unless `stylesheet` is set. */
   cdn?: boolean | undefined;
   /** Extra design-token CSS appended after the defaults (override `:root` / `.dark`). */
   tokensCss?: string | undefined;
@@ -53,9 +54,18 @@ export function adminTokensCss(): string {
 }
 
 /**
- * The Tailwind config (token → CSS-var mappings, fonts, radius, animations) as a
- * JS string. Reuse it in your own `tailwind.config.js` when building real CSS so a
- * compiled build matches the CDN look exactly.
+ * The theme as Tailwind v4 CSS (the `dark` variant, the token → utility mapping,
+ * the base layer). Include it after `@import "tailwindcss";` in a v4 build, with
+ * {@link adminTokensCss} beside it, and the compiled stylesheet matches the CDN look.
+ */
+export function adminTailwindCss(): string {
+  return flowTailwindCss();
+}
+
+/**
+ * The theme as a Tailwind v3 config, for an app whose own build is still on
+ * Tailwind v3. The panel's markup uses v4 class names, so a v3 build misses some of
+ * them; {@link adminTailwindCss} is the match for the CDN.
  */
 export function adminTailwindConfig(): string {
   return flowTailwindConfig();
@@ -64,7 +74,7 @@ export function adminTailwindConfig(): string {
 /**
  * Full `<head>` markup for the admin shell. Inject as `Layout.head`.
  *
- * With no `theme` (or `theme.cdn !== false`) it loads the Tailwind Play CDN. Set
+ * With no `theme` (or `theme.cdn !== false`) it loads Tailwind's browser build. Set
  * `theme.stylesheet` to link a prebuilt CSS file and drop the CDN — only this
  * file's wiring changes; pages stay identical.
  */

@@ -691,7 +691,7 @@ export class ResourceListPage extends Component {
   private _modalControl(f: Field): HtmlNode {
     const form = this.actionForm;
     const cls =
-      "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring";
+      "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-hidden transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring";
     if (f._type === "textarea") {
       return (
         <textarea value={form[f._key]} rows={f._rows} placeholder={f._placeholder} class={cls} />
@@ -723,7 +723,7 @@ export class ResourceListPage extends Component {
             id={id}
             accept={f._accept ?? undefined}
             onchange={`window.__zerotalReadFile(this,'${id}-value')`}
-            class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-accent"
+            class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-secondary-foreground file:hover:bg-accent"
           />
           <textarea id={`${id}-value`} value={form[f._key]} class="hidden" />
         </div>
@@ -762,7 +762,7 @@ export class ResourceListPage extends Component {
     const key = filter._key;
     const constraint = filter._constraints.find((c) => c._key === rule.constraint);
     const control =
-      "h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring";
+      "h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-hidden focus:ring-2 focus:ring-ring";
     const unary = constraint?.isUnary(rule.operator) ?? false;
 
     return (
@@ -976,7 +976,7 @@ export class ResourceListPage extends Component {
               type="button"
               onClick={this.applyBuilder}
               data-args={JSON.stringify([filter._key])}
-              class="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+              class="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90"
             >
               Apply
             </button>
@@ -1137,7 +1137,7 @@ export class ResourceListPage extends Component {
             type="text"
             value={this.newViewName}
             placeholder="Save this view as…"
-            class="h-7 w-40 rounded border border-input bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+            class="h-7 w-40 rounded border border-input bg-background px-2 text-xs outline-hidden focus:ring-2 focus:ring-ring"
           />
           <button
             type="submit"
@@ -1316,7 +1316,7 @@ export class ResourceListPage extends Component {
           const ctx = this._ctx(row);
           const id = String(row[pk]);
           return (
-            <div class="flex flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm transition hover:border-primary/40 hover:shadow-md">
+            <div class="flex flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xs transition hover:border-primary/40 hover:shadow-md">
               {image ? (
                 <div class="aspect-[4/3] w-full overflow-hidden bg-muted">
                   {this._cell(image, row)}
@@ -1393,7 +1393,7 @@ export class ResourceListPage extends Component {
                 {inLane.map((row) => {
                   const id = String(row[pk]);
                   return (
-                    <div class="rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm">
+                    <div class="rounded-lg border border-border bg-card p-3 text-card-foreground shadow-xs">
                       <a
                         href={R.recordUrl(base, id, parent)}
                         navigate
@@ -1543,7 +1543,7 @@ export class ResourceListPage extends Component {
             <button
               type="submit"
               loadingAttr="disabled"
-              class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60"
+              class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-60"
             >
               {act?._modalSubmit ?? act?.getLabel() ?? "Submit"}
             </button>
@@ -1616,7 +1616,7 @@ export class ResourceListPage extends Component {
           value={this.cellEdits[k]}
           onChange={this.saveCell}
           data-args={JSON.stringify([id, col.getColumn(), k])}
-          class="h-8 rounded-md border border-input bg-background px-2 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+          class="h-8 rounded-md border border-input bg-background px-2 text-sm outline-hidden transition focus:ring-2 focus:ring-ring"
         >
           {(col._options ?? []).map((o) => (
             <option value={o.value} selected={String(o.value) === cur}>
@@ -1638,7 +1638,7 @@ export class ResourceListPage extends Component {
           value={this.cellEdits[k]}
           onChange={this.saveCell}
           data-args={JSON.stringify([id, col.getColumn(), k])}
-          class="h-8 w-full max-w-[12rem] rounded-md border border-input bg-background px-2 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+          class="h-8 w-full max-w-[12rem] rounded-md border border-input bg-background px-2 text-sm outline-hidden transition focus:ring-2 focus:ring-ring"
         />
       );
     }
@@ -1757,7 +1757,7 @@ export class ResourceListPage extends Component {
     const active = parseFilters(this.filters);
     const byColumn = new Map(this._headerFilters().map((f) => [f._column ?? f._key, f]));
     const control =
-      "h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring";
+      "h-7 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground outline-hidden focus:ring-2 focus:ring-ring";
 
     return cols.map((c) => {
       const filter = byColumn.get(c._key);
@@ -2276,7 +2276,7 @@ export class ResourceListPage extends Component {
                   navigate
                   class={`rounded-md px-3 py-1 font-medium uppercase transition ${
                     on
-                      ? "bg-primary text-primary-foreground shadow-sm"
+                      ? "bg-primary text-primary-foreground shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -2302,7 +2302,7 @@ export class ResourceListPage extends Component {
                   navigate
                   class={`rounded-md px-3 py-1 font-medium transition ${
                     on
-                      ? "bg-primary text-primary-foreground shadow-sm"
+                      ? "bg-primary text-primary-foreground shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -2359,7 +2359,7 @@ export class ResourceListPage extends Component {
         ) : null}
 
         {/* Card: search + table */}
-        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-xs">
           <div class="flex items-center justify-between gap-3 border-b border-border p-3">
             {R.searchableColumns().length > 0 ? (
               <div class="relative max-w-sm flex-1">
@@ -2369,7 +2369,7 @@ export class ResourceListPage extends Component {
                 <input
                   value={this.search}
                   placeholder={`Search ${R.getPluralLabel().toLowerCase()}…`}
-                  class="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background placeholder:text-muted-foreground"
+                  class="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-hidden transition focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background placeholder:text-muted-foreground"
                 />
               </div>
             ) : (
@@ -2396,7 +2396,7 @@ export class ResourceListPage extends Component {
                   <a
                     href={this._groupHref("")}
                     navigate
-                    class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+                    class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     <span class="flex h-4 w-4 items-center justify-center text-primary">
                       {!activeGroup ? <Icon name="check-circle" class="h-4 w-4" /> : null}
@@ -2407,7 +2407,7 @@ export class ResourceListPage extends Component {
                     <a
                       href={this._groupHref(g.getColumn())}
                       navigate
-                      class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+                      class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
                     >
                       <span class="flex h-4 w-4 items-center justify-center text-primary">
                         {activeGroup?.getColumn() === g.getColumn() ? (
@@ -2441,7 +2441,7 @@ export class ResourceListPage extends Component {
                       <a
                         href={this._colHref(c._key)}
                         navigate
-                        class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+                        class="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
                       >
                         <span class="flex h-4 w-4 items-center justify-center text-primary">
                           {shown ? <Icon name="check-circle" class="h-4 w-4" /> : null}

@@ -20,7 +20,7 @@ function el(attrs: Record<string, string> = {}): HTMLFormElement {
 
 describe("the bundle is a classic script", () => {
   /**
-   * `/__flow/enhance.js` is loaded by `<script src>` with no `type="module"`, on
+   * The enhancement bundle is loaded by `<script src>` with no `type="module"`, on
    * pages that have no module loader. A trailing `export` is a SyntaxError there,
    * and the browser discards the **entire file** — silently, because the forms then
    * post natively and the page still works. The enhancement is absent on exactly

@@ -9,8 +9,8 @@ everything runs on the server and streams over WebSocket — no API layer, no
 client store.
 
 The default UI ships with **light + dark mode out of the box**. Styling currently
-loads Tailwind via the Play CDN (configured in `theme.ts`); swapping to a real
-Tailwind build later only touches that one file.
+loads Tailwind v4's browser build from a pinned CDN URL (configured in `theme.ts`);
+swapping to a real Tailwind build later only touches that one file.
 
 > **Status:** stable — the public API follows SemVer strictly for the rest of the 1.x
 > line. Anything importable without an `@internal` marker is covered, and the surface is

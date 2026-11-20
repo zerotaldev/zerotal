@@ -67,25 +67,24 @@ A package that only some apps need is an optional peer and is not installed for
 you: you add it when you turn on the feature that needs it, and the feature's own
 page says which. The tables below mark the exceptions still under review.
 
-Installing `zerotal` brings in these third-party packages, and what they depend on
-in turn:
+Installing `zerotal` brings in this third-party package, and what it depends on in
+turn:
 
-| Package                  | Comes with      | Why every app gets it                                                                                                                                          |
-| ------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@js-temporal/polyfill`  | `@zerotal/core` | Carbon, the date type, is built on Temporal. Bun only ships Temporal itself from 1.4, and the supported floor is lower. It goes once the floor ships Temporal. |
-| `@simplewebauthn/server` | `@zerotal/auth` | Passkey registration and sign-in. Under review: most apps never use passkeys, and they install it anyway.                                                      |
-| `reflect-metadata`       | `@zerotal/auth` | Loaded before the passkey library, which needs it in place first. It comes with that library anyway, and goes with it.                                         |
+| Package                 | Comes with      | Why every app gets it                                                                                                                                                                                 |
+| ----------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@js-temporal/polyfill` | `@zerotal/core` | Carbon, the date type, is built on Temporal, which Bun only ships itself from 1.4. Carbon loads it on Bun 1.3 alone, the first time it needs a date. It goes once the supported floor ships Temporal. |
 
 Flow apps also get these, through `@zerotal/flow` and `@zerotal/flow-ui`:
 
-| Package                                    | Comes with         | Why                                                                                                                     |
-| ------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `typescript`                               | `@zerotal/flow`    | The ahead-of-time component compiler reads TypeScript's syntax tree, which Bun's transpiler does not expose.            |
-| `alpinejs` and seven `@alpinejs/*` plugins | `@zerotal/flow`    | Flow's browser runtime, bundled for the page when the app boots. Under review: it could ship prebuilt with the package. |
-| `tailwind-merge`                           | `@zerotal/flow-ui` | Resolving conflicting Tailwind classes needs Tailwind's own class grammar, which a rewrite would let drift.             |
+| Package          | Comes with         | Why                                                                                                          |
+| ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `typescript`     | `@zerotal/flow`    | The ahead-of-time component compiler reads TypeScript's syntax tree, which Bun's transpiler does not expose. |
+| `tailwind-merge` | `@zerotal/flow-ui` | Resolving conflicting Tailwind classes needs Tailwind's own class grammar, which a rewrite would let drift.  |
 
-The seven plugins are `@alpinejs/anchor`, `@alpinejs/collapse`, `@alpinejs/focus`,
-`@alpinejs/mask`, `@alpinejs/morph`, `@alpinejs/persist` and `@alpinejs/resize`.
+Flow's browser runtime is not on the list because nothing installs it. Alpine and the plugins
+Flow uses are built into the runtime when `@zerotal/flow` is published, and arrive as that one
+file, at the versions that release was built with — see
+[the client runtime](/docs/flow/performance#the-client-runtime).
 
 This list is checked: CI fails when a package gains a dependency that is not on it.
 The rules a package follows are in
@@ -108,7 +107,7 @@ dependency order, from CI. Never mix versions across packages.
   tilde if you would rather cross a minor deliberately.
 - **A break is never silent.** Every one is called out in the release notes as
   **BREAKING**, with the reason and the migration steps, and the version gets its
-  own section in the Upgrade Guide. Nine have shipped so far — the
+  own section in the Upgrade Guide. Ten have shipped so far — the
   `ComponentWith` / `BaseModelWith` removal in 1.3.0, Flow's `socket:` listener
   prefix in 1.7.2, the removal of Flow's `this.title(…)` in 1.7.3, SQLite
   foreign-key enforcement in 1.11.0, `countTokens` returning `number | null` in
@@ -116,8 +115,14 @@ dependency order, from CI. Never mix versions across packages.
   Flow's `Component.client(…)` alongside two retired aliases in 1.13.0, and
   `inertia.ssr` no longer registering `POST /__ssr` in 1.14.0, and the model
   timestamps `createdAt` / `updatedAt` / `deletedAt` being typed `Carbon` rather
-  than `Date` in 1.15.0.
-- **One of those nine is in the wrong place, and it stays on the record.** 1.11.2
+  than `Date` in 1.15.0, and in 1.17.0 a group of changes to what an app must
+  install: the passkey library and Alpine are no longer installed for you, a
+  missing sharp or optional Zerotal package throws, and `.vue` pages need
+  `@vue/compiler-sfc` 3.3. The same release moved the panels to Tailwind v4,
+  gave Flow's route table its own URL, let passkey registration accept any
+  authenticator, handed out Bun's own `Temporal` from Carbon, and changed how the
+  ORM reads dates.
+- **One of those ten is in the wrong place, and it stays on the record.** 1.11.2
   is a patch, and by the rule above a patch cannot carry a break. It did: the
   `countTokens` signature changed in the same release that promoted `@zerotal/ai`
   to `stable`, and the reasoning that allowed it — the package was still

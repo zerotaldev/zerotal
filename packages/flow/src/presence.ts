@@ -2,9 +2,10 @@
 //
 // `@presence` props are filled with the live member list of a broadcast presence
 // channel. Broadcasting is an OPTIONAL peer: flow does not depend on it, so we
-// resolve `Broadcast` through a variable-specifier dynamic import (not type-checked,
-// so no hard dependency) and no-op gracefully when it isn't installed.
+// load `Broadcast` with core's optionalPeer() loader and no-op gracefully when it
+// isn't installed.
 
+import { optionalPeer, OptionalPeerMissingError } from "@zerotal/core/runtime";
 import type { Component } from "./Component.ts";
 import { getPresenceProps, resolvePresenceChannel } from "./decorators.ts";
 
@@ -50,12 +51,15 @@ let _broadcast: BroadcastFacade | null | undefined;
 async function _resolveBroadcast(): Promise<BroadcastFacade | null> {
   if (_broadcast !== undefined) return _broadcast;
   try {
-    // Variable specifier → TypeScript doesn't require the module to exist (optional peer).
-    const spec = "@zerotal/broadcasting";
-    const mod = (await import(spec)) as { Broadcast?: BroadcastFacade };
+    const mod: { Broadcast?: BroadcastFacade } = await import(
+      "@zerotal/broadcasting" as string
+    ).catch(optionalPeer("@zerotal/broadcasting", { feature: "a @presence property" }));
     _broadcast = mod.Broadcast ?? null;
-  } catch {
-    _broadcast = null; // broadcasting not installed → presence is a no-op
+  } catch (error) {
+    // Not installed means no presence channels exist at all, so the prop keeps
+    // its default. An installed package that fails to load is a broken install.
+    if (!(error instanceof OptionalPeerMissingError)) throw error;
+    _broadcast = null;
   }
   return _broadcast;
 }

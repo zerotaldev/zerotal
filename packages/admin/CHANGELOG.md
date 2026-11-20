@@ -8,6 +8,64 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.0] — 2026-11-20
+
+### Changed
+
+- **BREAKING:** the panel is styled by Tailwind v4's browser build, through `@zerotal/flow-ui`'s
+  head, instead of the Tailwind v3 Play CDN. An app must change two things if they apply: a
+  Content-Security-Policy that allowed `https://cdn.tailwindcss.com` for the panel must allow
+  `https://cdn.jsdelivr.net` instead, and custom pages, widgets or infolist entries that use v3
+  class names whose meaning moved in v4 (`shadow-sm`, bare `ring`, `outline-none`,
+  `bg-opacity-*`) need the v4 names listed in `@zerotal/flow-ui`'s changelog. The panel's own
+  markup already uses them (`shadow-xs`, `outline-hidden`, `file:hover:`), so it looks the same,
+  except that default borders in dark mode now take the dark `--border` token rather than a light
+  grey and the amber, emerald and red accents use v4's palette.
+- **BREAKING:** with `theme.stylesheet` set, `adminTokensCss()` and the head put the token border
+  colour and the page colours in `@layer base`, so a Tailwind v4 stylesheet's utilities override
+  them. `adminTailwindConfig()` sets `borderColor.DEFAULT` to the border token; an app whose
+  Tailwind v3 stylesheet is built from its own config must add
+  `borderColor: { DEFAULT: "hsl(var(--border))" }` under `theme.extend`, or dark-mode borders turn
+  light grey.
+- **`@zerotal/auth` and `@zerotal/orm` are dependencies.** The auth pages import auth, and the
+  panel's provider uses the ORM's types, so both were needed already; they were declared as
+  optional peers, which an isolated install does not provide. Every app installing the admin
+  package already had the ORM through `@zerotal/flow`. Auth is still loaded only by the
+  features that use it (the auth pages, the roles page, impersonation, the notification bell), so
+  a panel without them does not register auth's models.
+- **`@zerotal/notifications` and `@zerotal/audit` are declared optional peers**, alongside
+  `@zerotal/queue`. They were imported without being declared. An app that uses database
+  notifications, record history or queued imports installs the package itself.
+- **BREAKING: a missing optional package now throws `OptionalPeerMissingError` with the install
+  command, where it used to be silent.** `databaseNotifications()` without
+  `@zerotal/notifications` showed an empty bell, a resource with `static history = true` without
+  `@zerotal/audit` showed no history, and `importAction({ queue: true })` without
+  `@zerotal/queue` imported inline. Each looked like it was working. Now the notifications page,
+  every View page of a resource with history, and every queued import throw. The bell in the
+  layout still fails soft. `dispatchImport()` throws too, where it returned `false`; it still
+  returns `false` when the queue package is installed with no driver configured, so that case
+  still falls back to an inline import. An app that used one of these options without the
+  package must install it (`bun add @zerotal/notifications`, `bun add @zerotal/audit` or
+  `bun add @zerotal/queue`) or remove the option. `bun zt doctor` names the first two.
+
+### Added
+
+- `adminTailwindCss()`: the theme as Tailwind v4 CSS, for a `theme.stylesheet` built with Tailwind
+  v4 to match the CDN look. `adminTailwindConfig()` still returns the Tailwind v3 config.
+- **`bun zt doctor` reports a panel feature whose package is missing.** The
+  `admin-optional-packages` check fails when a panel uses `databaseNotifications()` without
+  `@zerotal/notifications`, or registers a resource with `static history = true` without
+  `@zerotal/audit`, and prints the install command. It loads the app's panel wiring
+  (`app/admin.ts` or `app/admin/index.ts`) to see what the panel serves. Queued imports are not
+  covered, because that option is only visible once a page builds its actions.
+
+### Testing
+
+- The optional-peer tests bundle their fixture into a directory rather than a single file, so they
+  run on Bun 1.4 as well as Bun 1.3. Bun 1.4 writes the Flow browser bundles the panel imports as
+  files of their own beside the entry, and refuses `--outfile` when there is more than one file to
+  write.
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

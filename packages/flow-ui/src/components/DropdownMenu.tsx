@@ -49,7 +49,7 @@ export function DropdownMenu(props: DropdownMenuProps): HtmlNode {
         ...triggerCommon,
         type: "button",
         class:
-          "inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          "inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
         children: [
           label ?? "Menu",
           jsx("span", { "aria-hidden": "true", class: "text-xs opacity-60", children: "▾" }),
@@ -94,7 +94,7 @@ export function DropdownMenuItem(props: DropdownMenuItemProps): HtmlNode {
     type: "button",
     role: "menuitem",
     class: cn(
-      "relative flex w-full cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
+      "relative flex w-full cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
       variant === "destructive" &&
         "text-destructive focus:bg-destructive/10 focus:text-destructive hover:bg-destructive/10 hover:text-destructive dark:focus:bg-destructive/20 [&_svg:not([class*='text-'])]:text-destructive",
       cls,

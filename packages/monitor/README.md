@@ -164,7 +164,7 @@ src/
   config.ts              MonitorConfig()
 ```
 
-> Tailwind is loaded from the Play CDN in `MonitorLayout` so the panel is styled
+> Tailwind's browser build is loaded from a CDN in `MonitorLayout` so the panel is styled
 > with zero build setup — fine for an internal ops tool. Swap it for a compiled
 > stylesheet in `MonitorLayout.head` for production hardening.
 
@@ -172,5 +172,6 @@ src/
 
 `maturity: stable` — the public API follows SemVer strictly for the rest of the 1.x
 line, and its shape is snapshotted in `api-surface.md`, which CI diffs on every change.
-The live adapters degrade gracefully when an optional peer (`queue`, `scheduler`,
-`telemetry`) isn't installed.
+The live adapters degrade gracefully when the app does not register the queue,
+scheduler or telemetry provider: they read those services from the container, so
+the panel needs none of those packages itself.

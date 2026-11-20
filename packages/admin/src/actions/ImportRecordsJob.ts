@@ -6,7 +6,8 @@
  * into a job the worker chews through while the user gets on with their day.
  *
  * This module imports `@zerotal/queue` lazily and only when an app actually
- * queues an import, so the dependency stays optional for everyone else.
+ * queues an import, so it is an optional peer: an app that queues imports
+ * installs it, and everyone else never loads it.
  *
  * The worker needs to be able to reconstruct the job from its payload, which
  * means registering the class where the worker can see it:
@@ -24,6 +25,7 @@ import { Panel } from "../Panel.ts";
 import { importCsv } from "./transfer.ts";
 import type { ImportResult } from "./transfer.ts";
 import { frameworkLog } from "@zerotal/core/logger";
+import { optionalPeer } from "@zerotal/core/runtime";
 
 /** What the job needs to do its work, once it is pulled off the queue. */
 export interface ImportRecordsPayload {
@@ -88,21 +90,28 @@ export async function runQueuedImport(payload: ImportRecordsPayload): Promise<Im
 }
 
 /**
- * Push an import onto the queue, returning false when no queue is available so
- * the caller can fall back to importing inline.
+ * Push an import onto the queue.
+ *
+ * Returns `false` when `@zerotal/queue` is installed but has no driver to take
+ * the job, so the caller can fall back to importing inline. Throws
+ * `OptionalPeerMissingError` naming the install command when `@zerotal/queue`
+ * is not installed at all: the app asked for a queued import, and running it
+ * inline instead would hide that it never could be queued. Any other error
+ * while loading the package is rethrown.
  */
 export async function dispatchImport(payload: ImportRecordsPayload): Promise<boolean> {
+  // `@zerotal/queue` is an optional peer, loaded only when an import is queued.
+  // The app asked for a queue, so a missing package is an error that says what
+  // to install, not a quiet inline import.
+  const mod: { Bus?: { dispatch?: (job: unknown) => Promise<unknown> } } = await import(
+    "@zerotal/queue" as string
+  ).catch(optionalPeer("@zerotal/queue", { feature: "importAction({ queue: true })" }));
   try {
-    // Resolved by name so `@zerotal/queue` stays a genuinely optional peer —
-    // a static import would make every admin install depend on it.
-    const mod = (await import(/* @vite-ignore */ "@zerotal/queue" as string)) as {
-      Bus?: { dispatch?: (job: unknown) => Promise<unknown> };
-    };
     if (typeof mod.Bus?.dispatch !== "function") return false;
     await mod.Bus.dispatch(new ImportRecordsJob(payload));
     return true;
   } catch {
-    // No queue package, or no driver configured — the caller imports inline.
+    // No driver configured — the caller imports inline.
     return false;
   }
 }

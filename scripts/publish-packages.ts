@@ -14,11 +14,22 @@
  * whose dependencies do not resolve. A re-run of a half-failed release skips the
  * packages already on npm and publishes the rest.
  *
+ * npm authenticates each package with trusted publishing (the workflow's OIDC
+ * identity) when that package is linked on npmjs.com, and with `NODE_AUTH_TOKEN`
+ * otherwise. The log names the path each package took and totals them at the end;
+ * see `publish-auth.ts`.
+ *
  *   bun run scripts/publish-packages.ts --dry-run          # verify + pack only
  *   bun run scripts/publish-packages.ts --tag v1.1.0       # verify tag matches, pack, publish
  */
 import { readFileSync, readdirSync, mkdirSync, rmSync } from "node:fs";
 import { resolve, join } from "node:path";
+import {
+  canAuthenticate,
+  describeAuthEnvironment,
+  readPublishLog,
+  type AuthEnvironment,
+} from "./publish-auth.ts";
 
 interface PackageManifest {
   name: string;
@@ -105,6 +116,22 @@ function alreadyPublished(name: string, version: string): boolean {
   return view.exitCode === 0 && view.stdout.toString().trim() === version;
 }
 
+/** The npm on PATH and the credentials this run was given, without reading any of them. */
+function authEnvironment(): AuthEnvironment {
+  let npmVersion: string | undefined;
+  if (Bun.which("npm") !== null) {
+    const run = Bun.spawnSync(["npm", "--version"], { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
+    if (run.exitCode === 0) npmVersion = run.stdout.toString().trim();
+  }
+  return {
+    npmVersion,
+    hasToken: (Bun.env["NODE_AUTH_TOKEN"] ?? "") !== "",
+    hasIdToken:
+      (Bun.env["ACTIONS_ID_TOKEN_REQUEST_URL"] ?? "") !== "" &&
+      (Bun.env["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] ?? "") !== "",
+  };
+}
+
 /** Every publishable package under packages/, keyed by npm name. */
 function publicPackages(): Map<string, { dir: string; manifest: PackageManifest }> {
   const out = new Map<string, { dir: string; manifest: PackageManifest }>();
@@ -161,11 +188,21 @@ console.log(
   `Releasing ${packages.size} package(s) at ${version}${dryRun ? " (dry run — no publish)" : ""}`,
 );
 
+const auth = authEnvironment();
+console.log(`  auth    ${describeAuthEnvironment(auth)}`);
+if (!dryRun && !canAuthenticate(auth)) {
+  fail(
+    "no credentials to publish with: set NODE_AUTH_TOKEN, or run in GitHub Actions with id-token: write and npm 11.5.1 or later",
+  );
+}
+
 // ── Pack, then publish ────────────────────────────────────────────────────────
 rmSync(OUT_DIR, { recursive: true, force: true });
 mkdirSync(OUT_DIR, { recursive: true });
 
 let skipped = 0;
+const viaTrustedPublishing: string[] = [];
+const viaToken: string[] = [];
 for (const name of order) {
   const { dir } = packages.get(name)!;
 
@@ -189,11 +226,21 @@ for (const name of order) {
     continue;
   }
 
-  const publish = Bun.spawnSync(["npm", "publish", tarball, "--provenance", "--access", "public"], {
-    cwd: ROOT,
-    stdout: "inherit",
-    stderr: "inherit",
-  });
+  // Verbose, because that is the only level at which npm says whether the OIDC
+  // exchange worked. readPublishLog drops the rest of the verbose detail.
+  const publish = Bun.spawnSync(
+    ["npm", "publish", tarball, "--provenance", "--access", "public", "--loglevel", "verbose"],
+    { cwd: ROOT, stdout: "inherit", stderr: "pipe" },
+  );
+  const log = readPublishLog(publish.stderr.toString());
+  for (const line of log.shown) console.error(line);
+  if (log.auth.kind === "trusted-publishing") {
+    console.log(`  auth    ${name}: trusted publishing`);
+    viaTrustedPublishing.push(name);
+  } else {
+    console.log(`  auth    ${name}: NODE_AUTH_TOKEN (${log.auth.reason})`);
+    viaToken.push(name);
+  }
   if (publish.exitCode !== 0) {
     fail(
       `npm publish failed for ${name} — packages published before it are live; ` +
@@ -209,3 +256,10 @@ console.log(
     : `\x1b[32m✓\x1b[0m released ${packages.size} package(s) at ${version}` +
         (skipped > 0 ? ` (${packages.size - skipped} now, ${skipped} already on npm)` : ""),
 );
+
+if (!dryRun && viaTrustedPublishing.length + viaToken.length > 0) {
+  console.log(
+    `  auth    ${viaTrustedPublishing.length} via trusted publishing, ${viaToken.length} via NODE_AUTH_TOKEN` +
+      (viaToken.length > 0 ? ` — still on the token: ${viaToken.join(", ")}` : ""),
+  );
+}

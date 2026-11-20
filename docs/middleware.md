@@ -374,8 +374,10 @@ RateLimiter.resetFor("login", ctx); // clear the counter for this actor
 
 ### SecureHeadersMiddleware
 
-Adds `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and a
-basic `Content-Security-Policy` to every response:
+Adds `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` and
+`Permissions-Policy` to every response, and a `Content-Security-Policy` when you set
+`contentSecurityPolicy` (Flow's guide has a
+[recommended policy](/docs/flow/components#recommended-csp-header)):
 
 ```ts fragment
 // bootstrap/app.ts

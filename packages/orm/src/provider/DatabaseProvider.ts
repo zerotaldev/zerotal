@@ -6,6 +6,7 @@ import { SQL } from "bun";
 import { DB, _getConnection } from "../db/DB.ts";
 import { preventNPlusOne } from "../db/NPlusOneDetector.ts";
 import { foreignKeysCheck } from "../doctor/foreignKeys.ts";
+import { mysqlTimeZoneCheck } from "../doctor/mysqlTimeZone.ts";
 import {
   _setBaseModelConnection,
   _setBaseModelDialect,
@@ -26,6 +27,40 @@ import {
   _mintDiagnosisToken,
 } from "../diagnostics/runMigrationsEndpoint.ts";
 import { _templateStrings } from "../db/templateStrings.ts";
+import { optionalPeer, OptionalPeerMissingError } from "@zerotal/core/runtime";
+
+/** The part of `@zerotal/validator` the ORM wires its `unique` / `exists` rules into. */
+interface ValidatorModule {
+  registerDbRuleRunner(
+    runner: (
+      rule: "unique" | "exists",
+      table: string,
+      column: string,
+      value: unknown,
+      options: { ignoreId?: number | string | undefined },
+    ) => Promise<boolean>,
+  ): void;
+}
+
+/**
+ * `@zerotal/validator`, or `null` when the app does not install it.
+ *
+ * A missing validator is the one case here where nothing was asked for: its
+ * `unique()` and `exists()` rules are the only things that use this wiring, and
+ * an app without the package cannot write them. Anything else that goes wrong
+ * while loading it is rethrown.
+ */
+async function loadValidator(): Promise<ValidatorModule | null> {
+  try {
+    const validator: ValidatorModule = await import("@zerotal/validator" as string).catch(
+      optionalPeer("@zerotal/validator", { feature: "the unique() and exists() validation rules" }),
+    );
+    return validator;
+  } catch (error) {
+    if (error instanceof OptionalPeerMissingError) return null;
+    throw error;
+  }
+}
 
 // Extend the core container registry so 'db' is a typed binding.
 declare module "@zerotal/core" {
@@ -160,11 +195,11 @@ export class DatabaseProvider extends ServiceProvider {
     });
 
     // Wire unique()/exists() validation rules to query through this connection.
-    // Lazy-import so @zerotal/validator is an optional peer — apps that don't use
-    // the validator still boot without errors.
-    try {
-      const { registerDbRuleRunner } = await import("@zerotal/validator");
-      registerDbRuleRunner(async (rule, table, column, value, options) => {
+    // @zerotal/validator is an optional peer: without it there are no such rules
+    // to wire, and the app boots as it would otherwise.
+    const validator = await loadValidator();
+    if (validator) {
+      validator.registerDbRuleRunner(async (rule, table, column, value, options) => {
         const conn = _getConnection();
 
         if (rule === "unique") {
@@ -185,8 +220,6 @@ export class DatabaseProvider extends ServiceProvider {
         const rows = await conn(_templateStrings(strs), value);
         return rows.length > 0; // true = exists (row found)
       });
-    } catch {
-      // @zerotal/validator not installed — unique()/exists() rules won't work
     }
   }
 
@@ -213,7 +246,7 @@ export class DatabaseProvider extends ServiceProvider {
    * it — `doctor` already boots the app and already holds the connection.
    */
   override doctorChecks(): DoctorCheck[] {
-    return [pendingMigrationsCheck, foreignKeysCheck];
+    return [pendingMigrationsCheck, foreignKeysCheck, mysqlTimeZoneCheck];
   }
 
   override async onBooted(): Promise<void> {

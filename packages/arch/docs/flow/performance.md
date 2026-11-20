@@ -38,6 +38,59 @@ It's a graceful degrade, not a mode you configure. WebSocket reconnection keeps 
 
 Everything driven by your own actions still works. Nothing is sent over HTTP until the socket has actually failed; the happy path is unchanged.
 
+## The client runtime
+
+The browser half of Flow — Alpine, the plugins behind props like `mask` and `trap`, and the
+bridge that carries actions over the socket — ships inside `@zerotal/flow` already built. Your
+app installs no Alpine and bundles nothing for Flow; the server reads the prebuilt file when it
+boots.
+
+Every Flow page ends with two scripts:
+
+```html
+<script src="/__flow/routes/3c5e1f2a9b7d4c60.js" defer></script>
+<script src="/__flow/assets/runtime.0f73789126a43e14.js" defer></script>
+```
+
+The first hands the runtime your app's [named routes](/docs/routing#named-routes), for
+`$route(...)`. The second is the runtime. Each file name is a hash of the file's content, so a URL
+only ever names one version of a script, and both can be cached for a year
+(`max-age=31536000, immutable`). A browser downloads the runtime once and keeps it until you
+upgrade Zerotal, and the route table until your routes change.
+
+The runtime is the same for every visitor, so it is sent `public`: a CDN in front of the app can
+cache it too. The route table lists your app's routes, so it is sent `private`, and only the
+visitor's browser keeps it.
+
+What follows from that:
+
+- **The Alpine version is the one your Zerotal release was built with.** A fix to Alpine reaches
+  your app in a Zerotal release, not through `bun update`. If your own code imports `alpinejs` or
+  one of its plugins, declare it in your app's dependencies.
+- **Turning [`cspSafe`](/docs/flow/components#csp-safe-mode) on or off changes the runtime's
+  URL**, because it serves a different build.
+- **A binary built by [`bun zt compile`](/docs/deployment#compile-to-a-single-binary) carries the
+  runtime inside it.** A compiled Flow app does not serve its pages yet; that page says what a
+  binary runs today.
+- **A page rendered before a deploy keeps working.** It asks for a hash the new server does not
+  have, and is redirected to the current file.
+
+The plain-form enhancement that
+[`flowEnhanceTag()`](/docs/flow/forms#enhancing-a-plain-form-no-component) adds is served the same
+way, from `/__flow/assets/enhance.<hash>.js`. The URLs these scripts had before they carried a
+hash, `/__flow/runtime.js` and `/__flow/enhance.js`, still answer for anything that names them by
+hand.
+
+The scripts under `/__flow/assets/` are [raw routes](/docs/routing#raw-routes): they are the same
+for every visitor, so your global middleware does not run for them. The route table is an ordinary
+route, so your global middleware runs for it exactly as it does for your pages: a visitor it turns
+away from the pages does not get the table either.
+
+If your app has global middleware that turns away every request except an allowlist of public
+paths, such as a sign-in gate, add `/__flow/*` to that allowlist. Otherwise a public page is
+served but its route table is not: `$route(...)` on that page stops working, and so does every
+`navigate` link built with it.
+
 ## Compiling at boot
 
 Flow compiles your pages' JSX into string-building render functions when the server starts,

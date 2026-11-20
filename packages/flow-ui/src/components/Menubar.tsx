@@ -57,7 +57,7 @@ export function Menubar(props: MenubarProps): HtmlNode {
             {...{
               "x-bind:class": `open === ${i} && 'bg-accent text-accent-foreground'`,
             }}
-            class="rounded-sm px-3 py-1 text-sm font-medium outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+            class="rounded-sm px-3 py-1 text-sm font-medium outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             {menu.label}
           </button>
@@ -79,7 +79,7 @@ export function Menubar(props: MenubarProps): HtmlNode {
                   {...(item.disabled ? { disabled: true } : {})}
                   {...(item.action ? { "x-on:click": `${item.action}; open = -1` } : {})}
                   class={cn(
-                    "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
+                    "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
                     item.danger && "text-destructive hover:bg-destructive/10",
                   )}
                 >

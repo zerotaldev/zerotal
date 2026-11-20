@@ -6,7 +6,8 @@ import {
   browserEnvDefines,
   DEV_RELOAD_CLIENT,
 } from "@zerotal/core/dev";
-import type { AppEnvironment } from "@zerotal/core";
+import type { AppEnvironment, DoctorCheck } from "@zerotal/core";
+import { _inertiaPeersCheck } from "../doctor.ts";
 import type { ConfigManager } from "@zerotal/core/config";
 import { _setHtmlTemplate, _setPagesDir } from "../inertia.ts";
 import { DEFAULT_PAGES_DIR } from "../config.ts";
@@ -33,6 +34,11 @@ export class InertiaProvider extends ServiceProvider {
   override onRegister(): void {
     // Make Router.inertia() available before routes load.
     Router.macro("inertia", inertiaRoute);
+  }
+
+  /** The framework packages the app's pages need, which nothing installs for it. */
+  override doctorChecks(): DoctorCheck[] {
+    return [_inertiaPeersCheck()];
   }
 
   override async onBooting(): Promise<void> {
@@ -101,8 +107,11 @@ export class InertiaProvider extends ServiceProvider {
 
     // 2c. Register the .vue runtime loader so server-side `import('*.vue')`
     // works for SSR and Inertia.stream(). No-op unless @vue/compiler-sfc is
-    // installed, so React apps are unaffected.
-    await registerVueRuntimeLoader(process.cwd());
+    // installed, so React apps are unaffected — except that an app which turned
+    // server rendering on and has `.vue` files is told at boot that it needs it.
+    await registerVueRuntimeLoader(process.cwd(), {
+      required: config.get<boolean>("inertia.ssr", false) === true,
+    });
 
     // 3. Register the SSR endpoint when the app asks for it — `ssrEndpoint`, not
     // `ssr`. Rendering happens in-process (see `inertia.ts`); this route exists only

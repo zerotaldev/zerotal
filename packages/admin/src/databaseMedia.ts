@@ -14,9 +14,9 @@
  *   id, path, name, mime, size, alt, folder, uploaded_at
  *
  * Column names are adjustable, so an existing table usually needs no migration.
- * `@zerotal/orm` is resolved lazily, keeping it an optional peer.
  */
 import { frameworkLog } from "@zerotal/core/logger";
+import { DB } from "@zerotal/orm";
 import type { MediaItem, MediaProvider } from "./media.ts";
 
 export interface DatabaseMediaOptions {
@@ -37,11 +37,11 @@ const DEFAULT_COLUMNS: Record<keyof MediaItem, string> = {
   uploadedAt: "uploaded_at",
 };
 
-/** The minimum query surface this needs, kept structural so `orm` stays optional. */
+/** The minimum query surface this needs. */
 interface QueryLike {
   where(column: string, value: unknown): QueryLike;
   whereLike?(column: string, value: string): QueryLike;
-  orderBy(column: string, direction: string): QueryLike;
+  orderBy(column: string, direction: "asc" | "desc"): QueryLike;
   limit(n: number): QueryLike;
   get(): Promise<Record<string, unknown>[]>;
   insert(values: Record<string, unknown>): Promise<unknown>;
@@ -49,14 +49,12 @@ interface QueryLike {
   delete(): Promise<unknown>;
 }
 
-async function table(name: string): Promise<QueryLike | null> {
+/** A query on the catalogue table. */
+function table(name: string): QueryLike {
   try {
-    const mod = (await import(/* @vite-ignore */ "@zerotal/orm" as string)) as {
-      DB?: { table(name: string): QueryLike };
-    };
-    return mod.DB?.table(name) ?? null;
-  } catch {
-    return null;
+    return DB.table(name);
+  } catch (error) {
+    throw new Error("The media library needs a configured database.", { cause: error });
   }
 }
 
@@ -92,8 +90,7 @@ export function databaseMedia(options: DatabaseMediaOptions = {}): MediaProvider
   return {
     async list(query): Promise<MediaItem[]> {
       try {
-        const t = await table(name);
-        if (!t) return [];
+        const t = table(name);
         let q = t;
         if (query.folder) q = q.where(col.folder, query.folder);
         // Searching by name is what a library search means; falling back to an
@@ -112,8 +109,7 @@ export function databaseMedia(options: DatabaseMediaOptions = {}): MediaProvider
     },
 
     async save(item): Promise<MediaItem> {
-      const t = await table(name);
-      if (!t) throw new Error("The media library needs a configured database.");
+      const t = table(name);
       const values: Record<string, unknown> = {
         [col.path]: item.path,
         [col.name]: item.name,
@@ -131,14 +127,12 @@ export function databaseMedia(options: DatabaseMediaOptions = {}): MediaProvider
     },
 
     async remove(id): Promise<void> {
-      const t = await table(name);
-      if (!t) throw new Error("The media library needs a configured database.");
+      const t = table(name);
       await t.where(col.id, id).delete();
     },
 
     async update(id, changes): Promise<void> {
-      const t = await table(name);
-      if (!t) throw new Error("The media library needs a configured database.");
+      const t = table(name);
       await t.where(col.id, id).update({
         [col.alt]: changes.alt ?? "",
         [col.folder]: changes.folder ?? "",

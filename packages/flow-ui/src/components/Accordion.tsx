@@ -47,7 +47,7 @@ export function Accordion(props: AccordionProps): HtmlNode {
       itemClass=""
       buttonClass={cn(
         "flex w-full items-center justify-between gap-4 py-4 text-left text-sm font-medium",
-        "transition-colors hover:underline outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "transition-colors hover:underline outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         // The headless layer sets data-open on the trigger, so the chevron can
         // rotate from CSS alone with no extra state to keep in sync.
         "[&[data-open]>svg]:rotate-180",

@@ -130,6 +130,8 @@ describe("the endpoints behind the gate", () => {
     "http://localhost/__zerotal/devtools/api/channels",
     "http://localhost/__zerotal/devtools/client.js",
     "http://localhost/__zerotal/devtools/dashboard.js",
+    // The hashed bundles too: under the same prefix, so behind the same gate.
+    "http://localhost/__zerotal/devtools/assets/client.0123456789abcdef.js",
   ];
 
   it("refuses every one of them when unauthorized", async () => {
@@ -200,6 +202,20 @@ describe("the page marker", () => {
     // the head is correct — but before `</head>` means it is there even if the page
     // runs a script in the head that looks.
     expect(text.indexOf("zerotal-devtools")).toBeLessThan(text.indexOf("</head>"));
+  });
+
+  it("drops the page's Content-Length once the marker makes it longer", async () => {
+    setEnv("development");
+    const page = "<html><head><title>x</title></head><body>hi</body></html>";
+    const res = await pass(
+      async () =>
+        new Response(page, {
+          headers: { "content-type": "text/html", "content-length": String(page.length) },
+        }),
+    );
+
+    expect(res!.headers.has("content-length")).toBe(false);
+    expect((await res!.text()).length).toBeGreaterThan(page.length);
   });
 
   it("writes nothing on a page the viewer could not use it on", async () => {

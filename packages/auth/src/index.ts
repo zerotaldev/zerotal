@@ -186,7 +186,17 @@ export type {
 
 // -- WebAuthn / Passkeys ------------------------------------------------------
 export { PasskeyService } from "./Passkeys.ts";
-export type { PasskeyCredential, PasskeyUser, PasskeysOptions } from "./Passkeys.ts";
+export type {
+  PasskeyCredential,
+  PasskeyUser,
+  PasskeysOptions,
+  PasskeyTransport,
+  PasskeyDeviceType,
+  PasskeyRegistrationOptionsJSON,
+  PasskeyRegistrationResponseJSON,
+  PasskeyAuthenticationOptionsJSON,
+  PasskeyAuthenticationResponseJSON,
+} from "./Passkeys.ts";
 
 // -- Social authentication (OAuth2) -------------------------------------------
 // Merged from the former @zerotal/social package — social login is an auth

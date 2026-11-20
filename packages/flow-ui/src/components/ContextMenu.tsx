@@ -89,7 +89,7 @@ export function ContextMenu(props: ContextMenuProps): HtmlNode {
               navigate
               role="menuitem"
               class={cn(
-                "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden hover:bg-accent hover:text-accent-foreground",
                 item.danger && "text-destructive hover:bg-destructive/10",
               )}
             >
@@ -106,7 +106,7 @@ export function ContextMenu(props: ContextMenuProps): HtmlNode {
               {...(item.disabled ? { disabled: true } : {})}
               {...(item.action ? { "x-on:click": `${item.action}; open = false` } : {})}
               class={cn(
-                "flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
+                "flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-hidden hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
                 item.danger && "text-destructive hover:bg-destructive/10",
               )}
             >

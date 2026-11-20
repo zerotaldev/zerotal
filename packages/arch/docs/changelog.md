@@ -27,6 +27,139 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.17.0 — 2026-11-20
+
+A minor that installs less into an app. Passkeys' WebAuthn library, Alpine, and the packages one
+Zerotal package loads from another are now installed only by the apps that use them, and a missing
+one says what to install. The panels move to Tailwind v4, Carbon runs on Bun's own `Temporal`, and
+a binary built by `bun zt compile` starts again.
+
+### Before you upgrade
+
+Read [1.16 to 1.17](/docs/upgrade#116-to-117) in the upgrade guide. It has a step for each breaking change, and
+most apps need only some of them:
+
+- **Using passkeys?** Run `bun add @simplewebauthn/server reflect-metadata`.
+- **Rendering your own markup under `flowUiHead()`**, the admin panel or `/monitor`? It is now
+  compiled by Tailwind v4, and the script comes from `cdn.jsdelivr.net`.
+- **Importing `alpinejs` in your own code?** Add it to your `package.json`.
+- **Using `driver: "sharp"` for media?** Make sure sharp is installed.
+- **Running with a `TZ` other than UTC, or MySQL outside UTC?** Some dates read differently; run
+  `bun zt doctor`.
+- **Does your own middleware turn away everything outside an allowlist?** Allow `/__flow/*`, or
+  `route()` and `navigate` stop working on public pages without an error.
+- **Vue pages server-rendered, or admin history, notifications or queued imports?** Each needs a
+  package installed; the upgrade guide names it.
+
+### Added
+
+- **Passkey registration takes `authenticatorAttachment`** (`@zerotal/auth`), so you can choose
+  which authenticators may enrol: any (the default), `"platform"` or `"cross-platform"`.
+- **`flowTailwindCss()` and `adminTailwindCss()`** (`@zerotal/flow-ui`, `@zerotal/admin`) give an
+  app's own Tailwind v4 build the theme that the panels use.
+- **`zt doctor` checks for optional packages.** It reports a missing WebAuthn library in an app that
+  uses passkeys, a missing image driver, the AI provider SDK, the Inertia framework packages, and the
+  admin panel's optional packages. Each report includes the install command.
+- **`zt doctor` checks MySQL's time zone** (`@zerotal/orm`). It warns when the app's connection
+  or the server's default zone is not UTC, in January or in July.
+- **Releases can publish with npm trusted publishing.** Packages not yet linked fall back to the
+  token. This changes release tooling only.
+
+### Changed
+
+- **BREAKING (`@zerotal/auth`): passkeys' WebAuthn library is an optional peer.** An app that uses
+  `PasskeyService` installs `@simplewebauthn/server` and `reflect-metadata` itself, and other apps
+  no longer install them. Without the library, the app still boots, but the first ceremony throws
+  `OptionalPeerMissingError`, and `zt doctor` and `zt deploy` fail with the install command.
+  `PasskeyService` takes and returns Zerotal's own WebAuthn types, so code that read
+  `attestationFormats` from the returned options no longer compiles.
+- **BREAKING (`@zerotal/auth`): passkey registration lets the browser offer any authenticator,**
+  including security keys and phones reached by QR code. Set `authenticatorAttachment: "platform"`
+  to keep 1.16's platform-only registration.
+- **BREAKING (`@zerotal/flow-ui`, `@zerotal/admin`, `@zerotal/monitor`): `flowUiHead()` runs
+  Tailwind v4.** The browser build is pinned to `@tailwindcss/browser` 4.3.5 on `cdn.jsdelivr.net`,
+  with an integrity hash, in place of `cdn.tailwindcss.com`. The components' v4 classes now render,
+  so checked switches fill in and invalid fields turn red. An app's own markup under the head is
+  compiled by v4, and v3 class names whose meaning changed (`shadow-sm`, bare `ring`,
+  `outline-none`, `bg-opacity-*`) need renaming. The components now use class names a Tailwind v3
+  build does not generate, so a stylesheet built with v3 has to move to v4. The token border and page colours now sit in
+  `@layer base`. A Content-Security-Policy for these pages needs `cdn.jsdelivr.net` and
+  `'unsafe-inline'` in `script-src`; [Recommended CSP header](/docs/flow/components#pages-rendered-with-flowuihead)
+  has the whole policy.
+- **BREAKING (`@zerotal/flow`): Alpine is no longer installed into apps.** Flow's client runtime is
+  prebuilt in the package, so an app whose own code imports `alpinejs` or an `@alpinejs/*` plugin
+  adds it. The Alpine version is fixed for each Zerotal release.
+- **BREAKING (`@zerotal/flow`): the route table is its own script, at `/__flow/routes/<hash>.js`.**
+  It passes through the app's global middleware, as `/__flow/runtime.js` does, and is cached
+  privately.
+  An app whose own middleware turns away everything outside an allowlist must allow it, or
+  `route()` and `navigate` stop working on public pages.
+- **Flow's scripts are served at content-hashed URLs and cached for a year** (`@zerotal/flow`).
+  `/__flow/runtime.js` and `/__flow/enhance.js` still answer. The hashed scripts and
+  `/__flow/enhance.js` are answered before global middleware runs, so headers, logging or rate
+  limits your middleware adds no longer apply to them. Development serves the same minified
+  runtime as production.
+- **BREAKING (`@zerotal/media`): a missing sharp fails conversions loudly.** With `driver: "sharp"`
+  and sharp missing or unloadable, `addMedia()` into a collection with conversions now throws. It
+  throws after storing the original, where it used to skip the conversions silently. sharp 0.35 is
+  supported.
+- **BREAKING (`@zerotal/admin`, `@zerotal/tenancy`, `@zerotal/notifications`, `@zerotal/orm`): a
+  missing optional Zerotal package throws `OptionalPeerMissingError`.** Each package now declares the
+  packages it loads from another. Admin's `static history`, `databaseNotifications()` and queued
+  imports throw without audit, notifications or queue; they used to do nothing. `tenantCache()`
+  throws without cache. The broadcast channel throws without broadcasting. Admin now depends on
+  `@zerotal/auth` and `@zerotal/orm`. `@zerotal/validator` becomes an optional peer of the ORM, so
+  an app that installs the ORM without `zerotal` and imports the validator must list it.
+- **BREAKING (`@zerotal/inertia`): `.vue` pages need `@vue/compiler-sfc` 3.3 or later.** A Vue app
+  with `inertia.ssr` on fails at boot without the compiler; before, it server-rendered the page's
+  file path. React, Vue, their adapters and the compiler load as optional peers and are embedded by
+  `bun zt compile`.
+- **BREAKING (`@zerotal/core`): on Bun 1.4, Carbon's values are Bun's own `Temporal`.** Carbon no
+  longer loads `@js-temporal/polyfill` there. A `ZonedDateTime` from Carbon is rejected by the
+  polyfill's `ZonedDateTime` methods and fails `instanceof` against its classes. Use the global
+  `Temporal`. On Bun 1.3, the polyfill loads the first time Carbon needs a date, and nothing else
+  changes.
+- **BREAKING (`@zerotal/orm`): dates read back as the instant saved, whatever the server's `TZ`.**
+  Zone-less date-time text, such as MySQL's `YYYY-MM-DD HH:MM:SS` or SQLite's
+  `CURRENT_TIMESTAMP`, is read as UTC, and MySQL `DATE`, `DATETIME` and `TIMESTAMP` columns read
+  the same on Bun 1.3 and 1.4. In 1.16, under a `TZ` other than UTC, every MySQL date moved by the
+  offset between a save and the next load. A value something else wrote as local time, such as a
+  column `NOW()` filled on a server outside UTC, now reads as UTC too, and code that added the
+  offset back now corrects twice. Nothing stored changes.
+- **A `Carbon` in `where()` binds the way a save stores it** (`@zerotal/orm`). On MySQL it bound as
+  ISO text and missed rows; on SQLite and PostgreSQL it dropped milliseconds, so
+  `where(column, "=", carbon)` missed a row saved from the same value. Such a query can now return
+  different rows.
+- **`@zerotal/ai` bounds the Anthropic SDK to `>=0.70.0 <2`**, and `bun zt compile` embeds it.
+- **The `NotificationFake` re-export from `@zerotal/testing` is deprecated.** Import it from
+  `@zerotal/notifications`. The re-export is removed in 1.18.
+
+### Fixed
+
+- **A binary built by `bun zt compile` starts** (`@zerotal/core`, `@zerotal/monitor`). Loading
+  either package read `package.json` from disk, which crashed every compiled binary before boot.
+  The binary runs console commands such as `list` and `version`. It cannot serve an app yet,
+  because routes, config, migrations and pages still load from disk;
+  [Deployment](/docs/deployment#compile-to-a-single-binary) says what to deploy instead.
+- **`bun zt compile` with no `--entry` compiles `zt.ts`**, the entry every starter ships.
+- **Vue pages render the way they should.** Scoped styles apply to `<script setup>` components, and
+  a page with a plain `<script lang="ts">` compiles.
+- **With read replicas, a `WITH` statement that writes goes to the primary** (`@zerotal/orm`).
+  `WITH old AS (…) DELETE …` and `WITH d AS (DELETE … RETURNING *) SELECT …` were sent to a replica.
+- **A PostgreSQL `infinity` in a date column throws a `RangeError` naming the model and property**
+  (`@zerotal/orm`), the same on every Bun, and `DB.raw()` refuses an object of named parameters
+  with a message naming the positional form.
+- **Flow's `@presence` and `@shared` work in a compiled app** when broadcasting is installed.
+- **`HEAD` answers the way `GET` would** (`@zerotal/core`). A `HEAD` request to an event-stream
+  route answers at once instead of reading the endless body, and reports the length `GET` actually
+  sends, even when a middleware rewrote the page or a proxied response was decompressed. When a raw
+  `GET` takes over a path, `HEAD` follows it there. Markdown pages answer `HEAD` on Bun 1.3 as they
+  do on Bun 1.4.
+- **With `capturePayloads` on, event-stream routes answer again** (`@zerotal/monitor`). The
+  middleware no longer waits for a body that does not end.
+- **Signing in works in new Vue and api apps**, and the Vue starter registers `StorageProvider`.
+  Apps already scaffolded can apply the same three-line change; see the upgrade guide.
+
 ## 1.16.4 — 2026-11-17
 
 A patch that makes the dependency policy explicit and puts less into a running app: passkeys load

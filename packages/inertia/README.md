@@ -19,9 +19,9 @@ Part of the [Zerotal](../../README.md) framework. Requires **Bun ≥ 1.3.14**.
 ```bash
 bun add @zerotal/inertia
 # plus the client of your choice:
-bun add @inertiajs/react react react-dom   # React
+bun add @inertiajs/react react react-dom        # React
 # or
-bun add @inertiajs/vue3 vue                # Vue
+bun add @inertiajs/vue3 vue @vue/compiler-sfc   # Vue
 ```
 
 ## Setup

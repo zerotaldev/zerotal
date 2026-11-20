@@ -50,7 +50,18 @@ either way, because server rendering is about the _first_ arrival.
 
 Pages render with the framework they are authored in: React `.tsx` via
 `react-dom/server`, Vue `.vue` via `@inertiajs/vue3` + `vue/server-renderer`. Install the
-server renderer for the framework your app uses.
+packages for the framework your app uses:
+
+| Pages | Packages                                      |
+| ----- | --------------------------------------------- |
+| React | `react`, `react-dom`, `@inertiajs/react`      |
+| Vue   | `vue`, `@inertiajs/vue3`, `@vue/compiler-sfc` |
+
+A Vue page is compiled on the server the first time it renders, which is what
+`@vue/compiler-sfc` is for here. With `ssr: true` and a `.vue` file under `resources/`,
+the app will not boot without it. A missing package is otherwise reported where it is
+first needed, as an error that names it and the command that installs it, and
+`bun zt doctor` reports it ahead of time.
 
 **A page that fails to server-render still works.** The failure is logged and the
 client-rendered document is served instead, because taking a route down because an

@@ -11,10 +11,7 @@
     "paths": {
       "@zerotal/core": ["../core/src/index.ts"],
       "@zerotal/flow": ["../flow/src/index.ts"],
-      "@zerotal/flow/jsx-runtime": ["../flow/src/jsx-runtime.ts"],
-      "@zerotal/queue": ["../queue/src/index.ts"],
-      "@zerotal/scheduler": ["../scheduler/src/index.ts"],
-      "@zerotal/telemetry": ["../telemetry/src/index.ts"]
+      "@zerotal/flow/jsx-runtime": ["../flow/src/jsx-runtime.ts"]
     }
   },
   "include": ["src/**/*"],

@@ -1699,6 +1699,42 @@ describe("CompileCommand", () => {
   });
 });
 
+describe("CompileCommand entry point", () => {
+  async function compiledEntry(existing: string[]): Promise<string> {
+    const origSpawn = Bun.spawn;
+    const origFileLocal = Bun.file;
+    let args: string[] = [];
+    (Bun as any).file = (path: string) => ({ exists: async () => existing.includes(path) });
+    (Bun as any).spawn = (spawnArgs: string[]) => {
+      args = spawnArgs;
+      return { exited: Promise.resolve(0) };
+    };
+    try {
+      const cmd = new CompileCommand();
+      cmd.args = {};
+      cmd.flags = { outfile: "my-app" };
+      cmd._writer = noop;
+      await cmd.run();
+      return args[4]!;
+    } finally {
+      (Bun as any).spawn = origSpawn;
+      (Bun as any).file = origFileLocal;
+    }
+  }
+
+  it("compiles zt.ts, the entry every starter ships, when --entry is not given", async () => {
+    expect(await compiledEntry(["zt.ts", "zerotal.ts"])).toBe("zt.ts");
+  });
+
+  it("falls back to zerotal.ts in a project that has no zt.ts", async () => {
+    expect(await compiledEntry(["zerotal.ts"])).toBe("zerotal.ts");
+  });
+
+  it("names zt.ts when neither exists, so the build error points at the right file", async () => {
+    expect(await compiledEntry([])).toBe("zt.ts");
+  });
+});
+
 // ── CssBuildCommand static ────────────────────────────────────────────────────
 
 describe("CssBuildCommand", () => {

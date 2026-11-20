@@ -8,6 +8,12 @@ name: Deprecate
 # human picks the range and the wording. Runs here rather than from a laptop
 # because CI holds the npm Automation token; nobody needs publish credentials
 # on their machine to steer people off a bad version.
+#
+# This is the one npm write that still needs the `NPM_TOKEN` secret. Trusted
+# publishing covers publishing (release.yml) and nothing else: npm makes no OIDC
+# exchange for `npm deprecate`. Without the secret this workflow stops before
+# touching anything, and a deprecation runs from a maintainer's machine instead
+# (docs/contributing.md, under "Publishing").
 
 on:
   workflow_dispatch:
@@ -35,6 +41,24 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+
+      # The same npm major release.yml publishes with, so both workflows talk to
+      # the registry through one client.
+      - name: Upgrade npm
+        run: |
+          npm install -g npm@11
+          npm --version
+
+      # Fail on the first line rather than on the first package: npm would
+      # otherwise report a bare ENEEDAUTH, which reads like a registry fault.
+      - name: Require the npm token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "::error::The NPM_TOKEN secret is not set. npm deprecate cannot use trusted publishing; run it from a maintainer's machine (docs/contributing.md, Publishing)."
+            exit 1
+          fi
 
       - name: Deprecate every public package
         env:

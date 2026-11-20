@@ -1,22 +1,22 @@
 {
   "packages": {
-    "validator": 2,
+    "validator": 1,
     "testing": 13,
     "tenancy": 6,
-    "session": 14,
+    "session": 13,
     "queue": 5,
-    "orm": 46,
+    "orm": 41,
     "notifications": 10,
     "monitor": 1,
     "flow": 11,
     "devtools": 4,
-    "core": 105,
+    "core": 83,
     "client": 9,
-    "cache": 5,
+    "cache": 1,
     "broadcasting": 8,
     "audit": 3,
     "admin": 10
   },
-  "total": 252,
-  "updatedAt": "2026-08-15T20:33:00.006Z"
+  "total": 219,
+  "updatedAt": "2026-11-19T22:05:46.031Z"
 }

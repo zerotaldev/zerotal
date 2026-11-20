@@ -39,7 +39,9 @@ export class ProductResource extends Resource {
 The view page grows a History card listing what changed, when, and by whom, with a
 Revert button on each entry that can be undone. It reads from `@zerotal/audit`, so
 you need that package recording the model — the panel does not keep a second trail of
-its own, which would only be a second thing to disagree with the first.
+its own, which would only be a second thing to disagree with the first. The panel does
+not install it: add it with `bun add @zerotal/audit`. Without it, the view page throws
+`OptionalPeerMissingError` with that command.
 
 Reverting restores the previous values of the fields that entry changed, not the whole
 record as it was. That distinction matters: reverting a price change from three weeks

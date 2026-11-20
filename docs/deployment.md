@@ -623,19 +623,38 @@ production.
 
 ## Compile to a single binary
 
-Bun can compile the app — runtime, dependencies, and your code — into one
-self-contained executable, so the deploy artifact needs no `bun install` or
-`node_modules`:
+`bun zt compile` builds the Bun runtime, the framework and the entry file (`zt.ts`) into one
+executable:
 
 ```bash
 # in your project root
 bun zt compile --outfile=zerotal-app
-./zerotal-app serve --port=3000
+./zerotal-app version
 ```
 
-This produces a portable binary ideal for slim containers and edge hosts. Ship your
-`config/`, migrations, and built `public/` assets alongside it, and provide the same
-environment variables at runtime.
+What the binary does today:
+
+- **It starts, and runs the console commands that need none of your app's files**, such as
+  `list` and `version`. The framework's own browser scripts — the
+  [Flow runtime](/docs/flow/performance#the-client-runtime) and the devtools panel — are embedded,
+  as are the optional packages that were installed when it was built.
+
+What it does not do yet:
+
+- **Serve your routes.** `config/`, your route file, migrations and models are loaded from disk
+  when the binary runs, not embedded, so their `import ... from "zerotal"` has to resolve from a
+  `node_modules` beside the binary, and that loads a second copy of the framework next to the
+  embedded one. Commands that read those files, `serve` and `migrate` among them, do not work
+  from the binary.
+- **Serve Flow pages.** The pages under `app/flow/pages/` are read and transpiled from disk at
+  boot without the app's `tsconfig.json`, so each one fails to load and every page answers 404.
+- **Render Inertia pages on the server.** Server rendering loads the page components from disk
+  in the same way.
+
+Until a binary can carry the app's own files, deploy with Bun and an installed
+`node_modules`: run `bun install --frozen-lockfile` and `bun zt serve` on the server, as in
+[Start the server](#start-the-server), or build an image from the
+[Dockerfile below](#a-minimal-dockerfile).
 
 ## A minimal Dockerfile
 

@@ -34,8 +34,37 @@ import { _setQueryBuilderDialect, registerConnectionDialect } from "./db/QueryBu
 import { _setBaseModelConnection, _setBaseModelDialect } from "./model/BaseModel.ts";
 import { Schema } from "./schema/Schema.ts";
 import { SchemaInspector } from "./schema/SchemaInspector.ts";
+import { BaseModel } from "./model/BaseModel.ts";
+import { column } from "./model/decorators/column.ts";
+import { table } from "./model/decorators/table.ts";
+import { _resetMysqlDateDecoding } from "./db/driverDates.ts";
+import { currentZone } from "./__fixtures__/processZone.ts";
+import { Carbon } from "@zerotal/core/carbon";
 
 type Dialect = "postgres" | "mysql";
+
+/**
+ * One instant in every kind of column a date can live in: the Blueprint's TEXT,
+ * the server's own date-time type, and its zone-aware one — plus a native JSON
+ * column, which the driver parses itself.
+ */
+@table("zt_smoke_moments", { timestamps: false })
+class Moment extends BaseModel {
+  @column() label!: string;
+  @column({ type: "datetime", nullable: true }) atText?: Carbon | null;
+  @column({ type: "datetime", nullable: true }) atNative?: Carbon | null;
+  @column({ type: "datetime", nullable: true }) atZoned?: Carbon | null;
+  @column({ type: "json", nullable: true }) doc?: unknown;
+}
+
+const MOMENTS_DDL: Record<Dialect, string> = {
+  mysql:
+    "CREATE TABLE zt_smoke_moments (id INT AUTO_INCREMENT PRIMARY KEY, label VARCHAR(40) NOT NULL, " +
+    "at_text TEXT NULL, at_native DATETIME NULL, at_zoned TIMESTAMP NULL, doc JSON NULL)",
+  postgres:
+    "CREATE TABLE zt_smoke_moments (id SERIAL PRIMARY KEY, label VARCHAR(40) NOT NULL, " +
+    "at_text TEXT NULL, at_native TIMESTAMP NULL, at_zoned TIMESTAMPTZ NULL, doc JSONB NULL)",
+};
 
 const SERVERS: { dialect: Dialect; url: string }[] = [
   { dialect: "postgres", url: Bun.env["ZT_PG_URL"] ?? "" },
@@ -211,6 +240,117 @@ for (const { dialect, url } of SERVERS.length
         expect(await DB.table(T).count()).toBe(before);
         expect(await DB.table(T).where("name", "doomed").count()).toBe(0);
       });
+    });
+
+    // The ORM writes dates as UTC. Under a zone that is not UTC they came back moved by
+    // its offset: MySQL's zone-less text was parsed as local time on every Bun, and Bun
+    // 1.3 decoded MySQL's own DATETIME and TIMESTAMP as local fields where 1.4 reads UTC.
+    // CI's `TZ` is unset, which is UTC, where every one of those readings agrees — so the
+    // zone is set here, and this block runs on both Bun versions in CI's matrix.
+    describe("dates and JSON under a zone that is not UTC", () => {
+      const INSTANT = new Date("2026-08-20T03:00:00.000Z");
+      let previousTz = "UTC";
+
+      beforeAll(async () => {
+        if (!url) return;
+        // Put back by assignment, never `delete`: see __fixtures__/processZone.ts.
+        previousTz = process.env.TZ ?? currentZone();
+        // Ahead of UTC with no daylight saving, so the expected offset is fixed.
+        process.env.TZ = "Asia/Kolkata";
+        _resetMysqlDateDecoding();
+        await DB.raw("DROP TABLE IF EXISTS zt_smoke_moments");
+        await DB.raw(MOMENTS_DDL[dialect]);
+      });
+
+      afterAll(async () => {
+        if (!url) return;
+        process.env.TZ = previousTz;
+        _resetMysqlDateDecoding();
+        await DB.raw("DROP TABLE IF EXISTS zt_smoke_moments");
+      });
+
+      it("reads a saved model's dates back as the instant written", async () => {
+        await Moment.create({
+          label: "saved",
+          atText: Carbon.create(INSTANT),
+          atNative: Carbon.create(INSTANT),
+          atZoned: Carbon.create(INSTANT),
+          doc: { tags: ["a", "b"], n: 2 },
+        });
+
+        const m = (await Moment.query().where("label", "saved").first())!;
+        expect(m.atText!.valueOf()).toBe(INSTANT.getTime());
+        expect(m.atNative!.valueOf()).toBe(INSTANT.getTime());
+        expect(m.atZoned!.valueOf()).toBe(INSTANT.getTime());
+        expect(m.doc).toEqual({ tags: ["a", "b"], n: 2 });
+      });
+
+      it("returns the same Date from the query builder and from DB.raw", async () => {
+        const row = (await DB.table("zt_smoke_moments").where("label", "saved").first()) as {
+          at_native: Date;
+          at_zoned: Date;
+        };
+        expect(new Date(row.at_native).getTime()).toBe(INSTANT.getTime());
+        expect(new Date(row.at_zoned).getTime()).toBe(INSTANT.getTime());
+
+        const [raw] = await DB.raw<{ at_native: Date }>(
+          "SELECT at_native FROM zt_smoke_moments WHERE label = ?",
+          ["saved"],
+        );
+        expect(new Date(raw!.at_native).getTime()).toBe(INSTANT.getTime());
+      });
+
+      it("reads a Date bound by the driver itself as the instant bound", async () => {
+        await DB.raw`INSERT INTO zt_smoke_moments (label, at_native, at_zoned) VALUES (${"bound"}, ${INSTANT}, ${INSTANT})`;
+        const m = (await Moment.query().where("label", "bound").first())!;
+        expect(m.atNative!.valueOf()).toBe(INSTANT.getTime());
+        expect(m.atZoned!.valueOf()).toBe(INSTANT.getTime());
+      });
+
+      it("finds the row by comparing against the same instant", async () => {
+        const at = Carbon.create(INSTANT);
+        const later = Carbon.create(new Date(INSTANT.getTime() + 1000));
+        for (const col of ["atText", "atNative", "atZoned"] as const) {
+          expect(await Moment.query().where("label", "saved").where(col, ">=", at).count()).toBe(1);
+          expect(await Moment.query().where("label", "saved").where(col, "=", at).count()).toBe(1);
+          expect(await Moment.query().where("label", "saved").where(col, ">=", later).count()).toBe(
+            0,
+          );
+        }
+      });
+
+      // A statement with no bound values runs differently the first time on each
+      // connection: Bun sends it before it knows the column types, and PostgreSQL answers
+      // in text, which Bun 1.3 parses as local time for `timestamp` — a limitation the
+      // casts guide documents. The statement here is new to every connection, so this
+      // is its first run.
+      it("reads a statement with no bound values as the casts guide says, on its first run", async () => {
+        const fresh = `zt_${Date.now()}`;
+        const [row] = await DB.raw<Record<string, Date>>(
+          `SELECT at_native AS ${fresh} FROM zt_smoke_moments WHERE label = 'saved'`,
+        );
+        const first = new Date(row![fresh]!).getTime();
+        if (dialect === "mysql") {
+          expect(first).toBe(INSTANT.getTime());
+          return;
+        }
+        // Asia/Kolkata is 5h30 ahead, so the stored 03:00 read as local time is 21:30 UTC.
+        const asLocal = INSTANT.getTime() - 5.5 * 3_600_000;
+        const [major = 0, minor = 0] = Bun.version.split(".").map(Number);
+        const before14 = major < 1 || (major === 1 && minor < 4);
+        expect(first).toBe(before14 ? asLocal : INSTANT.getTime());
+      });
+
+      if (dialect === "postgres") {
+        it("fails naming the column on an infinite timestamp, on every Bun", async () => {
+          await DB.raw(
+            "INSERT INTO zt_smoke_moments (label, at_native) VALUES ('forever', 'infinity')",
+          );
+          await expect(Moment.query().where("label", "forever").first()).rejects.toThrow(
+            /Moment\.atNative holds/,
+          );
+        });
+      }
     });
 
     describe("schema teardown", () => {

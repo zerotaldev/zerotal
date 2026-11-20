@@ -299,11 +299,13 @@ export default DatabaseConfig({
 
 No model code changes needed. Routing is automatic:
 
-| Query type                                                | Connection            |
-| --------------------------------------------------------- | --------------------- |
-| `SELECT`, `WITH`, `EXPLAIN`, `PRAGMA`, `SHOW`, `DESCRIBE` | Replica (round-robin) |
-| `INSERT`, `UPDATE`, `DELETE`, DDL                         | Primary               |
-| `BEGIN` / `DB.transaction()`                              | Primary always        |
+| Query type                                                     | Connection            |
+| -------------------------------------------------------------- | --------------------- |
+| `SELECT`, `WITH`, `EXPLAIN`, `PRAGMA`, `SHOW`, `DESCRIBE`      | Replica (round-robin) |
+| `INSERT`, `UPDATE`, `DELETE`, DDL                              | Primary               |
+| A `WITH` that contains `INSERT`, `UPDATE`, `DELETE` or `MERGE` | Primary               |
+| `SELECT … FOR UPDATE` / `FOR SHARE`                            | Primary               |
+| `BEGIN` / `DB.transaction()`                                   | Primary always        |
 
 ### Force primary for read-your-writes
 

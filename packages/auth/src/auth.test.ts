@@ -51,6 +51,16 @@ describe("HashService", () => {
     const hash = await h.make("bcrypt-password");
     expect(await h.check("bcrypt-password", hash)).toBe(true);
   });
+
+  it("hashes argon2id at Bun's default cost, which every supported Bun accepts", async () => {
+    // Bun 1.4 refuses an argon2 memory cost under 8 KiB. `auth.algorithm` is the only setting,
+    // so the cost is always Bun's own.
+    const hash = await new HashService().make("secret123");
+    const cost = /^\$argon2id\$v=\d+\$m=(\d+),t=(\d+),p=\d+\$/.exec(hash);
+    expect(cost).not.toBeNull();
+    expect(Number(cost![1])).toBeGreaterThanOrEqual(8);
+    expect(Number(cost![2])).toBeGreaterThanOrEqual(1);
+  });
 });
 
 // ── PersistUserMiddleware ─────────────────────────────────────────────────

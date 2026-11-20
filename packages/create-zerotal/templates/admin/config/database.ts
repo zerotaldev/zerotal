@@ -8,8 +8,10 @@ export default DatabaseConfig({
   // against your development database and leave its rows behind.
   url: env("ZT_DB_URL", env("DATABASE_URL", "./database/db.sqlite")),
 
-  // Additive schema sync for local development — creates every demo table from
-  // the models at boot, so `bun run dev` works with no migration step. Hard-off
-  // in production, where you run generated migrations instead.
-  synchronize: env("APP_ENV", "local") !== "production",
+  // Off deliberately. This template ships baseline migrations in
+  // database/migrations, and boot-time schema sync would create the same tables
+  // from the models first — so the very first `bun zt migrate` would fail with
+  // "table users already exists". Migrations are the single source of truth, in
+  // development exactly as in production; run `bun zt migrate` after scaffolding.
+  synchronize: false,
 });

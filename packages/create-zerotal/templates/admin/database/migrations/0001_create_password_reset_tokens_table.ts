@@ -7,9 +7,6 @@ import { Migration, Schema } from "zerotal/orm";
  *
  * `token` holds a SHA-256 hash, never the value that was emailed: a leaked
  * database should not hand out working reset links.
- *
- * This is a plain table rather than a model, so `synchronize` does not create
- * it. Run `bun zt migrate` once before using password reset.
  */
 export default class CreatePasswordResetTokensTable extends Migration {
   async up(): Promise<void> {

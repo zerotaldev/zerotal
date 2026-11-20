@@ -44,7 +44,7 @@ After scaffolding, the CLI prints the next commands:
 ```bash
 cd my-app
 # (set DATABASE_URL in .env for a non-sqlite api project)
-bun zt migrate   # api template only
+bun zt migrate   # every template except minimal — builds the schema
 bun zt db:seed   # admin template — demo data plus the first account
 bun zt dev
 ```

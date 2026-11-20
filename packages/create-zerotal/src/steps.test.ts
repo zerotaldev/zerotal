@@ -36,9 +36,10 @@ describe('nextStepLines', () => {
     ]);
   });
 
-  it('admin seeds its demo account, then says where the panel is', () => {
+  it('admin migrates, seeds its demo account, then says where the panel is', () => {
     expect(nextStepLines('app', 'admin', 'sqlite')).toEqual([
       'cd app',
+      'bun zt migrate',
       'bun zt db:seed              # demo data + admin@example.com / password',
       'bun zt dev',
       '# then open http://localhost:3000/admin',
@@ -87,7 +88,7 @@ describe('the README "Getting started" section', () => {
     );
   });
 
-  it('flow, react, vue and api tell you to migrate; minimal and admin do not', async () => {
+  it('every template but minimal tells you to migrate', async () => {
     const needsMigrate: Record<string, boolean> = {};
     for (const template of TEMPLATES) {
       await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
@@ -97,7 +98,7 @@ describe('the README "Getting started" section', () => {
     expect(needsMigrate).toEqual({
       minimal: false,
       api: true,
-      admin: false,
+      admin: true,
       flow: true,
       react: true,
       vue: true,

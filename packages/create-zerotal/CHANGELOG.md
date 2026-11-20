@@ -8,6 +8,25 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The admin starter ships migrations for its own tables.** It had a migration only for
+  `password_reset_tokens`; `users`, `products` and `settings` were created by `synchronize`,
+  which is off when `APP_ENV=production`. There, `bun zt migrate` built one table and
+  `bun zt db:seed` then failed with `no such table: users`. The starter now ships
+  `0002_create_users_table`, `0003_create_products_table` (with `deleted_at`, as the model
+  soft-deletes) and `0004_create_settings_table`, and `0001_create_password_reset_tokens_table`
+  keeps its name, so an app that already ran it is not asked to run it again.
+- **The admin starter turns `synchronize` off**, as the api, flow, react and vue starters do.
+  Migrations now build the schema in development and in production alike, so the next steps and
+  the README list `bun zt migrate` before `bun zt db:seed`, and the starter's test suite builds
+  its in-memory database with `migrateDatabase()`.
+
+  Apps already scaffolded are not touched. An admin app that relied on `synchronize` can copy the
+  three new migrations from this starter for new databases. A database where `synchronize`
+  already created those tables would fail on `table users already exists`, so leave
+  `synchronize` on for that one.
+
 ## [1.17.0] — 2026-11-20
 
 ### Fixed

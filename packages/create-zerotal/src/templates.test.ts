@@ -57,7 +57,7 @@ describe('the users migration', () => {
       expect(await Bun.file(migration).text()).toMatch(/rememberToken\(\)|remember_token/);
     }
     // Guards the guard: if this list shrinks, the test has gone vacuous, not the templates clean.
-    expect(checked.sort()).toEqual(['api', 'flow', 'react', 'vue']);
+    expect(checked.sort()).toEqual(['admin', 'api', 'flow', 'react', 'vue']);
   });
 });
 

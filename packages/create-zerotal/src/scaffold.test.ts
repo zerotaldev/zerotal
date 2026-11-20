@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'bun:test';
 import { join } from 'node:path';
-import { rm } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import { scaffold, ZT_VERSION } from './scaffold.ts';
 import { TEMPLATES } from './args.ts';
 
@@ -404,6 +404,23 @@ describe('scaffold — admin template', () => {
     expect(await Bun.file(join(TMP, 'database/seeders/DatabaseSeeder.ts')).exists()).toBe(true);
     // The .tmpl infix is stripped so the test lands as a real test file.
     expect(await Bun.file(join(TMP, 'tests/admin.test.ts')).exists()).toBe(true);
+  });
+
+  it('ships a migration for every table the panel and seeder use', async () => {
+    await scaffold({ name: 'my-admin', template: 'admin', db: 'sqlite', target: TMP });
+
+    // synchronize is off, so these migrations are the only thing that builds the
+    // schema — `bun zt db:seed` on a fresh database needs every one of them.
+    const migrations = (await readdir(join(TMP, 'database/migrations'))).sort();
+    expect(migrations).toEqual([
+      '0001_create_password_reset_tokens_table.ts',
+      '0002_create_users_table.ts',
+      '0003_create_products_table.ts',
+      '0004_create_settings_table.ts',
+    ]);
+    expect(await Bun.file(join(TMP, 'config/database.ts')).text()).toContain('synchronize: false');
+    expect(await Bun.file(join(TMP, 'database/migrations/0003_create_products_table.ts')).text())
+      .toContain('table.softDeletes()');
   });
 
   it('registers AdminProvider and substitutes the project name', async () => {

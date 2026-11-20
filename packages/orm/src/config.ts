@@ -73,6 +73,17 @@ export interface DatabaseConfigShape {
      * Default: `true`. Postgres and MySQL always enforce, so this is ignored there.
      */
     foreignKeys?: boolean | undefined;
+    /**
+     * Milliseconds a statement waits for another request's transaction before failing with
+     * `database is locked`.
+     *
+     * SQLite has one connection, so an open transaction holds it, and statements from other
+     * requests wait for it to end. See "Transactions on SQLite" in the database docs.
+     *
+     * Default: `5000`. Ignored by Postgres and MySQL, which give each transaction its own
+     * connection.
+     */
+    busyTimeout?: number | undefined;
   };
   /**
    * Auto-sync the schema to your models at boot (TypeORM-style). Opt-in, and

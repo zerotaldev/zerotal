@@ -171,6 +171,34 @@ await DB.transaction(async () => {
 Zerotal detects `deadlock`, `serialization failure`, `could not serialize`, `sqlite_busy`,
 `database is locked`, and SQLSTATE `40001` / `40P01` in error messages across all three drivers.
 
+### Transactions on SQLite
+
+PostgreSQL and MySQL give each transaction a connection from the pool. SQLite has one connection,
+so on SQLite an open transaction holds it: statements from other requests wait until it commits
+or rolls back, and transactions take turns in the order they started. Statements from inside the
+transaction run at once:
+
+- **`DB.transaction(callback)`:** everything the callback runs or awaits.
+- **`DB.beginTransaction()`:** everything from the request that began it. Outside a request, such
+  as in a console command or a seeder, no other caller can be told apart from it, so nothing waits.
+
+A statement that waits longer than `database.sqlite.busyTimeout` (5000 ms by default) fails with
+`database is locked`, the error SQLite gives when two connections contend for a write. Pass
+`attempts` to `DB.transaction()` to retry it. A transaction that awaits another request's query
+ends this way instead of hanging, since that query is waiting for the transaction. Keep SQLite
+transactions short, and don't wait on outside work inside one.
+
+```typescript
+// config/database.ts
+import { DatabaseConfig } from "@zerotal/orm";
+
+export default DatabaseConfig({
+  driver: "sqlite",
+  url: "./database/db.sqlite",
+  sqlite: { path: "./database/db.sqlite", busyTimeout: 10_000 },
+});
+```
+
 ### Manual transactions
 
 For cases where the transaction boundary can't be expressed as a callback (e.g., spanning an HTTP response stream):

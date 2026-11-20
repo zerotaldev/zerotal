@@ -10,6 +10,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **On SQLite, one request's transaction no longer takes in another request's statements.** Bun
+  keeps one SQLite connection, so while a `DB.transaction()` was open, a write from any other
+  request ran inside it: it reported success and vanished if the transaction rolled back, and a
+  second request's transaction joined the first or failed with `cannot start a transaction within
+a transaction`, depending on the Bun version. An open transaction now holds the connection:
+  other requests' statements wait for it, and transactions take turns in the order they started.
+  A wait longer than the new `database.sqlite.busyTimeout` (5000 ms by default) fails with
+  `database is locked`, which `DB.transaction(cb, attempts)` retries. `DB.beginTransaction()`
+  holds the connection for the request that began it. PostgreSQL and MySQL are unchanged.
+- **A `DB.beginTransaction()` whose `BEGIN` fails throws**, instead of never resolving.
 - **Migrations and seeders load in a binary built by `bun zt compile`.** `migrate` used to report
   nothing to migrate.
 

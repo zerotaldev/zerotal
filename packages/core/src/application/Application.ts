@@ -55,6 +55,7 @@ import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { runBootDoctor } from "./BootDoctor.ts";
 import { runConfigValidators } from "../config/validation.ts";
 import { pathToFileURL } from "node:url";
+import { _importAppFile, _scanAppFiles } from "../support/appFiles.ts";
 import { unroutedRoutesWarning } from "../support/unroutedRoutes.ts";
 import type { DoctorCheck } from "../doctor/AppDoctor.ts";
 import { defaultApp, setDefaultApp } from "./currentApp.ts";
@@ -67,11 +68,10 @@ async function _discoverConfig(dir: string): Promise<Record<string, Record<strin
   const configDir = `${dir}/config`;
   const map: Record<string, Record<string, unknown>> = {};
   try {
-    const glob = new Bun.Glob("*.{ts,js}");
-    for await (const file of glob.scan({ cwd: configDir, onlyFiles: true })) {
+    for (const file of await _scanAppFiles(configDir, "*.{ts,js}")) {
       const key = file.replace(/\.(ts|js)$/, "");
       try {
-        const module = await import(`${configDir}/${file}`);
+        const module = await _importAppFile(`${configDir}/${file}`);
         const value = module.default ?? module;
         if (value && typeof value === "object" && !Array.isArray(value)) {
           map[key] = value as Record<string, unknown>;
@@ -1366,7 +1366,7 @@ export class Application {
 
   private async _loadRoutes(): Promise<void> {
     for (const { file, prefix, middleware } of this._routeGroups) {
-      await Router.groupAsync({ prefix, middleware }, () => import(_toImportable(file)));
+      await Router.groupAsync({ prefix, middleware }, () => _importAppFile(_toImportable(file)));
     }
   }
 

@@ -10,7 +10,12 @@
  * `Router.*` registrations, which still compile down to Bun's native `routes`
  * map, so we keep the native fast path while supporting those extra features.
  */
-import { existsSync } from "node:fs";
+import {
+  _appDirectoryExists,
+  _appFileExists,
+  _importAppFile,
+  _scanAppFiles,
+} from "../support/appFiles.ts";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Router } from "./Router.ts";
@@ -287,7 +292,7 @@ async function _findMiddlewareFile(baseDir: string, dir: string): Promise<string
     const path = dir
       ? join(baseDir, dir, `_middleware.${ext}`)
       : join(baseDir, `_middleware.${ext}`);
-    if (await Bun.file(path).exists()) return path;
+    if (await _appFileExists(path)) return path;
   }
   return undefined;
 }
@@ -330,7 +335,7 @@ async function _collectMiddleware(
 
     let loadedModule: MiddlewareModule & { default?: unknown };
     try {
-      loadedModule = (await import(importUrl)) as MiddlewareModule & { default?: unknown };
+      loadedModule = await _importAppFile<MiddlewareModule & { default?: unknown }>(importUrl);
     } catch (error) {
       // A typo, a bad import path, a circular import, a SyntaxError — swallowing any of
       // these left the subtree beneath serving normally with its guard silently gone,
@@ -420,14 +425,14 @@ async function _collectLayout(
         : join(baseDir, `_layout${extension}`);
       // No file at this spelling is the ordinary case — most directories have no
       // layout, and the walk continues outward to find the nearest one that does.
-      if (!(await Bun.file(layoutPath).exists())) continue;
+      if (!(await _appFileExists(layoutPath))) continue;
 
       const href = pathToFileURL(layoutPath).href;
       const importUrl = reloadId ? `${href}?t=${reloadId}` : href;
 
       let loadedModule: { default?: unknown };
       try {
-        loadedModule = (await import(importUrl)) as { default?: unknown };
+        loadedModule = await _importAppFile<{ default?: unknown }>(importUrl);
       } catch (error) {
         // This was swallowed with the not-found case, under "component resolution is
         // best-effort". Best-effort is right for *absence*; it is not right for a file
@@ -490,14 +495,13 @@ async function _collectLayout(
 export async function scanFileRoutes(baseDir: string, reloadId?: string): Promise<number> {
   const absoluteBase = _resolveAbsoluteBase(baseDir);
 
-  if (!existsSync(absoluteBase)) {
+  if (!(await _appDirectoryExists(absoluteBase))) {
     return 0;
   }
 
-  const glob = new Bun.Glob("**/*.{ts,tsx}");
   let count = 0;
 
-  for await (const relativeFile of glob.scan({ cwd: absoluteBase })) {
+  for (const relativeFile of await _scanAppFiles(absoluteBase, "**/*.{ts,tsx}")) {
     const normalised = relativeFile.replace(/\\/g, "/");
 
     if (_shouldSkip(normalised)) continue;
@@ -528,7 +532,7 @@ export async function scanFileRoutes(baseDir: string, reloadId?: string): Promis
     const importUrl = reloadId ? `${fileHref}?t=${reloadId}` : fileHref;
     let loadedModule: RouteModule & { meta?: RouteFileMeta };
     try {
-      loadedModule = (await import(importUrl)) as RouteModule & { meta?: RouteFileMeta };
+      loadedModule = await _importAppFile<RouteModule & { meta?: RouteFileMeta }>(importUrl);
     } catch (error) {
       console.error(`[FileRouter] Failed to import ${normalised}:`, error);
       continue;

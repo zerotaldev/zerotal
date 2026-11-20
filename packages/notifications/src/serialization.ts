@@ -12,6 +12,8 @@
  * a `to*()` method that calls a model *method* on its recipient will not find it
  * — read fields, not behaviour, when a notification is queued.
  */
+import { pathToFileURL } from "node:url";
+import { _importAppFile, _scanAppFiles } from "@zerotal/core/runtime";
 import { NotificationRegistry } from "./NotificationRegistry.ts";
 import { UnknownNotificationTypeError } from "./errors.ts";
 import type { Notification } from "./Notification.ts";
@@ -135,9 +137,8 @@ export async function discoverNotifications(): Promise<void> {
 
   const dir = `${process.cwd()}/app/notifications`;
   try {
-    const glob = new Bun.Glob("**/*.ts");
-    for await (const file of glob.scan({ cwd: dir, absolute: true })) {
-      const mod = (await import(`file://${file.replace(/\\/g, "/")}`)) as Record<string, unknown>;
+    for (const file of await _scanAppFiles(dir, "**/*.ts")) {
+      const mod = await _importAppFile(pathToFileURL(`${dir}/${file}`).href);
       for (const exported of Object.values(mod)) {
         if (typeof exported === "function" && isNotificationClass(exported as AnyConstructor)) {
           NotificationRegistry.register(exported as never);

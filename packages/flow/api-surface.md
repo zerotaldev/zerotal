@@ -911,6 +911,10 @@ class FlowBrowser = {
   waitUntil: (expression: string, label: string, timeoutMs?: number) => Promise<void>
 }
 
+## ./compile  `(./src/compile.ts)`
+
+_(no exports)_
+
 ## ./compiler-helpers  `(./src/compiler/helpers.ts)`
 
 _(no exports)_

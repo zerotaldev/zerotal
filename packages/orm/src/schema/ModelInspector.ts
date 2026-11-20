@@ -1,4 +1,5 @@
 import path from "node:path";
+import { _importAppFile, _scanAppFiles } from "@zerotal/core/runtime";
 import type { ColumnOptions } from "../model/decorators/column.ts";
 import { columnRegistry, columnsFor } from "../model/decorators/_metadata.ts";
 import { ctorChain } from "../support/identifiers.ts";
@@ -121,10 +122,8 @@ export const ModelInspector = {
    * columns into `columnRegistry` at definition time — so `all()` can enumerate them.
    */
   async load(pattern: string, cwd = process.cwd()): Promise<void> {
-    const glob = new Bun.Glob(pattern);
-    const files = await Array.fromAsync(glob.scan({ cwd }));
-    for (const file of files) {
-      await import(path.resolve(cwd, file));
+    for (const file of await _scanAppFiles(cwd, pattern)) {
+      await _importAppFile(path.resolve(cwd, file));
     }
   },
 

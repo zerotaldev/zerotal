@@ -11,6 +11,7 @@ import { BufferWriter } from "./OutputWriter.ts";
 import { FrameworkEvents, CommandRan } from "../events/FrameworkEvents.ts";
 import { makeDeployCommand } from "./builtin/DeployCommand.ts";
 import { DEFAULT_DEPLOY_TARGETS } from "../config/DeployConfig.ts";
+import { _importAppFile, _scanAppFiles } from "../support/appFiles.ts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -295,18 +296,12 @@ export class CommandRunner {
    */
   async discover(dir: string): Promise<string[]> {
     const registered: string[] = [];
-    let glob: { scan(opts: { cwd: string; onlyFiles: boolean }): AsyncIterable<string> };
     try {
-      glob = new Bun.Glob("**/*.{ts,js}");
-    } catch {
-      return registered;
-    }
-    try {
-      for await (const file of glob.scan({ cwd: dir, onlyFiles: true })) {
+      for (const file of await _scanAppFiles(dir, "**/*.{ts,js}")) {
         if (file.endsWith(".test.ts") || file.endsWith(".test.js")) continue;
         let module: Record<string, unknown>;
         try {
-          module = (await import(`${dir}/${file}`)) as Record<string, unknown>;
+          module = await _importAppFile(`${dir}/${file}`);
         } catch {
           continue;
         }

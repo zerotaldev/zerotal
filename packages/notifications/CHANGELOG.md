@@ -8,6 +8,10 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Notification classes are found in a binary built by `bun zt compile`.**
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

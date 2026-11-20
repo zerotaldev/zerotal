@@ -8,6 +8,10 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`routes/channels.ts` loads in a binary built by `bun zt compile`.**
+
 ## [1.9.0] — 2026-08-29
 
 ### Documented

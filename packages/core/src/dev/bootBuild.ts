@@ -21,6 +21,7 @@
  * behaviour is exactly as before.
  */
 import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { _appFilesEmbedded } from "../support/appFiles.ts";
 import { isProdLike } from "../support/env.ts";
 
 /**
@@ -81,6 +82,17 @@ export async function bootBuildDecision(
   outDirs: string[],
   env: string | undefined,
 ): Promise<BootBuildDecision> {
+  // A compiled binary carries its modules but not the sources, plugins or bundler config an
+  // asset build reads, so a build at boot can only fail. It serves the `public/` shipped with it.
+  if (_appFilesEmbedded()) {
+    return {
+      build: false,
+      reason:
+        "skipping the boot-time asset build: this is a compiled binary. Serving the public/ " +
+        "directory shipped beside it — run `bun zt assets:build` before `bun zt compile`.",
+    };
+  }
+
   // `isProdLike` — so `staging` gets the same treatment. A staging box is hardened
   // like a production one, and used to build at boot regardless of whether its output
   // directory was writable: the one environment where the read-only crash was still

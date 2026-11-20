@@ -1,4 +1,5 @@
 import type { SQLInstance } from "./sql-types.ts";
+import { _holdForManualTransaction } from "./sqliteExclusive.ts";
 import { RequestContext, FrameworkEvents } from "@zerotal/core";
 import {
   QueryExecuted,
@@ -405,6 +406,8 @@ export const DB = {
    */
   async beginTransaction(): Promise<ManualTransaction> {
     const conn = _fromContainer()!;
+    // On SQLite, the connection belongs to this request until commit or rollback.
+    const giveBack = await _holdForManualTransaction(conn);
     const ROLLBACK = Symbol("zerotal.rollback");
     let releaseGate!: () => void;
     const gate = new Promise<void>((r) => {
@@ -431,9 +434,11 @@ export const DB = {
         (e: unknown) => {
           if (e !== ROLLBACK) throw e;
         },
-      );
+      )
+      .finally(giveBack);
 
-    await ready;
+    // A BEGIN that fails rejects `done` before `ready` resolves; surface that instead of waiting.
+    await Promise.race([ready, done]);
 
     const txId = crypto.randomUUID();
     const start = performance.now();

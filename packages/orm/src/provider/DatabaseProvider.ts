@@ -1,4 +1,5 @@
 import type { SQLInstance } from "../db/sql-types.ts";
+import { DEFAULT_BUSY_TIMEOUT_MS, _sqliteExclusive } from "../db/sqliteExclusive.ts";
 import { ServiceProvider, registerErrorDiagnoser, isProdLike, deployEnv } from "@zerotal/core";
 import type { AppEnvironment, DoctorCheck } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
@@ -153,9 +154,20 @@ export class DatabaseProvider extends ServiceProvider {
       const url = _normaliseSqliteUrl(rawUrl);
       const sqlArg =
         pool?.max !== undefined || pool?.idleTimeout !== undefined ? { url, ...pool } : url;
-      const primary = new SQL(sqlArg as unknown as string);
-
       const driver = config.get<string>("database.driver", "sqlite");
+      const opened = new SQL(sqlArg as unknown as string);
+      // SQLite has one connection, so a transaction would take in every other request's
+      // statements. While one is open, the connection is its alone; see sqliteExclusive.ts.
+      const primary =
+        driver === "sqlite"
+          ? _sqliteExclusive(opened, {
+              busyTimeoutMs: config.get<number>(
+                "database.sqlite.busyTimeout",
+                DEFAULT_BUSY_TIMEOUT_MS,
+              ),
+            })
+          : opened;
+
       const enforceForeignKeys = config.get<boolean>("database.sqlite.foreignKeys", true);
       await _applySqlitePragmas(primary, driver, enforceForeignKeys);
 

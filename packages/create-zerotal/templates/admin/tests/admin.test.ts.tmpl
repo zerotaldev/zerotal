@@ -1,5 +1,5 @@
 import { beforeAll, describe, test, expect } from "bun:test";
-import { createTestApp, type TestApp } from "zerotal/testing";
+import { createTestApp, migrateDatabase, type TestApp } from "zerotal/testing";
 import { Panel } from "@zerotal/admin";
 import { User } from "@app/models/User.ts";
 import { Product } from "@app/models/Product.ts";
@@ -11,7 +11,12 @@ let staff: User;
 
 beforeAll(async () => {
   Bun.env.APP_KEY ??= "test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa";
+  // Each run gets its own throwaway schema rather than the dev database.
+  Bun.env.ZT_DB_URL ??= ":memory:";
   app = await createTestApp(() => import("../bootstrap/app.ts").then((m) => m.default));
+  // Build the schema from the project's own migrations — config/database.ts
+  // keeps synchronize off, so the schema under test is the one that ships.
+  await migrateDatabase();
 
   staff = await User.create({
     name: "Ada Admin",

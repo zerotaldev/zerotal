@@ -20,7 +20,7 @@ export interface FirstRunStep {
  * Templates that ship baseline migrations. Their schema is built from those migrations
  * (`synchronize` is off), so the first migrate is a required step, not a tip.
  */
-const MIGRATES: ReadonlySet<Template> = new Set<Template>(['api', 'flow', 'react', 'vue']);
+const MIGRATES: ReadonlySet<Template> = new Set<Template>(['api', 'admin', 'flow', 'react', 'vue']);
 
 /** The seeded account that makes a fresh admin panel usable rather than a locked door. */
 const ADMIN_LOGIN = 'admin@example.com / password';

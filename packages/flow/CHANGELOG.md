@@ -65,6 +65,7 @@ change.
 
 ### Fixed
 
+- **A checkout on Bun 1.3 builds the client bundles in any process.** Once something in the process had loaded `client/bridge.ts`, Bun 1.3 refused to bundle the CSP runtime, and the page was served with no runtime. A source build that fails in-process is now tried once more in a fresh Bun process. Installed apps serve the prebuilt `dist/` and never reach this path.
 - **An app built with `bun zt compile` serves the client runtime.** The binary carries no
   `src/client/`, so the boot-time `Bun.build` failed with `ENOENT` inside it, and every page was
   served without a runtime: rendered, and inert. The prebuilt bundles are now read through an
@@ -72,6 +73,10 @@ change.
   A compiled Flow app still does not serve its pages: they are transpiled from disk at boot
   without the app's `tsconfig.json`, so each fails to load and answers 404. Deploy a Flow app
   with Bun and an installed `node_modules`, as the Deployment page describes.
+
+### Testing
+
+- The tests that build the client bundles from source do so in a fresh process. On Bun 1.3, a process that had already loaded a file the bundle takes in refused it, so the tests passed or failed with the order Bun ran the files in.
 
 ## [1.16.4] — 2026-11-17
 

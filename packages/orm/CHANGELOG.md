@@ -97,6 +97,10 @@ follows the Zerotal monorepo's unified versioning.
   boot with its own error; it was silently skipped, which left `unique()` and `exists()`
   failing later with no reason given.
 
+### Testing
+
+- The connection-resolver tests clear the model connection before each test as well as after, so a connection an earlier file left set no longer decides them.
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

@@ -22,12 +22,7 @@ import { Application, BaseMiddleware, Router, type HttpContext, type NextFn } fr
 import { FlowProvider } from "./provider/FlowProvider.ts";
 import { CounterPage } from "./browser/__fixtures__/CounterPage.tsx";
 import { _clientAsset, _routeTablePrelude, _routesAsset, _runtimeAsset } from "./clientAssets.ts";
-import {
-  _buildClientBundle,
-  _CLIENT_BUNDLE_NAMES,
-  _loadClientBundle,
-  _readPrebuiltBundle,
-} from "./clientBundles.ts";
+import { _CLIENT_BUNDLE_NAMES, _readPrebuiltBundle } from "./clientBundles.ts";
 import { flowEnhanceTag } from "./enhanceTag.ts";
 
 const PKG = join(import.meta.dir, "..");
@@ -45,6 +40,32 @@ async function run(cmd: string[], cwd: string): Promise<string> {
   ]);
   if (code !== 0) throw new Error(`${cmd.join(" ")} exited ${code}:\n${out}\n${err}`);
   return out;
+}
+
+/**
+ * What `_loadClientBundle()` and `_buildClientBundle()` give for one bundle, asked of a
+ * fresh process.
+ *
+ * Not this one: on Bun 1.3, once a process has loaded a file the bundle also takes in
+ * (another test file here imports `client/bridge.ts`, which reaches
+ * `@zerotal/core/routes`), `Bun.build` refuses that file with "Unexpected reading file".
+ * Whether these tests passed would then depend on the order Bun ran the files in.
+ */
+async function sourceBundle(
+  name: string,
+): Promise<{ loadedFrom: string | false; built: string | false; logs?: unknown }> {
+  const module = JSON.stringify(join(import.meta.dir, "clientBundles.ts"));
+  const script = `
+    const { _loadClientBundle, _buildClientBundle } = await import(${module});
+    const loaded = await _loadClientBundle(${JSON.stringify(name)}, true);
+    const built = await _buildClientBundle(${JSON.stringify(name)}, true);
+    process.stdout.write(JSON.stringify({
+      loadedFrom: loaded.ok && loaded.from,
+      built: built.ok && built.code,
+      logs: loaded.ok ? undefined : loaded.logs,
+    }));
+  `;
+  return JSON.parse(await run([process.execPath, "-e", script], PKG));
 }
 
 /** Build `dist/` the way `prepack` does, with the Bun running these tests. */
@@ -290,8 +311,8 @@ describe("where the bundles come from", () => {
       // behind by an earlier pack, the source wins.
       await buildDist();
       for (const name of _CLIENT_BUNDLE_NAMES) {
-        const loaded = await _loadClientBundle(name, true);
-        expect(loaded.ok && loaded.from).toBe("source");
+        const { loadedFrom, logs } = await sourceBundle(name);
+        expect({ name, loadedFrom, logs }).toEqual({ name, loadedFrom: "source", logs: undefined });
       }
     },
     SLOW,
@@ -304,8 +325,8 @@ describe("where the bundles come from", () => {
       for (const name of _CLIENT_BUNDLE_NAMES) {
         const prebuilt = await _readPrebuiltBundle(name);
         expect(prebuilt).toBe(readFileSync(join(PKG, "dist", `${name}.js`), "utf8"));
-        const built = await _buildClientBundle(name, true);
-        expect(built.ok && built.code).toBe(prebuilt!);
+        const { built } = await sourceBundle(name);
+        expect(built).toBe(prebuilt!);
         // Each is loaded as a classic script, where an `export` or `import` statement
         // is a syntax error that discards the whole file.
         expect(prebuilt).not.toMatch(/^(export|import)[\s{]/m);

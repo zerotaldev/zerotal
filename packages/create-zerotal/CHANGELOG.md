@@ -26,6 +26,14 @@ follows the Zerotal monorepo's unified versioning.
   three new migrations from this starter for new databases. A database where `synchronize`
   already created those tables would fail on `table users already exists`, so leave
   `synchronize` on for that one.
+- **The admin starter's dashboard no longer logs an `NPlusOneError` in development.** The "Active"
+  stat and the "Catalogue by status" chart counted products one status at a time, so with the
+  sidebar badge one query shape ran five times per load and crossed the detector's threshold. Both
+  widgets now read one grouped query (`SELECT status, COUNT(*) … GROUP BY status`), run once per
+  request through `RequestContext.remember`. The dashboard shows the same numbers.
+
+  Apps already scaffolded are not touched. To fix one, copy `productsByStatus()` and the two
+  widget changes from the template's `app/admin/widgets.ts`.
 
 ## [1.17.0] — 2026-11-20
 

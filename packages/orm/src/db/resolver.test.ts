@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "bun:test";
+import { describe, it, expect, afterEach, beforeEach } from "bun:test";
 import { SQL } from "bun";
 import {
   BaseModel,
@@ -9,10 +9,15 @@ import {
 import { column } from "../model/decorators/column.ts";
 import { table } from "../model/decorators/table.ts";
 
-afterEach(() => {
+// Before as well as after: these tests assert the connection itself, so one an
+// earlier file left set would decide them, and only in the orders Bun runs that file
+// first.
+const clear = (): void => {
   _setBaseModelConnection(null);
   setConnectionResolver(null);
-});
+};
+beforeEach(clear);
+afterEach(clear);
 
 describe("connection resolver (ORM <-> core decoupling)", () => {
   it("resolves the connection via the injected resolver", () => {

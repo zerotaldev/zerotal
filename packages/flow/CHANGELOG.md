@@ -73,6 +73,10 @@ change.
   without the app's `tsconfig.json`, so each fails to load and answers 404. Deploy a Flow app
   with Bun and an installed `node_modules`, as the Deployment page describes.
 
+### Testing
+
+- The tests that build the client bundles from source do so in a fresh process. On Bun 1.3, a process that had already loaded a file the bundle takes in refused it, so the tests passed or failed with the order Bun ran the files in.
+
 ## [1.16.4] — 2026-11-17
 
 ### Changed

@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { Application } from "../application/Application.ts";
-import { builtinDoctorChecks, runDoctor } from "./AppDoctor.ts";
+import { _bunRuntimeResult, builtinDoctorChecks, runDoctor } from "./AppDoctor.ts";
 import type { DoctorCheck } from "./AppDoctor.ts";
 
 /** The checks read the app skeleton from process.cwd(), so each test gets its own. */
@@ -58,6 +58,25 @@ function check(id: string): DoctorCheck {
   if (!found) throw new Error(`no builtin check "${id}"`);
   return found;
 }
+
+describe("bun-runtime check", () => {
+  it("is fine on Bun 1.4 and later", () => {
+    for (const version of ["1.4.0", "1.4.5", "1.5.2", "2.0.0"]) {
+      expect(_bunRuntimeResult(version).status).toBe("ok");
+    }
+  });
+
+  it("warns on Bun 1.3 that 1.18 needs 1.4, and says how to upgrade", () => {
+    const result = _bunRuntimeResult("1.3.14");
+    expect(result.status).toBe("warn");
+    expect(result.message).toContain("1.18 requires Bun 1.4");
+    expect(result.fix).toBe("bun upgrade");
+  });
+
+  it("is among the checks every app gets", () => {
+    expect(builtinDoctorChecks.some((c) => c.id === "bun-runtime")).toBe(true);
+  });
+});
 
 describe("allowed-origins check", () => {
   const app = (config: Record<string, unknown>) => fakeApp({ config });

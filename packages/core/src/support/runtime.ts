@@ -312,6 +312,7 @@ export type { OptionalPeerMissing } from "../errors/OptionalPeerMissingError.ts"
 export {
   _embedAppFiles,
   _appFilesEmbedded,
+  _isCompiledBinary,
   _scanAppFiles,
   _scanAppFilesSync,
   _importAppFileSync,

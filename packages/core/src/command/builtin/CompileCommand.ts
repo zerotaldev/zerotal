@@ -5,7 +5,7 @@ import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "../Command.ts";
 import type { FlagDef } from "../Command.ts";
-import { _appFilesEmbedded, _scanAppFiles } from "../../support/appFiles.ts";
+import { _isCompiledBinary, _scanAppFiles } from "../../support/appFiles.ts";
 
 /**
  * Entry points tried in order when `--entry` is not given: `zt.ts`, which every starter
@@ -92,7 +92,7 @@ export class CompileCommand extends Command {
   ];
 
   async run(): Promise<void> {
-    if (_appFilesEmbedded()) {
+    if (_isCompiledBinary()) {
       throw new Error(
         "This is a compiled binary, which cannot build another. Run `bun zt compile` in the project.",
       );

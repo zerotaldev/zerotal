@@ -21,7 +21,7 @@
  * behaviour is exactly as before.
  */
 import { mkdir, unlink, writeFile } from "node:fs/promises";
-import { _appFilesEmbedded } from "../support/appFiles.ts";
+import { _isCompiledBinary } from "../support/appFiles.ts";
 import { isProdLike } from "../support/env.ts";
 
 /**
@@ -84,7 +84,7 @@ export async function bootBuildDecision(
 ): Promise<BootBuildDecision> {
   // A compiled binary carries its modules but not the sources, plugins or bundler config an
   // asset build reads, so a build at boot can only fail. It serves the `public/` shipped with it.
-  if (_appFilesEmbedded()) {
+  if (_isCompiledBinary()) {
     return {
       build: false,
       reason:

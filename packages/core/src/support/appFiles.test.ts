@@ -10,6 +10,7 @@ import {
   _embedAppFiles,
   _importAppFile,
   _importAppFileSync,
+  _isCompiledBinary,
   _preloadAppFiles,
   _readAppFileText,
   _scanAppFiles,
@@ -47,6 +48,14 @@ describe("with no files embedded", () => {
   it("finds nothing in a directory that does not exist", async () => {
     expect(await _scanAppFiles(join(root, "no-such-directory"), "**/*.ts")).toEqual([]);
     expect(_scanAppFilesSync(join(root, "no-such-directory"), "*.ts")).toEqual([]);
+  });
+});
+
+describe("_isCompiledBinary", () => {
+  it("is false when run from source, true once a binary registers its files", () => {
+    expect(_isCompiledBinary()).toBe(false);
+    _embedAppFiles({ "config/app.ts": module("app") });
+    expect(_isCompiledBinary()).toBe(true);
   });
 });
 

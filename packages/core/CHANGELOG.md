@@ -10,12 +10,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
+- **`zt doctor` reports the Bun runtime**, and on Bun 1.3 warns that Zerotal 1.18 requires Bun 1.4,
+  with `bun upgrade` as the fix.
 - **`zt test --parallel`** runs the test files across every core, each in a fresh global, on Bun
   1.4 and later. On Bun 1.3 it says so and runs nothing. Against PostgreSQL or MySQL it warns that
   the workers share one database.
 
 ### Fixed
 
+- **A binary built with `bun build --compile` directly is recognised as one** on Bun 1.4, through
+  `Bun.isStandaloneExecutable`. Only a binary from `bun zt compile` was: in another, `serve` tried
+  to build assets at boot, and `compile` started the binary itself again instead of refusing.
 - **`zt test --migrate` works against a SQLite file.** It passed a path such as
   `./database/test.sqlite` to Bun's SQL without the `sqlite:` scheme, so it never connected.
 - **`zt test --migrate` finds `@zerotal/orm` from the app**, where the app's own imports find it.

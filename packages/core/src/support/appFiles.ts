@@ -96,6 +96,21 @@ export function _appFilesEmbedded(): boolean {
 }
 
 /**
+ * Whether this process is a compiled binary, built by `bun zt compile` or by `bun build --compile`
+ * directly.
+ *
+ * {@link _appFilesEmbedded} answers for a binary built by `bun zt compile`, which registers the
+ * app's files. A binary built with `bun build --compile` registers nothing, and Bun 1.4 answers
+ * for it with `Bun.isStandaloneExecutable`; Bun 1.3 has no such property, so there only the
+ * registry answers.
+ *
+ * @internal
+ */
+export function _isCompiledBinary(): boolean {
+  return _embedded !== null || Reflect.get(Bun, "isStandaloneExecutable") === true;
+}
+
+/**
  * The root-relative key for a path, URL or `file://` specifier, or `undefined` when it is outside
  * the project root. A `?query` (the hot-reload cache buster) is dropped.
  */

@@ -470,11 +470,36 @@ const throttleIdentityCheck: DoctorCheck = {
 };
 
 /**
+ * What the doctor says about the running Bun: fine on 1.4 and later, a warning on 1.3, whose
+ * support ends with Zerotal 1.18.
+ *
+ * @param version - `Bun.version`.
+ * @internal
+ */
+export function _bunRuntimeResult(version: string): DoctorCheckResult {
+  const [major = 0, minor = 0] = version.split(".").map(Number);
+  if (major > 1 || (major === 1 && minor >= 4)) return ok(`Bun ${version}`);
+  return warn(
+    `Bun ${version}. Zerotal 1.17 is the last line to run on Bun 1.3: 1.18 requires Bun 1.4, ` +
+      `which runs Carbon on Bun's own Temporal and drops the polyfill. Move this server, its CI ` +
+      `and its lockfile to Bun 1.4 before upgrading to 1.18.`,
+    "bun upgrade",
+  );
+}
+
+const bunRuntimeCheck: DoctorCheck = {
+  id: "bun-runtime",
+  label: "Bun runtime",
+  run: () => _bunRuntimeResult(Bun.version),
+};
+
+/**
  * The core checks every app gets.
  *
  * @internal
  */
 export const builtinDoctorChecks: DoctorCheck[] = [
+  bunRuntimeCheck,
   appKeyCheck,
   siteGateCheck,
   allowedOriginsCheck,

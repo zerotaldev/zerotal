@@ -10,6 +10,8 @@ import { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
 import * as DevWsServer from "./DevWsServer.ts";
 import { detectCssPlugins, buildCssBundle } from "./CssPlugins.ts";
 import { unlink } from "node:fs/promises";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // ── DevBuildHook ──────────────────────────────────────────────────────────────
@@ -132,12 +134,34 @@ describe("DevBuildHook", () => {
 
 // ── Live-reload client ────────────────────────────────────────────────────────
 
+/**
+ * Compile a browser script into a function of `params`, through a module file rather than
+ * `new Function`.
+ *
+ * `new Function` is refused under `--disallow-code-generation-from-strings`, the hardening flag a
+ * production server can run with, and the suite runs under that flag too. A module read from disk
+ * is static code there, so the script is written to one and imported.
+ */
+async function compileBrowserScript(
+  params: string[],
+  body: string,
+): Promise<(...args: unknown[]) => void> {
+  const dir = mkdtempSync(join(tmpdir(), "zt-browser-script-"));
+  const file = join(dir, "script.js");
+  writeFileSync(file, `export default function (${params.join(", ")}) {\n${body}\n}\n`);
+  try {
+    return ((await import(file)) as { default: (...args: unknown[]) => void }).default;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 describe("DEV_RELOAD_CLIENT", () => {
   /**
    * Run the injected snippet against a stub `WebSocket` and `location`, and
    * return handles to drive it: the sockets it opened, and the reload count.
    */
-  function runClient() {
+  async function runClient() {
     const sockets: Array<{
       onmessage?: (e: { data: string }) => void;
       onclose?: () => void;
@@ -158,7 +182,8 @@ describe("DEV_RELOAD_CLIENT", () => {
     }
 
     const body = DEV_RELOAD_CLIENT.replace(/^<script>/, "").replace(/<\/script>$/, "");
-    new Function("location", "WebSocket", "setTimeout", body)(
+    const client = await compileBrowserScript(["location", "WebSocket", "setTimeout"], body);
+    client(
       location,
       FakeSocket,
       // Reconnect immediately instead of after the real 1s backoff.
@@ -168,41 +193,41 @@ describe("DEV_RELOAD_CLIENT", () => {
     return { sockets, reloads: () => reloads };
   }
 
-  it("reloads on an explicit reload push", () => {
-    const client = runClient();
+  it("reloads on an explicit reload push", async () => {
+    const client = await runClient();
     client.sockets[0]!.onmessage!({ data: "reload" });
     expect(client.reloads()).toBe(1);
   });
 
-  it("does not reload when a reconnect reports the same build", () => {
-    const client = runClient();
+  it("does not reload when a reconnect reports the same build", async () => {
+    const client = await runClient();
     client.sockets[0]!.onmessage!({ data: "version:abc" });
     client.sockets[0]!.close();
     client.sockets[1]!.onmessage!({ data: "version:abc" });
     expect(client.reloads()).toBe(0);
   });
 
-  it("reloads when a reconnect reports a different build", () => {
+  it("reloads when a reconnect reports a different build", async () => {
     // A backend change rebuilds assets and restarts the worker. The restart kills
     // the socket, so a reload push at that moment reaches nobody — the changed
     // build token on reconnect is what gets the rebuild into the browser.
-    const client = runClient();
+    const client = await runClient();
     client.sockets[0]!.onmessage!({ data: "version:build-one" });
     client.sockets[0]!.close();
     client.sockets[1]!.onmessage!({ data: "version:build-two" });
     expect(client.reloads()).toBe(1);
   });
 
-  it("ignores an empty build token rather than reloading on it", () => {
-    const client = runClient();
+  it("ignores an empty build token rather than reloading on it", async () => {
+    const client = await runClient();
     client.sockets[0]!.onmessage!({ data: "version:abc" });
     client.sockets[0]!.close();
     client.sockets[1]!.onmessage!({ data: "version:" });
     expect(client.reloads()).toBe(0);
   });
 
-  it("reconnects when the socket closes, so a restart never wedges the page", () => {
-    const client = runClient();
+  it("reconnects when the socket closes, so a restart never wedges the page", async () => {
+    const client = await runClient();
     expect(client.sockets).toHaveLength(1);
     client.sockets[0]!.close();
     expect(client.sockets).toHaveLength(2);

@@ -565,6 +565,35 @@ Give each app its own copy of Bun under its own directory. A Bun installed as ro
 traverse — the error is `Permission denied`, not `not found` — and a runtime upgrade for
 one app should not be able to break another.
 
+### Refuse code built from strings
+
+On Bun 1.4 and later, `--disallow-code-generation-from-strings=strict` stops the process from
+turning a string into code: `eval()`, `new Function()`, `node:vm` and every other way. An attacker
+who gets a string into the wrong place can then no longer get it run. Bun reads the flag at
+startup, and nothing turns it off afterwards.
+
+The framework builds no code from strings on the server, and its suite passes under the flag,
+with one exception: **Vue pages rendered on the server**, which Inertia compiles at runtime. An
+app that server-renders Vue cannot use the flag. React, Flow and everything else can. Your own
+dependencies may differ, so run your tests under it first:
+
+```bash
+# in your project root
+BUN_OPTIONS="--disallow-code-generation-from-strings=strict" bun zt test
+```
+
+Then set it for the service:
+
+```ini
+# /etc/systemd/system/your-app.service
+[Service]
+Environment=BUN_OPTIONS=--disallow-code-generation-from-strings=strict
+```
+
+In a Dockerfile, set it with `ENV BUN_OPTIONS=--disallow-code-generation-from-strings=strict`. A
+refused call throws an `EvalError` naming the cause, so a dependency the tests missed fails
+loudly rather than misbehaving.
+
 ## Verifying a deploy
 
 `bun zt doctor` runs every static check against a release: `APP_KEY` strength, the

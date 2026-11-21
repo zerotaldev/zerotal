@@ -3,6 +3,9 @@ import { Router } from "@zerotal/core";
 import { route, resetRoutes } from "@zerotal/core/routes";
 import { _routeTableResponse, _routeTablePrelude, _routesAsset } from "../clientAssets.ts";
 import { installClientRoutes } from "../client/routes.ts";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 describe("Flow route table — serve-time prelude", () => {
   beforeEach(() => Router.reset());
@@ -92,14 +95,23 @@ describe("Flow route table — client install", () => {
     expect(route.dynamic("posts.show", { slug: "hello" })).toBe("/posts/hello");
   });
 
-  it("round-trips a real prelude through the global", () => {
+  it("round-trips a real prelude through the global", async () => {
     Router.reset();
     class C {}
     Router.get("/docs/*", C, "docs").name("docs.show");
 
-    // Evaluate the served prelude the way a browser would, then install.
+    // Evaluate the served prelude the way a browser would, then install. Through a module file
+    // rather than `new Function`, which `--disallow-code-generation-from-strings` refuses.
     const scope = { window: {} as Record<string, unknown> };
-    new Function("window", _routeTablePrelude())(scope.window);
+    const dir = mkdtempSync(join(tmpdir(), "zt-prelude-"));
+    try {
+      const file = join(dir, "prelude.js");
+      writeFileSync(file, `export default function (window) {\n${_routeTablePrelude()}\n}\n`);
+      const prelude = (await import(file)) as { default: (window: unknown) => void };
+      prelude.default(scope.window);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
     globals.window = scope.window;
     installClientRoutes();
 

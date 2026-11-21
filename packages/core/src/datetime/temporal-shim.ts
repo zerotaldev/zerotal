@@ -33,7 +33,11 @@ let resolved: TemporalNamespace | undefined;
  */
 export function temporal(): TemporalNamespace {
   if (resolved !== undefined) return resolved;
-  const native = (globalThis as { Temporal?: TemporalNamespace }).Temporal;
+  // Read by a key typed as any property: on Bun 1.4 `globalThis` declares its own `Temporal`,
+  // whose type differs from the polyfill's in details (`Duration#sign` is `number` there, `-1 | 0
+  // | 1` here) that TypeScript 7 refuses to cast across. The two agree at runtime.
+  const key: PropertyKey = "Temporal";
+  const native: TemporalNamespace | undefined = Reflect.get(globalThis, key);
   if (native !== undefined) {
     resolved = native;
   } else {

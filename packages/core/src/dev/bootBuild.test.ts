@@ -76,13 +76,17 @@ describe("bootBuildDecision", () => {
 
 /** POSIX-only: mode bits are advisory on Windows, so this would be a false pass there. */
 describe.skipIf(process.platform === "win32")("bootBuildDecision on a chmod'd directory", () => {
-  it("treats a mode 0o500 directory as unwritable", async () => {
+  it("treats a mode 0o500 directory as unwritable, except for root", async () => {
     const dir = join(root, "readonly");
     mkdirSync(dir);
     chmodSync(dir, 0o500);
+    // Root ignores the mode bits, so the directory really is writable for root, and the boot
+    // build can go ahead. Assert what the running user gets rather than assume a normal user,
+    // as every cloud session and many containers run as root.
+    const asRoot = process.getuid?.() === 0;
     try {
-      expect(await isWritableDir(dir)).toBe(false);
-      expect((await bootBuildDecision([dir], "production")).build).toBe(false);
+      expect(await isWritableDir(dir)).toBe(asRoot);
+      expect((await bootBuildDecision([dir], "production")).build).toBe(asRoot);
     } finally {
       chmodSync(dir, 0o700);
     }

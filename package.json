@@ -9,6 +9,7 @@
     "test:packages": "bun --filter='./packages/*' run test",
     "typecheck:packages": "bun --filter='./packages/*' run typecheck",
     "typecheck:tests": "bun run scripts/typecheck-tests.ts",
+    "typecheck:bun": "bun run scripts/bun-check.ts",
     "dev": "bun --filter='*' run dev",
     "lint:packages": "bun run scripts/lint-packages.ts",
     "lint:packages:ci": "bun run scripts/lint-packages.ts",

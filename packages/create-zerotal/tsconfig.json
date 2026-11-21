@@ -9,6 +9,7 @@
     "noUncheckedIndexedAccess": true,
     "composite": false,
     "incremental": false,
+    "rootDir": "..",
     "outDir": "./.tsbuild",
     "tsBuildInfoFile": "./.tsbuild/.tsbuildinfo"
   },

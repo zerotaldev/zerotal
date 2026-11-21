@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.17.1] — 2026-11-21
+
 ### Added
 
 - **`bun zt compile` compiles Flow pages ahead of time**, with and without CSP-safe mode, and the

@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`refreshDatabase()` opens its per-test transaction on SQLite's bare connection.** From 1.17.1
+  an open SQLite transaction holds the app's connection, and a statement from outside it waits
+  (see `@zerotal/orm`). The test's transaction is meant to hold everything the test does,
+  including what reaches the database through `DB` rather than a model, so it is opened where
+  every statement runs inside it, as before. Tests behave as they did.
+
 ## [1.17.0] — 2026-11-20
 
 ### Deprecated

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.1] — 2026-11-21
+
 ### Fixed
 
 - **A binary built by `bun zt compile` renders React pages on the server**, and finds

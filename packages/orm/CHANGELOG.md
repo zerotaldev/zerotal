@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`DB` honours a transaction opened around a test** (`_setAmbientTransaction`, set by
+  `@zerotal/testing`'s `refreshDatabase()`): `DB.transaction()` nests in it with a savepoint, and
+  `DB.table()` and `DB.raw()` run in it.
+
 ## [1.17.1] — 2026-11-21
 
 ### Fixed

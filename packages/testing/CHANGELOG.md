@@ -16,6 +16,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **A handler's `DB.transaction()` works inside a `refreshDatabase()` test.** It issued a second
+  `BEGIN` on the test's connection: SQLite refused it on Bun 1.3, and on Bun 1.4 the test hung until
+  it timed out. It now nests in the test's transaction with a savepoint. `DB.table()` and `DB.raw()`
+  run in the test's transaction too, which on PostgreSQL and MySQL they did not: they took another
+  pooled connection, and their writes outlived the test.
 - **The preload opens a SQLite test file given as a bare path**, adding the `sqlite:` scheme Bun's
   SQL needs, as the ORM's own provider does.
 

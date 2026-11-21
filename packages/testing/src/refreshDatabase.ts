@@ -1,5 +1,6 @@
 import {
   _getModelConnection,
+  _setAmbientTransaction,
   _setBaseModelConnection,
   _unwrapSqlite,
   type SQLInstance,
@@ -105,10 +106,14 @@ export function refreshDatabase(options: RefreshDatabaseOptions = {}): void {
 
     await ready;
     _setBaseModelConnection(txConn);
+    // So that what reaches the database through `DB` joins the test's transaction too: a
+    // handler's `DB.transaction()` nests in it with a savepoint, and `DB.table()` runs in it.
+    _setAmbientTransaction(txConn);
     releaseGate = openGate;
   });
 
   afterEach(async () => {
+    _setAmbientTransaction(null);
     if (releaseGate) {
       releaseGate();
       releaseGate = null;

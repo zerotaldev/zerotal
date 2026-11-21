@@ -151,6 +151,12 @@ function refreshDatabase(options?: RefreshDatabaseOptions): void;
 Both `migrate` and `setup` are committed (they are the schema and any shared
 fixtures), while each test's own writes happen inside the rolled-back transaction.
 
+Everything the test does joins that transaction, not only model calls: `DB.table()` and
+`DB.raw()` run in it, and a handler's own `DB.transaction()` nests in it with a savepoint,
+committing or rolling back its part as it would in production while the test's rollback still
+undoes everything. On PostgreSQL and MySQL, where `DB` would otherwise take another pooled
+connection, that is what keeps those writes inside the test's transaction.
+
 > **Warning** — `refreshDatabase()` only works inside a `bun test` run; it pulls
 > `beforeAll`/`afterEach` from `bun:test`. Calling it outside the test runner throws.
 

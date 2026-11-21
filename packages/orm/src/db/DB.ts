@@ -68,6 +68,26 @@ function _fromContainer(): SQLInstance | undefined {
   return resolveContainerConnection();
 }
 
+/**
+ * A transaction every statement belongs to while it is set: the one `refreshDatabase()` opens
+ * around each test.
+ *
+ * A test's transaction is opened in a hook, so no `DB.transaction()` callback scopes it and
+ * `TransactionContext` does not see it. Without this, a handler's `DB.transaction()` inside the
+ * test issued a second `BEGIN` (refused by SQLite, a deadlock on Bun 1.4), and `DB.table()` on
+ * PostgreSQL took another pooled connection, outside the test's transaction and its rollback.
+ */
+let _ambientTransaction: SQLInstance | null = null;
+
+/**
+ * Set or clear the ambient transaction. `refreshDatabase()` sets it for each test.
+ *
+ * @internal
+ */
+export function _setAmbientTransaction(tx: SQLInstance | null): void {
+  _ambientTransaction = tx;
+}
+
 /** Read the active connection (used by Schema and migration commands). */
 export function _getDbConnection(): SQLInstance {
   const conn = _fromContainer();
@@ -95,6 +115,7 @@ export function _getScopedDbConnection(): SQLInstance {
   const conn =
     TransactionContext.getStore() ??
     (RequestContext.tryGet()?._transaction as SQLInstance | undefined) ??
+    _ambientTransaction ??
     _fromContainer();
   if (!conn)
     throw new Error("[Zerotal ORM] No database connection. Is DatabaseProvider registered?");
@@ -122,6 +143,7 @@ function _resolveDbConn(): SQLInstance {
   return (
     TransactionContext.getStore() ??
     (RequestContext.tryGet()?._transaction as SQLInstance | undefined) ??
+    _ambientTransaction ??
     _fromContainer()!
   );
 }
@@ -334,7 +356,7 @@ export const DB = {
    * @category Transactions
    */
   async transaction<T>(callback: (tx?: SQLInstance) => Promise<T>, attempts = 1): Promise<T> {
-    const existingTx = TransactionContext.getStore();
+    const existingTx = TransactionContext.getStore() ?? _ambientTransaction ?? undefined;
     if (existingTx) {
       // Nested transaction → use a SAVEPOINT so an inner rollback does not abort
       // the entire outer transaction (true nested-transaction semantics).
@@ -512,7 +534,9 @@ export const DB = {
   currentTx(): unknown | undefined {
     return (
       TransactionContext.getStore() ??
-      (RequestContext.tryGet()?._transaction as SQLInstance | undefined)
+      (RequestContext.tryGet()?._transaction as SQLInstance | undefined) ??
+      _ambientTransaction ??
+      undefined
     );
   },
 

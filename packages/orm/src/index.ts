@@ -103,6 +103,7 @@ export {
   _setDbConnection,
   _getDbConnectionOverride,
   _setReadReplicas,
+  _setAmbientTransaction,
 } from "./db/DB.ts";
 export { setConnectionResolver, resolveContainerConnection } from "./db/resolver.ts";
 export {
@@ -114,7 +115,7 @@ export {
 export type { ManualTransaction } from "./db/DB.ts";
 export { createReadWriteRouter } from "./db/ReadWriteRouter.ts";
 export { TransactionContext } from "./db/TransactionContext.ts";
-export { _unwrapSqlite } from "./db/sqliteExclusive.ts";
+export { _sqliteExclusive, _unwrapSqlite } from "./db/sqliteExclusive.ts";
 export {
   _setBaseModelConnection,
   _getModelConnection,

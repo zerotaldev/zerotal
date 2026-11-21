@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.1] — 2026-11-21
+
 ### Changed
 
 - **`refreshDatabase()` opens its per-test transaction on SQLite's bare connection.** From 1.17.1

@@ -397,7 +397,8 @@ Bun can start each file from a fresh global, and `zt test` passes the request on
 
 ```bash
 bun zt test --isolate                  # a fresh global per file
-bun zt test -- --parallel=4            # four worker processes; implies --isolate
+bun zt test --parallel                 # files across every core; implies --isolate (Bun 1.4+)
+bun zt test -- --parallel=4            # exactly four worker processes
 bun zt test -- --shard=1/3             # the first of three slices of the files, for CI
 bun zt test -- --rerun-each=3          # anything else bun test takes goes after --
 ```
@@ -407,6 +408,23 @@ pays for it once per file: in the framework's own packages it ran within a few s
 shared run, a little slower where every file boots an app. What you get for it is a result that
 does not depend on file order. The framework's suite found one test that relied on a variable
 another file had set, which only the isolated run could see.
+
+### Running files in parallel
+
+`--parallel` runs the files in several processes at once, one per core, and each file in a fresh
+global. The framework's own suite runs in about half the time on four cores, with the same
+results. It needs Bun 1.4; on Bun 1.3, `zt test` says so and runs nothing.
+
+Each worker gets its own test database:
+
+- **In-memory SQLite** (the default `ZT_DB_URL`): already private to each process.
+- **A SQLite file**: each worker gets a copy of it, made when the worker starts, such as
+  `database/test.worker-2.sqlite` beside `database/test.sqlite`. The copy holds whatever the file
+  held, so a schema built by `zt test --migrate` is in every copy. The starters' `.gitignore`
+  already covers the copies.
+- **PostgreSQL or MySQL**: the workers share the one database, and see each other's rows. `zt
+test --parallel` warns when it runs against one. Use a SQLite test database, or run without
+  `--parallel`.
 
 `zt test` refuses an option it does not know, with the list of the ones it does, rather than
 running the suite without whatever you asked for. Put a `bun test` flag after `--` to hand it

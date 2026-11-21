@@ -5,7 +5,9 @@ import { scaffold, type Database, type Template } from './scaffold.ts';
 import { nextStepLines } from './steps.ts';
 import { TEMPLATES } from './args.ts';
 
-const TMP = join(import.meta.dir, '..', '.test-output');
+// One directory per test file: under `bun test --parallel` the files run at once, and a shared
+// directory let one file's cleanup delete the other's scaffold mid-test.
+const TMP = join(import.meta.dir, '..', '.test-output', 'steps');
 const TEMPLATES_DIR = join(import.meta.dir, '..', 'templates');
 
 afterEach(async () => {

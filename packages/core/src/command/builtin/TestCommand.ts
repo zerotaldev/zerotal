@@ -27,8 +27,9 @@ import { testEnvOverrides } from "../testEnv.ts";
  * bun zt test --coverage             # with coverage
  * bun zt test --watch                # watch mode
  * bun zt test --isolate              # a fresh global per test file
+ * bun zt test --parallel             # files across CPU cores (Bun 1.4+)
  * bun zt test -- --shard=1/3         # any other bun test flag, after --
- * bun zt test -- --parallel=4        # worker processes; implies --isolate
+ * bun zt test -- --parallel=4        # an exact number of worker processes
  * ```
  *
  * @category Testing
@@ -81,6 +82,14 @@ export class TestCommand extends Command {
       description: "Run each test file in a fresh global, so one file cannot affect the next",
       default: false,
     },
+    {
+      name: "parallel",
+      type: "boolean" as const,
+      description:
+        "Run test files across CPU cores, each in a fresh global (Bun 1.4+); a SQLite test " +
+        "file is copied per worker",
+      default: false,
+    },
 
     {
       name: "migrate",
@@ -116,9 +125,17 @@ export class TestCommand extends Command {
     const dbUrl = Bun.env["ZT_DB_URL"] ?? Bun.env["DATABASE_URL"] ?? ":memory:";
 
     if (this.flags["migrate"]) {
-      const migrated = await _migrateTestDatabase(dbUrl);
+      let migrated: string[] | null;
+      try {
+        migrated = await _migrateTestDatabase(dbUrl);
+      } catch (error) {
+        this.error(`--migrate failed: ${error instanceof Error ? error.message : String(error)}`);
+        process.exitCode = 1;
+        return;
+      }
       if (migrated === null) {
         this.error("--migrate needs @zerotal/orm installed in this project.");
+        process.exitCode = 1;
         return;
       }
       this.dim(
@@ -152,6 +169,23 @@ export class TestCommand extends Command {
     if (this.flags["watch"]) bunArguments.push("--watch");
     if (this.flags["bail"]) bunArguments.push("--bail");
     if (this.flags["isolate"]) bunArguments.push("--isolate");
+    if (this.flags["parallel"]) {
+      const [major = 0, minor = 0] = Bun.version.split(".").map(Number);
+      if (major === 1 && minor < 4) {
+        this.error(`--parallel needs Bun 1.4 or later; this is Bun ${Bun.version}.`);
+        process.exitCode = 1;
+        return;
+      }
+      bunArguments.push("--parallel");
+      // A SQLite file is copied per worker by the preload; a server is not, so the workers
+      // would share one database and see each other's rows.
+      if (/^(postgres|postgresql|mysql|mysql2|mariadb):\/\//.test(dbUrl)) {
+        this.warn(
+          `--parallel workers share ${dbUrl.split("@").pop()}: each worker's rows are visible ` +
+            "to the others. Use a SQLite test database, or run without --parallel.",
+        );
+      }
+    }
 
     // Bun's default is 5s and applies to hooks as well as tests — and `bunfig.toml`'s
     // `[test] timeout` does not cover hooks, only this flag does. A `beforeAll` that calls
@@ -221,26 +255,32 @@ function _resolvePreload(cwd: string): string | null {
  */
 async function _migrateTestDatabase(dbUrl: string): Promise<string[] | null> {
   if (dbUrl === ":memory:") return [];
+  // Core does not depend on the ORM, so it is found from the app being tested, as the app's own
+  // imports find it. Resolving it from core's directory worked only where `node_modules` was
+  // hoisted, and said the ORM was missing under the isolated linker.
+  let ormPath: string;
   try {
-    const { SQL } = await import("bun");
-    // Core does not depend on the ORM — this reaches for it only when the app
-    // being tested has one installed. The specifier lives in a variable so it
-    // stays a runtime lookup rather than a compile-time dependency.
-    const ormSpecifier = "@zerotal/orm";
-    const orm = (await import(ormSpecifier)) as {
-      MigrationRunner: new (o: { connection: unknown }) => {
-        runFromDirectory(dir: string): Promise<string[]>;
-      };
-      _setDbConnection(conn: unknown): void;
-      _setBaseModelConnection(conn: unknown): void;
-    };
-    const connection = new SQL(dbUrl);
-    // A migration's `up()` reaches for the ambient connection through `Schema`,
-    // so it has to be installed, not just handed to the runner.
-    orm._setDbConnection(connection);
-    orm._setBaseModelConnection(connection);
-    return await new orm.MigrationRunner({ connection }).runFromDirectory("database/migrations");
+    ormPath = Bun.resolveSync("@zerotal/orm", process.cwd());
   } catch {
     return null;
   }
+  const { SQL } = await import("bun");
+  const orm = (await import(ormPath)) as {
+    MigrationRunner: new (o: { connection: unknown }) => {
+      runFromDirectory(dir: string): Promise<string[]>;
+    };
+    _setDbConnection(conn: unknown): void;
+    _setBaseModelConnection(conn: unknown): void;
+    _normaliseSqliteUrl(raw: string): string;
+  };
+  // `./database/test.sqlite` as the app's config writes it: Bun's SQL needs the `sqlite:` scheme
+  // to open a file, and without it every --migrate against a SQLite file failed to connect.
+  const connection = new SQL(orm._normaliseSqliteUrl(dbUrl));
+  // A migration's `up()` reaches for the ambient connection through `Schema`,
+  // so it has to be installed, not just handed to the runner.
+  orm._setDbConnection(connection);
+  orm._setBaseModelConnection(connection);
+  // A migration that fails throws, with its own message. It used to be caught here and reported
+  // as "@zerotal/orm is not installed", which sent people to reinstall a package they had.
+  return await new orm.MigrationRunner({ connection }).runFromDirectory("database/migrations");
 }

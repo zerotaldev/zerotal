@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **One test database per `bun test --parallel` worker.** The preload gives each worker a copy of a
+  SQLite test file (`database/test.worker-2.sqlite` beside `database/test.sqlite`), made when the
+  worker starts, and points `ZT_DB_URL` at it so the app's own config opens it too.
+
+### Fixed
+
+- **The preload opens a SQLite test file given as a bare path**, adding the `sqlite:` scheme Bun's
+  SQL needs, as the ORM's own provider does.
+
 ## [1.17.1] — 2026-11-21
 
 ### Changed

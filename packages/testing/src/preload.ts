@@ -34,8 +34,14 @@
  */
 
 import { SQL } from "bun";
-import { _setBaseModelConnection, _setBaseModelDialect, _setDbConnection } from "@zerotal/orm";
+import {
+  _normaliseSqliteUrl,
+  _setBaseModelConnection,
+  _setBaseModelDialect,
+  _setDbConnection,
+} from "@zerotal/orm";
 import { runtimeBelowFloor, runtimeBelowFloorMessage } from "@zerotal/core/runtime";
+import { _workerDatabaseUrl } from "./workerDatabase.ts";
 
 // A warning rather than a refusal: a preload that throws takes down the whole run,
 // and a suite that is merely *suspect* should still produce its results — the point
@@ -46,10 +52,19 @@ if (_floor) {
   console.warn(`\n⚠  ${runtimeBelowFloorMessage(_floor)}\n`);
 }
 
-const url = Bun.env["ZT_DB_URL"];
+// Under `bun test --parallel`, a SQLite test file is copied per worker (see workerDatabase.ts),
+// and `ZT_DB_URL` is pointed at the copy so the app's own `config/database.ts` opens it too. The
+// URL the run started with is kept aside: with `--isolate` this module runs again for each file
+// in the same process, and must copy the original, not the copy.
+const sharedUrl = Bun.env["ZT_TEST_SHARED_DB_URL"] ?? Bun.env["ZT_DB_URL"];
+if (sharedUrl !== undefined) Bun.env["ZT_TEST_SHARED_DB_URL"] = sharedUrl;
+const url = _workerDatabaseUrl(sharedUrl, Bun.env["BUN_TEST_WORKER_ID"]);
+if (url !== undefined) Bun.env["ZT_DB_URL"] = url;
 
 if (url && url !== ":memory:") {
-  const db = new SQL(url);
+  // A bare path such as `./database/test.sqlite` needs the `sqlite:` scheme for Bun's SQL to open
+  // it as a file, as the ORM's own provider adds.
+  const db = new SQL(_normaliseSqliteUrl(url));
 
   _setBaseModelConnection(db);
   _setDbConnection(db);

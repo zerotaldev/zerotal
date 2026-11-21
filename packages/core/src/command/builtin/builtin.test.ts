@@ -1372,7 +1372,16 @@ describe("TestCommand", () => {
     expect(TestCommand.needsApp).toBe(false);
     expect(TestCommand.args).toHaveLength(1);
     expect(TestCommand.args[0]!.name).toBe("pattern");
-    expect(TestCommand.flags).toHaveLength(7);
+    expect(TestCommand.flags.map((f) => f.name)).toEqual([
+      "coverage",
+      "watch",
+      "timeout",
+      "bail",
+      "isolate",
+      "parallel",
+      "migrate",
+      "keep-env",
+    ]);
   });
 
   it("has coverage, watch, timeout, bail flags", () => {

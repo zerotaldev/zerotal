@@ -4,7 +4,9 @@ import { readdir, rm } from 'node:fs/promises';
 import { scaffold, ZT_VERSION } from './scaffold.ts';
 import { TEMPLATES } from './args.ts';
 
-const TMP = join(import.meta.dir, '..', '.test-output');
+// One directory per test file: under `bun test --parallel` the files run at once, and a shared
+// directory let one file's cleanup delete the other's scaffold mid-test.
+const TMP = join(import.meta.dir, '..', '.test-output', 'scaffold');
 
 // ── released version ─────────────────────────────────────────────────────────
 

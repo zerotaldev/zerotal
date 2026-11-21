@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`zt test --parallel`** runs the test files across every core, each in a fresh global, on Bun
+  1.4 and later. On Bun 1.3 it says so and runs nothing. Against PostgreSQL or MySQL it warns that
+  the workers share one database.
+
+### Fixed
+
+- **`zt test --migrate` works against a SQLite file.** It passed a path such as
+  `./database/test.sqlite` to Bun's SQL without the `sqlite:` scheme, so it never connected.
+- **`zt test --migrate` finds `@zerotal/orm` from the app**, where the app's own imports find it.
+  It looked from core's directory, which worked only where `node_modules` was hoisted.
+- **A migration that fails under `zt test --migrate` reports its own error** and fails the run. Any
+  error used to read "--migrate needs @zerotal/orm installed", and the command exited 0.
+
 ## [1.17.1] — 2026-11-21
 
 ### Added

@@ -77,6 +77,43 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.17.1
+
+A patch. One of its fixes changes what an app on SQLite can see. No app needs a code change.
+
+### On SQLite, other requests wait for an open transaction
+
+Bun keeps one connection to a SQLite database. While a request had a `DB.transaction()` open, a
+statement from any other request ran inside it: a write reported success and was lost if the
+transaction rolled back. Now an open transaction holds the connection, and other requests'
+statements wait until it commits or rolls back.
+
+A statement that waits longer than `database.sqlite.busyTimeout` (5000 ms by default) fails with
+`database is locked`. A request that used to finish while a long transaction ran elsewhere can
+now wait for it, or fail after the timeout.
+
+**What to change.** Usually nothing. If you see `database is locked`:
+
+- keep transactions short, and don't await outside work, such as an HTTP call or another
+  request's result, inside one;
+- pass `attempts` to `DB.transaction(cb, attempts)` to retry;
+- or raise `busyTimeout` in `config/database.ts`.
+
+[Transactions on SQLite](/docs/database#transactions-on-sqlite) has the details. PostgreSQL and
+MySQL are unchanged.
+
+### Also worth knowing (not breaking)
+
+- **A binary built by `bun zt compile` now serves the app.** If you deploy with Bun and an installed
+  `node_modules`, nothing changes. To deploy a binary instead, build assets first, then compile,
+  and ship the binary with `.env` and `public/`:
+  [Compile to a single binary](/docs/deployment#compile-to-a-single-binary).
+- **Admin apps scaffolded before 1.17.1** build their `users`, `products` and `settings` tables
+  with `synchronize`, which is off in production. For a new database, copy `0002` to `0004` from
+  the starter's `database/migrations/` and set `synchronize: false`. Leave a database that
+  `synchronize` already built as it is, since those migrations would fail on
+  `table users already exists`.
+
 ## 1.16 to 1.17
 
 A minor that installs less into an app. The packages it stops installing for you are the ones

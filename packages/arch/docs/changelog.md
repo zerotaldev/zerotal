@@ -27,6 +27,64 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.17.1 — 2026-11-21
+
+A patch. A binary built by `bun zt compile` now carries the app's own files and serves the app,
+SQLite keeps one request's transaction out of another's, and the admin starter builds its tables
+from migrations.
+
+### Before you upgrade
+
+Read [1.17.1](/docs/upgrade#1171) in the upgrade guide. One change can alter what an app sees:
+
+- **On SQLite, a statement from another request waits for an open transaction** (`@zerotal/orm`).
+  It used to run inside that transaction, report success, and vanish if the transaction rolled
+  back. A wait longer than `database.sqlite.busyTimeout`, 5000 ms by default, fails with
+  `database is locked`. PostgreSQL and MySQL are unchanged.
+
+### Added
+
+- **A binary built by `bun zt compile` serves the app** (`@zerotal/core`, `@zerotal/flow`). It
+  carries `app/`, `bootstrap/`, `config/`, `database/`, `routes/`, Inertia's pages, translation
+  catalogs and the HTML templates in `resources/`, and reads them from inside itself, so `serve`,
+  `migrate`, `worker` and `route:list` run from the binary. Flow pages are compiled while the binary
+  is built, with and without CSP-safe mode, and Inertia renders React pages on the server.
+  `--include` adds more directories.
+  [Compile to a single binary](/docs/deployment#compile-to-a-single-binary) lists what the binary
+  carries and what it does not: Vue pages render in the browser, and queue worker threads still
+  read jobs from disk.
+- **`database.sqlite.busyTimeout`** (`@zerotal/orm`): how long a statement waits for another
+  request's transaction before failing. See [Transactions on SQLite](/docs/database#transactions-on-sqlite).
+
+### Changed
+
+- **`serve` does not build front-end assets in a compiled binary.** It serves the `public/` shipped
+  beside it, so run `bun zt assets:build` before `bun zt compile`.
+- **`bun zt compile` runs `bun build` with the Bun that runs it**, not the first `bun` on `PATH`.
+- **The admin starter ships migrations for `users`, `products` and `settings`, and turns
+  `synchronize` off** (`create-zerotal`), as the other starters do. Its next steps list
+  `bun zt migrate` before `bun zt db:seed`. Apps already scaffolded are not touched; see the
+  upgrade guide.
+
+### Fixed
+
+- **On SQLite, one request's transaction no longer takes in another request's statements**
+  (`@zerotal/orm`). Bun keeps one SQLite connection, so while a `DB.transaction()` was open, a
+  write from any other request ran inside it and was lost if the transaction rolled back, and a
+  second request's transaction joined the first or failed with `cannot start a transaction within
+a transaction`. An open transaction now holds the connection, and transactions take turns in the
+  order they started. `DB.beginTransaction()` holds it for the request that began it.
+- **A `DB.beginTransaction()` whose `BEGIN` fails throws** (`@zerotal/orm`), instead of never
+  resolving.
+- **The admin starter migrates and seeds in production** (`create-zerotal`). Its tables came only
+  from `synchronize`, which is off under `APP_ENV=production`, so `bun zt db:seed` failed with
+  `no such table: users`.
+- **The admin starter's dashboard no longer logs an N+1 warning on every load in development**
+  (`create-zerotal`). Its widgets count products by status in one grouped query.
+- **In a compiled binary, migrations, seeders, `routes/channels.ts`, notification classes,
+  translation catalogs and `app/admin.ts` load** (`@zerotal/orm`, `@zerotal/broadcasting`,
+  `@zerotal/notifications`, `@zerotal/i18n`, `@zerotal/admin`).
+
 ## 1.17.0 — 2026-11-20
 
 A minor that installs less into an app. Passkeys' WebAuthn library, Alpine, and the packages one

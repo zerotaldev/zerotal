@@ -1,12 +1,8 @@
 // Ambient declarations for non-code assets imported from TypeScript and bundled
 // by `bun zt serve` (see the `assets` block in config/app.ts). These let
 // side-effect imports like `import "../css/app.css"` type-check.
-// Vue Single-File Components, compiled by @zerotal/inertia's Bun plugin.
-declare module "*.vue" {
-  import type { DefineComponent } from "vue";
-  const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>;
-  export default component;
-}
+// `.vue` files need no declaration here: `bun run typecheck` runs vue-tsc, which reads
+// each component's real props.
 
 declare module "*.css";
 declare module "*.scss";

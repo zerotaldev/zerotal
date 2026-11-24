@@ -2,6 +2,7 @@ import { describe, it, expect } from 'bun:test';
 import { join } from 'node:path';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { TEMPLATES } from './args.ts';
+import { KITS, MANIFEST } from './manifest.ts';
 
 /**
  * Invariants of the template sources — the first-run faults of 1.15.2, held in place.
@@ -79,5 +80,89 @@ describe('the admin template', () => {
 
     expect(tests).toMatch(/get\(\s*["']\/["']/);
     expect(tests).toMatch(/assertRedirect\(\s*["']\/admin["']\s*\)/);
+  });
+});
+
+describe.each(Object.entries(KITS))('the %s kit', (template, { extension, pages, layouts, components }) => {
+  // React is the reference; the other kits are ports of it, checked against the same list.
+  const KIT = join(TEMPLATES_DIR, template);
+  const has = (rel: string): boolean => existsSync(join(KIT, rel));
+
+  it.each([...MANIFEST.pages])('has the %s page', (page) => {
+    expect({ page, exists: has(`${pages}/${page}${extension}`) }).toEqual({ page, exists: true });
+  });
+
+  it.each([...MANIFEST.layouts])('has the %s layout', (layout) => {
+    expect({ layout, exists: has(`${layouts}/${layout}${extension}`) }).toEqual({ layout, exists: true });
+  });
+
+  it.each([...MANIFEST.components])('has the %s component', (component) => {
+    expect({ component, exists: has(`${components}/${component}${extension}`) }).toEqual({
+      component,
+      exists: true,
+    });
+  });
+
+  it('declares every route, at its path and verb, in the committed route table', async () => {
+    // `types/routes.generated.ts` is what `bun zt route:types` writes from the route files,
+    // and what `route()` reads in the browser — so a route missing from it is one the pages
+    // cannot link to.
+    const { ROUTES, METHODS } = (await import(join(KIT, 'types', 'routes.generated.ts'))) as {
+      ROUTES: Record<string, string>;
+      METHODS: Record<string, string>;
+    };
+    const missing = MANIFEST.routes.filter(
+      (r) => ROUTES[r.name] !== r.path || METHODS[r.name] !== r.method,
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it.each(MANIFEST.tests.map((t) => [t.file, t] as const))('ships %s with every named test', async (_file, test) => {
+    const path = join(KIT, 'tests', `${test.file}.ts.tmpl`);
+    expect({ file: test.file, exists: existsSync(path) }).toEqual({ file: test.file, exists: true });
+    const source = await Bun.file(path).text();
+    expect({ file: test.file, missing: test.names.filter((name) => !source.includes(`'${name}'`) && !source.includes(`"${name}"`)) }).toEqual({
+      file: test.file,
+      missing: [],
+    });
+  });
+
+  it('takes the app name from config/app.ts rather than stamping it into the UI', async () => {
+    // The name is stamped once, as the default of APP_NAME. A page, layout or mail that
+    // repeats it is a second copy that a rename misses.
+    const STAMPED_ON_PURPOSE = new Set([
+      'README.md',
+      '_env.example',
+      'package.json',
+      'config/app.ts',
+      'config/session.ts', // the cookie name, which must not change when the app is renamed
+      'resources/app.html', // the pre-render <title>; the page's own title replaces it
+      'Dockerfile', // the image tag in a usage comment
+    ]);
+    const stamped: string[] = [];
+    for await (const rel of new Bun.Glob('**/*').scan({ cwd: KIT, onlyFiles: true })) {
+      const path = rel.replace(/\\/g, '/');
+      if (STAMPED_ON_PURPOSE.has(path)) continue;
+      if ((await Bun.file(join(KIT, rel)).text()).includes('{{name}}')) stamped.push(path);
+    }
+    expect(stamped).toEqual([]);
+  });
+});
+
+describe('the vue kit', () => {
+  // A comment at the top of a component's <template> is a second root node in a production
+  // build. Vue's production runtime then passes no outside attributes through, so
+  // `<Icon class="size-4" />` rendered an unsized icon, while the dev server, which skips
+  // comments there, looked right. A component's comment goes above its <template> instead.
+  it('starts no component or layout template with a comment', async () => {
+    const KIT = join(TEMPLATES_DIR, 'vue');
+    const offenders: string[] = [];
+    for (const dir of [KITS.vue.components, KITS.vue.layouts]) {
+      for await (const rel of new Bun.Glob('**/*.vue').scan({ cwd: join(KIT, dir) })) {
+        const source = await Bun.file(join(KIT, dir, rel)).text();
+        if (/<template>\s*<!--/.test(source)) offenders.push(`${dir}/${rel}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

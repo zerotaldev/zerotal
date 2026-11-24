@@ -3,6 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Shown only until the first render, when the page's own title replaces it — and
+      that one is built from config/app.ts (see resources/js/app.tsx). Keep the two in
+      step if you rename the app.
+    -->
     <title>{{name}}</title>
 
     <link rel="icon" href="/zt.svg" type="image/svg+xml" />
@@ -19,10 +24,13 @@
     <script>
       (function () {
         try {
+          // "light" or "dark" is a choice made in the app; no key means "follow the
+          // system", which resources/js/lib/theme.ts also keeps following afterwards.
           var stored = localStorage.getItem("zerotal-theme");
-          var dark = stored
-            ? stored === "dark"
-            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var dark =
+            stored === "light" || stored === "dark"
+              ? stored === "dark"
+              : window.matchMedia("(prefers-color-scheme: dark)").matches;
           document.documentElement.classList.toggle("dark", dark);
         } catch (e) {
           /* private mode / storage disabled — fall through to light */

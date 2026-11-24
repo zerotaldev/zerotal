@@ -18,6 +18,12 @@ follows the Zerotal monorepo's unified versioning.
 - **A missing route-bound record is no longer logged as an unhandled error.** `/projects/999`
   throws the ORM's `ModelNotFoundError`, which was answered with a 404 but also logged as
   `Unhandled error` with a stack trace. It is now an expected outcome, like `NotFoundError`.
+- **A route named with `.name()` is known by its verb.** `Router.get(…).name("login")` (and
+  `.name()` after `Router.post`, `Router.flow`, `Router.view` and the rest) recorded the name for
+  `route()` but left it off the route's definition, so `routeMethods()` never saw it and
+  `bun zt route:types` wrote the name into `ROUTES` with no entry in `METHODS`. Only routes named
+  by a file route's `meta`, or by its file path, had a verb. `.name()` now names the definition
+  too.
 
 ## [1.17.1] — 2026-11-21
 

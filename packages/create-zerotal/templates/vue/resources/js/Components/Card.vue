@@ -1,23 +1,11 @@
 <script setup lang="ts">
-/** The app's surface primitive — matches the React template's Card. */
-import { computed } from "vue";
-import { cn } from "../lib/cn";
-
-const props = withDefaults(
-  defineProps<{ class?: string; interactive?: boolean }>(),
-  { interactive: false },
-);
-
-const classes = computed(() =>
-  cn(
-    "surface rounded-xl",
-    props.interactive &&
-      "transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-primary/40",
-    props.class,
-  ),
-);
+/**
+ * The app's surface primitive — a hairline border with a faint inner highlight (see the
+ * `surface` utility in resources/css/app.css) instead of a drop shadow. Compose it with
+ * CardHeader, CardBody and CardFooter for a titled panel.
+ */
 </script>
 
 <template>
-  <div :class="classes"><slot /></div>
+  <div class="surface rounded-xl"><slot /></div>
 </template>

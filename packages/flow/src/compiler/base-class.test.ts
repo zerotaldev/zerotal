@@ -19,7 +19,10 @@ export class ${name} extends ${base} {
 }
 `;
 
-function compile(file: string, source: string): { out: string | null; blocker?: string } {
+function compile(
+  file: string,
+  source: string,
+): { out: string | null; blocker: string | undefined } {
   const report: BlockerReport = {};
   const result = transformFlowFile(source, join(root, file), { report });
   return { out: result?.renderBody ?? null, blocker: report.blocker?.reason };

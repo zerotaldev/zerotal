@@ -1,13 +1,11 @@
 import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
-import { Auth, GuestMiddleware } from "zerotal/auth";
+import { Auth } from "zerotal/auth";
 import { validate } from "zerotal/validator";
 
-// Signed-in visitors are sent away from the sign-in form rather than shown it.
-export const middleware = [GuestMiddleware];
 
 export const GET = async () => {
-  return Inertia.render("login", { title: "Sign in" });
+  return Inertia.render("auth/login", { title: "Sign in" });
 };
 
 export async function POST(http: HttpContext): Promise<void> {
@@ -28,5 +26,5 @@ export async function POST(http: HttpContext): Promise<void> {
   }
 
   http.flash("success", "Welcome back.");
-  http.redirect("/profile", 303);
+  http.redirect("/dashboard", 303);
 }

@@ -1,16 +1,14 @@
 import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
-import { GuestMiddleware } from "zerotal/auth";
 import { validate } from "zerotal/validator";
 import { passwordReset } from "@app/auth/passwords";
 
-export const middleware = [GuestMiddleware];
 
 // The token and address arrive on the query string of the emailed link and are
 // handed to the page, which posts them back with the new password.
 export const GET = async (http: HttpContext) => {
   const url = new URL(http.request.url);
-  return Inertia.render("reset-password", {
+  return Inertia.render("auth/reset-password", {
     title: "Choose a new password",
     token: url.searchParams.get("token") ?? "",
     email: url.searchParams.get("email") ?? "",

@@ -11,6 +11,7 @@ export const ROUTES = {
   about: "/about",
   contact: "/contact",
   "contact.store": "/contact",
+  dashboard: "/dashboard",
   "forgot-password": "/forgot-password",
   "forgot-password.store": "/forgot-password",
   home: "/",
@@ -24,12 +25,14 @@ export const ROUTES = {
   "register.store": "/register",
   "reset-password": "/reset-password",
   "reset-password.store": "/reset-password",
+  settings: "/settings",
 } as const;
 
 export const METHODS = {
   about: "GET",
   contact: "GET",
   "contact.store": "POST",
+  dashboard: "GET",
   "forgot-password": "GET",
   "forgot-password.store": "POST",
   home: "GET",
@@ -43,6 +46,7 @@ export const METHODS = {
   "register.store": "POST",
   "reset-password": "GET",
   "reset-password.store": "POST",
+  settings: "GET",
 } as const;
 
 /** The generated route table, as a type. */

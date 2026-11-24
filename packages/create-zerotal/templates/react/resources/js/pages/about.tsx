@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Head } from "@inertiajs/react";
-import AppLayout from "../Layouts/AppLayout";
+import PublicLayout from "../Layouts/PublicLayout";
 import { ButtonLink } from "../Components/Button";
 import { Card } from "../Components/Card";
 import { Code } from "../Components/Code";
@@ -40,7 +40,7 @@ const LIFECYCLE = [
     ),
   },
   {
-    where: "Layouts/AppLayout.tsx",
+    where: "Layouts/PublicLayout.tsx",
     what: (
       <>
         Wraps the page. Assigned via <Code>Page.layout</Code>, it stays mounted across visits — the
@@ -51,7 +51,7 @@ const LIFECYCLE = [
 ];
 
 const TREE = [
-  { path: "app/routes/", note: "One file per URL. Exports GET, POST, PUT, DELETE." },
+  { path: "app/routes/", note: "One file per URL. (guest)/ and (auth)/ group them by who may visit." },
   { path: "bootstrap/", note: "Application creation and the provider list." },
   { path: "config/", note: "Typed config objects, read with config('app.name')." },
   { path: "resources/js/pages/", note: "Inertia page components, one per screen." },
@@ -140,7 +140,7 @@ function About({ title }: Props) {
 }
 
 (About as { layout?: (page: ReactNode) => ReactNode }).layout = (page) => (
-  <AppLayout>{page}</AppLayout>
+  <PublicLayout>{page}</PublicLayout>
 );
 
 export default About;

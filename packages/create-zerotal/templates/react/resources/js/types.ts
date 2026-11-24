@@ -1,4 +1,14 @@
 /**
+ * The signed-in user as a page sees it: the model's own `toJSON()`, so every column in
+ * `static hidden` (the password hash, the two-factor secret) is already gone.
+ */
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+/**
  * Props `@zerotal/inertia` merges into every page, so no controller has to pass
  * them. Type `usePage<SharedProps>()` with this to read them safely.
  *
@@ -8,7 +18,7 @@ export interface SharedProps {
   /** Shared by app/providers/AppServiceProvider.ts. `name` comes from config/app.ts. */
   app: { name: string };
   /** The signed-in user, or null. Populated once an auth provider is registered. */
-  auth: { user: { id: number; name: string; email: string } | null };
+  auth: { user: AuthUser | null };
   /** One-request-only messages set with `http.flash("success" | "error" | "warning" | "info", …)`. */
   flash: { success: string | null; error: string | null; warning: string | null; info: string | null };
   /** Field errors from a failed `validate()` call, keyed by field name. */
@@ -30,6 +40,6 @@ export interface SharedProps {
 declare module "@zerotal/inertia" {
   interface SharedProps {
     app: { name: string };
-    auth: { user: { id: number; name: string; email: string } | null };
+    auth: { user: AuthUser | null };
   }
 }

@@ -1,9 +1,8 @@
 import type { HttpContext } from "zerotal";
-import { Auth, AuthMiddleware, Hash } from "zerotal/auth";
+import { Auth, Hash } from "zerotal/auth";
 import { validate } from "zerotal/validator";
 import { User } from "@app/models/User";
 
-export const middleware = [AuthMiddleware];
 
 // POST /profile/password
 export async function POST(http: HttpContext): Promise<void> {

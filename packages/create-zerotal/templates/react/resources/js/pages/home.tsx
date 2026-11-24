@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Head } from "@inertiajs/react";
-import AppLayout from "../Layouts/AppLayout";
+import PublicLayout from "../Layouts/PublicLayout";
 import { ButtonLink, buttonClass } from "../Components/Button";
 import { Card, CardIcon } from "../Components/Card";
 import { Code, Command } from "../Components/Code";
@@ -193,7 +193,7 @@ function Home({ title, message }: Props) {
 
 // Inertia persistent layout — preserved across client-side navigations.
 (Home as { layout?: (page: ReactNode) => ReactNode }).layout = (page) => (
-  <AppLayout>{page}</AppLayout>
+  <PublicLayout>{page}</PublicLayout>
 );
 
 export default Home;

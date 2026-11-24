@@ -1,13 +1,11 @@
 import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
-import { GuestMiddleware } from "zerotal/auth";
 import { validate } from "zerotal/validator";
 import { passwordReset } from "@app/auth/passwords";
 
-export const middleware = [GuestMiddleware];
 
 export const GET = async () => {
-  return Inertia.render("forgot-password", { title: "Reset your password" });
+  return Inertia.render("auth/forgot-password", { title: "Reset your password" });
 };
 
 export async function POST(http: HttpContext): Promise<void> {

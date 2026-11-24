@@ -96,9 +96,9 @@ describe('contact form', () => {
  */
 describe('auth', () => {
   test('serves the guest screens', async () => {
-    (await app.get('/login')).assertInertia('login');
-    (await app.get('/register')).assertInertia('register');
-    (await app.get('/forgot-password')).assertInertia('forgot-password');
+    (await app.get('/login')).assertInertia('auth/login');
+    (await app.get('/register')).assertInertia('auth/register');
+    (await app.get('/forgot-password')).assertInertia('auth/forgot-password');
   });
 
   test('keeps the profile behind a sign-in', async () => {
@@ -129,9 +129,9 @@ describe('auth', () => {
       password_confirmation: 'correct-horse-battery',
     });
 
-    // Landing on /profile is the proof: it is a guarded route, so reaching it
+    // Landing on /dashboard is the proof: it is a guarded route, so reaching it
     // means the account was created *and* the session was established.
-    res.assertRedirect('/profile');
+    res.assertRedirect('/dashboard');
   });
 
 });

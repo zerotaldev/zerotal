@@ -39,20 +39,43 @@ export interface KitManifest {
 
 export const MANIFEST: KitManifest = {
   pages: [
+    // Public
     'home',
     'about',
     'contact',
     'error',
-    'login',
-    'register',
-    'forgot-password',
-    'reset-password',
+    // Signing in
+    'auth/login',
+    'auth/register',
+    'auth/forgot-password',
+    'auth/reset-password',
+    // Signed in
+    'dashboard',
     'profile',
   ],
 
-  layouts: ['AppLayout'],
+  layouts: ['AppLayout', 'AuthLayout', 'PublicLayout'],
 
-  components: ['Button', 'Card', 'Code', 'Field', 'FlashToasts', 'Icons', 'ThemeToggle'],
+  components: [
+    'Alert',
+    'AppLogo',
+    'Avatar',
+    'Badge',
+    'Button',
+    'Card',
+    'Checkbox',
+    'Code',
+    'Dropdown',
+    'EmptyState',
+    'Field',
+    'Icons',
+    'Input',
+    'Modal',
+    'PageHeader',
+    'Select',
+    'ThemeToggle',
+    'Toasts',
+  ],
 
   routes: [
     { name: 'home', method: 'GET', path: '/' },
@@ -68,6 +91,8 @@ export const MANIFEST: KitManifest = {
     { name: 'forgot-password.store', method: 'POST', path: '/forgot-password' },
     { name: 'reset-password', method: 'GET', path: '/reset-password' },
     { name: 'reset-password.store', method: 'POST', path: '/reset-password' },
+    { name: 'dashboard', method: 'GET', path: '/dashboard' },
+    { name: 'settings', method: 'GET', path: '/settings' },
     { name: 'profile', method: 'GET', path: '/profile' },
     { name: 'profile.store', method: 'POST', path: '/profile' },
     { name: 'profile.password.store', method: 'POST', path: '/profile/password' },
@@ -82,6 +107,6 @@ export const MANIFEST: KitManifest = {
         'returns 404 for an unregistered path',
       ],
     },
-    { file: 'pages.test', names: ['pages render'] },
+    { file: 'pages.test', names: ['pages render', 'pages render for a signed-in user'] },
   ],
 };

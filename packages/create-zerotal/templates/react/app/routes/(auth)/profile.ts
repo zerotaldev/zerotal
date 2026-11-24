@@ -1,11 +1,9 @@
 import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
-import { Auth, AuthMiddleware } from "zerotal/auth";
+import { Auth } from "zerotal/auth";
 import { validate } from "zerotal/validator";
 import { User } from "@app/models/User";
 
-// Only for signed-in visitors; everyone else is redirected to sign in.
-export const middleware = [AuthMiddleware];
 
 export const GET = async () => {
   return Inertia.render("profile", { title: "Your profile" });

@@ -1,13 +1,12 @@
 import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
-import { Auth, GuestMiddleware, Hash } from "zerotal/auth";
+import { Auth, Hash } from "zerotal/auth";
 import { validate } from "zerotal/validator";
 import { User } from "@app/models/User";
 
-export const middleware = [GuestMiddleware];
 
 export const GET = async () => {
-  return Inertia.render("register", { title: "Create an account" });
+  return Inertia.render("auth/register", { title: "Create an account" });
 };
 
 export async function POST(http: HttpContext): Promise<void> {
@@ -44,5 +43,5 @@ export async function POST(http: HttpContext): Promise<void> {
   }
 
   http.flash("success", "Welcome aboard.");
-  http.redirect("/profile", 303);
+  http.redirect("/dashboard", 303);
 }

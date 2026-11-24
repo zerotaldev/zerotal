@@ -21,12 +21,14 @@ import { ROUTES } from '../types/routes.generated';
 
 import About from '../resources/js/pages/about';
 import Contact from '../resources/js/pages/contact';
-import ForgotPassword from '../resources/js/pages/forgot-password';
+import Dashboard from '../resources/js/pages/dashboard';
+import ErrorPage from '../resources/js/pages/error';
+import ForgotPassword from '../resources/js/pages/auth/forgot-password';
 import Home from '../resources/js/pages/home';
-import Login from '../resources/js/pages/login';
+import Login from '../resources/js/pages/auth/login';
 import Profile from '../resources/js/pages/profile';
-import Register from '../resources/js/pages/register';
-import ResetPassword from '../resources/js/pages/reset-password';
+import Register from '../resources/js/pages/auth/register';
+import ResetPassword from '../resources/js/pages/auth/reset-password';
 
 // The same line `resources/js/app.tsx` runs in the browser. `defineRoutes` installs
 // `route()` as a global, and the layout calls it — so without this every page throws
@@ -51,11 +53,11 @@ const PAGES: [string, unknown, Record<string, unknown>][] = [
   ['home', Home, { title: 'Home', message: 'Welcome' }],
   ['about', About, { title: 'About' }],
   ['contact', Contact, { title: 'Contact' }],
-  ['login', Login, { title: 'Sign in' }],
-  ['register', Register, { title: 'Create an account' }],
-  ['forgot-password', ForgotPassword, { title: 'Forgot password' }],
-  ['reset-password', ResetPassword, { title: 'Reset password', token: 'test-token' }],
-  ['profile', Profile, { title: 'Profile' }],
+  ['error', ErrorPage, { status: 404 }],
+  ['auth/login', Login, { title: 'Sign in' }],
+  ['auth/register', Register, { title: 'Create an account' }],
+  ['auth/forgot-password', ForgotPassword, { title: 'Forgot password' }],
+  ['auth/reset-password', ResetPassword, { title: 'Reset password', token: 'test-token', email: 'ada@example.com' }],
 ];
 
 describe('pages render', () => {
@@ -67,17 +69,21 @@ describe('pages render', () => {
 });
 
 /**
- * A signed-in render as well, because a page that only ever renders as a guest has
- * had half of it tested. `profile` reads `auth.user` and is the one that shows it.
+ * The signed-in pages, rendered with a user — they read `auth.user`, and the sidebar
+ * shows it. A page that only ever renders as a guest has had half of it tested.
  */
-describe('pages render for a signed-in user', () => {
-  const user = { id: 1, name: 'Ada', email: 'ada@example.com' };
+const USER = { id: 1, name: 'Ada Lovelace', email: 'ada@example.com' };
 
-  test('profile builds with a user', async () => {
-    await renderPage(
-      Profile,
-      { title: 'Profile' },
-      { shared: { ...SHARED, auth: { user } }, url: '/profile' },
-    );
-  });
+const SIGNED_IN: [string, unknown, Record<string, unknown>][] = [
+  ['dashboard', Dashboard, { title: 'Dashboard', greeting: 'Good morning, Ada' }],
+  ['profile', Profile, { title: 'Profile' }],
+  ['error', ErrorPage, { status: 403 }],
+];
+
+describe('pages render for a signed-in user', () => {
+  for (const [name, Page, props] of SIGNED_IN) {
+    test(`${name} builds with a user`, async () => {
+      await renderPage(Page, props, { shared: { ...SHARED, auth: { user: USER } }, url: `/${name}` });
+    });
+  }
 });

@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from "react";
 import { Head, useForm, usePage } from "@inertiajs/react";
-import AppLayout from "../Layouts/AppLayout";
+import PublicLayout from "../Layouts/PublicLayout";
 import { Button } from "../Components/Button";
 import { Card } from "../Components/Card";
 import { Code } from "../Components/Code";
@@ -146,7 +146,7 @@ function Contact({ title }: Props) {
 }
 
 (Contact as { layout?: (page: ReactNode) => ReactNode }).layout = (page) => (
-  <AppLayout>{page}</AppLayout>
+  <PublicLayout>{page}</PublicLayout>
 );
 
 export default Contact;

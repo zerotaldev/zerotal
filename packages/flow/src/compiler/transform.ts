@@ -1315,15 +1315,8 @@ function _compileRenderMethod(
 
     // ── Whitespace-only text node (between tags) ─────────────────────────
     if (ts.isJsxText(node)) {
-      if (node.containsOnlyTriviaWhiteSpaces) return;
-      // Normalise: collapse leading/trailing whitespace on lines, newlines → space
-      const raw = node.text;
-      const lines = raw.split("\n");
-      const trimmed = lines
-        .map((l) => l.trim())
-        .filter(Boolean)
-        .join(" ");
-      if (trimmed) emitStatic(_escHtml(trimmed));
+      const text = _jsxText(node.text);
+      if (text) emitStatic(_escHtml(text));
       return;
     }
 
@@ -2367,6 +2360,26 @@ function _compileRenderMethod(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * JSX text as JSX itself reads it, so a compiled page has the spaces the runtime one has.
+ *
+ * Whitespace is dropped only where it touches a line break: each line loses its leading
+ * whitespace unless it is the first, its trailing whitespace unless it is the last, empty lines
+ * go, and the lines left are joined with one space. So `<b>12</b> {noun}` keeps its space and
+ * `Edit <code>x</code> and more` keeps both of its, while the indentation between tags goes.
+ */
+function _jsxText(raw: string): string {
+  const lines = raw.split(/\r\n|\n|\r/);
+  let out = "";
+  lines.forEach((line, i) => {
+    let text = line.replace(/\t/g, " ");
+    if (i > 0) text = text.replace(/^ +/, "");
+    if (i < lines.length - 1) text = text.replace(/ +$/, "");
+    if (text) out += out ? ` ${text}` : text;
+  });
+  return out;
+}
 
 function _isThisProp(node: ts.Node): node is ts.PropertyAccessExpression {
   return ts.isPropertyAccessExpression(node) && node.expression.kind === ts.SyntaxKind.ThisKeyword;

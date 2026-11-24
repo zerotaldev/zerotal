@@ -33,6 +33,10 @@ change.
 - **`dangerouslySetInnerHTML={{ __html: … }}` compiles**, writing the markup in place of the
   element's children as the runtime does. An icon drawn from the page's own constants, or an SVG
   made on the server, no longer sends the page to the runtime fallback.
+- **A compiled page keeps the spaces in its text.** The compiler trimmed every run of JSX text
+  and dropped a lone space between two children, so `<b>{count}</b> projects` and
+  `Edit <code>x</code> and reload` lost their spaces once compiled, though the runtime kept them.
+  It now drops whitespace only where JSX does: next to a line break.
 - **A `.map()` callback with a block body no longer stops a page compiling.** The compiler supports
   `{rows.map((row) => { const x = …; return <li>…</li>; })}`, but counted the callback's own
   `return` as a second one in `render()` and fell back.

@@ -161,3 +161,22 @@ export class DemoPage extends Component {
     expect(report.blocker?.reason).toContain("2 return statements");
   });
 });
+
+describe("Flow compiler — JSX text", () => {
+  it("keeps the spaces JSX keeps: around an expression or element on the same line", async () => {
+    expect(
+      await render(`<p><b>12</b> {noun} and <i>y</i> <i>z</i></p>`, {
+        lead: `const noun = "projects";`,
+      }),
+    ).toBe("<p><b>12</b> projects and <i>y</i> <i>z</i></p>");
+  });
+
+  it("drops what JSX drops: the indentation and line breaks between tags", async () => {
+    expect(
+      await render(`<p>
+        Edit <code>x</code> and the
+        page reloads.
+      </p>`),
+    ).toBe("<p>Edit <code>x</code> and the page reloads.</p>");
+  });
+});

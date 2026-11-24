@@ -3,6 +3,7 @@ import type { HtmlNode } from "@zerotal/flow";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Code } from "../components/Code";
+import { TextAreaField, TextField } from "../components/Field";
 import { Icon } from "../components/Icon";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { Page, titled } from "../lib/page";
@@ -37,11 +38,11 @@ const LIFECYCLE: { where: string; what: HtmlNode }[] = [
     ),
   },
   {
-    where: "app/routes/contact.ts",
+    where: "app/routes/about.ts",
     what: (
       <>
-        Where a form goes. The file's path is the URL, and its exported <Code>POST</Code> runs on
-        the server, validates, and redirects back to a page.
+        Where this page's form goes. The file's path is the URL, and its exported <Code>POST</Code>{" "}
+        runs on the server, validates, and redirects back to the page.
       </>
     ),
   },
@@ -62,7 +63,17 @@ const TREE = [
   { path: "tests/", note: "Runs with the app booted via bun zt test." },
 ];
 
-/** GET /about */
+/**
+ * GET /about — the tour, and a contact form at the end.
+ *
+ * The form is worth reading as a pattern rather than as content: the browser posts, the
+ * server validates, and a failure comes back as a redirect carrying the errors and what
+ * was typed, which `this.error()` and `this.old()` read back. There is no client-side
+ * validation to keep in step with the server's rules.
+ *
+ * It posts to app/routes/about.ts. Its action ends in `#contact`, and the browser keeps
+ * that fragment through the redirect, so the page comes back scrolled to the form.
+ */
 export class AboutPage extends Page {
   static override title = titled("How this app fits together");
 
@@ -122,16 +133,96 @@ export class AboutPage extends Page {
           </Card>
         </section>
 
-        <section class="mt-14 rounded-xl border border-border bg-accent/40 p-6 sm:p-8">
-          <h2 class="font-semibold">See a form do all of it</h2>
-          <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
-            The contact page posts to a route, validates on the server, and comes back with either a
-            flash message or the errors and your original input — no client-side state to reconcile.
+        <section id="contact" class="mt-14 scroll-mt-24">
+          <p class="font-mono text-xs tracking-[0.2em] text-muted-foreground uppercase">
+            Say hello
           </p>
-          <Button href={route("contact")} class="mt-5">
-            Open the contact form
-            <Icon name="arrow-right" class="size-4" />
-          </Button>
+          <h2 class="mt-3 text-2xl font-bold tracking-tight">Get in touch</h2>
+          <p class="mt-3 leading-relaxed text-pretty text-muted-foreground">
+            This form is the pattern every other one follows. Submit it empty, or with a malformed
+            address, and watch the server send the errors and your input straight back.
+          </p>
+
+          <div class="mt-6 grid gap-6 lg:grid-cols-5">
+            <Card class="p-6 sm:p-8 lg:col-span-3">
+              <form
+                method="post"
+                action={`${route("about.store")}#contact`}
+                class="space-y-5"
+                novalidate
+              >
+                <TextField
+                  label="Name"
+                  name="name"
+                  value={this.old("name")}
+                  error={this.error("name")}
+                  autocomplete="name"
+                  placeholder="Ada Lovelace"
+                />
+
+                <TextField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={this.old("email")}
+                  error={this.error("email")}
+                  autocomplete="email"
+                  placeholder="ada@example.com"
+                />
+
+                <TextAreaField
+                  label="Message"
+                  name="message"
+                  value={this.old("message")}
+                  error={this.error("message")}
+                  hint="At least 10 characters."
+                  placeholder="What's on your mind?"
+                />
+
+                <div class="flex items-center gap-3 pt-1">
+                  <Button type="submit" data-loading-text="Sending…">
+                    Send message
+                  </Button>
+                  <p class="text-sm text-muted-foreground">Nothing is stored — see the route.</p>
+                </div>
+              </form>
+            </Card>
+
+            <div class="space-y-6 lg:col-span-2">
+              <Card class="p-6">
+                <h2 class="font-semibold text-card-foreground">What happens on submit</h2>
+                <ol class="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+                  <li>
+                    <span class="font-medium text-foreground">1.</span> The POST reaches{" "}
+                    <Code>app/routes/about.ts</Code>.
+                  </li>
+                  <li>
+                    <span class="font-medium text-foreground">2.</span> <Code>validate()</Code>{" "}
+                    checks the body and returns typed data.
+                  </li>
+                  <li>
+                    <span class="font-medium text-foreground">3.</span> If it fails, errors and
+                    input are flashed and you are redirected back.
+                  </li>
+                  <li>
+                    <span class="font-medium text-foreground">4.</span> If it passes, a success
+                    flash becomes the toast in the corner.
+                  </li>
+                </ol>
+              </Card>
+
+              <Card class="p-6">
+                <h2 class="font-semibold text-card-foreground">Prefer email?</h2>
+                <a
+                  href="mailto:hello@example.com"
+                  class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary transition-opacity hover:opacity-80"
+                >
+                  <Icon name="mail" class="size-4" />
+                  hello@example.com
+                </a>
+              </Card>
+            </div>
+          </div>
         </section>
       </div>
     );

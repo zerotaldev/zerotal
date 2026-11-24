@@ -22,7 +22,6 @@ import { renderPage } from "./render";
 import { bootApp } from "./support";
 
 import { AboutPage } from "../app/flow/pages/about";
-import { ContactPage } from "../app/flow/pages/contact";
 import { ErrorPage } from "../app/flow/pages/error";
 import { HomePage } from "../app/flow/pages/home";
 import { ConfirmPasswordPage } from "../app/flow/pages/auth/confirm-password";
@@ -60,7 +59,6 @@ type PageCase = [name: string, page: any, state: Record<string, unknown>];
 const PUBLIC: PageCase[] = [
   ["home", HomePage, {}],
   ["about", AboutPage, {}],
-  ["contact", ContactPage, {}],
   ["error", ErrorPage, { status: 404 }],
   ["error", ErrorPage, { status: 419 }],
   ["auth/login", LoginPage, {}],

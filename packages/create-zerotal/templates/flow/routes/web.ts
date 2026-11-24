@@ -7,7 +7,6 @@ import { middleware as passkeySettings } from "../app/routes/(auth)/settings/pas
 import { middleware as twoFactorSettings } from "../app/routes/(auth)/settings/two-factor/_middleware";
 
 import { AboutPage } from "../app/flow/pages/about";
-import { ContactPage } from "../app/flow/pages/contact";
 import { HomePage } from "../app/flow/pages/home";
 import { ConfirmPasswordPage } from "../app/flow/pages/auth/confirm-password";
 import { ForgotPasswordPage } from "../app/flow/pages/auth/forgot-password";
@@ -47,7 +46,6 @@ import { TwoFactorPage } from "../app/flow/pages/settings/two-factor";
 // Public.
 Router.flow("/", HomePage).name("home");
 Router.flow("/about", AboutPage).name("about");
-Router.flow("/contact", ContactPage).name("contact");
 
 // Signing in — for visitors who are not signed in yet.
 Router.group({ middleware: guest }, () => {

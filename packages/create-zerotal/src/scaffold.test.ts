@@ -515,7 +515,6 @@ describe('scaffold — flow template', () => {
     expect(await Bun.file(join(TMP, 'app/flow/layouts/AppLayout.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'app/flow/pages/home.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'app/flow/pages/about.tsx')).exists()).toBe(true);
-    expect(await Bun.file(join(TMP, 'app/flow/pages/contact.tsx')).exists()).toBe(true);
     // `resources/js/app.js` by that name: it is the entry Flow's dev build looks for.
     expect(await Bun.file(join(TMP, 'resources/js/app.js')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'public/zt.svg')).exists()).toBe(true);

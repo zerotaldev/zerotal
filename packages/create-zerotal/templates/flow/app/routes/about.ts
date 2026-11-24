@@ -1,11 +1,12 @@
 import type { HttpContext } from "zerotal";
 import { validate } from "zerotal/validator";
 
-// POST /contact — validate, then redirect. The redirect is the important part:
-// answering a POST with a redirect is what keeps the browser's back button and a
+// POST /about — the contact form at the foot of the page (the page itself is
+// app/flow/pages/about.tsx). Validate, then redirect. The redirect is the important
+// part: answering a POST with a redirect is what keeps the browser's back button and a
 // page refresh from re-submitting the form.
 export async function POST(http: HttpContext): Promise<void> {
-  // On failure this throws — the framework turns it into a 303 back to /contact
+  // On failure this throws — the framework turns it into a 303 back to /about
   // with the messages in `errors` and the submitted values in `old`. Nothing
   // below this line runs unless the input is valid, and `name` is a string.
   const { name } = await validate(http, (r) => ({
@@ -17,5 +18,5 @@ export async function POST(http: HttpContext): Promise<void> {
   // Nothing is stored — this is where you would queue a job, send a notification
   // or write a row. Delete the flash and put your own work here.
   http.flash("success", `Thanks ${name}, your message came through.`);
-  http.redirect("/contact", 303);
+  http.redirect("/about", 303);
 }

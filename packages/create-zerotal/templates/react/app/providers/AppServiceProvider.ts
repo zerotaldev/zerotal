@@ -1,5 +1,6 @@
 import { ServiceProvider, config } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
+import { passkeysEnabled } from "@app/auth/passkeys";
 
 /**
  * The app's own provider. Anything under app/providers/ is registered on its own, after
@@ -14,6 +15,8 @@ export class AppServiceProvider extends ServiceProvider {
       // Read per request rather than once, so a test or a config reload sees the
       // current value.
       app: () => ({ name: config("app.name") }),
+      // Optional features, so the UI shows only what is switched on.
+      features: () => ({ passkeys: passkeysEnabled() }),
     });
   }
 }

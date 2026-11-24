@@ -6,6 +6,10 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string;
+  /** When the address was confirmed; null until the link in the email is clicked. */
+  emailVerifiedAt: string | null;
+  /** When two-factor was turned on; null while it is off. */
+  twoFactorConfirmedAt: string | null;
 }
 
 /**
@@ -17,6 +21,8 @@ export interface AuthUser {
 export interface SharedProps {
   /** Shared by app/providers/AppServiceProvider.ts. `name` comes from config/app.ts. */
   app: { name: string };
+  /** Optional features, and whether they are switched on (also from AppServiceProvider). */
+  features: { passkeys: boolean };
   /** The signed-in user, or null. Populated once an auth provider is registered. */
   auth: { user: AuthUser | null };
   /** One-request-only messages set with `http.flash("success" | "error" | "warning" | "info", …)`. */
@@ -40,6 +46,7 @@ export interface SharedProps {
 declare module "@zerotal/inertia" {
   interface SharedProps {
     app: { name: string };
+    features: { passkeys: boolean };
     auth: { user: AuthUser | null };
   }
 }

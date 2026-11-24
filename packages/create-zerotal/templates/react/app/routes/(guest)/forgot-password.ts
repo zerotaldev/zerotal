@@ -3,11 +3,12 @@ import { Inertia } from "@zerotal/inertia";
 import { validate } from "zerotal/validator";
 import { passwordReset } from "@app/auth/passwords";
 
-
+// GET /forgot-password
 export const GET = async () => {
-  return Inertia.render("auth/forgot-password", { title: "Reset your password" });
+  return Inertia.render("auth/forgot-password", { title: "Forgot your password?" });
 };
 
+// POST /forgot-password
 export async function POST(http: HttpContext): Promise<void> {
   const { email } = await validate(http, (r) => ({
     email: r.string().trim().email(),

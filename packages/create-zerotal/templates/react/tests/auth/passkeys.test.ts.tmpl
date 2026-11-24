@@ -1,0 +1,78 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { PASSWORD_CONFIRMED_AT_KEY } from 'zerotal/auth';
+import { refreshDatabase, type TestApp } from 'zerotal/testing';
+import { UserFactory } from '../../database/factories/UserFactory';
+import { Browser, bootApp } from '../support';
+
+/**
+ * Passkeys are off until PASSKEY_RP_ID is set. A full ceremony needs a real
+ * authenticator, so these check the server's half: the switch, the challenges it
+ * issues (which also proves the WebAuthn library loads), and that an assertion for a
+ * passkey nobody registered is refused.
+ */
+let app: TestApp;
+const original = Bun.env.PASSKEY_RP_ID;
+
+beforeAll(async () => {
+  app = await bootApp();
+});
+afterAll(() => app.close());
+beforeEach(() => app.actingAsGuest());
+afterEach(() => {
+  if (original === undefined) delete Bun.env.PASSKEY_RP_ID;
+  else Bun.env.PASSKEY_RP_ID = original;
+});
+
+describe('passkeys', () => {
+  refreshDatabase();
+
+  test('hides passkeys while they are switched off', async () => {
+    delete Bun.env.PASSKEY_RP_ID;
+    const user = await UserFactory.create();
+
+    (await app.post('/passkeys/login/options', {})).assertNotFound();
+    (await app.actingAs(user).withSession({ [PASSWORD_CONFIRMED_AT_KEY]: Date.now() }).get('/settings/passkeys')).assertNotFound();
+    (await app.actingAsGuest().get('/login')).assertInertiaProp('passkeys', false);
+  });
+
+  test('issues a sign-in challenge when switched on', async () => {
+    Bun.env.PASSKEY_RP_ID = 'localhost';
+    const browser = new Browser(app);
+
+    const res = await browser.json('/passkeys/login/options');
+
+    res.assertOk();
+    expect(res.json()).toMatchObject({ rpId: 'localhost', userVerification: 'required' });
+    expect(typeof (res.json() as { challenge: unknown }).challenge).toBe('string');
+  });
+
+  test('issues a registration challenge to a signed-in user', async () => {
+    Bun.env.PASSKEY_RP_ID = 'localhost';
+    const user = await UserFactory.create();
+
+    const res = await app
+      .actingAs(user)
+      .withSession({ [PASSWORD_CONFIRMED_AT_KEY]: Date.now() })
+      .post('/settings/passkeys/options', {}, { Accept: 'application/json' });
+
+    res.assertOk();
+    expect(res.json()).toMatchObject({ rp: { id: 'localhost' }, user: { name: user.email } });
+  });
+
+  test('rejects an assertion for a passkey nobody registered', async () => {
+    Bun.env.PASSKEY_RP_ID = 'localhost';
+    const browser = new Browser(app);
+    await browser.json('/passkeys/login/options');
+
+    const res = await browser.json('/passkeys/login', {
+      id: 'unknown',
+      rawId: 'unknown',
+      type: 'public-key',
+      clientExtensionResults: {},
+      response: { clientDataJSON: '', authenticatorData: '', signature: '' },
+    });
+
+    expect(res.status).toBe(422);
+    (await browser.get('/dashboard')).assertRedirect('/login');
+  });
+});

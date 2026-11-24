@@ -86,7 +86,7 @@ describe('starter parity', () => {
     api: [...WITH_DATABASE, 'NotificationProvider', 'QueueProvider', 'DevtoolsProvider'],
     admin: [...WITH_DATABASE, 'CacheProvider', 'FlowProvider', 'AdminProvider', 'DevtoolsProvider'],
     flow: [...WITH_DATABASE, 'FlowProvider', 'DevtoolsProvider'],
-    react: [...WITH_DATABASE, 'InertiaProvider', 'DevtoolsProvider'],
+    react: [...WITH_DATABASE, 'NotificationProvider', 'SocialProvider', 'InertiaProvider', 'DevtoolsProvider'],
     vue: [...WITH_DATABASE, 'InertiaProvider', 'DevtoolsProvider'],
   };
 
@@ -520,7 +520,9 @@ describe('scaffold — react template', () => {
     expect(await Bun.file(join(TMP, 'resources/js/pages/home.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'resources/js/pages/about.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'resources/js/pages/contact.tsx')).exists()).toBe(true);
+    expect(await Bun.file(join(TMP, 'resources/js/pages/dashboard.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'app/routes/index.ts')).exists()).toBe(true);
+    expect(await Bun.file(join(TMP, 'app/routes/(auth)/(verified)/dashboard.ts')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, '.env.example')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, '.gitignore')).exists()).toBe(true);
   });

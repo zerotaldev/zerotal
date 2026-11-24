@@ -3,12 +3,15 @@ import { Head, Link, useForm } from "@inertiajs/react";
 import AuthLayout from "../../Layouts/AuthLayout";
 import { Button } from "../../Components/Button";
 import { TextField } from "../../Components/Field";
+import { Divider, SocialButtons } from "../../Components/SocialButtons";
 
 interface Props {
   title: string;
+  /** Social providers switched on in config/social.ts. */
+  providers: string[];
 }
 
-function Register({ title }: Props) {
+function Register({ title, providers }: Props) {
   const form = useForm({ name: "", email: "", password: "", password_confirmation: "" });
 
   function submit(event: FormEvent) {
@@ -21,6 +24,15 @@ function Register({ title }: Props) {
   return (
     <>
       <Head title={title} />
+
+      {providers.length > 0 ? (
+        <div className="mb-6 space-y-3">
+          <SocialButtons providers={providers} />
+          <div className="pt-3">
+            <Divider label="or with email" />
+          </div>
+        </div>
+      ) : null}
 
       <form onSubmit={submit} className="space-y-5">
         <TextField

@@ -1,0 +1,54 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { refreshDatabase, type TestApp } from 'zerotal/testing';
+import { FACTORY_PASSWORD, UserFactory } from '../../database/factories/UserFactory';
+import { Browser, bootApp } from '../support';
+
+let app: TestApp;
+
+beforeAll(async () => {
+  app = await bootApp();
+});
+afterAll(() => app.close());
+beforeEach(() => app.actingAsGuest());
+
+async function signedIn(email: string): Promise<Browser> {
+  const browser = new Browser(app);
+  await browser.post('/login', { email, password: FACTORY_PASSWORD });
+  return browser;
+}
+
+describe('sessions', () => {
+  refreshDatabase();
+
+  test('lists the browsers the user is signed in on', async () => {
+    const user = await UserFactory.create();
+    await (await signedIn(user.email)).get('/dashboard');
+    const here = await signedIn(user.email);
+
+    const page = (await here.get('/settings/sessions')).assertOk().inertia();
+    const sessions = page?.props['sessions'] as { current: boolean }[];
+
+    expect(sessions).toHaveLength(2);
+    expect(sessions.filter((s) => s.current)).toHaveLength(1);
+  });
+
+  test('signs out the other sessions, and keeps this one', async () => {
+    const user = await UserFactory.create();
+    const laptop = await signedIn(user.email);
+    await laptop.get('/dashboard');
+    const phone = await signedIn(user.email);
+    await phone.get('/dashboard');
+
+    (await phone.delete('/settings/sessions', { password: FACTORY_PASSWORD })).assertRedirect('/settings/sessions');
+
+    (await laptop.get('/dashboard')).assertRedirect('/login');
+    (await phone.get('/dashboard')).assertOk();
+  });
+
+  test('refuses without the password', async () => {
+    const user = await UserFactory.create();
+    const browser = await signedIn(user.email);
+
+    (await browser.delete('/settings/sessions', { password: 'wrong' })).assertInvalid(['password']);
+  });
+});

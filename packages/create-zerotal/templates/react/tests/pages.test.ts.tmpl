@@ -21,17 +21,26 @@ import { ROUTES } from '../types/routes.generated';
 
 import About from '../resources/js/pages/about';
 import Contact from '../resources/js/pages/contact';
-import Dashboard from '../resources/js/pages/dashboard';
 import ErrorPage from '../resources/js/pages/error';
-import ForgotPassword from '../resources/js/pages/auth/forgot-password';
 import Home from '../resources/js/pages/home';
+import ConfirmPassword from '../resources/js/pages/auth/confirm-password';
+import ForgotPassword from '../resources/js/pages/auth/forgot-password';
 import Login from '../resources/js/pages/auth/login';
-import Profile from '../resources/js/pages/profile';
 import Register from '../resources/js/pages/auth/register';
 import ResetPassword from '../resources/js/pages/auth/reset-password';
+import TwoFactorChallenge from '../resources/js/pages/auth/two-factor-challenge';
+import VerifyEmail from '../resources/js/pages/auth/verify-email';
+import Dashboard from '../resources/js/pages/dashboard';
+import SettingsAppearance from '../resources/js/pages/settings/appearance';
+import SettingsDeleteAccount from '../resources/js/pages/settings/delete-account';
+import SettingsPasskeys from '../resources/js/pages/settings/passkeys';
+import SettingsPassword from '../resources/js/pages/settings/password';
+import SettingsProfile from '../resources/js/pages/settings/profile';
+import SettingsSessions from '../resources/js/pages/settings/sessions';
+import SettingsTwoFactor from '../resources/js/pages/settings/two-factor';
 
 // The same line `resources/js/app.tsx` runs in the browser. `defineRoutes` installs
-// `route()` as a global, and the layout calls it — so without this every page throws
+// `route()` as a global, and the layouts call it — so without this every page throws
 // `route is not defined`, which is a true statement about a test that has not
 // finished setting up rather than about the page.
 defineRoutes(ROUTES);
@@ -43,25 +52,29 @@ defineRoutes(ROUTES);
  */
 const SHARED = {
   app: { name: 'Acme' },
+  features: { passkeys: true },
   auth: { user: null },
-  flash: { success: null, error: null },
+  flash: { success: null, error: null, warning: null, info: null },
   errors: {},
   old: {},
 };
 
-const PAGES: [string, unknown, Record<string, unknown>][] = [
+type PageCase = [name: string, page: unknown, props: Record<string, unknown>];
+
+const PUBLIC: PageCase[] = [
   ['home', Home, { title: 'Home', message: 'Welcome' }],
   ['about', About, { title: 'About' }],
   ['contact', Contact, { title: 'Contact' }],
   ['error', ErrorPage, { status: 404 }],
-  ['auth/login', Login, { title: 'Sign in' }],
-  ['auth/register', Register, { title: 'Create an account' }],
+  ['auth/login', Login, { title: 'Sign in', passkeys: true, providers: ['github', 'google'] }],
+  ['auth/register', Register, { title: 'Create an account', providers: ['github'] }],
   ['auth/forgot-password', ForgotPassword, { title: 'Forgot password' }],
   ['auth/reset-password', ResetPassword, { title: 'Reset password', token: 'test-token', email: 'ada@example.com' }],
+  ['auth/two-factor-challenge', TwoFactorChallenge, { title: 'Two-factor authentication' }],
 ];
 
 describe('pages render', () => {
-  for (const [name, Page, props] of PAGES) {
+  for (const [name, Page, props] of PUBLIC) {
     test(`${name} builds without throwing`, async () => {
       await renderPage(Page, props, { shared: SHARED, url: `/${name}` });
     });
@@ -72,11 +85,39 @@ describe('pages render', () => {
  * The signed-in pages, rendered with a user — they read `auth.user`, and the sidebar
  * shows it. A page that only ever renders as a guest has had half of it tested.
  */
-const USER = { id: 1, name: 'Ada Lovelace', email: 'ada@example.com' };
+const USER = {
+  id: 1,
+  name: 'Ada Lovelace',
+  email: 'ada@example.com',
+  emailVerifiedAt: '2026-01-01T00:00:00.000Z',
+  twoFactorConfirmedAt: null,
+};
 
-const SIGNED_IN: [string, unknown, Record<string, unknown>][] = [
+const SIGNED_IN: PageCase[] = [
   ['dashboard', Dashboard, { title: 'Dashboard', greeting: 'Good morning, Ada' }],
-  ['profile', Profile, { title: 'Profile' }],
+  ['auth/verify-email', VerifyEmail, { title: 'Verify your email', email: 'ada@example.com' }],
+  ['auth/confirm-password', ConfirmPassword, { title: 'Confirm your password' }],
+  ['settings/profile', SettingsProfile, { title: 'Profile', emailVerified: false }],
+  ['settings/password', SettingsPassword, { title: 'Password' }],
+  ['settings/appearance', SettingsAppearance, { title: 'Appearance' }],
+  ['settings/two-factor', SettingsTwoFactor, { title: 'Two-factor', enabled: false, setup: null, recoveryCodes: null, recoveryCodesLeft: 0 }],
+  [
+    'settings/two-factor',
+    SettingsTwoFactor,
+    { title: 'Two-factor', enabled: false, setup: { qrSvg: '<svg></svg>', uri: 'otpauth://totp/x', secret: 'JBSWY3DPEHPK3PXP' }, recoveryCodes: null, recoveryCodesLeft: 0 },
+  ],
+  ['settings/two-factor', SettingsTwoFactor, { title: 'Two-factor', enabled: true, setup: null, recoveryCodes: ['aaaa-bbbb'], recoveryCodesLeft: 8 }],
+  [
+    'settings/passkeys',
+    SettingsPasskeys,
+    { title: 'Passkeys', passkeys: [{ id: 1, name: 'Mac', deviceType: 'multiDevice', backedUp: true, createdAt: '2026-01-01T00:00:00.000Z', lastUsedAt: null }] },
+  ],
+  [
+    'settings/sessions',
+    SettingsSessions,
+    { title: 'Sessions', sessions: [{ id: 'a', browser: 'Chrome', platform: 'macOS', ipAddress: '127.0.0.1', lastActiveAt: '2026-01-01T00:00:00.000Z', current: true }] },
+  ],
+  ['settings/delete-account', SettingsDeleteAccount, { title: 'Delete account' }],
   ['error', ErrorPage, { status: 403 }],
 ];
 

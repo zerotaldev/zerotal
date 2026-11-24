@@ -11,11 +11,20 @@ export const pages = {
   error: () => import("./pages/error.tsx"),
   dashboard: () => import("./pages/dashboard.tsx"),
   about: () => import("./pages/about.tsx"),
-  profile: () => import("./pages/profile.tsx"),
+  "settings/delete-account": () => import("./pages/settings/delete-account.tsx"),
+  "settings/appearance": () => import("./pages/settings/appearance.tsx"),
+  "settings/password": () => import("./pages/settings/password.tsx"),
+  "settings/passkeys": () => import("./pages/settings/passkeys.tsx"),
+  "settings/two-factor": () => import("./pages/settings/two-factor.tsx"),
+  "settings/sessions": () => import("./pages/settings/sessions.tsx"),
+  "settings/profile": () => import("./pages/settings/profile.tsx"),
   "auth/forgot-password": () => import("./pages/auth/forgot-password.tsx"),
   "auth/register": () => import("./pages/auth/register.tsx"),
+  "auth/confirm-password": () => import("./pages/auth/confirm-password.tsx"),
   "auth/login": () => import("./pages/auth/login.tsx"),
   "auth/reset-password": () => import("./pages/auth/reset-password.tsx"),
+  "auth/verify-email": () => import("./pages/auth/verify-email.tsx"),
+  "auth/two-factor-challenge": () => import("./pages/auth/two-factor-challenge.tsx"),
 } satisfies Record<string, () => Promise<{ default: unknown }>>;
 
 // Type-only: lets a controller's `Inertia.render(name, props)` be checked

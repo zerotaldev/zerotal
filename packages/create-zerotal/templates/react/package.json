@@ -9,15 +9,19 @@
     "start": "bun zt.ts serve",
     "build": "bun zt.ts inertia:build --production",
     "test": "bun zt.ts test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed": "bun zt.ts db:seed"
   },
   "dependencies": {
     "@inertiajs/react": "^3.0.0",
+    "@simplewebauthn/server": "^14.1.0",
     "@zerotal/devtools": "{{zerotal_version}}",
     "@zerotal/inertia": "{{zerotal_version}}",
+    "@zerotal/notifications": "{{zerotal_version}}",
     "bun-plugin-tailwind": "0.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "reflect-metadata": "^0.2.2",
     "tailwindcss": "^4.0.0",
     "zerotal": "{{zerotal_version}}"
   },

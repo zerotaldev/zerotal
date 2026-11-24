@@ -1,0 +1,72 @@
+import type { HttpContext } from "zerotal";
+import { Inertia } from "@zerotal/inertia";
+import { Auth, TwoFactor, loginThrottle } from "zerotal/auth";
+import { validate } from "zerotal/validator";
+import type { User } from "@app/models/User";
+import { intendedUrl } from "@app/support/redirects";
+import { rejectInput } from "@app/support/validation";
+
+/**
+ * The second step of signing in, for an account with two-factor on.
+ *
+ * The password was right, but `Auth.login()` left the session *pending*: every route
+ * still sees a guest. `Auth.pendingTwoFactorUser()` is the one place the account is
+ * visible, and `Auth.completeTwoFactor()` finishes the sign-in.
+ */
+
+function pendingUser(): User | undefined {
+  return Auth.pendingTwoFactorUser() as User | undefined;
+}
+
+// GET /two-factor/challenge
+export const GET = async (http: HttpContext) => {
+  if (!pendingUser()) {
+    http.redirect("/login", 302);
+    return;
+  }
+  return Inertia.render("auth/two-factor-challenge", { title: "Two-factor authentication" });
+};
+
+// POST /two-factor/challenge — a code from the authenticator app, or a recovery code.
+export async function POST(http: HttpContext): Promise<void> {
+  const user = pendingUser();
+  if (!user?.twoFactorSecret) {
+    http.flash("info", "Sign in again to continue.");
+    http.redirect("/login", 303);
+    return;
+  }
+
+  const { code, recovery_code } = await validate(http, (r) => ({
+    code: r.string().trim().optional(),
+    recovery_code: r.string().trim().optional(),
+  }));
+
+  // A six-digit code is a million guesses; five a minute makes that a very long time.
+  const throttleKey = `two-factor:${user.id}`;
+  const wait = loginThrottle.ensureNotLocked(http, throttleKey);
+  if (wait !== null) {
+    rejectInput(http, { code: `Too many attempts. Try again in ${wait} seconds.` }, "/two-factor/challenge");
+  }
+
+  if (recovery_code) {
+    // Each recovery code works once: the matched one is dropped from the stored set.
+    const result = TwoFactor.verifyRecoveryCode(user.recoveryCodeHashes(), recovery_code);
+    if (!result.valid) {
+      loginThrottle.recordFailure(http, throttleKey);
+      rejectInput(http, { recovery_code: "That recovery code is not valid." }, "/two-factor/challenge");
+    }
+    user.twoFactorRecoveryCodes = JSON.stringify(result.remaining);
+    await user.save();
+  } else if (!code || !TwoFactor.verifyCode(user.twoFactorSecret, code.replace(/\s+/g, ""))) {
+    loginThrottle.recordFailure(http, throttleKey);
+    rejectInput(http, { code: "That code is not valid. Check your authenticator app." }, "/two-factor/challenge");
+  }
+
+  loginThrottle.clearFor(http, throttleKey);
+  await Auth.completeTwoFactor();
+
+  if (recovery_code && user.recoveryCodeHashes().length <= 2) {
+    http.flash("warning", "You are running low on recovery codes. Make new ones in Settings → Two-factor.");
+  }
+  http.redirect(intendedUrl(http), 303);
+}

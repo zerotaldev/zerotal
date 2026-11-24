@@ -1,0 +1,86 @@
+import { afterAll, beforeAll, beforeEach, describe, test } from 'bun:test';
+import { loginThrottle } from 'zerotal/auth';
+import { refreshDatabase, type TestApp } from 'zerotal/testing';
+import { FACTORY_PASSWORD, UserFactory } from '../../database/factories/UserFactory';
+import { Browser, bootApp } from '../support';
+
+let app: TestApp;
+
+beforeAll(async () => {
+  app = await bootApp();
+});
+afterAll(() => app.close());
+beforeEach(() => {
+  app.actingAsGuest();
+  loginThrottle.reset();
+});
+
+describe('signing in', () => {
+  refreshDatabase();
+
+  test('shows the sign-in form', async () => {
+    (await app.get('/login')).assertOk().assertInertia('auth/login');
+  });
+
+  test('signs a user in and sends them to the dashboard', async () => {
+    const user = await UserFactory.create();
+
+    const res = await app.postForm('/login', { email: user.email, password: FACTORY_PASSWORD });
+
+    res.assertRedirect('/dashboard');
+    res.assertSessionHas('user_id', user.id);
+  });
+
+  test('rejects a wrong password without saying which field was wrong', async () => {
+    const user = await UserFactory.create();
+
+    const res = await app.postForm(
+      '/login',
+      { email: user.email, password: 'not-the-password' },
+      { Referer: `${app.baseUrl}/login` },
+    );
+
+    res.assertRedirect('/login');
+    res.assertInvalid({ email: 'Those credentials do not match our records.' });
+    res.assertSessionMissing('user_id');
+  });
+
+  test('locks an address out after five failed attempts, and says for how long', async () => {
+    const user = await UserFactory.create();
+    for (let i = 0; i < 5; i++) {
+      await app.postForm('/login', { email: user.email, password: 'wrong' });
+    }
+
+    // Even the right password is refused while the lock holds.
+    const res = await app.postForm('/login', { email: user.email, password: FACTORY_PASSWORD });
+
+    res.assertRedirect('/login');
+    res.assertInvalid({ email: 'Too many sign-in attempts. Try again in' });
+    res.assertSessionMissing('user_id');
+  });
+
+  test('sends a signed-in user away from the sign-in form', async () => {
+    const user = await UserFactory.create();
+
+    (await app.actingAs(user).get('/login')).assertRedirect('/dashboard');
+  });
+
+  test('returns a guest to the page they asked for after sign-in', async () => {
+    const user = await UserFactory.create();
+    const browser = new Browser(app);
+
+    (await browser.get('/settings/password')).assertRedirect('/login');
+    const res = await browser.post('/login', { email: user.email, password: FACTORY_PASSWORD });
+
+    res.assertRedirect('/settings/password');
+  });
+
+  test('signs the user out', async () => {
+    const user = await UserFactory.create();
+    const browser = new Browser(app);
+    await browser.post('/login', { email: user.email, password: FACTORY_PASSWORD });
+
+    (await browser.post('/logout')).assertRedirect('/login');
+    (await browser.get('/dashboard')).assertRedirect('/login');
+  });
+});

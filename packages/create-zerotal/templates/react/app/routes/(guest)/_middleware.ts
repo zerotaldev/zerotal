@@ -7,4 +7,4 @@ import { GuestMiddleware } from "zerotal/auth";
  * A directory in parentheses groups routes without adding to their URL:
  * (guest)/login.ts is /login.
  */
-export const middleware = [GuestMiddleware];
+export const middleware = [GuestMiddleware.with({ redirectTo: "/dashboard" })];

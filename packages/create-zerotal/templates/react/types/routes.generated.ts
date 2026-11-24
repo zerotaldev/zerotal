@@ -9,10 +9,9 @@
 
 export const ROUTES = {
   about: "/about",
+  "about.store": "/about",
   "confirm-password": "/confirm-password",
   "confirm-password.store": "/confirm-password",
-  contact: "/contact",
-  "contact.store": "/contact",
   dashboard: "/dashboard",
   "forgot-password": "/forgot-password",
   "forgot-password.store": "/forgot-password",
@@ -63,10 +62,9 @@ export const ROUTES = {
 
 export const METHODS = {
   about: "GET",
+  "about.store": "POST",
   "confirm-password": "GET",
   "confirm-password.store": "POST",
-  contact: "GET",
-  "contact.store": "POST",
   dashboard: "GET",
   "forgot-password": "GET",
   "forgot-password.store": "POST",

@@ -71,7 +71,6 @@ export const MANIFEST: KitManifest = {
     // Public
     'home',
     'about',
-    'contact',
     'error',
     // Signing in
     'auth/login',
@@ -127,8 +126,7 @@ export const MANIFEST: KitManifest = {
     // Public
     { name: 'home', method: 'GET', path: '/' },
     { name: 'about', method: 'GET', path: '/about' },
-    { name: 'contact', method: 'GET', path: '/contact' },
-    { name: 'contact.store', method: 'POST', path: '/contact' },
+    { name: 'about.store', method: 'POST', path: '/about' },
     // Signing in
     { name: 'login', method: 'GET', path: '/login' },
     { name: 'login.store', method: 'POST', path: '/login' },

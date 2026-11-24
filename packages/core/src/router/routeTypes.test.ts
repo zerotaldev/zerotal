@@ -2,7 +2,13 @@ import { describe, it, expect, afterEach } from "bun:test";
 import { rm, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { generateRouteTypes, writeRouteTypes, ROUTE_TYPES_FILE } from "./routeTypes.ts";
+import {
+  generateRouteTypes,
+  routeMethods,
+  writeRouteTypes,
+  ROUTE_TYPES_FILE,
+} from "./routeTypes.ts";
+import { Router } from "./Router.ts";
 
 const dirs: string[] = [];
 
@@ -62,6 +68,22 @@ describe("generateRouteTypes", () => {
 
   it("emits a valid empty map when nothing is named", () => {
     expect(generateRouteTypes(new Map())).toContain("export const ROUTES = {} as const;");
+  });
+});
+
+describe("routeMethods", () => {
+  it("knows the verb of a route named with .name(), as well as a file route's", () => {
+    Router.reset();
+    Router.get("/login", () => new Response("form")).name("login");
+    Router.post("/login", () => new Response("sent")).name("login.store");
+    Router.view("/about", () => "about").name("about");
+
+    expect(Object.fromEntries(routeMethods())).toEqual({
+      login: "GET",
+      "login.store": "POST",
+      about: "GET",
+    });
+    Router.reset();
   });
 });
 

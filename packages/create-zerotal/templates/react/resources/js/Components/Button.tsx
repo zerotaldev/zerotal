@@ -11,8 +11,8 @@ import { cn } from "../lib/cn";
  * for an external link.
  */
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
-export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 const BASE =
   "inline-flex items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap " +
@@ -23,12 +23,14 @@ const VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover",
   secondary: "border border-border bg-card text-foreground hover:bg-muted",
   ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+  danger: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
 };
 
 const SIZES: Record<ButtonSize, string> = {
   sm: "h-8 px-3 text-sm",
   md: "h-10 px-4 text-sm",
   lg: "h-11 px-5 text-[0.95rem]",
+  icon: "size-9",
 };
 
 export function buttonClass(
@@ -40,8 +42,8 @@ export function buttonClass(
 }
 
 interface StyleProps {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+  variant?: ButtonVariant | undefined;
+  size?: ButtonSize | undefined;
 }
 
 export function Button({

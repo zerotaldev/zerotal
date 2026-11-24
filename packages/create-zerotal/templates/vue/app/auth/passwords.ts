@@ -1,7 +1,7 @@
 import { PasswordBroker, Hash } from "zerotal/auth";
 import { DB } from "zerotal/orm";
-import { Log } from "zerotal/logger";
 import { User } from "@app/models/User";
+import { ResetPasswordNotification } from "@app/notifications/ResetPasswordNotification";
 
 /**
  * Password-reset broker for the forgot/reset pages.
@@ -43,27 +43,28 @@ const broker = new PasswordBroker({
   },
 
   async sendResetLink(email, token) {
-    const url = `${process.env["APP_URL"] ?? "http://localhost:3000"}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    // Nobody to send to is not an error the visitor hears about — the page says the
+    // same thing either way (see app/routes/(guest)/forgot-password.ts).
+    const user = await User.query().where("email", email).first();
+    if (!user) return;
 
-    // Logged rather than emailed, so a freshly scaffolded app has a working
-    // reset flow before any mail server exists. To send it for real, add
-    // `@zerotal/notifications` and swap this line for a Mail send — the token
-    // is the only thing this callback needs to deliver.
-    Log.info(`[password reset] ${email} → ${url}`);
+    // Through the mail driver in config/notifications.ts. Its default, "log", prints
+    // the message and its link to the server output.
+    await user.notify(new ResetPasswordNotification(token, email));
   },
 
   async resetPassword(email, newPassword) {
     const user = await User.query().where("email", email).first();
     if (!user) return;
     user.password = await Hash.make(newPassword);
+    // Whoever reset the password proved they hold the inbox — the same thing the
+    // verification link proves.
+    if (!user.hasVerifiedEmail()) user.emailVerifiedAt = new Date();
     await user.save();
   },
 });
 
-/**
- * Adapter matching the panel's `passwordReset` contract, which wants booleans
- * rather than the broker's result strings.
- */
+/** The two calls the forgot/reset routes make, as booleans rather than result strings. */
 export const passwordReset = {
   async sendResetLink(email: string): Promise<boolean> {
     // Always reports success. Answering "no such account" here would turn the

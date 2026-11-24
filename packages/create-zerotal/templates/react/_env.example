@@ -1,3 +1,6 @@
+# Shown in page titles, the sidebar, outgoing mail and authenticator apps.
+APP_NAME={{name}}
+
 # The runtime environment. "production" turns on the framework's stricter
 # config checks and turns off verbose error output.
 APP_ENV=development
@@ -20,3 +23,34 @@ ASSET_VERSION=1
 # it here would have the suite mutate your development data instead of running
 # against a throwaway :memory: schema. Uncomment only to point somewhere else.
 # DATABASE_URL=./database/db.sqlite
+
+# ── Mail ──────────────────────────────────────────────────────────────────────
+# "log" prints every message, links included, to the server output. Use "smtp"
+# or "resend" to send for real.
+MAIL_DRIVER=log
+MAIL_FROM_ADDRESS=hello@example.com
+# SMTP_HOST=
+# SMTP_PORT=587
+# SMTP_USERNAME=
+# SMTP_PASSWORD=
+# RESEND_API_KEY=
+
+# ── Passkeys (optional) ───────────────────────────────────────────────────────
+# Off until PASSKEY_RP_ID is set. It is the domain the passkeys belong to —
+# "localhost" in development, "example.com" in production — and it cannot change
+# later without every saved passkey being lost. The origin defaults to APP_URL.
+# PASSKEY_RP_ID=localhost
+# PASSKEY_ORIGIN=http://localhost:3000
+
+# ── Sign in with GitHub / Google (optional) ───────────────────────────────────
+# Each provider is on once its client id is set. The callback URL to register
+# with the provider is ${APP_URL}/auth/github/callback (or /google/).
+# GITHUB_CLIENT_ID=
+# GITHUB_CLIENT_SECRET=
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+
+# ── Health check ──────────────────────────────────────────────────────────────
+# /health answers probes. In production it refuses to serve without this key,
+# sent as ?key= or an X-Health-Key header.
+# HEALTH_KEY=

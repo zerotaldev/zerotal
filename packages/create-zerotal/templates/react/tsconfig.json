@@ -13,17 +13,10 @@
     "jsxImportSource": "react",
     "skipLibCheck": true,
     "paths": {
-      "@app/*": [
-        "./app/*"
-      ],
-      "@pages/*": [
-        "./resources/js/pages/*"
-      ]
+      "@app/*": ["./app/*"],
+      "@pages/*": ["./resources/js/pages/*"]
     }
   },
   "include": ["**/*"],
-  "exclude": [
-    "node_modules",
-    ".zerotal"
-  ]
+  "exclude": ["node_modules", ".zerotal"]
 }

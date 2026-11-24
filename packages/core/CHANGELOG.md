@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`/health` is served outside production by default, as the docs say.** `AppConfig()` defaulted
+  `health` to `false`, which the endpoint read as an explicit "off", so a fresh app answered
+  `/health` with a 404 under `bun zt serve`. The default is now `{}`, every field at its default:
+  on outside production, off in production. A `config/health.ts` namespace still applies, and
+  `app.health` fields win over it field by field. An app that sets `health` itself is unchanged.
+- **A missing route-bound record is no longer logged as an unhandled error.** `/projects/999`
+  throws the ORM's `ModelNotFoundError`, which was answered with a 404 but also logged as
+  `Unhandled error` with a stack trace. It is now an expected outcome, like `NotFoundError`.
+
 ## [1.17.1] — 2026-11-21
 
 ### Added

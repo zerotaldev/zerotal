@@ -98,7 +98,7 @@ describe("AppConfig()", () => {
     expect(cfg.locale).toBe("en");
     expect(cfg.timezone).toBe("UTC");
     expect(cfg.http3).toBe(false);
-    expect(cfg.health).toBe(false);
+    expect(cfg.health).toEqual({});
   });
 
   it("overrides name, port, locale, timezone", () => {

@@ -6,9 +6,11 @@ import { TextField } from "../../Components/Field";
 
 interface Props {
   title: string;
+  /** Mail is printed by the server rather than sent (MAIL_DRIVER=log). */
+  mailIsLogged: boolean;
 }
 
-function ForgotPassword({ title }: Props) {
+function ForgotPassword({ title, mailIsLogged }: Props) {
   const form = useForm({ email: "" });
 
   function submit(event: FormEvent) {
@@ -26,7 +28,11 @@ function ForgotPassword({ title }: Props) {
           type="email"
           autoComplete="email"
           autoFocus
-          hint="In development the email is written to the server log rather than sent."
+          hint={
+            mailIsLogged
+              ? "Mail is printed in the terminal running the server, not sent (MAIL_DRIVER=log)."
+              : undefined
+          }
           value={form.data.email}
           error={form.errors.email}
           onChange={(e) => form.setData("email", e.target.value)}

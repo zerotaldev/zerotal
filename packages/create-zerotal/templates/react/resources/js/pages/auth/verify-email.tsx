@@ -7,9 +7,11 @@ import { MailIcon } from "../../Components/Icons";
 interface Props {
   title: string;
   email: string;
+  /** Mail is printed by the server rather than sent (MAIL_DRIVER=log). */
+  mailIsLogged: boolean;
 }
 
-function VerifyEmail({ title, email }: Props) {
+function VerifyEmail({ title, email, mailIsLogged }: Props) {
   const resend = useForm({});
 
   return (
@@ -24,10 +26,12 @@ function VerifyEmail({ title, email }: Props) {
         </p>
       </div>
 
-      <p className="mt-4 text-sm text-muted-foreground">
-        Working locally? The mail driver is <code className="font-mono text-foreground">log</code>,
-        so the message — link included — is printed in the terminal running the server.
-      </p>
+      {mailIsLogged ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          Working locally? The mail driver is <code className="font-mono text-foreground">log</code>
+          , so the message — link included — is printed in the terminal running the server.
+        </p>
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Button

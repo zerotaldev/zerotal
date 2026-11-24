@@ -2,6 +2,7 @@ import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
 import { Auth } from "zerotal/auth";
 import { VerifyEmailNotification } from "@app/notifications/VerifyEmailNotification";
+import { mailIsLogged } from "@app/support/mail";
 
 // GET /verify-email — "check your inbox", until the link has been clicked.
 export const GET = async (http: HttpContext) => {
@@ -10,7 +11,11 @@ export const GET = async (http: HttpContext) => {
     http.redirect("/dashboard", 302);
     return;
   }
-  return Inertia.render("auth/verify-email", { title: "Verify your email", email: user.email });
+  return Inertia.render("auth/verify-email", {
+    title: "Verify your email",
+    email: user.email,
+    mailIsLogged: mailIsLogged(),
+  });
 };
 
 // POST /verify-email — send the link again.

@@ -71,7 +71,7 @@ const PUBLIC: PageCase[] = [
   ["error", ErrorPage, { status: 404 }],
   ["auth/login", Login, { title: "Sign in", passkeys: true, providers: ["github", "google"] }],
   ["auth/register", Register, { title: "Create an account", providers: ["github"] }],
-  ["auth/forgot-password", ForgotPassword, { title: "Forgot password" }],
+  ["auth/forgot-password", ForgotPassword, { title: "Forgot password", mailIsLogged: true }],
   [
     "auth/reset-password",
     ResetPassword,
@@ -147,7 +147,11 @@ const SIGNED_IN: PageCase[] = [
   ],
   ["projects/create", CreateProject, { title: "New project" }],
   ["projects/edit", EditProject, { title: "Edit", project: PROJECT }],
-  ["auth/verify-email", VerifyEmail, { title: "Verify your email", email: "ada@example.com" }],
+  [
+    "auth/verify-email",
+    VerifyEmail,
+    { title: "Verify your email", email: "ada@example.com", mailIsLogged: true },
+  ],
   ["auth/confirm-password", ConfirmPassword, { title: "Confirm your password" }],
   ["settings/profile", SettingsProfile, { title: "Profile", emailVerified: false }],
   ["settings/password", SettingsPassword, { title: "Password" }],

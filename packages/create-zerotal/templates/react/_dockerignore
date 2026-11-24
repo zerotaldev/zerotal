@@ -11,3 +11,4 @@ database/*.sqlite*
 .git
 .github
 .vscode
+zerotal-app

@@ -35,7 +35,7 @@ function Sessions({ title, sessions }: Props) {
           title="Where you're signed in"
           description="If you don't recognise a device, sign it out and change your password."
         />
-        <ul className="divide-y divide-border border-y border-border">
+        <ul className="mt-5 divide-y divide-border border-y border-border">
           {sessions.map((session) => {
             const Icon = /iOS|Android/.test(session.platform) ? PhoneIcon : MonitorIcon;
             return (

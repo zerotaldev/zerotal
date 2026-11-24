@@ -48,7 +48,7 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
         Each one signs you in once if you lose your phone. Keep them in a password manager. They
         will not be shown again.
       </p>
-      <ul className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-sm text-foreground">
+      <ul className="mt-3 space-y-1 font-mono text-sm break-all text-foreground">
         {codes.map((code) => (
           <li key={code}>{code}</li>
         ))}

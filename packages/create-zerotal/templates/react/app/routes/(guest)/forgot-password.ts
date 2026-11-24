@@ -2,10 +2,14 @@ import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
 import { validate } from "zerotal/validator";
 import { passwordReset } from "@app/auth/passwords";
+import { mailIsLogged } from "@app/support/mail";
 
 // GET /forgot-password
 export const GET = async () => {
-  return Inertia.render("auth/forgot-password", { title: "Forgot your password?" });
+  return Inertia.render("auth/forgot-password", {
+    title: "Forgot your password?",
+    mailIsLogged: mailIsLogged(),
+  });
 };
 
 // POST /forgot-password

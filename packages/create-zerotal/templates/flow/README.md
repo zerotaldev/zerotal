@@ -58,8 +58,6 @@ It is for local development only — never seed a production database with it.
 | `database/`                     | Migrations, factories and the demo seeder                                         |
 | `tests/`                        | Feature tests, run with the app booted                                            |
 
-### How a page works
-
 A page is a class in `app/flow/pages/` whose `render()` runs on the server, so it reads the
 database and the signed-in user directly and the browser gets finished HTML. `routes/web.ts`
 puts it at a URL. Its forms are ordinary HTML: they post to the file in `app/routes/` at the

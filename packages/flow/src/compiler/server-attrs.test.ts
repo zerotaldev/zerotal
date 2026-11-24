@@ -115,3 +115,28 @@ describe("Flow compiler — attributes worked out on the server", () => {
     expect(report.blocker?.reason).toContain("is not a static class string");
   });
 });
+
+describe("Flow compiler — dangerouslySetInnerHTML", () => {
+  it("writes the markup unescaped in place of the children, as the runtime does", async () => {
+    const html = await render(`<svg class="size-4" dangerouslySetInnerHTML={{ __html: body }} />`, {
+      lead: `const body = '<path d="M1 1"/>';`,
+    });
+    expect(html).toBe('<svg class="size-4"><path d="M1 1"/></svg>');
+  });
+
+  it("writes nothing for a missing body", async () => {
+    expect(
+      await render(`<div dangerouslySetInnerHTML={{ __html: none }}></div>`, {
+        lead: "const none = undefined;",
+      }),
+    ).toBe("<div></div>");
+  });
+
+  it("falls back for any other shape", () => {
+    const report: BlockerReport = {};
+    transformFlowFile(page(`<div dangerouslySetInnerHTML={{ html: "x" }}></div>`), FILE, {
+      report,
+    });
+    expect(report.blocker?.reason).toContain("is not `{{ __html: … }}`");
+  });
+});

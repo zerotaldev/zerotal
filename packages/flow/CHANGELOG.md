@@ -25,6 +25,9 @@ change.
   imported from a relative module and extending `Component` (directly or through another such
   class), compiles like a page that extends `Component`. Its `@expose` and `@locked` fields count as
   the page's.
+- **`dangerouslySetInnerHTML={{ __html: … }}` compiles**, writing the markup in place of the
+  element's children as the runtime does. An icon drawn from the page's own constants, or an SVG
+  made on the server, no longer sends the page to the runtime fallback.
 - **A page that cannot be compiled for want of a page class, or of a `render()`, says so** under
   `ZT_FLOW_COMPILE_LOG=1`, instead of reporting no reason.
 

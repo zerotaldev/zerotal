@@ -1089,6 +1089,12 @@ function _compileRenderMethod(
     );
   }
 
+  /**
+   * The `__html` of a `dangerouslySetInnerHTML` on the element whose attributes were just read,
+   * as source: `_visitAttrs` sets it, and the element writes it in place of its children.
+   */
+  let rawHtml: string | null = null;
+
   // Segment builder
   const parts: string[] = [];
   let staticBuf = "";
@@ -1570,11 +1576,15 @@ function _compileRenderMethod(
     }
 
     emitStatic(`<${tag}`);
+    rawHtml = null;
     const textProp = _visitAttrs(node.openingElement.attributes, false, tag);
     if (!canCompile) return;
     emitStatic(">");
 
-    if (textProp !== null) {
+    if (rawHtml !== null) {
+      // dangerouslySetInnerHTML={{ __html: … }} replaces the children, as in the runtime.
+      emitDynamic(`String((${rawHtml}) ?? "")`);
+    } else if (textProp !== null) {
       // text={this.x} overrides all children
       emitDynamic(`__esc(this.${textProp})`);
     } else {
@@ -1608,6 +1618,7 @@ function _compileRenderMethod(
     }
 
     emitStatic(`<${tag}`);
+    rawHtml = null;
     const textProp = _visitAttrs(node.attributes, false, tag);
     if (!canCompile) return;
 
@@ -1615,7 +1626,8 @@ function _compileRenderMethod(
       emitStatic(">");
     } else {
       emitStatic(">");
-      if (textProp !== null) emitDynamic(`__esc(this.${textProp})`);
+      if (rawHtml !== null) emitDynamic(`String((${rawHtml}) ?? "")`);
+      else if (textProp !== null) emitDynamic(`__esc(this.${textProp})`);
       emitStatic(`</${tag}>`);
     }
   }
@@ -2300,6 +2312,27 @@ function _compileRenderMethod(
         return bail(
           `\`${name}={${_snippet(expr, 28)}}\` is a function`,
           "pass a value, or name an event handler on*",
+          attr,
+        );
+      }
+      // dangerouslySetInnerHTML={{ __html: markup }} — markup the page vouches for (an icon's
+      // own constant, an SVG drawn on the server), written unescaped in place of the children.
+      if (name === "dangerouslySetInnerHTML" && ts.isObjectLiteralExpression(expr)) {
+        const html = expr.properties.length === 1 ? expr.properties[0] : undefined;
+        if (
+          html &&
+          ts.isPropertyAssignment(html) &&
+          (ts.isIdentifier(html.name) || ts.isStringLiteral(html.name)) &&
+          html.name.text === "__html" &&
+          !_containsClientMagic(html.initializer) &&
+          !_referencesGel(html.initializer)
+        ) {
+          rawHtml = html.initializer.getText();
+          continue;
+        }
+        return bail(
+          "`dangerouslySetInnerHTML` is not `{{ __html: … }}`",
+          "pass exactly `{{ __html: markup }}`",
           attr,
         );
       }

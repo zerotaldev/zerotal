@@ -98,8 +98,10 @@ describe("AppConfig allowedOrigins", () => {
 });
 
 describe("AppConfig health", () => {
-  it("defaults to false", () => {
-    expect(AppConfig({}).health).toBe(false);
+  // An empty object, not `false`: every field at its default, which serves the endpoint
+  // outside production as docs/health.md says. `false` turned it off everywhere.
+  it("defaults to an empty object, leaving enabled to the environment", () => {
+    expect(AppConfig({}).health).toEqual({});
   });
 
   it("accepts the boolean shorthand", () => {

@@ -202,7 +202,8 @@ export interface AppConfigShape {
    * Health endpoint configuration. Pass an object to configure it
    * (`enabled` / `path` / `secret` / `showDetails`); `enabled` defaults to on
    * outside production. A bare `true`/`false` is shorthand for enable/disable
-   * with the other defaults. Default: `false`.
+   * with the other defaults. Default: `{}` — every field at its default, so the
+   * endpoint is served outside production and not in it.
    *
    * @example
    * ```ts
@@ -365,7 +366,7 @@ export function AppConfig(options: {
     timezone: "UTC",
     http3: false,
     maxRequestBodySize: DEFAULT_MAX_REQUEST_BODY_SIZE,
-    health: false,
+    health: {},
     allowedOrigins: [],
     cors: DEFAULT_CORS,
     throttle: DEFAULT_THROTTLE,

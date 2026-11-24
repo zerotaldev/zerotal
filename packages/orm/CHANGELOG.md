@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `ModelNotFoundError` from route-model binding is no longer logged as an unhandled error.**
+  The 404 it answers with is unchanged; `@zerotal/core` now treats it as an expected outcome
+  rather than a fault, so a request for a record that does not exist stays out of the error log.
+
 ## [1.17.1] — 2026-11-21
 
 ### Fixed

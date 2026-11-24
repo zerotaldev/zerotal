@@ -7,6 +7,7 @@ import {
   ChevronDownIcon,
   CloseIcon,
   ExternalLinkIcon,
+  FolderIcon,
   GridIcon,
   LogOutIcon,
   MenuIcon,
@@ -33,7 +34,10 @@ interface NavItem {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
-const NAV: NavItem[] = [{ label: "Dashboard", href: "/dashboard", icon: GridIcon }];
+const NAV: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard", icon: GridIcon },
+  { label: "Projects", href: "/projects", icon: FolderIcon },
+];
 
 function isActive(url: string, href: string): boolean {
   const path = url.split("?")[0] ?? url;

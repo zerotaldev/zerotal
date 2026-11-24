@@ -25,6 +25,9 @@ export const pages = {
   "auth/reset-password": () => import("./pages/auth/reset-password.tsx"),
   "auth/verify-email": () => import("./pages/auth/verify-email.tsx"),
   "auth/two-factor-challenge": () => import("./pages/auth/two-factor-challenge.tsx"),
+  "projects/edit": () => import("./pages/projects/edit.tsx"),
+  "projects/index": () => import("./pages/projects/index.tsx"),
+  "projects/create": () => import("./pages/projects/create.tsx"),
 } satisfies Record<string, () => Promise<{ default: unknown }>>;
 
 // Type-only: lets a controller's `Inertia.render(name, props)` be checked

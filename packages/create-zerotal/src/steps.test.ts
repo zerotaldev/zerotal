@@ -19,7 +19,7 @@ describe('nextStepLines', () => {
     expect(nextStepLines('app', 'minimal', 'sqlite')).toEqual(['cd app', 'bun zt dev']);
   });
 
-  it.each(['flow', 'react', 'vue', 'api'] as const)('%s migrates first', (template) => {
+  it.each(['flow', 'vue', 'api'] as const)('%s migrates first', (template) => {
     expect(nextStepLines('app', template, 'sqlite')).toEqual([
       'cd app',
       'bun zt migrate',
@@ -32,6 +32,15 @@ describe('nextStepLines', () => {
       'cd app',
       '# Set DATABASE_URL in .env',
       'bun zt migrate',
+      'bun zt dev',
+    ]);
+  });
+
+  it('react migrates, then offers a demo account with sample projects', () => {
+    expect(nextStepLines('app', 'react', 'sqlite')).toEqual([
+      'cd app',
+      'bun zt migrate',
+      'bun zt db:seed              # optional: demo@example.com / password with sample projects',
       'bun zt dev',
     ]);
   });

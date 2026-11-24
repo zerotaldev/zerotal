@@ -50,3 +50,24 @@ declare module "@zerotal/inertia" {
     auth: { user: AuthUser | null };
   }
 }
+
+/** The example resource. Remove with it — see "Remove the example" in the README. */
+export type ProjectStatus = "planning" | "active" | "completed";
+
+/** A project as the server sends it (app/models/Project.ts, `toPage()`). */
+export interface Project {
+  id: number;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  updatedAt: string | null;
+}
+
+/** One page of a list, and where it sits in the whole. */
+export interface Pagination {
+  page: number;
+  lastPage: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}

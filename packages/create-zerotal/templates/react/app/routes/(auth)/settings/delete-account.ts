@@ -30,6 +30,7 @@ export async function DELETE(http: HttpContext): Promise<void> {
   // Everything that belongs to the account goes with it — add your own tables here. The
   // user row goes last, so a failure part-way leaves an account that can try again
   // rather than rows that belong to nobody.
+  await DB.table("projects").where("user_id", user.id).delete();
   await DB.table("passkeys").where("user_id", user.id).delete();
   await DB.table("social_accounts").where("user_id", user.id).delete();
   await forgetAllSessions(user.id);

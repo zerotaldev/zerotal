@@ -31,6 +31,9 @@ import ResetPassword from '../resources/js/pages/auth/reset-password';
 import TwoFactorChallenge from '../resources/js/pages/auth/two-factor-challenge';
 import VerifyEmail from '../resources/js/pages/auth/verify-email';
 import Dashboard from '../resources/js/pages/dashboard';
+import CreateProject from '../resources/js/pages/projects/create';
+import EditProject from '../resources/js/pages/projects/edit';
+import Projects from '../resources/js/pages/projects/index';
 import SettingsAppearance from '../resources/js/pages/settings/appearance';
 import SettingsDeleteAccount from '../resources/js/pages/settings/delete-account';
 import SettingsPasskeys from '../resources/js/pages/settings/passkeys';
@@ -93,8 +96,16 @@ const USER = {
   twoFactorConfirmedAt: null,
 };
 
+const PROJECT = { id: 1, name: 'Website relaunch', description: 'A new site.', status: 'active', updatedAt: '2026-01-01T00:00:00.000Z' };
+const EMPTY_PAGE = { page: 1, lastPage: 1, total: 0, from: null, to: null };
+
 const SIGNED_IN: PageCase[] = [
-  ['dashboard', Dashboard, { title: 'Dashboard', greeting: 'Good morning, Ada' }],
+  ['dashboard', Dashboard, { title: 'Dashboard', greeting: 'Good morning, Ada', stats: { total: 0, active: 0, completed: 0 }, recentProjects: [] }],
+  ['dashboard', Dashboard, { title: 'Dashboard', greeting: 'Good morning, Ada', stats: { total: 1, active: 1, completed: 0 }, recentProjects: [PROJECT] }],
+  ['projects/index', Projects, { title: 'Projects', projects: [], pagination: EMPTY_PAGE, search: '' }],
+  ['projects/index', Projects, { title: 'Projects', projects: [PROJECT], pagination: { ...EMPTY_PAGE, total: 1, from: 1, to: 1 }, search: '' }],
+  ['projects/create', CreateProject, { title: 'New project' }],
+  ['projects/edit', EditProject, { title: 'Edit', project: PROJECT }],
   ['auth/verify-email', VerifyEmail, { title: 'Verify your email', email: 'ada@example.com' }],
   ['auth/confirm-password', ConfirmPassword, { title: 'Confirm your password' }],
   ['settings/profile', SettingsProfile, { title: 'Profile', emailVerified: false }],

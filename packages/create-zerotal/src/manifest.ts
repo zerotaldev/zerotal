@@ -1,11 +1,11 @@
 /**
  * What a full-stack starter kit contains, independent of the frontend it is written in.
  *
- * The React kit is the reference. The Vue and Flow kits are ports of it, and this list is
- * how a port is checked for completeness: the same pages, the same named routes at the same
- * paths and verbs, the same components, and the same tests under the same names. Nothing in
- * it is specific to one frontend — a page is named the way `Inertia.render()` (or a Flow
- * page path) names it, and a component by its export name.
+ * The React kit is the reference. The Vue kit is a port of it, and this list is how a port
+ * is checked for completeness: the same pages, the same named routes at the same paths and
+ * verbs, the same components, and the same tests under the same names. Nothing in it is
+ * specific to one frontend — a page is named the way `Inertia.render()` names it, and a
+ * component by its export name.
  *
  * `templates.test.ts` asserts that every kit in {@link KITS} has every entry. When a kit gains
  * a page, a route, a component or a test, it gains a line here first.
@@ -16,8 +16,8 @@
  * extension they are written in. A page is `<pages>/<name><extension>`, a layout
  * `<layouts>/<Name><extension>`, and a component `<components>/<Name><extension>`.
  *
- * The React and Vue kits keep the frontend under resources/js/. The Flow kit's pages and
- * components run on the server, so they live under app/flow/.
+ * The Flow starter is not listed yet: its pages have to compile ahead of time
+ * (`packages/flow/src/compiler/starter-pages.test.ts`), so its port is built differently.
  */
 export const KITS = {
   react: {
@@ -31,12 +31,6 @@ export const KITS = {
     pages: 'resources/js/pages',
     layouts: 'resources/js/Layouts',
     components: 'resources/js/Components',
-  },
-  flow: {
-    extension: '.tsx',
-    pages: 'app/flow/pages',
-    layouts: 'app/flow/layouts',
-    components: 'app/flow/components',
   },
 } as const;
 

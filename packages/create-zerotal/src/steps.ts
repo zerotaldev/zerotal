@@ -28,8 +28,8 @@ const ADMIN_LOGIN = 'admin@example.com / password';
 /** The full-stack starters' demo account, with sample projects to look at. */
 const DEMO_LOGIN = 'demo@example.com / password';
 
-/** The full-stack starters, whose seeder makes that account. */
-const SEEDS_DEMO: ReadonlySet<Template> = new Set<Template>(['flow', 'react', 'vue']);
+/** The full-stack starters whose seeder makes that account. */
+const SEEDS_DEMO: ReadonlySet<Template> = new Set<Template>(['react', 'vue']);
 
 /** Where the admin template's panel lives. */
 export const ADMIN_URL = 'http://localhost:3000/admin';

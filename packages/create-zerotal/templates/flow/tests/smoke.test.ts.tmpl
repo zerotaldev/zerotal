@@ -1,25 +1,29 @@
 /**
- * The scaffold boots, serves its pages, and validates its form.
+ * The scaffold boots and serves its pages.
  *
- * A template ships with a `test` script, so it ships with something for that
- * script to run — and this is the assertion that catches a broken starter:
- * providers register, routes resolve, and a request completes. Delete it once
- * you have real tests, or keep it as the shape to copy.
+ * Two levels are shown here, and they answer different questions. The HTTP tests
+ * confirm the app wires up: providers register, file-based routes resolve, a
+ * request completes. The FlowTest block drives a page's own lifecycle in
+ * process — no server and no browser — which is where you test what a component
+ * does rather than that it exists.
  */
-import { beforeAll, afterAll, describe, test, expect } from "bun:test";
-import { config } from "zerotal";
-import { createTestApp, migrateDatabase, type TestApp } from "zerotal/testing";
-import { assertPage } from "./html";
+import { beforeAll, afterAll, describe, test, expect } from 'bun:test';
+import { createTestApp, migrateDatabase, type TestApp } from 'zerotal/testing';
+import { FlowTest } from '@zerotal/flow/testing';
+import { Auth, Hash, isAuthenticatable } from 'zerotal/auth';
+import { ContactPage } from '../app/flow/pages/contact.tsx';
+import { User } from '../app/models/User.ts';
 
 let app: TestApp;
 
 beforeAll(async () => {
-  // Session encryption needs a key. Seed a deterministic one for tests; `??=`
-  // leaves a real key alone when the app's .env is present.
-  Bun.env.APP_KEY ??= "test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa";
+  // Flow snapshot signing and session encryption both need a key. Seed a
+  // deterministic one for tests; `??=` leaves a real key alone when the app's
+  // .env is present.
+  Bun.env.APP_KEY ??= 'test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa';
   // Each run gets its own throwaway schema rather than the dev database.
-  Bun.env.ZT_DB_URL ??= ":memory:";
-  app = await createTestApp(() => import("../bootstrap/app.ts").then((m) => m.default));
+  Bun.env.ZT_DB_URL ??= ':memory:';
+  app = await createTestApp(() => import('../bootstrap/app.ts').then((m) => m.default));
   // Build the schema from the project's own migrations. config/database.ts keeps
   // synchronize off — migrations are the single source of truth — so without this
   // the :memory: database above has no tables and every test fails on 'no such
@@ -30,69 +34,105 @@ beforeAll(async () => {
 
 afterAll(() => app.close());
 
-describe("scaffold", () => {
-  test("boots and serves the home page", async () => {
-    const res = await app.get("/");
+describe('scaffold', () => {
+  test('boots and serves the home page', async () => {
+    const res = await app.get('/');
 
-    assertPage(res, "Home");
-    // Where the asset build writes them: a wrong path renders every page unstyled.
-    res.assertSee("/css/app.css").assertSee("/js/app.js");
+    res.assertOk();
   });
 
-  test("shares the app name from config with every page", async () => {
-    expect(config("app.name")).not.toBe("");
-    (await app.get("/about")).assertSee(`— ${config("app.name")}</title>`);
+  test('serves every file-based page', async () => {
+    (await app.get('/about')).assertOk();
+    (await app.get('/contact')).assertOk();
   });
 
-  test("renders the about page", async () => {
-    assertPage(await app.get("/about"), "How this app fits together");
-  });
-
-  test("answers HEAD on the home route, as probes and load balancers do", async () => {
-    const res = await app.head("/");
+  test('answers HEAD on the home route, as probes and load balancers do', async () => {
+    const res = await app.head('/');
     expect(res.status).toBeLessThan(400);
   });
 
-  test("serves a health check at /health", () => {
-    // The endpoint itself is only mounted by a running server — `bun zt serve`, and the
-    // Dockerfile's HEALTHCHECK — never inside a test, so this checks the config that turns
-    // it on. In production it also needs HEALTH_KEY.
-    expect(config("app.health")).toMatchObject({ enabled: true, path: "/health" });
+  test('returns 404 for an unregistered path', async () => {
+    (await app.get('/definitely-not-a-route')).assertNotFound();
   });
+});
 
-  test("returns 404 for an unregistered path", async () => {
-    (await app.get("/definitely-not-a-route")).assertNotFound();
+describe('the contact page component', () => {
+  test('renders its content without a server or a browser', async () => {
+    const page = await FlowTest.mount(ContactPage);
+
+    page.assertSee('Contact');
+    page.assertSee('hello@example.com');
   });
 });
 
 /**
- * The contact form's round trip — it sits at the foot of /about — which is the
- * pattern the starter exists to show: validate on the server, and on failure
- * redirect back carrying the messages and the input.
+ * The auth surface. The guard is the assertion that matters: /profile must be
+ * unreachable without a session, however the page itself is built.
  */
-describe("contact form", () => {
-  test("sends the visitor back with errors when the input is bad", async () => {
-    // Referer is what a browser sends on a form post, and what the framework
-    // redirects back to when validation fails — without it the redirect
-    // falls back to "/" and the assertion below would be testing nothing.
-    const res = await app.postForm(
-      "/about",
-      { name: "A", email: "nope", message: "short" },
-      { Referer: `${app.baseUrl}/about` },
-    );
-
-    res.assertRedirect("/about");
-    res.assertInvalid(["name", "email", "message"]);
+describe('auth', () => {
+  test('serves the guest screens', async () => {
+    (await app.get('/login')).assertOk();
+    (await app.get('/register')).assertOk();
+    (await app.get('/forgot-password')).assertOk();
   });
 
-  test("accepts a valid submission", async () => {
-    const res = await app.postForm("/about", {
-      name: "Ada Lovelace",
-      email: "ada@example.com",
-      message: "This message is comfortably long enough to pass validation.",
-    });
+  test('keeps the profile behind a sign-in', async () => {
+    const res = await app.get('/profile');
 
-    res.assertRedirect("/about");
-    res.assertValid();
+    expect(res.status).toBe(302);
+  });
+
+  /*
+   * Credentials must actually verify. Asserting that /login and /register
+   * *render* proves nothing about whether anyone can get in, and that gap let a
+   * User model ship that the auth layer could not resolve at all: every correct
+   * password was rejected, and the only symptom was being returned to the
+   * sign-in form. Nothing threw, and every other test still passed.
+   */
+  /*
+   * `validate` rather than `attempt`: it runs the same user lookup and password
+   * check, but stops short of `Auth.login`, which needs a live request context
+   * that a plain unit test has no reason to build. The bug this guards against
+   * lives entirely in the lookup half.
+   */
+  test('a registered user can actually sign in', async () => {
+    const user = new User();
+    user.name = 'Test Person';
+    user.email = 'signin-check@example.com';
+    user.password = await Hash.make('correct-horse-battery');
+    user.role = 'user';
+    await user.save();
+
+    expect(await Auth.validate({
+      email: 'signin-check@example.com',
+      password: 'correct-horse-battery',
+    })).toBe(true);
+  });
+
+  test('the User model is resolvable by the auth layer', () => {
+    // The root cause, asserted directly: `Auth.attempt` finds the user model
+    // through this brand, so a plain `Model` makes every login fail.
+    expect(isAuthenticatable(User)).toBe(true);
+  });
+
+  test('a wrong password is still refused', async () => {
+    expect(await Auth.validate({
+      email: 'signin-check@example.com',
+      password: 'not-the-password',
+    })).toBe(false);
+  });
+});
+
+/**
+ * The stylesheet link has to name the path the asset build actually writes.
+ * It shipped pointing at /app.css while the build produced public/css/app.css,
+ * so every page rendered unstyled with a 404 in the log — a failure that looks
+ * like a CSS problem and is really a one-segment path mismatch.
+ */
+describe('assets', () => {
+  test('links the stylesheet where the build writes it', async () => {
+    const res = await app.get('/');
+
+    res.assertSee('/css/app.css');
   });
 });

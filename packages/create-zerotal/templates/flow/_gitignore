@@ -5,8 +5,8 @@ node_modules/
 # have not been checkpointed into the main file yet — real ones.
 *.sqlite*
 .env
-public/css/
-public/js/
+public/app.js
+public/app.css
 
 # The site gate's state — never committed.
 #
@@ -16,6 +16,3 @@ public/js/
 # state, like a log, not configuration.
 storage/framework/gate.json
 **/storage/framework/gate.json
-
-# The binary `bun zt compile` writes.
-/zerotal-app

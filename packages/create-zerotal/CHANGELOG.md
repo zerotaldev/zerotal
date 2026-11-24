@@ -27,29 +27,20 @@ follows the Zerotal monorepo's unified versioning.
   sample projects. The README says how to remove it.
 - **The React starter ships CI, a Dockerfile, `/health`, `.editorconfig`, VS Code
   recommendations and Prettier settings**, with feature tests for every flow. The next steps
-  offer the demo seed for the React, Vue and Flow starters.
+  offer the demo seed for the React and Vue starters.
 - **The app name comes from `config/app.ts`** (`APP_NAME`) everywhere the React starter shows it.
 - **The Vue starter is the same app as the React one,** page for page, route for route and test
   for test: the same server code, the same tests, and the layouts, components and pages written
   as Vue single-file components. `bun run typecheck` runs `vue-tsc`, so `.vue` files are type
   checked and a route's props are checked against the page's own. A `tests/pages.test.ts` renders
   every page, through a small `tests/render.ts` helper.
-- **The Flow starter is the same app as well,** built from Flow pages rendered on the server.
-  The server code and the tests are the React starter's, with the page handlers moved into
-  `app/flow/pages/` (Flow components) and `routes/web.ts` (one line per page, with its route name
-  and middleware). Forms are plain HTML that post to `app/routes/` and redirect; a small browser
-  script in `resources/js/` adds menus, dialogs, the theme, passkeys, and PUT / PATCH / DELETE
-  forms, which a browser cannot send alone. The project search is a live Flow binding. Where the
-  other starters' tests read a page's props, the Flow tests read the rendered page
-  (`tests/html.ts`), and `tests/pages.test.ts` builds every page and its layout through
-  `FlowTest` (`tests/render.ts`). The old Flow starter's `/profile` page becomes Settings.
 - **Dotfiles in templates are renamed from one table** (`RENAMED` in `src/scaffold.ts`), applied
   to the first path segment, so directories such as `_github/` arrive as `.github/`.
 
 ### Added
 
 - **`src/manifest.ts`** lists a full-stack kit's pages, layouts, components, named routes and
-  tests, independent of the frontend, and `templates.test.ts` checks the React, Vue and Flow kits
+  tests, independent of the frontend, and `templates.test.ts` checks the React and Vue kits
   against it. `KITS` says where each kit keeps its pages, layouts and components.
 
 ## [1.17.1] — 2026-11-21

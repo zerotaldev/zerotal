@@ -3,8 +3,6 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
@@ -13,9 +11,16 @@
     "jsxImportSource": "@zerotal/flow",
     "skipLibCheck": true,
     "paths": {
-      "@app/*": ["./app/*"]
-    }
+      "@app/*": [
+        "./app/*"
+      ]
+    },
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
   "include": ["**/*"],
-  "exclude": ["node_modules", ".zerotal"]
+  "exclude": [
+    "node_modules",
+    ".zerotal"
+  ]
 }

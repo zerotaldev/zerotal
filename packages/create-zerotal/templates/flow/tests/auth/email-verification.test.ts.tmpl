@@ -1,0 +1,74 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { NotificationFake } from "@zerotal/notifications";
+import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { User } from "../../app/models/User";
+import { VerifyEmailNotification } from "../../app/notifications/VerifyEmailNotification";
+import { UserFactory } from "../../database/factories/UserFactory";
+import { bootApp } from "../support";
+import { assertPage } from "../html";
+
+let app: TestApp;
+let mail: NotificationFake;
+
+beforeAll(async () => {
+  app = await bootApp();
+});
+afterAll(() => app.close());
+beforeEach(() => {
+  app.actingAsGuest();
+  mail = NotificationFake.install();
+});
+afterEach(() => mail.restore());
+
+/** The path of the link in the last verification email sent. */
+function emailedLink(): string {
+  const sent = mail.sent().filter((s) => s.notification instanceof VerifyEmailNotification);
+  const last = sent[sent.length - 1]?.notification as VerifyEmailNotification | undefined;
+  if (!last) throw new Error("no verification email was sent");
+  return new URL(last.url()).pathname;
+}
+
+describe("email verification", () => {
+  refreshDatabase();
+
+  test("keeps an unverified user out of the dashboard", async () => {
+    const user = await UserFactory.create({ emailVerifiedAt: null });
+
+    (await app.actingAs(user).get("/dashboard")).assertRedirect("/verify-email");
+    assertPage(await app.actingAs(user).get("/verify-email"), "Verify your email");
+  });
+
+  test("lets an unverified user reach settings, to fix a mistyped address", async () => {
+    const user = await UserFactory.create({ emailVerifiedAt: null });
+
+    (await app.actingAs(user).get("/settings/profile")).assertOk();
+  });
+
+  test("sends the link again on request", async () => {
+    const user = await UserFactory.create({ emailVerifiedAt: null });
+
+    (await app.actingAs(user).postForm("/verify-email", {})).assertRedirect("/verify-email");
+
+    mail.assertSentTo(user, VerifyEmailNotification);
+  });
+
+  test("verifies the address from the emailed link", async () => {
+    const user = await UserFactory.create({ emailVerifiedAt: null });
+    await app.actingAs(user).postForm("/verify-email", {});
+
+    (await app.actingAs(user).get(emailedLink())).assertRedirect("/dashboard");
+
+    expect((await User.find(user.id))?.hasVerifiedEmail()).toBe(true);
+    (await app.actingAs(user).get("/dashboard")).assertOk();
+  });
+
+  test("rejects a link meant for someone else", async () => {
+    const owner = await UserFactory.create({ emailVerifiedAt: null });
+    const other = await UserFactory.create({ emailVerifiedAt: null });
+    await app.actingAs(owner).postForm("/verify-email", {});
+
+    (await app.actingAs(other).get(emailedLink())).assertRedirect("/verify-email");
+
+    expect((await User.find(other.id))?.hasVerifiedEmail()).toBe(false);
+  });
+});

@@ -30,8 +30,9 @@ change.
   compiler never saw it. A registered page now takes the file under `app/flow/pages/` that exports
   its class, in a compiled binary too. A class exported from nowhere there still renders through
   the runtime.
-- **`dangerouslySetInnerHTML={{ __html: … }}` compiles**, writing the markup in place of the
-  element's children as the runtime does. An icon drawn from the page's own constants, or an SVG
+- **`dangerouslySetInnerHTML` compiles**, given `{{ __html: … }}` or any value with an `__html`
+  (`dangerouslySetInnerHTML={icon("plus")}`), writing the markup in place of the element's
+  children as the runtime does. An icon drawn from the page's own constants, or an SVG
   made on the server, no longer sends the page to the runtime fallback.
 - **A compiled page keeps the spaces in its text.** The compiler trimmed every run of JSX text
   and dropped a lone space between two children, so `<b>{count}</b> projects` and

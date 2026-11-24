@@ -124,6 +124,13 @@ describe("Flow compiler — dangerouslySetInnerHTML", () => {
     expect(html).toBe('<svg class="size-4"><path d="M1 1"/></svg>');
   });
 
+  it("reads any other value by its __html, as the runtime does", async () => {
+    const html = await render(`<svg dangerouslySetInnerHTML={markup("M2 2")} />`, {
+      scope: { markup: (d: string) => ({ __html: `<path d="${d}"/>` }) },
+    });
+    expect(html).toBe('<svg><path d="M2 2"/></svg>');
+  });
+
   it("writes nothing for a missing body", async () => {
     expect(
       await render(`<div dangerouslySetInnerHTML={{ __html: none }}></div>`, {

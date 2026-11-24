@@ -2313,24 +2313,37 @@ function _compileRenderMethod(
       }
       // dangerouslySetInnerHTML={{ __html: markup }} — markup the page vouches for (an icon's
       // own constant, an SVG drawn on the server), written unescaped in place of the children.
-      if (name === "dangerouslySetInnerHTML" && ts.isObjectLiteralExpression(expr)) {
-        const html = expr.properties.length === 1 ? expr.properties[0] : undefined;
+      if (name === "dangerouslySetInnerHTML") {
+        // `{{ __html: markup }}` reads the markup straight out; any other value is read as the
+        // runtime reads it, by its `__html` — `dangerouslySetInnerHTML={icon("plus")}`.
+        if (ts.isObjectLiteralExpression(expr)) {
+          const html = expr.properties.length === 1 ? expr.properties[0] : undefined;
+          if (
+            html &&
+            ts.isPropertyAssignment(html) &&
+            (ts.isIdentifier(html.name) || ts.isStringLiteral(html.name)) &&
+            html.name.text === "__html" &&
+            !_containsClientMagic(html.initializer) &&
+            !_referencesGel(html.initializer)
+          ) {
+            rawHtml = html.initializer.getText();
+            continue;
+          }
+          return bail(
+            "`dangerouslySetInnerHTML` is not `{{ __html: … }}`",
+            "pass exactly `{{ __html: markup }}`",
+            attr,
+          );
+        }
         if (
-          html &&
-          ts.isPropertyAssignment(html) &&
-          (ts.isIdentifier(html.name) || ts.isStringLiteral(html.name)) &&
-          html.name.text === "__html" &&
-          !_containsClientMagic(html.initializer) &&
-          !_referencesGel(html.initializer)
+          !ts.isArrowFunction(expr) &&
+          !ts.isFunctionExpression(expr) &&
+          !_containsClientMagic(expr) &&
+          !_referencesGel(expr)
         ) {
-          rawHtml = html.initializer.getText();
+          rawHtml = `(${expr.getText()})?.__html`;
           continue;
         }
-        return bail(
-          "`dangerouslySetInnerHTML` is not `{{ __html: … }}`",
-          "pass exactly `{{ __html: markup }}`",
-          attr,
-        );
       }
       if (ts.isObjectLiteralExpression(expr)) {
         return bail(

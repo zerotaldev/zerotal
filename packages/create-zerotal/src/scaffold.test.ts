@@ -86,7 +86,7 @@ describe('starter parity', () => {
     minimal: ['LogProvider', 'DevtoolsProvider'],
     api: [...WITH_DATABASE, 'NotificationProvider', 'QueueProvider', 'DevtoolsProvider'],
     admin: [...WITH_DATABASE, 'CacheProvider', 'FlowProvider', 'AdminProvider', 'DevtoolsProvider'],
-    flow: [...WITH_DATABASE, 'FlowProvider', 'DevtoolsProvider'],
+    flow: [...WITH_DATABASE, 'NotificationProvider', 'SocialProvider', 'FlowProvider', 'DevtoolsProvider'],
     react: [...WITH_DATABASE, 'NotificationProvider', 'SocialProvider', 'InertiaProvider', 'DevtoolsProvider'],
     vue: [...WITH_DATABASE, 'NotificationProvider', 'SocialProvider', 'InertiaProvider', 'DevtoolsProvider'],
   };
@@ -506,15 +506,18 @@ describe('scaffold — admin template', () => {
 // ── flow template ────────────────────────────────────────────────────────────
 
 describe('scaffold — flow template', () => {
-  it('creates Flow pages, layout, and the logo asset', async () => {
+  it('creates Flow pages, layouts, the page table, the browser script and the logo asset', async () => {
     await scaffold({ name: 'my-flow', template: 'flow', db: 'sqlite', target: TMP });
 
     expect(await Bun.file(join(TMP, 'zt.ts')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'bootstrap/providers.ts')).exists()).toBe(true);
-    expect(await Bun.file(join(TMP, 'app/flow/layouts/app.tsx')).exists()).toBe(true);
-    expect(await Bun.file(join(TMP, 'app/flow/pages/index.tsx')).exists()).toBe(true);
+    expect(await Bun.file(join(TMP, 'routes/web.ts')).exists()).toBe(true);
+    expect(await Bun.file(join(TMP, 'app/flow/layouts/AppLayout.tsx')).exists()).toBe(true);
+    expect(await Bun.file(join(TMP, 'app/flow/pages/home.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'app/flow/pages/about.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'app/flow/pages/contact.tsx')).exists()).toBe(true);
+    // `resources/js/app.js` by that name: it is the entry Flow's dev build looks for.
+    expect(await Bun.file(join(TMP, 'resources/js/app.js')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'public/zt.svg')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'resources/css/app.css')).exists()).toBe(true);
   });
@@ -536,7 +539,7 @@ describe('scaffold — flow template', () => {
   it('leaves no unreplaced {{tokens}}', async () => {
     await scaffold({ name: 'flow-test', template: 'flow', db: 'sqlite', target: TMP });
     const files = ['package.json', 'zt.ts', 'config/app.ts', '.env.example',
-                   'app/flow/pages/index.tsx', 'app/flow/layouts/app.tsx'];
+                   'app/flow/pages/home.tsx', 'app/flow/layouts/AppLayout.tsx', 'routes/web.ts'];
     for (const f of files) {
       const text = await Bun.file(join(TMP, f)).text();
       expect(text, `${f} still has unreplaced tokens`).not.toContain('{{');

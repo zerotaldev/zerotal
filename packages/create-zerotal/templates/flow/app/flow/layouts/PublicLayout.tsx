@@ -22,8 +22,8 @@ import { DOCS_URL } from "../lib/site";
  * their own content rather than changing this one.
  */
 
+// No "Home" entry: the logo is the link home.
 const NAV = [
-  { href: "/", label: "Home" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -31,7 +31,7 @@ const NAV = [
 const CONTAINER = "mx-auto w-full max-w-5xl px-6";
 
 function isActive(path: string, href: string): boolean {
-  return href === "/" ? path === "/" : path.startsWith(href);
+  return path.startsWith(href);
 }
 
 export function PublicLayout({ shell, children }: { shell: Shell; children?: unknown }): HtmlNode {
@@ -81,11 +81,12 @@ export function PublicLayout({ shell, children }: { shell: Shell; children?: unk
             <span class="truncate">{shell.appName}</span>
           </a>
 
-          <nav aria-label="Main" class="hidden items-center gap-1 sm:flex">
-            {navItems}
-          </nav>
-
+          {/* Everything but the logo sits on the right: the site's pages, then the actions. */}
           <div class="flex items-center gap-2">
+            <nav aria-label="Main" class="hidden items-center gap-1 sm:flex">
+              {navItems}
+            </nav>
+            <span aria-hidden="true" class="mx-1 hidden h-5 w-px bg-border sm:block" />
             <a
               href={DOCS_URL}
               target="_blank"

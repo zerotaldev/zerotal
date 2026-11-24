@@ -1,0 +1,80 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { NotificationFake } from "@zerotal/notifications";
+import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { User } from "../../app/models/User";
+import { VerifyEmailNotification } from "../../app/notifications/VerifyEmailNotification";
+import { UserFactory } from "../../database/factories/UserFactory";
+import { bootApp } from "../support";
+
+let app: TestApp;
+let mail: NotificationFake;
+
+beforeAll(async () => {
+  app = await bootApp();
+});
+afterAll(() => app.close());
+beforeEach(() => {
+  app.actingAsGuest();
+  mail = NotificationFake.install();
+});
+afterEach(() => mail.restore());
+
+describe("registration", () => {
+  refreshDatabase();
+
+  test("shows the registration form", async () => {
+    (await app.get("/register")).assertOk().assertInertia("auth/register");
+  });
+
+  test("registers a new user, signs them in and emails a verification link", async () => {
+    const res = await app.postForm("/register", {
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      password: "correct-horse-battery",
+      password_confirmation: "correct-horse-battery",
+    });
+
+    // Signed in, and sent to confirm the address before anything else.
+    res.assertRedirect("/verify-email");
+    res.assertSessionHas("user_id");
+
+    const user = await User.query().where("email", "ada@example.com").first();
+    expect(user?.hasVerifiedEmail()).toBe(false);
+    mail.assertSentTo(user!, VerifyEmailNotification);
+  });
+
+  test("refuses an address that is already registered", async () => {
+    await UserFactory.create({ email: "taken@example.com" });
+
+    const res = await app.postForm(
+      "/register",
+      {
+        name: "Someone Else",
+        email: "taken@example.com",
+        password: "correct-horse-battery",
+        password_confirmation: "correct-horse-battery",
+      },
+      { Referer: `${app.baseUrl}/register` },
+    );
+
+    res.assertRedirect("/register");
+    res.assertInvalid(["email"]);
+    mail.assertNothingSent();
+  });
+
+  test("rejects a password confirmation that does not match", async () => {
+    const res = await app.postForm(
+      "/register",
+      {
+        name: "Ada Lovelace",
+        email: "mismatch@example.com",
+        password: "correct-horse-battery",
+        password_confirmation: "something-else",
+      },
+      { Referer: `${app.baseUrl}/register` },
+    );
+
+    res.assertRedirect("/register");
+    res.assertInvalid(["password"]);
+  });
+});

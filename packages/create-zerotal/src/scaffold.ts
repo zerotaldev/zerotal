@@ -74,6 +74,49 @@ function applyTokens(content: string, map: Record<string, string>): string {
   return out;
 }
 
+// ── Output paths ──────────────────────────────────────────────────────────────
+
+/**
+ * Template files stored under another name, and the name each is written as.
+ *
+ * A dotfile does not survive publishing: `bun pm pack` and npm leave some out of the
+ * package, and Bun's glob skips them when the templates are scanned. So each is stored
+ * with a leading underscore and renamed here — `_gitignore` → `.gitignore`. Directories
+ * are covered too (`_github/` → `.github/`), for the CI workflow inside one.
+ *
+ * `bunfig.toml` is not a dotfile, but `bun pm pack` leaves it out of a package as well,
+ * so 1.15.5 shipped its starters without one; it is `_bunfig.toml` for the same reason.
+ *
+ * `scaffold.test.ts` packs this package and checks every name here arrives.
+ */
+export const RENAMED: Readonly<Record<string, string>> = {
+  _gitignore: '.gitignore',
+  '_env.example': '.env.example',
+  '_bunfig.toml': 'bunfig.toml',
+  _dockerignore: '.dockerignore',
+  _editorconfig: '.editorconfig',
+  '_prettierrc.json': '.prettierrc.json',
+  _prettierignore: '.prettierignore',
+  _github: '.github',
+  _vscode: '.vscode',
+};
+
+/**
+ * Where a template file is written, relative to the new project.
+ *
+ * The first path segment is renamed per {@link RENAMED}. Test files carry a trailing
+ * `.tmpl` that is stripped, so Bun does not discover them while this package is developed
+ * inside the monorepo — where their `zerotal/testing` imports cannot resolve, because they
+ * are written for the app being scaffolded rather than for this workspace. The previous
+ * spelling was `_test.ts`, which does not work: Bun's matcher globs `_test.ts` as readily
+ * as `.test.ts` (and `.spec.ts` / `_spec.ts`), so those files were collected and failed on
+ * every root `bun test`. A trailing suffix is matched by none of them.
+ */
+export function outputPath(rel: string): string {
+  const [first = '', ...rest] = rel.replace(/\\/g, '/').split('/');
+  return [RENAMED[first] ?? first, ...rest].join('/').replace(/\.tmpl$/, '');
+}
+
 // ── File walker ───────────────────────────────────────────────────────────────
 
 async function* walk(dir: string): AsyncGenerator<string> {
@@ -92,24 +135,7 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
 
   for await (const rel of walk(templateDir)) {
     const src  = join(templateDir, rel);
-    // Rename underscore-prefixed dotfiles — npm and Bun glob both skip real dotfiles
-    // inside published/scanned directories. _gitignore → .gitignore, etc. `bunfig.toml` is
-    // not a dotfile, but `bun pm pack` leaves it out of a package as well, so 1.15.5 shipped
-    // its starters without one; it is `_bunfig.toml` here for the same reason.
-    //
-    // Test files carry a trailing `.tmpl` that is stripped here, so Bun does not
-    // discover them while this package is developed inside the monorepo — where their
-    // `zerotal/testing` imports cannot resolve, because they are written for the app
-    // being scaffolded rather than for this workspace. The previous spelling was
-    // `_test.ts`, which does not work: Bun's matcher globs `_test.ts` as readily as
-    // `.test.ts` (and `.spec.ts` / `_spec.ts`), so those files were collected and failed
-    // on every root `bun test`. A trailing suffix is matched by none of them.
-    const dest = join(opts.target, rel
-      .replace('_gitignore',   '.gitignore')
-      .replace('_env.example', '.env.example')
-      .replace('_bunfig.toml', 'bunfig.toml')
-      .replace(/\.tmpl$/,      ''),
-    );
+    const dest = join(opts.target, outputPath(rel));
 
     await mkdir(dirname(dest), { recursive: true });
 

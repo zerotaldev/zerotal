@@ -1,46 +1,35 @@
 <script setup lang="ts">
 /**
- * Light/dark switch.
- *
- * The class on `<html>` is the single source of truth — every colour is a CSS
- * custom property that `.dark` redefines, so flipping the class re-themes the
- * page with no re-render and no `dark:` variants through the components. The
- * choice is persisted under the same key the no-flash script in
- * resources/app.html reads on boot, so an app and its admin panel agree.
+ * Light / dark / system, from a small menu. Settings → Appearance offers the same three;
+ * both read and write the same stored choice (resources/js/lib/theme.ts).
  */
-import { ref } from "vue";
+import { computed } from "vue";
+import Dropdown from "./Dropdown.vue";
 import Icon from "./Icon.vue";
+import { setAppearance, useAppearance, type Appearance } from "../lib/theme";
+import type { IconName } from "../lib/icons";
 
-const STORAGE_KEY = "zerotal-theme";
+const ICON: Record<Appearance, IconName> = { light: "sun", dark: "moon", system: "laptop" };
+const LABEL: Record<Appearance, string> = { light: "Light", dark: "Dark", system: "System" };
 
-function isDark(): boolean {
-  return typeof document !== "undefined" && document.documentElement.classList.contains("dark");
-}
-
-const dark = ref(isDark());
-
-function toggle(): void {
-  const next = !isDark();
-  document.documentElement.classList.toggle("dark", next);
-  try {
-    localStorage.setItem(STORAGE_KEY, next ? "dark" : "light");
-  } catch {
-    // Storage can be unavailable (private mode). The class is still applied,
-    // the choice just won't survive a reload.
-  }
-  dark.value = next;
-}
+const appearance = useAppearance();
+const items = computed(() =>
+  (["light", "dark", "system"] as const).map((option) => ({
+    label: LABEL[option],
+    icon: ICON[option],
+    onSelect: () => setAppearance(option),
+  })),
+);
 </script>
 
 <template>
-  <button
-    type="button"
-    :aria-pressed="dark"
-    :aria-label="dark ? 'Switch to light theme' : 'Switch to dark theme'"
-    :title="dark ? 'Switch to light theme' : 'Switch to dark theme'"
-    class="grid size-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-    @click="toggle"
-  >
-    <Icon :name="dark ? 'moon' : 'sun'" class="size-4.5" />
-  </button>
+  <Dropdown label="Theme" :items="items">
+    <template #trigger>
+      <span
+        class="grid size-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <Icon :name="ICON[appearance]" class="size-4.5" />
+      </span>
+    </template>
+  </Dropdown>
 </template>

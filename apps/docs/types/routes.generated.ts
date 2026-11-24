@@ -27,6 +27,9 @@ export const ROUTES = {
 } as const;
 
 export const METHODS = {
+  "admin.posts": "GET",
+  "admin.posts.edit": "GET",
+  "admin.posts.new": "GET",
   home: "GET",
   "showcase.flow.ai-chat": "GET",
   "showcase.flow.components": "GET",

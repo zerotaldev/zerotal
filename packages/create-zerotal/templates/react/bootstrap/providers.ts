@@ -2,7 +2,8 @@ import { LogProvider } from "zerotal/logger";
 import { DatabaseProvider } from "zerotal/orm";
 import { StorageProvider } from "zerotal/storage";
 import { SessionProvider } from "zerotal/session";
-import { AuthProvider } from "zerotal/auth";
+import { AuthProvider, SocialProvider } from "zerotal/auth";
+import { NotificationProvider } from "@zerotal/notifications";
 import { InertiaProvider } from "@zerotal/inertia";
 import { DevtoolsProvider } from "@zerotal/devtools";
 
@@ -10,6 +11,16 @@ import { DevtoolsProvider } from "@zerotal/devtools";
 // auth, so both are registered before AuthProvider boots. AuthProvider installs
 // the middleware that puts the signed-in user on the request — which is what
 // makes `auth.user` appear in every Inertia page's props.
+//
+// NotificationProvider delivers mail: the email-verification and password-reset
+// links. config/notifications.ts picks the driver, and the default writes each
+// message to the log, so a new app has working links before it has a mail server.
+//
+// SocialProvider reads config/social.ts, which only lists GitHub and Google once
+// their keys are set in .env — until then there is nothing for it to register.
+//
+// Your own providers live in app/providers/ and are registered without being
+// listed here.
 //
 // `DevtoolsProvider` is last and needs no configuration. It activates only when
 // APP_ENV is one of development/dev/local/test/testing — it fails *closed*, so
@@ -26,6 +37,8 @@ const providers = [
   StorageProvider,
   SessionProvider,
   AuthProvider,
+  NotificationProvider,
+  SocialProvider,
   InertiaProvider,
   DevtoolsProvider,
 ];

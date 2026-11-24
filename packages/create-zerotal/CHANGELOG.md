@@ -8,6 +8,41 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The React starter is a first app rather than a demo site.** Signed-in pages render in a
+  sidebar shell with a slide-out menu on phones, and sign-in screens in a centred card; the public
+  pages stay. It lands on `/dashboard` after sign-in, and ships a component set (Alert, Avatar,
+  Badge, Checkbox, Dropdown, EmptyState, Input, Modal, Select, Toasts and more) with light, dark
+  and system themes.
+- **The React starter completes sign-in from `@zerotal/auth`:** email verification (mail is
+  printed by the `log` driver until one is configured), a lockout message that says how long to
+  wait, password confirmation before sensitive settings, two-factor with QR code and recovery
+  codes, a list of signed-in sessions that can sign the others out, and opt-in passkeys and
+  GitHub / Google sign-in that switch on when their keys are set.
+- **Settings replace `/profile`:** profile, password, appearance, two-factor, passkeys (when on),
+  sessions and account deletion.
+- **An example `Project` resource** with a model, migration, factory, owner-only policy, searchable
+  paginated list and forms, and `bun zt db:seed` creating `demo@example.com` / `password` with
+  sample projects. The README says how to remove it.
+- **The React starter ships CI, a Dockerfile, `/health`, `.editorconfig`, VS Code
+  recommendations and Prettier settings**, with feature tests for every flow. The next steps
+  offer the demo seed for the React and Vue starters.
+- **The app name comes from `config/app.ts`** (`APP_NAME`) everywhere the React starter shows it.
+- **The Vue starter is the same app as the React one,** page for page, route for route and test
+  for test: the same server code, the same tests, and the layouts, components and pages written
+  as Vue single-file components. `bun run typecheck` runs `vue-tsc`, so `.vue` files are type
+  checked and a route's props are checked against the page's own. A `tests/pages.test.ts` renders
+  every page, through a small `tests/render.ts` helper.
+- **Dotfiles in templates are renamed from one table** (`RENAMED` in `src/scaffold.ts`), applied
+  to the first path segment, so directories such as `_github/` arrive as `.github/`.
+
+### Added
+
+- **`src/manifest.ts`** lists a full-stack kit's pages, layouts, components, named routes and
+  tests, independent of the frontend, and `templates.test.ts` checks the React and Vue kits
+  against it. `KITS` says where each kit keeps its pages, layouts and components.
+
 ## [1.17.1] — 2026-11-21
 
 ### Fixed

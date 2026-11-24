@@ -580,6 +580,9 @@ export class Router {
     const registration: RouteRegistration = {
       name: (routeName: string) => {
         _s().namedRoutes.set(routeName, fullPath);
+        // On the definition too, which is where the verb is: `routeMethods()` — and so the
+        // METHODS table `route:types` writes — reads the name from there.
+        _s().routes.get(key)!.name = routeName;
         return registration;
       },
       bind: (paramName: string, modelOrResolver: ModelClass | ModelBindingResolver) => {
@@ -909,11 +912,13 @@ export class Router {
     };
 
     const fullPath = _s().prefix + path;
+    const key = _routeKey("GET", fullPath, _s().domain);
     Router._registerFileHandler("GET", fullPath, handler, middleware);
 
     const registration: ViewRegistration = {
       name: (routeName: string) => {
         _s().namedRoutes.set(routeName, fullPath);
+        _s().routes.get(key)!.name = routeName;
         return registration;
       },
       withLayout: (viewLayout: ViewLayout) => {

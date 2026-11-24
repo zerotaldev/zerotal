@@ -1,178 +1,104 @@
 <script setup lang="ts">
 /**
- * Shared application shell — decorative backdrop, sticky header with
- * active-aware navigation, and a footer.
+ * The signed-in shell: a sidebar on wide screens, a top bar with a slide-out menu on
+ * narrow ones. Every page behind sign-in renders inside it — in a page's script setup:
  *
- * Use it as an Inertia persistent layout so the header survives client-side
- * navigations and only the page body re-renders — in a page's script setup:
  *   defineOptions({ layout: AppLayout });
  *
- * Header, content and footer all share the same `max-w-5xl px-6` container, so
- * the nav and the page body line up at every breakpoint.
+ * The sidebar's sections are listed in Components/AppSidebar.vue.
  */
 import { computed, ref, watch } from "vue";
 import { Link, usePage } from "@inertiajs/vue3";
-import FlashToasts from "../Components/FlashToasts.vue";
-import ThemeToggle from "../Components/ThemeToggle.vue";
+import AppLogo from "../Components/AppLogo.vue";
+import AppSidebar from "../Components/AppSidebar.vue";
+import Avatar from "../Components/Avatar.vue";
+import Dropdown from "../Components/Dropdown.vue";
 import Icon from "../Components/Icon.vue";
-import { APP_NAME, DOCS_URL } from "../lib/site";
-import { cn } from "../lib/cn";
-import type { SharedProps } from "../types";
-
-const NAV = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
-];
-
-// Shown to signed-in visitors and guests respectively, so the header always
-// offers the next useful step rather than a link that would bounce them.
-const AUTHED_NAV = [{ href: "/profile", label: "Profile" }];
-const GUEST_NAV = [
-  { href: "/login", label: "Sign in" },
-  { href: "/register", label: "Register" },
-];
-
-const CONTAINER = "mx-auto w-full max-w-5xl px-6";
+import Toasts from "../Components/Toasts.vue";
+import type { DropdownItem, SharedProps } from "../types";
 
 const page = usePage<SharedProps>();
-const url = computed(() => page.url);
-const signedIn = computed(() => Boolean(page.props.auth?.user));
-const navItems = computed(() => [...NAV, ...(signedIn.value ? AUTHED_NAV : GUEST_NAV)]);
+const user = computed(() => page.props.auth.user);
 
+const menuItems = computed<DropdownItem[]>(() => [
+  { label: "Settings", href: "/settings", icon: "settings" },
+  { label: "Sign out", href: route("logout.store"), method: "post", icon: "log-out" },
+]);
+
+// The mobile menu is a modal <dialog>: focus moves into it, the page behind is inert,
+// and Escape closes it.
 const menuOpen = ref(false);
+const drawer = ref<HTMLDialogElement | null>(null);
+watch(menuOpen, (open) => {
+  const dialog = drawer.value;
+  if (!dialog) return;
+  if (open && !dialog.open) dialog.showModal();
+  if (!open && dialog.open) dialog.close();
+});
+// Close it once a visit lands, so it is not left open over the new page.
+watch(
+  () => page.url,
+  () => (menuOpen.value = false),
+);
 
-// Close the mobile menu once a visit lands, otherwise it stays open on top of
-// the page the user just navigated to.
-watch(url, () => (menuOpen.value = false));
-
-const isActive = (href: string): boolean =>
-  href === "/" ? url.value === "/" : url.value.startsWith(href);
-
-const navLink = (href: string): string =>
-  cn(
-    "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-    isActive(href)
-      ? "bg-accent text-accent-foreground"
-      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-  );
+function onDrawerClick(event: MouseEvent) {
+  if (event.target === drawer.value) menuOpen.value = false;
+}
 </script>
 
 <template>
-  <div class="relative flex min-h-dvh flex-col">
-    <!-- Decorative only: the grid and the glow. Fixed, inert, and behind everything. -->
-    <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div class="absolute inset-0 bg-grid" />
-      <div class="absolute inset-x-0 top-0 h-136 bg-aurora" />
-    </div>
-
+  <div class="min-h-dvh lg:pl-64">
     <a
       href="#main"
-      class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:border focus:border-border focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[70] focus:rounded-lg focus:border focus:border-border focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
     >
       Skip to content
     </a>
 
-    <header class="sticky top-0 z-40 border-b border-border bg-background/75 backdrop-blur-md">
-      <div :class="cn(CONTAINER, 'flex h-16 items-center justify-between gap-4')">
-        <Link
-          :href="route('home')"
-          class="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight"
-          :aria-label="`${APP_NAME} home`"
-        >
-          <img src="/zt.svg" alt="" class="size-8 shrink-0 rounded-lg" />
-          <span class="truncate">{{ APP_NAME }}</span>
-        </Link>
+    <!-- Wide screens: a fixed sidebar. -->
+    <aside
+      class="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-card/60 backdrop-blur lg:block"
+    >
+      <AppSidebar />
+    </aside>
 
-        <nav aria-label="Main" class="hidden items-center gap-1 sm:flex">
-          <Link
-            v-for="item in navItems"
-            :key="item.href"
-            :href="item.href"
-            :aria-current="isActive(item.href) ? 'page' : undefined"
-            :class="navLink(item.href)"
-          >
-            {{ item.label }}
-          </Link>
-        </nav>
-
-        <div class="flex items-center gap-2">
-          <a
-            :href="DOCS_URL"
-            target="_blank"
-            rel="noreferrer"
-            class="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:block"
-          >
-            Docs
-          </a>
-          <ThemeToggle />
-          <button
-            type="button"
-            :aria-expanded="menuOpen"
-            aria-controls="mobile-nav"
-            :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
-            class="grid size-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
-            @click="menuOpen = !menuOpen"
-          >
-            <Icon :name="menuOpen ? 'close' : 'menu'" class="size-4.5" />
-          </button>
-        </div>
-      </div>
-
-      <nav
-        v-if="menuOpen"
-        id="mobile-nav"
-        aria-label="Main"
-        :class="cn(CONTAINER, 'flex flex-col gap-1 border-t border-border py-3 sm:hidden')"
+    <!-- Narrow screens: a top bar, and the same sidebar in a drawer. -->
+    <header
+      class="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md lg:hidden"
+    >
+      <button
+        type="button"
+        aria-label="Open menu"
+        :aria-expanded="menuOpen"
+        class="grid size-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        @click="menuOpen = true"
       >
-        <Link
-          v-for="item in navItems"
-          :key="item.href"
-          :href="item.href"
-          :aria-current="isActive(item.href) ? 'page' : undefined"
-          :class="navLink(item.href)"
-        >
-          {{ item.label }}
-        </Link>
-        <a
-          :href="DOCS_URL"
-          target="_blank"
-          rel="noreferrer"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          Docs
-        </a>
-      </nav>
+        <Icon name="menu" class="size-4.5" />
+      </button>
+      <Link :href="route('dashboard')" class="min-w-0 flex-1 rounded-lg"><AppLogo /></Link>
+      <Dropdown v-if="user" label="Account" :items="menuItems">
+        <template #header>
+          <p class="truncate text-sm font-medium">{{ user.name }}</p>
+          <p class="truncate text-xs text-muted-foreground">{{ user.email }}</p>
+        </template>
+        <template #trigger><Avatar :name="user.name" /></template>
+      </Dropdown>
     </header>
 
-    <main id="main" :class="cn(CONTAINER, 'flex-1 py-14 sm:py-20')">
+    <dialog
+      ref="drawer"
+      aria-label="Menu"
+      class="m-0 h-dvh max-h-none w-72 max-w-[85vw] border-r border-border bg-card p-0 text-card-foreground backdrop:bg-black/50 lg:hidden"
+      @cancel.prevent="menuOpen = false"
+      @click="onDrawerClick"
+    >
+      <AppSidebar closable @close="menuOpen = false" />
+    </dialog>
+
+    <main id="main" class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
       <slot />
     </main>
 
-    <footer class="border-t border-border">
-      <div
-        :class="
-          cn(
-            CONTAINER,
-            'flex flex-col items-center justify-between gap-3 py-8 text-sm text-muted-foreground sm:flex-row',
-          )
-        "
-      >
-        <p>
-          Built with <span class="font-medium text-foreground">Zerotal</span> — the Bun-native
-          TypeScript framework.
-        </p>
-        <a
-          :href="DOCS_URL"
-          target="_blank"
-          rel="noreferrer"
-          class="font-medium transition-colors hover:text-foreground"
-        >
-          Documentation
-        </a>
-      </div>
-    </footer>
-
-    <FlashToasts />
+    <Toasts />
   </div>
 </template>

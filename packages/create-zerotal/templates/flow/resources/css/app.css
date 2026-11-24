@@ -1,12 +1,13 @@
 @import "tailwindcss";
 
-/* Page components live outside this file's directory — name them explicitly so
- * their utility classes survive Tailwind's content scan. */
-@source "../js";
+/* The pages, layouts and components live in app/flow/, outside this file's
+ * directory — name it explicitly so their utility classes survive Tailwind's
+ * content scan. */
+@source "../../app/flow";
 
 /* Dark mode is driven by a `.dark` class on <html>, not the OS preference, so the
- * in-app toggle can override it. The no-flash script in resources/app.html sets
- * the class before first paint. */
+ * in-app toggle can override it. The no-flash script in app/flow/lib/document.ts
+ * sets the class before first paint. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ── Design tokens ───────────────────────────────────────────────────────────

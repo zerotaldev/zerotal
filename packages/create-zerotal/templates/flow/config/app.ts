@@ -43,12 +43,7 @@ export default AppConfig({
     windowSeconds: 60,
   },
 
-  // The browser script: resources/js/app.js, bundled to public/js/app.js by `bun zt dev`
-  // (on every change) and `bun zt assets:build` (for a release). The stylesheet is built
-  // from resources/css/app.css to public/css/app.css alongside it.
-  assets: {
-    entrypoint: "resources/js/app.js",
-    outDir: "public/js",
-    prefix: env("ASSETS_PREFIX", "/"),
-  },
+  // No `assets` block: FlowProvider builds resources/css/app.css to public/css/app.css and
+  // resources/js/app.js to public/js/app.js — on every change under `bun zt dev`, and for a
+  // release with `bun zt assets:build`.
 });

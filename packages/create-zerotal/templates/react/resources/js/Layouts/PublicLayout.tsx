@@ -90,11 +90,12 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
             <span className="truncate">{appName}</span>
           </Link>
 
-          <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
-            {navItems}
-          </nav>
-
+          {/* Everything but the logo sits on the right: the site's pages, then the actions. */}
           <div className="flex items-center gap-2">
+            <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
+              {navItems}
+            </nav>
+            <span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-border sm:block" />
             <a
               href={DOCS_URL}
               target="_blank"

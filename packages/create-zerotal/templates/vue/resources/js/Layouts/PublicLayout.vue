@@ -79,19 +79,20 @@ const navLink = (href: string): string =>
           <span class="truncate">{{ appName }}</span>
         </Link>
 
-        <nav aria-label="Main" class="hidden items-center gap-1 sm:flex">
-          <Link
-            v-for="item in navItems"
-            :key="item.href"
-            :href="item.href"
-            :aria-current="isActive(item.href) ? 'page' : undefined"
-            :class="navLink(item.href)"
-          >
-            {{ item.label }}
-          </Link>
-        </nav>
-
+        <!-- Everything but the logo sits on the right: the site's pages, then the actions. -->
         <div class="flex items-center gap-2">
+          <nav aria-label="Main" class="hidden items-center gap-1 sm:flex">
+            <Link
+              v-for="item in navItems"
+              :key="item.href"
+              :href="item.href"
+              :aria-current="isActive(item.href) ? 'page' : undefined"
+              :class="navLink(item.href)"
+            >
+              {{ item.label }}
+            </Link>
+          </nav>
+          <span aria-hidden="true" class="mx-1 hidden h-5 w-px bg-border sm:block" />
           <a
             :href="DOCS_URL"
             target="_blank"

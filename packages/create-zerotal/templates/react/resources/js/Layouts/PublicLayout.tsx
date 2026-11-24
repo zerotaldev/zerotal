@@ -23,8 +23,8 @@ import type { SharedProps } from "../types";
  * narrower measure wrap their own content rather than changing this one.
  */
 
+// No "Home" entry: the logo is the link home.
 const NAV = [
-  { href: "/", label: "Home" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -32,7 +32,7 @@ const NAV = [
 const CONTAINER = "mx-auto w-full max-w-5xl px-6";
 
 function isActive(url: string, href: string): boolean {
-  return href === "/" ? url === "/" : url.startsWith(href);
+  return url.startsWith(href);
 }
 
 export default function PublicLayout({ children }: { children: ReactNode }) {

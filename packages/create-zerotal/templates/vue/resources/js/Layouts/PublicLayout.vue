@@ -21,8 +21,8 @@ import { DOCS_URL, useAppName } from "../lib/site";
 import { cn } from "../lib/cn";
 import type { SharedProps } from "../types";
 
+// No "Home" entry: the logo is the link home.
 const NAV = [
-  { href: "/", label: "Home" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
@@ -42,7 +42,7 @@ const menuOpen = ref(false);
 watch(url, () => (menuOpen.value = false));
 
 const isActive = (href: string): boolean =>
-  href === "/" ? url.value === "/" : url.value.startsWith(href);
+  url.value.startsWith(href);
 
 const navLink = (href: string): string =>
   cn(

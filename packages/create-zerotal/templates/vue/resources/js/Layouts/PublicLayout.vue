@@ -41,8 +41,7 @@ const menuOpen = ref(false);
 // the page the user just navigated to.
 watch(url, () => (menuOpen.value = false));
 
-const isActive = (href: string): boolean =>
-  url.value.startsWith(href);
+const isActive = (href: string): boolean => url.value.startsWith(href);
 
 const navLink = (href: string): string =>
   cn(

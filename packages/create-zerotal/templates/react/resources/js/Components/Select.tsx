@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { cn } from "../lib/cn";
 import { CONTROL, controlBorder } from "./Input";
-import { ChevronDownIcon } from "./Icons";
+import { ChevronDownIcon } from "./Icon";
 
 export interface SelectOption {
   value: string;

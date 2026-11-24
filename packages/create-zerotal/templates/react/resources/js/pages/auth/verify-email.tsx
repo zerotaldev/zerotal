@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Head, Link, useForm } from "@inertiajs/react";
 import AuthLayout from "../../Layouts/AuthLayout";
 import { Button } from "../../Components/Button";
-import { MailIcon } from "../../Components/Icons";
+import { MailIcon } from "../../Components/Icon";
 
 interface Props {
   title: string;

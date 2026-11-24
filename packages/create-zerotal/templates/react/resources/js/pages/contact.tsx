@@ -5,7 +5,7 @@ import { Button } from "../Components/Button";
 import { Card } from "../Components/Card";
 import { Code } from "../Components/Code";
 import { TextAreaField, TextField } from "../Components/Field";
-import { MailIcon } from "../Components/Icons";
+import { MailIcon } from "../Components/Icon";
 import type { SharedProps } from "../types";
 
 interface Props {

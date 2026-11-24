@@ -3,7 +3,7 @@ import { Head, usePage } from "@inertiajs/react";
 import AppLayout from "../Layouts/AppLayout";
 import PublicLayout from "../Layouts/PublicLayout";
 import { Button, ButtonLink } from "../Components/Button";
-import { AlertIcon, ClockIcon, LockIcon, SearchIcon } from "../Components/Icons";
+import { AlertIcon, ClockIcon, LockIcon, SearchIcon } from "../Components/Icon";
 import type { SharedProps } from "../types";
 
 interface Props {

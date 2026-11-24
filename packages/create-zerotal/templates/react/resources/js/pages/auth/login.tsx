@@ -4,7 +4,7 @@ import AuthLayout from "../../Layouts/AuthLayout";
 import { Button } from "../../Components/Button";
 import { Checkbox } from "../../Components/Checkbox";
 import { TextField } from "../../Components/Field";
-import { FingerprintIcon } from "../../Components/Icons";
+import { FingerprintIcon } from "../../Components/Icon";
 import { Divider, SocialButtons } from "../../Components/SocialButtons";
 import { toast } from "../../Components/Toasts";
 import { postJson } from "../../lib/http";

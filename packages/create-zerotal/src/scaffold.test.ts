@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { readdir, rm } from 'node:fs/promises';
 import { outputPath, RENAMED, scaffold, ZT_VERSION } from './scaffold.ts';
 import { TEMPLATES } from './args.ts';
+import { KITS } from './manifest.ts';
 
 const TMP = join(import.meta.dir, '..', '.test-output');
 
@@ -87,7 +88,7 @@ describe('starter parity', () => {
     admin: [...WITH_DATABASE, 'CacheProvider', 'FlowProvider', 'AdminProvider', 'DevtoolsProvider'],
     flow: [...WITH_DATABASE, 'FlowProvider', 'DevtoolsProvider'],
     react: [...WITH_DATABASE, 'NotificationProvider', 'SocialProvider', 'InertiaProvider', 'DevtoolsProvider'],
-    vue: [...WITH_DATABASE, 'InertiaProvider', 'DevtoolsProvider'],
+    vue: [...WITH_DATABASE, 'NotificationProvider', 'SocialProvider', 'InertiaProvider', 'DevtoolsProvider'],
   };
 
   const bootstrap = async (template: string) => {
@@ -582,8 +583,25 @@ describe('scaffold — react template', () => {
     expect(tsconfig).toContain('"jsxImportSource": "react"');
   });
 
-  it('writes the tooling dotfiles under their real names', async () => {
-    await scaffold({ name: 'react-app', template: 'react', db: 'sqlite', target: TMP });
+  it('leaves no unreplaced {{tokens}}', async () => {
+    await scaffold({ name: 'react-test', template: 'react', db: 'sqlite', target: TMP });
+    const files = ['package.json', 'zt.ts', 'config/app.ts', '.env.example',
+                   'resources/js/app.tsx', 'app/routes/index.ts'];
+    for (const f of files) {
+      const text = await Bun.file(join(TMP, f)).text();
+      expect(text, `${f} still has unreplaced tokens`).not.toContain('{{');
+    }
+  });
+});
+
+// ── the full-stack kits ──────────────────────────────────────────────────────
+
+/** The kits that ship the full app: sign-in, settings, the example resource and tooling. */
+const FULL_STACK = Object.keys(KITS) as (keyof typeof KITS)[];
+
+describe('scaffold — full-stack kits', () => {
+  it.each(FULL_STACK)('%s writes the tooling dotfiles under their real names', async (template) => {
+    await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
 
     for (const path of [
       '.gitignore',
@@ -604,8 +622,8 @@ describe('scaffold — react template', () => {
     expect(leftovers).toEqual([]);
   });
 
-  it('ships a CI workflow that runs the same checks as the README', async () => {
-    await scaffold({ name: 'react-app', template: 'react', db: 'sqlite', target: TMP });
+  it.each(FULL_STACK)('%s ships a CI workflow that runs the same checks as the README', async (template) => {
+    await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
     const workflow = await Bun.file(join(TMP, '.github/workflows/ci.yml')).text();
     const pkg = await Bun.file(join(TMP, 'package.json')).json();
 
@@ -617,33 +635,24 @@ describe('scaffold — react template', () => {
     expect(workflow).toContain('${{ github.workflow }}');
   });
 
-  it('passes its own format check as scaffolded', async () => {
+  it.each(FULL_STACK)('%s passes its own format check as scaffolded', async (template) => {
     // The kit's CI runs `bun run format:check` first, so a starter that fails it greets
     // every new project with a red build.
-    await scaffold({ name: 'react-app', template: 'react', db: 'sqlite', target: TMP });
+    await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
     const prettier = join(import.meta.dir, '..', '..', '..', 'node_modules', '.bin', 'prettier');
     const check = Bun.spawnSync([prettier, '--check', '.'], { cwd: TMP });
 
     expect({ code: check.exitCode, output: check.stdout.toString() + check.stderr.toString() }).toMatchObject({ code: 0 });
   });
 
-  it('formats with the repository\'s Prettier settings', async () => {
-    await scaffold({ name: 'react-app', template: 'react', db: 'sqlite', target: TMP });
+  it.each(FULL_STACK)('%s formats with the repository\'s Prettier settings', async (template) => {
+    await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
     const app = await Bun.file(join(TMP, '.prettierrc.json')).json();
     const repo = await Bun.file(join(import.meta.dir, '..', '..', '..', '.prettierrc.json')).json();
 
     expect(app).toEqual(repo);
   });
 
-  it('leaves no unreplaced {{tokens}}', async () => {
-    await scaffold({ name: 'react-test', template: 'react', db: 'sqlite', target: TMP });
-    const files = ['package.json', 'zt.ts', 'config/app.ts', '.env.example',
-                   'resources/js/app.tsx', 'app/routes/index.ts'];
-    for (const f of files) {
-      const text = await Bun.file(join(TMP, f)).text();
-      expect(text, `${f} still has unreplaced tokens`).not.toContain('{{');
-    }
-  });
 });
 
 // ── vue template ───────────────────────────────────────────────────────────────

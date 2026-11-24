@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { cn } from "../lib/cn";
-import { CloseIcon } from "./Icons";
+import { CloseIcon } from "./Icon";
 
 /**
  * A dialog over the page, built on the native `<dialog>` element.

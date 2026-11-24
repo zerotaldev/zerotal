@@ -1,32 +1,34 @@
 <script setup lang="ts">
 /**
- * The handful of icons this starter needs, inlined.
+ * The icons this starter needs, inlined: `<Icon name="folder" class="size-4" />`.
  *
- * One component with a `name` rather than one file per glyph: in Vue an SFC is
- * a file, and fourteen files for fourteen `<path>` elements is more ceremony
- * than the icons are worth. Same paths and same stroke treatment as the React
- * template, so both render identically.
+ * One component with a `name` rather than one file per glyph: in Vue an SFC is a file,
+ * and thirty files for thirty `<path>` elements is more ceremony than the icons are
+ * worth. The same glyphs as the React starter's Icon.tsx.
  *
- * They inherit `currentColor`, so they follow the theme with no extra wiring.
+ * Outline icons inherit `currentColor`, so they follow the theme with no extra wiring.
+ * The two brand marks (GitHub, Google) carry their own fill. Reach for a real icon set
+ * once you outgrow these.
  */
-const props = withDefaults(defineProps<{ name: IconName; class?: string }>(), {});
+import { computed } from "vue";
 
-type IconName = "sun" | "moon" | "menu" | "close" | "check" | "alert" | "info" | "arrow-right";
+import { ICONS, type IconName } from "../lib/icons";
 
-const PATHS: Record<IconName, string> = {
-  sun: "M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
-  moon: "M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z",
-  menu: "M4 7h16M4 12h16M4 17h16",
-  close: "M18 6 6 18M6 6l12 12",
-  check: "m20 6-11 11-5-5",
-  alert: "M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z",
-  info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01",
-  "arrow-right": "M5 12h14M13 6l6 6-6 6",
-};
+const props = defineProps<{ name: IconName }>();
+const icon = computed(() => ICONS[props.name]);
 </script>
 
 <template>
+  <!-- The markup is this file's own constants, never user input. -->
   <svg
+    v-if="icon.brand"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    v-html="icon.body"
+  />
+  <svg
+    v-else
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -34,9 +36,6 @@ const PATHS: Record<IconName, string> = {
     stroke-linecap="round"
     stroke-linejoin="round"
     aria-hidden="true"
-    :class="props.class"
-  >
-    <circle v-if="name === 'sun'" cx="12" cy="12" r="4" />
-    <path :d="PATHS[name]" />
-  </svg>
+    v-html="icon.body"
+  />
 </template>

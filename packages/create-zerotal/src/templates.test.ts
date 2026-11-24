@@ -2,7 +2,7 @@ import { describe, it, expect } from 'bun:test';
 import { join } from 'node:path';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { TEMPLATES } from './args.ts';
-import { MANIFEST } from './manifest.ts';
+import { KITS, MANIFEST } from './manifest.ts';
 
 /**
  * Invariants of the template sources — the first-run faults of 1.15.2, held in place.
@@ -83,21 +83,21 @@ describe('the admin template', () => {
   });
 });
 
-describe('the react kit', () => {
-  // The reference kit: the Vue and Flow kits are ports of it, checked against the same list.
-  const KIT = join(TEMPLATES_DIR, 'react');
+describe.each(Object.entries(KITS))('the %s kit', (template, { extension }) => {
+  // React is the reference; the other kits are ports of it, checked against the same list.
+  const KIT = join(TEMPLATES_DIR, template);
   const has = (rel: string): boolean => existsSync(join(KIT, rel));
 
   it.each([...MANIFEST.pages])('has the %s page', (page) => {
-    expect({ page, exists: has(`resources/js/pages/${page}.tsx`) }).toEqual({ page, exists: true });
+    expect({ page, exists: has(`resources/js/pages/${page}${extension}`) }).toEqual({ page, exists: true });
   });
 
   it.each([...MANIFEST.layouts])('has the %s layout', (layout) => {
-    expect({ layout, exists: has(`resources/js/Layouts/${layout}.tsx`) }).toEqual({ layout, exists: true });
+    expect({ layout, exists: has(`resources/js/Layouts/${layout}${extension}`) }).toEqual({ layout, exists: true });
   });
 
   it.each([...MANIFEST.components])('has the %s component', (component) => {
-    expect({ component, exists: has(`resources/js/Components/${component}.tsx`) }).toEqual({
+    expect({ component, exists: has(`resources/js/Components/${component}${extension}`) }).toEqual({
       component,
       exists: true,
     });

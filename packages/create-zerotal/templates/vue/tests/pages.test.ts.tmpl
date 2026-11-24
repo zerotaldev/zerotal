@@ -1,0 +1,257 @@
+/**
+ * Every page is built once, to prove it can be.
+ *
+ * The rest of the suite asserts values and status codes, and a page can throw on
+ * its first paint while every one of them passes: the route answers `200`, the
+ * Inertia payload is correct, and the failure happens in a browser the test never
+ * opened. An app shipped a blank page to production with 614 green tests exactly
+ * that way — a layout callback read `page.props`, which the callback is not given.
+ *
+ * This proves one thing only: the component tree builds without throwing. That is
+ * precisely the thing nothing else here checks. It is not a DOM — `useEffect` does
+ * not run, and nothing clicks; for that, see `@zerotal/testing/browser`.
+ *
+ * Add a line when you add a page. The cost is one line and the bug it catches is a
+ * white screen your users find first.
+ */
+import { afterAll, beforeAll, describe, test } from "bun:test";
+import type { TestApp } from "zerotal/testing";
+import { defineRoutes } from "zerotal/routes";
+import { ROUTES } from "../types/routes.generated";
+import { renderPage } from "./render";
+import { bootApp } from "./support";
+
+// `.vue` files can be imported once the app has booted: InertiaProvider registers the
+// compiler as a loader then. So the app is booted first and the pages loaded after.
+let app: TestApp;
+const pages: Record<string, unknown> = {};
+
+beforeAll(async () => {
+  app = await bootApp();
+  const load = async (path: string) => (await import(path)).default as unknown;
+  pages["About"] = await load("../resources/js/pages/about.vue");
+  pages["Contact"] = await load("../resources/js/pages/contact.vue");
+  pages["ErrorPage"] = await load("../resources/js/pages/error.vue");
+  pages["Home"] = await load("../resources/js/pages/home.vue");
+  pages["ConfirmPassword"] = await load("../resources/js/pages/auth/confirm-password.vue");
+  pages["ForgotPassword"] = await load("../resources/js/pages/auth/forgot-password.vue");
+  pages["Login"] = await load("../resources/js/pages/auth/login.vue");
+  pages["Register"] = await load("../resources/js/pages/auth/register.vue");
+  pages["ResetPassword"] = await load("../resources/js/pages/auth/reset-password.vue");
+  pages["TwoFactorChallenge"] = await load("../resources/js/pages/auth/two-factor-challenge.vue");
+  pages["VerifyEmail"] = await load("../resources/js/pages/auth/verify-email.vue");
+  pages["Dashboard"] = await load("../resources/js/pages/dashboard.vue");
+  pages["CreateProject"] = await load("../resources/js/pages/projects/create.vue");
+  pages["EditProject"] = await load("../resources/js/pages/projects/edit.vue");
+  pages["Projects"] = await load("../resources/js/pages/projects/index.vue");
+  pages["SettingsAppearance"] = await load("../resources/js/pages/settings/appearance.vue");
+  pages["SettingsDeleteAccount"] = await load("../resources/js/pages/settings/delete-account.vue");
+  pages["SettingsPasskeys"] = await load("../resources/js/pages/settings/passkeys.vue");
+  pages["SettingsPassword"] = await load("../resources/js/pages/settings/password.vue");
+  pages["SettingsProfile"] = await load("../resources/js/pages/settings/profile.vue");
+  pages["SettingsSessions"] = await load("../resources/js/pages/settings/sessions.vue");
+  pages["SettingsTwoFactor"] = await load("../resources/js/pages/settings/two-factor.vue");
+});
+
+afterAll(() => app.close());
+
+/** A page by the name it was loaded under, once `beforeAll` has run. */
+const page = (name: string) => () => pages[name];
+
+// The same line `resources/js/app.tsx` runs in the browser. `defineRoutes` installs
+// `route()` as a global, and the layouts call it in `<script setup>` — so without this every page throws
+// `route is not defined`, which is a true statement about a test that has not
+// finished setting up rather than about the page.
+defineRoutes(ROUTES);
+
+/**
+ * What `Inertia.share()` puts on every page. A component that destructures one of
+ * these throws without it — a real failure, but not the one these tests are for.
+ * Keep this in step with `resources/js/types.ts`.
+ */
+const SHARED = {
+  app: { name: "Acme" },
+  features: { passkeys: true },
+  auth: { user: null },
+  flash: { success: null, error: null, warning: null, info: null },
+  errors: {},
+  old: {},
+};
+
+type PageCase = [name: string, page: () => unknown, props: Record<string, unknown>];
+
+const PUBLIC: PageCase[] = [
+  ["home", page("Home"), { title: "Home", message: "Welcome" }],
+  ["about", page("About"), { title: "About" }],
+  ["contact", page("Contact"), { title: "Contact" }],
+  ["error", page("ErrorPage"), { status: 404 }],
+  [
+    "auth/login",
+    page("Login"),
+    { title: "Sign in", passkeys: true, providers: ["github", "google"] },
+  ],
+  ["auth/register", page("Register"), { title: "Create an account", providers: ["github"] }],
+  [
+    "auth/forgot-password",
+    page("ForgotPassword"),
+    { title: "Forgot password", mailIsLogged: true },
+  ],
+  [
+    "auth/reset-password",
+    page("ResetPassword"),
+    { title: "Reset password", token: "test-token", email: "ada@example.com" },
+  ],
+  ["auth/two-factor-challenge", page("TwoFactorChallenge"), { title: "Two-factor authentication" }],
+];
+
+describe("pages render", () => {
+  for (const [name, Page, props] of PUBLIC) {
+    test(`${name} builds without throwing`, async () => {
+      await renderPage(Page() as never, props, { shared: SHARED, url: `/${name}` });
+    });
+  }
+});
+
+/**
+ * The signed-in pages, rendered with a user — they read `auth.user`, and the sidebar
+ * shows it. A page that only ever renders as a guest has had half of it tested.
+ */
+const USER = {
+  id: 1,
+  name: "Ada Lovelace",
+  email: "ada@example.com",
+  emailVerifiedAt: "2026-01-01T00:00:00.000Z",
+  twoFactorConfirmedAt: null,
+};
+
+const PROJECT = {
+  id: 1,
+  name: "Website relaunch",
+  description: "A new site.",
+  status: "active",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
+const EMPTY_PAGE = { page: 1, lastPage: 1, total: 0, from: null, to: null };
+
+const SIGNED_IN: PageCase[] = [
+  [
+    "dashboard",
+    page("Dashboard"),
+    {
+      title: "Dashboard",
+      greeting: "Good morning, Ada",
+      stats: { total: 0, active: 0, completed: 0 },
+      recentProjects: [],
+    },
+  ],
+  [
+    "dashboard",
+    page("Dashboard"),
+    {
+      title: "Dashboard",
+      greeting: "Good morning, Ada",
+      stats: { total: 1, active: 1, completed: 0 },
+      recentProjects: [PROJECT],
+    },
+  ],
+  [
+    "projects/index",
+    page("Projects"),
+    { title: "Projects", projects: [], pagination: EMPTY_PAGE, search: "" },
+  ],
+  [
+    "projects/index",
+    page("Projects"),
+    {
+      title: "Projects",
+      projects: [PROJECT],
+      pagination: { ...EMPTY_PAGE, total: 1, from: 1, to: 1 },
+      search: "",
+    },
+  ],
+  ["projects/create", page("CreateProject"), { title: "New project" }],
+  ["projects/edit", page("EditProject"), { title: "Edit", project: PROJECT }],
+  [
+    "auth/verify-email",
+    page("VerifyEmail"),
+    { title: "Verify your email", email: "ada@example.com", mailIsLogged: true },
+  ],
+  ["auth/confirm-password", page("ConfirmPassword"), { title: "Confirm your password" }],
+  ["settings/profile", page("SettingsProfile"), { title: "Profile", emailVerified: false }],
+  ["settings/password", page("SettingsPassword"), { title: "Password" }],
+  ["settings/appearance", page("SettingsAppearance"), { title: "Appearance" }],
+  [
+    "settings/two-factor",
+    page("SettingsTwoFactor"),
+    { title: "Two-factor", enabled: false, setup: null, recoveryCodes: null, recoveryCodesLeft: 0 },
+  ],
+  [
+    "settings/two-factor",
+    page("SettingsTwoFactor"),
+    {
+      title: "Two-factor",
+      enabled: false,
+      setup: { qrSvg: "<svg></svg>", uri: "otpauth://totp/x", secret: "JBSWY3DPEHPK3PXP" },
+      recoveryCodes: null,
+      recoveryCodesLeft: 0,
+    },
+  ],
+  [
+    "settings/two-factor",
+    page("SettingsTwoFactor"),
+    {
+      title: "Two-factor",
+      enabled: true,
+      setup: null,
+      recoveryCodes: ["aaaa-bbbb"],
+      recoveryCodesLeft: 8,
+    },
+  ],
+  [
+    "settings/passkeys",
+    page("SettingsPasskeys"),
+    {
+      title: "Passkeys",
+      passkeys: [
+        {
+          id: 1,
+          name: "Mac",
+          deviceType: "multiDevice",
+          backedUp: true,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          lastUsedAt: null,
+        },
+      ],
+    },
+  ],
+  [
+    "settings/sessions",
+    page("SettingsSessions"),
+    {
+      title: "Sessions",
+      sessions: [
+        {
+          id: "a",
+          browser: "Chrome",
+          platform: "macOS",
+          ipAddress: "127.0.0.1",
+          lastActiveAt: "2026-01-01T00:00:00.000Z",
+          current: true,
+        },
+      ],
+    },
+  ],
+  ["settings/delete-account", page("SettingsDeleteAccount"), { title: "Delete account" }],
+  ["error", page("ErrorPage"), { status: 403 }],
+];
+
+describe("pages render for a signed-in user", () => {
+  for (const [name, Page, props] of SIGNED_IN) {
+    test(`${name} builds with a user`, async () => {
+      await renderPage(Page() as never, props, {
+        shared: { ...SHARED, auth: { user: USER } },
+        url: `/${name}`,
+      });
+    });
+  }
+});

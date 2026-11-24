@@ -4,7 +4,7 @@ import AppLayout from "../../Layouts/AppLayout";
 import { Button, ButtonLink } from "../../Components/Button";
 import { Card } from "../../Components/Card";
 import { EmptyState } from "../../Components/EmptyState";
-import { FolderIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "../../Components/Icons";
+import { FolderIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "../../Components/Icon";
 import { Input } from "../../Components/Input";
 import { Modal } from "../../Components/Modal";
 import { PageHeader } from "../../Components/PageHeader";

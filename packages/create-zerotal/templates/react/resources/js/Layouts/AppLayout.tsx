@@ -19,7 +19,7 @@ import {
   LogOutIcon,
   MenuIcon,
   SettingsIcon,
-} from "../Components/Icons";
+} from "../Components/Icon";
 import ThemeToggle from "../Components/ThemeToggle";
 import Toasts from "../Components/Toasts";
 import { cn } from "../lib/cn";

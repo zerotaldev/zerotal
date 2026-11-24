@@ -1,5 +1,5 @@
 import { buttonClass } from "./Button";
-import { GitHubIcon, GoogleIcon } from "./Icons";
+import { GitHubIcon, GoogleIcon } from "./Icon";
 
 const PROVIDERS: Record<string, { label: string; icon: typeof GitHubIcon }> = {
   github: { label: "GitHub", icon: GitHubIcon },

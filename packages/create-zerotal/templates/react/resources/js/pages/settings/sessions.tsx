@@ -4,7 +4,7 @@ import SettingsLayout from "../../Layouts/SettingsLayout";
 import { Badge } from "../../Components/Badge";
 import { Button } from "../../Components/Button";
 import { Card, CardFooter, CardHeader } from "../../Components/Card";
-import { MonitorIcon, PhoneIcon } from "../../Components/Icons";
+import { MonitorIcon, PhoneIcon } from "../../Components/Icon";
 import { PasswordDialog } from "../../Components/PasswordDialog";
 import { timeAgo } from "../../lib/format";
 

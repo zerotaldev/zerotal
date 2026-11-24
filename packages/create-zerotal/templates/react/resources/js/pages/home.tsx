@@ -13,7 +13,7 @@ import {
   LayersIcon,
   ShieldIcon,
   TerminalIcon,
-} from "../Components/Icons";
+} from "../Components/Icon";
 import { DOCS_URL } from "../lib/site";
 
 interface Props {

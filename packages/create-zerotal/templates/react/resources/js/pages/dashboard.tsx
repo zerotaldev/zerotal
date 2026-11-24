@@ -4,7 +4,7 @@ import AppLayout from "../Layouts/AppLayout";
 import { ButtonLink } from "../Components/Button";
 import { Card, CardHeader } from "../Components/Card";
 import { EmptyState } from "../Components/EmptyState";
-import { BoltIcon, CheckIcon, FolderIcon, PlusIcon } from "../Components/Icons";
+import { BoltIcon, CheckIcon, FolderIcon, PlusIcon } from "../Components/Icon";
 import { PageHeader } from "../Components/PageHeader";
 import { ProjectStatusBadge } from "../Components/ProjectStatusBadge";
 import { timeAgo } from "../lib/format";

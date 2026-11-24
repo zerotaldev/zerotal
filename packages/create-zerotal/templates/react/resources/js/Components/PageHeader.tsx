@@ -1,6 +1,6 @@
 import { Link } from "@inertiajs/react";
 import type { ReactNode } from "react";
-import { ChevronLeftIcon } from "./Icons";
+import { ChevronLeftIcon } from "./Icon";
 
 /** The title row at the top of a signed-in page: what this is, and what you can do here. */
 export function PageHeader({

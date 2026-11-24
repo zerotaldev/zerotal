@@ -4,7 +4,7 @@ import PublicLayout from "../Layouts/PublicLayout";
 import { ButtonLink } from "../Components/Button";
 import { Card } from "../Components/Card";
 import { Code } from "../Components/Code";
-import { ArrowRightIcon } from "../Components/Icons";
+import { ArrowRightIcon } from "../Components/Icon";
 
 interface Props {
   title: string;

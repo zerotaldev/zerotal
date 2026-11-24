@@ -10,7 +10,7 @@ import {
   ShieldIcon,
   TrashIcon,
   UserIcon,
-} from "../Components/Icons";
+} from "../Components/Icon";
 import { cn } from "../lib/cn";
 import type { SharedProps } from "../types";
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
-import { AlertIcon, CheckIcon, InfoIcon } from "./Icons";
+import { AlertIcon, CheckIcon, InfoIcon } from "./Icon";
 
 export type AlertTone = "info" | "success" | "warning" | "danger";
 

@@ -7,7 +7,7 @@ import { Button } from "../../Components/Button";
 import { Card, CardHeader } from "../../Components/Card";
 import { EmptyState } from "../../Components/EmptyState";
 import { TextField } from "../../Components/Field";
-import { FingerprintIcon, PlusIcon } from "../../Components/Icons";
+import { FingerprintIcon, PlusIcon } from "../../Components/Icon";
 import { Modal } from "../../Components/Modal";
 import { toast } from "../../Components/Toasts";
 import { formatDate, timeAgo } from "../../lib/format";

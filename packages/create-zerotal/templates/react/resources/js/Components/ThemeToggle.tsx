@@ -1,5 +1,5 @@
 import { Dropdown } from "./Dropdown";
-import { LaptopIcon, MoonIcon, SunIcon } from "./Icons";
+import { LaptopIcon, MoonIcon, SunIcon } from "./Icon";
 import { useAppearance, type Appearance } from "../lib/theme";
 import { cn } from "../lib/cn";
 

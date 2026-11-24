@@ -1,9 +1,5 @@
-import {
-  ExceptionHandler,
-  ZerotalError,
-  devSurfacesEnabled,
-  type HttpContext,
-} from "zerotal";
+import { ExceptionHandler, ZerotalError, devSurfacesEnabled, type HttpContext } from "zerotal";
+import { ModelNotFoundError } from "zerotal/orm";
 import { inertia } from "@zerotal/inertia";
 
 /**
@@ -11,7 +7,7 @@ import { inertia } from "@zerotal/inertia";
  *
  * Registered in bootstrap/app.ts. Without it, a mistyped URL lands on the
  * framework's plain error page — correct, but jarring after the rest of the app.
- * This hands the status to resources/js/pages/error.tsx instead.
+ * This hands the status to resources/js/pages/error.vue instead.
  *
  * Three cases deliberately fall through to `super.render()`:
  *
@@ -32,6 +28,10 @@ function statusOf(error: unknown): number {
 }
 
 export class Handler extends ExceptionHandler {
+  // A missing record is the visitor's 404, not the app's fault: `/projects/999/edit`
+  // binds `:project` with `findOrFail`, and that is not worth a stack trace in the log.
+  protected override dontReport = [ModelNotFoundError];
+
   override async render(error: unknown, ctx: HttpContext): Promise<Response> {
     const status = statusOf(error);
     const wantsHtml = (ctx.request.headers.get("Accept") ?? "").includes("text/html");

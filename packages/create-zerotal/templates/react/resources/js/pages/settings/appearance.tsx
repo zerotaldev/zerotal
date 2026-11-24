@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Head } from "@inertiajs/react";
 import SettingsLayout from "../../Layouts/SettingsLayout";
 import { Card, CardBody, CardHeader } from "../../Components/Card";
-import { LaptopIcon, MoonIcon, SunIcon } from "../../Components/Icons";
+import { LaptopIcon, MoonIcon, SunIcon } from "../../Components/Icon";
 import { cn } from "../../lib/cn";
 import { useAppearance, type Appearance as Choice } from "../../lib/theme";
 

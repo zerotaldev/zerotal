@@ -1,6 +1,6 @@
 import { Link } from "@inertiajs/react";
 import { cn } from "../lib/cn";
-import { ChevronLeftIcon, ChevronRightIcon } from "./Icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "./Icon";
 import type { Pagination as PaginationData } from "../types";
 
 /**

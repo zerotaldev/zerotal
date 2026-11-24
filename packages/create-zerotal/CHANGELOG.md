@@ -28,13 +28,19 @@ follows the Zerotal monorepo's unified versioning.
 - **The React starter ships CI, a Dockerfile, `/health`, `.editorconfig`, VS Code
   recommendations and Prettier settings**, with feature tests for every flow.
 - **The app name comes from `config/app.ts`** (`APP_NAME`) everywhere the React starter shows it.
+- **The Vue starter is the same app as the React one,** page for page, route for route and test
+  for test: the same server code, the same tests, and the layouts, components and pages written
+  as Vue single-file components. `bun run typecheck` runs `vue-tsc`, so `.vue` files are type
+  checked and a route's props are checked against the page's own. A `tests/pages.test.ts` renders
+  every page, through a small `tests/render.ts` helper.
 - **Dotfiles in templates are renamed from one table** (`RENAMED` in `src/scaffold.ts`), applied
   to the first path segment, so directories such as `_github/` arrive as `.github/`.
 
 ### Added
 
 - **`src/manifest.ts`** lists a full-stack kit's pages, layouts, components, named routes and
-  tests, independent of the frontend, and `templates.test.ts` checks the React kit against it.
+  tests, independent of the frontend, and `templates.test.ts` checks the React and Vue kits
+  against it.
 
 ## [1.17.1] — 2026-11-21
 

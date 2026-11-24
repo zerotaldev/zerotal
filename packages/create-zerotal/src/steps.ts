@@ -25,7 +25,7 @@ const MIGRATES: ReadonlySet<Template> = new Set<Template>(['api', 'admin', 'flow
 /** The seeded account that makes a fresh admin panel usable rather than a locked door. */
 const ADMIN_LOGIN = 'admin@example.com / password';
 
-/** The React starter's demo account, with sample projects to look at. */
+/** The full-stack starters' demo account, with sample projects to look at. */
 const DEMO_LOGIN = 'demo@example.com / password';
 
 /** Where the admin template's panel lives. */
@@ -41,7 +41,7 @@ export function setupSteps(template: Template, db: Database): FirstRunStep[] {
   if (template === 'admin') {
     steps.push({ command: 'bun zt db:seed', comment: `demo data + ${ADMIN_LOGIN}` });
   }
-  if (template === 'react') {
+  if (template === 'react' || template === 'vue') {
     steps.push({ command: 'bun zt db:seed', comment: `optional: ${DEMO_LOGIN} with sample projects` });
   }
   return steps;

@@ -7,9 +7,15 @@
  * it is specific to one frontend — a page is named the way `Inertia.render()` (or a Flow
  * page path) names it, and a component by its export name.
  *
- * `templates.test.ts` asserts that the React kit has every entry. When a kit gains a page,
- * a route, a component or a test, it gains a line here first.
+ * `templates.test.ts` asserts that every kit in {@link KITS} has every entry. When a kit gains
+ * a page, a route, a component or a test, it gains a line here first.
  */
+
+/** The full-stack kits, and the extension their pages, layouts and components are written in. */
+export const KITS = {
+  react: { extension: '.tsx' },
+  vue: { extension: '.vue' },
+} as const;
 
 /** A named route, as `types/routes.generated.ts` records it. */
 export interface ManifestRoute {
@@ -80,7 +86,7 @@ export const MANIFEST: KitManifest = {
     'Dropdown',
     'EmptyState',
     'Field',
-    'Icons',
+    'Icon',
     'Input',
     'Modal',
     'PageHeader',

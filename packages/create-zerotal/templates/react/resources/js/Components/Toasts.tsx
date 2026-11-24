@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { cn } from "../lib/cn";
-import { AlertIcon, CheckIcon, CloseIcon, InfoIcon } from "./Icons";
+import { AlertIcon, CheckIcon, CloseIcon, InfoIcon } from "./Icon";
 import type { SharedProps } from "../types";
 
 /**

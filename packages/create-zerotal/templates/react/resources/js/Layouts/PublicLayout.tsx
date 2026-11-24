@@ -3,7 +3,7 @@ import { Link, usePage } from "@inertiajs/react";
 import Toasts from "../Components/Toasts";
 import { ButtonLink } from "../Components/Button";
 import ThemeToggle from "../Components/ThemeToggle";
-import { CloseIcon, MenuIcon } from "../Components/Icons";
+import { CloseIcon, MenuIcon } from "../Components/Icon";
 import { DOCS_URL, useAppName } from "../lib/site";
 import { cn } from "../lib/cn";
 import type { SharedProps } from "../types";

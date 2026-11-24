@@ -1,8 +1,11 @@
 import { Inertia } from "@zerotal/inertia";
 
+// GET / — the landing page. Whatever this route passes as the second argument
+// arrives in resources/js/pages/home.vue as props.
 export const GET = async () => {
   return Inertia.render("home", {
-    title: "Welcome to Zerotal Vue!",
-    message: "This is a sample page for your Zerotal Vue application.",
+    title: "Everything in one TypeScript app",
+    message:
+      "Routes, pages, validation and data access share one language and one process — served by Bun.",
   });
 };

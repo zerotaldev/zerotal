@@ -59,7 +59,7 @@ function _explainFallbacks(): boolean {
   return Bun.env["ZT_FLOW_COMPILE_LOG"] === "1";
 }
 
-const HELPERS_IMPORT = `import { __esc, __escAttr } from '@zerotal/flow/compiler-helpers';\n\n`;
+const HELPERS_IMPORT = `import { __esc, __escAttr, __attr } from '@zerotal/flow/compiler-helpers';\n\n`;
 
 /**
  * Compile all Component classes that have __sourceFile set.

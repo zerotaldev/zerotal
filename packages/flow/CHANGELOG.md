@@ -11,6 +11,23 @@ change.
 
 ## [Unreleased]
 
+### Changed
+
+- **An attribute worked out on the server no longer stops a page compiling.** `href={route("login")}`,
+  `data-id={row.id}` inside a `.map()`, `class={cn(…)}`, `aria-invalid={error ? "true" : undefined}`
+  and the like used to send the whole page to the runtime fallback, and fail it under `cspSafe`.
+  They now compile to the value the page computes when it renders, written as the runtime writes
+  it: `true` as the bare attribute, `false` and nullish leaving it out, a URL attribute with its
+  scheme checked. A numeric literal (`rows={3}`) compiles as written. Still left to the runtime: a
+  `class` array, a `style` object, a `<textarea value>`, a function, and a class naming an imported
+  constant the compiler could not read.
+- **A page can extend a class of the app's own.** `class LoginPage extends Page`, with `Page`
+  imported from a relative module and extending `Component` (directly or through another such
+  class), compiles like a page that extends `Component`. Its `@expose` and `@locked` fields count as
+  the page's.
+- **A page that cannot be compiled for want of a page class, or of a `render()`, says so** under
+  `ZT_FLOW_COMPILE_LOG=1`, instead of reporting no reason.
+
 ## [1.17.1] — 2026-11-21
 
 ### Added

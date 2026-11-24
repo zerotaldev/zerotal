@@ -26,6 +26,7 @@ import {
   normalizeClassList,
   type StaticStrings,
 } from "./constants.ts";
+import { readModuleText, resolveRelativeModule } from "./static-imports.ts";
 
 export { FlowValidationError };
 
@@ -115,9 +116,10 @@ export function validateFlowFile(source: string, filename: string): void {
     /* setParentNodes */ true,
     ts.ScriptKind.TSX,
   );
-  const pageClass = _findPageClass(sf);
+  const bases: ts.ClassDeclaration[] = [];
+  const pageClass = _findPageClass(sf, bases);
   if (!pageClass) return;
-  const members = _getMemberInfo(pageClass);
+  const members = _pageMemberInfo(pageClass, bases);
   _validateFlowCallbacks(sf, members, filename);
 }
 
@@ -135,6 +137,12 @@ let _cspSafe = false;
  *  caller resolved from relative imports, minus any name the page class re-declares. Set
  *  per-call by transformFlowFile, like `_cspSafe`. */
 let _staticStrings: StaticStrings = new Map();
+/**
+ * Names this file imports from a relative module whose value the compiler was not handed. A
+ * class that names one is a shared class list the compiler could not read, which it leaves to
+ * the runtime rather than evaluate: the import may not resolve at all.
+ */
+let _unreadImports: ReadonlySet<string> = new Set();
 
 /** Every name the class declares anywhere inside it: locals, parameters, destructured names,
  *  inner functions and classes. Any of these could shadow a constant of the same name. */
@@ -200,14 +208,28 @@ export function transformFlowFile(
     ts.ScriptKind.TSX,
   );
 
-  const pageClass = _findPageClass(sf);
-  if (!pageClass) return null;
+  const bases: ts.ClassDeclaration[] = [];
+  const pageClass = _findPageClass(sf, bases);
+  if (!pageClass) {
+    if (opts.report && !opts.report.blocker) {
+      const cls = sf.statements.find(ts.isClassDeclaration);
+      opts.report.blocker = _blockerAt(
+        cls ?? sf,
+        cls
+          ? `\`${cls.name?.text ?? "class"}\` does not extend Component`
+          : "the file declares no page class",
+        "extend Component, or a class of your own that does, imported from a relative module",
+      );
+    }
+    return null;
+  }
 
   const strings = moduleStringConstants(sf, opts.constants);
   for (const shadowed of _declaredNames(pageClass)) strings.delete(shadowed);
   _staticStrings = strings;
+  _unreadImports = _relativeImportNames(sf, strings);
 
-  const members = _getMemberInfo(pageClass);
+  const members = _pageMemberInfo(pageClass, bases);
   const className = pageClass.name?.text ?? "Unknown";
 
   // Validate flow() client callbacks across the whole file before AOT.
@@ -215,7 +237,16 @@ export function transformFlowFile(
   _validateFlowCallbacks(sf, members, filename);
 
   const renderMethod = _findRenderMethod(pageClass);
-  if (!renderMethod) return null;
+  if (!renderMethod) {
+    if (opts.report && !opts.report.blocker) {
+      opts.report.blocker = _blockerAt(
+        pageClass,
+        `\`${className}\` has no render() of its own`,
+        "declare render() on the page class",
+      );
+    }
+    return null;
+  }
 
   const report: BlockerReport = opts.report ?? {};
   const renderBody = _compileRenderMethod(renderMethod, filename, members, report);
@@ -464,18 +495,113 @@ function _buildPreamble(sf: ts.SourceFile, filename: string): string {
 
 // ── AST finders ───────────────────────────────────────────────────────────────
 
-function _findPageClass(sf: ts.SourceFile): ts.ClassDeclaration | null {
+/** Names imported from relative modules (`./x`, `../x`) that `known` has no value for. */
+function _relativeImportNames(sf: ts.SourceFile, known: ReadonlyMap<string, string>): Set<string> {
+  const names = new Set<string>();
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    if (!stmt.moduleSpecifier.text.startsWith(".")) continue;
+    const clause = stmt.importClause;
+    if (!clause || clause.isTypeOnly) continue;
+    if (clause.name) names.add(clause.name.text);
+    const bindings = clause.namedBindings;
+    if (bindings && ts.isNamedImports(bindings)) {
+      for (const el of bindings.elements) if (!el.isTypeOnly) names.add(el.name.text);
+    }
+  }
+  for (const name of known.keys()) names.delete(name);
+  return names;
+}
+
+/**
+ * The page's class: the first class extending `Component`, or extending a class of the app's own
+ * that does — `class LoginPage extends Page`, with `Page` imported from a relative module that
+ * declares `class Page extends Component` (followed through a few such modules). An app shares
+ * its page plumbing that way, and only `render()` is compiled, so where the class sits in the
+ * chain changes nothing about the output. `bases`, when given, receives the classes followed,
+ * nearest first, so their `@expose`/`@locked` members count as the page's own.
+ */
+function _findPageClass(
+  sf: ts.SourceFile,
+  bases?: ts.ClassDeclaration[],
+): ts.ClassDeclaration | null {
   for (const stmt of sf.statements) {
     if (!ts.isClassDeclaration(stmt)) continue;
-    const ext = stmt.heritageClauses?.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword);
-    if (!ext) continue;
-    for (const t of ext.types) {
-      if (ts.isIdentifier(t.expression) && BASE_CLASSES.has(t.expression.text)) {
-        return stmt;
-      }
+    const parent = _extendsName(stmt);
+    if (!parent) continue;
+    if (BASE_CLASSES.has(parent)) return stmt;
+    const chain = _importedBaseChain(sf, parent, 0);
+    if (chain) {
+      bases?.push(...chain);
+      return stmt;
     }
   }
   return null;
+}
+
+/** The identifier after `extends`, if it is one. */
+function _extendsName(cls: ts.ClassDeclaration): string | null {
+  const ext = cls.heritageClauses?.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword);
+  const t = ext?.types[0];
+  return t && ts.isIdentifier(t.expression) ? t.expression.text : null;
+}
+
+/** How many modules deep a page's base class is followed. */
+const MAX_BASE_DEPTH = 4;
+
+/**
+ * When `name` is imported into `sf` from a relative module that declares it as a class extending
+ * `Component` (itself, or through another such import), the classes on the way; otherwise null.
+ */
+function _importedBaseChain(
+  sf: ts.SourceFile,
+  name: string,
+  depth: number,
+): ts.ClassDeclaration[] | null {
+  if (depth >= MAX_BASE_DEPTH) return null;
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const specifier = stmt.moduleSpecifier.text;
+    if (!specifier.startsWith("./") && !specifier.startsWith("../")) continue;
+    const bindings = stmt.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings) || stmt.importClause?.isTypeOnly) continue;
+    const element = bindings.elements.find((e) => e.name.text === name && !e.isTypeOnly);
+    if (!element) continue;
+
+    const file = resolveRelativeModule(sf.fileName, specifier);
+    const text = file ? readModuleText(file) : null;
+    if (!file || text === null) return null;
+    const kind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+    const module = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind);
+    const exported = (element.propertyName ?? element.name).text;
+    const cls = module.statements.find(
+      (s): s is ts.ClassDeclaration =>
+        ts.isClassDeclaration(s) &&
+        s.name?.text === exported &&
+        (s.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false),
+    );
+    const parent = cls ? _extendsName(cls) : null;
+    if (!cls || !parent) return null;
+    if (BASE_CLASSES.has(parent)) return [cls];
+    const rest = _importedBaseChain(module, parent, depth + 1);
+    return rest ? [cls, ...rest] : null;
+  }
+  return null;
+}
+
+/** A page's members, with those of the base classes it extends counted as its own. */
+function _pageMemberInfo(
+  cls: ts.ClassDeclaration,
+  bases: readonly ts.ClassDeclaration[],
+): MemberInfo {
+  const info = _getMemberInfo(cls);
+  for (const base of bases) {
+    const more = _getMemberInfo(base);
+    for (const key of Object.keys(info) as (keyof MemberInfo)[]) {
+      for (const name of more[key]) info[key].add(name);
+    }
+  }
+  return info;
 }
 
 function _findRenderMethod(cls: ts.ClassDeclaration): ts.MethodDeclaration | null {
@@ -1444,7 +1570,7 @@ function _compileRenderMethod(
     }
 
     emitStatic(`<${tag}`);
-    const textProp = _visitAttrs(node.openingElement.attributes);
+    const textProp = _visitAttrs(node.openingElement.attributes, false, tag);
     if (!canCompile) return;
     emitStatic(">");
 
@@ -1482,7 +1608,7 @@ function _compileRenderMethod(
     }
 
     emitStatic(`<${tag}`);
-    const textProp = _visitAttrs(node.attributes);
+    const textProp = _visitAttrs(node.attributes, false, tag);
     if (!canCompile) return;
 
     if (VOID_ELEMENTS.has(tag)) {
@@ -1634,7 +1760,7 @@ function _compileRenderMethod(
    * Returns null when no `text` prop is present.
    * Sets canCompile=false and returns null early on unsupported patterns.
    */
-  function _visitAttrs(attrs: ts.JsxAttributes, link = false): string | null {
+  function _visitAttrs(attrs: ts.JsxAttributes, link = false, tag = "a"): string | null {
     let textProp: string | null = null;
 
     // <Link> → <a flow:navigate>: the navigate directive is always present; `hover`
@@ -2081,13 +2207,22 @@ function _compileRenderMethod(
         continue;
       }
 
-      // class={['base', cond && 'extra']} / class={this.x} — not statically decomposable → runtime.
+      // class={cn("base", cond && "extra")} / class={cond ? A : B} — not something the client can
+      // re-evaluate, so it is worked out on the server, as the runtime does. An array would be
+      // written as the runtime writes it (joined with commas), which is never what was meant.
       if (name === "class" || name === "className") {
-        return bail(
-          `\`${name}={${_snippet(expr, 28)}}\` is not a static class string`,
-          "inline the classes as a string literal, or build them in a template literal",
-          attr,
-        );
+        if (ts.isArrayLiteralExpression(expr)) {
+          return bail(`\`${name}={[…]}\` is an array`, "join the classes into one string", attr);
+        }
+        if (ts.isIdentifier(expr) && _unreadImports.has(expr.text)) {
+          return bail(
+            `\`${name}={${expr.text}}\` is not a static class string`,
+            `the compiler could not read ${expr.text} from its module: export it as a plain string const`,
+            attr,
+          );
+        }
+        emitDynamic(`__attr("class", ${expr.getText()})`);
+        continue;
       }
 
       // style={{ ... }} object — can't compile
@@ -2125,16 +2260,58 @@ function _compileRenderMethod(
         continue;
       }
 
-      // Anything else (flow() chains, ternaries, etc.) — can't compile
-      return bail(
-        ts.isNumericLiteral(expr)
-          ? `\`${name}={${expr.text}}\` is a numeric literal`
-          : `\`${name}={${_snippet(expr, 28)}}\` is not a static value`,
-        ts.isNumericLiteral(expr)
-          ? `write ${name}="${expr.text}"`
-          : `use a string literal, or bind it to an @expose property (${name}={this.x})`,
-        attr,
-      );
+      // rows={3} — a number written as an expression is still a literal.
+      if (ts.isNumericLiteral(expr)) {
+        emitStatic(` ${ATTR_RENAMES[name] ?? name}="${_escAttr(expr.text)}"`);
+        continue;
+      }
+
+      // `key` is the runtime's list identity, never an attribute.
+      if (name === "key") continue;
+
+      // A Flow directive prop (show=, confirm=, poll=, …) with a value this compiler has no
+      // emit for: the runtime knows what to do with it.
+      if (name in STRING_DIRECTIVES || name in BOOLEAN_DIRECTIVES || name === "text") {
+        return bail(
+          `\`${name}={${_snippet(expr, 28)}}\` is not a static value`,
+          `use a string literal, or bind it to an @expose property (${name}={this.x})`,
+          attr,
+        );
+      }
+
+      // <textarea value> and <select value> are not attributes: the runtime writes the first as
+      // the element's text and marks the second's matching <option selected>.
+      if (name === "value" && (tag === "textarea" || tag === "select")) {
+        return bail(
+          `\`<${tag} value={${_snippet(expr, 24)}}>\` is not an attribute`,
+          tag === "textarea"
+            ? "write the value as the <textarea>'s text child"
+            : "mark the matching <option selected={…}> instead",
+          attr,
+        );
+      }
+
+      // Anything else is a value worked out on the server — `href={route("login")}`,
+      // `aria-invalid={error ? "true" : undefined}`, `data-id={project.id}` inside a .map().
+      // It runs at render time like a text child does, and is written the way the runtime
+      // writes an attribute (see `__attr`): no client code, so it is fine under cspSafe too.
+      // Functions never reach here as values worth writing; they are handlers or mistakes.
+      if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
+        return bail(
+          `\`${name}={${_snippet(expr, 28)}}\` is a function`,
+          "pass a value, or name an event handler on*",
+          attr,
+        );
+      }
+      if (ts.isObjectLiteralExpression(expr)) {
+        return bail(
+          `\`${name}={${_snippet(expr, 28)}}\` is an object literal`,
+          "pass a string, number or boolean",
+          attr,
+        );
+      }
+      emitDynamic(`__attr(${JSON.stringify(ATTR_RENAMES[name] ?? name)}, ${expr.getText()})`);
+      continue;
     }
 
     return textProp;

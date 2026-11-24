@@ -83,21 +83,21 @@ describe('the admin template', () => {
   });
 });
 
-describe.each(Object.entries(KITS))('the %s kit', (template, { extension }) => {
+describe.each(Object.entries(KITS))('the %s kit', (template, { extension, pages, layouts, components }) => {
   // React is the reference; the other kits are ports of it, checked against the same list.
   const KIT = join(TEMPLATES_DIR, template);
   const has = (rel: string): boolean => existsSync(join(KIT, rel));
 
   it.each([...MANIFEST.pages])('has the %s page', (page) => {
-    expect({ page, exists: has(`resources/js/pages/${page}${extension}`) }).toEqual({ page, exists: true });
+    expect({ page, exists: has(`${pages}/${page}${extension}`) }).toEqual({ page, exists: true });
   });
 
   it.each([...MANIFEST.layouts])('has the %s layout', (layout) => {
-    expect({ layout, exists: has(`resources/js/Layouts/${layout}${extension}`) }).toEqual({ layout, exists: true });
+    expect({ layout, exists: has(`${layouts}/${layout}${extension}`) }).toEqual({ layout, exists: true });
   });
 
   it.each([...MANIFEST.components])('has the %s component', (component) => {
-    expect({ component, exists: has(`resources/js/Components/${component}${extension}`) }).toEqual({
+    expect({ component, exists: has(`${components}/${component}${extension}`) }).toEqual({
       component,
       exists: true,
     });

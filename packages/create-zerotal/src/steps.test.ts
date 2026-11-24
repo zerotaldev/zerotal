@@ -19,7 +19,7 @@ describe('nextStepLines', () => {
     expect(nextStepLines('app', 'minimal', 'sqlite')).toEqual(['cd app', 'bun zt dev']);
   });
 
-  it.each(['flow', 'api'] as const)('%s migrates first', (template) => {
+  it.each(['api'] as const)('%s migrates first', (template) => {
     expect(nextStepLines('app', template, 'sqlite')).toEqual([
       'cd app',
       'bun zt migrate',
@@ -36,7 +36,7 @@ describe('nextStepLines', () => {
     ]);
   });
 
-  it.each(['react', 'vue'] as const)('%s migrates, then offers a demo account with sample projects', (template) => {
+  it.each(['flow', 'react', 'vue'] as const)('%s migrates, then offers a demo account with sample projects', (template) => {
     expect(nextStepLines('app', template, 'sqlite')).toEqual([
       'cd app',
       'bun zt migrate',

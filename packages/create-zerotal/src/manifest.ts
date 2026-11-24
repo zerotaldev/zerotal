@@ -11,10 +11,33 @@
  * a page, a route, a component or a test, it gains a line here first.
  */
 
-/** The full-stack kits, and the extension their pages, layouts and components are written in. */
+/**
+ * The full-stack kits: where each keeps its pages, layouts and components, and the
+ * extension they are written in. A page is `<pages>/<name><extension>`, a layout
+ * `<layouts>/<Name><extension>`, and a component `<components>/<Name><extension>`.
+ *
+ * The React and Vue kits keep the frontend under resources/js/. The Flow kit's pages and
+ * components run on the server, so they live under app/flow/.
+ */
 export const KITS = {
-  react: { extension: '.tsx' },
-  vue: { extension: '.vue' },
+  react: {
+    extension: '.tsx',
+    pages: 'resources/js/pages',
+    layouts: 'resources/js/Layouts',
+    components: 'resources/js/Components',
+  },
+  vue: {
+    extension: '.vue',
+    pages: 'resources/js/pages',
+    layouts: 'resources/js/Layouts',
+    components: 'resources/js/Components',
+  },
+  flow: {
+    extension: '.tsx',
+    pages: 'app/flow/pages',
+    layouts: 'app/flow/layouts',
+    components: 'app/flow/components',
+  },
 } as const;
 
 /** A named route, as `types/routes.generated.ts` records it. */

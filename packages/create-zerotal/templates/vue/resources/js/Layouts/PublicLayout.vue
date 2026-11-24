@@ -22,10 +22,7 @@ import { cn } from "../lib/cn";
 import type { SharedProps } from "../types";
 
 // No "Home" entry: the logo is the link home.
-const NAV = [
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
-];
+const NAV = [{ href: "/about", label: "About" }];
 
 const CONTAINER = "mx-auto w-full max-w-5xl px-6";
 

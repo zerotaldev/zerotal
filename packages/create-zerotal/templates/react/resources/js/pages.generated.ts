@@ -7,7 +7,6 @@
 
 export const pages = {
   home: () => import("./pages/home.tsx"),
-  contact: () => import("./pages/contact.tsx"),
   error: () => import("./pages/error.tsx"),
   dashboard: () => import("./pages/dashboard.tsx"),
   about: () => import("./pages/about.tsx"),

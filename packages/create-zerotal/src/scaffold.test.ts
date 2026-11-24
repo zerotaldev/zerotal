@@ -559,7 +559,6 @@ describe('scaffold — react template', () => {
     expect(await Bun.file(join(TMP, 'resources/js/Layouts/AppLayout.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'resources/js/pages/home.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'resources/js/pages/about.tsx')).exists()).toBe(true);
-    expect(await Bun.file(join(TMP, 'resources/js/pages/contact.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'resources/js/pages/dashboard.tsx')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'app/routes/index.ts')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'app/routes/(auth)/(verified)/dashboard.ts')).exists()).toBe(true);
@@ -670,7 +669,6 @@ describe('scaffold — vue template', () => {
     expect(await Bun.file(join(TMP, 'resources/js/Layouts/AppLayout.vue')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'resources/js/pages/home.vue')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'resources/js/pages/about.vue')).exists()).toBe(true);
-    expect(await Bun.file(join(TMP, 'resources/js/pages/contact.vue')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, 'app/routes/index.ts')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, '.env.example')).exists()).toBe(true);
     expect(await Bun.file(join(TMP, '.gitignore')).exists()).toBe(true);

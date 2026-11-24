@@ -30,7 +30,6 @@ beforeAll(async () => {
   app = await bootApp();
   const load = async (path: string) => (await import(path)).default as unknown;
   pages["About"] = await load("../resources/js/pages/about.vue");
-  pages["Contact"] = await load("../resources/js/pages/contact.vue");
   pages["ErrorPage"] = await load("../resources/js/pages/error.vue");
   pages["Home"] = await load("../resources/js/pages/home.vue");
   pages["ConfirmPassword"] = await load("../resources/js/pages/auth/confirm-password.vue");
@@ -83,7 +82,6 @@ type PageCase = [name: string, page: () => unknown, props: Record<string, unknow
 const PUBLIC: PageCase[] = [
   ["home", page("Home"), { title: "Home", message: "Welcome" }],
   ["about", page("About"), { title: "About" }],
-  ["contact", page("Contact"), { title: "Contact" }],
   ["error", page("ErrorPage"), { status: 404 }],
   [
     "auth/login",

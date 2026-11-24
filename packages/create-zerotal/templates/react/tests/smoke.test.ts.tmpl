@@ -42,9 +42,8 @@ describe("scaffold", () => {
     (await app.get("/about")).assertInertiaProp("app", { name: config("app.name") });
   });
 
-  test("renders the other pages", async () => {
+  test("renders the about page", async () => {
     (await app.get("/about")).assertInertia("about");
-    (await app.get("/contact")).assertInertia("contact");
   });
 
   test("answers HEAD on the home route, as probes and load balancers do", async () => {
@@ -65,9 +64,9 @@ describe("scaffold", () => {
 });
 
 /**
- * The contact form's round trip, which is the pattern the starter exists to
- * show: validate on the server, and on failure redirect back carrying the
- * messages and the input.
+ * The contact form's round trip — it sits at the foot of /about — which is the
+ * pattern the starter exists to show: validate on the server, and on failure
+ * redirect back carrying the messages and the input.
  */
 describe("contact form", () => {
   test("sends the visitor back with errors when the input is bad", async () => {
@@ -75,23 +74,23 @@ describe("contact form", () => {
     // redirects back to when validation fails — without it the redirect
     // falls back to "/" and the assertion below would be testing nothing.
     const res = await app.postForm(
-      "/contact",
+      "/about",
       { name: "A", email: "nope", message: "short" },
-      { Referer: `${app.baseUrl}/contact` },
+      { Referer: `${app.baseUrl}/about` },
     );
 
-    res.assertRedirect("/contact");
+    res.assertRedirect("/about");
     res.assertInvalid(["name", "email", "message"]);
   });
 
   test("accepts a valid submission", async () => {
-    const res = await app.postForm("/contact", {
+    const res = await app.postForm("/about", {
       name: "Ada Lovelace",
       email: "ada@example.com",
       message: "This message is comfortably long enough to pass validation.",
     });
 
-    res.assertRedirect("/contact");
+    res.assertRedirect("/about");
     res.assertValid();
   });
 });

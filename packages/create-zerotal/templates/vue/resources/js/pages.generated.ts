@@ -6,7 +6,6 @@
 // Converting to static imports will bundle ALL pages into app.js.
 
 export const pages = {
-  contact: () => import("./pages/contact.vue"),
   home: () => import("./pages/home.vue"),
   dashboard: () => import("./pages/dashboard.vue"),
   about: () => import("./pages/about.vue"),

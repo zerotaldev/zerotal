@@ -148,3 +148,21 @@ describe.each(Object.entries(KITS))('the %s kit', (template, { extension, pages,
     expect(stamped).toEqual([]);
   });
 });
+
+describe('the vue kit', () => {
+  // A comment at the top of a component's <template> is a second root node in a production
+  // build. Vue's production runtime then passes no outside attributes through, so
+  // `<Icon class="size-4" />` rendered an unsized icon, while the dev server, which skips
+  // comments there, looked right. A component's comment goes above its <template> instead.
+  it('starts no component or layout template with a comment', async () => {
+    const KIT = join(TEMPLATES_DIR, 'vue');
+    const offenders: string[] = [];
+    for (const dir of [KITS.vue.components, KITS.vue.layouts]) {
+      for await (const rel of new Bun.Glob('**/*.vue').scan({ cwd: join(KIT, dir) })) {
+        const source = await Bun.file(join(KIT, dir, rel)).text();
+        if (/<template>\s*<!--/.test(source)) offenders.push(`${dir}/${rel}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});

@@ -61,8 +61,8 @@ onMounted(() => window.addEventListener(TOAST_EVENT, onToast));
 onBeforeUnmount(() => window.removeEventListener(TOAST_EVENT, onToast));
 </script>
 
+<!-- Always in the DOM, so a screen reader is already listening when a toast arrives. -->
 <template>
-  <!-- Always in the DOM, so a screen reader is already listening when a toast arrives. -->
   <div
     aria-live="polite"
     class="pointer-events-none fixed inset-x-4 bottom-4 z-[60] flex flex-col items-end gap-2 sm:inset-x-auto sm:right-6 sm:bottom-6"

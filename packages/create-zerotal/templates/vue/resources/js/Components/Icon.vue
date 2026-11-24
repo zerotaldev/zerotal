@@ -18,8 +18,8 @@ const props = defineProps<{ name: IconName }>();
 const icon = computed(() => ICONS[props.name]);
 </script>
 
+<!-- The markup is this file's own constants, never user input. -->
 <template>
-  <!-- The markup is this file's own constants, never user input. -->
   <svg
     v-if="icon.brand"
     viewBox="0 0 24 24"

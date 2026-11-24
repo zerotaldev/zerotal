@@ -1045,6 +1045,9 @@ function _compileRenderMethod(
   const returns: ts.ReturnStatement[] = [];
   const countReturns = (n: ts.Node): void => {
     if (ts.isReturnStatement(n)) returns.push(n);
+    // A return inside a nested function is that function's own — the block body of a
+    // `.map((row) => { const x = …; return <li>…</li>; })` callback, say — not render()'s.
+    if (ts.isFunctionLike(n)) return;
     ts.forEachChild(n, countReturns);
   };
   countReturns(method.body);

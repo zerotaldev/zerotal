@@ -140,3 +140,24 @@ describe("Flow compiler — dangerouslySetInnerHTML", () => {
     expect(report.blocker?.reason).toContain("is not `{{ __html: … }}`");
   });
 });
+
+describe("Flow compiler — returns in nested functions", () => {
+  it("does not count a .map() callback's own return as render()'s", async () => {
+    const html = await render(
+      `<ul>{rows.map((row) => { const label = row.toUpperCase(); return <li>{label}</li>; })}</ul>`,
+      { lead: `const rows = ["a", "b"];` },
+    );
+    expect(html).toBe("<ul><li>A</li><li>B</li></ul>");
+  });
+
+  it("still needs render() itself to return once", () => {
+    const report: BlockerReport = {};
+    const source = `/** @jsxImportSource @zerotal/flow */
+import { Component } from '@zerotal/flow';
+export class DemoPage extends Component {
+  override async render() { if (Math.random()) return (<p>a</p>); return (<p>b</p>); }
+}`;
+    expect(transformFlowFile(source, FILE, { report })).toBeNull();
+    expect(report.blocker?.reason).toContain("2 return statements");
+  });
+});

@@ -33,6 +33,9 @@ change.
 - **`dangerouslySetInnerHTML={{ __html: … }}` compiles**, writing the markup in place of the
   element's children as the runtime does. An icon drawn from the page's own constants, or an SVG
   made on the server, no longer sends the page to the runtime fallback.
+- **A `.map()` callback with a block body no longer stops a page compiling.** The compiler supports
+  `{rows.map((row) => { const x = …; return <li>…</li>; })}`, but counted the callback's own
+  `return` as a second one in `render()` and fell back.
 - **A page that cannot be compiled for want of a page class, or of a `render()`, says so** under
   `ZT_FLOW_COMPILE_LOG=1`, instead of reporting no reason.
 

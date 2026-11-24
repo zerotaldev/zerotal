@@ -1,23 +1,18 @@
 import type { HtmlNode } from "@zerotal/flow";
-import { cn } from "../lib/cn";
-import type { IconName } from "../lib/icons";
+import {
+  ALERT_BODY,
+  ALERT_ICON,
+  ALERT_ICON_CLASS,
+  ALERT_TEXT,
+  ALERT_TEXT_UNDER_TITLE,
+  ALERT_TITLE,
+  alertClass,
+  alertRole,
+  type AlertTone,
+} from "../lib/ui";
 import { Icon } from "./Icon";
 
-export type AlertTone = "info" | "success" | "warning" | "danger";
-
-const TONE: Record<AlertTone, string> = {
-  info: "border-border bg-muted/50 text-foreground",
-  success: "border-success/30 bg-success/10 text-success",
-  warning: "border-warning/30 bg-warning/10 text-warning",
-  danger: "border-destructive/30 bg-destructive/10 text-destructive",
-};
-
-const ICON: Record<AlertTone, IconName> = {
-  info: "info",
-  success: "check",
-  warning: "alert",
-  danger: "alert",
-};
+export type { AlertTone };
 
 /**
  * A message that belongs to the page rather than to the moment — "verify your email",
@@ -40,15 +35,12 @@ export function Alert({
   class?: string | undefined;
 }): HtmlNode {
   return (
-    <div
-      role={tone === "danger" || tone === "warning" ? "alert" : undefined}
-      class={cn("flex gap-3 rounded-xl border p-4", TONE[tone], className)}
-    >
-      <Icon name={ICON[tone]} class="mt-0.5 size-5 shrink-0" />
-      <div class="min-w-0 flex-1 text-sm">
-        {title ? <p class="font-semibold">{title}</p> : null}
+    <div role={alertRole(tone)} class={alertClass(tone, className)}>
+      <Icon name={ALERT_ICON[tone]} class={ALERT_ICON_CLASS} />
+      <div class={ALERT_BODY}>
+        {title ? <p class={ALERT_TITLE}>{title}</p> : null}
         {children ? (
-          <div class={cn("text-foreground/80", title ? "mt-1" : undefined)}>{children}</div>
+          <div class={title ? ALERT_TEXT_UNDER_TITLE : ALERT_TEXT}>{children}</div>
         ) : null}
         {actions ? <div class="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
       </div>

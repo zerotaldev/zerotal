@@ -1,6 +1,7 @@
 import type { HtmlNode } from "@zerotal/flow";
 import { Input, Textarea } from "./Input";
 import { Select, type SelectOption } from "./Select";
+import { FIELD, FIELD_ERROR, FIELD_HINT, FIELD_LABEL_ROW, LABEL } from "../lib/ui";
 
 /**
  * Labelled form controls with error and hint text wired up.
@@ -62,9 +63,9 @@ function Shell({
   children: unknown;
 }): HtmlNode {
   return (
-    <div class="space-y-1.5">
-      <div class="flex items-baseline justify-between gap-3">
-        <label for={controlId} class="block text-sm font-medium text-foreground">
+    <div class={FIELD}>
+      <div class={FIELD_LABEL_ROW}>
+        <label for={controlId} class={LABEL}>
           {label}
         </label>
         {aside}
@@ -72,16 +73,11 @@ function Shell({
 
       {children}
 
-      <p id={errorId} data-error-for={name} class="text-sm text-destructive" hidden={!error}>
+      <p id={errorId} data-error-for={name} class={FIELD_ERROR} hidden={!error}>
         {error ?? ""}
       </p>
       {hint ? (
-        <p
-          id={hintId}
-          data-hint-for={name}
-          class="text-sm text-muted-foreground"
-          hidden={Boolean(error)}
-        >
+        <p id={hintId} data-hint-for={name} class={FIELD_HINT} hidden={Boolean(error)}>
           {hint}
         </p>
       ) : null}

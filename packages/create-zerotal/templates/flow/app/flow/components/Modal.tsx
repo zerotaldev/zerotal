@@ -1,6 +1,7 @@
 import type { HtmlNode } from "@zerotal/flow";
 import { cn } from "../lib/cn";
 import { Icon } from "./Icon";
+import { MODAL, MODAL_CLOSE, MODAL_FOOTER } from "../lib/ui";
 
 /**
  * A dialog over the page, built on the native `<dialog>` element.
@@ -36,23 +37,14 @@ export function Modal({
       data-modal=""
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
-      class={cn(
-        "m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-border bg-card p-0 text-card-foreground shadow-2xl",
-        "backdrop:bg-black/50 backdrop:backdrop-blur-[2px]",
-        className,
-      )}
+      class={cn(MODAL, className)}
     >
       <div class="p-5 sm:p-6">
         <div class="flex items-start justify-between gap-4">
           <h2 id={titleId} class="text-lg font-semibold">
             {title}
           </h2>
-          <button
-            type="button"
-            data-close-modal=""
-            aria-label="Close"
-            class="-m-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
+          <button type="button" data-close-modal="" aria-label="Close" class={MODAL_CLOSE}>
             <Icon name="close" class="size-4.5" />
           </button>
         </div>
@@ -63,11 +55,7 @@ export function Modal({
         ) : null}
         {children ? <div class="mt-5">{children}</div> : null}
       </div>
-      {footer ? (
-        <div class="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-border bg-muted/40 px-5 py-3 sm:flex-row sm:justify-end sm:px-6">
-          {footer}
-        </div>
-      ) : null}
+      {footer ? <div class={MODAL_FOOTER}>{footer}</div> : null}
     </dialog>
   );
 }

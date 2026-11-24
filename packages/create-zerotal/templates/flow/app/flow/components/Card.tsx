@@ -1,5 +1,16 @@
 import type { HtmlNode } from "@zerotal/flow";
 import { cn } from "../lib/cn";
+import {
+  CARD,
+  CARD_ACTIONS,
+  CARD_BODY,
+  CARD_DESCRIPTION,
+  CARD_FOOTER,
+  CARD_HEADER,
+  CARD_ICON,
+  CARD_INTERACTIVE,
+  CARD_TITLE,
+} from "../lib/ui";
 
 type BoxProps = { class?: string | undefined; children?: unknown; [attribute: string]: unknown };
 
@@ -17,15 +28,7 @@ export function Card({
   ...rest
 }: BoxProps & { interactive?: boolean }): HtmlNode {
   return (
-    <div
-      class={cn(
-        "surface rounded-xl",
-        interactive &&
-          "transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-primary/40",
-        className,
-      )}
-      {...rest}
-    >
+    <div class={cn(interactive ? CARD_INTERACTIVE : CARD, className)} {...rest}>
       {children}
     </div>
   );
@@ -33,16 +36,7 @@ export function Card({
 
 /** Small square glyph holder used at the top of a feature card. */
 export function CardIcon({ class: className, children }: BoxProps): HtmlNode {
-  return (
-    <div
-      class={cn(
-        "grid size-10 place-items-center rounded-lg border border-border bg-accent text-accent-foreground",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div class={cn(CARD_ICON, className)}>{children}</div>;
 }
 
 /**
@@ -61,36 +55,22 @@ export function CardHeader({
   class?: string | undefined;
 }): HtmlNode {
   return (
-    <div
-      class={cn(
-        "flex flex-col gap-3 px-5 pt-5 sm:flex-row sm:items-start sm:justify-between sm:px-6 sm:pt-6",
-        className,
-      )}
-    >
+    <div class={cn(CARD_HEADER, className)}>
       <div class="min-w-0">
-        <h2 class="text-base font-semibold text-card-foreground">{title}</h2>
-        {description ? <p class="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+        <h2 class={CARD_TITLE}>{title}</h2>
+        {description ? <p class={CARD_DESCRIPTION}>{description}</p> : null}
       </div>
-      {actions ? <div class="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? <div class={CARD_ACTIONS}>{actions}</div> : null}
     </div>
   );
 }
 
 /** The padded body under a {@link CardHeader}. */
 export function CardBody({ class: className, children }: BoxProps): HtmlNode {
-  return <div class={cn("px-5 py-5 sm:px-6", className)}>{children}</div>;
+  return <div class={cn(CARD_BODY, className)}>{children}</div>;
 }
 
 /** A tinted strip along the bottom of a card, for the form's submit button. */
 export function CardFooter({ class: className, children }: BoxProps): HtmlNode {
-  return (
-    <div
-      class={cn(
-        "flex flex-wrap items-center justify-end gap-3 rounded-b-xl border-t border-border bg-muted/40 px-5 py-3 sm:px-6",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div class={cn(CARD_FOOTER, className)}>{children}</div>;
 }

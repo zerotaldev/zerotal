@@ -43,6 +43,9 @@ follows the Zerotal monorepo's unified versioning.
   other starters' tests read a page's props, the Flow tests read the rendered page
   (`tests/html.ts`), and `tests/pages.test.ts` builds every page and its layout through
   `FlowTest` (`tests/render.ts`). The old Flow starter's `/profile` page becomes Settings.
+  Every page compiles ahead of time, with and without `cspSafe`: a page writes its markup from
+  the class lists in `app/flow/lib/ui.ts` instead of calling the components, which the layouts
+  use.
 - **Dotfiles in templates are renamed from one table** (`RENAMED` in `src/scaffold.ts`), applied
   to the first path segment, so directories such as `_github/` arrive as `.github/`.
 

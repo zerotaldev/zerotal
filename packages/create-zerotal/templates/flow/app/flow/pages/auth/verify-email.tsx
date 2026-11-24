@@ -1,10 +1,10 @@
 import { route } from "zerotal";
 import type { HtmlNode } from "@zerotal/flow";
 import { mailIsLogged } from "@app/support/mail";
-import { Button } from "../../components/Button";
-import { Icon } from "../../components/Icon";
 import { AuthLayout } from "../../layouts/AuthLayout";
+import { buttonClass } from "../../lib/button";
 import { Page, titled } from "../../lib/page";
+import { icon } from "../../lib/ui";
 
 /**
  * GET /verify-email — "check your inbox", until the link has been clicked. Asking for the
@@ -40,7 +40,12 @@ export class VerifyEmailPage extends Page {
     return (
       <>
         <div class="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-4">
-          <Icon name="mail" class="mt-0.5 size-5 shrink-0 text-primary" />
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            class="mt-0.5 size-5 shrink-0 text-primary"
+            dangerouslySetInnerHTML={icon("mail")}
+          />
           <p class="text-sm text-muted-foreground">
             We sent a link to{" "}
             <span class="font-medium text-foreground">{this.user?.email ?? ""}</span>. Open it on
@@ -58,9 +63,9 @@ export class VerifyEmailPage extends Page {
 
         <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <form method="post" action={route("verify-email.store")}>
-            <Button type="submit" data-loading-text="Sending…">
+            <button type="submit" class={buttonClass()} data-loading-text="Sending…">
               Send the link again
-            </Button>
+            </button>
           </form>
           <a
             href={route("settings.profile")}

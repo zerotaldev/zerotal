@@ -1,9 +1,9 @@
 import { route } from "zerotal";
 import type { HtmlNode } from "@zerotal/flow";
-import { Button } from "../../components/Button";
-import { TextField } from "../../components/Field";
 import { AuthLayout } from "../../layouts/AuthLayout";
+import { buttonClass } from "../../lib/button";
 import { Page, titled } from "../../lib/page";
+import { FIELD, FIELD_ERROR, FIELD_HINT, FIELD_LABEL_ROW, INPUT, LABEL } from "../../lib/ui";
 
 /**
  * GET /reset-password?token=…&email=… — the link from the email. The token and address
@@ -31,41 +31,100 @@ export class ResetPasswordPage extends Page {
   }
 
   override async render(): Promise<HtmlNode> {
+    const { token, email } = this;
+    const emailError = this.error("email");
+    const passwordError = this.error("password");
+    const confirmationError = this.error("password_confirmation");
+
     return (
       <form method="post" action={route("reset-password.store")} class="space-y-5">
-        <input type="hidden" name="token" value={this.token} />
-        <TextField
-          label="Email"
-          name="email"
-          type="email"
-          value={this.email}
-          error={this.error("email")}
-          readonly
-        />
-
-        <TextField
-          label="New password"
-          name="password"
-          type="password"
-          autocomplete="new-password"
-          autofocus
-          hint="At least 8 characters."
-          error={this.error("password")}
-          required
-        />
-
-        <TextField
-          label="Confirm password"
-          name="password_confirmation"
-          type="password"
-          autocomplete="new-password"
-          error={this.error("password_confirmation")}
-          required
-        />
-
-        <Button type="submit" class="w-full" data-loading-text="Saving…">
+        <input type="hidden" name="token" value={token} />
+        <div class={FIELD}>
+          <div class={FIELD_LABEL_ROW}>
+            <label for="field-email" class={LABEL}>
+              Email
+            </label>
+          </div>
+          <input
+            class={INPUT}
+            type="email"
+            value={email}
+            readonly
+            id="field-email"
+            name="email"
+            aria-invalid={emailError ? "true" : undefined}
+            aria-describedby={emailError ? "field-email-error" : undefined}
+          />
+          <p id="field-email-error" data-error-for="email" class={FIELD_ERROR} hidden={!emailError}>
+            {emailError}
+          </p>
+        </div>
+        <div class={FIELD}>
+          <div class={FIELD_LABEL_ROW}>
+            <label for="field-password" class={LABEL}>
+              New password
+            </label>
+          </div>
+          <input
+            class={INPUT}
+            type="password"
+            autocomplete="new-password"
+            autofocus
+            required
+            id="field-password"
+            name="password"
+            aria-invalid={passwordError ? "true" : undefined}
+            aria-describedby={passwordError ? "field-password-error" : "field-password-hint"}
+          />
+          <p
+            id="field-password-error"
+            data-error-for="password"
+            class={FIELD_ERROR}
+            hidden={!passwordError}
+          >
+            {passwordError}
+          </p>
+          <p
+            id="field-password-hint"
+            data-hint-for="password"
+            class={FIELD_HINT}
+            hidden={Boolean(passwordError)}
+          >
+            At least 8 characters.
+          </p>
+        </div>
+        <div class={FIELD}>
+          <div class={FIELD_LABEL_ROW}>
+            <label for="field-password_confirmation" class={LABEL}>
+              Confirm password
+            </label>
+          </div>
+          <input
+            class={INPUT}
+            type="password"
+            autocomplete="new-password"
+            required
+            id="field-password_confirmation"
+            name="password_confirmation"
+            aria-invalid={confirmationError ? "true" : undefined}
+            aria-describedby={confirmationError ? "field-password_confirmation-error" : undefined}
+          />
+          <p
+            id="field-password_confirmation-error"
+            data-error-for="password_confirmation"
+            class={FIELD_ERROR}
+            hidden={!confirmationError}
+          >
+            {confirmationError}
+          </p>
+        </div>
+        <button
+          type="submit"
+          class={buttonClass("primary", "md", "w-full")}
+          data-loading-text="Saving…"
+        >
           Save new password
-        </Button>
+        </button>
       </form>
     );
   }

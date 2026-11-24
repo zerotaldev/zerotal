@@ -1,5 +1,6 @@
 import type { HtmlNode } from "@zerotal/flow";
-import { ICONS, type IconName } from "../lib/icons";
+import type { IconName } from "../lib/icons";
+import { icon } from "../lib/ui";
 
 /**
  * The icons this starter needs, inlined: `<Icon name="folder" class="size-4" />`.
@@ -10,27 +11,12 @@ import { ICONS, type IconName } from "../lib/icons";
  * real icon set once you outgrow these.
  */
 export function Icon({ name, class: className }: { name: IconName; class?: string }): HtmlNode {
-  const icon = ICONS[name];
-  // The markup is this file's own constants, never user input.
-  return icon.brand ? (
+  return (
     <svg
       viewBox="0 0 24 24"
-      fill="currentColor"
       aria-hidden="true"
       class={className}
-      dangerouslySetInnerHTML={{ __html: icon.body }}
-    />
-  ) : (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.5"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-      class={className}
-      dangerouslySetInnerHTML={{ __html: icon.body }}
+      dangerouslySetInnerHTML={icon(name)}
     />
   );
 }

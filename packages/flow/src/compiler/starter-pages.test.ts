@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { transformFlowFile, type BlockerReport } from "./transform.ts";
 import { resolveImportedStrings } from "./constants.ts";
@@ -19,7 +19,11 @@ import { resolveImportedStrings } from "./constants.ts";
 const PAGES = fileURLToPath(
   new URL("../../../create-zerotal/templates/flow/app/flow/pages/", import.meta.url),
 );
-const files = readdirSync(PAGES).filter((f) => f.endsWith(".tsx"));
+// Every page, however deep: `auth/login.tsx` is as much a page as `home.tsx`.
+const files = (readdirSync(PAGES, { recursive: true }) as string[])
+  .map((f) => f.split(sep).join("/"))
+  .filter((f) => f.endsWith(".tsx"))
+  .sort();
 
 /** "compiled", or what stopped it: a failure that names the blocker is worth more than a null. */
 function verdict(file: string, cspSafe: boolean): string {

@@ -1,48 +1,38 @@
 import { route } from "zerotal";
-import type { HtmlNode } from "@zerotal/flow";
 import { TwoFactor } from "zerotal/auth";
+import type { HtmlNode } from "@zerotal/flow";
 import { RECOVERY_CODES_FLASH, SETUP_SECRET_KEY } from "@app/auth/two-factor";
-import { Alert } from "../../components/Alert";
-import { Badge } from "../../components/Badge";
-import { Button } from "../../components/Button";
-import { Card, CardBody, CardFooter, CardHeader } from "../../components/Card";
-import { TextField } from "../../components/Field";
-import { Modal } from "../../components/Modal";
 import { SettingsLayout } from "../../layouts/SettingsLayout";
+import { buttonClass } from "../../lib/button";
 import { Page, titled } from "../../lib/page";
+import {
+  ALERT_BODY,
+  ALERT_ICON_CLASS,
+  ALERT_TEXT_UNDER_TITLE,
+  ALERT_TITLE,
+  CARD,
+  CARD_ACTIONS,
+  CARD_BODY,
+  CARD_DESCRIPTION,
+  CARD_FOOTER,
+  CARD_HEADER,
+  CARD_TITLE,
+  FIELD,
+  FIELD_ERROR,
+  FIELD_LABEL_ROW,
+  INPUT,
+  LABEL,
+  MODAL,
+  MODAL_CLOSE,
+  MODAL_FOOTER,
+  alertClass,
+  badgeClass,
+  icon,
+} from "../../lib/ui";
 
 /** "JBSWY3DPEHPK3PXP" → "JBSW Y3DP EHPK 3PXP", easier to type off a screen. */
 function grouped(secret: string): string {
   return secret.replace(/(.{4})/g, "$1 ").trim();
-}
-
-function RecoveryCodes({ codes }: { codes: string[] }): HtmlNode {
-  return (
-    <Alert
-      tone="warning"
-      title="Save these recovery codes now"
-      actions={
-        <Button
-          size="sm"
-          variant="secondary"
-          data-copy={codes.join("\n")}
-          data-copied="Recovery codes copied."
-        >
-          Copy codes
-        </Button>
-      }
-    >
-      <p>
-        Each one signs you in once if you lose your phone. Keep them in a password manager. They
-        will not be shown again.
-      </p>
-      <ul class="mt-3 space-y-1 font-mono text-sm break-all text-foreground">
-        {codes.map((code) => (
-          <li data-recovery-code="">{code}</li>
-        ))}
-      </ul>
-    </Alert>
-  );
 }
 
 /**
@@ -90,46 +80,93 @@ export class TwoFactorPage extends Page {
 
   override async render(): Promise<HtmlNode> {
     const { enabled, setup, recoveryCodes, recoveryCodesLeft } = this;
+    const secret = setup ? grouped(setup.secret) : "";
+    const codeError = this.error("code");
 
     return (
       <>
-        {recoveryCodes ? <RecoveryCodes codes={recoveryCodes} /> : null}
+        {recoveryCodes ? (
+          <div role="alert" class={alertClass("warning")}>
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              class={ALERT_ICON_CLASS}
+              dangerouslySetInnerHTML={icon("alert")}
+            />
+            <div class={ALERT_BODY}>
+              <p class={ALERT_TITLE}>Save these recovery codes now</p>
+              <div class={ALERT_TEXT_UNDER_TITLE}>
+                <p>
+                  Each one signs you in once if you lose your phone. Keep them in a password
+                  manager. They will not be shown again.
+                </p>
+                <ul class="mt-3 space-y-1 font-mono text-sm break-all text-foreground">
+                  {recoveryCodes.map((code) => (
+                    <li data-recovery-code="">{code}</li>
+                  ))}
+                </ul>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class={buttonClass("secondary", "sm")}
+                  data-copy={recoveryCodes.join("\n")}
+                  data-copied="Recovery codes copied."
+                >
+                  Copy codes
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
-        <Card>
-          <CardHeader
-            title="Two-factor authentication"
-            description="Ask for a code from your phone, as well as your password, when you sign in."
-            actions={
+        <div class={CARD}>
+          <div class={CARD_HEADER}>
+            <div class="min-w-0">
+              <h2 class={CARD_TITLE}>Two-factor authentication</h2>
+              <p class={CARD_DESCRIPTION}>
+                Ask for a code from your phone, as well as your password, when you sign in.
+              </p>
+            </div>
+            <div class={CARD_ACTIONS}>
               <span data-two-factor-status="">
-                {enabled ? <Badge tone="success">On</Badge> : <Badge>Off</Badge>}
+                {enabled ? (
+                  <span class={badgeClass("success")}>On</span>
+                ) : (
+                  <span class={badgeClass()}>Off</span>
+                )}
               </span>
-            }
-          />
+            </div>
+          </div>
 
           {enabled ? (
             <>
-              <CardBody class="space-y-2 text-sm text-muted-foreground">
+              <div class={`${CARD_BODY} space-y-2 text-sm text-muted-foreground`}>
                 <p>
                   Signing in asks for the six-digit code from your authenticator app. You have{" "}
                   <span class="font-medium text-foreground">{recoveryCodesLeft}</span> unused
                   recovery code{recoveryCodesLeft === 1 ? "" : "s"} for when your phone is not to
                   hand.
                 </p>
-              </CardBody>
-              <CardFooter class="justify-between">
+              </div>
+              <div class={`${CARD_FOOTER} justify-between`}>
                 <form method="post" action={route("settings.two-factor.recovery-codes.store")}>
-                  <Button type="submit" variant="secondary">
+                  <button type="submit" class={buttonClass("secondary", "md")}>
                     Make new recovery codes
-                  </Button>
+                  </button>
                 </form>
-                <Button variant="danger" data-open-modal="turn-off-two-factor">
+                <button
+                  type="button"
+                  class={buttonClass("danger", "md")}
+                  data-open-modal="turn-off-two-factor"
+                >
                   Turn off
-                </Button>
-              </CardFooter>
+                </button>
+              </div>
             </>
           ) : setup ? (
             <form method="post" action={route("settings.two-factor.confirm.store")}>
-              <CardBody class="space-y-6">
+              <div class={`${CARD_BODY} space-y-6`}>
                 <ol class="space-y-6 text-sm">
                   <li>
                     <p class="font-medium">1. Scan this with your authenticator app</p>
@@ -149,7 +186,7 @@ export class TwoFactorPage extends Page {
                           class="font-mono text-base break-all text-foreground select-all"
                           data-two-factor-secret=""
                         >
-                          {grouped(setup.secret)}
+                          {secret}
                         </p>
                         <p>
                           On your phone already?{" "}
@@ -164,79 +201,121 @@ export class TwoFactorPage extends Page {
                   <li>
                     <p class="font-medium">2. Enter the code the app shows</p>
                     <div class="mt-3 max-w-xs">
-                      <TextField
-                        label="Code"
-                        name="code"
-                        inputmode="numeric"
-                        autocomplete="one-time-code"
-                        maxlength="7"
-                        placeholder="123456"
-                        class="font-mono tracking-[0.3em]"
-                        error={this.error("code")}
-                        required
-                      />
+                      <div class={FIELD}>
+                        <div class={FIELD_LABEL_ROW}>
+                          <label for="field-code" class={LABEL}>
+                            Code
+                          </label>
+                        </div>
+                        <input
+                          class={`${INPUT} font-mono tracking-[0.3em]`}
+                          inputmode="numeric"
+                          autocomplete="one-time-code"
+                          maxlength="7"
+                          placeholder="123456"
+                          required
+                          id="field-code"
+                          name="code"
+                          aria-invalid={codeError ? "true" : undefined}
+                          aria-describedby={codeError ? "field-code-error" : undefined}
+                        />
+                        <p
+                          id="field-code-error"
+                          data-error-for="code"
+                          class={FIELD_ERROR}
+                          hidden={!codeError}
+                        >
+                          {codeError}
+                        </p>
+                      </div>
                     </div>
                   </li>
                 </ol>
-              </CardBody>
-              <CardFooter>
+              </div>
+              <div class={CARD_FOOTER}>
                 {/* Abandons the setup: the same DELETE as turning it off. */}
-                <Button
+                <button
                   type="submit"
-                  variant="ghost"
+                  class={buttonClass("ghost", "md")}
                   formaction={route("settings.two-factor.destroy")}
                   formnovalidate
                   data-method="delete"
                 >
                   Cancel
-                </Button>
-                <Button type="submit" data-loading-text="Checking…">
+                </button>
+                <button
+                  type="submit"
+                  class={buttonClass("primary", "md")}
+                  data-loading-text="Checking…"
+                >
                   Turn on
-                </Button>
-              </CardFooter>
+                </button>
+              </div>
             </form>
           ) : (
             <>
-              <CardBody class="text-sm text-muted-foreground">
+              <div class={`${CARD_BODY} text-sm text-muted-foreground`}>
                 Even with your password, nobody can sign in without your phone. You'll get recovery
                 codes for the day you don't have it.
-              </CardBody>
-              <CardFooter>
+              </div>
+              <div class={CARD_FOOTER}>
                 <form method="post" action={route("settings.two-factor.store")}>
-                  <Button type="submit">Set up two-factor</Button>
+                  <button type="submit" class={buttonClass("primary", "md")}>
+                    Set up two-factor
+                  </button>
                 </form>
-              </CardFooter>
+              </div>
             </>
           )}
-        </Card>
+        </div>
 
-        <Modal
+        <dialog
           id="turn-off-two-factor"
-          title="Turn off two-factor?"
-          description="Signing in will need only your password. Your recovery codes stop working."
-          footer={
+          data-modal=""
+          aria-labelledby="turn-off-two-factor-title"
+          aria-describedby="turn-off-two-factor-description"
+          class={MODAL}
+        >
+          <div class="p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4">
+              <h2 id="turn-off-two-factor-title" class="text-lg font-semibold">
+                Turn off two-factor?
+              </h2>
+              <button type="button" data-close-modal="" aria-label="Close" class={MODAL_CLOSE}>
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  class="size-4.5"
+                  dangerouslySetInnerHTML={icon("close")}
+                />
+              </button>
+            </div>
+            <p id="turn-off-two-factor-description" class="mt-1.5 text-sm text-muted-foreground">
+              Signing in will need only your password. Your recovery codes stop working.
+            </p>
+          </div>
+          <div class={MODAL_FOOTER}>
             <>
-              <Button variant="secondary" data-close-modal="">
+              <button type="button" class={buttonClass("secondary", "md")} data-close-modal="">
                 Keep it on
-              </Button>
+              </button>
               {/* DELETE, which a browser form can't send alone: see resources/js/lib/forms.ts. */}
               <form
                 method="post"
                 action={route("settings.two-factor.destroy")}
                 data-method="delete"
               >
-                <Button
+                <button
                   type="submit"
-                  variant="danger"
-                  class="w-full"
+                  class={buttonClass("danger", "md", "w-full")}
                   data-loading-text="Turning off…"
                 >
                   Turn off
-                </Button>
+                </button>
               </form>
             </>
-          }
-        />
+          </div>
+        </dialog>
       </>
     );
   }

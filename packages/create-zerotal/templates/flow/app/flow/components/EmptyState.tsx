@@ -2,6 +2,7 @@ import type { HtmlNode } from "@zerotal/flow";
 import { cn } from "../lib/cn";
 import type { IconName } from "../lib/icons";
 import { Icon } from "./Icon";
+import { EMPTY_DESCRIPTION, EMPTY_ICON, EMPTY_STATE, EMPTY_TITLE } from "../lib/ui";
 
 /**
  * What a list shows before it has anything in it: what the thing is, and the one action
@@ -21,21 +22,14 @@ export function EmptyState({
   class?: string | undefined;
 }): HtmlNode {
   return (
-    <div
-      class={cn(
-        "flex flex-col items-center rounded-xl border border-dashed border-border px-6 py-12 text-center",
-        className,
-      )}
-    >
+    <div class={cn(EMPTY_STATE, className)}>
       {icon ? (
-        <div class="grid size-12 place-items-center rounded-xl border border-border bg-accent text-accent-foreground">
+        <div class={EMPTY_ICON}>
           <Icon name={icon} class="size-6" />
         </div>
       ) : null}
-      <h3 class="mt-4 text-base font-semibold">{title}</h3>
-      {description ? (
-        <p class="mt-1.5 max-w-sm text-sm text-pretty text-muted-foreground">{description}</p>
-      ) : null}
+      <h3 class={EMPTY_TITLE}>{title}</h3>
+      {description ? <p class={EMPTY_DESCRIPTION}>{description}</p> : null}
       {action ? <div class="mt-6">{action}</div> : null}
     </div>
   );

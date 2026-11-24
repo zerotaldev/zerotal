@@ -1,9 +1,8 @@
 import type { HtmlNode } from "@zerotal/flow";
-import { Card, CardBody, CardHeader } from "../../components/Card";
-import { Icon } from "../../components/Icon";
 import { SettingsLayout } from "../../layouts/SettingsLayout";
 import type { IconName } from "../../lib/icons";
 import { Page, titled } from "../../lib/page";
+import { CARD, CARD_BODY, CARD_DESCRIPTION, CARD_HEADER, CARD_TITLE, icon } from "../../lib/ui";
 
 const OPTIONS: {
   value: "light" | "dark" | "system";
@@ -30,12 +29,16 @@ export class AppearancePage extends Page {
 
   override async render(): Promise<HtmlNode> {
     return (
-      <Card>
-        <CardHeader
-          title="Appearance"
-          description="Kept in this browser, so each of your devices can have its own."
-        />
-        <CardBody>
+      <div class={CARD}>
+        <div class={CARD_HEADER}>
+          <div class="min-w-0">
+            <h2 class={CARD_TITLE}>Appearance</h2>
+            <p class={CARD_DESCRIPTION}>
+              Kept in this browser, so each of your devices can have its own.
+            </p>
+          </div>
+        </div>
+        <div class={CARD_BODY}>
           <fieldset>
             <legend class="sr-only">Theme</legend>
             <div class="grid gap-3 sm:grid-cols-3">
@@ -48,7 +51,12 @@ export class AppearancePage extends Page {
                     class="sr-only"
                   />
                   <span class="text-muted-foreground group-data-checked:text-primary">
-                    <Icon name={option.icon} class="size-5" />
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      class="size-5"
+                      dangerouslySetInnerHTML={icon(option.icon)}
+                    />
                   </span>
                   <span>
                     <span class="block text-sm font-medium">{option.label}</span>
@@ -58,8 +66,8 @@ export class AppearancePage extends Page {
               ))}
             </div>
           </fieldset>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 }

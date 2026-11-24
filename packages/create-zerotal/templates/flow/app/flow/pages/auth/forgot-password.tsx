@@ -1,10 +1,10 @@
 import { route } from "zerotal";
 import type { HtmlNode } from "@zerotal/flow";
 import { mailIsLogged } from "@app/support/mail";
-import { Button } from "../../components/Button";
-import { TextField } from "../../components/Field";
 import { AuthLayout } from "../../layouts/AuthLayout";
+import { buttonClass } from "../../lib/button";
 import { Page, titled } from "../../lib/page";
+import { FIELD, FIELD_ERROR, FIELD_HINT, FIELD_LABEL_ROW, INPUT, LABEL } from "../../lib/ui";
 
 /** GET /forgot-password. The form posts to app/routes/(guest)/forgot-password.ts. */
 export class ForgotPasswordPage extends Page {
@@ -28,28 +28,55 @@ export class ForgotPasswordPage extends Page {
   }
 
   override async render(): Promise<HtmlNode> {
+    const email = this.old("email");
+    const error = this.error("email");
+    // Mail is printed by the server rather than sent (MAIL_DRIVER=log).
+    const hint = mailIsLogged()
+      ? "Mail is printed in the terminal running the server, not sent (MAIL_DRIVER=log)."
+      : undefined;
+
     return (
       <form method="post" action={route("forgot-password.store")} class="space-y-5">
-        <TextField
-          label="Email"
-          name="email"
-          type="email"
-          autocomplete="email"
-          autofocus
-          hint={
-            // Mail is printed by the server rather than sent (MAIL_DRIVER=log).
-            mailIsLogged()
-              ? "Mail is printed in the terminal running the server, not sent (MAIL_DRIVER=log)."
-              : undefined
-          }
-          value={this.old("email")}
-          error={this.error("email")}
-          required
-        />
+        <div class={FIELD}>
+          <div class={FIELD_LABEL_ROW}>
+            <label for="field-email" class={LABEL}>
+              Email
+            </label>
+          </div>
+          <input
+            class={INPUT}
+            type="email"
+            autocomplete="email"
+            autofocus
+            value={email}
+            required
+            id="field-email"
+            name="email"
+            aria-invalid={error ? "true" : undefined}
+            aria-describedby={error ? "field-email-error" : hint ? "field-email-hint" : undefined}
+          />
+          <p id="field-email-error" data-error-for="email" class={FIELD_ERROR} hidden={!error}>
+            {error}
+          </p>
+          {hint ? (
+            <p
+              id="field-email-hint"
+              data-hint-for="email"
+              class={FIELD_HINT}
+              hidden={Boolean(error)}
+            >
+              {hint}
+            </p>
+          ) : null}
+        </div>
 
-        <Button type="submit" class="w-full" data-loading-text="Sending…">
+        <button
+          type="submit"
+          class={buttonClass("primary", "md", "w-full")}
+          data-loading-text="Sending…"
+        >
           Email me a reset link
-        </Button>
+        </button>
       </form>
     );
   }

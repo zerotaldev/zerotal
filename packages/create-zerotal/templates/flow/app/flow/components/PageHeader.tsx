@@ -1,5 +1,13 @@
 import type { HtmlNode } from "@zerotal/flow";
 import { Icon } from "./Icon";
+import {
+  PAGE_ACTIONS,
+  PAGE_DESCRIPTION,
+  PAGE_HEADER,
+  PAGE_HEADER_BACK,
+  PAGE_HEADER_ROW,
+  PAGE_TITLE,
+} from "../lib/ui";
 
 /** The title row at the top of a signed-in page: what this is, and what you can do here. */
 export function PageHeader({
@@ -15,22 +23,19 @@ export function PageHeader({
   back?: { href: string; label: string } | undefined;
 }): HtmlNode {
   return (
-    <header class="mb-8">
+    <header class={PAGE_HEADER}>
       {back ? (
-        <a
-          href={back.href}
-          class="mb-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
+        <a href={back.href} class={PAGE_HEADER_BACK}>
           <Icon name="chevron-left" class="size-4" />
           {back.label}
         </a>
       ) : null}
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div class={PAGE_HEADER_ROW}>
         <div class="min-w-0">
-          <h1 class="text-2xl font-bold tracking-tight text-balance sm:text-3xl">{title}</h1>
-          {description ? <p class="mt-1.5 text-muted-foreground">{description}</p> : null}
+          <h1 class={PAGE_TITLE}>{title}</h1>
+          {description ? <p class={PAGE_DESCRIPTION}>{description}</p> : null}
         </div>
-        {actions ? <div class="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
+        {actions ? <div class={PAGE_ACTIONS}>{actions}</div> : null}
       </div>
     </header>
   );

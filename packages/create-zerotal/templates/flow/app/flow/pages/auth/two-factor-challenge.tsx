@@ -1,10 +1,10 @@
 import { route } from "zerotal";
-import type { HtmlNode } from "@zerotal/flow";
 import { Auth } from "zerotal/auth";
-import { Button } from "../../components/Button";
-import { TextField } from "../../components/Field";
+import type { HtmlNode } from "@zerotal/flow";
 import { AuthLayout } from "../../layouts/AuthLayout";
+import { buttonClass } from "../../lib/button";
 import { Page, titled } from "../../lib/page";
+import { FIELD, FIELD_ERROR, FIELD_HINT, FIELD_LABEL_ROW, INPUT, LABEL } from "../../lib/ui";
 
 /**
  * GET /two-factor/challenge — the second step of signing in, for an account with
@@ -40,25 +40,38 @@ export class TwoFactorChallengePage extends Page {
   }
 
   override async render(): Promise<HtmlNode> {
+    const codeError = this.error("code");
+    const recoveryError = this.error("recovery_code");
     // A failed recovery code comes back showing the recovery field, not the code field.
-    const recovery = this.error("recovery_code") !== undefined;
+    const recovery = recoveryError !== undefined;
 
     return (
       <form method="post" action={route("two-factor.challenge.store")} class="space-y-5">
         <div data-swap-panel="two-factor" hidden={recovery}>
-          <TextField
-            label="Authentication code"
-            name="code"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            autofocus={!recovery}
-            maxlength="7"
-            placeholder="123456"
-            class="text-center font-mono text-lg tracking-[0.4em]"
-            error={this.error("code")}
-            disabled={recovery}
-            required
-          />
+          <div class={FIELD}>
+            <div class={FIELD_LABEL_ROW}>
+              <label for="field-code" class={LABEL}>
+                Authentication code
+              </label>
+            </div>
+            <input
+              class={`${INPUT} text-center font-mono text-lg tracking-[0.4em]`}
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              autofocus={!recovery}
+              maxlength="7"
+              placeholder="123456"
+              disabled={recovery}
+              required
+              id="field-code"
+              name="code"
+              aria-invalid={codeError ? "true" : undefined}
+              aria-describedby={codeError ? "field-code-error" : undefined}
+            />
+            <p id="field-code-error" data-error-for="code" class={FIELD_ERROR} hidden={!codeError}>
+              {codeError}
+            </p>
+          </div>
           <button
             type="button"
             data-swap="two-factor"
@@ -69,17 +82,43 @@ export class TwoFactorChallengePage extends Page {
         </div>
 
         <div data-swap-panel="two-factor" hidden={!recovery}>
-          <TextField
-            label="Recovery code"
-            name="recovery_code"
-            autocomplete="off"
-            autofocus={recovery}
-            spellcheck="false"
-            hint="One of the codes you saved when you turned two-factor on. Each works once."
-            error={this.error("recovery_code")}
-            disabled={!recovery}
-            required
-          />
+          <div class={FIELD}>
+            <div class={FIELD_LABEL_ROW}>
+              <label for="field-recovery_code" class={LABEL}>
+                Recovery code
+              </label>
+            </div>
+            <input
+              class={INPUT}
+              autocomplete="off"
+              autofocus={recovery}
+              spellcheck="false"
+              disabled={!recovery}
+              required
+              id="field-recovery_code"
+              name="recovery_code"
+              aria-invalid={recoveryError ? "true" : undefined}
+              aria-describedby={
+                recoveryError ? "field-recovery_code-error" : "field-recovery_code-hint"
+              }
+            />
+            <p
+              id="field-recovery_code-error"
+              data-error-for="recovery_code"
+              class={FIELD_ERROR}
+              hidden={!recoveryError}
+            >
+              {recoveryError}
+            </p>
+            <p
+              id="field-recovery_code-hint"
+              data-hint-for="recovery_code"
+              class={FIELD_HINT}
+              hidden={Boolean(recoveryError)}
+            >
+              One of the codes you saved when you turned two-factor on. Each works once.
+            </p>
+          </div>
           <button
             type="button"
             data-swap="two-factor"
@@ -89,9 +128,13 @@ export class TwoFactorChallengePage extends Page {
           </button>
         </div>
 
-        <Button type="submit" class="w-full" data-loading-text="Checking…">
+        <button
+          type="submit"
+          class={buttonClass("primary", "md", "w-full")}
+          data-loading-text="Checking…"
+        >
           Continue
-        </Button>
+        </button>
       </form>
     );
   }

@@ -1,83 +1,89 @@
 import { route } from "zerotal";
 import type { HtmlNode } from "@zerotal/flow";
-import { Button } from "../components/Button";
-import { Card, CardIcon } from "../components/Card";
-import { Code, Command } from "../components/Code";
-import { Icon } from "../components/Icon";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { buttonClass } from "../lib/button";
 import type { IconName } from "../lib/icons";
 import { Page, titled } from "../lib/page";
 import { DOCS_URL } from "../lib/site";
+import { CARD_ICON, CARD_INTERACTIVE, CODE, COMMAND, icon } from "../lib/ui";
 
 const docs = (page: string) => `${DOCS_URL}/blob/main/docs/${page}`;
 
-const FEATURES: { icon: IconName; heading: string; body: HtmlNode; href: string }[] = [
+/**
+ * A run of text with `code` spans in it, written as data rather than JSX: the page's render()
+ * is compiled ahead of time, and the compiler only reads markup written inside render().
+ */
+type Prose = (string | { code: string })[];
+
+const FEATURES: { icon: IconName; heading: string; body: Prose; href: string }[] = [
   {
     icon: "folder",
     heading: "File-based routing",
-    body: (
-      <>
-        Every file under <Code>app/routes</Code> is a URL. Export a <Code>GET</Code> or{" "}
-        <Code>POST</Code> function and the route exists — there is no registration list to keep in
-        sync.
-      </>
-    ),
+    body: [
+      "Every file under ",
+      { code: "app/routes" },
+      " is a URL. Export a ",
+      { code: "GET" },
+      " or ",
+      { code: "POST" },
+      " function and the route exists — there is no registration list to keep in sync.",
+    ],
     href: docs("routing.md"),
   },
   {
     icon: "layers",
     heading: "Pages, not endpoints",
-    body: (
-      <>
-        A page is a <Code>Component</Code> class whose <Code>render()</Code> runs on the server,
-        next to the data it shows. No API layer in between to build, version or keep in step.
-      </>
-    ),
+    body: [
+      "A page is a ",
+      { code: "Component" },
+      " class whose ",
+      { code: "render()" },
+      " runs on the server, next to the data it shows. No API layer in between to build, version or keep in step.",
+    ],
     href: docs("flow/index.md"),
   },
   {
     icon: "shield",
     heading: "Validation that comes back",
-    body: (
-      <>
-        <Code>validate()</Code> returns typed data on success. On failure it flashes the errors and
-        the submitted input and sends the user back — the form repopulates itself.
-      </>
-    ),
+    body: [
+      { code: "validate()" },
+      " returns typed data on success. On failure it flashes the errors and the submitted input and sends the user back — the form repopulates itself.",
+    ],
     href: docs("validator.md"),
   },
   {
     icon: "database",
     heading: "An ORM you can read",
-    body: (
-      <>
-        Models, relationships, migrations, factories, and a query builder that still looks like the
-        query you meant to write.
-      </>
-    ),
+    body: [
+      "Models, relationships, migrations, factories, and a query builder that still looks like the query you meant to write.",
+    ],
     href: docs("orm/index.md"),
   },
   {
     icon: "clock",
     heading: "Background work, built in",
-    body: (
-      <>
-        Push a job onto a queue or put it on a schedule. Same app, same types, one{" "}
-        <Code>bun zt worker</Code> away.
-      </>
-    ),
+    body: [
+      "Push a job onto a queue or put it on a schedule. Same app, same types, one ",
+      { code: "bun zt worker" },
+      " away.",
+    ],
     href: docs("queue.md"),
   },
   {
     icon: "terminal",
     heading: "A CLI that writes the boilerplate",
-    body: (
-      <>
-        <Code>make:flow</Code>, <Code>make:controller</Code>, <Code>route:list</Code>,{" "}
-        <Code>repl</Code> — and <Code>make:command</Code> when you need one of your own.
-      </>
-    ),
+    body: [
+      { code: "make:flow" },
+      ", ",
+      { code: "make:controller" },
+      ", ",
+      { code: "route:list" },
+      ", ",
+      { code: "repl" },
+      " — and ",
+      { code: "make:command" },
+      " when you need one of your own.",
+    ],
     href: docs("commands.md"),
   },
 ];
@@ -121,10 +127,15 @@ export class HomePage extends Page {
           </p>
 
           <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button href={route("about")} size="lg">
+            <a href={route("about")} class={buttonClass("primary", "lg")}>
               Take the tour
-              <Icon name="arrow-right" class="size-4" />
-            </Button>
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                class="size-4"
+                dangerouslySetInnerHTML={icon("arrow-right")}
+              />
+            </a>
             <a
               href={DOCS_URL}
               target="_blank"
@@ -136,7 +147,7 @@ export class HomePage extends Page {
           </div>
 
           <p class="mt-8 text-sm text-muted-foreground">
-            Edit <Code>app/flow/pages/home.tsx</Code> and the page reloads itself.
+            Edit <code class={CODE}>app/flow/pages/home.tsx</code> and the page reloads itself.
           </p>
         </section>
 
@@ -146,11 +157,16 @@ export class HomePage extends Page {
           </h2>
 
           <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon, heading, body, href }) => (
-              <Card interactive class="group relative p-5">
-                <CardIcon class="transition-colors group-hover:border-primary/40">
-                  <Icon name={icon} class="size-5" />
-                </CardIcon>
+            {FEATURES.map(({ icon: name, heading, body, href }) => (
+              <div class={`${CARD_INTERACTIVE} group relative p-5`}>
+                <div class={`${CARD_ICON} transition-colors group-hover:border-primary/40`}>
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    class="size-5"
+                    dangerouslySetInnerHTML={icon(name)}
+                  />
+                </div>
 
                 <h3 class="mt-4 font-semibold text-card-foreground">
                   {/* The pseudo-element stretches this link over the whole card, so the
@@ -165,22 +181,36 @@ export class HomePage extends Page {
                   </a>
                 </h3>
 
-                <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
-              </Card>
+                <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {body.map((part) =>
+                    typeof part === "string" ? part : <code class={CODE}>{part.code}</code>,
+                  )}
+                </p>
+              </div>
             ))}
           </div>
         </section>
 
         <section class="mt-20 sm:mt-28">
           <div class="flex items-center gap-2.5">
-            <Icon name="bolt" class="size-5 text-primary" />
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              class="size-5 text-primary"
+              dangerouslySetInnerHTML={icon("bolt")}
+            />
             <h2 class="font-semibold">Where to go next</h2>
           </div>
 
           <div class="mt-5 grid gap-4 sm:grid-cols-3">
             {NEXT_STEPS.map(({ command, note }) => (
               <div class="space-y-2">
-                <Command>{command}</Command>
+                <div class={COMMAND}>
+                  <span aria-hidden="true" class="text-primary select-none">
+                    $
+                  </span>
+                  <span class="overflow-x-auto text-foreground">{command}</span>
+                </div>
                 <p class="px-1 text-sm text-muted-foreground">{note}</p>
               </div>
             ))}

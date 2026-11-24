@@ -1,6 +1,6 @@
 import type { HtmlNode } from "@zerotal/flow";
-import { cn } from "../lib/cn";
 import { Icon } from "./Icon";
+import { PAGE_LINK_OFF, PAGE_LINK_ON } from "../lib/ui";
 
 /** One page of a list, and where it sits in the whole. */
 export interface PaginationData {
@@ -28,10 +28,7 @@ export function Pagination({
   if (total === 0) return { html: "" };
 
   const link = (target: number, label: string, disabled: boolean, icon: "prev" | "next") => {
-    const className = cn(
-      "inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-sm font-medium transition-colors",
-      disabled ? "pointer-events-none opacity-50" : "bg-card hover:bg-muted",
-    );
+    const className = disabled ? PAGE_LINK_OFF : PAGE_LINK_ON;
     const content =
       icon === "prev" ? (
         <>

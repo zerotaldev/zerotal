@@ -47,6 +47,7 @@ It is for local development only — never seed a production database with it.
 | `app/flow/pages/`               | One Flow component per screen, rendered on the server                             |
 | `app/flow/layouts/`             | The signed-in sidebar, the sign-in card, the public site and settings             |
 | `app/flow/components/`          | Buttons, fields, dialogs, menus, toasts — the shared vocabulary                   |
+| `app/flow/lib/ui.ts`            | The class lists pages and components are both built from                          |
 | `app/routes/`                   | What the forms send, one file per URL, grouped by who may (`(guest)/`, `(auth)/`) |
 | `app/routes/(auth)/(verified)/` | Routes that also need a confirmed email address                                   |
 | `app/models/`                   | `User` and `Project`                                                              |
@@ -68,6 +69,14 @@ A browser form can only GET or POST, so a form that updates or deletes says so w
 `data-method="put"` (or `patch`, `delete`), and `resources/js/lib/forms.ts` sends it with that
 verb. The project search is the one live page: its box is bound to a Flow property, and the
 list re-renders on the server as you type.
+
+Flow compiles each page's `render()` ahead of time, which makes it faster and is the only way a
+page renders under `cspSafe`. A compiled `render()` writes its markup out element by element, so
+it does not call the components: a page builds the same markup from the class lists in
+`app/flow/lib/ui.ts` (`class={CARD}`, `class={buttonClass("secondary")}`), and works out what it
+shows at the top of `render()` or in `onMount()`. The components serve the layouts, and any page
+you would rather render through the runtime. Run with `ZT_FLOW_COMPILE_LOG=1` to see what stops a
+page compiling.
 
 ## Scripts
 

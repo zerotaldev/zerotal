@@ -1,7 +1,7 @@
 import type { HtmlNode } from "@zerotal/flow";
 import { cn } from "../lib/cn";
-import { CONTROL, CONTROL_BORDER } from "./Input";
 import { Icon } from "./Icon";
+import { SELECT, SELECT_CHEVRON } from "../lib/ui";
 
 export interface SelectOption {
   value: string;
@@ -25,17 +25,14 @@ export function Select({
 }): HtmlNode {
   return (
     <div class="relative">
-      <select class={cn(CONTROL, CONTROL_BORDER, "appearance-none pr-9", className)} {...rest}>
+      <select class={cn(SELECT, className)} {...rest}>
         {options.map((option) => (
           <option value={option.value} selected={option.value === value}>
             {option.label}
           </option>
         ))}
       </select>
-      <Icon
-        name="chevron-down"
-        class="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
-      />
+      <Icon name="chevron-down" class={SELECT_CHEVRON} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { HtmlNode } from "@zerotal/flow";
 import { cn } from "../lib/cn";
+import { CHECKBOX, CHECKBOX_LABEL, CHECKBOX_ROW } from "../lib/ui";
 
 /**
  * A checkbox with its label. The whole label is the click target, and the box uses the
@@ -22,17 +23,17 @@ export function Checkbox({
 }): HtmlNode {
   const controlId = id ?? `field-${name}`;
   return (
-    <div class={cn("flex items-start gap-2.5", className)}>
+    <div class={cn(CHECKBOX_ROW, className)}>
       <input
         {...rest}
         id={controlId}
         name={name}
         type="checkbox"
         aria-describedby={description ? `${controlId}-description` : undefined}
-        class="mt-0.5 size-4 shrink-0 rounded border-input accent-primary"
+        class={CHECKBOX}
       />
       <div class="text-sm leading-5">
-        <label for={controlId} class="font-medium text-foreground">
+        <label for={controlId} class={CHECKBOX_LABEL}>
           {label}
         </label>
         {description ? (

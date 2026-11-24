@@ -1,12 +1,12 @@
 import { route } from "zerotal";
 import type { HtmlNode } from "@zerotal/flow";
-import { Button } from "../components/Button";
-import { Icon } from "../components/Icon";
 import { AppLayout } from "../layouts/AppLayout";
 import { PublicLayout } from "../layouts/PublicLayout";
+import { buttonClass } from "../lib/button";
 import type { IconName } from "../lib/icons";
 import { Page } from "../lib/page";
 import { appName } from "../lib/site";
+import { icon } from "../lib/ui";
 
 /**
  * The page behind every HTTP error the app renders to a browser.
@@ -78,32 +78,40 @@ export class ErrorPage extends Page {
   }
 
   override async render(): Promise<HtmlNode> {
-    const { heading, body, icon } = this.copy();
+    const { heading, body, icon: name } = this.copy();
+    const status = this.status;
     const signedIn = this.user !== null;
 
     return (
       <section class="mx-auto flex max-w-lg flex-col items-center py-10 text-center sm:py-16">
         <div class="grid size-14 place-items-center rounded-2xl border border-border bg-accent text-accent-foreground">
-          <Icon name={icon} class="size-7" />
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            class="size-7"
+            dangerouslySetInnerHTML={icon(name)}
+          />
         </div>
 
         <p class="mt-6 font-mono text-sm font-semibold tracking-widest text-primary">
-          ERROR {this.status}
+          ERROR {status}
         </p>
         <h1 class="mt-2 text-2xl font-bold tracking-tight text-balance sm:text-3xl">{heading}</h1>
         <p class="mt-3 leading-relaxed text-pretty text-muted-foreground">{body}</p>
 
         <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          {this.status === 419 ? (
-            <Button data-action="reload">Reload the page</Button>
+          {status === 419 ? (
+            <button type="button" class={buttonClass("primary", "md")} data-action="reload">
+              Reload the page
+            </button>
           ) : (
-            <Button href={signedIn ? route("dashboard") : route("home")}>
+            <a href={signedIn ? route("dashboard") : route("home")} class={buttonClass()}>
               {signedIn ? "Go to the dashboard" : "Back to home"}
-            </Button>
+            </a>
           )}
-          <Button variant="secondary" data-action="back">
+          <button type="button" class={buttonClass("secondary", "md")} data-action="back">
             Go back
-          </Button>
+          </button>
         </div>
       </section>
     );

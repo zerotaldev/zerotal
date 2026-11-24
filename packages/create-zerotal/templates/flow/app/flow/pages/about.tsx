@@ -1,50 +1,67 @@
 import { route } from "zerotal";
 import type { HtmlNode } from "@zerotal/flow";
-import { Button } from "../components/Button";
-import { Card } from "../components/Card";
-import { Code } from "../components/Code";
-import { TextAreaField, TextField } from "../components/Field";
-import { Icon } from "../components/Icon";
 import { PublicLayout } from "../layouts/PublicLayout";
+import { buttonClass } from "../lib/button";
 import { Page, titled } from "../lib/page";
+import {
+  CARD,
+  CODE,
+  FIELD,
+  FIELD_ERROR,
+  FIELD_HINT,
+  FIELD_LABEL_ROW,
+  INPUT,
+  LABEL,
+  TEXTAREA,
+  icon,
+} from "../lib/ui";
+
+/**
+ * A run of text with `code` spans in it, written as data rather than JSX: the page's render()
+ * is compiled ahead of time, and the compiler only reads markup written inside render().
+ */
+type Prose = (string | { code: string })[];
 
 /** The trip this very page made, from URL to rendered HTML. */
-const LIFECYCLE: { where: string; what: HtmlNode }[] = [
+const LIFECYCLE: { where: string; what: Prose }[] = [
   {
     where: "routes/web.ts",
-    what: (
-      <>
-        <Code>Router.flow("/about", AboutPage)</Code> puts this page at <Code>/about</Code> and
-        names the route <Code>about</Code>, so links write <Code>route("about")</Code>.
-      </>
-    ),
+    what: [
+      { code: 'Router.flow("/about", AboutPage)' },
+      " puts this page at ",
+      { code: "/about" },
+      " and names the route ",
+      { code: "about" },
+      ", so links write ",
+      { code: 'route("about")' },
+      ".",
+    ],
   },
   {
     where: "app/flow/pages/about.tsx",
-    what: (
-      <>
-        A <Code>Component</Code> class. Its <Code>render()</Code> runs on the server, and the
-        browser gets finished HTML — there is no page component to download first.
-      </>
-    ),
+    what: [
+      "A ",
+      { code: "Component" },
+      " class. Its ",
+      { code: "render()" },
+      " runs on the server, and the browser gets finished HTML — there is no page component to download first.",
+    ],
   },
   {
     where: "layout(page)",
-    what: (
-      <>
-        Wraps the page in <Code>PublicLayout</Code>: the header, the footer, and the toasts. A
-        layout is a function that returns markup, the same as any other component.
-      </>
-    ),
+    what: [
+      "Wraps the page in ",
+      { code: "PublicLayout" },
+      ": the header, the footer, and the toasts. A layout is a function that returns markup, the same as any other component.",
+    ],
   },
   {
     where: "app/routes/about.ts",
-    what: (
-      <>
-        Where this page's form goes. The file's path is the URL, and its exported <Code>POST</Code>{" "}
-        runs on the server, validates, and redirects back to the page.
-      </>
-    ),
+    what: [
+      "Where this page's form goes. The file's path is the URL, and its exported ",
+      { code: "POST" },
+      " runs on the server, validates, and redirects back to the page.",
+    ],
   },
 ];
 
@@ -82,6 +99,13 @@ export class AboutPage extends Page {
   }
 
   override async render(): Promise<HtmlNode> {
+    const name = this.old("name");
+    const email = this.old("email");
+    const message = this.old("message");
+    const nameError = this.error("name");
+    const emailError = this.error("email");
+    const messageError = this.error("message");
+
     return (
       <div class="mx-auto max-w-3xl">
         <header>
@@ -113,7 +137,11 @@ export class AboutPage extends Page {
 
                 <div class="pb-8">
                   <p class="font-mono text-sm text-foreground">{step.where}</p>
-                  <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">{step.what}</p>
+                  <p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                    {step.what.map((part) =>
+                      typeof part === "string" ? part : <code class={CODE}>{part.code}</code>,
+                    )}
+                  </p>
                 </div>
               </li>
             ))}
@@ -123,14 +151,14 @@ export class AboutPage extends Page {
         <section class="mt-6">
           <h2 class="font-semibold">Where things live</h2>
 
-          <Card class="mt-5 divide-y divide-border overflow-hidden">
+          <div class={`${CARD} mt-5 divide-y divide-border overflow-hidden`}>
             {TREE.map(({ path, note }) => (
               <div class="flex flex-col gap-1 px-5 py-3.5 sm:flex-row sm:items-baseline sm:gap-6">
                 <span class="shrink-0 font-mono text-sm text-primary sm:w-56">{path}</span>
                 <span class="text-sm text-muted-foreground">{note}</span>
               </div>
             ))}
-          </Card>
+          </div>
         </section>
 
         <section id="contact" class="mt-14 scroll-mt-24">
@@ -144,61 +172,123 @@ export class AboutPage extends Page {
           </p>
 
           <div class="mt-6 grid gap-6 lg:grid-cols-5">
-            <Card class="p-6 sm:p-8 lg:col-span-3">
+            <div class={`${CARD} p-6 sm:p-8 lg:col-span-3`}>
               <form
                 method="post"
                 action={`${route("about.store")}#contact`}
                 class="space-y-5"
                 novalidate
               >
-                <TextField
-                  label="Name"
-                  name="name"
-                  value={this.old("name")}
-                  error={this.error("name")}
-                  autocomplete="name"
-                  placeholder="Ada Lovelace"
-                />
-
-                <TextField
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={this.old("email")}
-                  error={this.error("email")}
-                  autocomplete="email"
-                  placeholder="ada@example.com"
-                />
-
-                <TextAreaField
-                  label="Message"
-                  name="message"
-                  value={this.old("message")}
-                  error={this.error("message")}
-                  hint="At least 10 characters."
-                  placeholder="What's on your mind?"
-                />
+                <div class={FIELD}>
+                  <div class={FIELD_LABEL_ROW}>
+                    <label for="field-name" class={LABEL}>
+                      Name
+                    </label>
+                  </div>
+                  <input
+                    class={INPUT}
+                    autocomplete="name"
+                    placeholder="Ada Lovelace"
+                    value={name}
+                    id="field-name"
+                    name="name"
+                    aria-invalid={nameError ? "true" : undefined}
+                    aria-describedby={nameError ? "field-name-error" : undefined}
+                  />
+                  <p
+                    id="field-name-error"
+                    data-error-for="name"
+                    class={FIELD_ERROR}
+                    hidden={!nameError}
+                  >
+                    {nameError}
+                  </p>
+                </div>
+                <div class={FIELD}>
+                  <div class={FIELD_LABEL_ROW}>
+                    <label for="field-email" class={LABEL}>
+                      Email
+                    </label>
+                  </div>
+                  <input
+                    class={INPUT}
+                    type="email"
+                    autocomplete="email"
+                    placeholder="ada@example.com"
+                    value={email}
+                    id="field-email"
+                    name="email"
+                    aria-invalid={emailError ? "true" : undefined}
+                    aria-describedby={emailError ? "field-email-error" : undefined}
+                  />
+                  <p
+                    id="field-email-error"
+                    data-error-for="email"
+                    class={FIELD_ERROR}
+                    hidden={!emailError}
+                  >
+                    {emailError}
+                  </p>
+                </div>
+                <div class={FIELD}>
+                  <div class={FIELD_LABEL_ROW}>
+                    <label for="field-message" class={LABEL}>
+                      Message
+                    </label>
+                  </div>
+                  <textarea
+                    class={TEXTAREA}
+                    rows="5"
+                    placeholder="What's on your mind?"
+                    id="field-message"
+                    name="message"
+                    aria-invalid={messageError ? "true" : undefined}
+                    aria-describedby={messageError ? "field-message-error" : "field-message-hint"}
+                  >
+                    {message}
+                  </textarea>
+                  <p
+                    id="field-message-error"
+                    data-error-for="message"
+                    class={FIELD_ERROR}
+                    hidden={!messageError}
+                  >
+                    {messageError}
+                  </p>
+                  <p
+                    id="field-message-hint"
+                    data-hint-for="message"
+                    class={FIELD_HINT}
+                    hidden={Boolean(messageError)}
+                  >
+                    At least 10 characters.
+                  </p>
+                </div>
 
                 <div class="flex items-center gap-3 pt-1">
-                  <Button type="submit" data-loading-text="Sending…">
+                  <button
+                    type="submit"
+                    class={buttonClass("primary", "md")}
+                    data-loading-text="Sending…"
+                  >
                     Send message
-                  </Button>
+                  </button>
                   <p class="text-sm text-muted-foreground">Nothing is stored — see the route.</p>
                 </div>
               </form>
-            </Card>
+            </div>
 
             <div class="space-y-6 lg:col-span-2">
-              <Card class="p-6">
+              <div class={`${CARD} p-6`}>
                 <h2 class="font-semibold text-card-foreground">What happens on submit</h2>
                 <ol class="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
                   <li>
                     <span class="font-medium text-foreground">1.</span> The POST reaches{" "}
-                    <Code>app/routes/about.ts</Code>.
+                    <code class={CODE}>app/routes/about.ts</code>.
                   </li>
                   <li>
-                    <span class="font-medium text-foreground">2.</span> <Code>validate()</Code>{" "}
-                    checks the body and returns typed data.
+                    <span class="font-medium text-foreground">2.</span>{" "}
+                    <code class={CODE}>validate()</code> checks the body and returns typed data.
                   </li>
                   <li>
                     <span class="font-medium text-foreground">3.</span> If it fails, errors and
@@ -209,18 +299,23 @@ export class AboutPage extends Page {
                     flash becomes the toast in the corner.
                   </li>
                 </ol>
-              </Card>
+              </div>
 
-              <Card class="p-6">
+              <div class={`${CARD} p-6`}>
                 <h2 class="font-semibold text-card-foreground">Prefer email?</h2>
                 <a
                   href="mailto:hello@example.com"
                   class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary transition-opacity hover:opacity-80"
                 >
-                  <Icon name="mail" class="size-4" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    class="size-4"
+                    dangerouslySetInnerHTML={icon("mail")}
+                  />
                   hello@example.com
                 </a>
-              </Card>
+              </div>
             </div>
           </div>
         </section>

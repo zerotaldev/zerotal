@@ -7,6 +7,7 @@
  * you have real tests, or keep it as the shape to copy.
  */
 import { beforeAll, afterAll, describe, test, expect } from 'bun:test';
+import { config } from 'zerotal';
 import { createTestApp, migrateDatabase, type TestApp } from 'zerotal/testing';
 
 let app: TestApp;
@@ -34,6 +35,11 @@ describe('scaffold', () => {
 
     res.assertOk();
     res.assertInertia('home');
+  });
+
+  test('shares the app name from config with every page', async () => {
+    expect(config('app.name')).not.toBe('');
+    (await app.get('/about')).assertInertiaProp('app', { name: config('app.name') });
   });
 
   test('renders the other pages', async () => {

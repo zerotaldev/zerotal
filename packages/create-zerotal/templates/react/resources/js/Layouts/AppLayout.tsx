@@ -3,7 +3,7 @@ import { Link, usePage } from "@inertiajs/react";
 import FlashToasts from "../Components/FlashToasts";
 import ThemeToggle from "../Components/ThemeToggle";
 import { CloseIcon, MenuIcon } from "../Components/Icons";
-import { APP_NAME, DOCS_URL } from "../lib/site";
+import { DOCS_URL, useAppName } from "../lib/site";
 import { cn } from "../lib/cn";
 import type { SharedProps } from "../types";
 
@@ -44,6 +44,7 @@ function isActive(url: string, href: string): boolean {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { url, props } = usePage<SharedProps>();
   const signedIn = Boolean(props.auth?.user);
+  const appName = useAppName();
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Close the mobile menu once a visit lands, otherwise it stays open on top of
@@ -89,10 +90,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Link
             href={route("home")}
             className="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight"
-            aria-label={`${APP_NAME} home`}
+            aria-label={`${appName} home`}
           >
             <img src="/zt.svg" alt="" className="size-8 shrink-0 rounded-lg" />
-            <span className="truncate">{APP_NAME}</span>
+            <span className="truncate">{appName}</span>
           </Link>
 
           <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">

@@ -2,7 +2,11 @@ import { env, requireEnv } from "zerotal";
 import { AppConfig } from "zerotal/config";
 
 export default AppConfig({
-  name: "{{name}}",
+  // The one place the app's name lives. Page titles, the sidebar, outgoing mail and
+  // the label authenticator apps show for two-factor codes all read it from here
+  // (the browser gets it as the shared `app.name` prop — see
+  // app/providers/AppServiceProvider.ts). Rename the app by changing APP_NAME.
+  name: env("APP_NAME", "{{name}}"),
   url: env("APP_URL", "http://localhost:3000"),
   /**
    * The APP_KEY is used for encryption and should be set to a random 32

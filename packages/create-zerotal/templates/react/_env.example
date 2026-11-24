@@ -1,3 +1,6 @@
+# Shown in page titles, the sidebar, outgoing mail and authenticator apps.
+APP_NAME={{name}}
+
 # The runtime environment. "production" turns on the framework's stricter
 # config checks and turns off verbose error output.
 APP_ENV=development

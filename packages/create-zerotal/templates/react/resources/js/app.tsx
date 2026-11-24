@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from "react-dom/client";
 import { defineRoutes } from "zerotal/routes";
 import { pages } from "./pages.generated.ts";
 import { ROUTES } from "../../types/routes.generated.ts";
+import type { SharedProps } from "./types.ts";
 import "../css/app.css";
 
 // Hand the browser the route table so `route("about")` works in a component the way
@@ -10,10 +11,14 @@ import "../css/app.css";
 // call it without an import. The table is regenerated on every `zt dev`.
 defineRoutes(ROUTES);
 
+// The app's name, from config/app.ts by way of the shared `app` prop. Read from the
+// first page in `setup()` below, which runs before anything renders a title.
+let appName = "";
+
 createInertiaApp({
   // Suffix every `<Head title="…" />` with the app name, so a page only has to
   // name itself. Pages that set no title fall back to the app name alone.
-  title: (title) => (title ? `${title} — {{name}}` : "{{name}}"),
+  title: (title) => (title && appName ? `${title} — ${appName}` : title || appName),
 
   // Map a component name (e.g. "Users/Index") to its lazily-loaded module.
   // `pages` is generated from the configured pages dir by `inertia:build`.
@@ -34,6 +39,8 @@ createInertiaApp({
   },
 
   setup({ el, App, props }) {
+    appName = (props.initialPage.props as Partial<SharedProps>).app?.name ?? "";
+
     // `inertiaStream()` and endpoint SSR mark the root they rendered into. Hydrate
     // that markup rather than replacing it: it is already the right page, a scraper
     // has already read the head tags out of it, and rendering a second time throws

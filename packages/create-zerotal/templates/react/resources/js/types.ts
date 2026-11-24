@@ -5,6 +5,8 @@
  * Add your own here after registering them with `Inertia.share(...)`.
  */
 export interface SharedProps {
+  /** Shared by app/providers/AppServiceProvider.ts. `name` comes from config/app.ts. */
+  app: { name: string };
   /** The signed-in user, or null. Populated once an auth provider is registered. */
   auth: { user: { id: number; name: string; email: string } | null };
   /** One-request-only messages set with `http.flash("success" | "error" | "warning" | "info", …)`. */
@@ -27,6 +29,7 @@ export interface SharedProps {
  */
 declare module "@zerotal/inertia" {
   interface SharedProps {
+    app: { name: string };
     auth: { user: { id: number; name: string; email: string } | null };
   }
 }

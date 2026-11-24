@@ -5,6 +5,8 @@ import { ServiceProvider } from "../provider/ServiceProvider.ts";
 import { FrameworkEvents, AppBooted } from "../events/FrameworkEvents.ts";
 import { GateMiddleware } from "../gate/GateMiddleware.ts";
 import { SecureHeadersMiddleware } from "../middleware/SecureHeadersMiddleware.ts";
+import { AppConfig, type AppConfigShape } from "../config/AppConfig.ts";
+import type { HealthConfigShape } from "../health/Health.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1038,6 +1040,47 @@ describe("Application.start() — fetch handler and health endpoint", () => {
     await expect(app.start(0)).resolves.toBeUndefined();
   });
 
+  // What `bun zt serve` hands the app: a config/app.ts built with `AppConfig()`, which
+  // used to default `health` to `false` and so turned `/health` off everywhere.
+  async function servedRoutes(
+    appConfig: AppConfigShape,
+    health?: HealthConfigShape,
+  ): Promise<string[]> {
+    const app = Application.create({ env: "web" });
+    app.useConfig({ app: { ...appConfig }, ...(health ? { health: { ...health } } : {}) });
+    let routes: Record<string, unknown> = {};
+    (Bun as unknown as Record<string, unknown>).serve = (opts: Record<string, unknown>) => {
+      routes = (opts["routes"] ?? {}) as Record<string, unknown>;
+      return fakeServer;
+    };
+    await app.start(0);
+    return Object.keys(routes);
+  }
+
+  it("serves /health by default outside production", async () => {
+    const routes = await servedRoutes(AppConfig({ env: "development" }));
+    expect(routes).toContain("/health");
+  });
+
+  it("does not serve /health by default in production", async () => {
+    const routes = await servedRoutes(AppConfig({ env: "production" }));
+    expect(routes).not.toContain("/health");
+  });
+
+  it("still honours a config/health.ts namespace next to the app.health default", async () => {
+    const routes = await servedRoutes(AppConfig({ env: "development" }), { enabled: false });
+    expect(routes).not.toContain("/health");
+  });
+
+  it("lets app.health fields win over the config/health.ts namespace", async () => {
+    const routes = await servedRoutes(
+      AppConfig({ env: "development", health: { path: "/healthz" } }),
+      { path: "/ignored" },
+    );
+    expect(routes).toContain("/healthz");
+    expect(routes).not.toContain("/ignored");
+  });
+
   it("WebSocket upgrade is handled when _wsHandlers is set", async () => {
     const messages: string[] = [];
     const app = Application.create({ env: "web" });
@@ -1163,6 +1206,24 @@ describe("Application._handleErrorAsync() — the log line on the default path",
     expect(logged).toEqual([]);
   });
 
+  // What route-model binding throws for `/projects/999`. The ORM's class, reproduced here
+  // because core cannot import the ORM: a `ZerotalError` with a 404, not an `HttpError`.
+  it("does not log a missing route-bound model as an unhandled error", async () => {
+    const { ZerotalError } = await import("../errors/ZerotalError.ts");
+    class ModelNotFoundError extends ZerotalError {
+      constructor() {
+        super("No Project record found for ID: 999", "E_MODEL_NOT_FOUND", 404);
+      }
+    }
+    const logged: string[] = [];
+    const app = await appLoggingTo(logged);
+
+    const res = await handle(app, new ModelNotFoundError());
+
+    expect(res.status).toBe(404);
+    expect(logged).toEqual([]);
+  });
+
   it("does not log a failed validation as an unhandled error", async () => {
     const logged: string[] = [];
     const app = await appLoggingTo(logged);
@@ -1243,6 +1304,7 @@ describe("_isExpectedOutcome()", () => {
       "ValidationRedirectError",
       "ValidationJsonError",
       "PrecognitionResponse",
+      "ModelNotFoundError",
     ]) {
       expect(_isExpectedOutcome(Object.assign(new Error("x"), { name }))).toBe(true);
     }

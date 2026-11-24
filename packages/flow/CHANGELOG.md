@@ -25,6 +25,11 @@ change.
   imported from a relative module and extending `Component` (directly or through another such
   class), compiles like a page that extends `Component`. Its `@expose` and `@locked` fields count as
   the page's.
+- **A page registered with `Router.flow()` is compiled.** Only a file-routed page was told its
+  source file, so every page an app listed in a route file rendered through the runtime, and the
+  compiler never saw it. A registered page now takes the file under `app/flow/pages/` that exports
+  its class, in a compiled binary too. A class exported from nowhere there still renders through
+  the runtime.
 - **`dangerouslySetInnerHTML={{ __html: … }}` compiles**, writing the markup in place of the
   element's children as the runtime does. An icon drawn from the page's own constants, or an SVG
   made on the server, no longer sends the page to the runtime fallback.

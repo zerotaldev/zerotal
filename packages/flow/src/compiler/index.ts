@@ -21,7 +21,7 @@
 
 import { basename, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { _appFilesEmbedded, _importAppFile } from "@zerotal/core/runtime";
+import { _appFilesEmbedded, _importAppFile, _scanAppFiles } from "@zerotal/core/runtime";
 import { frameworkLog } from "@zerotal/core/logger";
 import type { BlockerReport } from "./transform.ts";
 import { FlowValidationError } from "./errors.ts";
@@ -83,6 +83,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
   const start = Date.now();
 
   const embedded = _appFilesEmbedded();
+  await _locateRegisteredPages(appRoot, entries.values());
 
   for (const [, entry] of entries) {
     const PageClass = entry.PageClass as unknown as { new (): unknown } & {
@@ -197,6 +198,49 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
   }
 
   _warnIfMostlyRuntime(compiled + cached + injected + skipped - external, skipped - external);
+}
+
+/** Where an app keeps its Flow pages, from the project root. */
+const PAGES_DIRECTORY = join("app", "flow", "pages");
+
+/**
+ * Give each page registered from code its source file, so it is compiled like a file-routed one.
+ *
+ * The file router tells a page where it lives. `Router.flow("/login", LoginPage)` does not: the
+ * class arrives without a file, and was left to the runtime renderer — every page of an app that
+ * lists its pages in a route file, rather than only the pages a package registers. Such a page
+ * almost always sits under app/flow/pages/, so that directory is read for the file that exports
+ * the very class registered. The module is the one the route file already loaded, so importing
+ * it costs nothing and identity is exact; a class found nowhere there stays on the runtime. A
+ * binary carries the same files, so this finds them there too.
+ */
+async function _locateRegisteredPages(
+  appRoot: string,
+  entries: Iterable<{ PageClass: unknown }>,
+): Promise<void> {
+  const unplaced = new Set<unknown>();
+  for (const { PageClass } of entries) {
+    if (!(PageClass as { __sourceFile?: string }).__sourceFile) unplaced.add(PageClass);
+  }
+  if (unplaced.size === 0) return;
+
+  const directory = join(appRoot, PAGES_DIRECTORY);
+  for (const file of await _scanAppFiles(directory, "**/*.{ts,tsx}")) {
+    if (/\.(test|spec)\.tsx?$/.test(file)) continue;
+    const path = join(directory, file);
+    let module: Record<string, unknown>;
+    try {
+      module = await _importAppFile(pathToFileURL(path).href);
+    } catch {
+      continue;
+    }
+    for (const value of Object.values(module)) {
+      if (!unplaced.has(value)) continue;
+      (value as { __sourceFile?: string }).__sourceFile = path;
+      unplaced.delete(value);
+    }
+    if (unplaced.size === 0) return;
+  }
 }
 
 /** The compiler's parser-backed half, as {@link _loadCompiler} returns it. */

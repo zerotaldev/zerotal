@@ -124,7 +124,9 @@ N of M Flow pages (75%) render through the runtime fallback instead of compiled 
 
 The warning appears once more than half of your app's own pages fall back, and counts only
 those. Pages a package registers from code, like the admin panel's, render through the runtime by
-design and are left out of it.
+design and are left out of it. A page your app registers from code, with
+`Router.flow("/login", LoginPage)`, is compiled like a file-routed one when its class is exported
+from a file under `app/flow/pages/`.
 
 Set `ZT_FLOW_COMPILE_LOG=1` to print what blocks each page. The common causes:
 

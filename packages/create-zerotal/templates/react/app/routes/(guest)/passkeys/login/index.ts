@@ -12,9 +12,9 @@ export async function POST(http: HttpContext): Promise<Response> {
 
   const challenge = http.session?.get(LOGIN_CHALLENGE_KEY);
   http.session?.forget(LOGIN_CHALLENGE_KEY);
-  const assertion = (await http.request.json().catch(() => null)) as
-    | PasskeyAuthenticationResponseJSON
-    | null;
+  const assertion = (await http.request
+    .json()
+    .catch(() => null)) as PasskeyAuthenticationResponseJSON | null;
 
   if (typeof challenge !== "string" || !assertion) {
     return Response.json({ message: "Start again: the sign-in request expired." }, { status: 422 });

@@ -19,7 +19,11 @@ export async function POST(http: HttpContext): Promise<void> {
   const { code } = await validate(http, (r) => ({ code: r.string().trim().min(6) }));
 
   if (!TwoFactor.verifyCode(secret, code.replace(/\s+/g, ""))) {
-    rejectInput(http, { code: "That code did not match. Try the newest one in the app." }, "/settings/two-factor");
+    rejectInput(
+      http,
+      { code: "That code did not match. Try the newest one in the app." },
+      "/settings/two-factor",
+    );
   }
 
   const { plain, hashed } = TwoFactor.generateRecoveryCodes();

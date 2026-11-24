@@ -1,0 +1,13 @@
+# Kept out of the image: installed in it, built in it, or never to be shipped.
+node_modules
+public/assets
+.zerotal
+storage/logs
+storage/framework
+database/*.sqlite*
+.env
+.env.*
+!.env.example
+.git
+.github
+.vscode

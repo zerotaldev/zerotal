@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { refreshDatabase, type TestApp } from 'zerotal/testing';
-import { User } from '../../app/models/User';
-import { FACTORY_PASSWORD, UserFactory } from '../../database/factories/UserFactory';
-import { Browser, bootApp } from '../support';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { User } from "../../app/models/User";
+import { FACTORY_PASSWORD, UserFactory } from "../../database/factories/UserFactory";
+import { Browser, bootApp } from "../support";
 
 let app: TestApp;
 
@@ -12,30 +12,32 @@ beforeAll(async () => {
 afterAll(() => app.close());
 beforeEach(() => app.actingAsGuest());
 
-describe('deleting the account', () => {
+describe("deleting the account", () => {
   refreshDatabase();
 
-  test('deletes the account and signs out', async () => {
+  test("deletes the account and signs out", async () => {
     const user = await UserFactory.create();
     const browser = new Browser(app);
-    await browser.post('/login', { email: user.email, password: FACTORY_PASSWORD });
+    await browser.post("/login", { email: user.email, password: FACTORY_PASSWORD });
 
-    (await browser.delete('/settings/delete-account', { password: FACTORY_PASSWORD })).assertRedirect('/');
+    (
+      await browser.delete("/settings/delete-account", { password: FACTORY_PASSWORD })
+    ).assertRedirect("/");
 
     expect(await User.find(user.id)).toBeNull();
-    (await browser.get('/dashboard')).assertRedirect('/login');
+    (await browser.get("/dashboard")).assertRedirect("/login");
   });
 
-  test('refuses without the password', async () => {
+  test("refuses without the password", async () => {
     const user = await UserFactory.create();
 
-    const res = await app.actingAs(user).request('/settings/delete-account', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'password=wrong',
+    const res = await app.actingAs(user).request("/settings/delete-account", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "password=wrong",
     });
 
-    res.assertInvalid(['password']);
+    res.assertInvalid(["password"]);
     expect(await User.find(user.id)).not.toBeNull();
   });
 });

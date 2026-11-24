@@ -41,32 +41,32 @@ It is for local development only — never seed a production database with it.
 
 ## Where things live
 
-| Path                        | What it holds                                                          |
-| --------------------------- | ---------------------------------------------------------------------- |
-| `app/routes/`               | One file per URL. `(guest)/` and `(auth)/` group them by who may visit |
-| `app/routes/(auth)/(verified)/` | Pages that also need a confirmed email address                     |
-| `app/models/`               | `User` and `Project`                                                   |
-| `app/policies/`             | Who may do what with a model                                           |
-| `app/auth/`                 | Sessions, passkeys and social sign-in helpers                          |
-| `app/notifications/`        | The emails the app sends                                               |
-| `resources/js/pages/`       | One React component per screen                                         |
-| `resources/js/Layouts/`     | The signed-in sidebar, the sign-in card, the public site and settings  |
-| `resources/js/Components/`  | Buttons, fields, dialogs, menus, toasts — the shared vocabulary        |
-| `resources/css/app.css`     | Design tokens. Every colour in the app starts here                     |
-| `database/`                 | Migrations, factories and the demo seeder                              |
-| `tests/`                    | Feature tests, run with the app booted                                 |
+| Path                            | What it holds                                                          |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| `app/routes/`                   | One file per URL. `(guest)/` and `(auth)/` group them by who may visit |
+| `app/routes/(auth)/(verified)/` | Pages that also need a confirmed email address                         |
+| `app/models/`                   | `User` and `Project`                                                   |
+| `app/policies/`                 | Who may do what with a model                                           |
+| `app/auth/`                     | Sessions, passkeys and social sign-in helpers                          |
+| `app/notifications/`            | The emails the app sends                                               |
+| `resources/js/pages/`           | One React component per screen                                         |
+| `resources/js/Layouts/`         | The signed-in sidebar, the sign-in card, the public site and settings  |
+| `resources/js/Components/`      | Buttons, fields, dialogs, menus, toasts — the shared vocabulary        |
+| `resources/css/app.css`         | Design tokens. Every colour in the app starts here                     |
+| `database/`                     | Migrations, factories and the demo seeder                              |
+| `tests/`                        | Feature tests, run with the app booted                                 |
 
 ## Scripts
 
-| Command                | What it does                               |
-| ---------------------- | ------------------------------------------ |
-| `bun run dev`          | Start the dev server with hot reload       |
-| `bun run start`        | Start the server without dev tooling       |
-| `bun run build`        | Build the frontend bundle for production   |
-| `bun run test`         | Run the test suite                         |
-| `bun run typecheck`    | Type-check without emitting                |
-| `bun run seed`         | Create the demo account and its projects   |
-| `bun zt <command>`     | Any framework command; `bun zt list` shows them all |
+| Command             | What it does                                        |
+| ------------------- | --------------------------------------------------- |
+| `bun run dev`       | Start the dev server with hot reload                |
+| `bun run start`     | Start the server without dev tooling                |
+| `bun run build`     | Build the frontend bundle for production            |
+| `bun run test`      | Run the test suite                                  |
+| `bun run typecheck` | Type-check without emitting                         |
+| `bun run seed`      | Create the demo account and its projects            |
+| `bun zt <command>`  | Any framework command; `bun zt list` shows them all |
 
 ## Configuration
 
@@ -92,6 +92,23 @@ Register an OAuth app with the provider, set its callback URL to
 `<APP_URL>/auth/github/callback` (or `/google/`), and put its id and secret in `.env` as
 `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` or `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. The
 sign-in page shows a button for each provider that is set.
+
+## Tests and CI
+
+`bun run test` boots the app against a fresh in-memory database for each file and runs the
+feature tests in `tests/` — every sign-in flow, every settings page and every action on a
+project. Mail is faked in tests; nothing is sent.
+
+`.github/workflows/ci.yml` runs the format check, the type check, the tests and the production
+build on every push and pull request.
+
+## Deploying
+
+The `Dockerfile` installs, builds the frontend, and runs `bun zt migrate` then `bun zt serve` on
+port 3000. At run time the container needs `APP_KEY`, `APP_ENV=production` (set in the image),
+`APP_URL`, a `DATABASE_URL` on a persistent volume or server, and `HEALTH_KEY` for its health
+check, which calls `/health` with it. See the
+[deployment guide](https://zerotal.dev/docs/deployment) for the rest.
 
 ## Remove the example
 

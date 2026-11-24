@@ -1,9 +1,14 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { assertDatabaseHas, assertDatabaseMissing, refreshDatabase, type TestApp } from 'zerotal/testing';
-import { Project } from '../app/models/Project';
-import { ProjectFactory } from '../database/factories/ProjectFactory';
-import { UserFactory } from '../database/factories/UserFactory';
-import { bootApp } from './support';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import {
+  assertDatabaseHas,
+  assertDatabaseMissing,
+  refreshDatabase,
+  type TestApp,
+} from "zerotal/testing";
+import { Project } from "../app/models/Project";
+import { ProjectFactory } from "../database/factories/ProjectFactory";
+import { UserFactory } from "../database/factories/UserFactory";
+import { bootApp } from "./support";
 
 /**
  * The example resource, end to end: every action a user takes on a project, and the
@@ -18,125 +23,155 @@ beforeAll(async () => {
 afterAll(() => app.close());
 beforeEach(() => app.actingAsGuest());
 
-const valid = { name: 'Website relaunch', description: 'A new site.', status: 'active' };
+const valid = { name: "Website relaunch", description: "A new site.", status: "active" };
 
-describe('projects', () => {
+describe("projects", () => {
   refreshDatabase();
 
-  test('keeps projects behind a sign-in', async () => {
-    (await app.get('/projects')).assertRedirect('/login');
+  test("keeps projects behind a sign-in", async () => {
+    (await app.get("/projects")).assertRedirect("/login");
   });
 
-  test('lists only the signed-in user’s projects', async () => {
+  test("lists only the signed-in user’s projects", async () => {
     const user = await UserFactory.create();
     const other = await UserFactory.create();
     await ProjectFactory.for(user).count(2).create();
-    await ProjectFactory.for(other).create({ name: 'Not yours' });
+    await ProjectFactory.for(other).create({ name: "Not yours" });
 
-    const page = (await app.actingAs(user).get('/projects')).assertOk().assertInertia('projects/index').inertia();
-    const projects = page?.props['projects'] as { name: string }[];
+    const page = (await app.actingAs(user).get("/projects"))
+      .assertOk()
+      .assertInertia("projects/index")
+      .inertia();
+    const projects = page?.props["projects"] as { name: string }[];
 
     expect(projects).toHaveLength(2);
-    expect(projects.map((p) => p.name)).not.toContain('Not yours');
+    expect(projects.map((p) => p.name)).not.toContain("Not yours");
   });
 
-  test('searches by name and description', async () => {
+  test("searches by name and description", async () => {
     const user = await UserFactory.create();
-    await ProjectFactory.for(user).create({ name: 'Billing migration', description: 'Invoices.' });
-    await ProjectFactory.for(user).create({ name: 'Status page', description: 'Uptime and billing incidents.' });
-    await ProjectFactory.for(user).create({ name: 'Dark mode', description: 'Themes.' });
+    await ProjectFactory.for(user).create({ name: "Billing migration", description: "Invoices." });
+    await ProjectFactory.for(user).create({
+      name: "Status page",
+      description: "Uptime and billing incidents.",
+    });
+    await ProjectFactory.for(user).create({ name: "Dark mode", description: "Themes." });
 
-    const page = (await app.actingAs(user).get('/projects?search=billing')).inertia();
-    const names = (page?.props['projects'] as { name: string }[]).map((p) => p.name).sort();
+    const page = (await app.actingAs(user).get("/projects?search=billing")).inertia();
+    const names = (page?.props["projects"] as { name: string }[]).map((p) => p.name).sort();
 
-    expect(names).toEqual(['Billing migration', 'Status page']);
+    expect(names).toEqual(["Billing migration", "Status page"]);
   });
 
-  test('pages through a long list', async () => {
+  test("pages through a long list", async () => {
     const user = await UserFactory.create();
     await ProjectFactory.for(user).count(12).create();
 
-    const second = (await app.actingAs(user).get('/projects?page=2')).inertia();
+    const second = (await app.actingAs(user).get("/projects?page=2")).inertia();
 
-    expect(second?.props['projects']).toHaveLength(2);
-    expect(second?.props['pagination']).toMatchObject({ page: 2, lastPage: 2, total: 12, from: 11, to: 12 });
+    expect(second?.props["projects"]).toHaveLength(2);
+    expect(second?.props["pagination"]).toMatchObject({
+      page: 2,
+      lastPage: 2,
+      total: 12,
+      from: 11,
+      to: 12,
+    });
   });
 
-  test('creates a project owned by the signed-in user', async () => {
+  test("creates a project owned by the signed-in user", async () => {
     const user = await UserFactory.create();
 
-    (await app.actingAs(user).get('/projects/create')).assertOk().assertInertia('projects/create');
-    const res = await app.actingAs(user).postForm('/projects', valid);
+    (await app.actingAs(user).get("/projects/create")).assertOk().assertInertia("projects/create");
+    const res = await app.actingAs(user).postForm("/projects", valid);
 
-    res.assertRedirect('/projects');
-    res.assertSessionHas('success');
-    await assertDatabaseHas('projects', { name: 'Website relaunch', user_id: user.id, status: 'active' });
+    res.assertRedirect("/projects");
+    res.assertSessionHas("success");
+    await assertDatabaseHas("projects", {
+      name: "Website relaunch",
+      user_id: user.id,
+      status: "active",
+    });
   });
 
-  test('rejects an invalid project', async () => {
+  test("rejects an invalid project", async () => {
     const user = await UserFactory.create();
 
     const res = await app
       .actingAs(user)
-      .postForm('/projects', { name: 'x', status: 'nonsense' }, { Referer: `${app.baseUrl}/projects/create` });
+      .postForm(
+        "/projects",
+        { name: "x", status: "nonsense" },
+        { Referer: `${app.baseUrl}/projects/create` },
+      );
 
-    res.assertRedirect('/projects/create');
-    res.assertInvalid(['name', 'status']);
-    await assertDatabaseMissing('projects', { name: 'x' });
+    res.assertRedirect("/projects/create");
+    res.assertInvalid(["name", "status"]);
+    await assertDatabaseMissing("projects", { name: "x" });
   });
 
-  test('ignores an owner sent with the form', async () => {
+  test("ignores an owner sent with the form", async () => {
     const user = await UserFactory.create();
     const other = await UserFactory.create();
 
-    await app.actingAs(user).postForm('/projects', { ...valid, user_id: other.id, userId: other.id });
+    await app
+      .actingAs(user)
+      .postForm("/projects", { ...valid, user_id: other.id, userId: other.id });
 
-    await assertDatabaseHas('projects', { name: valid.name, user_id: user.id });
+    await assertDatabaseHas("projects", { name: valid.name, user_id: user.id });
   });
 
-  test('edits a project', async () => {
+  test("edits a project", async () => {
     const user = await UserFactory.create();
     const project = await ProjectFactory.for(user).create();
 
-    (await app.actingAs(user).get(`/projects/${project.id}/edit`)).assertOk().assertInertia('projects/edit');
-    const res = await app.actingAs(user).putForm(`/projects/${project.id}`, { ...valid, name: 'Renamed' });
+    (await app.actingAs(user).get(`/projects/${project.id}/edit`))
+      .assertOk()
+      .assertInertia("projects/edit");
+    const res = await app
+      .actingAs(user)
+      .putForm(`/projects/${project.id}`, { ...valid, name: "Renamed" });
 
-    res.assertRedirect('/projects');
-    expect((await Project.find(project.id))?.name).toBe('Renamed');
+    res.assertRedirect("/projects");
+    expect((await Project.find(project.id))?.name).toBe("Renamed");
   });
 
-  test('deletes a project', async () => {
+  test("deletes a project", async () => {
     const user = await UserFactory.create();
     const project = await ProjectFactory.for(user).create();
 
-    (await app.actingAs(user).delete(`/projects/${project.id}`)).assertRedirect('/projects');
+    (await app.actingAs(user).delete(`/projects/${project.id}`)).assertRedirect("/projects");
 
     expect(await Project.find(project.id)).toBeNull();
   });
 
-  test('answers 404 for a project that does not exist', async () => {
+  test("answers 404 for a project that does not exist", async () => {
     const user = await UserFactory.create();
 
-    (await app.actingAs(user).get('/projects/999999/edit')).assertNotFound();
+    (await app.actingAs(user).get("/projects/999999/edit")).assertNotFound();
   });
 
-  test('forbids another user from seeing, changing or deleting a project', async () => {
+  test("forbids another user from seeing, changing or deleting a project", async () => {
     const owner = await UserFactory.create();
     const stranger = await UserFactory.create();
-    const project = await ProjectFactory.for(owner).create({ name: 'Private' });
+    const project = await ProjectFactory.for(owner).create({ name: "Private" });
 
     (await app.actingAs(stranger).get(`/projects/${project.id}/edit`)).assertForbidden();
     (await app.actingAs(stranger).putForm(`/projects/${project.id}`, valid)).assertForbidden();
     (await app.actingAs(stranger).delete(`/projects/${project.id}`)).assertForbidden();
 
-    expect((await Project.find(project.id))?.name).toBe('Private');
+    expect((await Project.find(project.id))?.name).toBe("Private");
   });
 
-  test('shows the project counts on the dashboard', async () => {
+  test("shows the project counts on the dashboard", async () => {
     const user = await UserFactory.create();
-    await ProjectFactory.for(user).create({ status: 'active' });
-    await ProjectFactory.for(user).create({ status: 'completed' });
+    await ProjectFactory.for(user).create({ status: "active" });
+    await ProjectFactory.for(user).create({ status: "completed" });
 
-    (await app.actingAs(user).get('/dashboard')).assertInertiaProp('stats', { total: 2, active: 1, completed: 1 });
+    (await app.actingAs(user).get("/dashboard")).assertInertiaProp("stats", {
+      total: 2,
+      active: 1,
+      completed: 1,
+    });
   });
 });

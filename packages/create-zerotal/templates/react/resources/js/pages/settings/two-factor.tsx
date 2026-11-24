@@ -79,9 +79,7 @@ function TwoFactor({ title, enabled, setup, recoveryCodes, recoveryCodesLeft }: 
         <CardHeader
           title="Two-factor authentication"
           description="Ask for a code from your phone, as well as your password, when you sign in."
-          actions={
-            enabled ? <Badge tone="success">On</Badge> : <Badge>Off</Badge>
-          }
+          actions={enabled ? <Badge tone="success">On</Badge> : <Badge>Off</Badge>}
         />
 
         {enabled ? (
@@ -90,14 +88,19 @@ function TwoFactor({ title, enabled, setup, recoveryCodes, recoveryCodesLeft }: 
               <p>
                 Signing in asks for the six-digit code from your authenticator app. You have{" "}
                 <span className="font-medium text-foreground">{recoveryCodesLeft}</span> unused
-                recovery code{recoveryCodesLeft === 1 ? "" : "s"} for when your phone is not to hand.
+                recovery code{recoveryCodesLeft === 1 ? "" : "s"} for when your phone is not to
+                hand.
               </p>
             </CardBody>
             <CardFooter className="justify-between">
               <Button
                 variant="secondary"
                 onClick={() =>
-                  router.post(route("settings.two-factor.recovery-codes.store"), {}, { preserveScroll: true })
+                  router.post(
+                    route("settings.two-factor.recovery-codes.store"),
+                    {},
+                    { preserveScroll: true },
+                  )
                 }
               >
                 Make new recovery codes
@@ -159,7 +162,9 @@ function TwoFactor({ title, enabled, setup, recoveryCodes, recoveryCodesLeft }: 
             <CardFooter>
               <Button
                 variant="ghost"
-                onClick={() => router.delete(route("settings.two-factor.destroy"), { preserveScroll: true })}
+                onClick={() =>
+                  router.delete(route("settings.two-factor.destroy"), { preserveScroll: true })
+                }
               >
                 Cancel
               </Button>

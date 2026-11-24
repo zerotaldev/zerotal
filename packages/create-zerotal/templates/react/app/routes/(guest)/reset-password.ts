@@ -25,7 +25,11 @@ export async function POST(http: HttpContext): Promise<void> {
 
   if (!(await passwordReset.reset({ email, token, password }))) {
     const back = `/reset-password?${new URLSearchParams({ token, email })}`;
-    rejectInput(http, { email: "This reset link is invalid or has expired. Ask for a new one." }, back);
+    rejectInput(
+      http,
+      { email: "This reset link is invalid or has expired. Ask for a new one." },
+      back,
+    );
   }
 
   http.flash("success", "Your password has been changed. Sign in with it below.");

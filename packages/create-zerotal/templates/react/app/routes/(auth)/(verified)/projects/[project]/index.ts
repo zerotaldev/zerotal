@@ -9,7 +9,11 @@ export async function PUT(http: HttpContext<{ project: Project }>): Promise<void
   Gate.authorize("update", project);
   const data = await ProjectRequest.validate();
 
-  project.fill({ name: data.name, description: data.description || null, status: data.status as ProjectStatus });
+  project.fill({
+    name: data.name,
+    description: data.description || null,
+    status: data.status as ProjectStatus,
+  });
   await project.save();
 
   http.flash("success", `“${project.name}” was saved.`);

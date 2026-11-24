@@ -1,7 +1,7 @@
-import { describe, expect, test } from 'bun:test';
-import { ProjectPolicy } from '../app/policies/ProjectPolicy';
-import { Project } from '../app/models/Project';
-import { User } from '../app/models/User';
+import { describe, expect, test } from "bun:test";
+import { ProjectPolicy } from "../app/policies/ProjectPolicy";
+import { Project } from "../app/models/Project";
+import { User } from "../app/models/User";
 
 /**
  * The policy on its own, without HTTP: who may do what with a project. Delete this file
@@ -19,10 +19,10 @@ function projectOwnedBy(id: number): Project {
   return p;
 }
 
-describe('project policy', () => {
+describe("project policy", () => {
   const policy = new ProjectPolicy();
 
-  test('lets the owner view, update and delete', () => {
+  test("lets the owner view, update and delete", () => {
     const owner = user(1);
     const project = projectOwnedBy(1);
 
@@ -31,7 +31,7 @@ describe('project policy', () => {
     expect(policy.delete(owner, project)).toBe(true);
   });
 
-  test('refuses everyone else', () => {
+  test("refuses everyone else", () => {
     const stranger = user(2);
     const project = projectOwnedBy(1);
 
@@ -40,7 +40,7 @@ describe('project policy', () => {
     expect(policy.delete(stranger, project)).toBe(false);
   });
 
-  test('lets any signed-in user create one', () => {
+  test("lets any signed-in user create one", () => {
     expect(policy.create(user(3))).toBe(true);
   });
 });

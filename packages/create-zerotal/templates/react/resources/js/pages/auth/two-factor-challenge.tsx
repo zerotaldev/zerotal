@@ -71,7 +71,9 @@ function TwoFactorChallenge({ title }: Props) {
           onClick={toggle}
           className="w-full text-center text-sm font-medium text-primary hover:underline"
         >
-          {useRecoveryCode ? "Use a code from my app instead" : "Lost your phone? Use a recovery code"}
+          {useRecoveryCode
+            ? "Use a code from my app instead"
+            : "Lost your phone? Use a recovery code"}
         </button>
       </form>
     </>

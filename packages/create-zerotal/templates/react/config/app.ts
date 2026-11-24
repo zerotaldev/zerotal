@@ -26,6 +26,19 @@ export default AppConfig({
     secure: env("APP_SECURE", false),
   },
 
+  // GET /health — for load balancers, uptime monitors and the Dockerfile's HEALTHCHECK.
+  // Set explicitly: `AppConfig()` leaves it off unless asked. In production it answers
+  // only requests carrying HEALTH_KEY (as ?key= or an X-Health-Key header), and refuses
+  // with a 503 until one is set, so it is never exposed by accident.
+  health: {
+    enabled: true,
+    path: "/health",
+    // Spread rather than assigned: `secret?: string` will not take the `undefined`
+    // that `env()` returns when the variable is unset.
+    ...(env("HEALTH_KEY", "") ? { secret: env("HEALTH_KEY", "") } : {}),
+    showDetails: env("APP_ENV", "development") !== "production",
+  },
+
   throttle: {
     maxAttempts: 120,
     windowSeconds: 60,

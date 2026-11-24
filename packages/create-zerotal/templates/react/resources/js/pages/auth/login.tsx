@@ -34,11 +34,16 @@ function Login({ title, passkeys, providers }: Props) {
       const options = await postJson<Parameters<typeof getPasskey>[0]>("/passkeys/login/options");
       if (!options.ok) throw new Error("Passkey sign-in is not available right now.");
       const assertion = await getPasskey(options.data);
-      const result = await postJson<{ redirect?: string; message?: string }>("/passkeys/login", assertion);
-      if (!result.ok || !result.data.redirect) throw new Error(result.data.message ?? "That passkey did not work.");
+      const result = await postJson<{ redirect?: string; message?: string }>(
+        "/passkeys/login",
+        assertion,
+      );
+      if (!result.ok || !result.data.redirect)
+        throw new Error(result.data.message ?? "That passkey did not work.");
       router.visit(result.data.redirect);
     } catch (error) {
-      if (!wasCancelled(error)) toast("error", error instanceof Error ? error.message : String(error));
+      if (!wasCancelled(error))
+        toast("error", error instanceof Error ? error.message : String(error));
     } finally {
       setPasskeyBusy(false);
     }

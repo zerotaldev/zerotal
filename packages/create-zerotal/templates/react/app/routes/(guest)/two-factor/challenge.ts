@@ -45,7 +45,11 @@ export async function POST(http: HttpContext): Promise<void> {
   const throttleKey = `two-factor:${user.id}`;
   const wait = loginThrottle.ensureNotLocked(http, throttleKey);
   if (wait !== null) {
-    rejectInput(http, { code: `Too many attempts. Try again in ${wait} seconds.` }, "/two-factor/challenge");
+    rejectInput(
+      http,
+      { code: `Too many attempts. Try again in ${wait} seconds.` },
+      "/two-factor/challenge",
+    );
   }
 
   if (recovery_code) {
@@ -53,20 +57,31 @@ export async function POST(http: HttpContext): Promise<void> {
     const result = TwoFactor.verifyRecoveryCode(user.recoveryCodeHashes(), recovery_code);
     if (!result.valid) {
       loginThrottle.recordFailure(http, throttleKey);
-      rejectInput(http, { recovery_code: "That recovery code is not valid." }, "/two-factor/challenge");
+      rejectInput(
+        http,
+        { recovery_code: "That recovery code is not valid." },
+        "/two-factor/challenge",
+      );
     }
     user.twoFactorRecoveryCodes = JSON.stringify(result.remaining);
     await user.save();
   } else if (!code || !TwoFactor.verifyCode(user.twoFactorSecret, code.replace(/\s+/g, ""))) {
     loginThrottle.recordFailure(http, throttleKey);
-    rejectInput(http, { code: "That code is not valid. Check your authenticator app." }, "/two-factor/challenge");
+    rejectInput(
+      http,
+      { code: "That code is not valid. Check your authenticator app." },
+      "/two-factor/challenge",
+    );
   }
 
   loginThrottle.clearFor(http, throttleKey);
   await Auth.completeTwoFactor();
 
   if (recovery_code && user.recoveryCodeHashes().length <= 2) {
-    http.flash("warning", "You are running low on recovery codes. Make new ones in Settings → Two-factor.");
+    http.flash(
+      "warning",
+      "You are running low on recovery codes. Make new ones in Settings → Two-factor.",
+    );
   }
   http.redirect(intendedUrl(http), 303);
 }

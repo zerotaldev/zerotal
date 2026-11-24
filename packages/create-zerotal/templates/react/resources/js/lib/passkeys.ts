@@ -106,5 +106,8 @@ export async function getPasskey(options: {
 
 /** The user dismissed the browser's prompt — not an error worth a red toast. */
 export function wasCancelled(error: unknown): boolean {
-  return error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "AbortError");
+  return (
+    error instanceof DOMException &&
+    (error.name === "NotAllowedError" || error.name === "AbortError")
+  );
 }

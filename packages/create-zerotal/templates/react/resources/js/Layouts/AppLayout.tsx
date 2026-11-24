@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type SVGProps,
+} from "react";
 import { Link, usePage } from "@inertiajs/react";
 import { AppLogo } from "../Components/AppLogo";
 import { Avatar } from "../Components/Avatar";

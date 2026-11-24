@@ -6,19 +6,19 @@
  * providers register, routes resolve, and a request completes. Delete it once
  * you have real tests, or keep it as the shape to copy.
  */
-import { beforeAll, afterAll, describe, test, expect } from 'bun:test';
-import { config } from 'zerotal';
-import { createTestApp, migrateDatabase, type TestApp } from 'zerotal/testing';
+import { beforeAll, afterAll, describe, test, expect } from "bun:test";
+import { config } from "zerotal";
+import { createTestApp, migrateDatabase, type TestApp } from "zerotal/testing";
 
 let app: TestApp;
 
 beforeAll(async () => {
   // Session encryption needs a key. Seed a deterministic one for tests; `??=`
   // leaves a real key alone when the app's .env is present.
-  Bun.env.APP_KEY ??= 'test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa';
+  Bun.env.APP_KEY ??= "test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa";
   // Each run gets its own throwaway schema rather than the dev database.
-  Bun.env.ZT_DB_URL ??= ':memory:';
-  app = await createTestApp(() => import('../bootstrap/app.ts').then((m) => m.default));
+  Bun.env.ZT_DB_URL ??= ":memory:";
+  app = await createTestApp(() => import("../bootstrap/app.ts").then((m) => m.default));
   // Build the schema from the project's own migrations. config/database.ts keeps
   // synchronize off — migrations are the single source of truth — so without this
   // the :memory: database above has no tables and every test fails on 'no such
@@ -29,31 +29,38 @@ beforeAll(async () => {
 
 afterAll(() => app.close());
 
-describe('scaffold', () => {
-  test('boots and serves the home page', async () => {
-    const res = await app.get('/');
+describe("scaffold", () => {
+  test("boots and serves the home page", async () => {
+    const res = await app.get("/");
 
     res.assertOk();
-    res.assertInertia('home');
+    res.assertInertia("home");
   });
 
-  test('shares the app name from config with every page', async () => {
-    expect(config('app.name')).not.toBe('');
-    (await app.get('/about')).assertInertiaProp('app', { name: config('app.name') });
+  test("shares the app name from config with every page", async () => {
+    expect(config("app.name")).not.toBe("");
+    (await app.get("/about")).assertInertiaProp("app", { name: config("app.name") });
   });
 
-  test('renders the other pages', async () => {
-    (await app.get('/about')).assertInertia('about');
-    (await app.get('/contact')).assertInertia('contact');
+  test("renders the other pages", async () => {
+    (await app.get("/about")).assertInertia("about");
+    (await app.get("/contact")).assertInertia("contact");
   });
 
-  test('answers HEAD on the home route, as probes and load balancers do', async () => {
-    const res = await app.head('/');
+  test("answers HEAD on the home route, as probes and load balancers do", async () => {
+    const res = await app.head("/");
     expect(res.status).toBeLessThan(400);
   });
 
-  test('returns 404 for an unregistered path', async () => {
-    (await app.get('/definitely-not-a-route')).assertNotFound();
+  test("serves a health check at /health", () => {
+    // The endpoint itself is only mounted by a running server — `bun zt serve`, and the
+    // Dockerfile's HEALTHCHECK — never inside a test, so this checks the config that turns
+    // it on. In production it also needs HEALTH_KEY.
+    expect(config("app.health")).toMatchObject({ enabled: true, path: "/health" });
+  });
+
+  test("returns 404 for an unregistered path", async () => {
+    (await app.get("/definitely-not-a-route")).assertNotFound();
   });
 });
 
@@ -62,29 +69,29 @@ describe('scaffold', () => {
  * show: validate on the server, and on failure redirect back carrying the
  * messages and the input.
  */
-describe('contact form', () => {
-  test('sends the visitor back with errors when the input is bad', async () => {
+describe("contact form", () => {
+  test("sends the visitor back with errors when the input is bad", async () => {
     // Referer is what a browser sends on a form post, and what the framework
     // redirects back to when validation fails — without it the redirect
     // falls back to "/" and the assertion below would be testing nothing.
     const res = await app.postForm(
-      '/contact',
-      { name: 'A', email: 'nope', message: 'short' },
+      "/contact",
+      { name: "A", email: "nope", message: "short" },
       { Referer: `${app.baseUrl}/contact` },
     );
 
-    res.assertRedirect('/contact');
-    res.assertInvalid(['name', 'email', 'message']);
+    res.assertRedirect("/contact");
+    res.assertInvalid(["name", "email", "message"]);
   });
 
-  test('accepts a valid submission', async () => {
-    const res = await app.postForm('/contact', {
-      name: 'Ada Lovelace',
-      email: 'ada@example.com',
-      message: 'This message is comfortably long enough to pass validation.',
+  test("accepts a valid submission", async () => {
+    const res = await app.postForm("/contact", {
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      message: "This message is comfortably long enough to pass validation.",
     });
 
-    res.assertRedirect('/contact');
+    res.assertRedirect("/contact");
     res.assertValid();
   });
 });

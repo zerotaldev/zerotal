@@ -68,7 +68,8 @@ function Passkeys({ title, passkeys }: Props) {
       setAdding(false);
       router.reload();
     } catch (error) {
-      if (!wasCancelled(error)) toast("error", error instanceof Error ? error.message : String(error));
+      if (!wasCancelled(error))
+        toast("error", error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -122,7 +123,8 @@ function Passkeys({ title, passkeys }: Props) {
                       {passkey.backedUp ? <Badge tone="primary">Synced</Badge> : null}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Added {formatDate(passkey.createdAt)} · Last used {timeAgo(passkey.lastUsedAt)}
+                      Added {formatDate(passkey.createdAt)} · Last used{" "}
+                      {timeAgo(passkey.lastUsedAt)}
                     </p>
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => setRemoving(passkey)}>
@@ -142,7 +144,13 @@ function Passkeys({ title, passkeys }: Props) {
         description="Give it a name you'll recognise. Your browser will then ask you to confirm it's you."
       >
         <form onSubmit={add} className="space-y-5">
-          <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required />
+          <TextField
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={60}
+            required
+          />
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="secondary" onClick={() => setAdding(false)}>
               Cancel

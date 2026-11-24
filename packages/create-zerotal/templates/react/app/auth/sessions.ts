@@ -93,9 +93,7 @@ export async function listSessions(http: HttpContext, userId: number): Promise<S
 /** Sign out every browser but this one. Returns how many were signed out. */
 export async function revokeOtherSessions(http: HttpContext, userId: number): Promise<number> {
   const current = http.session?.get(SESSION_ROW_KEY);
-  const others = (await DB.table("user_sessions")
-    .where("user_id", userId)
-    .get()) as SessionRow[];
+  const others = (await DB.table("user_sessions").where("user_id", userId).get()) as SessionRow[];
   const revoke = others.filter((row) => row.id !== current);
   for (const row of revoke) await DB.table("user_sessions").where("id", row.id).delete();
   return revoke.length;

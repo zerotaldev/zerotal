@@ -35,7 +35,9 @@ export async function DELETE(http: HttpContext): Promise<void> {
 
   http.flash(
     "success",
-    count === 0 ? "No other sessions were signed in." : `Signed out of ${count} other session${count === 1 ? "" : "s"}.`,
+    count === 0
+      ? "No other sessions were signed in."
+      : `Signed out of ${count} other session${count === 1 ? "" : "s"}.`,
   );
   http.redirect("/settings/sessions", 303);
 }

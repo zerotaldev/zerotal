@@ -51,7 +51,10 @@ const LIFECYCLE = [
 ];
 
 const TREE = [
-  { path: "app/routes/", note: "One file per URL. (guest)/ and (auth)/ group them by who may visit." },
+  {
+    path: "app/routes/",
+    note: "One file per URL. (guest)/ and (auth)/ group them by who may visit.",
+  },
   { path: "bootstrap/", note: "Application creation and the provider list." },
   { path: "config/", note: "Typed config objects, read with config('app.name')." },
   { path: "resources/js/pages/", note: "Inertia page components, one per screen." },

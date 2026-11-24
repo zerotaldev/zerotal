@@ -42,7 +42,11 @@ function Projects({ title, projects, pagination, search }: Props) {
       return;
     }
     const timer = setTimeout(() => {
-      router.get(listUrl(query.trim()), {}, { preserveState: true, preserveScroll: true, replace: true });
+      router.get(
+        listUrl(query.trim()),
+        {},
+        { preserveState: true, preserveScroll: true, replace: true },
+      );
     }, 250);
     return () => clearTimeout(timer);
   }, [query]);
@@ -117,7 +121,9 @@ function Projects({ title, projects, pagination, search }: Props) {
                         <ProjectStatusBadge status={project.status} />
                       </div>
                       {project.description ? (
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{project.description}</p>
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                          {project.description}
+                        </p>
                       ) : null}
                     </div>
                     <p className="hidden shrink-0 text-sm text-muted-foreground sm:block">
@@ -147,7 +153,11 @@ function Projects({ title, projects, pagination, search }: Props) {
             </Card>
           )}
 
-          <Pagination pagination={pagination} href={(page) => listUrl(search, page)} noun="projects" />
+          <Pagination
+            pagination={pagination}
+            href={(page) => listUrl(search, page)}
+            noun="projects"
+          />
         </div>
       )}
 

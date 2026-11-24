@@ -51,10 +51,14 @@ function Appearance({ title }: Props) {
                       onChange={() => setAppearance(option.value)}
                       className="sr-only"
                     />
-                    <Icon className={cn("size-5", checked ? "text-primary" : "text-muted-foreground")} />
+                    <Icon
+                      className={cn("size-5", checked ? "text-primary" : "text-muted-foreground")}
+                    />
                     <span>
                       <span className="block text-sm font-medium">{option.label}</span>
-                      <span className="block text-sm text-muted-foreground">{option.description}</span>
+                      <span className="block text-sm text-muted-foreground">
+                        {option.description}
+                      </span>
                     </span>
                   </label>
                 );

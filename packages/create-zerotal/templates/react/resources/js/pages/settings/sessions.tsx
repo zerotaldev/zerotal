@@ -48,7 +48,9 @@ function Sessions({ title, sessions }: Props) {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {session.ipAddress ?? "Unknown address"} ·{" "}
-                    {session.current ? "Active now" : `Last active ${timeAgo(session.lastActiveAt)}`}
+                    {session.current
+                      ? "Active now"
+                      : `Last active ${timeAgo(session.lastActiveAt)}`}
                   </p>
                 </div>
               </li>

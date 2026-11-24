@@ -48,7 +48,10 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
       <PageHeader title="Settings" description="Manage your account and how you sign in." />
 
       <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
-        <nav aria-label="Settings" className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:w-52 lg:shrink-0 lg:px-0">
+        <nav
+          aria-label="Settings"
+          className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:w-52 lg:shrink-0 lg:px-0"
+        >
           <ul className="flex gap-1 lg:flex-col">
             {sections.map((section) => {
               const active = path === section.href;

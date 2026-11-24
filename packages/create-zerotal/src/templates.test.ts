@@ -121,7 +121,7 @@ describe('the react kit', () => {
     const path = join(KIT, 'tests', `${test.file}.ts.tmpl`);
     expect({ file: test.file, exists: existsSync(path) }).toEqual({ file: test.file, exists: true });
     const source = await Bun.file(path).text();
-    expect({ file: test.file, missing: test.names.filter((name) => !source.includes(`'${name}'`)) }).toEqual({
+    expect({ file: test.file, missing: test.names.filter((name) => !source.includes(`'${name}'`) && !source.includes(`"${name}"`)) }).toEqual({
       file: test.file,
       missing: [],
     });
@@ -137,6 +137,7 @@ describe('the react kit', () => {
       'config/app.ts',
       'config/session.ts', // the cookie name, which must not change when the app is renamed
       'resources/app.html', // the pre-render <title>; the page's own title replaces it
+      'Dockerfile', // the image tag in a usage comment
     ]);
     const stamped: string[] = [];
     for await (const rel of new Bun.Glob('**/*').scan({ cwd: KIT, onlyFiles: true })) {

@@ -163,6 +163,7 @@ export const MANIFEST: KitManifest = {
       names: [
         'boots and serves the home page',
         'shares the app name from config with every page',
+        'serves a health check at /health',
         'returns 404 for an unregistered path',
       ],
     },

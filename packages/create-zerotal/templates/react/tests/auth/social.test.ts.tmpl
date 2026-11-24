@@ -1,9 +1,9 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { Social, fakeSocialUser } from 'zerotal/auth';
-import { refreshDatabase, type TestApp } from 'zerotal/testing';
-import { User } from '../../app/models/User';
-import { UserFactory } from '../../database/factories/UserFactory';
-import { bootApp } from '../support';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { Social, fakeSocialUser } from "zerotal/auth";
+import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { User } from "../../app/models/User";
+import { UserFactory } from "../../database/factories/UserFactory";
+import { bootApp } from "../support";
 
 /**
  * Sign in with GitHub or Google. `Social.fake()` stands in for the provider: the
@@ -17,42 +17,56 @@ beforeAll(async () => {
 afterAll(() => app.close());
 beforeEach(() => app.actingAsGuest());
 
-describe('social sign-in', () => {
+describe("social sign-in", () => {
   refreshDatabase();
 
-  test('offers no providers until their keys are set', async () => {
-    (await app.get('/login')).assertInertiaProp('providers', []);
-    (await app.get('/auth/github')).assertNotFound();
+  test("offers no providers until their keys are set", async () => {
+    (await app.get("/login")).assertInertiaProp("providers", []);
+    (await app.get("/auth/github")).assertNotFound();
   });
 
-  test('signs in a new user from a verified provider account', async () => {
-    Social.fake('github', fakeSocialUser({ id: 'gh-1', name: 'Grace Hopper', email: 'grace@example.com', emailVerified: true }));
+  test("signs in a new user from a verified provider account", async () => {
+    Social.fake(
+      "github",
+      fakeSocialUser({
+        id: "gh-1",
+        name: "Grace Hopper",
+        email: "grace@example.com",
+        emailVerified: true,
+      }),
+    );
 
-    const res = await app.get('/auth/github/callback?code=x&state=y');
+    const res = await app.get("/auth/github/callback?code=x&state=y");
 
-    res.assertRedirect('/dashboard');
-    const user = await User.query().where('email', 'grace@example.com').first();
-    expect(user?.name).toBe('Grace Hopper');
+    res.assertRedirect("/dashboard");
+    const user = await User.query().where("email", "grace@example.com").first();
+    expect(user?.name).toBe("Grace Hopper");
     expect(user?.hasVerifiedEmail()).toBe(true);
   });
 
-  test('links an existing verified account with the same email', async () => {
-    const existing = await UserFactory.create({ email: 'linus@example.com' });
-    Social.fake('github', fakeSocialUser({ id: 'gh-2', email: 'linus@example.com', emailVerified: true }));
+  test("links an existing verified account with the same email", async () => {
+    const existing = await UserFactory.create({ email: "linus@example.com" });
+    Social.fake(
+      "github",
+      fakeSocialUser({ id: "gh-2", email: "linus@example.com", emailVerified: true }),
+    );
 
-    const res = await app.get('/auth/github/callback?code=x&state=y');
+    const res = await app.get("/auth/github/callback?code=x&state=y");
 
-    res.assertRedirect('/dashboard');
-    res.assertSessionHas('user_id', existing.id);
+    res.assertRedirect("/dashboard");
+    res.assertSessionHas("user_id", existing.id);
   });
 
-  test('refuses to link an account whose email was never verified', async () => {
-    await UserFactory.create({ email: 'claimed@example.com', emailVerifiedAt: null });
-    Social.fake('github', fakeSocialUser({ id: 'gh-3', email: 'claimed@example.com', emailVerified: true }));
+  test("refuses to link an account whose email was never verified", async () => {
+    await UserFactory.create({ email: "claimed@example.com", emailVerifiedAt: null });
+    Social.fake(
+      "github",
+      fakeSocialUser({ id: "gh-3", email: "claimed@example.com", emailVerified: true }),
+    );
 
-    const res = await app.get('/auth/github/callback?code=x&state=y');
+    const res = await app.get("/auth/github/callback?code=x&state=y");
 
-    res.assertRedirect('/login');
-    res.assertSessionMissing('user_id');
+    res.assertRedirect("/login");
+    res.assertSessionMissing("user_id");
   });
 });

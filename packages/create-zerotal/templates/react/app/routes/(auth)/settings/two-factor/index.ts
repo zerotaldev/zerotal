@@ -5,7 +5,10 @@ import type { User } from "@app/models/User";
 import { RECOVERY_CODES_FLASH, SETUP_SECRET_KEY } from "@app/auth/two-factor";
 
 // Route names, as `route()` knows them. Set here so they read the same across verbs.
-export const meta = { GET: { name: "settings.two-factor" }, DELETE: { name: "settings.two-factor.destroy" } };
+export const meta = {
+  GET: { name: "settings.two-factor" },
+  DELETE: { name: "settings.two-factor.destroy" },
+};
 
 /**
  * Settings → Two-factor.

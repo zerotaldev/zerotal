@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'bun:test';
 import { join } from 'node:path';
 import { readdir, rm } from 'node:fs/promises';
-import { scaffold, ZT_VERSION } from './scaffold.ts';
+import { outputPath, RENAMED, scaffold, ZT_VERSION } from './scaffold.ts';
 import { TEMPLATES } from './args.ts';
 
 const TMP = join(import.meta.dir, '..', '.test-output');
@@ -309,6 +309,42 @@ describe('scaffold — minimal template', () => {
     expect(missing).toEqual([]);
   });
 
+  it.each(Object.entries(RENAMED))('writes %s as %s', (stored, written) => {
+    expect(outputPath(stored)).toBe(written);
+    expect(outputPath(`${stored}/inner/file.yml`)).toBe(`${written}/inner/file.yml`);
+  });
+
+  it('renames only the first path segment, so a route group\'s _middleware.ts keeps its name', () => {
+    expect(outputPath('app/routes/(auth)/_middleware.ts')).toBe('app/routes/(auth)/_middleware.ts');
+    expect(outputPath('tests/auth/login.test.ts.tmpl')).toBe('tests/auth/login.test.ts');
+  });
+
+  it('packs every renamed file the templates hold, under its stored name', async () => {
+    // The point of storing them renamed is that the stored name survives `bun pm pack`.
+    // Checked against the packed file list itself, not the templates directory.
+    const root = join(import.meta.dir, '..');
+    const pack = Bun.spawnSync(['bun', 'pm', 'pack', '--dry-run'], { cwd: root });
+    const packed = new Set(
+      [...pack.stdout.toString().matchAll(/^packed \S+ (templates\/\S+)$/gm)].map((m) => m[1]),
+    );
+
+    const expected: string[] = [];
+    for (const template of TEMPLATES) {
+      for (const stored of Object.keys(RENAMED)) {
+        const dir = join(root, 'templates', template);
+        // The file itself, or everything under it when it is a directory.
+        for (const pattern of [stored, `${stored}/**/*`]) {
+          for await (const rel of new Bun.Glob(pattern).scan({ cwd: dir, onlyFiles: true, dot: true })) {
+            expected.push(`templates/${template}/${rel.replace(/\\/g, '/')}`);
+          }
+        }
+      }
+    }
+
+    expect(expected).toContain('templates/react/_github/workflows/ci.yml');
+    expect(expected.filter((path) => !packed.has(path))).toEqual([]);
+  });
+
   it('leaves no unreplaced {{tokens}}', async () => {
     await scaffold({ name: 'test-app', template: 'minimal', db: 'sqlite', target: TMP });
     const files = ['package.json', 'zt.ts', 'config/app.ts', '.env.example',
@@ -544,6 +580,59 @@ describe('scaffold — react template', () => {
     // React pages must compile against React's JSX runtime, not Flow's.
     const tsconfig = await Bun.file(join(TMP, 'tsconfig.json')).text();
     expect(tsconfig).toContain('"jsxImportSource": "react"');
+  });
+
+  it('writes the tooling dotfiles under their real names', async () => {
+    await scaffold({ name: 'react-app', template: 'react', db: 'sqlite', target: TMP });
+
+    for (const path of [
+      '.gitignore',
+      '.env.example',
+      '.env',
+      'bunfig.toml',
+      '.dockerignore',
+      '.editorconfig',
+      '.prettierrc.json',
+      '.prettierignore',
+      '.github/workflows/ci.yml',
+      '.vscode/extensions.json',
+      'Dockerfile',
+    ]) {
+      expect({ path, exists: await Bun.file(join(TMP, path)).exists() }).toEqual({ path, exists: true });
+    }
+    const leftovers = (await readdir(TMP)).filter((name) => name.startsWith('_'));
+    expect(leftovers).toEqual([]);
+  });
+
+  it('ships a CI workflow that runs the same checks as the README', async () => {
+    await scaffold({ name: 'react-app', template: 'react', db: 'sqlite', target: TMP });
+    const workflow = await Bun.file(join(TMP, '.github/workflows/ci.yml')).text();
+    const pkg = await Bun.file(join(TMP, 'package.json')).json();
+
+    for (const script of ['format:check', 'typecheck', 'test', 'build']) {
+      expect(workflow).toContain(`bun run ${script}`);
+      expect(pkg.scripts[script]).toBeDefined();
+    }
+    // GitHub expressions survive the token pass untouched.
+    expect(workflow).toContain('${{ github.workflow }}');
+  });
+
+  it('passes its own format check as scaffolded', async () => {
+    // The kit's CI runs `bun run format:check` first, so a starter that fails it greets
+    // every new project with a red build.
+    await scaffold({ name: 'react-app', template: 'react', db: 'sqlite', target: TMP });
+    const prettier = join(import.meta.dir, '..', '..', '..', 'node_modules', '.bin', 'prettier');
+    const check = Bun.spawnSync([prettier, '--check', '.'], { cwd: TMP });
+
+    expect({ code: check.exitCode, output: check.stdout.toString() + check.stderr.toString() }).toMatchObject({ code: 0 });
+  });
+
+  it('formats with the repository\'s Prettier settings', async () => {
+    await scaffold({ name: 'react-app', template: 'react', db: 'sqlite', target: TMP });
+    const app = await Bun.file(join(TMP, '.prettierrc.json')).json();
+    const repo = await Bun.file(join(import.meta.dir, '..', '..', '..', '.prettierrc.json')).json();
+
+    expect(app).toEqual(repo);
   });
 
   it('leaves no unreplaced {{tokens}}', async () => {

@@ -79,7 +79,10 @@ function Dashboard({ title, greeting, stats, recentProjects }: Props) {
             <CardHeader
               title="Recently updated"
               actions={
-                <Link href={route("projects")} className="text-sm font-medium text-primary hover:underline">
+                <Link
+                  href={route("projects")}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
                   View all
                 </Link>
               }

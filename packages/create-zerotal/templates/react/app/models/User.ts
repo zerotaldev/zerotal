@@ -25,7 +25,12 @@ export class User extends Model.using(Authenticatable, EmailVerification, Notifi
 
   // Never serialised into a rendered page or a JSON response. Every page receives the
   // signed-in user as a prop, so anything secret about them belongs on this list.
-  static override hidden = ["password", "rememberToken", "twoFactorSecret", "twoFactorRecoveryCodes"];
+  static override hidden = [
+    "password",
+    "rememberToken",
+    "twoFactorSecret",
+    "twoFactorRecoveryCodes",
+  ];
 
   @column({ type: "string" }) name!: string;
   @column({ type: "string" }) email!: string;

@@ -1,9 +1,4 @@
-import {
-  ExceptionHandler,
-  ZerotalError,
-  devSurfacesEnabled,
-  type HttpContext,
-} from "zerotal";
+import { ExceptionHandler, ZerotalError, devSurfacesEnabled, type HttpContext } from "zerotal";
 import { ModelNotFoundError } from "zerotal/orm";
 import { inertia } from "@zerotal/inertia";
 

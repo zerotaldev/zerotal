@@ -77,7 +77,10 @@ export class Browser {
     });
   }
 
-  private async send(url: string, init: { method: string; headers?: Record<string, string>; body?: string }) {
+  private async send(
+    url: string,
+    init: { method: string; headers?: Record<string, string>; body?: string },
+  ) {
     const cookie = [...this.jar].map(([name, value]) => `${name}=${value}`).join("; ");
     const res = await this.app.request(url, {
       ...init,

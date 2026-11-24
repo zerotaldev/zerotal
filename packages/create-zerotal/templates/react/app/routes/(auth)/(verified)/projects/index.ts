@@ -15,9 +15,14 @@ export const GET = async (http: HttpContext) => {
   let query = Project.query().where("user_id", Auth.user().id);
   if (search) {
     // Name or description, case-insensitively — LIKE is, on SQLite, for ASCII.
-    query = query.where((q) => q.whereLike("name", `%${search}%`).orWhereLike("description", `%${search}%`));
+    query = query.where((q) =>
+      q.whereLike("name", `%${search}%`).orWhereLike("description", `%${search}%`),
+    );
   }
-  const result = await query.orderBy("updated_at", "desc").orderBy("id", "desc").paginate(PER_PAGE, page);
+  const result = await query
+    .orderBy("updated_at", "desc")
+    .orderBy("id", "desc")
+    .paginate(PER_PAGE, page);
 
   return Inertia.render("projects/index", {
     title: "Projects",
@@ -41,7 +46,11 @@ export async function POST(http: HttpContext): Promise<void> {
   const data = await ProjectRequest.validate();
 
   const project = new Project();
-  project.fill({ name: data.name, description: data.description || null, status: data.status as ProjectStatus });
+  project.fill({
+    name: data.name,
+    description: data.description || null,
+    status: data.status as ProjectStatus,
+  });
   // Set in code, never from the form: the owner is whoever is signed in.
   project.userId = Auth.user().id;
   await project.save();

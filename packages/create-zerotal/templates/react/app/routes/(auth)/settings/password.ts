@@ -25,7 +25,11 @@ export async function PUT(http: HttpContext): Promise<void> {
   // Proving the current password is what stops a borrowed session from locking the
   // real owner out of their own account.
   if (!(await Hash.check(current_password, user.password))) {
-    rejectInput(http, { current_password: "That is not your current password." }, "/settings/password");
+    rejectInput(
+      http,
+      { current_password: "That is not your current password." },
+      "/settings/password",
+    );
   }
 
   user.password = await Hash.make(password);

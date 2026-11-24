@@ -14,7 +14,12 @@ import { safeRedirectPath } from "../pipeline/HttpContext.ts";
 
 /**
  * Errors that are an ordinary outcome of a request rather than a fault: a URL nothing
- * matches, a form that failed validation. They are rendered, never reported as unhandled.
+ * matches, a form that failed validation, a route-bound record that does not exist. They
+ * are rendered, never reported as unhandled.
+ *
+ * `ModelNotFoundError` is named here rather than found as an `HttpError`: the ORM throws
+ * it, core cannot import it, and it is a plain `ZerotalError` carrying a 404. A request
+ * for `/projects/999` is a mistyped URL one segment later, and is logged no louder.
  */
 const _EXPECTED_OUTCOMES: ReadonlySet<string> = new Set([
   "ValidationRedirectError",
@@ -22,6 +27,7 @@ const _EXPECTED_OUTCOMES: ReadonlySet<string> = new Set([
   "ValidationError",
   "PrecognitionResponse",
   "NotFoundError",
+  "ModelNotFoundError",
 ]);
 
 /**

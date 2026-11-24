@@ -51,6 +51,7 @@ import { dispatchRequest } from "../router/RouteHandler.ts";
 import { _bodyLimitResponse, _capRequestBodies } from "../router/bodyLimit.ts";
 import type { ProviderHooks } from "../router/RouteHandler.ts";
 import { isProdLike, deployEnv, runtimeMode } from "../support/env.ts";
+import { definedOnly } from "../support/deepMerge.ts";
 import { appKeyStrengthWarning } from "../support/appKey.ts";
 import { runBootDoctor } from "./BootDoctor.ts";
 import { runConfigValidators } from "../config/validation.ts";
@@ -1940,12 +1941,19 @@ export class Application {
 
     // Health config lives under `app.health` (an object). For back-compat we also
     // honour a legacy `health` config namespace (config/health.ts) and a bare
-    // `app.health` boolean enable-flag. Precedence: app.health object → health
-    // namespace → app.health boolean → environment default.
+    // `app.health` boolean enable-flag. Precedence, field by field: app.health
+    // object → health namespace → app.health boolean → environment default.
+    //
+    // The two objects merge rather than one replacing the other: `AppConfig()`
+    // defaults `app.health` to `{}`, and that default must not hide a
+    // config/health.ts. An `enabled` neither of them sets falls through to the
+    // environment default, which is on outside production.
     const appHealth = configManager?.get<boolean | HealthConfigShape>("app.health");
     const namespacedHealth = configManager?.get<HealthConfigShape>("health", {}) ?? {};
-    const healthConfigRaw =
-      appHealth && typeof appHealth === "object" ? appHealth : namespacedHealth;
+    const healthConfigRaw: HealthConfigShape =
+      appHealth && typeof appHealth === "object"
+        ? { ...namespacedHealth, ...definedOnly(appHealth) }
+        : namespacedHealth;
     const legacyHealthFlag = typeof appHealth === "boolean" ? appHealth : undefined;
     const config = resolveHealthConfig(healthConfigRaw, isProduction, legacyHealthFlag);
     if (!config.enabled) return;

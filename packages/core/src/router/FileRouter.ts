@@ -501,7 +501,10 @@ export async function scanFileRoutes(baseDir: string, reloadId?: string): Promis
 
   let count = 0;
 
-  for (const relativeFile of await _scanAppFiles(absoluteBase, "**/*.{ts,tsx}")) {
+  // `dot` so `.well-known/` is routed: MTA-STS, security.txt, app links and OpenID discovery all
+  // live there, and a default glob skips the directory without a word, leaving a route that
+  // 404s and is missing from `route:list`. Dotfiles are still skipped by `_shouldSkip()`.
+  for (const relativeFile of await _scanAppFiles(absoluteBase, "**/*.{ts,tsx}", { dot: true })) {
     const normalised = relativeFile.replace(/\\/g, "/");
 
     if (_shouldSkip(normalised)) continue;
@@ -614,12 +617,15 @@ function _resolveAbsoluteBase(dir: string): string {
  *
  * `_`-prefixed names are reserved by the convention, so the leading-underscore rule covers
  * `_middleware.*` and anything else an app parks in the routes tree. Tests and declaration
- * files are excluded because they are colocated with routes and are not endpoints.
+ * files are excluded because they are colocated with routes and are not endpoints. A dotfile
+ * is never a route: the scan descends into dot-directories (`.well-known/`) and would
+ * otherwise also pick up an editor's hidden `.name.ts` scratch copy.
  */
 function _shouldSkip(relativePath: string): boolean {
   const file = relativePath.split("/").at(-1) ?? "";
   return (
     file.startsWith("_") ||
+    file.startsWith(".") ||
     file.endsWith(".test.ts") ||
     file.endsWith(".test.tsx") ||
     file.endsWith(".spec.ts") ||

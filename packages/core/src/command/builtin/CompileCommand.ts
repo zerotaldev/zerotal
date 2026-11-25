@@ -148,9 +148,16 @@ async function defaultEntry(): Promise<string> {
   return DEFAULT_ENTRIES[0];
 }
 
-/** Whether a file is one the framework never imports at runtime: a test, or a declaration file. */
+/**
+ * Whether a file is one the framework never imports at runtime: a test, a declaration file, or
+ * a dotfile (the scan enters dot-directories such as `.well-known/`, never their hidden files).
+ */
 function _isExcluded(file: string): boolean {
-  return /\.(test|spec)\.[cm]?[jt]sx?$/.test(file) || /\.d\.[cm]?ts$/.test(file);
+  return (
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(file) ||
+    /\.d\.[cm]?ts$/.test(file) ||
+    /(?:^|\/)\.[^/]*$/.test(file)
+  );
 }
 
 /**
@@ -168,7 +175,8 @@ export async function _appModules(
   const found = new Map<string, string>();
   for (const { directory, pattern } of sources) {
     const base = directory.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
-    for (const file of await _scanAppFiles(resolve(base), pattern)) {
+    // `dot` so a binary carries `app/routes/.well-known/*`, which the file router serves.
+    for (const file of await _scanAppFiles(resolve(base), pattern, { dot: true })) {
       if (_isExcluded(file)) continue;
       const path = `${base}/${file}`;
       const identity = caseInsensitive ? path.toLowerCase() : path;

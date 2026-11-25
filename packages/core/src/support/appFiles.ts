@@ -116,23 +116,39 @@ function _keyFor(pathOrUrl: string): string | undefined {
   return sep === "/" ? fromRoot : fromRoot.split(sep).join("/");
 }
 
+/** Options for {@link _scanAppFiles}. @internal */
+export interface _AppFileScanOptions {
+  /**
+   * Also descend into directories whose name starts with a dot, such as `.well-known`. Off by
+   * default, as for `Bun.Glob`, which skips them silently.
+   */
+  dot?: boolean | undefined;
+}
+
 /**
  * The files under `directory` matching `pattern`, relative to `directory` with forward slashes.
  *
  * Reads the embedded set in a compiled binary, the disk otherwise. A directory that does not exist
- * yields nothing; it is not an error.
+ * yields nothing; it is not an error. Paths under a dot-directory are left out unless
+ * `options.dot` is set, on disk and in a binary alike.
  *
  * @param directory - Absolute directory, or one relative to the working directory.
  * @param pattern - A `Bun.Glob` pattern, such as `**\/*.{ts,tsx}`.
+ * @param options - See {@link _AppFileScanOptions}.
  * @returns Matching paths, sorted.
  * @internal
  */
-export async function _scanAppFiles(directory: string, pattern: string): Promise<string[]> {
-  const embedded = _scanEmbedded(directory, pattern);
+export async function _scanAppFiles(
+  directory: string,
+  pattern: string,
+  options: _AppFileScanOptions = {},
+): Promise<string[]> {
+  const dot = options.dot === true;
+  const embedded = _scanEmbedded(directory, pattern, dot);
   if (embedded) return embedded;
   try {
     const found = await Array.fromAsync(
-      new Bun.Glob(pattern).scan({ cwd: directory, onlyFiles: true }),
+      new Bun.Glob(pattern).scan({ cwd: directory, onlyFiles: true, dot }),
     );
     return _normalised(found);
   } catch {
@@ -146,11 +162,18 @@ export async function _scanAppFiles(directory: string, pattern: string): Promise
  *
  * @internal
  */
-export function _scanAppFilesSync(directory: string, pattern: string): string[] {
-  const embedded = _scanEmbedded(directory, pattern);
+export function _scanAppFilesSync(
+  directory: string,
+  pattern: string,
+  options: _AppFileScanOptions = {},
+): string[] {
+  const dot = options.dot === true;
+  const embedded = _scanEmbedded(directory, pattern, dot);
   if (embedded) return embedded;
   try {
-    return _normalised([...new Bun.Glob(pattern).scanSync({ cwd: directory, onlyFiles: true })]);
+    return _normalised([
+      ...new Bun.Glob(pattern).scanSync({ cwd: directory, onlyFiles: true, dot }),
+    ]);
   } catch {
     return [];
   }
@@ -161,8 +184,13 @@ function _normalised(files: string[]): string[] {
   return files.map((file) => (sep === "/" ? file : file.split(sep).join("/"))).sort();
 }
 
-/** The embedded files under `directory` matching `pattern`, or `null` to read the disk. */
-function _scanEmbedded(directory: string, pattern: string): string[] | null {
+/**
+ * The embedded files under `directory` matching `pattern`, or `null` to read the disk.
+ *
+ * `Bun.Glob.match()` matches a dot-directory's paths even though `scan()` skips them, so the
+ * dot rule is applied here by hand to keep a binary and the disk in agreement.
+ */
+function _scanEmbedded(directory: string, pattern: string, dot: boolean): string[] | null {
   if (!_embedded) return null;
   const base = _keyFor(directory);
   if (base === undefined && resolve(directory) !== process.cwd()) return null;
@@ -172,6 +200,7 @@ function _scanEmbedded(directory: string, pattern: string): string[] | null {
   for (const key of _embedded.keys()) {
     if (!key.startsWith(prefix)) continue;
     const inner = key.slice(prefix.length);
+    if (!dot && /(?:^|\/)\./.test(inner)) continue;
     if (glob.match(inner)) found.push(inner);
   }
   return found.sort();

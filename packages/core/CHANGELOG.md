@@ -26,6 +26,19 @@ follows the Zerotal monorepo's unified versioning.
   `bun zt route:types` wrote the name into `ROUTES` with no entry in `METHODS`. Only routes named
   by a file route's `meta`, or by its file path, had a verb. `.name()` now names the definition
   too.
+- **`files()` and `file()` read a list posted as `name[]` or `name[0]`.** Both were an exact
+  lookup of the field name, but a form helper that serialises an array of files (the Inertia
+  adapter's does) posts them as `attachments[]`, so `files("attachments")` returned nothing and
+  the request succeeded with every upload missing. Found in production, where a PDF went out as an
+  empty message. They now read `attachments`, `attachments[]` and `attachments[0]`, `[1]`, … in
+  the order sent; `attachments[cover]`, a nested object's member, is still not a list entry.
+- **File routes under `.well-known/` are served.** The route scan skipped dot-directories without
+  a word, so `app/routes/.well-known/security.txt.ts` was missing from `route:list` and answered 404. Dot-directories are now routed (and carried into a compiled binary); dotfiles are still
+  never routes.
+- **A malformed URL is no longer a 500.** With a storage disk served, `StorageFilesMiddleware`
+  percent-decoded every GET and HEAD path before checking whether it owned it, so `/mail%ZZ`
+  threw a `URIError` ahead of the application's own middleware, where nothing could catch it. A
+  malformed path outside every mount now passes to the application, and one under a mount is a 400.
 
 ## [1.17.1] — 2026-11-21
 

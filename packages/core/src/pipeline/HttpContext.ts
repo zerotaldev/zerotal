@@ -704,15 +704,17 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
    * @category Files & uploads
    */
   async file(field: string): Promise<UploadedFile | null> {
-    const formData = await this._parseFormData();
-    if (!formData) return null;
-    const entry = formData.get(field);
-    return entry instanceof File ? new UploadedFile(entry) : null;
+    return (await this.files(field))[0] ?? null;
   }
 
   /**
-   * Return all uploaded files for the given form field.
+   * Return all uploaded files for the given form field, in the order the client sent them.
    * Useful for `<input type="file" multiple>` inputs.
+   *
+   * A client can post a list of files under `attachments`, `attachments[]` or
+   * `attachments[0]`, `attachments[1]`, …. The browser's own multiple-file input uses the
+   * first form, and a form helper that serialises an array uses one of the others, so
+   * `files("attachments")` (and `file("attachments")`) reads all three.
    *
    * @example
    * const attachments = await ctx.files('attachments');
@@ -725,10 +727,11 @@ export class HttpContext<TParams extends Record<string, unknown> = Record<string
   async files(field: string): Promise<UploadedFile[]> {
     const formData = await this._parseFormData();
     if (!formData) return [];
-    return formData
-      .getAll(field)
-      .filter((entry): entry is File => entry instanceof File)
-      .map((file) => new UploadedFile(file));
+    const files: UploadedFile[] = [];
+    formData.forEach((entry: unknown, key) => {
+      if (entry instanceof File && _namesField(key, field)) files.push(new UploadedFile(entry));
+    });
+    return files;
   }
 
   /**
@@ -973,6 +976,16 @@ function configuredOrigin(): string | undefined {
  * absent one does. An array is an object and is kept, so a route that takes a JSON array still
  * gets it from `body()`; `input()` reads no field from it.
  */
+/**
+ * Whether a form key carries `field`: the bare name, `field[]`, or `field[<index>]`. A named
+ * key such as `field[avatar]` is a nested object's member, not a list entry, and does not match.
+ */
+function _namesField(key: string, field: string): boolean {
+  if (key === field) return true;
+  if (!key.startsWith(`${field}[`)) return false;
+  return /^\[\d*\]$/.test(key.slice(field.length));
+}
+
 function _asBody(parsed: unknown): Record<string, unknown> {
   return parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
 }

@@ -28,8 +28,9 @@ apps/*/public/js/app.js.map
 .tmp-*
 *.tmp.log
 */.claude/
-.claude/
-**/.claude/
+**/.claude/*
+# Shared with every session in this repo, cloud ones included: no AI attribution.
+!/.claude/settings.json
 .fuse_hidden*
 **/.fuse_hidden*
 

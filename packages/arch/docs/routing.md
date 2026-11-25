@@ -683,19 +683,24 @@ automatically.
 
 ### File → URL mapping
 
-| File path                 | URL                    |
-| ------------------------- | ---------------------- |
-| `index.ts`                | `/`                    |
-| `about.ts`                | `/about`               |
-| `users/index.ts`          | `/users`               |
-| `users/[id].ts`           | `/users/:id`           |
-| `(admin)/users/index.ts`  | `/users`               |
-| `api/users/[id]/posts.ts` | `/api/users/:id/posts` |
-| `blog/[...slug].ts`       | `/blog/*`              |
+| File path                     | URL                         |
+| ----------------------------- | --------------------------- |
+| `index.ts`                    | `/`                         |
+| `about.ts`                    | `/about`                    |
+| `users/index.ts`              | `/users`                    |
+| `users/[id].ts`               | `/users/:id`                |
+| `(admin)/users/index.ts`      | `/users`                    |
+| `api/users/[id]/posts.ts`     | `/api/users/:id/posts`      |
+| `blog/[...slug].ts`           | `/blog/*`                   |
+| `.well-known/security.txt.ts` | `/.well-known/security.txt` |
 
 Rules in order: `(group)` directory segments are stripped (no URL contribution);
 `[...slug]` becomes `*` (catch-all); `[param]` becomes `:param` (dynamic
 segment); `index` becomes the directory URL.
+
+Dot-directories are routed like any other, so `.well-known/` can serve `security.txt`,
+`mta-sts.txt`, app links and OpenID discovery. Files whose names start with `_` or `.`,
+tests and declaration files are never routes.
 
 ### Handler exports
 

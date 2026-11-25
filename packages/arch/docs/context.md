@@ -204,6 +204,12 @@ const avatar = await ctx.file("avatar"); // UploadedFile | null
 const attachments = await ctx.files("attachments"); // UploadedFile[]
 ```
 
+A list of files can arrive as `attachments`, `attachments[]` or `attachments[0]`,
+`attachments[1]`, …, depending on how the client built the form. A browser's multiple-file
+input uses the first and the Inertia adapter's form helper uses the second, so
+`files("attachments")` reads all three, in the order they were sent, and `file()` returns
+the first of them.
+
 An `UploadedFile` describes the upload and knows how to persist itself. Validate
 before storing, then hand it a disk — `store()` returns the stored path:
 

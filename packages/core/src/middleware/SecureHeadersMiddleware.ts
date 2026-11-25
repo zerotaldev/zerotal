@@ -1,7 +1,8 @@
 /**
  * Security-headers middleware: adds a sensible baseline of protective response
  * headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
- * `Permissions-Policy`, optional CSP and HSTS) to every response.
+ * `Permissions-Policy`, optional CSP and HSTS) to every response that does not
+ * already set them.
  */
 import type { NextFn } from "../pipeline/types.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
@@ -91,11 +92,30 @@ export class SecureHeadersMiddleware extends BaseMiddleware<SecureHeadersOptions
     this.options = { ...config.safe("app.secureHeaders", {} as SecureHeadersOptions) };
   }
 
+  /**
+   * Adds each header the response does not already carry. A header a route or an app's own
+   * middleware set is left as it is: it is the narrower policy, written for that response (a
+   * sandboxed print view's CSP, a preview that may be framed by the app itself), and replacing
+   * it with the global default would silently remove the control it exists for.
+   */
   async handle(_ctx: HttpContext, next: NextFn): Promise<Response | void> {
     const response = await next();
     if (!response) return;
-    return withHeaders(response, securityHeaders(this.options));
+    const missing = _notAlreadySet(securityHeaders(this.options), response.headers);
+    return Object.keys(missing).length === 0 ? response : withHeaders(response, missing);
   }
+}
+
+/** The entries of `defaults` whose header `existing` does not have (names match in any case). */
+function _notAlreadySet(
+  defaults: Record<string, string>,
+  existing: Headers,
+): Record<string, string> {
+  const missing: Record<string, string> = {};
+  for (const [name, value] of Object.entries(defaults)) {
+    if (!existing.has(name)) missing[name] = value;
+  }
+  return missing;
 }
 
 /**

@@ -5199,6 +5199,12 @@
     },
     {
       "file": "docs/middleware.md",
+      "heading": "SecureHeadersMiddleware",
+      "ordinal": 1,
+      "hash": "2vbfm8u9km6z"
+    },
+    {
+      "file": "docs/middleware.md",
       "heading": "Testing",
       "ordinal": 0,
       "hash": "mqy9ctynxzzf"

@@ -351,41 +351,51 @@ describe("Flow compiler - class built from string constants", () => {
     expect(r).not.toBeNull();
   });
 
-  describe("falls back to the runtime when it cannot be sure", () => {
-    const reasonFor = (top: string, body = `<div class={CARD}>x</div>`, members?: string) => {
+  describe("works the class out at render time when it cannot fold it", () => {
+    /** The compiled body, or the blocker that stopped it. */
+    const compile = (top: string, body = `<div class={CARD}>x</div>`, members?: string) => {
       const report: BlockerReport = {};
       const r = transformFlowFile(source(body, top, members), FILE, { report });
-      return r ? undefined : report.blocker?.reason;
+      return r ? html(r) : `falls back: ${report.blocker?.reason}`;
     };
+    // Not folded: the value is read when the page renders, so it is never a stale guess.
+    const evaluated = 'class", CARD)';
 
     it("for a let", () => {
-      expect(reasonFor(`let CARD = "a";`)).toContain("is not a static class string");
+      const out = compile(`let CARD = "a";`);
+      expect(out).toContain(evaluated);
+      expect(out).not.toContain('class="a"');
     });
 
     it("for a value that has to be computed", () => {
-      expect(reasonFor(`const CARD = pick("a");`)).toContain("is not a static class string");
-      expect(reasonFor(`const CARD = "a".toUpperCase();`)).toContain(
-        "is not a static class string",
-      );
+      expect(compile(`const CARD = pick("a");`)).toContain(evaluated);
+      expect(compile(`const CARD = "a".toUpperCase();`)).toContain(evaluated);
     });
 
     it("for a name the page declares itself, wherever in the class", () => {
       const members = `label(CARD: string) { return CARD; }`;
-      expect(reasonFor(`const CARD = "a";`, `<div class={CARD}>x</div>`, members)).toContain(
-        "is not a static class string",
-      );
+      const out = compile(`const CARD = "a";`, `<div class={CARD}>x</div>`, members);
+      expect(out).toContain(evaluated);
+      expect(out).not.toContain('class="a"');
     });
 
     it("for a local in render() that hides the constant", () => {
-      const report: BlockerReport = {};
       const code = `/** @jsxImportSource @zerotal/flow */
 import { Component } from '@zerotal/flow';
 const CARD = "a";
 export class DemoPage extends Component {
   override async render() { const CARD = String(Date.now()); return (<div class={CARD}>x</div>); }
 }`;
-      expect(transformFlowFile(code, FILE, { report })).toBeNull();
-      expect(report.blocker?.reason).toContain("is not a static class string");
+      const out = html(transformFlowFile(code, FILE));
+      expect(out).toContain("const CARD = String(Date.now())");
+      expect(out).toContain(evaluated);
+      expect(out).not.toContain('class="a"');
+    });
+
+    it("but not an array, which the runtime would write joined with commas", () => {
+      expect(compile(`const CARD = "a";`, `<div class={[CARD, "b"]}>x</div>`)).toContain(
+        "is an array",
+      );
     });
   });
 });

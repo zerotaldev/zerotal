@@ -199,14 +199,16 @@ describe("Flow compiler — G: client-reactive class", () => {
     expect(html(r)).toContain(':class="[$flow.a, $flow.b]"');
   });
 
-  it("bails (→ runtime) when the class expression calls a method (not snapshot-only)", () => {
+  it("works out on the server a class that calls a method (not snapshot-only)", () => {
     const r = compile("<div className={`x ${this.title.toUpperCase()}`}>y</div>");
-    expect(r).toBeNull();
+    expect(html(r)).toContain('__attr("class", `x ${this.title.toUpperCase()}`)');
+    expect(html(r)).not.toContain(":class");
   });
 
-  it("bails when the class references a non-snapshot local", () => {
+  it("works out on the server a class that reads a non-snapshot local", () => {
     const r = compile("<div className={`x ${cls}`}>y</div>");
-    expect(r).toBeNull();
+    expect(html(r)).toContain('__attr("class", `x ${cls}`)');
+    expect(html(r)).not.toContain(":class");
   });
 });
 
@@ -533,16 +535,22 @@ describe("Flow compiler — fallback blockers", () => {
     );
   });
 
-  it("names a numeric-literal attribute and gives the exact rewrite", () => {
-    const blocker = blockerFor(`<textarea rows={3} />`);
-    expect(blocker?.reason).toContain("`rows={3}` is a numeric literal");
-    expect(blocker?.fix).toBe('write rows="3"');
+  it("names a class array, which the runtime would join with commas", () => {
+    expect(blockerFor(`<div class={["a", "b"]}>x</div>`)?.reason).toContain("is an array");
   });
 
-  it("names a computed class", () => {
-    expect(blockerFor(`<div class={SUFFIX.toUpperCase()}>x</div>`)?.reason).toContain(
-      "is not a static class string",
-    );
+  it("names a <textarea value>, and says where the value goes", () => {
+    const blocker = blockerFor(`<textarea value={draft}></textarea>`);
+    expect(blocker?.reason).toContain("is not an attribute");
+    expect(blocker?.fix).toContain("text child");
+  });
+
+  it("names a directive prop given a value it cannot emit", () => {
+    expect(blockerFor(`<div confirm={ask()}>x</div>`)?.reason).toContain("is not a static value");
+  });
+
+  it("names a function passed as a plain attribute", () => {
+    expect(blockerFor(`<div data-x={() => 1}>x</div>`)?.reason).toContain("is a function");
   });
 
   it("names a style object", () => {

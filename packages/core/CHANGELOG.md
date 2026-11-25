@@ -10,6 +10,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **A security header a route sets itself is no longer overwritten.** `SecureHeadersMiddleware`
+  runs first in the pipeline and set every header on the way out, so `app.secureHeaders`
+  replaced a narrower policy a route or the app's own middleware had chosen for one response: a
+  print view's `Content-Security-Policy: sandbox …`, which gives mail HTML an opaque origin, came
+  back as the ordinary site-wide policy, and a preview meant to be framed by the app got
+  `frame-ancestors 'none'`. The control those routes existed for was removed without a word. A
+  header already on the response now keeps its value; every header it lacks is still added.
+
 - **`files()` and `file()` read a list posted as `name[]` or `name[0]`.** Both were an exact
   lookup of the field name, but a form helper that serialises an array of files (the Inertia
   adapter's does) posts them as `attachments[]`, so `files("attachments")` returned nothing and

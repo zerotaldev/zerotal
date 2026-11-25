@@ -389,6 +389,20 @@ It is registered for you as kernel middleware, so an app gets these headers
 without asking. Configure them under `app.secureHeaders` in `config/app.ts` — see
 [Configuration](/docs/config-system).
 
+**A header a route sets itself wins.** These are defaults: a response that already
+carries one of them keeps its own value, and the rest are still added. So a print view
+can send `Content-Security-Policy: sandbox allow-scripts` and a preview the app frames
+itself can send `frame-ancestors 'self'`, while every other page gets the global policy:
+
+```ts fragment
+// app/routes/messages/[id]/print.ts
+export function GET() {
+  return new Response(html, {
+    headers: { "Content-Type": "text/html", "Content-Security-Policy": "sandbox allow-scripts" },
+  });
+}
+```
+
 **Static files get the same headers**, even though no middleware runs for them.
 Files under `public/` are handed to Bun as pre-registered responses and served
 without entering JavaScript, so the pipeline never sees them; the header set is

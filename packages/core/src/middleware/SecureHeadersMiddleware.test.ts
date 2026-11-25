@@ -145,6 +145,91 @@ describe("SecureHeadersMiddleware — permissionsPolicy", () => {
   });
 });
 
+// ── A header the response already has ─────────────────────────────────────────
+//
+// This middleware runs first in the pipeline, so whatever is inside it (the route, or the app's
+// own middleware) has already answered. A header it set is the narrower policy for that one
+// response; replacing it with the global default silently removed the control it existed for.
+
+async function runOver(
+  opts: DeepPartial<SecureHeadersOptions>,
+  inner: Response,
+): Promise<Response> {
+  const mw = new (SecureHeadersMiddleware.with(opts))();
+  const result = await mw.handle(makeCtx(), async () => inner);
+  if (!(result instanceof Response)) throw new Error("expected a response");
+  return result;
+}
+
+describe("SecureHeadersMiddleware — a header the route already set", () => {
+  const sandboxed = "sandbox allow-scripts allow-modals";
+
+  it("keeps the route's CSP over the global one", async () => {
+    const res = await runOver(
+      { contentSecurityPolicy: "default-src 'self'" },
+      new Response("print view", { headers: { "Content-Security-Policy": sandboxed } }),
+    );
+    expect(res.headers.get("Content-Security-Policy")).toBe(sandboxed);
+  });
+
+  it("keeps the route's framing policy over the default", async () => {
+    const res = await runOver(
+      { frameOptions: "DENY", contentSecurityPolicy: "frame-ancestors 'none'" },
+      new Response("preview", {
+        headers: {
+          "X-Frame-Options": "SAMEORIGIN",
+          "Content-Security-Policy": "frame-ancestors 'self'",
+        },
+      }),
+    );
+    expect(res.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
+    expect(res.headers.get("Content-Security-Policy")).toBe("frame-ancestors 'self'");
+  });
+
+  it("still adds every header the route did not set", async () => {
+    const res = await runOver(
+      { secure: true, contentSecurityPolicy: "default-src 'self'" },
+      new Response("ok", { headers: { "Content-Security-Policy": sandboxed } }),
+    );
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
+    expect(res.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+    expect(res.headers.get("Permissions-Policy")).toContain("camera=()");
+    expect(res.headers.get("Strict-Transport-Security")).toContain("max-age=");
+  });
+
+  it("matches the route's header in any case", async () => {
+    const res = await runOver(
+      { contentSecurityPolicy: "default-src 'self'" },
+      new Response("ok", { headers: { "content-security-policy": sandboxed } }),
+    );
+    expect(res.headers.get("Content-Security-Policy")).toBe(sandboxed);
+  });
+
+  it("returns the route's response as it is when it already has every header", async () => {
+    const inner = new Response("ok", {
+      status: 201,
+      headers: {
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "X-Frame-Options": "DENY",
+        "Permissions-Policy": "camera=()",
+      },
+    });
+    expect(await runOver({}, inner)).toBe(inner);
+  });
+
+  it("keeps the status and body when it adds headers", async () => {
+    const res = await runOver(
+      {},
+      new Response("created", { status: 201, headers: { "Content-Security-Policy": sandboxed } }),
+    );
+    expect(res.status).toBe(201);
+    expect(await res.text()).toBe("created");
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+});
+
 // ── No response body (early return) ─────────────────────────────────────────
 
 describe("SecureHeadersMiddleware — no response", () => {

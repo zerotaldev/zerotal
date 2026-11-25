@@ -162,8 +162,8 @@ const token = await this.secret("API token:"); // input hidden on a Unix TTY
 | `bun zt dev --list`           | Print what would run, and which provider registered it          |
 | `bun zt dev --stream`         | Interleave prefixed output instead of drawing tabs              |
 | `bun zt dev --force-build`    | Rebuild assets even when the build cache says they're current   |
-| `bun zt serve`                | Start the HTTP server on port 3000                              |
-| `bun zt serve --port 8080`    | Start on a custom port                                          |
+| `bun zt serve`                | Start the HTTP server on `app.port`: `PORT`, else 3000          |
+| `bun zt serve --port 8080`    | Start on a custom port, over `PORT` and `app.port`              |
 | `bun zt serve --force`        | If the port is busy, stop whatever holds it                     |
 | `bun zt serve --auto-port`    | If the port is busy, start on the next free port                |
 | `bun zt reload`               | Hot-reload routes in the running server (sends SIGUSR2)         |

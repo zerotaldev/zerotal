@@ -2288,7 +2288,7 @@ class StatusCommand = {
   static args: never[]
   static commandName: string
   static description: string
-  static flags: ({    name: string;    short: string;    type: 'number';    description: string;    default: number;} | {    name: string;    type: 'string';    description: string;    default: string;    short?: never;})[]
+  static flags: ({    name: string;    short: string;    type: 'number';    description: string;    default?: never;} | {    name: string;    type: 'string';    description: string;    default: string;    short?: never;})[]
   static needsApp: boolean
   _readLine: () => Promise<string>
   _writer: OutputWriter

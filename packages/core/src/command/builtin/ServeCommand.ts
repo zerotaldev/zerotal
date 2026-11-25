@@ -21,6 +21,7 @@ import {
   findPortOwner,
   stopProcess,
   PORT_RESOLVED_ENV_VAR,
+  servePort,
   type PortOwner,
 } from "../../support/port.ts";
 import { localNetworkAddress } from "../../support/network.ts";
@@ -44,8 +45,8 @@ export class ServeCommand extends Command {
       name: "port",
       short: "p",
       type: "number",
-      description: "Port to listen on",
-      default: 3000,
+      // No default here: one would always win, and `app.port` (from `PORT`) would never be read.
+      description: "Port to listen on (default: app.port, which is PORT or 3000)",
     },
     {
       // Declared only so it can be refused by name. Removing it outright would be
@@ -115,7 +116,7 @@ export class ServeCommand extends Command {
       return;
     }
 
-    const port = await this._resolvePort(this.flags["port"] as number, isWorker);
+    const port = await this._resolvePort(this._wantedPort(), isWorker);
     const assets = this._assetsConfig();
 
     // ── DEV WORKER (Process 2) ──────────────────────────────────────────────
@@ -197,7 +198,7 @@ export class ServeCommand extends Command {
       return;
     }
 
-    const port = await this._resolvePort(this.flags["port"] as number, false);
+    const port = await this._resolvePort(this._wantedPort(), false);
     this._announce("dev", port);
 
     // Every view package (Inertia/Flow) that registered a build routine gets
@@ -465,6 +466,11 @@ export class ServeCommand extends Command {
     if (next === undefined) throw new Error(`${held} No free port found nearby.`);
     this.warn(`  ${held} Using port ${next}.`);
     return next;
+  }
+
+  /** The port asked for: `--port`, else `app.port` (which defaults to `PORT`), else 3000. */
+  private _wantedPort(): number {
+    return servePort(this.flags["port"], this._config()?.get<number>("app.port"));
   }
 
   /** Read the resolved `app.assets` config block, or undefined when not configured. */

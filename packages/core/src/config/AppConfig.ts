@@ -5,6 +5,7 @@
  */
 import { deepMerge } from "../support/deepMerge.ts";
 import { isProdLike } from "../support/env.ts";
+import { portFromEnv } from "../support/port.ts";
 import type { HealthConfigShape } from "../health/Health.ts";
 import type { DevConfigShape } from "../dev/DevProcess.ts";
 
@@ -174,7 +175,7 @@ export interface AppConfigShape {
   debug: boolean;
   /** Canonical public URL (e.g. https://myapp.com). */
   url: string;
-  /** Default HTTP port. Overridden by --port CLI flag. Default: 3000 */
+  /** HTTP port `zt serve` listens on. Overridden by `--port`. Default: the `PORT` environment variable, else 3000. */
   port: number;
   /** Application locale used for date/number formatting. Default: 'en' */
   locale: string;
@@ -361,7 +362,7 @@ export function AppConfig(options: {
     key: Bun.env["APP_KEY"] ?? "",
     debug: Bun.env["APP_DEBUG"] !== "false",
     url: Bun.env["APP_URL"] ?? "http://localhost:3000",
-    port: 3000,
+    port: portFromEnv(),
     locale: "en",
     timezone: "UTC",
     http3: false,

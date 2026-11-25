@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`bun zt serve` listens on `PORT`.** The docs gave `PORT` as the server port, and `AppConfig`
+  as the default `--port` overrides, but `--port` carried its own default of 3000, so it always
+  won and neither `PORT` nor `app.port` was read. A host or container that set `PORT` got an app
+  on 3000. `serve` now uses `--port` when given, else `app.port`, which defaults to `PORT`, else 3000. A `PORT` that is not a port (`80800`, `eighty`) stops `serve` with an error naming it
+  rather than falling back; config itself still never throws on it. `bun zt status` looks for
+  the server on the same port.
+
 ## [1.17.3] — 2026-11-25
 
 ### Fixed

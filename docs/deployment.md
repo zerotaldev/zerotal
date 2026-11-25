@@ -400,9 +400,13 @@ Bump your asset version (or hash the bundle) so clients reload onto the new buil
 
 ```bash
 # in your project root
-bun zt serve              # binds 0.0.0.0:3000
-bun zt serve --port=8080  # custom port
+bun zt serve              # binds 0.0.0.0 on app.port: PORT, else 3000
+bun zt serve --port=8080  # custom port, over PORT
 ```
+
+A host or container that sets `PORT` gets the app on that port with no flag. A `PORT` that
+is not a port, such as `80800`, stops `serve` with an error naming it instead of falling
+back to 3000.
 
 Run this under a process supervisor (systemd, Docker, Fly.io, Railway, a PaaS, …) so
 it restarts on crash. The server installs `SIGTERM`/`SIGINT` handlers and drains

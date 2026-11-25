@@ -141,6 +141,19 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
   },
 ];
 
+/** The sections of the "What ships" page, in the order it lists them. */
+export const CAPABILITY_AREAS = [
+  "Accounts and access",
+  "Data",
+  "Files",
+  "Messages and background work",
+  "Product features",
+  "Security and operations",
+  "Testing",
+] as const;
+
+export type CapabilityArea = (typeof CAPABILITY_AREAS)[number];
+
 /**
  * One thing an app commonly needs, and what in the framework already does it.
  *
@@ -151,6 +164,8 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
  */
 export interface Capability {
   need: string;
+  /** The section it is listed under on the docs' "What ships" page. */
+  area: CapabilityArea;
   provides: string;
   pkg?: string;
   doc: string;
@@ -173,144 +188,197 @@ export interface Capability {
 export const CAPABILITIES: readonly Capability[] = [
   {
     need: "Multi-tenancy",
+    area: "Accounts and access",
     provides: "tenant resolvers and tenant-scoped models",
     pkg: "@zerotal/tenancy",
     doc: "tenancy",
   },
   {
     need: "Roles and permissions",
+    area: "Accounts and access",
     provides: "the `Roles` and `Permissions` model mixins, `Auth.can()`",
     pkg: "@zerotal/auth",
     doc: "authorization",
   },
   {
     need: "Policies",
+    area: "Accounts and access",
     provides: "policy classes in `app/policies/`, discovered automatically",
     pkg: "@zerotal/auth",
     doc: "authorization",
   },
   {
     need: "Two-factor sign-in",
+    area: "Accounts and access",
     provides: "TOTP codes and recovery codes",
     pkg: "@zerotal/auth",
     doc: "roles-and-2fa",
   },
   {
     need: "Passkeys, magic links, email codes",
+    area: "Accounts and access",
     provides: "`PasskeyService` and passwordless login",
     pkg: "@zerotal/auth",
     doc: "authentication",
   },
   {
     need: "Sign in with GitHub, Google or Apple",
+    area: "Accounts and access",
     provides: "OAuth drivers",
     pkg: "@zerotal/auth",
     doc: "social",
   },
   {
     need: "Password reset",
+    area: "Accounts and access",
     provides: "`PasswordBroker`",
     pkg: "@zerotal/auth",
     doc: "password-reset",
   },
   {
     need: "Email verification",
+    area: "Accounts and access",
     provides: "signed links and `ValidateSignatureMiddleware`",
     pkg: "@zerotal/auth",
     doc: "email-verification",
   },
   {
     need: "An audit trail",
+    area: "Accounts and access",
     provides: "the `Auditable` mixin and manual audit events",
     pkg: "@zerotal/audit",
     doc: "audit",
   },
   {
     need: "An admin panel",
+    area: "Product features",
     provides: "declarative resources, tables, forms and dashboards",
     pkg: "@zerotal/admin",
     doc: "admin",
   },
   {
     need: "Mail, SMS and in-app notifications",
+    area: "Messages and background work",
     provides: "notification classes, one per message",
     pkg: "@zerotal/notifications",
     doc: "notifications",
   },
   {
     need: "File uploads and image conversions",
+    area: "Files",
     provides: "media attached to models",
     pkg: "@zerotal/media",
     doc: "media",
   },
-  { need: "File storage", provides: "local and S3-compatible disks", doc: "storage" },
+  {
+    need: "File storage",
+    area: "Files",
+    provides: "local and S3-compatible disks",
+    doc: "storage",
+  },
   {
     need: "Background jobs",
+    area: "Messages and background work",
     provides: "job classes and a worker",
     pkg: "@zerotal/queue",
     doc: "queue",
   },
   {
     need: "Scheduled tasks",
+    area: "Messages and background work",
     provides: "`Schedule` classes in `app/schedules/`",
     pkg: "@zerotal/scheduler",
     doc: "scheduler",
   },
   {
     need: "Caching",
+    area: "Data",
     provides: "SQLite, Redis and memory drivers with tags",
     pkg: "@zerotal/cache",
     doc: "cache",
   },
   {
     need: "Realtime updates",
+    area: "Product features",
     provides: "authorised broadcast channels",
     pkg: "@zerotal/broadcasting",
     doc: "broadcasting",
   },
   {
     need: "Translations",
+    area: "Product features",
     provides: "`__()` with plurals and per-request locale",
     pkg: "@zerotal/i18n",
     doc: "i18n",
   },
   {
     need: "Calls to a language model",
+    area: "Product features",
     provides: "`Ai.text()`, `Ai.object()`, `Ai.agent()`",
     pkg: "@zerotal/ai",
     doc: "ai",
   },
   {
     need: "Rate limiting",
+    area: "Security and operations",
     provides: "`ThrottleMiddleware` and named limiters",
     doc: "rate-limiting",
   },
-  { need: "Locks across processes", provides: "`zerotal/lock`", doc: "lock" },
-  { need: "Encryption and hashing", provides: "encrypt, hash and sign helpers", doc: "encryption" },
-  { need: "Maintenance mode and a pre-launch gate", provides: "the site gate", doc: "site-gate" },
-  { need: "Health checks", provides: "a `/health` endpoint with your own checks", doc: "health" },
-  { need: "Database backups", provides: "`bun zt db:backup` (SQLite)", doc: "commands" },
-  { need: "Seed and demo data", provides: "seeders and model factories", doc: "seeding" },
+  { need: "Locks across processes", area: "Data", provides: "`zerotal/lock`", doc: "lock" },
+  {
+    need: "Encryption and hashing",
+    area: "Security and operations",
+    provides: "encrypt, hash and sign helpers",
+    doc: "encryption",
+  },
+  {
+    need: "Maintenance mode and a pre-launch gate",
+    area: "Security and operations",
+    provides: "the site gate",
+    doc: "site-gate",
+  },
+  {
+    need: "Health checks",
+    area: "Security and operations",
+    provides: "a `/health` endpoint with your own checks",
+    doc: "health",
+  },
+  {
+    need: "Database backups",
+    area: "Data",
+    provides: "`bun zt db:backup` (SQLite)",
+    doc: "commands",
+  },
+  {
+    need: "Seed and demo data",
+    area: "Data",
+    provides: "seeders and model factories",
+    doc: "seeding",
+  },
   {
     need: "Validation",
+    area: "Data",
     provides: "`FormRequest` classes and `validate()`",
     pkg: "@zerotal/validator",
     doc: "validator",
   },
   {
     need: "Tests against a booted app",
+    area: "Testing",
     provides: "`createTestApp()`, factories and fakes",
     pkg: "@zerotal/testing",
     doc: "testing",
   },
   {
     need: "A production dashboard",
+    area: "Security and operations",
     provides: "requests, jobs, errors and alerts",
     pkg: "@zerotal/monitor",
     doc: "monitor",
   },
   {
     need: "Tracing",
+    area: "Security and operations",
     provides: "spans with OTLP export",
     pkg: "@zerotal/telemetry",
     doc: "telemetry",

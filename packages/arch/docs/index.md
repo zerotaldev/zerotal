@@ -20,6 +20,16 @@ Three pages, in order, and you'll be productive:
 3. **[Conventions](/docs/conventions)** — what gets auto-discovered, and the naming
    rules that make it happen. This is the page that stops the surprises.
 
+Before building something an app commonly needs — tenancy, roles, an audit log,
+backups — check **[What Ships](/docs/what-ships)**. It lists everything the framework
+already does, with the page for each.
+
+Reading these docs with a coding agent? Every page is also plain Markdown at its URL
+with `.md` added — this one is `/docs.md`. [`/llms.txt`](/llms.txt) lists
+them all, and [`/llms-full.txt`](/llms-full.txt) is the whole guide in one file.
+Inside an app, the agent surface serves the same pages for the installed version
+through `search_docs` — see [Agent Surface](/docs/arch).
+
 ```bash
 # in your project's parent directory
 bun create zerotal my-app

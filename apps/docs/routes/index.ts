@@ -2,7 +2,13 @@ import { Router } from "zerotal";
 import { assetVersion } from "zerotal/assets";
 import { ZEROTAL_VERSION, BUILD_SHA, BUILD_SHA_SHORT, BOOTED_AT } from "../app/version.ts";
 import { searchDocs } from "../app/support/search.ts";
-import { Layout, ApiLayout, isApiPath, navPages } from "../app/routes/_layout.ts";
+import { Layout, ApiLayout, isApiPath, navPages, SITE_URL } from "../app/routes/_layout.ts";
+import {
+  markdownPath,
+  markdownResponse,
+  markdownTarget,
+  prefersMarkdown,
+} from "../app/support/agent-docs.ts";
 // Registers GET /blog and GET /blog/* on import.
 import "./blog.ts";
 // Registers the authoring UI at /admin on import.
@@ -29,30 +35,45 @@ const MARKDOWN_OPTIONS: BunMarkdownOptions = {
 };
 
 async function renderDoc(req: Request): Promise<Response> {
-  const { pathname } = new URL(req.url);
+  // `/docs/orm.md` is the Markdown copy of `/docs/orm`, and so is `/docs/orm` asked
+  // for as `text/markdown` — see `agent-docs.ts`. Resolved as the HTML path, so
+  // both forms go through the same canonical rules.
+  const requested = new URL(req.url).pathname;
+  const target = markdownTarget(requested);
+  const pathname = target ?? requested;
+  const asMarkdown = target !== null || prefersMarkdown(req.headers.get("accept"));
+  const suffix = target !== null ? ".md" : "";
 
   // Send the duplicates to the one URL before rendering anything. 301, because
   // this is settled: the sitemap has always named this form, and a permanent
   // redirect is what moves the accumulated ranking onto it.
   const canonical = canonicalPath(pathname);
-  if (canonical) return Response.redirect(canonical, 301);
+  if (canonical) return Response.redirect(`${canonical}${suffix}`, 301);
 
   const slug = parseSlug(pathname);
   const resolved = await resolveDocument(slug);
 
   if (!resolved) {
+    if (asMarkdown) {
+      return new Response(`# Page not found\n\nNo documentation page at \`${pathname}\`.\n`, {
+        status: 404,
+        headers: { "Content-Type": "text/markdown; charset=utf-8", Vary: "Accept" },
+      });
+    }
     const notFoundHtml = renderNotFoundPage(slug, pathname);
     return createHtmlResponse(notFoundHtml, 404);
   }
 
   if (resolved.kind === "redirect") {
-    return Response.redirect(`/docs/${resolved.slug}`, 302);
+    return Response.redirect(`/docs/${resolved.slug}${suffix}`, 302);
   }
 
   const source = await Bun.file(resolved.filePath).text();
   // Split off optional YAML frontmatter so it never renders as a literal `---`
   // block; its `title`/`description` drive the page metadata when present.
   const { data, content } = parseFrontmatter(source);
+
+  if (asMarkdown) return markdownResponse(content.trimStart(), `${SITE_URL}${pathname}`);
   const body = Bun.markdown.html(content, MARKDOWN_OPTIONS);
   const title = data.title ?? extractTitle(content, slug);
 
@@ -78,11 +99,16 @@ async function renderDoc(req: Request): Promise<Response> {
     content: body,
     title,
     pathname,
+    markdown: markdownPath(pathname),
     ...(data.description ? { description: data.description } : {}),
     ...apiMeta,
   });
 
-  return createHtmlResponse(pageHtml);
+  const response = createHtmlResponse(pageHtml);
+  // The same URL answers in Markdown to an `Accept: text/markdown`, so a cache
+  // must not hand one reader's format to the other.
+  response.headers.set("Vary", "Accept");
+  return response;
 }
 
 // Both forms, because `/docs/*` does not match the bare `/docs` — and trimming
@@ -90,6 +116,8 @@ async function renderDoc(req: Request): Promise<Response> {
 // the table of contents.
 Router.raw("GET", "/docs", renderDoc);
 Router.raw("GET", "/docs/*", renderDoc);
+// The overview's Markdown copy, which neither pattern above reaches.
+Router.raw("GET", "/docs.md", renderDoc);
 
 // Full-text search for the sidebar box, which until now filtered navigation
 // labels and so could only find a page whose title you already knew.

@@ -373,11 +373,25 @@ export async function declaredPackages(root = process.cwd()): Promise<InstalledP
   // the rest. Reading it as one opaque name told every app scaffolded from a
   // starter nothing about its data, auth, validation, jobs or tests, because none
   // of those packages appear in its manifest by their own names.
-  if (declared.has("zerotal")) {
-    for (const name of await bundledPackages(root)) declared.add(name);
+  const bundled = declared.has("zerotal") ? await bundledPackages(root) : [];
+  for (const name of bundled) declared.add(name);
+
+  const found = (await installedPackages(root)).filter((pkg) => declared.has(pkg.name));
+
+  // A bundled package is installed wherever the install put it, which is not
+  // always beside the bundle: in a workspace the shared ones are hoisted to the
+  // workspace root, out of this app's `node_modules`. The bundle being here is the
+  // evidence they are too, so they count without being found. Versions move in
+  // lockstep, so the bundle's own is theirs.
+  const bundle = found.find((pkg) => pkg.name === "zerotal");
+  if (bundle) {
+    const seen = new Set(found.map((pkg) => pkg.name));
+    for (const name of bundled) {
+      if (!seen.has(name)) found.push({ name, version: bundle.version });
+    }
   }
 
-  return (await installedPackages(root)).filter((pkg) => declared.has(pkg.name));
+  return found.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

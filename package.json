@@ -25,6 +25,8 @@
     "docs:examples": "bun run scripts/docs-examples.ts",
     "docs:examples:check": "bun run scripts/docs-examples.ts --check",
     "arch:docs:check": "bun run scripts/arch-docs.ts --check",
+    "docs:what-ships": "bun run scripts/what-ships.ts",
+    "docs:what-ships:check": "bun run scripts/what-ships.ts --check",
     "starters:agent": "bun run scripts/starter-agent-files.ts",
     "starters:agent:check": "bun run scripts/starter-agent-files.ts --check",
     "icons:sync": "bun run scripts/sync-icons.ts",

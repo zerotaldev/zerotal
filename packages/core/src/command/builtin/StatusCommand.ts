@@ -1,4 +1,5 @@
 import { Command } from "../Command.ts";
+import { clientPort } from "../../support/port.ts";
 
 /**
  * `bun zt status` — shows live metrics from the running server.
@@ -21,8 +22,7 @@ export class StatusCommand extends Command {
       name: "port",
       short: "p",
       type: "number" as const,
-      description: "Port the server is listening on",
-      default: 3000,
+      description: "Port the server is listening on (default: PORT, else 3000)",
     },
     {
       name: "host",
@@ -33,7 +33,8 @@ export class StatusCommand extends Command {
   ];
 
   async run(): Promise<void> {
-    const port = this.flags["port"] as number;
+    // The same port `serve` binds when neither command is given `--port`.
+    const port = clientPort(this.flags["port"]);
     const host = this.flags["host"] as string;
     const url = `http://${host}:${port}/__zerotal/health`;
 

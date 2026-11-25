@@ -644,7 +644,9 @@ describe('scaffold — full-stack kits', () => {
     const check = Bun.spawnSync([prettier, '--check', '.'], { cwd: TMP });
 
     expect({ code: check.exitCode, output: check.stdout.toString() + check.stderr.toString() }).toMatchObject({ code: 0 });
-  });
+    // Prettier over a whole app: about 2 s on a CI runner, and once over 5 s on the Bun-latest
+    // leg, where the default timeout cut it off mid-check and failed a release PR.
+  }, 30_000);
 
   it.each(FULL_STACK)('%s formats with the repository\'s Prettier settings', async (template) => {
     await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });

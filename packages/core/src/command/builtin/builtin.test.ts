@@ -39,7 +39,8 @@ describe("ServeCommand", () => {
     expect(flag.name).toBe("port");
     expect(flag.short).toBe("p");
     expect(flag.type).toBe("number");
-    expect(flag.default).toBe(3000);
+    // No default: a default here always won, so `app.port` and `PORT` were never read.
+    expect(flag.default).toBeUndefined();
     expect(ServeCommand.flags.find((f) => f.name === "watch")).toBeUndefined();
 
     // The two ways out of a busy port without a terminal to answer the prompt.
@@ -1263,10 +1264,10 @@ describe("StatusCommand", () => {
     expect(StatusCommand.flags).toHaveLength(2);
   });
 
-  it("has port and host flags with defaults", () => {
+  it("has port and host flags; the port falls back to PORT, so it has no default of its own", () => {
     const portFlag = StatusCommand.flags.find((f) => f.name === "port")!;
     const hostFlag = StatusCommand.flags.find((f) => f.name === "host")!;
-    expect(portFlag.default).toBe(3000);
+    expect(portFlag.default).toBeUndefined();
     expect(hostFlag.default).toBe("localhost");
   });
 });

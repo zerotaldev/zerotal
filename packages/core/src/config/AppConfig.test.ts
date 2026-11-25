@@ -120,3 +120,32 @@ describe("AppConfig health", () => {
     });
   });
 });
+
+describe("AppConfig port", () => {
+  // Hosts and containers say where the app must listen with PORT. It was documented as the
+  // default and never read: app.port was always 3000.
+  function withPort<T>(value: string | undefined, run: () => T): T {
+    const saved = Bun.env["PORT"];
+    if (value === undefined) delete Bun.env["PORT"];
+    else Bun.env["PORT"] = value;
+    try {
+      return run();
+    } finally {
+      if (saved === undefined) delete Bun.env["PORT"];
+      else Bun.env["PORT"] = saved;
+    }
+  }
+
+  it("defaults to PORT, and to 3000 without it", () => {
+    expect(withPort("8080", () => AppConfig({}).port)).toBe(8080);
+    expect(withPort(undefined, () => AppConfig({}).port)).toBe(3000);
+  });
+
+  it("lets config/app.ts set it over PORT", () => {
+    expect(withPort("8080", () => AppConfig({ port: 4000 }).port)).toBe(4000);
+  });
+
+  it("survives a PORT that is not a port; serve refuses it before binding", () => {
+    expect(withPort("eighty", () => Number.isNaN(AppConfig({}).port))).toBe(true);
+  });
+});

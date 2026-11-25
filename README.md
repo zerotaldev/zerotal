@@ -638,55 +638,64 @@ Scaffold a fresh app with `bun create zerotal my-app` — the starters are `api`
 
 ## Documentation
 
-The full documentation lives in [`docs/`](docs). Start with **[Getting Started](docs/getting-started.md)**, then dive into the area you need.
+The full documentation lives in [`docs/`](docs). Start with **[Getting Started](docs/getting-started.md)**, check **[What Ships](docs/what-ships.md)** before building something an app commonly needs, then dive into the area you need.
+
+On [zerotal.dev](https://zerotal.dev/docs) every page also has a Markdown copy at its URL plus `.md`. [`/llms.txt`](https://zerotal.dev/llms.txt) indexes them, and [`/llms-full.txt`](https://zerotal.dev/llms-full.txt) is the whole guide in one file.
 
 **Core**
 
-| Guide                                                                | Description                                                   |
-| -------------------------------------------------------------------- | ------------------------------------------------------------- |
-| [Getting Started](docs/getting-started.md)                           | Install, project structure, first route                       |
-| [Project Structure](docs/structure.md)                               | Directory layout of an app                                    |
-| [Conventions](docs/conventions.md)                                   | What `app/*` auto-discovers, and how to turn it off           |
-| [Container](docs/container.md)                                       | Dependency injection, bindings, `@inject`, facades            |
-| [Service Providers](docs/providers.md)                               | Registration, boot lifecycle                                  |
-| [Request Lifecycle](docs/lifecycle.md)                               | Boot once, then each request: scope, middleware order, errors |
-| [Routing](docs/routing.md)                                           | Route registration, groups, model binding                     |
-| [Controllers](docs/controllers.md)                                   | Controller classes and actions                                |
-| [Middleware](docs/middleware.md)                                     | The pipeline, plus built-in CORS, secure headers and webhooks |
-| [Requests Context](docs/context.md) / [Responses](docs/responses.md) | HttpContext, request input, responses                         |
-| [Configuration](docs/config-system.md)                               | Config files, env binding, typed config                       |
-| [Commands](docs/commands.md)                                         | The `zt` CLI and custom commands                              |
-| [The Application](docs/application.md)                               | The kernel: container, provider lifecycle, boot to serve      |
-| [Events](docs/events.md)                                             | App events and the framework event bus                        |
-| [Error Handling](docs/errors.md)                                     | Exceptions to the right HTTP response                         |
-| [Helpers](docs/helpers.md)                                           | env, config, strings, outbound `Http`, response helpers       |
-| [Assets](docs/assets.md)                                             | CSS and JavaScript with Bun's bundler, hot reload             |
-| [Scaffolding](docs/scaffolding.md)                                   | The `make:*` generators                                       |
+| Guide                                      | Description                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------- |
+| [Getting Started](docs/getting-started.md) | Install, project structure, first route                                    |
+| [What Ships](docs/what-ships.md)           | Everything the framework already does, by area — check before building one |
+| [Project Structure](docs/structure.md)     | Directory layout of an app                                                 |
+| [Conventions](docs/conventions.md)         | What `app/*` auto-discovers, and how to turn it off                        |
+| [Container](docs/container.md)             | Dependency injection, bindings, `@inject`, facades                         |
+| [Service Providers](docs/providers.md)     | Registration, boot lifecycle                                               |
+| [Request Lifecycle](docs/lifecycle.md)     | Boot once, then each request: scope, middleware order, errors              |
+| [Routing](docs/routing.md)                 | Route registration, groups, model binding                                  |
+| [Controllers](docs/controllers.md)         | Controller classes and actions                                             |
+| [Middleware](docs/middleware.md)           | The pipeline, plus built-in CORS, secure headers and webhooks              |
+| [Requests Context](docs/context.md)        | `HttpContext`: route params, typed input, uploads, headers, flash          |
+| [Responses](docs/responses.md)             | JSON, views, redirects and custom responses                                |
+| [Configuration](docs/config-system.md)     | Config files, env binding, typed config                                    |
+| [Commands](docs/commands.md)               | The `zt` CLI and custom commands                                           |
+| [The Application](docs/application.md)     | The kernel: container, provider lifecycle, boot to serve                   |
+| [Events](docs/events.md)                   | App events and the framework event bus                                     |
+| [Error Handling](docs/errors.md)           | Exceptions to the right HTTP response                                      |
+| [Helpers](docs/helpers.md)                 | env, config, strings, outbound `Http`, response helpers                    |
+| [Assets](docs/assets.md)                   | CSS and JavaScript with Bun's bundler, hot reload                          |
+| [Scaffolding](docs/scaffolding.md)         | The `make:*` generators                                                    |
 
 **Data**
 
-| Guide                                  | Description                                                       |
-| -------------------------------------- | ----------------------------------------------------------------- |
-| [ORM](docs/orm/index.md)               | Models, casts, relationships, serialization, lifecycle            |
-| [Queries](docs/orm/queries.md)         | `Model.query()` — finders, writes, soft deletes, scopes           |
-| [Query Builder](docs/query-builder.md) | `DB.table()` — the same fluent API for tables without a model     |
-| [Migrations](docs/migrations.md)       | Schema builder, running migrations                                |
-| [Seeding](docs/seeding.md)             | Database seeders and factories                                    |
-| [Validation](docs/validator.md)        | FormRequest, RuleBuilder, available rules                         |
-| [Database](docs/database.md)           | Connections, transactions, raw SQL, replicas, N+1, advisory locks |
-| [Pagination](docs/pagination.md)       | Paged results, metadata and URL helpers                           |
-| [Media Library](docs/media.md)         | Files attached to models, conversions, responsive images          |
-| [Carbon](docs/carbon.md)               | Timezone-aware dates and durations                                |
+| Guide                                          | Description                                                       |
+| ---------------------------------------------- | ----------------------------------------------------------------- |
+| [ORM](docs/orm/index.md)                       | Models: defining them, mixins, the pages below                    |
+| [Queries](docs/orm/queries.md)                 | `Model.query()` — finders, writes, soft deletes, scopes           |
+| [Relationships](docs/orm/relationships.md)     | `hasMany`, `belongsTo`, many-to-many, eager loading               |
+| [Casts & Mutators](docs/orm/casts.md)          | Typed columns: dates, JSON, enums, encrypted values               |
+| [Factories](docs/orm/factories.md)             | Model factories for tests and seeders                             |
+| [Lifecycle & Events](docs/orm/lifecycle.md)    | Model hooks and observers                                         |
+| [ORM Serialization](docs/orm/serialization.md) | `toJSON()`, hidden and appended fields                            |
+| [Query Builder](docs/query-builder.md)         | `DB.table()` — the same fluent API for tables without a model     |
+| [Migrations](docs/migrations.md)               | Schema builder, running migrations                                |
+| [Seeding](docs/seeding.md)                     | Database seeders and factories                                    |
+| [Validation](docs/validator.md)                | FormRequest, RuleBuilder, available rules                         |
+| [Database](docs/database.md)                   | Connections, transactions, raw SQL, replicas, N+1, advisory locks |
+| [Pagination](docs/pagination.md)               | Paged results, metadata and URL helpers                           |
+| [Media Library](docs/media.md)                 | Files attached to models, conversions, responsive images          |
+| [Carbon](docs/carbon.md)                       | Timezone-aware dates and durations                                |
 
 **Frontend**
 
-| Guide                              | Description                                                            |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| [Flow](docs/flow/index.md)         | Reactive SSR — components, forms, static pages with islands, real-time |
-| [Inertia](docs/inertia/index.md)   | React or Vue pages from controllers — props, SSR                       |
-| [Views](docs/view.md)              | Server-rendered JSX views                                              |
-| [Components](docs/components.md)   | `@zerotal/flow-ui` — themeable components for Flow apps                |
-| [Admin Panel](docs/admin/index.md) | Resources as classes: tables, forms, actions                           |
+| Guide                              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Flow](docs/flow/index.md)         | Reactive SSR — components, forms, static pages with islands, real-time. Pages: [Routing](docs/flow/routing.md) · [Decorators](docs/flow/decorators.md) · [Forms & Uploads](docs/flow/forms.md) · [Models](docs/flow/models.md) · [Layouts](docs/flow/layouts.md) · [Lifecycle](docs/flow/lifecycle.md) · [Events](docs/flow/events.md) · [Pagination](docs/flow/pagination.md) · [Built-in Components](docs/flow/components.md) · [Icons](docs/flow/icons.md) · [Performance](docs/flow/performance.md) · [Testing](docs/flow/testing.md) · [Reference](docs/flow/references.md) |
+| [Inertia](docs/inertia/index.md)   | React or Vue pages from controllers. Pages: [Rendering](docs/inertia/rendering.md) · [Props](docs/inertia/props.md) · [Middleware & Versioning](docs/inertia/middleware.md) · [SSR](docs/inertia/ssr.md) · [CLI & Build](docs/inertia/build.md) · [DevTools](docs/inertia/devtools.md) · [Reference](docs/inertia/references.md)                                                                                                                                                                                                                                                 |
+| [Views](docs/view.md)              | Server-rendered JSX views                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| [Components](docs/components.md)   | `@zerotal/flow-ui` — themeable components for Flow apps                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| [Admin Panel](docs/admin/index.md) | Resources as classes. Pages: [Resources](docs/admin/resources.md) · [Tables](docs/admin/tables.md) · [Forms & Infolists](docs/admin/forms.md) · [Actions & Relations](docs/admin/actions.md) · [Dashboard & Navigation](docs/admin/dashboard.md) · [Panel Structure](docs/admin/structure.md) · [Auth Pages & Theming](docs/admin/auth.md) · [Custom Pages & Plugins](docs/admin/extending.md) · [Extending the UI](docs/admin/extending-ui.md) · [Operations](docs/admin/operations.md) · [Testing](docs/admin/testing.md) · [Reference](docs/admin/references.md)              |
 
 **Auth & security**
 
@@ -706,35 +715,41 @@ The full documentation lives in [`docs/`](docs). Start with **[Getting Started](
 
 **Services**
 
-| Guide                                      | Description                                                       |
-| ------------------------------------------ | ----------------------------------------------------------------- |
-| [Queue](docs/queue.md)                     | Jobs, workers, batches, chains                                    |
-| [Scheduler](docs/scheduler.md)             | Cron-style task scheduling                                        |
-| [Cache](docs/cache.md)                     | Drivers, `remember()`, tags, idempotency                          |
-| [Notifications](docs/notifications.md)     | Multi-channel notifications — including **mail** (SMTP/Resend)    |
-| [Storage](docs/storage.md)                 | Disks, file operations                                            |
-| [Broadcasting](docs/broadcasting/index.md) | WebSocket channels, presence, Redis driver                        |
-| [HTTP Client](docs/client/index.md)        | ApiClient, circuit breaker                                        |
-| [Distributed Lock](docs/lock.md)           | Owner-guarded locks across processes, with TTL and refresh        |
-| [Logger](docs/logger.md)                   | Channels, drivers, structured logging                             |
-| [Telemetry](docs/telemetry.md)             | Tracing, spans, exporters                                         |
-| [Monitor](docs/monitor.md)                 | Production dashboard: requests, queries, jobs, alerts, Prometheus |
-| [AI](docs/ai.md)                           | Text, structured output, tools and agents, any provider           |
-| [Audit](docs/audit.md)                     | Model writes and custom events with old/new values                |
-| [Internationalization](docs/i18n.md)       | Locale resolution and translations                                |
-| [Multi-Tenancy](docs/tenancy.md)           | Per-tenant data, files and cache                                  |
-| [Health Checks](docs/health.md)            | A probe-friendly /health endpoint                                 |
-| [Site Gate](docs/site-gate.md)             | Maintenance mode and private preview                              |
-| [DevTools](docs/devtools.md)               | Per-request SQL, logs, mail and jobs in the browser               |
+| Guide                                      | Description                                                                                                                                                                                                                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Queue](docs/queue.md)                     | Jobs, workers, batches, chains                                                                                                                                                                                                                                        |
+| [Scheduler](docs/scheduler.md)             | Cron-style task scheduling                                                                                                                                                                                                                                            |
+| [Cache](docs/cache.md)                     | Drivers, `remember()`, tags, idempotency                                                                                                                                                                                                                              |
+| [Notifications](docs/notifications.md)     | Multi-channel notifications — including **mail** (SMTP/Resend)                                                                                                                                                                                                        |
+| [Storage](docs/storage.md)                 | Disks, file operations                                                                                                                                                                                                                                                |
+| [Broadcasting](docs/broadcasting/index.md) | WebSocket channels, presence, Redis driver. Pages: [Channels](docs/broadcasting/channels.md) · [Events](docs/broadcasting/events.md) · [Client](docs/broadcasting/client.md) · [Testing](docs/broadcasting/testing.md) · [Reference](docs/broadcasting/references.md) |
+| [HTTP Client](docs/client/index.md)        | ApiClient, circuit breaker                                                                                                                                                                                                                                            |
+| [Distributed Lock](docs/lock.md)           | Owner-guarded locks across processes, with TTL and refresh                                                                                                                                                                                                            |
+| [Logger](docs/logger.md)                   | Channels, drivers, structured logging                                                                                                                                                                                                                                 |
+| [Telemetry](docs/telemetry.md)             | Tracing, spans, exporters                                                                                                                                                                                                                                             |
+| [Monitor](docs/monitor.md)                 | Production dashboard: requests, queries, jobs, alerts, Prometheus                                                                                                                                                                                                     |
+| [AI](docs/ai.md)                           | Text, structured output, tools and agents, any provider                                                                                                                                                                                                               |
+| [Audit](docs/audit.md)                     | Model writes and custom events with old/new values                                                                                                                                                                                                                    |
+| [Internationalization](docs/i18n.md)       | Locale resolution and translations                                                                                                                                                                                                                                    |
+| [Multi-Tenancy](docs/tenancy.md)           | Per-tenant data, files and cache                                                                                                                                                                                                                                      |
+| [Health Checks](docs/health.md)            | A probe-friendly /health endpoint                                                                                                                                                                                                                                     |
+| [Site Gate](docs/site-gate.md)             | Maintenance mode and private preview                                                                                                                                                                                                                                  |
+| [DevTools](docs/devtools.md)               | Per-request SQL, logs, mail and jobs in the browser                                                                                                                                                                                                                   |
 
 **Testing & deployment**
 
-| Guide                                | Description                                               |
-| ------------------------------------ | --------------------------------------------------------- |
-| [Testing](docs/testing/index.md)     | Test app, factories, fakes, assertions                    |
-| [Deployment](docs/deployment.md)     | Release gate, environment, reverse proxy, backups, Docker |
-| [Upgrade Guide](docs/upgrade.md)     | Version upgrade notes                                     |
-| [Contributing](docs/contributing.md) | Development workflow                                      |
+| Guide                                        | Description                                                   |
+| -------------------------------------------- | ------------------------------------------------------------- |
+| [Testing](docs/testing/index.md)             | Test app, factories, fakes, assertions                        |
+| [HTTP Tests](docs/testing/http.md)           | Requests against the booted app, with response assertions     |
+| [Database Testing](docs/testing/database.md) | Per-test rollback, row and file assertions                    |
+| [Mocking](docs/testing/mocking.md)           | Fakes for events, jobs, notifications, storage, HTTP and time |
+| [Console Tests](docs/testing/console.md)     | Run commands in-process and assert on output and exit code    |
+| [Browser Tests](docs/testing/browser.md)     | End-to-end tests in a real browser with Playwright            |
+| [FlowBrowser](docs/testing/flow-browser.md)  | A real page against a real server, inside `bun test`          |
+| [Deployment](docs/deployment.md)             | Release gate, environment, reverse proxy, backups, Docker     |
+| [Upgrade Guide](docs/upgrade.md)             | Version upgrade notes                                         |
+| [Contributing](docs/contributing.md)         | Development workflow                                          |
 
 **Project**
 

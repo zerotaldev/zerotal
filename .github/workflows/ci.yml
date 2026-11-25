@@ -179,6 +179,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun run starters:agent:check
 
+      # `docs/what-ships.md` is generated from the capability list `AGENTS.md` is
+      # built from, so a capability added there reaches the page too.
+      - name: What Ships page
+        if: ${{ !cancelled() }}
+        run: bun run docs:what-ships:check
+
       # `<Icon name>` is a union generated from the vendored icon bodies, so the two
       # drift apart the moment one is edited without the other — and the symptom is a
       # compile error in somebody else's app. Offline on purpose: it compares the two

@@ -1,6 +1,13 @@
 import { Router, env } from "zerotal";
 import { listPosts, loadPost } from "@app/support/blog.ts";
-import { listDocSlugs, docPath } from "@app/support/helpers.ts";
+import { listDocSlugs, docPath, DOCS_DIR } from "@app/support/helpers.ts";
+import {
+  FULL_TEXT_EXCLUDED,
+  buildLlmsFullTxt,
+  buildLlmsTxt,
+  collectTextPages,
+} from "@app/support/agent-docs.ts";
+import { navPages } from "@app/routes/_layout.ts";
 
 /**
  * The site's public origin. Absolute URLs are not optional here: a sitemap entry
@@ -92,6 +99,33 @@ Router.raw("GET", "/sitemap.xml", async () => {
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`,
   );
 });
+
+// ── llms.txt ──────────────────────────────────────────────────────────────────
+
+// Built once per process: the corpus is the deployed checkout's `docs/`, which
+// does not change under a running server.
+let textPages: ReturnType<typeof collectTextPages> | undefined;
+const pages = () => (textPages ??= collectTextPages(DOCS_DIR, navPages()));
+
+function textResponse(body: string): Response {
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
+}
+
+Router.raw("GET", "/llms.txt", async () => textResponse(buildLlmsTxt(await pages(), SITE)));
+
+Router.raw("GET", "/llms-full.txt", async () =>
+  textResponse(
+    buildLlmsFullTxt(
+      (await pages()).filter((page) => !FULL_TEXT_EXCLUDED.has(page.slug)),
+      SITE,
+    ),
+  ),
+);
 
 // ── RSS ───────────────────────────────────────────────────────────────────────
 

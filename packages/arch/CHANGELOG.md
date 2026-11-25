@@ -35,8 +35,9 @@ against. `mcp-surface.md` is diffed alongside it.
   `AGENTS.md` read the manifest literally: it left out the data, auth, validation, jobs, cache,
   scheduling, media and testing sections for exactly the apps most likely to use them. The
   bundle is now read as the packages it depends on, and such an app is told to import them
-  through it (`zerotal/orm`), which is what its code already does. Run `zt arch:update` to
-  regenerate the file.
+  through it (`zerotal/orm`), which is what its code already does. This holds in a workspace
+  too, where the install hoists the bundled packages to the workspace root rather than beside
+  the app. Run `zt arch:update` to regenerate the file.
 
 ## [1.17.0] — 2026-11-20
 

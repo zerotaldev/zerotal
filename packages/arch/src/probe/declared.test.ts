@@ -107,6 +107,24 @@ describe("declaredPackages", () => {
     ]);
   });
 
+  it("counts a bundled package the install hoisted out of this app's node_modules", async () => {
+    // A workspace app: the bundle is beside it, the packages it bundles are at the
+    // workspace root. Their absence here is the layout, not the app.
+    await declare("zerotal");
+    await writeFile(
+      join(await mkdirFor("zerotal"), "package.json"),
+      JSON.stringify({
+        name: "zerotal",
+        version: "1.9.0",
+        dependencies: { "@zerotal/queue": "workspace:*" },
+      }),
+    );
+
+    const found = await declaredPackages(root);
+    expect(names(found)).toEqual(["@zerotal/queue", "zerotal"]);
+    expect(found.find((pkg) => pkg.name === "@zerotal/queue")?.version).toBe("1.9.0");
+  });
+
   it("counts devDependencies, where a testing package belongs", async () => {
     await writeFile(
       join(root, "package.json"),

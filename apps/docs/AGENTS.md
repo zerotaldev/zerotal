@@ -40,13 +40,15 @@ app/commands/      app/schedules/   app/requests/     app/notifications/
 routes/            config/          database/migrations/   tests/
 ```
 
-Imports follow one rule: the kernel comes from `zerotal` (and `zerotal/routes`,
-`zerotal/http`, …), everything else from its own package.
+Imports follow one rule: this app depends on the `zerotal` bundle, so the kernel
+and the packages it bundles are imported through it — `zerotal/orm`, `zerotal/auth`,
+`zerotal/queue` and the rest — and any other package by its own name. An
+`@zerotal/orm` import would reach a package this app does not declare.
 
 ```ts
 import type { HttpContext } from "zerotal";
 import { route } from "zerotal/routes";
-import { DB } from "@zerotal/orm";
+import { DB } from "zerotal/orm";
 ```
 
 ### Commands
@@ -67,15 +69,62 @@ bun zt doctor          # health checks, with a fix beside each finding
 
 **Auth.** `Auth` from `@zerotal/auth` for the current user; policies go in `app/policies/` and are discovered automatically. Do not hand-roll password hashing or session handling.
 
+**Validation.** `FormRequest` subclasses in `app/requests/`, or `validate()` inline. Rules are built with `RuleBuilder`, so a typo is a compile error rather than a runtime one.
+
 **Flow components.** Server-rendered interactive components: a class with state fields and actions, rendered as JSX. Every component is an island and is fully interactive — there is no separate hydration step to write. `bun zt make:flow` scaffolds one.
 
 **UI kit.** `@zerotal/flow-ui` ships the component set. Check it before writing a button, modal, table or form field from scratch.
 
 **Inertia.** Pages are React/Vue components under `resources/`; controllers return `Inertia.render(...)`. Props are serialised — do not pass class instances.
 
+**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower than a request belongs in one. `bun zt queue:work` runs the worker; `bun zt dev` runs it for you.
+
+**Cache.** `Cache` from `@zerotal/cache`. Never cache a request-scoped value.
+
+**Scheduling.** Schedules in `app/schedules/`, discovered at boot. They need `SchedulerProvider` registered — `doctor` will say so if it is missing.
+
+**Media.** `@zerotal/media` owns uploads, conversions and the media library.
+
 **Realtime.** Channels are declared in the app and authorised server-side. `bun zt make:channel` scaffolds one.
 
 **Tests.** `createTestApp()` from `@zerotal/testing` boots a real app; factories and fakes come from the same package. Tests run on `bun test` via `bun zt test`.
+
+### Before you build it yourself
+
+The framework already ships each of these. Check this list, then `search_docs`, before
+writing one by hand — and ask before installing a package the app does not have yet.
+Each page is at `https://zerotal.dev/docs/<page>` and in `search_docs`.
+
+- **Multi-tenancy:** tenant resolvers and tenant-scoped models. `@zerotal/tenancy` — `bun add @zerotal/tenancy`; page `tenancy`.
+- **Roles and permissions:** the `Roles` and `Permissions` model mixins, `Auth.can()`. `@zerotal/auth`, installed; page `authorization`.
+- **Policies:** policy classes in `app/policies/`, discovered automatically. `@zerotal/auth`, installed; page `authorization`.
+- **Two-factor sign-in:** TOTP codes and recovery codes. `@zerotal/auth`, installed; page `roles-and-2fa`.
+- **Passkeys, magic links, email codes:** `PasskeyService` and passwordless login. `@zerotal/auth`, installed; page `authentication`.
+- **Sign in with GitHub, Google or Apple:** OAuth drivers. `@zerotal/auth`, installed; page `social`.
+- **Password reset:** `PasswordBroker`. `@zerotal/auth`, installed; page `password-reset`.
+- **Email verification:** signed links and `ValidateSignatureMiddleware`. `@zerotal/auth`, installed; page `email-verification`.
+- **An audit trail:** the `Auditable` mixin and manual audit events. `@zerotal/audit` — `bun add @zerotal/audit`; page `audit`.
+- **An admin panel:** declarative resources, tables, forms and dashboards. `@zerotal/admin` — `bun add @zerotal/admin`; page `admin`.
+- **Mail, SMS and in-app notifications:** notification classes, one per message. `@zerotal/notifications` — `bun add @zerotal/notifications`; page `notifications`.
+- **File uploads and image conversions:** media attached to models. `@zerotal/media`, installed; page `media`.
+- **File storage:** local and S3-compatible disks. Built in; page `storage`.
+- **Background jobs:** job classes and a worker. `@zerotal/queue`, installed; page `queue`.
+- **Scheduled tasks:** `Schedule` classes in `app/schedules/`. `@zerotal/scheduler`, installed; page `scheduler`.
+- **Caching:** SQLite, Redis and memory drivers with tags. `@zerotal/cache`, installed; page `cache`.
+- **Realtime updates:** authorised broadcast channels. `@zerotal/broadcasting`, installed; page `broadcasting`.
+- **Translations:** `__()` with plurals and per-request locale. `@zerotal/i18n` — `bun add @zerotal/i18n`; page `i18n`.
+- **Calls to a language model:** `Ai.text()`, `Ai.object()`, `Ai.agent()`. `@zerotal/ai`, installed; page `ai`.
+- **Rate limiting:** `ThrottleMiddleware` and named limiters. Built in; page `rate-limiting`.
+- **Locks across processes:** `zerotal/lock`. Built in; page `lock`.
+- **Encryption and hashing:** encrypt, hash and sign helpers. Built in; page `encryption`.
+- **Maintenance mode and a pre-launch gate:** the site gate. Built in; page `site-gate`.
+- **Health checks:** a `/health` endpoint with your own checks. Built in; page `health`.
+- **Database backups:** `bun zt db:backup` (SQLite). Built in; page `commands`.
+- **Seed and demo data:** seeders and model factories. Built in; page `seeding`.
+- **Validation:** `FormRequest` classes and `validate()`. `@zerotal/validator`, installed; page `validator`.
+- **Tests against a booted app:** `createTestApp()`, factories and fakes. `@zerotal/testing`, installed; page `testing`.
+- **A production dashboard:** requests, jobs, errors and alerts. `@zerotal/monitor` — `bun add @zerotal/monitor`; page `monitor`.
+- **Tracing:** spans with OTLP export. `@zerotal/telemetry` — `bun add @zerotal/telemetry`; page `telemetry`.
 
 ### How this app is set up
 

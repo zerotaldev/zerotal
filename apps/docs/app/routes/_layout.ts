@@ -11,9 +11,11 @@ import {
 } from "@app/support/api-nav.ts";
 
 /** Public origin, for the absolute URLs a crawler and a social card need. */
-const SITE_URL = env("APP_URL", "https://zerotal.dev").replace(/\/$/, "");
+export const SITE_URL = env("APP_URL", "https://zerotal.dev").replace(/\/$/, "");
 
 export interface LayoutProps {
+  /** Path of this page's Markdown copy, advertised as `<link rel="alternate">`. */
+  markdown?: string;
   content: string;
   title?: string;
   description?: string;
@@ -65,6 +67,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: "Getting Started",
     items: [
       { label: "Installation", slug: "getting-started" },
+      { label: "What Ships", slug: "what-ships" },
       { label: "Directory Structure", slug: "structure" },
       { label: "Configuration", slug: "config-system" },
       { label: "Conventions", slug: "conventions" },
@@ -797,6 +800,7 @@ export function Layout({
   title = "Zerotal Docs",
   description,
   canonical: canonicalOverride,
+  markdown,
   pathname = "",
   sidebar = true,
   variant = "guide",
@@ -833,6 +837,7 @@ export function Layout({
   ${canonical ? `<link rel="canonical" href="${escHtml(canonical)}">` : ""}
 
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  ${markdown ? `<link rel="alternate" type="text/markdown" href="${escHtml(markdown)}">` : ""}
   <link rel="alternate" type="application/rss+xml" title="Zerotal Blog" href="/blog/feed.xml">
   <meta name="theme-color" content="#0B0D0C">
   <!-- Which commit rendered this page: curl the URL and grep for zerotal-build,

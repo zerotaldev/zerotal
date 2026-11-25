@@ -20,14 +20,20 @@ The CLI is interactive: if you omit the project name it prompts for one (default
 
 ### Templates
 
-| Template  | Description                                                                   |
-| --------- | ----------------------------------------------------------------------------- |
-| `api`     | JSON REST API — core, ORM, auth, validation, testing. Prompts for a database. |
-| `admin`   | Admin panel — resources, auth, dashboard widgets, seeded demo data.           |
-| `flow`  | Server-driven UI — Flow pages, top nav, Tailwind.                           |
-| `react`   | Inertia + React SPA — file-based routes, Tailwind.                            |
-| `vue`     | Inertia + Vue SPA — file-based routes, Tailwind.                              |
-| `minimal` | Single page, JSX views, Tailwind — the bare framework.                        |
+| Template  | Description                                                                                  |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `api`     | JSON REST API — core, ORM, auth, validation, testing. Prompts for a database.                |
+| `admin`   | Admin panel — resources, auth, dashboard widgets, seeded demo data.                          |
+| `flow`    | Full app on Flow pages rendered on the server — see below.                                   |
+| `react`   | Full app with React pages — see below.                                                       |
+| `vue`     | Full app with Vue pages — see below.                                                         |
+| `minimal` | Single page, JSX views, Tailwind — the bare framework.                                       |
+
+The `react`, `vue` and `flow` templates are the same first app, page for page and test for
+test: a signed-in shell with a dashboard, sign-in with email verification, two-factor and
+opt-in passkeys or GitHub / Google, a Settings section, an example `Project` resource, feature
+tests, a CI workflow and a Dockerfile. Each app's README says where things live and how to
+remove the example.
 
 ### Databases (api template only)
 
@@ -45,13 +51,16 @@ After scaffolding, the CLI prints the next commands:
 cd my-app
 # (set DATABASE_URL in .env for a non-sqlite api project)
 bun zt migrate   # every template except minimal — builds the schema
-bun zt db:seed   # admin template — demo data plus the first account
+bun zt db:seed   # admin: demo data plus the first account; react, vue, flow: optional demo account
 bun zt dev
 ```
 
 The `admin` template's panel is behind a sign-in, so seeding is what makes a fresh
 app usable rather than a locked door: it creates `admin@example.com` with the
 password `password`, alongside a small demo catalogue. Open `/admin`.
+
+For `react`, `vue` and `flow` the seed is optional: it creates `demo@example.com` with the
+password `password` and a dozen sample projects.
 
 ## Documentation
 

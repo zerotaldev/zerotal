@@ -107,9 +107,11 @@ terminal: a half-built project that reports success is worse than one that stops
   [validation](/docs/validator), and [testing](/docs/testing). The default for a backend service.
 - **Admin** — an [admin panel](/docs/admin): resources, sign-in, dashboard widgets, and
   seeded demo data. `bun zt db:seed` gives you an account to log in with.
-- **Flow** — server-driven reactive UI ([Flow](/docs/flow) pages, top nav, Tailwind).
-- **React** — [Inertia](/docs/inertia) + React SPA with file-based routes and Tailwind.
-- **Vue** — Inertia + Vue SPA with file-based routes and Tailwind.
+- **React**, **Vue** or **Flow** — a full first app, the same in all three: a signed-in shell
+  with a dashboard, [sign-in](/docs/authentication) with email verification and two-factor, a
+  Settings section, an example `Project` resource and feature tests. React and Vue render their
+  pages through [Inertia](/docs/inertia); Flow renders [Flow](/docs/flow) pages on the server.
+  `bun zt db:seed` creates `demo@example.com` / `password` with sample projects.
 - **Minimal** — a single page with JSX views and Tailwind on the bare framework.
 
 > **Note** — every template except **Minimal** ships a database config and migrations,

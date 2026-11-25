@@ -11,6 +11,39 @@ change.
 
 ## [Unreleased]
 
+### Changed
+
+- **An attribute worked out on the server no longer stops a page compiling.** `href={route("login")}`,
+  `data-id={row.id}` inside a `.map()`, `class={cn(…)}`, `aria-invalid={error ? "true" : undefined}`
+  and the like used to send the whole page to the runtime fallback, and fail it under `cspSafe`.
+  They now compile to the value the page computes when it renders, written as the runtime writes
+  it: `true` as the bare attribute, `false` and nullish leaving it out, a URL attribute with its
+  scheme checked. A numeric literal (`rows={3}`) compiles as written. Still left to the runtime: a
+  `class` array, a `style` object, a `<textarea value>`, a function, and a class naming an imported
+  constant the compiler could not read.
+- **A page can extend a class of the app's own.** `class LoginPage extends Page`, with `Page`
+  imported from a relative module and extending `Component` (directly or through another such
+  class), compiles like a page that extends `Component`. Its `@expose` and `@locked` fields count as
+  the page's.
+- **A page registered with `Router.flow()` is compiled.** Only a file-routed page was told its
+  source file, so every page an app listed in a route file rendered through the runtime, and the
+  compiler never saw it. A registered page now takes the file under `app/flow/pages/` that exports
+  its class, in a compiled binary too. A class exported from nowhere there still renders through
+  the runtime.
+- **`dangerouslySetInnerHTML` compiles**, given `{{ __html: … }}` or any value with an `__html`
+  (`dangerouslySetInnerHTML={icon("plus")}`), writing the markup in place of the element's
+  children as the runtime does. An icon drawn from the page's own constants, or an SVG
+  made on the server, no longer sends the page to the runtime fallback.
+- **A compiled page keeps the spaces in its text.** The compiler trimmed every run of JSX text
+  and dropped a lone space between two children, so `<b>{count}</b> projects` and
+  `Edit <code>x</code> and reload` lost their spaces once compiled, though the runtime kept them.
+  It now drops whitespace only where JSX does: next to a line break.
+- **A `.map()` callback with a block body no longer stops a page compiling.** The compiler supports
+  `{rows.map((row) => { const x = …; return <li>…</li>; })}`, but counted the callback's own
+  `return` as a second one in `render()` and fell back.
+- **A page that cannot be compiled for want of a page class, or of a `render()`, says so** under
+  `ZT_FLOW_COMPILE_LOG=1`, instead of reporting no reason.
+
 ## [1.17.1] — 2026-11-21
 
 ### Added

@@ -81,11 +81,11 @@ describe("compiled: binding a value straight to a getter", () => {
 
 describe("compiled: a construct the transform cannot handle", () => {
   it("falls back whole-page rather than emitting a half-built element", () => {
-    // `value={t}` over a loop variable is not static, so the page bails to the
-    // runtime. It must bail entirely — a partial emit is how a stray attribute
-    // would end up on a later element.
+    // A style object inside the loop is not something the compiler emits, so the page
+    // bails to the runtime. It must bail entirely — a partial emit is how a stray
+    // attribute would end up on a later element.
     const { html, report } = compile(
-      `<select value={this.filterTown} live>{this.townOptions.map((t) => <option value={t}>{t}</option>)}</select>`,
+      `<select value={this.filterTown} live>{this.townOptions.map((t) => <option value={t} style={{ color: t }}>{t}</option>)}</select>`,
       MEMBERS,
     );
     expect(html).toBeNull();

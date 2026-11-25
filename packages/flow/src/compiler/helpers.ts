@@ -13,6 +13,8 @@
  * @packageDocumentation
  */
 
+import { URL_ATTRIBUTES, sanitizeUrl } from "../urlSafety.ts";
+
 /**
  * Escape a value for safe injection as HTML text content.
  *
@@ -31,4 +33,24 @@ export function __esc(v: unknown): string {
 export function __escAttr(v: unknown): string {
   if (v == null) return "";
   return String(v).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
+/**
+ * A whole attribute — leading space, name and quoted value — from a value worked out on the
+ * server, written the way the runtime renderer writes it: `true` is the bare name, `false` and
+ * nullish drop the attribute, and a URL-bearing attribute has its scheme checked, so
+ * `href={user.website}` cannot carry `javascript:`.
+ *
+ * @internal
+ */
+export function __attr(name: string, v: unknown): string {
+  if (v == null || v === false) return "";
+  if (v === true) return ` ${name}`;
+  const raw = String(v);
+  const value = URL_ATTRIBUTES.has(name) ? sanitizeUrl(raw) : raw;
+  return ` ${name}="${value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")}"`;
 }

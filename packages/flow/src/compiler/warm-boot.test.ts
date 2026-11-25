@@ -121,8 +121,8 @@ export class ${name} extends Component {
 const HOME = page("Home", `<div class={CARD}>home</div>`, `import { CARD } from "../ui";`);
 /** Compiles too, through a module that is not there yet when the test starts. */
 const THEMED = page("Themed", `<div class={TONE}>themed</div>`, `import { TONE } from "../theme";`);
-/** A computed class: the compiler leaves the page to the runtime, with nothing to inject. */
-const PLAIN = page("Plain", `<div class={String(this.open)}>plain</div>`);
+/** A style object: the compiler leaves the page to the runtime, with nothing to inject. */
+const PLAIN = page("Plain", `<div style={{ color: "red" }}>plain</div>`);
 /** A component with a `show` binding: rendered by the runtime, with its binding named. */
 const INJECTED = page(
   "Injected",

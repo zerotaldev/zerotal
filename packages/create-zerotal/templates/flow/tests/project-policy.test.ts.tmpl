@@ -1,0 +1,46 @@
+import { describe, expect, test } from "bun:test";
+import { ProjectPolicy } from "../app/policies/ProjectPolicy";
+import { Project } from "../app/models/Project";
+import { User } from "../app/models/User";
+
+/**
+ * The policy on its own, without HTTP: who may do what with a project. Delete this file
+ * with the rest of the example (see "Remove the example" in the README).
+ */
+function user(id: number): User {
+  const u = new User();
+  u.id = id;
+  return u;
+}
+
+function projectOwnedBy(id: number): Project {
+  const p = new Project();
+  p.userId = id;
+  return p;
+}
+
+describe("project policy", () => {
+  const policy = new ProjectPolicy();
+
+  test("lets the owner view, update and delete", () => {
+    const owner = user(1);
+    const project = projectOwnedBy(1);
+
+    expect(policy.view(owner, project)).toBe(true);
+    expect(policy.update(owner, project)).toBe(true);
+    expect(policy.delete(owner, project)).toBe(true);
+  });
+
+  test("refuses everyone else", () => {
+    const stranger = user(2);
+    const project = projectOwnedBy(1);
+
+    expect(policy.view(stranger, project)).toBe(false);
+    expect(policy.update(stranger, project)).toBe(false);
+    expect(policy.delete(stranger, project)).toBe(false);
+  });
+
+  test("lets any signed-in user create one", () => {
+    expect(policy.create(user(3))).toBe(true);
+  });
+});

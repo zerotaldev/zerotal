@@ -124,23 +124,35 @@ N of M Flow pages (75%) render through the runtime fallback instead of compiled 
 
 The warning appears once more than half of your app's own pages fall back, and counts only
 those. Pages a package registers from code, like the admin panel's, render through the runtime by
-design and are left out of it.
+design and are left out of it. A page your app registers from code, with
+`Router.flow("/login", LoginPage)`, is compiled like a file-routed one when its class is exported
+from a file under `app/flow/pages/`.
 
 Set `ZT_FLOW_COMPILE_LOG=1` to print what blocks each page. The common causes:
 
-| Blocker                                                            | Fix                                                |
-| ------------------------------------------------------------------ | -------------------------------------------------- |
-| `render()` with more than one `return`                             | Build the branches into a variable and return once |
-| A function call in a text child — including **`__()`**             | See below                                          |
-| An imported child component in `render()` (`<Header/>`)            | Inline it, or accept the fallback                  |
-| A `class` the compiler cannot read: a call, a `let`, a conditional | Build it from string constants, or use a literal   |
-| A numeric-literal attribute (`rows={3}`)                           | Use a literal string                               |
+| Blocker                                                                 | Fix                                                 |
+| ----------------------------------------------------------------------- | --------------------------------------------------- |
+| `render()` with more than one `return`                                  | Build the branches into a variable and return once  |
+| A function call in a text child — including **`__()`**                  | See below                                           |
+| An imported child component in `render()` (`<Header/>`)                 | Inline it, or accept the fallback                   |
+| A `class` naming an imported constant it could not read                 | Export the constant as a plain string `const`       |
+| A `class` given as an array, or a `style={{ … }}` object                | Join the classes into one string; write `style="…"` |
+| A class that extends neither `Component` nor a class of yours that does | See below                                           |
 
-A class list kept in a `const` does compile: one in the same file, or a named import from a
-relative module such as `import { CARD } from "../ui"`, on its own, joined with `+`, or inside a
-template literal. The compiler reads the value out of the source, so it has to be a plain string:
-a `let`, the result of a call, a name the page declares itself, or a constant re-exported through
-another file is not one.
+A class list kept in a `const` compiles to the literal: one in the same file, or a named import
+from a relative module such as `import { CARD } from "../ui"`, on its own, joined with `+`, or
+inside a template literal. The compiler reads the value out of the source, so it has to be a plain
+string. Any other attribute value — `href={route("login")}`, `data-id={row.id}` inside a `.map()`,
+`class={cn(BUTTON, active && "ring-2")}`, `aria-invalid={error ? "true" : undefined}` — is worked
+out on the server when the page renders, and written as the runtime would write it: `true` as the
+bare attribute, `false` and `undefined` leaving it out, and a URL attribute with its scheme
+checked. It needs no client code, so it is legal under `cspSafe` too. A `value` on a `<textarea>`
+is the one exception: put the value inside the element instead.
+
+A page can extend a class of your own instead of `Component`, to share what every page needs (a
+head, a layout, reading the signed-in user), as long as that class is imported from a relative
+module and extends `Component` itself, or through another such class. Its `@expose` and `@locked`
+fields count as the page's own.
 
 **`__()` is the one that matters most.** A translated template is a function call in a text child,
 so a page that translates a single string falls off the fast path — which in an app where `__()`

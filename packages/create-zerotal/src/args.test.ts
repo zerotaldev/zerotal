@@ -43,6 +43,13 @@ describe('parseArgs', () => {
     expect(a.yes).toBe(true);
     expect(a.help).toBe(true);
   });
+
+  it('ships the agent files unless --no-agent declines them', () => {
+    expect(parseArgs(['app']).agent).toBe(true);
+    expect(parseArgs(['app', '--no-agent']).agent).toBe(false);
+    expect(resolveOptions(parseArgs(['app', '--no-agent', '-y']), false).agent).toBe(false);
+    expect(resolveOptions(parseArgs(['app', '-y']), false).agent).toBe(true);
+  });
 });
 
 describe('resolveOptions — with no terminal', () => {

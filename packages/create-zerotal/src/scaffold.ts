@@ -28,6 +28,41 @@ export interface ScaffoldOptions {
   template: Template;
   db:       Database;
   target:   string; // absolute path of the new project directory
+  /**
+   * Ship the coding-agent files (see {@link AGENT_PATHS}). On unless declined with
+   * `--no-agent`.
+   */
+  agent?:   boolean;
+}
+
+/**
+ * What a starter carries for coding agents, by output path.
+ *
+ * `AGENTS.md` and its `CLAUDE.md` import, the MCP server registration, the skills, and
+ * the provider that keeps them current — `bun zt arch:update` after an upgrade, and a
+ * `doctor` warning when they drift. Each one is generated from the starter by
+ * `bun run starters:agent`, which is what `arch:update` itself would write there, so a
+ * new app's first update has nothing to change.
+ *
+ * A directory entry ends in `/` and covers everything under it. `--no-agent` leaves all
+ * of these out, and `@zerotal/arch` with them.
+ */
+export const AGENT_PATHS: readonly string[] = [
+  'AGENTS.md',
+  'CLAUDE.md',
+  '.mcp.json',
+  '.agents/',
+  '.claude/',
+  '.vscode/mcp.json',
+  'app/providers/ArchProvider.ts',
+];
+
+/** The package the agent files belong to, removed from `package.json` with them. */
+export const AGENT_PACKAGE = '@zerotal/arch';
+
+/** Whether a file at this output path is one of the {@link AGENT_PATHS}. */
+export function isAgentPath(path: string): boolean {
+  return AGENT_PATHS.some((entry) => (entry.endsWith('/') ? path.startsWith(entry) : path === entry));
 }
 
 // ── Token map ─────────────────────────────────────────────────────────────────
@@ -99,6 +134,9 @@ export const RENAMED: Readonly<Record<string, string>> = {
   _prettierignore: '.prettierignore',
   _github: '.github',
   _vscode: '.vscode',
+  _agents: '.agents',
+  _claude: '.claude',
+  '_mcp.json': '.mcp.json',
 };
 
 /**
@@ -133,14 +171,20 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
   const templateDir   = join(templatesRoot, opts.template);
   const map           = tokens(opts);
 
+  const agent         = opts.agent !== false;
+
   for await (const rel of walk(templateDir)) {
+    const out  = outputPath(rel);
+    if (!agent && isAgentPath(out)) continue;
+
     const src  = join(templateDir, rel);
-    const dest = join(opts.target, outputPath(rel));
+    const dest = join(opts.target, out);
 
     await mkdir(dirname(dest), { recursive: true });
 
     const raw     = await Bun.file(src).text();
-    const content = applyTokens(raw, map);
+    let content   = applyTokens(raw, map);
+    if (!agent && out === 'package.json') content = withoutDependency(content, AGENT_PACKAGE);
     await Bun.write(dest, content);
 
     // `.env` gets the real secrets; `.env.example` gets placeholders.
@@ -160,6 +204,21 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
   }
 
   await writeGitAttributes(opts.target);
+}
+
+/**
+ * `package.json` text without one dependency.
+ *
+ * Parsed and rewritten rather than edited as text: a line-based edit leaves the comma of
+ * the entry before it dangling whenever the removed one was last.
+ */
+function withoutDependency(manifest: string, name: string): string {
+  const parsed = JSON.parse(manifest) as Record<string, unknown>;
+  for (const key of ['dependencies', 'devDependencies']) {
+    const deps = parsed[key];
+    if (deps && typeof deps === 'object') delete (deps as Record<string, unknown>)[name];
+  }
+  return JSON.stringify(parsed, null, 2) + '\n';
 }
 
 /**

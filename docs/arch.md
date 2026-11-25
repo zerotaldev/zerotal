@@ -17,10 +17,20 @@ This package exposes it over the protocol agents speak.
 
 ## Install
 
+An app made with `create-zerotal` already has it: the dependency, the provider in
+`app/providers/ArchProvider.ts`, and every file below, unless it was scaffolded with
+`--no-agent`. Restart your agent once so it picks up the server, and skip to
+[the tools](#the-tools).
+
+To add it to an existing app:
+
 ```bash
 # in your project root
-bun add -d @zerotal/arch
+bun add @zerotal/arch
 ```
+
+A dependency rather than a devDependency, because the provider is imported when the app
+boots, and an install with `--production` that left it out would fail there.
 
 Register the provider in `bootstrap/providers.ts`:
 
@@ -38,15 +48,53 @@ Then wire it into whichever agents you use:
 bun zt arch:install
 ```
 
-That writes three things and restarts nothing:
+That writes these and restarts nothing:
 
-| File        | What it is                                                                                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| `.mcp.json` | Registers the server so an agent can call its tools. A `.cursor/` or `.vscode/` directory gets its own config too. |
-| `AGENTS.md` | The instructions, composed from the packages you actually installed.                                               |
-| `CLAUDE.md` | A one-line shim importing `AGENTS.md`.                                                                             |
+| File              | What it is                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `.mcp.json`       | Registers the server so an agent can call its tools. A `.cursor/` or `.vscode/` directory gets its own config too. |
+| `AGENTS.md`       | The instructions, composed from the packages you actually installed.                                               |
+| `CLAUDE.md`       | A one-line shim importing `AGENTS.md`.                                                                             |
+| `.agents/skills/` | Step-by-step skills, also written to `.claude/skills/` when `.claude/` exists.                                     |
 
 Restart your agent afterwards so it picks up the new server.
+
+### What the instructions say
+
+`AGENTS.md` is short on purpose, because an agent reads all of it on every task. It
+points at the tools rather than repeating the docs, and says four things:
+
+- **What this app has.** A few lines per installed package: where its classes go and
+  what owns what. An app on the `zerotal` bundle is described as having what the
+  bundle installs, and told to import through it (`zerotal/orm`).
+- **Before you build it yourself.** Everything the framework ships, installed or not:
+  tenancy, roles and permissions, two-factor sign-in, audit, an admin panel,
+  notifications, uploads, jobs, schedules, realtime, translations, AI, rate limiting,
+  backups and more. Each line says whether this app has it, the `bun add` that
+  installs it if not, and the page that covers it. An agent that is only told about
+  installed packages writes its own tenancy for an app that has none yet.
+- **How this app is set up.** Whether migrations or the models own the schema, whether
+  route names are typed, which strict compiler flags are on.
+- **Rules.** Read signatures with `api_surface`, scaffold before writing, and finish
+  with `doctor`.
+
+### Skills
+
+A skill is loaded only when a task needs it, so it can afford the detail
+`AGENTS.md` cannot. Each one covers a sequence and the traps in it, not signatures.
+A skill is installed only where the packages it needs are.
+
+| Skill                          | For                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------ |
+| `zerotal-crud-resource`        | A resource users create, list, edit and delete, from model to tests.                       |
+| `zerotal-feature-tests`        | A test against the booted app: one boot per file, signing in, fakes, asserting refusals.   |
+| `zerotal-schema-changes`       | Deciding whether a column needs a migration, and writing one that is safe to run again.    |
+| `zerotal-tenancy`              | Adding tenancy, scoping models, jobs that run outside a request, the isolation test.       |
+| `zerotal-queued-notifications` | Sending a notification in the background, and what survives the trip through the queue.    |
+| `zerotal-releases`             | Ordering release steps, replacing built assets, and production settings that fail quietly. |
+
+To change a shipped skill, edit it and delete its `zerotal:arch:generated` line.
+`arch:update` leaves a skill without that line alone.
 
 > **Note** — `ArchProvider` declares `environments: ["console"]`. It adds three commands
 > and contributes nothing to a request, so a web process never loads it.

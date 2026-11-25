@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BLOCK_END, BLOCK_START, applyBlock, fence } from "./markers.ts";
 import { applyMcpConfig, serverEntry } from "./mcpConfig.ts";
-import { agentsPreamble, buildGuidelines, claudeShim } from "./guidelines.ts";
+import { CAPABILITIES, agentsPreamble, buildGuidelines, claudeShim } from "./guidelines.ts";
 import { detectAgents } from "./detect.ts";
 import type { McpTarget } from "./detect.ts";
 
@@ -243,6 +243,17 @@ describe("buildGuidelines", () => {
     expect(text).toContain('import { DB } from "@zerotal/orm";');
   });
 
+  it("teaches bundle imports to an app that depends on the zerotal bundle", () => {
+    // The starters declare `zerotal` and import `zerotal/orm`; the scoped name is a
+    // package such an app never declared.
+    const text = buildGuidelines({
+      ...base,
+      packages: ["zerotal", "@zerotal/core", "@zerotal/orm"],
+    });
+    expect(text).toContain('import { DB } from "zerotal/orm";');
+    expect(text).not.toContain('import { DB } from "@zerotal/orm";');
+  });
+
   it("collapses to no blank-line runs, so it costs what it looks like it costs", () => {
     expect(buildGuidelines({ ...base, packages: ["@zerotal/core", "@zerotal/orm"] })).not.toContain(
       "\n\n\n",
@@ -251,6 +262,48 @@ describe("buildGuidelines", () => {
 
   it("ends with the rule the whole package exists for", () => {
     expect(buildGuidelines(base)).toContain("Finish with `doctor`");
+  });
+});
+
+describe("the capability index", () => {
+  const base = { packages: ["@zerotal/core"], serverName: "zerotal" };
+
+  it("names what is not installed, with the command that installs it", () => {
+    // The whole point: an app without tenancy is exactly the app whose agent is
+    // about to write tenant scoping by hand.
+    const text = buildGuidelines(base);
+    expect(text).toContain("### Before you build it yourself");
+    expect(text).toContain("**Multi-tenancy:**");
+    expect(text).toContain("`bun add @zerotal/tenancy`");
+  });
+
+  it("says installed for a package the app has, and offers no install for it", () => {
+    const text = buildGuidelines({ ...base, packages: [...base.packages, "@zerotal/tenancy"] });
+    expect(text).toContain("`@zerotal/tenancy`, installed");
+    expect(text).not.toContain("bun add @zerotal/tenancy");
+  });
+
+  it("points every entry at a page this package ships", async () => {
+    // The vendored copy is what `search_docs` answers from, and what an agent
+    // without network access can read. A page renamed under the index is a
+    // pointer to nothing.
+    const docs = join(import.meta.dir, "..", "..", "docs");
+    const missing: string[] = [];
+    for (const { doc } of CAPABILITIES) {
+      const page = Bun.file(join(docs, `${doc}.md`));
+      const index = Bun.file(join(docs, doc, "index.md"));
+      if (!(await page.exists()) && !(await index.exists())) missing.push(doc);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("names only real packages", async () => {
+    const packagesDir = join(import.meta.dir, "..", "..", "..");
+    for (const { pkg } of CAPABILITIES) {
+      if (pkg === undefined) continue;
+      const dir = pkg.replace("@zerotal/", "");
+      expect(await Bun.file(join(packagesDir, dir, "package.json")).exists()).toBe(true);
+    }
   });
 });
 

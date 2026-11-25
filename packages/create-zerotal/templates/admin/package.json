@@ -12,8 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@zerotal/devtools": "{{zerotal_version}}",
     "@zerotal/admin": "{{zerotal_version}}",
+    "@zerotal/arch": "{{zerotal_version}}",
+    "@zerotal/devtools": "{{zerotal_version}}",
     "@zerotal/flow": "{{zerotal_version}}",
     "zerotal": "{{zerotal_version}}"
   },

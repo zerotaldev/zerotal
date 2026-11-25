@@ -368,5 +368,32 @@ export async function declaredPackages(root = process.cwd()): Promise<InstalledP
     return installedPackages(root);
   }
 
+  // The `zerotal` package is a bundle: an app that declares it declares the
+  // packages it re-exports, and imports them as `zerotal/orm`, `zerotal/auth` and
+  // the rest. Reading it as one opaque name told every app scaffolded from a
+  // starter nothing about its data, auth, validation, jobs or tests, because none
+  // of those packages appear in its manifest by their own names.
+  if (declared.has("zerotal")) {
+    for (const name of await bundledPackages(root)) declared.add(name);
+  }
+
   return (await installedPackages(root)).filter((pkg) => declared.has(pkg.name));
+}
+
+/**
+ * The packages the installed `zerotal` bundle depends on.
+ *
+ * Read from the installed manifest rather than a list kept here, so the answer
+ * follows the version the app actually runs. Not installed, nothing is bundled:
+ * the same rule as any other declared package that is not on disk yet.
+ */
+export async function bundledPackages(root = process.cwd()): Promise<string[]> {
+  try {
+    const manifest = (await Bun.file(`${root}/node_modules/zerotal/package.json`).json()) as {
+      dependencies?: Record<string, string>;
+    };
+    return Object.keys(manifest.dependencies ?? {}).filter((name) => name.startsWith("@zerotal/"));
+  } catch {
+    return [];
+  }
 }

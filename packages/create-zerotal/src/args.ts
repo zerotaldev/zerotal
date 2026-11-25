@@ -14,6 +14,8 @@ export interface ParsedArgs {
   /** Take defaults for anything not supplied, instead of asking. */
   yes: boolean;
   install: boolean;
+  /** Ship the coding-agent files. `--no-agent` declines them. */
+  agent: boolean;
   help: boolean;
   version: boolean;
   /** Flags that are not ours — reported rather than ignored. */
@@ -33,7 +35,14 @@ export interface ParsedArgs {
  * they had answered.
  */
 export function parseArgs(argv: readonly string[]): ParsedArgs {
-  const out: ParsedArgs = { yes: false, install: true, help: false, version: false, unknown: [] };
+  const out: ParsedArgs = {
+    yes: false,
+    install: true,
+    agent: true,
+    help: false,
+    version: false,
+    unknown: [],
+  };
   const takesValue = new Set(['name', 'template', 'db', 't']);
 
   for (let i = 0; i < argv.length; i++) {
@@ -50,6 +59,12 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     // `--no-install` — the standard spelling for negating a boolean flag.
     if (key === 'no-install') {
       out.install = false;
+      continue;
+    }
+    // Not a prompt: the files are on by default, and a question nobody has context
+    // for yet is one more thing between a new user and a running app.
+    if (key === 'no-agent') {
+      out.agent = false;
       continue;
     }
     if (key === 'yes') {
@@ -95,6 +110,7 @@ export interface Resolution {
   template?: Template | undefined;
   db?: Database | undefined;
   install?: boolean | undefined;
+  agent?: boolean | undefined;
   /** Questions still to ask. Empty in non-interactive mode. */
   askFor?: Array<'name' | 'template' | 'db'>;
   /** Populated when `!ok` — a message a human or a CI log can act on. */
@@ -134,7 +150,15 @@ export function resolveOptions(args: ParsedArgs, interactive: boolean): Resoluti
     if (!template) askFor.push('template');
     // Only the API template offers a database choice; the rest have no DB config.
     if (!db && (template === undefined || template === 'api')) askFor.push('db');
-    return { ok: true, name: args.name, template, db, install: args.install, askFor };
+    return {
+      ok: true,
+      name: args.name,
+      template,
+      db,
+      install: args.install,
+      agent: args.agent,
+      askFor,
+    };
   }
 
   // Non-interactive from here: everything must already be known, or defaulted.
@@ -162,6 +186,7 @@ export function resolveOptions(args: ParsedArgs, interactive: boolean): Resoluti
     template: chosen,
     db: chosen === 'api' ? (db ?? DEFAULT_DATABASE) : DEFAULT_DATABASE,
     install: args.install,
+    agent: args.agent,
     askFor: [],
   };
 }
@@ -180,6 +205,7 @@ export function helpText(): string {
     `      --db <name>        ${DATABASES.join(' | ')} (api template only)`,
     '  -y, --yes              Take defaults for anything not given; never prompt',
     '      --no-install       Skip bun install',
+    '      --no-agent         Leave out AGENTS.md, the MCP config and the agent skills',
     '  -h, --help             Show this message',
     '  -v, --version          Print the scaffolder version',
     '',

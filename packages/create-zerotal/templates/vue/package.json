@@ -18,6 +18,7 @@
     "@inertiajs/vue3": "^3.0.0",
     "@simplewebauthn/server": "^14.1.0",
     "@vue/compiler-sfc": "^3.5.0",
+    "@zerotal/arch": "{{zerotal_version}}",
     "@zerotal/devtools": "{{zerotal_version}}",
     "@zerotal/inertia": "{{zerotal_version}}",
     "@zerotal/notifications": "{{zerotal_version}}",

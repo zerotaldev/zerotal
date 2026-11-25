@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'bun:test';
 import { join } from 'node:path';
 import { readdir, rm } from 'node:fs/promises';
-import { outputPath, RENAMED, scaffold, ZT_VERSION } from './scaffold.ts';
+import { AGENT_PATHS, isAgentPath, outputPath, RENAMED, scaffold, ZT_VERSION } from './scaffold.ts';
 import { TEMPLATES } from './args.ts';
 import { KITS } from './manifest.ts';
 
@@ -49,6 +49,69 @@ describe('scaffolded package.json', () => {
       }
     },
   );
+});
+
+// ── coding-agent files ───────────────────────────────────────────────────────
+
+describe('agent files', () => {
+  afterEach(async () => {
+    await rm(TMP, { recursive: true, force: true });
+  });
+
+  it.each(['minimal', 'api', 'admin', 'flow', 'react', 'vue'] as const)(
+    '%s ships AGENTS.md, the MCP config, skills and the provider by default',
+    async (template) => {
+      await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
+
+      for (const path of ['AGENTS.md', 'CLAUDE.md', '.mcp.json', 'app/providers/ArchProvider.ts']) {
+        expect({ path, exists: await Bun.file(join(TMP, path)).exists() }).toEqual({ path, exists: true });
+      }
+      const skills = await readdir(join(TMP, '.agents', 'skills'));
+      expect(skills).toContain('zerotal-feature-tests');
+      expect(await readdir(join(TMP, '.claude', 'skills'))).toEqual(skills);
+
+      const mcp = await Bun.file(join(TMP, '.mcp.json')).json();
+      expect(mcp.mcpServers.zerotal.args).toEqual(['node_modules/@zerotal/arch/src/bin/mcp.ts']);
+
+      // A regular dependency, not a dev one: the provider is imported at boot, so an
+      // install with --production that dropped it would fail before serving anything.
+      const pkg = await Bun.file(join(TMP, 'package.json')).json();
+      expect(pkg.dependencies['@zerotal/arch']).toBe(ZT_VERSION);
+
+      // The discovery index is the point: what ships, whether or not it is installed.
+      const agents = await Bun.file(join(TMP, 'AGENTS.md')).text();
+      expect(agents).toContain('### Before you build it yourself');
+      expect(agents).toContain('`bun add @zerotal/tenancy`');
+    },
+  );
+
+  it.each(['minimal', 'api', 'admin', 'flow', 'react', 'vue'] as const)(
+    '%s with --no-agent has none of them, and no @zerotal/arch',
+    async (template) => {
+      await scaffold({ name: 'app', template, db: 'sqlite', target: TMP, agent: false });
+
+      const written: string[] = [];
+      for await (const rel of new Bun.Glob('**/*').scan({ cwd: TMP, onlyFiles: true, dot: true })) {
+        const path = rel.replace(/\\/g, '/');
+        if (isAgentPath(path)) written.push(path);
+      }
+      expect(written).toEqual([]);
+
+      const pkg = await Bun.file(join(TMP, 'package.json')).json();
+      expect(pkg.dependencies['@zerotal/arch']).toBeUndefined();
+      // Everything else survives the rewrite.
+      expect(pkg.dependencies['zerotal']).toBe(ZT_VERSION);
+      expect(pkg.name).toBe('app');
+    },
+  );
+
+  it('matches a whole directory entry and a single file, and nothing beside them', () => {
+    expect(AGENT_PATHS).toContain('.agents/');
+    expect(isAgentPath('.agents/skills/x/SKILL.md')).toBe(true);
+    expect(isAgentPath('.vscode/mcp.json')).toBe(true);
+    expect(isAgentPath('.vscode/extensions.json')).toBe(false);
+    expect(isAgentPath('app/providers/AppServiceProvider.ts')).toBe(false);
+  });
 });
 
 // ── every template shares one baseline ───────────────────────────────────────

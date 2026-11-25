@@ -67,7 +67,7 @@ describe("temporal()", () => {
       'console.log(Carbon.create("2024-03-15T10:30:45Z", "UTC").addDays(1).toISOString(), polyfillLoaded());',
       true,
     );
-    expect(out).toBe("2024-03-16T10:30:45Z true");
+    expect(out).toBe("2024-03-16T10:30:45.000Z true");
   });
 
   it.skipIf(!hasNative)("never loads the polyfill when the runtime has Temporal", async () => {
@@ -80,7 +80,7 @@ describe("temporal()", () => {
       ].join("\n"),
       false,
     );
-    expect(out).toBe("2024-04-15T10:30:45Z 26 true false");
+    expect(out).toBe("2024-04-15T10:30:45.000Z 26 true false");
   });
 
   it("is the app's own import of the polyfill when there is no native Temporal", async () => {
@@ -183,12 +183,12 @@ describe("Carbon with values from an app's own copy of the polyfill", () => {
   it("takes a ZonedDateTime and keeps its zone", () => {
     const c = new Carbon(Polyfill.ZonedDateTime.from("2024-03-15T10:30:00+01:00[Europe/Paris]"));
     expect(c.timezone).toBe("Europe/Paris");
-    expect(c.toISOString()).toBe("2024-03-15T09:30:00Z");
+    expect(c.toISOString()).toBe("2024-03-15T09:30:00.000Z");
   });
 
   it("takes a PlainDate as midnight", () => {
     expect(new Carbon(Polyfill.PlainDate.from("2024-03-15"), "UTC").toISOString()).toBe(
-      "2024-03-15T00:00:00Z",
+      "2024-03-15T00:00:00.000Z",
     );
   });
 
@@ -196,7 +196,7 @@ describe("Carbon with values from an app's own copy of the polyfill", () => {
     const interval = CarbonInterval.fromDuration(Polyfill.Duration.from("P1DT2H"));
     expect(interval.toDuration()).toBeInstanceOf(Own.Duration);
     expect(Carbon.create("2024-03-15T00:00:00Z", "UTC").add(interval).toISOString()).toBe(
-      "2024-03-16T02:00:00Z",
+      "2024-03-16T02:00:00.000Z",
     );
   });
 });
@@ -228,25 +228,25 @@ describe.skipIf(!hasNative)("Carbon with native Temporal values (Bun 1.4+)", () 
     const c = new Carbon(N.ZonedDateTime.from("2024-03-15T10:30:00+01:00[Europe/Paris]"));
     expect(c.timezone).toBe("Europe/Paris");
     expect(c.hour).toBe(10);
-    expect(c.toISOString()).toBe("2024-03-15T09:30:00Z");
+    expect(c.toISOString()).toBe("2024-03-15T09:30:00.000Z");
   });
 
   it("takes a PlainDateTime in the given zone", () => {
     const c = new Carbon(N.PlainDateTime.from("2024-03-15T10:30:45"), "UTC");
-    expect(c.toISOString()).toBe("2024-03-15T10:30:45Z");
+    expect(c.toISOString()).toBe("2024-03-15T10:30:45.000Z");
   });
 
   it("takes a PlainDate as midnight", () => {
     const c = new Carbon(N.PlainDate.from("2024-03-15"), "UTC");
-    expect(c.toISOString()).toBe("2024-03-15T00:00:00Z");
+    expect(c.toISOString()).toBe("2024-03-15T00:00:00.000Z");
   });
 
   it("works through every entry point that takes a CarbonInput", () => {
     const instant = N.Instant.from("2024-03-15T10:30:45Z");
-    expect(Carbon.create(instant, "UTC").toISOString()).toBe("2024-03-15T10:30:45Z");
+    expect(Carbon.create(instant, "UTC").toISOString()).toBe("2024-03-15T10:30:45.000Z");
     try {
       Carbon.setTestNow(instant);
-      expect(Carbon.now("UTC").toISOString()).toBe("2024-03-15T10:30:45Z");
+      expect(Carbon.now("UTC").toISOString()).toBe("2024-03-15T10:30:45.000Z");
     } finally {
       Carbon.release();
     }
@@ -257,8 +257,8 @@ describe.skipIf(!hasNative)("Carbon with native Temporal values (Bun 1.4+)", () 
       at: Temporal.Instant;
       on: Temporal.PlainDate;
     };
-    expect(new Carbon(parsed.at, "UTC").toISOString()).toBe("1979-05-27T07:32:00Z");
-    expect(new Carbon(parsed.on, "UTC").toISOString()).toBe("1979-05-27T00:00:00Z");
+    expect(new Carbon(parsed.at, "UTC").toISOString()).toBe("1979-05-27T07:32:00.000Z");
+    expect(new Carbon(parsed.on, "UTC").toISOString()).toBe("1979-05-27T00:00:00.000Z");
   });
 });
 
@@ -275,7 +275,7 @@ describe.skipIf(!hasNative)("CarbonInterval with native Temporal values (Bun 1.4
     const later = Carbon.create("2024-03-15T00:00:00Z", "UTC").add(
       new CarbonInterval(N.Duration.from("P1DT2H")),
     );
-    expect(later.toISOString()).toBe("2024-03-16T02:00:00Z");
+    expect(later.toISOString()).toBe("2024-03-16T02:00:00.000Z");
   });
 
   it("cascades relative to a ZonedDateTime", () => {

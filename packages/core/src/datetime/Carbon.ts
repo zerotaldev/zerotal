@@ -1271,9 +1271,12 @@ export class Carbon {
     return new Date(Number(this._zdt.epochMilliseconds));
   }
 
-  /** ISO 8601 string with UTC offset, e.g. "2024-01-01T12:00:00+00:00". @category Conversion */
+  /**
+   * ISO 8601 string in UTC with exactly three fraction digits, e.g.
+   * `"2024-01-01T12:00:00.000Z"`: the same as `Date.prototype.toISOString()`. @category Conversion
+   */
   toISOString(): string {
-    return this._zdt.toInstant().toString();
+    return this._isoMillis();
   }
 
   /** Return the backing Temporal.ZonedDateTime. @category Conversion */
@@ -1332,9 +1335,9 @@ export class Carbon {
     return this.format("DD MMMM YYYY");
   }
 
-  /** ISO string returned when JSON.stringify is called. @category Conversion */
+  /** ISO string returned when JSON.stringify is called; the same as {@link toISOString}. @category Conversion */
   toJSON(): string {
-    return this._zdt.toInstant().toString();
+    return this._isoMillis();
   }
 
   /** `"YYYY-MM-DD HH:mm:ss"` string used for string coercion. @category Conversion */
@@ -1342,9 +1345,21 @@ export class Carbon {
     return this.format("YYYY-MM-DD HH:mm:ss");
   }
 
-  /** ISO 8601 string — compatible with most database datetime columns. @category Conversion */
+  /**
+   * ISO 8601 string for a database datetime column; the same as {@link toISOString}. The width
+   * is fixed, so stored values sort as strings in time order. @category Conversion
+   */
   toDatabase(): string {
-    return this._zdt.toInstant().toString();
+    return this._isoMillis();
+  }
+
+  /**
+   * UTC ISO 8601 with exactly three fraction digits. `Instant.toString()` on its own trims
+   * trailing zeros (`.940Z` becomes `.94Z`, and a whole second has no fraction at all), so
+   * strings that should sort in time order would not.
+   */
+  private _isoMillis(): string {
+    return this._zdt.toInstant().toString({ fractionalSecondDigits: 3 });
   }
 
   // ── Private formatting impl ───────────────────────────────────────────────

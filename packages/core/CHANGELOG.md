@@ -23,6 +23,12 @@ follows the Zerotal monorepo's unified versioning.
   percent-decoded every GET and HEAD path before checking whether it owned it, so `/mail%ZZ`
   threw a `URIError` ahead of the application's own middleware, where nothing could catch it. A
   malformed path outside every mount now passes to the application, and one under a mount is a 400.
+- **`Carbon`'s ISO strings always have three fraction digits.** `toDatabase()`, `toISOString()`
+  and `toJSON()` trimmed trailing zeros, so `.940` was written `.94Z` and a whole second had no
+  fraction at all. Stored timestamps then sorted out of time order as strings, and the output
+  differed from `Date.prototype.toISOString()` and from what the ORM itself writes. All three
+  now give `2026-11-25T10:00:00.000Z`. A test that compares one of these strings against a
+  literal without the fraction (`"…T10:00:00Z"`) needs the `.000` added.
 
 ## [1.17.2] — 2026-11-25
 

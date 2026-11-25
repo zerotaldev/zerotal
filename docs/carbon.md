@@ -538,8 +538,8 @@ d.toLongDate(); // '15 June 2026'
 ```typescript fragment
 // anywhere in your app
 d.toDate(); // native Date
-d.toISOString(); // '2026-06-15T07:30:00+00:00' (UTC)
-d.toDatabase(); // same — compatible with DB datetime columns
+d.toISOString(); // '2026-06-15T07:30:00.000Z' (UTC, always three fraction digits, as Date's)
+d.toDatabase(); // same — fixed width, so stored values sort as strings in time order
 d.toUnix(); // 1_750_067_400 (seconds)
 d.toMilliseconds(); // 1_750_067_400_000
 d.valueOf(); // same as toMilliseconds() — enables < > comparisons

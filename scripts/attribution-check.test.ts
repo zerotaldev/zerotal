@@ -24,6 +24,7 @@ describe("attributionLines", () => {
     expect(attributionLines("Co-authored-by: Jane Doe <jane@example.com>")).toEqual([]);
     expect(attributionLines("Regenerated with `bun run arch:docs`.")).toEqual([]);
     expect(attributionLines("The docs mention Claude-style prompts.")).toEqual([]);
+    expect(attributionLines('Fails on the "Generated with Claude Code" footer.')).toEqual([]);
   });
 });
 

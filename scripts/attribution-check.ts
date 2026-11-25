@@ -24,7 +24,9 @@ export interface AttributionHit {
 const MARKERS: readonly RegExp[] = [
   /^co-authored-by:.*\b(claude|anthropic)\b/i,
   /^co-authored-by:.*noreply@anthropic\.com/i,
-  /generated with \[?claude code/i,
+  // The footer itself, with its link brackets; prose that names it ("the Generated with
+  // Claude Code footer") is not one.
+  /generated with \[claude code\]/i,
   /^claude-session:/i,
 ];
 

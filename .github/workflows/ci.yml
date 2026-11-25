@@ -52,20 +52,21 @@ jobs:
       - name: Lockfile format
         run: bun run lockfile:check
 
+      - name: Install
+        run: bun install --frozen-lockfile
+
       # Commits here are the maintainer's. A co-author trailer that reaches main lists an extra
       # contributor on the repository page, and a force-push cannot take it back: GitHub keeps
       # the old commit, pinned by its pull request. Text from the event goes through env, never
       # into the script.
       - name: No AI attribution
+        if: ${{ !cancelled() }}
         run: bun run attribution:check
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
-
-      - name: Install
-        run: bun install --frozen-lockfile
 
       - name: Typecheck
         run: bun run typecheck

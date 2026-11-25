@@ -27,6 +27,51 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.17.3 — 2026-11-25
+
+A patch of fixes, most of them reported from apps in production. Uploads posted as a list are
+no longer dropped, routes under `.well-known/` are served, a malformed URL is not a 500, a route's
+own security headers are kept, and `Carbon`'s ISO strings have a fixed width.
+
+### Before you upgrade
+
+Read [1.17.3](/docs/upgrade#1173) in the upgrade guide. No app needs a code change, but two
+fixes can change what an existing app sees:
+
+- **`Carbon`'s ISO strings always have three fraction digits** (`@zerotal/core`). A test that
+  compares `toISOString()`, `toJSON()` or `toDatabase()` against a literal with no fraction,
+  such as `"2026-11-25T10:00:00Z"`, now gets `"2026-11-25T10:00:00.000Z"`.
+- **A security header a route sets itself is kept** (`@zerotal/core`). A route that set one of
+  these headers and relied on `app.secureHeaders` replacing it now sends its own.
+
+### Changed
+
+- **A new app depends on `~1.17.3`** (`create-zerotal`), so it installs this release.
+
+### Fixed
+
+- **`files()` and `file()` read a list posted as `name[]` or `name[0]`** (`@zerotal/core`). Both
+  looked up the exact field name, but a form helper that serialises an array of files, as the
+  Inertia adapter's does, posts `attachments[]`. So `files("attachments")` returned nothing and
+  the request succeeded with every upload missing. In production, a PDF went out as an empty
+  message.
+- **File routes under `.well-known/` are served** (`@zerotal/core`). The route scan skipped
+  dot-directories without a word, so `app/routes/.well-known/security.txt.ts` was missing from
+  `route:list` and answered 404. Dot-directories are routed, and carried into a compiled binary;
+  dotfiles are still never routes.
+- **A malformed URL is no longer a 500** (`@zerotal/core`). With a storage disk served, a path
+  such as `/mail%ZZ` threw ahead of the application's own middleware. Outside every mount it now
+  passes to the application, and under a mount it is a 400.
+- **A security header a route sets itself is no longer overwritten** (`@zerotal/core`).
+  `app.secureHeaders` replaced a narrower policy chosen for one response: a print view's
+  `Content-Security-Policy: sandbox …` came back as the site-wide policy, and a preview the app
+  frames itself got `frame-ancestors 'none'`. A header already on the response keeps its value;
+  every header it lacks is still added.
+- **`Carbon`'s ISO strings always have three fraction digits** (`@zerotal/core`). `toDatabase()`,
+  `toISOString()` and `toJSON()` trimmed trailing zeros (`.940` became `.94Z`), so stored
+  timestamps sorted out of time order as strings, and the output differed from
+  `Date.prototype.toISOString()` and from what the ORM writes.
+
 ## 1.17.2 — 2026-11-25
 
 A patch. The React, Vue and Flow starters become full first apps, with sign-in, settings, an

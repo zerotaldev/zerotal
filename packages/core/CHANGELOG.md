@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.3] — 2026-11-25
+
 ### Fixed
 
 - **A security header a route sets itself is no longer overwritten.** `SecureHeadersMiddleware`

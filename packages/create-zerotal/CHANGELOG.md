@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.3] — 2026-11-25
+
+### Changed
+
+- **A new app depends on `~1.17.3`**, so it installs this release and its fixes.
+
 ## [1.17.2] — 2026-11-25
 
 ### Changed

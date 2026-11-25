@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.2] — 2026-11-25
+
 ### Changed
 
 - **The React starter is a first app rather than a demo site.** Signed-in pages render in a

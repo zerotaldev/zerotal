@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.2] — 2026-11-25
+
 ### Fixed
 
 - **A `ModelNotFoundError` from route-model binding is no longer logged as an unhandled error.**

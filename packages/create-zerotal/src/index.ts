@@ -80,17 +80,17 @@ async function main(): Promise<void> {
     {
       value:       'flow',
       label:       'Flow',
-      description: 'Server-driven UI — Flow pages, top nav, Tailwind',
+      description: 'Full app on Flow — sign-in, settings, an example resource, tests',
     },
     {
       value:       'react',
       label:       'React',
-      description: 'Inertia + React SPA — file-based routes, Tailwind',
+      description: 'Full app with React pages — sign-in, settings, an example resource, tests',
     },
     {
       value:       'vue',
       label:       'Vue',
-      description: 'Inertia + Vue SPA — file-based routes, Tailwind',
+      description: 'Full app with Vue pages — sign-in, settings, an example resource, tests',
     },
     {
       value:       'minimal',
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   ]);
 
   // ── Database ─────────────────────────────────────────────────────────────────
-  // Only the API template ships a database config; minimal/flow have no DB.
+  // Only the API template asks for a database; the other templates start on SQLite.
   let db: Database = plan.db ?? 'sqlite';
   if (template === 'api' && asking.has('db')) {
     log('');

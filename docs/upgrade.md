@@ -77,6 +77,40 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.17.2
+
+A patch. No app needs a code change. Two fixes can change what an existing app sees.
+
+### Route types gain the verb of `.name()` routes
+
+`bun zt route:types` used to leave a route named with `.name()` (`Router.get(…).name("login")`,
+and likewise after `Router.post`, `Router.flow` or `Router.view`) out of `METHODS` in
+`types/routes.generated.ts`. It now writes its verb, as it does for routes named by a file
+route's `meta`.
+
+**What to change.** Run `bun zt route:types` once and commit the file. Until then, a CI step
+running `bun zt route:types --check` reports the file as out of date. `route()` is unaffected.
+
+### `/health` answers outside production
+
+An app that never configured health checks now serves `/health` outside production, as
+[Health checks](/docs/health) always said it would. Production is unchanged: the endpoint stays
+off there unless you turn it on.
+
+**What to change.** Nothing, unless you don't want the endpoint in development or staging: set
+`health: { enabled: false }` in `config/app.ts`.
+
+### Also worth knowing (not breaking)
+
+- **More Flow pages compile ahead of time**: pages registered with `Router.flow()`, pages that
+  extend a base class of your own, and pages with attribute values worked out on the server.
+  They render the same HTML as before, and now also work under `cspSafe`, where the runtime
+  fallback is refused. A page that still can't compile says why when you set
+  `ZT_FLOW_COMPILE_LOG=1`.
+- **A missing route-bound record is no longer logged** as an unhandled error. It still answers 404.
+- **The React, Vue and Flow starters are full first apps.** This changes only what
+  `bun create zerotal` scaffolds; existing apps are not touched.
+
 ## 1.17.1
 
 A patch. One of its fixes changes what an app on SQLite can see. No app needs a code change.

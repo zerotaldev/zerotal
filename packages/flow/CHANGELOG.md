@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.17.2] — 2026-11-25
+
 ### Changed
 
 - **An attribute worked out on the server no longer stops a page compiling.** `href={route("login")}`,

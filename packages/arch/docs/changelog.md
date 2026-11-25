@@ -27,6 +27,67 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.17.2 — 2026-11-25
+
+A patch. The React, Vue and Flow starters become full first apps, with sign-in, settings, an
+example resource and tests. Flow compiles more pages ahead of time, including every page of the
+new Flow starter. `/health` is served outside production by default, as the docs say.
+
+### Before you upgrade
+
+Read [1.17.2](/docs/upgrade#1172) in the upgrade guide. No app needs a code change, but two
+fixes can change what an existing app sees:
+
+- **`bun zt route:types` writes the verb of routes named with `.name()`** (`@zerotal/core`). An
+  app that names routes this way gets new lines in `types/routes.generated.ts` the next time
+  the file is generated, and `bun zt route:types --check` fails until the change is committed.
+- **`/health` answers outside production** (`@zerotal/core`) in an app that never configured it.
+
+### Added
+
+- **The React, Vue and Flow starters are first apps** (`create-zerotal`), not demo sites. Each
+  ships:
+  - a signed-in shell with a sidebar, and a slide-out menu on phones;
+  - a dashboard and a component set, with light, dark and system themes;
+  - complete sign-in from `@zerotal/auth`: email verification, a lockout message, password
+    confirmation, two-factor with recovery codes, and signed-in sessions;
+  - opt-in passkeys and GitHub / Google sign-in;
+  - a Settings section in place of `/profile`;
+  - an example `Project` resource, with `bun zt db:seed` creating `demo@example.com` / `password`;
+  - feature tests for every flow, a CI workflow, a Dockerfile and Prettier settings.
+
+  The three are the same app, page for page and test for test. Apps scaffolded earlier are not
+  touched.
+
+### Changed
+
+- **More Flow pages compile ahead of time** (`@zerotal/flow`), instead of rendering through
+  the runtime fallback, which `cspSafe` does not allow:
+  - a page registered with `Router.flow()` in a route file, not only a file-routed page;
+  - a page that extends a class of the app's own, which in turn extends `Component`;
+  - attribute values worked out on the server, such as `href={route("login")}` or
+    `data-id={row.id}` inside a `.map()`;
+  - `dangerouslySetInnerHTML`;
+  - a `.map()` callback with a block body.
+
+  A compiled page renders the same HTML the runtime does.
+
+- **A new app depends on `~1.17.2`** (`create-zerotal`), so it installs this release.
+
+### Fixed
+
+- **`/health` is served outside production by default** (`@zerotal/core`). `AppConfig()`
+  defaulted `health` to `false`, so a fresh app answered 404 under `bun zt serve`, contrary to
+  [Health checks](/docs/health). It stays off in production, and an app that sets `health` is
+  unchanged.
+- **A missing route-bound record is no longer logged as an unhandled error** (`@zerotal/core`,
+  `@zerotal/orm`). The 404 is unchanged; the stack trace in the log is gone.
+- **A route named with `.name()` is known by its verb** (`@zerotal/core`). The name reached
+  `route()` but not the route's definition, so `bun zt route:types` wrote it into `ROUTES` with
+  no entry in `METHODS`.
+- **A compiled Flow page keeps the spaces in its text** (`@zerotal/flow`). `<b>{count}</b> projects`
+  lost its space once compiled, though the runtime kept it.
+
 ## 1.17.1 — 2026-11-21
 
 A patch. A binary built by `bun zt compile` now carries the app's own files and serves the app,

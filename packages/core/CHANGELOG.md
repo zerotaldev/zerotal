@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.2] — 2026-11-25
+
 ### Fixed
 
 - **`/health` is served outside production by default, as the docs say.** `AppConfig()` defaulted

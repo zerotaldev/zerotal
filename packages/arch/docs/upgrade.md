@@ -77,6 +77,38 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.17.3
+
+A patch. No app needs a code change. Two fixes can change what an existing app sees.
+
+### `Carbon`'s ISO strings have three fraction digits
+
+`toISOString()`, `toJSON()` and `toDatabase()` used to trim trailing zeros, so a whole second
+printed as `2026-11-25T10:00:00Z` and `.940` as `.94Z`. They now always print three digits, as
+`Date.prototype.toISOString()` does: `2026-11-25T10:00:00.000Z`. Stored values now sort in time
+order as strings, and match what the ORM writes.
+
+**What to change.** Nothing in application code. A test that compares one of these strings
+against a literal without the fraction needs `.000` added to the literal.
+
+### A security header a route sets itself is kept
+
+The security headers from `app.secureHeaders` are now defaults: a response that already carries
+one keeps its own value, and the rest are still added. Before, the global value replaced it.
+
+**What to change.** Nothing, unless a route sets one of these headers and you relied on the
+global value replacing it. Remove the route's header in that case.
+
+### Also worth knowing (not breaking)
+
+- **`http.files()` and `http.file()` read `name[]` and `name[0]` fields**, so files posted by the
+  Inertia adapter as `attachments[]` arrive. If you read `attachments[]` by hand to work around
+  this, the workaround still works and can go.
+- **Routes under `app/routes/.well-known/` are served.** Remove any route you registered by hand
+  to stand in for one.
+- **A malformed URL is a 400 under a storage mount**, and passes to your app elsewhere, instead
+  of a 500.
+
 ## 1.17.2
 
 A patch. No app needs a code change. Two fixes can change what an existing app sees.

@@ -44,6 +44,26 @@ describe("with no files embedded", () => {
     }
   });
 
+  it("enters dot-directories only when asked", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "zt-app-files-"));
+    try {
+      mkdirSync(join(dir, ".well-known"));
+      writeFileSync(join(dir, "index.ts"), "");
+      writeFileSync(join(dir, ".well-known", "security.txt.ts"), "");
+
+      expect(await _scanAppFiles(dir, "**/*.ts")).toEqual(["index.ts"]);
+      expect(await _scanAppFiles(dir, "**/*.ts", { dot: true })).toEqual([
+        ".well-known/security.txt.ts",
+        "index.ts",
+      ]);
+      expect(_scanAppFilesSync(dir, "**/*.ts", { dot: true })).toContain(
+        ".well-known/security.txt.ts",
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("finds nothing in a directory that does not exist", async () => {
     expect(await _scanAppFiles(join(root, "no-such-directory"), "**/*.ts")).toEqual([]);
     expect(_scanAppFilesSync(join(root, "no-such-directory"), "*.ts")).toEqual([]);
@@ -71,6 +91,20 @@ describe("with files embedded", () => {
     expect(await _appDirectoryExists(`${root}/app/routes`)).toBe(true);
     expect(await _appDirectoryExists(`${root}/app/models`)).toBe(false);
     expect(await _readAppFileText(`${root}/resources/app.html`)).toBe("<p>embedded</p>");
+  });
+
+  // Bun.Glob.match() accepts a dot-directory's paths although scan() skips them; a binary must
+  // answer as the disk does, or a scan would find different files once compiled.
+  it("applies the dot-directory rule as the disk does", async () => {
+    _embedAppFiles({
+      "app/routes/index.ts": module("index"),
+      "app/routes/.well-known/security.txt.ts": module("txt"),
+    });
+    expect(await _scanAppFiles(`${root}/app/routes`, "**/*.ts")).toEqual(["index.ts"]);
+    expect(await _scanAppFiles(`${root}/app/routes`, "**/*.ts", { dot: true })).toEqual([
+      ".well-known/security.txt.ts",
+      "index.ts",
+    ]);
   });
 
   it("accepts file:// URLs and drops a hot-reload query", async () => {

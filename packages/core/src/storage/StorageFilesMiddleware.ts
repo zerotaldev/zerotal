@@ -56,8 +56,16 @@ export class StorageFilesMiddleware extends BaseMiddleware<StorageFilesOptions> 
     const method = http.request.method.toUpperCase();
     if (method !== "GET" && method !== "HEAD") return next();
 
-    const pathname = decodeURIComponent(http.url.pathname);
-    const mount = mounts.find((m) => pathname === m.prefix || pathname.startsWith(m.prefix + "/"));
+    // This middleware runs ahead of the application's own, for every GET and HEAD, so a path
+    // that is not valid percent-encoding (`/mail%ZZ`) must not throw here: that was a 500 on
+    // every route, and one the application could not guard against. A malformed path under a
+    // mount is a bad request; anywhere else it is the application's to answer.
+    const raw = http.url.pathname;
+    const pathname = _decodePath(raw);
+    if (pathname === null) {
+      return _isUnder(mounts, raw) ? this._badRequest() : next();
+    }
+    const mount = _isUnder(mounts, pathname);
     if (!mount) return next();
 
     const relative = pathname.slice(mount.prefix.length).replace(/^\/+/, "");
@@ -120,6 +128,24 @@ export class StorageFilesMiddleware extends BaseMiddleware<StorageFilesOptions> 
 
   private _notFound(): Response {
     return new Response("Not Found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  }
+
+  private _badRequest(): Response {
+    return new Response("Bad Request", { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+}
+
+/** The mount a path falls under (the prefix itself, or below it), if any. */
+function _isUnder(mounts: Mount[], path: string): Mount | undefined {
+  return mounts.find((m) => path === m.prefix || path.startsWith(m.prefix + "/"));
+}
+
+/** A URL path, percent-decoded, or `null` when it is not valid percent-encoding. */
+function _decodePath(path: string): string | null {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return null;
   }
 }
 

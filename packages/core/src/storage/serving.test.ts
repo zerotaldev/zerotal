@@ -276,6 +276,20 @@ describe("StorageFilesMiddleware", () => {
     expect(await res!.text()).toBe("SPACED");
   });
 
+  // The middleware sees every GET and HEAD before the application does, so a bad escape in
+  // any URL threw a URIError here: a 500 the application could not intercept.
+  it("passes a malformed path outside its mounts to the application", async () => {
+    const res = await serve(mount(disk, { path: "/storage" }), "http://x/mail%ZZ");
+
+    expect(res).toBeUndefined();
+  });
+
+  it("answers a malformed path under a mount with 400", async () => {
+    const res = await serve(mount(disk, { path: "/storage" }), "http://x/storage/a%ZZ.png");
+
+    expect(res?.status).toBe(400);
+  });
+
   it("applies configured headers and a cache default", async () => {
     await disk.put("a.txt", "x");
 

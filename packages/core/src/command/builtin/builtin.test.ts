@@ -1778,6 +1778,8 @@ describe("CompileCommand's generated entry", () => {
         ["app/models/User.ts", ""],
         ["app/models/User.test.ts", ""],
         ["app/env.d.ts", ""],
+        ["app/routes/.well-known/security.txt.ts", ""],
+        ["app/routes/.draft.ts", ""],
         ["resources/lang/en.json", "{}"],
         ["resources/app.html", ""],
         ["resources/css/app.css", ""],
@@ -1795,6 +1797,7 @@ describe("CompileCommand's generated entry", () => {
         ]),
       ).toEqual([
         "app/models/User.ts",
+        "app/routes/.well-known/security.txt.ts",
         "config/app.ts",
         "resources/app.html",
         "resources/lang/en.json",

@@ -580,6 +580,44 @@ describe("HttpContext.files()", () => {
     expect(files).toHaveLength(2);
     expect(files[0]?.originalName).toBe("a.txt");
   });
+
+  // A form helper that serialises an array of files posts them as `attachments[]` (or with an
+  // index), and an exact-name lookup found none of them: the request succeeded with every
+  // upload silently missing.
+  it("reads a list posted as attachments[]", async () => {
+    const fd = new FormData();
+    fd.append("attachments[]", new File(["a"], "a.pdf", { type: "application/pdf" }));
+    fd.append("attachments[]", new File(["b"], "b.pdf", { type: "application/pdf" }));
+    const ctx = HttpContext.fake("http://localhost/", { method: "POST", body: fd });
+    const files = await ctx.files("attachments");
+    expect(files.map((f) => f.originalName)).toEqual(["a.pdf", "b.pdf"]);
+  });
+
+  it("reads a list posted with indexes, in the order sent", async () => {
+    const fd = new FormData();
+    fd.append("attachments[0]", new File(["a"], "a.pdf", { type: "application/pdf" }));
+    fd.append("attachments[1]", new File(["b"], "b.pdf", { type: "application/pdf" }));
+    const ctx = HttpContext.fake("http://localhost/", { method: "POST", body: fd });
+    const files = await ctx.files("attachments");
+    expect(files.map((f) => f.originalName)).toEqual(["a.pdf", "b.pdf"]);
+  });
+
+  it("does not read a nested object's member, another field, or a text value", async () => {
+    const fd = new FormData();
+    fd.append("attachments[cover]", new File(["c"], "cover.png", { type: "image/png" }));
+    fd.append("attachmentsExtra", new File(["x"], "x.png", { type: "image/png" }));
+    fd.append("attachments[]", "not a file");
+    const ctx = HttpContext.fake("http://localhost/", { method: "POST", body: fd });
+    expect(await ctx.files("attachments")).toEqual([]);
+  });
+
+  it("file() returns the first of a bracketed list", async () => {
+    const fd = new FormData();
+    fd.append("avatar[]", new File(["a"], "first.png", { type: "image/png" }));
+    fd.append("avatar[]", new File(["b"], "second.png", { type: "image/png" }));
+    const ctx = HttpContext.fake("http://localhost/", { method: "POST", body: fd });
+    expect((await ctx.file("avatar"))?.originalName).toBe("first.png");
+  });
 });
 
 // ── HttpContext.afterResponse() ───────────────────────────────────────────────

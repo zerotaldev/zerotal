@@ -129,6 +129,24 @@ describe("scanFileRoutes — route registration", () => {
     expect(Router.routes.has("POST /posts")).toBe(true);
   });
 
+  // A default glob skips dot-directories without a word, so these routes 404ed and were missing
+  // from route:list.
+  it("routes files under .well-known/", async () => {
+    await Bun.write(`${TMP}/.well-known/security.txt.ts`, `export function GET() {}`);
+    await Bun.write(`${TMP}/.well-known/openid-configuration.ts`, `export function GET() {}`);
+    await scanFileRoutes(TMP);
+    expect(Router.routes.has("GET /.well-known/security.txt")).toBe(true);
+    expect(Router.routes.has("GET /.well-known/openid-configuration")).toBe(true);
+  });
+
+  it("does not route a dotfile", async () => {
+    await Bun.write(`${TMP}/notes/.draft.ts`, `export function GET() {}`);
+    await Bun.write(`${TMP}/notes/index.ts`, `export function GET() {}`);
+    await scanFileRoutes(TMP);
+    expect(Router.routes.has("GET /notes")).toBe(true);
+    expect([...Router.routes.keys()].some((key) => key.includes(".draft"))).toBe(false);
+  });
+
   it("converts [id] to :id in the registered path", async () => {
     await Bun.write(`${TMP}/items/[id].ts`, `export function GET() {} export function DELETE() {}`);
     await scanFileRoutes(TMP);

@@ -191,7 +191,10 @@ and freezing them would have promised the shape of `.mcp.json` writing to nobody
 
 Neither `ai` nor `arch` is in the `zerotal` meta-package. `arch` stays out because
 `arch:install` writes configuration and instruction files into a project, which is an
-opinion about someone's toolchain and stays their choice to invite. `ai` stays out for
+opinion about someone's toolchain. A new app from `create-zerotal` does get it, with
+the files already written, because an agent that is never told what the framework
+ships tends to write its own. One flag, `--no-agent`, declines it, and an existing app
+still adds it only by choice. `ai` stays out for
 its own reason rather than by omission: it is the only package with an optional peer
 on a vendor SDK, and pulling it into the meta-package would put a provider dependency
 in front of every app that installs `zerotal`, including the ones with no AI in them.

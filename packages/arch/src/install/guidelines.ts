@@ -141,6 +141,182 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
   },
 ];
 
+/**
+ * One thing an app commonly needs, and what in the framework already does it.
+ *
+ * `pkg` is the package to install for it, or absent when it ships in the kernel
+ * every app has. `doc` is a page name under `/docs/`, which `search_docs` and the
+ * vendored copy in this package both answer for; a test holds every one of them
+ * to a page that exists.
+ */
+export interface Capability {
+  need: string;
+  provides: string;
+  pkg?: string;
+  doc: string;
+}
+
+/**
+ * The "before you build it yourself" index.
+ *
+ * {@link PACKAGE_BLOCKS} only speaks about packages already installed, which is
+ * right for "how does this app work" and exactly wrong for discovery: an agent
+ * asked for tenancy in an app without `@zerotal/tenancy` was told nothing about
+ * it, and wrote tenant scoping, then roles, then an audit log by hand, beside
+ * framework packages that do all three. This list names what exists whether or
+ * not it is installed, and says which.
+ *
+ * One line each, pointing at the page that owns the subject. A capability that
+ * does not ship is never listed — an index that sends an agent looking for
+ * something that is not there is worse than no index.
+ */
+export const CAPABILITIES: readonly Capability[] = [
+  {
+    need: "Multi-tenancy",
+    provides: "tenant resolvers and tenant-scoped models",
+    pkg: "@zerotal/tenancy",
+    doc: "tenancy",
+  },
+  {
+    need: "Roles and permissions",
+    provides: "the `Roles` and `Permissions` model mixins, `Auth.can()`",
+    pkg: "@zerotal/auth",
+    doc: "authorization",
+  },
+  {
+    need: "Policies",
+    provides: "policy classes in `app/policies/`, discovered automatically",
+    pkg: "@zerotal/auth",
+    doc: "authorization",
+  },
+  {
+    need: "Two-factor sign-in",
+    provides: "TOTP codes and recovery codes",
+    pkg: "@zerotal/auth",
+    doc: "roles-and-2fa",
+  },
+  {
+    need: "Passkeys, magic links, email codes",
+    provides: "`PasskeyService` and passwordless login",
+    pkg: "@zerotal/auth",
+    doc: "authentication",
+  },
+  {
+    need: "Sign in with GitHub, Google or Apple",
+    provides: "OAuth drivers",
+    pkg: "@zerotal/auth",
+    doc: "social",
+  },
+  {
+    need: "Password reset",
+    provides: "`PasswordBroker`",
+    pkg: "@zerotal/auth",
+    doc: "password-reset",
+  },
+  {
+    need: "Email verification",
+    provides: "signed links and `ValidateSignatureMiddleware`",
+    pkg: "@zerotal/auth",
+    doc: "email-verification",
+  },
+  {
+    need: "An audit trail",
+    provides: "the `Auditable` mixin and manual audit events",
+    pkg: "@zerotal/audit",
+    doc: "audit",
+  },
+  {
+    need: "An admin panel",
+    provides: "declarative resources, tables, forms and dashboards",
+    pkg: "@zerotal/admin",
+    doc: "admin",
+  },
+  {
+    need: "Mail, SMS and in-app notifications",
+    provides: "notification classes, one per message",
+    pkg: "@zerotal/notifications",
+    doc: "notifications",
+  },
+  {
+    need: "File uploads and image conversions",
+    provides: "media attached to models",
+    pkg: "@zerotal/media",
+    doc: "media",
+  },
+  { need: "File storage", provides: "local and S3-compatible disks", doc: "storage" },
+  {
+    need: "Background jobs",
+    provides: "job classes and a worker",
+    pkg: "@zerotal/queue",
+    doc: "queue",
+  },
+  {
+    need: "Scheduled tasks",
+    provides: "`Schedule` classes in `app/schedules/`",
+    pkg: "@zerotal/scheduler",
+    doc: "scheduler",
+  },
+  {
+    need: "Caching",
+    provides: "SQLite, Redis and memory drivers with tags",
+    pkg: "@zerotal/cache",
+    doc: "cache",
+  },
+  {
+    need: "Realtime updates",
+    provides: "authorised broadcast channels",
+    pkg: "@zerotal/broadcasting",
+    doc: "broadcasting",
+  },
+  {
+    need: "Translations",
+    provides: "`__()` with plurals and per-request locale",
+    pkg: "@zerotal/i18n",
+    doc: "i18n",
+  },
+  {
+    need: "Calls to a language model",
+    provides: "`Ai.text()`, `Ai.object()`, `Ai.agent()`",
+    pkg: "@zerotal/ai",
+    doc: "ai",
+  },
+  {
+    need: "Rate limiting",
+    provides: "`ThrottleMiddleware` and named limiters",
+    doc: "rate-limiting",
+  },
+  { need: "Locks across processes", provides: "`zerotal/lock`", doc: "lock" },
+  { need: "Encryption and hashing", provides: "encrypt, hash and sign helpers", doc: "encryption" },
+  { need: "Maintenance mode and a pre-launch gate", provides: "the site gate", doc: "site-gate" },
+  { need: "Health checks", provides: "a `/health` endpoint with your own checks", doc: "health" },
+  { need: "Database backups", provides: "`bun zt db:backup` (SQLite)", doc: "commands" },
+  { need: "Seed and demo data", provides: "seeders and model factories", doc: "seeding" },
+  {
+    need: "Validation",
+    provides: "`FormRequest` classes and `validate()`",
+    pkg: "@zerotal/validator",
+    doc: "validator",
+  },
+  {
+    need: "Tests against a booted app",
+    provides: "`createTestApp()`, factories and fakes",
+    pkg: "@zerotal/testing",
+    doc: "testing",
+  },
+  {
+    need: "A production dashboard",
+    provides: "requests, jobs, errors and alerts",
+    pkg: "@zerotal/monitor",
+    doc: "monitor",
+  },
+  {
+    need: "Tracing",
+    provides: "spans with OTLP export",
+    pkg: "@zerotal/telemetry",
+    doc: "telemetry",
+  },
+];
+
 export interface GuidelineOptions {
   /** Installed `@zerotal/*` package names, as reported by `app_info`. */
   packages: string[];
@@ -183,7 +359,7 @@ export function buildGuidelines(options: GuidelineOptions): string {
     "",
     toolSection(options.serverName),
     "",
-    conventionSection(),
+    conventionSection(installed.has("zerotal")),
     "",
     commandSection(),
   ];
@@ -197,6 +373,8 @@ export function buildGuidelines(options: GuidelineOptions): string {
       ...blocks.flatMap((block) => [...block.lines, ""]),
     );
   }
+
+  sections.push("", discoverySection(installed));
 
   const shape = options.shape ? shapeSection(options.shape) : "";
   if (shape) sections.push("", shape);
@@ -227,7 +405,15 @@ function toolSection(serverName: string): string {
   ].join("\n");
 }
 
-function conventionSection(): string {
+/**
+ * Where classes go and where imports come from.
+ *
+ * @param bundle - The app declares the `zerotal` bundle. Its starters do, and import
+ *   `zerotal/orm` rather than `@zerotal/orm`; telling such an app to import the
+ *   scoped name sends an agent to a package that is only on disk because the
+ *   bundle put it there.
+ */
+function conventionSection(bundle: boolean): string {
   return [
     "### Conventions",
     "",
@@ -241,14 +427,29 @@ function conventionSection(): string {
     "routes/            config/          database/migrations/   tests/",
     "```",
     "",
-    "Imports follow one rule: the kernel comes from `zerotal` (and `zerotal/routes`,",
-    "`zerotal/http`, …), everything else from its own package.",
-    "",
-    "```ts",
-    'import type { HttpContext } from "zerotal";',
-    'import { route } from "zerotal/routes";',
-    'import { DB } from "@zerotal/orm";',
-    "```",
+    ...(bundle
+      ? [
+          "Imports follow one rule: this app depends on the `zerotal` bundle, so the kernel",
+          "and the packages it bundles are imported through it — `zerotal/orm`, `zerotal/auth`,",
+          "`zerotal/queue` and the rest — and any other package by its own name. An",
+          "`@zerotal/orm` import would reach a package this app does not declare.",
+          "",
+          "```ts",
+          'import type { HttpContext } from "zerotal";',
+          'import { route } from "zerotal/routes";',
+          'import { DB } from "zerotal/orm";',
+          "```",
+        ]
+      : [
+          "Imports follow one rule: the kernel comes from `zerotal` (and `zerotal/routes`,",
+          "`zerotal/http`, …), everything else from its own package.",
+          "",
+          "```ts",
+          'import type { HttpContext } from "zerotal";',
+          'import { route } from "zerotal/routes";',
+          'import { DB } from "@zerotal/orm";',
+          "```",
+        ]),
   ].join("\n");
 }
 
@@ -265,6 +466,35 @@ function commandSection(): string {
     "bun zt test            # tests, with the app booted",
     "bun zt doctor          # health checks, with a fix beside each finding",
     "```",
+  ].join("\n");
+}
+
+/**
+ * The capability index, marked against what this app has.
+ *
+ * A list, not a table: a Markdown table is padded to its widest cell by the
+ * project's formatter, so a generated one fails `prettier --check` until it is
+ * reformatted, and a reformatted one no longer matches what `doctor` regenerates.
+ */
+function discoverySection(installed: ReadonlySet<string>): string {
+  const line = (capability: Capability): string => {
+    const where =
+      capability.pkg === undefined
+        ? "Built in"
+        : installed.has(capability.pkg)
+          ? `\`${capability.pkg}\`, installed`
+          : `\`${capability.pkg}\` — \`bun add ${capability.pkg}\``;
+    return `- **${capability.need}:** ${capability.provides}. ${where}; page \`${capability.doc}\`.`;
+  };
+
+  return [
+    "### Before you build it yourself",
+    "",
+    "The framework already ships each of these. Check this list, then `search_docs`, before",
+    "writing one by hand — and ask before installing a package the app does not have yet.",
+    "Each page is at `https://zerotal.dev/docs/<page>` and in `search_docs`.",
+    "",
+    ...CAPABILITIES.map(line),
   ].join("\n");
 }
 

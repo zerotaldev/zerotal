@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@simplewebauthn/server": "^14.1.0",
+    "@zerotal/arch": "{{zerotal_version}}",
     "@zerotal/devtools": "{{zerotal_version}}",
     "@zerotal/flow": "{{zerotal_version}}",
     "@zerotal/notifications": "{{zerotal_version}}",

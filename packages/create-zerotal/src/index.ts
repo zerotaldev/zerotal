@@ -140,7 +140,8 @@ async function main(): Promise<void> {
 
   step(`Scaffolding ${c.bold}${name}${c.reset} (${template})…`);
 
-  await scaffold({ name, template, db, target });
+  const agent = plan.agent !== false;
+  await scaffold({ name, template, db, target, agent });
   info(`Project files created`);
 
   // ── Install ─────────────────────────────────────────────────────────────────
@@ -167,14 +168,15 @@ async function main(): Promise<void> {
   // The same list the project's README renders under "Getting started" — see steps.ts.
   for (const line of nextStepLines(name, template, db)) dim(line);
   log('');
-  // Discoverability without a dependency. `@zerotal/arch` exposes the app's own
-  // routes, schema and docs to a coding agent over MCP, and it is genuinely
-  // useful — but it is `beta`, and putting a beta package in every template would
-  // undercut the maturity rule the packages gate enforces. `arch:install` also
-  // writes `.mcp.json` and instruction files into the project, which is an
-  // opinion about someone's toolchain and should stay their choice.
-  log(`${c.gray}  Agent tooling (optional): bun add -d @zerotal/arch && bun zt arch:install${c.reset}`);
-  log('');
+  // Said once, plainly, because these files are an opinion about someone's
+  // toolchain: what was written, and how not to have it. An agent that never
+  // learns the framework ships tenancy or an audit log writes its own, and the
+  // files are how it learns — so they are on unless declined.
+  if (agent) {
+    log(`${c.gray}  Coding agents: AGENTS.md, .mcp.json and skills under .agents/ are included.${c.reset}`);
+    log(`${c.gray}  Refresh them after an upgrade with bun zt arch:update; --no-agent leaves them out.${c.reset}`);
+    log('');
+  }
   log(`${c.gray}  Docs: https://zerotal.dev${c.reset}`);
   log('');
 }

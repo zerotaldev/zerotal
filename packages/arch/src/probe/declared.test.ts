@@ -42,6 +42,12 @@ async function install(name: string, version = "1.8.0"): Promise<void> {
   await writeFile(join(dir, "package.json"), JSON.stringify({ name, version }));
 }
 
+async function mkdirFor(name: string): Promise<string> {
+  const dir = join(root, "node_modules", ...name.split("/"));
+  await mkdir(dir, { recursive: true });
+  return dir;
+}
+
 async function declare(...names: string[]): Promise<void> {
   await writeFile(
     join(root, "package.json"),
@@ -69,6 +75,34 @@ describe("declaredPackages", () => {
       "@zerotal/cache",
       "@zerotal/orm",
       "@zerotal/queue",
+      "zerotal",
+    ]);
+  });
+
+  it("reads the zerotal bundle as the packages it bundles", async () => {
+    // A starter declares `zerotal` and imports `zerotal/orm`, `zerotal/auth`… —
+    // none of which is in its manifest by its own name.
+    await declare("zerotal");
+    await writeFile(
+      join(await mkdirFor("zerotal"), "package.json"),
+      JSON.stringify({
+        name: "zerotal",
+        version: "1.8.0",
+        dependencies: {
+          "@zerotal/orm": "1.8.0",
+          "@zerotal/auth": "1.8.0",
+          "reflect-metadata": "*",
+        },
+      }),
+    );
+    await install("@zerotal/orm");
+    await install("@zerotal/auth");
+    // Installed, but neither declared nor bundled.
+    await install("@zerotal/admin");
+
+    expect(names(await declaredPackages(root))).toEqual([
+      "@zerotal/auth",
+      "@zerotal/orm",
       "zerotal",
     ]);
   });

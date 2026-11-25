@@ -16,22 +16,7 @@ import type { Application } from "@zerotal/core";
 import { ArchConfig } from "../config.ts";
 import type { ArchConfigShape } from "../config.ts";
 import { NoProjectRootError } from "../errors.ts";
-import { declaredPackages } from "../probe/topics.ts";
-import { detectAgents } from "./detect.ts";
-import { agentsPreamble, buildGuidelines, claudeShim } from "./guidelines.ts";
-import { detectShape } from "./shape.ts";
-import { selectSkills, renderSkill, skillPaths, SKILL_MARKER } from "./skills.ts";
-import type { ProjectShape } from "./shape.ts";
-import { applyBlock } from "./markers.ts";
-import { applyMcpConfig } from "./mcpConfig.ts";
-
-/** One file the run touched, and what happened to it. */
-interface Change {
-  path: string;
-  status: "created" | "updated" | "unchanged" | "conflict";
-  detail?: string;
-  text?: string;
-}
+import { planInstall } from "./plan.ts";
 
 export class ArchInstallCommand extends Command {
   static override commandName = "arch:install";
@@ -53,24 +38,11 @@ export class ArchInstallCommand extends Command {
     const root = await findProjectRoot(process.cwd());
     const config = this._config();
 
-    const detected = await detectAgents(root);
-    // Declared, not installed: what an install layout hoists into node_modules
-    // differs between machines, and the guidance must not.
-    const packages = (await declaredPackages(root)).map((pkg) => pkg.name);
-    // Read off disk rather than from a booted app: a project that will not boot is
-    // often exactly why someone is installing the agent surface.
-    const shape = await detectShape(root);
-
-    const changes: Change[] = [
-      ...(config.mcpConfig ? await this._mcpChanges(root, config, detected.targets) : []),
-      ...(config.agentsFile ? [await this._agentsChange(root, config, packages, shape)] : []),
-      ...(config.claudeFile ? [await this._claudeChange(root)] : []),
-      ...(config.skills ? await this._skillChanges(root, packages, shape, detected.agents) : []),
-    ];
+    const { agents, changes } = await planInstall(root, config);
 
     this.section(dry ? "arch:install — dry run" : "arch:install");
-    if (detected.agents.length > 0) {
-      this.dim(`  detected: ${detected.agents.join(", ")}`);
+    if (agents.length > 0) {
+      this.dim(`  detected: ${agents.join(", ")}`);
     } else {
       this.dim("  no agent tooling detected — writing the portable defaults");
     }
@@ -128,98 +100,6 @@ export class ArchInstallCommand extends Command {
       return ArchConfig();
     }
   }
-
-  private async _mcpChanges(
-    root: string,
-    config: ArchConfigShape,
-    detected: Awaited<ReturnType<typeof detectAgents>>["targets"],
-  ): Promise<Change[]> {
-    // The configured path always gets written; the detected ones are extra.
-    const targets = detected.some((target) => target.path === config.mcpConfigPath)
-      ? detected
-      : [
-          { path: config.mcpConfigPath, key: "mcpServers" as const, client: "MCP client" },
-          ...detected,
-        ];
-
-    const changes: Change[] = [];
-    for (const target of targets) {
-      const outcome = applyMcpConfig(
-        await readIfPresent(join(root, target.path)),
-        config.serverName,
-        target,
-      );
-      changes.push(
-        outcome.status === "conflict"
-          ? { path: target.path, status: "conflict", detail: outcome.reason }
-          : { path: target.path, status: outcome.status, text: outcome.text },
-      );
-    }
-    return changes;
-  }
-
-  private async _agentsChange(
-    root: string,
-    config: ArchConfigShape,
-    packages: string[],
-    shape: ProjectShape,
-  ): Promise<Change> {
-    const outcome = applyBlock(
-      await readIfPresent(join(root, "AGENTS.md")),
-      buildGuidelines({ packages, serverName: config.serverName, shape }),
-      agentsPreamble(),
-    );
-    return outcome.status === "conflict"
-      ? { path: "AGENTS.md", status: "conflict", detail: outcome.reason }
-      : { path: "AGENTS.md", status: outcome.status, text: outcome.text };
-  }
-
-  /**
-   * The skill files, one per applicable skill per agent directory.
-   *
-   * A file without {@link SKILL_MARKER} is left exactly as it is. That is the
-   * whole override mechanism: to replace a skill this ships, edit it and delete
-   * the marker line. Anything cleverer would be a second config to keep in step
-   * with the thing it configures.
-   */
-  private async _skillChanges(
-    root: string,
-    packages: string[],
-    shape: ProjectShape,
-    agents: string[],
-  ): Promise<Change[]> {
-    const changes: Change[] = [];
-
-    for (const skill of selectSkills(packages, shape)) {
-      const text = renderSkill(skill, shape);
-      for (const path of skillPaths(skill.name, agents)) {
-        const existing = await readIfPresent(join(root, path));
-        if (existing !== undefined && !existing.includes(SKILL_MARKER)) {
-          changes.push({ path, status: "unchanged", detail: "yours — left alone" });
-          continue;
-        }
-        changes.push(
-          existing === text
-            ? { path, status: "unchanged" }
-            : { path, status: existing === undefined ? "created" : "updated", text },
-        );
-      }
-    }
-
-    return changes;
-  }
-
-  private async _claudeChange(root: string): Promise<Change> {
-    const outcome = applyBlock(await readIfPresent(join(root, "CLAUDE.md")), claudeShim());
-    return outcome.status === "conflict"
-      ? { path: "CLAUDE.md", status: "conflict", detail: outcome.reason }
-      : { path: "CLAUDE.md", status: outcome.status, text: outcome.text };
-  }
-}
-
-async function readIfPresent(path: string): Promise<string | undefined> {
-  const file = Bun.file(path);
-  return (await file.exists()) ? file.text() : undefined;
 }
 
 /** The nearest ancestor with a `package.json`. */

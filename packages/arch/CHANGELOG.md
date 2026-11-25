@@ -13,6 +13,31 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Added
+
+- **`AGENTS.md` lists what the framework ships, installed or not.** A "Before you build it
+  yourself" section names about thirty capabilities: tenancy, roles and permissions, two-factor
+  sign-in, passkeys, audit, admin, notifications, media, jobs, schedules, realtime, translations,
+  AI, rate limiting, locks, backups, health checks and more. Each one says whether this app has
+  it, the `bun add` that installs it when it does not, and the docs page that covers it. Before
+  this, an app was only told about packages it already had, so an agent asked for tenancy in an
+  app without it never heard that it exists and wrote its own.
+
+- **Four more skills.** `zerotal-crud-resource` (model to tests, in an order that keeps each step
+  checkable), `zerotal-feature-tests`, `zerotal-tenancy` and `zerotal-queued-notifications`.
+  Like the existing two, they describe sequences and traps and leave signatures to
+  `api_surface`. Each is installed only where its packages are. Run `zt arch:update` to add them.
+
+### Fixed
+
+- **An app on the `zerotal` bundle is described as having what the bundle installs.** Starters
+  declare `zerotal`, not `@zerotal/orm`, `@zerotal/auth` and the rest, and the generated
+  `AGENTS.md` read the manifest literally: it left out the data, auth, validation, jobs, cache,
+  scheduling, media and testing sections for exactly the apps most likely to use them. The
+  bundle is now read as the packages it depends on, and such an app is told to import them
+  through it (`zerotal/orm`), which is what its code already does. Run `zt arch:update` to
+  regenerate the file.
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

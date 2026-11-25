@@ -93,6 +93,7 @@ bunx create-zerotal --help
 | `--db <name>`             | `sqlite`, `postgres`, `mysql` — API template only  |
 | `-y`, `--yes`             | Take defaults for anything not given; never prompt |
 | `--no-install`            | Skip `bun install`                                 |
+| `--no-agent`              | Leave out the coding-agent files (see below)       |
 | `-h`, `--help`            | Usage                                              |
 | `-v`, `--version`         | The scaffolder's own version                       |
 
@@ -117,6 +118,14 @@ terminal: a half-built project that reports success is worse than one that stops
 > **Note** — every template except **Minimal** ships a database config and migrations,
 > configured for SQLite. Only the **API** template _asks_ which database you want; the
 > rest start on SQLite and switch when you set `DATABASE_URL`.
+
+### Coding agents
+
+Every template is set up for a coding agent. `AGENTS.md` tells it how the app is built
+and what the framework already ships, `.mcp.json` connects it to the
+[agent surface](/docs/arch) for exact signatures, routes, schema and these docs, and a few
+skills cover common tasks step by step. Restart your agent after scaffolding so it picks
+up the MCP server. `--no-agent` leaves all of it out.
 
 ## Project structure
 

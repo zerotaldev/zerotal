@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Every starter ships with the coding-agent files.** A new app has `AGENTS.md`, a `CLAUDE.md`
+  that imports it, `.mcp.json` (and `.vscode/mcp.json` in the starters with `.vscode/`), and
+  skills under `.agents/skills/` and `.claude/skills/`. `@zerotal/arch` is a dependency, and
+  `app/providers/ArchProvider.ts` registers it, so `zt arch:update` refreshes the files after an
+  upgrade and `zt doctor` says when they have drifted. The files are what `arch:install` would
+  write into that starter, so a new app's first `arch:update` has nothing to change.
+
+- **`--no-agent`** leaves all of it out, `@zerotal/arch` included. There is no prompt for it.
+
 ## [1.17.3] — 2026-11-25
 
 ### Changed

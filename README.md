@@ -40,6 +40,10 @@ bun zt migrate            # create the database schema
 bun zt dev                # start the dev server, with hot reload
 ```
 
+A new app is ready for a coding agent: `AGENTS.md` describes the app and everything the
+framework ships, and `.mcp.json` connects the agent to [the agent surface](docs/arch.md).
+Pass `--no-agent` to leave them out.
+
 ---
 
 ## Packages
@@ -77,25 +81,25 @@ Each package has its own README with installation, setup, and usage examples —
 
 ### Cross-cutting
 
-| Package                                    | Description                                                                                                                                                                 |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@zerotal/telemetry`](packages/telemetry) | OpenTelemetry-style distributed tracing and spans; bridges `FrameworkEvents` to OTLP                                                                                        |
-| [`@zerotal/client`](packages/client)       | Type-safe **frontend/SPA** API client (route-map typed) with circuit breaker. For **server-to-server** outgoing requests use core's `Http` facade instead                   |
-| [`@zerotal/i18n`](packages/i18n)           | Internationalization and localization                                                                                                                                       |
-| [`@zerotal/tenancy`](packages/tenancy)     | Multi-tenancy                                                                                                                                                               |
-| [`@zerotal/audit`](packages/audit)         | Audit logging / activity log                                                                                                                                                |
-| [`@zerotal/monitor`](packages/monitor)     | Health checks, metrics, and an application monitoring dashboard                                                                                                             |
-| [`@zerotal/ai`](packages/ai)               | **Experimental** ([maturity](docs/support-policy.md#maturity-levels)) — provider-agnostic AI generation: text, streaming, structured output, typed tools, and an agent loop |
+| Package                                    | Description                                                                                                                                               |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@zerotal/telemetry`](packages/telemetry) | OpenTelemetry-style distributed tracing and spans; bridges `FrameworkEvents` to OTLP                                                                      |
+| [`@zerotal/client`](packages/client)       | Type-safe **frontend/SPA** API client (route-map typed) with circuit breaker. For **server-to-server** outgoing requests use core's `Http` facade instead |
+| [`@zerotal/i18n`](packages/i18n)           | Internationalization and localization                                                                                                                     |
+| [`@zerotal/tenancy`](packages/tenancy)     | Multi-tenancy                                                                                                                                             |
+| [`@zerotal/audit`](packages/audit)         | Audit logging / activity log                                                                                                                              |
+| [`@zerotal/monitor`](packages/monitor)     | Health checks, metrics, and an application monitoring dashboard                                                                                           |
+| [`@zerotal/ai`](packages/ai)               | Provider-agnostic AI generation: text, streaming, structured output, typed tools, and an agent loop                                                       |
 
 ### Tooling
 
-| Package                                     | Description                                                                                                                                              |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@zerotal/admin`](packages/admin)          | Admin panel with resource management and field types                                                                                                     |
-| [`@zerotal/devtools`](packages/devtools)    | Development tools panel, request tracing                                                                                                                 |
-| [`@zerotal/arch`](packages/arch)            | **Beta** ([maturity](docs/support-policy.md#maturity-levels)) — agent surface: an MCP server exposing the API surface, routes, schema, docs and `doctor` |
-| [`@zerotal/testing`](packages/testing)      | Test helpers, model factories, fakes, database utilities                                                                                                 |
-| [`create-zerotal`](packages/create-zerotal) | `bun create zerotal` scaffolding CLI                                                                                                                     |
+| Package                                     | Description                                                                                                                                        |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@zerotal/admin`](packages/admin)          | Admin panel with resource management and field types                                                                                               |
+| [`@zerotal/devtools`](packages/devtools)    | Development tools panel, request tracing                                                                                                           |
+| [`@zerotal/arch`](packages/arch)            | Agent surface: an MCP server exposing the API surface, routes, schema, docs and `doctor`, plus the `AGENTS.md` and skills every new app ships with |
+| [`@zerotal/testing`](packages/testing)      | Test helpers, model factories, fakes, database utilities                                                                                           |
+| [`create-zerotal`](packages/create-zerotal) | `bun create zerotal` scaffolding CLI                                                                                                               |
 
 ---
 

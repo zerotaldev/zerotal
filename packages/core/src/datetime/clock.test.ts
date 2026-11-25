@@ -9,7 +9,7 @@ describe("Carbon test clock", () => {
   it("freezes now at an absolute instant", () => {
     Carbon.setTestNow("2025-01-01T00:00:00Z");
 
-    expect(Carbon.now().toISOString()).toBe("2025-01-01T00:00:00Z");
+    expect(Carbon.now().toISOString()).toBe("2025-01-01T00:00:00.000Z");
     expect(Carbon.isFrozen()).toBe(true);
   });
 
@@ -32,21 +32,21 @@ describe("Carbon test clock", () => {
 
   it("travelTo jumps to an absolute point", () => {
     Carbon.travelTo("2026-03-04T00:00:00Z");
-    expect(Carbon.now().toISOString()).toBe("2026-03-04T00:00:00Z");
+    expect(Carbon.now().toISOString()).toBe("2026-03-04T00:00:00.000Z");
   });
 
   it("travel moves relative to the frozen point", () => {
     Carbon.freeze("2025-01-01T00:00:00Z");
     Carbon.travel({ days: 8 });
 
-    expect(Carbon.now().toISOString()).toBe("2025-01-09T00:00:00Z");
+    expect(Carbon.now().toISOString()).toBe("2025-01-09T00:00:00.000Z");
   });
 
   it("travel accepts negative amounts", () => {
     Carbon.freeze("2025-01-10T00:00:00Z");
     Carbon.travel({ days: -3 });
 
-    expect(Carbon.now().toISOString()).toBe("2025-01-07T00:00:00Z");
+    expect(Carbon.now().toISOString()).toBe("2025-01-07T00:00:00.000Z");
   });
 
   it("moves the predicates that read now", () => {

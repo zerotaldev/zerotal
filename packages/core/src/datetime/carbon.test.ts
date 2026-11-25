@@ -791,6 +791,34 @@ describe("Carbon serialisation", () => {
   it("toDatabase()", () => {
     expect(typeof base().toDatabase()).toBe("string");
   });
+
+  describe("ISO output always has three fraction digits", () => {
+    const at = (ms: number) => Carbon.fromMilliseconds(ms, "UTC");
+    const whole = Date.UTC(2026, 10, 25, 10, 0, 0);
+
+    it("keeps trailing zeros, and a whole second gets .000", () => {
+      expect(at(whole + 940).toDatabase()).toBe("2026-11-25T10:00:00.940Z");
+      expect(at(whole + 900).toDatabase()).toBe("2026-11-25T10:00:00.900Z");
+      expect(at(whole).toDatabase()).toBe("2026-11-25T10:00:00.000Z");
+      expect(at(whole + 7).toDatabase()).toBe("2026-11-25T10:00:00.007Z");
+    });
+
+    it("toISOString() and toJSON() match Date's, whatever the Carbon's own zone", () => {
+      for (const ms of [whole, whole + 940, whole + 7, whole + 123]) {
+        const expected = new Date(ms).toISOString();
+        expect(at(ms).toISOString()).toBe(expected);
+        expect(at(ms).toJSON()).toBe(expected);
+        expect(Carbon.fromMilliseconds(ms, "Africa/Johannesburg").toISOString()).toBe(expected);
+      }
+      expect(JSON.stringify({ at: at(whole) })).toBe(JSON.stringify({ at: new Date(whole) }));
+    });
+
+    it("sorts as strings in time order", () => {
+      const times = [whole, whole + 900, whole + 940, whole + 1000, whole + 1007];
+      const stored = times.map((ms) => at(ms).toDatabase());
+      expect([...stored].sort()).toEqual(stored);
+    });
+  });
 });
 
 describe("Carbon.inTimezone()", () => {

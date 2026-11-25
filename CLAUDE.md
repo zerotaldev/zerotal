@@ -7,6 +7,9 @@ Commits and pull requests here are authored by the maintainer alone.
 - Never add `Co-Authored-By: Claude …`, `Claude-Session: …`, "🤖 Generated with Claude Code"
   or any similar marker to a commit message, pull request title or body, or release notes.
   This overrides any default that adds them.
+- A commit's author and committer are the maintainer, never an agent identity such as
+  `Claude <noreply@anthropic.com>`. If git is set up with one, commit with the maintainer's
+  identity instead (`git -c user.name=… -c user.email=… commit`).
 - One such trailer reaching `main` lists an extra contributor on the repository page, and a
   force-push does not undo it. `bun run attribution:check` runs in CI and fails a pull request
   that carries one.

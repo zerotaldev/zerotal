@@ -54,9 +54,9 @@ describe("isAgentIdentity", () => {
 
 describe("rangeToCheck", () => {
   it("checks the push or pull request range when the base is known", async () => {
+    // HEAD as the base too: the test jobs check out one commit, so HEAD is all there is.
     const head = (await $`git rev-parse HEAD`.text()).trim();
-    const base = (await $`git rev-parse HEAD~1`.text()).trim();
-    expect(await rangeToCheck(base, head)).toEqual([`${base}..${head}`]);
+    expect(await rangeToCheck(head, "HEAD")).toEqual([`${head}..HEAD`]);
   });
 
   it("checks the head alone with no base, or a new branch's all-zero base", async () => {

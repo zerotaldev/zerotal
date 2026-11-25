@@ -1,5 +1,11 @@
+import { $ } from "bun";
 import { describe, expect, it } from "bun:test";
-import { attributionLines, findAttribution, isAgentIdentity } from "./attribution-check.ts";
+import {
+  attributionLines,
+  findAttribution,
+  isAgentIdentity,
+  rangeToCheck,
+} from "./attribution-check.ts";
 
 describe("attributionLines", () => {
   it("finds a co-author trailer naming Claude, in any case", () => {
@@ -43,6 +49,23 @@ describe("isAgentIdentity", () => {
     expect(
       isAgentIdentity("dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>"),
     ).toBe(false);
+  });
+});
+
+describe("rangeToCheck", () => {
+  it("checks the push or pull request range when the base is known", async () => {
+    const head = (await $`git rev-parse HEAD`.text()).trim();
+    const base = (await $`git rev-parse HEAD~1`.text()).trim();
+    expect(await rangeToCheck(base, head)).toEqual([`${base}..${head}`]);
+  });
+
+  it("checks the head alone with no base, or a new branch's all-zero base", async () => {
+    expect(await rangeToCheck("", "HEAD")).toEqual(["HEAD^!"]);
+    expect(await rangeToCheck("0".repeat(40), "HEAD")).toEqual(["HEAD^!"]);
+  });
+
+  it("checks all of the head's history when a force-push left the base behind", async () => {
+    expect(await rangeToCheck("f".repeat(40), "HEAD")).toEqual(["HEAD"]);
   });
 });
 

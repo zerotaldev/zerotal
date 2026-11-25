@@ -13,7 +13,9 @@
  * on every pull request and every push.
  *
  * Commits checked: `BASE_SHA..HEAD_SHA` when both are set (a pull request, or a push with a
- * known previous tip), otherwise `HEAD` alone. `PR_TITLE` and `PR_BODY` are checked when set.
+ * known previous tip), all of `HEAD_SHA`'s history when `BASE_SHA` is a commit the clone does
+ * not have (a force-push), otherwise `HEAD` alone. `PR_TITLE` and `PR_BODY` are checked when
+ * set.
  *
  * Usage: bun run attribution:check
  */
@@ -88,10 +90,29 @@ export function findAttribution(
 
 const NO_COMMIT = /^0+$/;
 
+/** Whether `sha` names a commit this clone has. */
+async function hasCommit(sha: string): Promise<boolean> {
+  const { exitCode } = await $`git cat-file -e ${`${sha}^{commit}`}`.quiet().nothrow();
+  return exitCode === 0;
+}
+
+/**
+ * The revisions to log. A force-push names a previous tip the clone no longer has, since no
+ * branch holds it; the whole rewritten history is checked then, rather than none of it.
+ */
+export async function rangeToCheck(base: string, head: string): Promise<string[]> {
+  if (base === "" || NO_COMMIT.test(base)) return [`${head}^!`];
+  if (await hasCommit(base)) return [`${base}..${head}`];
+  console.log(
+    `previous tip ${base.slice(0, 9)} is not in this clone (a force-push?): checking all of ${head}.`,
+  );
+  return [head];
+}
+
 async function commitsToCheck(): Promise<CommitToCheck[]> {
   const base = Bun.env["BASE_SHA"]?.trim() ?? "";
   const head = Bun.env["HEAD_SHA"]?.trim() || "HEAD";
-  const range = base !== "" && !NO_COMMIT.test(base) ? `${base}..${head}` : `${head}^!`;
+  const range = await rangeToCheck(base, head);
   // Interpolated so the shell takes `<` as text, not as a redirect.
   const format = "--format=%H%x00%an <%ae>%x00%cn <%ce>%x00%B%x01";
   const raw = await $`git log ${format} ${range}`.text();

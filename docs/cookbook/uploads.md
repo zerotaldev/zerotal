@@ -31,7 +31,7 @@ nothing to install. The starter registers `StorageProvider`, which serves the pu
 Add `MediaProvider` after `StorageProvider` in `bootstrap/providers.ts`. Media writes its
 files through the storage disks, so storage comes first.
 
-```ts fragment
+```ts
 // bootstrap/providers.ts
 import { StorageProvider } from "zerotal/storage";
 import { MediaProvider } from "zerotal/media";
@@ -200,7 +200,7 @@ as the file is stored, because `StorageProvider` serves the public disk.
 
 Describe the new prop to the page in `resources/js/types.ts`, after `Project`:
 
-```ts fragment
+```ts
 // resources/js/types.ts
 // …
 /** A file attached to a project, as the edit page receives it. */

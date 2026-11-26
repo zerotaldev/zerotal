@@ -227,7 +227,7 @@ const DDL: Record<QueueDatabaseDialect, string[]> = {
  */
 export class DatabaseDriver implements QueueDriver {
   private _sql: SQLInstance;
-  private _ready: Promise<void>;
+  private _ready: Promise<void> | undefined;
   /** Seconds a claimed job stays invisible before it is considered abandoned. */
   private _visibilityTimeout: number;
   /** The engine behind the connection, which decides the SQL each operation sends. */
@@ -240,7 +240,27 @@ export class DatabaseDriver implements QueueDriver {
     // re-claimed by another worker.
     this._visibilityTimeout = options.visibilityTimeout ?? 90;
     this.dialect = detectDialect(sql, options.dialect);
-    this._ready = this._ensureTables();
+    // Started now so the first job does not wait on it, but a failure here is not
+    // cached: the next call retries (see _whenReady) and reports it.
+    this._whenReady().catch(() => {});
+  }
+
+  /**
+   * The tables exist. Shared by every call while it is pending; forgotten if it fails.
+   *
+   * Caching a failed attempt made one bad moment permanent. On a fresh PostgreSQL
+   * database the web process and a worker create the tables at the same moment, and
+   * PostgreSQL can refuse one of the concurrent `CREATE … IF NOT EXISTS` with a
+   * duplicate-key error on its own catalogue; every dispatch in that process then
+   * failed until it restarted. Forgetting the failure means the next call simply
+   * runs the statements again, which the other process has by then made no-ops.
+   */
+  private _whenReady(): Promise<void> {
+    this._ready ??= this._ensureTables().catch((error: unknown) => {
+      this._ready = undefined;
+      throw error;
+    });
+    return this._ready;
   }
 
   private async _ensureTables(): Promise<void> {
@@ -304,7 +324,7 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async push(record: Omit<JobRecord, "id" | "createdAt">): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     const now = new Date().toISOString();
     const batchId = record.batchId ?? null;
     await this._sql`
@@ -329,7 +349,7 @@ export class DatabaseDriver implements QueueDriver {
    * the point of collapsing is that the earlier dispatch is stale.
    */
   async pushDebounced(record: Omit<JobRecord, "id" | "createdAt">, key: string): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     const now = new Date().toISOString();
     const batchId = record.batchId ?? null;
 
@@ -377,7 +397,7 @@ export class DatabaseDriver implements QueueDriver {
    * and the job becomes claimable again automatically.
    */
   async pop(queue = "default"): Promise<JobRecord | null> {
-    await this._ready;
+    await this._whenReady();
     const now = Math.floor(Date.now() / 1000);
     const staleBefore = now - this._visibilityTimeout;
 
@@ -454,7 +474,7 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async fail(record: JobRecord, error: string): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     await this._sql`
       INSERT INTO zerotal_failed_jobs
         (queue, class_name, payload, attempts, error, failed_at)
@@ -466,7 +486,7 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async retry(record: JobRecord): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     const nextAvailable = Math.floor(Date.now() / 1000) + Math.floor(record.retryDelay / 1000);
     // Release the reservation so the job is claimable once its delay elapses.
     await this._sql`
@@ -478,12 +498,12 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async delete(record: JobRecord): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     await this._sql`DELETE FROM zerotal_jobs WHERE id = ${record.id}`;
   }
 
   async size(queue = "default"): Promise<number> {
-    await this._ready;
+    await this._whenReady();
     const rows = await this._sql<{ count: Num }>`
       SELECT COUNT(*) as count FROM zerotal_jobs
       WHERE queue = ${queue}
@@ -492,14 +512,14 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async flush(): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     await this._sql`DELETE FROM zerotal_jobs`;
     await this._sql`DELETE FROM zerotal_failed_jobs`;
     await this._sql`DELETE FROM zerotal_job_batches`;
   }
 
   async listPending(queue?: string, limit = 50, offset = 0): Promise<JobRecord[]> {
-    await this._ready;
+    await this._whenReady();
     const rows: JobRow[] = queue
       ? await this._sql<JobRow>`
           SELECT * FROM zerotal_jobs WHERE queue = ${queue}
@@ -511,14 +531,14 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async queues(): Promise<{ queue: string; pending: number }[]> {
-    await this._ready;
+    await this._whenReady();
     const rows = await this._sql<{ queue: string; count: Num }>`
       SELECT queue, COUNT(*) as count FROM zerotal_jobs GROUP BY queue ORDER BY queue`;
     return rows.map((r) => ({ queue: r.queue, pending: Number(r.count) }));
   }
 
   async listFailed(queue?: string): Promise<FailedRecord[]> {
-    await this._ready;
+    await this._whenReady();
     const rows: FailedRow[] = queue
       ? await this._sql<FailedRow>`
           SELECT id, queue, class_name, payload, attempts, error, failed_at
@@ -539,12 +559,12 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async deleteFailedRecord(id: number): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     await this._sql`DELETE FROM zerotal_failed_jobs WHERE id = ${id}`;
   }
 
   async clearFailed(queue?: string): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     if (queue) {
       await this._sql`DELETE FROM zerotal_failed_jobs WHERE queue = ${queue}`;
     } else {
@@ -560,7 +580,7 @@ export class DatabaseDriver implements QueueDriver {
     totalJobs: number,
     optionsJson: string,
   ): Promise<void> {
-    await this._ready;
+    await this._whenReady();
     const now = new Date().toISOString();
     await this._sql`
       INSERT INTO zerotal_job_batches
@@ -571,7 +591,7 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async recordBatchJobComplete(batchId: string): Promise<BatchStatus> {
-    await this._ready;
+    await this._whenReady();
     return this._sql.begin(async (tx: SQLInstance) => {
       // The UPDATE takes the row lock first, so two workers finishing the last two
       // jobs of a batch at once read the counter one after the other.
@@ -594,7 +614,7 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async recordBatchJobFailed(batchId: string, jobId: number): Promise<BatchStatus> {
-    await this._ready;
+    await this._whenReady();
     return this._sql.begin(async (tx: SQLInstance) => {
       // Read-modify-write of the failed id list: on a server, lock the row for the
       // read, or two workers failing jobs of one batch at once each append to the
@@ -631,7 +651,7 @@ export class DatabaseDriver implements QueueDriver {
   }
 
   async getBatch(batchId: string): Promise<BatchRecord | null> {
-    await this._ready;
+    await this._whenReady();
     const rows = await this._sql<BatchRow>`
       SELECT * FROM zerotal_job_batches WHERE id = ${batchId}
     `;

@@ -171,6 +171,13 @@ another tenant's. A user override belongs to the user _within a tenant_, so the 
 user in a second tenant does not carry it over. The package's tests state each of
 these as a negative, on every database it supports.
 
+Naming a tenant (`{ tenant: 8 }`) is for code that runs outside every tenant: a
+central admin console, a command, a job working through tenants. Inside a tenant,
+naming a different one throws `SettingScopeError` for every read, write and `history()`
+call, so a request in tenant 7 cannot reach tenant 8's settings by passing an id from
+its input. For the same reason, `{ at: "global" }` throws inside a tenant: an app-wide
+value changes every tenant, so it is set from outside them all.
+
 ## Audit trail
 
 When [`AuditProvider`](/docs/audit) is registered, every `set()`, `hide()` and `unhide()`

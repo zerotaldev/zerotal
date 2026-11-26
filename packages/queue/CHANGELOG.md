@@ -18,6 +18,10 @@ follows the Zerotal monorepo's unified versioning.
   `FOR UPDATE SKIP LOCKED`, so any number of workers share the table without double-claiming
   or waiting on each other. A batch's failed-job list is read `FOR UPDATE`, so two workers
   failing jobs of one batch at once no longer lose an id. SQLite's schema is unchanged.
+- **A failed table setup is retried, not kept.** The driver created its tables once per
+  process and kept the result, so one failure, such as PostgreSQL refusing one of two
+  processes' concurrent `CREATE … IF NOT EXISTS` on a fresh database, failed every later
+  dispatch in that process until it restarted. The next call now runs the setup again.
 
 ### Changed
 
@@ -37,11 +41,15 @@ follows the Zerotal monorepo's unified versioning.
   `"database"` is the new default; `"sqlite"` still works and selects the same driver, and
   `SqliteDriver` is the same class. `DatabaseDriverOptions` adds `dialect`, for a connection
   whose engine cannot be read off it.
-- **`Queue.settle()`** runs every job that is due, on every queue, and the jobs those jobs
-  dispatch, until none is left, and resolves to how many ran. Tests no longer need a loop around
-  `processNext()`. Failures are retried or failed as a worker would handle them. It stops with
-  `E_QUEUE_SETTLE_LIMIT` after `limit` jobs (default 1000), so a job that dispatches itself fails
-  the test instead of hanging it.
+- **`queue.visibilityTimeout`**, how long a claimed job stays invisible to other workers
+  (default 90 seconds). It existed on the driver but could not be set from config, so a job
+  slower than 90 seconds was claimed and run a second time by another worker.
+- **`Queue.settle()`** runs every job that is due, and the jobs those jobs dispatch, until none
+  is left, and resolves to how many ran. It drains every queue the driver can list (the database
+  driver), else `default` (Redis, which cannot list them; pass `queues` there). Tests no longer
+  need a loop around `processNext()`. Failures are retried or failed as a worker would handle
+  them. It stops with `E_QUEUE_SETTLE_LIMIT` once more than `limit` jobs (default 1000) have run,
+  so a job that dispatches itself fails the test instead of hanging it.
 - **`QueueFake.settle()`** runs the captured jobs in dispatch order, including what they
   dispatch and the next link of a chain, and keeps every job assertable. If any job throws, the
   rest still run and it then throws `E_QUEUE_SETTLE_FAILED` naming each failure.

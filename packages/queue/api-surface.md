@@ -294,6 +294,7 @@ interface QueueConfigShape = {
   driver: 'sqlite' | 'database' | 'redis' | 'sync'
   pollInterval: number
   queues: string[]
+  visibilityTimeout?: number | undefined
   workerBootstrap?: string | undefined
   workers: number
 }

@@ -128,7 +128,7 @@ export class SettingsManager {
 
   /** Several settings at once, in one read of the store. */
   async resolveMany(keys: readonly string[], scope?: SettingsScope): Promise<ResolvedSetting[]> {
-    const who = this._who(scope);
+    const who = this._who(scope, keys.join(", "));
     const plans = keys.map((key) => {
       const definition = _definitionOf(key);
       return { key, definition, refs: this._readLevels(definition, who) };
@@ -281,9 +281,23 @@ export class SettingsManager {
 
   // ── Levels ──────────────────────────────────────────────────────────────
 
-  /** The tenant and user a call is for: what it names, else the context. */
-  protected _who(scope?: SettingsScope): { tenant: number | null; user: string | null } {
-    const tenant = scope?.tenant !== undefined ? scope.tenant : TenantContext.id();
+  /**
+   * The tenant and user a call is for: what it names, else the context.
+   *
+   * Code running inside one tenant may not name another. Without this, a request in
+   * tenant 7 that passed `{ tenant: Number(body.tenantId) }` read, wrote, hid or read
+   * the history of tenant 8's settings. Naming a tenant is for code outside every
+   * tenant — a central admin console, a command, a job working through tenants.
+   */
+  protected _who(scope?: SettingsScope, key = "*"): { tenant: number | null; user: string | null } {
+    const active = TenantContext.id();
+    if (scope?.tenant !== undefined && active !== null && scope.tenant !== active) {
+      throw new SettingScopeError(
+        key,
+        `this code runs inside tenant ${active}, so it cannot name tenant ${String(scope.tenant)}`,
+      );
+    }
+    const tenant = scope?.tenant !== undefined ? scope.tenant : active;
     const user = scope?.user !== undefined ? scope.user : contextUserId();
     return { tenant, user: user === null ? null : String(user) };
   }
@@ -310,12 +324,20 @@ export class SettingsManager {
     definition: SettingDefinition,
     options: SettingWriteOptions,
   ): ScopeRef {
-    const who = this._who(options);
+    const who = this._who(options, key);
     // Inside a tenant the default is always the tenant's own level: a write there
     // must never quietly become an app-wide one because the setting is global-only.
     const at =
       options.at ??
       (who.tenant !== null || !definition.scopes.includes("global") ? "tenant" : "global");
+    // Nor can it become one by asking: an app-wide value applies to every tenant,
+    // so it is set from outside them all, never from inside one.
+    if (at === "global" && TenantContext.id() !== null) {
+      throw new SettingScopeError(
+        key,
+        "this code runs inside a tenant, and an app-wide value would change it for every tenant",
+      );
+    }
     if (!definition.scopes.includes(at)) {
       throw new SettingScopeError(
         key,

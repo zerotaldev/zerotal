@@ -172,7 +172,7 @@ const SETTLE_LIMIT = 1000;
  */
 export function _settleLimitError(limit: number): QueueError {
   return new QueueError(
-    `settle() ran ${limit} jobs and the queue still was not empty. A job that dispatches ` +
+    `settle() ran more than ${limit} jobs and the queue still was not empty. A job that dispatches ` +
       `another of itself never settles; raise \`limit\` if this much work is expected.`,
     "E_QUEUE_SETTLE_LIMIT",
     500,
@@ -323,13 +323,14 @@ export class QueueManager {
    * Run every job that is due until none is left, and resolve to how many ran.
    *
    * What a test means by "let the background work finish": jobs the settled jobs
-   * dispatch are run too, on every queue, so the loop a test would otherwise
-   * write around `processNext()` — over every queue, until a pass finds nothing —
-   * is this one call. A job that fails is retried or failed exactly as a worker
+   * dispatch are run too, on every queue the driver can list (else `default`;
+   * Redis cannot list them, so pass `queues` there), so the loop a test would
+   * otherwise write around `processNext()` — until a pass finds nothing — is
+   * this one call. A job that fails is retried or failed exactly as a worker
    * would, and does not make this throw; a retry waits for its delay, so it is
    * not due within the same call. A delayed job that is not yet due is left alone.
    *
-   * Throws a {@link QueueError} (`E_QUEUE_SETTLE_LIMIT`) after `limit` jobs, so a
+   * Throws a {@link QueueError} (`E_QUEUE_SETTLE_LIMIT`) once more than `limit` jobs have run, so a
    * job that keeps dispatching itself ends the test rather than hanging it.
    *
    * @example

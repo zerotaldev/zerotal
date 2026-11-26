@@ -484,8 +484,10 @@ Any number of `queue:work` processes can share the table. On PostgreSQL and MySQ
 worker claims the next due job with `SELECT … FOR UPDATE SKIP LOCKED`. Two workers
 polling at once take two different jobs, and neither waits on the other's lock. SQLite
 serialises writers, so a single `UPDATE … RETURNING` claims a job atomically there. A
-claimed job stays invisible to other workers for 90 seconds (`visibilityTimeout`). If
-its worker dies, the job becomes claimable again after that.
+claimed job stays invisible to other workers for 90 seconds. If its worker dies, the
+job becomes claimable again after that. Set `visibilityTimeout` in `config/queue.ts` to
+longer than your slowest job: with several workers, a job still running when it runs
+out is claimed and run a second time.
 
 > **Note** — Up to 1.17.4 the driver created its table with SQLite-only DDL, so on
 > PostgreSQL and MySQL the first dispatch failed with a syntax error. If you moved jobs
@@ -524,9 +526,9 @@ which stops every thread. Any in-flight or queued work is resolved with
 
 ### Settling the queue
 
-`Queue.settle()` runs every job that is due, on every queue, including jobs those jobs
-dispatch, until none is left. It resolves to the number of jobs it ran. A test does not
-need its own loop around `processNext()`:
+`Queue.settle()` runs every job that is due, including jobs those jobs dispatch, until
+none is left. It resolves to the number of jobs it ran. A test does not need its own
+loop around `processNext()`:
 
 ```typescript fragment
 // in a test, with the sync, database or redis driver bound
@@ -536,12 +538,17 @@ await Queue.settle(); // ImportCsvJob, and every SendRowEmail it queued
 expect(await Queue.size()).toBe(0);
 ```
 
+Which queues it drains depends on the driver. The database driver can list the queues
+that have work, so `settle()` drains all of them. The Redis driver cannot, so it drains
+`default` only: on Redis, pass the queues your jobs use, as in
+`Queue.settle({ queues: ["default", "emails"] })`.
+
 A failing job is retried or failed as a worker would handle it, and `settle()` does not
-throw for it. Check `Queue.failed()`. A retry waits for its delay, so it is not due in
-the same call. A job whose delay has not passed is left in the queue. Pass `queues` to
-drain only some queues. After `limit` jobs (default 1000) `settle()` throws
-`E_QUEUE_SETTLE_LIMIT`, so a job that keeps dispatching itself fails the test instead of
-hanging it.
+throw for it. Check `Queue.failed()`. A retry waits for its delay, so it is usually not
+due in the same call (a `retryDelay` under a second can be). A job whose delay has not
+passed is left in the queue. Once it has run more than `limit` jobs (default 1000)
+`settle()` throws `E_QUEUE_SETTLE_LIMIT`, so a job that keeps dispatching itself fails
+the test instead of hanging it.
 
 ### Faking the queue
 
@@ -659,7 +666,7 @@ while leaving unrelated failures alone.
 | `QueueShuttingDownError`        | `E_QUEUE_SHUTTING_DOWN`        | Dispatching during a graceful shutdown — the manager is draining.                    |
 | `QueueBatchingUnsupportedError` | `E_QUEUE_BATCHING_UNSUPPORTED` | Using batches on a driver that has no batch support.                                 |
 | `QueueError`                    | `E_QUEUE_UNKNOWN_JOB`          | `retryFailed()` on a failed job whose class is not registered; the failed row stays. |
-| `QueueError`                    | `E_QUEUE_SETTLE_LIMIT`         | `settle()` ran `limit` jobs and work remained — usually a job dispatching itself.    |
+| `QueueError`                    | `E_QUEUE_SETTLE_LIMIT`         | `settle()` ran more than `limit` jobs — usually a job dispatching itself.            |
 | `QueueError`                    | `E_QUEUE_SETTLE_FAILED`        | `QueueFake.settle()` ran a job that threw; the message names each one.               |
 
 ```typescript fragment

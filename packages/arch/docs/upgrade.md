@@ -81,6 +81,65 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.18.3
+
+A patch. One change can affect a test suite; an app made from a starter can take one more
+change to its two-factor challenge.
+
+### `Storage.fake()` with no disk named fakes `public` too
+
+With no name, `Storage.fake()` fakes the default disk and, when that disk is not served (the
+built-in `local` is not), the `public` disk as well, where media with no disk configured writes.
+Both names share the files of the disk it returns. Before, a media test that faked the default
+found its fake empty, and its uploads were written for real into `storage/public/media/`.
+
+**What to check.** A test that calls `Storage.fake()` and then looks for a real file under
+`storage/public` finds it in the fake instead: assert on the fake. `Storage.fake("local")`, with
+the name, still fakes that disk alone.
+
+### Two-factor: claim the code's step in one update
+
+1.18.2's upgrade steps read the user's last accepted step and saved the new one after. Two
+requests carrying the same code at the same moment could both pass the check before either
+saved. New apps claim the step with one conditional update and sign in only the request that
+changed the row. To do the same, add this to `app/auth/two-factor.ts`:
+
+```ts
+import { DB } from "zerotal/orm";
+
+export async function claimTwoFactorStep(userId: number, step: number): Promise<boolean> {
+  const changed = await DB.table("users")
+    .where("id", userId)
+    .where((q) =>
+      q.whereNull("two_factor_last_counter").orWhere("two_factor_last_counter", "<", step),
+    )
+    .updateCount({ two_factor_last_counter: step });
+  return changed === 1;
+}
+```
+
+and in `app/routes/(guest)/two-factor/challenge.ts`, replace the check and the save that
+follows it with:
+
+```ts fragment
+const step = check.valid ? check.counter : null;
+if (step === null || !(await claimTwoFactorStep(user.id, step))) {
+  loginThrottle.recordFailure(http, throttleKey);
+  rejectInput(
+    http,
+    { code: "That code is not valid or was already used. Enter the newest one from your app." },
+    "/two-factor/challenge",
+  );
+}
+```
+
+### Also worth knowing (not breaking)
+
+- **Every test file of a run prints its warnings**, not only the first.
+- **`bun zt dev` no longer prints "Skipping … app/schedules" at startup.**
+- **`AGENTS.md` says `bun zt worker`** for production. `bun zt doctor` reports it as stale until
+  you run `bun zt arch:update`.
+
 ## 1.18.2
 
 A patch. Nothing in the packages asks for a change in your app, but an app made from the React,

@@ -8438,6 +8438,12 @@
       "hash": "1ttrva50evq0"
     },
     {
+      "file": "docs/upgrade.md",
+      "heading": "Two-factor: claim the code's step in one update",
+      "ordinal": 1,
+      "hash": "3g3at7hxhp3x"
+    },
+    {
       "file": "docs/validator.md",
       "heading": "Accessing context inside rules",
       "ordinal": 0,

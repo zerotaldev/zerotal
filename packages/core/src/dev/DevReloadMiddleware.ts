@@ -17,7 +17,7 @@
 import type { NextFn } from "../pipeline/types.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { BaseMiddleware } from "../middleware/BaseMiddleware.ts";
-import { DEV_RELOAD_CLIENT, DEV_RELOAD_SCRIPT_PATH } from "./reloadClient.ts";
+import { DEV_RELOAD_CLIENT, _DEV_RELOAD_SCRIPT_PATH } from "./reloadClient.ts";
 
 /**
  * Produces an HTML fragment to inject before `</body>` for the given request.
@@ -89,7 +89,7 @@ export class DevReloadMiddleware extends BaseMiddleware {
     // before the client became a file may still carry the inline one).
     if (
       _reloadClientActive &&
-      !html.includes(DEV_RELOAD_SCRIPT_PATH) &&
+      !html.includes(_DEV_RELOAD_SCRIPT_PATH) &&
       !html.includes("/__dev/ws")
     ) {
       injection += DEV_RELOAD_CLIENT;

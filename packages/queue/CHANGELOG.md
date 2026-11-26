@@ -19,6 +19,18 @@ follows the Zerotal monorepo's unified versioning.
   or waiting on each other. A batch's failed-job list is read `FOR UPDATE`, so two workers
   failing jobs of one batch at once no longer lose an id. SQLite's schema is unchanged.
 
+### Changed
+
+- **BREAKING (types only): `QueueConfigShape["driver"]` gains `"database"`, and it is the default.**
+  `QueueConfig()` now fills in `driver: "database"` where it filled in `"sqlite"`. Both names
+  select the same driver, so no queue behaves differently, and no config file needs to change.
+  Two kinds of code that read the setting do need a change. An exhaustive `switch` over the union
+  stops compiling until it has a `"database"` case. A check of `config.get("queue.driver") ===
+"sqlite"` that meant "jobs are in the database" no longer matches the default; test for
+  `"database"` as well. `SqliteDriver`'s constructor now takes `DatabaseDriverOptions`, a
+  superset of the `{ visibilityTimeout?: number }` it took before, so every existing call still
+  compiles.
+
 ### Added
 
 - **`driver: "database"`, and `DatabaseDriver`.** The names say what the driver is.

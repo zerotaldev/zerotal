@@ -8157,55 +8157,55 @@ class RuleBuilder = {
 }
 
 class StringRule = {
-  new (): StringRule
-  accepted: (message?: string) => StringRule
-  alpha: (message?: string) => StringRule
-  alphaDash: (message?: string) => StringRule
-  alphaNum: (message?: string) => StringRule
-  bail: () => StringRule
-  confirmed: (message?: string) => StringRule
-  custom: (fn: CustomFn, message?: string) => StringRule
-  declined: (message?: string) => StringRule
-  default: (value: unknown) => StringRule
-  digits: (n: number, message?: string) => StringRule
-  digitsBetween: (min: number, max: number, message?: string) => StringRule
-  email: (message?: string) => StringRule
-  endsWith: (suffix: string, message?: string) => StringRule
-  exists: (table: string, column: string, message?: string) => StringRule
-  in: (values: string[], message?: string) => StringRule
-  ip: (message?: string) => StringRule
-  json: (message?: string) => StringRule
-  lowercase: () => StringRule
-  matches: (pattern: RegExp, message?: string) => StringRule
-  max: (length: number, message?: string) => StringRule
-  min: (length: number, message?: string) => StringRule
-  notIn: (values: string[], message?: string) => StringRule
-  nullable: () => StringRule
-  numeric: (message?: string) => StringRule
-  optional: () => StringRule
-  password: () => StringRule
-  present: (message?: string) => StringRule
-  prohibited: (message?: string) => StringRule
-  prohibitedIf: (field: string, value: unknown) => StringRule
-  prohibitedUnless: (field: string, value: unknown) => StringRule
-  readonly _def: StringDef
-  regex: (pattern: RegExp, message?: string) => StringRule
-  required: (message?: string) => StringRule
-  requiredIf: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => StringRule
-  requiredUnless: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => StringRule
-  requiredWith: (fields: string[]) => StringRule
-  requiredWithAll: (fields: string[]) => StringRule
-  requiredWithout: (fields: string[]) => StringRule
-  requiredWithoutAll: (fields: string[]) => StringRule
-  sameAs: (field: string, message?: string) => StringRule
-  size: (n: number, message?: string) => StringRule
-  sometimes: () => StringRule
-  startsWith: (prefix: string, message?: string) => StringRule
-  trim: () => StringRule
-  unique: (table: string, column: string, ignoreOrOpts?: string | number | UniqueOptions, message?: string) => StringRule
-  uppercase: () => StringRule
-  url: (message?: string) => StringRule
-  uuid: (message?: string) => StringRule
+  new <L extends string = string>(): StringRule<L>
+  accepted: (message?: string) => StringRule<L>
+  alpha: (message?: string) => StringRule<L>
+  alphaDash: (message?: string) => StringRule<L>
+  alphaNum: (message?: string) => StringRule<L>
+  bail: () => StringRule<L>
+  confirmed: (message?: string) => StringRule<L>
+  custom: (fn: CustomFn, message?: string) => StringRule<L>
+  declined: (message?: string) => StringRule<L>
+  default: (value: unknown) => StringRule<L>
+  digits: (n: number, message?: string) => StringRule<L>
+  digitsBetween: (min: number, max: number, message?: string) => StringRule<L>
+  email: (message?: string) => StringRule<L>
+  endsWith: (suffix: string, message?: string) => StringRule<L>
+  exists: (table: string, column: string, message?: string) => StringRule<L>
+  in: <const V extends readonly string[]>(values: V, message?: string) => StringRule<V[number]>
+  ip: (message?: string) => StringRule<L>
+  json: (message?: string) => StringRule<L>
+  lowercase: () => StringRule<L>
+  matches: (pattern: RegExp, message?: string) => StringRule<L>
+  max: (length: number, message?: string) => StringRule<L>
+  min: (length: number, message?: string) => StringRule<L>
+  notIn: (values: string[], message?: string) => StringRule<L>
+  nullable: () => StringRule<L>
+  numeric: (message?: string) => StringRule<L>
+  optional: () => StringRule<L>
+  password: () => StringRule<L>
+  present: (message?: string) => StringRule<L>
+  prohibited: (message?: string) => StringRule<L>
+  prohibitedIf: (field: string, value: unknown) => StringRule<L>
+  prohibitedUnless: (field: string, value: unknown) => StringRule<L>
+  readonly _def: StringDef<L>
+  regex: (pattern: RegExp, message?: string) => StringRule<L>
+  required: (message?: string) => StringRule<L>
+  requiredIf: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => StringRule<L>
+  requiredUnless: (fieldOrFn: string | ((input: Record<string, unknown>) => boolean), value?: unknown) => StringRule<L>
+  requiredWith: (fields: string[]) => StringRule<L>
+  requiredWithAll: (fields: string[]) => StringRule<L>
+  requiredWithout: (fields: string[]) => StringRule<L>
+  requiredWithoutAll: (fields: string[]) => StringRule<L>
+  sameAs: (field: string, message?: string) => StringRule<L>
+  size: (n: number, message?: string) => StringRule<L>
+  sometimes: () => StringRule<L>
+  startsWith: (prefix: string, message?: string) => StringRule<L>
+  trim: () => StringRule<L>
+  unique: (table: string, column: string, ignoreOrOpts?: string | number | UniqueOptions, message?: string) => StringRule<L>
+  uppercase: () => StringRule<L>
+  url: (message?: string) => StringRule<L>
+  uuid: (message?: string) => StringRule<L>
 }
 
 class ValidationJsonError = {
@@ -8267,7 +8267,7 @@ interface ValidatorConfigShape = {
 
 type Infer = { [K in keyof S]: InferField<S[K]>; }
 
-type InferFieldType = F['type'] extends 'string' ? string : F['type'] extends 'number' ? number : F['type'] extends 'boolean' ? boolean : F['type'] extends 'date' ? Date : F['type'] extends 'array' ? InferArrayType<F> : F['type'] extends 'object' ? InferObjectType<F> : unknown
+type InferFieldType = F['type'] extends 'string' ? InferStringType<F> : F['type'] extends 'number' ? number : F['type'] extends 'boolean' ? boolean : F['type'] extends 'date' ? Date : F['type'] extends 'array' ? InferArrayType<F> : F['type'] extends 'object' ? InferObjectType<F> : unknown
 
 type Schema = {    [x: string]: FieldRuleDefinition;}
 

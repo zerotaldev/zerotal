@@ -37,6 +37,9 @@ export const KITS = {
     pages: 'app/flow/pages',
     layouts: 'app/flow/layouts',
     components: 'app/flow/components',
+    // Flow compiles a page ahead of time only when its render() is plain HTML elements, so the
+    // project pages write their form out rather than sharing a component.
+    omits: ['ProjectForm'],
   },
 } as const;
 

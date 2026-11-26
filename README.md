@@ -657,6 +657,19 @@ On [zerotal.dev](https://zerotal.dev/docs) every page also has a Markdown copy a
 | [8. Add Teams](docs/tutorial/multi-tenancy.md)                  | Projects that belong to a team                 |
 | [9. Deploy It](docs/tutorial/deploy.md)                         | The production gate, environment and checklist |
 
+**[Cookbook](docs/cookbook/index.md)** — short recipes, each tested on a new starter
+
+| Recipe                                                                 | What you add                                           |
+| ---------------------------------------------------------------------- | ------------------------------------------------------ |
+| [Upload Several Files at Once](docs/cookbook/uploads.md)               | Attachments through the media library, and the test    |
+| [A Queued Notification, Tested](docs/cookbook/queued-notifications.md) | Mail through the queue, tested with `Notify.settle()`  |
+| [Cache an Expensive Read](docs/cookbook/caching.md)                    | A remembered result, forgotten when the data changes   |
+| [Roles and Permissions](docs/cookbook/roles-and-permissions.md)        | An admin role that can manage every project            |
+| [Tenants by Subdomain](docs/cookbook/tenancy.md)                       | A tenant-scoped model, and the isolation test          |
+| [A Per-User Setting](docs/cookbook/settings.md)                        | A typed setting each user changes, with `SettingsFake` |
+| [AI Structured Output](docs/cookbook/ai-structured-output.md)          | A typed object from a model, tested with no network    |
+| [A Backup Before Migrating](docs/cookbook/backup-before-migrating.md)  | A snapshot, the migration, and the way back            |
+
 **Core**
 
 | Guide                                          | Description                                                                |

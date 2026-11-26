@@ -35,8 +35,12 @@ follows the Zerotal monorepo's unified versioning.
 - **Mail from the starters signs off with the app's name.** The password-reset and
   verification emails ended on a bare "Regards,". They close with "The _App_ team", from
   `config/app.ts`, through `signOff()` in `app/support/mail.ts`.
-- **The Flow starter's project create and edit pages use `ProjectForm`.** Each repeated the
-  form's markup by hand, so a change to the shared form reached neither page.
+- **The Flow starter no longer ships an unused `ProjectForm`.** Its project create and edit
+  pages write the form out, because Flow compiles a page ahead of time only when its `render()`
+  is plain HTML elements, and a page using a component falls back to runtime rendering, which
+  `cspSafe` refuses. The component looked like the shared form those pages used, and was used
+  by nothing. `STATUS_OPTIONS` moves to `app/flow/lib/projects.ts`, and both pages say why the
+  form is inline.
 - **The admin starter's example resource has no casts.** The "Feature" action and the stock
   value widget used `as unknown as`; both type-check without them.
 - **The README does not ask for a second `bun install`.** The scaffolder installs, and the

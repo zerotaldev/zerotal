@@ -1205,6 +1205,55 @@ describe("RouteListCommand", () => {
     Router.reset();
   });
 
+  it("run() labels each verb at one path with its own name", async () => {
+    // `GET /projects` was labelled `projects.store` and `PUT /projects/:project`
+    // `projects.destroy`: the lookup went by path, and the last name registered won.
+    Router.reset();
+    class FakeController {
+      async handle() {}
+    }
+    Router.get("/projects", FakeController as never, "index").name("projects");
+    Router.post("/projects", FakeController as never, "store").name("projects.store");
+    Router.put("/projects/:project", FakeController as never, "update").name("projects.update");
+    Router.delete("/projects/:project", FakeController as never, "destroy").name(
+      "projects.destroy",
+    );
+    Router.get("/about", FakeController as never, "show");
+
+    const lines: string[] = [];
+    const cmd = new RouteListCommand();
+    cmd.args = {};
+    cmd.flags = { name: false, verbose: false };
+    cmd._writer = { ...noop, writeLine: (m: string) => void lines.push(m) };
+    await cmd.run();
+
+    // Strip colour, then read the last column of each row by its method and path.
+    // eslint-disable-next-line no-control-regex
+    const plain = lines.map((line) => line.replace(/\x1b\[[0-9;]*m/g, ""));
+    const nameFor = (method: string, path: string): string | undefined =>
+      plain
+        .find((line) =>
+          new RegExp(`^\\s+${method}\\s+${path.replace(/[/:]/g, "\\$&")}\\s`).test(line),
+        )
+        ?.trim()
+        .split(/\s+/)
+        .at(4);
+
+    expect(nameFor("GET", "/projects")).toBe("projects");
+    expect(nameFor("POST", "/projects")).toBe("projects.store");
+    expect(nameFor("PUT", "/projects/:project")).toBe("projects.update");
+    expect(nameFor("DELETE", "/projects/:project")).toBe("projects.destroy");
+    expect(nameFor("GET", "/about")).toBeUndefined();
+
+    // `--name` keeps the named ones, each once.
+    const named: string[] = [];
+    cmd.flags = { name: true, verbose: false };
+    cmd._writer = { ...noop, writeLine: (m: string) => void named.push(m) };
+    await cmd.run();
+    expect(named.join("\n")).toContain("4 routes");
+    Router.reset();
+  });
+
   it("run() filters by method", async () => {
     Router.reset();
     class FakeController {

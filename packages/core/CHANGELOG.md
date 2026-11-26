@@ -22,6 +22,10 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **`route:list` shows each route's own name.** It looked names up by path, so every verb at
+  one path showed whichever name was registered last: `GET /projects` read `projects.store`
+  and `PUT /projects/:project` read `projects.destroy`. `route()` and the generated route
+  types were always right; only the table was wrong.
 - **Live-reload works under a strict Content-Security-Policy.** The dev client was an inline
   `<script>`, so an app whose policy refused inline scripts had to add `'unsafe-inline'` in
   development to keep it. It is now a file, `/__dev/reload.js`, served while `zt dev` is

@@ -70,11 +70,15 @@ export class RouteListCommand extends Command {
     const nameOnly = this.flags["name"] as boolean;
     const verbose = this.flags["verbose"] as boolean;
 
-    // Build path → name lookup from the named-routes map (name → path)
-    const pathToName = new Map<string, string>();
-    for (const [name, path] of Router.namedRoutes) {
-      pathToName.set(path, name);
-    }
+    // Each route's own name, read off its definition, where the verb is. A lookup by
+    // path labelled every verb at a path with whichever name was registered last —
+    // `GET /projects` showed as `projects.store` — because one path carries a name per
+    // verb. A name `route()` refuses (it names two paths) is left blank here and listed
+    // under the table instead.
+    const nameOf = (route: { name?: string | undefined; path: string }): string =>
+      route.name !== undefined && Router.namedRoutes.get(route.name) === route.path
+        ? route.name
+        : "";
 
     let rows = Array.from(Router.routes.values());
 
@@ -85,7 +89,7 @@ export class RouteListCommand extends Command {
       rows = rows.filter((route) => route.path.includes(pathFilter));
     }
     if (nameOnly) {
-      rows = rows.filter((route) => pathToName.has(route.path));
+      rows = rows.filter((route) => nameOf(route) !== "");
     }
 
     if (rows.length === 0) {
@@ -113,7 +117,7 @@ export class RouteListCommand extends Command {
       path: route.path,
       controller: _controllerName(route.controller.name),
       action: route.action,
-      name: pathToName.get(route.path) ?? "",
+      name: nameOf(route),
       middleware: route.middleware
         .map((middleware) => middleware.name)
         .filter(Boolean)

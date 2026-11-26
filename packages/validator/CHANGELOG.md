@@ -17,6 +17,13 @@ follows the Zerotal monorepo's unified versioning.
   be saved to a column typed with that list without a cast. `in()` also accepts a `readonly`
   list. A list typed `string[]` still gives `string`. See
   [String rules](/docs/validator#string-rules).
+- **BREAKING (types only): a narrower `in()` value can fail a comparison that compiled before.**
+  Nothing changes at run time. But code that compares a validated field with a value the list
+  does not hold, such as `data.status === "archived"` after `in(["draft", "active"])`, now
+  fails to compile ("This comparison appears to be unintentional"), and so does assigning such
+  a value to it. Add the value to the list, or widen the field with `as string` where the
+  comparison is deliberate. `StringRule` gained a type parameter for this; it defaults to
+  `string`, so code that names `StringRule` on its own is unaffected.
 
 ## [1.18.0] — 2026-11-26
 

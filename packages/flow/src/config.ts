@@ -21,6 +21,24 @@ export interface FlowConfigShape {
    * Default: `["SessionMiddleware", "PersistUserMiddleware", "BearerTokenMiddleware"]`
    */
   persistentMiddleware: (string | MiddlewareClass)[];
+  /**
+   * Whether a visitor is shown an error's own message when something on a Flow page throws:
+   * the toast the default `onError()` raises, and the message of the error frame the browser
+   * logs.
+   *
+   * An error's text is written for the log. It can name tables, hosts and file paths, so
+   * outside development and tests the visitor is told "Something went wrong. Please try
+   * again." and the detail goes to the log and the app's exception handler. An error the
+   * framework raised to answer the client (`abort(403, "…")`, a `ForbiddenError`) keeps its
+   * message either way.
+   *
+   * `true` shows every message everywhere, which is what Flow did before 1.18.4. `false` hides
+   * them everywhere, development included.
+   *
+   * Default: unset, which means shown in development, under `bun zt dev` and in tests, and
+   * hidden everywhere else.
+   */
+  exposeErrorMessages?: boolean | undefined;
 }
 
 /**

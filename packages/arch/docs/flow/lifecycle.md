@@ -309,42 +309,53 @@ override async onDehydrate() {
 }
 ```
 
-After `onDehydrate()`, the snapshot is signed and sent to the browser as an encrypted opaque blob. The next round-trip restores it before `onHydrate()` runs.
+After `onDehydrate()`, the snapshot is signed and sent to the browser. It is signed, not encrypted: the browser cannot change a value without the server refusing the snapshot, but every value in it can be read, so keep secrets out of `@expose` and `@locked` fields. The next round-trip restores it before `onHydrate()` runs.
 
 ## Custom error handling
 
-Called when an `@expose`d action throws an unhandled error. The default behaviour flashes the error message with level `"error"`. Override to log to an error tracker or display a custom message:
+`onError(error)` is called when an `@expose`d action throws, or when an `onUpdating()` hook
+rejects a write from the browser. By then Flow has already done two things you do not need to
+repeat:
+
+- **Reported it.** The error goes to the exception handler you registered with
+  `app.withExceptionHandler()`, or to the log when you have none, with a line naming the action
+  and the page. See [Custom exception handler](/docs/errors#custom-exception-handler) for
+  sending errors to a tracker from one place.
+- **Kept the page alive.** The component re-renders after `onError()` returns.
+
+What is left for `onError()` is what the visitor sees. The default flashes a message with level
+`"error"`:
+
+| Where the app runs                               | What the default flashes                  |
+| ------------------------------------------------ | ----------------------------------------- |
+| Development, `bun zt dev`, a test run            | The error's own message                   |
+| Anywhere else                                    | "Something went wrong. Please try again." |
+| An error raised to answer the client, everywhere | Its own message                           |
+
+An error's message is written for the log, and it can name a table, a host or a file path, so a
+deployment does not show it. An error raised to answer the client is one you threw on purpose
+with `abort(403, "…")` or a built-in HTTP error such as `ForbiddenError`, with a status below 500: its message was written for the person on the page and is shown as it is.
+[Flow security](/docs/flow/security#what-a-visitor-sees-when-something-throws) covers the
+setting that changes this for the whole app.
+
+Override `onError()` to choose the words yourself:
 
 ```typescript fragment
 override async onError(error: Error) {
-  // Log to your error tracker
-  await Sentry.captureException(error, {
-    extra: {
-      component: this.constructor.name,
-      userId:    this.currentUserId,
-    },
-  });
-
-  // Show a user-friendly message instead of the raw error text
-  this.flash("Something went wrong. Our team has been notified.", "error");
-}
-```
-
-If you want some errors to propagate normally and only handle specific types:
-
-```typescript fragment
-override async onError(error: Error) {
-  if (error instanceof DatabaseConnectionError) {
-    this.flash("Database is temporarily unavailable. Please try again.", "error");
+  if (error instanceof PaymentDeclinedError) {
+    this.flash("Your card was declined. Try another card.", "error");
     return;
   }
 
-  // Re-throw everything else to get the default flash behaviour
+  // Everything else: hand it back, and the default flash runs for it.
   throw error;
 }
 ```
 
-`onError()` does not run during the initial `GET` render — if `onMount()` throws, the error propagates to the HTTP layer and results in a 500 response. It only runs during WebSocket action frames.
+Throwing from `onError()` hands the error back to Flow, which flashes the default message for
+whatever was thrown. Returning without flashing shows the visitor nothing.
+
+`onError()` does not run during the initial `GET` render — if `onMount()` throws, the error propagates to the HTTP layer and results in a 500 response. It only runs during WebSocket action frames. An error thrown outside the action body on a later round trip (in `render()`, `onBoot()`, `onHydrate()`, `onUpdate()` or a middleware) does not reach `onError()` either: there is no page left to repaint, so it is reported the same way and the browser is sent an error frame carrying the message from the table above.
 
 ## Next steps
 

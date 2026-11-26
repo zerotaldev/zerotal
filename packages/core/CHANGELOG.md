@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Errors caught outside the HTTP error path can reach the app's exception handler.** An
+  internal `Application._reportError()` reports an error the way an unhandled route error is
+  reported (the registered exception handler, or the log when there is none) without rendering
+  a response. Flow uses it for actions that throw, which until now reached neither.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

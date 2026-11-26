@@ -2113,6 +2113,40 @@ export class Application {
     return ExceptionHandler.defaultRender(error, ctx);
   }
 
+  /**
+   * Report an error that was caught somewhere other than the HTTP error path, the way an
+   * unhandled route error is reported: through the app's exception handler when it has one,
+   * and to the log otherwise. Nothing is rendered.
+   *
+   * A Flow action that throws is caught by Flow, which still has a page to repaint, so the
+   * error never reaches {@link _handleErrorAsync}. Without this door it reached nobody: no log
+   * line, and no call to the handler an app registered to send its errors to a tracker.
+   *
+   * Never throws. A reporter that fails must not take down the work that was being reported.
+   *
+   * @param error - What was thrown.
+   * @param ctx - The request it was thrown in, when there is one.
+   * @internal
+   */
+  async _reportError(error: unknown, ctx?: HttpContext): Promise<void> {
+    try {
+      const handler = this._exceptionHandler;
+      if (handler) {
+        await handler.report(error, ctx);
+        return;
+      }
+      if (!_isExpectedOutcome(error)) {
+        frameworkLog("app").error("Unhandled error", undefined, error);
+      }
+    } catch (reportFailure) {
+      frameworkLog("app").error(
+        "The exception handler failed to report an error",
+        undefined,
+        reportFailure,
+      );
+    }
+  }
+
   private _buildProviderHooks(): ProviderHooks {
     const providers = this._activeProviders;
     return {

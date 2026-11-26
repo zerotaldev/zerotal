@@ -207,6 +207,24 @@ export async function hydrate<T extends Component>(
     throw new FlowIntegrityError();
   }
 
+  return _hydrateVerified(snapshot, PageClass);
+}
+
+/**
+ * The rest of {@link hydrate}, for a caller that has already checked the signature.
+ *
+ * The action handler verifies a frame's snapshot before it does anything else, so that a frame
+ * which does not verify costs one HMAC and nothing more, and one which does is never turned
+ * away. It then restores the page inside the middleware pipeline, where the signed-in user is
+ * known. Verifying there again would sign the whole snapshot a second time on every action.
+ *
+ * @throws {@link FlowSnapshotOwnershipError} When the snapshot is not this requester's, or expired.
+ * @internal
+ */
+export async function _hydrateVerified<T extends Component>(
+  snapshot: Snapshot,
+  PageClass: new () => T,
+): Promise<T> {
   // 2. Verify the snapshot belongs to whoever is asking, and has not aged out. The HMAC
   //    proves integrity, not ownership — a genuine signature over someone else's state is
   //    still someone else's state.

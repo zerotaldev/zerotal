@@ -572,6 +572,7 @@ interface FlowChain = {
 
 interface FlowConfigShape = {
   cspSafe: boolean
+  exposeErrorMessages?: boolean | undefined
   persistentMiddleware: (string | MiddlewareClass)[]
 }
 

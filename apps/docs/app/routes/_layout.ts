@@ -170,6 +170,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { label: "Icons", slug: "flow/icons" },
       { label: "Layouts & Composition", slug: "flow/layouts" },
       { label: "Transport & Performance", slug: "flow/performance" },
+      { label: "Security", slug: "flow/security" },
       { label: "Testing", slug: "flow/testing" },
       { label: "References", slug: "flow/references" },
     ],

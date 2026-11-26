@@ -135,6 +135,31 @@ it("notifies the user when an invoice is ready", async () => {
 });
 ```
 
+### Mail sent fire-and-forget: `Notify.settle()`
+
+Code that should not make a response wait on SMTP sends without awaiting —
+`void Notify.send(user, new Welcome())`, often after a lookup of its own. The test then
+asserts before the send has happened. `Notify.settle()` waits for it: it resolves once
+every send started through `Notify` has finished and a turn of the event loop has passed
+with nothing new, so a send started after an `await` is waited for too.
+
+```typescript fragment
+it("welcomes a new user", async () => {
+  await app.post("/register", { email: "ada@example.test", password: "secret-password" });
+
+  await Notify.settle();
+  notify.assertSentTimes(Welcome, 1);
+});
+```
+
+It works the same with the real notifier, for a test that asserts on the mail log or the
+`notifications` table rather than on the fake. A send that failed does not make `settle()`
+reject; the code that started it owns that error.
+
+`sentTo()` and the assertions take your model as it is declared: `email`, `name` and
+`phone` may be absent or typed `string | undefined`, so a model needs no cast under
+`exactOptionalPropertyTypes`.
+
 ## Broadcasting
 
 The `Broadcast` facade has its own recorder. Call `Broadcast.fake()` to install
@@ -409,6 +434,8 @@ fake.sample([1, 2, 3, 4], 2); // 2 unique random picks
 | `install`           | `static install(): NotificationFake`                         | Swap the `notifications` binding for the fake.           |
 | `restore`           | `restore(): void`                                            | Restore the original `notifications` binding.            |
 | `sent`              | `sent(): CapturedNotification[]`                             | All captured `{ notifiable, notification }` pairs.       |
+| `sentTo`            | `sentTo(notifiable): CapturedNotification[]`                 | What was sent to one recipient.                          |
+| `settle`            | `settle(): Promise<void>`                                    | Wait until every send in flight has been captured.       |
 | `assertSentTo`      | `assertSentTo(notifiable, NotificationClass, filter?): void` | A notification of that class was sent to the notifiable. |
 | `assertNotSentTo`   | `assertNotSentTo(notifiable, NotificationClass): void`       | That class was not sent to the notifiable.               |
 | `assertNothingSent` | `assertNothingSent(): void`                                  | No notifications were sent at all.                       |

@@ -13,6 +13,12 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Added
+
+- `CAPABILITIES`, `CAPABILITY_AREAS` and the `Capability` / `CapabilityArea` types are
+  exported, so `zt about` can list what the framework ships that an app does not have. The
+  entries are unchanged.
+
 ## [1.17.4] — 2026-11-26
 
 ### Added

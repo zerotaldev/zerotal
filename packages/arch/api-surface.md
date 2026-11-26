@@ -47,6 +47,10 @@ const BLOCK_END = '<!-- zerotal:arch:end -->'
 
 const BLOCK_START = '<!-- zerotal:arch:start -->'
 
+const CAPABILITIES = readonly Capability[]
+
+const CAPABILITY_AREAS = readonly ['Accounts and access', 'Data', 'Files', 'Messages and background work', 'Product features', 'Security and operations', 'Testing']
+
 const PROBE_TOPICS = readonly ['doctor', 'routes', 'schema', 'app-info']
 
 const SERVER_ENTRY_PATH = 'node_modules/@zerotal/arch/src/bin/mcp.ts'
@@ -98,6 +102,14 @@ interface ArchConfigShape = {
   mcpConfigPath: string
   serverName: string
   skills: boolean
+}
+
+interface Capability = {
+  area: 'Accounts and access' | 'Data' | 'Files' | 'Messages and background work' | 'Product features' | 'Security and operations' | 'Testing'
+  doc: string
+  need: string
+  pkg?: string
+  provides: string
 }
 
 interface Detected = {
@@ -191,6 +203,8 @@ interface ToolContext = {
 }
 
 type BlockOutcome = { status: 'created'; text: string } | { status: 'updated'; text: string } | { status: 'unchanged'; text: string } | { status: 'conflict'; reason: string }
+
+type CapabilityArea = 'Accounts and access' | 'Data' | 'Files' | 'Messages and background work' | 'Product features' | 'Security and operations' | 'Testing'
 
 type ConfigOutcome = { status: 'created' | 'updated' | 'unchanged'; text: string } | { status: 'conflict'; reason: string }
 

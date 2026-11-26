@@ -78,3 +78,9 @@ export type { BlockOutcome } from "./install/markers.ts";
 export { agentsPreamble, buildGuidelines, claudeShim } from "./install/guidelines.ts";
 /** @internal */
 export type { GuidelineOptions } from "./install/guidelines.ts";
+
+// The capability index: what the framework ships, by package. `AGENTS.md` and the
+// docs' "What ships" page are generated from it, and `zt about` reads it to list
+// what this app could add.
+export { CAPABILITIES, CAPABILITY_AREAS } from "./install/guidelines.ts";
+export type { Capability, CapabilityArea } from "./install/guidelines.ts";

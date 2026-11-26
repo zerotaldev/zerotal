@@ -297,6 +297,9 @@ is the seam that lets a tool's tests answer from a fixture instead of booting an
 | `GuidelineOptions`                              | `interface GuidelineOptions`                                      | Installed packages and the server name.                                         |
 | `agentsPreamble`                                | `agentsPreamble(): string`                                        | The prose written above the block on creation.                                  |
 | `claudeShim`                                    | `claudeShim(): string`                                            | The `CLAUDE.md` that imports `AGENTS.md`.                                       |
+| `CAPABILITIES`                                  | `readonly Capability[]`                                           | What the framework ships, one need each; `zt about` and What Ships read it.     |
+| `Capability`                                    | `interface Capability`                                            | `need`, `area`, `provides`, the `pkg` to install (absent if built in), `doc`.   |
+| `CAPABILITY_AREAS` / `CapabilityArea`           | `readonly [...]` / `type`                                         | The sections of the What Ships page, in order.                                  |
 
 The transport is on the `@zerotal/arch/mcp` subpath: `McpServer`, `McpServerOptions`,
 `serveStdio`, `StdioOptions`, `decodeFrame`, `encodeFrame`, `DecodedFrame`, `success`,

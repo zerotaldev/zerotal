@@ -90,6 +90,10 @@ This list is checked: CI fails when a package gains a dependency that is not on 
 The rules a package follows are in
 [Package Development](/docs/package-development#dependencies).
 
+How the packages are built and published — npm provenance, CI actions pinned by commit,
+the publish token held by one job, no install scripts — is on
+[Supply-Chain Security](/docs/supply-chain).
+
 ## Releases and versioning
 
 All `@zerotal/*` packages and `create-zerotal` share **one version line and

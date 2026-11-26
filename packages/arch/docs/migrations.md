@@ -84,6 +84,9 @@ bun zt migrate:rollback
 
 # Show which migrations have run (name | ran | batch | ranAt)
 bun zt migrate:status
+
+# Print the SQL the pending migrations would run, and run none of it
+bun zt migrate --pretend
 ```
 
 `bun zt doctor` warns when migrations on disk have not run, and names them. It is a warning
@@ -147,6 +150,54 @@ states a deploy can be caught in are _not applied_ and _applied and recorded_.
 Rollback carries the same guarantee in reverse: a `down()` that fails part-way undoes
 nothing and keeps the migration recorded as applied, rather than leaving the schema and the
 tracking table disagreeing.
+
+### Seeing the SQL first: `--pretend`
+
+`migrate --pretend` runs each pending migration's `up()` against a connection that records
+what it is sent instead of sending it, and prints the statements. No migration runs and
+nothing is recorded in the `migrations` table, so the next `migrate` runs the same
+migrations. (Like every `migrate`, it creates that table, empty, if the database has never
+had one.)
+
+```bash
+bun zt migrate --pretend
+```
+
+The SQL is the dialect your database speaks. What `--pretend` cannot do is answer a read: a
+query returns no rows, so a migration that branches on `Schema.hasTable()` or on data it
+selects shows the branch an empty database would take, and a SQLite column drop (which
+rebuilds the table from what it reads back) shows only the statements that do not depend on
+the read.
+
+### A backup before migrating in production
+
+Set `backupBeforeMigrate` in `config/database.ts` and `migrate` takes a
+[`db:backup`](/docs/deployment#back-up-the-database) snapshot before it changes anything in
+production:
+
+```typescript
+// config/database.ts
+import { env } from "zerotal";
+import { DatabaseConfig } from "zerotal/orm";
+
+export default DatabaseConfig({
+  driver: "sqlite",
+  url: env("DATABASE_URL", "./database/db.sqlite"),
+  backupBeforeMigrate: true,
+});
+```
+
+- **Off by default.** It is on only where you turn it on.
+- **Production only.** It runs when `APP_ENV` is `production` (or `prod`, or `staging`) and
+  there is something to migrate. A development database is rebuilt with `migrate:fresh
+--seed`, not restored.
+- **Verified, and blocking.** The snapshot goes to `storage/backups/pre-migrate/` (the
+  newest 14 are kept, apart from your scheduled backups), is opened and integrity-checked,
+  and `migrate` stops without migrating if the backup fails.
+  `bun zt migrate --skip-backup` migrates without one.
+- **SQLite only.** The snapshot is SQLite's `VACUUM INTO`. On PostgreSQL and MySQL,
+  `migrate` says that no backup was taken and carries on; take one with `pg_dump`,
+  `mysqldump` or your provider's snapshots as a deploy step before `migrate`.
 
 ## Auto-generating from models
 
@@ -465,6 +516,40 @@ writes a zero-padded numeric prefix so order is preserved as you add files:
 Timestamp-prefixed names (`2024_01_15_120000_create_users.ts`) also sort correctly if
 you prefer them.
 
+### Two migrations, one number
+
+Two branches cut from the same `main` each add "the next" migration. Both merge, and the
+app has `0042_add_invoices.ts` and `0042_add_refunds.ts`. The number was meant to say what
+runs in what order, and now the alphabet decides.
+
+`zt migrate` refuses to run while two different migration files share a number and either
+of them has not been applied yet. The error names the files, the next free number, and the
+fix:
+
+```text
+Two different migrations share a number, usually because two branches each added "the next one":
+  0042: 0042_add_invoices.ts, 0042_add_refunds.ts
+
+  Renumber the one that has not reached production to the next free number, e.g.
+    database/migrations/0042_add_refunds.ts → database/migrations/0043_add_refunds.ts
+  If it has already run somewhere, keep its recorded identity while renaming:
+    static override id = "0042_add_refunds";
+```
+
+`zt doctor` reports the same clash, so a pull request's CI catches it before merge: CI runs
+on the merge of the branch into `main`, where both files exist. Run `doctor` in your CI and
+nobody has to check the highest number on `main` by hand.
+
+A clash whose migrations have **all** already run is history rather than a decision — both
+are recorded, in the order they ran — so `migrate` carries on and `doctor` only warns.
+`042_` and `0042_` count as the same number, and a timestamp-named migration is numbered
+by its whole timestamp, not its year.
+
+A renumbered copy of an applied migration (`001_create_users` renamed to
+`0001_create_users`) is refused separately, with its own message. Either rename it back, or
+keep the new filename and pin the identity the database already holds with
+`static override id = "001_create_users"`.
+
 ## Testing
 
 Set your suite up once as described in [Testing](/docs/testing). Migrations get
@@ -525,6 +610,8 @@ test("backfills a slug for every existing post", async () => {
 | ------------------------------------------- | ------------------------------------------------------------- |
 | `make:migration <name>`                     | Scaffold a numbered migration file in `database/migrations/`. |
 | `migrate [--fresh]`                         | Run pending migrations; `--fresh` drops all tables first.     |
+| `migrate --pretend`                         | Print the SQL pending migrations would run, without running.  |
+| `migrate --skip-backup`                     | Migrate without the `backupBeforeMigrate` snapshot.           |
 | `migrate:fresh`                             | Roll everything back, then re-run from scratch.               |
 | `migrate:rollback`                          | Roll back the most recent batch (runs each `down()`).         |
 | `migrate:status`                            | Show each migration's ran / batch / ranAt state.              |

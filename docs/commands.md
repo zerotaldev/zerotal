@@ -255,6 +255,25 @@ one tab parks with a message telling you how to retry. Everything else keeps
 running. This is the opposite of the asset build, where a failure deliberately
 aborts the reload.
 
+#### When a build or the server fails
+
+A save that breaks something shows the error where you are looking, not only in the
+terminal:
+
+- **A frontend build fails** (a syntax error in a React or Vue page, say). The server
+  keeps serving the last bundle that built, and every open tab draws the error over
+  the page: the file, line and column, and the compiler's message. A tab you open or
+  reload while the build is broken shows it too. Save a fix and the tab reloads by
+  itself. `Esc` hides the panel.
+- **The server will not start** (a syntax error in a Flow page, or an error thrown
+  while booting). Instead of the browser's "connection refused", the port answers with
+  a page naming the file, line and message, and the terminal says the same. A syntax
+  error is not retried, and only a port another process holds is reported as one.
+  Save a fix and the page reloads by itself once the server is back.
+
+Both are drawn by `/__dev/reload.js`, the same file that does live-reload, with no
+inline script or style, so they work under a strict Content-Security-Policy.
+
 #### Stream mode
 
 Not everything watching `zt dev` is a person at a terminal. When stdout is not a

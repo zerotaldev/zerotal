@@ -108,7 +108,7 @@ describe("make:flow in an app laid out like the starters", () => {
     await Bun.write(join(root, "app/flow/pages/home.tsx"), "export class Home {}\n");
     await Bun.write(
       join(root, "app/models/Post.ts"),
-      "@table('posts')\nexport class Post extends Model {}\n",
+      "@table('posts')\nexport class Post extends Model {\n  static override fillable = ['name'] as const;\n  @column() name!: string;\n}\n",
     );
     process.chdir(root);
     return root;
@@ -131,12 +131,14 @@ describe("make:flow in an app laid out like the starters", () => {
 
     const src = await Bun.file(join(root, "app/flow/pages/posts.tsx")).text();
     expect(src).toContain('import { Post } from "../../models/Post";');
-    expect(src).toContain("@locked items: Post[] = [];");
-    expect(src).toContain("this.items = await Post.all();");
-    expect(src).toContain("await Post.create({ name: this.name });");
-    expect(src).toContain("await item.delete();");
+    expect(src).toContain("@locked items: Row[] = [];");
+    expect(src).toContain('type Row = Pick<Post, "id" | "name">;');
+    expect(src).toContain("const post = new Post();");
+    expect(src).toContain("post.fill({ name: this.name });");
+    expect(src).toContain("await post.delete();");
     expect(src).not.toContain("TODO");
     expect(col.out).not.toContain("No model exports");
+    expect(() => new Bun.Transpiler({ loader: "tsx" }).transformSync(src)).not.toThrow();
   });
 
   it("says so when the model it was told to use does not exist", async () => {
@@ -190,3 +192,125 @@ async function c_run(
   const { c } = mk(args, flags);
   await c.run();
 }
+
+// From the 1.18.0 starter walk: in the Flow starter, `make:flow TasksPage --crud --model Task`
+// printed "File-based routing serves this automatically" and /tasks was a 404 (the starter serves
+// pages from routes/web.ts only); the page assumed a `name` column (four type errors on a model
+// without one), listed `Task.all()` — everyone's tasks — and extended `Component`, not the
+// starter's `Page`.
+describe("make:flow --crud --model in the Flow starter", () => {
+  const cwd = process.cwd();
+  afterEach(() => process.chdir(cwd));
+
+  async function flowStarter(bootstrap?: string): Promise<string> {
+    const root = await freshDir();
+    await Bun.write(
+      join(root, "bootstrap/app.ts"),
+      bootstrap ??
+        `Application.create({ providers })
+  .routing({ web: basePath("routes/web.ts") })
+  .fileBasedRouting({ web: basePath("app/routes") });
+`,
+    );
+    await Bun.write(join(root, "routes/web.ts"), 'Router.flow("/", HomePage).name("home");\n');
+    await Bun.write(
+      join(root, "app/flow/lib/page.ts"),
+      "export function titled(title: string) { return () => title; }\n" +
+        "export abstract class Page extends Component {}\n",
+    );
+    await Bun.write(
+      join(root, "app/flow/layouts/AppLayout.tsx"),
+      "export function AppLayout({ shell }: { shell: Shell }) {}\n",
+    );
+    await Bun.write(join(root, "app/flow/pages/home.tsx"), "export class HomePage {}\n");
+    await Bun.write(
+      join(root, "app/models/Task.ts"),
+      `@table("tasks")
+export class Task extends Model {
+  static override fillable = ["title", "notes", "done", "status"] as const;
+  @column({ type: "number" }) userId!: number;
+  @column({ type: "string" }) title!: string;
+  @column({ type: "text", nullable: true }) notes?: string | null | undefined;
+  @column({ type: "boolean" }) done!: boolean;
+  @column({ type: "string" }) status!: TaskStatus;
+}
+`,
+    );
+    process.chdir(root);
+    return root;
+  }
+
+  async function generate(root: string): Promise<{ src: string; out: string }> {
+    const { c, col } = mk({ name: "TasksPage" }, { crud: true, model: "Task" });
+    await c.run();
+    return { src: await Bun.file(join(root, "app/flow/pages/tasks.tsx")).text(), out: col.out };
+  }
+
+  it("says how to give the page a URL, since nothing serves it by itself", async () => {
+    const { out } = await generate(await flowStarter());
+
+    expect(out).not.toContain("serves this automatically");
+    expect(out).toContain("Nothing serves /tasks yet. Add the page to routes/web.ts:");
+    expect(out).toContain('import { TasksPage } from "../app/flow/pages/tasks";');
+    expect(out).toContain('Router.flow("/tasks", TasksPage).name("tasks");');
+    expect(out).toContain("inside the signed-in group");
+  });
+
+  it("says file-based routing serves it when the app routes its pages that way", async () => {
+    const root = await flowStarter(
+      'Application.create({}).fileBasedRouting({ web: basePath("app/flow/pages") });\n',
+    );
+    const { out } = await generate(root);
+
+    expect(out).toContain("File-based routing serves it at /tasks.");
+    expect(out).not.toContain("Nothing serves");
+  });
+
+  it("edits the model's own columns, not a `name` it does not have", async () => {
+    const { src } = await generate(await flowStarter());
+
+    expect(src).not.toMatch(/\bname\b/);
+    expect(src).toContain('type Row = Pick<Task, "id" | "title" | "notes" | "done">;');
+    expect(src).toContain('@expose @validate((rule) => rule.required()) title = "";');
+    expect(src).toContain('@expose notes = "";');
+    expect(src).toContain("@expose done = false;");
+    expect(src).toContain("task.fill({ title: this.title, notes: this.notes, done: this.done });");
+    expect(src).toContain('this.notes = item.notes ?? "";');
+    expect(src).toContain('<input type="checkbox" checked={this.done} />');
+    // A union of literals has no value a blank form could start from; it is left to its default.
+    expect(src).not.toContain("status");
+  });
+
+  it("reads and writes only the signed-in user's records", async () => {
+    const { src } = await generate(await flowStarter());
+
+    expect(src).not.toContain("Task.all()");
+    expect(src).toContain('return Task.query().where("user_id", this.user?.id ?? 0);');
+    expect(src).toContain("task.userId = this.user?.id ?? 0;");
+    expect(src).toContain('await this.owned().where("id", this.editingId).firstOrFail();');
+    expect(src).toContain('await this.owned().where("id", id).firstOrFail();');
+  });
+
+  it("extends the starter's Page, in its layout, and is live", async () => {
+    const { src } = await generate(await flowStarter());
+
+    expect(src).toContain('import { Page, titled } from "../lib/page";');
+    expect(src).toContain("export class TasksPage extends Page {");
+    expect(src).toContain("static override interactive = true;");
+    expect(src).toContain('static override title = titled("Tasks");');
+    expect(src).toContain('import { AppLayout } from "../layouts/AppLayout";');
+    expect(src).toContain("return <AppLayout shell={this.shell()}>{page}</AppLayout>;");
+    expect(src).not.toContain("Component");
+    expect(() => new Bun.Transpiler({ loader: "tsx" }).transformSync(src)).not.toThrow();
+  });
+
+  it("scopes by the signed-in user through Auth on a page without the starter's base", async () => {
+    const root = await flowStarter();
+    await rm(join(root, "app/flow/lib"), { recursive: true, force: true });
+    const { src } = await generate(root);
+
+    expect(src).toContain("export class TasksPage extends Component {");
+    expect(src).toContain('import { Auth } from "zerotal/auth";');
+    expect(src).toContain('Task.query().where("user_id", Auth.user().id)');
+  });
+});

@@ -64,6 +64,17 @@ export { AssetsPruneCommand } from "./AssetsPruneCommand.ts";
 export { LintPackagesCommand } from "./LintPackagesCommand.ts";
 export { MakePackageCommand } from "./MakePackageCommand.ts";
 
+// What the `make:*` generators in every package share: how the app imports the framework,
+// how it formats its files, and what its models declare. Plumbing, with no stability promise.
+export {
+  _frameworkImport,
+  _formatAppSource,
+  _writeAppSource,
+  _readModel,
+  _relativeImport,
+} from "../appSource.ts";
+export type { _ModelColumn, _ModelShape } from "../appSource.ts";
+
 // Extension point rather than a command: lets a view package add its own
 // generated-types file to `zt route:types`, so one command refreshes every type
 // file an app generates from its file tree. `@zerotal/inertia` registers its page

@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`make:model`, `make:migration`, `make:seeder` and `make:factory` write files a starter's
+  checks accept.** They imported `@zerotal/orm` and `@zerotal/testing`, which the starters do not
+  declare, extended `BaseModel` where the starters use `Model`, and used single quotes, so
+  `bun run format:check` failed in the starter's CI. They now import through `zerotal/orm` and
+  `zerotal/testing` when the app declares the `zerotal` bundle (the scoped name otherwise), and
+  are formatted with the app's Prettier.
+- **`make:factory TaskFactory` writes `TaskFactory`,** not `TaskFactoryFactory` importing a model
+  called `TaskFactory`. The factory also fills the model's own mass-assignable columns with
+  made-up values, rather than leaving a commented example.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

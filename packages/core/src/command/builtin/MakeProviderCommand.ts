@@ -3,6 +3,7 @@
  * skipped) wires it into `bootstrap/providers.ts`.
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 import { registerProvider } from "../../build/codemod.ts";
 
 function providerStub(name: string): string {
@@ -57,7 +58,7 @@ export class MakeProviderCommand extends Command {
       return;
     }
 
-    await Bun.write(path, providerStub(className));
+    await _writeAppSource(path, providerStub(className));
     this.info(`Created: ${path}`);
 
     // Codemod: wire the new provider into bootstrap/providers.ts.

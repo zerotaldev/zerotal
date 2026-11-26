@@ -2,6 +2,7 @@
  * The `make:listener` command, which scaffolds an event listener class.
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 
 /**
  * `bun zt make:listener <name>` — scaffolds a new event listener class under
@@ -26,7 +27,7 @@ export class MakeListenerCommand extends Command {
       this.error(`File already exists: ${path}`);
       return;
     }
-    await Bun.write(
+    await _writeAppSource(
       path,
       `export class ${name} {\n  async handle(event: unknown): Promise<void> {\n    // Handle the event here\n    void event;\n  }\n}\n`,
     );

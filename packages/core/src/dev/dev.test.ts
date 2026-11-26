@@ -164,11 +164,13 @@ describe("DEV_RELOAD_CLIENT", () => {
       }
     }
 
-    new Function("location", "WebSocket", "setTimeout", _DEV_RELOAD_SOURCE)(
+    new Function("location", "WebSocket", "setTimeout", "document", _DEV_RELOAD_SOURCE)(
       location,
       FakeSocket,
       // Reconnect immediately instead of after the real 1s backoff.
       (fn: () => void) => fn(),
+      // The build-error overlay listens for Escape; nothing here draws it.
+      { addEventListener: () => {} },
     );
 
     return { sockets, reloads: () => reloads };

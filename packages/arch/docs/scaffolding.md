@@ -17,28 +17,35 @@ bun zt make:<type> <Name> [flags]
 Every generator is idempotent: if the target file already exists it reports
 `File already exists: <path>` and writes nothing, so it never overwrites your work.
 
+A generated file passes your app's own checks as it is written. It imports the framework
+the way your app does: through the `zerotal` bundle (`zerotal/orm`, `zerotal/auth`) when
+`package.json` declares it, as every starter does, and by the scoped name (`@zerotal/orm`)
+when it declares the packages instead. When the app declares Prettier, the file is
+formatted with it, under the app's own config and ignore file, so `bun run format:check`
+passes; without Prettier, the stubs are already in the starters' style.
+
 ## Generators at a glance
 
-| Command               | Creates                               | Notes                                                                 |
-| --------------------- | ------------------------------------- | --------------------------------------------------------------------- |
-| `make:controller`     | `app/controllers/<Name>.ts`           | `--resource` adds CRUD stubs                                          |
-| `make:middleware`     | `app/middleware/<Name>.ts`            | Pass-through `Pipe<HttpContext>` stub                                 |
-| `make:command`        | `app/commands/<Name>.ts`              | CLI command extending `Command`                                       |
-| `make:request`        | `app/requests/<Name>.ts`              | `FormRequest` with `rules()`                                          |
-| `make:notification`   | `app/notifications/<Name>.ts`         | Extends `Notification`                                                |
-| `make:job`            | `app/jobs/<Name>.ts`                  | Queue `Job`, self-registers                                           |
-| `make:event`          | `app/events/<Name>.ts`                | `--broadcast` extends `BroadcastingEvent`                             |
-| `make:listener`       | `app/listeners/<Name>.ts`             | `handle(event)` method                                                |
-| `make:observer`       | `app/observers/<Name>.ts`             | `--model` sets the target model                                       |
-| `make:policy`         | `app/policies/<Name>.ts`              | `--model` sets the target model                                       |
-| `make:resource`       | `app/resources/<Name>.ts`             | API resource transformer                                              |
-| `make:admin-resource` | `app/admin/<Name>Resource.ts`         | Admin panel resource for a model                                      |
-| `make:provider`       | `app/providers/<Name>Provider.ts`     | Auto-registers in `bootstrap/providers.ts`                            |
-| `make:package`        | `packages/<name>/…`                   | Full `@zerotal/*` package skeleton                                    |
-| `make:model`          | `app/models/<Name>.ts`                | See [ORM](/docs/orm#generating-models)                                |
-| `make:migration`      | `database/migrations/…`               | See [Migrations](/docs/migrations)                                    |
-| `make:factory`        | `database/factories/<Name>Factory.ts` | Name the model, not the factory. See [Factories](/docs/orm/factories) |
-| `make:seeder`         | `database/seeders/<Name>.ts`          | See [Seeding](/docs/seeding)                                          |
+| Command               | Creates                               | Notes                                                           |
+| --------------------- | ------------------------------------- | --------------------------------------------------------------- |
+| `make:controller`     | `app/controllers/<Name>.ts`           | `--resource` adds CRUD stubs                                    |
+| `make:middleware`     | `app/middleware/<Name>.ts`            | Pass-through `Pipe<HttpContext>` stub                           |
+| `make:command`        | `app/commands/<Name>.ts`              | CLI command extending `Command`                                 |
+| `make:request`        | `app/requests/<Name>.ts`              | `FormRequest` with `rules()`                                    |
+| `make:notification`   | `app/notifications/<Name>.ts`         | Extends `Notification`                                          |
+| `make:job`            | `app/jobs/<Name>.ts`                  | Queue `Job`, self-registers                                     |
+| `make:event`          | `app/events/<Name>.ts`                | `--broadcast` extends `BroadcastingEvent`                       |
+| `make:listener`       | `app/listeners/<Name>.ts`             | `handle(event)` method                                          |
+| `make:observer`       | `app/observers/<Name>.ts`             | `--model` sets the target model                                 |
+| `make:policy`         | `app/policies/<Name>.ts`              | `--model` sets the target model                                 |
+| `make:resource`       | `app/resources/<Name>.ts`             | API resource transformer                                        |
+| `make:admin-resource` | `app/admin/<Name>Resource.ts`         | Admin panel resource for a model                                |
+| `make:provider`       | `app/providers/<Name>Provider.ts`     | Auto-registers in `bootstrap/providers.ts`                      |
+| `make:package`        | `packages/<name>/…`                   | Full `@zerotal/*` package skeleton                              |
+| `make:model`          | `app/models/<Name>.ts`                | See [ORM](/docs/orm#generating-models)                          |
+| `make:migration`      | `database/migrations/…`               | See [Migrations](/docs/migrations)                              |
+| `make:factory`        | `database/factories/<Name>Factory.ts` | Fills the model's columns. See [Factories](/docs/orm/factories) |
+| `make:seeder`         | `database/seeders/<Name>.ts`          | See [Seeding](/docs/seeding)                                    |
 
 ## make:controller
 
@@ -79,7 +86,8 @@ bun zt make:command SendDailyReport
 
 The stub includes `static commandName` (kebab-cased from the class name),
 `static description`, `static needsApp`, placeholder `args` and `flags` arrays,
-and an async `run()` method.
+and an async `run()` method. Commands in `app/commands/` are found by themselves, so it
+runs at once: `bun zt send-daily-report`.
 
 ## make:request
 
@@ -113,7 +121,7 @@ bun zt make:job ProcessPayment
 # Created: app/jobs/ProcessPayment.ts
 ```
 
-The stub extends `Job` from `@zerotal/queue`, sets a `default` queue, and calls
+The stub extends `Job` from `zerotal/queue`, sets a `default` queue, and calls
 `JobRegistry.register(...)` at the bottom of the file so the job is dispatchable.
 
 ## make:event
@@ -174,13 +182,17 @@ model name is inferred by stripping the `Observer` suffix.
 bun zt make:policy PostPolicy
 # Created: app/policies/PostPolicy.ts
 
-bun zt make:policy PostPolicy --model Post
-# Same path; stub references Post in commented imports
+bun zt make:policy TaskPolicy --model Task   # also --model=Task and -m Task
+# Created: app/policies/TaskPolicy.ts
 ```
 
-The stub extends `Policy` from `@zerotal/auth` with `view`, `create`, `update`,
-and `delete` methods. When `--model` is omitted the model name is inferred by
-stripping the `Policy` suffix.
+The policy extends `Policy<Task>` from `zerotal/auth`, and its `view`, `create`,
+`update` and `delete` checks take your app's own `User` and `Task`. When the model has
+an owner column (`userId`), the checks are the starters' rule, as in their
+`ProjectPolicy`: anyone signed in may create one, and only its owner may see, change or
+delete it. Without one, each check allows and says where to decide, and the command
+warns. When `--model` is omitted the model name is inferred by stripping the `Policy`
+suffix.
 
 | Flag             | Type   | Description             |
 | ---------------- | ------ | ----------------------- |

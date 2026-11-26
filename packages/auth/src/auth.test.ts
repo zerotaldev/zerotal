@@ -366,7 +366,7 @@ import { createToken, hashToken, tokenCan } from "./PersonalAccessToken.ts";
 import { TokenIssued } from "./events.ts";
 import { TwoFactorService, RECOVERY_CODE_BITS } from "./TwoFactorService.ts";
 import { GateService } from "./GateService.ts";
-import { MakePolicyCommand, policyStub } from "./commands/MakePolicyCommand.ts";
+import { MakePolicyCommand } from "./commands/MakePolicyCommand.ts";
 import { BearerTokenMiddleware } from "./BearerTokenMiddleware.ts";
 import { HttpContext, FrameworkEvents } from "@zerotal/core";
 import { Container } from "@zerotal/core";
@@ -998,24 +998,6 @@ describe("MakePolicyCommand", () => {
     expect(MakePolicyCommand.args[0]!.name).toBe("name");
     expect(MakePolicyCommand.flags).toHaveLength(1);
     expect(MakePolicyCommand.flags[0]!.name).toBe("model");
-  });
-});
-
-describe("policyStub()", () => {
-  it("includes the policy class name", () => {
-    const stub = policyStub("PostPolicy", "Post");
-    expect(stub).toContain("PostPolicy");
-    expect(stub).toContain("Post");
-    expect(stub).toContain("extends Policy");
-    expect(stub).toContain("view");
-    expect(stub).toContain("create");
-    expect(stub).toContain("update");
-    expect(stub).toContain("delete");
-  });
-
-  it("includes import from @zerotal/auth", () => {
-    const stub = policyStub("UserPolicy", "User");
-    expect(stub).toContain("from '@zerotal/auth'");
   });
 });
 

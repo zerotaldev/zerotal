@@ -2,6 +2,7 @@
  * The `make:middleware` command and the middleware source stub it writes.
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 
 /** Source for a pass-through middleware class implementing `Pipe<HttpContext>`. */
 export function middlewareStub(name: string): string {
@@ -54,8 +55,8 @@ export class MakeMiddlewareCommand extends Command {
           this.error(`File already exists: ${path}`);
           return;
         }
-        // Bun.write() creates any missing parent directories, so no mkdir is needed.
-        return Bun.write(path, middlewareStub(name)).then(() => {
+        // _writeAppSource() creates any missing parent directories, so no mkdir is needed.
+        return _writeAppSource(path, middlewareStub(name)).then(() => {
           this.info(`Created: ${path}`);
         });
       });

@@ -7,6 +7,7 @@ import type { BuildHookFn } from "./DevBuildHook.ts";
 import { DEV_WORKER_ENV_VAR } from "../support/env.ts";
 import { requestGracefulStop } from "./devShutdown.ts";
 import { ZEROTAL_VERSION, installedCoreVersion } from "../support/version.ts";
+import { _DEV_RELOAD_SCRIPT_PATH, _DEV_RELOAD_SOURCE } from "./reloadClient.ts";
 
 /**
  * How the orchestrator reports to whatever is presenting dev mode.
@@ -97,6 +98,24 @@ export class DevOrchestrator {
   private static readonly RESPAWN_DELAY_MS = 300;
   /** A server that binds stays up; one that loses the port exits almost immediately. */
   private static readonly BIND_SETTLE_MS = 400;
+  /**
+   * What the last build said when it failed, or `null` after a good one. Sent to the worker,
+   * which shows it in the browser, and sent again to each new worker, since a restart starts
+   * one that knows nothing about it.
+   */
+  private _buildFailure: string[] | null = null;
+  /**
+   * The last lines the current server wrote. When it will not start, they say why: a syntax
+   * error in a page and a port held by another process look alike by exit code alone.
+   */
+  private _serverOutput: string[] = [];
+  /** Set while a start is being attempted, which reports its own failure. */
+  private _starting = false;
+  /**
+   * What answers on the port while the server is down: a page saying why, which reloads
+   * itself once the server is back, instead of the browser's "connection refused".
+   */
+  private _fallback: { stop(closeActive?: boolean): Promise<void> | void } | null = null;
   /** Per-build asset-version token — bumped on each build, busts `asset()` `?v=` URLs. */
   private _assetVersion = Date.now().toString(36);
 
@@ -155,6 +174,7 @@ export class DevOrchestrator {
     // it through a hook that discards would be how dev mode goes silent.
     const routed = this._hooks.onServerLine !== undefined;
     this._hooks.onServerState?.("starting");
+    this._serverOutput = [];
 
     const child = Bun.spawn(
       ["bun", Bun.main, "serve", "--port", String(this._port), "--dev-worker"],
@@ -191,9 +211,15 @@ export class DevOrchestrator {
       // `this._child` identity matters: reading the field alone reported an exit that a
       // restart had deliberately caused, because by then the field held the replacement.
       // A restart in flight owns its own reporting.
-      if (this._child === child && this._restartInFlight === null && code !== 0) {
+      if (
+        this._child === child &&
+        this._restartInFlight === null &&
+        !this._starting &&
+        code !== 0
+      ) {
         this._say(`  [zerotal:dev] server exited with code ${code}`);
         this._hooks.onServerState?.("parked");
+        void this._serveStartupError(_startupFailure(this._serverOutput));
       }
     });
 
@@ -217,14 +243,21 @@ export class DevOrchestrator {
         buffered += decoder.decode(value, { stream: true });
         const lines = buffered.split("\n");
         buffered = lines.pop() ?? "";
-        for (const line of lines) this._hooks.onServerLine?.(line.replace(/\r$/, ""), kind);
+        for (const line of lines) this._serverLine(line.replace(/\r$/, ""), kind);
       }
     } catch {
       // The stream ends when the server is replaced — the normal case on every
       // restart, not something to report.
     }
 
-    if (buffered) this._hooks.onServerLine?.(buffered, kind);
+    if (buffered) this._serverLine(buffered, kind);
+  }
+
+  /** Hand a server line to the deck, and keep it in case the server is about to die. */
+  private _serverLine(line: string, kind: "stdout" | "stderr"): void {
+    this._serverOutput.push(line.replace(_ANSI, ""));
+    if (this._serverOutput.length > 200) this._serverOutput.shift();
+    this._hooks.onServerLine?.(line, kind);
   }
 
   /**
@@ -348,33 +381,123 @@ export class DevOrchestrator {
    * whatever is still listening.
    */
   private async _spawnServerWithRetry(): Promise<void> {
-    for (let attempt = 1; attempt <= DevOrchestrator.RESPAWN_ATTEMPTS; attempt++) {
-      const child = this._spawnServer();
+    // The error page holds the port while the server is down; hand it back first.
+    await this._stopFallback();
+    this._starting = true;
+    let failure: StartupFailure = { kind: "unknown", lines: [] };
+    try {
+      for (let attempt = 1; attempt <= DevOrchestrator.RESPAWN_ATTEMPTS; attempt++) {
+        const child = this._spawnServer();
 
-      const settled = await Promise.race([
-        child.exited.then(() => true),
-        Bun.sleep(DevOrchestrator.BIND_SETTLE_MS).then(() => false),
-      ]);
+        const settled = await Promise.race([
+          child.exited.then(() => true),
+          Bun.sleep(DevOrchestrator.BIND_SETTLE_MS).then(() => false),
+        ]);
 
-      if (!settled) {
-        this._hooks.onServerState?.("running"); // still running → it bound the port
-        return;
+        if (!settled) {
+          this._hooks.onServerState?.("running"); // still running → it bound the port
+          if (this._buildFailure) {
+            this._tellServer(`build-error:${JSON.stringify(this._buildFailure)}`);
+          }
+          return;
+        }
+        if (this._child !== child) return; // superseded by a newer restart
+
+        this._child = null;
+        // Let the last of its output arrive before reading it.
+        await Bun.sleep(20);
+        failure = _startupFailure(this._serverOutput);
+        // A syntax error fails the same way every time: retrying it only repeats the error
+        // three times and then blames the port. Retries are for a port the previous server
+        // has not released yet.
+        if (failure.kind === "source") break;
+        if (attempt < DevOrchestrator.RESPAWN_ATTEMPTS) {
+          await Bun.sleep(DevOrchestrator.RESPAWN_DELAY_MS);
+        }
       }
-      if (this._child !== child) return; // superseded by a newer restart
-
-      this._child = null;
-      if (attempt < DevOrchestrator.RESPAWN_ATTEMPTS) {
-        await Bun.sleep(DevOrchestrator.RESPAWN_DELAY_MS);
-      }
+    } finally {
+      this._starting = false;
     }
 
     this._hooks.onServerState?.("parked");
-    this._say(
-      `  [zerotal:dev] ✗  server did not start after ${DevOrchestrator.RESPAWN_ATTEMPTS} attempts.\n` +
-        `     Port ${this._port} may be held by another process — the error above says which.\n` +
-        `     Dev mode is still watching; fix the cause and save to retry.`,
-      "error",
-    );
+    if (failure.kind === "source") {
+      this._say(
+        `  [zerotal:dev] ✗  server did not start: ${failure.lines[0]}\n` +
+          `     Fix it and save; the browser shows this error until the server is back.`,
+        "error",
+      );
+    } else if (failure.kind === "port") {
+      this._say(
+        `  [zerotal:dev] ✗  server did not start after ${DevOrchestrator.RESPAWN_ATTEMPTS} attempts.\n` +
+          `     Port ${this._port} is held by another process — the error above says which.\n` +
+          `     Dev mode is still watching; fix the cause and save to retry.`,
+        "error",
+      );
+    } else {
+      this._say(
+        `  [zerotal:dev] ✗  server did not start after ${DevOrchestrator.RESPAWN_ATTEMPTS} attempts.\n` +
+          `     The error above says why${failure.lines.length === 0 ? ` (or port ${this._port} may be held by another process)` : ""}.\n` +
+          `     Dev mode is still watching; fix the cause and save to retry.`,
+        "error",
+      );
+    }
+    // Not for a port someone else holds: there is nothing to serve on.
+    if (failure.kind !== "port") await this._serveStartupError(failure);
+  }
+
+  /**
+   * Answer on the port, while the server is down, with why it is down.
+   *
+   * A Flow page with a syntax error stops the server (the page is imported at boot), and the
+   * browser got "connection refused" — nothing to say what, or that a save would fix it. This
+   * page says what, and loads `/__dev/reload.js`, whose socket reconnects to the real server
+   * when it is back and reloads the tab.
+   */
+  private async _serveStartupError(failure: StartupFailure): Promise<void> {
+    await this._stopFallback();
+    const detail =
+      failure.lines.length > 0
+        ? failure.lines
+        : ["The server exited while starting. Its output in the terminal says why."];
+    const page = _startupErrorPage(detail);
+    // A token no real build has, so the tab reloads when the real server answers.
+    const version = `server-down-${Date.now().toString(36)}`;
+    try {
+      this._fallback = Bun.serve({
+        port: this._port,
+        fetch(req, server) {
+          const path = new URL(req.url).pathname;
+          if (path === "/__dev/ws" && server.upgrade(req)) return undefined;
+          if (path === _DEV_RELOAD_SCRIPT_PATH) {
+            return new Response(_DEV_RELOAD_SOURCE, {
+              headers: {
+                "content-type": "text/javascript; charset=utf-8",
+                "cache-control": "no-store",
+              },
+            });
+          }
+          return new Response(page, {
+            status: 503,
+            headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+          });
+        },
+        websocket: {
+          open(ws) {
+            ws.send(`version:${version}`);
+          },
+          message() {},
+        },
+      });
+    } catch {
+      // Something else holds the port; the terminal has said what failed.
+      this._fallback = null;
+    }
+  }
+
+  private async _stopFallback(): Promise<void> {
+    const fallback = this._fallback;
+    this._fallback = null;
+    if (fallback) await fallback.stop(true);
   }
 
   // ── Build management ───────────────────────────────────────────────────────
@@ -406,9 +529,9 @@ export class DevOrchestrator {
       const result = await this._build();
       if (!result.success) {
         this._say("  [zerotal:dev] ✗  build failed:", "error");
-        for (const entry of result.logs ?? []) {
-          this._say(`     ${String(entry)}`, "error");
-        }
+        const lines = (result.logs ?? []).map((entry) => String(entry));
+        for (const line of lines) this._say(`     ${line}`, "error");
+        this._failBuild(lines.length > 0 ? lines : ["The frontend build failed."]);
         return { ok: false, skipped: false };
       }
 
@@ -417,23 +540,45 @@ export class DevOrchestrator {
       // of every asset on the page.
       if (result.skipped !== true) this._assetVersion = Date.now().toString(36);
 
+      if (this._buildFailure) {
+        this._buildFailure = null;
+        this._tellServer("build-ok");
+      }
       return { ok: true, skipped: result.skipped === true };
     } catch (error) {
       this._say(`  [zerotal:dev] ✗  build error: ${String(error)}`, "error");
+      this._failBuild([String(error)]);
       return { ok: false, skipped: false };
     }
   }
 
+  /**
+   * Remember a failed build and show it in the browser.
+   *
+   * The server goes on serving the last bundle that built, which is what keeps the page usable,
+   * and was the trouble: a developer who broke a page and reloaded saw the old page, with the
+   * error only in a terminal they were not looking at.
+   */
+  private _failBuild(lines: string[]): void {
+    this._buildFailure = lines.map((line) => line.replace(_ANSI, ""));
+    this._tellServer(`build-error:${JSON.stringify(this._buildFailure)}`);
+  }
+
   private _signalReload(): void {
+    // Carry the fresh asset-version token so the worker can update `asset()`
+    // URLs before broadcasting the browser reload.
+    this._tellServer(`reload:${this._assetVersion}`);
+  }
+
+  /** One line to the worker over its stdin, which it reads in `serve --dev-worker`. */
+  private _tellServer(line: string): void {
     try {
       // When spawned with `stdin: "pipe"` this is a FileSink (not a numeric fd).
-      // Carry the fresh asset-version token so the worker can update `asset()`
-      // URLs before broadcasting the browser reload.
       const sink = this._child?.stdin as import("bun").FileSink | undefined;
-      sink?.write(`reload:${this._assetVersion}\n`);
+      sink?.write(`${line}\n`);
       sink?.flush?.();
     } catch {
-      // Child may be in mid-restart — ignore
+      // Child may be in mid-restart — the next one is told when it starts.
     }
   }
 
@@ -476,6 +621,7 @@ export class DevOrchestrator {
    */
   async shutdown(watcher?: { close(): void }): Promise<never> {
     watcher?.close();
+    await this._stopFallback().catch(() => {});
     try {
       await this._hooks.onCleanup?.();
     } catch {
@@ -486,6 +632,80 @@ export class DevOrchestrator {
     process.exit(0);
   }
 }
+
+/** Why a server would not start, as read from what it wrote. */
+interface StartupFailure {
+  /**
+   * `source`: an error in the app's code, at a file and line — the same on every attempt.
+   * `port`: the port is taken. `unknown`: neither could be read from the output.
+   */
+  kind: "source" | "port" | "unknown";
+  /** `file:line:column message` first, for a source error; the error's own lines otherwise. */
+  lines: string[];
+}
+
+/**
+ * Read why a server would not start from its last lines of output.
+ *
+ * Bun prints a parse error as `error: <message>` and, below it, `at <file>:<line>:<column>`;
+ * an uncaught error as `TypeError: <message>` with a stack of `at …` lines.
+ *
+ * @internal Exported for tests.
+ */
+export function _startupFailure(output: readonly string[]): StartupFailure {
+  const text = output.join("\n");
+  if (
+    /EADDRINUSE|address already in use|port \d+ (?:is )?(?:already )?in use|Is port \d+ in use/i.test(
+      text,
+    )
+  ) {
+    return { kind: "port", lines: output.filter((line) => /port|EADDRINUSE|address/i.test(line)) };
+  }
+  const index = output.findIndex((line) => /^\s*(?:error|\w*Error):\s/.test(line));
+  if (index === -1) return { kind: "unknown", lines: output.filter(Boolean).slice(-15) };
+  const message = output[index]!.trim().replace(/^error:\s*/, "");
+  for (const line of output.slice(index + 1, index + 12)) {
+    const at = /\bat\s+(?:.*?\()?((?:[A-Za-z]:)?[^\s():]+):(\d+):(\d+)\)?\s*$/.exec(line);
+    if (at && !at[1]!.includes("node_modules")) {
+      // The code frame Bun prints above the error, which shows the line itself.
+      const frame = output
+        .slice(Math.max(0, index - 4), index)
+        .filter((l) => /^\s*\d+ \|/.test(l) || /^\s+\^/.test(l));
+      return { kind: "source", lines: [`${at[1]}:${at[2]}:${at[3]} ${message}`, ...frame] };
+    }
+  }
+  return { kind: "unknown", lines: output.slice(index, index + 15) };
+}
+
+/** The page the port answers with while the server will not start. */
+function _startupErrorPage(lines: readonly string[]): string {
+  const escape = (text: string) =>
+    text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server did not start</title>
+<style>
+body{margin:0;padding:32px;background:#111117;color:#f4f4f5;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+h1{margin:0 0 4px;color:#f87171;font-size:18px}
+p{margin:0 0 16px;color:#a1a1aa}
+pre{margin:0;padding:16px;border-radius:6px;background:rgba(255,255,255,.06);white-space:pre-wrap;word-break:break-word}
+</style>
+</head>
+<body>
+<h1>The server did not start</h1>
+<p>Fix the error and save. This page reloads by itself when the server is back.</p>
+<pre>${escape(lines.join("\n"))}</pre>
+<script src="${_DEV_RELOAD_SCRIPT_PATH}"></script>
+</body>
+</html>
+`;
+}
+
+/** Terminal colour codes, which a build log can carry and a browser would print as text. */
+const _ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
 
 /** Elapsed time since a `Bun.nanoseconds()` reading, as `"12ms"`. */
 function _ms(since: number): string {

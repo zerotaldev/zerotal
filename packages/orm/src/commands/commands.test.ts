@@ -64,7 +64,10 @@ describe("MakeMigrationCommand", () => {
 
   it("migration stub extends Migration — the base the runner instantiates", () => {
     const output = migrationStub("CreatePostsTable");
-    expect(output).toContain("import { Migration, Schema } from '@zerotal/orm'");
+    expect(output).toContain('import { Migration, Schema } from "zerotal/orm"');
+    expect(migrationStub("CreatePostsTable", { orm: "@zerotal/orm" })).toContain(
+      'import { Migration, Schema } from "@zerotal/orm"',
+    );
     expect(output).toContain("export default class CreatePostsTable extends Migration");
     // The stub used to `implements MigrationFile`, a type the package never
     // exported — every scaffolded migration failed to typecheck.
@@ -83,9 +86,14 @@ describe("MakeModelCommand", () => {
     expect(MakeModelCommand.flags[0]!.name).toBe("migration");
   });
 
-  it("model stub references BaseModel", () => {
+  // The starters' models extend `Model` from `zerotal/orm`; the stub wrote `BaseModel` from
+  // `@zerotal/orm`, the older name from a package the starters do not declare.
+  it("model stub extends Model, imported the way the app imports the ORM", () => {
     const output = modelStub("User", "users");
-    expect(output).toContain("extends BaseModel");
+    expect(output).toContain("extends Model {");
+    expect(output).toContain('import { Model, column, table } from "zerotal/orm";');
+    expect(output).not.toContain("BaseModel");
+    expect(modelStub("User", "users", "@zerotal/orm")).toContain('from "@zerotal/orm"');
   });
 
   // The stub emitted `@table('users').withTimestamps()`, which is not valid decorator
@@ -136,7 +144,7 @@ describe("MakeSeederCommand", () => {
     expect(output).toContain("extends Seeder");
     expect(output).toContain("class UserSeeder");
     expect(output).toContain("async run()");
-    expect(output).toContain("@zerotal/orm");
+    expect(output).toContain('from "zerotal/orm"');
   });
 });
 
@@ -153,7 +161,7 @@ describe("MakeFactoryCommand", () => {
     const output = factoryStub("Post");
     expect(output).toContain("Factory.define");
     expect(output).toContain("PostFactory");
-    expect(output).toContain("@zerotal/testing");
+    expect(output).toContain('from "zerotal/testing"');
     expect(output).toContain("Post");
   });
 });
@@ -310,7 +318,7 @@ describe("MakeModelCommand.run()", () => {
       writeError: () => {},
     };
     await cmd.run();
-    expect(written["app/models/Post.ts"]).toContain("extends BaseModel");
+    expect(written["app/models/Post.ts"]).toContain("extends Model {");
     expect(lines.some((l) => l.includes("Created"))).toBe(true);
   });
 

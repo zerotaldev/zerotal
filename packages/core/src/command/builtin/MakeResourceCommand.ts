@@ -2,6 +2,7 @@
  * The `make:resource` command, which scaffolds an API resource transformer.
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 import { pluralize, singularize, snakeCase } from "../../support/str.ts";
 
 /**
@@ -28,7 +29,7 @@ export class MakeResourceCommand extends Command {
       return;
     }
 
-    await Bun.write(path, _stub(name));
+    await _writeAppSource(path, _stub(name));
     this.info(`Created: ${path}`);
 
     const model = name.replace(/Resource$/, "");

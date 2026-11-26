@@ -257,9 +257,11 @@ import { factoryStub } from "./commands/MakeFactoryCommand.ts";
 import { seederStub } from "./commands/MakeSeederCommand.ts";
 
 describe("migrationStub", () => {
-  it("includes import from @zerotal/orm", () => {
-    const out = migrationStub("CreateUsersTable");
-    expect(out).toContain("from '@zerotal/orm'");
+  it("imports the ORM through the bundle unless told the scoped name", () => {
+    expect(migrationStub("CreateUsersTable")).toContain('from "zerotal/orm"');
+    expect(migrationStub("CreateUsersTable", { orm: "@zerotal/orm" })).toContain(
+      'from "@zerotal/orm"',
+    );
   });
 
   it("includes async up() and down()", () => {
@@ -285,13 +287,13 @@ describe("toMigrationClassName", () => {
 describe("modelStub", () => {
   it("uses provided name and tableName", () => {
     const out = modelStub("Article", "articles");
-    expect(out).toContain("@table('articles')");
-    expect(out).toContain("class Article extends BaseModel");
+    expect(out).toContain('@table("articles")');
+    expect(out).toContain("class Article extends Model");
   });
 
-  it("includes @column() decorator", () => {
+  it("includes a @column decorator", () => {
     const out = modelStub("Product", "products");
-    expect(out).toContain("@column()");
+    expect(out).toContain('@column({ type: "string" })');
   });
 });
 

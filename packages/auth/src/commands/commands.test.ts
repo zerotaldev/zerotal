@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { MakePolicyCommand, policyStub } from "./MakePolicyCommand.ts";
+import { MakePolicyCommand as CoreMakePolicyCommand } from "@zerotal/core/commands";
+import { MakePolicyCommand } from "./MakePolicyCommand.ts";
 
 describe("MakePolicyCommand", () => {
   it("declares static properties", () => {
@@ -12,24 +13,9 @@ describe("MakePolicyCommand", () => {
     expect(MakePolicyCommand.flags[0]!.name).toBe("model");
   });
 
-  it("policyStub generates a class extending Policy", () => {
-    const output = policyStub("PostPolicy", "Post");
-    expect(output).toContain("extends Policy<unknown>");
-    expect(output).toContain("class PostPolicy");
-    expect(output).toContain("view(");
-    expect(output).toContain("create(");
-    expect(output).toContain("update(");
-    expect(output).toContain("delete(");
-    expect(output).toContain("@zerotal/auth");
-  });
-
-  it("policyStub infers model name from policy name", () => {
-    const output = policyStub("UserPolicy", "User");
-    expect(output).toContain("User");
-  });
-
-  it("policyStub uses provided model name", () => {
-    const output = policyStub("ArticlePolicy", "Post");
-    expect(output).toContain("Post");
+  // The CLI registers core's copy before any provider boots, so this package's copy was the one
+  // that never ran, and the two drifted. There is one implementation now.
+  it("is the command core registers, not a second copy", () => {
+    expect(MakePolicyCommand).toBe(CoreMakePolicyCommand);
   });
 });

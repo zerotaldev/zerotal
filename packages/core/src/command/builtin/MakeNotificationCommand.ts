@@ -2,6 +2,7 @@
  * The `make:notification` command and the notification source stub it writes.
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 
 /**
  * `bun zt make:notification <name>` — scaffolds a new notification class under
@@ -26,18 +27,18 @@ export class MakeNotificationCommand extends Command {
       return;
     }
 
-    await Bun.write(path, notificationStub(name));
+    await _writeAppSource(path, notificationStub(name));
     this.info(`Created: ${path}`);
   }
 }
 
 /** Source for a new notification class extending `Notification`. */
 export function notificationStub(name: string): string {
-  return `import { Notification } from '@zerotal/notifications';
+  return `import { Notification } from "@zerotal/notifications";
 
 export class ${name} extends Notification {
   channels(): string[] {
-    return ['database'];
+    return ["database"];
   }
 
   toDatabase(): Record<string, unknown> {

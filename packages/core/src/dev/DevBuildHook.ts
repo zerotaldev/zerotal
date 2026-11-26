@@ -80,7 +80,17 @@ export function _describeBuildLog(entry: unknown): string {
   };
   if (typeof message !== "string") return String(entry);
   if (!position || typeof position.file !== "string" || position.file === "") return message;
-  return `${position.file}:${String(position.line)}:${String(position.column)} ${message}`;
+  const line = Number(position.line);
+  if (line > 0) return `${position.file}:${line}:${String(position.column)} ${message}`;
+  // An error a plugin throws (the `.vue` compiler's, say) reaches Bun with no place of its own,
+  // so its position is `0:0`, and `index.vue:0:0 … (12:15)` sent a developer to the top of the
+  // file. The compiler puts the place in the message instead, as `(line:column)` at the end of
+  // its first line; read it from there.
+  const [first = "", ...rest] = message.split("\n");
+  const at = /\s*\((\d+):(\d+)\)\s*$/.exec(first);
+  if (!at) return `${position.file} ${message}`;
+  const text = [first.slice(0, at.index), ...rest].join("\n");
+  return `${position.file}:${at[1]}:${at[2]} ${text}`;
 }
 
 /**

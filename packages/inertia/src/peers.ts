@@ -146,7 +146,8 @@ export function _loadInertiaVue(): Promise<InertiaVueModule> {
 export interface SfcDescriptor {
   scriptSetup: unknown;
   script: unknown;
-  template: { content: string } | null;
+  /** `loc` is where the block starts in the file, which its own errors count lines from. */
+  template: { content: string; loc?: { start: { line: number } } | undefined } | null;
   styles: { content: string; scoped?: boolean | undefined }[];
   slotted: boolean;
 }

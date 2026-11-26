@@ -2,6 +2,7 @@ import type { Application } from "@zerotal/core";
 import { Command } from "@zerotal/core";
 import { CronExpression } from "../CronExpression.ts";
 import type { SchedulerManager } from "../SchedulerManager.ts";
+import { _loadSchedulesFile } from "./loadSchedulesFile.ts";
 
 export class ScheduleListCommand extends Command {
   static override commandName = "schedule:list";
@@ -17,14 +18,7 @@ export class ScheduleListCommand extends Command {
       return;
     }
 
-    const schedulesFile = `${process.cwd()}/app/schedules.ts`;
-    if (await Bun.file(schedulesFile).exists()) {
-      try {
-        await import(schedulesFile);
-      } catch (err) {
-        this.warn(`Failed to load app/schedules.ts: ${(err as Error).message}`);
-      }
-    }
+    await _loadSchedulesFile(this);
 
     const tasks = [...scheduler.tasks.values()];
     if (tasks.length === 0) {

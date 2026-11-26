@@ -184,6 +184,20 @@ describe("collectDevProcesses()", () => {
     expect(collected[0]!.after).toBe("none");
   });
 
+  it("carries restartOnChange only for a process that asked for it", async () => {
+    const collected = await collectDevProcesses(
+      app(
+        provider("P", [
+          { name: "plain", command: ["y"] },
+          { name: "follows", command: ["z"], restartOnChange: true },
+        ]),
+      ),
+    );
+
+    expect(collected[0]!.restartOnChange).toBeUndefined();
+    expect(collected[1]!.restartOnChange).toBe(true);
+  });
+
   it("assigns distinct colours to processes that did not pick one", async () => {
     const collected = await collectDevProcesses(
       app(

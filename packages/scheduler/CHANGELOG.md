@@ -8,6 +8,27 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`bun zt dev` runs your schedules.** `SchedulerProvider` contributes a `scheduler` tab that
+  runs the new `bun zt schedule:work`, which runs the scheduler and nothing else (`bun zt worker`
+  also consumes the queue, which has its own tab). The tab prints each run, failure and skip,
+  and restarts with the server, so a schedule added or edited under `app/` runs as saved.
+  `--without=scheduler` or `app.dev.disable` leaves it out. Before this, schedules ran only
+  under `bun zt worker`, so in development they never fired.
+- **`bun zt schedule:run <name>`** runs one task now, once, whatever its cron and guards say,
+  and exits with its result: 0 on success, 1 with the error when it throws, 1 with the
+  registered names when none matches. The run is recorded in the run log.
+
+### Fixed
+
+- **Runs are recorded, and `schedule:runs` finds them.** The run store was a lazy binding that
+  nothing resolved, and both the run log and `schedule:runs` looked it up synchronously, so
+  neither found it: no run was written, and `schedule:runs` said the store was not registered.
+  The provider now resolves it while booting.
+- **`schedule:runs` with no name lists every task's runs.** An omitted name reached the command
+  as an empty string, which matched no task, so the full history always read as empty.
+
 ## [1.13.3] — 2026-08-31
 
 ### Added

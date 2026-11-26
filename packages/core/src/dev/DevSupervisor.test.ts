@@ -5,7 +5,7 @@
  * rather than about whether timers fire.
  */
 import { describe, it, expect } from "bun:test";
-import { DevSupervisor } from "./DevSupervisor.ts";
+import { DevSupervisor, _childEnv } from "./DevSupervisor.ts";
 import type { DevChild } from "./DevSupervisor.ts";
 import type { ResolvedDevProcess } from "./DevProcess.ts";
 
@@ -365,5 +365,72 @@ describe("DevSupervisor — shutdown", () => {
     expect(lines.some((line) => line.includes("ENOENT"))).toBe(true);
     expect(supervisor.statuses()[0]!.state).toBe("parked");
     await supervisor.stopAll();
+  });
+});
+
+describe("DevSupervisor — server restarts", () => {
+  it("restarts the processes that set restartOnChange, and only those", async () => {
+    const h = harness();
+    h.supervisor.start([
+      definition({ name: "scheduler", restartOnChange: true }),
+      definition({ name: "queue" }),
+    ]);
+    await settle();
+    const [scheduler, queue] = h.children;
+
+    await h.supervisor.restartWithServer();
+    await settle();
+
+    expect(scheduler!.signals).toEqual(["SIGTERM"]);
+    expect(queue!.signals).toEqual([]);
+    expect(h.children).toHaveLength(3);
+    expect(h.supervisor.statuses().map((status) => status.state)).toEqual(["running", "running"]);
+    await h.supervisor.stopAll();
+  });
+
+  it("does nothing when no process follows the server", async () => {
+    const h = harness();
+    h.supervisor.start([definition()]);
+    await settle();
+
+    await h.supervisor.restartWithServer();
+
+    expect(h.children).toHaveLength(1);
+    await h.supervisor.stopAll();
+  });
+});
+
+describe("DevSupervisor — child environment", () => {
+  it("leaves out the runtime mode, so each child picks its own from its command", () => {
+    // `zt dev` sets APP_TYPE=web for itself. Passed on, `schedule:work` booted
+    // as a web process and skipped app/schedules/.
+    const env = _childEnv({ APP_TYPE: "web", APP_ENV: "development", PATH: "/bin" });
+
+    expect(env["APP_TYPE"]).toBeUndefined();
+    expect(env["APP_ENV"]).toBe("development");
+    expect(env["PATH"]).toBe("/bin");
+  });
+
+  it("spawns with that environment by default", async () => {
+    const seen: Array<Record<string, string | undefined>> = [];
+    const previous = Bun.env["APP_TYPE"];
+    Bun.env["APP_TYPE"] = "web";
+    try {
+      const supervisor = new DevSupervisor({
+        cwd: "/app",
+        spawn: (_argv, options) => {
+          seen.push(options.env);
+          return new FakeChild();
+        },
+      });
+      supervisor.start([definition()]);
+      await supervisor.stopAll();
+    } finally {
+      if (previous === undefined) delete Bun.env["APP_TYPE"];
+      else Bun.env["APP_TYPE"] = previous;
+    }
+
+    expect(seen).toHaveLength(1);
+    expect("APP_TYPE" in seen[0]!).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { ServiceProvider } from "@zerotal/core";
-import type { AppEnvironment } from "@zerotal/core";
+import type { AppEnvironment, DevProcessDefinition } from "@zerotal/core";
 import type { LockManager } from "@zerotal/core/lock";
 import { resolve } from "node:path";
 import { SchedulerManager } from "../SchedulerManager.ts";
@@ -23,6 +23,25 @@ export class SchedulerProvider extends ServiceProvider {
 
   private _disposeObservability: (() => void) | undefined = undefined;
   private _disposeRunLog: (() => void) | undefined = undefined;
+
+  /**
+   * The scheduler that `bun zt dev` runs beside the server, in its own tab.
+   *
+   * `schedule:work` rather than `worker`: the worker also consumes the queue,
+   * which the queue's own tab already does. It restarts with the server on a
+   * backend change, so a schedule added or edited under `app/` runs as saved.
+   * Leave it out with `--without=scheduler` or `app.dev.disable`.
+   */
+  override devProcesses(): DevProcessDefinition[] {
+    return [
+      {
+        name: "scheduler",
+        command: "schedule:work",
+        restart: "on-failure",
+        restartOnChange: true,
+      },
+    ];
+  }
 
   override onRegister(): void {
     // Convention-based auto-discovery of app/schedules. (Optional-chained so bare-container
@@ -62,6 +81,11 @@ export class SchedulerProvider extends ServiceProvider {
 
   override async onBooting(): Promise<void> {
     await this.app.container.make("scheduler");
+    // Resolved here so the synchronous lookups that read it succeed:
+    // `installScheduleRunLog` in onBooted and `schedule:runs`. Left lazy, both
+    // got undefined, so no run was ever recorded and `schedule:runs` reported
+    // the store as not registered.
+    await this.app.container.make("scheduler.runs");
 
     // Offer the scheduled-tasks section to the monitor panel, if one is
     // installed. The panel reads its section registry when it renders, so
@@ -84,6 +108,12 @@ export class SchedulerProvider extends ServiceProvider {
     );
     runner.registerLazy("schedule:runs", () =>
       import("../commands/ScheduleRunsCommand.ts").then((m) => m.ScheduleRunsCommand),
+    );
+    runner.registerLazy("schedule:run", () =>
+      import("../commands/ScheduleRunCommand.ts").then((m) => m.ScheduleRunCommand),
+    );
+    runner.registerLazy("schedule:work", () =>
+      import("../commands/ScheduleWorkCommand.ts").then((m) => m.ScheduleWorkCommand),
     );
   }
 

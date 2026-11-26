@@ -32,6 +32,11 @@ export interface DevOrchestratorHooks {
   onNotice?: (text: string, level: "info" | "warn" | "error") => void;
   /** Called once the first server has bound, for `after: "server"` processes. */
   onServerReady?: () => void | Promise<void>;
+  /**
+   * Called each time the server restarts, for a file change or the deck's `r`
+   * key, before the new server is spawned. Not called for the first start.
+   */
+  onServerRestart?: () => void;
   /** Called on SIGINT/SIGTERM, before the process exits. */
   onCleanup?: () => void | Promise<void>;
 }
@@ -321,6 +326,10 @@ export class DevOrchestrator {
     await this._runBuild();
 
     this._warnIfFrameworkUpgradedUnderneath();
+
+    // Processes that load the app's own files restart with the server, so a
+    // schedule edited under `app/` is not left running its old code.
+    this._hooks.onServerRestart?.();
 
     // Stop before spawning, always: the old server owns the port until it exits.
     await this._stopChild();

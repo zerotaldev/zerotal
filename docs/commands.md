@@ -317,6 +317,10 @@ Dev processes
   queue
     command          bun zt queue:work
     registered by    QueueProvider
+  scheduler
+    command          bun zt schedule:work
+    registered by    SchedulerProvider
+    on change        restarts with the server
 ```
 
 Your app has the last word. `app.dev.disable` removes a process by name, and
@@ -508,6 +512,7 @@ failure, so it is safe to run from a timer — see
 | `bun zt make:request StorePost`                      | `app/requests/StorePostRequest.ts`                                         |
 | `bun zt make:notification OrderShipped`              | `app/notifications/OrderShippedNotification.ts`                            |
 | `bun zt make:job ProcessPayment`                     | `app/jobs/ProcessPaymentJob.ts`                                            |
+| `bun zt make:schedule SendReminders`                 | `app/schedules/SendReminders.ts`                                           |
 | `bun zt make:event UserRegistered`                   | `app/events/UserRegisteredEvent.ts`                                        |
 | `bun zt make:listener SendWelcome`                   | `app/listeners/SendWelcomeListener.ts`                                     |
 | `bun zt make:observer UserObserver [--model User]`   | `app/observers/UserObserver.ts`                                            |
@@ -536,9 +541,13 @@ failure, so it is safe to run from a timer — see
 
 ### Scheduler
 
-| Command                | Description                                                  |
-| ---------------------- | ------------------------------------------------------------ |
-| `bun zt schedule:list` | List all registered scheduled tasks with their next run time |
+| Command                       | Description                                                                             |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| `bun zt schedule:list`        | List all registered scheduled tasks with their next run time                            |
+| `bun zt schedule:run <name>`  | Run one task now, once, and exit with its result (0 or 1)                               |
+| `bun zt schedule:work`        | Run the scheduler alone in the foreground (the `zt dev` tab)                            |
+| `bun zt schedule:runs [name]` | Recent recorded runs, newest first (`--limit` to page)                                  |
+| `bun zt make:schedule <Name>` | Create `app/schedules/<Name>.ts`; see [Scheduler](/docs/scheduler#developing-schedules) |
 
 ## References
 

@@ -45,6 +45,7 @@ export { MakeRequestCommand } from "./MakeRequestCommand.ts";
 export { MakeEventCommand } from "./MakeEventCommand.ts";
 export { MakeListenerCommand } from "./MakeListenerCommand.ts";
 export { MakeJobCommand } from "./MakeJobCommand.ts";
+export { MakeScheduleCommand } from "./MakeScheduleCommand.ts";
 
 export { MakePolicyCommand } from "./MakePolicyCommand.ts";
 export { MakeNotificationCommand } from "./MakeNotificationCommand.ts";

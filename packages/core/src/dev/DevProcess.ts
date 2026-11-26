@@ -63,6 +63,16 @@ export interface DevProcessDefinition {
    * that talks to it. Defaults to `"none"`, which starts immediately.
    */
   after?: "server" | "none";
+  /**
+   * Restart this process whenever the server restarts for a change under `app/`,
+   * `config/`, `routes/` or the other backend paths, so it runs the code on disk
+   * rather than the code it booted with. Defaults to `false`.
+   *
+   * For a process that loads the app's own files, such as a scheduler reading
+   * `app/schedules/`. Nothing watches files when the server is left out
+   * (`--only` without `server`), so this has no effect there.
+   */
+  restartOnChange?: boolean;
   /** Display name for the tab. Defaults to {@link name}. */
   label?: string;
   /** Tab colour. Auto-assigned from the palette when omitted. */
@@ -94,6 +104,8 @@ export interface ResolvedDevProcess {
   run?: (signal: AbortSignal) => Promise<void>;
   restart: "always" | "on-failure" | "never";
   after: "server" | "none";
+  /** Restarted alongside the server on a backend change. Absent means no. */
+  restartOnChange?: boolean;
   /**
    * Who registered it — a provider class name, or `"app.dev.processes"`.
    *
@@ -179,6 +191,7 @@ export async function collectDevProcesses(
       ...(definition.run !== undefined ? { run: definition.run } : {}),
       restart: definition.restart ?? "on-failure",
       after: definition.after ?? "none",
+      ...(definition.restartOnChange ? { restartOnChange: true } : {}),
       registrant,
     });
   }

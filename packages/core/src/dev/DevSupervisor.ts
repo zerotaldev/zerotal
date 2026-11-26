@@ -15,6 +15,7 @@
  * server it would be a worse problem than the one the tab was added to solve.
  */
 import type { ResolvedDevProcess } from "./DevProcess.ts";
+import { RUNTIME_MODE_VAR } from "../support/env.ts";
 
 /**
  * What the supervisor needs back from whatever it spawned.
@@ -122,7 +123,7 @@ export class DevSupervisor {
 
   constructor(options: DevSupervisorOptions) {
     this._cwd = options.cwd;
-    this._env = options.env ?? { ...Bun.env };
+    this._env = options.env ?? _childEnv();
     this._spawn = options.spawn ?? _bunSpawn;
     this._backoff = options.backoffMs ?? BACKOFF_MS;
     this._healthyAfter = options.healthyAfterMs ?? HEALTHY_AFTER_MS;
@@ -183,6 +184,20 @@ export class DevSupervisor {
     await this._stopEntry(entry);
     if (this._stopped) return;
     this._launch(entry);
+  }
+
+  /**
+   * Restart every process that set `restartOnChange`, for a server restart.
+   *
+   * A process that loads the app's own files — a scheduler reading
+   * `app/schedules/` — would otherwise keep running the code it booted with
+   * while the server picked up the change.
+   */
+  async restartWithServer(): Promise<void> {
+    const following = [...this._entries.values()].filter(
+      (entry) => entry.definition.restartOnChange,
+    );
+    await Promise.all(following.map((entry) => this.restart(entry.definition.name)));
   }
 
   /** Stop everything and stay stopped. Safe to call twice. */
@@ -374,6 +389,25 @@ function _bunSpawn(
     cwd: options.cwd,
     env: options.env,
   });
+}
+
+/**
+ * The environment a dev process starts with: this one, minus the runtime mode.
+ *
+ * `zt dev` sets `APP_TYPE=web` for itself, and an explicit `APP_TYPE` wins over
+ * the command name. Passed on, it booted every dev process as a web process:
+ * `queue:work` ran without the `worker` conventions, and a scheduler skipped
+ * `app/schedules/` entirely. Leaving it out lets each child pick its mode from
+ * its own command, the way it does when run by hand.
+ *
+ * @internal
+ */
+export function _childEnv(
+  from: Record<string, string | undefined> = Bun.env,
+): Record<string, string | undefined> {
+  const env = { ...from };
+  delete env[RUNTIME_MODE_VAR];
+  return env;
 }
 
 function _errorText(error: unknown): string {

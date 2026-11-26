@@ -8,10 +8,17 @@
  * line, no call to the app's exception handler, and an event that said it had gone well.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from "bun:test";
-import { Application, Container, FrameworkEvents, ForbiddenError, abort } from "@zerotal/core";
+import {
+  Application,
+  Container,
+  FrameworkEvents,
+  ForbiddenError,
+  NotFoundError,
+  abort,
+} from "@zerotal/core";
 import type { HttpContext } from "@zerotal/core";
 import { Component } from "../Component.ts";
-import { expose, locked } from "../decorators.ts";
+import { expose, locked, task } from "../decorators.ts";
 import { dehydrate } from "../dehydrate.ts";
 import { registerPage, _getPageEntries } from "../registry.ts";
 import { FlowActionHandled } from "../frameworkEvents.ts";
@@ -57,6 +64,19 @@ class LedgerPage extends Component {
 
   @expose async failAborted(): Promise<void> {
     abort(409, "That ledger is already closed.");
+  }
+
+  @expose async failNotFound(): Promise<void> {
+    throw new NotFoundError("No such ledger.");
+  }
+
+  /** A task whose work rejects when the visitor stops it, as the guide says to write one. */
+  @expose @task async stream(): Promise<void> {
+    await new Promise<void>((_resolve, reject) => {
+      this.signal.addEventListener("abort", () =>
+        reject(new DOMException("aborted", "AbortError")),
+      );
+    });
   }
 
   @expose async breakTheRender(): Promise<void> {
@@ -346,7 +366,8 @@ describe("a snapshot that verifies", () => {
     expect(errorOf(frames)?.["message"]).toBe('Method "wipe" is not allowed');
     expect(ran).toEqual([]);
     expect(events.map((e) => e.ok)).toEqual([false]);
-    expect(warnings().join("")).toContain('Refused a call to "wipe" on LedgerPage');
+    expect(warnings().join("")).toContain("calls a method LedgerPage does not expose");
+    expect(warnings().join("")).toContain("wipe");
   });
 });
 
@@ -440,5 +461,45 @@ describe("an error thrown outside the action body", () => {
     expect(errorOf(frames)?.["message"]).toBe(_GENERIC_ERROR_MESSAGE);
     expect(JSON.stringify(frames)).not.toContain("ECONNREFUSED");
     expect(errorOf(frames)?.["stack"]).toBeUndefined();
+  });
+});
+
+describe("an expected outcome", () => {
+  it("is handed to the exception handler without an error line of Flow's", async () => {
+    const { ws, frames } = socket();
+
+    await _handleFlowMessage(ws, call("failNotFound", await snapshotOf()), deps());
+
+    expect(reported).toHaveLength(1);
+    expect(logged.join("")).not.toContain("An error was thrown by");
+    expect(flashOf(frames)?.["message"]).toBe("No such ledger.");
+  });
+});
+
+describe("a @task the visitor stops", () => {
+  it("is not reported and shows no error", async () => {
+    const { ws, frames } = socket();
+    const done = _handleFlowMessage(ws, call("stream", await snapshotOf()), deps());
+    await Bun.sleep(20);
+
+    await _handleFlowMessage(ws, call("$cancel", await snapshotOf()), deps());
+    await done;
+
+    expect(reported).toEqual([]);
+    expect(flashOf(frames)).toBeUndefined();
+    expect(patchOf(frames)?.["actionError"]).toBeUndefined();
+    expect(events.map((e) => e.ok)).toEqual([true]);
+  });
+});
+
+describe("refusal lines across many addresses", () => {
+  it("stop at a shared budget, with one line saying so", () => {
+    const start = 5_000_000;
+    for (let i = 0; i < 30; i++) {
+      for (let j = 0; j < 5; j++) _noteInvalidFrame(`2001:db8::${i}`, "test", start);
+    }
+
+    expect(warnings()).toHaveLength(101);
+    expect(warnings()[100]).toContain("across all addresses");
   });
 });

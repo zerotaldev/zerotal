@@ -320,7 +320,8 @@ repeat:
 - **Reported it.** The error goes to the exception handler you registered with
   `app.withExceptionHandler()`, or to the log when you have none, with a line naming the action
   and the page. See [Custom exception handler](/docs/errors#custom-exception-handler) for
-  sending errors to a tracker from one place.
+  sending errors to a tracker from one place. If your `onError()` sends errors to a tracker
+  itself, remove that call, or each error is reported twice.
 - **Kept the page alive.** The component re-renders after `onError()` returns.
 
 What is left for `onError()` is what the visitor sees. The default flashes a message with level
@@ -352,8 +353,10 @@ override async onError(error: Error) {
 }
 ```
 
-Throwing from `onError()` hands the error back to Flow, which flashes the default message for
-whatever was thrown. Returning without flashing shows the visitor nothing.
+Throwing from `onError()` hands the error back to Flow, which flashes the framework's default
+message for whatever was thrown. That is the default on `Component`, not any `onError()` a base
+class of yours defines: to reach one of those, call `await super.onError(error)` instead of
+throwing. Returning without flashing shows the visitor nothing.
 
 `onError()` does not run during the initial `GET` render — if `onMount()` throws, the error propagates to the HTTP layer and results in a 500 response. It only runs during WebSocket action frames. An error thrown outside the action body on a later round trip (in `render()`, `onBoot()`, `onHydrate()`, `onUpdate()` or a middleware) does not reach `onError()` either: there is no page left to repaint, so it is reported the same way and the browser is sent an error frame carrying the message from the table above.
 

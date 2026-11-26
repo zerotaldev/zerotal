@@ -30,6 +30,7 @@ import {
   readPublishLog,
   type AuthEnvironment,
 } from "./publish-auth.ts";
+import { distTagFor, registryLatest } from "./dist-tag.ts";
 
 interface PackageManifest {
   name: string;
@@ -196,6 +197,10 @@ if (!dryRun && !canAuthenticate(auth)) {
   );
 }
 
+// A security fix on an older line must not move `latest` back to it. See dist-tag.ts.
+const distTag = dryRun ? undefined : distTagFor(version, registryLatest("zerotal", ROOT));
+console.log(`  tag     ${distTag ?? "latest"}`);
+
 // ── Pack, then publish ────────────────────────────────────────────────────────
 rmSync(OUT_DIR, { recursive: true, force: true });
 mkdirSync(OUT_DIR, { recursive: true });
@@ -229,7 +234,17 @@ for (const name of order) {
   // Verbose, because that is the only level at which npm says whether the OIDC
   // exchange worked. readPublishLog drops the rest of the verbose detail.
   const publish = Bun.spawnSync(
-    ["npm", "publish", tarball, "--provenance", "--access", "public", "--loglevel", "verbose"],
+    [
+      "npm",
+      "publish",
+      tarball,
+      "--provenance",
+      "--access",
+      "public",
+      ...(distTag ? ["--tag", distTag] : []),
+      "--loglevel",
+      "verbose",
+    ],
     { cwd: ROOT, stdout: "inherit", stderr: "pipe" },
   );
   const log = readPublishLog(publish.stderr.toString());

@@ -234,10 +234,19 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
+      # A security fix on an older line is published under its own npm dist-tag, so
+      # `latest` stays on the newest line (scripts/dist-tag.ts). The GitHub Release
+      # follows npm: it is marked latest only when this version is npm's `latest`.
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" \
+          latest="$(npm view zerotal dist-tags.latest 2>/dev/null || true)"
+          if [ -n "${latest}" ] && [ "${latest}" != "${GITHUB_REF_NAME#v}" ]; then
+            mark_latest="--latest=false"
+          else
+            mark_latest="--latest"
+          fi
+          gh release create "${GITHUB_REF_NAME}" "${mark_latest}" \
             --title "Zerotal ${GITHUB_REF_NAME}" \
             --notes "Published to npm with provenance. Per-version changes and migration notes: [Release Notes](https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/changelog.md); per-package detail lives in each package's CHANGELOG.md."

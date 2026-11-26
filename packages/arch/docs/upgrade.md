@@ -138,7 +138,7 @@ that code, or an older one, afterwards. To do the same in yours:
        loginThrottle.recordFailure(http, throttleKey);
        rejectInput(
          http,
-         { code: "That code is not valid. Check your authenticator app." },
+         { code: "That code is not valid or was already used. Enter the newest one from your app." },
          "/two-factor/challenge",
        );
      }

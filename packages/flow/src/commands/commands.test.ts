@@ -362,6 +362,28 @@ export class Task extends Model {
     expect(src).not.toContain('class="input');
   });
 
+  it("imports only the class lists the page uses", async () => {
+    // From the 1.18.2 walk: the starter's lib/ui.ts exports CARD, and every generated page
+    // imported it and never used it.
+    const root = await flowStarter();
+    await Bun.write(
+      join(root, "app/flow/lib/ui.ts"),
+      'export const INPUT = "border";\nexport const FIELD_ERROR = "text-destructive";\n' +
+        'export const PAGE_TITLE = "text-2xl";\nexport const CHECKBOX = "size-4";\n' +
+        'export const CARD = "rounded-xl border";\n',
+    );
+    await Bun.write(
+      join(root, "app/flow/lib/button.ts"),
+      'export function buttonClass(variant = "primary") { return variant; }\n',
+    );
+    const { src } = await generate(root);
+
+    const imported = /import \{ ([^}]+) \} from "\.\.\/lib\/ui";/.exec(src)?.[1]?.split(", ") ?? [];
+    expect(imported).not.toContain("CARD");
+    expect(imported.length).toBeGreaterThan(0);
+    for (const name of imported) expect(src).toContain(`class={${name}}`);
+  });
+
   it("leaves out the JSX pragma when the app's tsconfig names Flow's runtime", async () => {
     const root = await flowStarter();
     await Bun.write(

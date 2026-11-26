@@ -80,7 +80,7 @@ export async function POST(http: HttpContext): Promise<void> {
       loginThrottle.recordFailure(http, throttleKey);
       rejectInput(
         http,
-        { code: "That code is not valid. Check your authenticator app." },
+        { code: "That code is not valid or was already used. Enter the newest one from your app." },
         "/two-factor/challenge",
       );
     }

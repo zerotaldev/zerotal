@@ -9,11 +9,11 @@
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "bun:test";
 import { SQL } from "bun";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Application } from "@zerotal/core";
-import { StorageProvider, StorageConfig } from "@zerotal/core/storage";
+import { Storage, StorageProvider, StorageConfig } from "@zerotal/core/storage";
 import {
   Model,
   Schema,
@@ -128,6 +128,27 @@ describe("media with no disk configured", () => {
 
     expect(media.disk).toBe("local");
     expect(await media.fileExists()).toBe(true);
+  });
+
+  // From the 1.18.2 walk. A test that fakes storage without naming a disk fakes `local`, and
+  // media wrote the upload to the real `public` disk: a file in a folder the app serves, left
+  // behind by a test whose own assertions found the fake empty.
+  it("is caught by Storage.fake() with no disk named: nothing reaches the served folder", async () => {
+    const served = join(root, "public", "media");
+    const before = await readdir(served).catch(() => []);
+    const disk = Storage.fake();
+    try {
+      const album = await Album.create({ title: "Faked" });
+      const media = await album.addMedia(new File([PNG_4x4], "a.png")).toCollection("covers");
+
+      disk.assertExistsMatching(/^media\/[0-9a-f-]+\/original\.png$/);
+      expect(media.disk).toBe("public");
+      expect(media.getUrl()).toStartWith("/storage/public/media/");
+      expect(await media.fileExists()).toBe(true);
+      expect(await readdir(served).catch(() => [])).toEqual(before);
+    } finally {
+      Storage.restoreFakes();
+    }
   });
 
   it("keeps the storage default when that disk has a URL of its own", async () => {

@@ -331,6 +331,22 @@ r.string()
   .password(); // semantic alias — chain constraints after this
 ```
 
+`in()` also narrows the type. The validated value is the union of the listed values, so a
+field checked against a fixed list can be saved into a column typed with that list without
+a cast:
+
+```typescript fragment
+// app/models/Project.ts exports these two
+export const PROJECT_STATUSES = ["planning", "active", "completed"] as const;
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+
+// in a rules() method
+status: r.string().in(PROJECT_STATUSES), // data.status: ProjectStatus
+priority: r.string().in(["low", "high"]).optional(), // data.priority: "low" | "high"
+```
+
+A list typed `string[]` (built at runtime, say) gives `string`, as before.
+
 ## Number rules
 
 ```typescript fragment

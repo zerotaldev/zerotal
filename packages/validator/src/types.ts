@@ -40,7 +40,7 @@ export interface FieldRuleDefinition {
 export type Schema = Record<string, FieldRuleDefinition>;
 
 export type InferFieldType<F extends FieldRuleDefinition> = F["type"] extends "string"
-  ? string
+  ? InferStringType<F>
   : F["type"] extends "number"
     ? number
     : F["type"] extends "boolean"
@@ -52,6 +52,18 @@ export type InferFieldType<F extends FieldRuleDefinition> = F["type"] extends "s
           : F["type"] extends "object"
             ? InferObjectType<F>
             : unknown;
+
+/**
+ * A string narrowed by `in()` carries its allowed values on the type-only `oneOf`
+ * (see `StringDef`). Without it, or with a plain `string[]` list, the type is `string`.
+ */
+type InferStringType<F extends FieldRuleDefinition> = F extends {
+  oneOf?: readonly (infer L extends string)[];
+}
+  ? string extends L
+    ? string
+    : L
+  : string;
 
 /**
  * `array` and `object` carry their contents on `children` / `shape`, so unlike the

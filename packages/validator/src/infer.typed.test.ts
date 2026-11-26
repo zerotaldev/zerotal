@@ -49,6 +49,49 @@ assertType<Equals<Data["allocations"], { amount: number; scope: string }[]>>();
 assertType<Equals<Data["matrix"], number[][]>>();
 assertType<Equals<Data["address"], { street: string; zip: string }>>();
 
+// ── `in()` narrows a string to the listed values ───────────────────────────────
+// Without this an app validates `status` against its statuses and then casts the
+// result back to the status type before it can save it.
+
+const STATUSES = ["planning", "active", "completed"] as const;
+type Status = (typeof STATUSES)[number];
+const looseList: string[] = ["a", "b"];
+
+const _inOutcome = ValidatorFacade.check({}, (r) => ({
+  inline: r.string().in(["draft", "active"]),
+  asConst: r.string().in(STATUSES),
+  spread: r.string().in([...STATUSES]),
+  loose: r.string().in(looseList),
+  nullable: r.string().in(STATUSES).nullable(),
+  optional: r.string().trim().in(STATUSES).optional().max(20),
+  required: r.required().in(STATUSES),
+  listed: r.array(r.string().in(STATUSES)),
+  nested: r.object({ status: r.string().in(STATUSES) }),
+}));
+
+type InData = DataOf<typeof _inOutcome>;
+
+assertType<Equals<InData["inline"], "draft" | "active">>();
+assertType<Equals<InData["asConst"], Status>>();
+assertType<Equals<InData["spread"], Status>>();
+assertType<Equals<InData["loose"], string>>();
+assertType<Equals<InData["nullable"], Status>>();
+assertType<Equals<InData["optional"], Status>>();
+assertType<Equals<InData["required"], Status>>();
+assertType<Equals<InData["listed"], Status[]>>();
+assertType<Equals<InData["nested"], { status: Status }>>();
+
+function _assignments(data: InData): void {
+  const status: Status = data.asConst;
+  // @ts-expect-error — "draft" is not one of the listed statuses.
+  const wrong: "draft" = data.asConst;
+  // @ts-expect-error — a narrowed value is not assignable from another literal.
+  data.inline = "archived";
+  void status;
+  void wrong;
+}
+void _assignments;
+
 // ── Runtime: the inferred type matches what validation actually returns ───────
 
 describe("Infer<> — array and object", () => {
@@ -64,6 +107,26 @@ describe("Infer<> — array and object", () => {
     // assertion — it is a compile error when `Infer<>` regresses to `unknown`.
     const doubled = (result.data.categoryIds ?? []).map((id) => id * 2);
     expect(doubled).toEqual([2, 4, 6]);
+  });
+
+  it("returns an in() value usable as the literal union", () => {
+    const result = ValidatorFacade.check({ status: "active" }, (r) => ({
+      status: r.string().in(STATUSES),
+    }));
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const status: Status = result.data.status;
+    expect(status).toBe("active");
+  });
+
+  it("still rejects a value outside an in() list", () => {
+    const result = ValidatorFacade.check({ status: "archived" }, (r) => ({
+      status: r.string().in(STATUSES),
+    }));
+
+    expect(result.success).toBe(false);
   });
 
   it("returns nested object fields at their inferred types", () => {

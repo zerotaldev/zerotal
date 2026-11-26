@@ -495,7 +495,7 @@ failure, so it is safe to run from a timer — see
 | `bun zt make:policy PostPolicy [--model Post]`       | `app/policies/PostPolicy.ts`                                               |
 | `bun zt make:resource UserResource`                  | `app/resources/UserResource.ts`                                            |
 | `bun zt make:migration create_posts_table`           | `database/migrations/{timestamp}_create_posts_table.ts`                    |
-| `bun zt make:factory PostFactory`                    | `database/factories/PostFactory.ts`                                        |
+| `bun zt make:factory Post`                           | `database/factories/PostFactory.ts`                                        |
 | `bun zt make:seeder PostSeeder`                      | `database/seeders/PostSeeder.ts`                                           |
 | `bun zt make:provider Payment [--no-register]`       | `app/providers/PaymentProvider.ts` + registers in `bootstrap/providers.ts` |
 | `bun zt make:package billing`                        | Full `packages/billing/` package skeleton                                  |

@@ -20,6 +20,10 @@ Three pages, in order, and you'll be productive:
 3. **[Conventions](/docs/conventions)** — what gets auto-discovered, and the naming
    rules that make it happen. This is the page that stops the surprises.
 
+Then build something: **[Build Your First App](/docs/tutorial)** takes the starter from
+scaffold to deploy in nine milestones — a model, pages, validation, a policy, queued
+mail, tests and teams — each ending in something you can run.
+
 Before building something an app commonly needs — tenancy, roles, an audit log,
 backups — check **[What Ships](/docs/what-ships)**. It lists everything the framework
 already does, with the page for each.

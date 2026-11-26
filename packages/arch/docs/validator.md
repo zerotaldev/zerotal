@@ -166,6 +166,34 @@ rules(r: RuleBuilder) {
 }
 ```
 
+### Preparing input
+
+An HTML form cannot leave a field out or send `null`: a blank input posts `""`. A blank
+optional `number()` or `date()` field already counts as absent, but a string keeps `""`, because an empty
+string is a value a string field can hold. So an optional email fails on a blank input:
+
+```typescript fragment
+// in a FormRequest subclass
+rules(r: RuleBuilder) {
+  return { assignee: r.string().trim().email().optional() };
+}
+```
+
+Override `prepareForValidation()` to reshape the body before the rules see it. It runs after
+`authorize()` and receives the parsed body; return the object to validate. Mutating the argument
+and returning it is fine:
+
+```typescript fragment
+// in a FormRequest subclass
+override prepareForValidation(body: Record<string, unknown>) {
+  if (body["assignee"] === "") delete body["assignee"];
+  return body;
+}
+```
+
+Now a blank field counts as absent. To clear a column instead, set the value to `null` and mark
+the rule `.nullable()`. The default returns the body unchanged.
+
 ## Standalone validate
 
 For simple one-off validation without a dedicated class:

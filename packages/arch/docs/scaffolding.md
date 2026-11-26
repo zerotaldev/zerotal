@@ -19,26 +19,26 @@ Every generator is idempotent: if the target file already exists it reports
 
 ## Generators at a glance
 
-| Command               | Creates                           | Notes                                      |
-| --------------------- | --------------------------------- | ------------------------------------------ |
-| `make:controller`     | `app/controllers/<Name>.ts`       | `--resource` adds CRUD stubs               |
-| `make:middleware`     | `app/middleware/<Name>.ts`        | Pass-through `Pipe<HttpContext>` stub      |
-| `make:command`        | `app/commands/<Name>.ts`          | CLI command extending `Command`            |
-| `make:request`        | `app/requests/<Name>.ts`          | `FormRequest` with `rules()`               |
-| `make:notification`   | `app/notifications/<Name>.ts`     | Extends `Notification`                     |
-| `make:job`            | `app/jobs/<Name>.ts`              | Queue `Job`, self-registers                |
-| `make:event`          | `app/events/<Name>.ts`            | `--broadcast` extends `BroadcastingEvent`  |
-| `make:listener`       | `app/listeners/<Name>.ts`         | `handle(event)` method                     |
-| `make:observer`       | `app/observers/<Name>.ts`         | `--model` sets the target model            |
-| `make:policy`         | `app/policies/<Name>.ts`          | `--model` sets the target model            |
-| `make:resource`       | `app/resources/<Name>.ts`         | API resource transformer                   |
-| `make:admin-resource` | `app/admin/<Name>Resource.ts`     | Admin panel resource for a model           |
-| `make:provider`       | `app/providers/<Name>Provider.ts` | Auto-registers in `bootstrap/providers.ts` |
-| `make:package`        | `packages/<name>/…`               | Full `@zerotal/*` package skeleton         |
-| `make:model`          | `app/models/<Name>.ts`            | See [ORM](/docs/orm#generating-models)     |
-| `make:migration`      | `database/migrations/…`           | See [Migrations](/docs/migrations)         |
-| `make:factory`        | `database/factories/<Name>.ts`    | See [Factories](/docs/orm/factories)       |
-| `make:seeder`         | `database/seeders/<Name>.ts`      | See [Seeding](/docs/seeding)               |
+| Command               | Creates                               | Notes                                                                 |
+| --------------------- | ------------------------------------- | --------------------------------------------------------------------- |
+| `make:controller`     | `app/controllers/<Name>.ts`           | `--resource` adds CRUD stubs                                          |
+| `make:middleware`     | `app/middleware/<Name>.ts`            | Pass-through `Pipe<HttpContext>` stub                                 |
+| `make:command`        | `app/commands/<Name>.ts`              | CLI command extending `Command`                                       |
+| `make:request`        | `app/requests/<Name>.ts`              | `FormRequest` with `rules()`                                          |
+| `make:notification`   | `app/notifications/<Name>.ts`         | Extends `Notification`                                                |
+| `make:job`            | `app/jobs/<Name>.ts`                  | Queue `Job`, self-registers                                           |
+| `make:event`          | `app/events/<Name>.ts`                | `--broadcast` extends `BroadcastingEvent`                             |
+| `make:listener`       | `app/listeners/<Name>.ts`             | `handle(event)` method                                                |
+| `make:observer`       | `app/observers/<Name>.ts`             | `--model` sets the target model                                       |
+| `make:policy`         | `app/policies/<Name>.ts`              | `--model` sets the target model                                       |
+| `make:resource`       | `app/resources/<Name>.ts`             | API resource transformer                                              |
+| `make:admin-resource` | `app/admin/<Name>Resource.ts`         | Admin panel resource for a model                                      |
+| `make:provider`       | `app/providers/<Name>Provider.ts`     | Auto-registers in `bootstrap/providers.ts`                            |
+| `make:package`        | `packages/<name>/…`                   | Full `@zerotal/*` package skeleton                                    |
+| `make:model`          | `app/models/<Name>.ts`                | See [ORM](/docs/orm#generating-models)                                |
+| `make:migration`      | `database/migrations/…`               | See [Migrations](/docs/migrations)                                    |
+| `make:factory`        | `database/factories/<Name>Factory.ts` | Name the model, not the factory. See [Factories](/docs/orm/factories) |
+| `make:seeder`         | `database/seeders/<Name>.ts`          | See [Seeding](/docs/seeding)                                          |
 
 ## make:controller
 

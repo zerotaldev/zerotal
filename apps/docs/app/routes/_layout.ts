@@ -79,6 +79,21 @@ const NAV: { group: string; items: NavItem[] }[] = [
     ],
   },
   {
+    group: "Tutorial",
+    items: [
+      { label: "Build Your First App", slug: "tutorial" },
+      { label: "1. Scaffold and Run", slug: "tutorial/scaffold" },
+      { label: "2. Add a Model", slug: "tutorial/model" },
+      { label: "3. Routes and Pages", slug: "tutorial/routes-and-pages" },
+      { label: "4. Validation", slug: "tutorial/validation" },
+      { label: "5. A Policy", slug: "tutorial/policy" },
+      { label: "6. Queued Notification", slug: "tutorial/notifications" },
+      { label: "7. Feature Tests", slug: "tutorial/tests" },
+      { label: "8. Teams", slug: "tutorial/multi-tenancy" },
+      { label: "9. Deploy", slug: "tutorial/deploy" },
+    ],
+  },
+  {
     group: "Architecture Concepts",
     items: [
       { label: "The Application", slug: "application" },

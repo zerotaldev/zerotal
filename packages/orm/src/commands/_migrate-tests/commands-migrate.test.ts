@@ -23,6 +23,8 @@ mock.module("../_loadMigrations.ts", () => ({
 
 import { SQL } from "bun";
 import { MigrateCommand } from "../MigrateCommand.ts";
+import { MigrateFreshCommand } from "../MigrateFreshCommand.ts";
+import { MigrateRefreshCommand } from "../MigrateRefreshCommand.ts";
 import { MigrateRollbackCommand } from "../MigrateRollbackCommand.ts";
 import { MigrateStatusCommand } from "../MigrateStatusCommand.ts";
 import { _setDbConnection } from "../../db/DB.ts";
@@ -285,18 +287,39 @@ async function tableExists(name: string): Promise<boolean> {
 }
 
 describe("MigrateCommand.run() — two migrations under one number", () => {
-  it("refuses before running anything, naming both files and the next number", async () => {
+  it("refuses a database that ran one side of the clash, before running anything", async () => {
+    // The merge case: main applied 0042_add_invoices here; a branch brings 0042_add_refunds.
     _mockLoadMigrations.mockImplementation(async () => [
-      { name: "0041_create_widgets", file: "0041_create_widgets", instance: new CreateWidgets() },
+      { name: "0042_add_invoices", file: "0042_add_invoices", instance: fakeMigration },
+    ]);
+    await migrateWith({}).cmd.run();
+
+    _mockLoadMigrations.mockImplementation(async () => [
       { name: "0042_add_invoices", file: "0042_add_invoices", instance: fakeMigration },
       { name: "0042_add_refunds", file: "0042_add_refunds", instance: fakeMigration },
+      { name: "0043_create_widgets", file: "0043_create_widgets", instance: new CreateWidgets() },
     ]);
     const { cmd } = migrateWith({});
     const error = await cmd.run().catch((e: unknown) => e);
     expect((error as { code?: string }).code).toBe("E_MIGRATION_NUMBER_CLASH");
     expect((error as Error).message).toContain("0042_add_invoices.ts, 0042_add_refunds.ts");
-    expect((error as Error).message).toContain("0043_add_refunds.ts");
+    expect((error as Error).message).toContain("0044_add_refunds.ts");
+    expect((error as Error).message).toContain("0042b_add_refunds.ts");
     expect(await tableExists("widgets")).toBe(false);
+  });
+
+  it("warns and runs on a database that has run neither side, in name order", async () => {
+    // A new environment of an app whose clash shipped long ago. Every new database
+    // runs these in the same order, so stopping it would block it for nothing.
+    _mockLoadMigrations.mockImplementation(async () => [
+      { name: "0041_create_widgets", file: "0041_create_widgets", instance: new CreateWidgets() },
+      { name: "0042_add_invoices", file: "0042_add_invoices", instance: fakeMigration },
+      { name: "0042_add_refunds", file: "0042_add_refunds", instance: fakeMigration },
+    ]);
+    const { cmd, lines } = migrateWith({});
+    await cmd.run();
+    expect(await tableExists("widgets")).toBe(true);
+    expect(lines.join("\n")).toContain("0042_add_invoices.ts, 0042_add_refunds.ts");
   });
 
   it("runs when every clashing migration has already been applied", async () => {
@@ -375,10 +398,16 @@ describe("MigrateCommand.run() — database.backupBeforeMigrate", () => {
     ]);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     process.chdir(cwd);
     if (appEnv === undefined) delete Bun.env["APP_ENV"];
     else Bun.env["APP_ENV"] = appEnv;
+    // Close the file before removing its directory: Windows will not delete a SQLite
+    // file that is still open, and this runs before the suite's own afterEach closes
+    // the connection. The suite gets an in-memory one to close in its place.
+    await db.end();
+    db = new SQL(":memory:");
+    _setDbConnection(db);
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -405,6 +434,26 @@ describe("MigrateCommand.run() — database.backupBeforeMigrate", () => {
     const { cmd } = migrateWith({}, { "database.backupBeforeMigrate": true, "database.url": path });
     await cmd.run();
     expect(snapshots()).toHaveLength(1);
+    expect(await tableExists("widgets")).toBe(true);
+  });
+
+  it("snapshots before migrate:fresh and migrate:refresh too, which drop every table", async () => {
+    const path = await onFile();
+    Bun.env["APP_ENV"] = "production";
+    const config = { "database.backupBeforeMigrate": true, "database.url": path };
+    for (const Fresh of [MigrateFreshCommand, MigrateRefreshCommand]) {
+      const { cmd } = migrateWith({}, config);
+      const fresh = new Fresh();
+      fresh.args = {};
+      fresh.flags = { seed: false };
+      fresh._writer = cmd._writer;
+      (fresh as unknown as { app: unknown }).app = (cmd as unknown as { app: unknown }).app;
+      await fresh.run();
+      expect(snapshots()).toHaveLength(1);
+      // Snapshots are stamped to the second and never overwritten, so clear this
+      // one before the next command runs in the same second.
+      rmSync(join(dir, MigrateCommand.BACKUP_DIR), { recursive: true, force: true });
+    }
     expect(await tableExists("widgets")).toBe(true);
   });
 

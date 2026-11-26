@@ -12,7 +12,8 @@
  * @internal
  */
 export class _InFlight {
-  readonly #pending = new Set<Promise<unknown>>();
+  /** One signal per send, resolved when it settles. Never rejects. */
+  readonly #pending = new Set<Promise<void>>();
   #started = 0;
 
   /**
@@ -21,14 +22,23 @@ export class _InFlight {
    * The returned promise rejects exactly when `work` does, so a caller that awaits
    * sees the error and one that does not gets the same unhandled rejection it
    * always did — tracking never swallows a failure.
+   *
+   * That is why `settle()` waits on a separate signal rather than on the returned
+   * promise. Attaching any handler to a promise marks it handled, so waiting on the
+   * caller's own promise silenced the rejection of a send nobody awaited: a failed
+   * fire-and-forget send then passed a test that should have failed.
    */
   track<T>(work: Promise<T>): Promise<T> {
     this.#started++;
-    const tracked = work.finally(() => {
-      this.#pending.delete(tracked);
+    let done!: () => void;
+    const finished = new Promise<void>((resolve) => {
+      done = resolve;
     });
-    this.#pending.add(tracked);
-    return tracked;
+    this.#pending.add(finished);
+    return work.finally(() => {
+      this.#pending.delete(finished);
+      done();
+    });
   }
 
   /** Something was started since `since` was read. */
@@ -52,7 +62,7 @@ export class _InFlight {
   async settle(extra: () => boolean = () => false): Promise<void> {
     for (;;) {
       const before = this.#started;
-      while (this.#pending.size > 0) await Promise.allSettled([...this.#pending]);
+      while (this.#pending.size > 0) await Promise.all([...this.#pending]);
       await new Promise((resolve) => setTimeout(resolve, 0));
       const changed = extra();
       if (this.#pending.size === 0 && !this.startedSince(before) && !changed) return;

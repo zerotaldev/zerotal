@@ -10,9 +10,10 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Added
 
-- **Every starter guards a bare `bun test`.** `bunfig.toml` preloads `zerotal/testing/guard`,
+- **The starters guard a bare `bun test`.** `bunfig.toml` preloads `zerotal/testing/guard`,
   which stops a direct `bun test` from running against the database `.env` points at and says
-  to run `bun zt test`. `ZT_DB_URL=:memory: bun test` still runs directly.
+  to run `bun zt test`. `ZT_DB_URL=:memory: bun test` still runs directly. The `api` starter
+  has no guard: its tests all pin an in-memory database, so a bare run there is already safe.
 
 ### Changed
 

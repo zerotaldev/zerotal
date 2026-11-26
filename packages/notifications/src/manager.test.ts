@@ -7,6 +7,7 @@ import { NotificationManager } from "./NotificationManager.ts";
 import { NotificationConfig } from "./config.ts";
 import { NotificationFake } from "./NotificationFake.ts";
 import { NotificationSent } from "./events.ts";
+import { _InFlight } from "./inFlight.ts";
 import { MailMessage } from "./messages/MailMessage.ts";
 import { NotificationDispatchError, UnknownNotificationChannelError } from "./errors.ts";
 import { _resetStats, channelStats, installNotificationStats, recentDeliveries } from "./stats.ts";
@@ -625,6 +626,31 @@ describe("NotificationManager.settle()", () => {
 
     await mgr.settle();
     expect(delivered).toEqual(["1"]);
+  });
+
+  it("leaves the failure of a send nobody awaited unhandled, even while settling", async () => {
+    // Waiting must not count as handling: a fire-and-forget send that fails while
+    // `settle()` is waiting has to surface as an unhandled rejection, or a test of
+    // a broken mailer passes.
+    //
+    // Run in a child process: `bun test` takes unhandled rejections itself and fails
+    // the test, so a listener here would never see one.
+    const inFlight = new URL("./inFlight.ts", import.meta.url).pathname.replace(
+      /^\/([A-Z]:)/,
+      "$1",
+    );
+    const script = `
+      import { _InFlight } from ${JSON.stringify(inFlight)};
+      const seen = [];
+      process.on("unhandledRejection", (reason) => seen.push(reason.message));
+      const tracker = new _InFlight();
+      void tracker.track(new Promise((_, reject) => setTimeout(() => reject(new Error("smtp down")), 5)));
+      await tracker.settle();
+      await new Promise((r) => setTimeout(r, 0));
+      console.log(JSON.stringify(seen));
+    `;
+    const child = Bun.spawnSync([process.execPath, "-e", script]);
+    expect(child.stdout.toString().trim()).toBe('["smtp down"]');
   });
 
   it("still rejects to a caller that awaits the send", async () => {

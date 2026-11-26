@@ -140,6 +140,14 @@ describe("zt test options", () => {
     expect(args).toContain("--seed=1106410279");
   });
 
+  it("refuses a seed that is not a whole number, rather than running in normal order", async () => {
+    const args = await run({ seed: Number.NaN });
+
+    expect(args).toBeUndefined();
+    expect(process.exitCode).toBe(1);
+    expect(errors.concat(lines).join("\n")).toContain("--seed takes a whole number");
+  });
+
   it("marks the child as a prepared run, so the bare-run guard stays out of the way", async () => {
     let env: Record<string, string | undefined> = {};
     (Bun as unknown as { spawn: unknown }).spawn = (

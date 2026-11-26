@@ -77,6 +77,32 @@ describe("withConfig()", () => {
     expect(config.has("features")).toBe(false);
   });
 
+  it("puts back a plain value an override had to replace with an object", async () => {
+    // `database.synchronize` accepts `true` or an object; overriding a key inside it
+    // has to turn the `true` into an object, and undoing that must not delete it.
+    const config = store();
+    config.load("database", { url: "x", synchronize: true, replica: null });
+    await withConfig(
+      { "database.synchronize.enabled": false, "database.replica.url": "y" },
+      () => expect(config.get("database.synchronize.enabled")).toBe(false),
+      { app: appWith(config) },
+    );
+    const database = config.all()["database"] as Record<string, unknown>;
+    expect(database["synchronize"]).toBe(true);
+    // `null` comes back as `null`, not as a missing key.
+    expect(Object.prototype.hasOwnProperty.call(database, "replica")).toBe(true);
+    expect(database["replica"]).toBeNull();
+  });
+
+  it("puts back a null leaf as null", async () => {
+    const config = store();
+    config.load("mail", { from: null });
+    await withConfig({ "mail.from": "a@example.com" }, () => {}, { app: appWith(config) });
+    const mail = config.all()["mail"] as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(mail, "from")).toBe(true);
+    expect(mail["from"]).toBeNull();
+  });
+
   it("restores after a throw", async () => {
     const config = store();
     await expect(

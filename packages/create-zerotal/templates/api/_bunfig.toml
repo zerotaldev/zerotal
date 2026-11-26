@@ -4,9 +4,8 @@
 [install]
 peer = false
 
-# `bun zt test` prepares a test run: APP_ENV=test, the suite's own database, a 30s timeout. A bare
-# `bun test` does none of that and still loads .env, so it would run against the development
-# database. This preload stops that run and says to use `bun zt test`; `ZT_DB_URL=:memory: bun test`
-# runs directly on purpose.
-[test]
-preload = ["zerotal/testing/guard"]
+# No bare-`bun test` guard here, unlike the other starters. Every test in this app boots through
+# tests/helpers.ts, which pins an in-memory database whatever .env says, so a bare `bun test` (or an
+# editor's test runner) is already safe, and .env sets DATABASE_URL from the first run — the guard
+# would refuse exactly the runs it exists to allow. A test that boots the app another way should use
+# `bun zt test`, which gives the suite its own database.

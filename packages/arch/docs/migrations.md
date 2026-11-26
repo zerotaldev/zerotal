@@ -195,6 +195,8 @@ export default DatabaseConfig({
   newest 14 are kept, apart from your scheduled backups), is opened and integrity-checked,
   and `migrate` stops without migrating if the backup fails.
   `bun zt migrate --skip-backup` migrates without one.
+- **Before `migrate:fresh` and `migrate:refresh` too.** They drop every table, so they are
+  the commands a snapshot matters most for. Both take `--skip-backup` as well.
 - **SQLite only.** The snapshot is SQLite's `VACUUM INTO`. On PostgreSQL and MySQL,
   `migrate` says that no backup was taken and carries on; take one with `pg_dump`,
   `mysqldump` or your provider's snapshots as a deploy step before `migrate`.
@@ -522,28 +524,36 @@ Two branches cut from the same `main` each add "the next" migration. Both merge,
 app has `0042_add_invoices.ts` and `0042_add_refunds.ts`. The number was meant to say what
 runs in what order, and now the alphabet decides.
 
-`zt migrate` refuses to run while two different migration files share a number and either
-of them has not been applied yet. The error names the files, the next free number, and the
-fix:
+`zt migrate` refuses to run on a database that has applied one side of a clash and not the
+other — the database where the two branches met, and where the order is about to differ
+from everywhere else. The error names the files and both fixes:
 
 ```text
 Two different migrations share a number, usually because two branches each added "the next one":
   0042: 0042_add_invoices.ts, 0042_add_refunds.ts
 
-  Renumber the one that has not reached production to the next free number, e.g.
+  If the later one has not run anywhere yet, renumber it to the next free number:
     database/migrations/0042_add_refunds.ts → database/migrations/0043_add_refunds.ts
-  If it has already run somewhere, keep its recorded identity while renaming:
+  If it has already run somewhere, do not move it: a later migration may depend on
+  it. Keep its place with a letter after the number, and pin its recorded name:
+    database/migrations/0042_add_refunds.ts → database/migrations/0042b_add_refunds.ts
     static override id = "0042_add_refunds";
 ```
 
-`zt doctor` reports the same clash, so a pull request's CI catches it before merge: CI runs
+The letter keeps the file where it sorted: `0042b_` comes after every `0042_` and before
+any `0043_`. Moving an applied migration to the end instead would run it after migrations
+written to follow it, the next time a database is built from scratch.
+
+`zt doctor` reports the clash too, so a pull request's CI catches it before merge: CI runs
 on the merge of the branch into `main`, where both files exist. Run `doctor` in your CI and
 nobody has to check the highest number on `main` by hand.
 
-A clash whose migrations have **all** already run is history rather than a decision — both
-are recorded, in the order they ran — so `migrate` carries on and `doctor` only warns.
-`042_` and `0042_` count as the same number, and a timestamp-named migration is numbered
-by its whole timestamp, not its year.
+Where nothing of the clash has run — a new database — `migrate` warns and runs both, in
+name order, the same order every new database gets. Where all of it has run, it is history
+and `migrate` says nothing; `doctor` warns. `042_` and `0042_` count as the same number. A
+migration named with a timestamp to the second (`2024_01_15_093000_`) is numbered by the
+whole timestamp, and one named with a date alone (`2024_01_15_`, `20240115_`) is not
+numbered at all: files written on the same day sharing a date is normal.
 
 A renumbered copy of an applied migration (`001_create_users` renamed to
 `0001_create_users`) is refused separately, with its own message. Either rename it back, or

@@ -227,6 +227,16 @@ describe('starter parity', () => {
     });
   });
 
+  it.each([...TEMPLATES])('%s guards a bare bun test with the test preload', async (template) => {
+    const bunfig = await Bun.file(join(import.meta.dir, '..', 'templates', template, '_bunfig.toml'))
+      .text()
+      .catch(() => '');
+    expect({
+      template,
+      guard: /^\[test\][^[]*^\s*preload\s*=\s*\[\s*"zerotal\/testing\/guard"\s*\]/m.test(bunfig),
+    }).toEqual({ template, guard: true });
+  });
+
   it.each([...TEMPLATES])('%s keeps build-time packages out of devDependencies', async (template) => {
     const dev = Object.keys((await manifest(template)).devDependencies ?? {});
     expect({ template, dev: dev.filter((d) => BUILD_TIME.includes(d)) }).toEqual({ template, dev: [] });

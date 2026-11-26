@@ -8,6 +8,22 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`withConfig()` and `withEnv()`**: per-test overrides that put themselves back. Scoped
+  (`await withConfig({ "app.secureHeaders.contentSecurityPolicy": "…" }, async () => …)`,
+  undone in a `finally`) or per test (`withEnv({ FEATURE_X: "1" })` at the top of a
+  `describe`, applied before and undone after each test). Config is overridden on the live
+  store by dot path and restored exactly, removing paths it created; code that reads config
+  per request, the CSP header included, sees the override. `withEnv()` restores unset
+  variables as unset. Config resolves once at boot and `Bun.env` is process-wide, so a test
+  that flipped either leaked into every later file unless it restored by hand.
+- **`@zerotal/testing/guard`**, a `bun test` preload that stops a bare `bun test` from
+  running against the development database. Under `bun zt test` it does nothing; a direct run
+  that would fall through to `.env`'s `DATABASE_URL` stops before any test file loads and
+  says to run `bun zt test`, or to name the database with `ZT_DB_URL=:memory: bun test`.
+  New apps load it from `bunfig.toml`.
+
 ## [1.17.1] — 2026-11-21
 
 ### Changed

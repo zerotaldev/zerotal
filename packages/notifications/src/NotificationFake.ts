@@ -4,6 +4,7 @@ import type { Notification } from "./Notification.ts";
 import type { NotificationRecord } from "./DatabaseChannel.ts";
 import type { OnDemandRoutes } from "./OnDemandNotifiable.ts";
 import { OnDemandNotifiable } from "./OnDemandNotifiable.ts";
+import { _InFlight } from "./inFlight.ts";
 
 type Binding = unknown;
 
@@ -29,12 +30,17 @@ interface CapturedNotification {
  * notify.assertSentOn(user, OrderShippedNotification, "mail");
  * notify.assertNothingSent(); // or assertSentCount(1)
  *
+ * // Code that notifies fire-and-forget (`void Notify.send(…)`):
+ * await Notify.settle();
+ * notify.assertSentTo(user, WelcomeNotification);
+ *
  * notify.restore(); // call in afterEach
  */
 export class NotificationFake {
   private readonly _sent: CapturedNotification[] = [];
   private readonly _app: Application;
   private readonly _original: Binding;
+  private readonly _inFlight = new _InFlight();
 
   private constructor(app: Application, original: Binding) {
     this._app = app;
@@ -61,20 +67,24 @@ export class NotificationFake {
 
   // ── Notification manager interface ───────────────────────────────────────
 
-  async send(notifiable: Notifiable, notification: Notification): Promise<void> {
-    this._capture(notifiable, notification, false);
+  send(notifiable: Notifiable, notification: Notification): Promise<void> {
+    return this._track(() => this._capture(notifiable, notification, false));
   }
 
-  async queue(notifiable: Notifiable, notification: Notification): Promise<void> {
-    this._capture(notifiable, notification, true);
+  queue(notifiable: Notifiable, notification: Notification): Promise<void> {
+    return this._track(() => this._capture(notifiable, notification, true));
   }
 
-  async sendMany(notifiables: Iterable<Notifiable>, notification: Notification): Promise<void> {
-    for (const notifiable of notifiables) this._capture(notifiable, notification, false);
+  sendMany(notifiables: Iterable<Notifiable>, notification: Notification): Promise<void> {
+    return this._track(() => {
+      for (const notifiable of notifiables) this._capture(notifiable, notification, false);
+    });
   }
 
-  async queueMany(notifiables: Iterable<Notifiable>, notification: Notification): Promise<void> {
-    for (const notifiable of notifiables) this._capture(notifiable, notification, true);
+  queueMany(notifiables: Iterable<Notifiable>, notification: Notification): Promise<void> {
+    return this._track(() => {
+      for (const notifiable of notifiables) this._capture(notifiable, notification, true);
+    });
   }
 
   route(routes: OnDemandRoutes): {
@@ -83,9 +93,32 @@ export class NotificationFake {
   } {
     const notifiable = new OnDemandNotifiable(routes);
     return {
-      notify: async (notification) => this._capture(notifiable, notification, false),
-      notifyLater: async (notification) => this._capture(notifiable, notification, true),
+      notify: (notification) => this._track(() => this._capture(notifiable, notification, false)),
+      notifyLater: (notification) =>
+        this._track(() => this._capture(notifiable, notification, true)),
     };
+  }
+
+  /**
+   * Wait until everything that is going to notify has.
+   *
+   * Code under test that sends fire-and-forget — `void Notify.send(…)`, often after
+   * awaiting a lookup of its own — has not reached the fake by the time the test
+   * asserts. This goes round the event loop until a turn passes in which nothing new
+   * was sent, so the assertion that follows sees every send the request started.
+   *
+   * @example
+   * await http.post("/register", { email: "ada@example.test" });
+   * await Notify.settle();
+   * notify.assertSentTimes(WelcomeNotification, 1);
+   */
+  settle(): Promise<void> {
+    let seen = this._sent.length;
+    return this._inFlight.settle(() => {
+      const changed = this._sent.length !== seen;
+      seen = this._sent.length;
+      return changed;
+    });
   }
 
   /** Registering a custom channel on the fake is a no-op — nothing is delivered. */
@@ -124,6 +157,15 @@ export class NotificationFake {
       delete: async () => undefined,
       clear: async () => undefined,
     };
+  }
+
+  /**
+   * Capture now, as the fake always has — an un-awaited send is recorded before the
+   * next line runs — and count it as a send for {@link settle}.
+   */
+  private _track(capture: () => void): Promise<void> {
+    capture();
+    return this._inFlight.track(Promise.resolve());
   }
 
   private _capture(notifiable: Notifiable, notification: Notification, queued: boolean): void {

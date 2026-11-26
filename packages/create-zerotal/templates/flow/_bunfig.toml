@@ -3,3 +3,10 @@
 # Everything this app uses is listed in package.json, so nothing else is lost.
 [install]
 peer = false
+
+# `bun zt test` prepares a test run: APP_ENV=test, the suite's own database, a 30s timeout. A bare
+# `bun test` does none of that and still loads .env, so it would run against the development
+# database. This preload stops that run and says to use `bun zt test`; `ZT_DB_URL=:memory: bun test`
+# runs directly on purpose.
+[test]
+preload = ["zerotal/testing/guard"]

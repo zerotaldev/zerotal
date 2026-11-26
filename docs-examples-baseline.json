@@ -7755,6 +7755,12 @@
     },
     {
       "file": "docs/testing/index.md",
+      "heading": "Overrides that put themselves back: `withConfig()` and `withEnv()`",
+      "ordinal": 0,
+      "hash": "2qaidzct1n11"
+    },
+    {
+      "file": "docs/testing/index.md",
       "heading": "Pages render",
       "ordinal": 0,
       "hash": "22t9ic030rt5"
@@ -7782,6 +7788,12 @@
       "heading": "Events",
       "ordinal": 0,
       "hash": "23ouv6enakvc"
+    },
+    {
+      "file": "docs/testing/mocking.md",
+      "heading": "Mail sent fire-and-forget: `Notify.settle()`",
+      "ordinal": 0,
+      "hash": "171b1t5bgfwg"
     },
     {
       "file": "docs/testing/mocking.md",

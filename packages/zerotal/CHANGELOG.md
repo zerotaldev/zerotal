@@ -8,6 +8,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `zerotal/testing/guard`: the bare-`bun test` guard from `@zerotal/testing/guard`, under the
+  name starters already import from.
+
 ## [1.9.0] — 2026-08-29
 
 ### Added

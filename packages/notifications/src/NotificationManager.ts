@@ -14,6 +14,7 @@ import { OnDemandNotifiable, type OnDemandRoutes } from "./OnDemandNotifiable.ts
 import { _getConnection } from "@zerotal/orm";
 import { FrameworkEvents } from "@zerotal/core";
 import { NotificationSent, MessageQueued } from "./events.ts";
+import { _InFlight } from "./inFlight.ts";
 
 /** A channel factory, resolved once on first use. */
 type ChannelResolver = () => NotificationChannel;
@@ -42,6 +43,8 @@ export class NotificationManager {
    * construction time.
    */
   private _dbChannel: DatabaseChannel | undefined;
+  /** Sends started through this manager and not yet finished; see {@link settle}. */
+  private readonly _inFlight = new _InFlight();
 
   constructor(private readonly config: NotificationConfigShape) {
     this._resolvers.set("mail", () => new MailChannel(config.mail));
@@ -108,7 +111,29 @@ export class NotificationManager {
    * @example
    * await Notify.send(user, new OrderShippedNotification(order));
    */
-  async send(notifiable: Notifiable, notification: Notification): Promise<void> {
+  send(notifiable: Notifiable, notification: Notification): Promise<void> {
+    return this._inFlight.track(this._send(notifiable, notification));
+  }
+
+  /**
+   * Wait for every send and queue started through this manager to finish.
+   *
+   * For tests of code that notifies fire-and-forget (`void Notify.send(…)`): call
+   * it before asserting on the mail outbox or the database rows. It also waits for
+   * sends started by code that awaited something else first, by going round the
+   * event loop until a turn passes with nothing new. A send that failed does not
+   * make this reject; the code that started it owns that error.
+   *
+   * @example
+   * await http.post("/register", { email: "ada@example.test" });
+   * await Notify.settle();
+   * expect(Mail.sent()).toHaveLength(1);
+   */
+  settle(): Promise<void> {
+    return this._inFlight.settle();
+  }
+
+  private async _send(notifiable: Notifiable, notification: Notification): Promise<void> {
     const className = notification.constructor?.name ?? "Notification";
     const recipient = NotificationManager._notifiableLabel(notifiable);
 
@@ -163,13 +188,20 @@ export class NotificationManager {
    * @example
    * await Notify.sendMany(admins, new LowStockNotification(product));
    */
-  async sendMany(notifiables: Iterable<Notifiable>, notification: Notification): Promise<void> {
+  sendMany(notifiables: Iterable<Notifiable>, notification: Notification): Promise<void> {
+    return this._inFlight.track(this._sendMany(notifiables, notification));
+  }
+
+  private async _sendMany(
+    notifiables: Iterable<Notifiable>,
+    notification: Notification,
+  ): Promise<void> {
     const failures: Array<{ channel: string; error: Error }> = [];
     let delivered = 0;
 
     for (const notifiable of notifiables) {
       try {
-        await this.send(notifiable, notification);
+        await this._send(notifiable, notification);
         delivered++;
       } catch (error) {
         failures.push({
@@ -189,10 +221,12 @@ export class NotificationManager {
   }
 
   /** Queue one notification for many recipients. */
-  async queueMany(notifiables: Iterable<Notifiable>, notification: Notification): Promise<void> {
-    for (const notifiable of notifiables) {
-      await this.queue(notifiable, notification);
-    }
+  queueMany(notifiables: Iterable<Notifiable>, notification: Notification): Promise<void> {
+    return this._inFlight.track(
+      (async () => {
+        for (const notifiable of notifiables) await this._queue(notifiable, notification);
+      })(),
+    );
   }
 
   /**
@@ -226,7 +260,11 @@ export class NotificationManager {
    * @example
    * await Notify.queue(user, new OrderShippedNotification(order));
    */
-  async queue(notifiable: Notifiable, notification: Notification): Promise<void> {
+  queue(notifiable: Notifiable, notification: Notification): Promise<void> {
+    return this._inFlight.track(this._queue(notifiable, notification));
+  }
+
+  private async _queue(notifiable: Notifiable, notification: Notification): Promise<void> {
     // If this notification mails, log it as "queued" now — the Mail tab shows the
     // deferred message immediately, before SendNotificationJob delivers it (at which
     // point MessageSent flips it to "sent"). Telemetry must never block the queue.

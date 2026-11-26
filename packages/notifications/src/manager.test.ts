@@ -481,6 +481,36 @@ describe("NotificationFake — expanded assertions", () => {
     await fake.send({ id: 2 }, new Mailed());
     expect(fake.sentTo({ id: 1 })).toHaveLength(1);
   });
+
+  it("accepts a model whose contact fields may hold undefined", async () => {
+    // Under exactOptionalPropertyTypes `email?: string` rejected all three of these.
+    class Member {
+      id = 7;
+      email: string | undefined = "member@example.test";
+      name?: string | undefined = undefined;
+      phone: string | undefined = undefined;
+    }
+    const member = new Member();
+    await fake.send(member, new Mailed());
+    expect(fake.sentTo(member)).toHaveLength(1);
+    fake.assertSentTo(member, Mailed);
+  });
+
+  it("settle() waits for a fire-and-forget send that first awaited something else", async () => {
+    const lookup = () => new Promise<{ id: number }>((r) => setTimeout(() => r({ id: 9 }), 0));
+    void (async () => {
+      const recipient = await lookup();
+      void fake.send(recipient, new Mailed());
+    })();
+    fake.assertNothingSent();
+    await fake.settle();
+    expect(fake.sentTo({ id: 9 })).toHaveLength(1);
+  });
+
+  it("settle() resolves at once when nothing was sent", async () => {
+    await fake.settle();
+    fake.assertNothingSent();
+  });
 });
 
 // ── Slack / SMS routing fallbacks ────────────────────────────────────────────
@@ -566,5 +596,45 @@ describe("channel destination fallbacks", () => {
     await expect(mgr.send({ id: 6 }, new CodeSms())).rejects.toThrow(
       "the notifiable has no 'phone'",
     );
+  });
+});
+
+// ── settle() ─────────────────────────────────────────────────────────────────
+
+describe("NotificationManager.settle()", () => {
+  class Slow extends Notification {
+    channels() {
+      return ["slow"];
+    }
+  }
+
+  it("waits for a send nobody awaited, and for its failure without rejecting", async () => {
+    const mgr = manager("settle_notifications");
+    const delivered: string[] = [];
+    mgr.extend("slow", () => ({
+      async send(n) {
+        await new Promise((r) => setTimeout(r, 10));
+        if (n.id === 2) throw new Error("smtp down");
+        delivered.push(String(n.id));
+      },
+    }));
+
+    void mgr.send({ id: 1 }, new Slow());
+    mgr.send({ id: 2 }, new Slow()).catch(() => {});
+    expect(delivered).toEqual([]);
+
+    await mgr.settle();
+    expect(delivered).toEqual(["1"]);
+  });
+
+  it("still rejects to a caller that awaits the send", async () => {
+    const mgr = manager("settle_reject_notifications");
+    mgr.extend("slow", () => ({
+      async send() {
+        throw new Error("smtp down");
+      },
+    }));
+    await expect(mgr.send({ id: 1 }, new Slow())).rejects.toThrow("smtp down");
+    await mgr.settle();
   });
 });

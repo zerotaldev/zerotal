@@ -185,6 +185,15 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun run starters:agent:check
 
+      # The docs app is an app too, and its `AGENTS.md` and skills come from the same
+      # generator. Nothing compared them, so the 1.18.0 capability list reached every
+      # starter and not the docs app, and `zt doctor` on the deployed site warned that
+      # `AGENTS.md` described a different project. Passing here means `arch:update --dry`
+      # in `apps/docs` has nothing to do.
+      - name: Docs app agent files
+        if: ${{ !cancelled() }}
+        run: bun run docs:agent:check
+
       # `docs/what-ships.md` is generated from the capability list `AGENTS.md` is
       # built from, so a capability added there reaches the page too.
       - name: What Ships page

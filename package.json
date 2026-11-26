@@ -29,6 +29,8 @@
     "docs:what-ships:check": "bun run scripts/what-ships.ts --check",
     "starters:agent": "bun run scripts/starter-agent-files.ts",
     "starters:agent:check": "bun run scripts/starter-agent-files.ts --check",
+    "docs:agent": "bun run scripts/docs-agent-files.ts",
+    "docs:agent:check": "bun run scripts/docs-agent-files.ts --check",
     "starters:smoke": "bun run scripts/starter-smoke.ts",
     "icons:sync": "bun run scripts/sync-icons.ts",
     "icons:names": "bun run scripts/sync-icons.ts --names",

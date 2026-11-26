@@ -139,7 +139,7 @@ check, which calls `/health` with it. See the
 - `app/models/Project.ts`, `app/policies/ProjectPolicy.ts`, `app/requests/ProjectRequest.ts`
 - `app/routes/(auth)/(verified)/projects/`
 - `database/migrations/0006_create_projects_table.ts` and `database/factories/ProjectFactory.ts`
-- `app/flow/pages/projects/`, and `ProjectForm.tsx`, `ProjectStatusBadge.tsx` and
+- `app/flow/pages/projects/` and `app/flow/lib/projects.ts`, and `ProjectStatusBadge.tsx` and
   `Pagination.tsx` (if nothing else uses it) in `app/flow/components/`
 - `tests/projects.test.ts` and `tests/project-policy.test.ts`
 

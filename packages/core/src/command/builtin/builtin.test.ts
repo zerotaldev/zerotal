@@ -1184,6 +1184,27 @@ describe("RouteListCommand", () => {
     Router.reset();
   });
 
+  it("run() lists a name given to two paths, since route() refuses it", async () => {
+    Router.reset();
+    class FakeController {
+      async handle() {}
+    }
+    Router.post("/applications/act", FakeController as never, "store").name("act");
+    Router.post("/applications/:id/act", FakeController as never, "store").name("act");
+
+    const lines: string[] = [];
+    const cmd = new RouteListCommand();
+    cmd.args = {};
+    cmd.flags = { name: false, verbose: false };
+    cmd._writer = { ...noop, writeLine: (m: string) => void lines.push(m) };
+    await cmd.run();
+
+    const output = lines.join("\n");
+    expect(output).toContain("1 route name(s) name more than one path");
+    expect(output).toMatch(/act\s.*\/applications\/act.*\/applications\/:id\/act/);
+    Router.reset();
+  });
+
   it("run() filters by method", async () => {
     Router.reset();
     class FakeController {

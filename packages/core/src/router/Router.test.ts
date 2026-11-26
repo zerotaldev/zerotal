@@ -392,6 +392,49 @@ describe("Router — request handling", () => {
 
 import { route } from "./Router.ts";
 
+describe("Named routes — one name on two paths", () => {
+  // The last registration used to win silently, and which one is last depends on file-scan
+  // order, so a route() link could change target on an upgrade. Now the name names neither.
+  beforeEach(() => Router.reset());
+  class ActController {}
+
+  it("makes route() throw, naming both paths, instead of picking one", () => {
+    Router.post("/applications/act", ActController, "store").name("applications.act");
+    Router.post("/applications/:id/act", ActController, "store").name("applications.act");
+    expect(() => route("applications.act")).toThrow(
+      'Route name "applications.act" is ambiguous: it names /applications/act and /applications/:id/act.',
+    );
+  });
+
+  it("leaves the name out of namedRoutes, so generated route types never offer it", () => {
+    Router.post("/a", ActController, "store").name("dup");
+    Router.post("/b", ActController, "store").name("dup");
+    expect(Router.namedRoutes.has("dup")).toBe(false);
+    expect([...(Router.ambiguousRouteNames.get("dup") ?? [])]).toEqual(["/a", "/b"]);
+  });
+
+  it("adds a third path to the same ambiguity", () => {
+    for (const path of ["/a", "/b", "/c"]) Router.post(path, ActController, "store").name("dup");
+    expect([...(Router.ambiguousRouteNames.get("dup") ?? [])]).toEqual(["/a", "/b", "/c"]);
+  });
+
+  it("is not a clash when the same name is given to the same path again", () => {
+    Router.get("/login", ActController, "show").name("login");
+    Router.get("/login", ActController, "show").name("login");
+    expect(route("login")).toBe("/login");
+    expect(Router.ambiguousRouteNames.size).toBe(0);
+  });
+
+  it("leaves every other name working, and resets with the router", () => {
+    Router.post("/a", ActController, "store").name("dup");
+    Router.post("/b", ActController, "store").name("dup");
+    Router.get("/home", ActController, "show").name("home");
+    expect(route("home")).toBe("/home");
+    Router.reset();
+    expect(Router.ambiguousRouteNames.size).toBe(0);
+  });
+});
+
 describe("Named routes — .name() and route()", () => {
   beforeEach(() => Router.reset());
 

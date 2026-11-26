@@ -115,6 +115,38 @@ beforeEach(() => {
   Router.reset();
 });
 
+describe("scanFileRoutes — two files that generate one name", () => {
+  // From an app on 1.17.4: a generated name drops `:param`, so these two POST handlers both
+  // became `applications.act.store`, and the one scanned last took it with no warning.
+  it("leaves the name ambiguous rather than letting scan order pick a path", async () => {
+    await Bun.write(`${TMP}/applications/act.ts`, `export function POST() {}`);
+    await Bun.write(`${TMP}/applications/[id]/act.ts`, `export function POST() {}`);
+    await scanFileRoutes(TMP);
+
+    expect(Router.routes.has("POST /applications/act")).toBe(true);
+    expect(Router.routes.has("POST /applications/:id/act")).toBe(true);
+    expect(Router.namedRoutes.has("applications.act.store")).toBe(false);
+    expect([...(Router.ambiguousRouteNames.get("applications.act.store") ?? [])].sort()).toEqual([
+      "/applications/:id/act",
+      "/applications/act",
+    ]);
+  });
+
+  it("is resolved by giving one of them its own name in meta", async () => {
+    // Fresh paths: Bun caches an imported module, so reusing the files above would read them stale.
+    await Bun.write(`${TMP}/claims/act.ts`, `export function POST() {}`);
+    await Bun.write(
+      `${TMP}/claims/[id]/act.ts`,
+      `export const meta = { POST: { name: "claims.act.one" } }; export function POST() {}`,
+    );
+    await scanFileRoutes(TMP);
+
+    expect(Router.namedRoutes.get("claims.act.store")).toBe("/claims/act");
+    expect(Router.namedRoutes.get("claims.act.one")).toBe("/claims/:id/act");
+    expect(Router.ambiguousRouteNames.has("claims.act.store")).toBe(false);
+  });
+});
+
 describe("scanFileRoutes — route registration", () => {
   it("registers GET from a named export", async () => {
     await Bun.write(`${TMP}/users/index.ts`, `export function GET() {}`);

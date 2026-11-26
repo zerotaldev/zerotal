@@ -222,6 +222,8 @@ export class RouterState {
   groupMiddleware: MiddlewareClass[] = [];
   rawRoutes = new Map<string, (req: Request) => Response | Promise<Response>>();
   namedRoutes = new Map<string, string>();
+  /** Names given to more than one path, with every path each was given to. See {@link _nameRoute}. */
+  ambiguousRouteNames = new Map<string, Set<string>>();
   middlewareGroups = new Map<string, MiddlewareClass[]>();
   /**
    * Resolver contributed by the ORM (via {@link setImplicitModelResolver}) that maps a route
@@ -496,8 +498,47 @@ export const route: RouteBuilder = Object.assign(
  */
 function _buildRoute(name: string, params: RouteParamValues, query: RouteQuery): string {
   const pattern = _s().namedRoutes.get(name);
-  if (pattern === undefined) throw unknownRouteError(name);
+  if (pattern === undefined) {
+    const paths = _s().ambiguousRouteNames.get(name);
+    throw paths ? _ambiguousRouteError(name, paths) : unknownRouteError(name);
+  }
   return buildRouteUrl(name, pattern, params, query);
+}
+
+/**
+ * Give `fullPath` the route name `name`, unless another path already has it.
+ *
+ * A name is a promise that `route(name)` reaches one place. Two paths can arrive at the same
+ * name: a generated name drops `:param` segments, so `applications/act.ts` and
+ * `applications/[id]/act.ts` both become `applications.act.store`, and an explicit name can
+ * repeat one. The last registration used to win without a word, and which one is last
+ * depends on file-scan order, so a `route()` link could change target on an upgrade. Now the
+ * name stops naming either: it leaves `namedRoutes` (and so the generated route types), and
+ * `route(name)` throws an error naming every path. Nothing fails at boot, so an app that
+ * never calls the name is unaffected.
+ */
+function _nameRoute(name: string, fullPath: string): void {
+  const state = _s();
+  const clashing = state.ambiguousRouteNames.get(name);
+  if (clashing) {
+    clashing.add(fullPath);
+    return;
+  }
+  const existing = state.namedRoutes.get(name);
+  if (existing === undefined || existing === fullPath) {
+    state.namedRoutes.set(name, fullPath);
+    return;
+  }
+  state.namedRoutes.delete(name);
+  state.ambiguousRouteNames.set(name, new Set([existing, fullPath]));
+}
+
+function _ambiguousRouteError(name: string, paths: ReadonlySet<string>): Error {
+  const list = [...paths].join(" and ");
+  return new Error(
+    `[Zerotal] Route name "${name}" is ambiguous: it names ${list}. Give one of them its own ` +
+      "name (a route file's `meta`, or `.name()`), then use that.",
+  );
 }
 
 /**
@@ -579,7 +620,7 @@ export class Router {
 
     const registration: RouteRegistration = {
       name: (routeName: string) => {
-        _s().namedRoutes.set(routeName, fullPath);
+        _nameRoute(routeName, fullPath);
         // On the definition too, which is where the verb is: `routeMethods()` — and so the
         // METHODS table `route:types` writes — reads the name from there.
         _s().routes.get(key)!.name = routeName;
@@ -658,7 +699,7 @@ export class Router {
       bindings: new Map(),
       ...(domain ? { domain } : {}),
     });
-    if (name) _s().namedRoutes.set(name, fullPath);
+    if (name) _nameRoute(name, fullPath);
   }
 
   /**
@@ -706,7 +747,7 @@ export class Router {
       bindings: new Map(),
       ...(domain ? { domain } : {}),
     });
-    if (name) _s().namedRoutes.set(name, fullPath);
+    if (name) _nameRoute(name, fullPath);
   }
 
   // ── Registration ──────────────────────────────────────────────────────
@@ -917,7 +958,7 @@ export class Router {
 
     const registration: ViewRegistration = {
       name: (routeName: string) => {
-        _s().namedRoutes.set(routeName, fullPath);
+        _nameRoute(routeName, fullPath);
         _s().routes.get(key)!.name = routeName;
         return registration;
       },
@@ -1339,6 +1380,7 @@ export class Router {
     _s().prefix = "";
     _s().groupMiddleware = [];
     _s().namedRoutes.clear();
+    _s().ambiguousRouteNames.clear();
     _s().middlewareGroups.clear();
   }
 
@@ -1400,6 +1442,16 @@ export class Router {
    */
   static get namedRoutes(): ReadonlyMap<string, string> {
     return _s().namedRoutes;
+  }
+
+  /**
+   * Route names given to more than one path, each with every path it was given to. Such a name
+   * is not in {@link namedRoutes}, and `route()` on it throws. `zt route:list` lists them.
+   *
+   * @category Naming & URLs
+   */
+  static get ambiguousRouteNames(): ReadonlyMap<string, ReadonlySet<string>> {
+    return _s().ambiguousRouteNames;
   }
 }
 

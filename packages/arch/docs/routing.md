@@ -758,6 +758,13 @@ export const meta = {
 };
 ```
 
+**A name that two paths share names neither.** The generated name leaves out `[param]`
+segments, so `applications/act.ts` and `applications/[id]/act.ts` both come out as
+`applications.act.store`, and an explicit name can repeat one by accident. Such a name is left
+out of the named routes and the generated route types, `route()` on it throws an error naming
+both paths, and `bun zt route:list` lists it under the table. Give one of the routes its own name
+in `meta`. Both routes still answer requests; only the name is withheld.
+
 ### Directory middleware
 
 Place a `_middleware.ts` file in any directory to protect all routes under it.

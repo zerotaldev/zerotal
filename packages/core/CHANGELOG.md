@@ -25,6 +25,19 @@ follows the Zerotal monorepo's unified versioning.
 - `zt test` marks the process it spawns (`ZT_TEST_RUNNER=1`), so the new bare-run guard in
   `@zerotal/testing/guard` knows the run was prepared.
 
+### Fixed
+
+- **A route name that two paths share no longer picks one of them silently.** A generated name
+  leaves out `[param]` segments, so `applications/act.ts` and `applications/[id]/act.ts` both
+  became `applications.act.store`, and the route registered last kept the name. Which one that
+  was depends on file-scan order, and it changed between releases, so a `route()` link could
+  start pointing somewhere else on an upgrade with no warning. Found in an app with seven such
+  pairs. Now such a name names neither path: it is left out of `Router.namedRoutes` and the
+  generated route types, `route()` on it throws an error naming both paths, `bun zt route:list`
+  lists it, and `Router.ambiguousRouteNames` exposes it. Both routes still answer requests, and
+  nothing fails at boot. An app that called such a name gets that error and should give one of
+  the routes its own name in `meta` or with `.name()`.
+
 ## [1.17.4] — 2026-11-26
 
 ### Fixed

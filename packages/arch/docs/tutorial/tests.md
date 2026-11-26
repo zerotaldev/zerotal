@@ -192,6 +192,6 @@ Then the whole suite, which now includes the policy test:
 bun zt test
 ```
 
-It ends with `110 pass` and `0 fail` on the React starter.
+It ends with `0 fail`.
 
 **Next:** [Teams](/docs/tutorial/multi-tenancy).

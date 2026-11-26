@@ -419,10 +419,7 @@ missing would pass a query that returned everything else.
 bun zt test
 ```
 
-```
- 114 pass
- 0 fail
-```
+It ends with `0 fail`.
 
 Make sure the isolation test can fail: change `Project` back to `extends Model`, run the
 suite, and both of the first two `teams` tests fail. Put it back. Run the suite once with

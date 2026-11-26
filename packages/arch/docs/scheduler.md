@@ -542,11 +542,28 @@ a `(email, subject, body) => void | Promise<void>` function, in a provider's
 ```typescript
 // in a provider's onBooted()
 import { ScheduledTask } from "zerotal/scheduler";
-import { Notify } from "@zerotal/notifications";
+import { MailMessage, Notification, Notify } from "@zerotal/notifications";
+
+/** A task's output, as a plain email. */
+class ScheduleOutputNotification extends Notification {
+  constructor(
+    private readonly title: string,
+    private readonly output: string,
+  ) {
+    super();
+  }
+
+  channels(): string[] {
+    return ["mail"];
+  }
+
+  toMail(): MailMessage {
+    return new MailMessage().subject(this.title).line(this.output);
+  }
+}
 
 ScheduledTask.outputMailer = async (email, subject, body) => {
-  // ScheduleOutputNotification implements toMail() from subject/body.
-  await Notify.send({ email }, new ScheduleOutputNotification(subject, body));
+  await Notify.route({ mail: email }).notify(new ScheduleOutputNotification(subject, body));
 };
 ```
 

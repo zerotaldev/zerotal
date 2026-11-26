@@ -516,7 +516,7 @@ await Cache.set("key", value, 300);
 await Cache.forget("key");
 
 // Tag-based invalidation
-await Cache.tags(["posts"]).put("post:1", post, 600);
+await Cache.tags(["posts"]).set("post:1", post, 600);
 await Cache.tags(["posts"]).flush();
 ```
 

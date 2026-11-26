@@ -18,7 +18,7 @@ export class TenantModel extends BaseModel {
    * `MassAssignmentError` in any app — the facade's own create could not create.
    * Listing the columns keeps the guard against anything else (`id`, timestamps).
    */
-  static override fillable: readonly string[] = ["slug", "name", "isActive", "database"];
+  static override fillable?: readonly string[] = ["slug", "name", "isActive", "database"];
 
   @column() slug!: string;
   @column() name!: string;

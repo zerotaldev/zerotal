@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`BrowserPage.waitForPatch()` waits for the action's own answer.** The page marks itself
+  `online` when its socket opens, and the server sends a `ready` frame just after, so an action
+  taken right after `waitForConnection()` could see `ready` arrive behind it. Counted as the
+  action's answer, it ended the wait before the patch, and the next read saw the page unchanged.
+  It made a docs browser test fail intermittently in CI. `ready` no longer counts. And once a frame
+  that does count arrives, the wait gives the page one turn to apply it before returning, because
+  Chrome reports the frame as it comes off the wire, before the page's handler has run.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

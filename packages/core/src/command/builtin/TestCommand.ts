@@ -1,6 +1,6 @@
 import { Command } from "../Command.ts";
 import { bunBinary } from "../../support/runtime.ts";
-import { testEnvOverrides } from "../testEnv.ts";
+import { testEnvOverrides, testLogLevel } from "../testEnv.ts";
 
 /**
  * `bun zt test [pattern] [flags]` — runs the test suite in the test environment.
@@ -15,6 +15,8 @@ import { testEnvOverrides } from "../testEnv.ts";
  *  - Resets the driver keys `.env` would otherwise lend the suite (mail, queue,
  *    session, cache) to their in-process defaults, and loads `.env.test` when
  *    the app has one. See `../testEnv.ts` for why, and `--keep-env` to opt out.
+ *  - Sets `LOG_LEVEL=warn` unless the shell or `.env.test` sets it, so the suite's
+ *    output is not one request line per test request.
  *
  * All positional args and recognised flags are forwarded to bun test. A flag it does not
  * recognise is refused rather than dropped; anything after `--` goes to `bun test` untouched.
@@ -106,7 +108,8 @@ export class TestCommand extends Command {
     {
       name: "keep-env",
       type: "boolean" as const,
-      description: "Inherit .env's mail/queue/session/cache drivers instead of resetting them",
+      description:
+        "Inherit .env's mail/queue/session/cache drivers and LOG_LEVEL instead of resetting them",
       default: false,
     },
   ];
@@ -201,7 +204,11 @@ export class TestCommand extends Command {
       ? { overrides: {}, neutralised: [] as string[] }
       : await testEnvOverrides(process.cwd(), Bun.env as Record<string, string | undefined>);
 
-    this.dim(`APP_ENV=test  ZT_DB_URL=${dbUrl}  bun ${Bun.version}`);
+    // The terminal's level for the run. Every test request is a request, and at the logger's
+    // default each one prints a line: a starter's suite printed several hundred of them.
+    const logLevel = testLogLevel(overrides, Bun.env as Record<string, string | undefined>);
+
+    this.dim(`APP_ENV=test  ZT_DB_URL=${dbUrl}  LOG_LEVEL=${logLevel}  bun ${Bun.version}`);
     if (neutralised.length > 0) {
       this.dim(`Reset for tests: ${neutralised.join("  ")}  (keep .env's with --keep-env)`);
     }
@@ -219,6 +226,7 @@ export class TestCommand extends Command {
       env: {
         ...Bun.env,
         ...overrides,
+        LOG_LEVEL: logLevel,
         APP_ENV: "test",
         ZT_DB_URL: dbUrl,
         // Read by `@zerotal/testing/guard`: this run was prepared, so a bare-run

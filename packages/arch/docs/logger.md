@@ -99,7 +99,10 @@ export default LoggingConfig({
 });
 ```
 
-`console` takes `level` (default `debug`) and `format` (`"pretty"` or `"json"`).
+`console` takes `level` and `format` (`"pretty"` or `"json"`). Its level defaults to
+the one the `LOG_LEVEL` environment variable names (`debug`, `info`, `warn`, `error` or
+`fatal`, in any case), else `debug`; a `level` in the config outranks the variable. Under
+`bun zt test` the variable is `warn` unless you set it ([Testing](/docs/testing#the-log-level)).
 `file` takes `path`, `days`, and `level` — which also defaults to `debug`, so the
 trail records everything even when the console is filtered. That asymmetry is the
 point: you decide what to _watch_ without deciding what to _keep_.

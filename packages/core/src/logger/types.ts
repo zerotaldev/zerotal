@@ -144,7 +144,10 @@ export type ChannelConfig =
 export type ConsoleSinkConfig =
   | false
   | {
-      /** Minimum level printed. Defaults to `debug`. */
+      /**
+       * Minimum level printed. Defaults to the level `LOG_LEVEL` names, else `debug`
+       * (when the config goes through `LoggingConfig()`).
+       */
       level?: LogLevel;
       /** `"pretty"` (default) or `"json"`. */
       format?: "json" | "pretty";

@@ -257,8 +257,8 @@ your users find first.
 
 ## `bun test` vs `bun zt test`
 
-Both run the same files. `bun zt test` is a wrapper that sets up four things Bun's
-runner does not, and each of them has cost somebody a day:
+Both run the same files. `bun zt test` is a wrapper that sets up five things Bun's
+runner does not, and most of them have cost somebody a day:
 
 |                  | `bun test`            | `bun zt test`                                                      |
 | ---------------- | --------------------- | ------------------------------------------------------------------ |
@@ -266,6 +266,7 @@ runner does not, and each of them has cost somebody a day:
 | Runtime check    | none                  | refuses a Bun below the project's `engines.bun`                    |
 | DB wiring        | none                  | preloads `@zerotal/testing/preload` and passes `ZT_DB_URL`         |
 | Drivers          | inherits `.env`       | resets mail, queue, session and cache to their in-process defaults |
+| Log level        | every level           | `LOG_LEVEL=warn`: warnings and errors only                         |
 
 ### A bare `bun test` stops before it reaches your database
 
@@ -321,6 +322,34 @@ things still win, and the command prints a line saying what it changed:
   so `bun test` on its own does not see it.)
 
 `--keep-env` skips the reset entirely and inherits `.env` as-is.
+
+### The log level
+
+The logger prints a line for every request, and a test suite is mostly requests: one run
+of a starter's suite printed close to four hundred lines, and the few that explained a
+failure were somewhere among them. So `bun zt test` runs the suite with `LOG_LEVEL=warn`.
+Warnings and errors still print — a 4xx or 5xx response, a failed job, a slow query —
+which are the lines a failing test is usually explained by. The command's first line
+shows the level it used.
+
+To see everything again, set it yourself. The same rules as the drivers apply:
+
+```bash
+# in your project root
+LOG_LEVEL=debug bun zt test tests/projects.test.ts
+```
+
+- **The shell** sets it for one run, as above.
+- **`.env.test`** sets it for every run, and outranks the shell: `LOG_LEVEL=info` there
+  brings the request lines back for the whole team.
+- **`.env`** does not count: it is written for `zt dev`, where every request line is
+  wanted, so `bun zt test` resets a level it sets (`--keep-env` keeps it).
+- **`console.level` in `config/logging.ts`** outranks the variable in every
+  environment, so an app that sets one there keeps it under test too.
+
+The level only filters the terminal. A test that asserts on log entries with
+`LogManager.tap()` sees every level, whatever `LOG_LEVEL` says (see
+[Logger](/docs/logger#testing)).
 
 ### The timeout
 

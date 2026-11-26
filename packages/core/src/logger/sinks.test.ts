@@ -196,6 +196,55 @@ describe("the console sink", () => {
   });
 });
 
+describe("LOG_LEVEL", () => {
+  // `bun zt test` sets it to `warn` so a suite is not one line per request; anything
+  // else that starts the app can set it too. It is a default: config still decides.
+  const original = Bun.env["LOG_LEVEL"];
+  afterEach(() => {
+    if (original === undefined) delete Bun.env["LOG_LEVEL"];
+    else Bun.env["LOG_LEVEL"] = original;
+  });
+
+  it("sets the terminal's level when the config does not", () => {
+    Bun.env["LOG_LEVEL"] = "warn";
+    const log = new LogManager(LoggingConfig({ file: false }));
+
+    const printed = captureStdout(() => {
+      log.info("GET /projects");
+      log.warn("POST /projects 422");
+    });
+
+    expect(printed).not.toContain("GET /projects");
+    expect(printed).toContain("POST /projects 422");
+  });
+
+  it("is outranked by console.level in the config", () => {
+    Bun.env["LOG_LEVEL"] = "warn";
+    const log = new LogManager(LoggingConfig({ console: { level: "debug" }, file: false }));
+
+    expect(captureStdout(() => log.debug("every line"))).toContain("every line");
+  });
+
+  it("ignores a value that is not one of the five levels", () => {
+    // Other tools read the same name with their own vocabulary (`trace`, `verbose`).
+    Bun.env["LOG_LEVEL"] = "verbose";
+
+    expect(LoggingConfig({ file: false }).console).toEqual({ format: "pretty" });
+  });
+
+  it("is case-insensitive", () => {
+    Bun.env["LOG_LEVEL"] = "ERROR";
+
+    expect(LoggingConfig({ file: false }).console).toEqual({ format: "pretty", level: "error" });
+  });
+
+  it("leaves the file trail at its own level", () => {
+    Bun.env["LOG_LEVEL"] = "error";
+
+    expect(LoggingConfig({ file: { path: "./tmp" } }).file).toEqual({ path: "./tmp" });
+  });
+});
+
 describe("no double-writing", () => {
   it("a console channel suppresses the baseline console for its entries", () => {
     const log = new LogManager(

@@ -8,18 +8,22 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Vue page props can be checked against `Inertia.render`, as React ones are.** Declare
+  `interface InertiaTypeOptions { checkVueProps: true }` in `declare module "@zerotal/inertia"`
+  and, under `vue-tsc`, a controller that leaves out a prop the page's `defineProps` declares,
+  passes one it does not, or passes the wrong type is a compile error. Without it, `vue-tsc`
+  types a page as `DefineComponent<Props, …>`, whose constructor takes `...args: any[]`, and the
+  props were read as `any`. Off by default because it can fail a `vue-tsc` run that passes today;
+  a page typed through a `declare module "*.vue"` shim accepts any props either way.
+
 ### Fixed
 
 - **A `.vue` compile error names its line.** A syntax error in `<script setup>` was reported as
   `index.vue:0:0 … (12:15)`; it is now `index.vue:12:15`. A template or markup error said only
   "Element is missing end tag." and now carries its line and column too, counted from the top
   of the file.
-- **Vue page props are checked against `Inertia.render`, as React ones are.** `vue-tsc` types a
-  page as `DefineComponent<Props, …>`, a constructor taking `...args: any[]`, and the props were
-  read off its first argument, which made them `any`: a Vue controller could leave a prop out or
-  pass the wrong type and still compile. They are read from the instance's `$props` now. A page
-  typed through a `declare module "*.vue"` shim, under plain `tsc`, still accepts any props.
-  An app type-checked with `vue-tsc` may see new errors in controllers that were wrong before.
 
 ## [1.17.1] — 2026-11-21
 

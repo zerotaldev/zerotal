@@ -762,7 +762,7 @@ function arrayOf = <T = unknown>(mapper?: CastMapper<T>) => ArrayCast<T>
 
 function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
-function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptionsInput): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;    (type: 'immutable_datetime' | `decimal:${number}`, options?: Omit<ColumnOptions, 'type'> | undefined): ColumnDecorator;}
+function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (options: ColumnOptionsInput): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;    (type: 'immutable_datetime' | `decimal:${number}`, options?: Omit<ColumnOptions, 'type'> | undefined): ColumnDecorator;}
 
 function DatabaseConfig = (options?: Partial<DatabaseConfigShape>) => DatabaseConfigShape
 

@@ -359,6 +359,11 @@ type ColumnDecorator = (value: undefined, context: ClassFieldDecoratorContext) =
  */
 export function column(): ColumnDecorator;
 export function column(type: ColumnShorthand): ColumnDecorator;
+export function column(options: ColumnOptions): ColumnDecorator;
+/**
+ * The object form with a shorthand `type`: `@column({ type: "date", nullable: true })`
+ * resolves the way `@column("date", { nullable: true })` does.
+ */
 export function column(options: ColumnOptionsInput): ColumnDecorator;
 export function column(
   type: ColumnShorthand,

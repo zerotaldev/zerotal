@@ -197,6 +197,68 @@ describe("isWidening — an additive change that reads as a removal", () => {
   });
 });
 
+describe("isWidening — overloads added to a function", () => {
+  const before =
+    "function column = {    (): D;    (type: S): D;    (options: O): D;    (type: S, options: Omit<O, 'type'>): D;}";
+
+  it("accepts a function that gained overloads, every old one kept in order", () => {
+    const after =
+      "function column = {    (): D;    (type: S): D;    (options: O): D;    (options: I): D;    (type: S, options: Omit<O, 'type'>): D;    (type: 'x'): D;}";
+    expect(isWidening(before, added(after))).toBe(true);
+  });
+
+  it("reports an overload that changed while another was added", () => {
+    const after =
+      "function column = {    (): D;    (type: S): D;    (options: I): D;    (type: S, options: Omit<O, 'type'>): D;    (type: 'x'): D;}";
+    expect(isWidening(before, added(after))).toBe(false);
+  });
+
+  it("reports an overload that was dropped", () => {
+    const after =
+      "function column = {    (): D;    (type: S): D;    (options: O): D;    (type: 'x'): D;}";
+    expect(isWidening(before, added(after))).toBe(false);
+  });
+});
+
+describe("isWidening — a parameter widened through a new union", () => {
+  const before =
+    "multipart: (url: string, body?: Record<string, TestFormValue>, method?: 'POST') => Promise<R>";
+  const after =
+    "multipart: (url: string, body?: Record<string, TestMultipartValue>, method?: 'POST') => Promise<R>";
+
+  it("accepts a parameter whose type names a new union of the old type", () => {
+    const alias = "type TestMultipartValue = TestFormValue | readonly TestFormValue[]";
+    expect(isWidening(before, added(after, alias))).toBe(true);
+  });
+
+  it("reports it when the union does not include the old type", () => {
+    const alias = "type TestMultipartValue = TestFileInput | readonly TestFormValue[]";
+    expect(isWidening(before, added(after, alias))).toBe(false);
+  });
+
+  it("reports it when the alias is not a union", () => {
+    expect(isWidening(before, added(after, "type TestMultipartValue = TestFormValue"))).toBe(false);
+  });
+
+  it("reports it when the alias was not added", () => {
+    expect(isWidening(before, added(after))).toBe(false);
+  });
+
+  it("reports the return type widened the same way, which callers read", () => {
+    const was = "read: (key: string) => Promise<TestFormValue>";
+    const now = "read: (key: string) => Promise<TestMultipartValue>";
+    const alias = "type TestMultipartValue = TestFormValue | readonly TestFormValue[]";
+    expect(isWidening(was, added(now, alias))).toBe(false);
+  });
+
+  it("reports a callback's parameter widened the same way", () => {
+    const was = "each: (fn: (value: TestFormValue) => void) => void";
+    const now = "each: (fn: (value: TestMultipartValue) => void) => void";
+    const alias = "type TestMultipartValue = TestFormValue | readonly TestFormValue[]";
+    expect(isWidening(was, added(now, alias))).toBe(false);
+  });
+});
+
 describe("isWidening — a union printed in another order", () => {
   it("accepts the same members in a different order", () => {
     expect(

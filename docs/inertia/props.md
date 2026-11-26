@@ -567,14 +567,28 @@ still override one, and no page is forced to pass it.
 - **A page name only known at runtime** — an error page chosen by status code, a
   component from config — has nothing to check against. Use
   `Inertia.render.dynamic(name, props)`, which takes any name and any props.
-- **Vue pages under plain `tsc`.** Type-checked with `vue-tsc`, as the Vue starter's
-  `bun run typecheck` is, a page's `defineProps<…>()` is read like a React
-  component's props: a missing prop, an extra one or one of the wrong type is an
-  error in the controller. Under plain `tsc` a `.vue` file resolves through a
-  `declare module '*.vue'` shim that types the default export as
+- **Vue pages, unless the app opts in.** `vue-tsc` types a page as
+  `DefineComponent<Props, …>`, whose constructor takes `...args: any[]`, so read the
+  way a React component is read its props are `any` and every prop bag compiles.
+  Declare `checkVueProps` and they are read from the component's `$props` instead:
+  a missing prop, an extra one or one of the wrong type is then an error in the
+  controller, as it is for a React page.
+
+  ```typescript
+  // types/inertia.d.ts
+  declare module "@zerotal/inertia" {
+    interface InertiaTypeOptions {
+      checkVueProps: true;
+    }
+  }
+  ```
+
+  It is an option in 1.18 because it can fail a `vue-tsc` run that passed, in an
+  app whose controllers were already wrong. Under plain `tsc`, a `.vue` file
+  resolves through a `declare module '*.vue'` shim typed
   `DefineComponent<{}, {}, any>`, which carries no props, so those pages accept any
-  props rather than failing on a shape nobody can see. The page **name** is still
-  checked.
+  props with or without the option. The page **name** is checked either way.
+
 - **A component wrapped in `React.memo()`** (or anything else that returns an
   object rather than a function) falls back the same way.
 - **Before you rebuild the registry**, every name and every prop bag compiles, as

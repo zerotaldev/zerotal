@@ -16,7 +16,7 @@ import {
   type _ModelShape,
 } from "@zerotal/core/commands";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 
 /** Where pages live, in preference order. Real apps use `app/flow/pages`. */
 const PAGE_DIRS = ["app/flow/pages", "app/flow"];
@@ -147,12 +147,17 @@ export class MakeFlowCommand extends Command {
             layoutImport: pageLayoutImport,
             shellLayout,
             auth: _frameworkImport("@zerotal/auth"),
+            styles: _appStyles(baseDir, path),
           })
         : _crudStub(componentName, layout, layoutImport);
     } else {
       if (model) this.warn("--model is used with --crud; it is ignored for a plain page.");
       stub = _pageStub(componentName, layout, layoutImport);
     }
+
+    // The starters set `jsxImportSource` in tsconfig.json, and none of their pages carries the
+    // pragma; a page generated beside them carries it only where no tsconfig says it.
+    if (!_tsconfigSetsFlowJsx(dirname(path))) stub = `${FLOW_JSX_PRAGMA}\n${stub}`;
 
     await _writeAppSource(path, stub);
     this.info(`Created: ${path}`);
@@ -214,6 +219,32 @@ export function _servedByFileRouting(dir: string): boolean {
   // Up to the first `)`, which is the end of a `basePath("…")` argument or of the call itself.
   const calls = source.match(/fileBasedRouting\s*\([^)]*\)/g) ?? [];
   return calls.some((call) => call.includes(dir));
+}
+
+/** The pragma a page needs when no tsconfig names Flow's JSX runtime. */
+const FLOW_JSX_PRAGMA = "/** @jsxImportSource @zerotal/flow */";
+
+/**
+ * Whether the nearest `tsconfig.json` at or above `dir` sets `jsxImportSource` to
+ * `@zerotal/flow`, so a page under it needs no pragma.
+ *
+ * @internal Exported for tests.
+ */
+export function _tsconfigSetsFlowJsx(dir: string): boolean {
+  let current = resolve(dir);
+  for (;;) {
+    const file = join(current, "tsconfig.json");
+    if (existsSync(file)) {
+      try {
+        return /"jsxImportSource"\s*:\s*"@zerotal\/flow"/.test(readFileSync(file, "utf8"));
+      } catch {
+        return false;
+      }
+    }
+    const parent = dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
 }
 
 /** First existing candidate directory, else the first candidate as the default. */
@@ -284,8 +315,7 @@ function _layoutStatic(layout: string): string {
 
 /** A minimal page: one exposed field, one action, a render. */
 function _pageStub(name: string, layout: string, layoutImport: string): string {
-  return `/** @jsxImportSource @zerotal/flow */
-import { Component, expose } from "@zerotal/flow";
+  return `import { Component, expose } from "@zerotal/flow";
 ${_layoutImport(layout, layoutImport)}
 export class ${name} extends Component {
 ${_layoutStatic(layout)}  @expose count = 0;
@@ -309,8 +339,7 @@ ${_layoutStatic(layout)}  @expose count = 0;
 
 /** A child component: props assigned by the parent, its own isolated state. */
 function _childStub(name: string): string {
-  return `/** @jsxImportSource @zerotal/flow */
-import { Component, expose, locked } from "@zerotal/flow";
+  return `import { Component, expose, locked } from "@zerotal/flow";
 
 export class ${name} extends Component {
   // A prop from the parent lands on the same-named field before any hook runs.
@@ -338,8 +367,7 @@ export class ${name} extends Component {
 
 /** A resourceful page: list + create/edit/delete, validation, and a form. */
 function _crudStub(name: string, layout: string, layoutImport: string): string {
-  return `/** @jsxImportSource @zerotal/flow */
-import { Component, expose, locked, validate } from "@zerotal/flow";
+  return `import { Component, expose, locked, validate } from "@zerotal/flow";
 ${_layoutImport(layout, layoutImport)}
 // TODO: swap this shape for your model type.
 interface Item {
@@ -487,6 +515,74 @@ interface _ModelCrudStubOptions {
   shellLayout: boolean;
   /** The specifier `Auth` is imported by, for owner scoping on a page without the starter base. */
   auth: string;
+  /** The app's own class lists, when it has the starters' `lib/ui.ts` and `lib/button.ts`. */
+  styles: _AppStyles | undefined;
+}
+
+/**
+ * Where the starters keep their class lists: `INPUT` and the rest in `lib/ui.ts`, and
+ * `buttonClass()` in `lib/button.ts`. A page generated beside them uses those, so its form looks
+ * like the rest of the app. (It wrote `class="input w-full"`, and no stylesheet defines `input`:
+ * the fields rendered with no border.)
+ *
+ * @internal
+ */
+export interface _AppStyles {
+  /** Import specifier for `lib/ui.ts`, relative to the page. */
+  ui: string;
+  /** Import specifier for `lib/button.ts`, relative to the page. */
+  button: string;
+  /** The `lib/ui.ts` constants this page uses that the app exports. */
+  names: Set<string>;
+}
+
+/** The class lists a generated page reads from the starters' `lib/ui.ts`. */
+const UI_NAMES = ["INPUT", "FIELD_ERROR", "CHECKBOX", "PAGE_TITLE", "CARD"] as const;
+
+/** The app's class lists, read from the `lib/` beside the pages directory, if it has them. */
+function _appStyles(pagesDir: string, page: string): _AppStyles | undefined {
+  const lib = join(dirname(pagesDir), "lib");
+  const ui = join(lib, "ui.ts");
+  const button = join(lib, "button.ts");
+  if (!existsSync(ui) || !existsSync(button)) return undefined;
+  const uiSource = readFileSync(ui, "utf8");
+  if (!/export\s+function\s+buttonClass\b/.test(readFileSync(button, "utf8"))) return undefined;
+  const names = new Set(
+    UI_NAMES.filter((name) => new RegExp(`export\\s+const\\s+${name}\\b`).test(uiSource)),
+  );
+  if (!names.has("INPUT")) return undefined;
+  return {
+    ui: _importPath(page, join(lib, "ui")),
+    button: _importPath(page, join(lib, "button")),
+    names,
+  };
+}
+
+/** A class attribute: the app's constant when it has one, else plain Tailwind. */
+function _cls(
+  styles: _AppStyles | undefined,
+  name: (typeof UI_NAMES)[number],
+  fallback: string,
+): string {
+  return styles?.names.has(name) ? `class={${name}}` : `class="${fallback}"`;
+}
+
+/** A button's class attribute, in the app's style when it has `buttonClass()`. */
+function _btn(styles: _AppStyles | undefined, variant: "primary" | "secondary" | "danger"): string {
+  if (styles)
+    return variant === "primary" ? "class={buttonClass()}" : `class={buttonClass("${variant}")}`;
+  if (variant === "primary")
+    return 'class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"';
+  if (variant === "danger") return 'class="text-sm font-medium text-red-600 hover:underline"';
+  return 'class="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"';
+}
+
+const PLAIN_INPUT = "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm";
+const PLAIN_ERROR = "text-sm text-red-600";
+
+/** A column the form edits as a date: a `Date` property, from a `date` or `datetime` column. */
+function _isDate(column: _ModelColumn): boolean {
+  return column.type === "Date";
 }
 
 /** The form's initial value for a column of this type. */
@@ -497,17 +593,17 @@ function _initial(column: _ModelColumn): string {
 }
 
 /** The form control for one field, bound to the page's field of the same name. */
-function _control(column: _ModelColumn, label: string): string {
+function _control(column: _ModelColumn, label: string, styles: _AppStyles | undefined): string {
   const p = column.property;
   if (column.type === "boolean") {
     return `<label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={this.${p}} />
+              <input type="checkbox" checked={this.${p}} ${_cls(styles, "CHECKBOX", "size-4")} />
               ${label}
             </label>`;
   }
-  const type = column.type === "number" ? ` type="number"` : "";
-  return `<input${type} value={this.${p}} class="input w-full" placeholder="${label}" aria-label="${label}" />
-            <span error={this.errors.${p}} class="text-sm text-red-500" />`;
+  const type = column.type === "number" ? ` type="number"` : _isDate(column) ? ` type="date"` : "";
+  return `<input${type} value={this.${p}} ${_cls(styles, "INPUT", PLAIN_INPUT)} placeholder="${label}" aria-label="${label}" />
+            <span error={this.errors.${p}} ${_cls(styles, "FIELD_ERROR", PLAIN_ERROR)} />`;
 }
 
 /** `dueOn` → `Due on`: a label from a property name. */
@@ -547,7 +643,7 @@ function _modelCrudStub(o: _ModelCrudStubOptions): string {
     (c) =>
       c !== o.shape?.owner &&
       !RESERVED.has(c.property) &&
-      ["string", "number", "boolean"].includes(c.type),
+      (["string", "number", "boolean"].includes(c.type) || _isDate(c)),
   );
   const fields = editable.length > 0 ? editable : [];
   const first = fields.find((c) => c.type === "string");
@@ -563,8 +659,12 @@ function _modelCrudStub(o: _ModelCrudStubOptions): string {
     ...(owner && !onPage ? [`import { Auth } from "${o.auth}";`] : []),
     `import { ${model} } from "${o.modelImport}";`,
     ...(o.layout ? [`import { ${o.layout} } from "${o.layoutImport}";`] : []),
+    ...(o.styles ? [`import { buttonClass } from "${o.styles.button}";`] : []),
     ...(onPage
       ? [`import { Page${o.base!.titled ? ", titled" : ""} } from "${o.base!.import}";`]
+      : []),
+    ...(o.styles
+      ? [`import { ${[...o.styles.names].sort().join(", ")} } from "${o.styles.ui}";`]
       : []),
   ].join("\n");
 
@@ -584,27 +684,46 @@ function _modelCrudStub(o: _ModelCrudStubOptions): string {
     fields
       .map(
         (c) =>
-          `    this.${c.property} = ${source}.${c.property}${c.nullable && c.type === "string" ? ' ?? ""' : c.nullable ? ` ?? ${_initial(c)}` : ""};`,
+          `    this.${c.property} = ${source}.${c.property}${_isDate(c) ? "" : c.nullable && c.type === "string" ? ' ?? ""' : c.nullable ? ` ?? ${_initial(c)}` : ""};`,
       )
       .join("\n");
+  // A date field holds the form's `YYYY-MM-DD`; the model wants a `Date`, or null when blank.
+  const toModel = (c: _ModelColumn) =>
+    _isDate(c)
+      ? c.nullable
+        ? `${c.property}: this.${c.property} ? new Date(this.${c.property}) : null`
+        : `${c.property}: new Date(this.${c.property})`
+      : `${c.property}: this.${c.property}`;
+  // A row holds a date as the form's `YYYY-MM-DD` string: the page's state goes to the browser
+  // and back as JSON, and a `Date` would come back as a string anyway.
+  const fromModel = (c: string) => {
+    const column = fields.find((f) => f.property === c);
+    if (!column || !_isDate(column)) return `${record}.${c}`;
+    return `${record}.${c} ? ${record}.${c}.toISOString().slice(0, 10) : ""`;
+  };
+  const dates = fields.filter(_isDate);
   const clear = fields.map((c) => `    this.${c.property} = ${_initial(c)};`).join("\n");
-  const data = fields.length
-    ? `{ ${fields.map((c) => `${c.property}: this.${c.property}`).join(", ")} }`
-    : "{}";
+  const data = fields.length ? `{ ${fields.map(toModel).join(", ")} }` : "{}";
   const owned = owner ? `${model}.query().where("${owner.column}", ${userId})` : `${model}.query()`;
   const shown = first ? `{item.${first.property}}` : `{\`#\${item.id}\`}`;
   const controls = fields
     .map(
       (c) =>
-        `          <div class="flex-1">\n            ${_control(c, _label(c.property))}\n          </div>`,
+        `          <div class="flex-1">\n            ${_control(c, _label(c.property), o.styles)}\n          </div>`,
     )
     .join("\n");
 
-  return `/** @jsxImportSource @zerotal/flow */
-${imports}
+  return `${imports}
 
-/** A ${record} as the page holds it: the columns it lists and edits. */
-type Row = Pick<${model}, ${rowKeys.map((k) => `"${k}"`).join(" | ")}>;
+/** A ${record} as the page holds it: the columns it lists and edits${dates.length ? ", with dates as `YYYY-MM-DD`" : ""}. */
+type Row = ${
+    dates.length
+      ? `Pick<${model}, ${rowKeys
+          .filter((k) => !dates.some((d) => d.property === k))
+          .map((k) => `"${k}"`)
+          .join(" | ")}> & { ${dates.map((d) => `${d.property}: string`).join("; ")} }`
+      : `Pick<${model}, ${rowKeys.map((k) => `"${k}"`).join(" | ")}>`
+  };
 
 /**
  * ${o.url} — ${owner ? `the signed-in user's ${records}` : `every ${record}`}: list, create, edit and delete them.
@@ -636,7 +755,7 @@ ${fieldLines.map((line) => `${line}\n`).join("")}${
   private async load(): Promise<void> {
     const found = await this.owned().orderBy("id", "desc").get();
     this.items = found.map((${record}) => ({
-${rowKeys.map((k) => `      ${k}: ${record}.${k},`).join("\n")}
+${rowKeys.map((k) => `      ${k}: ${fromModel(k)},`).join("\n")}
     }));
   }
 
@@ -676,27 +795,34 @@ ${first ? "    await this.validate();\n\n" : ""}    if (this.editingId === null)
 
   override async render() {
     return (
-      <div class="max-w-xl mx-auto space-y-6 p-6">
-        <h1 class="text-2xl font-bold">${_label(name.replace(/Page$/, ""))}</h1>
+      <div class="mx-auto max-w-2xl space-y-6">
+        <h1 ${_cls(o.styles, "PAGE_TITLE", "text-2xl font-bold")}>${_label(name.replace(/Page$/, ""))}</h1>
 
-        <form onSubmit={this.save} class="flex items-start gap-2">
-${controls ? `${controls}\n` : ""}          <button type="submit" loadingAttr="disabled">
+        <form onSubmit={this.save} class="flex flex-wrap items-start gap-2">
+${controls ? `${controls}\n` : ""}          <button type="submit" loadingAttr="disabled" ${_btn(o.styles, "primary")}>
             {this.editingId === null ? "Add" : "Update"}
           </button>
           {this.editingId !== null && (
-            <button type="button" onClick={this.reset}>
+            <button type="button" onClick={this.reset} ${_btn(o.styles, "secondary")}>
               Cancel
             </button>
           )}
         </form>
 
-        <ul class="divide-y">
+        <ul class="divide-y divide-border">
           {this.items.map((item) => (
-            <li key={String(item.id)} class="flex items-center justify-between py-2">
-              <span>${shown}</span>
-              <span class="flex gap-3">
-                <button onClick={() => this.edit(item.id)}>Edit</button>
-                <button onClick={() => this.destroy(item.id)} confirm="Delete this?" class="text-red-600">
+            <li key={String(item.id)} class="flex items-center justify-between gap-4 py-3">
+              <span class="min-w-0 flex-1 truncate">${shown}</span>${dates
+                .map(
+                  (d) =>
+                    `\n              <span class="text-sm text-muted-foreground">{item.${d.property}}</span>`,
+                )
+                .join("")}
+              <span class="flex shrink-0 gap-3">
+                <button type="button" onClick={() => this.edit(item.id)} ${_btn(o.styles, "secondary")}>
+                  Edit
+                </button>
+                <button type="button" onClick={() => this.destroy(item.id)} confirm="Delete this?" ${_btn(o.styles, "danger")}>
                   Delete
                 </button>
               </span>

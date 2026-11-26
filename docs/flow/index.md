@@ -209,7 +209,7 @@ If the natural name is taken, the usual fix is a more specific one — `headline
 
 ### Scaffolding with make:flow
 
-You don't have to write each component from a blank file. `make:flow` generates a ready-to-run class with the JSX pragma, the right imports, and an `@expose`/`render` skeleton already in place:
+You don't have to write each component from a blank file. `make:flow` generates a ready-to-run class with the right imports and an `@expose`/`render` skeleton already in place. It adds the `@jsxImportSource @zerotal/flow` pragma only when no `tsconfig.json` over the file already names Flow's JSX runtime, which the starters' does:
 
 ```bash
 bun zt make:flow Dashboard             # a page under app/flow/pages
@@ -221,7 +221,7 @@ bun zt make:flow Billing --layout AppLayout   # a page wrapped in a layout
 
 `--layout` and `--model` are found by what the files export, so `--layout AppLayout` imports from the file in `app/flow/layouts/` that exports it, and `--model Post` from `app/models/Post.ts`. If no file exports the name, the page imports it from where it would be and the command warns.
 
-With `--model`, the page lists, creates, edits and deletes records with nothing left to fill in. Its form fields are the model's own: the mass-assignable columns that are strings, numbers or booleans, read from the model's source. A model with an owner column (`userId`) is scoped to the signed-in user: the list, and every edit and delete, read only that user's records, and a new record is theirs. In the Flow starter the page extends the starter's `Page` (from `app/flow/lib/page.ts`), renders inside `AppLayout` unless `--layout` names another, and is interactive.
+With `--model`, the page lists, creates, edits and deletes records with nothing left to fill in. Its form fields are the model's own: the mass-assignable columns that are strings, numbers, booleans or dates, read from the model's source. A date is an `<input type="date">`, held on the page as `YYYY-MM-DD` and saved as a `Date` (or `null` when left blank on a nullable column). In an app with the starters' `lib/ui.ts` and `lib/button.ts`, the form uses their `INPUT`, `FIELD_ERROR` and `buttonClass()`, so it looks like the rest of the app; elsewhere it uses plain Tailwind classes. A model with an owner column (`userId`) is scoped to the signed-in user: the list, and every edit and delete, read only that user's records, and a new record is theirs. In the Flow starter the page extends the starter's `Page` (from `app/flow/lib/page.ts`), renders inside `AppLayout` unless `--layout` names another, and is interactive.
 
 The name may be nested (`Users/Index` → `app/flow/pages/users/index.tsx`, at `/users`; pages are written lowercase because the file name is the URL), and the target directory is auto-detected (`app/flow/pages` for pages, `app/flow/components` for children) or set with `--dir`.
 

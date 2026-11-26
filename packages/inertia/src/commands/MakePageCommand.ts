@@ -1,18 +1,26 @@
 import { Command, config } from "@zerotal/core";
+import { _writeAppSource } from "@zerotal/core/commands";
+import { existsSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { generatePageRegistry } from "../PageRegistry.ts";
 import { DEFAULT_PAGES_DIR } from "../config.ts";
 
 /**
  * `make:page` — scaffold a new Inertia page component under the configured pages dir
  * and regenerate the page registry. The framework (React `.tsx` / Vue `.vue`) is
- * auto-detected from the installed adapter unless forced with `--framework`; pass
- * `--layout` to wrap the page in a persistent layout.
+ * auto-detected from the installed adapter unless forced with `--framework`.
+ *
+ * The page is written the way the starters write theirs: a named component, a `Props`
+ * interface with the `title` every starter route passes, `<Head>` for the document title,
+ * and the app's signed-in layout (`AppLayout`, found beside the pages directory) as its
+ * persistent layout. Pass `--layout` to name another, or `--layout none` for no layout. The
+ * file is formatted with the app's own Prettier, so it passes the app's `format:check`.
  *
  * @category Scaffolding
  * @example
  * ```ts
- * // bun zt make:page Users/Index
- * // bun zt make:page Dashboard --layout MainLayout
+ * // bun zt make:page tasks/index
+ * // bun zt make:page Dashboard --layout PublicLayout
  * // bun zt make:page Settings --framework vue
  * ```
  */
@@ -25,7 +33,7 @@ export class MakePageCommand extends Command {
     {
       name: "name",
       required: true,
-      description: "Page name, e.g. Dashboard or Users/Index",
+      description: "Page name, as Inertia.render() names it, e.g. tasks/index",
     },
   ];
 
@@ -33,7 +41,8 @@ export class MakePageCommand extends Command {
     {
       name: "layout",
       type: "string" as const,
-      description: "Wrap the page in a persistent layout, e.g. --layout MainLayout",
+      description:
+        "The persistent layout, e.g. --layout PublicLayout (default: AppLayout when the app has one; none for no layout)",
       default: "",
     },
     {
@@ -45,8 +54,7 @@ export class MakePageCommand extends Command {
   ];
 
   override async run(): Promise<void> {
-    const name = this.args["name"]!; // e.g. 'Users/Index'
-    const layout = (this.flags["layout"] as string | undefined) ?? "";
+    const name = this.args["name"]!.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
     const pagesDir = config
       .safe("inertia.pagesDir", DEFAULT_PAGES_DIR)
       .replace(/\\/g, "/")
@@ -68,27 +76,26 @@ export class MakePageCommand extends Command {
       return;
     }
 
-    const componentName = name.includes("/") ? name.split("/").pop()! : name;
-
-    // Compute how many levels deep the page is so the layout import is correct
-    const depth = name.split("/").length;
-    const prefix = "../".repeat(depth);
-    const stub =
-      framework === "vue"
-        ? layout
-          ? _vueLayoutPageStub(componentName, layout, prefix)
-          : _vuePageStub(componentName)
-        : layout
-          ? _reactLayoutPageStub(componentName, layout, prefix)
-          : _reactPageStub(componentName);
-
-    await Bun.write(path, stub);
-    this.info(`Created: ${path}`);
-
-    if (layout) {
-      this.dim(`  Layout: ${prefix}layouts/${layout}.${ext}`);
-      this.dim("  Adjust the import path if your layouts live elsewhere.");
+    const asked = ((this.flags["layout"] as string | undefined) ?? "").trim();
+    const layoutName = asked === "" ? "AppLayout" : asked;
+    const layoutFile =
+      asked.toLowerCase() === "none" ? undefined : _findLayout(pagesDir, layoutName, ext);
+    if (asked !== "" && asked.toLowerCase() !== "none" && !layoutFile) {
+      this.warn(`  No ${layoutName}.${ext} beside ${pagesDir}/; the page has no layout.`);
     }
+
+    const stub = _pageStub({
+      framework,
+      component: _componentName(name),
+      layout: layoutFile
+        ? { name: layoutName, from: _importPath(path, layoutFile, framework) }
+        : undefined,
+    });
+
+    await _writeAppSource(path, stub);
+    this.info(`Created: ${path}`);
+    if (layoutFile) this.dim(`  Layout: ${layoutName}, from ${layoutFile}`);
+    this.dim(`  Render it from a route: Inertia.render("${name}", { title: "…" })`);
 
     this.dim("  Regenerating page registry...");
     await generatePageRegistry(process.cwd());
@@ -108,100 +115,118 @@ function _detectFramework(cwd: string): Framework {
   }
 }
 
-function _reactPageStub(name: string): string {
-  return `import { Link, usePage } from '@inertiajs/react';
-
-// Define the props this page receives from the controller
-interface Props {
-  // TODO: add your props here
+/**
+ * `tasks/index` → `TasksIndex`, `settings/two-factor` → `SettingsTwoFactor`: a component
+ * name from the page's path, PascalCase, as the starters name theirs. A lone `index` was the
+ * component's name before, which reads as nothing in a stack trace or in devtools.
+ *
+ * @internal Exported for tests.
+ */
+export function _componentName(page: string): string {
+  const words = page
+    .split(/[/\\\-_.\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1));
+  const joined = words.join("").replace(/[^A-Za-z0-9]/g, "");
+  if (joined === "") return "Page";
+  return /^[0-9]/.test(joined) ? `Page${joined}` : joined;
 }
 
-export default function ${name}({}: Props) {
-  const { auth } = usePage<{ auth: { user: { name: string } | null } }>().props;
+/**
+ * The layout's file, relative to the app root, without extension for React: looked for in
+ * `Layouts/` and `layouts/` beside the pages directory, as the starters keep them.
+ */
+function _findLayout(pagesDir: string, layout: string, ext: string): string | undefined {
+  const root = dirname(pagesDir);
+  for (const dir of ["Layouts", "layouts"]) {
+    const file = join(root, dir, `${layout}.${ext}`).replace(/\\/g, "/");
+    if (existsSync(file)) return file;
+  }
+  return undefined;
+}
 
+/** A relative import from the page at `from` to `to`; React's has no extension, Vue's keeps it. */
+function _importPath(from: string, to: string, framework: Framework): string {
+  const target = framework === "react" ? to.replace(/\.tsx$/, "") : to;
+  const path = relative(dirname(from), target).replace(/\\/g, "/");
+  return path.startsWith(".") ? path : `./${path}`;
+}
+
+/** What a page stub is built from. @internal */
+export interface _PageStubOptions {
+  framework: Framework;
+  /** The component's name, e.g. `TasksIndex`. */
+  component: string;
+  /** The persistent layout and the import that reaches it, or none. */
+  layout: { name: string; from: string } | undefined;
+}
+
+/**
+ * The page's source. Double quotes, a named component and a `Props` interface with the
+ * `title` the starters' routes pass, and the layout as Inertia's persistent layout.
+ *
+ * @internal Exported for tests.
+ */
+export function _pageStub(o: _PageStubOptions): string {
+  return o.framework === "vue" ? _vueStub(o) : _reactStub(o);
+}
+
+function _reactStub({ component, layout }: _PageStubOptions): string {
+  const imports = [
+    ...(layout ? [`import type { ReactNode } from "react";`] : []),
+    `import { Head } from "@inertiajs/react";`,
+    ...(layout ? [`import ${layout.name} from "${layout.from}";`] : []),
+  ].join("\n");
+  const body = `<>
+      <Head title={title} />
+      <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+    </>`;
+  return `${imports}
+
+/** The props the route passes to \`Inertia.render()\`. */
+interface Props {
+  title: string;
+}
+
+function ${component}({ title }: Props) {
   return (
-    <main>
-      <h1>${name}</h1>
-      {auth.user && <p>Hello, {auth.user.name}</p>}
-      <Link href="/">Home</Link>
-    </main>
+    ${body}
   );
 }
+${
+  layout
+    ? `
+// The layout persists across visits: only the page re-renders.
+${component}.layout = (page: ReactNode) => <${layout.name}>{page}</${layout.name}>;
+`
+    : ""
+}
+export default ${component};
 `;
 }
 
-function _reactLayoutPageStub(name: string, layout: string, prefix: string): string {
-  return `import type { ReactNode } from 'react';
-import { Link }          from '@inertiajs/react';
-// Adjust the path if your layouts directory is elsewhere
-import ${layout}         from '${prefix}layouts/${layout}.tsx';
-
-// Define the props this page receives from the controller
-interface Props {
-  // TODO: add your props here
-}
-
-function ${name}({}: Props) {
-  return (
-    <main>
-      <h1>${name}</h1>
-      <Link href="/">Home</Link>
-    </main>
-  );
-}
-
-// Inertia persistent layout — preserved across client-side navigations.
-// The layout renders once; only the page content re-renders on navigation.
-(${name} as { layout?: (page: ReactNode) => ReactNode }).layout =
-  (page) => <${layout}>{page}</${layout}>;
-
-export default ${name};
-`;
-}
-
-function _vuePageStub(name: string): string {
+function _vueStub({ component, layout }: _PageStubOptions): string {
+  const imports = [
+    `import { Head } from "@inertiajs/vue3";`,
+    ...(layout ? [`import ${layout.name} from "${layout.from}";`] : []),
+  ].join("\n");
+  const options = layout
+    ? `{ name: "${component}", layout: ${layout.name} }`
+    : `{ name: "${component}" }`;
   return `<script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
+${imports}
 
-const page = usePage<{ auth: { user: { name: string } | null } }>();
+${layout ? "// The layout persists across visits: only the page re-renders.\n" : ""}defineOptions(${options});
 
-// Define the props this page receives from the controller
+/** The props the route passes to \`Inertia.render()\`. */
 defineProps<{
-  // TODO: add your props here
+  title: string;
 }>();
 </script>
 
 <template>
-  <main>
-    <h1>${name}</h1>
-    <p v-if="page.props.auth.user">Hello, {{ page.props.auth.user.name }}</p>
-    <Link href="/">Home</Link>
-  </main>
-</template>
-`;
-}
-
-function _vueLayoutPageStub(name: string, layout: string, prefix: string): string {
-  return `<script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-// Adjust the path if your layouts directory is elsewhere
-import ${layout} from '${prefix}layouts/${layout}.vue';
-
-// Inertia persistent layout — preserved across client-side navigations.
-// The layout renders once; only the page content re-renders on navigation.
-defineOptions({ layout: ${layout} });
-
-// Define the props this page receives from the controller
-defineProps<{
-  // TODO: add your props here
-}>();
-</script>
-
-<template>
-  <main>
-    <h1>${name}</h1>
-    <Link href="/">Home</Link>
-  </main>
+  <Head :title="title" />
+  <h1 class="text-2xl font-bold tracking-tight">{{ title }}</h1>
 </template>
 `;
 }

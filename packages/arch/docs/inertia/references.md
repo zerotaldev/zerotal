@@ -12,7 +12,7 @@ A consolidated cheat-sheet for `@zerotal/inertia`. Each entry links to the secti
 | Command                                            | Purpose                                                         |
 | -------------------------------------------------- | --------------------------------------------------------------- |
 | `bun zt make:page <Name>`                          | Scaffold a page component under your pages directory.           |
-| `bun zt make:page <Name> --layout <Layout>`        | Scaffold a page wrapped in a persistent layout.                 |
+| `bun zt make:page <Name> --layout <Layout>`        | Wrap the page in another layout than `AppLayout`, or `none`.    |
 | `bun zt make:page <Name> --framework <vue\|react>` | Force the frontend framework instead of auto-detecting.         |
 | `bun zt inertia:build`                             | Bundle the frontend — development build (external source maps). |
 | `bun zt inertia:build -p`                          | Production build (minified, no source maps).                    |

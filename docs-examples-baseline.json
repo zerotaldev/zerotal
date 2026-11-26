@@ -8830,12 +8830,6 @@
       "hash": "34yqvflqmnl2"
     },
     {
-      "file": "docs/tenancy.md",
-      "heading": "Custom resolver",
-      "ordinal": 0,
-      "hash": "2nenhqsg2m7x"
-    },
-    {
       "file": "docs/upgrade.md",
       "heading": "Pre-release checkout to 1.0",
       "ordinal": 0,

@@ -80,7 +80,7 @@ export default TenancyConfig({
 
 | Field          | Required            | Default             | Description                                                                                            |
 | -------------- | ------------------- | ------------------- | ------------------------------------------------------------------------------------------------------ |
-| `resolvers`    | yes                 | —                   | Resolvers tried in order until one returns a non-null identifier. All-null means a 404.                |
+| `resolvers`    | yes                 | —                   | Resolvers tried in order until one returns a non-null identifier. All-null means no tenant.            |
 | `strategy`     | no                  | `"single-database"` | `"single-database"` or `"multi-database"`.                                                             |
 | `tenantColumn` | no                  | `"tenant_id"`       | FK column appended by `Tenantable` in the single-database strategy.                                    |
 | `connect`      | multi-database only | —                   | `(tenant: MultiDbTenant) => SQLInstance` factory opening each tenant's connection (pooled per tenant). |
@@ -198,11 +198,13 @@ Implement the `TenantResolver` interface — return a `{ identifier }` result, o
 
 ```typescript
 // app/tenancy/CookieResolver.ts
+import type { HttpContext } from "zerotal";
 import type { TenantResolver, TenantResolverResult } from "@zerotal/tenancy";
 
 export class CookieResolver implements TenantResolver {
-  resolve(request: Request): TenantResolverResult | null {
-    const cookie = request.headers.get("cookie") ?? "";
+  // A resolver is handed the request context: `http.request`, `http.params`, `http.user`.
+  resolve(http: HttpContext): TenantResolverResult | null {
+    const cookie = http.request.headers.get("cookie") ?? "";
     const match = cookie.match(/tenant=([^;]+)/);
     return match ? { identifier: match[1]! } : null;
   }
@@ -229,14 +231,20 @@ an app registers it by hand, and one registered twice would resolve the tenant
 twice. To _require_ a tenant on particular routes, reach for
 `EnsureTenancyMiddleware` below.
 
-The middleware throws an [error](/docs/errors) the framework's exception handler renders by content negotiation:
+When no resolver matches, or the identifier names no tenant in the registry, the
+middleware carries on with **no tenant**: the request reaches the route with an empty
+context. That is what lets one app serve its marketing pages and its tenants' pages. A
+route that needs a tenant says so with
+[`EnsureTenancyMiddleware`](#requiring-a-tenant-on-a-route), which answers 404.
 
-| Situation                  | Error                       | Status | Message                           |
-| -------------------------- | --------------------------- | ------ | --------------------------------- |
-| No resolver matched        | `TenantNotFoundError`       | 404    | `This account doesn’t exist.`     |
-| Slug not in the registry   | `TenantNotFoundError`       | 404    | `This account doesn’t exist.`     |
-| `isActive` is false        | `TenantInactiveError`       | 403    | `This account has been disabled.` |
-| Middleware ran before boot | `TenancyNotConfiguredError` | 500    | configuration error               |
+Otherwise the middleware throws an [error](/docs/errors) the framework's exception
+handler renders by content negotiation:
+
+| Situation                                          | Error                       | Status | Message                                             |
+| -------------------------------------------------- | --------------------------- | ------ | --------------------------------------------------- |
+| `isActive` is false                                | `TenantInactiveError`       | 403    | `This account has been disabled.`                   |
+| A signed-in user who is not a member of the tenant | `TenantForbiddenError`      | 403    | `You don’t have permission to manage this account.` |
+| Middleware ran before boot                         | `TenancyNotConfiguredError` | 500    | configuration error                                 |
 
 ### Requiring a tenant on a route
 

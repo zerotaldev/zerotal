@@ -60,6 +60,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { label: "Release Notes", slug: "changelog" },
       { label: "Upgrade Guide", slug: "upgrade" },
       { label: "Support Policy", slug: "support-policy" },
+      { label: "Supply-Chain Security", slug: "supply-chain" },
       { label: "Contribution Guide", slug: "contributing" },
     ],
   },

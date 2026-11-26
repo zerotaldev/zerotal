@@ -21,12 +21,12 @@ on:
   push:
     tags: ["v*"]
 
+# Read-only by default; the two jobs that need more ask for it themselves. The OIDC
+# token used to be granted here, to every job, so the gates — which install and run
+# the whole dependency tree — held a token npm would exchange for publish rights.
+# `workflows:check` fails if `id-token: write` appears anywhere but `publish`.
 permissions:
-  # The workflow's OIDC identity: trusted publishing exchanges it for a
-  # publish token, and provenance attestation is signed against it.
-  id-token: write
-  # gh release create.
-  contents: write
+  contents: read
 
 env:
   APP_KEY: ci-app-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -47,10 +47,10 @@ jobs:
       # the tag being released, so both compared the release with itself: the
       # breaking-change gate from 1.11.2 and the release-notes gate from 1.14.1 passed
       # every release having checked nothing.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.14
 
@@ -157,6 +157,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun run exact:optional:check
 
+      - name: Workflow supply-chain rules
+        if: ${{ !cancelled() }}
+        run: bun run workflows:check
+
       - name: Typecheck tests
         if: ${{ !cancelled() }}
         run: bun run typecheck:tests
@@ -181,15 +185,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: verify
+    permissions:
+      contents: read
+      # The workflow's OIDC identity: trusted publishing exchanges it for a
+      # publish token, and provenance attestation is signed against it.
+      id-token: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.14
       # npm does the publishing: `npm publish --provenance` is the attestation
       # path. Bun does the packing, because `bun pm pack` rewrites workspace:*
       # dependencies to real versions.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
@@ -219,8 +228,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: publish
+    permissions:
+      # gh release create.
+      contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Create release
         env:

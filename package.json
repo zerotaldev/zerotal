@@ -57,6 +57,7 @@
     "deps:check:update": "bun run scripts/deps-check.ts --update",
     "attribution:check": "bun run scripts/attribution-check.ts",
     "lockfile:check": "bun run scripts/lockfile-check.ts",
+    "workflows:check": "bun run scripts/workflows-check.ts",
     "test:scripts": "bun test ./scripts"
   },
   "dependencies": {

@@ -95,6 +95,20 @@ const NAV: { group: string; items: NavItem[] }[] = [
     ],
   },
   {
+    group: "Cookbook",
+    items: [
+      { label: "Recipes", slug: "cookbook" },
+      { label: "Uploading Several Files", slug: "cookbook/uploads" },
+      { label: "Queued Notifications", slug: "cookbook/queued-notifications" },
+      { label: "Caching a Slow Read", slug: "cookbook/caching" },
+      { label: "Roles and Permissions", slug: "cookbook/roles-and-permissions" },
+      { label: "Tenant per Subdomain", slug: "cookbook/tenancy" },
+      { label: "Settings", slug: "cookbook/settings" },
+      { label: "AI Structured Output", slug: "cookbook/ai-structured-output" },
+      { label: "Back Up Before Migrating", slug: "cookbook/backup-before-migrating" },
+    ],
+  },
+  {
     group: "Architecture Concepts",
     items: [
       { label: "The Application", slug: "application" },

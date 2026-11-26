@@ -1,5 +1,6 @@
 import { config } from "zerotal";
 import { MailMessage, Notification } from "@zerotal/notifications";
+import { signOff } from "../support/mail";
 
 /**
  * The "confirm your email address" message, sent on registration and on request from
@@ -26,6 +27,7 @@ export class VerifyEmailNotification extends Notification {
       .greeting("Almost there")
       .line("Confirm this is your email address to finish setting up your account.")
       .action("Confirm email address", this.url())
-      .line("The link works once and expires in an hour. If you did not sign up, ignore this.");
+      .line("The link works once and expires in an hour. If you did not sign up, ignore this.")
+      .salutation(signOff());
   }
 }

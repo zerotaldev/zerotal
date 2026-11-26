@@ -67,8 +67,8 @@ bun zt test
 bun zt doctor
 ```
 
-`bun zt test` ends with `0 fail` (on the React starter, `102 pass`). `bun zt doctor` ends with
-`All 22 checks passed.`
+`bun zt test` ends with `0 fail`. `bun zt doctor` ends with `All N checks passed.`, where `N`
+depends on the starter and on what the app registers, so it grows as the app does.
 
 ## What you have
 

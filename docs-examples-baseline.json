@@ -1253,43 +1253,43 @@
       "file": "docs/cache.md",
       "heading": "Basic operations",
       "ordinal": 0,
-      "hash": "bghfpxc815vh"
+      "hash": "0p1dplwzyp58"
     },
     {
       "file": "docs/cache.md",
       "heading": "Batch operations",
       "ordinal": 0,
-      "hash": "1m78blimqx3b"
+      "hash": "2q86o3xec436"
     },
     {
       "file": "docs/cache.md",
       "heading": "Cache warming",
       "ordinal": 0,
-      "hash": "1nh2gc0afzzy"
+      "hash": "29uz8hybpqew"
     },
     {
       "file": "docs/cache.md",
       "heading": "Counters",
       "ordinal": 0,
-      "hash": "21q1zr51vkjv"
+      "hash": "l0dedueb2o1d"
     },
     {
       "file": "docs/cache.md",
       "heading": "Errors",
       "ordinal": 0,
-      "hash": "1niwxyvx3931"
+      "hash": "32kx63sosazf"
     },
     {
       "file": "docs/cache.md",
       "heading": "Idempotency middleware",
       "ordinal": 0,
-      "hash": "amkqlx69bt9d"
+      "hash": "2ij6j8ousuk0"
     },
     {
       "file": "docs/cache.md",
       "heading": "Per-use driver override",
       "ordinal": 0,
-      "hash": "1eeq71187elg"
+      "hash": "1r9b5ywdu52t"
     },
     {
       "file": "docs/cache.md",
@@ -1307,7 +1307,7 @@
       "file": "docs/cache.md",
       "heading": "remember — the primary workhorse",
       "ordinal": 1,
-      "hash": "2zyvyrezt0lp"
+      "hash": "27w0soz3koyi"
     },
     {
       "file": "docs/cache.md",
@@ -1319,13 +1319,13 @@
       "file": "docs/cache.md",
       "heading": "Tags",
       "ordinal": 0,
-      "hash": "36q92800n5ey"
+      "hash": "dpth4uo521o2"
     },
     {
       "file": "docs/cache.md",
       "heading": "Testing",
       "ordinal": 0,
-      "hash": "26io2fnsh33i"
+      "hash": "1nldczq45aut"
     },
     {
       "file": "docs/cache.md",
@@ -5043,12 +5043,6 @@
     },
     {
       "file": "docs/media.md",
-      "heading": "Getting started",
-      "ordinal": 0,
-      "hash": "27hsnbkcn8ae"
-    },
-    {
-      "file": "docs/media.md",
       "heading": "Image drivers",
       "ordinal": 0,
       "hash": "1seov7bth3at"
@@ -5111,7 +5105,7 @@
       "file": "docs/media.md",
       "heading": "Testing",
       "ordinal": 0,
-      "hash": "2t7z96afa28y"
+      "hash": "3rplcba0yks8"
     },
     {
       "file": "docs/media.md",
@@ -6515,19 +6509,19 @@
       "file": "docs/queue.md",
       "heading": "Dispatching jobs",
       "ordinal": 0,
-      "hash": "hid59nta1kh4"
+      "hash": "1hxtwvte8tyg"
     },
     {
       "file": "docs/queue.md",
       "heading": "Errors",
       "ordinal": 0,
-      "hash": "2u584wy4s1bl"
+      "hash": "3h8cbknfob1o"
     },
     {
       "file": "docs/queue.md",
       "heading": "Faking the queue",
       "ordinal": 0,
-      "hash": "1hrnlgenq1ev"
+      "hash": "2pfb0dyddhuu"
     },
     {
       "file": "docs/queue.md",
@@ -6539,19 +6533,19 @@
       "file": "docs/queue.md",
       "heading": "Job batching",
       "ordinal": 0,
-      "hash": "18703eg78pwi"
+      "hash": "2nwz2vhfevz7"
     },
     {
       "file": "docs/queue.md",
       "heading": "Job chaining",
       "ordinal": 0,
-      "hash": "1wyusowghau7"
+      "hash": "3o3yhb5oc175"
     },
     {
       "file": "docs/queue.md",
       "heading": "Minimal job",
       "ordinal": 0,
-      "hash": "30bhgb6m0w9o"
+      "hash": "13kf7w77dh7q"
     },
     {
       "file": "docs/queue.md",
@@ -6569,7 +6563,7 @@
       "file": "docs/queue.md",
       "heading": "Writing a job",
       "ordinal": 0,
-      "hash": "1ni3fwxfhxoq"
+      "hash": "29jun38h9g3s"
     },
     {
       "file": "docs/rate-limiting.md",
@@ -7037,25 +7031,25 @@
       "file": "docs/scheduler.md",
       "heading": "Capturing output",
       "ordinal": 0,
-      "hash": "24fbz8kwvmks"
+      "hash": "itorqbvcgx6u"
     },
     {
       "file": "docs/scheduler.md",
       "heading": "Defining schedules",
       "ordinal": 0,
-      "hash": "2kpcr2w4woe0"
+      "hash": "1n2betzwrgoc"
     },
     {
       "file": "docs/scheduler.md",
       "heading": "Defining schedules",
       "ordinal": 1,
-      "hash": "3f7veuhtx47n"
+      "hash": "2v71czy05hnh"
     },
     {
       "file": "docs/scheduler.md",
       "heading": "Inline schedules",
       "ordinal": 0,
-      "hash": "1mwxwdqe8nl9"
+      "hash": "3a4d3gegsgms"
     },
     {
       "file": "docs/scheduler.md",
@@ -7067,7 +7061,7 @@
       "file": "docs/scheduler.md",
       "heading": "Observability — task events",
       "ordinal": 0,
-      "hash": "2bzm57chelrp"
+      "hash": "2ziqgqwezeca"
     },
     {
       "file": "docs/scheduler.md",
@@ -7085,13 +7079,13 @@
       "file": "docs/scheduler.md",
       "heading": "Settings reference",
       "ordinal": 0,
-      "hash": "3vomb472p619"
+      "hash": "s96scmsi33xo"
     },
     {
       "file": "docs/scheduler.md",
       "heading": "Testing",
       "ordinal": 0,
-      "hash": "20mbro2xxcsy"
+      "hash": "yxrku4uc6hrb"
     },
     {
       "file": "docs/scheduler.md",
@@ -7757,7 +7751,7 @@
       "file": "docs/testing/http.md",
       "heading": "File uploads",
       "ordinal": 0,
-      "hash": "2h6d4xxtctq8"
+      "hash": "3l1sxzuegos5"
     },
     {
       "file": "docs/testing/http.md",
@@ -7985,7 +7979,7 @@
       "file": "docs/tutorial/notifications.md",
       "heading": "Register the queue",
       "ordinal": 1,
-      "hash": "v1rc58mnhjze"
+      "hash": "1fe7v9l33fdi"
     },
     {
       "file": "docs/tutorial/notifications.md",
@@ -8213,7 +8207,7 @@
       "file": "docs/validator.md",
       "heading": "Password rules",
       "ordinal": 0,
-      "hash": "e7ap5j74py4c"
+      "hash": "wb8smmq75gcn"
     },
     {
       "file": "docs/validator.md",
@@ -8498,12 +8492,6 @@
       "heading": "Deferred providers",
       "ordinal": 0,
       "hash": "1lhm6tjzsjvl"
-    },
-    {
-      "file": "docs/scheduler.md",
-      "heading": "Capturing output",
-      "ordinal": 1,
-      "hash": "3c9mjoaf822n"
     },
     {
       "file": "docs/session.md",

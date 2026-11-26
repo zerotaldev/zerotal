@@ -38,12 +38,7 @@ export function dashboardWidgets(): DashboardWidget[] {
         User.count(),
         Product.query()
           .get()
-          .then((rows) =>
-            (rows as unknown as { price?: number; stock?: number }[]).reduce(
-              (sum, r) => sum + Number(r.price ?? 0) * Number(r.stock ?? 0),
-              0,
-            ),
-          ),
+          .then((rows) => rows.reduce((sum, r) => sum + r.price * (r.stock ?? 0), 0)),
       ]);
 
       return [

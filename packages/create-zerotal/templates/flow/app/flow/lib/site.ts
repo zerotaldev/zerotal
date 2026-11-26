@@ -9,4 +9,4 @@ export function appName(): string {
 }
 
 /** Where the header and footer "Docs" links point. */
-export const DOCS_URL = "https://github.com/zerotaldev/zerotal";
+export const DOCS_URL = "https://zerotal.dev/docs";

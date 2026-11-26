@@ -110,7 +110,7 @@ export class ProductResource extends Resource {
         action("feature")
           .label("Feature")
           .icon("plus")
-          .visible((rec) => !(rec as unknown as Product)?.featured)
+          .visible((rec) => !rec?.["featured"])
           .run(async ({ record, resource }) => {
             await resource.update(record!.id, { featured: true });
           })

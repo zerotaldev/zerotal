@@ -25,6 +25,14 @@ follows the Zerotal monorepo's unified versioning.
   comparison is deliberate. `StringRule` gained a type parameter for this; it defaults to
   `string`, so code that names `StringRule` on its own is unaffected.
 
+### Fixed
+
+- **`.uncompromised()` is described as what it does.** Its docblock and the password-rules
+  example said "must not contain spaces". The rule rejects any whitespace (spaces, tabs and line
+  breaks), and, whatever the name suggests, does not check the password against a list of
+  breached passwords. Behaviour is unchanged.
+
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

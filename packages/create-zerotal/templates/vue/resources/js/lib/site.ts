@@ -12,4 +12,4 @@ export function useAppName(): ComputedRef<string> {
 }
 
 /** Where the "Docs" links point. */
-export const DOCS_URL = "https://github.com/zerotaldev/zerotal";
+export const DOCS_URL = "https://zerotal.dev/docs";

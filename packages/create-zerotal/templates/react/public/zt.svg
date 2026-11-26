@@ -12,6 +12,6 @@
   </defs>
   <rect width="64" height="64" rx="18" fill="url(#zt-grad)" />
   <rect width="64" height="64" rx="18" fill="url(#zt-shine)" />
-  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="17.25" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5" />
+  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="17.25" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5" />
   <text x="32" y="41" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="20" font-weight="800" letter-spacing="0.5" fill="#ffffff">ZT</text>
 </svg>

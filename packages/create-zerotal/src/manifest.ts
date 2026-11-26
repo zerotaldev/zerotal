@@ -231,6 +231,7 @@ export const MANIFEST: KitManifest = {
         'answers the same for an unknown address',
         'resets the password with the emailed link',
         'rejects an invalid token',
+        "sign off with the app's name",
       ],
     },
     {

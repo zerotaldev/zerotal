@@ -8,8 +8,11 @@ import { MediaItem } from "./MediaItem.ts";
  * collection. Both matter — a media row with no file and a file with no row are
  * different bugs.
  *
+ * Fake the disk media writes to. With no disk configured that is `public`, not
+ * the storage default — see "Which disk" in the media docs.
+ *
  * @example
- * const disk = Storage.fake();
+ * const disk = Storage.fake("public");
  * await product.addMedia(file).toCollection("images");
  *
  * await MediaFake.assertHas(product, "images");

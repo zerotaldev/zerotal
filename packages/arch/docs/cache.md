@@ -9,10 +9,8 @@ A unified caching layer with SQLite, Redis, and in-memory drivers. Wrap slow dat
 
 ## Getting Started
 
-```bash
-# in your project root
-bun add @zerotal/cache
-```
+`@zerotal/cache` ships in the `zerotal` package every starter already depends on, so there
+is nothing to install: import it from `zerotal/cache` and register its provider.
 
 ## Register the provider
 
@@ -20,7 +18,7 @@ Add `CacheProvider` to the providers array in `bootstrap/providers.ts`:
 
 ```ts
 // bootstrap/providers.ts
-import { CacheProvider } from "@zerotal/cache";
+import { CacheProvider } from "zerotal/cache";
 
 export default [
   // …other providers
@@ -41,7 +39,7 @@ Create `config/cache.ts` with the `CacheConfig()` helper so every field stays ty
 
 ```ts
 // config/cache.ts
-import { CacheConfig } from "@zerotal/cache";
+import { CacheConfig } from "zerotal/cache";
 import { env } from "zerotal";
 
 export default CacheConfig({
@@ -70,7 +68,7 @@ export default CacheConfig({
 
 ```ts fragment
 // in a controller or service
-import { Cache } from "@zerotal/cache";
+import { Cache } from "zerotal/cache";
 
 // Write with TTL (seconds)
 await Cache.set("user:1", { id: 1, name: "Alice" }, 300); // expires in 5 minutes
@@ -97,7 +95,7 @@ await Cache.flush();
 
 ```ts fragment
 // in a controller
-import { Cache } from "@zerotal/cache";
+import { Cache } from "zerotal/cache";
 
 const signups = await Cache.increment(`signups:${today}`, 1, 86_400); // 1, then 2, then 3
 await Cache.increment("credits:42", 0.5);
@@ -120,7 +118,7 @@ function remember<T>(key: string, ttl: number, fn: () => Promise<T> | T): Promis
 
 ```ts fragment
 // in a controller
-import { Cache } from "@zerotal/cache";
+import { Cache } from "zerotal/cache";
 import { Post } from "../app/models/Post.ts";
 
 // Cache a slow database query for 5 minutes
@@ -151,7 +149,7 @@ Group related keys under named tags so you can invalidate them together. `Cache.
 
 ```ts fragment
 // in a controller
-import { Cache } from "@zerotal/cache";
+import { Cache } from "zerotal/cache";
 
 // Store with tags
 await Cache.tags(["posts", "public"]).set("posts:page:1", data, 300);
@@ -192,7 +190,7 @@ There is no multi-get primitive — batch with `Promise.all` to cut round-trips 
 
 ```ts fragment
 // in a controller
-import { Cache } from "@zerotal/cache";
+import { Cache } from "zerotal/cache";
 
 // Read several keys at once
 const [user, settings, flags] = await Promise.all([
@@ -232,7 +230,7 @@ The `Cache` facade always uses the configured driver. To use a different driver 
 
 ```ts fragment
 // in a service
-import { CacheManager, MemoryDriver } from "@zerotal/cache";
+import { CacheManager, MemoryDriver } from "zerotal/cache";
 
 // A short-lived in-process cache with its own prefix and default TTL
 const local = new CacheManager(new MemoryDriver(), "req:", 30);
@@ -251,7 +249,7 @@ new CacheManager(driver: CacheDriver, prefix?: string, defaultTtl?: number)
 
 ```ts fragment
 // routes/api.ts
-import { IdempotencyMiddleware, CacheManager } from "@zerotal/cache";
+import { IdempotencyMiddleware, CacheManager } from "zerotal/cache";
 import { BearerTokenMiddleware } from "@zerotal/auth";
 
 const cache = app.container.makeSync("cache") as CacheManager;
@@ -330,7 +328,7 @@ Pre-populate the cache at boot so the first real request is always fast. Call fr
 ```ts fragment
 // bootstrap/providers/AppServiceProvider.ts
 import { ServiceProvider } from "zerotal";
-import { Cache } from "@zerotal/cache";
+import { Cache } from "zerotal/cache";
 import { Post } from "../../app/models/Post.ts";
 
 export class AppServiceProvider extends ServiceProvider {
@@ -352,7 +350,7 @@ To swap the cache for a single suite, rebind the `cache` singleton on the contai
 ```ts fragment
 // in test setup
 import { Application } from "zerotal";
-import { Cache, CacheManager, MemoryDriver } from "@zerotal/cache";
+import { Cache, CacheManager, MemoryDriver } from "zerotal/cache";
 
 const app = currentApp();
 app.container.singleton("cache", () => new CacheManager(new MemoryDriver(), "test:", 3600));
@@ -402,7 +400,7 @@ Cache errors extend `CacheError`, which extends the framework's `ZerotalError`.
 
 ```typescript fragment
 // in a service
-import { CacheDeserializationError } from "@zerotal/cache";
+import { CacheDeserializationError } from "zerotal/cache";
 
 try {
   return await Cache.get<Report>("report:q3");

@@ -55,17 +55,42 @@ function render(step: FirstRunStep): string {
   return step.comment ? `${step.command}              # ${step.comment}` : step.command;
 }
 
-/** The lines the scaffolder prints under "Next steps:", `cd` first. */
-export function nextStepLines(name: string, template: Template, db: Database): string[] {
-  const lines = [`cd ${name}`, ...setupSteps(template, db).map(render), 'bun zt dev'];
+/**
+ * The lines the scaffolder prints under "Next steps:", `cd` first.
+ *
+ * `installed` is whether the scaffolder's own `bun install` ran and succeeded. When it did,
+ * the list does not repeat it; after `--no-install`, or an install that failed, it is the
+ * first thing to run.
+ */
+export function nextStepLines(name: string, template: Template, db: Database, installed = true): string[] {
+  const lines = [
+    `cd ${name}`,
+    ...(installed ? [] : ['bun install']),
+    ...setupSteps(template, db).map(render),
+    'bun zt dev',
+  ];
   if (template === 'admin') lines.push(`# then open ${ADMIN_URL}`);
   return lines;
 }
 
-/** The README's "Getting started" body: the commands, then what to expect. */
+/**
+ * The README's "Getting started" body: the commands, then what to expect.
+ *
+ * The commands start after `bun install`. The scaffolder has already run it, and a README
+ * that opened with it had everyone who had just created the app install a second time; the
+ * sentence before the block is for a fresh clone, which has not.
+ */
 export function gettingStarted(template: Template, db: Database): string {
-  const commands = ['bun install', ...setupSteps(template, db).map(render), 'bun run dev'];
-  const parts = ['```bash', ...commands, '```', ''];
+  const commands = [...setupSteps(template, db).map(render), 'bun run dev'];
+  const parts = [
+    '`create-zerotal` installed the dependencies when it made this app. In a fresh clone, run',
+    '`bun install` first.',
+    '',
+    '```bash',
+    ...commands,
+    '```',
+    '',
+  ];
   if (template === 'admin') {
     parts.push(`The panel is at ${ADMIN_URL}, and \`bun zt db:seed\` is what creates the account to sign in with.`, '');
   }

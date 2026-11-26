@@ -165,93 +165,102 @@ export class TwoFactorPage extends Page {
               </div>
             </>
           ) : setup ? (
-            <form method="post" action={route("settings.two-factor.confirm.store")}>
-              <div class={`${CARD_BODY} space-y-6`}>
-                <ol class="space-y-6 text-sm">
-                  <li>
-                    <p class="font-medium">1. Scan this with your authenticator app</p>
-                    <p class="mt-1 text-muted-foreground">
-                      1Password, Google Authenticator, Authy, Bitwarden — any app for six-digit
-                      codes.
-                    </p>
-                    <div class="mt-4 flex flex-col gap-5 sm:flex-row sm:items-center">
-                      {/* Drawn on the server, from data that never leaves it. Inline on purpose. */}
-                      <div
-                        class="w-fit shrink-0 rounded-xl border border-border bg-white p-2"
-                        dangerouslySetInnerHTML={{ __html: setup.qrSvg }}
-                      />
-                      <div class="min-w-0 space-y-2 text-muted-foreground">
-                        <p>Can't scan it? Type this key into the app instead:</p>
-                        <p
-                          class="font-mono text-base break-all text-foreground select-all"
-                          data-two-factor-secret=""
-                        >
-                          {secret}
-                        </p>
-                        <p>
-                          On your phone already?{" "}
-                          <a href={setup.uri} class="font-medium text-primary hover:underline">
-                            Open it in your authenticator app
-                          </a>
-                          .
-                        </p>
-                      </div>
-                    </div>
-                  </li>
-                  <li>
-                    <p class="font-medium">2. Enter the code the app shows</p>
-                    <div class="mt-3 max-w-xs">
-                      <div class={FIELD}>
-                        <div class={FIELD_LABEL_ROW}>
-                          <label for="field-code" class={LABEL}>
-                            Code
-                          </label>
-                        </div>
-                        <input
-                          class={`${INPUT} font-mono tracking-[0.3em]`}
-                          inputmode="numeric"
-                          autocomplete="one-time-code"
-                          maxlength="7"
-                          placeholder="123456"
-                          required
-                          id="field-code"
-                          name="code"
-                          aria-invalid={codeError ? "true" : undefined}
-                          aria-describedby={codeError ? "field-code-error" : undefined}
+            <>
+              <form method="post" action={route("settings.two-factor.confirm.store")}>
+                <div class={`${CARD_BODY} space-y-6`}>
+                  <ol class="space-y-6 text-sm">
+                    <li>
+                      <p class="font-medium">1. Scan this with your authenticator app</p>
+                      <p class="mt-1 text-muted-foreground">
+                        1Password, Google Authenticator, Authy, Bitwarden — any app for six-digit
+                        codes.
+                      </p>
+                      <div class="mt-4 flex flex-col gap-5 sm:flex-row sm:items-center">
+                        {/* Drawn on the server, from data that never leaves it. Inline on purpose. */}
+                        <div
+                          class="w-fit shrink-0 rounded-xl border border-border bg-white p-2"
+                          dangerouslySetInnerHTML={{ __html: setup.qrSvg }}
                         />
-                        <p
-                          id="field-code-error"
-                          data-error-for="code"
-                          class={FIELD_ERROR}
-                          hidden={!codeError}
-                        >
-                          {codeError}
-                        </p>
+                        <div class="min-w-0 space-y-2 text-muted-foreground">
+                          <p>Can't scan it? Type this key into the app instead:</p>
+                          <p
+                            class="font-mono text-base break-all text-foreground select-all"
+                            data-two-factor-secret=""
+                          >
+                            {secret}
+                          </p>
+                          <p>
+                            On your phone already?{" "}
+                            <a href={setup.uri} class="font-medium text-primary hover:underline">
+                              Open it in your authenticator app
+                            </a>
+                            .
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                </ol>
-              </div>
-              <div class={CARD_FOOTER}>
-                {/* Abandons the setup: the same DELETE as turning it off. */}
-                <button
-                  type="submit"
-                  class={buttonClass("ghost", "md")}
-                  formaction={route("settings.two-factor.destroy")}
-                  formnovalidate
-                  data-method="delete"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  class={buttonClass("primary", "md")}
-                  data-loading-text="Checking…"
-                >
-                  Turn on
-                </button>
-              </div>
-            </form>
+                    </li>
+                    <li>
+                      <p class="font-medium">2. Enter the code the app shows</p>
+                      <div class="mt-3 max-w-xs">
+                        <div class={FIELD}>
+                          <div class={FIELD_LABEL_ROW}>
+                            <label for="field-code" class={LABEL}>
+                              Code
+                            </label>
+                          </div>
+                          <input
+                            class={`${INPUT} font-mono tracking-[0.3em]`}
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            maxlength="7"
+                            placeholder="123456"
+                            required
+                            id="field-code"
+                            name="code"
+                            aria-invalid={codeError ? "true" : undefined}
+                            aria-describedby={codeError ? "field-code-error" : undefined}
+                          />
+                          <p
+                            id="field-code-error"
+                            data-error-for="code"
+                            class={FIELD_ERROR}
+                            hidden={!codeError}
+                          >
+                            {codeError}
+                          </p>
+                        </div>
+                      </div>
+                    </li>
+                  </ol>
+                </div>
+                <div class={CARD_FOOTER}>
+                  {/* Abandons the setup: the same DELETE as turning it off. It submits the
+                    form below rather than this one, so it is not this form's default
+                    button — pressing Enter in the code field turns two-factor on. */}
+                  <button
+                    type="submit"
+                    class={buttonClass("ghost", "md")}
+                    form="cancel-two-factor-setup"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class={buttonClass("primary", "md")}
+                    data-loading-text="Checking…"
+                  >
+                    Turn on
+                  </button>
+                </div>
+              </form>
+              <form
+                id="cancel-two-factor-setup"
+                method="post"
+                action={route("settings.two-factor.destroy")}
+                data-method="delete"
+                hidden
+              />
+            </>
           ) : (
             <>
               <div class={`${CARD_BODY} text-sm text-muted-foreground`}>

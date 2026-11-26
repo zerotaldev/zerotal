@@ -1,5 +1,6 @@
 import { config } from "zerotal";
 import { MailMessage, Notification } from "@zerotal/notifications";
+import { signOff } from "../support/mail";
 
 /** The password-reset link, sent from the "Forgot your password?" page. */
 export class ResetPasswordNotification extends Notification {
@@ -25,6 +26,7 @@ export class ResetPasswordNotification extends Notification {
       .subject(`Reset your ${config("app.name")} password`)
       .line("Someone asked to reset the password for this account.")
       .action("Choose a new password", this.url())
-      .line("The link expires in an hour. If it was not you, ignore this — nothing changes.");
+      .line("The link expires in an hour. If it was not you, ignore this — nothing changes.")
+      .salutation(signOff());
   }
 }

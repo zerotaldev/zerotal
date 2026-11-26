@@ -26,8 +26,8 @@ description: "Send an email or other notification from a Zerotal app in the back
   worker cannot rebuild it.
 - **Something has to run the queue.** With `QueueProvider` registered in
   `bootstrap/providers.ts` and a `config/queue.ts`, `bun zt dev` runs a worker locally.
-  In production a persistent driver needs `bun zt queue:work` running, or queued mail is
-  never sent.
+  In production a persistent driver needs `bun zt worker` running beside the server (it runs
+  the queue and `app/schedules/`), or queued mail is never sent.
 - **Failures wait in the failed jobs** after their retries; `bun zt queue:retry` sends them
   again.
 - **The fake records, it does not deliver.** Database-channel rows are not written under it.

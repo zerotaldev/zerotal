@@ -188,8 +188,9 @@ the real disk the code used.
 - **`uncompromised()` is now `noWhitespace()`.** The old name still works, and is deprecated.
 - **`AGENTS.md` has a new line on Vue page props.** `bun zt doctor` reports it as stale until you
   run `bun zt arch:update`.
-- **`bun zt dev` is quieter**: no "Skipping … app/schedules" line, and a page syntax error no
-  longer parks the scheduler tab, which starts again on the next save.
+- **`bun zt dev` is quieter**: no "Skipping … app/schedules" line when the server restarts (one
+  still printed at startup until 1.18.3), and a page syntax error no longer parks the scheduler
+  tab, which starts again on the next save.
 - **A refused upload is logged as a warning**, without a stack.
 
 ## 1.18.1

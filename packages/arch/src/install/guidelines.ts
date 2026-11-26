@@ -143,7 +143,8 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
             "and a `config/queue.ts`",
         ) +
         " Once it is registered, `bun zt dev` runs a worker beside the server; in production " +
-        "`bun zt queue:work` does.",
+        "run `bun zt worker` beside it, which runs queued jobs and `app/schedules/` " +
+        "(`bun zt queue:work` runs only the queue).",
     ],
   },
   {

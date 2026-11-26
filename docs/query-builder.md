@@ -237,6 +237,22 @@ await DB.table("accounts").where("id", 1).decrement("balance", 100);
 Use `updateOrInsert(attributes, values)` to update a matching row or insert a merged
 one if none exists; it returns `true` when a row was inserted.
 
+`updateCount(data)` is `update()` that returns how many rows it changed. That makes a
+conditional update a claim: when two requests both try to take the same row, the database
+lets one change it, and only that one sees `1`. Reading the row and then saving it cannot
+tell them apart, because both read it before either saved.
+
+```typescript fragment
+// in a controller or service — accept a one-time code once, even under concurrent requests
+const changed = await DB.table("users")
+  .where("id", user.id)
+  .where((q) => q.whereNull("last_counter").orWhere("last_counter", "<", counter))
+  .updateCount({ last_counter: counter });
+if (changed === 0) {
+  // another request took it first
+}
+```
+
 > **Danger** — `update()` and `delete()` apply to **every** matching row — always set
 > your `where()` constraints first, or you will overwrite or wipe the whole table.
 
@@ -440,25 +456,26 @@ test("excludes users still in trial", async () => {
 
 ### Terminals
 
-| Method                                     | Signature                           | Description                                         |
-| ------------------------------------------ | ----------------------------------- | --------------------------------------------------- |
-| `get`                                      | `get<T>(): Promise<T[]>`            | Run the query, return all rows.                     |
-| `first`                                    | `first<T>(): Promise<T \| null>`    | First matching row or `null`.                       |
-| `sole`                                     | `sole<T>(): Promise<T>`             | The one row; throws on zero or many.                |
-| `value`                                    | `value<V>(col): Promise<V \| null>` | Single column of the first row.                     |
-| `pluck`                                    | `pluck<V>(col, key?)`               | Array of one column, or object keyed by `key`.      |
-| `exists` / `doesntExist`                   | `exists(): Promise<boolean>`        | Whether any row matches.                            |
-| `count` / `sum` / `avg` / `min` / `max`    | `count(): Promise<number>`          | Aggregates.                                         |
-| `insert`                                   | `insert(data): Promise<void>`       | Insert a row.                                       |
-| `update`                                   | `update(data): Promise<void>`       | Update matching rows.                               |
-| `updateOrInsert`                           | `updateOrInsert(attrs, values?)`    | Update a match or insert; returns `true` on insert. |
-| `delete`                                   | `delete(): Promise<void>`           | Delete matching rows.                               |
-| `increment` / `decrement`                  | `increment(col, amount = 1)`        | Atomic counter update.                              |
-| `chunk` / `chunkById`                      | `chunk(size, (rows, page) => …)`    | Page through a large table.                         |
-| `lazy` / `lazyById` / `cursor` / `each`    | `lazy<T>(size = 1000)`              | Stream rows one at a time.                          |
-| `clone`                                    | `clone(): this`                     | Deep-copy the builder (used by pagination).         |
-| `toSql` / `toSqlWithBindings` / `toRawSql` | `toSql(): string`                   | Inspect the compiled SQL.                           |
-| `dump` / `dd` / `explain`                  | `dump(): this`                      | Log SQL/bindings or run `EXPLAIN`.                  |
+| Method                                     | Signature                            | Description                                         |
+| ------------------------------------------ | ------------------------------------ | --------------------------------------------------- |
+| `get`                                      | `get<T>(): Promise<T[]>`             | Run the query, return all rows.                     |
+| `first`                                    | `first<T>(): Promise<T \| null>`     | First matching row or `null`.                       |
+| `sole`                                     | `sole<T>(): Promise<T>`              | The one row; throws on zero or many.                |
+| `value`                                    | `value<V>(col): Promise<V \| null>`  | Single column of the first row.                     |
+| `pluck`                                    | `pluck<V>(col, key?)`                | Array of one column, or object keyed by `key`.      |
+| `exists` / `doesntExist`                   | `exists(): Promise<boolean>`         | Whether any row matches.                            |
+| `count` / `sum` / `avg` / `min` / `max`    | `count(): Promise<number>`           | Aggregates.                                         |
+| `insert`                                   | `insert(data): Promise<void>`        | Insert a row.                                       |
+| `update`                                   | `update(data): Promise<void>`        | Update matching rows.                               |
+| `updateCount`                              | `updateCount(data): Promise<number>` | Update matching rows; return how many changed.      |
+| `updateOrInsert`                           | `updateOrInsert(attrs, values?)`     | Update a match or insert; returns `true` on insert. |
+| `delete`                                   | `delete(): Promise<void>`            | Delete matching rows.                               |
+| `increment` / `decrement`                  | `increment(col, amount = 1)`         | Atomic counter update.                              |
+| `chunk` / `chunkById`                      | `chunk(size, (rows, page) => …)`     | Page through a large table.                         |
+| `lazy` / `lazyById` / `cursor` / `each`    | `lazy<T>(size = 1000)`               | Stream rows one at a time.                          |
+| `clone`                                    | `clone(): this`                      | Deep-copy the builder (used by pagination).         |
+| `toSql` / `toSqlWithBindings` / `toRawSql` | `toSql(): string`                    | Inspect the compiled SQL.                           |
+| `dump` / `dd` / `explain`                  | `dump(): this`                       | Log SQL/bindings or run `EXPLAIN`.                  |
 
 ## Next steps
 

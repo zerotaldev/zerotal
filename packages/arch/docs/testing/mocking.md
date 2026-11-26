@@ -219,11 +219,12 @@ Uploads are stored under a generated name, which is why `assertExistsMatching`
 takes a pattern. When you control the path, `assertExists(path, contents?)` checks
 it directly.
 
-A fake replaces one disk. If the code under test writes to another, the fake stays
-empty and the files go to the real disk. A failed assertion then names the real disks
-the code used while the fake was installed, and the call that fakes the right one:
-media with no disk configured writes to `public`, so a media test calls
-`Storage.fake("public")`.
+`Storage.fake()` with no argument fakes the default disk, and also the built-in
+`public` disk when the default is not served, since that is where media with no
+disk configured writes; both names share the files of the disk it returns. A named
+fake replaces that disk alone. If the code under test writes to a disk no fake
+replaces, the files go to the real disk, and a failed assertion names the real disks
+the code used and the call that fakes the right one.
 
 ## Outbound HTTP
 

@@ -23,6 +23,16 @@ type Handler<E> = (event: E) => void;
 const _byClass = new Map<EventCtor, Set<Handler<object>>>();
 const _byKind = new Map<string, Set<Handler<object>>>();
 
+/**
+ * The subscriptions at one moment, from {@link FrameworkEvents._snapshot}.
+ *
+ * @internal
+ */
+export interface FrameworkEventsSnapshot {
+  byClass: Map<EventCtor, Set<Handler<object>>>;
+  byKind: Map<string, Set<Handler<object>>>;
+}
+
 /** Async handlers that have started and not finished, so shutdown and tests can wait for them. */
 const _pending = new Set<Promise<void>>();
 
@@ -181,6 +191,41 @@ export const FrameworkEvents = {
   clear(): void {
     _byClass.clear();
     _byKind.clear();
+  },
+
+  /**
+   * Every subscription as it stands, to put back later with {@link _restore}.
+   *
+   * For the test harness: a test app the next file re-adopts without booting again
+   * lost the subscriptions its providers made at boot when {@link clear} reset the
+   * suite, so the logger's 4xx warnings and the auth audit trail went silent in every
+   * file after the first.
+   *
+   * @internal
+   */
+  _snapshot(): FrameworkEventsSnapshot {
+    return {
+      byClass: new Map([..._byClass].map(([ctor, handlers]) => [ctor, new Set(handlers)])),
+      byKind: new Map([..._byKind].map(([kind, handlers]) => [kind, new Set(handlers)])),
+    };
+  },
+
+  /**
+   * Add back the subscriptions a {@link _snapshot} recorded, beside any made since.
+   *
+   * @internal
+   */
+  _restore(snapshot: FrameworkEventsSnapshot): void {
+    for (const [ctor, handlers] of snapshot.byClass) {
+      const set = _byClass.get(ctor) ?? new Set<Handler<object>>();
+      for (const handler of handlers) set.add(handler);
+      _byClass.set(ctor, set);
+    }
+    for (const [kind, handlers] of snapshot.byKind) {
+      const set = _byKind.get(kind) ?? new Set<Handler<object>>();
+      for (const handler of handlers) set.add(handler);
+      _byKind.set(kind, set);
+    }
   },
 
   /**

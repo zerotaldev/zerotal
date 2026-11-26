@@ -5,6 +5,7 @@ import { validate } from "zerotal/validator";
 import type { User } from "@app/models/User";
 import { intendedUrl } from "@app/support/redirects";
 import { rejectInput } from "@app/support/validation";
+import { claimTwoFactorStep } from "@app/auth/two-factor";
 
 /**
  * The second step of signing in, for an account with two-factor on.
@@ -74,7 +75,8 @@ export async function POST(http: HttpContext): Promise<void> {
       code ?? "",
       user.twoFactorLastCounter,
     );
-    if (!check.valid) {
+    const step = check.valid ? check.counter : null;
+    if (step === null || !(await claimTwoFactorStep(user.id, step))) {
       loginThrottle.recordFailure(http, throttleKey);
       rejectInput(
         http,
@@ -82,8 +84,6 @@ export async function POST(http: HttpContext): Promise<void> {
         "/two-factor/challenge",
       );
     }
-    user.twoFactorLastCounter = check.counter;
-    await user.save();
   }
 
   loginThrottle.clearFor(http, throttleKey);

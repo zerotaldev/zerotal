@@ -351,10 +351,11 @@ second asserts a row points at them — a media row with no file and a file with
 no row are different bugs.
 
 Fake the disk media writes to. With no disk configured that is `public` (see
-[Which disk](#which-disk-and-how-files-are-served)), not the storage default
-that `Storage.fake()` with no argument replaces. Faking the wrong one does not stop
-the upload: the files land in the real, served disk. When an assertion on the fake then
-fails, its message names the disk media used.
+[Which disk](#which-disk-and-how-files-are-served)). `Storage.fake()` with no
+argument covers it: when the default disk is not served, it fakes `public` too, and
+the disk it returns sees what was written to either. `Storage.fake("public")` says so
+outright. A collection on another disk needs that disk faked by name; if a fake is
+missed, a failed assertion names the real disk media used.
 
 ```ts fragment
 import { Storage } from "zerotal/storage";

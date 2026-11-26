@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import {
   runConventions,
+  _isDevCommand,
   importConventionModules,
   type ConcernDescriptor,
   type ConcernContext,
@@ -119,6 +120,15 @@ describe("runConventions", () => {
     }
 
     expect(lines.join(" | ")).not.toContain("Skipping");
+  });
+
+  it("knows the zt dev process itself, which boots the app only to ask what to run", () => {
+    expect(_isDevCommand(["dev"])).toBe(true);
+    expect(_isDevCommand(["d", "--only=queue"])).toBe(true);
+    expect(_isDevCommand(["serve", "--dev"])).toBe(true);
+    expect(_isDevCommand(["serve", "--port=3000"])).toBe(false);
+    expect(_isDevCommand(["worker"])).toBe(false);
+    expect(_isDevCommand([])).toBe(false);
   });
 
   it("stays quiet about a skipped directory with nothing in it", async () => {

@@ -190,6 +190,16 @@ for (const { dialect, url } of SERVERS.length
         expect(await DB.table(T).where("name", "stamped").count()).toBe(0);
       });
 
+      it("counts the rows a conditional update changed, so only one claim wins", async () => {
+        await DB.table(T).insert({ name: "claimed", score: 1, active: true });
+        const claim = () =>
+          DB.table(T).where("name", "claimed").where("score", "<", 5).updateCount({ score: 5 });
+
+        expect(await claim()).toBe(1);
+        expect(await claim()).toBe(0);
+        await DB.table(T).where("name", "claimed").delete();
+      });
+
       it("pages with limit and offset", async () => {
         const page = (await DB.table(T).orderBy("id").limit(1).offset(1).get()) as {
           name: string;

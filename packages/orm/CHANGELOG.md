@@ -8,6 +8,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`updateCount(data)`** on the query builder: `update()`, returning how many rows it changed, so
+  a conditional update can be used as a claim that only one of two concurrent requests wins.
+
 ## [1.18.1] — 2026-11-26
 
 ### Fixed

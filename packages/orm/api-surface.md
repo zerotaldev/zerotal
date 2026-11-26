@@ -524,6 +524,7 @@ class ModelQueryBuilder = {
   union: (other: QueryBuilder, all?: boolean) => ModelQueryBuilder<M>
   unionAll: (other: QueryBuilder) => ModelQueryBuilder<M>
   update: (data: Record<string, unknown>) => Promise<void>
+  updateCount: (data: Record<string, unknown>) => Promise<number>
   updateOrInsert: (attributes: Record<string, unknown>, values?: Record<string, unknown>) => Promise<boolean>
   value: <V = unknown>(column: string) => Promise<V | null>
   when: (condition: unknown, callback: (q: QueryBuilder, value: unknown) => void) => ModelQueryBuilder<M>
@@ -657,6 +658,7 @@ class QueryBuilder = {
   union: (other: QueryBuilder, all?: boolean) => QueryBuilder
   unionAll: (other: QueryBuilder) => QueryBuilder
   update: (data: Record<string, unknown>) => Promise<void>
+  updateCount: (data: Record<string, unknown>) => Promise<number>
   updateOrInsert: (attributes: Record<string, unknown>, values?: Record<string, unknown>) => Promise<boolean>
   value: <V = unknown>(column: string) => Promise<V | null>
   when: (condition: unknown, callback: (q: QueryBuilder, value: unknown) => void) => QueryBuilder

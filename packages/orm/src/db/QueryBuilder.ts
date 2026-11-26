@@ -1544,20 +1544,57 @@ export class QueryBuilder {
    * ```
    */
   async update(data: Record<string, unknown>): Promise<void> {
+    await this._update(data, "update()");
+  }
+
+  /**
+   * {@link update}, returning how many rows it changed.
+   *
+   * The count is what makes a conditional update a claim: of two requests that both read a row
+   * and both try `UPDATE … WHERE claimed IS NULL`, the database lets one change it, and only
+   * that one sees `1`. Reading the row first and saving it after cannot tell the two apart.
+   *
+   * @returns The number of rows the statement changed; `0` for an empty `data`.
+   * @throws {Error} When any column key is not a safe SQL identifier.
+   * @category Insert / update / delete
+   * @example
+   * ```ts
+   * // Accept a one-time code once, even when two requests carry it at the same moment.
+   * const won = await DB.table("users")
+   *   .where("id", user.id)
+   *   .where((q) => q.whereNull("last_counter").orWhere("last_counter", "<", counter))
+   *   .updateCount({ last_counter: counter });
+   * if (won === 0) throw new Error("That code was already used.");
+   * ```
+   */
+  async updateCount(data: Record<string, unknown>): Promise<number> {
+    const result = await this._update(data, "updateCount()");
+    if (!result) return 0;
+    // Bun's drivers put the changed-row count on the result array: `count` everywhere, and
+    // `affectedRows` as well on MySQL.
+    const { count, affectedRows } = result as { count?: unknown; affectedRows?: unknown };
+    const changed = typeof affectedRows === "number" ? affectedRows : count;
+    return typeof changed === "number" ? changed : Number(changed ?? 0);
+  }
+
+  private async _update(
+    data: Record<string, unknown>,
+    caller: string,
+  ): Promise<unknown[] | undefined> {
     this._beforeTerminal();
     const entries = Object.entries(data);
-    if (entries.length === 0) return;
+    if (entries.length === 0) return undefined;
 
     const segs: Segment[] = [`UPDATE ${this._state.table} SET `];
     entries.forEach(([key, val], i) => {
       const col = this._column(key);
-      _assertIdentifier(col, "update()");
+      _assertIdentifier(col, caller);
       if (i > 0) segs.push(", ");
       segs.push(`${col} = `);
       segs.push({ val });
     });
     this._appendWhere(segs);
-    await this._run(segs);
+    return this._run(segs);
   }
 
   /**

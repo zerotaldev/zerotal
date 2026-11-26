@@ -129,6 +129,18 @@ export async function runConventions(
 }
 
 /**
+ * Whether this process is `bun zt dev` (or `serve --dev`) itself, from its arguments after the
+ * script: the process that supervises the server and the other tabs.
+ *
+ * @internal Exported for tests.
+ */
+export function _isDevCommand(args: readonly string[]): boolean {
+  const [command = "", ...rest] = args;
+  if (command === "dev" || command === "d") return true;
+  return ["serve", "start", "s"].includes(command) && rest.includes("--dev");
+}
+
+/**
  * Say once, at boot, that this process is not running a convention the app has
  * written files for.
  *
@@ -150,7 +162,8 @@ async function _announceSkipped(
   if (!concern.dir || !concern.register) return;
   // Under `bun zt dev` the web server is one process of several: the scheduler's own tab runs
   // app/schedules. Saying the server skips them, on every restart, read as "they do not run".
-  if (Bun.env[DEV_WORKER_ENV_VAR] === "1") return;
+  // The dev command's own process boots the app as `web` too, only to ask what to run.
+  if (Bun.env[DEV_WORKER_ENV_VAR] === "1" || _isDevCommand(Bun.argv.slice(2))) return;
 
   const relativeDirectory = options.paths?.[concern.name] ?? concern.dir;
   const files = (await _scanDir(`${options.root}/${relativeDirectory}`)).filter(

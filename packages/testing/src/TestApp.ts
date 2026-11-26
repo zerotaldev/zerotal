@@ -1,4 +1,4 @@
-import { Application } from "@zerotal/core";
+import { Application, FrameworkEvents } from "@zerotal/core";
 import { TestResponse, type SessionDecoder } from "./TestResponse.ts";
 import { TestExceptionHandler } from "./TestExceptionHandler.ts";
 import { resetTestState } from "./resetTestState.ts";
@@ -660,6 +660,12 @@ const _sharedApps = new Map<Application, TestApp>();
  * — see {@link _carryOrmRegistrations}.
  */
 const _bootRegistrations = new WeakMap<Application, OrmRegistrations>();
+/**
+ * The framework-event subscriptions an app's providers made while it booted. A later file that
+ * re-adopts the app does not boot it again, and `resetTestState()` has cleared them: the
+ * logger's `[HTTP]` warnings and the auth audit trail fell silent in every file after the first.
+ */
+const _bootSubscriptions = new WeakMap<Application, ReturnType<typeof FrameworkEvents._snapshot>>();
 
 export async function createTestApp(
   bootstrap: () => Application | Promise<Application>,
@@ -710,6 +716,8 @@ export async function createTestApp(
       booted.adoptAsCurrent();
       // Adopting installs an empty ORM context; the app booted into another one.
       _carryOrmRegistrations(_bootRegistrations.get(booted), imported);
+      const subscriptions = _bootSubscriptions.get(booted);
+      if (subscriptions) FrameworkEvents._restore(subscriptions);
       // The previous file may not have closed it, and what it set is not this file's.
       existing._resetClientState();
       return existing;
@@ -739,6 +747,7 @@ export async function createTestApp(
   await app.start(0);
   // Booted: what it registered is what every later file handed this app must see.
   _bootRegistrations.set(app, _snapshotOrmRegistrations());
+  _bootSubscriptions.set(app, FrameworkEvents._snapshot());
   const testApp = new TestApp(app, errors);
 
   // Cache it either way. `_shared` still means "reached through the sharing path",

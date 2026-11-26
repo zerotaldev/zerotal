@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`Storage.fake()` with no disk named also catches media's writes.** Media with no disk
+  configured writes to the served `public` disk, so a test that faked the default found its fake
+  empty and the uploads landed for real in `storage/public/media`. With no name, `Storage.fake()`
+  now also fakes `public` when the default disk is not served, sharing the files of the disk it
+  returns (each name keeps its own URLs). A named fake still replaces that disk alone.
+- **`bun zt dev` no longer prints "Skipping … app/schedules" at startup.** 1.18.2 removed it from
+  the server's restarts; the `zt dev` process itself, which boots the app only to ask what to
+  run, still printed it once.
+
 ## [1.18.2] — 2026-11-26
 
 ### Fixed

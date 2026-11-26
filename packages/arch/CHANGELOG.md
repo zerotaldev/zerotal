@@ -13,6 +13,12 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`AGENTS.md` and the notifications skill say to run `bun zt worker` in production.** They said
+  `bun zt queue:work`, which runs no schedules, while the starters' README and Dockerfile say
+  `bun zt worker`, which runs both.
+
 ## [1.18.2] — 2026-11-26
 
 ### Changed

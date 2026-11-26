@@ -6770,6 +6770,12 @@
       "hash": "28tw8fxmqghm"
     },
     {
+      "file": "docs/query-builder.md",
+      "heading": "Writing rows",
+      "ordinal": 1,
+      "hash": "p41bwnglknmy"
+    },
+    {
       "file": "docs/queue.md",
       "heading": "Batch status object",
       "ordinal": 0,

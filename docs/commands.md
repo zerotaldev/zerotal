@@ -173,6 +173,7 @@ const token = await this.secret("API token:"); // input hidden on a Unix TTY
 | `bun zt worker --queue email` | Process a specific queue                                        |
 | `bun zt worker --once`        | Process one job then exit                                       |
 | `bun zt test`                 | Run the test suite in the `test` environment                    |
+| `bun zt test --randomize`     | Run tests in a random order; `--seed=<n>` replays one           |
 | `bun zt compile`              | Compile to a binary; Deployment has its limits (alias: `build`) |
 | `bun zt css:build`            | Build the Tailwind CSS bundle for production                    |
 
@@ -322,6 +323,7 @@ Packages register their own — see
 | Command                | Description                                            |
 | ---------------------- | ------------------------------------------------------ |
 | `bun zt version`       | Show the Zerotal, Bun and app versions                 |
+| `bun zt about`         | Installed Zerotal packages, and what else ships        |
 | `bun zt route:list`    | List all registered routes with methods and middleware |
 | `bun zt route:types`   | Write `types/routes.generated.ts` (`--check` in CI)    |
 | `bun zt doctor`        | Check the app for silent misconfigurations             |
@@ -330,6 +332,33 @@ Packages register their own — see
 | `bun zt init:env`      | Create `.env` from `.env.example`, secrets generated   |
 | `bun zt lint:packages` | Check every workspace package against convention rules |
 | `bun zt upgrade`       | Apply the codemods for a version upgrade               |
+
+#### What does this app have, and what else is there?
+
+`bun zt about` lists the Zerotal packages installed in the app with their versions, then the
+framework packages it does not have, each with the needs it covers, the command to add it and
+its docs page:
+
+```text
+Zerotal 1.x.y  ·  Bun 1.3.14  ·  shop 0.0.1
+
+Installed
+  @zerotal/arch           1.x.y
+  @zerotal/core           1.x.y  (through zerotal)
+  @zerotal/notifications  1.x.y
+  zerotal                 1.x.y
+
+Available, not installed
+  @zerotal/tenancy
+    Multi-tenancy
+    bun add @zerotal/tenancy  ·  https://zerotal.dev/docs/tenancy
+```
+
+A package at a different version from the rest is marked, since the packages are released
+and tested together. The available list is the capability index that ships in
+`@zerotal/arch`, the same one [What Ships](/docs/what-ships) and `AGENTS.md` are built from;
+without that package, `about` lists what is installed and says where the index lives. Like
+`version`, it needs no booted app. `--json` prints the same report for a script.
 
 #### Which version am I on?
 
@@ -432,6 +461,7 @@ can gate a deploy.
 | `bun zt migrate`              | Run all pending migrations                                     |
 | `bun zt migrate --fresh`      | Drop all tables, then re-run everything from scratch           |
 | `bun zt migrate --seed`       | Run migrations, then run the seeders                           |
+| `bun zt migrate --pretend`    | Print the SQL pending migrations would run, and run none of it |
 | `bun zt migrate:rollback`     | Roll back the most recent migration batch                      |
 | `bun zt migrate:fresh`        | Alias: drop all tables and re-run all migrations               |
 | `bun zt migrate:fresh --seed` | Rebuild the schema from scratch, then run the seeders          |

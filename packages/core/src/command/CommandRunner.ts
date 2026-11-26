@@ -390,6 +390,7 @@ export class CommandRunner {
       ReloadCommand,
       StatusCommand,
       VersionCommand,
+      AboutCommand,
       DownCommand,
       PreviewCommand,
       UpCommand,
@@ -435,6 +436,8 @@ export class CommandRunner {
     // Always registered, and deliberately not gated on the boot mode: the answer to
     // "which version is this" must not depend on which environment is asking.
     this.register(VersionCommand);
+    // Same reasoning: "what does this app have" is asked when something is wrong.
+    this.register(AboutCommand);
 
     // The gate is changed at the moments things are going wrong — before a
     // migration, during an incident — so these are registered in every

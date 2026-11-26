@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`zt about`** lists the Zerotal packages installed in the app with their versions (marking
+  one out of step with the rest, and those that arrive through `zerotal`), then the framework
+  packages the app does not have, each with the needs it covers, `bun add …` and its docs
+  page. The list of what ships comes from the capability index in `@zerotal/arch`, loaded
+  from the app when it is installed; without it, `about` says where the index lives. Needs no
+  booted app. `--json` for scripts.
+- **`zt test --randomize` and `--seed=<n>`** pass through to `bun test`: a random order, with
+  the seed Bun prints, and the same order replayed. Module state leaking between test files
+  showed up as Linux-only failures; a random order shows it on purpose.
+
+### Changed
+
+- `zt test` marks the process it spawns (`ZT_TEST_RUNNER=1`), so the new bare-run guard in
+  `@zerotal/testing/guard` knows the run was prepared.
+
 ## [1.17.4] — 2026-11-26
 
 ### Fixed

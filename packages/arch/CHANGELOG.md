@@ -13,6 +13,23 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Fixed
+
+- The generated `AGENTS.md` no longer contradicts an app that depends on the `zerotal`
+  bundle. It said "`DB` from `@zerotal/orm`", `Auth` from `@zerotal/auth` and `Cache` from
+  `@zerotal/cache` a few lines after saying an `@zerotal/orm` import reaches a package the app
+  does not declare. Every bundled package is now named by the path the app imports it from,
+  `zerotal/orm` and the rest, and the skills' code samples follow.
+- Notifications are described with `channels()`, the method a notification declares, not
+  `via()`.
+- The directory list names the routing style the app uses: `app/routes/` for file routes,
+  `routes/` for routes registered in code, `app/controllers/` only where it exists. An Inertia
+  page is returned by a route handler, not necessarily a controller.
+- The queue and scheduler lines say when their provider is not registered yet, read from the
+  files under `bootstrap/`, instead of saying `bun zt dev` runs a worker the app does not have.
+- The Flow line no longer says every component is interactive. A component or its base class
+  can set `static interactive = false`, as the Flow starter's page base does.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

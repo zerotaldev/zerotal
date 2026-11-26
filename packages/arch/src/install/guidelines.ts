@@ -13,11 +13,54 @@
 
 import type { ProjectShape } from "./shape.ts";
 
+/**
+ * The packages the `zerotal` bundle re-exports, as `zerotal/<name>`.
+ *
+ * An app that declares the bundle imports these through it, and every line of
+ * guidance that names one has to say so: a starter's `AGENTS.md` that said
+ * "`DB` from `@zerotal/orm`" two paragraphs after "an `@zerotal/orm` import would
+ * reach a package this app does not declare" told an agent both things. A test
+ * holds this list to the bundle's own dependencies.
+ *
+ * @internal
+ */
+export const _BUNDLED_PACKAGES: readonly string[] = [
+  "@zerotal/auth",
+  "@zerotal/cache",
+  "@zerotal/media",
+  "@zerotal/orm",
+  "@zerotal/queue",
+  "@zerotal/scheduler",
+  "@zerotal/session",
+  "@zerotal/testing",
+  "@zerotal/validator",
+];
+
+/** What a package block is written against. */
+interface BlockContext {
+  /** The specifier this app imports `pkg` by. */
+  from: (pkg: string) => string;
+  /** Whether the files under `bootstrap/` register `name`; `undefined` when not known. */
+  registered: (name: string) => boolean | undefined;
+}
+
 /** A block contributed by one installed package. */
 interface PackageBlock {
   /** The package that triggers it. */
   pkg: string;
-  lines: string[];
+  lines: (ctx: BlockContext) => string[];
+}
+
+/**
+ * The setup sentence for a package that does nothing until its provider is
+ * registered: nothing when it is, the instruction when it is not, and a hedge
+ * when this app's providers were not read.
+ */
+function providerNote(ctx: BlockContext, provider: string, setup: string): string {
+  const registered = ctx.registered(provider);
+  if (registered === true) return "";
+  if (registered === false) return ` It needs ${setup} first — this app does not register it yet.`;
+  return ` It needs ${setup}.`;
 }
 
 /**
@@ -30,52 +73,57 @@ interface PackageBlock {
 const PACKAGE_BLOCKS: PackageBlock[] = [
   {
     pkg: "@zerotal/orm",
-    lines: [
+    lines: ({ from }) => [
       "**Data.** Models are Active Record classes in `app/models/`, declared with `@table` and " +
-        "`@column` decorators; `DB` from `@zerotal/orm` is the query builder. Migrations live in " +
-        "`database/migrations/` — generate with `bun zt make:migration`, never hand-edit an " +
-        "applied one. Call `schema` before writing a query or a factory.",
+        `\`@column\` decorators; \`DB\` from \`${from("@zerotal/orm")}\` is the query builder. ` +
+        "Migrations live in `database/migrations/` — generate with `bun zt make:migration`, " +
+        "never hand-edit an applied one. Call `schema` before writing a query or a factory.",
     ],
   },
   {
     pkg: "@zerotal/auth",
-    lines: [
-      "**Auth.** `Auth` from `@zerotal/auth` for the current user; policies go in `app/policies/` " +
-        "and are discovered automatically. Do not hand-roll password hashing or session handling.",
+    lines: ({ from }) => [
+      `**Auth.** \`Auth\` from \`${from("@zerotal/auth")}\` for the current user; policies go in ` +
+        "`app/policies/` and are discovered automatically. Do not hand-roll password hashing or " +
+        "session handling.",
     ],
   },
   {
     pkg: "@zerotal/validator",
-    lines: [
+    lines: () => [
       "**Validation.** `FormRequest` subclasses in `app/requests/`, or `validate()` inline. " +
         "Rules are built with `RuleBuilder`, so a typo is a compile error rather than a runtime one.",
     ],
   },
   {
     pkg: "@zerotal/flow",
-    lines: [
-      "**Flow components.** Server-rendered interactive components: a class with state fields and " +
-        "actions, rendered as JSX. Every component is an island and is fully interactive — there " +
-        "is no separate hydration step to write. `bun zt make:flow` scaffolds one.",
+    lines: () => [
+      "**Flow components.** Server-rendered components: a class with state fields and actions, " +
+        "rendered as JSX. A component is interactive — state kept between requests, actions " +
+        "called over a socket — unless it or a base class sets `static interactive = false`, " +
+        "which renders plain HTML with no snapshot. Check the base class before relying on " +
+        "either; a page base often turns it off and a page that needs live state turns it " +
+        "back on. `bun zt make:flow` scaffolds one.",
     ],
   },
   {
     pkg: "@zerotal/flow-ui",
-    lines: [
+    lines: () => [
       "**UI kit.** `@zerotal/flow-ui` ships the component set. Check it before writing a button, " +
         "modal, table or form field from scratch.",
     ],
   },
   {
     pkg: "@zerotal/inertia",
-    lines: [
-      "**Inertia.** Pages are React/Vue components under `resources/`; controllers return " +
-        "`Inertia.render(...)`. Props are serialised — do not pass class instances.",
+    lines: () => [
+      "**Inertia.** Pages are React/Vue components under `resources/`; a route handler returns " +
+        "`Inertia.render(...)` with the page's props. Props are serialised — do not pass class " +
+        "instances.",
     ],
   },
   {
     pkg: "@zerotal/admin",
-    lines: [
+    lines: () => [
       "**Admin.** Resources in `app/admin/` describe tables, forms and infolists declaratively. " +
         "`bun zt make:admin-resource` scaffolds one; prefer extending a resource over writing a " +
         "bespoke page.",
@@ -83,43 +131,61 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
   },
   {
     pkg: "@zerotal/queue",
-    lines: [
+    lines: (ctx) => [
       "**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower " +
-        "than a request belongs in one. `bun zt queue:work` runs the worker; `bun zt dev` runs it " +
-        "for you.",
+        "than a request belongs in one." +
+        providerNote(
+          ctx,
+          "QueueProvider",
+          `\`QueueProvider\` from \`${ctx.from("@zerotal/queue")}\` in the provider list under \`bootstrap/\` ` +
+            "and a `config/queue.ts`",
+        ) +
+        " Once it is registered, `bun zt dev` runs a worker beside the server; in production " +
+        "`bun zt queue:work` does.",
     ],
   },
   {
     pkg: "@zerotal/cache",
-    lines: ["**Cache.** `Cache` from `@zerotal/cache`. Never cache a request-scoped value."],
+    lines: ({ from }) => [
+      `**Cache.** \`Cache\` from \`${from("@zerotal/cache")}\`. Never cache a request-scoped value.`,
+    ],
   },
   {
     pkg: "@zerotal/scheduler",
-    lines: [
-      "**Scheduling.** Schedules in `app/schedules/`, discovered at boot. They need " +
-        "`SchedulerProvider` registered — `doctor` will say so if it is missing.",
+    lines: (ctx) => [
+      "**Scheduling.** Schedules in `app/schedules/`, discovered at boot." +
+        providerNote(
+          ctx,
+          "SchedulerProvider",
+          `\`SchedulerProvider\` from \`${ctx.from("@zerotal/scheduler")}\` in ` +
+            "the provider list under `bootstrap/`",
+        ),
     ],
   },
   {
     pkg: "@zerotal/notifications",
-    lines: [
-      "**Notifications.** Notification classes in `app/notifications/`, one `via()` per channel.",
+    lines: () => [
+      "**Notifications.** One class per message in `app/notifications/`: `channels()` names " +
+        "where it goes, and each channel has its own method — `toMail()`, `toDatabase()` and " +
+        "the rest. `bun zt make:notification` scaffolds one.",
     ],
   },
   {
     pkg: "@zerotal/media",
-    lines: ["**Media.** `@zerotal/media` owns uploads, conversions and the media library."],
+    lines: ({ from }) => [
+      `**Media.** \`${from("@zerotal/media")}\` owns uploads, conversions and the media library.`,
+    ],
   },
   {
     pkg: "@zerotal/broadcasting",
-    lines: [
+    lines: () => [
       "**Realtime.** Channels are declared in the app and authorised server-side. " +
         "`bun zt make:channel` scaffolds one.",
     ],
   },
   {
     pkg: "@zerotal/i18n",
-    lines: [
+    lines: () => [
       "**Translations.** `@zerotal/i18n`; message files live under `resources/lang/`. " +
         'Translate with `__("English sentence")` — the source string is the key, so there ' +
         "is no catalog for the source language and no key to invent.",
@@ -127,15 +193,15 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
   },
   {
     pkg: "@zerotal/tenancy",
-    lines: [
+    lines: () => [
       "**Multi-tenancy.** Tenant resolution is middleware-driven. Anything tenant-scoped must go " +
         "through it rather than reading an id from the request.",
     ],
   },
   {
     pkg: "@zerotal/testing",
-    lines: [
-      "**Tests.** `createTestApp()` from `@zerotal/testing` boots a real app; factories and fakes " +
+    lines: ({ from }) => [
+      `**Tests.** \`createTestApp()\` from \`${from("@zerotal/testing")}\` boots a real app; factories and fakes ` +
         "come from the same package. Tests run on `bun test` via `bun zt test`.",
     ],
   },
@@ -428,6 +494,13 @@ export function agentsPreamble(): string {
 /** Build the managed block for `AGENTS.md`. */
 export function buildGuidelines(options: GuidelineOptions): string {
   const installed = new Set(options.packages);
+  const bundle = installed.has("zerotal");
+  const providers = options.shape?.providers ? new Set(options.shape.providers) : undefined;
+  const ctx: BlockContext = {
+    from: (pkg) =>
+      bundle && _BUNDLED_PACKAGES.includes(pkg) ? pkg.replace("@zerotal/", "zerotal/") : pkg,
+    registered: (name) => providers?.has(name),
+  };
   const sections: string[] = [
     "## Zerotal",
     "",
@@ -436,7 +509,7 @@ export function buildGuidelines(options: GuidelineOptions): string {
     "",
     toolSection(options.serverName),
     "",
-    conventionSection(installed.has("zerotal")),
+    conventionSection(bundle, options.shape?.routing),
     "",
     commandSection(),
   ];
@@ -447,7 +520,7 @@ export function buildGuidelines(options: GuidelineOptions): string {
       "",
       "### What this app has",
       "",
-      ...blocks.flatMap((block) => [...block.lines, ""]),
+      ...blocks.flatMap((block) => [...block.lines(ctx), ""]),
     );
   }
 
@@ -489,8 +562,40 @@ function toolSection(serverName: string): string {
  *   `zerotal/orm` rather than `@zerotal/orm`; telling such an app to import the
  *   scoped name sends an agent to a package that is only on disk because the
  *   bundle put it there.
+ * @param routing - Which routing directories this app uses, from its shape. Absent,
+ *   both styles are listed, as they always were.
  */
-function conventionSection(bundle: boolean): string {
+function conventionSection(bundle: boolean, routing?: ProjectShape["routing"]): string {
+  const styles = routing && (routing.files || routing.registered) ? routing : undefined;
+  const dirs = [
+    ...(!styles || styles.files ? ["app/routes/"] : []),
+    ...(!styles || styles.registered ? ["routes/"] : []),
+    ...(!styles || styles.controllers ? ["app/controllers/"] : []),
+    "app/models/",
+    "app/middleware/",
+    "app/policies/",
+    "app/requests/",
+    "app/jobs/",
+    "app/events/",
+    "app/listeners/",
+    "app/observers/",
+    "app/notifications/",
+    "app/commands/",
+    "app/schedules/",
+    "config/",
+    "database/migrations/",
+    "tests/",
+  ];
+  const grid: string[] = [];
+  for (let i = 0; i < dirs.length; i += 4) {
+    grid.push(
+      dirs
+        .slice(i, i + 4)
+        .map((dir, j, row) => (j === row.length - 1 ? dir : dir.padEnd(22)))
+        .join(""),
+    );
+  }
+
   return [
     "### Conventions",
     "",
@@ -498,18 +603,20 @@ function conventionSection(bundle: boolean): string {
     "itself; no manifest to update.",
     "",
     "```text",
-    "app/controllers/   app/models/      app/middleware/   app/policies/",
-    "app/jobs/          app/events/      app/listeners/    app/observers/",
-    "app/commands/      app/schedules/   app/requests/     app/notifications/",
-    "routes/            config/          database/migrations/   tests/",
+    ...grid,
     "```",
+    "",
+    routingSentence(styles),
     "",
     ...(bundle
       ? [
           "Imports follow one rule: this app depends on the `zerotal` bundle, so the kernel",
-          "and the packages it bundles are imported through it — `zerotal/orm`, `zerotal/auth`,",
-          "`zerotal/queue` and the rest — and any other package by its own name. An",
-          "`@zerotal/orm` import would reach a package this app does not declare.",
+          "and the packages it bundles are imported through it — " +
+            _BUNDLED_PACKAGES
+              .map((pkg) => `\`${pkg.replace("@zerotal/", "zerotal/")}\``)
+              .join(", ") +
+            " — and any other package by its own name. An `@zerotal/orm` import would reach a " +
+            "package this app does not declare.",
           "",
           "```ts",
           'import type { HttpContext } from "zerotal";',
@@ -528,6 +635,35 @@ function conventionSection(bundle: boolean): string {
           "```",
         ]),
   ].join("\n");
+}
+
+/** How a request finds its handler in this app, in the style it already uses. */
+function routingSentence(routing: ProjectShape["routing"] | undefined): string {
+  const files =
+    "each file serves the path it sits at and exports `GET`, `POST` " +
+    "and the rest; a `[param]` folder or file is a parameter, and a `(group)` folder adds " +
+    "the middleware in its `_middleware.ts` without adding to the path";
+  if (routing?.files && !routing.registered) {
+    return `Routes are files under \`app/routes/\`: ${files}. Add a route by adding a file.`;
+  }
+  if (routing?.files && routing.registered) {
+    return (
+      `This app uses both routing styles. Files under \`app/routes/\` route themselves — ${files}; \`routes/\` ` +
+      "registers the rest in code. Read both before adding a route, and follow whichever " +
+      "already serves its neighbours."
+    );
+  }
+  if (routing?.registered) {
+    return (
+      "Routes are registered in code in `routes/`" +
+      (routing.controllers ? ", pointing at controllers in `app/controllers/`" : "") +
+      ". Add a route there."
+    );
+  }
+  return (
+    `Routes are either files under \`app/routes/\` — ${files} — or registered in code in \`routes/\`. Check ` +
+    "which this app uses before adding one."
+  );
 }
 
 function commandSection(): string {

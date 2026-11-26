@@ -26,6 +26,9 @@ const shape = (over: Partial<ProjectShape> = {}): ProjectShape => ({
   routeTypes: true,
   hasTests: true,
   strict: { strict: true, exactOptionalPropertyTypes: true, noUncheckedIndexedAccess: true },
+  routing: { files: true, registered: false, controllers: false },
+  providers: [],
+  bundle: true,
   ...over,
 });
 

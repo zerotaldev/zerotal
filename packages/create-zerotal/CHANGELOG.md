@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-11-26
+
 ### Added
 
 - **The starters guard a bare `bun test`.** `bunfig.toml` preloads `zerotal/testing/guard`,
@@ -17,6 +19,7 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Changed
 
+- **A new app depends on `~1.18.0`**, so it installs this release.
 - **The CI workflow a new app gets pins its actions to commit SHAs** (`actions/checkout`,
   `oven-sh/setup-bun`), with the version in a comment, and declares
   `permissions: contents: read`. A moved tag can no longer change what an app's CI runs.

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-11-26
+
 ### Added
 
 - **`FormRequest.prepareForValidation()` is documented.** Override it to reshape the parsed body

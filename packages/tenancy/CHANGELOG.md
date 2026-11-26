@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-11-26
+
 ### Fixed
 
 - **`Tenant.create()`, `update()` and `forceUpdate()` work in an app.** `TenantModel` declared

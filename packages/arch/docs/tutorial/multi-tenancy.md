@@ -22,7 +22,7 @@ request belongs to the signed-in user's team.
 
 ```bash
 # in your project root
-bun add @zerotal/tenancy@~1.17.4
+bun add @zerotal/tenancy@~1.18.0
 ```
 
 The team is read off the signed-in user, from a `tenantId` attribute this milestone

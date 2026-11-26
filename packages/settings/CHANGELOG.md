@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-11-26
+
 ### Added
 
 - **`@zerotal/settings`, a per-tenant settings registry.** Declare settings in code with a typed

@@ -80,7 +80,7 @@ The starter sends its own mail inline, so it does not register a queue. Add
 
 ```bash
 # in your project root
-bun add @zerotal/queue@~1.17.4
+bun add @zerotal/queue@~1.18.0
 ```
 
 ```ts

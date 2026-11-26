@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-11-26
+
 ### Added
 
 - **`withConfig()` and `withEnv()`**: per-test overrides that put themselves back. Scoped

@@ -27,6 +27,74 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.18.0 — 2026-11-26
+
+Per-tenant settings, the database queue on PostgreSQL and MySQL, safer migrations, test helpers
+that put themselves back, and a tutorial that builds an app from `bun create zerotal` to deployed.
+
+### Before you upgrade
+
+Read [1.18.0](/docs/upgrade#1180) in the upgrade guide. Three changes can affect an existing app:
+
+- **The queue driver setting's type gains `"database"`, now the default** (`@zerotal/queue`,
+  types only). `"sqlite"` still selects the same driver, and no queue behaves differently. Code
+  with an exhaustive `switch` over the setting, or a check for `"sqlite"` meaning "jobs are in
+  the database", needs a `"database"` case.
+- **`zt migrate` refuses a database that has run one side of a migration-number clash**
+  (`@zerotal/orm`): two different migrations under one number, typically from two branches. The
+  error names both files and the fix. `zt doctor` fails on any clash, so CI catches one before
+  merge.
+- **A route name that two paths share is withheld** (`@zerotal/core`). `route()` on it throws,
+  naming both paths, where the route registered last used to win silently. Give one of the
+  routes its own name.
+
+### Added
+
+- **`@zerotal/settings`, a per-tenant settings registry** (new, `beta`). Typed defaults in code,
+  overridden per tenant, per user within a tenant, or app-wide. An override is hidden, never
+  deleted. Changes are audited through `@zerotal/audit` when it is registered, the admin panel
+  gets a generated settings screen, and `SettingsFake` pins a setting in a test. Code inside a
+  tenant cannot read or write another tenant's settings. See [Settings](/docs/settings).
+- **A tutorial**, [Build Your First App](/docs/tutorial): nine milestones from
+  `bun create zerotal` to a deployed app with a model, pages, validation, a policy, a queued
+  notification, tests and teams.
+- **`zt about`** (`@zerotal/core`) lists the installed Zerotal packages and what else the
+  framework ships.
+- **`database.backupBeforeMigrate`** (`@zerotal/orm`), off by default. In production, `migrate`,
+  `migrate:fresh` and `migrate:refresh` take a verified SQLite snapshot first, and stop if it
+  fails. **`zt migrate --pretend`** prints the SQL a migration would send and sends none.
+- **`withConfig()` and `withEnv()`** (`@zerotal/testing`), per-test overrides that restore
+  themselves exactly. **`Queue.settle()`** and **`Notify.settle()`** wait for the background
+  work a test started. **`zt test --randomize` / `--seed`** run tests in a random, replayable
+  order.
+- **A guard on a bare `bun test`** in new apps, which stops it running against the development
+  database and points to `bun zt test`.
+- **`queue.visibilityTimeout`**, so a job slower than 90 seconds is not claimed twice.
+- **A console row action can ask for a value** (`@zerotal/admin`).
+- **A page on supply-chain security**, [Supply Chain](/docs/supply-chain): provenance, pinned
+  actions and what a publish needs.
+
+### Changed
+
+- **A new app depends on `~1.18.0`** (`create-zerotal`), so it installs this release.
+- **Every GitHub Action is pinned to a commit SHA**, in this repository and in the workflow a new
+  app gets, and only the publish job can request an OIDC token.
+
+### Fixed
+
+- **The database queue runs on PostgreSQL and MySQL 8** (`@zerotal/queue`). It created its table
+  with SQLite-only syntax, so the first dispatch failed on either server. Workers claim jobs with
+  `FOR UPDATE SKIP LOCKED`, and a failed table setup is retried rather than kept.
+- **`Tenant.create()`, `update()` and `forceUpdate()` work in an app** (`@zerotal/tenancy`). They
+  threw a mass-assignment error because `TenantModel` declared no fillable columns.
+- **A route name that two paths share no longer points at whichever was registered last**
+  (`@zerotal/core`).
+- **A model passes as a `Notifiable` as declared** (`@zerotal/notifications`) under
+  `exactOptionalPropertyTypes`.
+- **New apps keep every `.env.*` file out of git, not only `.env`** (`create-zerotal`).
+- **Two agent skills were corrected** (`@zerotal/arch`): what a tenant-owned query does outside a
+  tenant, and the argument `make:factory` takes.
+
 ## 1.17.4 — 2026-11-26
 
 New apps come ready for a coding agent, and an agent is told what the framework already ships

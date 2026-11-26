@@ -77,6 +77,59 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.18.0
+
+A minor, with one type-level break and two changes that refuse what used to pass silently.
+Most apps need no change.
+
+### The queue driver setting gains `"database"`
+
+`QueueConfigShape["driver"]` is now `"database" | "sqlite" | "redis" | "sync"`, and
+`QueueConfig()` fills in `"database"` where it filled in `"sqlite"`. Both names select the same
+driver, which now also runs on PostgreSQL and MySQL 8.
+
+**What to change.** Nothing in config files. Code that reads the setting needs a look in two
+cases: an exhaustive `switch` over it stops compiling until it has a `"database"` case, and a
+check of `config.get("queue.driver") === "sqlite"` that meant "jobs are in the database" no
+longer matches the default. Test for `"database"` as well.
+
+### `zt migrate` refuses a half-run migration-number clash
+
+Two different migrations under one number, such as `0042_add_invoices` and `0042_add_refunds`
+from two branches, are now refused by `migrate` on a database that has run one of them and not
+the other. `zt doctor` fails on any clash, so CI catches one before merge.
+
+**What to change.** Run `bun zt doctor` once. If it reports a clash, its message gives the fix:
+renumber the later file if it has not run anywhere yet, or, if it has, keep it in place with a
+letter after the number (`0042b_add_refunds`) and pin its recorded name with
+`static override id = "0042_add_refunds"`. A new database runs a clash in name order with a
+warning, so nothing blocks a fresh environment. Migrations named by date are not numbered and
+never clash.
+
+### A route name that two paths share is withheld
+
+A generated route name leaves out `[param]` segments, so `applications/act.ts` and
+`applications/[id]/act.ts` both came out as `applications.act.store`, and the route registered
+last kept the name. Such a name now names neither: it is left out of the generated route types,
+`route()` on it throws an error naming both paths, and `bun zt route:list` lists it.
+
+**What to change.** Run `bun zt route:list`. If it lists a shared name, give one of the routes
+its own name in the route file's `meta` (or with `.name()` in a routes file), and use that name
+where you linked to it. Both routes keep answering requests either way.
+
+### Also worth knowing (not breaking)
+
+- **`database.backupBeforeMigrate: true`** takes a SQLite snapshot before `migrate`,
+  `migrate:fresh` and `migrate:refresh` in production. Off unless you turn it on.
+- **`queue.visibilityTimeout`** can now be set. Raise it above your slowest job if you run more
+  than one worker.
+- **New test helpers:** `withConfig()`, `withEnv()`, `Queue.settle()`, `Notify.settle()`. Any
+  hand-written settle loop or env restore in your tests can go.
+- **An app created before this release** can add the bare-`bun test` guard with two lines in
+  `bunfig.toml`; see [Testing](/docs/testing#a-bare-bun-test-stops-before-it-reaches-your-database).
+- **Run `bun zt arch:update`** if the app has `@zerotal/arch`: `AGENTS.md` now lists the
+  settings registry, and two skills were corrected.
+
 ## 1.17.4
 
 A patch. No app needs a code change. One fix can change what an existing app sees.

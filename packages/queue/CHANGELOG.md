@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-11-26
+
 ### Fixed
 
 - **The database queue runs on PostgreSQL and MySQL 8, not only SQLite.** The driver created

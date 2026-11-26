@@ -13,6 +13,8 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.18.0] — 2026-11-26
+
 ### Added
 
 - `CAPABILITIES`, `CAPABILITY_AREAS` and the `Capability` / `CapabilityArea` types are

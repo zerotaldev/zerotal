@@ -39,7 +39,7 @@ and mail is printed to the terminal until you configure a real driver. The
 [Getting Started](/docs/getting-started) page covers installation in more depth.
 
 Every command and every file in this tutorial was run on an app scaffolded from
-`create-zerotal@1.17.4`. If you are on a later version, the steps still apply; the
+`create-zerotal@1.18.0`. If you are on a later version, the steps still apply; the
 [Release Notes](/docs/changelog) say what changed.
 
 ## React, Vue or Flow

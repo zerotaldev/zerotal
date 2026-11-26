@@ -11,7 +11,7 @@ Milestone 1 of 9 in [Build Your First App](/docs/tutorial).
 
 ```bash
 # in the directory that will hold the project
-bunx create-zerotal@1.17.4 my-app --template=react --yes
+bunx create-zerotal@1.18.0 my-app --template=react --yes
 cd my-app
 ```
 
@@ -45,7 +45,7 @@ and rebuilds the frontend when a file changes. (A queue worker joins it in
 [milestone 6](/docs/tutorial/notifications), once the app has jobs to run.)
 
 ```
-  Zerotal v1.17.4  ›  dev
+  Zerotal v1.18.0  ›  dev
 
   Local    http://localhost:3000
 ```

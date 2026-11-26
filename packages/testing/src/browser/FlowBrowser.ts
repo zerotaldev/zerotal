@@ -271,10 +271,16 @@ export class BrowserPage {
    * a patch fails where the patch did not arrive instead of three assertions later.
    */
   async waitForPatch(timeout = this._timeout): Promise<this> {
-    const before = this._framesAtAction;
+    const from = this._framesAtAction;
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
-      if (this._receivedCount() > before) return this;
+      if (this._answeredSince(from)) {
+        // Chrome reports the frame as it comes off the wire, before the page's own handler
+        // has run. One evaluation queues behind that message in the page, so once it
+        // returns, the update is in the DOM the next read sees.
+        await this.evaluate("void 0");
+        return this;
+      }
       await Bun.sleep(POLL_MS);
     }
     throw new Error(
@@ -353,7 +359,21 @@ export class BrowserPage {
   }
 
   private _markAction(): void {
-    this._framesAtAction = this._receivedCount();
+    this._framesAtAction = this._report.frames.length;
+  }
+
+  /**
+   * Whether a frame that answers an action arrived at or after index `from`.
+   *
+   * The connection's `ready` frame does not count. The page stamps itself `online` when the
+   * socket opens, and the server sends `ready` just after, so an action taken right after
+   * {@link waitForConnection} can see `ready` arrive behind it. Counted, it ended the wait
+   * before the action's own patch, and the test read the page before the change landed.
+   */
+  private _answeredSince(from: number): boolean {
+    return this._report.frames
+      .slice(from)
+      .some((frame) => frame.direction === "received" && !_isReadyFrame(frame.payload));
   }
 
   private _assertOpen(): void {
@@ -517,4 +537,13 @@ export class FlowBrowser {
 /** JSON-quote a value for embedding in an evaluated expression. */
 function quote(value: string): string {
   return JSON.stringify(value);
+}
+
+/** Whether a frame is the server's `ready`, sent once when a socket opens, not in answer to anything. */
+function _isReadyFrame(payload: string): boolean {
+  try {
+    return (JSON.parse(payload) as { type?: unknown } | null)?.type === "ready";
+  } catch {
+    return false;
+  }
 }

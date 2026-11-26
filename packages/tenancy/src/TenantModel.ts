@@ -12,6 +12,14 @@ import { BaseModel, column, table } from "@zerotal/orm";
  */
 @(table("tenants").withTimestamps())
 export class TenantModel extends BaseModel {
+  /**
+   * What `Tenant.create()` and `Tenant.update()` may write. A model with no list
+   * rejects every mass-assigned key, so without this `Tenant.create()` threw
+   * `MassAssignmentError` in any app — the facade's own create could not create.
+   * Listing the columns keeps the guard against anything else (`id`, timestamps).
+   */
+  static override fillable: readonly string[] = ["slug", "name", "isActive", "database"];
+
   @column() slug!: string;
   @column() name!: string;
   @column("boolean") isActive!: boolean;

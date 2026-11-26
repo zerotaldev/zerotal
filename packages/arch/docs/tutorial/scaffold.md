@@ -40,8 +40,9 @@ bun zt dev
 ```
 
 `migrate` builds the SQLite database at `database/db.sqlite` from the six migrations the
-starter ships. `db:seed` adds a demo user with twelve projects. `dev` starts the server,
-rebuilds the frontend when a file changes, and runs a queue worker alongside it:
+starter ships. `db:seed` adds a demo user with twelve projects. `dev` starts the server
+and rebuilds the frontend when a file changes. (A queue worker joins it in
+[milestone 6](/docs/tutorial/notifications), once the app has jobs to run.)
 
 ```
   Zerotal v1.17.4  ›  dev

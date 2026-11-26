@@ -325,7 +325,7 @@ import { Events } from "zerotal";
 
 Events.on(PostCreated, async ({ post }) => {
   await SearchIndex.sync(post);
-  await Cache.tags("posts").flush();
+  await Cache.tags(["posts"]).flush();
 });
 ```
 

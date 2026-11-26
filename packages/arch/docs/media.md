@@ -22,7 +22,7 @@ The media library ships in the `zerotal` package every starter already
 depends on, so there is nothing to install: import it from `zerotal/media` and
 register its provider.
 
-```ts fragment
+```ts
 // bootstrap/providers.ts
 import { DatabaseProvider } from "zerotal/orm";
 import { StorageProvider } from "zerotal/storage";

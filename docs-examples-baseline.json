@@ -23,7 +23,7 @@
       "file": "docs/about.md",
       "heading": "Cache",
       "ordinal": 0,
-      "hash": "6oyicj8d02gt"
+      "hash": "gujlk7osnssc"
     },
     {
       "file": "docs/about.md",
@@ -1313,19 +1313,19 @@
       "file": "docs/cache.md",
       "heading": "Tag-based invalidation in model hooks",
       "ordinal": 0,
-      "hash": "2tdlxd1ct9w0"
+      "hash": "1gwyedxa8sjd"
     },
     {
       "file": "docs/cache.md",
       "heading": "Tags",
       "ordinal": 0,
-      "hash": "dpth4uo521o2"
+      "hash": "3w28hpg0arvt"
     },
     {
       "file": "docs/cache.md",
       "heading": "Testing",
       "ordinal": 0,
-      "hash": "1nldczq45aut"
+      "hash": "2d1trwvq0agt"
     },
     {
       "file": "docs/cache.md",
@@ -2502,6 +2502,288 @@
       "heading": "Schedules — app/schedules/",
       "ordinal": 0,
       "hash": "dwtyskip0f6c"
+    },
+    {
+      "file": "docs/cookbook/ai-structured-output.md",
+      "heading": "Ask for an object",
+      "ordinal": 0,
+      "hash": "x2kqaxnyl6t4"
+    },
+    {
+      "file": "docs/cookbook/ai-structured-output.md",
+      "heading": "Register and configure",
+      "ordinal": 0,
+      "hash": "ofshwmu9dmtn"
+    },
+    {
+      "file": "docs/cookbook/ai-structured-output.md",
+      "heading": "The page",
+      "ordinal": 0,
+      "hash": "b4a311b41usa"
+    },
+    {
+      "file": "docs/cookbook/ai-structured-output.md",
+      "heading": "The page",
+      "ordinal": 1,
+      "hash": "12p9ndv8aru6"
+    },
+    {
+      "file": "docs/cookbook/ai-structured-output.md",
+      "heading": "The page",
+      "ordinal": 2,
+      "hash": "eltfxbx2fa09"
+    },
+    {
+      "file": "docs/cookbook/ai-structured-output.md",
+      "heading": "The page",
+      "ordinal": 3,
+      "hash": "1dnnmclk2r3q"
+    },
+    {
+      "file": "docs/cookbook/ai-structured-output.md",
+      "heading": "The tests",
+      "ordinal": 0,
+      "hash": "ouk5yj9bzdda"
+    },
+    {
+      "file": "docs/cookbook/caching.md",
+      "heading": "Cache the summary",
+      "ordinal": 0,
+      "hash": "220vo8gr2ik1"
+    },
+    {
+      "file": "docs/cookbook/caching.md",
+      "heading": "Cache the summary",
+      "ordinal": 1,
+      "hash": "2lfds7u1snhi"
+    },
+    {
+      "file": "docs/cookbook/caching.md",
+      "heading": "Forget it when a project changes",
+      "ordinal": 0,
+      "hash": "3llo3toky4od"
+    },
+    {
+      "file": "docs/cookbook/caching.md",
+      "heading": "Forget it when a project changes",
+      "ordinal": 1,
+      "hash": "3kplrusdns5y"
+    },
+    {
+      "file": "docs/cookbook/caching.md",
+      "heading": "Register the cache",
+      "ordinal": 1,
+      "hash": "2msxonv54u52"
+    },
+    {
+      "file": "docs/cookbook/caching.md",
+      "heading": "The test",
+      "ordinal": 0,
+      "hash": "jkb9rp79lhcu"
+    },
+    {
+      "file": "docs/cookbook/caching.md",
+      "heading": "The test",
+      "ordinal": 1,
+      "hash": "xs0v2qkpw3g0"
+    },
+    {
+      "file": "docs/cookbook/queued-notifications.md",
+      "heading": "Queue it when a project is completed",
+      "ordinal": 0,
+      "hash": "v4jrym3j5hti"
+    },
+    {
+      "file": "docs/cookbook/queued-notifications.md",
+      "heading": "Register the queue",
+      "ordinal": 1,
+      "hash": "1fe7v9l33fdi"
+    },
+    {
+      "file": "docs/cookbook/queued-notifications.md",
+      "heading": "The notification",
+      "ordinal": 0,
+      "hash": "3pm73jm2i6i4"
+    },
+    {
+      "file": "docs/cookbook/queued-notifications.md",
+      "heading": "The test",
+      "ordinal": 0,
+      "hash": "2xkegngh5zpt"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "Give users roles",
+      "ordinal": 0,
+      "hash": "m3efpm5wg1qa"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "Let admins manage every project",
+      "ordinal": 0,
+      "hash": "3vrhoipbv20u"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "Let admins manage every project",
+      "ordinal": 1,
+      "hash": "23fcfl9titr6"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "Load the user's roles on each request",
+      "ordinal": 0,
+      "hash": "3vrze3ojt6wu"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "Load the user's roles on each request",
+      "ordinal": 1,
+      "hash": "1ocdxsfacvhj"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "Make someone an admin",
+      "ordinal": 0,
+      "hash": "fg3ppw17mxdh"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "Seed the admin role",
+      "ordinal": 1,
+      "hash": "pckmx28e4rvz"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "The tests",
+      "ordinal": 0,
+      "hash": "306ctu6wugqe"
+    },
+    {
+      "file": "docs/cookbook/roles-and-permissions.md",
+      "heading": "The tests",
+      "ordinal": 1,
+      "hash": "1rjx8314gxal"
+    },
+    {
+      "file": "docs/cookbook/settings.md",
+      "heading": "Let a user change it",
+      "ordinal": 0,
+      "hash": "1v5ky2wg2m7o"
+    },
+    {
+      "file": "docs/cookbook/settings.md",
+      "heading": "Let a user change it",
+      "ordinal": 1,
+      "hash": "fyh854pk76on"
+    },
+    {
+      "file": "docs/cookbook/settings.md",
+      "heading": "Let a user change it",
+      "ordinal": 2,
+      "hash": "1x9loptgscn2"
+    },
+    {
+      "file": "docs/cookbook/settings.md",
+      "heading": "Let a user change it",
+      "ordinal": 3,
+      "hash": "2lygvo8an82b"
+    },
+    {
+      "file": "docs/cookbook/settings.md",
+      "heading": "Read it",
+      "ordinal": 0,
+      "hash": "2u6vba5hsnyo"
+    },
+    {
+      "file": "docs/cookbook/settings.md",
+      "heading": "Register the provider",
+      "ordinal": 0,
+      "hash": "30r6zhrgz5fm"
+    },
+    {
+      "file": "docs/cookbook/settings.md",
+      "heading": "Register the provider",
+      "ordinal": 1,
+      "hash": "i088uqclycpq"
+    },
+    {
+      "file": "docs/cookbook/settings.md",
+      "heading": "The tests",
+      "ordinal": 0,
+      "hash": "3nt5364nf72m"
+    },
+    {
+      "file": "docs/cookbook/tenancy.md",
+      "heading": "Routes that need a tenant",
+      "ordinal": 1,
+      "hash": "2iwfxd8l7bdq"
+    },
+    {
+      "file": "docs/cookbook/tenancy.md",
+      "heading": "Say where the tenant comes from",
+      "ordinal": 1,
+      "hash": "1gjc2pu22h0x"
+    },
+    {
+      "file": "docs/cookbook/tenancy.md",
+      "heading": "Tenants to try it with",
+      "ordinal": 0,
+      "hash": "qp82sv3xdcbo"
+    },
+    {
+      "file": "docs/cookbook/tenancy.md",
+      "heading": "Tenants to try it with",
+      "ordinal": 1,
+      "hash": "2c8k6wdxl052"
+    },
+    {
+      "file": "docs/cookbook/tenancy.md",
+      "heading": "The tests",
+      "ordinal": 0,
+      "hash": "3uabj2nzjx8u"
+    },
+    {
+      "file": "docs/cookbook/uploads.md",
+      "heading": "Give projects an attachments collection",
+      "ordinal": 0,
+      "hash": "1yvj295g4o73"
+    },
+    {
+      "file": "docs/cookbook/uploads.md",
+      "heading": "Show the files on the edit page",
+      "ordinal": 0,
+      "hash": "1lsiar1tf15r"
+    },
+    {
+      "file": "docs/cookbook/uploads.md",
+      "heading": "Show the files on the edit page",
+      "ordinal": 2,
+      "hash": "2csiyf0kasu0"
+    },
+    {
+      "file": "docs/cookbook/uploads.md",
+      "heading": "Show the files on the edit page",
+      "ordinal": 3,
+      "hash": "169092i6v46d"
+    },
+    {
+      "file": "docs/cookbook/uploads.md",
+      "heading": "Show the files on the edit page",
+      "ordinal": 4,
+      "hash": "144t3mrbzga5"
+    },
+    {
+      "file": "docs/cookbook/uploads.md",
+      "heading": "The test",
+      "ordinal": 0,
+      "hash": "2nce7yzgkhvw"
+    },
+    {
+      "file": "docs/cookbook/uploads.md",
+      "heading": "The upload route",
+      "ordinal": 0,
+      "hash": "14oj98q4pnn3"
     },
     {
       "file": "docs/cookies.md",
@@ -5765,7 +6047,7 @@
       "file": "docs/orm/lifecycle.md",
       "heading": "Dispatching model events to the app bus",
       "ordinal": 1,
-      "hash": "jmdog93vw03l"
+      "hash": "ezivqsq42sik"
     },
     {
       "file": "docs/orm/lifecycle.md",

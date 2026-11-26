@@ -13,17 +13,17 @@ Every recipe was run, block by block, on a new React starter scaffolded from the
 this release was cut from. The server code is the same on Vue and Flow; only the page
 components differ.
 
-- **[Uploading several files](/docs/cookbook/uploads)** — attach files to a model with
+- **[Upload several files at once](/docs/cookbook/uploads)** — attach files to a model with
   the media library, and test an upload of more than one at once.
-- **[Queued notifications](/docs/cookbook/queued-notifications)** — send mail through the
+- **[A queued notification, tested](/docs/cookbook/queued-notifications)** — send mail through the
   queue, and test it with `NotificationFake` and `Notify.settle()`.
-- **[Caching a slow read](/docs/cookbook/caching)** — remember an expensive result, and
+- **[Cache an expensive read](/docs/cookbook/caching)** — remember an expensive result, and
   forget it when the data behind it changes.
 - **[Roles and permissions](/docs/cookbook/roles-and-permissions)** — give users roles,
   gate a page on a permission, and test both sides of the gate.
-- **[Tenancy](/docs/cookbook/tenancy)** — scope a model to a tenant, and prove one tenant
-  cannot read another's rows.
-- **[Settings](/docs/cookbook/settings)** — a typed setting with a default in code, changed
+- **[Tenants by subdomain](/docs/cookbook/tenancy)** — pick the tenant from the subdomain
+  or a header, scope a model to it, and prove one tenant cannot read another's rows.
+- **[A per-user setting](/docs/cookbook/settings)** — a typed setting with a default in code, changed
   per user, and tested with `SettingsFake`.
 - **[AI structured output](/docs/cookbook/ai-structured-output)** — ask a model for a typed
   object, handle a bad answer, and test it with no network.

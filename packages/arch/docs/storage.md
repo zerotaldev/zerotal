@@ -467,8 +467,8 @@ Validate the upload first with a `FormRequest`:
 
 ```ts
 // app/requests/AvatarRequest.ts
-import { FormRequest } from "@zerotal/validator";
-import type { RuleBuilder } from "@zerotal/validator";
+import { FormRequest } from "zerotal/validator";
+import type { RuleBuilder } from "zerotal/validator";
 
 export class AvatarRequest extends FormRequest {
   rules(v: RuleBuilder) {

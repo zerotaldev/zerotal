@@ -88,6 +88,22 @@ describe("Tenancy — create enrolls the creator as admin", () => {
     });
   });
 
+  it("creates and updates a tenant with mass assignment guarded, as it is in an app", async () => {
+    // The repo's test preload unguards every model, which hid that TenantModel
+    // declared no `fillable`: in an app, Tenant.create() threw MassAssignmentError.
+    BaseModel.reguard();
+    try {
+      const tenant = await tenancy.create({ slug: "guarded", name: "Guarded" });
+      expect(tenant.slug).toBe("guarded");
+      await as(tenant as unknown as Tenant, null, async () => {
+        await tenancy.forceUpdate({ name: "Renamed" });
+      });
+      expect((await TenantModel.find(tenant.id))?.name).toBe("Renamed");
+    } finally {
+      BaseModel.unguard();
+    }
+  });
+
   it("create without an authenticated user enrolls no one", async () => {
     const tenant = await tenancy.create({ slug: "solo", name: "Solo" });
     await as(tenant as unknown as Tenant, null, async () => {

@@ -404,12 +404,6 @@ const team = await Tenant.members(); // hydrated User models
 await Tenant.update({ name: "Acme Corp" }); // throws TenantForbiddenError unless admin
 ```
 
-> **Warning** — In 1.17.4 `Tenant.create()`, `update()` and `forceUpdate()` throw a
-> `MassAssignmentError` in an app, because `TenantModel` declares no fillable columns.
-> Create the tenant from trusted code with `TenantModel.forceCreate()`, passing `slug`,
-> `name` and `isActive: true`, then add its first admin inside it with `Tenant.run()` and
-> `Tenant.addMember()`. The [tutorial](/docs/tutorial/multi-tenancy) shows both.
-
 > **Note** — Membership requires an authenticatable User model. Compose `Authenticatable` (from `@zerotal/auth`) on it, or `Tenancy` throws `TenancyConfigError` when a membership method runs.
 
 ## Tenant-scoped storage

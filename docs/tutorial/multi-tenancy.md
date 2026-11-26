@@ -162,9 +162,9 @@ export async function createTeamFor(user: User): Promise<TenantModel> {
 }
 ```
 
-`TenantModel.forceCreate()` rather than `Tenant.create()`: in 1.17.4 `Tenant.create()`
-throws a mass-assignment error in an app. `forceCreate()` is the right call for values
-built in code anyway.
+`TenantModel.forceCreate()` rather than `Tenant.create()`: `Tenant.create()` enrolls the
+signed-in user as the team's admin, and at registration nobody is signed in yet, so this
+adds the new user explicitly. `forceCreate()` is the right call for values built in code.
 
 Call it after the user is saved in the three places that create one: the registration
 route, the social sign-in helper and the seeder.
@@ -220,10 +220,7 @@ if (assignee && !(await Tenant.isMember(assignee.id))) {
 ```
 
 `rejectInput()` is the starter's helper for a check `validate()` cannot make: it fails
-the form the same way. In 1.17.4 its first parameter accepts only a route without
-bound models, so `bun run typecheck` rejects this call. Widen the parameter in
-`app/support/validation.ts` to `HttpContext<Record<string, unknown>>`; starters after
-1.17.4 ship it that way.
+the form the same way.
 
 ## Rebuild your development data
 

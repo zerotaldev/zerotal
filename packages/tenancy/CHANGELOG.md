@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`Tenant.create()`, `update()` and `forceUpdate()` work in an app.** `TenantModel` declared
+  no fillable columns, and a model guards every mass-assigned key by default, so the facade's
+  own create threw `MassAssignmentError`. The framework's test setup turns that guard off, which
+  is why nothing caught it. `TenantModel` now allows exactly `slug`, `name`, `isActive` and
+  `database`; anything else is still refused.
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

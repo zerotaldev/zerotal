@@ -164,7 +164,7 @@ class TenantModel = {
   static createMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), records: InsertPayload<T>[]) => Promise<T[]>
   static dispatchesEvents?: Record<string, new (model: unknown) => object>
   static encryptable?: string[]
-  static fillable?: readonly string[]
+  static fillable: readonly string[]
   static find: <T extends BaseModel>(this: typeof BaseModel & (new () => T), id: number | string) => Promise<T | null>
   static findBy: <T extends BaseModel>(this: typeof BaseModel & (new () => T), column: string, value: unknown) => Promise<T | null>
   static findMany: <T extends BaseModel>(this: typeof BaseModel & (new () => T), ids: (number | string)[]) => Promise<T[]>

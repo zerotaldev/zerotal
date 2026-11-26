@@ -27,6 +27,10 @@ follows the Zerotal monorepo's unified versioning.
   `storage/logs/`, where the app writes a log file a day. The React and Vue starters also
   ignore `public/css/`, which `assets:build` writes during a deploy, and leave it out of
   `format:check`, which failed on it after a release build.
+- **Every starter keeps all `.env.*` files out of git, not only `.env`.** A
+  `.env.production` holding real secrets matched nothing in `.gitignore`, so `git add -A`
+  committed it (the starter's `.dockerignore` already left it out of the image).
+  `.env.example`, the one meant to be committed, still is.
 - **`rejectInput()` accepts any route's context** in the React, Vue and Flow starters. It was
   typed for string route params only, so a route with a bound model, such as
   `projects/[project]/…`, could not call it without a type error.

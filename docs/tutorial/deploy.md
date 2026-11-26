@@ -60,10 +60,12 @@ is enough to stop the release:
 ## The production environment
 
 Each refusal names a variable to set. In production these are your platform's secrets,
-not a committed file. For the rehearsal, put them in a file outside version control:
+not a committed file. For the rehearsal, put them in `.env.production`. The starter's
+`.gitignore` and `.dockerignore` already keep every `.env.*` file except `.env.example` out
+of the repository and the image, so this one stays on your machine:
 
 ```bash
-# production.env — never commit it
+# .env.production
 APP_ENV=production
 APP_URL=https://tasks.example.com
 APP_SECURE=true
@@ -86,16 +88,25 @@ What each one is for:
   `log`, the gate refuses: every message would go to a log file.
 - **`HEALTH_KEY`** — `/health` answers load balancers in production only when they
   send it.
-- **`APP_KEY`** — already in `.env` from the scaffolder. In production, generate a
-  separate one with `bun zt key:generate` and keep it secret.
+- **`APP_KEY`** — already in `.env` from the scaffolder. Production needs a separate one,
+  kept secret. Don't run `bun zt key:generate` for it here: that writes into this
+  project's `.env` and replaces your development key. Print a new one instead and put
+  it in your platform's secrets (or, for the rehearsal, add `APP_KEY=` with it to
+  `.env.production`):
+
+  ```bash
+  # anywhere
+  bun -e "console.log(Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64'))"
+  ```
 
 [Environment](/docs/deployment#environment) lists the rest.
 
-Load the file into your shell and run the gate again:
+Load the file into your shell and run the gate again. This uses a POSIX shell (bash or
+zsh; on Windows, Git Bash or WSL):
 
 ```bash
 # in your project root
-set -a; . ./production.env; set +a
+set -a; . ./.env.production; set +a
 bun zt deploy:production --check
 ```
 
@@ -109,7 +120,7 @@ release runs them.
 ## Release
 
 ```bash
-# in your project root, with production.env loaded
+# in your project root, with .env.production loaded
 bun zt deploy:production
 ```
 
@@ -140,12 +151,12 @@ command exits 0.
 Two long-running processes: the server, and a worker for the queued notifications.
 
 ```bash
-# in your project root, with production.env loaded
+# in your project root, with .env.production loaded
 PORT=3001 bun zt serve
 ```
 
 ```bash
-# in your project root, with production.env loaded, in a second terminal
+# in your project root, with .env.production loaded, in a second terminal
 bun zt worker
 ```
 
@@ -174,7 +185,7 @@ Without `?key=` it answers 401. `curl -sI http://localhost:3001/` shows the
 which is the one check the gate cannot make before the release is live:
 
 ```bash
-# in your project root, with production.env loaded
+# in your project root, with .env.production loaded
 bun zt doctor --url=http://localhost:3001
 ```
 
@@ -192,10 +203,10 @@ The [production checklist](/docs/deployment#production-checklist) is what
 
 | Checklist item       | Done by                                                   |
 | -------------------- | --------------------------------------------------------- |
-| `APP_ENV=production` | `production.env`; the gate's first check                  |
-| A strong `APP_KEY`   | `bun zt key:generate`, kept as a secret                   |
-| `APP_URL`            | `production.env`; the gate refused without it             |
-| `DATABASE_URL`       | `production.env`                                          |
+| `APP_ENV=production` | `.env.production`; the gate's first check                 |
+| A strong `APP_KEY`   | A new random key, kept as a secret, not the dev one       |
+| `APP_URL`            | `.env.production`; the gate refused without it            |
+| `DATABASE_URL`       | `.env.production`                                         |
 | Secure headers       | `APP_SECURE=true`                                         |
 | CORS origins         | The starter's default: same origin only                   |
 | Migrations           | `deploy:production`                                       |

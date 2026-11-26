@@ -4,7 +4,10 @@ node_modules/
 # default, so both exist in every project, and the write-ahead log holds rows that
 # have not been checkpointed into the main file yet — real ones.
 *.sqlite*
+# Every environment file but the example, which is the one meant to be committed.
 .env
+.env.*
+!.env.example
 public/assets/
 
 # The site gate's state — never committed.

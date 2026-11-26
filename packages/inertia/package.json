@@ -67,11 +67,11 @@
   "devDependencies": {
     "@inertiajs/react": "^3.11.0",
     "@inertiajs/vue3": "^3.11.0",
-    "@vue/compiler-sfc": "^3.5.45",
+    "@vue/compiler-sfc": "^3.5.46",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "typescript": "^5.8.0",
-    "vue": "^3.5.45"
+    "vue": "^3.5.46"
   },
   "description": "Inertia.js adapter for Zerotal — server-driven React/Vue single-page apps.",
   "keywords": [

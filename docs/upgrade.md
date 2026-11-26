@@ -496,6 +496,10 @@ so a bad one is a 422 on the form and not an exception when the mail goes out. A
 sender the check would refuse now fails at boot, naming the key. See
 [Notifications](/docs/notifications#mail).
 
+A test that calls `MailMessage.toPayload()` itself must pass both arguments, the default sender
+and the fallback recipients, as its signature always said. Called with no recipients set and no
+fallback, it used to return a payload with `to` undefined; it now throws.
+
 ### Idempotency keys are scoped
 
 `IdempotencyMiddleware` keys a stored response by the signed-in user, or the session the client
@@ -587,6 +591,10 @@ Entries already written keep the address they were written with.
 - **`ctx.clientIp()`** returns the client's address by the same rule, or `null` when the
   request offers none. Use it where you used to read `X-Forwarded-For` yourself; `ctx.ip()` is
   still the socket, which behind a proxy is the proxy.
+- **An app scaffolded with 1.15.5 has a second Bun** in `node_modules/bun` and prints a warning
+  about it. Add a `bunfig.toml` with an `[install]` table holding `peer = false`, delete
+  `node_modules`, then run `bun install`. Adding the setting alone keeps the copy already
+  installed. See [1.15.6](/docs/changelog#1156-2026-10-28).
 
 ## 1.14 to 1.15
 

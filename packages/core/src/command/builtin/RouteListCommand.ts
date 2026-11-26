@@ -178,6 +178,21 @@ export class RouteListCommand extends Command {
     }
 
     this._writer.writeLine("");
+    this._reportAmbiguousNames();
+  }
+
+  /** Names given to more than one path. Each is left out of the table, and `route()` on it throws. */
+  private _reportAmbiguousNames(): void {
+    const ambiguous = Router.ambiguousRouteNames;
+    if (ambiguous.size === 0) return;
+    this.warn(
+      `${ambiguous.size} route name(s) name more than one path, so route() refuses them. ` +
+        "Give one route in each its own name (a route file's `meta`, or `.name()`):",
+    );
+    for (const [name, paths] of ambiguous) {
+      this._writer.writeLine(`  ${name}  ${DIM}${[...paths].join("  ")}${RESET}`);
+    }
+    this._writer.writeLine("");
   }
 }
 

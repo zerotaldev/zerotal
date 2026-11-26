@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`uncompromised()` is deprecated in favour of `noWhitespace()`.** It is the same rule and keeps
+  working. The old name suggested a check against breached passwords, which it never made.
+
+### Added
+
+- **`noWhitespace()`**, the password rule's name for what it checks: no space, tab or line
+  break anywhere in the value.
+
 ## [1.18.1] — 2026-11-26
 
 ### Changed

@@ -8,6 +8,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A password confirmation that does not match is reported under "Confirm password".** The
+  register, reset-password and change-password routes checked it with `confirmed()` on the
+  password, so its message piled up under "Password" with that field's own. They now check
+  `password_confirmation` with `sameAs("password")`.
+
+### Changed
+
+- **The Vue starter checks page props against `Inertia.render`.** It ships `types/inertia.d.ts`
+  with `checkVueProps: true`, so a missing, extra or wrongly typed prop is a `vue-tsc` error in
+  the route, as it is for a React page. The README says so, and how to turn it off.
+- **The Dockerfile and README say how to run background work.** Once an app registers
+  `QueueProvider` or `SchedulerProvider`, a second process from the same image runs
+  `bun zt worker`; the web server runs neither the queue nor the schedules.
+- **The starters' example code drops two casts.** `Project.toPage()` reads `updatedAt` as the
+  model types it, and the React project form picks the status from its own options.
+
 ### Security
 
 - **A two-factor code works once in the React, Vue and Flow starters.** The sign-in challenge

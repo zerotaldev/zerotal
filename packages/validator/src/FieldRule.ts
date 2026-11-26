@@ -738,13 +738,23 @@ export class PasswordRule extends FieldRule {
 
   /**
    * Must contain no whitespace: no space, tab or line break anywhere in the value.
-   *
-   * Despite the name, this does not check the password against a list of breached
-   * passwords, and makes no network request. It is a character rule like `symbols()`.
+   * A character rule like `symbols()`.
    */
-  uncompromised(message?: string): this {
+  noWhitespace(message?: string): this {
     addRule(this._def.rules, "passwordNoSpaces", [], message);
     return this;
+  }
+
+  /**
+   * The same rule as {@link noWhitespace}, under its old name.
+   *
+   * Despite the name, this does not check the password against a list of breached
+   * passwords, and makes no network request.
+   *
+   * @deprecated Use `noWhitespace()`, which is what this checks.
+   */
+  uncompromised(message?: string): this {
+    return this.noWhitespace(message);
   }
 
   /** Value must equal the `{field}_confirmation` input field. */

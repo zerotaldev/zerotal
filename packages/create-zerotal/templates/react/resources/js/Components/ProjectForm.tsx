@@ -53,7 +53,11 @@ export function ProjectForm({ project }: { project?: Project | undefined }) {
             options={STATUS_OPTIONS}
             value={form.data.status}
             error={form.errors.status}
-            onChange={(e) => form.setData("status", e.target.value as typeof form.data.status)}
+            onChange={(e) => {
+              // The option the browser chose, typed as one of the statuses.
+              const option = STATUS_OPTIONS.find((o) => o.value === e.target.value);
+              if (option) form.setData("status", option.value);
+            }}
           />
         </CardBody>
         <CardFooter>

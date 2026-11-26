@@ -198,6 +198,7 @@ class PasswordRule = {
   default: (value: unknown) => PasswordRule
   min: (length: number, message?: string) => PasswordRule
   mixedCase: (message?: string) => PasswordRule
+  noWhitespace: (message?: string) => PasswordRule
   nullable: () => PasswordRule
   numbers: (message?: string) => PasswordRule
   optional: () => PasswordRule

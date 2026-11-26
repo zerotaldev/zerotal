@@ -118,7 +118,9 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
     lines: () => [
       "**Inertia.** Pages are React/Vue components under `resources/`; a route handler returns " +
         "`Inertia.render(...)` with the page's props. Props are serialised — do not pass class " +
-        "instances.",
+        "instances. In a Vue app, a page's props are checked against `Inertia.render` only when " +
+        "`InertiaTypeOptions` sets `checkVueProps: true` (the Vue starter's `types/inertia.d.ts`), " +
+        "and only by `vue-tsc`: plain `tsc` does not read `.vue` files.",
     ],
   },
   {

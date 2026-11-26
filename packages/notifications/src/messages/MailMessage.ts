@@ -38,6 +38,20 @@ function _absoluteUrl(url: string): string {
   }
 }
 
+/**
+ * The closing line when a message sets none: "The Acme team", for an app named Acme. It was a bare
+ * "Regards," with nothing under it, while the starters' own mail signed off with the app's
+ * name, so two messages from one app closed two ways.
+ */
+function _defaultSalutation(): Line {
+  const name = tryCurrentApp()?.container.tryMake("config")?.get<string>("app.name");
+  return [
+    {
+      text: typeof name === "string" && name.trim() !== "" ? `The ${name.trim()} team` : "Regards,",
+    },
+  ];
+}
+
 /** Inline text styling applied to a whole line or to a single run within a line. */
 export interface TextStyle {
   bold?: boolean;
@@ -188,8 +202,8 @@ export class MailMessage {
   }
 
   /**
-   * Closing line, e.g. "Regards,". Defaults to "Regards,". Accepts the same styling
-   * forms as `line()`.
+   * Closing line. Defaults to "The Acme team" for an app whose `config/app.ts` names it Acme, or to
+   * "Regards," where no app is running. Accepts the same styling forms as `line()`.
    */
   salutation(text: string): this;
   salutation(text: string, style: TextStyle): this;
@@ -391,7 +405,7 @@ export class MailMessage {
       );
     }
     for (const l of this._outroLines) parts.push(this._paragraph(l));
-    parts.push(this._paragraph(this._salutation ?? [{ text: "Regards," }]));
+    parts.push(this._paragraph(this._salutation ?? _defaultSalutation()));
 
     return (
       `<div style="max-width:560px;margin:0 auto;padding:32px 24px;font-family:` +
@@ -416,7 +430,7 @@ export class MailMessage {
     if (this._actionText && this._actionUrl)
       parts.push(`${this._actionText}: ${_absoluteUrl(this._actionUrl)}`);
     for (const l of this._outroLines) parts.push(this._lineText(l));
-    parts.push(this._lineText(this._salutation ?? [{ text: "Regards," }]));
+    parts.push(this._lineText(this._salutation ?? _defaultSalutation()));
     return parts.join("\n\n");
   }
 

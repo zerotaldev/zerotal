@@ -8,7 +8,10 @@ export async function POST(http: HttpContext): Promise<void> {
   const { email, token, password } = await validate(http, (r) => ({
     email: r.string().trim().email(),
     token: r.string().min(1),
-    password: r.string().min(8).confirmed(),
+    password: r.string().min(8),
+    // Checked as its own field, so a mismatch is shown under "Confirm password" rather than
+    // piled under "Password" with that field's own message.
+    password_confirmation: r.string().sameAs("password", "The two passwords do not match."),
   }));
 
   if (!(await passwordReset.reset({ email, token, password }))) {

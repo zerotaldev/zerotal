@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Mail signs off with the app's name.** A `MailMessage` with no `salutation()` ended on a bare
+  "Regards," with nothing under it, while the starters' own mail closed with "The _App_ team".
+  The default is now "The _App_ team", from `app.name` in `config/app.ts`, and "Regards,"
+  only where no app is running.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

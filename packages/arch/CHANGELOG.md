@@ -13,6 +13,11 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Changed
+
+- **`AGENTS.md` says how a Vue page's props are checked**: only with `checkVueProps` set in
+  `InertiaTypeOptions`, and only by `vue-tsc`. Run `bun zt arch:update` to pick it up.
+
 ## [1.18.1] — 2026-11-26
 
 ### Fixed

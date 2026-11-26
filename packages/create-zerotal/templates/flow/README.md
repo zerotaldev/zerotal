@@ -132,6 +132,11 @@ port 3000. At run time the container needs `APP_KEY`, `APP_ENV=production` (set 
 check, which calls `/health` with it. See the
 [deployment guide](https://zerotal.dev/docs/deployment) for the rest.
 
+The server runs no background work. Once the app registers `QueueProvider` (for queued mail,
+notifications and jobs) or `SchedulerProvider` (for `app/schedules/`), run a second process
+from the same image, with the same environment: `bun zt worker`. Under `bun zt dev` the queue
+and the scheduler already run in their own tabs.
+
 ## Remove the example
 
 `Project` is there to show a resource end to end. To build your own in its place, delete:

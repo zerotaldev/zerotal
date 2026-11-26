@@ -2,6 +2,7 @@
  * The `make:command` command and the CLI-command source stub it writes.
  */
 import { Command } from "../Command.ts";
+import { _frameworkImport, _writeAppSource } from "../appSource.ts";
 
 /** Convert a name to kebab-case (e.g. `SendDailyReport` → `send-daily-report`). */
 export function toKebab(name: string): string {
@@ -12,29 +13,29 @@ export function toKebab(name: string): string {
     .toLowerCase();
 }
 
-/** Source for a new CLI command class extending `Command`. */
-export function commandStub(name: string): string {
-  return `import { Command } from 'zerotal';
-import type { ArgDef, FlagDef } from 'zerotal';
+/** Source for a new CLI command class extending `Command`, importing it from `core`. */
+export function commandStub(name: string, core = "zerotal"): string {
+  return `import { Command } from "${core}";
+import type { ArgDef, FlagDef } from "${core}";
 
 export class ${name} extends Command {
-  static commandName = '${toKebab(name)}';
-  static description = 'Describe what this command does';
-  static needsApp    = true;
+  static commandName = "${toKebab(name)}";
+  static description = "Describe what this command does";
+  static needsApp = true;
 
   static args: ArgDef[] = [
-    // { name: 'target', description: 'The target', required: true },
+    // { name: "target", description: "The target", required: true },
   ];
 
   static flags: FlagDef[] = [
-    // { name: 'dry-run', short: 'd', type: 'boolean' as const,
-    //   description: 'Preview without making changes', default: false },
+    // { name: "dry-run", short: "d", type: "boolean" as const,
+    //   description: "Preview without making changes", default: false },
   ];
 
   async run(): Promise<void> {
-    this.section('${name}');
+    this.section("${name}");
     // your implementation here
-    this.info('Done.');
+    this.info("Done.");
   }
 }
 `;
@@ -76,12 +77,14 @@ export class MakeCommandCommand extends Command {
           this.error(`File already exists: ${path}`);
           return;
         }
-        // Bun.write() creates any missing parent directories, so no mkdir is needed.
-        return Bun.write(path, commandStub(name)).then(() => {
-          this.info(`Created: ${path}`);
-          // app/commands/ is auto-discovered, so the command is immediately runnable.
-          this.info(`Run it with: bun zt.ts ${toKebab(name)}`);
-        });
+        return _writeAppSource(path, commandStub(name, _frameworkImport("@zerotal/core"))).then(
+          () => {
+            this.info(`Created: ${path}`);
+            // app/commands/ is auto-discovered, so the command is immediately runnable. Every
+            // starter's package.json has a `zt` script, so `bun zt` is how an app runs one.
+            this.info(`Run it with: bun zt ${toKebab(name)}`);
+          },
+        );
       });
   }
 }

@@ -520,19 +520,41 @@ export class ServeCommand extends Command {
   private _listenForReloadSignals(): void {
     const readline = createInterface({ input: process.stdin, terminal: false });
 
-    readline.on("line", (line: string) => {
-      const trimmed = line.trim();
-      // The orchestrator sends `reload` or `reload:<assetVersion>`. Update the
-      // asset version (so `asset()` emits a fresh ?v=) before broadcasting.
-      if (trimmed === "reload" || trimmed.startsWith("reload:")) {
-        const version = trimmed.slice("reload:".length);
-        if (version) setAssetVersion(version);
-        DevWsServer.broadcast("reload");
-      }
-    });
+    readline.on("line", _onOrchestratorLine);
 
     // If stdin closes (the orchestrator died), exit cleanly.
     readline.on("close", () => process.exit(0));
+  }
+}
+
+/**
+ * One line from the dev orchestrator, on the worker's stdin.
+ *
+ * `reload` / `reload:<assetVersion>` after a good rebuild; `build-error:<json lines>` after a
+ * failed one, and `build-ok` once a build works again. The tab shows a failure over the page it
+ * has, instead of the server serving the last good bundle with nothing said.
+ *
+ * @internal Exported for tests.
+ */
+export function _onOrchestratorLine(line: string): void {
+  const trimmed = line.trim();
+  // Update the asset version (so `asset()` emits a fresh ?v=) before broadcasting.
+  if (trimmed === "reload" || trimmed.startsWith("reload:")) {
+    const version = trimmed.slice("reload:".length);
+    if (version) setAssetVersion(version);
+    DevWsServer._setBuildError(null);
+    DevWsServer.broadcast("reload");
+    return;
+  }
+  if (trimmed === "build-ok") {
+    DevWsServer._setBuildError(null);
+  } else if (trimmed.startsWith("build-error:")) {
+    try {
+      const lines = JSON.parse(trimmed.slice("build-error:".length)) as unknown;
+      if (Array.isArray(lines)) DevWsServer._setBuildError(lines.map(String));
+    } catch {
+      /* a line that is not the orchestrator's — nothing to show */
+    }
   }
 }
 

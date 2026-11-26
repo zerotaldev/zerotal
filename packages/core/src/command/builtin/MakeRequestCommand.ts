@@ -2,6 +2,7 @@
  * The `make:request` command, which scaffolds a FormRequest validation class.
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 
 /**
  * `bun zt make:request <name>` — scaffolds a new FormRequest validation class
@@ -26,7 +27,7 @@ export class MakeRequestCommand extends Command {
       this.error(`File already exists: ${path}`);
       return;
     }
-    await Bun.write(path, stub(name));
+    await _writeAppSource(path, stub(name));
     this.info(`Created: ${path}`);
   }
 }

@@ -1,4 +1,5 @@
 import { Command, Str } from "@zerotal/core";
+import { _frameworkImport, _writeAppSource } from "@zerotal/core/commands";
 
 export type MigrationFileResult = {
   path: string;
@@ -19,6 +20,8 @@ export type MigrationStubOptions = {
   table?: string | undefined;
   /** Column lines for `up()`, between the id and the timestamps. */
   columns?: readonly string[] | undefined;
+  /** The specifier the ORM is imported by. `zerotal/orm` unless given. */
+  orm?: string | undefined;
 };
 
 /**
@@ -37,18 +40,19 @@ export function tableFromMigrationName(name: string): string | undefined {
 export function migrationStub(className: string, options: MigrationStubOptions = {}): string {
   const table = options.table ?? "table_name";
   const columns = (options.columns ?? []).map((line) => `      ${line}\n`).join("");
-  return `import { Migration, Schema } from '@zerotal/orm';
+  const orm = options.orm ?? "zerotal/orm";
+  return `import { Migration, Schema } from "${orm}";
 
 export default class ${className} extends Migration {
   override async up(): Promise<void> {
-    await Schema.create('${table}', (table) => {
-      table.increments('id');
+    await Schema.create("${table}", (table) => {
+      table.increments("id");
 ${columns}      table.timestamps();
     });
   }
 
   override async down(): Promise<void> {
-    await Schema.drop('${table}');
+    await Schema.drop("${table}");
   }
 }
 `;
@@ -108,13 +112,13 @@ export async function createMigrationFile(
     return { path, created: false };
   }
 
-  // Bun.write() creates any missing parent directories, so no mkdir is needed.
   const table = options.table ?? tableFromMigrationName(name);
-  await Bun.write(
+  await _writeAppSource(
     path,
     migrationStub(toMigrationClassName(name), {
       ...(table ? { table } : {}),
       ...(options.columns ? { columns: options.columns } : {}),
+      orm: _frameworkImport("@zerotal/orm"),
     }),
   );
   return { path, created: true };

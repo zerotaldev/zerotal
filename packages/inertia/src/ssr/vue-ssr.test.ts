@@ -15,6 +15,7 @@ import { Application, HttpContext, RequestContext, withApp } from "@zerotal/core
 import { inertia, inertiaStream, _setHtmlTemplate, _setPagesDir } from "../inertia.ts";
 import { SsrHandler } from "../SsrHandler.ts";
 import { detectVuePlugin } from "../vuePlugin.ts";
+import { _describeBuildLog } from "@zerotal/core/dev";
 import { renderInertiaPage, resolvePageModule } from "./renderPage.ts";
 
 const pagesDir = new URL("../__fixtures__/vue", import.meta.url).pathname.replace(
@@ -182,4 +183,59 @@ describe("Vue — the browser build", () => {
     },
     COLD,
   );
+
+  // From the 1.18.0 starter walk: a syntax error in a page's `<script setup>` was reported as
+  // `index.vue:0:0 … (12:15)`, and a template error named no line at all.
+  describe("a .vue error names its line and column", () => {
+    async function failure(source: string): Promise<string> {
+      const page = join(dir, "index.vue");
+      writeFileSync(page, source);
+      const entry = join(dir, "entry.ts");
+      writeFileSync(entry, `import Page from ${JSON.stringify(page)};\nexport default Page;\n`);
+      const result = await Bun.build({
+        entrypoints: [entry],
+        target: "browser",
+        plugins: await detectVuePlugin(dir),
+        throw: false,
+      });
+      expect(result.success).toBe(false);
+      return result.logs.map((log) => _describeBuildLog(log)).join("\n");
+    }
+
+    it(
+      "in <script setup>",
+      async () => {
+        const out = await failure(
+          `<script setup lang="ts">\nconst ok = 1;\nconst broken = ;\n</script>\n<template><p>{{ ok }}</p></template>\n`,
+        );
+        expect(out).toContain(`${join(dir, "index.vue")}:3:15 `);
+        expect(out).not.toContain(":0:0");
+        expect(out.split("\n")[0]).not.toContain("(3:15)");
+      },
+      COLD,
+    );
+
+    it(
+      "in a template, counted from the top of the file",
+      async () => {
+        const out = await failure(
+          `<script>\nexport default { data: () => ({ a: 1 }) };\n</script>\n\n<template>\n  <div>\n    <p>{{ a + }}</p>\n  </div>\n</template>\n`,
+        );
+        expect(out).toMatch(
+          new RegExp(`${join(dir, "index.vue").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:7:\\d+ `),
+        );
+        expect(out).not.toContain(":0:0");
+      },
+      COLD,
+    );
+
+    it(
+      "in the markup the parser reads",
+      async () => {
+        const out = await failure(`<template>\n  <div>\n    <span>\n  </div>\n</template>\n`);
+        expect(out).toMatch(/index\.vue:[1-9]\d*:\d+ \[vue\] Failed to parse: /);
+      },
+      COLD,
+    );
+  });
 });

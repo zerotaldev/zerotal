@@ -2,6 +2,7 @@
  * The `make:observer` command, which scaffolds a model observer class.
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 
 /**
  * `bun zt make:observer <name>` — scaffolds a new model observer class under
@@ -38,7 +39,7 @@ export class MakeObserverCommand extends Command {
       return;
     }
 
-    await Bun.write(path, _stub(name, model));
+    await _writeAppSource(path, _stub(name, model));
     this.info(`Created: ${path}`);
     this.line("");
     this.line(`Register it in a ServiceProvider:`);

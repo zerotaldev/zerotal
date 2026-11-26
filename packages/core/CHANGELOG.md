@@ -33,6 +33,44 @@ follows the Zerotal monorepo's unified versioning.
 - **`SecureHeadersMiddleware`'s docblock no longer shows a `{nonce}` placeholder.** Nothing
   replaced it, so a policy copied from the example sent a literal `'nonce-{nonce}'` that matched
   no script. The example now keeps scripts in files on the app's own origin.
+- **Generated files pass the app's own checks.** `make:notification`, `make:job` and
+  `make:command` wrote single quotes, and a starter's `bun run format:check` (which its CI runs)
+  failed on a file nobody had touched. Every `make:*` generator now imports the framework the
+  way the app does (through `zerotal/*` when `package.json` declares the bundle, by the scoped
+  name otherwise) and writes through the app's own Prettier when it declares one; without it,
+  the stubs are already in the starters' style.
+- **`make:policy --model Task` writes a policy for `Task`.** `--model` (also `--model=Task` and
+  `-m Task`) was read and then ignored: the policy was `Policy<unknown>`, its imports were
+  commented out, and every check returned `true`. It is now `Policy<Task>`, its checks take the
+  app's own `User` and `Task`, and on a model with a `userId` column they are the starters'
+  owner rule, as in `ProjectPolicy`. On a model without one, each check allows and the command
+  says so.
+- **`make:test` writes a test that passes on the app as it stands.** In the React, Vue and Flow
+  starters it wrote into `tests/feature/` with its own boot code and JSON requests, and
+  `bun zt test` failed on a fresh app with `Expected HTTP 200 but got 302`. It now writes into
+  `tests/`, boots through the starter's `bootApp()` from `tests/support.ts`, signs in with
+  `UserFactory` and sends forms; a test that calls a route the app does not have yet is a
+  `test.todo`, and the list test runs once that route exists.
+- **`make:command` says to run the command with `bun zt <name>`,** not `bun zt.ts <name>`.
+- **`printf '1+1\n' | bun zt repl` evaluates the line and exits 0.** The REPL read its history
+  file after creating its input, so piped lines (and the end of input) arrived before anything
+  was listening; the prompt it then asked for threw `readline was closed`, exit code 1. Lines
+  are now read in order, each finishes before the REPL exits at the end of input, and piped
+  input prints only the results: no banner, prompt or colour codes.
+- **A failed frontend build shows in the browser.** In `zt dev`, breaking a React or Vue page
+  served the last good bundle with nothing said; the error was only in the terminal. Every open
+  tab now draws the error over the page (file, line, column and message), a tab opened while the
+  build is broken shows it too, and the next good build takes it away and reloads. The panel is
+  drawn by `/__dev/reload.js` with DOM calls only, so it needs no `'unsafe-inline'`.
+- **A server that will not start says why, in the browser too.** A syntax error in a Flow page
+  stopped the server: the browser got "connection refused", and the terminal, after three
+  identical attempts, blamed the port (`Port 3000 may be held by another process`). A source
+  error is now reported as itself (`home.tsx:110:26 Expected closing JSX tag …`) and not
+  retried, only a port another process holds is reported as one, and until the next save the
+  port answers with a page showing the error, which reloads itself when the server is back.
+- **A build error from a plugin names its line.** Bun gives an error thrown by a build plugin no
+  position, so the dev log and `inertia:build` printed `file:0:0`; the place the compiler wrote in
+  the message, `(12:15)`, is now read from there: `file:12:15`.
 
 ## [1.18.0] — 2026-11-26
 

@@ -13,6 +13,11 @@
  *     reports a different one. That is how a rebuild riding along with a
  *     server restart still reaches the browser.
  *
+ *   • `build-error:<json lines>` — the last frontend build failed. The server goes
+ *     on serving the last bundle that built, so the tab draws the error over the
+ *     page; `build-ok` (or the `reload` a good build sends) takes it away. A tab
+ *     that connects while the build is broken is told at once.
+ *
  * Reconnecting on close (rather than on error) is what keeps a server restart
  * from wedging the page without spinning up a reload loop.
  *
@@ -43,11 +48,33 @@ export const _DEV_RELOAD_SOURCE: string =
   `(function(){` +
   `var proto=location.protocol==='https:'?'wss:':'ws:';` +
   `var build=null;` +
+  // The build-error overlay. Drawn with DOM calls and CSSOM properties only: no markup string,
+  // no inline style attribute and no inline script, so a strict Content-Security-Policy that
+  // allows this file allows the overlay too.
+  `var overlay=null;` +
+  `function hide(){if(overlay){overlay.remove();overlay=null;}}` +
+  `function el(tag,text,style){var e=document.createElement(tag);if(text)e.textContent=text;` +
+  `for(var k in style)e.style[k]=style[k];return e;}` +
+  `function show(lines){hide();` +
+  `var o=el('div','',{position:'fixed',top:'0',right:'0',bottom:'0',left:'0',zIndex:'2147483647',` +
+  `overflow:'auto',padding:'32px',background:'rgba(17,17,23,0.94)',color:'#f4f4f5',` +
+  `font:'13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace',textAlign:'left'});` +
+  `o.id='__zerotal_build_error';o.setAttribute('role','alertdialog');` +
+  `o.setAttribute('aria-label','Build failed');` +
+  `o.appendChild(el('div','Build failed',{color:'#f87171',fontSize:'16px',fontWeight:'700',marginBottom:'4px'}));` +
+  `o.appendChild(el('div','The page underneath is the last build that worked.',{color:'#a1a1aa',marginBottom:'16px'}));` +
+  `o.appendChild(el('pre',lines.join('\\n'),{whiteSpace:'pre-wrap',wordBreak:'break-word',margin:'0',` +
+  `padding:'16px',borderRadius:'6px',background:'rgba(255,255,255,0.06)',font:'inherit'}));` +
+  `o.appendChild(el('div','Fix it and save: the page reloads by itself. Esc hides this.',{color:'#a1a1aa',marginTop:'16px'}));` +
+  `(document.body||document.documentElement).appendChild(o);overlay=o;}` +
+  `document.addEventListener('keydown',function(e){if(e.key==='Escape')hide();});` +
   `function connect(){` +
   `var ws=new WebSocket(proto+'//'+location.host+'/__dev/ws');` +
   `ws.onmessage=function(e){` +
   `var d=e.data;` +
   `if(d==='reload'){location.reload();return;}` +
+  `if(d==='build-ok'){hide();return;}` +
+  `if(d.indexOf('build-error:')===0){try{show(JSON.parse(d.slice(12)));}catch(_){}return;}` +
   `if(d.indexOf('version:')===0){` +
   `var v=d.slice(8);` +
   `if(!v)return;` +

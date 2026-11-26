@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`make:policy` is one command.** This package registered its own copy, which the CLI never
+  reached (core's is registered before any provider boots) and which had drifted from it; it is
+  now core's, which writes `Policy<Model>` with owner checks.
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

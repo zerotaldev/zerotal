@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `.vue` compile error names its line.** A syntax error in `<script setup>` was reported as
+  `index.vue:0:0 … (12:15)`; it is now `index.vue:12:15`. A template or markup error said only
+  "Element is missing end tag." and now carries its line and column too, counted from the top
+  of the file.
+
 ## [1.17.1] — 2026-11-21
 
 ### Fixed

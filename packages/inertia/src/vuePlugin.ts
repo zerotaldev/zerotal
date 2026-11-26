@@ -110,6 +110,29 @@ export function _requireVueRuntimeLoader(): Promise<void> {
   return _registerRuntimeLoader(_loadVueCompiler);
 }
 
+/**
+ * The message for the `.vue` compiler's errors, each with its place in the file as `(line:column)`.
+ *
+ * Bun gives an error thrown from a plugin no position of its own, so a build reported
+ * `index.vue:0:0`, and the compiler's errors said only "Element is missing end tag." with no line
+ * at all. The place goes at the end of the first line, where the script compiler already puts
+ * its own (`Unexpected token (12:15)`), and where the build log reads it from.
+ *
+ * @param errors - The compiler's errors: `CompilerError`s with a `loc`, or plain errors.
+ * @param lineOffset - Lines before the compiled source's first, for a block compiled alone.
+ * @internal Exported for tests.
+ */
+export function _vueErrorMessage(what: string, errors: readonly unknown[], lineOffset = 0): string {
+  const lines = errors.map((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    const start = (error as { loc?: { start?: { line?: unknown; column?: unknown } } } | null)?.loc
+      ?.start;
+    if (typeof start?.line !== "number" || typeof start.column !== "number") return message;
+    return `${message} (${start.line + lineOffset}:${start.column})`;
+  });
+  return `[vue] ${what}: ${lines.join("\n")}`;
+}
+
 function vueSfcPlugin(sfc: SfcCompiler): BunPlugin {
   return {
     name: "zerotal-vue-sfc",
@@ -117,9 +140,7 @@ function vueSfcPlugin(sfc: SfcCompiler): BunPlugin {
       build.onLoad({ filter: /\.vue$/ }, async (args) => {
         const source = await Bun.file(args.path).text();
         const { descriptor, errors } = sfc.parse(source, { filename: args.path });
-        if (errors.length > 0) {
-          throw new Error(`[Zerotal Vue] Failed to parse ${args.path}:\n${errors.join("\n")}`);
-        }
+        if (errors.length > 0) throw new Error(_vueErrorMessage("Failed to parse", errors));
 
         // Stable per-file id used for scoped-style hashing (data-v-<id>).
         const id = Bun.hash(args.path).toString(16).slice(0, 8);
@@ -156,9 +177,10 @@ function vueSfcPlugin(sfc: SfcCompiler): BunPlugin {
             compilerOptions: { bindingMetadata: bindings },
           });
           if (tpl.errors.length > 0) {
-            throw new Error(
-              `[Zerotal Vue] Template error in ${args.path}:\n${tpl.errors.join("\n")}`,
-            );
+            // The template is compiled on its own, so its errors count lines from the
+            // `<template>` tag; the file's line is that many past the tag's.
+            const offset = (descriptor.template.loc?.start.line ?? 1) - 1;
+            throw new Error(_vueErrorMessage("Template error", tpl.errors, offset));
           }
           code += `\n${tpl.code}\n__sfc_main__.render = render;`;
         }

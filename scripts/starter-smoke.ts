@@ -22,6 +22,13 @@
  *   - `zt doctor` reports no failure (warnings, such as unrun migrations, are fine);
  *   - `zt list` exits rather than hanging.
  *
+ * Then, in the React and Flow starters, a feature is added the way a developer adds one — the
+ * generators a 1.18.0 walk found writing files the starter's own checks rejected — and the
+ * checks run again: `make:model`, `make:factory`, `make:notification`, `make:job`,
+ * `make:command`, `make:policy --model`, `make:test` and, in Flow, `make:flow --crud --model`,
+ * then `typecheck`, `format:check` and `zt test` must all still pass, and `zt repl` must read
+ * piped input.
+ *
  * Run in the release workflow after the dry run, so a starter that does not work stops
  * the release before any package reaches npm.
  */
@@ -90,8 +97,15 @@ async function run(
   cmd: string[],
   cwd: string,
   timeoutMs = 300_000,
+  stdin?: string,
 ): Promise<{ code: number; out: string }> {
-  const proc = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "pipe", env: appEnv() });
+  const proc = Bun.spawn(cmd, {
+    cwd,
+    stdin: stdin === undefined ? "ignore" : new TextEncoder().encode(stdin),
+    stdout: "pipe",
+    stderr: "pipe",
+    env: appEnv(),
+  });
   const timer = setTimeout(() => proc.kill(), timeoutMs);
   const [out, err, code] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -162,10 +176,136 @@ async function smoke(template: string, tarballs: Record<string, string>): Promis
 
     const list = await run([process.execPath, "zt.ts", "list"], app, 30_000);
     check("zt list exits", list.code === 0, tail(list.out));
+
+    if (template === "react" || template === "flow") {
+      await addFeature(app, template, scripts, check);
+    }
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
   return checks;
+}
+
+/** Replace `from` with `to` in the app's file, failing the check when `from` is not there. */
+async function edit(app: string, file: string, from: string, to: string): Promise<boolean> {
+  const path = join(app, file);
+  const text = await Bun.file(path).text();
+  if (!text.includes(from)) return false;
+  await Bun.write(path, text.replace(from, to));
+  return true;
+}
+
+/**
+ * Add a Task feature with the generators, as a developer would, and run the starter's checks
+ * over the result. Each generator's output is checked for the thing it used to get wrong.
+ */
+async function addFeature(
+  app: string,
+  template: string,
+  scripts: Record<string, string>,
+  check: (name: string, ok: boolean, detail?: string) => void,
+): Promise<void> {
+  const zt = (...args: string[]) => run([process.execPath, "zt.ts", ...args], app);
+  const read = (file: string) =>
+    Bun.file(join(app, file))
+      .text()
+      .catch(() => "");
+  const step = async (args: string[], ok: (out: string) => Promise<boolean> | boolean) => {
+    const result = await zt(...args);
+    check(`zt ${args.join(" ")}`, result.code === 0 && (await ok(result.out)), tail(result.out));
+  };
+
+  await step(["make:model", "Task", "-m"], async (out) => {
+    const model = await read("app/models/Task.ts");
+    return (
+      /Created: database\/migrations\//.test(out) &&
+      model.includes('from "zerotal/orm"') &&
+      model.includes("extends Model {")
+    );
+  });
+  // A task belongs to whoever made it, as the starter's projects do: the owner column the
+  // policy and the Flow page scope by.
+  const owned =
+    (await edit(
+      app,
+      "app/models/Task.ts",
+      '  @column({ type: "string" }) name!: string;',
+      '  @column({ type: "number" }) userId!: number;\n  @column({ type: "string" }) name!: string;',
+    )) &&
+    (await Promise.all(
+      [...new Bun.Glob("database/migrations/*_create_tasks_table.ts").scanSync({ cwd: app })].map(
+        (file) =>
+          edit(
+            app,
+            file,
+            'table.string("name");',
+            'table.integer("user_id").index();\n      table.string("name");',
+          ),
+      ),
+    ).then((done) => done.length === 1 && done[0] === true));
+  check("give Task an owner column", owned);
+
+  await step(["make:factory", "TaskFactory"], async () => {
+    const factory = await read("database/factories/TaskFactory.ts");
+    return factory.includes('from "zerotal/testing"') && factory.includes("name: fake.");
+  });
+  await step(["make:notification", "TaskAssigned"], () => true);
+  await step(["make:job", "SendTaskReminder"], async () =>
+    (await read("app/jobs/SendTaskReminder.ts")).includes('from "zerotal/queue"'),
+  );
+  await step(["make:command", "PruneTasks"], (out) =>
+    out.includes("Run it with: bun zt prune-tasks"),
+  );
+  await step(["make:policy", "TaskPolicy", "--model", "Task"], async () => {
+    const policy = await read("app/policies/TaskPolicy.ts");
+    return (
+      policy.includes("extends Policy<Task>") && policy.includes("return task.userId === user.id;")
+    );
+  });
+
+  if (template === "flow") {
+    await step(
+      ["make:flow", "TasksPage", "--crud", "--model", "Task"],
+      (out) =>
+        !out.includes("serves this automatically") &&
+        out.includes('Router.flow("/tasks", TasksPage).name("tasks");'),
+    );
+    // Register it where the command says: routes/web.ts, inside the signed-in group.
+    const routed =
+      (await edit(
+        app,
+        "routes/web.ts",
+        'import { ProjectsPage } from "../app/flow/pages/projects/index";',
+        'import { ProjectsPage } from "../app/flow/pages/projects/index";\nimport { TasksPage } from "../app/flow/pages/tasks";',
+      )) &&
+      (await edit(
+        app,
+        "routes/web.ts",
+        '    Router.flow("/projects", ProjectsPage).name("projects");',
+        '    Router.flow("/projects", ProjectsPage).name("projects");\n    Router.flow("/tasks", TasksPage).name("tasks");',
+      ));
+    check("register /tasks in routes/web.ts", routed);
+  }
+
+  // With /tasks routed (Flow), the list test runs; without (React), every test is a todo.
+  await step(["make:test", "tasks"], async () => {
+    const test = await read("tests/tasks.test.ts");
+    return (
+      test.includes('import { bootApp } from "./support"') &&
+      (template === "flow" ? test.includes('  test("lists tasks"') : !/^\s+test\(/m.test(test))
+    );
+  });
+
+  for (const script of ["typecheck", "format:check"]) {
+    if (!scripts[script]) continue;
+    const result = await run([process.execPath, "run", script], app);
+    check(`${script} after the generators`, result.code === 0, tail(result.out));
+  }
+  const test = await zt("test");
+  check("zt test after the generators", test.code === 0, tail(test.out));
+
+  const repl = await run([process.execPath, "zt.ts", "repl"], app, 60_000, "1+1\n");
+  check("zt repl reads piped input", repl.code === 0 && /^2$/m.test(repl.out), tail(repl.out));
 }
 
 const tarballs = await tarballMap();

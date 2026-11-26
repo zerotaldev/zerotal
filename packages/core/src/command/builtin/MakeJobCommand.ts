@@ -2,6 +2,7 @@
  * The `make:job` command, which scaffolds a queue job class.
  */
 import { Command } from "../Command.ts";
+import { _frameworkImport, _writeAppSource } from "../appSource.ts";
 
 /**
  * `bun zt make:job <name>` — scaffolds a new queue job class under `app/jobs/`.
@@ -25,16 +26,20 @@ export class MakeJobCommand extends Command {
       this.error(`File already exists: ${path}`);
       return;
     }
-    await Bun.write(
-      path,
-      `import { Job, JobRegistry } from 'zerotal/queue';
+    await _writeAppSource(path, jobStub(name, _frameworkImport("@zerotal/queue")));
+    this.info(`Created: ${path}`);
+  }
+}
+
+/** Source for a new queue job class extending `Job`, importing the queue by `queue`. */
+export function jobStub(name: string, queue = "zerotal/queue"): string {
+  return `import { Job, JobRegistry } from "${queue}";
 
 export class ${name} extends Job {
-  readonly queue = 'default';
+  readonly queue = "default";
 
-  constructor(
-    // public readonly id: number,
-  ) { super(); }
+  // Whatever the job needs, as constructor parameters, e.g.
+  //   constructor(public readonly id: number) { super(); }
 
   payload(): Record<string, unknown> {
     return {};
@@ -46,8 +51,5 @@ export class ${name} extends Job {
 }
 
 JobRegistry.register(${name} as never);
-`,
-    );
-    this.info(`Created: ${path}`);
-  }
+`;
 }

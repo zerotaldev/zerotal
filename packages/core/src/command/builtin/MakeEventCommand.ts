@@ -3,6 +3,7 @@
  * broadcastable).
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 
 /**
  * `bun zt make:event <name>` — scaffolds a new event class under `app/events/`
@@ -37,7 +38,7 @@ export class MakeEventCommand extends Command {
       return;
     }
     const broadcast = this.flags["broadcast"] as boolean;
-    await Bun.write(path, broadcast ? broadcastEventStub(name) : plainEventStub(name));
+    await _writeAppSource(path, broadcast ? broadcastEventStub(name) : plainEventStub(name));
     this.info(`Created: ${path}`);
   }
 }

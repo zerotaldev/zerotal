@@ -140,15 +140,21 @@ how to pass any other flag to `bun test`, see
 
 ```bash
 # in your project root
-bun zt make:test PostTest         # tests/feature/post.test.ts
-bun zt make:test SlugTest --unit  # tests/unit/slug.test.ts
+bun zt make:test tasks            # tests/tasks.test.ts
+bun zt make:test SlugTest --unit  # tests/slug.test.ts
 ```
 
-The file is named `*.test.ts`, which is what `bun test` discovers. The feature stub boots
-the app the way the starter's own tests do, through `bootstrap/app.ts` (or through
-`tests/helpers.ts` if your app has one, as the API starter does), so a generated test runs
-against the same configured application as the rest of the suite. Its requests assume the
-resource's routes (`Posts` is `/posts`) and a `name` column; edit them to match your app.
+The file is named `*.test.ts`, which is what `bun test` discovers, and goes in `tests/`
+beside the starter's own tests (an app that already has `tests/feature/` and `tests/unit/`
+keeps that layout). It boots the app the way the rest of the suite does: through `bootApp()`
+from `tests/support.ts` in the React, Vue and Flow starters, through `tests/helpers.ts` in the
+API starter, and through `bootstrap/app.ts` otherwise. In the starters it signs in with
+`UserFactory` and sends forms, as their own tests do.
+
+A generated test passes on the app as it stands, or is a `test.todo` that `bun zt test`
+lists without running. A test that calls a route nobody has written yet (`tasks` is
+`/tasks`) is a todo; the one that reads the list runs once that route exists. Take `.todo`
+off the others as you write their routes, and change the fields to the ones your form sends.
 
 ## A first test
 

@@ -6,7 +6,13 @@ import { ServeCommand } from "./ServeCommand.ts";
 import { KeyGenerateCommand, generateKey, updateEnvContent } from "./KeyGenerateCommand.ts";
 import { MakeControllerCommand, basicStub, resourceStub } from "./MakeControllerCommand.ts";
 import { MakeMiddlewareCommand, middlewareStub } from "./MakeMiddlewareCommand.ts";
-import { MakeTestCommand, _testPath, featureTestStub, unitTestStub } from "./MakeTestCommand.ts";
+import {
+  MakeTestCommand,
+  _routeExists,
+  _testPath,
+  featureTestStub,
+  unitTestStub,
+} from "./MakeTestCommand.ts";
 import { MakeCommandCommand, toKebab, commandStub } from "./MakeCommandCommand.ts";
 import { TerminalWriter, BufferWriter } from "../OutputWriter.ts";
 import { MakeEventCommand } from "./MakeEventCommand.ts";
@@ -148,13 +154,13 @@ describe("MakeTestCommand", () => {
   });
 
   it("the feature stub boots the app through the shared helper when the app has one", () => {
-    const stub = featureTestStub("PostTest", { helpers: true });
+    const stub = featureTestStub("PostTest", { helpers: true, routeExists: true });
 
-    expect(stub).toContain("import { createApp } from '../helpers.ts'");
+    expect(stub).toContain('import { createApp } from "./helpers.ts"');
     // The umbrella subpath, not the scoped package: no template installs the latter.
-    expect(stub).toContain("from 'zerotal/testing'");
+    expect(stub).toContain('from "zerotal/testing"');
     expect(stub).not.toContain("@zerotal/testing");
-    expect(stub).toContain("describe('Post'");
+    expect(stub).toContain('describe("Post"');
     expect(stub).toContain("res.assertOk()");
     expect(stub).toContain("afterAll(() => app.close())");
   });
@@ -162,44 +168,114 @@ describe("MakeTestCommand", () => {
   // From the 1.15.4 adoption audit: `make:test Posts` wrote tests/feature/PostsTest.ts, which
   // bun test never discovers; imported ../helpers.ts, which only the API starter has; and asked
   // for `/postses`.
-  it("boots through bootstrap/app.ts when there is no helper, as the starters' own tests do", () => {
+  it("boots through bootstrap/app.ts when there is no helper", () => {
     const stub = featureTestStub("Posts");
 
     expect(stub).not.toContain("helpers.ts");
-    expect(stub).toContain("import('../../bootstrap/app.ts')");
-    expect(stub).toContain("createTestApp, migrateDatabase");
+    expect(stub).toContain('import("../bootstrap/app.ts")');
+    expect(stub).toContain("  createTestApp,\n  migrateDatabase,");
+    expect(featureTestStub("Posts", { dir: "tests/feature" })).toContain(
+      'import("../../bootstrap/app.ts")',
+    );
   });
 
   it("leaves the write tests as todos outside the API starter, so a fresh app is not red", () => {
-    expect(featureTestStub("Posts")).toContain("it.todo('creates a record'");
-    expect(featureTestStub("Posts", { helpers: true })).toContain("  it('creates a record'");
+    expect(featureTestStub("Posts")).toContain('test.todo("creates a record"');
+    expect(featureTestStub("Posts", { helpers: true, routeExists: true })).toContain(
+      '  test("creates a record"',
+    );
+  });
+
+  // From the 1.18.0 starter walk: `make:test tasks` in the React starter wrote its own boot code
+  // and a JSON-API test into tests/feature/, and `bun zt test` failed on a fresh app with
+  // "Expected HTTP 200 but got 302".
+  it("in a starter, boots through bootApp() and sends forms, as the starter's tests do", () => {
+    const stub = featureTestStub("tasks", { support: true, userFactory: true });
+
+    expect(stub).toContain('import { bootApp } from "./support"');
+    expect(stub).toContain('import { UserFactory } from "../database/factories/UserFactory"');
+    expect(stub).not.toContain("createTestApp");
+    expect(stub).not.toContain("asJson");
+    expect(stub).toContain('app.actingAs(user).postForm("/tasks"');
+  });
+
+  it("runs no test that calls a route the app does not have", () => {
+    const missing = featureTestStub("tasks", { support: true, userFactory: true });
+    expect(missing).not.toMatch(/^\s+test\(/m);
+    expect(missing).toContain('test.todo("lists tasks"');
+
+    const present = featureTestStub("tasks", {
+      support: true,
+      userFactory: true,
+      routeExists: true,
+    });
+    expect(present).toContain('  test("lists tasks"');
+    // The write tests depend on fields only the author knows.
+    expect(present).toContain('test.todo("creates a task"');
   });
 
   it("does not pluralise a name that is already plural", () => {
     const stub = featureTestStub("Posts");
 
-    expect(stub).toContain("app.get('/posts')");
+    expect(stub).toContain('app.get("/posts")');
     expect(stub).not.toContain("postses");
-    expect(featureTestStub("BlogPostTest")).toContain("assertDatabaseHas('blog_posts'");
-    expect(featureTestStub("BlogPostTest")).toContain("app.get('/blog-posts')");
+    expect(featureTestStub("BlogPostTest")).toContain('assertDatabaseHas("blog_posts"');
+    expect(featureTestStub("BlogPostTest")).toContain('app.get("/blog-posts")');
   });
 
-  it("names the file so bun test discovers it", () => {
-    expect(_testPath("Posts", false)).toBe("tests/feature/posts.test.ts");
-    expect(_testPath("PostTest", false)).toBe("tests/feature/post.test.ts");
-    expect(_testPath("BlogPost", true)).toBe("tests/unit/blog-post.test.ts");
+  it("names the file so bun test discovers it, in tests/ unless the app sorts its tests", () => {
+    const flat = mkdtempSync(join(tmpdir(), "zt-make-test-"));
+    const sorted = mkdtempSync(join(tmpdir(), "zt-make-test-"));
+    mkdirSync(join(sorted, "tests", "feature"), { recursive: true });
+    mkdirSync(join(sorted, "tests", "unit"), { recursive: true });
+    try {
+      expect(_testPath("Posts", false, flat)).toBe("tests/posts.test.ts");
+      expect(_testPath("PostTest", false, flat)).toBe("tests/post.test.ts");
+      expect(_testPath("BlogPost", true, flat)).toBe("tests/blog-post.test.ts");
+      expect(_testPath("Posts", false, sorted)).toBe("tests/feature/posts.test.ts");
+      expect(_testPath("BlogPost", true, sorted)).toBe("tests/unit/blog-post.test.ts");
+    } finally {
+      rmSync(flat, { recursive: true, force: true });
+      rmSync(sorted, { recursive: true, force: true });
+    }
+  });
+
+  it("finds a list route in app/routes/ or routes/, and nothing else", () => {
+    const dir = mkdtempSync(join(tmpdir(), "zt-make-test-"));
+    try {
+      expect(_routeExists("/tasks", dir)).toBe(false);
+      mkdirSync(join(dir, "app", "routes", "(auth)", "tasks"), { recursive: true });
+      // A POST handler does not answer GET.
+      writeFileSync(
+        join(dir, "app/routes/(auth)/tasks/index.ts"),
+        "export async function POST() {}",
+      );
+      expect(_routeExists("/tasks", dir)).toBe(false);
+      writeFileSync(
+        join(dir, "app/routes/(auth)/tasks/index.ts"),
+        "export async function GET() {}",
+      );
+      expect(_routeExists("/tasks", dir)).toBe(true);
+
+      const flow = mkdtempSync(join(tmpdir(), "zt-make-test-"));
+      mkdirSync(join(flow, "routes"));
+      writeFileSync(join(flow, "routes/web.ts"), 'Router.flow("/tasks", TasksPage);');
+      expect(_routeExists("/tasks", flow)).toBe(true);
+      expect(_routeExists("/task", flow)).toBe(false);
+      rmSync(flow, { recursive: true, force: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("the unit stub pulls in neither the app nor the database", () => {
     const stub = unitTestStub("SlugifyTest");
 
-    expect(stub).toContain("describe('Slugify'");
+    expect(stub).toContain('describe("Slugify"');
     expect(stub).not.toContain("@zerotal/testing");
     expect(stub).not.toContain("createApp");
   });
 });
-
-// ── MakeCommandCommand static ─────────────────────────────────────────────────
 
 describe("MakeCommandCommand", () => {
   it("declares static properties", () => {
@@ -829,7 +905,7 @@ describe("MakePolicyCommand", () => {
     const stub = policyStub("PostPolicy", "Post");
     expect(stub).toContain("PostPolicy");
     expect(stub).toContain("extends Policy");
-    expect(stub).toContain("from 'zerotal/auth'");
+    expect(stub).toContain('from "zerotal/auth"');
     expect(stub).toContain("view(");
     expect(stub).toContain("create(");
     expect(stub).toContain("update(");
@@ -1090,6 +1166,24 @@ describe("make:* stubs import only what a scaffolded app has", () => {
     ["make:resource", MakeResourceCommand],
     ["make:test", MakeTestCommand],
   ] as const;
+
+  // Generators read the app's package.json to choose between `zerotal/orm` and `@zerotal/orm`,
+  // so these run inside an app that declares the bundle, as every starter does.
+  let cwd: string;
+  let app: string;
+  beforeEach(() => {
+    cwd = process.cwd();
+    app = mkdtempSync(join(tmpdir(), "zt-make-app-"));
+    writeFileSync(
+      join(app, "package.json"),
+      JSON.stringify({ dependencies: { zerotal: "1.18.1", "@zerotal/notifications": "1.18.1" } }),
+    );
+    process.chdir(app);
+  });
+  afterEach(() => {
+    process.chdir(cwd);
+    rmSync(app, { recursive: true, force: true });
+  });
 
   for (const [name, Cmd] of GENERATORS) {
     it(`${name} names no package the templates leave out`, async () => {

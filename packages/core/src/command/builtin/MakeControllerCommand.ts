@@ -2,6 +2,7 @@
  * The `make:controller` command and the controller source stubs it writes.
  */
 import { Command } from "../Command.ts";
+import { _writeAppSource } from "../appSource.ts";
 
 /** Source for a minimal controller with a single `index` action. */
 export function basicStub(name: string): string {
@@ -86,8 +87,8 @@ export class MakeControllerCommand extends Command {
           this.error(`File already exists: ${path}`);
           return;
         }
-        // Bun.write() creates any missing parent directories, so no mkdir is needed.
-        return Bun.write(path, resource ? resourceStub(name) : basicStub(name)).then(() => {
+        // _writeAppSource() creates any missing parent directories, so no mkdir is needed.
+        return _writeAppSource(path, resource ? resourceStub(name) : basicStub(name)).then(() => {
           this.info(`Created: ${path}`);
         });
       });

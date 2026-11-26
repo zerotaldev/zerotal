@@ -67,7 +67,7 @@ describe("make:model --migration", () => {
     await makeModel(model);
 
     expect(tableNameFor(model)).toBe(table);
-    expect(await read(`app/models/${model}.ts`)).toContain(`@table('${table}')`);
+    expect(await read(`app/models/${model}.ts`)).toContain(`@table("${table}")`);
   });
 
   it("creates a migration for the same table, named for it", async () => {
@@ -76,8 +76,8 @@ describe("make:model --migration", () => {
     const files = await migrations();
     expect(files).toEqual(["001_create_posts_table.ts"]);
     const migration = await read("database/migrations/001_create_posts_table.ts");
-    expect(migration).toContain("Schema.create('posts'");
-    expect(migration).toContain("Schema.drop('posts')");
+    expect(migration).toContain('Schema.create("posts"');
+    expect(migration).toContain('Schema.drop("posts")');
     expect(migration).not.toContain("table_name");
   });
 
@@ -86,9 +86,9 @@ describe("make:model --migration", () => {
 
     const model = await read("app/models/Post.ts");
     const migration = await read("database/migrations/001_create_posts_table.ts");
-    expect(model).toContain("@column() name!: string;");
-    expect(model).toContain("fillable = ['name']");
-    expect(migration).toContain("table.string('name');");
+    expect(model).toContain('@column({ type: "string" }) name!: string;');
+    expect(model).toContain('fillable = ["name"]');
+    expect(migration).toContain('table.string("name");');
   });
 
   it("the model and the migration name one table", async () => {
@@ -97,9 +97,9 @@ describe("make:model --migration", () => {
     const model = await read("app/models/BlogPost.ts");
     const [file] = await migrations();
     const migration = await read(`database/migrations/${file}`);
-    const modelTable = /@table\('([^']+)'\)/.exec(model)?.[1];
-    const created = /Schema\.create\('([^']+)'/.exec(migration)?.[1];
-    const dropped = /Schema\.drop\('([^']+)'\)/.exec(migration)?.[1];
+    const modelTable = /@table\("([^"]+)"\)/.exec(model)?.[1];
+    const created = /Schema\.create\("([^"]+)"/.exec(migration)?.[1];
+    const dropped = /Schema\.drop\("([^"]+)"\)/.exec(migration)?.[1];
     expect(modelTable).toBe("blog_posts");
     expect(created).toBe(modelTable);
     expect(dropped).toBe(modelTable);
@@ -108,7 +108,7 @@ describe("make:model --migration", () => {
   it("writes no migration without the flag", async () => {
     await makeModel("Post", false);
 
-    expect(await read("app/models/Post.ts")).toContain("@table('posts')");
+    expect(await read("app/models/Post.ts")).toContain('@table("posts")');
     await expect(migrations()).rejects.toThrow();
   });
 });
@@ -118,7 +118,7 @@ describe("make:migration", () => {
     await makeMigration("create_invoices_table");
 
     const migration = await read("database/migrations/001_create_invoices_table.ts");
-    expect(migration).toContain("Schema.create('invoices'");
+    expect(migration).toContain('Schema.create("invoices"');
     expect(migration).not.toContain("table_name");
   });
 
@@ -149,14 +149,14 @@ describe("migrationStub", () => {
 
     expect(() => transpiler.transformSync(source)).not.toThrow();
     expect(source).toContain("table.string('title');");
-    expect(source.indexOf("table.increments('id')")).toBeLessThan(
+    expect(source.indexOf('table.increments("id")')).toBeLessThan(
       source.indexOf("table.string('title')"),
     );
     expect(source.indexOf("table.text('body')")).toBeLessThan(source.indexOf("table.timestamps()"));
   });
 
   it("still creates the placeholder when it is told nothing", () => {
-    expect(migrationStub("CreateThings")).toContain("Schema.create('table_name'");
+    expect(migrationStub("CreateThings")).toContain('Schema.create("table_name"');
   });
 });
 

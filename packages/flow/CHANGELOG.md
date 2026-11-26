@@ -11,6 +11,17 @@ change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`make:flow --crud --model Task` works in the Flow starter.** It printed "File-based routing
+  serves this automatically", and `/tasks` was a 404: the starter serves pages only from
+  `routes/web.ts`. It now prints the import and the `Router.flow(...)` line to add there (and
+  says so only when the app's file-based routing does serve its pages). The page's fields are
+  the model's own columns, read from its source (it assumed a `name` column, four type errors on
+  a model without one); a model with a `userId` column is scoped to the signed-in user, for the
+  list and for every edit and delete (it listed `Task.all()`, everyone's); and in the starter it
+  extends the starter's `Page`, inside `AppLayout`.
+
 ## [1.17.2] — 2026-11-25
 
 ### Changed

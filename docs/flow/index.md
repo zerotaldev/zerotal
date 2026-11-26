@@ -219,9 +219,13 @@ bun zt make:flow StarRating --child    # a child component (props from its paren
 bun zt make:flow Billing --layout AppLayout   # a page wrapped in a layout
 ```
 
-`--layout` and `--model` are found by what the files export, so `--layout AppLayout` imports from `app/flow/layouts/app.tsx` in a starter app, and `--model Post` from `app/models/Post.ts`. If no file exports the name, the page imports it from where it would be and the command warns. With `--model`, the page lists, creates, edits and deletes records with nothing left to fill in; it assumes a `name` column, which is what `make:model --migration` starts a model with.
+`--layout` and `--model` are found by what the files export, so `--layout AppLayout` imports from the file in `app/flow/layouts/` that exports it, and `--model Post` from `app/models/Post.ts`. If no file exports the name, the page imports it from where it would be and the command warns.
 
-The name may be nested (`Users/Index` → `app/flow/pages/users/index.tsx`, served at `/users`; pages are written lowercase because the file name is the URL), and the target directory is auto-detected (`app/flow/pages` for pages, `app/flow/components` for children) or set with `--dir`. Because Flow uses file-based routing, a generated page is served automatically — the command also prints the explicit `Router.flow(...)` line for apps that register routes by hand.
+With `--model`, the page lists, creates, edits and deletes records with nothing left to fill in. Its form fields are the model's own: the mass-assignable columns that are strings, numbers or booleans, read from the model's source. A model with an owner column (`userId`) is scoped to the signed-in user: the list, and every edit and delete, read only that user's records, and a new record is theirs. In the Flow starter the page extends the starter's `Page` (from `app/flow/lib/page.ts`), renders inside `AppLayout` unless `--layout` names another, and is interactive.
+
+The name may be nested (`Users/Index` → `app/flow/pages/users/index.tsx`, at `/users`; pages are written lowercase because the file name is the URL), and the target directory is auto-detected (`app/flow/pages` for pages, `app/flow/components` for children) or set with `--dir`.
+
+Whether the page is served by itself depends on how the app routes its pages. The Flow starter registers every page in `routes/web.ts`, so the command prints the two lines to add there (the import and the `Router.flow(...)` route), and says to put an owner-scoped page inside the signed-in group. An app whose `bootstrap/app.ts` points `fileBasedRouting()` at its pages directory serves the page at once, and the command says so.
 
 The command lives on `FlowProvider`, so it's available in any app that registers the provider. (If `make:flow` isn't found, add `FlowProvider` to your `bootstrap/providers.ts` — an app that only pulls it in transitively through the admin panel won't have it in CLI runs.)
 

@@ -7,7 +7,14 @@
  * with an `@expose`/`render` skeleton; `--child`, `--crud`, and `--layout`
  * cover the common shapes.
  */
-import { Command } from "@zerotal/core";
+import { Command, pluralize } from "@zerotal/core";
+import {
+  _frameworkImport,
+  _readModel,
+  _writeAppSource,
+  type _ModelColumn,
+  type _ModelShape,
+} from "@zerotal/core/commands";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
@@ -96,22 +103,58 @@ export class MakeFlowCommand extends Command {
     const modelFile = model && crud && !child ? _findExport("app/models", model) : undefined;
     const modelImport = model ? _importPath(path, modelFile ?? join("app/models", model)) : "";
 
+    // The starters give every page a base class, `Page` in app/flow/lib/page.ts, which reads the
+    // signed-in user, the flash messages and the field errors, and hands the layout what it
+    // needs. A page generated beside them extends it too, rather than the bare `Component`.
+    const pageFile = child ? undefined : _findExport(join(dirname(baseDir), "lib"), "Page");
+    const base: _PageBase | undefined = pageFile
+      ? {
+          import: _importPath(path, pageFile),
+          titled: /export\s+function\s+titled\b/.test(readFileSync(`${pageFile}.ts`, "utf8")),
+        }
+      : undefined;
+    // On a starter page, the layout is the signed-in shell unless another is asked for.
+    const pageLayout = layout || (base && _findExport(layoutsDir, "AppLayout") ? "AppLayout" : "");
+    const pageLayoutFile = pageLayout ? _findExport(layoutsDir, pageLayout) : undefined;
+    const pageLayoutImport = pageLayout
+      ? _importPath(path, pageLayoutFile ?? join(layoutsDir, pageLayout))
+      : "";
+    // A layout that takes the page's shell (`<AppLayout shell={this.shell()}>`) is rendered from
+    // `layout()`; any other is the `static layout` a plain component names.
+    const shellLayout =
+      base !== undefined &&
+      pageLayoutFile !== undefined &&
+      /\bshell\b/.test(readFileSync(`${pageLayoutFile}.tsx`, "utf8"));
+
     let stub: string;
+    let shape: _ModelShape | undefined;
     if (child) {
       if (crud || layout || model) {
         this.warn("--crud, --layout and --model are ignored for a child component.");
       }
       stub = _childStub(componentName);
     } else if (crud) {
+      shape = model ? _readModel(model) : undefined;
       stub = model
-        ? _modelCrudStub(componentName, layout, layoutImport, model, modelImport)
+        ? _modelCrudStub({
+            name: componentName,
+            url: _urlFor(name),
+            model,
+            modelImport,
+            shape,
+            base,
+            layout: pageLayout,
+            layoutImport: pageLayoutImport,
+            shellLayout,
+            auth: _frameworkImport("@zerotal/auth"),
+          })
         : _crudStub(componentName, layout, layoutImport);
     } else {
       if (model) this.warn("--model is used with --crud; it is ignored for a plain page.");
       stub = _pageStub(componentName, layout, layoutImport);
     }
 
-    await Bun.write(path, stub);
+    await _writeAppSource(path, stub);
     this.info(`Created: ${path}`);
 
     if (layout && !child && !layoutFile) {
@@ -128,15 +171,49 @@ export class MakeFlowCommand extends Command {
     }
 
     if (!child) {
-      // File-based routing (`.fileBasedRouting("app/flow/pages")`) auto-discovers this page.
-      // Show the explicit registration too, for apps that register routes by hand.
       const url = _urlFor(name);
-      this.dim(
-        "  File-based routing serves this automatically. To register it explicitly, add to routes/web.ts:",
-      );
-      this.dim(`    Router.flow("${url}", ${componentName});`);
+      if (_servedByFileRouting(baseDir)) {
+        this.dim(`  File-based routing serves it at ${url}.`);
+      } else {
+        // The starters register every page in routes/web.ts, and serve nothing from
+        // app/flow/pages by itself: this used to say "File-based routing serves this
+        // automatically", and the page was a 404 at the address it named.
+        const routes = existsSync("routes/web.ts") ? "routes/web.ts" : "your routes file";
+        const from = existsSync("routes/web.ts")
+          ? _importPath("routes/web.ts", path.replace(/\.tsx$/, ""))
+          : path.replace(/\.tsx$/, "");
+        const routeName = url.slice(1).replace(/\//g, ".") || "home";
+        this.warn(`  Nothing serves ${url} yet. Add the page to ${routes}:`);
+        this.dim(`    import { ${componentName} } from "${from}";`);
+        this.dim(`    Router.flow("${url}", ${componentName}).name("${routeName}");`);
+        if (shape?.owner) {
+          this.dim(
+            `  It lists the signed-in user's records, so put it inside the signed-in group ` +
+              `(beside /projects in the starters).`,
+          );
+        }
+      }
     }
   }
+}
+
+/**
+ * Whether the app serves the pages in `dir` by file-based routing: its bootstrap points
+ * `fileBasedRouting()` at that directory. The starters do not; they register pages in
+ * routes/web.ts and point file-based routing at app/routes/, the form handlers.
+ *
+ * @internal Exported for tests.
+ */
+export function _servedByFileRouting(dir: string): boolean {
+  let source: string;
+  try {
+    source = readFileSync("bootstrap/app.ts", "utf8");
+  } catch {
+    return false;
+  }
+  // Up to the first `)`, which is the end of a `basePath("…")` argument or of the call itself.
+  const calls = source.match(/fileBasedRouting\s*\([^)]*\)/g) ?? [];
+  return calls.some((call) => call.includes(dir));
 }
 
 /** First existing candidate directory, else the first candidate as the default. */
@@ -357,39 +434,221 @@ ${_layoutStatic(layout)}  @locked items: Item[] = [];
 `;
 }
 
+/** The app's own page base class, when it has one (the starters' `Page`). */
+interface _PageBase {
+  /** Its import, relative to the page. */
+  import: string;
+  /** Its module also exports `titled()`, which the starters' pages name their tab with. */
+  titled: boolean;
+}
+
+/** Members of `Component` and the starters' `Page` that a form field must not shadow. */
+const RESERVED = new Set([
+  "id",
+  "items",
+  "editingId",
+  "errors",
+  "error",
+  "user",
+  "http",
+  "path",
+  "flashes",
+  "shell",
+  "old",
+  "layout",
+  "render",
+  "refresh",
+  "flash",
+  "validate",
+  "reset",
+  "save",
+  "edit",
+  "destroy",
+  "load",
+  "owned",
+  "signal",
+  "cancelled",
+  "html",
+  "slot",
+]);
+
+/** What the model CRUD stub is built from. */
+interface _ModelCrudStubOptions {
+  name: string;
+  url: string;
+  model: string;
+  modelImport: string;
+  /** The model's columns, read from its source; absent when the model was not found. */
+  shape: _ModelShape | undefined;
+  base: _PageBase | undefined;
+  layout: string;
+  layoutImport: string;
+  /** The layout takes the page's shell, and is rendered from `layout()`. */
+  shellLayout: boolean;
+  /** The specifier `Auth` is imported by, for owner scoping on a page without the starter base. */
+  auth: string;
+}
+
+/** The form's initial value for a column of this type. */
+function _initial(column: _ModelColumn): string {
+  if (column.type === "number") return "0";
+  if (column.type === "boolean") return "false";
+  return '""';
+}
+
+/** The form control for one field, bound to the page's field of the same name. */
+function _control(column: _ModelColumn, label: string): string {
+  const p = column.property;
+  if (column.type === "boolean") {
+    return `<label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={this.${p}} />
+              ${label}
+            </label>`;
+  }
+  const type = column.type === "number" ? ` type="number"` : "";
+  return `<input${type} value={this.${p}} class="input w-full" placeholder="${label}" aria-label="${label}" />
+            <span error={this.errors.${p}} class="text-sm text-red-500" />`;
+}
+
+/** `dueOn` → `Due on`: a label from a property name. */
+function _label(property: string): string {
+  const words = property.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /**
  * A resourceful page over a real model: list, create, edit and delete, with nothing left to fill
- * in. It assumes a `name` column, which is what `make:model --migration` starts a model with.
+ * in.
+ *
+ * Its fields are the model's own: the mass-assignable columns that are strings, numbers or
+ * booleans, read from the model's source. (It assumed a `name` column, and a model without one
+ * failed to typecheck in four places.) A model with an owner column (`userId`) is scoped to the
+ * signed-in user: the list, and every edit and delete, read only that user's records, and a new
+ * one is theirs. In an app with the starters' `Page` base, the page extends it.
  */
-function _modelCrudStub(
-  name: string,
-  layout: string,
-  layoutImport: string,
-  model: string,
-  modelImport: string,
-): string {
+function _modelCrudStub(o: _ModelCrudStubOptions): string {
+  const { name, model } = o;
+  const record = model.charAt(0).toLowerCase() + model.slice(1);
+  const records = pluralize(record);
+  // Without the model's source to read, assume what `make:model` starts a model with.
+  const assumed: _ModelColumn = {
+    property: "name",
+    column: "name",
+    type: "string",
+    nullable: false,
+  };
+  const editable = (
+    o.shape
+      ? o.shape.fillable
+          .map((property) => o.shape!.columns.find((c) => c.property === property))
+          .filter((c): c is _ModelColumn => c !== undefined)
+      : [assumed]
+  ).filter(
+    (c) =>
+      c !== o.shape?.owner &&
+      !RESERVED.has(c.property) &&
+      ["string", "number", "boolean"].includes(c.type),
+  );
+  const fields = editable.length > 0 ? editable : [];
+  const first = fields.find((c) => c.type === "string");
+  const owner = o.shape?.owner;
+  const onPage = o.base !== undefined;
+  const userId = onPage ? "this.user?.id ?? 0" : "Auth.user().id";
+
+  const flowImports = ["expose", "locked", ...(first ? ["validate"] : [])];
+  if (!onPage) flowImports.unshift("Component");
+  if (o.shellLayout) flowImports.push("type HtmlNode");
+  const imports = [
+    `import { ${flowImports.join(", ")} } from "@zerotal/flow";`,
+    ...(owner && !onPage ? [`import { Auth } from "${o.auth}";`] : []),
+    `import { ${model} } from "${o.modelImport}";`,
+    ...(o.layout ? [`import { ${o.layout} } from "${o.layoutImport}";`] : []),
+    ...(onPage
+      ? [`import { Page${o.base!.titled ? ", titled" : ""} } from "${o.base!.import}";`]
+      : []),
+  ].join("\n");
+
+  const rowKeys = ["id", ...fields.map((c) => c.property)];
+  const statics = [
+    ...(onPage ? ["  static override interactive = true;"] : []),
+    ...(onPage && o.base!.titled
+      ? [`  static override title = titled("${_label(name.replace(/Page$/, ""))}");`]
+      : []),
+    ...(o.layout && !o.shellLayout ? [`  static layout = ${o.layout};`] : []),
+  ];
+  const fieldLines = fields.map((c) => {
+    const rule = c === first ? "@validate((rule) => rule.required()) " : "";
+    return `  @expose ${rule}${c.property} = ${_initial(c)};`;
+  });
+  const assignFrom = (source: string) =>
+    fields
+      .map(
+        (c) =>
+          `    this.${c.property} = ${source}.${c.property}${c.nullable && c.type === "string" ? ' ?? ""' : c.nullable ? ` ?? ${_initial(c)}` : ""};`,
+      )
+      .join("\n");
+  const clear = fields.map((c) => `    this.${c.property} = ${_initial(c)};`).join("\n");
+  const data = fields.length
+    ? `{ ${fields.map((c) => `${c.property}: this.${c.property}`).join(", ")} }`
+    : "{}";
+  const owned = owner ? `${model}.query().where("${owner.column}", ${userId})` : `${model}.query()`;
+  const shown = first ? `{item.${first.property}}` : `{\`#\${item.id}\`}`;
+  const controls = fields
+    .map(
+      (c) =>
+        `          <div class="flex-1">\n            ${_control(c, _label(c.property))}\n          </div>`,
+    )
+    .join("\n");
+
   return `/** @jsxImportSource @zerotal/flow */
-import { Component, expose, locked, validate } from "@zerotal/flow";
-${_layoutImport(layout, layoutImport)}import { ${model} } from "${modelImport}";
+${imports}
 
-export class ${name} extends Component {
-${_layoutStatic(layout)}  @locked items: ${model}[] = [];
+/** A ${record} as the page holds it: the columns it lists and edits. */
+type Row = Pick<${model}, ${rowKeys.map((k) => `"${k}"`).join(" | ")}>;
+
+/**
+ * ${o.url} — ${owner ? `the signed-in user's ${records}` : `every ${record}`}: list, create, edit and delete them.
+ *
+ * The page is live: each action runs on the server over Flow's WebSocket, and the list
+ * re-renders in place.${owner ? ` Every read and write goes through \`owned()\`, so nobody\n * sees or changes a ${record} that is not theirs.` : ""}
+ */
+export class ${name} extends ${onPage ? "Page" : "Component"} {
+${statics.length ? statics.join("\n") + "\n\n" : ""}  @locked items: Row[] = [];
   @expose editingId: number | null = null;
-  @expose @validate((rule) => rule.required().min(2)) name = "";
-
+${fieldLines.map((line) => `${line}\n`).join("")}${
+    o.shellLayout
+      ? `
+  override layout(page: HtmlNode): HtmlNode {
+    return <${o.layout} shell={this.shell()}>{page}</${o.layout}>;
+  }
+`
+      : ""
+  }
   override async onMount(): Promise<void> {
-    this.items = await ${model}.all();
+    await this.load();
+  }
+
+  /** ${owner ? `The signed-in user's ${records}, and nobody else's.` : `The ${records} the page works on.`} */
+  private owned() {
+    return ${owned};
+  }
+
+  private async load(): Promise<void> {
+    const found = await this.owned().orderBy("id", "desc").get();
+    this.items = found.map((${record}) => ({
+${rowKeys.map((k) => `      ${k}: ${record}.${k},`).join("\n")}
+    }));
   }
 
   @expose async save(): Promise<void> {
-    await this.validate();
-
-    if (this.editingId === null) {
-      await ${model}.create({ name: this.name });
+${first ? "    await this.validate();\n\n" : ""}    if (this.editingId === null) {
+      const ${record} = new ${model}();
+      ${record}.fill(${data});${owner ? `\n      ${record}.${owner.property} = ${userId};` : ""}
+      await ${record}.save();
     } else {
-      const item = await ${model}.findOrFail(this.editingId);
-      item.name = this.name;
-      await item.save();
+      const ${record} = await this.owned().where("id", this.editingId).firstOrFail();
+      ${record}.fill(${data});
+      await ${record}.save();
     }
 
     this.reset();
@@ -400,34 +659,28 @@ ${_layoutStatic(layout)}  @locked items: ${model}[] = [];
   @expose edit(id: number): void {
     const item = this.items.find((i) => i.id === id);
     if (!item) return;
-    this.editingId = id;
-    this.name = item.name;
+    this.editingId = id;${fields.length ? `\n${assignFrom("item")}` : ""}
   }
 
   @expose async destroy(id: number): Promise<void> {
-    const item = await ${model}.findOrFail(id);
-    await item.delete();
+    const ${record} = await this.owned().where("id", id).firstOrFail();
+    await ${record}.delete();
     this.refresh();
     this.flash("Deleted.");
   }
 
   @expose reset(): void {
-    this.editingId = null;
-    this.name = "";
+    this.editingId = null;${fields.length ? `\n${clear}` : ""}
     this.resetValidation();
   }
 
   override async render() {
     return (
       <div class="max-w-xl mx-auto space-y-6 p-6">
-        <h1 class="text-2xl font-bold">${name}</h1>
+        <h1 class="text-2xl font-bold">${_label(name.replace(/Page$/, ""))}</h1>
 
         <form onSubmit={this.save} class="flex items-start gap-2">
-          <div class="flex-1">
-            <input value={this.name} class="input w-full" placeholder="Name" />
-            <span error={this.errors.name} class="text-sm text-red-500" />
-          </div>
-          <button type="submit" loadingAttr="disabled">
+${controls ? `${controls}\n` : ""}          <button type="submit" loadingAttr="disabled">
             {this.editingId === null ? "Add" : "Update"}
           </button>
           {this.editingId !== null && (
@@ -440,7 +693,7 @@ ${_layoutStatic(layout)}  @locked items: ${model}[] = [];
         <ul class="divide-y">
           {this.items.map((item) => (
             <li key={String(item.id)} class="flex items-center justify-between py-2">
-              <span>{item.name}</span>
+              <span>${shown}</span>
               <span class="flex gap-3">
                 <button onClick={() => this.edit(item.id)}>Edit</button>
                 <button onClick={() => this.destroy(item.id)} confirm="Delete this?" class="text-red-600">

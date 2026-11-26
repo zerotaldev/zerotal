@@ -1,4 +1,5 @@
 import { Command } from "@zerotal/core";
+import { _frameworkImport, _writeAppSource } from "@zerotal/core/commands";
 
 /**
  * Scaffolds a new database seeder class (`bun zt make:seeder`).
@@ -30,7 +31,7 @@ export class MakeSeederCommand extends Command {
       return;
     }
 
-    await Bun.write(path, seederStub(name));
+    await _writeAppSource(path, seederStub(name, _frameworkImport("@zerotal/orm")));
     this.info(`Created: ${path}`);
   }
 }
@@ -38,8 +39,8 @@ export class MakeSeederCommand extends Command {
 /**
  * Returns the source text of a seeder class file named `name`.
  */
-export function seederStub(name: string): string {
-  return `import { Seeder } from '@zerotal/orm';
+export function seederStub(name: string, orm = "zerotal/orm"): string {
+  return `import { Seeder } from "${orm}";
 
 export class ${name} extends Seeder {
   async run(): Promise<void> {

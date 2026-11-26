@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A fake disk says which real disk the code used instead.** `Storage.fake()` replaces one
+  disk, so a test that faked the default while the code wrote elsewhere (media with no disk
+  configured writes to `public`) found the fake empty, "The disk holds no files.", while the
+  files went to the real, served folder. A failed `assertExists`, `assertExistsMatching` or
+  `assertCount` now names the real disks used while the fake was installed, and the call
+  that fakes the right one: `Storage.fake("public")`.
+- **`bun zt dev` no longer says it is skipping `app/schedules`.** The server printed
+  `Skipping 1 file(s) in app/schedules — the "schedules" convention does not run in env=web`
+  on every restart, while the scheduler tab beside it was running them. A web server outside
+  `zt dev` still says so.
+- **A page syntax error no longer parks the scheduler tab.** The scheduler loads the app's own
+  files, so the error stopped it too, and it retried the same files three times and printed
+  `"scheduler" failed 3 times — parked`. A process that restarts with the server and fails
+  to start now waits for the next save, with one line saying so.
+
 ## [1.18.1] — 2026-11-26
 
 ### Added

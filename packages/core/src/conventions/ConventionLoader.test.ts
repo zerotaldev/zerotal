@@ -90,6 +90,37 @@ describe("runConventions", () => {
     expect(announced).toContain("worker");
   });
 
+  it("stays quiet under zt dev, where the convention's own process runs it", async () => {
+    // From the 1.18.1 walk: every server restart under `zt dev` said app/schedules was skipped,
+    // while the scheduler tab beside it was running them.
+    const lines: string[] = [];
+    const original = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: unknown) => {
+      lines.push(String(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    const before = Bun.env["ZT_DEV"];
+    Bun.env["ZT_DEV"] = "1";
+
+    try {
+      const concern: ConcernDescriptor = {
+        name: "conventions",
+        order: 1,
+        dir: ".",
+        envs: ["worker"],
+        register: () => {},
+      };
+      await runConventions([concern], { root: import.meta.dir, env: "web", ctx });
+      await Promise.resolve();
+    } finally {
+      process.stdout.write = original;
+      if (before === undefined) delete Bun.env["ZT_DEV"];
+      else Bun.env["ZT_DEV"] = before;
+    }
+
+    expect(lines.join(" | ")).not.toContain("Skipping");
+  });
+
   it("stays quiet about a skipped directory with nothing in it", async () => {
     const lines: string[] = [];
     const original = process.stdout.write.bind(process.stdout);

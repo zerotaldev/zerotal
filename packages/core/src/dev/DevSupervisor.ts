@@ -276,6 +276,21 @@ export class DevSupervisor {
       return;
     }
 
+    // A process that restarts with the server loads the app's own files, so when it fails to
+    // start the cause is usually a file being edited — a page with a syntax error stops it the
+    // same way it stops the server. Retrying the same files three times only printed the same
+    // failure three times and parked it; it starts again on the next save, as the server does.
+    if (entry.definition.restartOnChange && Date.now() - startedAt < this._healthyAfter) {
+      this._setState(entry, "parked");
+      this._emit(
+        entry,
+        `[zerotal:dev] "${entry.definition.name}" stopped (exit ${code}). It starts again when ` +
+          `you save a change, or press r with this tab focused.`,
+        "stderr",
+      );
+      return;
+    }
+
     entry.status.attempts += 1;
     if (entry.status.attempts >= MAX_ATTEMPTS) {
       this._setState(entry, "parked");

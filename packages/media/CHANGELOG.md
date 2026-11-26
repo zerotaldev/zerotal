@@ -10,6 +10,14 @@ line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A refused upload is logged as a warning.** `DisallowedMimeTypeError` (422) and
+  `FileTooLargeError` (413) are the client's mistake, answered with a 4xx, but were logged as
+  `ERROR Request pipeline error` with a stack, even at `LOG_LEVEL=warn`, including in a test
+  that sent a wrong file on purpose. They are now treated as an answer to the client, as an
+  `HttpError` is: one warning line, no stack.
+
 ## [1.18.1] — 2026-11-26
 
 ### Fixed

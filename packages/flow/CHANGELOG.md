@@ -21,6 +21,10 @@ change.
   `FIELD_ERROR` and `buttonClass()`, and elsewhere plain Tailwind classes. Generated pages no
   longer carry `/** @jsxImportSource @zerotal/flow */` when the app's `tsconfig.json` already
   names Flow's JSX runtime, as the starters' does.
+- **The dev error overlay shows the code.** It showed the message and the stack, so a
+  developer read `at render (…/tasks/index.tsx:25:6)` and opened the file. The server now
+  sends the lines around the first frame in the app's own code with the error, under the dev
+  worker only, for an action and for the first render alike.
 
 ## [1.18.1] — 2026-11-26
 

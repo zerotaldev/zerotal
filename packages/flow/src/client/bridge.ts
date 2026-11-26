@@ -31,7 +31,7 @@ import { FlowComponent } from "./FlowComponent.ts";
 import { evaluateCsp } from "./cspEvaluator.ts";
 import { buildUrlWithQuery, type CurrentUrlOptions } from "./url.ts";
 import { confirmDialog, type ConfirmDialogOptions } from "./confirm.ts";
-import { showErrorOverlay } from "./errorOverlay.ts";
+import { showErrorOverlay, type OverlayError } from "./errorOverlay.ts";
 import { applyAppend, applyRemove, type OptOp } from "./optimistic.ts";
 import { clientStore } from "../store.ts";
 // The `/Socket` subpath, not the package root: the root also exports
@@ -1812,13 +1812,20 @@ async function _handleServerFrame(
     // Dev error overlay: the server attaches a stack only under the dev worker, so its presence
     // means "show the full-screen overlay". The patch that follows still reconciles the component
     // underneath, so dismissing (Esc / backdrop) returns to a live page.
-    const errFrame = frame as { stack?: string; name?: string; action?: string; message: string };
+    const errFrame = frame as {
+      stack?: string;
+      name?: string;
+      action?: string;
+      message: string;
+      frame?: OverlayError["frame"];
+    };
     if (errFrame.stack) {
       showErrorOverlay({
         message: errFrame.message,
         name: errFrame.name,
         stack: errFrame.stack,
         action: errFrame.action,
+        frame: errFrame.frame,
         component: frame.component ? _components.get(frame.component)?.name : undefined,
       });
     }

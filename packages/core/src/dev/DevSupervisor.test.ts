@@ -256,6 +256,29 @@ describe("DevSupervisor — restart policy", () => {
     expect(h.supervisor.statuses()[0]!.attempts).toBe(0);
     await h.supervisor.stopAll();
   });
+
+  // From the 1.18.1 walk: a syntax error in a Flow page stopped the scheduler, which loads the
+  // same files, and it retried them three times and printed "failed 3 times — parked".
+  it("waits for the next save when a process that follows the server fails to start", async () => {
+    const h = harness();
+    h.supervisor.start([definition({ name: "scheduler", restartOnChange: true })]);
+    await settle();
+
+    h.children[0]!.exit(1);
+    await settle();
+
+    // No retry against the same files: one start, and a line saying what brings it back.
+    expect(h.children).toHaveLength(1);
+    expect(h.states).toContainEqual(["scheduler", "parked"]);
+    expect(h.lines.some(([, line]) => line.includes("starts again when you save"))).toBe(true);
+    expect(h.lines.some(([, line]) => line.includes("failed 3 times"))).toBe(false);
+
+    // The save restarts it with the server.
+    await h.supervisor.restartWithServer();
+    await settle();
+    expect(h.children).toHaveLength(2);
+    await h.supervisor.stopAll();
+  });
 });
 
 describe("DevSupervisor — isolation", () => {

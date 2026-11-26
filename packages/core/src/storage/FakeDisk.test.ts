@@ -173,6 +173,33 @@ describe("StorageManager.fake()", () => {
 
     expect(manager.disk()).not.toBe(fake);
   });
+
+  // From the 1.18.1 walk: media with no disk configured writes to `public`. A test that faked
+  // the default disk found it empty ("The disk holds no files."), while the uploads went to the
+  // real, served `public` folder, and nothing said so.
+  it("names the real disk the code used when an assertion on the fake fails", () => {
+    const manager = new StorageManager(config);
+    const fake = manager.fake();
+    manager.disk("s3");
+
+    expect(() => fake.assertExistsMatching(/^media\//)).toThrow(
+      /used the real "s3" disk.*Storage\.fake\("s3"\)/,
+    );
+    expect(() => fake.assertCount(1)).toThrow(/Storage\.fake\("s3"\)/);
+  });
+
+  it("does not blame a disk that is faked too, or one used after restoreFakes", () => {
+    const manager = new StorageManager(config);
+    const local = manager.fake();
+    manager.fake("s3");
+    manager.disk("s3");
+
+    expect(() => local.assertExistsMatching(/^media\//)).toThrow(/holds no files\.$/);
+
+    manager.restoreFakes();
+    const again = manager.fake();
+    expect(() => again.assertCount(1)).toThrow(/holds no files\.$/);
+  });
 });
 
 describe("append", () => {

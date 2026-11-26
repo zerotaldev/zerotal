@@ -11,6 +11,7 @@
 import type { Application } from "../application/Application.ts";
 import type { AppEnvironment } from "../provider/ServiceProvider.ts";
 import { frameworkLog } from "../logger/frameworkLog.ts";
+import { DEV_WORKER_ENV_VAR } from "../support/env.ts";
 import { _importAppFile, _scanAppFiles } from "../support/appFiles.ts";
 
 /**
@@ -147,6 +148,9 @@ async function _announceSkipped(
   options: RunConventionsOptions,
 ): Promise<void> {
   if (!concern.dir || !concern.register) return;
+  // Under `bun zt dev` the web server is one process of several: the scheduler's own tab runs
+  // app/schedules. Saying the server skips them, on every restart, read as "they do not run".
+  if (Bun.env[DEV_WORKER_ENV_VAR] === "1") return;
 
   const relativeDirectory = options.paths?.[concern.name] ?? concern.dir;
   const files = (await _scanDir(`${options.root}/${relativeDirectory}`)).filter(

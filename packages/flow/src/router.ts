@@ -19,6 +19,7 @@ import type { HtmlNode } from "./jsx-runtime.ts";
 import { _clientScriptTags } from "./clientAssets.ts";
 import { randomComponentId, toScriptJson } from "./utils.ts";
 import type { Layout } from "./Layout.ts";
+import { _codeFrame } from "./devFrame.ts";
 import {
   getUrlProps,
   getSessionProps,
@@ -359,6 +360,7 @@ export function _renderBootErrorPage(error: unknown, compName: string): string {
     stack: e.stack,
     action: "initial render",
     component: compName,
+    frame: _codeFrame(e.stack),
   });
   const runtimeTag = _clientScriptTags();
   return `<!DOCTYPE html>

@@ -38,6 +38,14 @@ export class FakeDisk implements StorageDriver {
    */
   constructor(private readonly baseUrl: string = "/storage") {}
 
+  /**
+   * The real disks the code under test used while this fake was installed, set by
+   * `Storage.fake()`. A failed assertion names them: the files are most likely there.
+   *
+   * @internal
+   */
+  _realDisksUsed: (() => string[]) | undefined = undefined;
+
   // ── StorageDriver ─────────────────────────────────────────────────────
 
   async put(
@@ -217,7 +225,15 @@ export class FakeDisk implements StorageDriver {
 
   private _listing(): string {
     const paths = this.paths();
-    return paths.length === 0 ? "no files." : `${paths.length}: [${paths.join(", ")}].`;
+    const listing = paths.length === 0 ? "no files." : `${paths.length}: [${paths.join(", ")}].`;
+    const elsewhere = this._realDisksUsed?.() ?? [];
+    if (elsewhere.length === 0) return listing;
+    const names = elsewhere.map((d) => `"${d}"`).join(", ");
+    return (
+      `${listing} While this fake was installed, the code under test used the real ${names} ` +
+      `disk${elsewhere.length === 1 ? "" : "s"}, which it does not replace, so files may have ` +
+      `been written there. Fake that disk instead: Storage.fake("${elsewhere[0]}").`
+    );
   }
 }
 

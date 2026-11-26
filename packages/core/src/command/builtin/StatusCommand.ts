@@ -1,5 +1,5 @@
 import { Command } from "../Command.ts";
-import { clientPort } from "../../support/port.ts";
+import { _clientPort } from "../../support/port.ts";
 
 /**
  * `bun zt status` — shows live metrics from the running server.
@@ -34,7 +34,7 @@ export class StatusCommand extends Command {
 
   async run(): Promise<void> {
     // The same port `serve` binds when neither command is given `--port`.
-    const port = clientPort(this.flags["port"]);
+    const port = _clientPort(this.flags["port"]);
     const host = this.flags["host"] as string;
     const url = `http://${host}:${port}/__zerotal/health`;
 

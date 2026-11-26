@@ -32,7 +32,7 @@ export interface ScaffoldOptions {
    * Ship the coding-agent files (see {@link AGENT_PATHS}). On unless declined with
    * `--no-agent`.
    */
-  agent?:   boolean;
+  agent?:   boolean | undefined;
 }
 
 /**

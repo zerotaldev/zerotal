@@ -21,7 +21,7 @@ import {
   findPortOwner,
   stopProcess,
   PORT_RESOLVED_ENV_VAR,
-  servePort,
+  _servePort,
   type PortOwner,
 } from "../../support/port.ts";
 import { localNetworkAddress } from "../../support/network.ts";
@@ -470,7 +470,7 @@ export class ServeCommand extends Command {
 
   /** The port asked for: `--port`, else `app.port` (which defaults to `PORT`), else 3000. */
   private _wantedPort(): number {
-    return servePort(this.flags["port"], this._config()?.get<number>("app.port"));
+    return _servePort(this.flags["port"], this._config()?.get<number>("app.port"));
   }
 
   /** Read the resolved `app.assets` config block, or undefined when not configured. */

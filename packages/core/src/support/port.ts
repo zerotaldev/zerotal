@@ -26,7 +26,7 @@ export const DEFAULT_PORT = 3000;
  *
  * @internal
  */
-export function parsePort(value: unknown, source: string): number {
+export function _parsePort(value: unknown, source: string): number {
   const port = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
   if (typeof port === "number" && Number.isInteger(port) && port >= 0 && port <= 65_535)
     return port;
@@ -47,11 +47,11 @@ function _hasPort(env: Env): boolean {
  * when it is unset or blank. Hosts and containers set `PORT` to say where the app must listen.
  *
  * Deliberately unchecked. Config resolves before anything can report an error usefully, so a
- * typo must not throw here; {@link servePort} refuses it, naming `PORT`, before anything binds.
+ * typo must not throw here; {@link _servePort} refuses it, naming `PORT`, before anything binds.
  *
  * @internal
  */
-export function portFromEnv(env: Env = Bun.env): number {
+export function _portFromEnv(env: Env = Bun.env): number {
   return _hasPort(env) ? Number((env["PORT"] as string).trim()) : DEFAULT_PORT;
 }
 
@@ -62,23 +62,23 @@ export function portFromEnv(env: Env = Bun.env): number {
  *
  * @internal
  */
-export function servePort(flag: unknown, configured: unknown, env: Env = Bun.env): number {
-  if (flag !== undefined) return parsePort(flag, "--port");
+export function _servePort(flag: unknown, configured: unknown, env: Env = Bun.env): number {
+  if (flag !== undefined) return _parsePort(flag, "--port");
   if (configured === undefined) return DEFAULT_PORT;
   const source = _hasPort(env) ? `app.port (PORT is ${JSON.stringify(env["PORT"])})` : "app.port";
-  return parsePort(configured, source);
+  return _parsePort(configured, source);
 }
 
 /**
  * The port a command that does not boot the app looks for the server on: `--port` when given,
- * otherwise `PORT`, otherwise {@link DEFAULT_PORT}. The same answer as {@link servePort} for an
+ * otherwise `PORT`, otherwise {@link DEFAULT_PORT}. The same answer as {@link _servePort} for an
  * app that leaves `app.port` to its default.
  *
  * @internal
  */
-export function clientPort(flag: unknown, env: Env = Bun.env): number {
-  if (flag !== undefined) return parsePort(flag, "--port");
-  return _hasPort(env) ? parsePort(env["PORT"], "PORT") : DEFAULT_PORT;
+export function _clientPort(flag: unknown, env: Env = Bun.env): number {
+  if (flag !== undefined) return _parsePort(flag, "--port");
+  return _hasPort(env) ? _parsePort(env["PORT"], "PORT") : DEFAULT_PORT;
 }
 
 /** A process holding a port: its pid, and its executable name when discoverable. */

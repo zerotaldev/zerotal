@@ -5,7 +5,7 @@
  */
 import { deepMerge } from "../support/deepMerge.ts";
 import { isProdLike } from "../support/env.ts";
-import { portFromEnv } from "../support/port.ts";
+import { _portFromEnv } from "../support/port.ts";
 import type { HealthConfigShape } from "../health/Health.ts";
 import type { DevConfigShape } from "../dev/DevProcess.ts";
 
@@ -362,7 +362,7 @@ export function AppConfig(options: {
     key: Bun.env["APP_KEY"] ?? "",
     debug: Bun.env["APP_DEBUG"] !== "false",
     url: Bun.env["APP_URL"] ?? "http://localhost:3000",
-    port: portFromEnv(),
+    port: _portFromEnv(),
     locale: "en",
     timezone: "UTC",
     http3: false,

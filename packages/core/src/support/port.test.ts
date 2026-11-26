@@ -4,62 +4,62 @@ import {
   waitForPort,
   findAvailablePort,
   findPortOwner,
-  parsePort,
-  portFromEnv,
-  servePort,
-  clientPort,
+  _parsePort,
+  _portFromEnv,
+  _servePort,
+  _clientPort,
 } from "./port.ts";
 
-describe("parsePort()", () => {
+describe("_parsePort()", () => {
   it("takes a whole number from 0 to 65535, as a number or a string", () => {
-    expect(parsePort(8080, "x")).toBe(8080);
-    expect(parsePort(" 8080 ", "x")).toBe(8080);
-    expect(parsePort(0, "x")).toBe(0);
-    expect(parsePort(65_535, "x")).toBe(65_535);
+    expect(_parsePort(8080, "x")).toBe(8080);
+    expect(_parsePort(" 8080 ", "x")).toBe(8080);
+    expect(_parsePort(0, "x")).toBe(0);
+    expect(_parsePort(65_535, "x")).toBe(65_535);
   });
 
   it("refuses anything else, naming where it came from", () => {
     for (const bad of [80800, -1, 3000.5, Number.NaN, "abc", "", "80 80", null, true]) {
-      expect(() => parsePort(bad, "PORT")).toThrow(/^PORT must be a whole number from 0 to 65535/);
+      expect(() => _parsePort(bad, "PORT")).toThrow(/^PORT must be a whole number from 0 to 65535/);
     }
   });
 });
 
-describe("portFromEnv()", () => {
+describe("_portFromEnv()", () => {
   it("reads PORT, and is 3000 when it is unset or blank", () => {
-    expect(portFromEnv({ PORT: "8080" })).toBe(8080);
-    expect(portFromEnv({})).toBe(3000);
-    expect(portFromEnv({ PORT: "  " })).toBe(3000);
+    expect(_portFromEnv({ PORT: "8080" })).toBe(8080);
+    expect(_portFromEnv({})).toBe(3000);
+    expect(_portFromEnv({ PORT: "  " })).toBe(3000);
   });
 
   it("never throws on a bad value: config resolves before anything can report it", () => {
-    expect(Number.isNaN(portFromEnv({ PORT: "eighty" }))).toBe(true);
-    expect(portFromEnv({ PORT: "80800" })).toBe(80800);
+    expect(Number.isNaN(_portFromEnv({ PORT: "eighty" }))).toBe(true);
+    expect(_portFromEnv({ PORT: "80800" })).toBe(80800);
   });
 });
 
-describe("servePort()", () => {
+describe("_servePort()", () => {
   it("prefers --port, then app.port, then 3000", () => {
-    expect(servePort(4000, 8080, {})).toBe(4000);
-    expect(servePort(undefined, 8080, {})).toBe(8080);
-    expect(servePort(undefined, undefined, {})).toBe(3000);
+    expect(_servePort(4000, 8080, {})).toBe(4000);
+    expect(_servePort(undefined, 8080, {})).toBe(8080);
+    expect(_servePort(undefined, undefined, {})).toBe(3000);
   });
 
   it("refuses a bad app.port before anything binds, and says what PORT was", () => {
-    expect(() => servePort(undefined, 80800, { PORT: "80800" })).toThrow(
+    expect(() => _servePort(undefined, 80800, { PORT: "80800" })).toThrow(
       'app.port (PORT is "80800") must be a whole number from 0 to 65535',
     );
-    expect(() => servePort(undefined, Number.NaN, {})).toThrow(/^app\.port must be/);
-    expect(() => servePort(Number.NaN, 3000, {})).toThrow(/^--port must be/);
+    expect(() => _servePort(undefined, Number.NaN, {})).toThrow(/^app\.port must be/);
+    expect(() => _servePort(Number.NaN, 3000, {})).toThrow(/^--port must be/);
   });
 });
 
-describe("clientPort()", () => {
+describe("_clientPort()", () => {
   it("prefers --port, then PORT, then 3000", () => {
-    expect(clientPort(4000, { PORT: "8080" })).toBe(4000);
-    expect(clientPort(undefined, { PORT: "8080" })).toBe(8080);
-    expect(clientPort(undefined, {})).toBe(3000);
-    expect(() => clientPort(undefined, { PORT: "x" })).toThrow(/^PORT must be/);
+    expect(_clientPort(4000, { PORT: "8080" })).toBe(4000);
+    expect(_clientPort(undefined, { PORT: "8080" })).toBe(8080);
+    expect(_clientPort(undefined, {})).toBe(3000);
+    expect(() => _clientPort(undefined, { PORT: "x" })).toThrow(/^PORT must be/);
   });
 });
 

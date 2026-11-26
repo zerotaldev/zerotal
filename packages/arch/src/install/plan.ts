@@ -40,7 +40,7 @@ export interface PlanOptions {
    * see {@link declaredPackages}. Given explicitly for a project with nothing
    * installed yet, which is what a starter is before its first `bun install`.
    */
-  packages?: readonly string[];
+  packages?: readonly string[] | undefined;
 }
 
 /** Every change `arch:install` would make in `root` under `config`. */

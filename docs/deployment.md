@@ -298,6 +298,11 @@ Pair it with a `.timer`, and let the failed unit be your alert. Retention is han
 On PostgreSQL or MySQL the command refuses and points at `pg_dump` / `mysqldump`, which is
 where that job belongs.
 
+To take one as part of every deploy, set `backupBeforeMigrate: true` in
+`config/database.ts`: `zt migrate` then snapshots a SQLite database before it applies
+anything in production, and stops if the snapshot fails. See
+[A backup before migrating](/docs/migrations#a-backup-before-migrating-in-production).
+
 ## Build assets
 
 Build the frontend bundle as a release step, so `public/` holds compiled output before

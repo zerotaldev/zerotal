@@ -2,6 +2,19 @@ import { _importAppFile, _scanAppFiles } from "@zerotal/core/runtime";
 import type { MigrationRecord } from "../schema/MigrationRunner.ts";
 
 /**
+ * A migration as loaded from disk: its recorded identity plus the file it came from.
+ *
+ * The two differ when a migration pins `static id`, and the duplicate-number check
+ * reads the file, not the identity — see `_migrationNumberClashes`.
+ *
+ * @internal
+ */
+export interface _LoadedMigration extends MigrationRecord {
+  /** Bare filename, no directory or extension. */
+  file: string;
+}
+
+/**
  * Globs `database/migrations/*.ts`, imports each file, and returns a
  * {@link MigrationRecord} array of instantiated migrations. Files are sorted by
  * filename so `001_` runs before `002_`; files without a default export are
@@ -12,20 +25,21 @@ import type { MigrationRecord } from "../schema/MigrationRunner.ts";
  *
  * @internal
  */
-export async function loadMigrations(): Promise<MigrationRecord[]> {
+export async function loadMigrations(): Promise<_LoadedMigration[]> {
   // Sorted by the scan, and root-relative with forward slashes on every platform.
   const files = (await _scanAppFiles(`${process.cwd()}/database/migrations`, "*.ts")).map(
     (file) => `database/migrations/${file}`,
   );
 
-  const records: MigrationRecord[] = [];
+  const records: _LoadedMigration[] = [];
   for (const file of files) {
     const mod = await _importAppFile(`${process.cwd()}/${file}`);
     const Ctor = mod.default as (new () => MigrationRecord["instance"]) | undefined;
     if (!Ctor) continue;
     // A declared `static id` wins over the filename — see `Migration.id`.
     const declared = (Ctor as { id?: string }).id;
-    records.push({ name: declared ?? _migrationName(file), instance: new Ctor() });
+    const bare = _migrationName(file);
+    records.push({ name: declared ?? bare, instance: new Ctor(), file: bare });
   }
 
   return records;

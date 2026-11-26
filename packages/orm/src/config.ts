@@ -100,6 +100,23 @@ export interface DatabaseConfigShape {
    * synchronize: { enabled: true, disruptive: true }      // also drops removed columns
    */
   synchronize?: boolean | { enabled: boolean; disruptive?: boolean } | undefined;
+  /**
+   * Take a `db:backup` snapshot before `zt migrate` changes anything in production.
+   *
+   * Opt-in. When on, and the deploy environment is production-like, `migrate` (and
+   * `migrate --fresh`) writes a verified SQLite snapshot to
+   * `storage/backups/pre-migrate/` (the newest 14 kept) before the first pending
+   * migration runs, and stops without migrating if the snapshot fails. Nothing is
+   * taken when there is nothing to migrate, outside production, or with
+   * `--skip-backup`.
+   *
+   * SQLite only. On PostgreSQL and MySQL `migrate` says that no backup was taken
+   * and carries on: take one with `pg_dump`, `mysqldump` or the provider's
+   * snapshots as a deploy step before `migrate`.
+   *
+   * Default: `false`.
+   */
+  backupBeforeMigrate?: boolean | undefined;
 }
 
 const defaults: DatabaseConfigShape = {

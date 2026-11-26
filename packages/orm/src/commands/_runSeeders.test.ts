@@ -95,7 +95,9 @@ describe("--seed flag wiring", () => {
   it("migrate declares --seed alongside --fresh", () => {
     // `migrate --fresh` is a synonym for `migrate:fresh`, so --seed has to exist
     // on both or the two paths disagree.
-    expect(MigrateCommand.flags.map((f) => f.name)).toEqual(["fresh", "seed"]);
+    expect(MigrateCommand.flags.map((f) => f.name)).toEqual(
+      expect.arrayContaining(["fresh", "seed"]),
+    );
     expect(MigrateCommand.flags.find((f) => f.name === "seed")!.default).toBe(false);
   });
 });

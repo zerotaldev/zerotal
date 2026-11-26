@@ -104,13 +104,6 @@ follows the Zerotal monorepo's unified versioning.
   position, so the dev log and `inertia:build` printed `file:0:0`; the place the compiler wrote in
   the message, `(12:15)`, is now read from there: `file:12:15`.
 
-### Added
-
-- **A worker liveness check can say what an idle worker has.** `workerLivenessCheck()`'s
-  `hasWork()` may return `idle`, the message to show when there is nothing to run, in place of
-  "nothing registered, nothing to run". The queue's check uses it. `WorkerLivenessOptions` and
-  `WorkerWork` are exported from `@zerotal/core/heartbeat`.
-
 ## [1.18.0] — 2026-11-26
 
 ### Added

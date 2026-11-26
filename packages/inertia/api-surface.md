@@ -260,6 +260,8 @@ interface InertiaDevtoolsConfig = {
 
 interface InertiaPageRegistry = {}
 
+interface InertiaTypeOptions = {}
+
 interface MergeConfig = {
   appendPaths: string[]
   deep: boolean
@@ -316,7 +318,7 @@ type PageTarget = string
 
 type PropInput = T | (() => T | Promise<T>) | AlwaysProp<T> | MergeProp<T> | (T extends PaginatorLike ? InfiniteScrollProp : never) | (undefined extends T ? OptionalProp<T> | DeferProp<T> : never)
 
-type PropsOf = PageComponent<N> extends abstract new (...args: any) => infer Instance ? 0 extends 1 & Instance ? PropsOfCallable<(abstract new (...args: any) => infer Instance) & PageComponent<N>> : Instance extends {    $props: infer VueProps;} ? VueProps : PropsOfCallable<(abstract new (...args: any) => infer Instance) & PageComponent<N>> : PropsOfCallable<PageComponent<N>>
+type PropsOf = PageComponent<N> extends (props: infer Props, ...rest: any[]) => any ? Props : PageComponent<N> extends abstract new (props: infer Props, ...rest: any[]) => any ? Props : Record<string, unknown>
 
 type RenderArgs = [props?: Record<string, unknown>]
 

@@ -69,6 +69,7 @@ export type { PageRegistryResult } from "./PageRegistry.ts";
 // augments, `SharedProps` is what the app declares for `Inertia.share()`.
 export type {
   InertiaPageRegistry,
+  InertiaTypeOptions,
   SharedProps,
   PageName,
   PageTarget,

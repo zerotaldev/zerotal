@@ -121,10 +121,57 @@ export type PageName = Extract<keyof PageModules, string>;
  */
 export type PageTarget = [PageName] extends [never] ? string : PageName;
 
+/**
+ * Type-checking behaviour an app opts into by augmenting this interface.
+ *
+ * `checkVueProps: true` checks a Vue page's props the way a React page's are.
+ * `vue-tsc` types a page as `DefineComponent<Props, …>`, a constructor whose
+ * parameters are `...args: any[]`, so reading the props off its first parameter,
+ * which is right for a React class component, gives `any` and every controller
+ * compiles whatever it passes. With the option the props are read from the
+ * instance's `$props`, so a missing prop, an extra one or one of the wrong type is
+ * an error in the controller:
+ *
+ * ```ts
+ * // types/inertia.d.ts
+ * declare module "@zerotal/inertia" {
+ *   interface InertiaTypeOptions {
+ *     checkVueProps: true;
+ *   }
+ * }
+ * ```
+ *
+ * An option rather than the default because it can turn a passing `vue-tsc` red
+ * in an app whose controllers were already wrong, which a patch release must not
+ * do. A page typed through a `declare module "*.vue"` shim has an `any` instance
+ * and keeps accepting any props either way.
+ *
+ * @category Extension registries
+ */
+export interface InertiaTypeOptions {}
+
+/** Whether the app opted into {@link InertiaTypeOptions} `checkVueProps`. */
+type ChecksVueProps = InertiaTypeOptions extends { checkVueProps: true } ? true : false;
+
+/**
+ * A Vue component as something whose props can be read off its first parameter,
+ * when the app checks Vue props; any other component as it is.
+ */
+type VuePropsReader<Component> = ChecksVueProps extends true
+  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches any constructor's arguments
+    Component extends abstract new (...args: any) => infer Instance
+    ? 0 extends 1 & Instance
+      ? Component
+      : Instance extends { $props: infer VueProps }
+        ? (props: VueProps) => unknown
+        : Component
+    : Component
+  : Component;
+
 /** The default export of page `N`'s module. */
 type PageComponent<N extends string> = N extends keyof PageModules
   ? PageModules[N] extends () => Promise<{ default: infer Component }>
-    ? Component
+    ? VuePropsReader<Component>
     : unknown
   : unknown;
 
@@ -141,23 +188,7 @@ type PageComponent<N extends string> = N extends keyof PageModules
  * open record so those pages keep compiling rather than failing on a shape
  * nobody can see. See the Vue note in the props docs.
  */
-type PropsOfComponent<Component> =
-  // Vue first. `vue-tsc` types a page as `DefineComponent<Props, …>`, a constructor
-  // whose parameters are `...args: any[]`, so the constructor branch below would read
-  // its props as `any` and accept everything. The props are on the instance's
-  // `$props`. A `*.vue` shim's `DefineComponent<{}, {}, any>` has an `any` instance,
-  // which says nothing, so it is read as before and keeps accepting any props.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches any constructor's arguments
-  Component extends abstract new (...args: any) => infer Instance
-    ? 0 extends 1 & Instance
-      ? PropsOfCallable<Component>
-      : Instance extends { $props: infer VueProps }
-        ? VueProps
-        : PropsOfCallable<Component>
-    : PropsOfCallable<Component>;
-
-/** A function component's first parameter, or a class component's constructor prop. */
-type PropsOfCallable<Component> = Component extends (
+type PropsOfComponent<Component> = Component extends (
   props: infer Props,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matching any component signature, whose extra args (React's legacy context) are irrelevant here.
   ...rest: any[]

@@ -190,6 +190,7 @@ export function isWidening(removed: string, added: Set<string>): boolean {
     if (isReordered(removed, candidate)) return true;
     if (isMembersAdded(removed, candidate)) return true;
     if (gainedOptionalParameters(removed, candidate)) return true;
+    if (isParameterWidenedByAlias(removed, candidate, added)) return true;
   }
 
   // Nothing here is optional, so nothing here can have been widened.
@@ -261,12 +262,14 @@ function isOptionalMemberAddition(removed: string, added: string): boolean {
  * the new one must have more. A member that changed, left or moved fails the match and is
  * reported, as before.
  *
- * Only for a `const`, which callers read from. A type alias or interface is often something a
- * caller builds, and a required member appearing there breaks every existing literal, which is
- * what {@link isOptionalMemberAddition} exists to refuse.
+ * Only for a `const`, which callers read from, and a `function`'s overload set, which callers
+ * only call: an overload added beside the old ones, all kept as they were, accepts every call
+ * that compiled. A type alias or interface is often something a caller builds, and a required
+ * member appearing there breaks every existing literal, which is what
+ * {@link isOptionalMemberAddition} exists to refuse.
  */
 function isMembersAdded(removed: string, added: string): boolean {
-  if (!removed.startsWith("const ")) return false;
+  if (!removed.startsWith("const ") && !removed.startsWith("function ")) return false;
   if (!removed.includes(";") || !added.includes(";")) return false;
 
   const before = removed.split(";");
@@ -364,6 +367,64 @@ function gainedOptionalParameters(removed: string, added: string): boolean {
   if (!before.every((parameter, index) => after[index] === parameter)) return false;
 
   return after.slice(before.length).every((parameter) => /^\.{0,3}[\w$]+\?:/.test(parameter));
+}
+
+/**
+ * Whether a parameter's type was widened by naming a new union that includes it.
+ *
+ * `multipart(url, body?: Record<string, TestFormValue>)` becoming
+ * `multipart(url, body?: Record<string, TestMultipartValue>)`, with the same package adding
+ * `type TestMultipartValue = TestFormValue | readonly TestFormValue[]`, accepts every call that
+ * compiled before. Put back the member the union kept, and the new line must read exactly as
+ * the old one did. The alias may appear only in the first parameter list, and that list must
+ * hold no function type: a callback's parameter widened the same way would hand the caller's
+ * callback values it was never written for.
+ */
+function isParameterWidenedByAlias(
+  removed: string,
+  candidate: string,
+  added: Set<string>,
+): boolean {
+  const open = candidate.indexOf("(");
+  const close = open === -1 ? -1 : _closing(candidate, open);
+  if (close === -1) return false;
+  const parameters = candidate.slice(open + 1, close);
+  if (parameters.includes("=>")) return false;
+  const outside = candidate.slice(0, open + 1) + candidate.slice(close);
+
+  for (const line of added) {
+    const alias = /^type ([\w$]+) = (.+)$/.exec(line);
+    if (!alias) continue;
+    const [, name, body] = alias as unknown as [string, string, string];
+    const word = new RegExp(`(?<![\\w$])${name.replace(/\$/g, "\\$")}(?![\\w$])`, "g");
+    if (!word.test(parameters) || new RegExp(word.source).test(outside)) continue;
+    const members = _unionMembers(body);
+    if (members.length < 2) continue;
+    for (const member of members) {
+      if (!/^[\w$]+$/.test(member)) continue;
+      if (candidate.replace(word, member) === removed) return true;
+    }
+  }
+  return false;
+}
+
+/** The members of a union written on one line, split only where ` | ` is at the top level. */
+function _unionMembers(type: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < type.length; i++) {
+    const c = type[i];
+    if (c === "(" || c === "{" || c === "[" || c === "<") depth++;
+    else if (c === ")" || c === "}" || c === "]" || (c === ">" && type[i - 1] !== "=")) depth--;
+    else if (depth === 0 && type.startsWith(" | ", i)) {
+      out.push(type.slice(start, i).trim());
+      start = i + 3;
+      i += 2;
+    }
+  }
+  out.push(type.slice(start).trim());
+  return out;
 }
 
 /** Members of an inline object type, as `name` (with a trailing `?` when optional) → type. */

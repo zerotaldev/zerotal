@@ -23,13 +23,12 @@ export class Project extends Model {
 
   /** What a page is sent: the fields it shows, as plain JSON. */
   toPage(): ProjectData {
-    const updated = (this as { updatedAt?: { toISOString?(): string } | string }).updatedAt;
     return {
       id: this.id,
       name: this.name,
       description: this.description ?? null,
       status: this.status,
-      updatedAt: typeof updated === "string" ? updated : (updated?.toISOString?.() ?? null),
+      updatedAt: this.updatedAt?.toISOString() ?? null,
     };
   }
 }

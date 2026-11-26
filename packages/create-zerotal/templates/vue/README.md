@@ -56,6 +56,13 @@ It is for local development only — never seed a production database with it.
 | `database/`                     | Migrations, factories and the demo seeder                              |
 | `tests/`                        | Feature tests, run with the app booted                                 |
 
+### Typed page props
+
+`types/inertia.d.ts` turns on `checkVueProps`, so `bun run typecheck` checks the props a route
+passes to `Inertia.render("page", { … })` against the page's `defineProps`: a missing, extra or
+wrongly typed prop is an error in the route. Delete the file to turn it off. See
+[Inertia props](https://zerotal.dev/docs/inertia/props).
+
 ## Scripts
 
 | Command             | What it does                                        |
@@ -109,6 +116,11 @@ port 3000. At run time the container needs `APP_KEY`, `APP_ENV=production` (set 
 `APP_URL`, a `DATABASE_URL` on a persistent volume or server, and `HEALTH_KEY` for its health
 check, which calls `/health` with it. See the
 [deployment guide](https://zerotal.dev/docs/deployment) for the rest.
+
+The server runs no background work. Once the app registers `QueueProvider` (for queued mail,
+notifications and jobs) or `SchedulerProvider` (for `app/schedules/`), run a second process
+from the same image, with the same environment: `bun zt worker`. Under `bun zt dev` the queue
+and the scheduler already run in their own tabs.
 
 ## Remove the example
 

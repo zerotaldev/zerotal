@@ -1,4 +1,6 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, afterEach } from "bun:test";
+import { Application } from "@zerotal/core";
+import { ConfigManager } from "@zerotal/core/config";
 import { MailMessage } from "./MailMessage.ts";
 import { MailChannel } from "../MailChannel.ts";
 import { Notification } from "../Notification.ts";
@@ -370,5 +372,41 @@ describe("MailMessage.header()", () => {
       .toPayload({ address: "app@test" }, [{ address: "ada@test" }]);
 
     expect(payload.headers).toEqual({ "X-Trace": "a b" });
+  });
+});
+
+// From the 1.18.1 walk: the starters' own mail closed with "The <app> team", and every
+// notification built on MailMessage with a bare "Regards," and nobody under it.
+describe("MailMessage — sign-off", () => {
+  afterEach(() => Application._resetInstance());
+
+  /** A running app whose `config/app.ts` names it. */
+  async function signedOffBy(name: string): Promise<void> {
+    const config = new ConfigManager();
+    config.set("app.name", name);
+    Application.create().container.value("config", config);
+  }
+
+  it("signs off with the app's name", async () => {
+    await signedOffBy("Acme");
+
+    const payload = new MailMessage().subject("Hi").line("Body.").toPayload(from, []);
+
+    expect(payload.text?.endsWith("The Acme team")).toBe(true);
+    expect(payload.html).toContain("The Acme team");
+    expect(payload.text).not.toContain("Regards,");
+  });
+
+  it("keeps a sign-off the message sets", async () => {
+    await signedOffBy("Acme");
+
+    const payload = new MailMessage().line("Body.").salutation("Cheers,").toPayload(from, []);
+
+    expect(payload.text?.endsWith("Cheers,")).toBe(true);
+  });
+
+  it("says Regards, where no app is running", () => {
+    const payload = new MailMessage().line("Body.").toPayload(from, []);
+    expect(payload.text?.endsWith("Regards,")).toBe(true);
   });
 });

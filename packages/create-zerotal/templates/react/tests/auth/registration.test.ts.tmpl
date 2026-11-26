@@ -75,6 +75,8 @@ describe("registration", () => {
     );
 
     res.assertRedirect("/register");
-    res.assertInvalid(["password"]);
+    // Under the confirmation, where the form shows it, not under the password.
+    res.assertInvalid(["password_confirmation"]);
+    res.assertValid(["password"]);
   });
 });

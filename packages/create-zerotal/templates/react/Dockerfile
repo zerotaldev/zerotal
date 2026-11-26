@@ -26,3 +26,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 # Run migrations then serve (use your platform's release step for migrate in real setups)
 CMD bun zt migrate && bun zt serve --port=3000
+
+# Background work. Once the app registers QueueProvider or SchedulerProvider, run a second
+# container from this same image with the command `bun zt worker`: it runs queued jobs and the
+# schedules in app/schedules/, which the web server above does not. One worker is enough to
+# start; it needs the same environment as the server.

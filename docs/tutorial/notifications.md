@@ -137,7 +137,7 @@ rather than sent in development:
 [queue ]
 [queue ] Open the project: http://localhost:3000/projects/12
 [queue ]
-[queue ] Regards,
+[queue ] The my-app team
 ```
 
 The HTML version of the message follows it. `bun zt doctor` still reports that all

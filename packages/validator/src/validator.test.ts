@@ -919,6 +919,13 @@ describe("runValidation — password rules", () => {
     }
   });
 
+  it("noWhitespace() is the same rule under a name that says what it checks", () => {
+    const schema = { pw: rules.password().noWhitespace()._def };
+    expect(runValidation(schema, { pw: "Has Space1!" }).success).toBe(false);
+    expect(runValidation(schema, { pw: "Has\tTab1!" }).success).toBe(false);
+    expect(runValidation(schema, { pw: "NoSpaces1!" }).success).toBe(true);
+  });
+
   it("uncompromised() does not check a breach list", () => {
     const schema = { pw: rules.password().uncompromised()._def };
     expect(runValidation(schema, { pw: "password123" }).success).toBe(true);

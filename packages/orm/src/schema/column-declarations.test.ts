@@ -47,6 +47,85 @@ describe("@column two-argument form", () => {
   });
 });
 
+// The object form's `type` takes every shorthand the string form does. The runtime
+// always resolved them, but the overload was typed with the six storage types, so
+// `@column({ type: "date", nullable: true })` — the column `table.date()` makes — was a
+// compile error, and so were `integer`, `float`, `array` and both encrypted forms.
+// This block does not compile without the fix: `typecheck:tests` fails on it.
+describe("@column object form takes every shorthand as its type", () => {
+  @table("shorthand_events")
+  class ShorthandEvent extends BaseModel {
+    @column({ type: "date", nullable: true }) day?: Date | null;
+    @column({ type: "integer", default: 0 }) seats!: number;
+    @column({ type: "float" }) ratio!: number;
+    @column({ type: "array", default: [] }) tags!: string[];
+    @column({ type: "encrypted" }) secret!: string;
+    @column({ type: "encrypted:json", nullable: true }) secretJson?: unknown;
+    @column({ type: "date", cast: "datetime" }) startsAt!: unknown;
+    @column("immutable_datetime") frozenAt!: unknown;
+    @column("decimal:2", { nullable: true }) price?: string | null;
+  }
+
+  const cols = columnsFor(ShorthandEvent)!;
+  const resolved = (name: string) => {
+    const c = cols.get(name)!;
+    return { type: c.type, cast: c.cast, nullable: c.nullable ?? false };
+  };
+
+  it("resolves each to its storage type and cast, keeping the other options", () => {
+    expect(resolved("day")).toEqual({ type: "datetime", cast: "date", nullable: true });
+    expect(resolved("seats")).toEqual({ type: "number", cast: "integer", nullable: false });
+    expect(cols.get("seats")?.default).toBe(0);
+    expect(resolved("ratio")).toEqual({ type: "number", cast: "float", nullable: false });
+    expect(resolved("tags")).toEqual({ type: "json", cast: "array", nullable: false });
+    expect(resolved("secret")).toEqual({ type: "text", cast: "encrypted", nullable: false });
+    expect(resolved("secretJson")).toEqual({
+      type: "text",
+      cast: "encrypted:json",
+      nullable: true,
+    });
+  });
+
+  it("lets an explicit cast win over the shorthand's", () => {
+    expect(resolved("startsAt")).toEqual({ type: "datetime", cast: "datetime", nullable: false });
+  });
+
+  it("types the two string-only casts the runtime always accepted", () => {
+    expect(resolved("frozenAt")).toEqual({
+      type: "datetime",
+      cast: "immutable_datetime",
+      nullable: false,
+    });
+    expect(resolved("price")).toEqual({ type: "number", cast: "decimal:2", nullable: true });
+  });
+
+  it("generates a date column the way a datetime is generated", () => {
+    const day = cols.get("day")!;
+    const schema: ModelSchema = {
+      table: "shorthand_events",
+      primaryKey: "id",
+      timestamps: false,
+      softDeletes: false,
+      columns: [
+        {
+          name: "day",
+          type: day.type,
+          nullable: true,
+          primary: false,
+          default: undefined,
+          unique: false,
+          index: false,
+        },
+      ],
+    };
+    const out = generateMigrationContent("CreateShorthandEvents", {
+      newTables: [{ schema }],
+      newColumns: [],
+    } as never);
+    expect(out).toMatch(/table\.dateTime\(['"]day['"]\)\.nullable\(\)/);
+  });
+});
+
 describe("generated migrations carry constraints", () => {
   const schema = (columns: ModelSchema["columns"]): ModelSchema => ({
     table: "invoices",

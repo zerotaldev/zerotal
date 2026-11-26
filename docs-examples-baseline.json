@@ -7523,7 +7523,7 @@
       "file": "docs/settings.md",
       "heading": "Testing",
       "ordinal": 0,
-      "hash": "3dyz4y00ccxa"
+      "hash": "x91m80e6c7cc"
     },
     {
       "file": "docs/social.md",
@@ -8034,6 +8034,12 @@
       "heading": "File uploads",
       "ordinal": 0,
       "hash": "3l1sxzuegos5"
+    },
+    {
+      "file": "docs/testing/http.md",
+      "heading": "File uploads",
+      "ordinal": 1,
+      "hash": "3633on5n314z"
     },
     {
       "file": "docs/testing/http.md",

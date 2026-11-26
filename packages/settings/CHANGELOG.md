@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`SettingsFake` checks keys and values at compile time when given the group.**
+  `SettingsFake.install(billing, { "billing.paymentTermsDays": 7 })` takes only the keys
+  `billing` declares, each with its declared type, in the overrides and in every later
+  `override()` and `release()` — the way the group's own `get()` and `set()` do. Pass several
+  groups as an array. `SettingsFake.install({ … })` without a group still takes any key and
+  rejects an unknown one when the test runs.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

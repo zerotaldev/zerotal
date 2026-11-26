@@ -9,3 +9,4 @@
 export { Heartbeat } from "./Heartbeat.ts";
 export type { Beat, BeatLookup } from "./Heartbeat.ts";
 export { workerLivenessCheck, describeBeat } from "./doctor.ts";
+export type { WorkerLivenessOptions, WorkerWork } from "./doctor.ts";

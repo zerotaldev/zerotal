@@ -195,7 +195,7 @@ const SHORTHAND_MAP: Record<ColumnShorthand, ColumnOptions> = {
  * `Omit<ColumnOptions, "type">`, so it cannot contradict the type it is modifying.
  */
 function resolveOptions(
-  arg?: ColumnShorthand | ColumnOptionsInput,
+  arg?: ColumnShorthand | ColumnOptionsInput | "immutable_datetime" | `decimal:${number}`,
   extra?: Omit<ColumnOptions, "type">,
 ): ColumnOptions {
   const base = _resolveBase(arg);
@@ -209,7 +209,9 @@ function resolveOptions(
   return merged;
 }
 
-function _resolveBase(arg?: ColumnShorthand | ColumnOptionsInput): ColumnOptions {
+function _resolveBase(
+  arg?: ColumnShorthand | ColumnOptionsInput | "immutable_datetime" | `decimal:${number}`,
+): ColumnOptions {
   if (arg === undefined) return { type: "string" };
   if (typeof arg === "string") {
     const a = arg as string;
@@ -329,7 +331,8 @@ type ColumnDecorator = (value: undefined, context: ClassFieldDecoratorContext) =
  * Bun 1.3.x standard-decorator workaround), so a model that declares columns must
  * also carry `@table` — or be auto-discovered from `app/models/`.
  *
- * @param arg - A {@link ColumnShorthand} string, a {@link ColumnOptions} object, or nothing (defaults to `"string"`).
+ * @param arg - A {@link ColumnShorthand} string, an options object whose `type` may be any
+ *   {@link ColumnShorthand} (`{ type: "date", nullable: true }`), or nothing (defaults to `"string"`).
  * @returns A class-field decorator that registers the property as a column.
  *
  * @example
@@ -356,13 +359,22 @@ type ColumnDecorator = (value: undefined, context: ClassFieldDecoratorContext) =
  */
 export function column(): ColumnDecorator;
 export function column(type: ColumnShorthand): ColumnDecorator;
-export function column(options: ColumnOptions): ColumnDecorator;
+export function column(options: ColumnOptionsInput): ColumnDecorator;
 export function column(
   type: ColumnShorthand,
   options: Omit<ColumnOptions, "type">,
 ): ColumnDecorator;
+/**
+ * The two casts the string form resolves on its own: `"immutable_datetime"` is a
+ * datetime column read as an immutable Carbon, `"decimal:2"` a number column read as
+ * a fixed-point string. Both always worked at runtime and were refused by the types.
+ */
 export function column(
-  arg?: ColumnShorthand | ColumnOptionsInput,
+  type: "immutable_datetime" | `decimal:${number}`,
+  options?: Omit<ColumnOptions, "type"> | undefined,
+): ColumnDecorator;
+export function column(
+  arg?: ColumnShorthand | ColumnOptionsInput | "immutable_datetime" | `decimal:${number}`,
   extra?: Omit<ColumnOptions, "type">,
 ): ColumnDecorator {
   const options = resolveOptions(arg, extra);

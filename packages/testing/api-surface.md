@@ -156,7 +156,7 @@ class TestApp = {
   followingRedirects: () => TestApp
   get: (url: string, headers?: Record<string, string>) => Promise<TestResponse>
   head: (url: string, headers?: Record<string, string>) => Promise<TestResponse>
-  multipart: (url: string, body?: Record<string, TestFormValue>, headers?: Record<string, string>, method?: 'POST' | 'PUT' | 'PATCH') => Promise<TestResponse>
+  multipart: (url: string, body?: Record<string, TestMultipartValue>, headers?: Record<string, string>, method?: 'POST' | 'PUT' | 'PATCH') => Promise<TestResponse>
   options: (url: string, headers?: Record<string, string>) => Promise<TestResponse>
   patch: (url: string, body: unknown, headers?: Record<string, string>) => Promise<TestResponse>
   patchForm: (url: string, body?: Record<string, TestFormValue>, headers?: Record<string, string>) => Promise<TestResponse>
@@ -307,6 +307,8 @@ type FakeFile = {    create(name: string, content?: string | Uint8Array, type?: 
 type SessionDecoder = (response: Response) => Promise<Record<string, unknown> | null>
 
 type TestFormValue = string | number | boolean | null | undefined | TestFileInput | File | Blob
+
+type TestMultipartValue = TestFormValue | readonly TestFormValue[]
 
 ## ./browser  `(./src/browser.ts)`
 

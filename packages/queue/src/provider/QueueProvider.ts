@@ -201,6 +201,13 @@ export class QueueProvider extends ServiceProvider {
    * Keyed on the *pending depth* rather than on whether any job class is
    * registered — an app with an empty queue and no worker may be perfectly fine,
    * and a doctor that says otherwise is one people scroll past.
+   *
+   * The depth is every queue's, not `default`'s alone: jobs waiting on `emails`
+   * with no worker are the same finding. And with nothing waiting the report says
+   * how many job classes the app defines rather than "nothing registered". Job
+   * classes register themselves when a worker imports `app/jobs/`, so the web
+   * process running the doctor has not seen them, and "nothing registered" read as
+   * "your jobs are missing" in an app that had several.
    */
   override doctorChecks(): DoctorCheck[] {
     return [
@@ -209,17 +216,55 @@ export class QueueProvider extends ServiceProvider {
         label: "Queue worker",
         name: "queue",
         hasWork: async () => {
+          const defined = await this._definedJobClasses();
+          const idle =
+            defined > 0
+              ? `${defined} job class(es) defined, none waiting`
+              : "no job classes defined, none waiting";
           try {
-            const depth = (await this.app.container.tryMake("queue")?.size()) ?? 0;
-            return { has: depth > 0, summary: `${depth} job(s) waiting` };
+            const queue = this.app.container.tryMake("queue") as QueueManager | undefined;
+            if (!queue) return { has: false, summary: "", idle };
+            const queues = await queue.queues();
+            const busy = queues.filter((q) => q.pending > 0);
+            const depth =
+              queues.length > 0 ? busy.reduce((n, q) => n + q.pending, 0) : await queue.size();
+            const where =
+              busy.length > 1 || (busy.length === 1 && busy[0]!.queue !== "default")
+                ? ` on ${busy.map((q) => q.queue).join(", ")}`
+                : "";
+            return { has: depth > 0, summary: `${depth} job(s) waiting${where}`, idle };
           } catch {
             // An unreadable queue is not a finding about the worker.
-            return { has: false, summary: "" };
+            return { has: false, summary: "", idle };
           }
         },
         staleAfter: 15 * 60,
         command: "bun zt worker",
       }),
     ];
+  }
+
+  /**
+   * The job classes the app defines: the files in its jobs directory, which is
+   * what a worker imports. Not `JobRegistry`, which in the web process holds only
+   * the framework's own jobs.
+   */
+  private async _definedJobClasses(): Promise<number> {
+    const config = this.app.container.tryMake("config") as ConfigManager | undefined;
+    const paths = config?.get<Record<string, string> | undefined>(
+      "app.conventions.paths",
+      undefined,
+    );
+    const dir = `${process.cwd()}/${paths?.["jobs"] ?? "app/jobs"}`;
+    const names = new Set<string>();
+    try {
+      for await (const file of new Bun.Glob("**/*.{ts,tsx,js}").scan({ cwd: dir })) {
+        if (/\.(test|spec)\.[jt]sx?$/.test(file) || file.endsWith(".d.ts")) continue;
+        names.add(file.replace(/\\/g, "/").replace(/\.[jt]sx?$/, ""));
+      }
+    } catch {
+      // No jobs directory: nothing defined there.
+    }
+    return names.size;
   }
 }

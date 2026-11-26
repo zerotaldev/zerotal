@@ -3073,6 +3073,21 @@ interface Beat = {
   pid?: number | undefined
 }
 
+interface WorkerLivenessOptions = {
+  command: string
+  hasWork: () => Promise<WorkerWork> | WorkerWork
+  id: string
+  label: string
+  name: string
+  staleAfter: number
+}
+
+interface WorkerWork = {
+  has: boolean
+  idle?: string | undefined
+  summary: string
+}
+
 type BeatLookup = { status: 'seen'; beat: Beat; ageSeconds: number } | { status: 'never' } | { status: 'unknown'; reason: string }
 
 ## ./helpers  `(./src/helpers/index.ts)`

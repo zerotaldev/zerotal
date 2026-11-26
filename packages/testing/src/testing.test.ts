@@ -595,6 +595,60 @@ describe("TestResponse.assertInertiaRedirect()", () => {
   });
 });
 
+// ── A failed assertion on a redirect says where it went ─────────────────────
+
+/**
+ * `assertOk()` after a POST that bounced to `/login` failed with "Expected HTTP 200
+ * but got 302" and an empty body — the one thing worth knowing, where the response
+ * went, was in a header the message never showed.
+ */
+describe("a failed assertion on a redirect names its Location", () => {
+  const to = (location: string, status = 302) =>
+    mk(null, { status, headers: { Location: location } });
+  const failure = (fn: () => unknown): string => {
+    try {
+      fn();
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error("expected the assertion to fail");
+  };
+
+  it("on a status assertion", () => {
+    expect(failure(() => to("/login?next=%2Finvoices").assertOk())).toContain(
+      'Redirected to "/login?next=%2Finvoices"',
+    );
+    expect(failure(() => to("/login").assertStatus(201))).toContain('Redirected to "/login"');
+    expect(failure(() => to("/login", 303).assertSuccessful())).toContain('Redirected to "/login"');
+  });
+
+  it("on a body, JSON or Inertia assertion", () => {
+    expect(failure(() => to("/login").assertSee("Invoices"))).toContain('Redirected to "/login"');
+    expect(failure(() => to("/login").assertJson({ ok: true }))).toContain(
+      'Redirected to "/login"',
+    );
+    expect(failure(() => to("/login").assertInertia("Invoices/Index"))).toContain(
+      'Redirected to "/login"',
+    );
+  });
+
+  it("says when a redirect carries no Location at all", () => {
+    expect(failure(() => mk(null, { status: 302 }).assertOk())).toContain(
+      "Redirected with no Location header",
+    );
+  });
+
+  it("does not repeat the Location a redirect assertion already names", () => {
+    const message = failure(() => to("/login").assertRedirect("/dashboard"));
+    expect(message).toContain('Location was "/login"');
+    expect(message).not.toContain("Redirected to");
+  });
+
+  it("adds nothing to a response that is not a redirect", () => {
+    expect(failure(() => mk("nope", { status: 404 }).assertOk())).not.toContain("Redirected");
+  });
+});
+
 // ── TestResponse.assertRedirect() — exactness ────────────────────────────────
 
 /**

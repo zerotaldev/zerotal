@@ -242,7 +242,7 @@ You can also pin a setting to a value for every reader:
 ```typescript fragment
 import { SettingsFake } from "@zerotal/settings";
 
-const settings = SettingsFake.install({ "billing.paymentTermsDays": 7 });
+const settings = SettingsFake.install(billing, { "billing.paymentTermsDays": 7 });
 
 expect(await billing.get("billing.paymentTermsDays")).toBe(7); // whatever is stored
 
@@ -254,7 +254,12 @@ settings.restore(); // in afterEach
 ```
 
 A pinned value is checked against its definition, so a test cannot pin a value the app
-could never hold.
+could never hold. Given the group `defineSettings()` returned, the fake checks that at
+compile time too: `override()`, `release()` and the overrides passed to `install()` take
+only the group's keys, each with its declared type, the way the group's own `get()` and
+`set()` do. Pass several groups as an array, `SettingsFake.install([billing, mail])`.
+Given overrides alone, `install({ ... })` takes any key and rejects an unknown one when
+the test runs.
 
 ## Configuration
 

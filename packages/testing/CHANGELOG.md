@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`multipart()` takes an array for a multi-file field.** `{ photos: [fakeFile.image("a.png"),
+fakeFile.jpeg("b.jpg")] }` sends one part per file under `photos`, as
+  `<input type="file" multiple>` does, so `files("photos")` reads them all. Plain values in an
+  array are sent the same way. An array used to arrive as one file named `file`, so a test of an
+  attachments field had to drop to `fetch`. The field type is exported as `TestMultipartValue`.
+
 ### Fixed
 
 - **`BrowserPage.waitForPatch()` waits for the action's own answer.** The page marks itself
@@ -17,6 +25,12 @@ follows the Zerotal monorepo's unified versioning.
   It made a docs browser test fail intermittently in CI. `ready` no longer counts. And once a frame
   that does count arrives, the wait gives the page one turn to apply it before returning, because
   Chrome reports the frame as it comes off the wire, before the page's handler has run.
+
+- **A failed assertion on a redirect says where it went.** `assertOk()` on a request that bounced
+  to the login page failed with `Expected HTTP 200 but got 302.` and an empty body. Every
+  `TestResponse` assertion that fails on a `3xx` now adds `Redirected to "<Location>".`, or says
+  the redirect had no `Location`. The redirect assertions, which already name it, do not repeat
+  it.
 
 ## [1.18.0] — 2026-11-26
 

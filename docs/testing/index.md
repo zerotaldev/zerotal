@@ -572,7 +572,8 @@ its full surface.
 
 `TestResponseContext` is what an assertion receives, `SessionDecoder` reads the session out of a
 response so a test can assert on it, and `FakeFile` / `TestFileInput` / `TestFormValue` are the
-shapes a multipart submission takes in a test.
+shapes a multipart submission takes in a test. `TestMultipartValue` is a field of one, which may
+be an array for a field that takes several files.
 
 ## Next steps
 

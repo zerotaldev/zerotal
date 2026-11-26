@@ -21,6 +21,21 @@ export function describeBeat(lookup: BeatLookup): string {
   return lookup.status === "never" ? "has never checked in" : lookup.reason;
 }
 
+/** What {@link WorkerLivenessOptions.hasWork} reports. */
+export interface WorkerWork {
+  /** Whether there is work for a worker to do now. */
+  has: boolean;
+  /** The work, as a report reads it, e.g. `"3 schedule(s) registered"`. */
+  summary: string;
+  /**
+   * What the report says when `has` is false. Default: `"nothing registered, nothing
+   * to run"`, which is wrong for a worker whose work is defined but not waiting —
+   * the queue's job classes are discovered when a worker imports them, so the web
+   * process cannot count them as registered.
+   */
+  idle?: string | undefined;
+}
+
 /** What {@link workerLivenessCheck} needs to know about one worker kind. */
 export interface WorkerLivenessOptions {
   /** Doctor check id, e.g. `"scheduler-running"`. */
@@ -37,7 +52,7 @@ export interface WorkerLivenessOptions {
    * worker is correctly configured, and saying otherwise is how a doctor becomes
    * a thing people scroll past.
    */
-  hasWork(): Promise<{ has: boolean; summary: string }> | { has: boolean; summary: string };
+  hasWork(): Promise<WorkerWork> | WorkerWork;
   /** Seconds after which a check-in is stale. */
   staleAfter: number;
   /** What to run to start it, named in the fix. */
@@ -61,7 +76,9 @@ export function workerLivenessCheck(options: WorkerLivenessOptions): DoctorCheck
     label: options.label,
     async run(): Promise<DoctorCheckResult> {
       const work = await options.hasWork();
-      if (!work.has) return { status: "ok", message: "nothing registered, nothing to run" };
+      if (!work.has) {
+        return { status: "ok", message: work.idle ?? "nothing registered, nothing to run" };
+      }
 
       const seen = await Heartbeat.lastSeen(options.name);
 

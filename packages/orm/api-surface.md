@@ -762,7 +762,7 @@ function arrayOf = <T = unknown>(mapper?: CastMapper<T>) => ArrayCast<T>
 
 function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
-function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
+function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptionsInput): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;    (type: 'immutable_datetime' | `decimal:${number}`, options?: Omit<ColumnOptions, 'type'> | undefined): ColumnDecorator;}
 
 function DatabaseConfig = (options?: Partial<DatabaseConfigShape>) => DatabaseConfigShape
 
@@ -1090,6 +1090,8 @@ interface TransitionContext = {
 }
 
 type CastMapper = ((raw: unknown) => T) | (new (...args: never[]) => T)
+
+type ColumnOptionsInput = Omit<ColumnOptions, 'type'> & {    type?: ColumnStorageType | ColumnShorthand | undefined;}
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 

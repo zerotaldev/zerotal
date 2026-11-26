@@ -19,6 +19,12 @@ follows the Zerotal monorepo's unified versioning.
 - **`make:factory TaskFactory` writes `TaskFactory`,** not `TaskFactoryFactory` importing a model
   called `TaskFactory`. The factory also fills the model's own mass-assignable columns with
   made-up values, rather than leaving a commented example.
+- **`@column({ type: "date" })` compiles.** The object form's `type` was typed with the six
+  storage types, so the column `table.date()` makes was a type error in the object form, and so
+  were `integer`, `float`, `array`, `encrypted` and `encrypted:json`, though each resolved
+  correctly at runtime. The object form now takes every shorthand the string form does
+  (`ColumnOptionsInput`, now exported), `@column("immutable_datetime")` and
+  `@column("decimal:2")` are typed as well, and `ColumnOptions` itself is unchanged.
 
 ## [1.18.0] — 2026-11-26
 

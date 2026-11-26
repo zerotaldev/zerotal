@@ -139,6 +139,16 @@ const res = await testApp.multipart("/avatar", {
 res.assertCreated();
 ```
 
+A field that takes several files, like `<input type="file" multiple>`, takes an array.
+Each entry is sent as its own part under the field's name, which is what a browser
+posts and what `files("photos")` reads:
+
+```typescript fragment
+await testApp.multipart("/albums", {
+  photos: [fakeFile.image("a.png"), fakeFile.jpeg("b.jpg")],
+});
+```
+
 The files `fakeFile` builds are real: a PNG has the PNG signature, a valid header
 at the size you asked for, and compressed pixel data. That matters because the
 framework never trusts what an upload claims to be — `UploadedFile.store()` and
@@ -219,6 +229,11 @@ have nothing to parse.
 > **Warning** — Redirect following is **off** by default, so a `POST` that
 > succeeds returns the `3xx` response, not the final page. Call
 > `followingRedirects()` when you want to assert against the destination.
+
+Any assertion that fails on a redirect says where it went. `assertOk()` on a request
+that bounced to the login page fails with `Expected HTTP 200 but got 302.` followed by
+`Redirected to "/login?next=%2Finvoices".`, so the cause is in the message rather than
+in a header you have to go and print.
 
 ## When a test fails on a 500
 

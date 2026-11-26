@@ -147,7 +147,11 @@ export type {
 
 // Decorators
 export { column, columnRegistry } from "./model/decorators/column.ts";
-export type { ColumnOptions, ColumnShorthand } from "./model/decorators/column.ts";
+export type {
+  ColumnOptions,
+  ColumnOptionsInput,
+  ColumnShorthand,
+} from "./model/decorators/column.ts";
 export { registerModel, modelByName, modelsByName } from "./model/decorators/_metadata.ts";
 // Imperative column registration — for mixin authors composing model behaviour with
 // Model.using (the @column decorator can't run inside a returned class expression).

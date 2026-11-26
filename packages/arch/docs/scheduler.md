@@ -414,13 +414,15 @@ const seen = await Heartbeat.lastSeen("scheduler");
 // { status: "seen", ageSeconds, beat } | { status: "never" } | { status: "unknown", reason }
 ```
 
-| Name                  | Description                                                                                                |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `Heartbeat`           | `beat()` records a check-in, `start()` beats on an interval and returns a stopper, `lastSeen()` reads one. |
-| `Beat`                | What a check-in records — `at`, `pid`, `detail`.                                                           |
-| `BeatLookup`          | The three answers: `seen`, `never`, and `unknown` with a reason.                                           |
-| `workerLivenessCheck` | Builds the doctor check above for a worker kind.                                                           |
-| `describeBeat`        | Renders a `BeatLookup` as the prose used in the report.                                                    |
+| Name                    | Description                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Heartbeat`             | `beat()` records a check-in, `start()` beats on an interval and returns a stopper, `lastSeen()` reads one.                                                    |
+| `Beat`                  | What a check-in records — `at`, `pid`, `detail`.                                                                                                              |
+| `BeatLookup`            | The three answers: `seen`, `never`, and `unknown` with a reason.                                                                                              |
+| `workerLivenessCheck`   | Builds the doctor check above for a worker kind.                                                                                                              |
+| `WorkerLivenessOptions` | What `workerLivenessCheck()` takes: the check's id and label, the heartbeat name, `hasWork()`, when a check-in is stale, and the command to start the worker. |
+| `WorkerWork`            | What `hasWork()` returns: whether there is work, its summary, and `idle`, the message shown when there is none.                                               |
+| `describeBeat`          | Renders a `BeatLookup` as the prose used in the report.                                                                                                       |
 
 `unknown` is a distinct answer from `never` on purpose, and every consumer has to keep
 them apart: one means nothing is running, the other means this process cannot see whether

@@ -52,16 +52,16 @@ class SettingsError = {
 }
 
 class SettingsFake = {
-  new (app: Application, original: RegistryEntry | undefined, store: MemoryStore): SettingsFake
-  static install: (overrides?: Record<string, unknown>) => SettingsFake
+  new <D extends SettingDefinitions = SettingDefinitions>(app: Application, original: RegistryEntry | undefined, store: MemoryStore): SettingsFake<D>
+  static install: {    <G extends DefinesSettings>(group: G, overrides?: Partial<SettingValues<G['definitions']>> | undefined): SettingsFake<G['definitions']>;    <const G extends readonly DefinesSettings[]>(groups: G, overrides?: Partial<SettingValues<MergedDefinitions<G>>> | undefined): SettingsFake<MergedDefinitions<G>>;    (overrides?: Record<string, unknown> | undefined): SettingsFake;}
   all: (scope?: SettingsScope) => Promise<ResolvedSetting[]>
   definitions: () => [string, SettingDefinition][]
   get: (key: string, scope?: SettingsScope) => Promise<unknown>
   hide: (key: string, options?: SettingWriteOptions) => Promise<boolean>
   history: (key: string, options?: SettingHistoryOptions) => Promise<SettingHistoryEntry[]>
-  override: (key: string, value: unknown) => SettingsFake
+  override: <K extends keyof D & string>(key: K, value: SettingValue<D[K]>) => SettingsFake<D>
   readonly memory: MemoryStore
-  release: (key: string) => SettingsFake
+  release: <K extends keyof D & string>(key: K) => SettingsFake<D>
   resolve: (key: string, scope?: SettingsScope) => Promise<ResolvedSetting>
   resolveMany: (keys: readonly string[], scope?: SettingsScope) => Promise<ResolvedSetting[]>
   restore: () => void

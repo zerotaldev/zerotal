@@ -34,16 +34,16 @@ Classes are discovered by directory. Put a file in the right place and it regist
 itself; no manifest to update.
 
 ```text
-app/controllers/   app/models/      app/middleware/   app/policies/
-app/jobs/          app/events/      app/listeners/    app/observers/
-app/commands/      app/schedules/   app/requests/     app/notifications/
-routes/            config/          database/migrations/   tests/
+app/routes/           routes/               app/models/           app/middleware/
+app/policies/         app/requests/         app/jobs/             app/events/
+app/listeners/        app/observers/        app/notifications/    app/commands/
+app/schedules/        config/               database/migrations/  tests/
 ```
 
+This app uses both routing styles. Files under `app/routes/` route themselves — each file serves the path it sits at and exports `GET`, `POST` and the rest; a `[param]` folder or file is a parameter, and a `(group)` folder adds the middleware in its `_middleware.ts` without adding to the path; `routes/` registers the rest in code. Read both before adding a route, and follow whichever already serves its neighbours.
+
 Imports follow one rule: this app depends on the `zerotal` bundle, so the kernel
-and the packages it bundles are imported through it — `zerotal/orm`, `zerotal/auth`,
-`zerotal/queue` and the rest — and any other package by its own name. An
-`@zerotal/orm` import would reach a package this app does not declare.
+and the packages it bundles are imported through it — `zerotal/auth`, `zerotal/cache`, `zerotal/media`, `zerotal/orm`, `zerotal/queue`, `zerotal/scheduler`, `zerotal/session`, `zerotal/testing`, `zerotal/validator` — and any other package by its own name. An `@zerotal/orm` import would reach a package this app does not declare.
 
 ```ts
 import type { HttpContext } from "zerotal";
@@ -65,29 +65,29 @@ bun zt doctor          # health checks, with a fix beside each finding
 
 ### What this app has
 
-**Data.** Models are Active Record classes in `app/models/`, declared with `@table` and `@column` decorators; `DB` from `@zerotal/orm` is the query builder. Migrations live in `database/migrations/` — generate with `bun zt make:migration`, never hand-edit an applied one. Call `schema` before writing a query or a factory.
+**Data.** Models are Active Record classes in `app/models/`, declared with `@table` and `@column` decorators; `DB` from `zerotal/orm` is the query builder. Migrations live in `database/migrations/` — generate with `bun zt make:migration`, never hand-edit an applied one. Call `schema` before writing a query or a factory.
 
-**Auth.** `Auth` from `@zerotal/auth` for the current user; policies go in `app/policies/` and are discovered automatically. Do not hand-roll password hashing or session handling.
+**Auth.** `Auth` from `zerotal/auth` for the current user; policies go in `app/policies/` and are discovered automatically. Do not hand-roll password hashing or session handling.
 
 **Validation.** `FormRequest` subclasses in `app/requests/`, or `validate()` inline. Rules are built with `RuleBuilder`, so a typo is a compile error rather than a runtime one.
 
-**Flow components.** Server-rendered interactive components: a class with state fields and actions, rendered as JSX. Every component is an island and is fully interactive — there is no separate hydration step to write. `bun zt make:flow` scaffolds one.
+**Flow components.** Server-rendered components: a class with state fields and actions, rendered as JSX. A component is interactive — state kept between requests, actions called over a socket — unless it or a base class sets `static interactive = false`, which renders plain HTML with no snapshot. Check the base class before relying on either; a page base often turns it off and a page that needs live state turns it back on. `bun zt make:flow` scaffolds one.
 
 **UI kit.** `@zerotal/flow-ui` ships the component set. Check it before writing a button, modal, table or form field from scratch.
 
-**Inertia.** Pages are React/Vue components under `resources/`; controllers return `Inertia.render(...)`. Props are serialised — do not pass class instances.
+**Inertia.** Pages are React/Vue components under `resources/`; a route handler returns `Inertia.render(...)` with the page's props. Props are serialised — do not pass class instances.
 
-**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower than a request belongs in one. `bun zt queue:work` runs the worker; `bun zt dev` runs it for you.
+**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower than a request belongs in one. It needs `QueueProvider` from `zerotal/queue` in the provider list under `bootstrap/` and a `config/queue.ts` first — this app does not register it yet. Once it is registered, `bun zt dev` runs a worker beside the server; in production `bun zt queue:work` does.
 
-**Cache.** `Cache` from `@zerotal/cache`. Never cache a request-scoped value.
+**Cache.** `Cache` from `zerotal/cache`. Never cache a request-scoped value.
 
-**Scheduling.** Schedules in `app/schedules/`, discovered at boot. They need `SchedulerProvider` registered — `doctor` will say so if it is missing.
+**Scheduling.** Schedules in `app/schedules/`, discovered at boot. It needs `SchedulerProvider` from `zerotal/scheduler` in the provider list under `bootstrap/` first — this app does not register it yet.
 
-**Media.** `@zerotal/media` owns uploads, conversions and the media library.
+**Media.** `zerotal/media` owns uploads, conversions and the media library.
 
 **Realtime.** Channels are declared in the app and authorised server-side. `bun zt make:channel` scaffolds one.
 
-**Tests.** `createTestApp()` from `@zerotal/testing` boots a real app; factories and fakes come from the same package. Tests run on `bun test` via `bun zt test`.
+**Tests.** `createTestApp()` from `zerotal/testing` boots a real app; factories and fakes come from the same package. Tests run on `bun test` via `bun zt test`.
 
 ### Before you build it yourself
 

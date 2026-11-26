@@ -14,6 +14,12 @@ follows the Zerotal monorepo's unified versioning.
   it as `ProjectStatus`, so `data.status as ProjectStatus` is gone from the React, Vue and Flow
   starters.
 
+### Fixed
+
+- Every starter's `AGENTS.md` and skills are regenerated so that they import bundled packages
+  through `zerotal/*`, name `channels()` for notifications, list the routing directories the
+  starter actually uses, and say the queue needs `QueueProvider` registered first.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

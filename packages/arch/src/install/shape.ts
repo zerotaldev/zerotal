@@ -42,17 +42,113 @@ export interface ProjectShape {
   };
   /** A `tests/` directory with something in it. */
   hasTests: boolean;
+  /**
+   * Where requests are routed from, by which directories hold files. A starter
+   * routes by file under `app/routes/`, the API template registers controllers in
+   * `routes/`, and the Flow starter does both; guidance that names the wrong one
+   * sends an agent to write a file nothing reads.
+   */
+  routing: {
+    /** `app/routes/`: file-based routes. */
+    files: boolean;
+    /** `routes/`: routes registered in code. */
+    registered: boolean;
+    /** `app/controllers/`. */
+    controllers: boolean;
+  };
+  /**
+   * The provider class names the files under `bootstrap/` mention, or `undefined`
+   * when there are none to read. A package can be installed through the bundle
+   * and still do nothing until its provider is registered, which is the
+   * difference between "dispatch a job" and "register `QueueProvider`, then
+   * dispatch a job".
+   */
+  providers: string[] | undefined;
+  /**
+   * The manifest declares the `zerotal` bundle, so the packages it re-exports are
+   * imported as `zerotal/orm` and the rest, not by their scoped names.
+   */
+  bundle: boolean;
 }
 
 /** Read `root`'s shape. Every probe fails soft: an unknown fact is simply not stated. */
 export async function detectShape(root: string): Promise<ProjectShape> {
-  const [schemaSource, routeTypes, strict, hasTests] = await Promise.all([
+  const [
+    schemaSource,
+    routeTypes,
+    strict,
+    hasTests,
+    files,
+    registered,
+    controllers,
+    providers,
+    bundle,
+  ] = await Promise.all([
     _schemaSource(root),
     _exists(join(root, "types", "routes.generated.ts")),
     _strictness(root),
     _hasFiles(join(root, "tests")),
+    _hasFiles(join(root, "app", "routes")),
+    _hasFiles(join(root, "routes")),
+    _hasFiles(join(root, "app", "controllers")),
+    _providers(root),
+    _declaresBundle(root),
   ]);
-  return { schemaSource, routeTypes, strict, hasTests };
+  return {
+    schemaSource,
+    routeTypes,
+    strict,
+    hasTests,
+    routing: { files, registered, controllers },
+    providers,
+    bundle,
+  };
+}
+
+/** Whether `package.json` lists `zerotal` among its dependencies. */
+async function _declaresBundle(root: string): Promise<boolean> {
+  const source = await _read(join(root, "package.json"));
+  if (!source) return false;
+  try {
+    const manifest = JSON.parse(source) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    return (
+      "zerotal" in (manifest.dependencies ?? {}) || "zerotal" in (manifest.devDependencies ?? {})
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Provider names in the files under `bootstrap/`, read as text.
+ *
+ * Every file there, not only `providers.ts`: the starters keep the list in that
+ * file, the API template passes it straight to the app in `app.ts`. A name in a
+ * comment counts too. That errs toward saying a provider is registered, which
+ * costs one sentence of setup advice the app did not need, rather than toward
+ * telling an agent to register one twice.
+ *
+ * `undefined` when there is no `bootstrap/` to read, so the guidance hedges
+ * rather than saying a provider is missing from a file that does not exist.
+ */
+async function _providers(root: string): Promise<string[] | undefined> {
+  let names: string[];
+  try {
+    const { readdir } = await import("node:fs/promises");
+    names = (await readdir(join(root, "bootstrap"))).filter((name) => /\.[cm]?[jt]sx?$/.test(name));
+  } catch {
+    return undefined;
+  }
+  if (names.length === 0) return undefined;
+  const found = new Set<string>();
+  for (const name of names) {
+    const source = await _read(join(root, "bootstrap", name));
+    for (const match of source?.match(/\b[A-Z]\w*Provider\b/g) ?? []) found.add(match);
+  }
+  return [...found].sort();
 }
 
 /**

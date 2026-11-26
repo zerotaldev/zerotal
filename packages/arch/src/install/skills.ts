@@ -114,7 +114,7 @@ the mixin was composed. An unguarded \`ALTER TABLE\` then fails with \`duplicate
 during the release's \`migrate\` step:
 
 \`\`\`ts
-import { Schema } from "@zerotal/orm";
+import { Migration, Schema } from "${shape?.bundle ? "zerotal/orm" : "@zerotal/orm"}";
 
 export default class extends Migration {
   async up(): Promise<void> {
@@ -298,7 +298,7 @@ sets the key and database a test needs. The tests beside it show the house style
 
 \`\`\`ts
 import { afterAll, beforeAll, beforeEach, describe, test } from "bun:test";
-import { createTestApp, refreshDatabase, type TestApp } from "zerotal/testing";
+import { createTestApp, refreshDatabase, type TestApp } from "${shape?.bundle === false ? "@zerotal/testing" : "zerotal/testing"}";
 
 let app: TestApp;
 
@@ -403,8 +403,8 @@ const NOTIFICATION_SKILL: Skill = {
 
 1. \`bun zt make:notification <Name>\` — classes in \`app/notifications/\` are found
    automatically, including by the queue worker that rebuilds them.
-2. Declare the channels in \`via()\` and one method per channel. The recipient model composes
-   \`Notifiable\`.
+2. Name the channels in \`channels()\` and write one method per channel — \`toMail()\`,
+   \`toDatabase()\` and the rest. The recipient model composes \`Notifiable\`.
 3. Send with \`user.notifyLater(new <Name>(...))\` or \`Notify.queue(user, ...)\` from a request.
    \`notify()\` sends inline and is not retried.
 4. Test with \`NotificationFake\` and \`assertQueued\`.
@@ -416,8 +416,10 @@ const NOTIFICATION_SKILL: Skill = {
   as a snapshot — read its fields, not its methods.
 - **A class outside \`app/notifications/\`** must call \`NotificationRegistry.register()\`, or the
   worker cannot rebuild it.
-- **Something has to run the queue.** \`bun zt dev\` runs a worker locally. In production a
-  persistent driver needs \`bun zt queue:work\` running, or queued mail is never sent.
+- **Something has to run the queue.** With \`QueueProvider\` registered in
+  \`bootstrap/providers.ts\` and a \`config/queue.ts\`, \`bun zt dev\` runs a worker locally.
+  In production a persistent driver needs \`bun zt queue:work\` running, or queued mail is
+  never sent.
 - **Failures wait in the failed jobs** after their retries; \`bun zt queue:retry\` sends them
   again.
 - **The fake records, it does not deliver.** Database-channel rows are not written under it.

@@ -44,7 +44,7 @@ the mixin was composed. An unguarded `ALTER TABLE` then fails with `duplicate co
 during the release's `migrate` step:
 
 ```ts
-import { Schema } from "@zerotal/orm";
+import { Migration, Schema } from "zerotal/orm";
 
 export default class extends Migration {
   async up(): Promise<void> {

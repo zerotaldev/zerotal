@@ -396,6 +396,19 @@
         "typescript": "^5.8.0",
       },
     },
+    "packages/settings": {
+      "name": "@zerotal/settings",
+      "version": "1.17.4",
+      "dependencies": {
+        "@zerotal/core": "workspace:*",
+        "@zerotal/orm": "workspace:*",
+        "@zerotal/tenancy": "workspace:*",
+      },
+      "devDependencies": {
+        "@zerotal/audit": "workspace:*",
+        "typescript": "^5.8.0",
+      },
+    },
     "packages/telemetry": {
       "name": "@zerotal/telemetry",
       "version": "1.17.4",
@@ -793,6 +806,8 @@
     "@zerotal/scheduler": ["@zerotal/scheduler@workspace:packages/scheduler"],
 
     "@zerotal/session": ["@zerotal/session@workspace:packages/session"],
+
+    "@zerotal/settings": ["@zerotal/settings@workspace:packages/settings"],
 
     "@zerotal/telemetry": ["@zerotal/telemetry@workspace:packages/telemetry"],
 

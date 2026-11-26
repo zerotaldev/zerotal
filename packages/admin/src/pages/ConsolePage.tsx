@@ -30,6 +30,9 @@ const BADGE_TONE: Record<BadgeTone, string> = {
   destructive: "bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/20",
 };
 
+const INPUT =
+  "mt-1.5 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-hidden transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring";
+
 const ALIGN: Record<string, string> = {
   start: "text-left",
   center: "text-center",
@@ -50,6 +53,11 @@ export class ConsolePage extends Component {
   /** Rows for the active tab, resolved on mount and after every action. */
   @expose rows: ConsoleRow[] = [];
   @expose tabBadges: Record<string, number> = {};
+
+  /** The row action waiting for a value, as `[actionKey, rowKey]`; empty when none is. */
+  @expose editing: string[] = [];
+  /** The value being typed for {@link editing}, bound to the field. */
+  @expose inputValue = "";
 
   private get _console(): ConsoleContribution {
     return (this.constructor as typeof ConsolePage).console;
@@ -99,6 +107,7 @@ export class ConsolePage extends Component {
     const tab = this._console.tabs.find((t) => t.key === key);
     if (!tab) return;
     this.tab = tab.key;
+    this.editing = [];
     await this._load();
   }
 
@@ -115,11 +124,50 @@ export class ConsolePage extends Component {
     const action = tab?.rowActions?.find((a) => a.key === key);
     if (!action) return;
 
-    const idKey = tab.rowKey ?? "id";
-    const row = this.rows.find((r) => String(r[idKey]) === String(rowKey));
+    // An action that asks for a value runs only through submitInput(), with one.
+    if (action.input) return;
+
+    const row = this._row(tab, rowKey);
     if (!row) return;
 
     await this._run(() => action.run(row));
+  }
+
+  /** Open the field for a row action that asks for a value, filled from the row. */
+  @expose async openInput(key: unknown, rowKey: unknown): Promise<void> {
+    await this._authorize();
+    const tab = this._activeTab();
+    const action = tab?.rowActions?.find((a) => a.key === key && a.input);
+    const row = tab ? this._row(tab, rowKey) : undefined;
+    if (!action?.input || !row) return;
+    this.editing = [String(key), String(rowKey)];
+    this.inputValue = action.input.value?.(row) ?? "";
+  }
+
+  @expose async cancelInput(): Promise<void> {
+    this.editing = [];
+    this.inputValue = "";
+  }
+
+  /**
+   * Run the open row action with the submitted value. The action and its row are
+   * looked up again on the server, and the ability checked, as for any action.
+   */
+  @expose async submitInput(): Promise<void> {
+    await this._authorize();
+    const [key, rowKey] = this.editing;
+    const tab = this._activeTab();
+    const action = tab?.rowActions?.find((a) => a.key === key && a.input);
+    const row = tab ? this._row(tab, rowKey) : undefined;
+    const value = String(this.inputValue ?? "");
+    await this.cancelInput();
+    if (!action || !row) return;
+    await this._run(() => action.run(row, value));
+  }
+
+  private _row(tab: ConsoleTab, rowKey: unknown): ConsoleRow | undefined {
+    const idKey = tab.rowKey ?? "id";
+    return this.rows.find((r) => String(r[idKey]) === String(rowKey));
   }
 
   @expose async runHeaderAction(key: unknown): Promise<void> {
@@ -218,6 +266,8 @@ export class ConsolePage extends Component {
           </div>
         ) : null}
 
+        {this._editor(active)}
+
         <div class="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xs">
           <div class="overflow-x-auto p-1.5">
             {this.rows.length > 0 ? (
@@ -233,6 +283,66 @@ export class ConsolePage extends Component {
     );
   }
 
+  /** The field for the row action waiting for a value, or nothing. */
+  private _editor(tab: ConsoleTab): HtmlNode | null {
+    const [key, rowKey] = this.editing;
+    const action = tab.rowActions?.find((a) => a.key === key && a.input);
+    const row = this._row(tab, rowKey);
+    const input = action?.input;
+    if (!action || !input || !row) return null;
+
+    const options = input.options?.(row) ?? [];
+    const help = input.help?.(row);
+    const field =
+      options.length > 0 || input.type === "select" ? (
+        <select value={this.inputValue} class={INPUT}>
+          {options.map((o) => (
+            <option value={o}>{o}</option>
+          ))}
+        </select>
+      ) : input.type === "textarea" ? (
+        <textarea value={this.inputValue} rows="5" class={`${INPUT} font-mono`} />
+      ) : (
+        <input
+          type={input.type === "number" ? "number" : "text"}
+          value={this.inputValue}
+          class={INPUT}
+        />
+      );
+
+    return (
+      <form
+        onSubmit={this.submitInput}
+        class="space-y-3 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xs"
+      >
+        <div class="text-sm font-medium">
+          {action.label}{" "}
+          <span class="font-mono text-xs text-muted-foreground">{String(rowKey)}</span>
+        </div>
+        <label class="block text-sm text-muted-foreground">
+          {input.label}
+          {field}
+        </label>
+        {help ? <p class="text-xs text-muted-foreground">{help}</p> : null}
+        <div class="flex items-center gap-2">
+          <button
+            type="submit"
+            class="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={this.cancelInput}
+            class="inline-flex h-9 items-center rounded-lg border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   private _rowActions(tab: ConsoleTab, row: ConsoleRow): HtmlNode {
     const idKey = tab.rowKey ?? "id";
     const rowKey = String(row[idKey] ?? "");
@@ -241,7 +351,7 @@ export class ConsolePage extends Component {
         {(tab.rowActions ?? []).map((a) => (
           <button
             type="button"
-            onClick={this.runRowAction}
+            onClick={a.input ? this.openInput : this.runRowAction}
             data-args={JSON.stringify([a.key, rowKey])}
             {...(a.confirm ? { confirm: a.confirm } : {})}
             class={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors ${

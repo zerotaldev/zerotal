@@ -1246,9 +1246,18 @@ interface ConsoleAction = {
   confirm?: string
   danger?: boolean
   icon?: string
+  input?: ConsoleActionInput
   key: string
   label: string
-  run: (row: ConsoleRow) => Promise<string | void> | string | void
+  run: (row: ConsoleRow, input?: string) => Promise<string | void> | string | void
+}
+
+interface ConsoleActionInput = {
+  help?: (row: ConsoleRow) => string | undefined
+  label: string
+  options?: (row: ConsoleRow) => string[]
+  type?: 'number' | 'text' | 'select' | 'textarea'
+  value?: (row: ConsoleRow) => string
 }
 
 interface ConsoleColumn = {

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { SQL } from "bun";
 import { QueueProvider } from "./QueueProvider.ts";
+import { DatabaseDriver } from "../drivers/DatabaseDriver.ts";
 import { _setDbConnection } from "@zerotal/orm";
 
 // ── Mock helpers ──────────────────────────────────────────────────────────────
@@ -97,6 +98,13 @@ describe("QueueProvider.onRegister()", () => {
     const { factory } = captureFactory("sqlite");
     const queue = factory();
     expect(queue).toBeDefined();
+  });
+
+  it('builds the database driver for "database", and for its earlier name "sqlite"', () => {
+    for (const name of ["database", "sqlite"]) {
+      const queue = captureFactory(name).factory() as { _driver: unknown };
+      expect(queue._driver).toBeInstanceOf(DatabaseDriver);
+    }
   });
 
   it('factory creates a QueueManager with SyncDriver for "sync"', () => {

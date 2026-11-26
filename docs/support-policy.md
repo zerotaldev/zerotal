@@ -166,9 +166,12 @@ has worn the label for a year is not being cautious, it is unowned. So each one
 below `stable` names the release by which it is reviewed, and the review has three
 outcomes — promote, keep with a new date and the reason, or withdraw.
 
-Nothing is below `stable` today. The table that lived here is empty, which is the
-outcome the mechanism is for rather than the absence of one — it is how the review
-looks when every date has been answered.
+| Package             | Level  | Reviewed by | Why it is not `stable` yet                                                                                                           |
+| ------------------- | ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `@zerotal/settings` | `beta` | 1.20.0      | New. Its design comes from two production apps' hand-built versions, but no app has run this package yet. It graduates once one has. |
+
+Before `@zerotal/settings` arrived, nothing was below `stable`, and this table was
+empty. That is the outcome the mechanism is for: every date had been answered.
 
 `@zerotal/ai` was the last entry, `experimental` and due by 1.11.0. It was promoted in
 1.11.2, and the precondition it carried was met rather than waived: it graduates in the

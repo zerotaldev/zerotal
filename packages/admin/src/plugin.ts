@@ -107,6 +107,23 @@ export interface ConsoleColumn {
   badge?: (value: unknown, row: ConsoleRow) => BadgeTone | null;
 }
 
+/**
+ * A value a row action asks for before it runs. The console opens a field above
+ * the table, filled from the row, and passes what was submitted to `run`.
+ */
+export interface ConsoleActionInput {
+  /** The field's label. */
+  label: string;
+  /** The kind of field. `select` needs `options`. Defaults to `"text"`. */
+  type?: "text" | "number" | "select" | "textarea";
+  /** Choices, per row. A non-empty list makes the field a select, whatever `type` says. */
+  options?: (row: ConsoleRow) => string[];
+  /** What the field starts with, per row. Defaults to empty. */
+  value?: (row: ConsoleRow) => string;
+  /** A line of help under the field, per row. */
+  help?: (row: ConsoleRow) => string | undefined;
+}
+
 /** An action offered on every row of a console table. */
 export interface ConsoleAction {
   key: string;
@@ -115,8 +132,13 @@ export interface ConsoleAction {
   danger?: boolean;
   /** Ask for confirmation with this message before running. */
   confirm?: string;
-  /** Run against one row. Return a message to flash on success. */
-  run: (row: ConsoleRow) => Promise<string | void> | string | void;
+  /** Ask for a value first; `run` receives it as its second argument. */
+  input?: ConsoleActionInput;
+  /**
+   * Run against one row. Return a message to flash on success. `input` is the
+   * submitted value when the action declares {@link ConsoleAction.input}.
+   */
+  run: (row: ConsoleRow, input?: string) => Promise<string | void> | string | void;
 }
 
 /** An action in a console tab's header — operating on the tab, not on a row. */

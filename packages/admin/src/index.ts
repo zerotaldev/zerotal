@@ -75,6 +75,7 @@ export type {
   ConsoleTab,
   ConsoleColumn,
   ConsoleAction,
+  ConsoleActionInput,
   ConsoleHeaderAction,
   ConsoleRow,
   WidgetContribution,

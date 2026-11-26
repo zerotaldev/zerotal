@@ -3,7 +3,7 @@ import type { AppEnvironment, DevProcessDefinition } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import { _getConnection } from "@zerotal/orm";
 import { QueueManager } from "../QueueManager.ts";
-import { SqliteDriver } from "../drivers/SqliteDriver.ts";
+import { DatabaseDriver } from "../drivers/DatabaseDriver.ts";
 import { SyncDriver } from "../drivers/SyncDriver.ts";
 import { RedisDriver } from "../drivers/RedisDriver.ts";
 import { WorkerPool } from "../WorkerPool.ts";
@@ -47,7 +47,7 @@ export class QueueProvider extends ServiceProvider {
         command: "queue:work",
         enabled: () => {
           const config = this.app.container.makeSync("config") as ConfigManager;
-          const driver = config.get<string>("queue.driver", "sqlite");
+          const driver = config.get<string>("queue.driver", "database");
           const workers = config.get<number>("queue.workers", 0);
           return driver !== "sync" && (workers ?? 0) === 0;
         },
@@ -65,7 +65,7 @@ export class QueueProvider extends ServiceProvider {
 
     this.app.container.singleton("queue", () => {
       const config = this.app.container.makeSync("config") as ConfigManager;
-      const driver = config.get<string>("queue.driver", "sqlite");
+      const driver = config.get<string>("queue.driver", "database");
 
       switch (driver) {
         case "redis":
@@ -74,9 +74,12 @@ export class QueueProvider extends ServiceProvider {
         case "sync":
           return new QueueManager(new SyncDriver());
 
+        // The app's own database, whichever engine it is. `sqlite` is the name
+        // this driver had before it ran on PostgreSQL and MySQL too.
+        case "database":
         case "sqlite":
         default:
-          return new QueueManager(new SqliteDriver(_getConnection()));
+          return new QueueManager(new DatabaseDriver(_getConnection()));
       }
     });
   }

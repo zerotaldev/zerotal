@@ -48,12 +48,13 @@ against what the app has installed. See [Agent Surface](/docs/arch).
 ## Messages and background work
 
 - **[Mail, SMS and in-app notifications](/docs/notifications)** — notification classes, one per message. Add `@zerotal/notifications`.
-- **[Background jobs](/docs/queue)** — job classes and a worker. Included with `zerotal`.
+- **[Background jobs](/docs/queue)** — job classes and a worker, on the app's own database (SQLite, PostgreSQL, MySQL) or Redis. Included with `zerotal`.
 - **[Scheduled tasks](/docs/scheduler)** — `Schedule` classes in `app/schedules/`. Included with `zerotal`.
 
 ## Product features
 
 - **[An admin panel](/docs/admin)** — declarative resources, tables, forms and dashboards. Add `@zerotal/admin`.
+- **[Per-tenant settings](/docs/settings)** — typed defaults in code with tenant and user overrides, hidden not deleted, audited, with an admin screen. Add `@zerotal/settings`.
 - **[Realtime updates](/docs/broadcasting)** — authorised broadcast channels. Add `@zerotal/broadcasting`.
 - **[Translations](/docs/i18n)** — `__()` with plurals and per-request locale. Add `@zerotal/i18n`.
 - **[Calls to a language model](/docs/ai)** — `Ai.text()`, `Ai.object()`, `Ai.agent()`. Add `@zerotal/ai`.

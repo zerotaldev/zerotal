@@ -34,7 +34,7 @@ export class QueueShuttingDownError extends QueueError {
 export class QueueBatchingUnsupportedError extends QueueError {
   constructor() {
     super(
-      "[Zerotal] The current queue driver does not support job batching. Use SqliteDriver.",
+      "[Zerotal] The current queue driver does not support job batching. Use the database driver.",
       "E_QUEUE_BATCHING_UNSUPPORTED",
       500,
     );
@@ -52,7 +52,7 @@ export class QueueDebounceUnsupportedError extends QueueError {
         `nothing in production, where more than one worker dispatches — so this refuses ` +
         `rather than degrading quietly.
 ` +
-        `Fix: use the sqlite or redis driver, or remove \`debounce\` from ${className}.`,
+        `Fix: use the database or redis driver, or remove \`debounce\` from ${className}.`,
       "E_QUEUE_DEBOUNCE_UNSUPPORTED",
       500,
     );

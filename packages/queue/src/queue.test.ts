@@ -829,7 +829,7 @@ describe("QueueManager — getters and drain() Promise path", () => {
 describe("QueueConfig factory", () => {
   it("returns defaults when called with no args", () => {
     const cfg = QueueConfig();
-    expect(cfg.driver).toBe("sqlite");
+    expect(cfg.driver).toBe("database");
     expect(cfg.pollInterval).toBe(500);
     expect(cfg.queues).toEqual(["default"]);
     expect(cfg.workers).toBe(0);

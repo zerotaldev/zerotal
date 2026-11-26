@@ -2,7 +2,7 @@
 
 > Background job queue with retries, batches, chaining, and a worker pool.
 
-Offload slow work to background jobs. Define `Job` classes, dispatch them singly, batched, or chained, choose a driver (SQLite, Redis, or sync), and process them with the worker loop or a `WorkerPool` of Bun threads.
+Offload slow work to background jobs. Define `Job` classes, dispatch them singly, batched, or chained, choose a driver (the app's own database — SQLite, PostgreSQL or MySQL — Redis, or sync), and process them with the worker loop or a `WorkerPool` of Bun threads.
 
 Part of the [Zerotal](../../README.md) framework. Requires **Bun ≥ 1.3.14**.
 
@@ -73,30 +73,34 @@ await Bus.batch(rows.map((row) => new ImportCsvRowJob(row)))
 await Bus.chain([new ValidateImportJob(id), new ProcessImportJob(id)]).dispatch();
 ```
 
-In tests, swap the facade for a recorder:
+In tests, swap the binding for a recorder, and settle it to run what was captured:
 
 ```ts
-import { QueueFake } from "@zerotal/queue";
+import { Queue, QueueFake } from "@zerotal/queue";
 
-QueueFake.swap();
-expect(QueueFake.dispatched(NotifyFollowersJob)).toHaveLength(1);
-QueueFake.restore();
+const queue = QueueFake.install();
+await Queue.dispatch(new NotifyFollowersJob(post.id));
+queue.assertDispatched(NotifyFollowersJob);
+await Queue.settle(); // run it, and whatever it dispatches
+queue.restore();
 ```
+
+`Queue.settle()` works with the real drivers too: it runs every due job until none is left.
 
 ## Exports
 
-| Export                                                                                 | Description                                              |
-| -------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `Queue`                                                                                | Facade over `QueueManager`.                              |
-| `Job`, `JobRegistry`                                                                   | Base job class and the class-name registry.              |
-| `QueueManager`, `queueStats`, `JobStatus`, `QueueStats`                                | Manager and stats helpers.                               |
-| `Bus`, `Batch`, `PendingBatch`, `BatchRecord`, `BatchOptions`, `SerializedJob`         | Batch and chain orchestration.                           |
-| `WorkerPool`, `WorkerPoolOptions`, `WorkerResult`                                      | Bun-thread worker pool for CPU-bound jobs.               |
-| `QueueFake`                                                                            | In-memory test double.                                   |
-| `QueueProvider`                                                                        | Service provider — register in `bootstrap/providers.ts`. |
-| `QueueConfig`, `QueueConfigShape`                                                      | Config factory and its type.                             |
-| `QueueDriver`, `JobRecord`, `BatchStatus`, `SqliteDriver`, `SyncDriver`, `RedisDriver` | Driver contract and built-in drivers.                    |
-| `errors`                                                                               | Typed error vocabulary (re-exported).                    |
+| Export                                                                                                          | Description                                              |
+| --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `Queue`                                                                                                         | Facade over `QueueManager`.                              |
+| `Job`, `JobRegistry`                                                                                            | Base job class and the class-name registry.              |
+| `QueueManager`, `queueStats`, `JobStatus`, `QueueStats`                                                         | Manager and stats helpers.                               |
+| `Bus`, `Batch`, `PendingBatch`, `BatchRecord`, `BatchOptions`, `SerializedJob`                                  | Batch and chain orchestration.                           |
+| `WorkerPool`, `WorkerPoolOptions`, `WorkerResult`                                                               | Bun-thread worker pool for CPU-bound jobs.               |
+| `QueueFake`                                                                                                     | In-memory test double.                                   |
+| `QueueProvider`                                                                                                 | Service provider — register in `bootstrap/providers.ts`. |
+| `QueueConfig`, `QueueConfigShape`                                                                               | Config factory and its type.                             |
+| `QueueDriver`, `JobRecord`, `BatchStatus`, `DatabaseDriver` (alias `SqliteDriver`), `SyncDriver`, `RedisDriver` | Driver contract and built-in drivers.                    |
+| `errors`                                                                                                        | Typed error vocabulary (re-exported).                    |
 
 Subpath exports:
 

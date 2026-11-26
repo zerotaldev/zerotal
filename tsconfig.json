@@ -40,6 +40,7 @@
     { "path": "./packages/queue" },
     { "path": "./packages/scheduler" },
     { "path": "./packages/session" },
+    { "path": "./packages/settings" },
     { "path": "./packages/telemetry" },
     { "path": "./packages/tenancy" },
     { "path": "./packages/testing" },

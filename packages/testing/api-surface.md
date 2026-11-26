@@ -138,6 +138,7 @@ class QueueFake = {
   isShuttingDown: boolean
   processNext: () => Promise<boolean>
   restore: () => void
+  settle: (options?: QueueSettleOptions) => Promise<number>
   size: () => Promise<number>
 }
 

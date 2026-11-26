@@ -105,10 +105,11 @@ Each page is at `https://zerotal.dev/docs/<page>` and in `search_docs`.
 - **Email verification:** signed links and `ValidateSignatureMiddleware`. `@zerotal/auth`, installed; page `email-verification`.
 - **An audit trail:** the `Auditable` mixin and manual audit events. `@zerotal/audit` — `bun add @zerotal/audit`; page `audit`.
 - **An admin panel:** declarative resources, tables, forms and dashboards. `@zerotal/admin` — `bun add @zerotal/admin`; page `admin`.
+- **Per-tenant settings:** typed defaults in code with tenant and user overrides, hidden not deleted, audited, with an admin screen. `@zerotal/settings` — `bun add @zerotal/settings`; page `settings`.
 - **Mail, SMS and in-app notifications:** notification classes, one per message. `@zerotal/notifications` — `bun add @zerotal/notifications`; page `notifications`.
 - **File uploads and image conversions:** media attached to models. `@zerotal/media`, installed; page `media`.
 - **File storage:** local and S3-compatible disks. Built in; page `storage`.
-- **Background jobs:** job classes and a worker. `@zerotal/queue`, installed; page `queue`.
+- **Background jobs:** job classes and a worker, on the app's own database (SQLite, PostgreSQL, MySQL) or Redis. `@zerotal/queue`, installed; page `queue`.
 - **Scheduled tasks:** `Schedule` classes in `app/schedules/`. `@zerotal/scheduler`, installed; page `scheduler`.
 - **Caching:** SQLite, Redis and memory drivers with tags. `@zerotal/cache`, installed; page `cache`.
 - **Realtime updates:** authorised broadcast channels. `@zerotal/broadcasting`, installed; page `broadcasting`.

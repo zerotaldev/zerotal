@@ -16,14 +16,31 @@
  * Reconnecting on close (rather than on error) is what keeps a server restart
  * from wedging the page without spinning up a reload loop.
  *
- * Exported as a string because it is injected inline: `DevReloadMiddleware`
- * rewrites HTML responses with it for every view layer, and Inertia bakes it
+ * Served as a file, `/__dev/reload.js`, and pulled in with a `<script src>` tag,
+ * not inlined. An inline script needs `'unsafe-inline'` or a nonce in the page's
+ * Content-Security-Policy, so an app with a strict policy had to loosen it in
+ * development to keep live-reload. A script from the app's own origin is allowed
+ * by `script-src 'self'`, the same way Flow's runtime under `/__flow/` is.
+ *
+ * @internal
+ */
+export const DEV_RELOAD_SCRIPT_PATH = "/__dev/reload.js";
+
+/**
+ * The tag `DevReloadMiddleware` injects into dev HTML responses, and Inertia bakes
  * into its cached template so streamed pages need no body rewrite.
  *
  * @internal
  */
-export const DEV_RELOAD_CLIENT: string =
-  `<script>(function(){` +
+export const DEV_RELOAD_CLIENT: string = `<script src="${DEV_RELOAD_SCRIPT_PATH}"></script>`;
+
+/**
+ * The script served at {@link DEV_RELOAD_SCRIPT_PATH}.
+ *
+ * @internal
+ */
+export const DEV_RELOAD_SOURCE: string =
+  `(function(){` +
   `var proto=location.protocol==='https:'?'wss:':'ws:';` +
   `var build=null;` +
   `function connect(){` +
@@ -38,4 +55,4 @@ export const DEV_RELOAD_CLIENT: string =
   `else if(build!==v)location.reload();` +
   `}};` +
   `ws.onclose=function(){setTimeout(connect,1000);};` +
-  `}connect();})();</script>`;
+  `}connect();})();`;

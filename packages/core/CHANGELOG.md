@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Live-reload works under a strict Content-Security-Policy.** The dev client was an inline
+  `<script>`, so an app whose policy refused inline scripts had to add `'unsafe-inline'` in
+  development to keep it. It is now a file, `/__dev/reload.js`, served while `zt dev` is
+  running and pulled in with `<script src>`, which `script-src 'self'` allows.
+- **`SecureHeadersMiddleware`'s docblock no longer shows a `{nonce}` placeholder.** Nothing
+  replaced it, so a policy copied from the example sent a literal `'nonce-{nonce}'` that matched
+  no script. The example now keeps scripts in files on the app's own origin.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

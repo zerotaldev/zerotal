@@ -32,6 +32,12 @@ export interface QueueConfigShape {
    * workerBootstrap: new URL('../bootstrap/queue-worker.ts', import.meta.url).href
    */
   workerBootstrap?: string | undefined;
+  /**
+   * Seconds a claimed job stays invisible to other workers (database driver).
+   * Default: 90. It must be longer than your slowest job: with several workers, a
+   * job still running when it runs out is claimed and run a second time.
+   */
+  visibilityTimeout?: number | undefined;
 }
 
 const defaults: QueueConfigShape = {

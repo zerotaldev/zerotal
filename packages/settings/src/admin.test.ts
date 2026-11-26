@@ -5,7 +5,7 @@
  * job and is tested there (`ConsolePage.input.test.ts`).
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import { Application, currentApp } from "@zerotal/core";
+import { Application, RequestContext, currentApp } from "@zerotal/core";
 import { TenantContext } from "@zerotal/tenancy";
 import type { Tenant } from "@zerotal/tenancy";
 import { _installSettingsAdmin, _settingsConsole, SETTINGS_ABILITY } from "./admin.ts";
@@ -19,6 +19,7 @@ const screen = defineSettings({
   "screen.rows": setting.number({ default: 25, min: 5, max: 100 }),
   "screen.dense": setting.boolean({ default: false }),
   "screen.theme": setting.enum(["light", "dark"], { default: "light" }),
+  "screen.locale": setting.string({ default: "en", scopes: ["global", "tenant", "user"] }),
 });
 
 const acme: Tenant = { id: 1, slug: "acme", name: "Acme", isActive: true };
@@ -85,6 +86,27 @@ describe("the generated settings screen", () => {
     });
     expect(await TenantContext.run(acme, () => screen.get("screen.rows"))).toBe(50);
     expect(await TenantContext.run(globex, () => screen.get("screen.rows"))).toBe(25);
+  });
+
+  it("shows and edits the tenant's value, not the signed-in admin's own override", async () => {
+    // The admin has a personal `fr`; the tenant's value is `de`. The screen edits the
+    // tenant's, so it must show the tenant's — and a save must not copy `fr` to everyone.
+    await TenantContext.run(acme, async () => {
+      await screen.set("screen.locale", "de");
+      await screen.set("screen.locale", "fr", { at: "user", user: 7 });
+    });
+    const asAdmin = <T>(fn: () => Promise<T>) =>
+      RequestContext.run({ user: { id: 7 } } as never, () => TenantContext.run(acme, fn));
+
+    const shown = await asAdmin(() => row("screen.locale"));
+    expect(shown).toMatchObject({ value: "de", source: "tenant" });
+    expect(action("settings", "change").input!.value!(shown)).toBe("de");
+
+    await asAdmin(async () => action("settings", "hide").run(await row("screen.locale")));
+    // Hidden at the screen's level, and counted the same way.
+    expect(await asAdmin(() => tab("hidden").badge!())).toBe(1);
+    // The admin's own override is untouched.
+    expect(await asAdmin(() => screen.get("screen.locale"))).toBe("fr");
   });
 
   it("refuses a value the definition does not accept", async () => {

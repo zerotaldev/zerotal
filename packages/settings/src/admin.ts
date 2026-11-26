@@ -90,6 +90,17 @@ function groupOf(key: string, definition: SettingDefinition): string {
   return definition.group ?? key.split(".")[0] ?? key;
 }
 
+/**
+ * How the screen reads: for no particular user. The screen edits the tenant's (or the
+ * app's) value, so what it shows must be that value, not the signed-in admin's own.
+ */
+const SCREEN_SCOPE = { user: null } as const;
+
+/** The level a write from the screen goes to, and so the one its Hidden tab lists. */
+function screenLevel(): "tenant" | "global" {
+  return TenantContext.id() !== null ? "tenant" : "global";
+}
+
 /** The level the panel reads and writes: the tenant's, inside one, else app-wide. */
 function levelLabel(): string {
   const tenant = TenantContext.tryGet();
@@ -132,7 +143,10 @@ export function _settingsConsole(settings: () => SettingsManager): ConsoleSpec {
         ],
         rows: async () => {
           const defs = definitions();
-          return (await settings().all()).map((r) => {
+          // Read for no particular user. Without `user: null` the signed-in admin's own
+          // user-level override showed as the row's value, Change opened pre-filled with
+          // it, and saving wrote it for the whole tenant.
+          return (await settings().all(SCREEN_SCOPE)).map((r) => {
             const definition = defs.get(r.key)!;
             return {
               key: r.key,
@@ -207,9 +221,9 @@ export function _settingsConsole(settings: () => SettingsManager): ConsoleSpec {
         ],
         rows: async () => {
           const rows: Row[] = [];
-          for (const r of await settings().all()) {
+          for (const r of await settings().all(SCREEN_SCOPE)) {
             // The level a write from this screen goes to is the one it can unhide.
-            const level = TenantContext.id() !== null ? "tenant" : "global";
+            const level = screenLevel();
             const hidden = r.levels.find((l) => l.kind === level && l.hidden);
             if (hidden) {
               rows.push({ key: r.key, level, value: hidden.value, updatedAt: hidden.updatedAt });
@@ -217,8 +231,12 @@ export function _settingsConsole(settings: () => SettingsManager): ConsoleSpec {
           }
           return rows;
         },
+        // Counted as the tab lists them: hidden at this screen's level only. Counting
+        // any hidden level showed "2" over an empty tab.
         badge: async () =>
-          (await settings().all()).filter((r) => r.levels.some((l) => l.hidden)).length || null,
+          (await settings().all(SCREEN_SCOPE)).filter((r) =>
+            r.levels.some((l) => l.kind === screenLevel() && l.hidden),
+          ).length || null,
         rowActions: [
           {
             key: "unhide",

@@ -78,8 +78,17 @@ export class QueueProvider extends ServiceProvider {
         // this driver had before it ran on PostgreSQL and MySQL too.
         case "database":
         case "sqlite":
-        default:
-          return new QueueManager(new DatabaseDriver(_getConnection()));
+        default: {
+          // Read from config, so a slow job can be given longer than the 90s
+          // default before another worker reclaims it.
+          const visibilityTimeout = config.get<number | undefined>("queue.visibilityTimeout");
+          return new QueueManager(
+            new DatabaseDriver(
+              _getConnection(),
+              visibilityTimeout !== undefined ? { visibilityTimeout } : {},
+            ),
+          );
+        }
       }
     });
   }

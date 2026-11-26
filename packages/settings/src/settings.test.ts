@@ -224,6 +224,39 @@ for (const { engine, url } of ENGINES) {
       expect(await inTenant(acme, () => billing.get("billing.paymentTermsDays"))).toBe(7);
     });
 
+    it("refuses code inside one tenant that names another, for every operation", async () => {
+      // A request in Acme that passed `{ tenant: Number(body.tenantId) }` used to
+      // read, write, hide and read the history of Globex's settings.
+      await inTenant(globex, () => billing.set("billing.paymentTermsDays", 60));
+      const other = { tenant: globex.id };
+
+      await inTenant(acme, async () => {
+        for (const attempt of [
+          () => billing.get("billing.paymentTermsDays", other),
+          () => billing.explain("billing.paymentTermsDays", other),
+          () => billing.set("billing.paymentTermsDays", 1, other),
+          () => billing.hide("billing.paymentTermsDays", other),
+          () => billing.unhide("billing.paymentTermsDays", other),
+          () => billing.history("billing.paymentTermsDays", other),
+        ]) {
+          await expect(attempt()).rejects.toBeInstanceOf(SettingScopeError);
+        }
+        // Naming its own tenant is not crossing anything.
+        expect(await billing.get("billing.paymentTermsDays", { tenant: acme.id })).toBe(30);
+      });
+
+      expect(await inTenant(globex, () => billing.get("billing.paymentTermsDays"))).toBe(60);
+    });
+
+    it("refuses an app-wide write from inside a tenant, even when asked for", async () => {
+      await inTenant(acme, async () => {
+        await expect(billing.set("billing.locale", "de", { at: "global" })).rejects.toBeInstanceOf(
+          SettingScopeError,
+        );
+      });
+      expect(await billing.get("billing.locale")).toBe("en");
+    });
+
     // ── Hide, never delete ──────────────────────────────────────────────
 
     it("hides an override so the next level shows through", async () => {

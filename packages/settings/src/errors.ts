@@ -52,7 +52,7 @@ export class InvalidSettingValueError extends SettingsError {
  */
 export class SettingScopeError extends SettingsError {
   constructor(key: string, reason: string) {
-    super(`Cannot change the setting "${key}": ${reason}.`, "E_SETTING_SCOPE", 422, {
+    super(`Cannot use the setting "${key}" this way: ${reason}.`, "E_SETTING_SCOPE", 422, {
       key,
       reason,
     });

@@ -68,7 +68,7 @@ export type {
   AppScopeInstaller,
   ProviderReport,
 } from "./application/Application.ts";
-export { ExceptionHandler } from "./application/ExceptionHandler.ts";
+export { ExceptionHandler, _isExpectedOutcome } from "./application/ExceptionHandler.ts";
 
 // Container
 export { Container } from "./container/Container.ts";

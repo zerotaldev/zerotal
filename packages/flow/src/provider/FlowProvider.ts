@@ -8,6 +8,7 @@ import {
   registerFileRouteResolver,
   FrameworkEvents,
   config,
+  _isExpectedOutcome,
 } from "@zerotal/core";
 import {
   WebSocketConnected,
@@ -184,6 +185,10 @@ interface InvalidFrameEntry {
 }
 
 const _invalidFrames = new Map<string, InvalidFrameEntry>();
+/** Refusal warnings logged across every address in the current window, and when it began. */
+const _invalidFramesLogged = { count: 0, since: 0, warned: false };
+/** At most this many refusal warnings per window in all, however many addresses send them. */
+const INVALID_FRAME_LOG_MAX = 100;
 const INVALID_FRAME_MAX = 10;
 const INVALID_FRAME_WINDOW_MS = 600_000; // 10 minutes
 /** Addresses tracked at once. Past it the table is emptied rather than grown. */
@@ -207,11 +212,20 @@ setInterval(() => _sweepInvalidFrames(Date.now()), INVALID_FRAME_WINDOW_MS).unre
  *
  * @param ip - The address the frame came from.
  * @param why - What was wrong with it, for the log.
+ * Across all addresses at most {@link INVALID_FRAME_LOG_MAX} warnings are logged per window, so a
+ * client that rotates its address cannot fill the log either.
+ *
  * @param now - The current time in ms; a parameter so a test can move the clock.
+ * @param detail - More context for the log line. Values are written as JSON, never as text.
  * @returns `true` when the address has sent more than the limit in this window.
  * @internal exported for tests.
  */
-export function _noteInvalidFrame(ip: string, why: string, now: number = Date.now()): boolean {
+export function _noteInvalidFrame(
+  ip: string,
+  why: string,
+  now: number = Date.now(),
+  detail: Record<string, unknown> = {},
+): boolean {
   let entry = _invalidFrames.get(ip);
   if (!entry || now - entry.since > INVALID_FRAME_WINDOW_MS) {
     if (_invalidFrames.size >= INVALID_FRAME_TABLE_MAX) {
@@ -224,11 +238,12 @@ export function _noteInvalidFrame(ip: string, why: string, now: number = Date.no
   entry.count++;
 
   if (entry.count <= INVALID_FRAME_MAX) {
-    frameworkLog("flow").warn(`Refused a frame: ${why}`, { ip });
+    if (_mayLogRefusal(now))
+      frameworkLog("flow").warn(`Refused a frame: ${why}`, { ip, ...detail });
     return false;
   }
 
-  if (!entry.warned) {
+  if (!entry.warned && _mayLogRefusal(now)) {
     entry.warned = true;
     const minutes = INVALID_FRAME_WINDOW_MS / 60_000;
     const proxyHint =
@@ -246,9 +261,35 @@ export function _noteInvalidFrame(ip: string, why: string, now: number = Date.no
   return true;
 }
 
+/** Whether the window's shared budget allows one more refusal line; says so once when it ends. */
+function _mayLogRefusal(now: number): boolean {
+  const budget = _invalidFramesLogged;
+  if (now - budget.since > INVALID_FRAME_WINDOW_MS) {
+    budget.count = 0;
+    budget.since = now;
+    budget.warned = false;
+  }
+  if (budget.count < INVALID_FRAME_LOG_MAX) {
+    budget.count++;
+    return true;
+  }
+  if (!budget.warned) {
+    budget.warned = true;
+    frameworkLog("flow").warn(
+      `Refused more than ${INVALID_FRAME_LOG_MAX} invalid frames in ` +
+        `${INVALID_FRAME_WINDOW_MS / 60_000} minutes across all addresses. Further refusals are ` +
+        `not logged until the window ends. Frames that verify are still served.`,
+    );
+  }
+  return false;
+}
+
 /** Forget every counted address. @internal exported for tests. */
 export function _resetInvalidFrames(): void {
   _invalidFrames.clear();
+  _invalidFramesLogged.count = 0;
+  _invalidFramesLogged.since = 0;
+  _invalidFramesLogged.warned = false;
 }
 
 /**
@@ -422,19 +463,17 @@ interface DispatchOutcome {
  * @param ctx - The request-scoped context of the action.
  * @param where - What was running, for the log: `action "save" on ProjectsPage`.
  */
-async function _reportFlowError(
-  deps: FlowWsDeps,
-  error: unknown,
-  ctx: HttpContext,
-  where: string,
-): Promise<void> {
+function _reportFlowError(deps: FlowWsDeps, error: unknown, ctx: HttpContext, where: string): void {
   if (error instanceof ValidationError) return;
-  const fault = !_isClientFacingError(error);
+  // An answer to the client (`abort(403)`) or an ordinary outcome (a record that is not there)
+  // is not a fault, and gets no error line of Flow's; the app's handler applies its own rules.
+  const fault = !_isClientFacingError(error) && !_isExpectedOutcome(error);
   try {
     if (deps.report) {
       // The handler prints the stack; this line says where in Flow it came from.
       if (fault) frameworkLog("flow").error(`An error was thrown by ${where}`);
-      await deps.report(error, ctx);
+      // Not awaited: a slow or hung tracker must not hold up the visitor's patch.
+      deps.report(error, ctx).catch(() => {});
     } else if (fault) {
       frameworkLog("flow").error(`An error was thrown by ${where}`, undefined, error);
     }
@@ -461,10 +500,28 @@ export async function _handleFlowMessage(
   } catch (error) {
     frameworkLog("flow").error("A frame could not be handled", undefined, error);
     try {
-      ws.send(JSON.stringify({ type: "error", message: _publicErrorMessage(error) }));
+      // Named when it can be, so the browser releases that component's queue at once.
+      const component = _componentOf(raw);
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          ...(component ? { component } : {}),
+          message: _publicErrorMessage(error),
+        }),
+      );
     } catch {
       // The socket is gone; there is nobody to tell.
     }
+  }
+}
+
+/** The `component` a raw frame names, when it parses and names one. */
+function _componentOf(raw: string): string | undefined {
+  try {
+    const component = (JSON.parse(raw) as { component?: unknown } | null)?.component;
+    return typeof component === "string" ? component : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -634,7 +691,7 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
       } catch (e) {
         // Thrown outside the action body: a render, `onBoot()`, `onUpdate()`, a middleware.
         // Nothing caught it to repaint the page, so the error frame is all the browser gets.
-        await _reportFlowError(deps, e, ctx, where);
+        _reportFlowError(deps, e, ctx, where);
         _touchConnection(ws, ctx);
         FrameworkEvents.emit(
           new FlowActionHandled(
@@ -896,7 +953,7 @@ async function _dispatchFrame(
   const fail = async (thrown: unknown): Promise<void> => {
     actionErrored = true;
     captureDevError(thrown);
-    await _reportFlowError(deps, thrown, ctx, where);
+    _reportFlowError(deps, thrown, ctx, where);
     const error = thrown instanceof Error ? thrown : new Error(String(thrown));
     try {
       await page.onError(error);
@@ -973,9 +1030,13 @@ async function _dispatchFrame(
     if (!allowed.has(method)) {
       // The snapshot verified, so this is a real page asking for something it may not call:
       // a stale tab after a deploy renamed the action, or someone trying names by hand.
-      frameworkLog("flow").warn(
-        `Refused a call to "${method}" on ${className}: the method is not exposed to the browser`,
-        { ip: ws.data.remoteIp ?? "unknown" },
+      // Counted like an invalid frame, so a loop of them is bounded too; the name the client
+      // sent goes in the context, escaped and cut short, never into the message itself.
+      _noteInvalidFrame(
+        ws.data.remoteIp ?? "unknown",
+        `it calls a method ${className} does not expose to the browser`,
+        Date.now(),
+        { method: method.slice(0, 80) },
       );
       ws.send(
         JSON.stringify({
@@ -1051,6 +1112,10 @@ async function _dispatchFrame(
         // Validation errors are NOT bugs — store them and continue to re-render.
         // The client will show field-level error messages via $errors.
         // _errors is already set on the page by validate().
+      } else if (taskController?.signal.aborted) {
+        // The visitor pressed Stop. The guide tells a @task to let the aborted signal reject its
+        // work, so this rejection is the cancellation working: re-render what was streamed so
+        // far, with no report and no error toast.
       } else {
         await fail(error);
       }

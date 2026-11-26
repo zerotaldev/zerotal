@@ -8,7 +8,7 @@
  * leak, so there the visitor gets one generic sentence and the detail goes to the log and the
  * app's exception handler.
  */
-import { config, devSurfacesEnabled } from "@zerotal/core";
+import { config, devSurfacesEnabled, deployEnv, isDevSurfaceAllowed } from "@zerotal/core";
 
 /**
  * The sentence shown in place of an error's own message.
@@ -53,8 +53,12 @@ export function _isClientFacingError(error: unknown): boolean {
 export function _exposesErrorMessages(): boolean {
   const configured = config.safe<boolean | undefined>("flow.exposeErrorMessages", undefined);
   if (typeof configured === "boolean") return configured;
+  if (devSurfacesEnabled()) return true;
   // `bun test` sets NODE_ENV for a run that sets nothing else, and a test asserts on the text.
-  return devSurfacesEnabled() || Bun.env["NODE_ENV"] === "test";
+  // Only where the deployment names no environment, or a non-production one: a staging box
+  // started with NODE_ENV=test still hides them.
+  const deployment = deployEnv().trim();
+  return Bun.env["NODE_ENV"] === "test" && (deployment === "" || isDevSurfaceAllowed(deployment));
 }
 
 /**

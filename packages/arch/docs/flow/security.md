@@ -75,18 +75,20 @@ A frame is checked in this order, and the first failure answers it:
 | The page class is registered         | `Unknown component`    | No (the browser reloads) |
 | Route and persistent middleware pass | A redirect or an error | By the middleware        |
 | The snapshot belongs to this user    | Reload instruction     | No                       |
-| The method is `@expose`d             | `Method … not allowed` | Warning                  |
+| The method is `@expose`d             | `Method … not allowed` | Warning, counted (below) |
 
 A frame that fails one of the first two checks never reaches your middleware, starts no
 session and loads no page.
 
 ### The invalid-frame count
 
-Malformed frames and frames that do not verify are counted per client address, in ten-minute
-windows, so that a client sending them in a loop cannot fill your log. The first ten in a
-window are each logged as a warning. The eleventh logs one line saying the rest will be
-refused quietly, and from then on that address is answered `Too many invalid requests` with
-nothing logged, until the window ends.
+Malformed frames, frames that do not verify and calls to a method that is not exposed are
+counted per client address, in ten-minute windows, so that a client sending them in a loop
+cannot fill your log. The first ten in a window are each logged as a warning. The eleventh logs
+one line saying the rest will be refused quietly, and from then on that address's bad frames are
+answered `Too many invalid requests` with nothing logged, until the window ends. Across all
+addresses at most 100 such warnings are logged per window, so rotating addresses does not get
+round it.
 
 **The count never refuses a frame that verifies.** A visitor with a valid page is served
 however many bad frames came from the same address.
@@ -108,9 +110,12 @@ export default AppConfig({
 
 ## What a visitor sees when something throws
 
-Flow catches an error thrown on a page so that the page stays usable. The error is always
-reported: to the exception handler you registered with `app.withExceptionHandler()`, or to the
-log when there is none. What the visitor is shown depends on where the app runs:
+Flow catches an error thrown on a page so that the page stays usable, and hands it to the
+exception handler you registered with `app.withExceptionHandler()`, or to the log when there is
+none. The handler applies its own rules, so an expected outcome (a failed validation, a record
+that is not there, an error raised to answer the client) is not reported as a fault. A `@task`
+the visitor stops is not an error at all. What the visitor is shown depends on where the app
+runs:
 
 | Where the app runs                               | The visitor sees                          |
 | ------------------------------------------------ | ----------------------------------------- |

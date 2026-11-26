@@ -21,7 +21,8 @@ change.
   signature is now checked first, and a frame that verifies is always served. A frame that does
   not is refused before any middleware runs (it no longer starts a session), is answered the
   same way whatever page it names, and is counted per address only to bound the log: ten
-  warnings, one line saying the rest are refused quietly, then nothing until the window ends.
+  warnings, one line saying the rest are refused quietly, then nothing until the window ends,
+  with at most 100 such lines per window across all addresses.
 - **A malformed frame is refused instead of throwing.** `{"type":"call"}` with no snapshot
   reached `frame.snapshot.memo` unchecked, and the socket handler dropped the rejected promise,
   so any client could print an unhandled rejection with a stack trace per frame. A frame's shape
@@ -45,7 +46,13 @@ change.
   none) with a line naming the action and the page, and the event carries `ok: false`. An
   error thrown outside the action body is reported the same way. A call that is refused because
   the method is not exposed is logged as a warning, and it and a call refused because the
-  snapshot belongs to another session also carry `ok: false`.
+  snapshot belongs to another session also carry `ok: false`. An expected outcome (a
+  `ModelNotFoundError`, an error raised to answer the client) still goes to the handler, whose
+  own rules skip it, and gets no error line of Flow's. If your `onError()` sends errors to a
+  tracker itself, remove that call: each error would now be reported twice.
+- **A `@task` the visitor stops no longer shows an error.** The guide says to let the aborted
+  `signal` reject the task's work. That rejection went to `onError()`, so pressing Stop flashed
+  "This operation was aborted". It now ends the task quietly and re-renders what was streamed.
 - **An `onError()` that throws gets the default flash.** The lifecycle guide says to re-throw
   from `onError()` for the errors you do not handle yourself. That did nothing: the visitor saw
   no message at all. The default now runs for whatever `onError()` threw.

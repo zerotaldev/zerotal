@@ -121,6 +121,7 @@ class NotificationFake = {
   sendMany: (notifiables: Iterable<Notifiable>, notification: Notification) => Promise<void>
   sent: () => CapturedNotification[]
   sentTo: (notifiable: Notifiable) => CapturedNotification[]
+  settle: () => Promise<void>
 }
 
 class QueueFake = {
@@ -249,7 +250,11 @@ function refreshDatabase = (options?: RefreshDatabaseOptions) => void
 
 function resetTestState = () => void
 
+function withConfig = {    <T>(overrides: Record<string, unknown>, fn: () => T | Promise<T>, options?: WithConfigOptions): Promise<T>;    (overrides: Record<string, unknown>, options?: WithConfigOptions): void;}
+
 function withDatabase = (fn: () => Promise<void>) => () => Promise<void>
+
+function withEnv = {    <T>(vars: Record<string, string | undefined>, fn: () => T | Promise<T>): Promise<T>;    (vars: Record<string, string | undefined>): void;}
 
 interface FakeStoredFile = {
   contentType: string | undefined
@@ -288,6 +293,10 @@ interface TestFileInput = {
 interface TestResponseContext = {
   exception?: unknown
   session?: SessionDecoder | undefined
+}
+
+interface WithConfigOptions = {
+  app?: Application | undefined
 }
 
 type FactoryPayload = Omit<InsertPayload<T>, FKKeys<T> & Exclude<{ [K in keyof T]-?: (<G>() => G extends { [P in K]: T[P]; } ? 1 : 2) extends <G>() => G extends { -readonly [P in K]: T[P]; } ? 1 : 2 ? K : never; }[keyof T] & { [K in keyof T & string]-?: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : NonNullable<T[K]> extends {    readonly __isZerotalModel: true;} | {    readonly __isZerotalModel: true;}[] ? never : K; }[keyof T & string], 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>> & Partial<Pick<InsertPayload<T>, FKKeys<T> & Exclude<{ [K in keyof T]-?: (<G>() => G extends { [P in K]: T[P]; } ? 1 : 2) extends <G>() => G extends { -readonly [P in K]: T[P]; } ? 1 : 2 ? K : never; }[keyof T] & { [K in keyof T & string]-?: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : NonNullable<T[K]> extends {    readonly __isZerotalModel: true;} | {    readonly __isZerotalModel: true;}[] ? never : K; }[keyof T & string], 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>>>
@@ -364,6 +373,10 @@ interface TransportReport = {
   statuses: number[]
   upgraded: number
 }
+
+## ./guard  `(./src/guard.ts)`
+
+_(no exports)_
 
 ## ./preload  `(./src/preload.ts)`
 

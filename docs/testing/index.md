@@ -267,6 +267,30 @@ runner does not, and each of them has cost somebody a day:
 | DB wiring        | none                  | preloads `@zerotal/testing/preload` and passes `ZT_DB_URL`         |
 | Drivers          | inherits `.env`       | resets mail, queue, session and cache to their in-process defaults |
 
+### A bare `bun test` stops before it reaches your database
+
+Bun loads `.env` into `bun test` too, so a suite run that way boots with `DATABASE_URL`
+pointing at the development database. The usual first sign is migration 001 failing with
+"table already exists"; the worse one is `refreshDatabase()` emptying tables you were
+using.
+
+New apps load a guard from `bunfig.toml`:
+
+```toml
+[test]
+preload = ["zerotal/testing/guard"]
+```
+
+Under `bun zt test` it does nothing. A bare `bun test` that would use `DATABASE_URL` stops
+before the first test file loads and says to run `bun zt test`. To run `bun test` directly
+on purpose, name the test database yourself:
+
+```bash
+ZT_DB_URL=:memory: bun test
+```
+
+An app created before this guard shipped can add the same two lines to its own `bunfig.toml`.
+
 ### The drivers
 
 Bun loads `.env` into every process it starts, so a test run inherits your local
@@ -386,6 +410,47 @@ const app = await createTestApp({ config: { app: { url: "https://example.test" }
 expect(page.canonical).toBe(config("app.url"));
 ```
 
+### Overrides that put themselves back: `withConfig()` and `withEnv()`
+
+When a test needs a different value, override it for that test only. Both helpers come
+from `@zerotal/testing` (or `zerotal/testing`) and undo themselves, so nothing leaks into
+the next test or the next file:
+
+```typescript fragment
+import { withConfig, withEnv } from "zerotal/testing";
+
+// For one block: undone in a `finally`, whether the block returns or throws.
+await withConfig({ "app.secureHeaders.contentSecurityPolicy": "default-src 'none'" }, async () => {
+  const res = await app.get("/");
+  res.assertHeader("content-security-policy", "default-src 'none'");
+});
+
+await withEnv({ FEATURE_BILLING: "1", STRIPE_KEY: undefined }, async () => {
+  // FEATURE_BILLING is "1" and STRIPE_KEY is unset in here, and as they were afterwards.
+});
+
+// For every test in a describe: applied before each test, undone after each one.
+describe("with registration closed", () => {
+  withConfig({ "features.registration": false }); // a key your own config/features.ts defines
+
+  it("hides the sign-up link", async () => {
+    (await app.get("/")).assertDontSee("Sign up");
+  });
+});
+```
+
+`withConfig()` writes into the live config of the current app (or the one passed as
+`{ app }`, its `WithConfigOptions`), by dot path, and puts back
+exactly what was there: a path that did not exist is removed again, with any objects it
+had to create. Code that reads config on each request sees the override, which includes
+the security-headers middleware and so the Content-Security-Policy. A value your config
+file computed from an environment variable while it loaded is fixed by then, so override
+the config key it produced, not the variable.
+
+`withEnv()` sets `Bun.env`, which is shared by every file in the run. `undefined` unsets a
+variable for the duration, and one that was unset before is unset again afterwards rather
+than left as an empty string.
+
 ## Running each file in its own global
 
 `bun test` puts every file in one process and one global, so what one file leaves behind is
@@ -397,10 +462,18 @@ Bun can start each file from a fresh global, and `zt test` passes the request on
 
 ```bash
 bun zt test --isolate                  # a fresh global per file
+bun zt test --randomize                # run in a random order; prints the seed it used
+bun zt test --seed=1106410279          # replay that order exactly
 bun zt test -- --parallel=4            # four worker processes; implies --isolate
 bun zt test -- --shard=1/3             # the first of three slices of the files, for CI
 bun zt test -- --rerun-each=3          # anything else bun test takes goes after --
 ```
+
+`--randomize` is the other way to find those dependencies, and the cheaper one to run on
+every build: it shuffles the order tests run in, so a test that passes only after another
+has run fails on the first order that puts it first. Bun prints the seed with the results
+(`--seed=1106410279`), and passing it back with `--seed` replays that order exactly, which
+turns "fails on Linux in CI" into a failure you can reproduce on your own machine.
 
 It is off by default. Each file then boots its own app, so a suite that boots one in every file
 pays for it once per file: in the framework's own packages it ran within a few seconds of the

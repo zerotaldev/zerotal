@@ -27,6 +27,8 @@ import { testEnvOverrides } from "../testEnv.ts";
  * bun zt test --coverage             # with coverage
  * bun zt test --watch                # watch mode
  * bun zt test --isolate              # a fresh global per test file
+ * bun zt test --randomize            # random order; prints the seed it used
+ * bun zt test --seed=12345           # replay that order
  * bun zt test -- --shard=1/3         # any other bun test flag, after --
  * bun zt test -- --parallel=4        # worker processes; implies --isolate
  * ```
@@ -80,6 +82,19 @@ export class TestCommand extends Command {
       type: "boolean" as const,
       description: "Run each test file in a fresh global, so one file cannot affect the next",
       default: false,
+    },
+    {
+      name: "randomize",
+      type: "boolean" as const,
+      description:
+        "Run tests in a random order; the seed is printed so a failing order can be replayed",
+      default: false,
+    },
+    {
+      name: "seed",
+      type: "number" as const,
+      description: "Replay a random order with this seed (implies --randomize)",
+      default: 0,
     },
 
     {
@@ -153,6 +168,14 @@ export class TestCommand extends Command {
     if (this.flags["bail"]) bunArguments.push("--bail");
     if (this.flags["isolate"]) bunArguments.push("--isolate");
 
+    // Random order is how module state leaking between test files shows itself on
+    // purpose instead of by accident: a file that passes only after another has run
+    // fails here on the first seed that puts it first. Bun prints the seed it chose,
+    // and `--seed` replays that order exactly.
+    const seed = this.flags["seed"] as number | undefined;
+    if (this.flags["randomize"] || seed) bunArguments.push("--randomize");
+    if (seed) bunArguments.push(`--seed=${seed}`);
+
     // Bun's default is 5s and applies to hooks as well as tests — and `bunfig.toml`'s
     // `[test] timeout` does not cover hooks, only this flag does. A `beforeAll` that calls
     // `createTestApp()` boots providers and runs migrations, which on a cold start with a
@@ -190,6 +213,9 @@ export class TestCommand extends Command {
         ...overrides,
         APP_ENV: "test",
         ZT_DB_URL: dbUrl,
+        // Read by `@zerotal/testing/guard`: this run was prepared, so a bare-run
+        // refusal does not apply to it.
+        ZT_TEST_RUNNER: "1",
       } as Record<string, string | undefined>,
     });
 

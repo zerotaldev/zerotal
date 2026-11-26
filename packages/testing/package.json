@@ -10,6 +10,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./preload": "./src/preload.ts",
+    "./guard": "./src/guard.ts",
     "./browser": "./src/browser.ts"
   },
   "files": [

@@ -248,15 +248,18 @@ The entity receiving the notification must satisfy `Notifiable`:
 // from @zerotal/notifications
 interface Notifiable {
   id: number | string;
-  email?: string; // default recipient for the 'mail' channel
-  name?: string;
-  phone?: string; // default recipient for the 'sms' channel (E.164 format)
+  email?: string | undefined; // default recipient for the 'mail' channel
+  name?: string | undefined;
+  phone?: string | undefined; // default recipient for the 'sms' channel (E.164 format)
   receivesBroadcastNotificationsOn?(): string; // override the broadcast channel
   routeNotificationFor?(channel: string): string | undefined; // per-channel override
 }
 ```
 
-Your `User` model already satisfies this if it has `id` and `email` fields. To
+Your `User` model already satisfies this if it has `id` and `email` fields, whether it
+declares them as `email!: string`, `email: string | undefined`, or `name?: string | undefined`
+under `exactOptionalPropertyTypes`. A recipient with no address for a channel is reported
+by that channel when it sends. To
 get the object-oriented API (`user.notify(...)`, inbox helpers), compose the
 [`Notifiable` mixin](#via-the-notifiable-mixin).
 
@@ -813,6 +816,10 @@ you need next.
 > `unreadNotifications()` keeps working; assert on what was sent, not on the
 > inbox, inside a faked test.
 
+When the code under test sends without awaiting (`void Notify.send(...)`), call
+`await Notify.settle()` before asserting; it waits for every send in flight. See
+[Mail sent fire-and-forget](/docs/testing/mocking#mail-sent-fire-and-forget-notifysettle).
+
 ## Watching deliveries
 
 With [`@zerotal/admin`](/docs/admin) installed, the notifications console
@@ -840,9 +847,10 @@ database channel.
 | `extend`    | `(channel: string, factory: () => NotificationChannel) => this`                    | Register a custom channel, or replace a built-in.  |
 | `channels`  | `() => string[]`                                                                   | Every registered channel name.                     |
 | `database`  | `DatabaseChannel` (getter)                                                         | Direct access to the database channel for queries. |
+| `settle`    | `() => Promise<void>`                                                              | Wait for every send in flight; for tests.          |
 
 The `Notify` facade proxies these — `Notify.send(...)`, `Notify.sendMany(...)`,
-`Notify.queue(...)`, `Notify.route(...)`.
+`Notify.queue(...)`, `Notify.route(...)`, `Notify.settle()`.
 
 ### Notification (extend this)
 
@@ -881,6 +889,7 @@ building one can do I/O — reading an attachment, loading a record.
 | `restore()`                                | Restore the original binding. Call in `afterEach`.                                        |
 | `sent()`                                   | Return all captured `{ notifiable, notification }` pairs.                                 |
 | `sentTo(notifiable)`                       | Return the captured notifications for one recipient.                                      |
+| `settle()`                                 | Resolve once every send in flight, including fire-and-forget ones, has been captured.     |
 | `assertSentTo(notifiable, Class, filter?)` | Throw if `Class` was not sent to `notifiable`.                                            |
 | `assertNotSentTo(notifiable, Class)`       | Throw if `Class` was sent to `notifiable`.                                                |
 | `assertSentOn(notifiable, Class, channel)` | Throw unless `Class` declared `channel` for `notifiable`.                                 |

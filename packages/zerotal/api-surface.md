@@ -2951,6 +2951,36 @@ type TokenSource = string | (() => string | null | undefined | Promise<string | 
 
 ## ./commands  `(./src/commands.ts)`
 
+class AboutCommand = {
+  new (): AboutCommand
+  static args: never[]
+  static commandName: string
+  static description: string
+  static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  rest: string[]
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
 class AssetsBuildCommand = {
   new (): AssetsBuildCommand
   static args: ArgDef[]
@@ -6157,6 +6187,7 @@ interface CursorPaginateResult = {
 }
 
 interface DatabaseConfigShape = {
+  backupBeforeMigrate?: boolean | undefined
   driver: 'sqlite' | 'postgres' | 'mysql'
   pool?: {    max?: number;    idleTimeout?: number;} | undefined
   replicas?: string[] | undefined
@@ -7657,6 +7688,7 @@ class NotificationFake = {
   sendMany: (notifiables: Iterable<Notifiable>, notification: Notification) => Promise<void>
   sent: () => CapturedNotification[]
   sentTo: (notifiable: Notifiable) => CapturedNotification[]
+  settle: () => Promise<void>
 }
 
 class QueueFake = {
@@ -7785,7 +7817,11 @@ function refreshDatabase = (options?: RefreshDatabaseOptions) => void
 
 function resetTestState = () => void
 
+function withConfig = {    <T>(overrides: Record<string, unknown>, fn: () => T | Promise<T>, options?: WithConfigOptions): Promise<T>;    (overrides: Record<string, unknown>, options?: WithConfigOptions): void;}
+
 function withDatabase = (fn: () => Promise<void>) => () => Promise<void>
+
+function withEnv = {    <T>(vars: Record<string, string | undefined>, fn: () => T | Promise<T>): Promise<T>;    (vars: Record<string, string | undefined>): void;}
 
 interface FakeStoredFile = {
   contentType: string | undefined
@@ -7826,6 +7862,10 @@ interface TestResponseContext = {
   session?: SessionDecoder | undefined
 }
 
+interface WithConfigOptions = {
+  app?: Application | undefined
+}
+
 type FactoryPayload = Omit<InsertPayload<T>, FKKeys<T> & Exclude<{ [K in keyof T]-?: (<G>() => G extends { [P in K]: T[P]; } ? 1 : 2) extends <G>() => G extends { -readonly [P in K]: T[P]; } ? 1 : 2 ? K : never; }[keyof T] & { [K in keyof T & string]-?: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : NonNullable<T[K]> extends {    readonly __isZerotalModel: true;} | {    readonly __isZerotalModel: true;}[] ? never : K; }[keyof T & string], 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>> & Partial<Pick<InsertPayload<T>, FKKeys<T> & Exclude<{ [K in keyof T]-?: (<G>() => G extends { [P in K]: T[P]; } ? 1 : 2) extends <G>() => G extends { -readonly [P in K]: T[P]; } ? 1 : 2 ? K : never; }[keyof T] & { [K in keyof T & string]-?: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : NonNullable<T[K]> extends {    readonly __isZerotalModel: true;} | {    readonly __isZerotalModel: true;}[] ? never : K; }[keyof T & string], 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>>>
 
 type FakeFile = {    create(name: string, content?: string | Uint8Array, type?: string): File;    sized(name: string, size: number, type?: string): File;    image(name?: string, options?: {        width?: number;        height?: number;    }): File;    jpeg(name?: string): File;    gif(name?: string): File;    pdf(name?: string): File;}
@@ -7833,6 +7873,10 @@ type FakeFile = {    create(name: string, content?: string | Uint8Array, type?: 
 type SessionDecoder = (response: Response) => Promise<Record<string, unknown> | null>
 
 type TestFormValue = string | number | boolean | null | undefined | TestFileInput | File | Blob
+
+## ./testing/guard  `(./src/testing-guard.ts)`
+
+_(no exports)_
 
 ## ./validator  `(./src/validator.ts)`
 

@@ -8,6 +8,8 @@ export type { RefreshDatabaseOptions } from "./refreshDatabase.ts";
 export { migrateDatabase } from "./migrateDatabase.ts";
 export type { MigrateDatabaseOptions } from "./migrateDatabase.ts";
 export { resetTestState } from "./resetTestState.ts";
+export { withConfig, withEnv } from "./overrides.ts";
+export type { WithConfigOptions } from "./overrides.ts";
 export { assertDatabaseHas, assertDatabaseMissing, assertDatabaseCount } from "./assertions.ts";
 export { assertStoredFile, assertMissingFile } from "./storageAssertions.ts";
 export { Factory, FactoryBatch } from "./factory.ts";

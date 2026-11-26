@@ -8,6 +8,24 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`Notify.settle()`**, on `NotificationManager` and on `NotificationFake`. It resolves once
+  every send started through `Notify` has finished and a turn of the event loop passes with
+  nothing new, so a test of code that notifies fire-and-forget (`void Notify.send(…)`, often
+  after a lookup) can wait for it instead of every app writing its own
+  `settleNotifications()`. A failed send does not make it reject; an awaited send still
+  rejects to its caller exactly as before.
+
+### Fixed
+
+- **A model passes as a `Notifiable` as it is declared.** `email`, `name` and `phone` were
+  `?: string`, which under `exactOptionalPropertyTypes` rejected a model declaring
+  `email: string | undefined` or `name?: string | undefined`, so `Notify.send(user, …)` and
+  `NotificationFake.sentTo(user)` failed to typecheck for a perfectly good recipient. They
+  are now `?: string | undefined`. Reading one still gives `string | undefined`, so code that
+  reads them is unaffected.
+
 ## [1.17.1] — 2026-11-21
 
 ### Fixed

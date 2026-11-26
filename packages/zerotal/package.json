@@ -40,6 +40,7 @@
     "./shared": "./src/shared.ts",
     "./storage": "./src/storage.ts",
     "./testing": "./src/testing.ts",
+    "./testing/guard": "./src/testing-guard.ts",
     "./validator": "./src/validator.ts",
     "./view": "./src/view.ts"
   },

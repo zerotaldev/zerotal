@@ -189,6 +189,7 @@ class NotificationFake = {
   sendMany: (notifiables: Iterable<Notifiable>, notification: Notification) => Promise<void>
   sent: () => CapturedNotification[]
   sentTo: (notifiable: Notifiable) => CapturedNotification[]
+  settle: () => Promise<void>
 }
 
 class NotificationManager = {
@@ -201,6 +202,7 @@ class NotificationManager = {
   route: (routes: OnDemandRoutes) => {    notify(notification: Notification): Promise<void>;    notifyLater(notification: Notification): Promise<void>;}
   send: (notifiable: Notifiable, notification: Notification) => Promise<void>
   sendMany: (notifiables: Iterable<Notifiable>, notification: Notification) => Promise<void>
+  settle: () => Promise<void>
 }
 
 class NotificationProvider = {
@@ -380,10 +382,10 @@ interface MailPayload = {
 }
 
 interface Notifiable = {
-  email?: string
+  email?: string | undefined
   id: string | number
-  name?: string
-  phone?: string
+  name?: string | undefined
+  phone?: string | undefined
   receivesBroadcastNotificationsOn?: () => string
   routeNotificationFor?: (channel: string) => string | undefined
 }

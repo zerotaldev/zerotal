@@ -124,4 +124,32 @@ describe("zt test options", () => {
 
     expect(args).toContain("--rerun-each=3");
   });
+
+  it("passes --randomize to bun test", async () => {
+    expect(await run({ randomize: true })).toContain("--randomize");
+  });
+
+  it("keeps the order fixed unless asked", async () => {
+    expect(await run({})).not.toContain("--randomize");
+  });
+
+  it("replays an order with --seed, which implies --randomize", async () => {
+    const args = await run({ seed: 1106410279 });
+
+    expect(args).toContain("--randomize");
+    expect(args).toContain("--seed=1106410279");
+  });
+
+  it("marks the child as a prepared run, so the bare-run guard stays out of the way", async () => {
+    let env: Record<string, string | undefined> = {};
+    (Bun as unknown as { spawn: unknown }).spawn = (
+      _argv: string[],
+      options: { env: Record<string, string | undefined> },
+    ) => {
+      env = options.env;
+      return { exited: Promise.resolve(0) };
+    };
+    await run({});
+    expect(env["ZT_TEST_RUNNER"]).toBe("1");
+  });
 });

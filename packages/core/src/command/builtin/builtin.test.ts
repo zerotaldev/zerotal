@@ -1373,7 +1373,7 @@ describe("TestCommand", () => {
     expect(TestCommand.needsApp).toBe(false);
     expect(TestCommand.args).toHaveLength(1);
     expect(TestCommand.args[0]!.name).toBe("pattern");
-    expect(TestCommand.flags).toHaveLength(7);
+    expect(TestCommand.flags).toHaveLength(9);
   });
 
   it("has coverage, watch, timeout, bail flags", () => {

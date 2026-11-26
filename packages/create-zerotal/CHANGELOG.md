@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Every starter guards a bare `bun test`.** `bunfig.toml` preloads `zerotal/testing/guard`,
+  which stops a direct `bun test` from running against the database `.env` points at and says
+  to run `bun zt test`. `ZT_DB_URL=:memory: bun test` still runs directly.
+
+### Changed
+
+- **The CI workflow a new app gets pins its actions to commit SHAs** (`actions/checkout`,
+  `oven-sh/setup-bun`), with the version in a comment, and declares
+  `permissions: contents: read`. A moved tag can no longer change what an app's CI runs.
+
 ## [1.17.4] — 2026-11-26
 
 ### Added

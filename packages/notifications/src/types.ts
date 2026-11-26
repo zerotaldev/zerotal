@@ -1,10 +1,18 @@
-/** The entity receiving the notification (typically a user). */
+/**
+ * The entity receiving the notification (typically a user).
+ *
+ * The contact fields accept an explicit `undefined` as well as being absent. Under
+ * `exactOptionalPropertyTypes`, `email?: string` rejected a model that declares
+ * `email: string | undefined` or `name?: string | undefined`, so `Notify.send(user, …)`
+ * and `fake.sentTo(user)` failed to typecheck for a perfectly good recipient. Reading
+ * a field gives `string | undefined` either way, so nothing that reads one changes.
+ */
 export interface Notifiable {
   id: number | string;
-  email?: string;
-  name?: string;
+  email?: string | undefined;
+  name?: string | undefined;
   /** Phone number in E.164 format, required when using the sms channel. */
-  phone?: string;
+  phone?: string | undefined;
   /**
    * Override the channel this notifiable receives broadcast notifications on.
    * Default: `notifications.{id}` (broadcast as a private channel). Used by the 'broadcast' channel.

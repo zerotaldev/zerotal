@@ -30,7 +30,7 @@ export interface FakeStoredFile {
  * disk.assertCount(1);
  */
 export class FakeDisk implements StorageDriver {
-  private readonly _files = new Map<string, FakeStoredFile>();
+  private _files = new Map<string, FakeStoredFile>();
 
   /**
    * @param baseUrl - Prefix returned by {@link url}, so a test can assert on the
@@ -45,6 +45,20 @@ export class FakeDisk implements StorageDriver {
    * @internal
    */
   _realDisksUsed: (() => string[]) | undefined = undefined;
+
+  /**
+   * A fake for another disk name that holds this one's files, with its own URL base, so a write
+   * through either name is seen by both. `Storage.fake()` uses it to fake `public` beside an
+   * unserved default disk.
+   *
+   * @internal
+   */
+  _sharingFiles(baseUrl: string): FakeDisk {
+    const sibling = new FakeDisk(baseUrl);
+    sibling._files = this._files;
+    sibling._realDisksUsed = this._realDisksUsed;
+    return sibling;
+  }
 
   // ── StorageDriver ─────────────────────────────────────────────────────
 

@@ -641,7 +641,7 @@ const Config = ConfigManager
 
 const Events = Emitter
 
-const FrameworkEvents = {    on<E extends object>(target: (new (...args: any[]) => E) | string, handler: Handler<E>): () => void;    onAsync<E extends object>(target: (new (...args: any[]) => E) | string, handler: (event: E) => void | Promise<void>): () => void;    settled(): Promise<void>;    emit<E extends object>(event: E): void;    clear(): void;    handlerCount(): number;    subscriptions(): Array<{        event: string;        handlers: number;    }>;}
+const FrameworkEvents = {    on<E extends object>(target: (new (...args: any[]) => E) | string, handler: Handler<E>): () => void;    onAsync<E extends object>(target: (new (...args: any[]) => E) | string, handler: (event: E) => void | Promise<void>): () => void;    settled(): Promise<void>;    emit<E extends object>(event: E): void;    clear(): void;    _snapshot(): FrameworkEventsSnapshot;    _restore(snapshot: FrameworkEventsSnapshot): void;    handlerCount(): number;    subscriptions(): Array<{        event: string;        handlers: number;    }>;}
 
 const route = RouteBuilder
 
@@ -5898,6 +5898,7 @@ class ModelQueryBuilder = {
   union: (other: QueryBuilder, all?: boolean) => ModelQueryBuilder<M>
   unionAll: (other: QueryBuilder) => ModelQueryBuilder<M>
   update: (data: Record<string, unknown>) => Promise<void>
+  updateCount: (data: Record<string, unknown>) => Promise<number>
   updateOrInsert: (attributes: Record<string, unknown>, values?: Record<string, unknown>) => Promise<boolean>
   value: <V = unknown>(column: string) => Promise<V | null>
   when: (condition: unknown, callback: (q: QueryBuilder, value: unknown) => void) => ModelQueryBuilder<M>
@@ -6031,6 +6032,7 @@ class QueryBuilder = {
   union: (other: QueryBuilder, all?: boolean) => QueryBuilder
   unionAll: (other: QueryBuilder) => QueryBuilder
   update: (data: Record<string, unknown>) => Promise<void>
+  updateCount: (data: Record<string, unknown>) => Promise<number>
   updateOrInsert: (attributes: Record<string, unknown>, values?: Record<string, unknown>) => Promise<boolean>
   value: <V = unknown>(column: string) => Promise<V | null>
   when: (condition: unknown, callback: (q: QueryBuilder, value: unknown) => void) => QueryBuilder
@@ -7436,6 +7438,7 @@ class DiskNotServedError = {
 class FakeDisk = {
   new (baseUrl?: string): FakeDisk
   _realDisksUsed: (() => string[]) | undefined
+  _sharingFiles: (baseUrl: string) => FakeDisk
   append: (path: string, content: string | Uint8Array) => Promise<void>
   assertContentType: (path: string, contentType: string) => FakeDisk
   assertCount: (expected: number) => FakeDisk
@@ -7695,6 +7698,7 @@ class FactoryBatch = {
 class FakeDisk = {
   new (baseUrl?: string): FakeDisk
   _realDisksUsed: (() => string[]) | undefined
+  _sharingFiles: (baseUrl: string) => FakeDisk
   append: (path: string, content: string | Uint8Array) => Promise<void>
   assertContentType: (path: string, contentType: string) => FakeDisk
   assertCount: (expected: number) => FakeDisk

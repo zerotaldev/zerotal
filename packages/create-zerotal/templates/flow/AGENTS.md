@@ -73,7 +73,7 @@ bun zt doctor          # health checks, with a fix beside each finding
 
 **Flow components.** Server-rendered components: a class with state fields and actions, rendered as JSX. A component is interactive — state kept between requests, actions called over a socket — unless it or a base class sets `static interactive = false`, which renders plain HTML with no snapshot. Check the base class before relying on either; a page base often turns it off and a page that needs live state turns it back on. `bun zt make:flow` scaffolds one.
 
-**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower than a request belongs in one. It needs `QueueProvider` from `zerotal/queue` in the provider list under `bootstrap/` and a `config/queue.ts` first — this app does not register it yet. Once it is registered, `bun zt dev` runs a worker beside the server; in production `bun zt queue:work` does.
+**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower than a request belongs in one. It needs `QueueProvider` from `zerotal/queue` in the provider list under `bootstrap/` and a `config/queue.ts` first — this app does not register it yet. Once it is registered, `bun zt dev` runs a worker beside the server; in production run `bun zt worker` beside it, which runs queued jobs and `app/schedules/` (`bun zt queue:work` runs only the queue).
 
 **Cache.** `Cache` from `zerotal/cache`. Never cache a request-scoped value.
 

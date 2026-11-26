@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Security
+
+- **Two sign-ins with the same two-factor code at the same moment can no longer both succeed.**
+  1.18.2 read the last accepted time step and saved the new one after, so two requests carrying
+  one code could both pass the check before either saved. The challenge now saves the step with
+  one conditional update, `claimTwoFactorStep()` in `app/auth/two-factor.ts`, and only the request
+  whose update changed the row is signed in.
+
 ## [1.18.2] — 2026-11-26
 
 ### Fixed

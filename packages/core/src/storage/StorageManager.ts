@@ -4,6 +4,9 @@ import { LocalDriver } from "./drivers/LocalDriver.ts";
 import { S3Driver } from "./drivers/S3Driver.ts";
 import { FakeDisk } from "./FakeDisk.ts";
 
+/** The built-in served disk, where media with no disk configured writes. */
+const PUBLIC_DISK = "public";
+
 export class StorageManager {
   private _config: StorageConfigShape;
   private _drivers: Map<string, StorageDriver> = new Map();
@@ -64,6 +67,13 @@ export class StorageManager {
    * `afterEach`, or a later test expecting real storage will silently write
    * into memory and find its files gone.
    *
+   * With no `name`, the default disk is faked, and so is the built-in `public` disk when the
+   * default is not served and `public` is: that is where media with no disk configured, and
+   * anything else that needs a served disk, writes. Both names share the one fake's files, each
+   * with its own URLs, so the disk handed back sees every write. (A test written for the
+   * default disk otherwise found its fake empty while uploads went into the real, served
+   * `storage/public`.) A named fake replaces that disk alone.
+   *
    * @param name - Disk to replace; defaults to the configured default disk.
    *
    * @example
@@ -77,17 +87,43 @@ export class StorageManager {
     // so a link built in a test is the link the app serves. Falling back to `/storage`
     // alone gave a served disk's fake `/storage/a.png` where the app answers at
     // `/storage/public/a.png`.
-    const cfg = this._config.disks[diskName];
-    const fake = new FakeDisk(cfg?.url ?? cfg?.serve?.path ?? "/storage");
-    // Media with no disk configured writes to `public`, not the storage default, so a test that
-    // faked the default asserted against an empty fake while the files went to a served folder.
-    // A failed assertion on this fake now names the real disks the code used instead.
+    const fake = new FakeDisk(this._urlBase(diskName));
+    // A failed assertion on this fake names the real disks the code used instead, for a write
+    // that went to a disk no fake replaces.
     fake._realDisksUsed = () => [...this._realDisksUsed].filter((d) => !this._realDrivers.has(d));
+    this._install(diskName, fake);
+
+    const served = (disk: string): boolean =>
+      this._config.disks[disk] !== undefined && this.isServed(disk);
+    if (
+      name === undefined &&
+      diskName !== PUBLIC_DISK &&
+      !served(diskName) &&
+      served(PUBLIC_DISK) &&
+      !this._realDrivers.has(PUBLIC_DISK)
+    ) {
+      this._install(PUBLIC_DISK, fake._sharingFiles(this._urlBase(PUBLIC_DISK)));
+    }
+    return fake;
+  }
+
+  /**
+   * The URL base a disk's fake builds links with: the same one the real disk uses (an explicit
+   * `url`, else where it is served), so a link built in a test is the link the app serves.
+   * Falling back to `/storage` alone gave a served disk's fake `/storage/a.png` where the app
+   * answers at `/storage/public/a.png`.
+   */
+  private _urlBase(diskName: string): string {
+    const cfg = this._config.disks[diskName];
+    return cfg?.url ?? cfg?.serve?.path ?? "/storage";
+  }
+
+  /** Put `fake` in place of `diskName`, remembering the real driver for {@link restoreFakes}. */
+  private _install(diskName: string, fake: FakeDisk): void {
     if (!this._realDrivers.has(diskName)) {
       this._realDrivers.set(diskName, this._drivers.get(diskName));
     }
     this._drivers.set(diskName, fake);
-    return fake;
   }
 
   /** Restore every disk swapped by {@link fake}. Call in `afterEach`. */

@@ -188,6 +188,33 @@ describe("StorageManager.fake()", () => {
     expect(() => fake.assertCount(1)).toThrow(/Storage\.fake\("s3"\)/);
   });
 
+  // From the 1.18.2 walk: naming the disk was not enough. A test written for the default disk
+  // still wrote real files into the served storage/public, which media uses when the default
+  // disk (`local`) is not served.
+  it("with no name, also fakes `public` when the default disk is not served", async () => {
+    const manager = new StorageManager(StorageConfig());
+    const fake = manager.fake();
+
+    await manager.disk("public").put("media/1/original.png", "png");
+
+    fake.assertExistsMatching(/^media\/1\/original\.png$/);
+    expect(manager.disk("public")).not.toBe(fake);
+    // Each name keeps its own links.
+    expect(manager.disk("public").url("a.png")).toBe("/storage/public/a.png");
+
+    manager.restoreFakes();
+    expect(manager.disk("public")).not.toBeInstanceOf(FakeDisk);
+    expect(manager.disk()).not.toBeInstanceOf(FakeDisk);
+  });
+
+  it("fakes only the disk it names", () => {
+    const manager = new StorageManager(StorageConfig());
+    manager.fake("local");
+
+    expect(manager.disk("public")).not.toBeInstanceOf(FakeDisk);
+    manager.restoreFakes();
+  });
+
   it("does not blame a disk that is faked too, or one used after restoreFakes", () => {
     const manager = new StorageManager(config);
     const local = manager.fake();

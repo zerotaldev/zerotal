@@ -77,7 +77,7 @@ bun zt doctor          # health checks, with a fix beside each finding
 
 **Inertia.** Pages are React/Vue components under `resources/`; a route handler returns `Inertia.render(...)` with the page's props. Props are serialised — do not pass class instances. In a Vue app, a page's props are checked against `Inertia.render` only when `InertiaTypeOptions` sets `checkVueProps: true` (the Vue starter's `types/inertia.d.ts`), and only by `vue-tsc`: plain `tsc` does not read `.vue` files.
 
-**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower than a request belongs in one. It needs `QueueProvider` from `zerotal/queue` in the provider list under `bootstrap/` and a `config/queue.ts` first — this app does not register it yet. Once it is registered, `bun zt dev` runs a worker beside the server; in production `bun zt queue:work` does.
+**Background work.** Jobs in `app/jobs/`, dispatched with `.dispatch()`. Anything slower than a request belongs in one. It needs `QueueProvider` from `zerotal/queue` in the provider list under `bootstrap/` and a `config/queue.ts` first — this app does not register it yet. Once it is registered, `bun zt dev` runs a worker beside the server; in production run `bun zt worker` beside it, which runs queued jobs and `app/schedules/` (`bun zt queue:work` runs only the queue).
 
 **Cache.** `Cache` from `zerotal/cache`. Never cache a request-scoped value.
 

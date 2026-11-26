@@ -265,6 +265,21 @@ describe("QueryBuilder — increment() / decrement()", () => {
     expect(row?.score).toBe(7);
   });
 
+  it("updateCount() says how many rows the update changed", async () => {
+    await seed({ name: "Alice", score: 10 });
+    await seed({ name: "Bob", score: 10 });
+
+    expect(await qb().where("score", 10).updateCount({ score: 11 })).toBe(2);
+    // A conditional update is a claim: the second one finds nothing left to change.
+    expect(
+      await qb().where("name", "Alice").where("score", "<", 12).updateCount({ score: 12 }),
+    ).toBe(1);
+    expect(
+      await qb().where("name", "Alice").where("score", "<", 12).updateCount({ score: 12 }),
+    ).toBe(0);
+    expect(await qb().where("name", "Alice").updateCount({})).toBe(0);
+  });
+
   it("increment() defaults to 1", async () => {
     await seed({ name: "Alice", score: 5 });
     await qb().where("name", "Alice").increment("score");

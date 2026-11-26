@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Warnings print in every test file of a run, not just the first.** A test file that re-uses
+  the app an earlier file booted got it with the framework-event subscriptions its providers made
+  at boot cleared, so the logger's `[HTTP]` 4xx warnings and the auth audit trail went silent:
+  `zt test a.test.ts b.test.ts` showed none of `b`'s warnings, which it printed alone. Those
+  subscriptions are now put back when the app is re-used.
+
 ## [1.18.1] — 2026-11-26
 
 ### Added

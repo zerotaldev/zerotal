@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The two-factor examples check a code once.** The docblocks on `Auth.completeTwoFactor()`,
+  the `TwoFactor` facade, `TwoFactorMiddleware` and `TwoFactorService` showed
+  `verifyCode(secret, code)`, which accepts a code for its whole window. They now pass the
+  user's last accepted time step to `verifyCodeWithCounter()` and save the step it returns.
+
 ## [1.18.1] — 2026-11-26
 
 ### Fixed

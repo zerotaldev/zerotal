@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Security
+
+- **A two-factor code works once in the React, Vue and Flow starters.** The sign-in challenge
+  and the setup confirmation checked codes with `TwoFactor.verifyCode()` and saved nothing, so
+  a code could be used again for as long as it was current (about a minute). They now use
+  `TwoFactor.verifyCodeWithCounter()`, save the time step each accepted code matched in a new
+  `users.two_factor_last_counter` column, and refuse a code from that step or an earlier one.
+  The code that turns two-factor on can't then be used to sign in. An existing app has its own
+  copy of these routes: see the upgrade guide for the change to make.
+
 ## [1.18.1] — 2026-11-26
 
 ### Changed

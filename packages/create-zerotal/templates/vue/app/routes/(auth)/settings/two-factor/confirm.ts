@@ -18,7 +18,10 @@ export async function POST(http: HttpContext): Promise<void> {
 
   const { code } = await validate(http, (r) => ({ code: r.string().trim().min(6) }));
 
-  if (!TwoFactor.verifyCode(secret, code.replace(/\s+/g, ""))) {
+  // The secret is new, so no code from it has been used yet. The step this one matched
+  // is saved below, so the same code can't then sign in a second session.
+  const check = TwoFactor.verifyCodeWithCounter(secret, code);
+  if (!check.valid) {
     rejectInput(
       http,
       { code: "That code did not match. Try the newest one in the app." },
@@ -30,6 +33,7 @@ export async function POST(http: HttpContext): Promise<void> {
   user.twoFactorSecret = secret;
   user.twoFactorRecoveryCodes = JSON.stringify(hashed);
   user.twoFactorConfirmedAt = new Date();
+  user.twoFactorLastCounter = check.counter;
   await user.save();
 
   http.session?.forget(SETUP_SECRET_KEY);

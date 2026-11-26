@@ -30,6 +30,7 @@ export class User extends Model.using(Authenticatable, EmailVerification, Notifi
     "rememberToken",
     "twoFactorSecret",
     "twoFactorRecoveryCodes",
+    "twoFactorLastCounter",
   ];
 
   @column({ type: "string" }) name!: string;
@@ -43,6 +44,11 @@ export class User extends Model.using(Authenticatable, EmailVerification, Notifi
   /** SHA-256 hashes of the unused recovery codes, as a JSON array. Never the codes. */
   @column({ type: "text", nullable: true }) twoFactorRecoveryCodes?: string | null | undefined;
   @column({ type: "datetime", nullable: true }) twoFactorConfirmedAt?: Date | null | undefined;
+  /**
+   * The time step of the last code accepted, at setup or at sign-in. A code is good for
+   * about a minute; this is what stops it from being used a second time in that minute.
+   */
+  @column({ type: "integer", nullable: true }) twoFactorLastCounter?: number | null | undefined;
 
   /** True once two-factor is set up *and* its first code was confirmed. */
   hasTwoFactorEnabled(): boolean {

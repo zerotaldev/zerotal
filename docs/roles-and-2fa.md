@@ -78,7 +78,7 @@ export default AuthConfig({
 
 ## Data model
 
-2FA stores three columns on the user. Add a migration:
+2FA stores four columns on the user. Add a migration:
 
 ```typescript fragment
 // database/migrations/003_add_two_factor_to_users.ts
@@ -88,6 +88,7 @@ export default class AddTwoFactorToUsers extends Migration {
       table.string("two_factor_secret").nullable();
       table.text("two_factor_recovery_codes").nullable(); // JSON array of hashed codes
       table.timestamp("two_factor_confirmed_at").nullable();
+      table.integer("two_factor_last_counter").nullable(); // the last code's time step
     });
   }
   async down(schema: Schema): Promise<void> {
@@ -95,6 +96,7 @@ export default class AddTwoFactorToUsers extends Migration {
       table.dropColumn("two_factor_secret");
       table.dropColumn("two_factor_recovery_codes");
       table.dropColumn("two_factor_confirmed_at");
+      table.dropColumn("two_factor_last_counter");
     });
   }
 }
@@ -111,8 +113,14 @@ export class User extends AuthUser {
   @column() twoFactorSecret?: string | null;
   @column("json") twoFactorRecoveryCodes?: string[] | null; // stored hashed
   @column("datetime") twoFactorConfirmedAt?: Carbon | null;
+  @column("integer") twoFactorLastCounter?: number | null;
 }
 ```
+
+A code is good for its 30-second step and, with the default `window: 1`, the steps
+either side of it. `twoFactorLastCounter` is what makes it good once: save the step
+each accepted code matched, pass it back on the next check, and
+`verifyCodeWithCounter()` refuses any code from that step or an earlier one.
 
 > **Danger** — `twoFactorRecoveryCodes` holds SHA-256 hashes of the recovery
 > codes, never the plaintext. Show the plaintext to the user exactly once at
@@ -121,7 +129,7 @@ export class User extends AuthUser {
 ## Enabling 2FA
 
 Enrolment is a two-step flow: generate a secret and show its QR code, then verify
-the user's first code before persisting. `TwoFactor.verifyCode()` and
+the user's first code before persisting. `TwoFactor.verifyCodeWithCounter()` and
 `TwoFactor.generateRecoveryCodes()` are synchronous.
 
 ```typescript fragment
@@ -146,7 +154,9 @@ export class TwoFactorController extends Controller {
     const secret = ctx.session.get("two_factor_pending_secret") as string;
     const code = ctx.input("code") as string;
 
-    if (!TwoFactor.verifyCode(secret, code)) {
+    // The secret is new, so there is no last step to pass yet.
+    const check = TwoFactor.verifyCodeWithCounter(secret, code);
+    if (!check.valid) {
       return this.back().withErrors({ code: "Invalid code." });
     }
 
@@ -157,6 +167,8 @@ export class TwoFactorController extends Controller {
         twoFactorSecret: secret,
         twoFactorRecoveryCodes: JSON.stringify(hashed),
         twoFactorConfirmedAt: Carbon.now(),
+        // Saved now, so the code that confirmed setup can't also be used to sign in.
+        twoFactorLastCounter: check.counter,
       })
       .save();
 
@@ -183,7 +195,7 @@ export class TwoFactorController extends Controller {
 > **Warning** — Setting `twoFactorConfirmedAt` is what makes
 > `TwoFactorMiddleware` start challenging the user. Persist the secret and a
 > non-null `twoFactorConfirmedAt` together, only after a successful
-> `verifyCode()`, so a half-finished enrolment never locks anyone out.
+> `verifyCodeWithCounter()`, so a half-finished enrolment never locks anyone out.
 
 ## The challenge flow
 
@@ -207,10 +219,13 @@ export class TwoFactorChallengeController extends Controller {
     const code = ctx.input("code") as string;
     const secret = user.twoFactorSecret!;
 
-    // Try TOTP code first, then recovery code
-    const totpOk = TwoFactor.verifyCode(secret, code);
+    // Try TOTP code first, then recovery code. Passing the last accepted step means
+    // a code that already worked once is refused.
+    const check = TwoFactor.verifyCodeWithCounter(secret, code, user.twoFactorLastCounter);
 
-    if (!totpOk) {
+    if (check.valid) {
+      await user.fill({ twoFactorLastCounter: check.counter }).save();
+    } else {
       const storedHashed = JSON.parse(user.twoFactorRecoveryCodes ?? "[]") as string[];
       const recoveryResult = TwoFactor.verifyRecoveryCode(storedHashed, code);
 
@@ -400,15 +415,16 @@ to get past it — `assertRedirect("/two-factor/challenge")` is the whole test.
 The `TwoFactor` facade proxies the `two_factor` singleton (a `TwoFactorService`).
 All methods are synchronous.
 
-| Method                                   | Signature                                                                           | Description                                                                        |
-| ---------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `generateSecret()`                       | `() => string`                                                                      | Random 20-byte base-32 secret for a new enrolment.                                 |
-| `getQrCodeUrl(label, secret, issuer?)`   | `(label: string, secret: string, issuer?: string) => string`                        | `otpauth://totp/...` URI for an authenticator app.                                 |
-| `getQrCodeSvg(label, secret, options?)`  | `(label: string, secret: string, options?: TwoFactorQrOptions) => string`           | The same URI as an inline `<svg>`, drawn in-process. Inline it; never fetch it.    |
-| `generateCode(secret, offset?)`          | `(secret: string, offset?: number) => string`                                       | Produce the code an authenticator would show. For tests — never send it to a user. |
-| `verifyCode(secret, token)`              | `(secret: string, token: string) => boolean`                                        | Verify a 6-digit TOTP code within the time window.                                 |
-| `generateRecoveryCodes()`                | `() => { plain: string[]; hashed: string[] }`                                       | Fresh one-time recovery codes (plaintext + hashes).                                |
-| `verifyRecoveryCode(storedHashed, code)` | `(storedHashed: string[], code: string) => { valid: boolean; remaining: string[] }` | Consume a recovery code, returning the unused ones.                                |
+| Method                                                   | Signature                                                                                                          | Description                                                                                                          |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `generateSecret()`                                       | `() => string`                                                                                                     | Random 20-byte base-32 secret for a new enrolment.                                                                   |
+| `getQrCodeUrl(label, secret, issuer?)`                   | `(label: string, secret: string, issuer?: string) => string`                                                       | `otpauth://totp/...` URI for an authenticator app.                                                                   |
+| `getQrCodeSvg(label, secret, options?)`                  | `(label: string, secret: string, options?: TwoFactorQrOptions) => string`                                          | The same URI as an inline `<svg>`, drawn in-process. Inline it; never fetch it.                                      |
+| `generateCode(secret, offset?)`                          | `(secret: string, offset?: number) => string`                                                                      | Produce the code an authenticator would show. For tests — never send it to a user.                                   |
+| `verifyCodeWithCounter(secret, token, lastUsedCounter?)` | `(secret: string, token: string, lastUsedCounter?: number \| null) => { valid: boolean; counter: number \| null }` | Verify a code and return the time step it matched. Refuses a code from `lastUsedCounter` or earlier. Save `counter`. |
+| `verifyCode(secret, token, lastUsedCounter?)`            | `(secret: string, token: string, lastUsedCounter?: number \| null) => boolean`                                     | The same check, without the step to save. On its own a code works for its whole window.                              |
+| `generateRecoveryCodes()`                                | `() => { plain: string[]; hashed: string[] }`                                                                      | Fresh one-time recovery codes (plaintext + hashes).                                                                  |
+| `verifyRecoveryCode(storedHashed, code)`                 | `(storedHashed: string[], code: string) => { valid: boolean; remaining: string[] }`                                | Consume a recovery code, returning the unused ones.                                                                  |
 
 ## Next steps
 

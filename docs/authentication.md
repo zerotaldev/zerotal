@@ -1149,13 +1149,14 @@ above with the calls that emit them.
 
 ### Two-factor API
 
-| Method                                             | Signature                                                                         | Description                      |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------- |
-| `TwoFactor.generateSecret()`                       | `(): string`                                                                      | 20-byte random base-32 secret    |
-| `TwoFactor.getQrCodeUrl(label, secret, issuer?)`   | `(label: string, secret: string, issuer?: string): string`                        | `otpauth://totp/…` URI           |
-| `TwoFactor.verifyCode(secret, token)`              | `(secret: string, token: string): boolean`                                        | Verify a 6-digit TOTP code       |
-| `TwoFactor.generateRecoveryCodes()`                | `(): { plain: string[]; hashed: string[] }`                                       | Generate one-time recovery codes |
-| `TwoFactor.verifyRecoveryCode(storedHashed, code)` | `(storedHashed: string[], code: string): { valid: boolean; remaining: string[] }` | Consume a recovery code          |
+| Method                                                             | Signature                                                                                                        | Description                                                                                    |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `TwoFactor.generateSecret()`                                       | `(): string`                                                                                                     | 20-byte random base-32 secret                                                                  |
+| `TwoFactor.getQrCodeUrl(label, secret, issuer?)`                   | `(label: string, secret: string, issuer?: string): string`                                                       | `otpauth://totp/…` URI                                                                         |
+| `TwoFactor.verifyCodeWithCounter(secret, token, lastUsedCounter?)` | `(secret: string, token: string, lastUsedCounter?: number \| null): { valid: boolean; counter: number \| null }` | Verify a code once: refuses a code from `lastUsedCounter` or earlier, returns the step to save |
+| `TwoFactor.verifyCode(secret, token, lastUsedCounter?)`            | `(secret: string, token: string, lastUsedCounter?: number \| null): boolean`                                     | Verify a 6-digit TOTP code                                                                     |
+| `TwoFactor.generateRecoveryCodes()`                                | `(): { plain: string[]; hashed: string[] }`                                                                      | Generate one-time recovery codes                                                               |
+| `TwoFactor.verifyRecoveryCode(storedHashed, code)`                 | `(storedHashed: string[], code: string): { valid: boolean; remaining: string[] }`                                | Consume a recovery code                                                                        |
 
 ### Personal access tokens
 

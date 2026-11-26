@@ -47,9 +47,10 @@ export const TWO_FACTOR_REMEMBER_KEY = "two_factor_pending_remember";
  * until the challenge is met, so a route that forgets this middleware still sees a guest.
  * Attach it where you want the redirect-to-challenge behaviour instead of a bare 401.
  *
- * The challenge page verifies the submitted code via `TwoFactorService.verifyCode()` and then
- * calls `Auth.completeTwoFactor()`, which clears the pending marker, records the challenge as
- * met, and rotates the session id.
+ * The challenge page verifies the submitted code with
+ * `TwoFactorService.verifyCodeWithCounter()`, passing the user's last accepted time step and
+ * saving the new one so a code works once, and then calls `Auth.completeTwoFactor()`, which
+ * clears the pending marker, records the challenge as met, and rotates the session id.
  *
  * @example
  * ```ts

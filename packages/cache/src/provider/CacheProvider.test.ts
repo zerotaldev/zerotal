@@ -65,3 +65,20 @@ describe("the worker's heartbeat", () => {
     expect((await Heartbeat.lastSeen("scheduler")).status).toBe("never");
   });
 });
+
+describe("the cache prefix with no config/cache.ts", () => {
+  // The provider fell back to `zerotal:`, the namespace the queue's Redis keys sit under
+  // (`zerotal:jobs:`), so `Cache.flush()` on a shared Redis deleted every queued job.
+  it("is the CacheConfig() default, apart from the queue's keys", async () => {
+    const app = Application.create({
+      env: "test",
+      providers: [CacheProvider],
+      config: { cache: { driver: "memory" } },
+    });
+    await app.boot();
+
+    const cache = app.container.tryMake("cache") as { prefix: string } | undefined;
+    expect(cache?.prefix).toBe("zerotal:cache:");
+    expect("zerotal:jobs:default".startsWith(cache?.prefix ?? "")).toBe(false);
+  });
+});

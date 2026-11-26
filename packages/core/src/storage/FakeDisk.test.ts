@@ -4,6 +4,7 @@ import { FakeDisk } from "./FakeDisk.ts";
 // Local disks must live inside the storage root; pin it for this suite so the
 // value does not depend on which test file the worker loaded first.
 Bun.env["ZT_STORAGE_ROOT"] = "storage";
+import { StorageConfig } from "./config.ts";
 import { StorageManager } from "./StorageManager.ts";
 
 let disk: FakeDisk;
@@ -144,6 +145,16 @@ describe("StorageManager.fake()", () => {
     const manager = new StorageManager(config);
     const fake = manager.fake();
     expect(fake.url("a.png")).toBe("/files/a.png");
+  });
+
+  it("builds the URLs the real disk would for a served disk with no `url`", () => {
+    // The built-in `public` disk is served at /storage/public and sets no `url`.
+    const manager = new StorageManager(StorageConfig());
+    const fake = manager.fake("public");
+
+    expect(fake.url("media/a.png")).toBe("/storage/public/media/a.png");
+    manager.restoreFakes();
+    expect(manager.disk("public").url("media/a.png")).toBe("/storage/public/media/a.png");
   });
 
   it("fakes a named disk without touching the others", () => {

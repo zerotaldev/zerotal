@@ -65,7 +65,12 @@ export class StorageManager {
    */
   fake(name?: string): FakeDisk {
     const diskName = name ?? this._config.default;
-    const fake = new FakeDisk(this._config.disks[diskName]?.url ?? "/storage");
+    // The same URL base the real disk uses (an explicit `url`, else where it is served),
+    // so a link built in a test is the link the app serves. Falling back to `/storage`
+    // alone gave a served disk's fake `/storage/a.png` where the app answers at
+    // `/storage/public/a.png`.
+    const cfg = this._config.disks[diskName];
+    const fake = new FakeDisk(cfg?.url ?? cfg?.serve?.path ?? "/storage");
     if (!this._realDrivers.has(diskName)) {
       this._realDrivers.set(diskName, this._drivers.get(diskName));
     }

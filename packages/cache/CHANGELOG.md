@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`Cache.flush()` no longer reaches the queue's Redis keys in an app with no
+  `config/cache.ts`.** `CacheConfig()` defaults the prefix to `zerotal:cache:`, kept apart from
+  the queue's `zerotal:jobs:` for exactly this reason, but `CacheProvider` fell back to
+  `zerotal:` when the app had no cache config. On a Redis shared with the queue, a flush
+  deleted every pending and failed job. The provider now falls back to the `CacheConfig()`
+  default. Cached entries written under the old prefix are left behind once and expire on
+  their TTL.
+- **The cache docs describe tags as they work.** A set of tags is one namespace, in any order:
+  `tags(["posts"]).flush()` does not clear entries written under `tags(["posts", "featured"])`.
+  The page said the opposite on both counts. Its default prefix and its testing advice (a
+  `CACHE_DRIVER` variable the provider never reads) are corrected too.
+
 ## [1.16.2] — 2026-10-30
 
 ### Security

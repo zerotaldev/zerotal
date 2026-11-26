@@ -19,3 +19,6 @@ storage/framework/gate.json
 
 # The binary `bun zt compile` writes.
 /zerotal-app
+
+# The log files the app writes as it runs, one per day.
+storage/logs/

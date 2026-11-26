@@ -11,7 +11,8 @@ import { ValidationJsonError, ValidationRedirectError } from "zerotal/validator"
  * visitor's mistake, not the app's.
  */
 export function rejectInput(
-  http: HttpContext,
+  // Any route's context, including one whose params are bound models.
+  http: HttpContext<Record<string, unknown>>,
   errors: Record<string, string>,
   redirectTo: string,
 ): never {

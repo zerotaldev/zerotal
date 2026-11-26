@@ -1119,7 +1119,7 @@ describe("Application.start() — fetch handler and health endpoint", () => {
 
   it("serves the live-reload script as a file while the dev socket is on, and not otherwise", async () => {
     // A same-origin file is what lets a strict CSP (`script-src 'self'`) keep live-reload.
-    const { DEV_RELOAD_SCRIPT_PATH, DEV_RELOAD_SOURCE } = await import("../dev/reloadClient.ts");
+    const { _DEV_RELOAD_SCRIPT_PATH, _DEV_RELOAD_SOURCE } = await import("../dev/reloadClient.ts");
     const serveWith = async (devWs: boolean) => {
       Application._resetInstance();
       const app = Application.create({ env: "web" });
@@ -1130,13 +1130,13 @@ describe("Application.start() — fetch handler and health endpoint", () => {
         return fakeServer;
       };
       await app.start(0);
-      return fetchFn!(new Request(`http://localhost${DEV_RELOAD_SCRIPT_PATH}`), {});
+      return fetchFn!(new Request(`http://localhost${_DEV_RELOAD_SCRIPT_PATH}`), {});
     };
 
     const served = await serveWith(true);
     expect(served!.status).toBe(200);
     expect(served!.headers.get("content-type")).toContain("text/javascript");
-    expect(await served!.text()).toBe(DEV_RELOAD_SOURCE);
+    expect(await served!.text()).toBe(_DEV_RELOAD_SOURCE);
 
     const off = await serveWith(false);
     expect(off?.status).not.toBe(200);

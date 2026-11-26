@@ -6,7 +6,7 @@ import {
   _resetDevBuildHooks,
   _describeBuildLog,
 } from "./DevBuildHook.ts";
-import { DEV_RELOAD_CLIENT, DEV_RELOAD_SCRIPT_PATH, DEV_RELOAD_SOURCE } from "./reloadClient.ts";
+import { DEV_RELOAD_CLIENT, _DEV_RELOAD_SCRIPT_PATH, _DEV_RELOAD_SOURCE } from "./reloadClient.ts";
 import * as DevWsServer from "./DevWsServer.ts";
 import { detectCssPlugins, buildCssBundle } from "./CssPlugins.ts";
 import { unlink } from "node:fs/promises";
@@ -136,8 +136,8 @@ describe("DEV_RELOAD_CLIENT", () => {
   it("is a script tag pointing at a file, with no inline code a strict CSP would block", () => {
     // `script-src 'self'` allows a same-origin file and refuses inline code, so an app
     // with a strict policy keeps live-reload without `'unsafe-inline'` or a nonce.
-    expect(DEV_RELOAD_CLIENT).toBe(`<script src="${DEV_RELOAD_SCRIPT_PATH}"></script>`);
-    expect(DEV_RELOAD_SCRIPT_PATH.startsWith("/__dev/")).toBe(true);
+    expect(DEV_RELOAD_CLIENT).toBe(`<script src="${_DEV_RELOAD_SCRIPT_PATH}"></script>`);
+    expect(_DEV_RELOAD_SCRIPT_PATH.startsWith("/__dev/")).toBe(true);
   });
 
   /**
@@ -164,7 +164,7 @@ describe("DEV_RELOAD_CLIENT", () => {
       }
     }
 
-    new Function("location", "WebSocket", "setTimeout", DEV_RELOAD_SOURCE)(
+    new Function("location", "WebSocket", "setTimeout", _DEV_RELOAD_SOURCE)(
       location,
       FakeSocket,
       // Reconnect immediately instead of after the real 1s backoff.

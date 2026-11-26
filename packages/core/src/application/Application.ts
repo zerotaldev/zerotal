@@ -9,7 +9,7 @@ import { ServiceProvider } from "../provider/ServiceProvider.ts";
 import type { AuthenticatedUser } from "../auth/AuthenticatedUser.ts";
 import * as DevWsServer from "../dev/DevWsServer.ts";
 import { DevReloadMiddleware, setDevReloadClientActive } from "../dev/DevReloadMiddleware.ts";
-import { DEV_RELOAD_SCRIPT_PATH, DEV_RELOAD_SOURCE } from "../dev/reloadClient.ts";
+import { _DEV_RELOAD_SCRIPT_PATH, _DEV_RELOAD_SOURCE } from "../dev/reloadClient.ts";
 import { onGracefulStopRequest } from "../dev/devShutdown.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { Pipeline } from "../pipeline/Pipeline.ts";
@@ -1721,9 +1721,9 @@ export class Application {
         if (
           this._devWsEnabled &&
           req.method === "GET" &&
-          new URL(req.url).pathname === DEV_RELOAD_SCRIPT_PATH
+          new URL(req.url).pathname === _DEV_RELOAD_SCRIPT_PATH
         ) {
-          return new Response(DEV_RELOAD_SOURCE, {
+          return new Response(_DEV_RELOAD_SOURCE, {
             headers: {
               "Content-Type": "text/javascript; charset=utf-8",
               "Cache-Control": "no-store",

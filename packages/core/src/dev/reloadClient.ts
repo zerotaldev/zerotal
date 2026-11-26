@@ -24,7 +24,7 @@
  *
  * @internal
  */
-export const DEV_RELOAD_SCRIPT_PATH = "/__dev/reload.js";
+export const _DEV_RELOAD_SCRIPT_PATH = "/__dev/reload.js";
 
 /**
  * The tag `DevReloadMiddleware` injects into dev HTML responses, and Inertia bakes
@@ -32,14 +32,14 @@ export const DEV_RELOAD_SCRIPT_PATH = "/__dev/reload.js";
  *
  * @internal
  */
-export const DEV_RELOAD_CLIENT: string = `<script src="${DEV_RELOAD_SCRIPT_PATH}"></script>`;
+export const DEV_RELOAD_CLIENT: string = `<script src="${_DEV_RELOAD_SCRIPT_PATH}"></script>`;
 
 /**
- * The script served at {@link DEV_RELOAD_SCRIPT_PATH}.
+ * The script served at {@link _DEV_RELOAD_SCRIPT_PATH}.
  *
  * @internal
  */
-export const DEV_RELOAD_SOURCE: string =
+export const _DEV_RELOAD_SOURCE: string =
   `(function(){` +
   `var proto=location.protocol==='https:'?'wss:':'ws:';` +
   `var build=null;` +

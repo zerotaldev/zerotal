@@ -18,6 +18,10 @@ follows the Zerotal monorepo's unified versioning.
   `DevProcessDefinition` restarts that process whenever the server restarts for a backend
   change, so a process that loads the app's own files runs the code on disk. `zt dev --list`
   shows it as `on change`.
+- **A worker liveness check can say what an idle worker has.** `workerLivenessCheck()`'s
+  `hasWork()` may return `idle`, the message to show when there is nothing to run, in place of
+  "nothing registered, nothing to run". The queue's check uses it. `WorkerLivenessOptions` and
+  `WorkerWork` are exported from `@zerotal/core/heartbeat`.
 
 ### Changed
 
@@ -48,6 +52,12 @@ follows the Zerotal monorepo's unified versioning.
   served. So a test faking the built-in `public` disk saw `/storage/media/a.png` where the app
   serves `/storage/public/media/a.png`. The fake now uses `url`, then `serve.path`, then
   `/storage`, as the real disk does.
+- **A validation failure the exception handler answers lasts for one page.** A thrown
+  `ValidationError` flashes `errors` and `old` rather than setting them, and `old` leaves out
+  password fields and uploads, as `validate()` does now. A `ValidationRedirectError` flashes the
+  errors it carries, so a form that wrote them with `session.set` before throwing (the starters'
+  `rejectInput()`) no longer leaves them on every later page. A JSON 422, from either error,
+  removes the `errors` and `old` the request left in the session.
 - **Live-reload works under a strict Content-Security-Policy.** The dev client was an inline
   `<script>`, so an app whose policy refused inline scripts had to add `'unsafe-inline'` in
   development to keep it. It is now a file, `/__dev/reload.js`, served while `zt dev` is

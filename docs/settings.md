@@ -216,7 +216,23 @@ action. Set `plugins: { settings: false }` in `config/admin.ts` to leave it out.
 Screens for other frontends call the same API the admin screen does. `Settings.all()`
 returns every declared setting, resolved, and `Settings.definitions()` returns each
 setting's type, options, label and group, enough to build a form. `Settings.setFromText()`,
-`hide()` and `unhide()` do the writing.
+`hide()` and `unhide()` do the writing. Four things the admin screen does that yours has
+to do as well:
+
+- **Read the level you edit.** With no scope, a read takes the signed-in user's own
+  override first, so a tenant screen built on `Settings.all()` shows the admin's personal
+  value and saves it for the whole tenant. Pass `{ user: null }`:
+  `Settings.all({ user: null })`.
+- **Decide where a write goes.** Outside a tenant, a write is app-wide and every tenant
+  without its own override sees it. A tenant's screen should refuse to run without a
+  tenant, and an app-wide one should be for people allowed to change everyone's settings.
+- **Check the ability.** Guard the screen and every write with `settings.manage`
+  (`SETTINGS_ABILITY`), as the admin screen does.
+- **Turn a refusal into a field error.** A value that does not fit its definition throws
+  `InvalidSettingValueError` (a `SettingsError`, status 422) with the reason in
+  `error.context.reason`; catch it and show it under the field. A definition's `label` and
+  `group` are `undefined` when not declared; the admin screen shows the key and the key's
+  first segment in their place.
 
 ## Storage
 

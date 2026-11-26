@@ -8,7 +8,7 @@ import { RuleBuilder } from "./RuleBuilder.ts";
 import { runValidationAsync } from "./Validator.ts";
 import { ValidationRedirectError, ValidationJsonError } from "./ValidationError.ts";
 import { PrecognitionResponseError } from "./PrecognitionError.ts";
-import { _readRequestBody, _requestOrigin } from "./requestBody.ts";
+import { _oldInput, _readRequestBody, _requestOrigin } from "./requestBody.ts";
 
 // Maps { title: StringRule; body: StringRule } → { title: StringRuleDef; body: StringRuleDef }
 // The same pattern used by the top-level validate() function.
@@ -17,7 +17,7 @@ type ExtractDefs<S extends Record<string, FieldRule>> = {
 };
 
 type SessionLike = {
-  set(key: string, value: unknown): void;
+  flash(key: string, value: unknown): void;
   forget(key: string): void;
 };
 
@@ -226,14 +226,14 @@ export abstract class FormRequest {
     }
 
     if (!result.success) {
-      session?.set("errors", result.errors);
-      session?.set("old", body);
-
       // Same rule as validate() and the exception handler: JSON when Accept prefers it to HTML,
       // X-Inertia or not.
       if (_prefersJson(ctx.request.headers.get("Accept"))) {
         throw new ValidationJsonError(result.errors);
       } else {
+        // Flashed for the page the redirect lands on; see validate().
+        session?.flash("errors", result.errors);
+        session?.flash("old", _oldInput(body));
         // Same origin check as validate() — see the note there. Referer is client input.
         const back =
           safeRedirectPath(ctx.request.headers.get("Referer"), _requestOrigin(ctx)) ?? "/";

@@ -39,6 +39,12 @@ export class SettingsProvider extends ServiceProvider {
   }
 
   override async onBooting(): Promise<void> {
+    // Resolved here, not on first use: the typed groups and the `Settings` facade read
+    // the binding with `makeSync`, which refuses a singleton nothing has resolved yet.
+    // Left lazy, every `billing.get(…)` in an app threw "Settings are not available"
+    // with this provider registered.
+    await this.app.container.make("settings");
+
     // The panel mounts its routes once booting finishes, so the screen is
     // contributed here rather than in onBooted, which would race the mount.
     _installSettingsAdmin(this.app);

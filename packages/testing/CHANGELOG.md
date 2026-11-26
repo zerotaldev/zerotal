@@ -31,6 +31,13 @@ fakeFile.jpeg("b.jpg")] }` sends one part per file under `photos`, as
   `TestResponse` assertion that fails on a `3xx` now adds `Redirected to "<Location>".`, or says
   the redirect had no `Location`. The redirect assertions, which already name it, do not repeat
   it.
+- **Every test file sees the ORM registrations the app made.** `createTestApp()` replaces the
+  ORM context between files, and re-adopting the shared app installed an empty one, so global
+  scopes, hooks and observers registered while the app booted, and scopes a model's class body
+  registers (the `Roles` mixin's eager load), were missing in every file after the first; the
+  class-body ones were missing in the first file too. A tenant-scoped query returned every
+  tenant's rows under `bun zt test` and passed under `--isolate`. They are carried onto the new
+  context now. What a test registers itself still stays in its own file.
 
 ## [1.18.0] — 2026-11-26
 

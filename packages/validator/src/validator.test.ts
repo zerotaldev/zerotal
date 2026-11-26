@@ -1475,7 +1475,11 @@ function makeCtx(opts: {
   contentType?: string;
   headers?: Record<string, string>;
   url?: string;
-  session?: { set: (k: string, v: unknown) => void; forget: (k: string) => void };
+  session?: {
+    set?: (k: string, v: unknown) => void;
+    flash?: (k: string, v: unknown) => void;
+    forget: (k: string) => void;
+  };
 }) {
   const method = opts.method ?? "POST";
   const url = opts.url ?? "http://localhost/test";
@@ -1558,23 +1562,48 @@ describe("validate() — failure paths", () => {
     );
   });
 
-  it("stores errors in session on failure", async () => {
-    const stored: Record<string, unknown> = {};
+  it("flashes errors and the input, without passwords, for the page it redirects to", async () => {
+    const flashed: Record<string, unknown> = {};
+    const set: string[] = [];
     const ctx = makeCtx({
-      body: "{}",
+      body: JSON.stringify({
+        email: "ada@example.com",
+        password: "hunter22",
+        current_password: "x",
+      }),
+      headers: { Accept: "text/html" },
       session: {
-        set: (k: string, v: unknown) => {
-          stored[k] = v;
+        set: (k: string) => void set.push(k),
+        flash: (k: string, v: unknown) => {
+          flashed[k] = v;
         },
         forget: () => {},
       },
     });
-    try {
-      await validate(ctx, (r) => ({ name: r.string() }));
-    } catch {
-      /* expected to throw — we assert the stored errors below */
-    }
-    expect(stored["errors"]).toBeDefined();
+    await expect(
+      validate(ctx, (r) => ({ email: r.string(), name: r.string() })),
+    ).rejects.toBeInstanceOf(ValidationRedirectError);
+    expect(Object.keys(flashed["errors"] as object)).toEqual(["name"]);
+    expect(flashed["old"]).toEqual({ email: "ada@example.com" });
+    // Set, they outlived the page they were for.
+    expect(set).toEqual([]);
+  });
+
+  it("leaves nothing in the session when it answers with a JSON 422", async () => {
+    const written: string[] = [];
+    const ctx = makeCtx({
+      body: "{}",
+      headers: { Accept: "application/json" },
+      session: {
+        set: (k: string) => void written.push(k),
+        flash: (k: string) => void written.push(k),
+        forget: () => {},
+      },
+    });
+    await expect(validate(ctx, (r) => ({ name: r.string() }))).rejects.toBeInstanceOf(
+      ValidationJsonError,
+    );
+    expect(written).toEqual([]);
   });
 
   it("throws ValidationRedirectError for an Inertia visit (not JSON error)", async () => {

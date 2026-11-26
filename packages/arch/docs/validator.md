@@ -103,8 +103,9 @@ the two work in either order, and after middleware that has already read the bod
 `ctx.body()` and `ctx.input()` return the body as the client sent it, not just the validated
 fields. A multipart form's files are validated from the same parse that `ctx.file()` reads.
 
-On failure, `validate()` stores `errors` and `old` (previous input) in the
-session, then branches on the request type:
+On failure, `validate()` branches on the request type. A redirect flashes `errors` and
+`old` (the submitted input) into the session for the page it lands on; a JSON 422 carries
+the errors in its body and writes nothing to the session:
 
 | Request type | Detected by                                                               | Error thrown              | HTTP result                                     |
 | ------------ | ------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------- |
@@ -512,8 +513,10 @@ When `Accept` does not prefer JSON (a form post, a browser, or an Inertia visit)
 validation throws `ValidationRedirectError`. `ExceptionHandler` converts this to a
 redirect back to the previous page.
 
-Errors and old input are stored in the [session](/docs/session) under the keys
-`'errors'` and `'old'`. Read them on the next request:
+Errors and old input are flashed into the [session](/docs/session) under the keys
+`'errors'` and `'old'`, so they reach the page the redirect lands on and no page after it.
+`old` leaves out every field whose name contains `password`, and `_token` and uploads, so a
+password a visitor typed is never put back into a page. Read them on the next request:
 
 ```typescript fragment
 // in a controller

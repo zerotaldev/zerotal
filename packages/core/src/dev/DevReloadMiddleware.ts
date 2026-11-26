@@ -17,7 +17,7 @@
 import type { NextFn } from "../pipeline/types.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { BaseMiddleware } from "../middleware/BaseMiddleware.ts";
-import { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
+import { DEV_RELOAD_CLIENT, DEV_RELOAD_SCRIPT_PATH } from "./reloadClient.ts";
 
 /**
  * Produces an HTML fragment to inject before `</body>` for the given request.
@@ -85,8 +85,15 @@ export class DevReloadMiddleware extends BaseMiddleware {
 
     let injection = "";
     // Inject the reload client only under dev-worker, and not when the page
-    // already embeds one (e.g. an Inertia template).
-    if (_reloadClientActive && !html.includes("/__dev/ws")) injection += DEV_RELOAD_CLIENT;
+    // already embeds one (an Inertia template carries the tag; a template written
+    // before the client became a file may still carry the inline one).
+    if (
+      _reloadClientActive &&
+      !html.includes(DEV_RELOAD_SCRIPT_PATH) &&
+      !html.includes("/__dev/ws")
+    ) {
+      injection += DEV_RELOAD_CLIENT;
+    }
     for (const snippet of _snippets) {
       try {
         injection += snippet.fn(http);

@@ -9,6 +9,7 @@ import { ServiceProvider } from "../provider/ServiceProvider.ts";
 import type { AuthenticatedUser } from "../auth/AuthenticatedUser.ts";
 import * as DevWsServer from "../dev/DevWsServer.ts";
 import { DevReloadMiddleware, setDevReloadClientActive } from "../dev/DevReloadMiddleware.ts";
+import { DEV_RELOAD_SCRIPT_PATH, DEV_RELOAD_SOURCE } from "../dev/reloadClient.ts";
 import { onGracefulStopRequest } from "../dev/devShutdown.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { Pipeline } from "../pipeline/Pipeline.ts";
@@ -1713,6 +1714,21 @@ export class Application {
         if (req.method === "GET" && lazyStaticDirs.length) {
           const staticFile = await _lazyStaticResponse(req.url, lazyStaticDirs);
           if (staticFile) return staticFile;
+        }
+
+        // The live-reload client, as a file so a strict CSP (`script-src 'self'`)
+        // allows it without `'unsafe-inline'`. Only while /__dev/ws exists.
+        if (
+          this._devWsEnabled &&
+          req.method === "GET" &&
+          new URL(req.url).pathname === DEV_RELOAD_SCRIPT_PATH
+        ) {
+          return new Response(DEV_RELOAD_SOURCE, {
+            headers: {
+              "Content-Type": "text/javascript; charset=utf-8",
+              "Cache-Control": "no-store",
+            },
+          });
         }
 
         if (req.headers.get("Upgrade") === "websocket") {

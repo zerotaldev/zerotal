@@ -5,6 +5,7 @@ import {
   setDevReloadClientActive,
   _resetDevHtmlSnippets,
 } from "./DevReloadMiddleware.ts";
+import { DEV_RELOAD_CLIENT, DEV_RELOAD_SCRIPT_PATH } from "./reloadClient.ts";
 
 const html = (body: string, status = 200) =>
   new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
@@ -27,10 +28,17 @@ describe("DevReloadMiddleware", () => {
   it("injects the live-reload client before </body> in HTML responses", async () => {
     const res = await run(html("<html><body><h1>Hi</h1></body></html>"));
     const text = await res!.text();
-    expect(text).toContain("/__dev/ws");
-    expect(text).toContain("location.reload()");
+    expect(text).toContain(DEV_RELOAD_CLIENT);
+    // A file, not inline code: a strict `script-src 'self'` policy allows it.
+    expect(text).not.toContain("location.reload()");
     // injected before the closing body tag
-    expect(text.indexOf("/__dev/ws")).toBeLessThan(text.indexOf("</body>"));
+    expect(text.indexOf(DEV_RELOAD_SCRIPT_PATH)).toBeLessThan(text.indexOf("</body>"));
+  });
+
+  it("does not double-inject when the page already has the script tag", async () => {
+    const res = await run(html(`<body>${DEV_RELOAD_CLIENT}</body>`));
+    const text = await res!.text();
+    expect(text.split(DEV_RELOAD_SCRIPT_PATH).length - 1).toBe(1);
   });
 
   it("leaves non-HTML responses untouched", async () => {
@@ -40,17 +48,18 @@ describe("DevReloadMiddleware", () => {
     expect(await res!.text()).toBe('{"ok":true}');
   });
 
-  it("does not double-inject when the page already has a /__dev/ws client", async () => {
+  it("does not double-inject when the page already has an inline /__dev/ws client", async () => {
+    // A template written before the client became a file still carries the inline one.
     const res = await run(html("<body><script>new WebSocket('/__dev/ws')</script></body>"));
     const text = await res!.text();
-    expect(text.split("/__dev/ws").length - 1).toBe(1); // exactly one occurrence
+    expect(text).not.toContain(DEV_RELOAD_SCRIPT_PATH);
   });
 
   it("appends to the end when there is no </body>", async () => {
     const res = await run(html("<div>fragment</div>"));
     const text = await res!.text();
     expect(text.startsWith("<div>fragment</div>")).toBe(true);
-    expect(text).toContain("/__dev/ws");
+    expect(text).toContain(DEV_RELOAD_SCRIPT_PATH);
   });
 
   it("injects registered snippets and passes the context to them", async () => {
@@ -66,7 +75,7 @@ describe("DevReloadMiddleware", () => {
     const onPanel = await run(html("<body></body>"), ctx("/__zerotal/devtools"));
     const panelText = await onPanel!.text();
     expect(panelText).not.toContain("client.js");
-    expect(panelText).toContain("/__dev/ws");
+    expect(panelText).toContain(DEV_RELOAD_SCRIPT_PATH);
   });
 
   it("registerDevHtmlSnippet is idempotent by name", async () => {
@@ -84,7 +93,7 @@ describe("DevReloadMiddleware", () => {
     });
     const res = await run(html("<body></body>"));
     expect(res!.status).toBe(200);
-    expect(await res!.text()).toContain("/__dev/ws");
+    expect(await res!.text()).toContain(DEV_RELOAD_SCRIPT_PATH);
   });
 
   it("preserves status and drops stale content-length", async () => {
@@ -98,7 +107,7 @@ describe("DevReloadMiddleware", () => {
     registerDevHtmlSnippet("tool", () => "<!--tool-->");
     const res = await run(html("<body></body>"));
     const text = await res!.text();
-    expect(text).not.toContain("/__dev/ws");
+    expect(text).not.toContain(DEV_RELOAD_SCRIPT_PATH);
     expect(text).toContain("<!--tool-->");
   });
 });

@@ -40,7 +40,7 @@ jobs:
     # Caps, not budgets: Gates runs ~5 min, Publish ~2, the Release ~1. A hung Gates fails the
     # release before anything is published. Publish is capped far above its normal run on
     # purpose: cancelling it midway would leave some packages on npm and not others.
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       # Full history and tags, because the release-notes and breaking-change gates diff
       # against the previous release. The default checkout fetches one commit and only
@@ -179,6 +179,13 @@ jobs:
       - name: Tag matches package version
         if: ${{ !cancelled() }}
         run: bun run scripts/publish-packages.ts --dry-run --tag "${GITHUB_REF_NAME}"
+
+      # The tarballs the step above just packed, installed into every starter and
+      # run through its own checks. A starter that does not work from what would
+      # be published stops the release here, before any package reaches npm.
+      - name: Starters work from the packed release
+        if: ${{ !cancelled() }}
+        run: bun run starters:smoke
 
   publish:
     name: Publish to npm with provenance

@@ -78,10 +78,12 @@ const DEFAULT_PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), pa
  * // Production (HTTPS)
  * app.use([SecureHeadersMiddleware.with({ secure: true })]);
  *
- * // Custom CSP
+ * // Custom CSP. The policy is sent as written: there is no per-request nonce, so
+ * // keep scripts in files on your own origin rather than inline. Flow's runtime and
+ * // the dev live-reload client are both served that way, so `'self'` covers them.
  * app.use([SecureHeadersMiddleware.with({
  *   secure: true,
- *   contentSecurityPolicy: "default-src 'self'; script-src 'self' 'nonce-{nonce}'",
+ *   contentSecurityPolicy: "default-src 'self'; script-src 'self'",
  * })]);
  */
 export class SecureHeadersMiddleware extends BaseMiddleware<SecureHeadersOptions> {

@@ -29,6 +29,7 @@
     "docs:what-ships:check": "bun run scripts/what-ships.ts --check",
     "starters:agent": "bun run scripts/starter-agent-files.ts",
     "starters:agent:check": "bun run scripts/starter-agent-files.ts --check",
+    "starters:smoke": "bun run scripts/starter-smoke.ts",
     "icons:sync": "bun run scripts/sync-icons.ts",
     "icons:names": "bun run scripts/sync-icons.ts --names",
     "icons:check": "bun run scripts/sync-icons.ts --check",
@@ -73,7 +74,7 @@
     "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "^4.14.1",
     "typescript": "^5.8.0",
-    "typescript-eslint": "^8.72.2"
+    "typescript-eslint": "^8.73.0"
   },
   "workspaces": [
     "packages/*",

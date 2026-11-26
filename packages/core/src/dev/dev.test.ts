@@ -6,7 +6,7 @@ import {
   _resetDevBuildHooks,
   _describeBuildLog,
 } from "./DevBuildHook.ts";
-import { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
+import { DEV_RELOAD_CLIENT, DEV_RELOAD_SCRIPT_PATH, DEV_RELOAD_SOURCE } from "./reloadClient.ts";
 import * as DevWsServer from "./DevWsServer.ts";
 import { detectCssPlugins, buildCssBundle } from "./CssPlugins.ts";
 import { unlink } from "node:fs/promises";
@@ -133,6 +133,13 @@ describe("DevBuildHook", () => {
 // ── Live-reload client ────────────────────────────────────────────────────────
 
 describe("DEV_RELOAD_CLIENT", () => {
+  it("is a script tag pointing at a file, with no inline code a strict CSP would block", () => {
+    // `script-src 'self'` allows a same-origin file and refuses inline code, so an app
+    // with a strict policy keeps live-reload without `'unsafe-inline'` or a nonce.
+    expect(DEV_RELOAD_CLIENT).toBe(`<script src="${DEV_RELOAD_SCRIPT_PATH}"></script>`);
+    expect(DEV_RELOAD_SCRIPT_PATH.startsWith("/__dev/")).toBe(true);
+  });
+
   /**
    * Run the injected snippet against a stub `WebSocket` and `location`, and
    * return handles to drive it: the sockets it opened, and the reload count.
@@ -157,8 +164,7 @@ describe("DEV_RELOAD_CLIENT", () => {
       }
     }
 
-    const body = DEV_RELOAD_CLIENT.replace(/^<script>/, "").replace(/<\/script>$/, "");
-    new Function("location", "WebSocket", "setTimeout", body)(
+    new Function("location", "WebSocket", "setTimeout", DEV_RELOAD_SOURCE)(
       location,
       FakeSocket,
       // Reconnect immediately instead of after the real 1s backoff.

@@ -1116,6 +1116,31 @@ describe("Application.start() — fetch handler and health endpoint", () => {
     const res = await capturedFetch!(wsReq, fakeSrv);
     expect(res).toBeUndefined(); // Upgrade succeeded
   });
+
+  it("serves the live-reload script as a file while the dev socket is on, and not otherwise", async () => {
+    // A same-origin file is what lets a strict CSP (`script-src 'self'`) keep live-reload.
+    const { DEV_RELOAD_SCRIPT_PATH, DEV_RELOAD_SOURCE } = await import("../dev/reloadClient.ts");
+    const serveWith = async (devWs: boolean) => {
+      Application._resetInstance();
+      const app = Application.create({ env: "web" });
+      if (devWs) app.enableDevWs();
+      let fetchFn: ((req: Request, srv: unknown) => Promise<Response | undefined>) | undefined;
+      (Bun as unknown as Record<string, unknown>).serve = (opts: Record<string, unknown>) => {
+        fetchFn = opts["fetch"] as typeof fetchFn;
+        return fakeServer;
+      };
+      await app.start(0);
+      return fetchFn!(new Request(`http://localhost${DEV_RELOAD_SCRIPT_PATH}`), {});
+    };
+
+    const served = await serveWith(true);
+    expect(served!.status).toBe(200);
+    expect(served!.headers.get("content-type")).toContain("text/javascript");
+    expect(await served!.text()).toBe(DEV_RELOAD_SOURCE);
+
+    const off = await serveWith(false);
+    expect(off?.status).not.toBe(200);
+  });
 });
 
 // ── _handleErrorAsync() ───────────────────────────────────────────────────────

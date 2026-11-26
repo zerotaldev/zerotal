@@ -61,6 +61,16 @@ class FeatureController {
     http.json({ file: file?.originalName ?? null, amount: body.amount ?? null }, 200);
   }
 
+  /** Report every file of a multi-file field, and a repeated plain field. */
+  async uploadMany(http: HttpContext): Promise<void> {
+    const photos = await http.files("photos");
+    const form = await http._parseFormData();
+    http.json({
+      photos: photos.map((f) => f.originalName),
+      tags: (form?.getAll("tags") ?? []).filter((t) => typeof t === "string"),
+    });
+  }
+
   /** Always throws, to exercise exception capture. */
   boom(_http: HttpContext): void {
     throw new BoomError("payment declined");
@@ -118,6 +128,7 @@ beforeAll(async () => {
       Router.post("/form", FeatureController, "form");
       Router.put("/form", FeatureController, "form");
       Router.post("/upload", FeatureController, "upload");
+      Router.post("/upload-many", FeatureController, "uploadMany");
       Router.post("/upload-then-body", FeatureController, "uploadThenBody");
       Router.get("/boom", FeatureController, "boom");
       Router.get("/remember", FeatureController, "remember");
@@ -179,6 +190,24 @@ describe("TestApp.multipart()", () => {
     res.assertJsonPath("received", true);
     res.assertJsonPath("name", "me.png");
     res.assertJsonPath("declared", "image/png");
+  });
+
+  // A multi-file field is what `<input type="file" multiple>` posts: one part per
+  // file, all under the field's name. `multipart()` typed each field as one value, so
+  // a test of an attachments field could not be written without dropping to fetch.
+  it("sends an array of files as one part each under the field's name", async () => {
+    const res = await app.multipart("/upload-many", {
+      photos: [fakeFile.image("a.png"), fakeFile.jpeg("b.jpg"), new File(["c"], "c.txt")],
+      tags: ["red", "blue"],
+    });
+    res.assertOk();
+    res.assertJsonPath("photos", ["a.png", "b.jpg", "c.txt"]);
+    res.assertJsonPath("tags", ["red", "blue"]);
+  });
+
+  it("sends nothing for an empty array", async () => {
+    const res = await app.multipart("/upload-many", { photos: [] });
+    res.assertJsonPath("photos", []);
   });
 
   it("builds files whose bytes match what they claim to be", async () => {

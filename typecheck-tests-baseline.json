@@ -5,7 +5,7 @@
     "tenancy": 6,
     "session": 13,
     "queue": 5,
-    "orm": 41,
+    "orm": 38,
     "notifications": 10,
     "monitor": 1,
     "flow": 11,
@@ -17,6 +17,6 @@
     "audit": 3,
     "admin": 10
   },
-  "total": 219,
+  "total": 216,
   "updatedAt": "2026-11-19T22:05:46.031Z"
 }

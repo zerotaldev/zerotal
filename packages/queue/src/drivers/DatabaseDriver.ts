@@ -485,16 +485,50 @@ export class DatabaseDriver implements QueueDriver {
     await this._sql`DELETE FROM zerotal_jobs WHERE id = ${record.id}`;
   }
 
+  /**
+   * Release the reservation so the job is claimable once its delay elapses.
+   *
+   * A debounced job can be retried while a newer dispatch with the same key is
+   * pending: the newer one could not collapse into it, because it was reserved.
+   * Releasing this one would leave two unreserved rows with one key, which the
+   * debounce index forbids, so the retry yields instead: this row is deleted and
+   * the newer dispatch, which carries the latest payload, is the one that runs.
+   * That is the rule `pushDebounced` already follows — the earlier dispatch is the
+   * stale one. The look-up keeps the common case free of a constraint error; the
+   * catch covers a dispatch that lands between the look-up and the update.
+   */
   async retry(record: JobRecord): Promise<void> {
     await this._whenReady();
     const nextAvailable = Math.floor(Date.now() / 1000) + Math.floor(record.retryDelay / 1000);
-    // Release the reservation so the job is claimable once its delay elapses.
-    await this._sql`
-      UPDATE zerotal_jobs
-      SET    available_at = ${nextAvailable},
-             reserved_at  = NULL
-      WHERE  id = ${record.id}
+
+    if (record.debounceKey !== undefined && (await this._supersededBy(record))) {
+      await this._sql`DELETE FROM zerotal_jobs WHERE id = ${record.id}`;
+      return;
+    }
+
+    try {
+      await this._sql`
+        UPDATE zerotal_jobs
+        SET    available_at = ${nextAvailable},
+               reserved_at  = NULL
+        WHERE  id = ${record.id}
+      `;
+    } catch (error) {
+      if (!_isUniqueViolation(error)) throw error;
+      await this._sql`DELETE FROM zerotal_jobs WHERE id = ${record.id}`;
+    }
+  }
+
+  /** Whether another job with this record's debounce key is waiting, unreserved. */
+  private async _supersededBy(record: JobRecord): Promise<boolean> {
+    const rows = await this._sql<{ id: Num }>`
+      SELECT id FROM zerotal_jobs
+      WHERE  debounce_key = ${record.debounceKey ?? null}
+        AND  reserved_at IS NULL
+        AND  id <> ${record.id}
+      LIMIT 1
     `;
+    return rows.length > 0;
   }
 
   async delete(record: JobRecord): Promise<void> {
@@ -657,4 +691,17 @@ export class DatabaseDriver implements QueueDriver {
     `;
     return rows[0] ? this._mapBatchRow(rows[0]) : null;
   }
+}
+
+/**
+ * Whether a driver error is a unique-constraint violation, on any engine the
+ * driver runs on: SQLite's `SQLITE_CONSTRAINT_UNIQUE`, PostgreSQL's SQLSTATE
+ * `23505`, MySQL's `ER_DUP_ENTRY` (1062).
+ */
+function _isUniqueViolation(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, errno } = error as { code?: unknown; errno?: unknown };
+  return (
+    code === "SQLITE_CONSTRAINT_UNIQUE" || errno === "23505" || code === "23505" || errno === 1062
+  );
 }

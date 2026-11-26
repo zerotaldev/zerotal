@@ -649,6 +649,7 @@ The builders a migration's `up()` receives, and the shapes they take:
 | `ColumnBuilder`          | What every `table.string(…)` returns — the chain that adds modifiers.              |
 | `ColumnOptions`          | Length, precision and the other per-type settings a column accepts.                |
 | `ColumnShorthand`        | The short forms (`"string"`, `"integer"`, …) accepted where a full builder fits.   |
+| `ColumnOptionsInput`     | What `@column({ … })` accepts: its `type` may be any shorthand, `"date"` included. |
 | `ForeignIdColumnBuilder` | What `table.foreignId(…)` returns, adding `.constrained()` to the chain.           |
 | `ForeignKeyBuilder`      | The `.references(…).on(…)` chain, and where `onDelete` / `onUpdate` are set.       |
 | `FKAction`               | `"cascade" \| "restrict" \| "set null" \| "no action"` — what a FK does on change. |

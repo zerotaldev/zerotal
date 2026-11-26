@@ -59,7 +59,8 @@ In a test:
 ```ts
 import { SettingsFake } from "@zerotal/settings";
 
-const settings = SettingsFake.install({ "billing.paymentTermsDays": 7 });
+// Given the group, keys and values are checked against its definitions.
+const settings = SettingsFake.install(billing, { "billing.paymentTermsDays": 7 });
 // …
 settings.restore();
 ```

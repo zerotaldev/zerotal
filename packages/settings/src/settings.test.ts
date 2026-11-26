@@ -10,7 +10,7 @@
  * ZT_MYSQL_URL=mysql://root:root@localhost:3306/zerotal_test         bun test src/settings.test.ts
  * ```
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, expectTypeOf, beforeAll, afterAll, beforeEach } from "bun:test";
 import { SQL } from "bun";
 import { Application, currentApp } from "@zerotal/core";
 import {
@@ -423,6 +423,45 @@ describe("SettingsFake", () => {
       { key: "billing.invoicePrefix", scope: "tenant:1", hidden: true },
     ]);
     expect(await inTenant(acme, () => billing.get("billing.invoicePrefix"))).toBe("INV-");
+  });
+
+  it("given its groups, takes only their keys, each as its declared type", async () => {
+    const typed = SettingsFake.install(billing, { "billing.paymentTermsDays": 7 });
+    fake = typed;
+    expectTypeOf<Parameters<typeof typed.override>[0]>().toEqualTypeOf<
+      "billing.invoicePrefix" | "billing.paymentTermsDays" | "billing.locale"
+    >();
+
+    typed.override("billing.locale", "fr");
+    // @ts-expect-error — a key the group does not declare
+    expect(() => typed.override("billing.nope", 1)).toThrow(UnknownSettingError);
+    // @ts-expect-error — a number setting given a string
+    expect(() => typed.override("billing.paymentTermsDays", "7")).toThrow(InvalidSettingValueError);
+    // @ts-expect-error — not one of the enum's values
+    expect(() => typed.override("billing.locale", "es")).toThrow(InvalidSettingValueError);
+    // @ts-expect-error — a key the group does not declare
+    typed.release("ui.compactTables");
+
+    expect(await billing.get("billing.paymentTermsDays")).toBe(7);
+    expect(await billing.get("billing.locale")).toBe("fr");
+  });
+
+  it("given several groups, takes the keys of all of them", async () => {
+    const typed = SettingsFake.install([billing, ui], {
+      "billing.invoicePrefix": "AC-",
+      "ui.compactTables": true,
+    });
+    fake = typed;
+    typed.override("ui.dashboard", { widgets: [] });
+    // @ts-expect-error — the JSON setting's declared shape
+    expect(() => typed.override("ui.dashboard", { widgets: "all" })).toThrow();
+    // @ts-expect-error — a boolean setting given a string
+    expect(() => SettingsFake.install([billing, ui], { "ui.compactTables": "yes" })).toThrow(
+      InvalidSettingValueError,
+    );
+
+    expect(await billing.get("billing.invoicePrefix")).toBe("AC-");
+    expect(await ui.get("ui.dashboard")).toEqual({ widgets: [] });
   });
 
   it("puts the original binding back on restore", () => {

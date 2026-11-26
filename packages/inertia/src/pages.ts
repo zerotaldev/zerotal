@@ -141,7 +141,23 @@ type PageComponent<N extends string> = N extends keyof PageModules
  * open record so those pages keep compiling rather than failing on a shape
  * nobody can see. See the Vue note in the props docs.
  */
-type PropsOfComponent<Component> = Component extends (
+type PropsOfComponent<Component> =
+  // Vue first. `vue-tsc` types a page as `DefineComponent<Props, …>`, a constructor
+  // whose parameters are `...args: any[]`, so the constructor branch below would read
+  // its props as `any` and accept everything. The props are on the instance's
+  // `$props`. A `*.vue` shim's `DefineComponent<{}, {}, any>` has an `any` instance,
+  // which says nothing, so it is read as before and keeps accepting any props.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches any constructor's arguments
+  Component extends abstract new (...args: any) => infer Instance
+    ? 0 extends 1 & Instance
+      ? PropsOfCallable<Component>
+      : Instance extends { $props: infer VueProps }
+        ? VueProps
+        : PropsOfCallable<Component>
+    : PropsOfCallable<Component>;
+
+/** A function component's first parameter, or a class component's constructor prop. */
+type PropsOfCallable<Component> = Component extends (
   props: infer Props,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matching any component signature, whose extra args (React's legacy context) are irrelevant here.
   ...rest: any[]

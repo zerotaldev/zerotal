@@ -14,6 +14,12 @@ follows the Zerotal monorepo's unified versioning.
   `index.vue:0:0 … (12:15)`; it is now `index.vue:12:15`. A template or markup error said only
   "Element is missing end tag." and now carries its line and column too, counted from the top
   of the file.
+- **Vue page props are checked against `Inertia.render`, as React ones are.** `vue-tsc` types a
+  page as `DefineComponent<Props, …>`, a constructor taking `...args: any[]`, and the props were
+  read off its first argument, which made them `any`: a Vue controller could leave a prop out or
+  pass the wrong type and still compile. They are read from the instance's `$props` now. A page
+  typed through a `declare module "*.vue"` shim, under plain `tsc`, still accepts any props.
+  An app type-checked with `vue-tsc` may see new errors in controllers that were wrong before.
 
 ## [1.17.1] — 2026-11-21
 

@@ -6136,7 +6136,7 @@ function arrayOf = <T = unknown>(mapper?: CastMapper<T>) => ArrayCast<T>
 
 function belongsTo = (related: () => unknown, options: BelongsToOptions) => (_value: unknown, context: ClassFieldDecoratorContext) => void
 
-function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptions): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;}
+function column = {    (): ColumnDecorator;    (type: ColumnShorthand): ColumnDecorator;    (options: ColumnOptionsInput): ColumnDecorator;    (type: ColumnShorthand, options: Omit<ColumnOptions, 'type'>): ColumnDecorator;    (type: 'immutable_datetime' | `decimal:${number}`, options?: Omit<ColumnOptions, 'type'> | undefined): ColumnDecorator;}
 
 function DatabaseConfig = (options?: Partial<DatabaseConfigShape>) => DatabaseConfigShape
 
@@ -6464,6 +6464,8 @@ interface TransitionContext = {
 }
 
 type CastMapper = ((raw: unknown) => T) | (new (...args: never[]) => T)
+
+type ColumnOptionsInput = Omit<ColumnOptions, 'type'> & {    type?: ColumnStorageType | ColumnShorthand | undefined;}
 
 type Columns = { [K in keyof T & string]: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : K; }[keyof T & string]
 
@@ -7794,7 +7796,7 @@ class TestApp = {
   followingRedirects: () => TestApp
   get: (url: string, headers?: Record<string, string>) => Promise<TestResponse>
   head: (url: string, headers?: Record<string, string>) => Promise<TestResponse>
-  multipart: (url: string, body?: Record<string, TestFormValue>, headers?: Record<string, string>, method?: 'POST' | 'PUT' | 'PATCH') => Promise<TestResponse>
+  multipart: (url: string, body?: Record<string, TestMultipartValue>, headers?: Record<string, string>, method?: 'POST' | 'PUT' | 'PATCH') => Promise<TestResponse>
   options: (url: string, headers?: Record<string, string>) => Promise<TestResponse>
   patch: (url: string, body: unknown, headers?: Record<string, string>) => Promise<TestResponse>
   patchForm: (url: string, body?: Record<string, TestFormValue>, headers?: Record<string, string>) => Promise<TestResponse>
@@ -7945,6 +7947,8 @@ type FakeFile = {    create(name: string, content?: string | Uint8Array, type?: 
 type SessionDecoder = (response: Response) => Promise<Record<string, unknown> | null>
 
 type TestFormValue = string | number | boolean | null | undefined | TestFileInput | File | Blob
+
+type TestMultipartValue = TestFormValue | readonly TestFormValue[]
 
 ## ./testing/guard  `(./src/testing-guard.ts)`
 

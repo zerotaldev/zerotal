@@ -60,6 +60,12 @@ export interface TestFileInput {
 export type TestFormValue =
   string | number | boolean | null | undefined | TestFileInput | File | Blob;
 
+/**
+ * Field values {@link TestApp.multipart} accepts: one value, or a list sent as one
+ * part per entry under the same name, the way `<input type="file" multiple>` posts.
+ */
+export type TestMultipartValue = TestFormValue | readonly TestFormValue[];
+
 export class TestApp {
   private readonly _server: BunServer;
   private _authCookie: string | undefined = undefined;
@@ -408,24 +414,29 @@ export class TestApp {
    *   avatar: fakeFile.image('avatar.png', { width: 64, height: 64 }),
    * });
    * res.assertCreated();
+   *
+   * // A multi-file field: an array is one part per file, under the same name.
+   * await app.multipart('/albums', { photos: [fakeFile.image('a.png'), fakeFile.jpeg('b.jpg')] });
    */
   async multipart(
     url: string,
-    body: Record<string, TestFormValue> = {},
+    body: Record<string, TestMultipartValue> = {},
     headers: Record<string, string> = {},
     method: "POST" | "PUT" | "PATCH" = "POST",
   ): Promise<TestResponse> {
     const form = new FormData();
-    for (const [key, value] of Object.entries(body)) {
-      if (value === undefined || value === null) continue;
-      if (value instanceof File) {
-        form.append(key, value);
-      } else if (value instanceof Blob) {
-        form.append(key, value, key);
-      } else if (typeof value === "object") {
-        form.append(key, _toFile(value));
-      } else {
-        form.append(key, String(value));
+    for (const [key, entry] of Object.entries(body)) {
+      for (const value of _isList(entry) ? entry : [entry]) {
+        if (value === undefined || value === null) continue;
+        if (value instanceof File) {
+          form.append(key, value);
+        } else if (value instanceof Blob) {
+          form.append(key, value, key);
+        } else if (typeof value === "object") {
+          form.append(key, _toFile(value));
+        } else {
+          form.append(key, String(value));
+        }
       }
     }
     // Content-Type is deliberately not set: fetch derives it from the FormData,
@@ -595,6 +606,11 @@ export class TestApp {
 }
 
 /** Turn a {@link TestFileInput} into the `File` FormData wants. */
+/** Whether a multipart field holds a list of values rather than one. */
+function _isList(value: TestMultipartValue): value is readonly TestFormValue[] {
+  return Array.isArray(value);
+}
+
 function _toFile(input: TestFileInput | File | Blob): File {
   if (input instanceof File) return input;
   if (input instanceof Blob) return new File([input], "file", { type: input.type });

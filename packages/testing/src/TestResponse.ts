@@ -921,6 +921,15 @@ export class TestResponse {
   ): string {
     const parts = [message];
 
+    // A redirect's body is empty, so a failure on one that shows only the status and
+    // the body says nothing about the one thing worth knowing: where it went. The
+    // redirect assertions name the Location themselves, so it is not said twice.
+    if (this._res.status >= 300 && this._res.status <= 399) {
+      const location = this._res.headers.get("Location");
+      if (location === null) parts.push(`Redirected with no Location header.`);
+      else if (!message.includes(`"${location}"`)) parts.push(`Redirected to "${location}".`);
+    }
+
     if (this._exception !== undefined) {
       const error = this._exception;
       const detail =

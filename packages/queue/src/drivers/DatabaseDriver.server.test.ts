@@ -211,6 +211,54 @@ for (const { dialect, url } of ENGINES) {
       expect(await driver.size()).toBe(2);
     });
 
+    // A debounced job fails while a newer dispatch with its key waits. Releasing the
+    // failed one made two unreserved rows share the key, which the debounce index
+    // forbids: the retry threw a unique-constraint error out of the worker and the
+    // job sat reserved until the visibility timeout. The newer dispatch is the one
+    // that matters, so the retry yields to it.
+    it("retries a debounced job into the newer dispatch waiting with its key", async () => {
+      await driver.pushDebounced(record({ payload: '{"v":1}' }), "doc:1");
+      const running = (await driver.pop())!;
+      const later = Math.floor(Date.now() / 1000) + 30;
+      await driver.pushDebounced(record({ payload: '{"v":2}', availableAt: later }), "doc:1");
+
+      await driver.retry(running);
+
+      const pending = await driver.listPending();
+      expect(pending.map((r) => [r.payload, r.debounceKey])).toEqual([['{"v":2}', "doc:1"]]);
+      expect(pending[0]!.availableAt).toBe(later);
+    });
+
+    it("yields to the newer dispatch even when it lands after the look-up", async () => {
+      await driver.pushDebounced(record({ payload: '{"v":1}' }), "doc:1");
+      const running = (await driver.pop())!;
+      await driver.pushDebounced(record({ payload: '{"v":2}' }), "doc:1");
+
+      // Without the key the look-up finds nothing, so the update meets the index
+      // the way it does when a dispatch arrives between the two statements.
+      await driver.retry({ ...running, debounceKey: undefined });
+
+      expect((await driver.listPending()).map((r) => r.payload)).toEqual(['{"v":2}']);
+    });
+
+    it("retries a debounced job as usual when nothing newer waits with its key", async () => {
+      await driver.pushDebounced(record({ payload: '{"v":1}', retryDelay: 60_000 }), "doc:1");
+      const running = (await driver.pop())!;
+      await driver.pushDebounced(record({ payload: '{"v":9}' }), "doc:2");
+
+      await driver.retry(running);
+
+      const pending = await driver.listPending();
+      expect(pending.map((r) => [r.payload, r.debounceKey])).toEqual([
+        ['{"v":1}', "doc:1"],
+        ['{"v":9}', "doc:2"],
+      ]);
+      expect(pending[0]!.availableAt).toBeGreaterThan(Math.floor(Date.now() / 1000) + 30);
+      // Still debounced: a dispatch now collapses into the retry instead of adding a row.
+      await driver.pushDebounced(record({ payload: '{"v":3}' }), "doc:1");
+      expect(await driver.size()).toBe(2);
+    });
+
     it("hands each job to exactly one of many workers polling at once", async () => {
       const total = 40;
       for (let i = 0; i < total; i++) await driver.push(record({ payload: `{"i":${i}}` }));

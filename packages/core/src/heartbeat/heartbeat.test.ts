@@ -158,6 +158,16 @@ describe("workerLivenessCheck", () => {
     });
   });
 
+  it("reports the idle summary it is given instead of claiming nothing is registered", async () => {
+    app = appWith("sqlite");
+    await withApp(app, async () => {
+      const result = await check({
+        hasWork: () => ({ has: false, summary: "", idle: "4 job class(es) defined, none waiting" }),
+      }).run(app!);
+      expect(result).toEqual({ status: "ok", message: "4 job class(es) defined, none waiting" });
+    });
+  });
+
   it("fails when work is registered and nothing has ever run it", async () => {
     // The reported production case: weeks of no scheduled task executing.
     app = appWith("sqlite");

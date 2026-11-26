@@ -8,6 +8,22 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Retrying a debounced job no longer fails on a newer dispatch with its key.** A dispatch made
+  while a debounced job ran could not collapse into it, because it was reserved, so it waited as
+  a second row. When the running job failed and was retried, releasing it made two pending rows
+  share the key, which the debounce index forbids: the retry threw a unique-constraint error on
+  SQLite, PostgreSQL and MySQL, and the job stayed reserved until the visibility timeout. The
+  retry now yields to the newer dispatch, which carries the latest payload: the failed row is
+  deleted and the newer one runs. With nothing newer waiting, the retry is unchanged.
+- **`zt doctor`'s queue check counts every queue and the app's job classes.** It looked at the
+  `default` queue alone, so jobs waiting on `emails` with no worker went unreported. With nothing
+  waiting it said "nothing registered, nothing to run" in an app that had jobs, because job
+  classes register when a worker imports `app/jobs/` and the doctor runs in the web process. It
+  now says `3 job class(es) defined, none waiting` (or that the app defines none), and counts
+  waiting jobs across queues, naming them.
+
 ## [1.18.0] — 2026-11-26
 
 ### Fixed

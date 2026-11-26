@@ -567,11 +567,14 @@ still override one, and no page is forced to pass it.
 - **A page name only known at runtime** — an error page chosen by status code, a
   component from config — has nothing to check against. Use
   `Inertia.render.dynamic(name, props)`, which takes any name and any props.
-- **Vue pages.** A `.vue` SFC resolves through a `declare module '*.vue'` shim
-  that types the default export as `DefineComponent<{}, {}, any>`, so its props
-  are not visible to TypeScript unless `vue-tsc` is in your typecheck path. Those
-  pages fall back to accepting any props rather than failing on a shape nobody
-  can see. The page **name** is still checked; only its props are not.
+- **Vue pages under plain `tsc`.** Type-checked with `vue-tsc`, as the Vue starter's
+  `bun run typecheck` is, a page's `defineProps<…>()` is read like a React
+  component's props: a missing prop, an extra one or one of the wrong type is an
+  error in the controller. Under plain `tsc` a `.vue` file resolves through a
+  `declare module '*.vue'` shim that types the default export as
+  `DefineComponent<{}, {}, any>`, which carries no props, so those pages accept any
+  props rather than failing on a shape nobody can see. The page **name** is still
+  checked.
 - **A component wrapped in `React.memo()`** (or anything else that returns an
   object rather than a function) falls back the same way.
 - **Before you rebuild the registry**, every name and every prop bag compiles, as

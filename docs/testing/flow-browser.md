@@ -163,6 +163,28 @@ action is dispatched and this waits for it to rise, so an assertion cannot race 
 transport. A harness that raced it would produce flaky tests, and a flaky browser
 suite gets deleted.
 
+## Checking layout at a width
+
+A page can be fine at 1280 pixels and scroll sideways on a phone. `resize(width, height)`
+sets the viewport, and three methods say whether anything sticks out:
+
+| Method                    | Returns                                                        |
+| ------------------------- | -------------------------------------------------------------- |
+| `horizontalOverflow()`    | Pixels the page scrolls sideways past the viewport; `0` is fit |
+| `overflowingElements(n?)` | The widest offenders past the right edge, default 5            |
+| `overflowTrace(selector)` | The element's ancestors, with each one's width and overflow    |
+
+```ts fragment
+await page.resize(375, 812);
+const overflow = await page.horizontalOverflow();
+if (overflow > 0) {
+  throw new Error([`overflows by ${overflow}px`, ...(await page.overflowingElements())].join("\n"));
+}
+```
+
+An element inside a scrolling box may be wider than the screen without the page scrolling.
+`overflowTrace()` walks up from it, so you can see which ancestor was meant to contain it.
+
 ## Asserting on the transport
 
 `page.transport()` reports what Chrome saw on the wire — which the page cannot lie

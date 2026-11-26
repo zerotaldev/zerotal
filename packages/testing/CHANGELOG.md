@@ -24,6 +24,12 @@ follows the Zerotal monorepo's unified versioning.
   says to run `bun zt test`, or to name the database with `ZT_DB_URL=:memory: bun test`.
   New apps load it from `bunfig.toml`.
 
+- **`BrowserPage` can check a page's layout at a given width, and it is documented.**
+  `resize()` sets the viewport, `horizontalOverflow()` says how far the page scrolls sideways,
+  and `overflowingElements()` and `overflowTrace()` name what sticks out and which ancestor
+  failed to contain it. They have shipped since 1.7.5 without a mention. See
+  [Checking layout at a width](/docs/testing/flow-browser#checking-layout-at-a-width).
+
 ## [1.17.1] — 2026-11-21
 
 ### Changed

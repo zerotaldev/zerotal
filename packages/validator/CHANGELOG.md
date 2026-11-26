@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`FormRequest.prepareForValidation()` is documented.** Override it to reshape the parsed body
+  before the rules run, for example to turn a blank form field's `""` into an absent field or
+  `null`. It has shipped since 1.7.2 without a mention. See
+  [Preparing input](/docs/validator#preparing-input).
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

@@ -8247,6 +8247,12 @@
     },
     {
       "file": "docs/validator.md",
+      "heading": "String rules",
+      "ordinal": 1,
+      "hash": "1oy7mxou9bk3"
+    },
+    {
+      "file": "docs/validator.md",
       "heading": "Testing",
       "ordinal": 1,
       "hash": "3lat1atmrrmb"

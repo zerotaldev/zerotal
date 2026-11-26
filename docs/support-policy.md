@@ -46,6 +46,14 @@ course?", so this is it:
   notes.
 - **Pinning guidance:** pin the Bun version in production images and move it
   when you upgrade Zerotal, exactly as you would any other runtime.
+- **Bun's rewrite in Rust:** Bun 1.3.14 was the last release built from its Zig
+  code, and 1.4 is the first built from Rust. Both are tested here — 1.3.14 is the
+  floor CI pins, and "latest stable" in CI is the Rust line — so an app can run on
+  either today. The floor stays at 1.3.14 until the Rust line has gone several
+  releases without a regression that reaches Zerotal, and then moves in a minor,
+  announced one minor ahead. A Bun regression that does reach the framework is
+  reported to Bun with a reproduction, and worked around in Zerotal with a test that
+  fails while it is present, so the workaround comes out when Bun fixes it.
 
 ## Databases
 
@@ -140,9 +148,22 @@ dependency order, from CI. Never mix versions across packages.
 - **Cadence:** releases ship when they are ready rather than on a calendar.
   Security fixes are released out of band — see the response windows in
   [SECURITY.md](https://github.com/zerotaldev/zerotal/blob/main/SECURITY.md).
-- **Supported versions:** fixes land on the latest minor of the current major.
-  There is no long-term-support line yet; one will be declared when the project's
-  adoption warrants maintaining two lines honestly rather than nominally.
+- **Supported versions:** the latest minor gets every fix. The minor before it gets
+  security fixes for three months after its successor ships, released as patches on
+  its own line, so an app that has not yet crossed a breaking minor is not left
+  exposed while it does. Older minors get nothing. There is no long-term-support line
+  beyond that; one will be declared when the project's adoption warrants maintaining
+  it honestly rather than nominally.
+
+  | Line   | Gets              | Until            |
+  | ------ | ----------------- | ---------------- |
+  | 1.18.x | Every fix         | 1.19.0 ships     |
+  | 1.17.x | Security fixes    | 26 February 2027 |
+  | 1.16.x | Nothing — upgrade |                  |
+
+  Minors ship weeks apart, not years, which is why the window is three months from
+  the successor rather than a fixed span from each release: a fixed span would mean
+  patching four or five lines at once, a promise one maintainer could not keep.
 
 ## Maturity levels
 
@@ -224,6 +245,25 @@ deprecation lands in a minor release (a `@deprecated` marker with the
 replacement named, and a runtime warning where one is practical), the API keeps
 working for the remainder of the major line, and removal happens at the next
 major. Release notes list every deprecation and every removal.
+
+## If the maintainer steps away
+
+Zerotal has one maintainer today, who holds the npm and GitHub access. A framework
+you build a business on should say plainly what that means and what happens if it
+changes:
+
+- **Nothing is lost.** Every package is MIT-licensed and built from this repository.
+  The release workflow, the publishing script and every gate CI runs are in it, so a
+  fork can build, test and publish the whole framework under its own npm scope
+  without anything that lives only on the maintainer's machine.
+- **A pause is announced.** If no release has shipped for 90 days, the README says
+  so at the top: whether the project is paused, handed over, or ended. Silence is
+  not one of the options.
+- **A handover is public.** If someone takes the project on, the change of npm and
+  GitHub ownership is announced in the release notes before their first release, so
+  no package changes hands unannounced.
+- **A second owner** for the npm organisation and the GitHub organisation is the
+  next step, and this section will name the arrangement once it is in place.
 
 ## Getting help
 

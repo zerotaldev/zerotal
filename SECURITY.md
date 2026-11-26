@@ -44,9 +44,12 @@ exploitable), and reports that require a maliciously modified local environment.
 
 ## Supported versions
 
-Security fixes land on the latest minor of the current major version line.
+Security fixes land on the latest minor, and on the minor before it for three
+months after its successor ships. See [Support Policy](docs/support-policy.md#releases-and-versioning)
+for the full rule.
 
-| Version | Supported |
-| ------- | --------- |
-| 1.1.x   | Yes       |
-| < 1.1   | No        |
+| Version | Supported                       |
+| ------- | ------------------------------- |
+| 1.18.x  | Yes                             |
+| 1.17.x  | Security fixes until 2027-02-26 |
+| < 1.17  | No                              |

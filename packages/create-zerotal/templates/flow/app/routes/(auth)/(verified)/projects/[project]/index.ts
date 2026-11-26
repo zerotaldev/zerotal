@@ -1,6 +1,6 @@
 import type { HttpContext } from "zerotal";
 import { Gate } from "zerotal/auth";
-import type { Project, ProjectStatus } from "@app/models/Project";
+import type { Project } from "@app/models/Project";
 import { ProjectRequest } from "@app/requests/ProjectRequest";
 
 // PUT /projects/:project
@@ -12,7 +12,7 @@ export async function PUT(http: HttpContext<{ project: Project }>): Promise<void
   project.fill({
     name: data.name,
     description: data.description || null,
-    status: data.status as ProjectStatus,
+    status: data.status,
   });
   await project.save();
 

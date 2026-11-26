@@ -12,7 +12,7 @@ export class ProjectRequest extends FormRequest {
     return {
       name: r.string().trim().min(2).max(120),
       description: r.string().trim().max(2000).optional(),
-      // `in()` checks the value; the route narrows it to `ProjectStatus` when it saves.
+      // `in()` checks the value and types it as `ProjectStatus`, so the routes save it as is.
       status: r.string().in([...PROJECT_STATUSES]),
     };
   }

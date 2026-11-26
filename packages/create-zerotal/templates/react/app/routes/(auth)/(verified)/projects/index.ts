@@ -1,7 +1,7 @@
 import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
 import { Auth } from "zerotal/auth";
-import { Project, type ProjectStatus } from "@app/models/Project";
+import { Project } from "@app/models/Project";
 import { ProjectRequest } from "@app/requests/ProjectRequest";
 
 const PER_PAGE = 10;
@@ -49,7 +49,7 @@ export async function POST(http: HttpContext): Promise<void> {
   project.fill({
     name: data.name,
     description: data.description || null,
-    status: data.status as ProjectStatus,
+    status: data.status,
   });
   // Set in code, never from the form: the owner is whoever is signed in.
   project.userId = Auth.user().id;

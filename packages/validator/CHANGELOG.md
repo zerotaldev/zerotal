@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`r.string().in([...])` types the validated value as the listed values.** A literal list
+  such as `in(["draft", "active"])`, or an `as const` one such as `in(STATUSES)`, now gives
+  `"draft" | "active"` rather than `string`, through `.optional()`, `.nullable()` and the other
+  modifiers and inside `r.array()` and `r.object()`. A value checked against a fixed list can
+  be saved to a column typed with that list without a cast. `in()` also accepts a `readonly`
+  list. A list typed `string[]` still gives `string`. See
+  [String rules](/docs/validator#string-rules).
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

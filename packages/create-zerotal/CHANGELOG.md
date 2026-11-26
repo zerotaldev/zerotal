@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The starters' project routes save the validated status without a cast.** `in()` now types
+  it as `ProjectStatus`, so `data.status as ProjectStatus` is gone from the React, Vue and Flow
+  starters.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

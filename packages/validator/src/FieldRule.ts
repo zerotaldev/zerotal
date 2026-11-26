@@ -3,7 +3,13 @@ import type { UniqueOptions } from "./dbRules.ts";
 
 // Narrow definition types — each class's _def has a literal 'type' field so
 // that Infer<> can resolve the correct TypeScript type per field class.
-type StringDef = Omit<FieldRuleDefinition, "type"> & { type: "string" };
+// `StringDef` also carries the value type `in()` narrows to. `oneOf` is type-only: no
+// rule writes it, so a definition at runtime is the same shape it always was. `Infer<>`
+// reads `L` back out of it, and `string` (the default) is an unconstrained string.
+type StringDef<L extends string = string> = Omit<FieldRuleDefinition, "type"> & {
+  type: "string";
+  oneOf?: readonly L[];
+};
 type NumberDef = Omit<FieldRuleDefinition, "type"> & { type: "number" };
 type BooleanDef = Omit<FieldRuleDefinition, "type"> & { type: "boolean" };
 // array/object are the two whose inferred type depends on more than `type`, so their
@@ -234,8 +240,8 @@ export abstract class FieldRule {
   }
 }
 
-export class StringRule extends FieldRule {
-  readonly _def: StringDef = {
+export class StringRule<L extends string = string> extends FieldRule {
+  readonly _def: StringDef<L> = {
     type: "string",
     required: true,
     nullable: false,
@@ -290,9 +296,18 @@ export class StringRule extends FieldRule {
     return this;
   }
 
-  in(values: string[], message?: string): this {
+  /**
+   * The value must be one of `values`. The validated value is typed as their union, so a
+   * list of literals (inline, or an `as const` array) needs no cast at the use site:
+   *
+   *   status: r.string().in(["draft", "active"])   // data.status: "draft" | "active"
+   *
+   * A list typed `string[]` still gives `string`.
+   */
+  in<const V extends readonly string[]>(values: V, message?: string): StringRule<V[number]> {
     addRule(this._def.rules, "in", [values], message);
-    return this;
+    // Only the type narrows: the rule just added is what makes the narrower type true.
+    return this as StringRule<V[number]>;
   }
 
   confirmed(message?: string): this {

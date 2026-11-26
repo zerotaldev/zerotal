@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Changed
 
 - **`r.string().in([...])` types the validated value as the listed values.** A literal list

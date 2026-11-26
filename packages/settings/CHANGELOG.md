@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Fixed
 
 - **A `validate` check that throws refuses the value.** A check written for the declared shape

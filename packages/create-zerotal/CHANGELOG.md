@@ -8,8 +8,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Changed
 
+- **A new app depends on `~1.18.1`**, so it installs this release and its fixes.
 - **The starters' project routes save the validated status without a cast.** `in()` now types
   it as `ProjectStatus`, so `data.status as ProjectStatus` is gone from the React, Vue and Flow
   starters.
@@ -51,7 +54,6 @@ follows the Zerotal monorepo's unified versioning.
 - **Cancelling two-factor setup clears the wrong code's error** (React and Vue starters). The
   confirm form kept its errors in the page, so after a mistyped code, Cancel and a fresh "Set up
   two-factor" opened with "That code did not match" already showing.
-
 
 ## [1.18.0] — 2026-11-26
 

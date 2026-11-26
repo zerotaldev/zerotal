@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Added
 
 - **`multipart()` takes an array for a multi-file field.** `{ photos: [fakeFile.image("a.png"),

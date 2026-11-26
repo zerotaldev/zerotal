@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Fixed
 
 - **`make:flow --crud --model Task` works in the Flow starter.** It printed "File-based routing

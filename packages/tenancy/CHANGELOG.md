@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Fixed
 
 - **The docs say what happens when no tenant matches.** The page and the `resolvers`

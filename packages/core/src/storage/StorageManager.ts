@@ -9,6 +9,11 @@ export class StorageManager {
   private _drivers: Map<string, StorageDriver> = new Map();
   /** Drivers displaced by {@link fake}, keyed by disk name, for {@link restoreFakes}. */
   private _realDrivers: Map<string, StorageDriver | undefined> = new Map();
+  /**
+   * Real disks asked for while a fake was installed, so a fake's failed assertion can say
+   * where the files went. Cleared by {@link restoreFakes}.
+   */
+  private _realDisksUsed: Set<string> = new Set();
 
   constructor(config: StorageConfigShape) {
     this._config = config;
@@ -24,6 +29,9 @@ export class StorageManager {
    */
   disk(name?: string): StorageDriver {
     const diskName = name ?? this._config.default;
+    if (this._realDrivers.size > 0 && !this._realDrivers.has(diskName)) {
+      this._realDisksUsed.add(diskName);
+    }
 
     const cached = this._drivers.get(diskName);
     if (cached) return cached;
@@ -71,6 +79,10 @@ export class StorageManager {
     // `/storage/public/a.png`.
     const cfg = this._config.disks[diskName];
     const fake = new FakeDisk(cfg?.url ?? cfg?.serve?.path ?? "/storage");
+    // Media with no disk configured writes to `public`, not the storage default, so a test that
+    // faked the default asserted against an empty fake while the files went to a served folder.
+    // A failed assertion on this fake now names the real disks the code used instead.
+    fake._realDisksUsed = () => [...this._realDisksUsed].filter((d) => !this._realDrivers.has(d));
     if (!this._realDrivers.has(diskName)) {
       this._realDrivers.set(diskName, this._drivers.get(diskName));
     }
@@ -85,6 +97,7 @@ export class StorageManager {
       else this._drivers.delete(name);
     }
     this._realDrivers.clear();
+    this._realDisksUsed.clear();
   }
 
   /**

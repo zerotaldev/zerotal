@@ -7,6 +7,17 @@ export class MediaError extends ZerotalError {
   }
 }
 
+/**
+ * Mark an error class as the framework answering the client, as an `HttpError` is: an upload
+ * of the wrong type or size is refused with a 4xx and logged as one warning line, not as an
+ * error with a stack. (A refusal a test provoked on purpose printed `ERROR … Request pipeline
+ * error` and a stack trace, even at `LOG_LEVEL=warn`.) The key is core's registered symbol, so
+ * it is recognised whichever copy of core is loaded.
+ */
+function _answersTheClient(errorClass: { prototype: object }): void {
+  Object.defineProperty(errorClass.prototype, Symbol.for("zerotal.httpError"), { value: true });
+}
+
 /** A collection was referenced that the model never declared. */
 export class UnknownCollectionError extends MediaError {
   constructor(model: string, collection: string, known: string[]) {
@@ -28,6 +39,10 @@ export class UnknownCollectionError extends MediaError {
  * client's problem to fix.
  */
 export class DisallowedMimeTypeError extends MediaError {
+  static {
+    _answersTheClient(this);
+  }
+
   constructor(collection: string, actual: string, allowed: string[]) {
     super(
       `[Zerotal Media] Collection "${collection}" does not accept ${actual}. ` +
@@ -43,6 +58,10 @@ export class DisallowedMimeTypeError extends MediaError {
 
 /** The file is larger than the collection's `maxSize`. */
 export class FileTooLargeError extends MediaError {
+  static {
+    _answersTheClient(this);
+  }
+
   constructor(collection: string, actual: number, max: number) {
     super(
       `[Zerotal Media] File is ${actual} bytes; collection "${collection}" allows at most ${max}.\n` +

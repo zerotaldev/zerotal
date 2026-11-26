@@ -53,6 +53,7 @@ class FactoryBatch = {
 
 class FakeDisk = {
   new (baseUrl?: string): FakeDisk
+  _realDisksUsed: (() => string[]) | undefined
   append: (path: string, content: string | Uint8Array) => Promise<void>
   assertContentType: (path: string, contentType: string) => FakeDisk
   assertCount: (expected: number) => FakeDisk

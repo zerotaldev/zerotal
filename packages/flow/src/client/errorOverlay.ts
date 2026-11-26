@@ -12,6 +12,15 @@ export interface OverlayError {
   stack?: string | undefined;
   action?: string | undefined;
   component?: string | undefined;
+  /** The app's source around the throw, which the server reads and sends with the error. */
+  frame?:
+    | {
+        file: string;
+        line: number;
+        column: number;
+        lines: { num: number; code: string; active: boolean }[];
+      }
+    | undefined;
 }
 
 const OVERLAY_ID = "flow-error-overlay";
@@ -33,6 +42,17 @@ export function _formatStack(stack: string): string {
       return `<div class="flow-eo-frame${dim ? " dim" : ""}">${_esc(line.trim())}</div>`;
     })
     .join("");
+}
+
+/** The source lines around the throw, the thrown-from line marked. @internal */
+export function _formatFrame(frame: NonNullable<OverlayError["frame"]>): string {
+  const rows = frame.lines
+    .map(
+      (l) =>
+        `<div class="flow-eo-line${l.active ? " on" : ""}"><span class="flow-eo-num">${l.num}</span>${_esc(l.code)}</div>`,
+    )
+    .join("");
+  return `<div class="flow-eo-code"><div class="flow-eo-file">${_esc(frame.file)}:${frame.line}:${frame.column}</div>${rows}</div>`;
 }
 
 /** Show (or replace) the dev error overlay for `err`. Idempotent — re-showing replaces content. */
@@ -75,6 +95,11 @@ export function showErrorOverlay(err: OverlayError): void {
       .flow-eo-where { margin-top: 8px; font-size: 12px; color: #9aa0b4; }
       .flow-eo-where b { color: #cbd5e1; font-weight: 700; }
       .flow-eo-msg { margin-top: 8px; font-size: 16px; font-weight: 600; color: #fca5a5; white-space: pre-wrap; word-break: break-word; }
+      .flow-eo-code { padding: 12px 0 4px; border-bottom: 1px solid #262b3f; overflow-x: auto; }
+      .flow-eo-file { padding: 0 20px 8px; font-size: 12px; color: #9aa0b4; word-break: break-all; }
+      .flow-eo-line { white-space: pre; padding: 0 20px; color: #a9b1d6; }
+      .flow-eo-line.on { background: rgba(127, 29, 29, .45); color: #fecaca; }
+      .flow-eo-num { display: inline-block; width: 4ch; margin-right: 12px; text-align: right; color: #565f89; user-select: none; }
       .flow-eo-stack { padding: 12px 20px 18px; max-height: 46vh; overflow: auto; }
       .flow-eo-frame { white-space: pre-wrap; word-break: break-all; color: #cbd5e1; padding: 1px 0; }
       .flow-eo-frame.dim { color: #565f89; }
@@ -93,6 +118,7 @@ export function showErrorOverlay(err: OverlayError): void {
           ${where ? `<div class="flow-eo-where">${where}</div>` : ""}
           <div class="flow-eo-msg">${_esc(err.message)}</div>
         </div>
+        ${err.frame ? _formatFrame(err.frame) : ""}
         ${err.stack ? `<div class="flow-eo-stack">${_formatStack(err.stack)}</div>` : ""}
         <div class="flow-eo-foot">
           <span class="flow-eo-hint">Flow dev error · fix the action and save, or dismiss (Esc)</span>

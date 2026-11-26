@@ -53,6 +53,7 @@ import {
   _runtimeAsset,
 } from "../clientAssets.ts";
 import { FLOW_ENHANCE_PATH } from "../enhanceTag.ts";
+import { _codeFrame, type DevCodeFrame } from "../devFrame.ts";
 
 /** True when this process is the `serve --dev-worker` (dev fast refresh gates on it). */
 const _isDevWorker = Bun.argv.includes("--dev-worker");
@@ -83,12 +84,20 @@ interface DevErrorInfo {
   message: string;
   stack?: string | undefined;
   action: string;
+  /** The lines of the app's own code the error was thrown from, when they can be read. */
+  frame?: DevCodeFrame | undefined;
 }
 
 /** Extract overlay-ready detail from a thrown value. @internal (exported for tests). */
 export function _devErrorInfo(error: unknown, action: string): DevErrorInfo {
   const e = error instanceof Error ? error : new Error(String(error));
-  return { name: e.name || "Error", message: e.message, stack: e.stack, action };
+  return {
+    name: e.name || "Error",
+    message: e.message,
+    stack: e.stack,
+    action,
+    frame: _codeFrame(e.stack),
+  };
 }
 
 /**
@@ -926,6 +935,7 @@ async function _dispatchFrame(
         name: de.name,
         stack: de.stack,
         action: de.action,
+        frame: de.frame,
       }),
     );
   }

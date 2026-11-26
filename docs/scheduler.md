@@ -674,6 +674,9 @@ and monitored independently of the web server.
 >
 > Seeing that on a web process is correct. Seeing it and having no worker running is
 > the hole.
+>
+> Under `bun zt dev` the line is left out: the scheduler runs in its own tab beside the
+> server.
 
 ## References
 

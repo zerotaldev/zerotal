@@ -37,7 +37,7 @@
   "devDependencies": {
     "typescript": "^5.8.0"
   },
-  "description": "Background job queue for Zerotal with SQLite and Redis drivers, delayed jobs, and retries.",
+  "description": "Background job queue for Zerotal: jobs in the app's own database (SQLite, PostgreSQL, MySQL) or Redis, with delays, retries, batches and chains.",
   "keywords": [
     "zerotal",
     "bun",

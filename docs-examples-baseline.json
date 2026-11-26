@@ -273,6 +273,12 @@
     },
     {
       "file": "docs/admin/extending.md",
+      "heading": "Consoles: pages described rather than built",
+      "ordinal": 1,
+      "hash": "2mjakfm7ko44"
+    },
+    {
+      "file": "docs/admin/extending.md",
       "heading": "Extending the panel from a package",
       "ordinal": 0,
       "hash": "mbwtvbjlk7k2"
@@ -6519,6 +6525,18 @@
     },
     {
       "file": "docs/queue.md",
+      "heading": "Faking the queue",
+      "ordinal": 0,
+      "hash": "1hrnlgenq1ev"
+    },
+    {
+      "file": "docs/queue.md",
+      "heading": "Faking the queue",
+      "ordinal": 1,
+      "hash": "26rjmn6i3bwd"
+    },
+    {
+      "file": "docs/queue.md",
       "heading": "Job batching",
       "ordinal": 0,
       "hash": "18703eg78pwi"
@@ -6537,9 +6555,9 @@
     },
     {
       "file": "docs/queue.md",
-      "heading": "Testing",
+      "heading": "Settling the queue",
       "ordinal": 0,
-      "hash": "1hrnlgenq1ev"
+      "hash": "32e1imzjlcvl"
     },
     {
       "file": "docs/queue.md",
@@ -7188,6 +7206,48 @@
       "heading": "Testing",
       "ordinal": 2,
       "hash": "2k9jecxjryvd"
+    },
+    {
+      "file": "docs/settings.md",
+      "heading": "Audit trail",
+      "ordinal": 0,
+      "hash": "fk80ybxs1fwk"
+    },
+    {
+      "file": "docs/settings.md",
+      "heading": "Changing a setting",
+      "ordinal": 0,
+      "hash": "2mtli9sf3r4p"
+    },
+    {
+      "file": "docs/settings.md",
+      "heading": "Hidden, never deleted",
+      "ordinal": 0,
+      "hash": "1bl3wip138ll"
+    },
+    {
+      "file": "docs/settings.md",
+      "heading": "Levels and how a read resolves",
+      "ordinal": 0,
+      "hash": "2728avmxt2oh"
+    },
+    {
+      "file": "docs/settings.md",
+      "heading": "Levels and how a read resolves",
+      "ordinal": 1,
+      "hash": "2t57iyzt1ea5"
+    },
+    {
+      "file": "docs/settings.md",
+      "heading": "Levels and how a read resolves",
+      "ordinal": 2,
+      "hash": "2f7zrahnotqi"
+    },
+    {
+      "file": "docs/settings.md",
+      "heading": "Testing",
+      "ordinal": 0,
+      "hash": "3dyz4y00ccxa"
     },
     {
       "file": "docs/social.md",

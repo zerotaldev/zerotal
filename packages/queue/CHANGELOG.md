@@ -8,6 +8,32 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The database queue runs on PostgreSQL and MySQL 8, not only SQLite.** The driver created
+  its table with `INTEGER PRIMARY KEY AUTOINCREMENT`, which both servers reject, so an app on
+  either failed on its first dispatch and needed Redis for background jobs. The driver now reads
+  the engine from the connection and creates tables, claims jobs and collapses debounced
+  dispatches in that engine's SQL. On PostgreSQL and MySQL a worker claims a job with
+  `FOR UPDATE SKIP LOCKED`, so any number of workers share the table without double-claiming
+  or waiting on each other. A batch's failed-job list is read `FOR UPDATE`, so two workers
+  failing jobs of one batch at once no longer lose an id. SQLite's schema is unchanged.
+
+### Added
+
+- **`driver: "database"`, and `DatabaseDriver`.** The names say what the driver is.
+  `"database"` is the new default; `"sqlite"` still works and selects the same driver, and
+  `SqliteDriver` is the same class. `DatabaseDriverOptions` adds `dialect`, for a connection
+  whose engine cannot be read off it.
+- **`Queue.settle()`** runs every job that is due, on every queue, and the jobs those jobs
+  dispatch, until none is left, and resolves to how many ran. Tests no longer need a loop around
+  `processNext()`. Failures are retried or failed as a worker would handle them. It stops with
+  `E_QUEUE_SETTLE_LIMIT` after `limit` jobs (default 1000), so a job that dispatches itself fails
+  the test instead of hanging it.
+- **`QueueFake.settle()`** runs the captured jobs in dispatch order, including what they
+  dispatch and the next link of a chain, and keeps every job assertable. If any job throws, the
+  rest still run and it then throws `E_QUEUE_SETTLE_FAILED` naming each failure.
+
 ## [1.16.2] — 2026-10-30
 
 ### Fixed

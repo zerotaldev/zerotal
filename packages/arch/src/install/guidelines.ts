@@ -257,6 +257,14 @@ export const CAPABILITIES: readonly Capability[] = [
     doc: "admin",
   },
   {
+    need: "Per-tenant settings",
+    area: "Product features",
+    provides:
+      "typed defaults in code with tenant and user overrides, hidden not deleted, audited, with an admin screen",
+    pkg: "@zerotal/settings",
+    doc: "settings",
+  },
+  {
     need: "Mail, SMS and in-app notifications",
     area: "Messages and background work",
     provides: "notification classes, one per message",
@@ -279,7 +287,8 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     need: "Background jobs",
     area: "Messages and background work",
-    provides: "job classes and a worker",
+    provides:
+      "job classes and a worker, on the app's own database (SQLite, PostgreSQL, MySQL) or Redis",
     pkg: "@zerotal/queue",
     doc: "queue",
   },

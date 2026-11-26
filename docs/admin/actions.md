@@ -189,6 +189,7 @@ Force-delete automatically — no extra configuration.
 | `ActionVisible`                        | The predicate deciding whether an action appears for this record at all. |
 | `ActionColor`                          | The emphasis it is drawn with.                                           |
 | `ConsoleAction`, `ConsoleHeaderAction` | The console's own row and header actions.                                |
+| `ConsoleActionInput`                   | The value a console row action asks for before it runs.                  |
 
 **`ActionVisible` hides, it does not authorize.** An action absent from the UI is still
 reachable by anyone who can form the request, so the authorization check belongs in the handler

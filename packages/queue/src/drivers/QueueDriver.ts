@@ -70,7 +70,7 @@ export interface QueueDriver {
   /** Delete all failed jobs, optionally filtered to a single queue. */
   clearFailed(queue?: string): Promise<void>;
 
-  // ── Batch support (optional — only implemented by SqliteDriver) ───────────
+  // ── Batch support (optional — only implemented by DatabaseDriver) ─────────
   /** Create a new batch row and return immediately. */
   createBatch?(id: string, name: string, totalJobs: number, optionsJson: string): Promise<void>;
   /** Decrement pending_jobs for a completed job; mark finished if last. */

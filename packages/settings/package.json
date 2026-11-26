@@ -1,0 +1,58 @@
+{
+  "name": "@zerotal/settings",
+  "version": "1.17.4",
+  "license": "MIT",
+  "maturity": "beta",
+  "maturityReview": "1.20.0",
+  "private": false,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "api-surface.md",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/*.spec.ts",
+    "!src/**/__fixtures__/**"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@zerotal/core": "workspace:*",
+    "@zerotal/orm": "workspace:*",
+    "@zerotal/tenancy": "workspace:*"
+  },
+  "devDependencies": {
+    "@zerotal/audit": "workspace:*",
+    "typescript": "^5.8.0"
+  },
+  "description": "Per-tenant settings for Zerotal: typed defaults in code, overrides per tenant and per user, hidden but never deleted, audited, with an admin screen.",
+  "keywords": [
+    "zerotal",
+    "bun",
+    "typescript",
+    "framework",
+    "settings",
+    "tenancy"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zerotaldev/zerotal.git",
+    "directory": "packages/settings"
+  },
+  "homepage": "https://github.com/zerotaldev/zerotal/tree/main/packages/settings#readme",
+  "bugs": "https://github.com/zerotaldev/zerotal/issues"
+}

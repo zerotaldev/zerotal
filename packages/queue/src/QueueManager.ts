@@ -147,6 +147,39 @@ async function pushUnderOwnPolicy(
 
 // ── QueueManager ──────────────────────────────────────────────────────────────
 
+/** Options for `settle()`, on the queue manager and on `QueueFake` alike. */
+export interface QueueSettleOptions {
+  /**
+   * The queues to drain. Defaults to every queue that has a pending job (when the
+   * driver can list them) plus `"default"`. The fake runs every captured job and
+   * ignores this.
+   */
+  queues?: string[] | undefined;
+  /**
+   * The most jobs one call runs before it gives up and throws, so a job that
+   * dispatches itself fails the test instead of hanging it. Default: 1000.
+   */
+  limit?: number | undefined;
+}
+
+/** The default for {@link QueueSettleOptions.limit}. */
+const SETTLE_LIMIT = 1000;
+
+/**
+ * The error `settle()` throws when it has run `limit` jobs and work remains.
+ *
+ * @internal
+ */
+export function _settleLimitError(limit: number): QueueError {
+  return new QueueError(
+    `settle() ran ${limit} jobs and the queue still was not empty. A job that dispatches ` +
+      `another of itself never settles; raise \`limit\` if this much work is expected.`,
+    "E_QUEUE_SETTLE_LIMIT",
+    500,
+    { limit },
+  );
+}
+
 type JobExecutor = {
   run(record: JobRecord): Promise<{ success: true } | { success: false; error: string }>;
 };
@@ -284,6 +317,44 @@ export class QueueManager {
 
     await this._processRecord(record);
     return true;
+  }
+
+  /**
+   * Run every job that is due until none is left, and resolve to how many ran.
+   *
+   * What a test means by "let the background work finish": jobs the settled jobs
+   * dispatch are run too, on every queue, so the loop a test would otherwise
+   * write around `processNext()` — over every queue, until a pass finds nothing —
+   * is this one call. A job that fails is retried or failed exactly as a worker
+   * would, and does not make this throw; a retry waits for its delay, so it is
+   * not due within the same call. A delayed job that is not yet due is left alone.
+   *
+   * Throws a {@link QueueError} (`E_QUEUE_SETTLE_LIMIT`) after `limit` jobs, so a
+   * job that keeps dispatching itself ends the test rather than hanging it.
+   *
+   * @example
+   * await Queue.dispatch(new SendWelcomeEmail(user.id));
+   * await Queue.settle();
+   */
+  async settle(options: QueueSettleOptions = {}): Promise<number> {
+    const limit = options.limit ?? SETTLE_LIMIT;
+    let ran = 0;
+    for (;;) {
+      let progressed = false;
+      for (const queue of options.queues ?? (await this._settleQueues())) {
+        while (await this.processNext(queue)) {
+          progressed = true;
+          if (++ran > limit) throw _settleLimitError(limit);
+        }
+      }
+      if (!progressed) return ran;
+    }
+  }
+
+  /** Every queue with work waiting, plus `default`, which may have none yet. */
+  private async _settleQueues(): Promise<string[]> {
+    const known = this._driver.queues ? (await this._driver.queues()).map((q) => q.queue) : [];
+    return known.includes("default") ? known : ["default", ...known];
   }
 
   // ── Worker loop control ───────────────────────────────────────────────

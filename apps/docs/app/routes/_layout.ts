@@ -262,6 +262,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { label: "AI", slug: "ai" },
       { label: "Monitor", slug: "monitor" },
       { label: "Multi-tenancy", slug: "tenancy" },
+      { label: "Settings", slug: "settings" },
       { label: "Telemetry", slug: "telemetry" },
       { label: "Audit Logging", slug: "audit" },
     ],

@@ -32,6 +32,28 @@ class Bus = {
   static setManager: (manager: QueueManager) => void
 }
 
+class DatabaseDriver = {
+  new (sql: SQLInstance, options?: DatabaseDriverOptions): DatabaseDriver
+  clearFailed: (queue?: string) => Promise<void>
+  createBatch: (id: string, name: string, totalJobs: number, optionsJson: string) => Promise<void>
+  delete: (record: JobRecord) => Promise<void>
+  deleteFailedRecord: (id: number) => Promise<void>
+  fail: (record: JobRecord, error: string) => Promise<void>
+  flush: () => Promise<void>
+  getBatch: (batchId: string) => Promise<BatchRecord | null>
+  listFailed: (queue?: string) => Promise<FailedRecord[]>
+  listPending: (queue?: string, limit?: number, offset?: number) => Promise<JobRecord[]>
+  pop: (queue?: string) => Promise<JobRecord | null>
+  push: (record: Omit<JobRecord, 'id' | 'createdAt'>) => Promise<void>
+  pushDebounced: (record: Omit<JobRecord, 'id' | 'createdAt'>, key: string) => Promise<void>
+  queues: () => Promise<{    queue: string;    pending: number;}[]>
+  readonly dialect: QueueDatabaseDialect
+  recordBatchJobComplete: (batchId: string) => Promise<BatchStatus>
+  recordBatchJobFailed: (batchId: string, jobId: number) => Promise<BatchStatus>
+  retry: (record: JobRecord) => Promise<void>
+  size: (queue?: string) => Promise<number>
+}
+
 class Job = {
   new (): Job
   static jobName?: string
@@ -103,6 +125,7 @@ class QueueFake = {
   isShuttingDown: boolean
   processNext: () => Promise<boolean>
   restore: () => void
+  settle: (options?: QueueSettleOptions) => Promise<number>
   size: () => Promise<number>
 }
 
@@ -122,6 +145,7 @@ class QueueManager = {
   queues: () => Promise<{    queue: string;    pending: number;}[]>
   retryFailed: (id: number) => Promise<boolean>
   setWorkerPool: (pool: JobExecutor) => void
+  settle: (options?: QueueSettleOptions) => Promise<number>
   size: (queue?: string) => Promise<number>
   stats: () => QueueStats
 }
@@ -177,7 +201,7 @@ class RedisDriver = {
 }
 
 class SqliteDriver = {
-  new (sql: SQLInstance, options?: { visibilityTimeout?: number; }): SqliteDriver
+  new (sql: SQLInstance, options?: DatabaseDriverOptions): SqliteDriver
   clearFailed: (queue?: string) => Promise<void>
   createBatch: (id: string, name: string, totalJobs: number, optionsJson: string) => Promise<void>
   delete: (record: JobRecord) => Promise<void>
@@ -191,6 +215,7 @@ class SqliteDriver = {
   push: (record: Omit<JobRecord, 'id' | 'createdAt'>) => Promise<void>
   pushDebounced: (record: Omit<JobRecord, 'id' | 'createdAt'>, key: string) => Promise<void>
   queues: () => Promise<{    queue: string;    pending: number;}[]>
+  readonly dialect: QueueDatabaseDialect
   recordBatchJobComplete: (batchId: string) => Promise<BatchStatus>
   recordBatchJobFailed: (batchId: string, jobId: number) => Promise<BatchStatus>
   retry: (record: JobRecord) => Promise<void>
@@ -246,6 +271,11 @@ interface BatchRecord = {
   totalJobs: number
 }
 
+interface DatabaseDriverOptions = {
+  dialect?: QueueDatabaseDialect | undefined
+  visibilityTimeout?: number | undefined
+}
+
 interface JobRecord = {
   attempts: number
   availableAt: number
@@ -261,7 +291,7 @@ interface JobRecord = {
 }
 
 interface QueueConfigShape = {
-  driver: 'sqlite' | 'redis' | 'sync'
+  driver: 'sqlite' | 'database' | 'redis' | 'sync'
   pollInterval: number
   queues: string[]
   workerBootstrap?: string | undefined
@@ -288,6 +318,11 @@ interface QueueDriver = {
   size: (queue?: string) => Promise<number>
 }
 
+interface QueueSettleOptions = {
+  limit?: number | undefined
+  queues?: string[] | undefined
+}
+
 interface QueueStats = {
   failedLast5m: number
   failedTotal: number
@@ -305,6 +340,8 @@ interface WorkerPoolOptions = {
 type BatchStatus = 'pending' | 'complete' | 'failed'
 
 type JobStatus = 'dispatched' | 'completed' | 'failed' | 'retried'
+
+type QueueDatabaseDialect = 'sqlite' | 'postgres' | 'mysql'
 
 type SerializedJob = {    className: string;    payload: Record<string, unknown>;}
 

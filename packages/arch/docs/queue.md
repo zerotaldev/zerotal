@@ -56,9 +56,9 @@ import { QueueConfig } from "@zerotal/queue";
 import { env } from "zerotal";
 
 export default QueueConfig({
-  // One of 'sqlite' | 'redis' | 'sync', written literally: the field is that union
+  // One of 'database' | 'redis' | 'sync', written literally: the field is that union
   // and `env()` returns a plain string.
-  driver: "sqlite",
+  driver: "database",
   pollInterval: env("QUEUE_POLL_INTERVAL", 500),
   queues: ["default"],
   workers: env("QUEUE_WORKERS", 0),
@@ -68,7 +68,7 @@ export default QueueConfig({
 
 | Field             | Required           | Default       | Description                                                         |
 | ----------------- | ------------------ | ------------- | ------------------------------------------------------------------- |
-| `driver`          | no                 | `"sqlite"`    | Queue driver: `"sqlite"`, `"redis"`, or `"sync"`.                   |
+| `driver`          | no                 | `"database"`  | Queue driver: `"database"`, `"redis"`, or `"sync"`.                 |
 | `pollInterval`    | no                 | `500`         | Milliseconds between worker polls for new jobs.                     |
 | `queues`          | no                 | `["default"]` | Queue names the worker listens on.                                  |
 | `workers`         | no                 | `0`           | Number of Bun Worker threads to spawn. `0` = main-thread only.      |
@@ -272,24 +272,24 @@ The key lives in the queue's own backing store, so it is stable **across process
 
 ### Driver support
 
-| Driver   | Debounce                                                           |
-| -------- | ------------------------------------------------------------------ |
-| `sqlite` | Yes — one `INSERT … ON CONFLICT` against a partial unique index    |
-| `redis`  | Yes — one `EVAL`, so two processes cannot both enqueue             |
-| `sync`   | Inert: every job runs inline, so there is no window to collapse in |
+| Driver     | Debounce                                                           |
+| ---------- | ------------------------------------------------------------------ |
+| `database` | Yes — one atomic upsert against a unique index of unreserved keys  |
+| `redis`    | Yes — one `EVAL`, so two processes cannot both enqueue             |
+| `sync`     | Inert: every job runs inline, so there is no window to collapse in |
 
 Collapsing has to be **atomic**, or two processes dispatching at the same instant both find nothing pending and both enqueue — the exact failure the feature exists to prevent. A driver that cannot promise that throws `QueueDebounceUnsupportedError` (`E_QUEUE_DEBOUNCE_UNSUPPORTED`) rather than silently degrading to a per-process debounce, and the message names the driver and what to change.
 
 ### A job already being worked is never collapsed into
 
-Once a worker has claimed a job, it is running, and the next dispatch is genuinely new work — it becomes its own pending job rather than trying to reschedule something already in flight. On `sqlite` the unique index covers only unreserved rows; on `redis` the key is released when the job is promoted to the ready list.
+Once a worker has claimed a job, it is running, and the next dispatch is genuinely new work — it becomes its own pending job rather than trying to reschedule something already in flight. On `database` the unique index covers only unreserved rows (a partial index on SQLite and PostgreSQL, a generated column on MySQL, which has no partial indexes); on `redis` the key is released when the job is promoted to the ready list.
 
 This is the behaviour you want for the reindex case: a save that lands while the previous rebuild is running still gets a rebuild.
 
 ## Job batching
 
 Batch a set of jobs and react when they all finish. Batching uses the
-`zerotal_job_batches` table (auto-created by `SqliteDriver`).
+`zerotal_job_batches` table, which the `database` driver creates on first use.
 
 ```typescript fragment
 // in a controller
@@ -312,9 +312,9 @@ const batch = await Bus.batch(rows.map((row) => new ImportCsvRowJob(row)))
 > three attempts and a one-second delay, and ends up in the failed jobs, as a
 > [chain](#job-chaining) link does.
 
-> **Warning** — Batching requires `SqliteDriver`. `SyncDriver` and `RedisDriver`
-> do not implement the batch table, so `Bus.batch(...).dispatch()` throws a
-> `QueueBatchingUnsupportedError` with them.
+> **Warning** — Batching requires the `database` driver. `SyncDriver` and
+> `RedisDriver` do not implement the batch table, so `Bus.batch(...).dispatch()`
+> throws a `QueueBatchingUnsupportedError` with them.
 
 ### Batch status object
 
@@ -461,14 +461,35 @@ as data. An app running the queue without the panel pulls in nothing extra.
 
 ## Queue drivers
 
-| Driver     | Notes                                                                                     |
-| ---------- | ----------------------------------------------------------------------------------------- |
-| `"sqlite"` | Jobs stored in a `zerotal_jobs` table in the app database. Default. Good for most apps.   |
-| `"redis"`  | Jobs stored in Redis lists. Better throughput for high-volume apps. Requires `REDIS_URL`. |
-| `"sync"`   | Jobs run immediately and synchronously in the dispatching process. Intended for tests.    |
+| Driver       | Notes                                                                                                     |
+| ------------ | --------------------------------------------------------------------------------------------------------- |
+| `"database"` | Jobs stored in a `zerotal_jobs` table in the app's own database — SQLite, PostgreSQL or MySQL 8. Default. |
+| `"redis"`    | Jobs stored in Redis lists. Better throughput for high-volume apps. Requires `REDIS_URL`.                 |
+| `"sync"`     | Jobs run immediately and synchronously in the dispatching process. Intended for tests.                    |
 
-> **Warning** — Only `"sqlite"` supports batching. Pick it if you rely on
+`"sqlite"` is the earlier name for `"database"` and still selects it, on whichever
+engine the connection is. `SqliteDriver` is the same class as `DatabaseDriver`.
+
+> **Warning** — Only `"database"` supports batching. Pick it if you rely on
 > `Bus.batch()`.
+
+### The database driver in production
+
+A production app needs only the database it already has, with no Redis. The driver
+reads the engine from the app's connection and creates its three tables on first use:
+`zerotal_jobs`, `zerotal_failed_jobs` and `zerotal_job_batches`. Everything the queue
+does works on all three engines: delays, retries, debounce, batches and chains.
+
+Any number of `queue:work` processes can share the table. On PostgreSQL and MySQL a
+worker claims the next due job with `SELECT … FOR UPDATE SKIP LOCKED`. Two workers
+polling at once take two different jobs, and neither waits on the other's lock. SQLite
+serialises writers, so a single `UPDATE … RETURNING` claims a job atomically there. A
+claimed job stays invisible to other workers for 90 seconds (`visibilityTimeout`). If
+its worker dies, the job becomes claimable again after that.
+
+> **Note** — Up to 1.17.4 the driver created its table with SQLite-only DDL, so on
+> PostgreSQL and MySQL the first dispatch failed with a syntax error. If you moved jobs
+> to Redis for that reason, `driver: "database"` is now an option.
 
 ## Bun Worker threads
 
@@ -501,6 +522,29 @@ which stops every thread. Any in-flight or queued work is resolved with
 
 ## Testing
 
+### Settling the queue
+
+`Queue.settle()` runs every job that is due, on every queue, including jobs those jobs
+dispatch, until none is left. It resolves to the number of jobs it ran. A test does not
+need its own loop around `processNext()`:
+
+```typescript fragment
+// in a test, with the sync, database or redis driver bound
+await Queue.dispatch(new ImportCsvJob(upload.id));
+await Queue.settle(); // ImportCsvJob, and every SendRowEmail it queued
+
+expect(await Queue.size()).toBe(0);
+```
+
+A failing job is retried or failed as a worker would handle it, and `settle()` does not
+throw for it. Check `Queue.failed()`. A retry waits for its delay, so it is not due in
+the same call. A job whose delay has not passed is left in the queue. Pass `queues` to
+drain only some queues. After `limit` jobs (default 1000) `settle()` throws
+`E_QUEUE_SETTLE_LIMIT`, so a job that keeps dispatching itself fails the test instead of
+hanging it.
+
+### Faking the queue
+
 `QueueFake` swaps the `queue` binding for a fake that captures dispatched jobs
 instead of running them, so you can assert on them:
 
@@ -516,6 +560,22 @@ queue.assertDispatched(NotifyFollowersJob);
 queue.assertDispatchedCount(1);
 
 queue.restore(); // call in afterEach
+```
+
+The fake also has `settle()`. It runs the captured jobs in dispatch order, including any
+jobs they dispatch and the next link of a chain, and keeps every job in `dispatched()`
+for assertions. A second call runs only the jobs captured since the first. Each job runs
+once, with no retries. If any job throws, the rest still run, and then `settle()` throws
+`E_QUEUE_SETTLE_FAILED` naming every job that failed:
+
+```typescript fragment
+const queue = QueueFake.install();
+
+await Queue.dispatch(new ImportCsvJob(upload.id));
+queue.assertNotDispatched(SendImportSummaryJob); // captured, not run yet
+
+await Queue.settle(); // or queue.settle()
+queue.assertDispatched(SendImportSummaryJob); // dispatched by ImportCsvJob
 ```
 
 ## References
@@ -536,13 +596,14 @@ queue.restore(); // call in afterEach
 
 The facade proxies a `QueueManager` resolved from the `queue` binding.
 
-| Method           | Signature                              | Description                                      |
-| ---------------- | -------------------------------------- | ------------------------------------------------ |
-| `dispatch`       | `(job: Job) => Promise<void>`          | Persist a job to its queue for later processing. |
-| `processNext`    | `(queue?: string) => Promise<boolean>` | Pop and run the next job; `false` if none.       |
-| `size`           | `(queue?: string) => Promise<number>`  | Count pending jobs on a queue.                   |
-| `drain`          | `() => Promise<void>`                  | Stop accepting work and wait for in-flight jobs. |
-| `isShuttingDown` | `boolean`                              | `true` once shutdown has begun.                  |
+| Method           | Signature                              | Description                                                    |
+| ---------------- | -------------------------------------- | -------------------------------------------------------------- |
+| `dispatch`       | `(job: Job) => Promise<void>`          | Persist a job to its queue for later processing.               |
+| `processNext`    | `(queue?: string) => Promise<boolean>` | Pop and run the next job; `false` if none.                     |
+| `settle`         | `(options?) => Promise<number>`        | Run every due job, and what they dispatch, until none is left. |
+| `size`           | `(queue?: string) => Promise<number>`  | Count pending jobs on a queue.                                 |
+| `drain`          | `() => Promise<void>`                  | Stop accepting work and wait for in-flight jobs.               |
+| `isShuttingDown` | `boolean`                              | `true` once shutdown has begun.                                |
 
 ### `Bus`
 
@@ -583,6 +644,7 @@ The facade proxies a `QueueManager` resolved from the `queue` binding.
 | `assertNotDispatched`     | `(JobClass) => void`                            | Assert a job class was not dispatched. |
 | `assertNothingDispatched` | `() => void`                                    | Assert no jobs were dispatched.        |
 | `assertDispatchedCount`   | `(count: number) => void`                       | Assert the exact dispatched count.     |
+| `settle`                  | `(options?) => Promise<number>`                 | Run the captured jobs not yet run.     |
 
 ### Errors
 
@@ -597,6 +659,8 @@ while leaving unrelated failures alone.
 | `QueueShuttingDownError`        | `E_QUEUE_SHUTTING_DOWN`        | Dispatching during a graceful shutdown — the manager is draining.                    |
 | `QueueBatchingUnsupportedError` | `E_QUEUE_BATCHING_UNSUPPORTED` | Using batches on a driver that has no batch support.                                 |
 | `QueueError`                    | `E_QUEUE_UNKNOWN_JOB`          | `retryFailed()` on a failed job whose class is not registered; the failed row stays. |
+| `QueueError`                    | `E_QUEUE_SETTLE_LIMIT`         | `settle()` ran `limit` jobs and work remained — usually a job dispatching itself.    |
+| `QueueError`                    | `E_QUEUE_SETTLE_FAILED`        | `QueueFake.settle()` ran a job that threw; the message names each one.               |
 
 ```typescript fragment
 // in a controller or service
@@ -618,13 +682,15 @@ re-dispatch on the next boot rather than to fail the request.
 
 ## Types
 
-| Type                                         | What it is                                                                                      |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `QueueDriver`                                | The contract a backend implements — implement it to queue somewhere the built-ins do not reach. |
-| `JobRecord`, `JobStatus`                     | A queued job as stored, and where it is in its life.                                            |
-| `SerializedJob`                              | The wire form — what a driver actually persists.                                                |
-| `BatchOptions`, `BatchRecord`, `BatchStatus` | A batch's settings, its stored form, and its progress.                                          |
-| `WorkerPoolOptions`, `WorkerResult`          | How many workers run and what one attempt returned.                                             |
+| Type                                            | What it is                                                                                      |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `QueueDriver`                                   | The contract a backend implements — implement it to queue somewhere the built-ins do not reach. |
+| `JobRecord`, `JobStatus`                        | A queued job as stored, and where it is in its life.                                            |
+| `SerializedJob`                                 | The wire form — what a driver actually persists.                                                |
+| `BatchOptions`, `BatchRecord`, `BatchStatus`    | A batch's settings, its stored form, and its progress.                                          |
+| `WorkerPoolOptions`, `WorkerResult`             | How many workers run and what one attempt returned.                                             |
+| `DatabaseDriverOptions`, `QueueDatabaseDialect` | The database driver's options, and the engines it runs on.                                      |
+| `QueueSettleOptions`                            | The queues `settle()` drains and the most jobs it runs.                                         |
 
 ## Next steps
 

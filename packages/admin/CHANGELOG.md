@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **A console row action can ask for a value.** Give a `ConsoleAction` an `input` (label,
+  `type`, per-row `options`, `value` and `help`) and the console opens a field above the table,
+  filled from the row. What is submitted is passed to `run(row, input)`. The ability is checked
+  again when the value is submitted. An action with an `input` never runs through the plain row
+  dispatcher, so it cannot run without a value. The settings screen of `@zerotal/settings` edits
+  values this way.
+
 ## [1.17.1] — 2026-11-21
 
 ### Fixed

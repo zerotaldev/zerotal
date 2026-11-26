@@ -420,6 +420,16 @@ jobs:
         working-directory: packages/orm
         run: bun test src/
 
+      # The queue's database driver and the settings store against the same server. Up to
+      # 1.17.4 the queue created its table with SQLite-only DDL, and every PostgreSQL app that
+      # dispatched a job got a syntax error — nothing here dialled out to catch it. Both suites
+      # read ZT_PG_URL; the SQLite cases in them run in the Tests job as well.
+      - name: Queue and settings tests
+        if: ${{ !cancelled() }}
+        run: |
+          (cd packages/queue && bun test src/drivers/DatabaseDriver.server.test.ts)
+          (cd packages/settings && bun test src/settings.test.ts)
+
   # MySQL was documented as "experimental — no CI suite runs against a real MySQL server
   # yet", and that was true for the same reason Postgres's job was hollow: nothing dialled
   # out. `server.smoke.test.ts` is dialect-parameterised, so the same fifteen cases run here
@@ -477,3 +487,11 @@ jobs:
       - name: ORM tests
         working-directory: packages/orm
         run: bun test src/
+
+      # Same suites as the PostgreSQL job, under ZT_MYSQL_URL: MySQL has no UPDATE … RETURNING
+      # and no partial index, so the queue claims and debounces differently here.
+      - name: Queue and settings tests
+        if: ${{ !cancelled() }}
+        run: |
+          (cd packages/queue && bun test src/drivers/DatabaseDriver.server.test.ts)
+          (cd packages/settings && bun test src/settings.test.ts)

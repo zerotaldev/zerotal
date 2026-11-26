@@ -18,6 +18,9 @@ against. `mcp-surface.md` is diffed alongside it.
 - `CAPABILITIES`, `CAPABILITY_AREAS` and the `Capability` / `CapabilityArea` types are
   exported, so `zt about` can list what the framework ships that an app does not have. The
   entries are unchanged.
+- **`AGENTS.md` and the What Ships page list per-tenant settings** (`@zerotal/settings`) under
+  Product features. The background-jobs entry says the queue runs on the app's own database
+  (SQLite, PostgreSQL or MySQL) as well as Redis.
 
 ### Fixed
 

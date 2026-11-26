@@ -156,6 +156,30 @@ either way the table re-reads afterwards so it shows what the action just did.
 Tabs carry their own `badge()` count, and the console as a whole can carry a
 `navigationBadge()` that puts a number beside its sidebar entry.
 
+A row action can ask for a value before it runs. Give it an `input`, and the
+console opens a field above the table, filled from the row, and passes what was
+submitted to `run` as its second argument. A non-empty `options` list makes the
+field a select, and `type: "textarea"` suits JSON or long text. The
+[settings screen](/docs/settings#the-settings-screen) edits values this way:
+
+```ts fragment
+rowActions: [
+  {
+    key: "change",
+    label: "Change",
+    input: {
+      label: "New value",
+      value: (row) => String(row.value),
+      options: (row) => (row.type === "boolean" ? ["true", "false"] : []),
+    },
+    run: (row, value) => Settings.setFromText(String(row.key), value ?? ""),
+  },
+],
+```
+
+An action with an `input` runs only through the field. The plain row dispatcher
+ignores it, so it never runs without a value.
+
 The console's ability is re-checked on every dispatched action, not just when the
 page renders — these are `@expose`d methods reachable from a client frame, so
 drawing the button and running it are separately enforced.

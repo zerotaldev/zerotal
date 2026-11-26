@@ -2,8 +2,16 @@ import { deepMerge } from "@zerotal/core";
 import type { ConfigValidator, ConfigIssue } from "@zerotal/core/config";
 
 export interface QueueConfigShape {
-  /** Queue driver. Default: 'sqlite' */
-  driver: "sqlite" | "redis" | "sync";
+  /**
+   * Queue driver. Default: `"database"`.
+   *
+   * - `"database"` keeps jobs in the app's own database — SQLite, PostgreSQL or
+   *   MySQL 8, whichever the connection is. No Redis needed.
+   * - `"sqlite"` is the earlier name for `"database"` and selects the same driver.
+   * - `"redis"` keeps jobs in Redis lists.
+   * - `"sync"` runs each job inline as it is dispatched; for tests and scripts.
+   */
+  driver: "database" | "sqlite" | "redis" | "sync";
   /** How often the worker polls for new jobs (ms). Default: 500 */
   pollInterval: number;
   /** Queue names the worker listens on. Default: ['default'] */
@@ -27,7 +35,7 @@ export interface QueueConfigShape {
 }
 
 const defaults: QueueConfigShape = {
-  driver: "sqlite",
+  driver: "database",
   pollInterval: 500,
   queues: ["default"],
   workers: 0,
@@ -38,13 +46,13 @@ const defaults: QueueConfigShape = {
  *
  * @example
  * import { QueueConfig } from '@zerotal/queue';
- * export default QueueConfig({ driver: 'sqlite', queues: ['default', 'emails'] });
+ * export default QueueConfig({ driver: 'database', queues: ['default', 'emails'] });
  */
 export function QueueConfig(options: Partial<QueueConfigShape> = {}): QueueConfigShape {
   return deepMerge(defaults, options);
 }
 
-const DRIVERS = new Set<string>(["sqlite", "redis", "sync"]);
+const DRIVERS = new Set<string>(["database", "sqlite", "redis", "sync"]);
 
 /**
  * Validate the `queue` config namespace at boot. Structural mistakes (an
@@ -57,12 +65,12 @@ const DRIVERS = new Set<string>(["sqlite", "redis", "sync"]);
 export const validateQueueConfig: ConfigValidator = (value, { isProduction }) => {
   const cfg = value as Partial<QueueConfigShape> | undefined;
   const issues: ConfigIssue[] = [];
-  const driver = cfg?.driver ?? "sqlite";
+  const driver = cfg?.driver ?? "database";
 
   if (!DRIVERS.has(driver)) {
     issues.push({
       level: "error",
-      message: `queue.driver "${driver}" is unknown — use "sqlite", "redis", or "sync".`,
+      message: `queue.driver "${driver}" is unknown — use "database", "redis", or "sync".`,
     });
   }
 
@@ -103,7 +111,7 @@ export const validateQueueConfig: ConfigValidator = (value, { isProduction }) =>
       level: "warning",
       message:
         'queue.driver is "sync" in production — every dispatched job runs inline on the ' +
-        "request that queued it. Use the sqlite or redis driver for real background work.",
+        "request that queued it. Use the database or redis driver for real background work.",
     });
   }
 

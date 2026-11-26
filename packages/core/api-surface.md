@@ -775,6 +775,7 @@ interface ConfigRegistry = {
   queue: QueueConfigShape
   scheduler: SchedulerConfigShape
   session: SessionConfigShape
+  settings: SettingsConfigShape
   social: SocialConfigShape
   storage: StorageConfigShape
   telemetry: TelemetryConfigShape
@@ -810,6 +811,7 @@ interface ContainerBindings = {
   scheduler: SchedulerManager
   session.driver: SessionDriver
   session: SessionAccessor
+  settings: SettingsManager
   social: SocialManager
   storage: StorageManager
   telemetry: Tracer

@@ -13,6 +13,8 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.17.4] — 2026-11-26
+
 ### Added
 
 - **`AGENTS.md` lists what the framework ships, installed or not.** A "Before you build it

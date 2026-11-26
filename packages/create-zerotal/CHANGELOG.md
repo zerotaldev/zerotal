@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.4] — 2026-11-26
+
 ### Added
 
 - **Every starter ships with the coding-agent files.** A new app has `AGENTS.md`, a `CLAUDE.md`
@@ -18,6 +20,10 @@ follows the Zerotal monorepo's unified versioning.
   write into that starter, so a new app's first `arch:update` has nothing to change.
 
 - **`--no-agent`** leaves all of it out, `@zerotal/arch` included. There is no prompt for it.
+
+### Changed
+
+- **A new app depends on `~1.17.4`**, so it installs this release.
 
 ## [1.17.3] — 2026-11-25
 

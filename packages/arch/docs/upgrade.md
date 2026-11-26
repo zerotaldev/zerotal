@@ -77,6 +77,26 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.17.4
+
+A patch. No app needs a code change. One fix can change what an existing app sees.
+
+### `bun zt serve` listens on `PORT`
+
+`serve` used to listen on 3000 unless given `--port`, whatever `PORT` or `app.port` said. It now
+uses `--port` when given, else `app.port`, which defaults to `PORT`, else 3000. A `PORT` that is
+not a port, such as `80800`, stops `serve` with an error naming it.
+
+**What to change.** Nothing, unless the host sets `PORT` and your proxy forwards to 3000 because
+that is where the app always ended up. Point the proxy at `PORT`, or unset `PORT`.
+
+### Also worth knowing (not breaking)
+
+- **`bun zt arch:update` adds the new `AGENTS.md` index and skills** in an app with
+  `@zerotal/arch`. An app on the `zerotal` bundle also gets the package sections it was missing.
+- **A new app ships with the coding-agent files.** An existing app adds them with
+  `bun add @zerotal/arch` and `bun zt arch:install`; see [Agent Surface](/docs/arch).
+
 ## 1.17.3
 
 A patch. No app needs a code change. Two fixes can change what an existing app sees.

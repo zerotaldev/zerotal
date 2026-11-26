@@ -27,6 +27,58 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.17.4 — 2026-11-26
+
+New apps come ready for a coding agent, and an agent is told what the framework already ships
+before it writes its own. The documentation site serves every page as Markdown with an
+`llms.txt` index, a new page lists everything that ships, and `zt serve` listens on `PORT`.
+
+### Before you upgrade
+
+Read [1.17.4](/docs/upgrade#1174) in the upgrade guide. No app needs a code change, but one fix
+can change what an existing app sees:
+
+- **`bun zt serve` listens on `PORT`** (`@zerotal/core`). An app on a host that sets `PORT` used
+  to listen on 3000 whatever it said, and now listens where `PORT` says.
+
+An app with `@zerotal/arch` picks up the new `AGENTS.md` index and skills with
+`bun zt arch:update`.
+
+### Added
+
+- **Every starter ships with the coding-agent files** (`create-zerotal`). A new app has
+  `AGENTS.md`, a `CLAUDE.md` that imports it, `.mcp.json`, and skills under `.agents/skills/` and
+  `.claude/skills/`, with `@zerotal/arch` registered so `zt arch:update` keeps them current after
+  an upgrade and `zt doctor` says when they drift. `--no-agent` leaves all of it out.
+- **`AGENTS.md` lists what the framework ships, installed or not** (`@zerotal/arch`). A "Before
+  you build it yourself" section names about thirty capabilities, from tenancy and roles to
+  backups and health checks. Each says whether the app has it, the `bun add` that installs it,
+  and the page that covers it. Before, an agent was only told about installed packages, so one
+  asked for tenancy in an app without it wrote its own.
+- **Four more agent skills** (`@zerotal/arch`): adding a CRUD resource, writing a feature test,
+  adding tenancy, and sending a queued notification.
+- **[What Ships](/docs/what-ships)**, a page listing everything the framework already does, by
+  area, with where each comes from and the page that covers it.
+- **The documentation as Markdown.** Every page on zerotal.dev answers at its URL plus `.md`, and
+  to a request for `text/markdown`. `/llms.txt` indexes them and `/llms-full.txt` is the whole
+  guide in one file.
+
+### Changed
+
+- **A new app depends on `~1.17.4`** (`create-zerotal`), so it installs this release.
+
+### Fixed
+
+- **`bun zt serve` listens on `PORT`** (`@zerotal/core`). `--port` carried its own default of
+  3000, so it always won and neither `PORT` nor `app.port` was read. `serve` now uses `--port`
+  when given, else `app.port`, which defaults to `PORT`, else 3000. A `PORT` that is not a port
+  stops `serve` with an error naming it.
+- **An app on the `zerotal` bundle is described as having what the bundle installs**
+  (`@zerotal/arch`). Starters declare `zerotal`, not the packages it bundles, so their
+  `AGENTS.md` left out the data, auth, validation, jobs, cache, scheduling, media and testing
+  sections. It now reads the bundle as those packages, in a workspace too, and tells such an app
+  to import through it (`zerotal/orm`).
+
 ## 1.17.3 — 2026-11-25
 
 A patch of fixes, most of them reported from apps in production. Uploads posted as a list are

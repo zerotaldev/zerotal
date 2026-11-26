@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.17.4] — 2026-11-26
+
 ### Fixed
 
 - **`bun zt serve` listens on `PORT`.** The docs gave `PORT` as the server port, and `AppConfig`

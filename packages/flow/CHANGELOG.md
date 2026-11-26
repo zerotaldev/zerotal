@@ -11,6 +11,54 @@ change.
 
 ## [Unreleased]
 
+### Security
+
+- **Bad frames from one address no longer switch Flow off for that address.** Ten frames whose
+  snapshot did not verify made the server refuse every later frame from the same address for
+  ten minutes, valid ones included, and the count was checked before the signature was. It took
+  no sign-in, and behind a reverse proxy with no `app.throttle.trustedProxies` every visitor
+  shares the proxy's address, so one client could stop every Flow page for everyone. The
+  signature is now checked first, and a frame that verifies is always served. A frame that does
+  not is refused before any middleware runs (it no longer starts a session), is answered the
+  same way whatever page it names, and is counted per address only to bound the log: ten
+  warnings, one line saying the rest are refused quietly, then nothing until the window ends.
+- **A malformed frame is refused instead of throwing.** `{"type":"call"}` with no snapshot
+  reached `frame.snapshot.memo` unchecked, and the socket handler dropped the rejected promise,
+  so any client could print an unhandled rejection with a stack trace per frame. A frame's shape
+  is checked before anything reads it, the answer is `Malformed frame`, and the handler no
+  longer rejects.
+- **An error's own message is not shown to visitors in production.** The default `onError()`
+  flashed `error.message` as a toast, and an error thrown outside the action body (a render,
+  `onBoot()`, a middleware) was sent as the error frame's message, so a failed query could show
+  a table name, a host or a file path to whoever was on the page. Outside development and tests
+  both now say "Something went wrong. Please try again." An error the framework raised to
+  answer the client (`abort(403, "…")`, a `ForbiddenError`) keeps its message. Set
+  `flow.exposeErrorMessages: true` to show every message everywhere, as before, or override
+  `onError()` to choose your own text.
+
+### Fixed
+
+- **An action that throws is logged and reported.** Flow catches the error to keep the page
+  alive, and until now nobody else heard of it: no log line, no call to the exception handler
+  the app registered with `app.withExceptionHandler()`, and a `FlowActionHandled` event that
+  said `ok: true`. The error now goes to the app's exception handler (or the log when there is
+  none) with a line naming the action and the page, and the event carries `ok: false`. An
+  error thrown outside the action body is reported the same way. A call that is refused because
+  the method is not exposed is logged as a warning, and it and a call refused because the
+  snapshot belongs to another session also carry `ok: false`.
+- **An `onError()` that throws gets the default flash.** The lifecycle guide says to re-throw
+  from `onError()` for the errors you do not handle yourself. That did nothing: the visitor saw
+  no message at all. The default now runs for whatever `onError()` threw.
+- **A render that throws after an action opens the dev error overlay.** Under `bun zt dev` the
+  error frame for it now carries the stack and the code frame, as a throwing action's already
+  did. Nothing is added outside the dev server.
+
+### Added
+
+- **`flow.exposeErrorMessages`** in `config/flow.ts`: `true` shows an error's own message to the
+  visitor in every environment, `false` hides it in every environment. Unset, it is shown in
+  development, under `bun zt dev` and in tests, and hidden everywhere else.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

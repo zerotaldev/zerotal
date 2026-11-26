@@ -22,19 +22,22 @@ import { isProdLike, deployEnv } from "@zerotal/core";
 import type { CallFrame, Snapshot } from "../types.ts";
 import { getPage, getAllowedMethods, getRenderlessMethods, BUILTIN_ACTIONS } from "../registry.ts";
 import {
-  hydrate,
+  _hydrateVerified,
+  verifySnapshot,
   dehydrate,
   encodeSnapshotDelta,
-  FlowIntegrityError,
   FlowSnapshotOwnershipError,
   warnIfLarge,
   type SnapshotDelta,
 } from "../dehydrate.ts";
+import { frameworkLog } from "@zerotal/core/logger";
+import { _isClientFacingError, _publicErrorMessage } from "../errorText.ts";
 import { _renderFlowPage } from "../jsx-runtime.ts";
 import { populatePresence } from "../presence.ts";
 import { populateShared, snapshotSharedValues, commitShared } from "../shared.ts";
 import { persistDurable } from "../durable.ts";
 import type { Component } from "../Component.ts";
+import { Component as FlowComponent } from "../Component.ts";
 import { flowRoute, registerFlowFileRoute, _persistSessionProps } from "../router.ts";
 import type { PageClassWithMeta } from "../registry.ts";
 import { getTaskMethods } from "../decorators.ts";
@@ -163,40 +166,131 @@ async function _loadClientAssets(cspSafe: boolean): Promise<void> {
   );
 }
 
-// ── Rate limiter for HMAC failures ───────────────────────────────────────────
+// ── Invalid frames ────────────────────────────────────────────────────────────
+// A frame that is not a call frame, or whose snapshot does not verify, is refused before any
+// middleware runs: one HMAC, no session, no page. Those refusals are counted per address so that
+// a client sending them in a loop costs a bounded number of log lines.
+//
+// The count never decides whether a frame that verifies is served. It used to: ten bad frames
+// from one address refused every frame from it for ten minutes, valid or not, checked before
+// the signature was. Behind a reverse proxy with no `app.throttle.trustedProxies` every visitor
+// shares the proxy's address, so one anonymous client could switch Flow off for all of them.
 
-const _checksumFailures = new Map<string, { count: number; since: number }>();
-const CHECKSUM_MAX = 10;
-const CHECKSUM_WINDOW_MS = 600_000; // 10 minutes
-
-// Periodic sweep so the map doesn't grow unbounded under IP rotation.
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of _checksumFailures) {
-    if (now - entry.since > CHECKSUM_WINDOW_MS) _checksumFailures.delete(ip);
-  }
-}, CHECKSUM_WINDOW_MS).unref?.();
-
-/** Returns false when this IP has exceeded the failure threshold. */
-function _isChecksumRateLimited(ip: string): boolean {
-  const entry = _checksumFailures.get(ip);
-  if (!entry) return false;
-  if (Date.now() - entry.since > CHECKSUM_WINDOW_MS) {
-    _checksumFailures.delete(ip);
-    return false;
-  }
-  return entry.count >= CHECKSUM_MAX;
+interface InvalidFrameEntry {
+  count: number;
+  since: number;
+  /** Whether the "over the limit" line has been logged for this window. */
+  warned: boolean;
 }
 
-/** Called only when a checksum actually fails — not on every request. */
-function _recordChecksumFailure(ip: string): void {
-  const now = Date.now();
-  const entry = _checksumFailures.get(ip);
-  if (!entry || now - entry.since > CHECKSUM_WINDOW_MS) {
-    _checksumFailures.set(ip, { count: 1, since: now });
-  } else {
-    entry.count++;
+const _invalidFrames = new Map<string, InvalidFrameEntry>();
+const INVALID_FRAME_MAX = 10;
+const INVALID_FRAME_WINDOW_MS = 600_000; // 10 minutes
+/** Addresses tracked at once. Past it the table is emptied rather than grown. */
+const INVALID_FRAME_TABLE_MAX = 10_000;
+
+function _sweepInvalidFrames(now: number): void {
+  for (const [ip, entry] of _invalidFrames) {
+    if (now - entry.since > INVALID_FRAME_WINDOW_MS) _invalidFrames.delete(ip);
   }
+}
+
+// Periodic sweep so the map doesn't grow unbounded under IP rotation.
+setInterval(() => _sweepInvalidFrames(Date.now()), INVALID_FRAME_WINDOW_MS).unref?.();
+
+/**
+ * Count one invalid frame from `ip` and say whether that address is now over the limit.
+ *
+ * Each of the first {@link INVALID_FRAME_MAX} in a window is logged as a warning with the
+ * reason. The one after logs a single line saying the rest will be refused quietly, and the
+ * rest log nothing, so the log cannot be filled from outside.
+ *
+ * @param ip - The address the frame came from.
+ * @param why - What was wrong with it, for the log.
+ * @param now - The current time in ms; a parameter so a test can move the clock.
+ * @returns `true` when the address has sent more than the limit in this window.
+ * @internal exported for tests.
+ */
+export function _noteInvalidFrame(ip: string, why: string, now: number = Date.now()): boolean {
+  let entry = _invalidFrames.get(ip);
+  if (!entry || now - entry.since > INVALID_FRAME_WINDOW_MS) {
+    if (_invalidFrames.size >= INVALID_FRAME_TABLE_MAX) {
+      _sweepInvalidFrames(now);
+      if (_invalidFrames.size >= INVALID_FRAME_TABLE_MAX) _invalidFrames.clear();
+    }
+    entry = { count: 0, since: now, warned: false };
+    _invalidFrames.set(ip, entry);
+  }
+  entry.count++;
+
+  if (entry.count <= INVALID_FRAME_MAX) {
+    frameworkLog("flow").warn(`Refused a frame: ${why}`, { ip });
+    return false;
+  }
+
+  if (!entry.warned) {
+    entry.warned = true;
+    const minutes = INVALID_FRAME_WINDOW_MS / 60_000;
+    const proxyHint =
+      _trustedProxyCount() === undefined
+        ? " If a reverse proxy fronts this app, this address is the proxy's: set " +
+          "app.throttle.trustedProxies so each client is counted on its own."
+        : "";
+    frameworkLog("flow").warn(
+      `More than ${INVALID_FRAME_MAX} invalid frames from one address in ${minutes} minutes. ` +
+        `Further invalid frames from it are refused without a log line until the window ends. ` +
+        `Frames that verify are still served.${proxyHint}`,
+      { ip },
+    );
+  }
+  return true;
+}
+
+/** Forget every counted address. @internal exported for tests. */
+export function _resetInvalidFrames(): void {
+  _invalidFrames.clear();
+}
+
+/**
+ * A parsed message as a call frame, or `null` when it does not have a call frame's shape.
+ *
+ * Everything the handler reads before the signature is checked is checked here first. The
+ * snapshot's `data` and the signed part of its `memo` are only trusted once the signature
+ * verifies; `memo.children` is not signed, so its shape is checked here as well.
+ *
+ * @internal exported for tests.
+ */
+export function _asCallFrame(value: unknown): CallFrame | null {
+  if (!_hasCallFrameShape(value)) return null;
+  // Lenient where leniency is harmless: a frame with no `updates`, or a nonsense one, has none.
+  if (!_isRecord(value.updates)) value.updates = {};
+  if (!Array.isArray(value.args)) value.args = [];
+  return value;
+}
+
+/** The checks behind {@link _asCallFrame}, as a type guard. */
+function _hasCallFrameShape(value: unknown): value is CallFrame {
+  if (!_isRecord(value) || value["type"] !== "call") return false;
+  if (typeof value["component"] !== "string" || typeof value["method"] !== "string") return false;
+
+  const snapshot = value["snapshot"];
+  if (!_isRecord(snapshot) || typeof snapshot["checksum"] !== "string") return false;
+  if (!_isRecord(snapshot["data"])) return false;
+
+  const memo = snapshot["memo"];
+  if (!_isRecord(memo)) return false;
+  if (
+    typeof memo["id"] !== "string" ||
+    typeof memo["name"] !== "string" ||
+    typeof memo["path"] !== "string"
+  ) {
+    return false;
+  }
+  return memo["children"] === undefined || Array.isArray(memo["children"]);
+}
+
+function _isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 // ── Session relay store ───────────────────────────────────────────────────────
@@ -300,10 +394,60 @@ export function _flowRemoteIp(req: Request, server: unknown): string {
 type FlowWsDeps = {
   container: Container;
   globalMiddleware: () => MiddlewareClass[];
+  /**
+   * Hands a caught error to the app's exception handler (`Application._reportError`). Absent
+   * when the handler is driven without an application, where the error is logged instead.
+   */
+  report?: (error: unknown, ctx: HttpContext) => Promise<void>;
 };
+
+/** What dispatching one frame came to. */
+interface DispatchOutcome {
+  /** Where the action sent the browser, when it called `this.redirect()`. */
+  redirectUrl?: string | undefined;
+  /** True when the action threw, a client write was rejected, or the call was refused. */
+  failed: boolean;
+}
+
+/**
+ * Tell the log and the app's exception handler that something on a Flow page threw.
+ *
+ * Flow catches these to keep the page alive, which used to mean nobody else heard of them: no
+ * log line, and no call to the handler an app registers to send errors to its tracker. An error
+ * the framework raised to answer the client (`abort(403)`) is an answer, not a fault, and is
+ * left to the handler's own rule for what to report.
+ *
+ * @param deps - The handler's dependencies, for the app's reporter.
+ * @param error - What was thrown.
+ * @param ctx - The request-scoped context of the action.
+ * @param where - What was running, for the log: `action "save" on ProjectsPage`.
+ */
+async function _reportFlowError(
+  deps: FlowWsDeps,
+  error: unknown,
+  ctx: HttpContext,
+  where: string,
+): Promise<void> {
+  if (error instanceof ValidationError) return;
+  const fault = !_isClientFacingError(error);
+  try {
+    if (deps.report) {
+      // The handler prints the stack; this line says where in Flow it came from.
+      if (fault) frameworkLog("flow").error(`An error was thrown by ${where}`);
+      await deps.report(error, ctx);
+    } else if (fault) {
+      frameworkLog("flow").error(`An error was thrown by ${where}`, undefined, error);
+    }
+  } catch {
+    // Reporting must never be the reason an action's response is lost.
+  }
+}
 
 /**
  * Handle one call frame, exactly as the socket and the HTTP fallback do.
+ *
+ * Never rejects. Whatever goes wrong is logged and answered with an error frame, because the
+ * socket handler has nobody to hand a rejection to.
  *
  * @internal exported for tests.
  */
@@ -312,28 +456,75 @@ export async function _handleFlowMessage(
   raw: string,
   deps: FlowWsDeps,
 ): Promise<void> {
-  let frame: CallFrame;
   try {
-    frame = JSON.parse(raw) as CallFrame;
+    await _handleFlowFrame(ws, raw, deps);
+  } catch (error) {
+    frameworkLog("flow").error("A frame could not be handled", undefined, error);
+    try {
+      ws.send(JSON.stringify({ type: "error", message: _publicErrorMessage(error) }));
+    } catch {
+      // The socket is gone; there is nobody to tell.
+    }
+  }
+}
+
+async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): Promise<void> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
   } catch {
     return;
   }
 
-  if (frame.type !== "call") return;
+  // Not a call: nothing here answers anything else.
+  if (parsed === null || typeof parsed !== "object") return;
+  if ((parsed as { type?: unknown }).type !== "call") return;
+
+  const ip = ws.data.remoteIp ?? "unknown";
+  const loose = parsed as { component?: unknown; method?: unknown };
 
   // `$cancel` is handled out-of-band, before hydrate/dispatch: the client sends it while a
   // @task is mid-flight (the per-component queue is still blocked on that task), so it can't
   // go through the normal action path. Abort the running task's controller and return; the
   // task observes the abort and finishes, sending its own final patch.
-  if (frame.method === "$cancel") {
-    const running = _runningTasks.get(frame.component);
+  if (loose.method === "$cancel") {
+    if (typeof loose.component !== "string") return;
+    const running = _runningTasks.get(loose.component);
     // Only the connection that started the task may cancel it. Component ids are short and
     // routinely visible, so ownership has to come from the socket, not from the frame.
     if (running && running.owner === ws) running.controller.abort();
     return;
   }
 
-  const ip = ws.data.remoteIp ?? "unknown";
+  const frame = _asCallFrame(parsed);
+  if (!frame) {
+    const limited = _noteInvalidFrame(ip, "it does not have the shape of a call frame");
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        ...(typeof loose.component === "string" ? { component: loose.component } : {}),
+        message: limited ? "Too many invalid requests" : "Malformed frame",
+      }),
+    );
+    return;
+  }
+
+  // The signature is checked first, before the component is looked up and before any
+  // middleware runs. A frame that fails costs one HMAC and is answered the same way whatever
+  // it names, so the reply cannot be used to learn which page classes exist. A frame that
+  // passes is served: how many bad frames came from the same address has no say in it.
+  if (!verifySnapshot(frame.snapshot)) {
+    const limited = _noteInvalidFrame(ip, "its snapshot does not verify");
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        component: frame.component,
+        message: limited ? "Too many invalid requests" : "Invalid snapshot",
+      }),
+    );
+    return;
+  }
+
   const entry = getPage(frame.snapshot.memo.name);
 
   if (!entry) {
@@ -343,20 +534,9 @@ export async function _handleFlowMessage(
     return;
   }
 
-  if (_isChecksumRateLimited(ip)) {
-    ws.send(
-      JSON.stringify({
-        type: "error",
-        component: frame.component,
-        message: "Too many invalid requests",
-      }),
-    );
-    return;
-  }
-
-  // The snapshot is hydrated inside the pipeline below rather than here.
+  // The snapshot is restored inside the pipeline below rather than here.
   //
-  // Hydration asserts that the snapshot belongs to whoever is asking, and that
+  // Restoring asserts that the snapshot belongs to whoever is asking, and that
   // check reads the authenticated user off the request context — which only the
   // Session and Auth middleware can put there, and they have not run yet. Doing
   // it here compares a snapshot issued to a signed-in user against a context
@@ -373,6 +553,8 @@ export async function _handleFlowMessage(
   const request = new Request(`${ws.data.origin ?? "http://localhost"}${pagePath}`, {
     headers: ws.data.headers ?? new Headers(),
   });
+
+  const where = `action "${frame.method}" on ${entry.PageClass.name}`;
 
   await deps.container.runScoped(async (scoped) => {
     const ctx = new HttpContext(request, scoped);
@@ -395,7 +577,7 @@ export async function _handleFlowMessage(
 
     await RequestContext.run(ctx, async () => {
       let passed = false;
-      let redirectUrl: string | undefined;
+      let outcome: DispatchOutcome = { failed: false };
 
       const DispatchTerminal = class {
         async handle(c: HttpContext, next: NextFn): Promise<Response | void> {
@@ -405,25 +587,17 @@ export async function _handleFlowMessage(
           // against.
           let page: Component;
           try {
-            page = await hydrate(frame.snapshot, entry.PageClass as unknown as new () => Component);
+            page = await _hydrateVerified(
+              frame.snapshot,
+              entry.PageClass as unknown as new () => Component,
+            );
           } catch (e) {
-            if (e instanceof FlowIntegrityError) {
-              _recordChecksumFailure(ip); // only count actual tampered/invalid snapshots
-              ws.send(
-                JSON.stringify({
-                  type: "error",
-                  component: frame.component,
-                  message: "Invalid snapshot",
-                }),
-              );
-              if (!c.response) c.response = new Response(null, { status: 400 });
-              return next();
-            }
             if (e instanceof FlowSnapshotOwnershipError) {
               // Not tampering — the session changed under a page that is still
               // open, which is what signing out in another tab looks like. The
               // page's state belongs to who you were, so reloading is the only
               // honest recovery, and the client is told to do exactly that.
+              outcome = { failed: true };
               ws.send(
                 JSON.stringify({
                   type: "error",
@@ -438,7 +612,7 @@ export async function _handleFlowMessage(
             throw e;
           }
 
-          redirectUrl = await _dispatchFrame(ws, frame, page, entry, c);
+          outcome = await _dispatchFrame(ws, frame, page, entry, c, deps);
           if (!c.response) c.response = new Response(null, { status: 204 });
           return next();
         }
@@ -458,6 +632,9 @@ export async function _handleFlowMessage(
         pipeline.via(deps.container);
         await pipeline.thenReturn();
       } catch (e) {
+        // Thrown outside the action body: a render, `onBoot()`, `onUpdate()`, a middleware.
+        // Nothing caught it to repaint the page, so the error frame is all the browser gets.
+        await _reportFlowError(deps, e, ctx, where);
         _touchConnection(ws, ctx);
         FrameworkEvents.emit(
           new FlowActionHandled(
@@ -469,11 +646,17 @@ export async function _handleFlowMessage(
             ctx,
           ),
         );
+        // The stack rides along under the dev worker only, where it opens the error overlay.
+        const dev =
+          _isDevWorker && !_isClientFacingError(e) ? _devErrorInfo(e, frame.method) : null;
         ws.send(
           JSON.stringify({
             type: "error",
             component: frame.snapshot.memo.id,
-            message: e instanceof Error ? e.message : "Request blocked by middleware",
+            message: _publicErrorMessage(e),
+            ...(dev
+              ? { name: dev.name, stack: dev.stack, action: dev.action, frame: dev.frame }
+              : {}),
           }),
         );
         return;
@@ -487,7 +670,7 @@ export async function _handleFlowMessage(
             frame.component,
             frame.method,
             performance.now() - _startedAt,
-            true,
+            !outcome.failed,
             ip,
             ctx,
           ),
@@ -525,6 +708,7 @@ export async function _handleFlowMessage(
       }
 
       const setCookieHeader = ctx.response?.headers.get("Set-Cookie");
+      const redirectUrl = outcome.redirectUrl;
 
       if (redirectUrl) {
         if (setCookieHeader) {
@@ -647,7 +831,7 @@ function _logTransport(
  * Execute the action described by `frame`, re-render the page, and push WS
  * messages for flashes, patches, events, downloads, and scripts.
  *
- * @returns The redirect URL if the action called this.redirect(), otherwise undefined.
+ * @returns Where the action redirected to, if it did, and whether it failed.
  */
 async function _dispatchFrame(
   ws: FlowBunWs,
@@ -655,7 +839,8 @@ async function _dispatchFrame(
   page: Component,
   entry: NonNullable<ReturnType<typeof getPage>>,
   ctx: HttpContext,
-): Promise<string | undefined> {
+  deps: FlowWsDeps,
+): Promise<DispatchOutcome> {
   page._isHydrated = true;
   // Use the HMAC-signed id from the snapshot — frame.component is unsigned.
   page._flowId = frame.snapshot.memo.id;
@@ -701,6 +886,30 @@ async function _dispatchFrame(
     devErrorRef.current = _devErrorInfo(error, frame.method);
   };
 
+  const where = `action "${frame.method}" on ${entry.PageClass.name}`;
+
+  /**
+   * An action threw, or a hook rejected a client write: tell the log and the app's exception
+   * handler, then let the page say what the visitor should see. An `onError()` that throws
+   * (the documented way to hand an error back) gets the default flash for what it threw.
+   */
+  const fail = async (thrown: unknown): Promise<void> => {
+    actionErrored = true;
+    captureDevError(thrown);
+    await _reportFlowError(deps, thrown, ctx, where);
+    const error = thrown instanceof Error ? thrown : new Error(String(thrown));
+    try {
+      await page.onError(error);
+    } catch (rethrown) {
+      const final = rethrown instanceof Error ? rethrown : new Error(String(rethrown));
+      try {
+        await FlowComponent.prototype.onError.call(page, final);
+      } catch {
+        // The default only flashes; if even that fails, still send the patch.
+      }
+    }
+  };
+
   // Apply pending flow:model updates from the client through _applyClientUpdate so
   // the @expose / @locked allowlist is enforced (internal _* fields can't be
   // clobbered) AND the updating()/updated() hooks fire around each write. An
@@ -709,15 +918,7 @@ async function _dispatchFrame(
     try {
       await page._applyClientUpdate(key, value);
     } catch (error) {
-      if (!(error instanceof ValidationError)) {
-        actionErrored = true;
-        captureDevError(error);
-        try {
-          await page.onError(error instanceof Error ? error : new Error(String(error)));
-        } catch {
-          /* keep going */
-        }
-      }
+      if (!(error instanceof ValidationError)) await fail(error);
     }
   }
 
@@ -748,15 +949,7 @@ async function _dispatchFrame(
       try {
         await page._applyClientUpdate(key, value);
       } catch (error) {
-        if (!(error instanceof ValidationError)) {
-          actionErrored = true;
-          captureDevError(error);
-          try {
-            await page.onError(error instanceof Error ? error : new Error(String(error)));
-          } catch {
-            /* keep going */
-          }
-        }
+        if (!(error instanceof ValidationError)) await fail(error);
       }
     } else if (method === "$refresh") {
       await page.onMount(ctx);
@@ -778,6 +971,12 @@ async function _dispatchFrame(
   } else {
     const allowed = getAllowedMethods(entry.PageClass as typeof Component);
     if (!allowed.has(method)) {
+      // The snapshot verified, so this is a real page asking for something it may not call:
+      // a stale tab after a deploy renamed the action, or someone trying names by hand.
+      frameworkLog("flow").warn(
+        `Refused a call to "${method}" on ${className}: the method is not exposed to the browser`,
+        { ip: ws.data.remoteIp ?? "unknown" },
+      );
       ws.send(
         JSON.stringify({
           type: "error",
@@ -785,7 +984,7 @@ async function _dispatchFrame(
           message: `Method "${method}" is not allowed`,
         }),
       );
-      return;
+      return { failed: true };
     }
 
     const renderlessMethods = getRenderlessMethods(entry.PageClass as typeof Component);
@@ -853,13 +1052,7 @@ async function _dispatchFrame(
         // The client will show field-level error messages via $errors.
         // _errors is already set on the page by validate().
       } else {
-        actionErrored = true;
-        captureDevError(error);
-        try {
-          await page.onError(error instanceof Error ? error : new Error(String(error)));
-        } catch {
-          // onError itself threw — still try to send a response
-        }
+        await fail(error);
       }
     } finally {
       if (isTask) {
@@ -883,7 +1076,7 @@ async function _dispatchFrame(
   const effects = page._drainEffects();
 
   if (effects.redirectUrl) {
-    return effects.redirectUrl;
+    return { redirectUrl: effects.redirectUrl, failed: actionErrored };
   }
 
   // Use the HMAC-signed component id for all outbound frames.
@@ -948,7 +1141,7 @@ async function _dispatchFrame(
     warnIfLarge(snapshot, frame.snapshot.memo.name);
     await persistDurable(page, ctx, snapshot);
     _sendPatch(ws, canonicalId, undefined, snapshot, deltaBase, effects, actionErrored);
-    return undefined;
+    return { failed: actionErrored };
   }
 
   // Re-render first (collects nested child ids), then dehydrate.
@@ -961,7 +1154,7 @@ async function _dispatchFrame(
   const compName = frame.snapshot.memo.name;
   const html = `<div data-flow-root x-data="{}" data-flow-id="${canonicalId}" data-flow-name="${compName}">${innerHtml}</div>`;
   _sendPatch(ws, canonicalId, html, snapshot, deltaBase, effects, actionErrored);
-  return undefined;
+  return { failed: actionErrored };
 }
 
 // ── Persistent middleware registry ────────────────────────────────────────────
@@ -1263,6 +1456,7 @@ export class FlowProvider extends ServiceProvider {
     const flowDeps: FlowWsDeps = {
       container: this.app.container,
       globalMiddleware: () => app.globalMiddleware as unknown as MiddlewareClass[],
+      report: (error, ctx) => app._reportError(error, ctx),
     };
     (this.app as unknown as Application).withWebSocket(
       _makeFlowWsHandlers(flowDeps),

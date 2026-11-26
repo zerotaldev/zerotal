@@ -52,7 +52,7 @@ Registering the provider switches on the following (in lifecycle order):
 ### Configuration
 
 Flow runs with no configuration at all. Add `config/flow.ts` only when you want to
-change one of its two knobs — the file is auto-discovered, and every key you leave
+change one of its settings — the file is auto-discovered, and every key you leave
 out keeps its default:
 
 ```typescript
@@ -64,10 +64,11 @@ export default FlowConfig({
 });
 ```
 
-| Key                    | Default                                                                   | Controls                                                                                       |
-| ---------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `cspSafe`              | `false`                                                                   | Serve the eval-free client runtime — see [CSP-safe mode](/docs/flow/components#csp-safe-mode). |
-| `persistentMiddleware` | `["SessionMiddleware", "PersistUserMiddleware", "BearerTokenMiddleware"]` | Which **global** middleware re-runs on every WebSocket update.                                 |
+| Key                    | Default                                                                   | Controls                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `cspSafe`              | `false`                                                                   | Serve the eval-free client runtime — see [CSP-safe mode](/docs/flow/components#csp-safe-mode).                                      |
+| `persistentMiddleware` | `["SessionMiddleware", "PersistUserMiddleware", "BearerTokenMiddleware"]` | Which **global** middleware re-runs on every WebSocket update.                                                                      |
+| `exposeErrorMessages`  | unset: shown in development and tests, hidden elsewhere                   | Whether a visitor sees an error's own message — see [Flow security](/docs/flow/security#what-a-visitor-sees-when-something-throws). |
 
 `cspSafe` also reads the `ZT_FLOW_CSP_SAFE` (or `APP_CSP_SAFE`) env flag when no
 config file sets it, so an existing env-driven deployment keeps working untouched.
@@ -574,6 +575,7 @@ Flow is a large surface. Each section below is its own page.
 | [Icons](/docs/flow/icons)                         | 2,060 icons by name, rendered on the server, nothing to install.                                      |
 | [Layouts & Composition](/docs/flow/layouts)       | Layouts, mixins, nested components, static pages with interactive islands, and `@task` streaming.     |
 | [Transport & Performance](/docs/flow/performance) | How updates reach the browser, what to do on hostile networks, and the polish that hides latency.     |
+| [Security](/docs/flow/security)                   | What Flow trusts from the browser, what it checks on every action, and what your code still checks.   |
 | [Testing](/docs/flow/testing)                     | Drive a component in-process, assert on its state, and test the rendered markup.                      |
 | [Reference](/docs/flow/references)                | Every decorator, prop, directive, and client global in one table.                                     |
 

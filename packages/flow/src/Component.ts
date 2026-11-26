@@ -22,6 +22,7 @@ import { RuleBuilder, runValidationAsync } from "@zerotal/validator";
 import type { Schema, FieldRuleDefinition } from "@zerotal/validator";
 import type { ValidateBuilder } from "./decorators.ts";
 import { ValidationError } from "./validation.ts";
+import { _publicErrorMessage } from "./errorText.ts";
 import type { ValidationRules } from "./validation.ts";
 import { _applyWireValues, _isRegisteredModel } from "./synths/ModelSynth.ts";
 import { resolveUploadValue } from "./uploads/TemporaryUploadedFile.ts";
@@ -878,15 +879,21 @@ export abstract class Component {
   async onRendered(_html: string): Promise<void> {}
 
   /**
-   * Called when an action throws an unhandled error. Flow catches the error and
-   * still re-renders; override to customise (log, swallow, re-flash). The default
-   * flashes the message.
+   * Called when an action throws an unhandled error. Flow catches the error, logs it, hands it
+   * to the app's exception handler and still re-renders; override to customise what the visitor
+   * sees (a different message, nothing at all).
+   *
+   * The default flashes a message. In development and in tests that is the error's own
+   * message. Anywhere else it is "Something went wrong. Please try again.", because an error's
+   * text is written for the log and can name tables, hosts and paths. An error the framework
+   * raised to answer the client (`abort(403, "…")`, a `ForbiddenError`) keeps its message
+   * everywhere. Set `flow.exposeErrorMessages` to choose for every environment.
    *
    * @param error  the error thrown by the action.
    * @category Errors
    */
   async onError(error: Error): Promise<void> {
-    this.flash(error.message, "error");
+    this.flash(_publicErrorMessage(error), "error");
   }
 
   // ── Render ────────────────────────────────────────────────────────────────

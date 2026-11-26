@@ -22,6 +22,7 @@ class Application = {
   _activeProviders: ServiceProvider[]
   _allowedOrigins: () => string[]
   _env: Environment
+  _reportError: (error: unknown, ctx?: HttpContext) => Promise<void>
   _swapExceptionHandler: (handler: ExceptionHandler | undefined) => ExceptionHandler | undefined
   _userResolver: ((id: number) => Promise<AuthenticatedUser | null>) | undefined
   adoptAsCurrent: () => Application

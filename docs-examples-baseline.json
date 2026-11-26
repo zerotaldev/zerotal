@@ -4103,13 +4103,7 @@
       "file": "docs/flow/lifecycle.md",
       "heading": "Custom error handling",
       "ordinal": 0,
-      "hash": "3ibeg70zy6d2"
-    },
-    {
-      "file": "docs/flow/lifecycle.md",
-      "heading": "Custom error handling",
-      "ordinal": 1,
-      "hash": "17l79i6qd2dw"
+      "hash": "dygebe12b38z"
     },
     {
       "file": "docs/flow/lifecycle.md",
@@ -4488,6 +4482,24 @@
       "heading": "The Router.flow method",
       "ordinal": 0,
       "hash": "1uhabwwbwxfy"
+    },
+    {
+      "file": "docs/flow/security.md",
+      "heading": "The invalid-frame count",
+      "ordinal": 0,
+      "hash": "3nfd12949sqa"
+    },
+    {
+      "file": "docs/flow/security.md",
+      "heading": "What a visitor sees when something throws",
+      "ordinal": 0,
+      "hash": "3dds0shnjy3a"
+    },
+    {
+      "file": "docs/flow/security.md",
+      "heading": "What the browser can call and write",
+      "ordinal": 0,
+      "hash": "1v7r5d0wg6z8"
     },
     {
       "file": "docs/flow/testing.md",

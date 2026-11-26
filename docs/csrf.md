@@ -21,8 +21,11 @@ import { CsrfMiddleware } from "@zerotal/session";
 
 ## Getting Started
 
-CSRF protection ships inside `@zerotal/session` — installing the session
-package is all it takes, and `SessionProvider` wires the middleware for you.
+CSRF protection ships inside `@zerotal/session`, but it is **not on by default**:
+`SessionProvider` registers the session, not `CsrfMiddleware`. Register it yourself,
+as [Enabling it](#enabling-it) shows. Until you do, the only cross-site defence a
+session cookie has is its `SameSite=Lax` attribute, which stops other sites but not
+other subdomains of your own.
 
 ```typescript
 import { CsrfMiddleware } from "@zerotal/session";

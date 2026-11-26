@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The docs say what happens when no tenant matches.** The page and the `resolvers`
+  docblock said `TenancyMiddleware` answers 404 when no resolver matches or the slug is not in
+  the registry. It carries on with no tenant; only `EnsureTenancyMiddleware` answers 404. The
+  error table now lists the 403 a signed-in non-member gets, and the custom resolver example
+  takes the request context, as `TenantResolver.resolve()` does.
+
 ## [1.18.0] — 2026-11-26
 
 ### Fixed

@@ -75,8 +75,8 @@ export interface TenancyConfigShape {
 
   /**
    * One or more resolvers tried in order until one returns a non-null result.
-   * If all resolvers return null the request is treated as tenant-less
-   * (TenancyMiddleware returns a 404).
+   * If all resolvers return null the request carries on with no tenant; a route that
+   * needs one requires it with `EnsureTenancyMiddleware`, which answers 404.
    */
   resolvers: TenantResolver[];
 

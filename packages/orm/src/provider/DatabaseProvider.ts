@@ -7,6 +7,7 @@ import { SQL } from "bun";
 import { DB, _getConnection } from "../db/DB.ts";
 import { preventNPlusOne } from "../db/NPlusOneDetector.ts";
 import { foreignKeysCheck } from "../doctor/foreignKeys.ts";
+import { migrationNumbersCheck } from "../diagnostics/migrationNumbersCheck.ts";
 import { mysqlTimeZoneCheck } from "../doctor/mysqlTimeZone.ts";
 import {
   _setBaseModelConnection,
@@ -258,7 +259,7 @@ export class DatabaseProvider extends ServiceProvider {
    * it — `doctor` already boots the app and already holds the connection.
    */
   override doctorChecks(): DoctorCheck[] {
-    return [pendingMigrationsCheck, foreignKeysCheck, mysqlTimeZoneCheck];
+    return [pendingMigrationsCheck, migrationNumbersCheck, foreignKeysCheck, mysqlTimeZoneCheck];
   }
 
   override async onBooted(): Promise<void> {

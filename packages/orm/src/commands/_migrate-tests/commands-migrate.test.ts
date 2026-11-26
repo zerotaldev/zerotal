@@ -242,3 +242,210 @@ describe("MigrateStatusCommand.run() — with migration records", () => {
     expect(lines.some((l) => l.includes("yes") || l.includes("001"))).toBe(true);
   });
 });
+
+// ── Duplicate numbers, --pretend, backup before migrate ───────────────────────
+
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { Migration } from "../../schema/Migration.ts";
+import { Schema } from "../../schema/Schema.ts";
+
+class CreateWidgets extends Migration {
+  override async up(): Promise<void> {
+    await Schema.create("widgets", (table) => {
+      table.increments("id");
+      table.string("name");
+    });
+  }
+  override async down(): Promise<void> {
+    await Schema.drop("widgets");
+  }
+}
+
+function migrateWith(
+  flags: Record<string, unknown>,
+  config: Record<string, unknown> = {},
+): { cmd: MigrateCommand; lines: string[] } {
+  const { lines, writer } = makeLines();
+  const cmd = new MigrateCommand();
+  cmd.args = {};
+  cmd.flags = { fresh: false, ...flags };
+  cmd._writer = { ...writer, writeError: (l: string) => lines.push(l) };
+  const get = (key: string, fallback?: unknown) => (key in config ? config[key] : fallback);
+  (cmd as unknown as { app: unknown }).app = {
+    container: { makeSync: (k: string) => (k === "config" ? { get } : undefined) },
+  };
+  return { cmd, lines };
+}
+
+async function tableExists(name: string): Promise<boolean> {
+  const rows = await db`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ${name}`;
+  return rows.length > 0;
+}
+
+describe("MigrateCommand.run() — two migrations under one number", () => {
+  it("refuses before running anything, naming both files and the next number", async () => {
+    _mockLoadMigrations.mockImplementation(async () => [
+      { name: "0041_create_widgets", file: "0041_create_widgets", instance: new CreateWidgets() },
+      { name: "0042_add_invoices", file: "0042_add_invoices", instance: fakeMigration },
+      { name: "0042_add_refunds", file: "0042_add_refunds", instance: fakeMigration },
+    ]);
+    const { cmd } = migrateWith({});
+    const error = await cmd.run().catch((e: unknown) => e);
+    expect((error as { code?: string }).code).toBe("E_MIGRATION_NUMBER_CLASH");
+    expect((error as Error).message).toContain("0042_add_invoices.ts, 0042_add_refunds.ts");
+    expect((error as Error).message).toContain("0043_add_refunds.ts");
+    expect(await tableExists("widgets")).toBe(false);
+  });
+
+  it("runs when every clashing migration has already been applied", async () => {
+    const clashing = [
+      { name: "0042_add_invoices", file: "0042_add_invoices", instance: fakeMigration },
+      { name: "0042_add_refunds", file: "0042_add_refunds", instance: fakeMigration },
+    ];
+    // Applied before the check existed: recorded, so history rather than a decision.
+    _mockLoadMigrations.mockImplementation(async () => [
+      { name: "0042_add_invoices", instance: fakeMigration },
+    ]);
+    await migrateWith({}).cmd.run();
+    _mockLoadMigrations.mockImplementation(async () => [
+      { name: "0042_add_refunds", instance: fakeMigration },
+    ]);
+    await migrateWith({}).cmd.run();
+
+    _mockLoadMigrations.mockImplementation(async () => [
+      ...clashing,
+      { name: "0043_create_widgets", file: "0043_create_widgets", instance: new CreateWidgets() },
+    ]);
+    await migrateWith({}).cmd.run();
+    expect(await tableExists("widgets")).toBe(true);
+  });
+
+  it("still refuses a renumbered copy of an applied migration, with its own message", async () => {
+    _mockLoadMigrations.mockImplementation(async () => [
+      { name: "001_create_posts_table", instance: fakeMigration },
+    ]);
+    await migrateWith({}).cmd.run();
+    _mockLoadMigrations.mockImplementation(async () => [
+      { name: "0001_create_posts_table", instance: fakeMigration },
+    ]);
+    const error = await migrateWith({})
+      .cmd.run()
+      .catch((e: unknown) => e);
+    expect((error as Error).message).toContain("renumbered");
+  });
+});
+
+describe("MigrateCommand.run() — --pretend", () => {
+  it("prints the SQL and leaves the schema and the tracking table untouched", async () => {
+    _mockLoadMigrations.mockImplementation(async () => [
+      { name: "001_create_widgets", file: "001_create_widgets", instance: new CreateWidgets() },
+    ]);
+    const { cmd, lines } = migrateWith({ pretend: true });
+    await cmd.run();
+    const out = lines.join("\n");
+    expect(out).toContain("001_create_widgets");
+    expect(out).toMatch(/CREATE TABLE[^;]*widgets/i);
+    expect(await tableExists("widgets")).toBe(false);
+    const recorded = await db`SELECT migration FROM migrations`;
+    expect(recorded).toHaveLength(0);
+  });
+
+  it("says nothing is pending when nothing is", async () => {
+    _mockLoadMigrations.mockImplementation(async () => []);
+    const { cmd, lines } = migrateWith({ pretend: true });
+    await cmd.run();
+    expect(lines.some((l) => l.includes("Nothing to migrate"))).toBe(true);
+  });
+});
+
+describe("MigrateCommand.run() — database.backupBeforeMigrate", () => {
+  let dir: string;
+  let cwd: string;
+  let appEnv: string | undefined;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "zt-premigrate-"));
+    cwd = process.cwd();
+    appEnv = Bun.env["APP_ENV"];
+    process.chdir(dir);
+    _mockLoadMigrations.mockImplementation(async () => [
+      { name: "001_create_widgets", file: "001_create_widgets", instance: new CreateWidgets() },
+    ]);
+  });
+
+  afterEach(() => {
+    process.chdir(cwd);
+    if (appEnv === undefined) delete Bun.env["APP_ENV"];
+    else Bun.env["APP_ENV"] = appEnv;
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  async function onFile(): Promise<string> {
+    const path = join(dir, "db.sqlite");
+    await db.end();
+    db = new SQL(`sqlite://${path}`);
+    _setDbConnection(db);
+    await db`CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY)`;
+    return path;
+  }
+
+  const snapshots = (): string[] => {
+    try {
+      return readdirSync(join(dir, MigrateCommand.BACKUP_DIR));
+    } catch {
+      return [];
+    }
+  };
+
+  it("snapshots a SQLite database in production before migrating", async () => {
+    const path = await onFile();
+    Bun.env["APP_ENV"] = "production";
+    const { cmd } = migrateWith({}, { "database.backupBeforeMigrate": true, "database.url": path });
+    await cmd.run();
+    expect(snapshots()).toHaveLength(1);
+    expect(await tableExists("widgets")).toBe(true);
+  });
+
+  it("takes nothing outside production, with the flag off, or with --skip-backup", async () => {
+    const path = await onFile();
+    Bun.env["APP_ENV"] = "local";
+    await migrateWith({}, { "database.backupBeforeMigrate": true, "database.url": path }).cmd.run();
+    expect(snapshots()).toHaveLength(0);
+
+    Bun.env["APP_ENV"] = "production";
+    await migrateWith(
+      { "skip-backup": true },
+      {
+        "database.backupBeforeMigrate": true,
+        "database.url": path,
+      },
+    ).cmd.run();
+    expect(snapshots()).toHaveLength(0);
+  });
+
+  it("does not migrate when the backup fails", async () => {
+    await onFile();
+    Bun.env["APP_ENV"] = "production";
+    const { cmd } = migrateWith(
+      {},
+      { "database.backupBeforeMigrate": true, "database.url": join(dir, "missing.sqlite") },
+    );
+    const error = await cmd.run().catch((e: unknown) => e);
+    expect((error as Error).message).toContain("Not migrating");
+    expect(await tableExists("widgets")).toBe(false);
+  });
+
+  it("says plainly that no backup was taken on a server database, then migrates", async () => {
+    Bun.env["APP_ENV"] = "production";
+    const { cmd, lines } = migrateWith(
+      {},
+      { "database.backupBeforeMigrate": true, "database.url": "postgres://db.internal/app" },
+    );
+    await cmd.run();
+    expect(lines.join("\n")).toContain("No backup was taken");
+    expect(snapshots()).toHaveLength(0);
+    expect(await tableExists("widgets")).toBe(true);
+  });
+});

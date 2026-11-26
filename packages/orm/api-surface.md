@@ -846,6 +846,7 @@ interface CursorPaginateResult = {
 }
 
 interface DatabaseConfigShape = {
+  backupBeforeMigrate?: boolean | undefined
   driver: 'sqlite' | 'postgres' | 'mysql'
   pool?: {    max?: number;    idleTimeout?: number;} | undefined
   replicas?: string[] | undefined
@@ -1294,6 +1295,7 @@ class MigrateCommand = {
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static readonly BACKUP_DIR: string
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown

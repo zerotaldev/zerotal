@@ -23,7 +23,12 @@ describe("MigrateCommand", () => {
     expect(MigrateCommand.aliases).toEqual(["db:migrate"]);
     expect(MigrateCommand.description).toBe("Run all pending database migrations");
     expect(MigrateCommand.needsApp).toBe(true);
-    expect(MigrateCommand.flags.map((f) => f.name)).toEqual(["fresh", "seed"]);
+    expect(MigrateCommand.flags.map((f) => f.name)).toEqual([
+      "fresh",
+      "seed",
+      "pretend",
+      "skip-backup",
+    ]);
   });
 });
 

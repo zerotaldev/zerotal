@@ -57,6 +57,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: "Prologue",
     items: [
       { label: "About Zerotal", slug: "about" },
+      { label: "In Production", slug: "in-production" },
       { label: "Release Notes", slug: "changelog" },
       { label: "Upgrade Guide", slug: "upgrade" },
       { label: "Support Policy", slug: "support-policy" },

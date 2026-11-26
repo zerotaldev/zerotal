@@ -8,7 +8,8 @@ description: Run recurring tasks on a cron-like schedule from class files or a f
 Run tasks on a cron-like schedule without editing the system crontab. Drop a
 `Schedule` subclass in `app/schedules/` and it is auto-registered at boot; a
 fluent `Scheduler` facade is also available for quick inline definitions.
-Schedules fire in the worker process (`bun zt worker`).
+Schedules fire in the worker process (`bun zt worker`), and in the `scheduler`
+tab of `bun zt dev` while you develop.
 
 ## Getting Started
 
@@ -38,11 +39,15 @@ Registering the provider switches on the following, in lifecycle order:
 - `onRegister` — registers the `app/schedules/` convention, binds the
   `scheduler` manager and the `scheduler.runs` run store as lazy singletons, and
   contributes the static-config check to `zt doctor`.
-- `onBooting` — resolves the `scheduler` binding so it is ready before boot finishes.
+- `onBooting` — resolves the `scheduler` and `scheduler.runs` bindings so both are
+  ready before boot finishes.
 - `onBooted` — subscribes the run log to task events and lazily registers the
-  `schedule:list` and `schedule:runs` commands (when a command runner is present).
+  `schedule:list`, `schedule:runs`, `schedule:run` and `schedule:work` commands
+  (when a command runner is present).
 - `onStarted` — calls `scheduler.start()`, arming every registered cron.
 - `onStopped` — calls `scheduler.stop()`, so nothing leaks between boots or test suites.
+- `devProcesses()` — adds the `scheduler` tab to `bun zt dev` (see
+  [Developing schedules](#developing-schedules)).
 
 > **Note** — The provider itself loads in `web`, `console`, and `worker`, but the
 > `app/schedules/` discovery convention runs only in `worker` (to execute the
@@ -282,6 +287,65 @@ Scheduler.job("nightly-backup", () => runBackup())
 > **Tip** — Prefer class-based schedules for anything non-trivial — they're
 > discoverable, testable, and keep each task in its own file. Reach for the facade
 > for one-liners.
+
+## Developing schedules
+
+Generate a schedule, then run it by hand while you write it:
+
+```bash
+# in your project root
+bun zt make:schedule SendReminders
+# Created: app/schedules/SendReminders.ts
+bun zt schedule:run SendReminders
+```
+
+`make:schedule` writes a `Schedule` subclass that runs hourly, with an empty
+`handle()` for the work. It imports from `zerotal/scheduler` and is formatted the
+way the starters format code, so `format:check` and `typecheck` pass on it as
+generated. If `bootstrap/providers.ts` does not list `SchedulerProvider`, it says
+so: without the provider, `app/schedules/` is never loaded.
+
+### `bun zt dev` runs them
+
+With `SchedulerProvider` registered, `bun zt dev` runs the scheduler in its own
+`scheduler` tab beside the server, so schedules fire on their cron while you work.
+Each run, failure and skip is printed in the tab as it happens:
+
+```text
+[scheduler] Scheduler running 1 task(s):
+[scheduler]   SendReminders  0 * * * *  next 2026-11-26T16:00:00.000Z
+[scheduler] ✓ SendReminders ran in 41 ms
+```
+
+The tab restarts with the server whenever a file under `app/`, `config/` or
+`routes/` changes, so a schedule you add or edit runs as saved. It runs
+`bun zt schedule:work`, which runs the scheduler and nothing else; the queue has
+its own tab. To leave it out:
+
+```bash
+# in your project root
+bun zt dev --without=scheduler
+```
+
+or add `"scheduler"` to `app.dev.disable` in `config/app.ts`. Production still
+runs schedules with `bun zt worker`.
+
+### Run one now
+
+`bun zt schedule:run <name>` runs one task immediately, once, and exits with its
+result: `0` when it succeeded, `1` when it threw (with the error printed) or when
+no task has that name (with the names that do exist). A class-based schedule's
+name is its class name unless it sets `name`.
+
+```bash
+# in your project root
+bun zt schedule:run SendReminders && echo "it worked"
+```
+
+The task runs whatever its cron, time window, `environments`, `when()` and
+`skip()` say: you asked for it by name. The overlap lock is not taken, so do not
+run a long task by hand while a worker may be running it. The run is recorded
+like any other, so it appears in [`schedule:runs`](#run-history).
 
 ## Listing schedules
 
@@ -560,6 +624,9 @@ Schedules fire in **worker mode** — a separate Bun process started by the CLI.
 bun zt worker       # starts the queue worker + scheduler
 ```
 
+`bun zt schedule:work` runs the scheduler alone, without consuming the queue. It is
+what the `scheduler` tab in `bun zt dev` runs, and stops on `SIGINT` or `SIGTERM`.
+
 For simpler deployments, `AppServiceProvider.onStarted()` can run inline polling
 instead of a dedicated worker process (skip it when this IS the worker):
 
@@ -599,12 +666,15 @@ The `Scheduler` facade resolves the `scheduler` container binding — a
 
 ### Commands
 
-`@zerotal/scheduler` ships one command:
+`@zerotal/scheduler` ships four commands, and `@zerotal/core` ships the generator:
 
-| Command                       | What it does                                           |
-| ----------------------------- | ------------------------------------------------------ |
-| `bun zt schedule:list`        | List scheduled tasks with their next run time          |
-| `bun zt schedule:runs [name]` | Recent recorded runs, newest first (`--limit` to page) |
+| Command                       | What it does                                                |
+| ----------------------------- | ----------------------------------------------------------- |
+| `bun zt schedule:list`        | List scheduled tasks with their next run time               |
+| `bun zt schedule:run <name>`  | Run one task now, once, and exit with its result (0 or 1)   |
+| `bun zt schedule:work`        | Run the scheduler in the foreground; what `bun zt dev` runs |
+| `bun zt schedule:runs [name]` | Recent recorded runs, newest first (`--limit` to page)      |
+| `bun zt make:schedule <Name>` | Create `app/schedules/<Name>.ts`, a `Schedule` subclass     |
 
 ### SchedulerManager
 

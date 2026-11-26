@@ -114,6 +114,7 @@ export async function startDevMode(options: StartDevModeOptions): Promise<void> 
     onServerReady: () => {
       supervisor.start(supervised.filter((entry) => entry.after === "server"));
     },
+    onServerRestart: () => void supervisor.restartWithServer(),
     onCleanup: async () => {
       await supervisor.stopAll();
       deck.stop();

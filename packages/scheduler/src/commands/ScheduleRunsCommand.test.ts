@@ -65,6 +65,15 @@ describe("schedule:runs", () => {
     expect(col.out).toContain("5000 ms");
   });
 
+  it("lists every task when the name is omitted, which the runner passes as empty", async () => {
+    const store = new MemoryStore();
+    store.record(run("a"));
+    store.record(run("b"));
+    const { c, col } = make(store, { name: "" });
+    await c.run();
+    expect(col.out).toContain("Recent runs (2)");
+  });
+
   it("filters to one task by name", async () => {
     const store = new MemoryStore();
     store.record(run("a"));

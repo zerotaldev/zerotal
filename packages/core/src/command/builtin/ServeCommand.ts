@@ -299,6 +299,7 @@ export class ServeCommand extends Command {
           ["registered by", entry.registrant],
           ["restart", entry.restart],
           ["after", entry.after],
+          ...(entry.restartOnChange ? _ON_CHANGE_ROW : []),
         ],
         4,
       );
@@ -557,6 +558,9 @@ export function _onOrchestratorLine(line: string): void {
     }
   }
 }
+
+/** The `--list` row for a process that restarts with the server. */
+const _ON_CHANGE_ROW: [string, string][] = [["on change", "restarts with the server"]];
 
 /** Split a `--only` / `--without` value into names. Absent means "no filter". */
 function _names(flag: unknown): string[] {

@@ -576,7 +576,14 @@ override devProcesses(): DevProcessDefinition[] {
 Use `run: async (signal) => …` instead of `command` for work with no separate
 binary; the signal aborts on shutdown and on a restart. Set `after: "server"` for
 a process that talks to the server, so it does not spend its restart budget
-against a closed port before the server has bound.
+against a closed port before the server has bound. Set `restartOnChange: true` for
+a process that loads the app's own files, so it restarts with the server when one
+of them changes instead of running the code it booted with; the scheduler's tab
+does this for `app/schedules/`.
+
+A `zt` command runs in the mode its own name selects (`queue:work` as `worker`,
+anything unlisted as `console`), the same as when a developer runs it by hand. It
+does not inherit `web` from `bun zt dev`.
 
 Two things worth knowing:
 

@@ -18,6 +18,7 @@
  */
 import { describe, it, expect } from "bun:test";
 import { DevOrchestrator } from "./DevOrchestrator.ts";
+import type { DevOrchestratorHooks } from "./DevOrchestrator.ts";
 
 /** A promise the test resolves by hand, standing in for slow work. */
 function gate(): { wait: Promise<void>; release: () => void } {
@@ -37,16 +38,21 @@ interface Harness {
   finishBuild: () => Promise<void>;
 }
 
-function harness(): Harness {
+function harness(hooks: (events: string[]) => DevOrchestratorHooks = () => ({})): Harness {
   const events: string[] = [];
   let live = 0;
   let peak = 0;
   let pending: (() => void)[] = [];
 
-  const orchestrator = new DevOrchestrator(3000, "/app", async () => ({
-    success: true,
-    logs: [],
-  }));
+  const orchestrator = new DevOrchestrator(
+    3000,
+    "/app",
+    async () => ({
+      success: true,
+      logs: [],
+    }),
+    hooks(events),
+  );
 
   // These are private; a test reaching them is the price of asserting the ordering of
   // process work without spawning processes.
@@ -156,5 +162,21 @@ describe("concurrent restart requests", () => {
 
     expect(h.events.filter((e) => e === "spawn")).toHaveLength(2);
     expect(h.peak()).toBe(1);
+  });
+});
+
+describe("onServerRestart", () => {
+  it("fires once per restart, before the new server is spawned", async () => {
+    const h = harness((events) => ({ onServerRestart: () => events.push("hook") }));
+
+    const first = requestRestart(h.orchestrator);
+    await h.finishBuild();
+    await first;
+    const second = requestRestart(h.orchestrator);
+    await h.finishBuild();
+    await second;
+
+    expect(h.events.filter((e) => e === "hook")).toHaveLength(2);
+    expect(h.events.indexOf("hook")).toBeLessThan(h.events.indexOf("spawn"));
   });
 });

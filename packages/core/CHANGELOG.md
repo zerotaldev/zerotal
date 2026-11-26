@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`bun zt make:schedule <Name>`** writes `app/schedules/<Name>.ts`, a `Schedule` subclass that
+  runs hourly and imports from `zerotal/scheduler`. It passes a starter's `format:check` and
+  `typecheck` as generated, and warns when `bootstrap/providers.ts` does not list
+  `SchedulerProvider`, without which the file is never loaded.
+- **A dev process can restart with the server.** `restartOnChange: true` on a
+  `DevProcessDefinition` restarts that process whenever the server restarts for a backend
+  change, so a process that loads the app's own files runs the code on disk. `zt dev --list`
+  shows it as `on change`.
+
 ### Changed
 
 - **`bun zt test` is quiet by default.** It runs the suite with `LOG_LEVEL=warn`, so the
@@ -26,6 +37,12 @@ follows the Zerotal monorepo's unified versioning.
   one path showed whichever name was registered last: `GET /projects` read `projects.store`
   and `PUT /projects/:project` read `projects.destroy`. `route()` and the generated route
   types were always right; only the table was wrong.
+
+- **A dev process boots in the mode its own command selects.** `zt dev` sets `APP_TYPE=web` for
+  itself, and every process it supervised inherited it, so `queue:work` booted as a web process
+  rather than a worker, and a process that loads `app/schedules/` found nothing there. The
+  variable is no longer passed on: each process boots the way it does when run by hand.
+
 - **Live-reload works under a strict Content-Security-Policy.** The dev client was an inline
   `<script>`, so an app whose policy refused inline scripts had to add `'unsafe-inline'` in
   development to keep it. It is now a file, `/__dev/reload.js`, served while `zt dev` is

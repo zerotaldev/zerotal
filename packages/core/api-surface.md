@@ -847,6 +847,7 @@ interface DevProcessDefinition = {
   label?: string
   name: string
   restart?: 'always' | 'on-failure' | 'never'
+  restartOnChange?: boolean
   run?: (signal: AbortSignal) => Promise<void>
 }
 
@@ -2046,6 +2047,36 @@ class MakeRequestCommand = {
 class MakeResourceCommand = {
   new (): MakeResourceCommand
   static args: {    name: string;    required: boolean;    description: string;}[]
+  static commandName: string
+  static description: string
+  static flags: FlagDef[]
+  static needsApp: boolean
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  info: (msg: string) => void
+  line: (msg: string) => void
+  newLine: () => void
+  rest: string[]
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
+  warn: (msg: string) => void
+  write: (msg: string) => void
+}
+
+class MakeScheduleCommand = {
+  new (): MakeScheduleCommand
+  static args: {    name: string;    required: boolean;    default: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]

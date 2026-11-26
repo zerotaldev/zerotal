@@ -35,7 +35,9 @@ export class ScheduleRunsCommand extends Command {
       return;
     }
 
-    const name = this.args["name"];
+    // The runner passes an omitted argument as "", which filtered on a name no
+    // task has and reported every history as empty.
+    const name = this.args["name"] || undefined;
     const limit = Number(this.flags["limit"] ?? 20);
     const runs = store.recent(limit, name);
 

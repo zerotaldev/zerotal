@@ -34,6 +34,7 @@ passes; without Prettier, the stubs are already in the starters' style.
 | `make:request`        | `app/requests/<Name>.ts`              | `FormRequest` with `rules()`                                    |
 | `make:notification`   | `app/notifications/<Name>.ts`         | Extends `Notification`                                          |
 | `make:job`            | `app/jobs/<Name>.ts`                  | Queue `Job`, self-registers                                     |
+| `make:schedule`       | `app/schedules/<Name>.ts`             | `Schedule` subclass, discovered at boot                         |
 | `make:event`          | `app/events/<Name>.ts`                | `--broadcast` extends `BroadcastingEvent`                       |
 | `make:listener`       | `app/listeners/<Name>.ts`             | `handle(event)` method                                          |
 | `make:observer`       | `app/observers/<Name>.ts`             | `--model` sets the target model                                 |
@@ -123,6 +124,20 @@ bun zt make:job ProcessPayment
 
 The stub extends `Job` from `zerotal/queue`, sets a `default` queue, and calls
 `JobRegistry.register(...)` at the bottom of the file so the job is dispatchable.
+
+## make:schedule
+
+```bash
+# in your project root
+bun zt make:schedule SendReminders
+# Created: app/schedules/SendReminders.ts
+```
+
+The stub extends `Schedule` from `zerotal/scheduler`, runs hourly
+(`override cron = "0 * * * *"`) and leaves `handle()` for the work. The scheduler
+discovers it at boot; `bun zt schedule:run SendReminders` runs it once, now. It
+warns when `bootstrap/providers.ts` does not list `SchedulerProvider`. See
+[Developing schedules](/docs/scheduler#developing-schedules).
 
 ## make:event
 

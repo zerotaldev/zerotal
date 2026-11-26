@@ -6,6 +6,8 @@ node_modules/
 *.sqlite*
 .env
 public/assets/
+# Written by `bun zt assets:build` (a deploy runs it) from resources/css/app.css.
+public/css/
 
 # The site gate's state — never committed.
 #
@@ -18,3 +20,6 @@ storage/framework/gate.json
 
 # The binary `bun zt compile` writes.
 /zerotal-app
+
+# The log files the app writes as it runs, one per day.
+storage/logs/

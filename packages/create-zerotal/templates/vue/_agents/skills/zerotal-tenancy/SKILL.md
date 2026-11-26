@@ -26,9 +26,12 @@ If `app_info` does not list it, ask before `bun add @zerotal/tenancy`.
 
 ## Traps
 
-- **Outside a tenant boundary nothing is scoped.** A query with no tenant resolved returns
-  every tenant's rows. Jobs, commands and schedules run outside a request: wrap their work
-  in `TenantContext.run(tenant, ...)`, one tenant at a time.
+- **Outside a tenant boundary a tenant-owned query matches nothing.** It fails closed: no
+  error, just an empty result. Jobs, commands, schedules and test setup run outside a
+  request: wrap their work in `TenantContext.run(tenant, ...)`, one tenant at a time.
+- **Factories skip model hooks**, including the one that fills the tenant column. A factory
+  for a tenant-owned model needs `.dispatchEvents()`, and its rows must be created inside a
+  tenant boundary.
 - **Never take the tenant id from the request body or query string.** It comes from the
   resolved context; a model's `tenantId` is filled on create for you.
 - **Bypassing is explicit.** `withoutTenancy()` on a query is for an admin screen that

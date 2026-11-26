@@ -21,6 +21,16 @@ follows the Zerotal monorepo's unified versioning.
   `oven-sh/setup-bun`), with the version in a comment, and declares
   `permissions: contents: read`. A moved tag can no longer change what an app's CI runs.
 
+### Fixed
+
+- **A new app no longer offers its logs and built CSS to git.** Every starter ignores
+  `storage/logs/`, where the app writes a log file a day. The React and Vue starters also
+  ignore `public/css/`, which `assets:build` writes during a deploy, and leave it out of
+  `format:check`, which failed on it after a release build.
+- **`rejectInput()` accepts any route's context** in the React, Vue and Flow starters. It was
+  typed for string route params only, so a route with a bound model, such as
+  `projects/[project]/…`, could not call it without a type error.
+
 ## [1.17.4] — 2026-11-26
 
 ### Added

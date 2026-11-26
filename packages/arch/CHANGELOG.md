@@ -19,6 +19,15 @@ against. `mcp-surface.md` is diffed alongside it.
   exported, so `zt about` can list what the framework ships that an app does not have. The
   entries are unchanged.
 
+### Fixed
+
+- **The `zerotal-tenancy` skill says what happens outside a tenant.** It said a query with no
+  tenant returns every tenant's rows; a tenant-owned query fails closed and returns nothing. It
+  now also says that factories skip the hook that fills the tenant column, so a factory for a
+  tenant-owned model needs `.dispatchEvents()`.
+- **The `zerotal-crud-resource` skill names the right argument for `make:factory`**: the model,
+  as in `make:factory Task`. Passing `TaskFactory` writes `TaskFactoryFactory`.
+
 ## [1.17.4] — 2026-11-26
 
 ### Added

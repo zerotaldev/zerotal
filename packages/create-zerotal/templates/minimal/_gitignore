@@ -16,3 +16,6 @@ public/app.css
 # state, like a log, not configuration.
 storage/framework/gate.json
 **/storage/framework/gate.json
+
+# The log files the app writes as it runs, one per day.
+storage/logs/

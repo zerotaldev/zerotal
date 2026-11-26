@@ -28,6 +28,11 @@ bun add @zerotal/tenancy
 
 The package owns the `tenants` registry and the `tenant_members` pivot tables — they are provisioned automatically on boot. You do **not** define a tenant model or write a migration for them.
 
+They are created when the web server, a worker or a test run boots, not by a console
+command. On a new database, start the app once (`bun zt dev`) before a command such as
+`db:seed` creates a tenant. Being outside your migrations, they are also not dropped by
+`migrate:fresh`.
+
 ## Register the provider
 
 Supply the config with `TenancyProvider.withConfig(...)`, then add the provider to the array in `bootstrap/providers.ts`:
@@ -257,7 +262,7 @@ has been made.
 
 Compose the `Tenantable` mixin via [`Model.using`](/docs/orm#composing-model-mixins) onto any model that belongs to a tenant. Two things happen automatically:
 
-1. Every query on the model receives `WHERE tenant_id = <current tenant id>` (skipped outside a tenant context).
+1. Every query on the model receives `WHERE tenant_id = <current tenant id>`. Outside a tenant context the query matches nothing: it fails closed rather than returning every tenant's rows.
 2. `create()` / `save()` inject `tenant_id` on new records, so you never accidentally write cross-tenant data.
 
 ```typescript
@@ -267,10 +272,18 @@ import { Tenantable } from "@zerotal/tenancy";
 
 @(table("projects").withTimestamps())
 export class Project extends Model.using(Tenantable) {
+  static override tenantColumn = "tenantId";
+
   @column() name!: string;
   @column() tenantId!: number;
 }
 ```
+
+> **Warning** — Name the attribute in `tenantColumn` when the model declares it with
+> `@column`. The create hook sets the value under that name, and a model with declared
+> columns saves only those attributes: left at `tenant_id`, every new row is saved with
+> no tenant, and the scope then hides it. Queries map the attribute to its column, so
+> the scope is unchanged.
 
 ```typescript fragment
 // in a controller — inside a TenancyMiddleware boundary (tenant id = 7):
@@ -390,6 +403,12 @@ await Tenant.addMember(userId, { admin: true });
 const team = await Tenant.members(); // hydrated User models
 await Tenant.update({ name: "Acme Corp" }); // throws TenantForbiddenError unless admin
 ```
+
+> **Warning** — In 1.17.4 `Tenant.create()`, `update()` and `forceUpdate()` throw a
+> `MassAssignmentError` in an app, because `TenantModel` declares no fillable columns.
+> Create the tenant from trusted code with `TenantModel.forceCreate()`, passing `slug`,
+> `name` and `isActive: true`, then add its first admin inside it with `Tenant.run()` and
+> `Tenant.addMember()`. The [tutorial](/docs/tutorial/multi-tenancy) shows both.
 
 > **Note** — Membership requires an authenticatable User model. Compose `Authenticatable` (from `@zerotal/auth`) on it, or `Tenancy` throws `TenancyConfigError` when a membership method runs.
 
@@ -511,6 +530,21 @@ test("a tenant cannot read another tenant's posts", async () => {
   expect(seen).toHaveLength(0); // the assertion the whole feature exists for
   await app.close();
 });
+```
+
+**Create test data inside a tenant.** Outside a boundary nothing is stamped with a
+tenant, and nothing tenant-owned can be read back. Factories also skip model hooks by
+default, including the one that fills the tenant column, so a factory for a tenant-owned
+model needs `.dispatchEvents()`:
+
+```typescript fragment
+// database/factories/PostFactory.ts
+export const PostFactory = Factory.define(Post, (fake) => ({
+  title: fake.title(),
+})).dispatchEvents();
+
+// in a test
+const post = await Tenant.run(acme, () => PostFactory.create());
 ```
 
 **Assert the count, not just the absence of a specific row.** `toHaveLength(0)`

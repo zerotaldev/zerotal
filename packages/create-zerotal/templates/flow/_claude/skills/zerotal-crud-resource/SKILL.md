@@ -17,7 +17,7 @@ questions below the way this app already answers them.
 
 1. **Model and schema.** Migrations own the schema here, so the table needs one: `bun zt make:model <Name> -m`. Make the model's `table(...)` name and the
    migration's table name agree; nothing checks it until the first query.
-2. **Factory.** `bun zt make:factory <Name>Factory`. Tests and seeders both need one.
+2. **Factory.** `bun zt make:factory <Name>` — the model's name; it writes `<Name>Factory`. Tests and seeders both need one.
 3. **Policy.** `bun zt make:policy <Name>Policy --model <Name>`. Policies in
    `app/policies/` are discovered; there is nothing to register.
 4. **Validation.** `bun zt make:request <Name>Request`, one request for create and update

@@ -742,7 +742,7 @@ Type helpers exported from `@zerotal/orm`:
 | `bun zt migrate:generate`                  | Auto-generate a migration from model schema changes       |
 | `bun zt make:model Post --migration`       | Create a model class, optionally with a migration         |
 | `bun zt make:migration create_posts_table` | Create a new migration file                               |
-| `bun zt make:factory PostFactory`          | Create a new model factory                                |
+| `bun zt make:factory Post`                 | Create `PostFactory` for the `Post` model                 |
 | `bun zt make:seeder PostSeeder`            | Create a new database seeder class                        |
 | `bun zt db:seed`                           | Run database seeders from `database/seeders/`             |
 

@@ -43,6 +43,11 @@ follows the Zerotal monorepo's unified versioning.
   rather than a worker, and a process that loads `app/schedules/` found nothing there. The
   variable is no longer passed on: each process boots the way it does when run by hand.
 
+- **`Storage.fake()` builds the URLs the real disk does.** A fake took its URL base from the
+  disk's `url` and otherwise used `/storage`, while the real disk falls back to where it is
+  served. So a test faking the built-in `public` disk saw `/storage/media/a.png` where the app
+  serves `/storage/public/media/a.png`. The fake now uses `url`, then `serve.path`, then
+  `/storage`, as the real disk does.
 - **Live-reload works under a strict Content-Security-Policy.** The dev client was an inline
   `<script>`, so an app whose policy refused inline scripts had to add `'unsafe-inline'` in
   development to keep it. It is now a file, `/__dev/reload.js`, served while `zt dev` is

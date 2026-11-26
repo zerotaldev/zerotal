@@ -46,7 +46,7 @@ export default CacheConfig({
   // One of 'sqlite' | 'redis' | 'memory', written literally: the field is that
   // union and `env()` returns a plain string.
   driver: "sqlite",
-  prefix: env("CACHE_PREFIX", "zerotal:"), // prepended to every key
+  prefix: env("CACHE_PREFIX", "zerotal:cache:"), // prepended to every key
   ttl: env("CACHE_TTL", 3600), // default TTL in seconds (1 hour)
 
   sqlite: {
@@ -55,12 +55,15 @@ export default CacheConfig({
 });
 ```
 
-| Field         | Required | Default      | Description                                                 |
-| ------------- | -------- | ------------ | ----------------------------------------------------------- |
-| `driver`      | no       | `"sqlite"`   | Which backend to use: `"sqlite"`, `"redis"`, or `"memory"`. |
-| `prefix`      | no       | `"zerotal:"` | Key prefix prepended to every cache key.                    |
-| `ttl`         | no       | `3600`       | Default TTL in seconds when a call omits one.               |
-| `sqlite.path` | no       | `":memory:"` | SQLite file path, or `":memory:"` for an in-process store.  |
+| Field         | Required | Default            | Description                                                 |
+| ------------- | -------- | ------------------ | ----------------------------------------------------------- |
+| `driver`      | no       | `"sqlite"`         | Which backend to use: `"sqlite"`, `"redis"`, or `"memory"`. |
+| `prefix`      | no       | `"zerotal:cache:"` | Key prefix prepended to every cache key.                    |
+| `ttl`         | no       | `3600`             | Default TTL in seconds when a call omits one.               |
+| `sqlite.path` | no       | `":memory:"`       | SQLite file path, or `":memory:"` for an in-process store.  |
+
+> **Note** — `flush()` deletes every key under the prefix. On a Redis the queue also uses,
+> keep the prefix apart from the queue's `zerotal:jobs:`, as the default does.
 
 > **Note** — The Redis driver connects through Bun's built-in `redis` client, which reads the `REDIS_URL` environment variable. There is no `redis` block in the cache config — set `REDIS_URL` in your `.env` instead.
 
@@ -145,16 +148,18 @@ const stats = await Cache.remember(`user:${userId}:stats`, 60, async () => {
 
 ## Tags
 
-Group related keys under named tags so you can invalidate them together. `Cache.tags()` returns a `TaggedCache` whose keys all share a tag prefix — useful when several cache entries depend on the same underlying data:
+Group related keys under a set of tags so you can invalidate them together. `Cache.tags()`
+returns a `TaggedCache`: a namespace named by its set of tags, in which `set`, `get`,
+`remember` and `flush` work as they do on `Cache`. Flushing it clears every entry written
+under that same set of tags and nothing else.
 
 ```ts fragment
 // in a controller
 import { Cache } from "zerotal/cache";
 
-// Store with tags
-await Cache.tags(["posts", "public"]).set("posts:page:1", data, 300);
-await Cache.tags(["posts", "public"]).set("posts:page:2", data, 300);
-await Cache.tags(["posts", "featured"]).set("posts:featured", featured, 300);
+// Store under a set of tags
+await Cache.tags(["posts"]).set("posts:page:1", data, 300);
+await Cache.tags(["posts"]).set("posts:page:2", data, 300);
 await Cache.tags([`user:${userId}`]).set(`user:${userId}:profile`, profile, 600);
 
 // remember() with tags
@@ -162,14 +167,20 @@ const featured = await Cache.tags(["posts", "featured"]).remember("posts:feature
   Post.query().where("featured", true).get(),
 );
 
-// Bust all keys under the 'posts' tag group
+// Bust both pages of posts
 await Cache.tags(["posts"]).flush();
 
-// Bust only a specific user's cache
+// Bust the featured list: the same set of tags it was stored under, in any order
+await Cache.tags(["featured", "posts"]).flush();
+
+// Bust only one user's cache
 await Cache.tags([`user:${userId}`]).flush();
 ```
 
-> **Note** — `tags(["posts"]).flush()` removes every key whose tag prefix starts with `posts:`. Because the tag prefix is positional, store and flush with the tags in the same order.
+> **Note** — A set of tags is one namespace, not an index per tag. The order of the names
+> does not matter, but the set does: `tags(["posts"]).flush()` does **not** clear an entry
+> written under `tags(["posts", "featured"])`. Flush with the set each entry was stored
+> under, or keep the entries that change together under one set.
 
 ### Tag-based invalidation in model hooks
 
@@ -177,10 +188,12 @@ await Cache.tags([`user:${userId}`]).flush();
 // app/models/Post.ts — inside a lifecycle hook or observer
 async afterCreate(post: Post) {
   await Cache.tags(["posts"]).flush();
+  await Cache.tags(["posts", "featured"]).flush();
 }
 
 async afterUpdate(post: Post) {
-  await Cache.tags(["posts", `post:${post.id}`]).flush();
+  await Cache.tags(["posts"]).flush();
+  await Cache.tags([`post:${post.id}`]).flush();
 }
 ```
 
@@ -343,13 +356,13 @@ export class AppServiceProvider extends ServiceProvider {
 
 ## Testing
 
-Use the `memory` driver in tests for speed and isolation — it never persists between runs. The simplest path is to set `CACHE_DRIVER=memory` in `.env.test` and let the provider build a memory cache automatically.
+Tests want a cache that keeps nothing between runs. The default config already is one: the `sqlite` driver at `":memory:"` lives and dies with the process. If your `config/cache.ts` points at a file or at Redis, choose the driver there by environment — the provider reads `cache.driver` from config, not from a `CACHE_DRIVER` variable of its own.
 
 To swap the cache for a single suite, rebind the `cache` singleton on the container before resolving the facade, then flush between tests to avoid bleed:
 
 ```ts fragment
 // in test setup
-import { Application } from "zerotal";
+import { currentApp } from "zerotal";
 import { Cache, CacheManager, MemoryDriver } from "zerotal/cache";
 
 const app = currentApp();

@@ -3,6 +3,7 @@ import type { AppEnvironment } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import type { LockManager } from "@zerotal/core/lock";
 import { CacheManager } from "../CacheManager.ts";
+import { CacheConfig } from "../config.ts";
 import { MemoryDriver } from "../drivers/MemoryDriver.ts";
 import { SqliteDriver } from "../drivers/SqliteDriver.ts";
 import { RedisDriver } from "../drivers/RedisDriver.ts";
@@ -31,7 +32,9 @@ export class CacheProvider extends ServiceProvider {
       const config = this.app.container.makeSync("config") as ConfigManager;
 
       const driver = config.get<string>("cache.driver", "sqlite");
-      const prefix = config.get<string>("cache.prefix", "zerotal:");
+      // The same default as `CacheConfig()`. An app with no config/cache.ts got `zerotal:`,
+      // the namespace the queue's Redis keys sit under, so `Cache.flush()` deleted them too.
+      const prefix = config.get<string>("cache.prefix", CacheConfig().prefix);
       const ttl = config.get<number>("cache.ttl", 3600);
       const sqlitePath = config.get<string>("cache.sqlite.path", ":memory:");
       const stampede = config.get<boolean>("cache.stampedeProtection", true);

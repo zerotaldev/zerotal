@@ -227,6 +227,11 @@ describe('starter parity', () => {
     });
   });
 
+  // The api starter writes DATABASE_URL into .env from the first run, and every one of its
+  // tests boots through tests/helpers.ts, which pins an in-memory database. The guard there
+  // would refuse a bare `bun test` that is already safe, so it is the one starter without it.
+  const UNGUARDED = new Set(['api']);
+
   it.each([...TEMPLATES])('%s guards a bare bun test with the test preload', async (template) => {
     const bunfig = await Bun.file(join(import.meta.dir, '..', 'templates', template, '_bunfig.toml'))
       .text()
@@ -234,7 +239,14 @@ describe('starter parity', () => {
     expect({
       template,
       guard: /^\[test\][^[]*^\s*preload\s*=\s*\[\s*"zerotal\/testing\/guard"\s*\]/m.test(bunfig),
-    }).toEqual({ template, guard: true });
+    }).toEqual({ template, guard: !UNGUARDED.has(template) });
+  });
+
+  it('api pins an in-memory database for every test, which is what makes it safe unguarded', async () => {
+    const helpers = await Bun.file(
+      join(import.meta.dir, '..', 'templates', 'api', 'tests', 'helpers.ts'),
+    ).text();
+    expect(helpers).toContain("database: { url: ':memory:' }");
   });
 
   it.each([...TEMPLATES])('%s keeps build-time packages out of devDependencies', async (template) => {

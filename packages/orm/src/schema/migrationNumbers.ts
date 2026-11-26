@@ -25,22 +25,38 @@ export interface _MigrationNumberClash {
   files: string[];
 }
 
+/** A timestamp to the second: two migrations sharing one is a real clash. */
+const TIMESTAMP = /^(\d{4}[_-]\d{2}[_-]\d{2}[_-]\d{6}|\d{14})(?=[_-]|$)/;
+/** A date alone. Not an ordinal: two migrations written the same day is normal. */
+const DATE_ONLY = /^(\d{4}[_-]\d{2}[_-]\d{2}|\d{8})(?=[_-]|$)/;
+/** A plain sequence number. */
+const SEQUENCE = /^(\d{1,6})(?=[_-]|$)/;
+
 /**
  * The ordinal a migration filename starts with, or `undefined` when it has none.
  *
- * Two shapes are read: a plain sequence number (`0042_add_x`, `42-add-x`) and a
- * `YYYY_MM_DD_HHMMSS_` timestamp, whose first group alone would make every migration
- * written in one year share the number `2024`. The key compares by value, so `042`
- * and `0042` are the same number.
+ * Read as a plain sequence number (`0042_add_x`, `42-add-x`) or a timestamp to the
+ * second (`2024_01_15_093000_`, `20240115093000_`). A date with no time
+ * (`2024_01_15_`, `2024-01-15-`, `20240115_`) is not an ordinal: files written on
+ * one day share it as a matter of course and sort by the rest of their name. Read
+ * as a number, it was the year, so every migration in a year "clashed".
+ *
+ * A letter straight after the number (`0042b_`) makes it no ordinal at all. That is
+ * deliberate: it is how an app keeps an already-run clash in its order — see
+ * {@link _describeMigrationNumberClashes}.
+ *
+ * The key compares by value, so `042` and `0042` are the same number.
  *
  * @internal
  */
 export function _migrationOrdinal(name: string): { key: string; spelled: string } | undefined {
-  const match = /^(\d{4}_\d{2}_\d{2}_\d{6}|\d+)(?=[_-]|$)/.exec(name);
-  if (!match) return undefined;
-  const spelled = match[1]!;
-  const key = spelled.includes("_") ? spelled : spelled.replace(/^0+(?=\d)/, "");
-  return { key, spelled };
+  const timestamp = TIMESTAMP.exec(name);
+  if (timestamp) return { key: timestamp[1]!.replace(/\D/g, ""), spelled: timestamp[1]! };
+  if (DATE_ONLY.test(name)) return undefined;
+  const sequence = SEQUENCE.exec(name);
+  if (!sequence) return undefined;
+  const spelled = sequence[1]!;
+  return { key: spelled.replace(/^0+(?=\d)/, ""), spelled };
 }
 
 /**
@@ -85,14 +101,20 @@ export function _describeMigrationNumberClashes(
   const lines = clashes.map(
     (clash) => `  ${clash.number}: ${clash.files.map((f) => `${f}.ts`).join(", ")}`,
   );
-  const example = clashes[0]!.files.at(-1)!;
-  const renamed = example.replace(/^(\d{4}_\d{2}_\d{2}_\d{6}|\d+)/, next);
+  const clash = clashes[0]!;
+  const example = clash.files.at(-1)!;
+  const renumbered = example.replace(SEQUENCE, next);
+  // A letter after the number keeps the file exactly where it sorted: `0042b_x`
+  // comes after every `0042_…` and before `0043_…`.
+  const lettered = example.replace(SEQUENCE, `${clash.number}b`);
   return (
     `Two different migrations share a number, usually because two branches each added ` +
     `"the next one":\n${lines.join("\n")}\n\n` +
-    `  Renumber the one that has not reached production to the next free number, e.g.\n` +
-    `    database/migrations/${example}.ts → database/migrations/${renamed}.ts\n` +
-    `  If it has already run somewhere, keep its recorded identity while renaming:\n` +
+    `  If the later one has not run anywhere yet, renumber it to the next free number:\n` +
+    `    database/migrations/${example}.ts → database/migrations/${renumbered}.ts\n` +
+    `  If it has already run somewhere, do not move it: a later migration may depend on\n` +
+    `  it. Keep its place with a letter after the number, and pin its recorded name:\n` +
+    `    database/migrations/${example}.ts → database/migrations/${lettered}.ts\n` +
     `    static override id = "${example}";`
   );
 }
@@ -120,6 +142,32 @@ export function _unappliedMigrationNumberClashes(
   return _migrationNumberClashes(files).filter((clash) =>
     clash.files.some((file) => pending.has(identity.get(file) ?? file)),
   );
+}
+
+/**
+ * Split unapplied clashes by whether the database has run part of them.
+ *
+ * `divergent` is a clash with an applied member and a pending one: two branches
+ * met, and this database ran one side first. That is the history the refusal
+ * exists for. `fresh` has nothing applied — a new database, which runs the files in
+ * name order like every other new database — so `migrate` warns and carries on
+ * rather than stopping every new environment of an app whose clash shipped long ago.
+ *
+ * @internal
+ */
+export function _partitionMigrationNumberClashes(
+  clashes: readonly _MigrationNumberClash[],
+  migrations: ReadonlyArray<{ file?: string | undefined; name: string }>,
+  pending: ReadonlySet<string>,
+): { divergent: _MigrationNumberClash[]; fresh: _MigrationNumberClash[] } {
+  const identity = new Map(migrations.map((m) => [_bareMigrationName(m.file ?? m.name), m.name]));
+  const divergent: _MigrationNumberClash[] = [];
+  const fresh: _MigrationNumberClash[] = [];
+  for (const clash of clashes) {
+    const anyApplied = clash.files.some((file) => !pending.has(identity.get(file) ?? file));
+    (anyApplied ? divergent : fresh).push(clash);
+  }
+  return { divergent, fresh };
 }
 
 /** A path or filename reduced to its bare migration name. */

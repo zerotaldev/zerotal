@@ -3,6 +3,7 @@ import {
   _describeMigrationNumberClashes,
   _migrationNumberClashes,
   _migrationOrdinal,
+  _partitionMigrationNumberClashes,
   _unappliedMigrationNumberClashes,
 } from "./migrationNumbers.ts";
 
@@ -15,7 +16,19 @@ describe("_migrationOrdinal", () => {
   });
 
   it("reads a dated name as its whole timestamp, not its year", () => {
-    expect(_migrationOrdinal("2024_01_01_000000_create_users")?.key).toBe("2024_01_01_000000");
+    expect(_migrationOrdinal("2024_01_01_000000_create_users")?.key).toBe("20240101000000");
+    expect(_migrationOrdinal("20240101000000_create_users")?.key).toBe("20240101000000");
+  });
+
+  it("has none for a date with no time: files written on one day share it as a matter of course", () => {
+    // Read as a number, each of these was the year, and every migration of a year clashed.
+    expect(_migrationOrdinal("2024_01_15_create_users")).toBeUndefined();
+    expect(_migrationOrdinal("2024-01-15-create_users")).toBeUndefined();
+    expect(_migrationOrdinal("20240115_create_users")).toBeUndefined();
+  });
+
+  it("has none when a letter follows the number, which is how an app keeps a run clash in place", () => {
+    expect(_migrationOrdinal("0042b_add_refunds")).toBeUndefined();
   });
 
   it("has none for a name that does not start with a number", () => {
@@ -47,6 +60,23 @@ describe("_migrationNumberClashes", () => {
         "2024_03_09_120000_create_posts.ts",
       ]),
     ).toEqual([]);
+  });
+
+  it("does not treat migrations dated the same day as clashing", () => {
+    expect(
+      _migrationNumberClashes([
+        "2026_11_01_create_x.ts",
+        "2026_11_20_add_y.ts",
+        "20261120_add_z.ts",
+        "20261120_add_w.ts",
+      ]),
+    ).toEqual([]);
+  });
+
+  it("still finds two migrations stamped with the same second", () => {
+    expect(_migrationNumberClashes(["2024_01_01_000000_a.ts", "20240101000000_b.ts"])).toHaveLength(
+      1,
+    );
   });
 
   it("accepts Windows separators", () => {
@@ -90,6 +120,34 @@ describe("_unappliedMigrationNumberClashes", () => {
   });
 });
 
+describe("_partitionMigrationNumberClashes", () => {
+  const migrations = [
+    { file: "0042_add_invoices", name: "0042_add_invoices" },
+    { file: "0042_add_refunds", name: "0042_add_refunds" },
+  ];
+  const clash = { number: "0042", files: ["0042_add_invoices", "0042_add_refunds"] };
+
+  it("calls a clash divergent when this database ran one side and not the other", () => {
+    const parts = _partitionMigrationNumberClashes(
+      [clash],
+      migrations,
+      new Set(["0042_add_refunds"]),
+    );
+    expect(parts).toEqual({ divergent: [clash], fresh: [] });
+  });
+
+  it("calls it fresh on a database that has run neither, which runs them in name order", () => {
+    // A new environment of an app whose clash shipped long ago: refusing here would
+    // stop every fresh database for something no fresh database gets wrong.
+    const parts = _partitionMigrationNumberClashes(
+      [clash],
+      migrations,
+      new Set(["0042_add_invoices", "0042_add_refunds"]),
+    );
+    expect(parts).toEqual({ divergent: [], fresh: [clash] });
+  });
+});
+
 describe("_describeMigrationNumberClashes", () => {
   it("names the files, the next free number and the identity pin", () => {
     const text = _describeMigrationNumberClashes(
@@ -99,5 +157,19 @@ describe("_describeMigrationNumberClashes", () => {
     expect(text).toContain("0042: 0042_add_invoices.ts, 0042_add_refunds.ts");
     expect(text).toContain("database/migrations/0043_add_refunds.ts");
     expect(text).toContain('static override id = "0042_add_refunds";');
+  });
+
+  it("keeps an already-run migration in its place rather than moving it after later ones", () => {
+    const text = _describeMigrationNumberClashes(
+      [{ number: "0042", files: ["0042_add_invoices", "0042_add_refunds"] }],
+      "0043",
+    );
+    // `0042b_` sorts after `0042_add_invoices` and before any `0043_`.
+    expect(text).toContain("database/migrations/0042b_add_refunds.ts");
+    expect(["0042_add_invoices", "0042b_add_refunds", "0043_alter_refunds"].sort()).toEqual([
+      "0042_add_invoices",
+      "0042b_add_refunds",
+      "0043_alter_refunds",
+    ]);
   });
 });

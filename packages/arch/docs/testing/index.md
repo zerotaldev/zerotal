@@ -274,7 +274,8 @@ pointing at the development database. The usual first sign is migration 001 fail
 "table already exists"; the worse one is `refreshDatabase()` emptying tables you were
 using.
 
-New apps load a guard from `bunfig.toml`:
+New apps load a guard from `bunfig.toml` (all but the `api` starter, whose tests already
+pin an in-memory database):
 
 ```toml
 [test]

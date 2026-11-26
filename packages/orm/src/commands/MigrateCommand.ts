@@ -1,18 +1,22 @@
-import { Command, ZerotalError, deployEnv, isProdLike, type FlagDef } from "@zerotal/core";
+import { Command, ZerotalError, type FlagDef } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
 import type { MigrationEntry } from "../schema/MigrationRunner.ts";
 import { MigrationRunner } from "../schema/MigrationRunner.ts";
 import { _getConnection, _rawStatement } from "../db/DB.ts";
 import {
   _describeMigrationNumberClashes,
+  _partitionMigrationNumberClashes,
   _unappliedMigrationNumberClashes,
 } from "../schema/migrationNumbers.ts";
 import { _pretendMigration } from "../schema/pretend.ts";
 import { loadMigrations } from "./_loadMigrations.ts";
 import { _nextMigrationPrefix } from "./MakeMigrationCommand.ts";
 import { runSeeders } from "./_runSeeders.ts";
-import { BackupError, isSqliteUrl, takeBackup } from "./_backup.ts";
-import { DbBackupCommand } from "./DbBackupCommand.ts";
+import {
+  _PRE_MIGRATE_BACKUP_DIR,
+  _backupBeforeMigrate,
+  _commandConfig,
+} from "./_preMigrateBackup.ts";
 
 /**
  * Runs all pending database migrations (`bun zt migrate`).
@@ -70,7 +74,7 @@ export class MigrateCommand extends Command {
   ];
 
   /** Where the pre-migrate snapshot goes: beside the nightly ones, never pruning them. */
-  static readonly BACKUP_DIR = `${DbBackupCommand.DEFAULT_DIR}/pre-migrate`;
+  static readonly BACKUP_DIR = _PRE_MIGRATE_BACKUP_DIR;
 
   async run(): Promise<void> {
     const fresh = this.flags["fresh"] as boolean;
@@ -85,17 +89,23 @@ export class MigrateCommand extends Command {
 
     // Before anything runs, and before the backup: a clash is a decision for the
     // author, and nothing about it gets better by having touched the database.
-    const clashes = _unappliedMigrationNumberClashes(records, pending);
-    if (clashes.length > 0) {
+    const next = _nextMigrationPrefix(records.map((r) => r.file ?? r.name));
+    const { divergent, fresh: unrun } = _partitionMigrationNumberClashes(
+      _unappliedMigrationNumberClashes(records, pending),
+      records,
+      pending,
+    );
+    if (divergent.length > 0) {
       throw new ZerotalError(
-        _describeMigrationNumberClashes(
-          clashes,
-          _nextMigrationPrefix(records.map((r) => r.file ?? r.name)),
-        ),
+        _describeMigrationNumberClashes(divergent, next),
         "E_MIGRATION_NUMBER_CLASH",
         500,
-        { clashes },
+        { clashes: divergent },
       );
+    }
+    if (unrun.length > 0) {
+      this.warn(_describeMigrationNumberClashes(unrun, next));
+      this.dim("  Nothing here has run yet, so they run in name order. Migrating.");
     }
 
     if (this.flags["pretend"] as boolean) {
@@ -186,55 +196,11 @@ export class MigrateCommand extends Command {
    * step must never tell.
    */
   async #backupFirst(): Promise<void> {
-    const config = this.#config();
-    if (config?.get<boolean>("database.backupBeforeMigrate", false) !== true) return;
-    if (!isProdLike(deployEnv())) return;
-
-    if (this.flags["skip-backup"] as boolean) {
-      this.warn("Skipping the pre-migrate backup (--skip-backup).");
-      return;
-    }
-
-    const url = config.get<string>("database.url", ":memory:");
-    if (!isSqliteUrl(url)) {
-      this.warn(
-        `database.backupBeforeMigrate is on, but this database is ${url.split("://")[0]}, and ` +
-          `the built-in backup is SQLite's VACUUM INTO. No backup was taken.`,
-      );
-      this.dim(
-        "  Take one with the server's own tool (pg_dump, mysqldump) or a provider snapshot " +
-          "as a deploy step before migrate.",
-      );
-      this.newLine();
-      return;
-    }
-
-    this.section("Backup before migrate");
-    try {
-      const result = await takeBackup((sql) => _rawStatement(sql), {
-        source: url,
-        dir: MigrateCommand.BACKUP_DIR,
-        keep: DbBackupCommand.DEFAULT_KEEP,
-      });
-      this.info(`Wrote ${result.path}`);
-      this.newLine();
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      throw new BackupError(
-        `Not migrating: database.backupBeforeMigrate is on and the backup failed. ${reason}\n` +
-          `  Fix the backup, or run \`bun zt migrate --skip-backup\` to migrate without one.`,
-      );
-    }
+    await _backupBeforeMigrate(this, this.#config(), this.flags["skip-backup"] === true);
   }
 
   #config(): ConfigManager | undefined {
-    try {
-      return (this.app as { container: { makeSync(k: string): unknown } }).container.makeSync(
-        "config",
-      ) as ConfigManager;
-    } catch {
-      return undefined;
-    }
+    return _commandConfig(this);
   }
 
   /**

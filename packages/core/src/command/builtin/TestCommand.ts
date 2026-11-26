@@ -173,6 +173,14 @@ export class TestCommand extends Command {
     // fails here on the first seed that puts it first. Bun prints the seed it chose,
     // and `--seed` replays that order exactly.
     const seed = this.flags["seed"] as number | undefined;
+    // `--seed=abc` parses to NaN, which read as "no seed" and ran the suite in its
+    // normal order with no word — the opposite of replaying the order asked for.
+    // (0 is the flag's default, so it means no seed.)
+    if (seed !== undefined && (!Number.isInteger(seed) || seed < 0)) {
+      this.error(`--seed takes a whole number, the one a randomized run printed.`);
+      process.exitCode = 1;
+      return;
+    }
     if (this.flags["randomize"] || seed) bunArguments.push("--randomize");
     if (seed) bunArguments.push(`--seed=${seed}`);
 

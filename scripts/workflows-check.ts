@@ -143,7 +143,9 @@ export function workflowFiles(root: string): string[] {
   for (const template of readdirSync(templates)) {
     files.push(...yaml(join(templates, template, "_github/workflows")));
   }
-  return files.map((f) => relative(root, f)).sort();
+  // Forward slashes on every platform: `relative()` answers with backslashes on
+  // Windows, and these paths are reported and compared as repository paths.
+  return files.map((f) => relative(root, f).split("\\").join("/")).sort();
 }
 
 function main(): void {

@@ -23,9 +23,12 @@ npm audit signatures            # in your app: verifies the signatures and attes
 npm view @zerotal/core dist.attestations   # the SLSA provenance record for that version
 ```
 
-Publishing authenticates with npm trusted publishing: the workflow's OIDC identity is
-exchanged for a short-lived token scoped to one package, so there is no long-lived publish
-token to steal.
+Publishing authenticates with npm trusted publishing where a package is linked to the
+workflow: its OIDC identity is exchanged for a short-lived token scoped to that package.
+A long-lived `NPM_TOKEN` repository secret still exists, for two reasons: the publish
+step falls back to it for a package not yet linked, and `npm deprecate` cannot use
+trusted publishing at all. Only those two jobs reference it — one runs on a release tag,
+the other only when started by hand — and no workflow a pull request triggers can read it.
 
 ## CI that cannot be redirected
 

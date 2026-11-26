@@ -13,16 +13,19 @@ follows the Zerotal monorepo's unified versioning.
 - **`zt migrate` refuses two different migrations under one number.** Two branches that each
   added "the next" migration (`0042_add_invoices`, `0042_add_refunds`) used to merge silently,
   leaving the alphabet to decide their order. `migrate` now stops before running anything
-  while either of them is unapplied, naming both files, the next free number and how to pin
-  the identity of one that already ran elsewhere. A clash whose migrations have all run is
-  history and does not block. `042_` and `0042_` count as one number; a timestamp-named
-  migration is numbered by its whole timestamp. The existing refusal of a renumbered copy of
-  an applied migration is unchanged and still reports first.
+  on a database that has applied one side of the clash and not the other, naming both files
+  and both fixes: renumber one that has not run anywhere, or keep one that has in its place
+  with a letter (`0042b_`) and a pinned identity. A new database, where nothing of the clash
+  has run, gets a warning and runs both in name order; a clash that has all run says
+  nothing. `042_` and `0042_` count as one number; a migration named with a timestamp to the
+  second is numbered by the whole timestamp, and one named with a date alone is not
+  numbered. The existing refusal of a renumbered copy of an applied migration is unchanged
+  and still reports first.
 - **`zt doctor` reports the same clash** (check `migration-numbers`), so a pull request's CI,
   which runs on the merge with `main`, catches it before merge. A failure while any clashing
   migration is unapplied or there is no database to ask; a warning when all have run.
 - **`database.backupBeforeMigrate`**, off by default. When on and the deploy environment is
-  production-like, `migrate` (and `migrate --fresh`) takes a verified `db:backup` snapshot to
+  production-like, `migrate`, `migrate:fresh` and `migrate:refresh` take a verified `db:backup` snapshot to
   `storage/backups/pre-migrate/` (newest 14 kept) before applying anything, and stops without
   migrating if it fails. Nothing is taken when nothing is pending. On PostgreSQL and MySQL it
   says that no backup was taken and continues. `--skip-backup` migrates without one.

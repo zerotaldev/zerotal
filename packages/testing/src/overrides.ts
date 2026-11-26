@@ -187,37 +187,48 @@ function _applyConfig(config: ConfigManager, overrides: Record<string, unknown>)
 /** Set one path and return what puts it back. */
 function _setOne(config: ConfigManager, path: string, value: unknown): () => void {
   const keys = path.split(".");
-  // The shallowest prefix that does not exist yet as an object: set() creates it and
-  // everything below it, so removing it removes all of them.
-  let created: number | undefined;
-  for (let depth = 1; depth < keys.length; depth++) {
-    const node = config.get(keys.slice(0, depth).join("."));
-    if (node === undefined || node === null || typeof node !== "object") {
-      created = depth;
+  // The shallowest key set() will create or overwrite: the first node on the way
+  // down that is missing or not an object, else the leaf. set() replaces that key
+  // and builds everything below it, so restoring that one key restores all of it.
+  //
+  // "Restoring" means its exact previous state. A key that held a plain value —
+  // `database.synchronize: true` under an override of `database.synchronize.enabled`
+  // — is put back as that value, not deleted; and a `null` comes back as `null`,
+  // which is why this reads the raw data rather than `get()`, where `null` and
+  // absent are both `undefined`.
+  let depth = keys.length;
+  for (let d = 1; d < keys.length; d++) {
+    const node = _raw(config, keys.slice(0, d));
+    if (!node.exists || node.value === null || typeof node.value !== "object") {
+      depth = d;
       break;
     }
   }
-  const parentPath = keys.slice(0, -1).join(".");
-  const leaf = keys.at(-1)!;
-  const parent = parentPath === "" ? undefined : config.get<Record<string, unknown>>(parentPath);
-  const existed =
-    created === undefined &&
-    (parent === undefined ? config.has(path) : Object.prototype.hasOwnProperty.call(parent, leaf));
-  const previous = config.get(path);
+  const target = keys.slice(0, depth);
+  const before = _raw(config, target);
 
   config.set(path, value);
 
   return () => {
-    if (existed) {
-      config.set(path, previous);
-      return;
-    }
-    if (created !== undefined) {
-      _remove(config, keys.slice(0, created));
-      return;
-    }
-    _remove(config, keys);
+    if (before.exists) config.set(target.join("."), before.value);
+    else _remove(config, target);
   };
+}
+
+/** The value stored at `keys`, `null` included, and whether the key exists at all. */
+function _raw(config: ConfigManager, keys: string[]): { exists: boolean; value: unknown } {
+  let current: unknown = config.all();
+  for (const key of keys) {
+    if (
+      current === null ||
+      typeof current !== "object" ||
+      !Object.prototype.hasOwnProperty.call(current, key)
+    ) {
+      return { exists: false, value: undefined };
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return { exists: true, value: current };
 }
 
 /** Delete the property at `keys`; a top-level namespace is reset to undefined. */

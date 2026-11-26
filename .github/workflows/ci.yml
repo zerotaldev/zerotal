@@ -275,7 +275,7 @@ jobs:
         run: bun run scripts/publish-packages.ts --dry-run
 
       # Actions pinned to commits, no pull_request_target, id-token only where it publishes.
-      # See scripts/workflows-check.ts and docs/security.md.
+      # See scripts/workflows-check.ts and docs/supply-chain.md.
       - name: Workflow supply-chain rules
         if: ${{ !cancelled() }}
         run: bun run workflows:check

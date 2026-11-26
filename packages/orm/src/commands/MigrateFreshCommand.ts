@@ -4,6 +4,7 @@ import { MigrationRunner } from "../schema/MigrationRunner.ts";
 import { _getConnection } from "../db/DB.ts";
 import { loadMigrations } from "./_loadMigrations.ts";
 import { runSeeders } from "./_runSeeders.ts";
+import { _backupBeforeMigrate, _commandConfig } from "./_preMigrateBackup.ts";
 
 /**
  * Rolls back every migration, then re-runs them from scratch (`bun zt migrate:fresh`).
@@ -32,6 +33,12 @@ export class MigrateFreshCommand extends Command {
       description: "Run database seeders once the schema has been rebuilt",
       default: false,
     },
+    {
+      name: "skip-backup",
+      type: "boolean",
+      description: "Skip the snapshot database.backupBeforeMigrate takes in production",
+      default: false,
+    },
   ];
 
   async run(): Promise<void> {
@@ -40,6 +47,10 @@ export class MigrateFreshCommand extends Command {
       name: r.name,
       migration: r.instance,
     }));
+
+    // Before anything is rolled back: this command drops every table, so it is the
+    // one a production snapshot matters most for.
+    await _backupBeforeMigrate(this, _commandConfig(this), this.flags["skip-backup"] === true);
 
     const runner = new MigrationRunner({ connection: _getConnection() });
     await runner.reset(entries);

@@ -32,7 +32,11 @@ export const migrationNumbersCheck: DoctorCheck = {
   async run(): Promise<DoctorCheckResult> {
     let files: string[];
     try {
-      files = await _scanAppFiles(`${process.cwd()}/database/migrations`, "*.ts");
+      // A test kept beside its migration (`0001_create_users.test.ts`) is not a
+      // migration, and read as one it "clashed" with the file it tests.
+      files = (await _scanAppFiles(`${process.cwd()}/database/migrations`, "*.ts")).filter(
+        (file) => !/\.(test|spec)\.ts$/.test(file),
+      );
     } catch {
       return { status: "ok", message: "no migrations directory." };
     }
@@ -48,7 +52,10 @@ export const migrationNumbersCheck: DoctorCheck = {
       return {
         status: "fail",
         message: _describeMigrationNumberClashes(unapplied, next),
-        fix: "Renumber the newer migration; `bun zt migrate` refuses to run until you do.",
+        fix:
+          "Renumber the later migration if it has not run anywhere, or keep its place with a " +
+          "letter after the number and pin its name if it has. `bun zt migrate` refuses a " +
+          "database that has run one side of the clash and not the other.",
       };
     }
     return {

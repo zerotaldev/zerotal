@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-11-26
+
 ### Fixed
 
 - **A fake disk says which real disk the code used instead.** `Storage.fake()` replaces one

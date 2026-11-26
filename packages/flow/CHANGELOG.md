@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-11-26
+
 ### Fixed
 
 - **`make:flow --crud --model` edits date columns and looks like the rest of the app.** A `Date`

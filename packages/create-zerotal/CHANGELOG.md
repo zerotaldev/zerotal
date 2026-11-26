@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-11-26
+
 ### Fixed
 
 - **A password confirmation that does not match is reported under "Confirm password".** The
@@ -17,6 +19,7 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Changed
 
+- **A new app depends on `~1.18.2`**, so it installs this release and its fixes.
 - **The Vue starter checks page props against `Inertia.render`.** It ships `types/inertia.d.ts`
   with `checkVueProps: true`, so a missing, extra or wrongly typed prop is a `vue-tsc` error in
   the route, as it is for a React page. The README says so, and how to turn it off.

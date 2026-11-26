@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-11-26
+
 ### Fixed
 
 - **Mail signs off with the app's name.** A `MailMessage` with no `salutation()` ended on a bare

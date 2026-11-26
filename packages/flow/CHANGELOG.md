@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.18.3] — 2026-11-26
+
 ### Fixed
 
 - **`make:flow --crud` imports only the class lists its page uses.** In an app with the

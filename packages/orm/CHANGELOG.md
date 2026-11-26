@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.3] — 2026-11-26
+
 ### Added
 
 - **`updateCount(data)`** on the query builder: `update()`, returning how many rows it changed, so

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.3] — 2026-11-26
+
 ### Fixed
 
 - **Warnings print in every test file of a run, not just the first.** A test file that re-uses

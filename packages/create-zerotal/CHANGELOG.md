@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.3] — 2026-11-26
+
+### Changed
+
+- **A new app depends on `~1.18.3`**, so it installs this release and its fixes.
+
 ### Security
 
 - **Two sign-ins with the same two-factor code at the same moment can no longer both succeed.**

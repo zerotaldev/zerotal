@@ -13,6 +13,8 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.18.3] — 2026-11-26
+
 ### Fixed
 
 - **`AGENTS.md` and the notifications skill say to run `bun zt worker` in production.** They said

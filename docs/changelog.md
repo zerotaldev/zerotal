@@ -27,6 +27,59 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.18.3 — 2026-11-26
+
+A patch, from the walk of 1.18.2. A test that fakes storage no longer writes media files for real,
+every test file prints its warnings, `zt dev` stops announcing skipped schedules, agents are told
+to run `bun zt worker`, two sign-ins with one two-factor code at the same moment can't both
+succeed, and a handful of smaller rough edges are gone.
+
+### Before you upgrade
+
+Read [1.18.3](/docs/upgrade#1183) in the upgrade guide. One thing can affect an existing app:
+
+- **`Storage.fake()` with no disk named now fakes `public` too** (`@zerotal/core`), when the
+  default disk is not served, as the built-in `local` is not. A test that faked the default and
+  expected a real file to appear in `storage/public` will find it in the fake instead.
+
+An app made from a starter, and that applied 1.18.2's two-factor steps, can also make its
+challenge claim the code's time step in one update, as new apps now do; the upgrade guide shows
+how.
+
+### Added
+
+- **`updateCount(data)`** on the query builder (`@zerotal/orm`): `update()`, returning how many
+  rows it changed, so a conditional update can be a claim only one request wins.
+
+### Changed
+
+- **A new app depends on `~1.18.3`** (`create-zerotal`).
+
+### Fixed
+
+- **`Storage.fake()` with no disk named catches media's writes** (`@zerotal/core`), which go to
+  `public` when no disk is configured.
+- **Warnings print in every test file of a run** (`@zerotal/testing`). A file that re-used the
+  app an earlier file booted lost the framework-event subscriptions its providers made at boot,
+  so the logger's `[HTTP]` warnings and the auth audit trail were silent after the first file.
+- **`bun zt dev` no longer prints "Skipping … app/schedules" at startup** (`@zerotal/core`).
+- **`AGENTS.md` and the notifications skill say `bun zt worker`** for production (`@zerotal/arch`),
+  which runs the queue and the schedules; they said `bun zt queue:work`, which runs only the
+  queue.
+- **Two sign-ins with the same two-factor code at the same moment can't both succeed**
+  (`create-zerotal`). The starters' challenge saves the code's time step with one conditional
+  update and signs in only the request that changed the row.
+- **`make:flow --crud` imports only the class lists its page uses** (`@zerotal/flow`), so the
+  app's lint no longer flags an unused `CARD` or `CHECKBOX`.
+- **A scheduled run's duration is logged in whole milliseconds** (`@zerotal/scheduler`), not as
+  `durationMs=14.195999999999998`.
+- **`bun zt doctor` no longer warns about an `app/jobs` that holds no jobs** (`@zerotal/core`). It
+  counts a file only when it defines a job.
+- **A framework-event handler can be unsubscribed after the test harness restored it**
+  (`@zerotal/core`), so a shared test app's providers stop listening when it stops.
+- **A refused two-factor code says it may have been used already** (`create-zerotal`): "That code
+  is not valid or was already used. Enter the newest one from your app."
+
 ## 1.18.2 — 2026-11-26
 
 A patch, from a second walk through the React, Vue and Flow starters. A two-factor code works

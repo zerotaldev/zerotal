@@ -65,13 +65,25 @@ export async function POST(http: HttpContext): Promise<void> {
     }
     user.twoFactorRecoveryCodes = JSON.stringify(result.remaining);
     await user.save();
-  } else if (!code || !TwoFactor.verifyCode(user.twoFactorSecret, code.replace(/\s+/g, ""))) {
-    loginThrottle.recordFailure(http, throttleKey);
-    rejectInput(
-      http,
-      { code: "That code is not valid. Check your authenticator app." },
-      "/two-factor/challenge",
+  } else {
+    // A code works once. The time step it matched is saved, and a code from that step or
+    // an earlier one is refused, so a code someone saw over a shoulder or in a screen
+    // recording can't be used again while it is still current.
+    const check = TwoFactor.verifyCodeWithCounter(
+      user.twoFactorSecret,
+      code ?? "",
+      user.twoFactorLastCounter,
     );
+    if (!check.valid) {
+      loginThrottle.recordFailure(http, throttleKey);
+      rejectInput(
+        http,
+        { code: "That code is not valid. Check your authenticator app." },
+        "/two-factor/challenge",
+      );
+    }
+    user.twoFactorLastCounter = check.counter;
+    await user.save();
   }
 
   loginThrottle.clearFor(http, throttleKey);

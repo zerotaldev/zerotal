@@ -66,6 +66,25 @@ describe("setting up two-factor", () => {
     expect((await User.find(user.id))?.hasTwoFactorEnabled()).toBe(true);
   });
 
+  test("the code that turned two-factor on can't then sign in", async () => {
+    const user = await UserFactory.create();
+    const browser = new Browser(app);
+    await browser.post("/login", { email: user.email, password: FACTORY_PASSWORD });
+    await browser.post("/confirm-password", { password: FACTORY_PASSWORD });
+    await browser.post("/settings/two-factor");
+    const { secret } = (await browser.get("/settings/two-factor")).inertia()?.props["setup"] as {
+      secret: string;
+    };
+    const code = authenticator.generateCode(secret);
+    (await browser.post("/settings/two-factor/confirm", { code })).assertRedirect(
+      "/settings/two-factor",
+    );
+
+    const other = await signInWithPassword(user.email);
+    (await other.post("/two-factor/challenge", { code })).assertInvalid(["code"]);
+    (await other.get("/dashboard")).assertRedirect("/login");
+  });
+
   test("rejects a wrong code during setup, and saves nothing", async () => {
     const user = await UserFactory.create();
     const browser = new Browser(app);
@@ -113,6 +132,35 @@ describe("signing in with two-factor", () => {
       await browser.post("/two-factor/challenge", { code: authenticator.generateCode(secret) })
     ).assertRedirect("/dashboard");
     (await browser.get("/dashboard")).assertOk();
+  });
+
+  test("refuses a code that already signed someone in", async () => {
+    const { user, secret } = await userWithTwoFactor();
+    const code = authenticator.generateCode(secret);
+
+    const first = await signInWithPassword(user.email);
+    (await first.post("/two-factor/challenge", { code })).assertRedirect("/dashboard");
+
+    // Still inside its 30 seconds, but it has been used: a code works once.
+    const second = await signInWithPassword(user.email);
+    (await second.post("/two-factor/challenge", { code })).assertInvalid(["code"]);
+    (await second.get("/dashboard")).assertRedirect("/login");
+  });
+
+  test("refuses a code older than the last one used", async () => {
+    const { user, secret } = await userWithTwoFactor();
+
+    const first = await signInWithPassword(user.email);
+    (
+      await first.post("/two-factor/challenge", { code: authenticator.generateCode(secret) })
+    ).assertRedirect("/dashboard");
+
+    // The previous step's code is still inside the window, but it is older than the
+    // code just accepted.
+    const second = await signInWithPassword(user.email);
+    (
+      await second.post("/two-factor/challenge", { code: authenticator.generateCode(secret, -1) })
+    ).assertInvalid(["code"]);
   });
 
   test("rejects a wrong code", async () => {

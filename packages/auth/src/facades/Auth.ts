@@ -734,7 +734,11 @@ export const Auth = {
    * @example
    * ```ts
    * const user = Auth.pendingTwoFactorUser();
-   * if (!user || !tf.verifyCode(user.twoFactorSecret, code)) return back().withErrors(…);
+   * if (!user) return redirect('/login');
+   * // Pass the last accepted time step, so a code can't be used twice.
+   * const check = tf.verifyCodeWithCounter(user.twoFactorSecret, code, user.twoFactorLastCounter);
+   * if (!check.valid) return back().withErrors(…);
+   * await user.update({ twoFactorLastCounter: check.counter });
    * await Auth.completeTwoFactor();
    * return redirect().intended('/dashboard');
    * ```

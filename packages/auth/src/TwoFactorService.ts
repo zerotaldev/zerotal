@@ -18,12 +18,14 @@
  * const svg = tf.getQrCodeSvg(user.email, secret, { size: 220 });
  * const uri = tf.getQrCodeUrl(user.email, secret); // also offer it as a link
  *
- * // 3. Confirm setup — verify the first code:
- * const ok = tf.verifyCode(secret, inputCode); // <-- Now synchronous!
- * if (ok) await user.update({ twoFactorConfirmedAt: new Date() });
+ * // 3. Confirm setup — verify the first code, and save the time step it matched:
+ * const setup = tf.verifyCodeWithCounter(secret, inputCode);
+ * if (setup.valid) {
+ *   await user.update({ twoFactorConfirmedAt: new Date(), twoFactorLastCounter: setup.counter });
+ * }
  *
- * // 3b. At login, guard against TOTP replay (RFC 6238 §5.2) by persisting the
- * //     last successfully-used time-step counter next to the secret:
+ * // 3b. At login, guard against TOTP replay (RFC 6238 §5.2) by passing the last
+ * //     accepted time step and saving the new one. A code then works once:
  * const check = tf.verifyCodeWithCounter(secret, inputCode, user.twoFactorLastCounter);
  * if (check.valid) await user.update({ twoFactorLastCounter: check.counter });
  *

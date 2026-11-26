@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-11-26
+
 ### Changed
 
 - **`uncompromised()` is deprecated in favour of `noWhitespace()`.** It is the same rule and keeps

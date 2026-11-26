@@ -10,6 +10,8 @@ line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-11-26
+
 ### Fixed
 
 - **A refused upload is logged as a warning.** `DisallowedMimeTypeError` (422) and

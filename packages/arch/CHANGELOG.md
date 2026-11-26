@@ -13,6 +13,8 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-11-26
+
 ### Changed
 
 - **`AGENTS.md` says how a Vue page's props are checked**: only with `checkVueProps` set in

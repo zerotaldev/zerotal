@@ -27,6 +27,65 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.18.2 — 2026-11-26
+
+A patch, from a second walk through the React, Vue and Flow starters. A two-factor code works
+once in new apps, `make:page` and `make:flow --crud` write pages the starters' own checks accept,
+a fake disk says where the files went, and `zt dev` and the Flow overlay say less and show more.
+
+### Before you upgrade
+
+Read [1.18.2](/docs/upgrade#1182) in the upgrade guide. Two things can affect an existing app:
+
+- **An app made from the React, Vue or Flow starter accepts a two-factor code more than once.**
+  Its own copy of the challenge and setup routes checks a code with `TwoFactor.verifyCode()` and
+  saves nothing, so the code is accepted again for as long as it is current, about a minute.
+  New apps save the time step of each accepted code and refuse it afterwards. Upgrading the
+  packages does not change an existing app's routes: the upgrade guide gives the migration, the
+  model field and the two route changes.
+- **A media test written before 1.18.1 that calls `Storage.fake()` with no argument writes real
+  files.** Media with no disk configured goes to `public`, so that test fakes the wrong disk and
+  its uploads land in `storage/public/media/`. Fake `Storage.fake("public")`.
+
+### Added
+
+- **`noWhitespace()`**, the password rule's name for what it checks (`@zerotal/validator`).
+
+### Changed
+
+- **The starters save the last two-factor code's time step** (`create-zerotal`) in a new
+  `users.two_factor_last_counter` column, and check codes with `verifyCodeWithCounter()`, at
+  sign-in and at setup. The `@zerotal/auth` docblocks and the two-factor docs show the same call.
+- **The Vue starter checks page props against `Inertia.render`** (`create-zerotal`), with
+  `checkVueProps` on in `types/inertia.d.ts`, and every `AGENTS.md` says how Vue page props are
+  checked (`@zerotal/arch`).
+- **The Dockerfile and README say how to run background work** (`create-zerotal`): `bun zt worker`
+  beside the server, once an app registers a queue or the scheduler.
+- **`uncompromised()` is deprecated** in favour of `noWhitespace()`, the same rule
+  (`@zerotal/validator`).
+- **A new app depends on `~1.18.2`** (`create-zerotal`).
+
+### Fixed
+
+- **`make:page` writes a page in the starters' style** (`@zerotal/inertia`): a component named from
+  the whole path, a `title` prop and `<Head>`, `AppLayout` when the app has one, and the app's
+  Prettier, so it passes `format:check`.
+- **`make:flow --crud --model` edits date columns and uses the app's styles** (`@zerotal/flow`):
+  a `Date` column is a date input, the form uses the starters' `INPUT` and `buttonClass()` where
+  they exist, and the JSX pragma is left out where `tsconfig.json` already names Flow's runtime.
+- **A failed assertion on a fake disk names the real disk the code used** (`@zerotal/core`), and
+  the call that fakes it.
+- **`bun zt dev` no longer says it skips `app/schedules`**, which its scheduler tab runs, and a page
+  syntax error no longer parks the scheduler: it starts again on the next save (`@zerotal/core`).
+- **Flow's dev error overlay shows the code** around the line that threw (`@zerotal/flow`).
+- **A refused upload is logged as one warning**, not an error with a stack (`@zerotal/media`).
+- **Mail signs off with the app's name**, "The _App_ team", when a message sets no salutation
+  (`@zerotal/notifications`).
+- **A password confirmation that does not match is reported under "Confirm password"** in the
+  starters, not under "Password" (`create-zerotal`).
+- **The starters' example drops two casts**, in `Project.toPage()` and the React project form
+  (`create-zerotal`).
+
 ## 1.18.1 — 2026-11-26
 
 A patch, from a newcomer's walk through the React, Vue and Flow starters. Uploads have working

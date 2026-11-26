@@ -81,6 +81,117 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.18.2
+
+A patch. Nothing in the packages asks for a change in your app, but an app made from the React,
+Vue or Flow starter should make one change to its own two-factor routes, and a media test written
+before 1.18.1 may be writing real files.
+
+### Before you upgrade: two-factor codes in an app made from a starter
+
+An app made with `create-zerotal` 1.18.1 or earlier has its own copy of the two-factor routes.
+They check a code with `TwoFactor.verifyCode()` and save nothing, so a code is accepted again for
+as long as it is current, about a minute: a code that signed someone in can sign in a second
+session, and the code that turned two-factor on can then sign in. Upgrading the packages does not
+change your copy. An app made from 1.18.2 saves the time step of each code it accepts and refuses
+that code, or an older one, afterwards. To do the same in yours:
+
+1. **Add a column.** Run `bun zt make:migration add_two_factor_last_counter_to_users` and give it
+   this body, then run `bun zt migrate`:
+
+   ```ts
+   import { Migration, Schema } from "zerotal/orm";
+
+   export default class AddTwoFactorLastCounterToUsers extends Migration {
+     async up(): Promise<void> {
+       await Schema.table("users", (table) => {
+         table.integer("two_factor_last_counter").nullable();
+       });
+     }
+
+     async down(): Promise<void> {
+       await Schema.table("users", (table) => {
+         table.dropColumn("two_factor_last_counter");
+       });
+     }
+   }
+   ```
+
+2. **Add it to the model.** In `app/models/User.ts`, add `"twoFactorLastCounter"` to `hidden`,
+   and the column beside the other two-factor ones:
+
+   ```ts fragment
+   @column({ type: "integer", nullable: true }) twoFactorLastCounter?: number | null | undefined;
+   ```
+
+3. **Check the code once at sign-in.** In `app/routes/(guest)/two-factor/challenge.ts`, replace
+   the branch that begins `} else if (!code || !TwoFactor.verifyCode(` with:
+
+   ```ts fragment
+   } else {
+     const check = TwoFactor.verifyCodeWithCounter(
+       user.twoFactorSecret,
+       code ?? "",
+       user.twoFactorLastCounter,
+     );
+     if (!check.valid) {
+       loginThrottle.recordFailure(http, throttleKey);
+       rejectInput(
+         http,
+         { code: "That code is not valid. Check your authenticator app." },
+         "/two-factor/challenge",
+       );
+     }
+     user.twoFactorLastCounter = check.counter;
+     await user.save();
+   }
+   ```
+
+4. **Save the step at setup.** In `app/routes/(auth)/settings/two-factor/confirm.ts`, check the
+   code with `verifyCodeWithCounter()` and save the step it matched with the secret:
+
+   ```ts fragment
+   const check = TwoFactor.verifyCodeWithCounter(secret, code);
+   if (!check.valid) {
+     rejectInput(
+       http,
+       { code: "That code did not match. Try the newest one in the app." },
+       "/settings/two-factor",
+     );
+   }
+
+   // … where the secret is saved:
+   user.twoFactorConfirmedAt = new Date();
+   user.twoFactorLastCounter = check.counter;
+   ```
+
+A new app's `tests/auth/two-factor.test.ts` has three tests for this ("refuses a code that
+already signed someone in", "refuses a code older than the last one used" and "the code that
+turned two-factor on can't then sign in"), which work in an app made from the same starter.
+
+### A media test that fakes the default disk
+
+Since 1.18.1, media with no disk configured goes to the `public` disk. A test written before
+that which calls `Storage.fake()` with no argument fakes `local`, the storage default, so its
+disk assertions find nothing, and the uploads it makes are written for real into
+`storage/public/media/`, a served folder.
+
+**What to change.** Fake the disk media writes to, `Storage.fake("public")`, and delete anything
+such a test left in `storage/public/media/`. From 1.18.2 a failed assertion on the fake names
+the real disk the code used.
+
+### Also worth knowing (not breaking)
+
+- **Mail signs off with the app's name.** A `MailMessage` that sets no `salutation()` now ends
+  with "The _App_ team" from `app.name`, not "Regards,". A test that asserts the old line needs
+  the new one.
+- **`uncompromised()` is now `noWhitespace()`.** The old name still works, and is deprecated.
+- **`AGENTS.md` has a new line on Vue page props.** `bun zt doctor` reports it as stale until you
+  run `bun zt arch:update`.
+- **`bun zt dev` is quieter**: no "Skipping … app/schedules" line, and a page syntax error no
+  longer parks the scheduler tab, which starts again on the next save.
+- **A refused upload is logged as a warning**, without a stack.
+
 ## 1.18.1
 
 A patch. Three changes can affect an existing app; most need no change.

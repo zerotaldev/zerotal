@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.2] — 2026-11-26
+
 ### Changed
 
 - **The two-factor examples check a code once.** The docblocks on `Auth.completeTwoFactor()`,

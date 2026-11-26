@@ -129,7 +129,7 @@ Build the attachments with `fakeFile`:
 
 ```typescript fragment
 // in a test
-import { fakeFile } from "@zerotal/testing";
+import { fakeFile } from "zerotal/testing";
 
 const res = await testApp.multipart("/avatar", {
   name: "Alice",

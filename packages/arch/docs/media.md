@@ -18,20 +18,19 @@ media.getUrl("thumb"); // a generated conversion
 
 ## Getting started
 
-Install the package and register its provider:
-
-```bash
-bun add @zerotal/media
-```
+The media library ships in the `zerotal` package every starter already
+depends on, so there is nothing to install: import it from `zerotal/media` and
+register its provider.
 
 ```ts fragment
 // bootstrap/providers.ts
+import { DatabaseProvider } from "zerotal/orm";
 import { StorageProvider } from "zerotal/storage";
 import { MediaProvider } from "zerotal/media";
 
 export default [
   DatabaseProvider,
-  StorageProvider, // media writes through disks — register it too
+  StorageProvider, // media writes through disks, and this serves them
   MediaProvider,
 ];
 ```
@@ -39,6 +38,33 @@ export default [
 There is no migration to write. `MediaProvider` provisions the `media` table on
 boot, once, only when it is missing. Set `autoCreateTable: false` in config if
 you would rather own the schema yourself.
+
+## Which disk, and how files are served
+
+With nothing configured, media is written to the `public` disk
+(`storage/public`), and `StorageProvider` serves that disk at
+`/storage/public`. So `media.getUrl()` is a link that works the moment the file
+is stored:
+
+```text
+storage/public/media/<uuid>/original.png   →   /storage/public/media/<uuid>/original.png
+```
+
+The disk is chosen in this order, and the name is recorded on the row, so
+changing config later never strands a file that was already written:
+
+1. the disk passed to `.toDisk()` for one file;
+2. the collection's `disk`;
+3. `disk` in `config/media.ts`;
+4. `storage.default`, when that disk has a URL — a `serve` block or a `url`;
+5. otherwise `public`. The built-in default disk, `local`, is private and has
+   no URL, and a media link on it would point at nothing.
+
+Files you do not want reachable by anyone with the link belong on a private
+disk: name it on the collection and hand out signed links — see
+[Private files](#private-files). Nothing under `storage/` except
+`storage/public` is served without a signature; [Storage](/docs/storage#serving-files-over-http)
+explains the rule and how to serve a disk of your own.
 
 ## Declaring collections
 
@@ -222,9 +248,10 @@ and the boot log will warn if this machine cannot. Stick to `jpeg`, `png` and
 ### Queued conversions
 
 Mark a conversion `queued: true` and it runs on a worker instead of in the
-request. This needs `@zerotal/queue` installed and its provider registered; with
-no queue bound, every conversion runs inline — late is better than a thumbnail
-that never appears. A dispatch that fails, such as a Redis that is down, runs
+request. This needs the queue's provider registered: `QueueProvider`, from
+`zerotal/queue`, which ships with the rest of `zerotal`. With no queue bound,
+every conversion runs inline — late is better than a thumbnail that never
+appears. A dispatch that fails, such as a Redis that is down, runs
 that conversion inline too.
 
 The job registers itself when the app boots, so a worker process runs conversion
@@ -323,11 +350,15 @@ Pair `Storage.fake()` with `MediaFake`. The first asserts bytes landed, the
 second asserts a row points at them — a media row with no file and a file with
 no row are different bugs.
 
+Fake the disk media writes to. With no disk configured that is `public` (see
+[Which disk](#which-disk-and-how-files-are-served)), not the storage default
+that `Storage.fake()` with no argument replaces.
+
 ```ts fragment
 import { Storage } from "zerotal/storage";
 import { MediaFake } from "zerotal/media";
 
-const disk = Storage.fake();
+const disk = Storage.fake("public");
 
 await product.addMedia(file).toCollection("images");
 

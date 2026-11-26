@@ -57,26 +57,47 @@ export function setDefaultDiskName(name: string | null): void {
   _defaultName = name;
 }
 
+/** The part of `StorageManager` this module asks about. */
+interface ServedDisks {
+  isServed(disk?: string): boolean;
+}
+
 /**
- * The concrete name of the default disk, e.g. `"local"`.
+ * The concrete name of the disk media is written to when neither the collection
+ * nor `config/media.ts` names one, e.g. `"public"`.
  *
  * Media rows record the disk they were written to by name rather than storing
  * `""` and re-resolving on read. An app that later flips `storage.default` from
  * `local` to `s3` would otherwise find every existing media row suddenly
  * claiming to live on S3, where none of the files are.
  *
- * Falls back to `""` when there is no app or no storage config to ask — the read
- * path treats that as "the default", which is the best answer available.
+ * That is `storage.default` when that disk has a URL. When it has none — the
+ * built-in default, `local`, is private and unserved — it is the `public` disk
+ * instead, because a media item's `getUrl()` on an unserved disk is a path
+ * nothing answers: every link 404s. A disk named in config always wins.
+ *
+ * Falls back to `""` when there is no app or no storage to ask — the read path
+ * treats that as "the default", which is the best answer available.
  *
  * @internal — disk resolution.
  */
 export function defaultDiskName(): string {
   if (_defaultName !== null) return _defaultName;
   try {
-    const config = tryCurrentApp()?.container.tryMake("config") as
+    const container = tryCurrentApp()?.container;
+    const config = container?.tryMake("config") as
       { get<T>(path: string, fallback?: T): T | undefined } | null | undefined;
-    return config?.get<string>("storage.default", "") ?? "";
+    const storage = container?.tryMake("storage") as ServedDisks | null | undefined;
+    // `StorageProvider` falls back to `StorageConfig()` when the app has no
+    // config/storage.ts, and that names `local` as the default.
+    const configured = config?.get<string>("storage.default", "") ?? "";
+    if (!storage) return configured;
+    const name = configured === "" ? "local" : configured;
+    return !storage.isServed(name) && storage.isServed(PUBLIC_DISK) ? PUBLIC_DISK : name;
   } catch {
     return "";
   }
 }
+
+/** The built-in served disk, mounted at `/storage/public`. */
+const PUBLIC_DISK = "public";

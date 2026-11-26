@@ -75,17 +75,13 @@ Try it now, and adding an assigned task fails with a 500:
 FacadeBindingMissingError: Could not resolve the "queue" facade.
 ```
 
-The starter sends its own mail inline, so it does not register a queue. Add
-`@zerotal/queue` at the version the rest of the app is on:
-
-```bash
-# in your project root
-bun add @zerotal/queue@~1.18.0
-```
+The starter sends its own mail inline, so it does not register a queue. There is nothing
+to install: the queue ships in the `zerotal` package the app already depends on, as
+`zerotal/queue`. Configure it and register its provider.
 
 ```ts
 // config/queue.ts
-import { QueueConfig } from "@zerotal/queue";
+import { QueueConfig } from "zerotal/queue";
 
 export default QueueConfig({
   // Jobs are stored in the app's SQLite database until a worker runs them.
@@ -99,7 +95,7 @@ Register the provider in `bootstrap/providers.ts`, before `NotificationProvider`
 
 ```ts fragment
 // bootstrap/providers.ts
-import { QueueProvider } from "@zerotal/queue";
+import { QueueProvider } from "zerotal/queue";
 
 const providers = [
   // …
@@ -144,7 +140,7 @@ rather than sent in development:
 [queue ] Regards,
 ```
 
-The HTML version of the message follows it. `bun zt doctor` now reports
-`All 23 checks passed.`: the new one is the queue worker check.
+The HTML version of the message follows it. `bun zt doctor` still reports that all
+checks passed, and now counts one more among them: the queue worker check.
 
 **Next:** [Feature tests](/docs/tutorial/tests).

@@ -129,7 +129,10 @@ export default StorageConfig({
 
 `StorageProvider` registers the serving middleware only when at least one disk
 declares `serve`, and mounts the longest prefix first so `/files/private` is
-matched before `/files`.
+matched before `/files`. With the built-in config that is the `public` disk, so
+registering `StorageProvider` is all it takes for `/storage/public/**` to
+answer — and it is where the [media library](/docs/media#which-disk-and-how-files-are-served)
+writes when no disk is configured.
 
 > **Note** — This is not [`Router.static()`](/docs/routing#static-file-serving). A static mount
 > registers the files it finds when the server boots, so anything uploaded

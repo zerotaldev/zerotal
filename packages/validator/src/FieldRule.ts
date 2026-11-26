@@ -736,7 +736,12 @@ export class PasswordRule extends FieldRule {
     return this;
   }
 
-  /** Must not contain spaces. */
+  /**
+   * Must contain no whitespace: no space, tab or line break anywhere in the value.
+   *
+   * Despite the name, this does not check the password against a list of breached
+   * passwords, and makes no network request. It is a character rule like `symbols()`.
+   */
   uncompromised(message?: string): this {
     addRule(this._def.rules, "passwordNoSpaces", [], message);
     return this;

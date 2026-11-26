@@ -62,6 +62,26 @@ describe('the users migration', () => {
   });
 });
 
+// The example resources are the code a new app copies from, so a cast in one is copied into
+// every resource written after it. The admin kit's product actions and dashboard carried two.
+describe('the example resources', () => {
+  const sources = (template: string, pattern: string): string[] =>
+    [...new Bun.Glob(pattern).scanSync({ cwd: join(TEMPLATES_DIR, template), onlyFiles: true })].map((rel) => join(template, rel));
+
+  it('hold no `as unknown as` or `as never`', () => {
+    const files = [
+      ...sources('admin', 'app/admin/**/*.ts'),
+      ...sources('admin', 'app/models/*.ts'),
+      ...['react', 'vue', 'flow'].flatMap((kit) =>
+        sources(kit, '{app,resources,database}/**/*.{ts,tsx,vue}').filter((f) => /project/i.test(f)),
+      ),
+    ];
+    expect(files.length).toBeGreaterThan(10);
+    const casts = files.filter((f) => /\bas (unknown as|never)\b/.test(readFileSync(join(TEMPLATES_DIR, f), 'utf8')));
+    expect(casts).toEqual([]);
+  });
+});
+
 describe('the admin template', () => {
   // The dev server prints http://localhost:3000, and this app has no page there. A newcomer who
   // opened the printed URL got `{"message":"Not Found","code":"E_NOT_FOUND"}` and no hint that
@@ -125,6 +145,52 @@ describe.each(Object.entries(KITS))('the %s kit', (template, { extension, pages,
       file: test.file,
       missing: [],
     });
+  });
+
+  // Browsers ask for /favicon.ico whatever the page links, and every kit answered 404.
+  it('ships a favicon.ico, and links it', async () => {
+    const icon = new Uint8Array(await Bun.file(join(KIT, 'public', 'favicon.ico')).arrayBuffer());
+    // An ICO header: reserved 0, type 1 (icon), at least one image.
+    expect([...icon.slice(0, 4)]).toEqual([0, 0, 1, 0]);
+    expect(icon[4]).toBeGreaterThan(0);
+
+    const head = template === 'flow'
+      ? readFileSync(join(KIT, 'app', 'flow', 'lib', 'document.ts'), 'utf8')
+      : readFileSync(join(KIT, 'resources', 'app.html'), 'utf8');
+    expect(head).toContain('<link rel="icon" href="/favicon.ico"');
+  });
+
+  // The border's <rect> had no fill, so it defaulted to black and covered the gradient:
+  // the logo in the header and sidebar was a black square.
+  it('draws the logo with no shape filled black by default', () => {
+    const svg = readFileSync(join(KIT, 'public', 'zt.svg'), 'utf8');
+    const unfilled = [...svg.matchAll(/<(rect|circle|path|ellipse|polygon)\b[^>]*>/g)]
+      .map((m) => m[0])
+      .filter((tag) => !/\sfill=/.test(tag));
+    expect(unfilled).toEqual([]);
+  });
+
+  // Both inputs on the two-factor challenge carry a visible label tied to the control: the
+  // shared field components bind it by id in React and Vue, and Flow writes `for`/`id` itself.
+  it('labels both inputs on the two-factor challenge', () => {
+    const page = readFileSync(join(KIT, pages, `auth/two-factor-challenge${extension}`), 'utf8');
+    if (template === 'flow') {
+      for (const id of ['field-code', 'field-recovery_code']) {
+        expect(page).toContain(`<label for="${id}"`);
+        expect(page).toContain(`id="${id}"`);
+      }
+    } else {
+      expect(page).toContain('label="Authentication code"');
+      expect(page).toContain('label="Recovery code"');
+    }
+  });
+
+  // The header, footer and sidebar "Documentation" links went to the GitHub repository.
+  it('points its Documentation links at the docs site', () => {
+    const site = template === 'flow'
+      ? join(KIT, 'app', 'flow', 'lib', 'site.ts')
+      : join(KIT, 'resources', 'js', 'lib', 'site.ts');
+    expect(readFileSync(site, 'utf8')).toContain('export const DOCS_URL = "https://zerotal.dev/docs";');
   });
 
   it('takes the app name from config/app.ts rather than stamping it into the UI', async () => {

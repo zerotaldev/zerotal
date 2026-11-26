@@ -45,6 +45,17 @@ describe('nextStepLines', () => {
     ]);
   });
 
+  // After `--no-install`, or an install that failed, nothing has installed the dependencies.
+  it('starts with bun install when the scaffolder did not install', () => {
+    expect(nextStepLines('app', 'react', 'sqlite', false)).toEqual([
+      'cd app',
+      'bun install',
+      'bun zt migrate',
+      'bun zt db:seed              # optional: demo@example.com / password with sample projects',
+      'bun zt dev',
+    ]);
+  });
+
   it('admin migrates, seeds its demo account, then says where the panel is', () => {
     expect(nextStepLines('app', 'admin', 'sqlite')).toEqual([
       'cd app',
@@ -61,7 +72,7 @@ describe('nextStepLines', () => {
 /** The commands in the README's first fenced bash block. */
 async function readmeCommands(): Promise<string[]> {
   const readme = await Bun.file(join(TMP, 'README.md')).text();
-  const block = readme.match(/## Getting started\n\n```bash\n([\s\S]*?)\n```/);
+  const block = readme.match(/## Getting started\n\n[\s\S]*?```bash\n([\s\S]*?)\n```/);
   if (!block) throw new Error('no "Getting started" bash block in the scaffolded README');
   return block[1]!.split('\n');
 }
@@ -81,9 +92,20 @@ describe('the README "Getting started" section', () => {
 
     const commands = await readmeCommands();
 
-    expect(commands[0]).toBe('bun install');
     expect(commands.at(-1)).toBe('bun run dev');
-    expect(commands.slice(1, -1)).toEqual(terminalSetup('app', template, 'sqlite'));
+    expect(commands.slice(0, -1)).toEqual(terminalSetup('app', template, 'sqlite'));
+  });
+
+  // The scaffolder had just installed, and the README's first step was `bun install` again.
+  it.each([...TEMPLATES])('%s: does not ask for a second bun install', async (template) => {
+    await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
+
+    const readme = await Bun.file(join(TMP, 'README.md')).text();
+
+    expect(await readmeCommands()).not.toContain('bun install');
+    // Once, in prose, for a fresh clone.
+    expect(readme.match(/bun install/g)).toHaveLength(1);
+    expect(readme).toContain('In a fresh clone, run\n`bun install` first.');
   });
 
   it.each(['postgres', 'mysql'] as const)('api on %s: says where DATABASE_URL goes', async (db) => {

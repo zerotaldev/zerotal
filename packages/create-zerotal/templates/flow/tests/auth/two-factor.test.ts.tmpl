@@ -82,6 +82,24 @@ describe("setting up two-factor", () => {
     expect((await User.find(user.id))?.hasTwoFactorEnabled()).toBe(false);
   });
 
+  test("pressing Enter in the code field turns it on rather than cancelling", async () => {
+    const user = await UserFactory.create();
+    const browser = new Browser(app);
+    await browser.post("/login", { email: user.email, password: FACTORY_PASSWORD });
+    await browser.post("/confirm-password", { password: FACTORY_PASSWORD });
+    await browser.post("/settings/two-factor");
+    const html = (await browser.get("/settings/two-factor")).assertOk().text();
+
+    // A browser submits a form from a text field with the form's default button: the first
+    // submit button that belongs to it. A button with a `form` attribute belongs elsewhere.
+    const form = html.match(/<form[^>]*action="\/settings\/two-factor\/confirm"[\s\S]*?<\/form>/);
+    const buttons = [...(form?.[0] ?? "").matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)];
+    const owned = buttons.filter(
+      ([, attrs]) => !/\stype="button"/.test(attrs!) && !/\sform=/.test(attrs!),
+    );
+    expect(owned[0]?.[2]?.trim()).toBe("Turn on");
+  });
+
   test("never shows the secret or the recovery codes to the page", async () => {
     const { user } = await userWithTwoFactor();
 

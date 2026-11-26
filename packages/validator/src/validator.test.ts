@@ -910,6 +910,19 @@ describe("runValidation — password rules", () => {
     expect(r.success).toBe(false);
     expect(r.errors?.pw).toContain("spaces");
   });
+
+  // What its docblock says it does, since the name suggests something else.
+  it("uncompromised() rejects any whitespace, not only spaces", () => {
+    const schema = { pw: rules.password().uncompromised()._def };
+    for (const pw of ["Has\tTab1!", "Has\nBreak1!"]) {
+      expect(runValidation(schema, { pw }).success).toBe(false);
+    }
+  });
+
+  it("uncompromised() does not check a breach list", () => {
+    const schema = { pw: rules.password().uncompromised()._def };
+    expect(runValidation(schema, { pw: "password123" }).success).toBe(true);
+  });
 });
 
 // ── Extra string rules ────────────────────────────────────────────────────────

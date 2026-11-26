@@ -790,3 +790,21 @@ describe('scaffold — vue template', () => {
     }
   });
 });
+
+// ── binary files ─────────────────────────────────────────────────────────────
+
+describe('binary template files', () => {
+  afterEach(async () => {
+    await rm(TMP, { recursive: true, force: true });
+  });
+
+  // Every file was read as text and written back, which decodes bytes that are not UTF-8
+  // and writes U+FFFD in their place: an icon arrived corrupt.
+  it.each(TEMPLATES.filter((t) => t in KITS))('%s: copies favicon.ico byte for byte', async (template) => {
+    await scaffold({ name: 'app', template, db: 'sqlite', target: TMP });
+
+    const source = await Bun.file(join(import.meta.dir, '..', 'templates', template, 'public', 'favicon.ico')).bytes();
+    const copied = await Bun.file(join(TMP, 'public', 'favicon.ico')).bytes();
+    expect(copied).toEqual(source);
+  });
+});

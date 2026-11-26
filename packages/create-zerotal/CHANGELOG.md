@@ -20,6 +20,31 @@ follows the Zerotal monorepo's unified versioning.
   through `zerotal/*`, name `channels()` for notifications, list the routing directories the
   starter actually uses, and say the queue needs `QueueProvider` registered first.
 
+- **Pressing Enter in the Flow starter's two-factor setup turns two-factor on.** The code field's
+  form had Cancel as its first submit button, so a browser's implicit submission cancelled the
+  setup. Cancel now submits a separate form through its `form` attribute, and stays where it was
+  on screen. The React and Vue starters were not affected: their Cancel is `type="button"`.
+- **`/favicon.ico` exists in the React, Vue and Flow starters.** Browsers request it whatever a
+  page links, and every starter answered 404. Each ships one and links it beside `zt.svg`, and
+  the scaffolder now copies binary template files byte for byte; it read every file as text,
+  which would have corrupted one.
+- **The starters' logo is the indigo mark it was drawn as.** The border of `public/zt.svg` had
+  no `fill`, so it defaulted to black and covered the gradient: the header and sidebar showed a
+  black square.
+- **The "Documentation" links go to `https://zerotal.dev/docs`**, not the GitHub repository.
+- **Mail from the starters signs off with the app's name.** The password-reset and
+  verification emails ended on a bare "Regards,". They close with "The _App_ team", from
+  `config/app.ts`, through `signOff()` in `app/support/mail.ts`.
+- **The Flow starter's project create and edit pages use `ProjectForm`.** Each repeated the
+  form's markup by hand, so a change to the shared form reached neither page.
+- **The admin starter's example resource has no casts.** The "Feature" action and the stock
+  value widget used `as unknown as`; both type-check without them.
+- **The README does not ask for a second `bun install`.** The scaffolder installs, and the
+  README's "Getting started" began with `bun install` again. Its commands now start after the
+  install, with a sentence for a fresh clone; the terminal's "Next steps" list `bun install`
+  first only when `--no-install` skipped it or it failed.
+
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

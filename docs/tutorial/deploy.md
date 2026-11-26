@@ -111,7 +111,7 @@ bun zt deploy:production --check
 ```
 
 ```
-✓ 23 checks passed, 1 warning(s)
+✓ N checks passed, 1 warning(s)
 ```
 
 The warning left is that the eight migrations have not run on the new database. The
@@ -139,7 +139,7 @@ Migrated 8 migration(s).
   0007_create_tasks_table                    ran
   0008_add_tenant_id_columns                 ran
 Verify
-✓ 23 checks passed
+✓ N checks passed
 production release complete. Restart the service to pick it up.
 ```
 
@@ -190,7 +190,7 @@ bun zt doctor --url=http://localhost:3001
 ```
 
 ```
-All 23 checks passed.
+All N checks passed.
 ```
 
 Against a real deployment, point `--url` at the public address: it then also sees what

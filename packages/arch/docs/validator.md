@@ -432,9 +432,12 @@ r.password()
   .mixedCase() // requires upper + lower case letters
   .numbers() // requires at least one digit
   .symbols() // requires at least one symbol
-  .uncompromised() // must not contain spaces
+  .uncompromised() // no whitespace at all: spaces, tabs or line breaks
   .confirmed(); // must equal password_confirmation field
 ```
+
+`uncompromised()` is a character rule: it rejects a password with any whitespace in it.
+It does not look the password up in a list of breached passwords.
 
 ## Database rules
 

@@ -11,10 +11,8 @@ threads.
 
 ## Getting Started
 
-```bash
-# in your project root
-bun add @zerotal/queue
-```
+`@zerotal/queue` ships in the `zerotal` package every starter already depends on, so there
+is nothing to install: import it from `zerotal/queue` and register its provider.
 
 ## Register the provider
 
@@ -22,7 +20,7 @@ Add `QueueProvider` to the providers array in `bootstrap/providers.ts`:
 
 ```typescript
 // bootstrap/providers.ts
-import { QueueProvider } from "@zerotal/queue";
+import { QueueProvider } from "zerotal/queue";
 
 const providers = [
   // …your other providers
@@ -52,7 +50,7 @@ type-checked while defaults fill in the rest:
 
 ```typescript
 // config/queue.ts
-import { QueueConfig } from "@zerotal/queue";
+import { QueueConfig } from "zerotal/queue";
 import { env } from "zerotal";
 
 export default QueueConfig({
@@ -85,7 +83,7 @@ a static `fromPayload()`:
 
 ```typescript fragment
 // app/jobs/NotifyFollowersJob.ts
-import { Job, JobRegistry } from "@zerotal/queue";
+import { Job, JobRegistry } from "zerotal/queue";
 
 export class NotifyFollowersJob extends Job {
   // Route this job to a specific named queue (default: 'default')
@@ -130,7 +128,7 @@ A job with no constructor state needs only `handle()` plus the registration line
 
 ```typescript fragment
 // app/jobs/PruneDeletedContentJob.ts
-import { Job, JobRegistry } from "@zerotal/queue";
+import { Job, JobRegistry } from "zerotal/queue";
 
 export class PruneDeletedContentJob extends Job {
   async handle(): Promise<void> {
@@ -154,7 +152,7 @@ It is invisible to a test suite, because a test enqueues and runs in the same pr
 Declare the stored name and the class is free to move:
 
 ```ts
-import { Job } from "@zerotal/queue";
+import { Job } from "zerotal/queue";
 
 export class SendWelcomeEmail extends Job {
   // The name in the queue payload. Keep it when the class is renamed.
@@ -199,7 +197,7 @@ the `JobRegistry.register(...)` line — keep it at the bottom of each job file.
 
 ```typescript fragment
 // in a controller
-import { Queue } from "@zerotal/queue";
+import { Queue } from "zerotal/queue";
 
 // Dispatch a job to the queue
 await Queue.dispatch(new NotifyFollowersJob(post.id));
@@ -293,7 +291,7 @@ Batch a set of jobs and react when they all finish. Batching uses the
 
 ```typescript fragment
 // in a controller
-import { Bus } from "@zerotal/queue";
+import { Bus } from "zerotal/queue";
 
 // Dispatch 10,000 import jobs; send a summary email when all finish.
 const batch = await Bus.batch(rows.map((row) => new ImportCsvRowJob(row)))
@@ -343,7 +341,7 @@ any job fails, the rest of the chain is abandoned.
 
 ```typescript fragment
 // in a controller
-import { Bus } from "@zerotal/queue";
+import { Bus } from "zerotal/queue";
 
 await Bus.chain([
   new ValidateImportJob(fileId),
@@ -413,7 +411,7 @@ For development or small apps that don't need a separate process, drive
 
 ```typescript
 // in AppServiceProvider.onStarted()
-import { Queue } from "@zerotal/queue";
+import { Queue } from "zerotal/queue";
 
 const queues = ["default", "notifications", "emails"];
 setInterval(async () => {
@@ -502,7 +500,7 @@ not construct it yourself.
 
 ```typescript
 // config/queue.ts
-import { QueueConfig } from "@zerotal/queue";
+import { QueueConfig } from "zerotal/queue";
 
 export default QueueConfig({
   workers: 4, // spawn 4 Bun Worker threads
@@ -557,7 +555,7 @@ instead of running them, so you can assert on them:
 
 ```typescript fragment
 // in a test
-import { QueueFake } from "@zerotal/queue";
+import { QueueFake } from "zerotal/queue";
 
 const queue = QueueFake.install(); // replaces the 'queue' binding with a fake
 
@@ -671,7 +669,7 @@ while leaving unrelated failures alone.
 
 ```typescript fragment
 // in a controller or service
-import { QueueError, QueueShuttingDownError } from "@zerotal/queue";
+import { QueueError, QueueShuttingDownError } from "zerotal/queue";
 
 try {
   await ProcessPayment.dispatch({ orderId });

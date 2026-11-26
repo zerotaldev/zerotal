@@ -145,10 +145,12 @@ async function main(): Promise<void> {
   info(`Project files created`);
 
   // ── Install ─────────────────────────────────────────────────────────────────
+  let installed = false;
   if (plan.install !== false) {
     log('');
     step('Installing dependencies…');
     const ok = await install(target);
+    installed = ok;
     if (ok) {
       info(`Dependencies installed`);
     } else {
@@ -166,7 +168,7 @@ async function main(): Promise<void> {
   log('');
   log(`${c.bold}  Next steps:${c.reset}`);
   // The same list the project's README renders under "Getting started" — see steps.ts.
-  for (const line of nextStepLines(name, template, db)) dim(line);
+  for (const line of nextStepLines(name, template, db, installed)) dim(line);
   log('');
   // Said once, plainly, because these files are an opinion about someone's
   // toolchain: what was written, and how not to have it. An agent that never

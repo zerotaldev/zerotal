@@ -13,10 +13,8 @@ tab of `bun zt dev` while you develop.
 
 ## Getting Started
 
-```bash
-# in your project root
-bun add @zerotal/scheduler
-```
+`@zerotal/scheduler` ships in the `zerotal` package every starter already depends on, so there
+is nothing to install: import it from `zerotal/scheduler` and register its provider.
 
 ## Register the provider
 
@@ -24,7 +22,7 @@ Add `SchedulerProvider` to the providers array in `bootstrap/providers.ts`:
 
 ```typescript
 // bootstrap/providers.ts
-import { SchedulerProvider } from "@zerotal/scheduler";
+import { SchedulerProvider } from "zerotal/scheduler";
 
 const providers = [
   // …your other providers
@@ -62,7 +60,7 @@ stays type-checked:
 
 ```typescript
 // config/scheduler.ts
-import { SchedulerConfig } from "@zerotal/scheduler";
+import { SchedulerConfig } from "zerotal/scheduler";
 import { env } from "zerotal";
 
 export default SchedulerConfig({
@@ -113,8 +111,8 @@ automatically — no manual wiring, no central list.
 
 ```typescript fragment
 // app/schedules/SendDailyReports.ts
-import { Schedule } from "@zerotal/scheduler";
-import { Queue } from "@zerotal/queue";
+import { Schedule } from "zerotal/scheduler";
+import { Queue } from "zerotal/queue";
 import { SendReportsJob } from "../jobs/SendReportsJob.ts";
 
 export class SendDailyReports extends Schedule {
@@ -133,7 +131,7 @@ override `frequency()` and return a configured task:
 
 ```typescript fragment
 // app/schedules/WarmCache.ts
-import { Schedule, type SchedulerBuilder } from "@zerotal/scheduler";
+import { Schedule, type SchedulerBuilder } from "zerotal/scheduler";
 
 export class WarmCache extends Schedule {
   override frequency(every: SchedulerBuilder) {
@@ -185,7 +183,7 @@ Every setting is an optional property (or method) on your `Schedule` subclass:
 
 ```typescript fragment
 // app/schedules/NightlyBackup.ts
-import { Schedule, type SchedulerBuilder } from "@zerotal/scheduler";
+import { Schedule, type SchedulerBuilder } from "zerotal/scheduler";
 
 export class NightlyBackup extends Schedule {
   frequency(every: SchedulerBuilder) {
@@ -246,7 +244,7 @@ which exposes the underlying manager fluently:
 
 ```typescript fragment
 // in a provider's onBooted()
-import { Scheduler } from "@zerotal/scheduler";
+import { Scheduler } from "zerotal/scheduler";
 
 Scheduler.job("cleanup-sessions", () => Session.prune()).daily();
 Scheduler.job("warm-cache", () => Cache.forget("posts:page:1")).cron("*/5 * * * *");
@@ -467,7 +465,7 @@ skips the new tick while the previous run is active:
 
 ```typescript
 // app/schedules/RebuildSearchIndex.ts
-import { Schedule } from "@zerotal/scheduler";
+import { Schedule } from "zerotal/scheduler";
 
 export class RebuildSearchIndex extends Schedule {
   cron = "*/5 * * * *";
@@ -525,7 +523,7 @@ Anything the task writes to `console.log` can be persisted or emailed:
 
 ```typescript fragment
 // app/schedules/GenerateSitemap.ts
-import { Schedule } from "@zerotal/scheduler";
+import { Schedule } from "zerotal/scheduler";
 
 export class GenerateSitemap extends Schedule {
   cron = "0 3 * * *";
@@ -543,12 +541,29 @@ a `(email, subject, body) => void | Promise<void>` function, in a provider's
 
 ```typescript
 // in a provider's onBooted()
-import { ScheduledTask } from "@zerotal/scheduler";
-import { Notify } from "@zerotal/notifications";
+import { ScheduledTask } from "zerotal/scheduler";
+import { MailMessage, Notification, Notify } from "@zerotal/notifications";
+
+/** A task's output, as a plain email. */
+class ScheduleOutputNotification extends Notification {
+  constructor(
+    private readonly title: string,
+    private readonly output: string,
+  ) {
+    super();
+  }
+
+  channels(): string[] {
+    return ["mail"];
+  }
+
+  toMail(): MailMessage {
+    return new MailMessage().subject(this.title).line(this.output);
+  }
+}
 
 ScheduledTask.outputMailer = async (email, subject, body) => {
-  // ScheduleOutputNotification implements toMail() from subject/body.
-  await Notify.send({ email }, new ScheduleOutputNotification(subject, body));
+  await Notify.route({ mail: email }).notify(new ScheduleOutputNotification(subject, body));
 };
 ```
 
@@ -560,7 +575,7 @@ alerts. Subscribe in a provider's `onBooted()`:
 ```typescript fragment
 // in a provider's onBooted()
 import { FrameworkEvents } from "zerotal";
-import { TaskRan, TaskFailed, TaskSkipped } from "@zerotal/scheduler";
+import { TaskRan, TaskFailed, TaskSkipped } from "zerotal/scheduler";
 
 FrameworkEvents.on(TaskRan, (e) => metrics.timing(`schedule.${e.name}`, e.durationMs));
 FrameworkEvents.on(TaskFailed, (e) => logger.error(`schedule ${e.name} failed: ${e.error}`));
@@ -601,7 +616,7 @@ handler immediately, bypassing the cron/time-window guards — ideal in tests:
 
 ```typescript fragment
 // in a test
-import { Scheduler } from "@zerotal/scheduler";
+import { Scheduler } from "zerotal/scheduler";
 
 const task = Scheduler.job("report", () => generateReport()).dailyAt("08:00");
 

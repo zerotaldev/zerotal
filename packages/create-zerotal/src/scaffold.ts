@@ -155,6 +155,17 @@ export function outputPath(rel: string): string {
   return [RENAMED[first] ?? first, ...rest].join('/').replace(/\.tmpl$/, '');
 }
 
+/** Template files that are not text, and so take no tokens. */
+const BINARY_EXTENSIONS: ReadonlySet<string> = new Set([
+  '.ico', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.woff', '.woff2', '.pdf',
+]);
+
+/** Whether a template file is copied as bytes rather than rendered as text. */
+function isBinary(path: string): boolean {
+  const dot = path.lastIndexOf('.');
+  return dot !== -1 && BINARY_EXTENSIONS.has(path.slice(dot).toLowerCase());
+}
+
 // ── File walker ───────────────────────────────────────────────────────────────
 
 async function* walk(dir: string): AsyncGenerator<string> {
@@ -181,6 +192,13 @@ export async function scaffold(opts: ScaffoldOptions): Promise<void> {
     const dest = join(opts.target, out);
 
     await mkdir(dirname(dest), { recursive: true });
+
+    // An icon or an image is copied byte for byte: read as text, its bytes would be
+    // decoded as UTF-8 and the file written back corrupt.
+    if (isBinary(rel)) {
+      await Bun.write(dest, Bun.file(src));
+      continue;
+    }
 
     const raw     = await Bun.file(src).text();
     let content   = applyTokens(raw, map);

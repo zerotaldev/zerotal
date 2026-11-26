@@ -1,7 +1,7 @@
 import { asset } from "zerotal/assets";
 
 /**
- * What every page puts in `<head>`, besides its title: the icon, the stylesheet, the
+ * What every page puts in `<head>`, besides its title: the icons, the stylesheet, the
  * browser script, and the line that picks light or dark before the first paint.
  *
  * Flow writes the rest of the document itself. app/exceptions/Handler.ts writes the
@@ -10,7 +10,8 @@ import { asset } from "zerotal/assets";
  * `asset()` runs per request, so a rebuild in development is picked up on the next load.
  */
 export function documentHead(): string {
-  return `<link rel="icon" href="/zt.svg" type="image/svg+xml" />
+  return `<link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/zt.svg" type="image/svg+xml" />
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#191922" media="(prefers-color-scheme: dark)" />
   ${THEME_SCRIPT}

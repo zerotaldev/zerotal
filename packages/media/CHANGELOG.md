@@ -10,6 +10,22 @@ line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Media links work with the default config.** With no disk named in `config/media.ts` or on
+  the collection, media went to `storage.default` — the built-in `local` disk, which is private
+  and has no URL. `getUrl()` returned `/media/<uuid>/original.png`, a path nothing serves, so
+  every media link 404ed until the app configured a disk. Media now goes to `storage.default`
+  only when that disk has a URL (a `serve` block or a `url`), and to the built-in `public` disk
+  otherwise, which `StorageProvider` serves at `/storage/public`. The row also records the disk
+  by name: it recorded `""` when the app had no `config/storage.ts`. A disk named on the
+  collection, in `config/media.ts` or with `.toDisk()` is used as before, and rows already
+  written keep resolving to the disk they were written to. **What to check:** files uploaded
+  with no disk configured are now reachable by anyone holding the link (the path carries the
+  item's random uuid). If they should not be, name a private disk in `config/media.ts` and hand
+  out `getTemporaryUrl()` links. A test that fakes the disk with `Storage.fake()` and no
+  argument fakes `local`; fake `Storage.fake("public")` instead.
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

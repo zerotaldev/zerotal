@@ -133,7 +133,11 @@ export abstract class ExceptionHandler {
     const name = (error as { name?: string } | null)?.name;
 
     if (name === "ValidationRedirectError") {
-      const { redirectTo } = error as { redirectTo: string };
+      const { redirectTo, errors } = error as { redirectTo: string; errors?: unknown };
+      // Flashed for the page the redirect lands on and no other. A form that sets them
+      // itself before throwing (the starters' `rejectInput()`) used `session.set`, and they
+      // then stayed on every page until a later validation passed.
+      if (ctx?.session && errors !== undefined) ctx.session.flash("errors", errors);
       return new Response(null, {
         status: 303,
         headers: { Location: redirectTo },
@@ -148,6 +152,9 @@ export abstract class ExceptionHandler {
     // ── Validation errors: structured JSON (form submits use redirect above) ─
     if (name === "ValidationJsonError") {
       const { errors } = error as { errors: Record<string, string> };
+      // The 422 answers the form where it is. Anything this request put in the session for
+      // a page to show would otherwise be shown on whichever page the visitor opens next.
+      _forgetFormState(ctx);
       return Response.json({ message: "Validation failed", errors }, { status: 422 });
     }
 
@@ -196,6 +203,31 @@ export abstract class ExceptionHandler {
   }
 }
 
+/** Fields whose submitted value is never kept to refill a form. */
+const SECRET_FIELD = /password|passwd|^_token$/i;
+
+/**
+ * The submitted body as it is kept to refill a form: without any field whose name says it
+ * holds a password, and without uploads. Kept whole, a change-password form that failed on
+ * its confirmation put the current password into every later Inertia page's props.
+ */
+function _oldInput(body: unknown): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (body === null || typeof body !== "object") return out;
+  for (const [key, value] of Object.entries(body)) {
+    if (SECRET_FIELD.test(key)) continue;
+    if (typeof Blob !== "undefined" && value instanceof Blob) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+/** Drop the errors and input a failed form left in the session for a page to show. */
+function _forgetFormState(ctx?: HttpContext): void {
+  ctx?.session?.forget("errors");
+  ctx?.session?.forget("old");
+}
+
 /**
  * The field errors of a `ValidationError` from `@zerotal/core/errors`, or `undefined` for any
  * other error.
@@ -228,6 +260,7 @@ async function _renderValidationError(
   ctx?: HttpContext,
 ): Promise<Response> {
   if (_prefersJson(ctx?.request.headers.get("Accept"))) {
+    _forgetFormState(ctx);
     return Response.json({ message: error.message, errors }, { status: 422 });
   }
 
@@ -237,12 +270,12 @@ async function _renderValidationError(
       const first = Array.isArray(messages) ? messages[0] : messages;
       if (first !== undefined) firsts[field] = String(first);
     }
-    ctx.session.set("errors", firsts);
+    ctx.session.flash("errors", firsts);
 
     const method = ctx.request.method;
     if (method !== "GET" && method !== "HEAD") {
       try {
-        ctx.session.set("old", await ctx.body());
+        ctx.session.flash("old", _oldInput(await ctx.body()));
       } catch {
         // A body that cannot be read leaves nothing to refill the form with; the errors
         // still reach the page.

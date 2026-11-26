@@ -114,7 +114,16 @@ function build<T>(
     parse(value, key, fromText = false) {
       const result = check(value, fromText);
       if (isRefusal(result)) throw new InvalidSettingValueError(key, result[INVALID]);
-      const reason = options.validate?.(result);
+      // A check written for the declared shape can throw on a value of another one
+      // (`null` from a JSON field reaches `v.days`). That refuses the value too, rather
+      // than escaping as a 500 from the screen that sent it.
+      let reason: string | undefined | void;
+      try {
+        reason = options.validate?.(result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new InvalidSettingValueError(key, `its check failed (${message})`);
+      }
       if (reason) throw new InvalidSettingValueError(key, reason);
       return result;
     },

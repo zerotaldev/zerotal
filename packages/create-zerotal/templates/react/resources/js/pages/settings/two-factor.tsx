@@ -162,9 +162,11 @@ function TwoFactor({ title, enabled, setup, recoveryCodes, recoveryCodesLeft }: 
             <CardFooter>
               <Button
                 variant="ghost"
-                onClick={() =>
-                  router.delete(route("settings.two-factor.destroy"), { preserveScroll: true })
-                }
+                onClick={() => {
+                  // The wrong code's error belongs to this attempt, not to the next setup.
+                  confirm.clearErrors();
+                  router.delete(route("settings.two-factor.destroy"), { preserveScroll: true });
+                }}
               >
                 Cancel
               </Button>

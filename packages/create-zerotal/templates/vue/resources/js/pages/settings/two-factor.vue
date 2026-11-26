@@ -50,6 +50,12 @@ async function copyCodes() {
 const post = (name: "settings.two-factor.store" | "settings.two-factor.recovery-codes.store") =>
   router.post(route(name), {}, { preserveScroll: true });
 
+/** Abandon a setup. The wrong code's error belongs to this attempt, not to the next one. */
+function cancelSetup() {
+  confirm.clearErrors();
+  router.delete(route("settings.two-factor.destroy"), { preserveScroll: true });
+}
+
 function turnOff() {
   router.delete(route("settings.two-factor.destroy"), {
     preserveScroll: true,
@@ -145,12 +151,7 @@ function turnOff() {
         </ol>
       </CardBody>
       <CardFooter>
-        <Button
-          variant="ghost"
-          @click="router.delete(route('settings.two-factor.destroy'), { preserveScroll: true })"
-        >
-          Cancel
-        </Button>
+        <Button variant="ghost" @click="cancelSetup"> Cancel </Button>
         <Button type="submit" :disabled="confirm.processing">
           {{ confirm.processing ? "Checking…" : "Turn on" }}
         </Button>

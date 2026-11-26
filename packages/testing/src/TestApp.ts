@@ -2,6 +2,8 @@ import { Application } from "@zerotal/core";
 import { TestResponse, type SessionDecoder } from "./TestResponse.ts";
 import { TestExceptionHandler } from "./TestExceptionHandler.ts";
 import { resetTestState } from "./resetTestState.ts";
+import { _carryOrmRegistrations, _snapshotOrmRegistrations } from "./ormRegistrations.ts";
+import type { OrmRegistrations } from "./ormRegistrations.ts";
 
 type BunServer = { port: number; stop(drain?: boolean): void };
 
@@ -651,6 +653,14 @@ function _toFile(input: TestFileInput | File | Blob): File {
  */
 const _sharedApps = new Map<Application, TestApp>();
 
+/**
+ * The ORM registrations each app had once it booted: global scopes, hooks and
+ * observers its providers added, and those its models added when their modules were
+ * evaluated. A file that is handed the shared app gets these back on a fresh context
+ * — see {@link _carryOrmRegistrations}.
+ */
+const _bootRegistrations = new WeakMap<Application, OrmRegistrations>();
+
 export async function createTestApp(
   bootstrap: () => Application | Promise<Application>,
   setup?: () => void,
@@ -687,12 +697,19 @@ export async function createTestApp(
   // that breaks it.
   Bun.env["APP_TYPE"] = "test";
 
+  // What models registered when this file imported them, before the reset below
+  // replaces the context they registered into. A model module is evaluated once per
+  // process, so a scope its class body adds is never added again.
+  const imported = _snapshotOrmRegistrations();
+
   if (!setup && _sharedApps.size > 0) {
     resetTestState();
     const booted = await bootstrap();
     const existing = _sharedApps.get(booted);
     if (existing) {
       booted.adoptAsCurrent();
+      // Adopting installs an empty ORM context; the app booted into another one.
+      _carryOrmRegistrations(_bootRegistrations.get(booted), imported);
       // The previous file may not have closed it, and what it set is not this file's.
       existing._resetClientState();
       return existing;
@@ -709,6 +726,7 @@ export async function createTestApp(
   // short-circuits, so the app scope `resetTestState()` just tore down is never
   // reinstalled. Re-adopt it so facades resolve. No-op for a fresh app.
   app.adoptAsCurrent();
+  _carryOrmRegistrations(_bootRegistrations.get(app), imported);
   setup?.();
 
   // Wrap whatever handler the app already has, so every request's exception is
@@ -719,6 +737,8 @@ export async function createTestApp(
   errors.inner = app._swapExceptionHandler(errors);
 
   await app.start(0);
+  // Booted: what it registered is what every later file handed this app must see.
+  _bootRegistrations.set(app, _snapshotOrmRegistrations());
   const testApp = new TestApp(app, errors);
 
   // Cache it either way. `_shared` still means "reached through the sharing path",

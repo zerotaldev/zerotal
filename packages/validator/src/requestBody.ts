@@ -89,3 +89,27 @@ async function readUncached(request: Request): Promise<Record<string, unknown>> 
 
   return body;
 }
+
+/** Fields whose submitted value is never kept to refill a form. */
+const SECRET_FIELD = /password|passwd|^_token$/i;
+
+/**
+ * The submitted body as it is kept to refill a form after a failed submit: without any
+ * field whose name says it holds a password, and without uploads, which cannot be put
+ * back into a file input and do not belong in a session.
+ *
+ * The body used to be kept whole, so a change-password form that failed on its
+ * confirmation put the current password, in plain text, into the session and from there
+ * into the page props of every Inertia page that followed.
+ *
+ * @internal
+ */
+export function _oldInput(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (SECRET_FIELD.test(key)) continue;
+    if (typeof Blob !== "undefined" && value instanceof Blob) continue;
+    out[key] = value;
+  }
+  return out;
+}

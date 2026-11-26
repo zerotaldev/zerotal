@@ -134,14 +134,19 @@ describe("FormRequest.validate()", () => {
     expect((err as { status: number }).status).toBe(403);
   });
 
-  it("stores errors and old input in session on failure", async () => {
-    const stored: Record<string, unknown> = {};
-    const ctx = makeCtx({ body: { title: "Hi", body: "short" }, isJson: false });
+  it("flashes errors and old input, without passwords, on a failed form post", async () => {
+    const flashed: Record<string, unknown> = {};
+    const ctx = makeCtx({
+      body: { title: "Hi", body: "short", password: "hunter22" },
+      isJson: false,
+    });
     (
-      ctx as unknown as { session: { set(k: string, v: unknown): void; forget(k: string): void } }
+      ctx as unknown as {
+        session: { flash(k: string, v: unknown): void; forget(k: string): void };
+      }
     ).session = {
-      set: (k, v) => {
-        stored[k] = v;
+      flash: (k, v) => {
+        flashed[k] = v;
       },
       forget: () => {},
     };
@@ -150,8 +155,8 @@ describe("FormRequest.validate()", () => {
     } catch {
       /* expected */
     }
-    expect(stored["errors"]).toBeDefined();
-    expect(stored["old"]).toBeDefined();
+    expect(flashed["errors"]).toBeDefined();
+    expect(flashed["old"]).toEqual({ title: "Hi", body: "short" });
   });
 
   it("clears errors from session on success", async () => {

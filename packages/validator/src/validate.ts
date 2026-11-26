@@ -6,10 +6,10 @@ import type { FieldRule } from "./FieldRule.ts";
 import { RuleBuilder } from "./RuleBuilder.ts";
 import { runValidationAsync } from "./Validator.ts";
 import { ValidationRedirectError, ValidationJsonError } from "./ValidationError.ts";
-import { _readRequestBody, _requestOrigin } from "./requestBody.ts";
+import { _oldInput, _readRequestBody, _requestOrigin } from "./requestBody.ts";
 
 type SessionLike = {
-  set(key: string, value: unknown): void;
+  flash(key: string, value: unknown): void;
   forget(key: string): void;
 };
 
@@ -49,15 +49,17 @@ export async function validate<S extends Record<string, FieldRule>>(
     const errors = result.errors;
     const session = (ctx as unknown as { session?: SessionLike }).session;
 
-    session?.set("errors", errors);
-    session?.set("old", body);
-
     // A client whose Accept prefers JSON to HTML gets JSON, X-Inertia or not: the exception
     // handler's rule, so the two agree. Inertia's own visits send
     // `Accept: text/html, application/xhtml+xml`, so they still redirect back.
     if (_prefersJson(ctx.request.headers.get("Accept"))) {
+      // The 422 answers the form where it is, so nothing is left for the next page.
       throw new ValidationJsonError(errors);
     } else {
+      // Flashed, for the page the redirect lands on and no other. Set, they stayed until a
+      // later validation passed, on every page in between.
+      session?.flash("errors", errors);
+      session?.flash("old", _oldInput(body));
       // Referer is attacker-controllable and this is a redirect target, so it must go
       // through the same origin check every other redirect in the framework uses. Without it,
       // a plain <a href="https://app.com/search"> on an attacker's page bounced the victim

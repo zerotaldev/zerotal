@@ -8,6 +8,20 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `validate` check that throws refuses the value.** A check written for the declared shape
+  can throw on another one: `setFromText()` on a JSON setting parses `"null"` to `null`, and the
+  documented `(v) => (Array.isArray(v.days) ? …)` then threw a `TypeError`, a 500 from the
+  settings screen. It is an `InvalidSettingValueError` (422) now, its reason naming the check's
+  message.
+- **A settings group works in a running app.** `SettingsProvider` bound `settings` lazily and
+  never resolved it, and the typed groups and the `Settings` facade read the binding with
+  `makeSync`, which refuses a singleton nothing has resolved. So with the provider registered,
+  every `billing.get(…)` in a request threw "Settings are not available: register
+  SettingsProvider". `SettingsFake` and the provider's tests used other paths and passed. The
+  provider resolves the manager while booting now.
+
 ### Added
 
 - **`SettingsFake` checks keys and values at compile time when given the group.**

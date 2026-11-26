@@ -48,6 +48,10 @@ follows the Zerotal monorepo's unified versioning.
   install, with a sentence for a fresh clone; the terminal's "Next steps" list `bun install`
   first only when `--no-install` skipped it or it failed.
 
+- **Cancelling two-factor setup clears the wrong code's error** (React and Vue starters). The
+  confirm form kept its errors in the page, so after a mistyped code, Cancel and a fresh "Set up
+  two-factor" opened with "That code did not match" already showing.
+
 
 ## [1.18.0] — 2026-11-26
 

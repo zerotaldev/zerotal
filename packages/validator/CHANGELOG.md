@@ -32,6 +32,16 @@ follows the Zerotal monorepo's unified versioning.
   breaks), and, whatever the name suggests, does not check the password against a list of
   breached passwords. Behaviour is unchanged.
 
+- **A failed form's errors and input last for one page, and never hold a password.**
+  `validate()` and `FormRequest` wrote `errors` and `old` with `session.set`, so they stayed
+  until a later validation passed: every Inertia page after one failure carried the stale
+  `errors` prop, and a later visit that ran no validation was reported as failed. `old` was the
+  submitted body as it was, so a change-password form that failed on its confirmation put the
+  current password, in plain text, into every later page's props and `history.state`. Both are
+  flashed now, for the page the redirect lands on, and `old` leaves out any field whose name
+  contains `password` (and `_token`) and any upload. A JSON 422 answers the form where it is and
+  writes neither.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

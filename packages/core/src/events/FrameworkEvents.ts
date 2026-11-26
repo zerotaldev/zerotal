@@ -98,8 +98,12 @@ export const FrameworkEvents = {
       return set;
     })();
     handlers.add(handler as Handler<object>);
+    // Looked up when it runs, not captured: `clear()` drops the set this handler went into,
+    // and `_restore()` puts the handler back in a new one, which a captured set would miss.
     return () => {
-      handlers.delete(handler as Handler<object>);
+      const current =
+        typeof target === "string" ? _byKind.get(target) : _byClass.get(target as EventCtor);
+      current?.delete(handler as Handler<object>);
     };
   },
 

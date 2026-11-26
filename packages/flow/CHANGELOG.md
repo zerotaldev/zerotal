@@ -11,6 +11,13 @@ change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`make:flow --crud` imports only the class lists its page uses.** In an app with the
+  starters' `lib/ui.ts` the page imported every constant the generator knows, so it carried
+  an unused `CARD`, and an unused `CHECKBOX` for a model with no boolean column, which the
+  app's lint flags.
+
 ## [1.18.2] — 2026-11-26
 
 ### Fixed

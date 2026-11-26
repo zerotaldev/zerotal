@@ -11,7 +11,7 @@
  * Packages contribute their own checks via `app.registerDoctorCheck()` (the
  * scheduler's static-config check is the model); the built-ins cover core.
  */
-import { readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { siteGateCheck } from "../gate/doctor.ts";
 import type { Application } from "../application/Application.ts";
 import { appKeyStrengthWarning } from "../support/appKey.ts";
@@ -62,6 +62,15 @@ function _sourceFiles(root: string, dir: string): string[] {
     );
   } catch {
     return [];
+  }
+}
+
+/** A file's source, or `""` when it cannot be read: the check then leaves it out. */
+function _source(root: string, dir: string, file: string): string {
+  try {
+    return readFileSync(`${root}/${dir}/${file}`, "utf8");
+  } catch {
+    return "";
   }
 }
 
@@ -264,14 +273,24 @@ function _providerDirCheck(options: {
   dir: (app: Application) => string;
   binding: string;
   provider: string;
+  /**
+   * What a file's source holds when the provider has something to do with it. Left out, every
+   * file in the directory counts.
+   */
+  defines?: { pattern: RegExp; what: string };
 }): DoctorCheck {
   return {
     id: options.id,
     label: options.label,
     run(app) {
       const dir = options.dir(app);
-      const files = _sourceFiles(process.cwd(), dir);
-      if (files.length === 0) return ok(`no ${dir}/`);
+      const every = _sourceFiles(process.cwd(), dir);
+      if (every.length === 0) return ok(`no ${dir}/`);
+      const defines = options.defines;
+      const files = defines
+        ? every.filter((file) => defines.pattern.test(_source(process.cwd(), dir, file)))
+        : every;
+      if (files.length === 0) return ok(`${every.length} file(s), none ${defines!.what}`);
       if (app.container.bound(options.binding as never)) {
         return ok(`${files.length} file(s), provider registered`);
       }
@@ -303,6 +322,13 @@ const jobsProviderCheck = _providerDirCheck({
   dir: (app) => _conventionPath(app, "jobs", "app/jobs"),
   binding: "queue",
   provider: "QueueProvider",
+  // A directory named `jobs` is not always the queue's: one app kept the plain functions its
+  // schedules call there, and was told on every run that nothing in it would run. A job is a
+  // class that extends the queue's `Job`, directly or through a base class of the app's own.
+  defines: {
+    pattern: /\bextends\s+[\w$.]*Job\b|["'](?:@zerotal\/queue|zerotal\/queue)["']/,
+    what: "defines a job",
+  },
 });
 
 const storageProviderCheck: DoctorCheck = {

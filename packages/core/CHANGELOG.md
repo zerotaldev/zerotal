@@ -18,6 +18,15 @@ follows the Zerotal monorepo's unified versioning.
 - **`bun zt dev` no longer prints "Skipping … app/schedules" at startup.** 1.18.2 removed it from
   the server's restarts; the `zt dev` process itself, which boots the app only to ask what to
   run, still printed it once.
+- **`bun zt doctor` no longer warns about an `app/jobs` that holds no jobs.** Any file there
+  drew "QueueProvider is not registered — nothing in it will run", including plain modules
+  that an app's schedules call. The check now counts a file only when it defines a job: a
+  class that extends `Job`, or a file that imports from the queue package.
+- **A framework-event handler can be unsubscribed after the test harness restored it.** The
+  function `FrameworkEvents.on()` returns removed the handler from the set it was first put
+  in. Once the harness had cleared the bus between test files and restored a shared app's
+  subscriptions, that set was no longer the live one, so a provider's unsubscribe on stop
+  left its handler listening. The function now looks the handler's set up when it runs.
 
 ## [1.18.2] — 2026-11-26
 

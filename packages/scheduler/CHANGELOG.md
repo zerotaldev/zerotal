@@ -8,6 +8,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A run's duration is logged in whole milliseconds.** "Scheduled task ran" printed the
+  timer's float, `durationMs=14.195999999999998`.
+
 ## [1.18.1] — 2026-11-26
 
 ### Added

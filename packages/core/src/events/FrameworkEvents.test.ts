@@ -105,3 +105,42 @@ describe("FrameworkEvents bus", () => {
     expect(seen).toHaveLength(1);
   });
 });
+
+// The test harness clears the bus between files and puts back what a shared app subscribed
+// at boot. The app's providers still hold the functions `on()` gave them, and call them when
+// the app stops.
+describe("FrameworkEvents — unsubscribing after a clear and a restore", () => {
+  afterEach(() => FrameworkEvents.clear());
+
+  it("removes a restored handler, by class and by kind", () => {
+    const seen: string[] = [];
+    const offClass = FrameworkEvents.on(Alpha, () => seen.push("class"));
+    const offKind = FrameworkEvents.on("Alpha", () => seen.push("kind"));
+
+    const snapshot = FrameworkEvents._snapshot();
+    FrameworkEvents.clear();
+    FrameworkEvents._restore(snapshot);
+
+    FrameworkEvents.emit(new Alpha());
+    expect(seen.sort()).toEqual(["class", "kind"]);
+
+    offClass();
+    offKind();
+    seen.length = 0;
+    FrameworkEvents.emit(new Alpha());
+    expect(seen).toEqual([]);
+    expect(FrameworkEvents.handlerCount()).toBe(0);
+  });
+
+  it("is a no-op for a handler that was cleared and not restored", () => {
+    const off = FrameworkEvents.on(Beta, () => {});
+    FrameworkEvents.clear();
+    const kept: string[] = [];
+    FrameworkEvents.on(Beta, () => kept.push("later"));
+
+    off();
+
+    FrameworkEvents.emit(new Beta());
+    expect(kept).toEqual(["later"]);
+  });
+});

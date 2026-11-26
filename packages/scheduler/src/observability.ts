@@ -105,13 +105,16 @@ export function installSchedulerObservability(app: Application): () => void {
   if (log) {
     unsubs.push(
       FrameworkEvents.on(TaskRan, (e) => {
-        if (e.ok) log.info("Scheduled task ran", { name: e.name, durationMs: e.durationMs });
-        else log.error("Scheduled task failed", { name: e.name, durationMs: e.durationMs });
+        // Whole milliseconds: the event carries the timer's own float, which printed as
+        // `durationMs=14.195999999999998`.
+        const durationMs = Math.round(e.durationMs);
+        if (e.ok) log.info("Scheduled task ran", { name: e.name, durationMs });
+        else log.error("Scheduled task failed", { name: e.name, durationMs });
       }),
       FrameworkEvents.on(TaskFailed, (e) =>
         log.error(
           "Scheduled task threw",
-          { name: e.name, durationMs: e.durationMs },
+          { name: e.name, durationMs: Math.round(e.durationMs) },
           new Error(e.error),
         ),
       ),

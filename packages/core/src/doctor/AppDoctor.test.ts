@@ -220,6 +220,42 @@ describe("provider-directory checks", () => {
     expect((await check("schedules-provider").run(app)).status).toBe("ok");
   });
 
+  it("warns when app/jobs defines a job without the queue binding", async () => {
+    mkdirSync(join(root, "app", "jobs"), { recursive: true });
+    writeFileSync(
+      join(root, "app", "jobs", "SendReceipt.ts"),
+      'import { Job } from "zerotal/queue";\nexport class SendReceipt extends Job {}\n',
+    );
+    writeFileSync(join(root, "app", "jobs", "helpers.ts"), "export const TRIES = 3;\n");
+    const result = await check("jobs-provider").run(fakeApp());
+    expect(result.status).toBe("warn");
+    expect(result.message).toContain("SendReceipt.ts");
+    expect(result.message).not.toContain("helpers.ts");
+    expect(result.fix).toContain("QueueProvider");
+  });
+
+  it("counts a job that extends a base class of the app's own", async () => {
+    mkdirSync(join(root, "app", "jobs"), { recursive: true });
+    writeFileSync(
+      join(root, "app", "jobs", "SendReceipt.ts"),
+      'import { TenantJob } from "./TenantJob";\nexport class SendReceipt extends TenantJob {}\n',
+    );
+    expect((await check("jobs-provider").run(fakeApp())).status).toBe("warn");
+  });
+
+  // From an app that keeps the functions its schedules call in app/jobs: no queue, no job
+  // class, and a warning on every run that "nothing in it will run".
+  it("passes when app/jobs holds only plain modules", async () => {
+    mkdirSync(join(root, "app", "jobs"), { recursive: true });
+    writeFileSync(
+      join(root, "app", "jobs", "cycles.ts"),
+      "export async function ensureAllCycles(): Promise<number> {\n  return 0;\n}\n",
+    );
+    const result = await check("jobs-provider").run(fakeApp());
+    expect(result.status).toBe("ok");
+    expect(result.message).toContain("none defines a job");
+  });
+
   it("warns when config/storage.ts exists without the storage binding", async () => {
     mkdirSync(join(root, "config"), { recursive: true });
     writeFileSync(join(root, "config", "storage.ts"), "");

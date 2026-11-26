@@ -574,6 +574,9 @@ runs:
 })
 ```
 
+**Or keep the files in memory.** `Storage.fake()` swaps a disk for one that writes nothing;
+see [Mocking](/docs/testing/mocking#storage).
+
 **Assert the deletion too.** `assertMissingFile` is the other half of any test
 that removes a file — a delete endpoint returning `204` proves the route ran, not
 that the bytes are gone:

@@ -16,6 +16,14 @@ follows the Zerotal monorepo's unified versioning.
   one conditional update, `claimTwoFactorStep()` in `app/auth/two-factor.ts`, and only the request
   whose update changed the row is signed in.
 
+### Fixed
+
+- **A refused two-factor code says it may have been used already.** A code that had just
+  signed someone in is refused, correctly, and the message sent them to check their app:
+  "That code is not valid. Check your authenticator app." It now reads "That code is not
+  valid or was already used. Enter the newest one from your app." in the React, Vue and Flow
+  starters.
+
 ## [1.18.2] — 2026-11-26
 
 ### Fixed

@@ -537,7 +537,7 @@ export interface _AppStyles {
 }
 
 /** The class lists a generated page reads from the starters' `lib/ui.ts`. */
-const UI_NAMES = ["INPUT", "FIELD_ERROR", "CHECKBOX", "PAGE_TITLE", "CARD"] as const;
+const UI_NAMES = ["INPUT", "FIELD_ERROR", "CHECKBOX", "PAGE_TITLE"] as const;
 
 /** The app's class lists, read from the `lib/` beside the pages directory, if it has them. */
 function _appStyles(pagesDir: string, page: string): _AppStyles | undefined {
@@ -713,7 +713,7 @@ function _modelCrudStub(o: _ModelCrudStubOptions): string {
     )
     .join("\n");
 
-  return `${imports}
+  const source = `${imports}
 
 /** A ${record} as the page holds it: the columns it lists and edits${dates.length ? ", with dates as `YYYY-MM-DD`" : ""}. */
 type Row = ${
@@ -834,4 +834,17 @@ ${controls ? `${controls}\n` : ""}          <button type="submit" loadingAttr="d
   }
 }
 `;
+  return _importUsedUi(source, o.styles);
+}
+
+/**
+ * Import from the app's `lib/ui` only the class lists the page ended up using. A model with
+ * no boolean column draws no checkbox, and an import nothing reads fails the app's lint.
+ */
+function _importUsedUi(source: string, styles: _AppStyles | undefined): string {
+  if (!styles) return source;
+  const line = (names: string[]) => `import { ${names.join(", ")} } from "${styles.ui}";\n`;
+  const all = [...styles.names].sort();
+  const used = all.filter((name) => source.includes(`class={${name}}`));
+  return source.replace(line(all), used.length > 0 ? line(used) : "");
 }

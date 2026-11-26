@@ -27,6 +27,79 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.18.1 — 2026-11-26
+
+A patch, from a newcomer's walk through the React, Vue and Flow starters. Uploads have working
+links out of the box, generators write files the starters' own checks accept, a build or start
+error shows in the browser, `zt dev` runs your schedules, and the starters lose their rough edges.
+
+### Before you upgrade
+
+Read [1.18.1](/docs/upgrade#1181) in the upgrade guide. Three changes can affect an existing app:
+
+- **Media with no disk configured goes to the served `public` disk** (`@zerotal/media`). It went
+  to the private `local` disk, where every link 404ed. Those files can now be reached by anyone
+  holding the link, which carries the item's random id. An app whose uploads must stay private
+  names a private disk in `config/media.ts` and hands out `getTemporaryUrl()` links.
+- **A narrower `in()` value can fail a comparison that compiled before** (`@zerotal/validator`,
+  types only). After `r.string().in(["draft", "active"])` the value is typed
+  `"draft" | "active"`, so `data.status === "archived"` no longer compiles. Add the value to the
+  list, or widen with `as string`.
+- **The logger reads `LOG_LEVEL`** (`@zerotal/core`). When it names a level, it is the terminal's
+  minimum unless `console.level` is set in the logging config, so a host that sets `LOG_LEVEL`
+  changes what the terminal shows. `bun zt test` now runs at `LOG_LEVEL=warn`.
+
+### Added
+
+- **`bun zt dev` runs your schedules** (`@zerotal/scheduler`), in its own tab.
+  **`bun zt schedule:run <name>`** runs one now, and **`bun zt make:schedule <Name>`** writes one.
+- **`multipart()` takes an array for a multi-file field** (`@zerotal/testing`), sent as
+  `<input type="file" multiple>` sends it.
+- **Vue page props can be checked against `Inertia.render`** (`@zerotal/inertia`), as React ones
+  are, by opting in with `InertiaTypeOptions { checkVueProps: true }`.
+- **`SettingsFake` checks keys and values at compile time** when given the group
+  (`@zerotal/settings`).
+- **A cookbook**, short recipes for uploads, caching, and roles and permissions, each checked
+  against a real app.
+
+### Changed
+
+- **`in()` types the validated value as the listed values** (`@zerotal/validator`), and the
+  starters drop the casts they needed.
+- **A new app depends on `~1.18.1`** (`create-zerotal`).
+
+### Fixed
+
+- **Generated files pass the app's own checks** (`@zerotal/core`, `@zerotal/orm`). Every `make:*`
+  generator imports the framework the way the app does and writes through the app's Prettier.
+  `make:policy --model` writes a typed policy with the starters' owner rule, `make:test` writes
+  a test that passes on a fresh starter, `make:factory TaskFactory` no longer doubles the name,
+  and `make:flow --crud --model` works in the Flow starter.
+- **Errors show in the browser in `zt dev`** (`@zerotal/core`): a failed React or Vue build is
+  drawn over the page instead of serving the last good bundle, a Flow syntax error is shown as
+  itself instead of being blamed on the port, and a `.vue` error names its line.
+- **Live-reload works under a strict Content-Security-Policy** (`@zerotal/core`).
+- **A failed form's errors and input last for one page, and never hold a password**
+  (`@zerotal/core`, `@zerotal/validator`).
+- **`route:list` shows each verb's own route name** (`@zerotal/core`).
+- **A dev process boots in the mode its own command selects** (`@zerotal/core`), so a worker
+  under `zt dev` boots as a worker.
+- **Retrying a debounced job no longer fails on a newer dispatch with its key**, and `zt doctor`'s
+  queue check counts every queue (`@zerotal/queue`).
+- **`@column({ type: "date" })` compiles** (`@zerotal/orm`).
+- **A settings group works in a running app**, and a `validate` check that throws refuses the
+  value (`@zerotal/settings`).
+- **Every test file sees the ORM registrations the app made**, a failed assertion on a redirect
+  says where it went, and `waitForPatch()` waits for the action's own answer (`@zerotal/testing`).
+- **`Cache.flush()` stays out of the queue's Redis keys** (`@zerotal/cache`), and
+  `Storage.fake()` builds the URLs the real disk does (`@zerotal/core`).
+- **The starters** (`create-zerotal`): Enter in the Flow two-factor setup turns it on,
+  `/favicon.ico` exists, the logo is the colour it was drawn, "Documentation" links to the docs,
+  mail signs off with the app's name, the README asks for one install, and the examples have no
+  casts.
+- **Each starter's `AGENTS.md` matches the starter it ships in** (`@zerotal/arch`): imports
+  through `zerotal/*`, notifications with `channels()`, and only the folders the starter has.
+
 ## 1.18.0 — 2026-11-26
 
 Per-tenant settings, the database queue on PostgreSQL and MySQL, safer migrations, test helpers

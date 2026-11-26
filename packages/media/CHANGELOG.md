@@ -10,6 +10,8 @@ line, and `api-surface.md` is diffed by CI on every change.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Fixed
 
 - **Media links work with the default config.** With no disk named in `config/media.ts` or on

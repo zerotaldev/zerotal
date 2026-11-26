@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Fixed
 
 - **`make:model`, `make:migration`, `make:seeder` and `make:factory` write files a starter's

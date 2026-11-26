@@ -81,6 +81,53 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.18.1
+
+A patch. Three changes can affect an existing app; most need no change.
+
+### Media with no disk configured is served
+
+With no disk named on a collection, in `config/media.ts` or with `.toDisk()`, media went to the
+private `local` disk, and every `getUrl()` link 404ed. It now goes to `storage.default` when
+that disk has a URL, and otherwise to the built-in `public` disk, served at `/storage/public`.
+Files already stored keep resolving to the disk they were written to.
+
+**What to check.** Files uploaded from now on with no disk configured are reachable by anyone
+holding the link, which carries the item's random id. If they should not be, name a private disk
+in `config/media.ts` and hand out `getTemporaryUrl()` links. A test that calls `Storage.fake()`
+with no argument fakes `local`; fake `Storage.fake("public")` instead.
+
+### A narrower `in()` value can fail a comparison
+
+`r.string().in(["draft", "active"])` now types the validated value as `"draft" | "active"`, not
+`string`. Nothing changes at run time.
+
+**What to change.** Code that compares the field with a value the list does not hold, such as
+`data.status === "archived"`, or assigns one to it, no longer compiles. Add the value to the
+list, or widen with `as string` where the comparison is deliberate. `StringRule`'s new type
+parameter defaults to `string`, so code that names `StringRule` on its own is unaffected.
+
+### The logger reads `LOG_LEVEL`
+
+When `LOG_LEVEL` names a level (`debug` to `fatal`), it is the terminal's minimum level, unless
+the logging config sets `console.level`. The file trail keeps its own level. `bun zt test` sets
+`LOG_LEVEL=warn` for the suite.
+
+**What to change.** Nothing, unless your host sets `LOG_LEVEL` and you want the terminal to keep
+showing what it did: set `console.level` in `config/logging.ts`.
+
+### Also worth knowing (not breaking)
+
+- **A failed form's errors and old input are flashed** for the page the redirect lands on,
+  rather than kept until a later validation passes, and `old` never holds a password field or
+  an upload.
+- **`bun zt dev` runs your schedules**, and a process it supervises boots in its own mode, so a
+  queue worker under `zt dev` boots as a worker.
+- **Generated files follow your app**: `zerotal/*` imports when the app uses the bundle, and the
+  app's own Prettier. Re-run a generator rather than fixing an old file by hand.
+- **Vue page props can be type-checked** against `Inertia.render`; it is off until you opt in,
+  because it can fail a `vue-tsc` run that passes today.
+
 ## 1.18.0
 
 A minor, with one type-level break and two changes that refuse what used to pass silently.

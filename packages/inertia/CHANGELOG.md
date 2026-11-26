@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Added
 
 - **Vue page props can be checked against `Inertia.render`, as React ones are.** Declare

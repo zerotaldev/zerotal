@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Added
 
 - **`bun zt make:schedule <Name>`** writes `app/schedules/<Name>.ts`, a `Schedule` subclass that

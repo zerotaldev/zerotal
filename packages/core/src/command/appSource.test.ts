@@ -115,7 +115,13 @@ describe("_formatAppSource()", () => {
     write("package.json", JSON.stringify({ devDependencies: { prettier: "^3" } }));
     write(".prettierrc.json", JSON.stringify(config));
     mkdirSync(join(app, "node_modules"), { recursive: true });
-    symlinkSync(join(ROOT, "node_modules", "prettier"), join(app, "node_modules", "prettier"));
+    // A junction, not a plain directory symlink: Windows refuses those without admin rights or
+    // developer mode (EPERM). Elsewhere the type is ignored.
+    symlinkSync(
+      join(ROOT, "node_modules", "prettier"),
+      join(app, "node_modules", "prettier"),
+      "junction",
+    );
   }
 
   it("formats with the app's own Prettier and config", async () => {

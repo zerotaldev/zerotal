@@ -13,6 +13,8 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.18.1] — 2026-11-26
+
 ### Fixed
 
 - The generated `AGENTS.md` no longer contradicts an app that depends on the `zerotal`

@@ -32,7 +32,6 @@ follows the Zerotal monorepo's unified versioning.
   breaks), and, whatever the name suggests, does not check the password against a list of
   breached passwords. Behaviour is unchanged.
 
-
 ## [1.18.0] — 2026-11-26
 
 ### Added

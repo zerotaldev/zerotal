@@ -14,35 +14,40 @@ Scaffold a new page component under your pages directory (`resources/js/pages/` 
 
 ```bash
 # in your project root
-bun zt make:page Dashboard
-bun zt make:page Users/Index          # nested — creates resources/js/pages/Users/Index.tsx
+bun zt make:page dashboard
+bun zt make:page tasks/index          # nested — creates resources/js/pages/tasks/index.tsx
 ```
 
-The generated stub wires up `usePage()` for typed access to shared props and a couple
-of starter links. The framework (React `.tsx` or Vue `.vue`) is auto-detected from
-the Inertia adapter you installed; force it with `--framework vue` or `--framework react`.
-After writing the file, `make:page` regenerates the [page registry](#page-registry)
-automatically.
+The name is the one `Inertia.render()` uses. The page is written the way the starters write
+theirs: a component named from the whole path (`tasks/index` becomes `TasksIndex`), a `Props`
+interface with the `title` the starters' routes pass, and a `<Head>` that sets the document
+title. It is formatted with your app's Prettier, so it passes `format:check` as written. The
+framework (React `.tsx` or Vue `.vue`) is auto-detected from the Inertia adapter you
+installed; force it with `--framework vue` or `--framework react`. After writing the file,
+`make:page` regenerates the [page registry](#page-registry) automatically.
 
 ### Persistent layouts — --layout
 
-Pass `--layout` to wrap the page in an Inertia persistent layout (the layout mounts
-once and survives client-side navigations; only the page content re-renders):
+A page is wrapped in an Inertia persistent layout (the layout mounts once and survives
+client-side navigations; only the page content re-renders). By default that is `AppLayout`,
+when the app has one in `Layouts/` or `layouts/` beside the pages directory, as the starters
+do. Name another with `--layout`, or pass `--layout none` for a page with no layout:
 
 ```bash
 # in your project root
-bun zt make:page Settings --layout MainLayout
+bun zt make:page about --layout PublicLayout
+bun zt make:page embed --layout none
 ```
 
-This emits a page that assigns a `.layout` function and imports the layout from a
-`layouts/` directory relative to the page. Adjust the import path if your layouts live
-elsewhere — the generator prints a reminder.
+A React page assigns a `.layout` function; a Vue page sets `layout` in `defineOptions()`. The
+import is relative to the page. If the layout you name is not there, the command says so and
+writes the page without one.
 
-| Argument / flag | Description                                                        |
-| --------------- | ------------------------------------------------------------------ |
-| `name`          | Page name, e.g. `Dashboard` or `Users/Index` (required).           |
-| `--layout`      | Wrap the page in a persistent layout component.                    |
-| `--framework`   | Force `vue` or `react` (auto-detected from the installed adapter). |
+| Argument / flag | Description                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| `name`          | Page name, as `Inertia.render()` names it, e.g. `tasks/index` (required).                 |
+| `--layout`      | The persistent layout: `AppLayout` by default when the app has one; `none` for no layout. |
+| `--framework`   | Force `vue` or `react` (auto-detected from the installed adapter).                        |
 
 ## Building assets
 

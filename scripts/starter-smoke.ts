@@ -22,12 +22,12 @@
  *   - `zt doctor` reports no failure (warnings, such as unrun migrations, are fine);
  *   - `zt list` exits rather than hanging.
  *
- * Then, in the React and Flow starters, a feature is added the way a developer adds one — the
+ * Then, in the React, Vue and Flow starters, a feature is added the way a developer adds one — the
  * generators a 1.18.0 walk found writing files the starter's own checks rejected — and the
  * checks run again: `make:model`, `make:factory`, `make:notification`, `make:job`,
- * `make:command`, `make:policy --model`, `make:test` and, in Flow, `make:flow --crud --model`,
- * then `typecheck`, `format:check` and `zt test` must all still pass, and `zt repl` must read
- * piped input.
+ * `make:command`, `make:policy --model`, `make:test`, `make:page` in React and Vue, and, in Flow,
+ * `make:flow --crud --model`, then `typecheck`, `format:check` and `zt test` must all still pass,
+ * and `zt repl` must read piped input.
  *
  * Run in the release workflow after the dry run, so a starter that does not work stops
  * the release before any package reaches npm.
@@ -177,7 +177,7 @@ async function smoke(template: string, tarballs: Record<string, string>): Promis
     const list = await run([process.execPath, "zt.ts", "list"], app, 30_000);
     check("zt list exits", list.code === 0, tail(list.out));
 
-    if (template === "react" || template === "flow") {
+    if (template === "react" || template === "vue" || template === "flow") {
       await addFeature(app, template, scripts, check);
     }
   } finally {
@@ -262,6 +262,15 @@ async function addFeature(
       policy.includes("extends Policy<Task>") && policy.includes("return task.userId === user.id;")
     );
   });
+
+  if (template === "react" || template === "vue") {
+    // It wrote single quotes, a component named `index` and no layout, and failed format:check.
+    const ext = template === "vue" ? "vue" : "tsx";
+    await step(["make:page", "tasks/index"], async () => {
+      const page = await read(`resources/js/pages/tasks/index.${ext}`);
+      return page.includes("AppLayout") && page.includes("TasksIndex") && !page.includes("TODO");
+    });
+  }
 
   if (template === "flow") {
     await step(

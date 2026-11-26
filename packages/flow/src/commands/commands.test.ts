@@ -276,7 +276,7 @@ export class Task extends Model {
     expect(src).toContain("@expose done = false;");
     expect(src).toContain("task.fill({ title: this.title, notes: this.notes, done: this.done });");
     expect(src).toContain('this.notes = item.notes ?? "";');
-    expect(src).toContain('<input type="checkbox" checked={this.done} />');
+    expect(src).toContain('<input type="checkbox" checked={this.done} class="size-4" />');
     // A union of literals has no value a blank form could start from; it is left to its default.
     expect(src).not.toContain("status");
   });
@@ -312,5 +312,64 @@ export class Task extends Model {
     expect(src).toContain("export class TasksPage extends Component {");
     expect(src).toContain('import { Auth } from "zerotal/auth";');
     expect(src).toContain('Task.query().where("user_id", Auth.user().id)');
+  });
+
+  // From the 1.18.1 walk: a `date` column was left out, the inputs used a class no stylesheet
+  // defines (`input`), so they rendered without a border, and every page carried a JSX pragma
+  // that no starter page uses.
+  it("edits a date column as a date, held as YYYY-MM-DD on the page", async () => {
+    const root = await flowStarter();
+    await Bun.write(
+      join(root, "app/models/Task.ts"),
+      `@table("tasks")
+export class Task extends Model {
+  static override fillable = ["title", "dueOn"] as const;
+  @column({ type: "number" }) userId!: number;
+  @column({ type: "string" }) title!: string;
+  @column({ type: "date", nullable: true }) dueOn?: Date | null | undefined;
+}
+`,
+    );
+    const { src } = await generate(root);
+
+    expect(src).toContain('type Row = Pick<Task, "id" | "title"> & { dueOn: string };');
+    expect(src).toContain('dueOn: task.dueOn ? task.dueOn.toISOString().slice(0, 10) : "",');
+    expect(src).toContain('@expose dueOn = "";');
+    expect(src).toContain("dueOn: this.dueOn ? new Date(this.dueOn) : null");
+    expect(src).toContain('<input type="date" value={this.dueOn}');
+    expect(src).toContain("this.dueOn = item.dueOn;");
+    expect(() => new Bun.Transpiler({ loader: "tsx" }).transformSync(src)).not.toThrow();
+  });
+
+  it("uses the starter's class lists and button styles when the app has them", async () => {
+    const root = await flowStarter();
+    await Bun.write(
+      join(root, "app/flow/lib/ui.ts"),
+      'export const INPUT = "border";\nexport const FIELD_ERROR = "text-destructive";\n' +
+        'export const PAGE_TITLE = "text-2xl";\nexport const CHECKBOX = "size-4";\n',
+    );
+    await Bun.write(
+      join(root, "app/flow/lib/button.ts"),
+      'export function buttonClass(variant = "primary") { return variant; }\n',
+    );
+    const { src } = await generate(root);
+
+    expect(src).toContain('import { buttonClass } from "../lib/button";');
+    expect(src).toContain('import { CHECKBOX, FIELD_ERROR, INPUT, PAGE_TITLE } from "../lib/ui";');
+    expect(src).toContain("<input value={this.title} class={INPUT}");
+    expect(src).toContain("<span error={this.errors.title} class={FIELD_ERROR} />");
+    expect(src).toContain('<button type="submit" loadingAttr="disabled" class={buttonClass()}>');
+    expect(src).not.toContain('class="input');
+  });
+
+  it("leaves out the JSX pragma when the app's tsconfig names Flow's runtime", async () => {
+    const root = await flowStarter();
+    await Bun.write(
+      join(root, "tsconfig.json"),
+      '{ "compilerOptions": { "jsx": "react-jsx", "jsxImportSource": "@zerotal/flow" } }\n',
+    );
+    const { src } = await generate(root);
+
+    expect(src).not.toContain("@jsxImportSource");
   });
 });

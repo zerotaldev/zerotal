@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`make:page` writes a page in the starters' style.** It wrote single quotes, a component named
+  after the last path segment (`index`), no layout, and a `Props` interface holding only a
+  `// TODO`, so the page failed the app's `format:check`. It now names the component from the
+  whole path (`tasks/index` → `TasksIndex`), gives it the `title` prop the starters' routes pass
+  and a `<Head>`, wraps it in `AppLayout` when the app has one beside the pages directory
+  (`--layout` names another, `--layout none` none), and formats it with the app's Prettier.
+
 ## [1.18.1] — 2026-11-26
 
 ### Added

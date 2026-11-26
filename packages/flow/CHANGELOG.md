@@ -11,6 +11,17 @@ change.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`make:flow --crud --model` edits date columns and looks like the rest of the app.** A `Date`
+  column was left out of the page; it is now an `<input type="date">`, held on the page as
+  `YYYY-MM-DD` and saved as a `Date` (or `null` when blank, for a nullable column). The inputs
+  used `class="input w-full"`, which no stylesheet defines, so they rendered without a border; in
+  an app with the starters' `lib/ui.ts` and `lib/button.ts` the page uses `INPUT`,
+  `FIELD_ERROR` and `buttonClass()`, and elsewhere plain Tailwind classes. Generated pages no
+  longer carry `/** @jsxImportSource @zerotal/flow */` when the app's `tsconfig.json` already
+  names Flow's JSX runtime, as the starters' does.
+
 ## [1.18.1] — 2026-11-26
 
 ### Fixed

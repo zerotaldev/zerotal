@@ -131,17 +131,16 @@ describe("media with no disk configured", () => {
   });
 
   it("keeps the storage default when that disk has a URL of its own", async () => {
+    const assets = StorageConfig({
+      default: "assets",
+      disks: { assets: { driver: "local", root: join(root, "public", "assets"), url: "/a" } },
+    });
     await app.close();
     Application._resetInstance();
     app = Application.create({
       env: "test",
       providers: [StorageProvider],
-      config: {
-        storage: StorageConfig({
-          default: "assets",
-          disks: { assets: { driver: "local", root: join(root, "public", "assets"), url: "/a" } },
-        }),
-      },
+      config: { storage: { ...assets } },
     });
     await app.boot();
     await useDatabase();

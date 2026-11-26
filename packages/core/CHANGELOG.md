@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`bun zt test` is quiet by default.** It runs the suite with `LOG_LEVEL=warn`, so the
+  terminal no longer shows a request line for every request a test makes (one starter's suite
+  printed 397 lines); warnings and errors still print. A `LOG_LEVEL` set in the shell or in
+  `.env.test` is used instead, and one from `.env` is reset like the drivers (`--keep-env`
+  keeps it). The command's first line shows the level. See
+  [The log level](/docs/testing#the-log-level).
+- **The logger reads `LOG_LEVEL`.** When it names a level (`debug` to `fatal`), it is the
+  terminal's minimum level for an app whose logging config sets no `console.level`. The file
+  trail keeps its own level, and a `console.level` in the config still wins.
+
 ### Fixed
 
 - **Live-reload works under a strict Content-Security-Policy.** The dev client was an inline

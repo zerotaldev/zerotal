@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseDotenv, testEnvOverrides, TEST_SAFE_DRIVERS } from "./testEnv.ts";
+import {
+  parseDotenv,
+  testEnvOverrides,
+  testLogLevel,
+  TEST_LOG_LEVEL,
+  TEST_SAFE_DRIVERS,
+} from "./testEnv.ts";
 
 describe("parseDotenv", () => {
   it("reads plain assignments", () => {
@@ -108,11 +114,51 @@ describe("testEnvOverrides", () => {
     expect(overrides).toEqual({ ...TEST_SAFE_DRIVERS });
   });
 
+  it("resets a LOG_LEVEL the app's .env set for zt dev", async () => {
+    await Bun.write(join(dir, ".env"), "LOG_LEVEL=debug\n");
+
+    const { overrides, neutralised } = await testEnvOverrides(dir, { LOG_LEVEL: "debug" });
+
+    expect(overrides["LOG_LEVEL"]).toBe(TEST_LOG_LEVEL);
+    expect(neutralised).toEqual([`LOG_LEVEL=${TEST_LOG_LEVEL}`]);
+  });
+
+  it("leaves a LOG_LEVEL the shell set", async () => {
+    // `LOG_LEVEL=debug bun zt test` is someone who wants every line back.
+    const { overrides } = await testEnvOverrides(dir, { LOG_LEVEL: "debug" });
+
+    expect(overrides["LOG_LEVEL"]).toBeUndefined();
+  });
+
+  it("lets .env.test set LOG_LEVEL over the reset", async () => {
+    await Bun.write(join(dir, ".env"), "LOG_LEVEL=debug\n");
+    await Bun.write(join(dir, ".env.test"), "LOG_LEVEL=info\n");
+
+    const { overrides, neutralised } = await testEnvOverrides(dir, { LOG_LEVEL: "debug" });
+
+    expect(overrides["LOG_LEVEL"]).toBe("info");
+    expect(neutralised).toEqual([]);
+  });
+
   it("works in a project with no dotenv files at all", async () => {
     const { overrides, neutralised } = await testEnvOverrides(dir, { MAIL_DRIVER: "smtp" });
 
     // Nothing declared it, so it came from the shell — left alone.
     expect(overrides).toEqual({});
     expect(neutralised).toEqual([]);
+  });
+});
+
+describe("testLogLevel", () => {
+  it("is warn when nothing sets LOG_LEVEL", () => {
+    expect(testLogLevel({}, {})).toBe("warn");
+  });
+
+  it("keeps the shell's LOG_LEVEL", () => {
+    expect(testLogLevel({}, { LOG_LEVEL: "debug" })).toBe("debug");
+  });
+
+  it("prefers what the overrides chose (.env.test, or the reset of .env's)", () => {
+    expect(testLogLevel({ LOG_LEVEL: "info" }, { LOG_LEVEL: "debug" })).toBe("info");
   });
 });

@@ -17,6 +17,9 @@
  * should answer for itself. The app's own config already defaults to the same
  * safe values; it is only `.env` that overrides them.
  *
+ * The run is also quieter than `zt dev`: `LOG_LEVEL` is `warn` unless something
+ * else sets it (see {@link TEST_LOG_LEVEL}).
+ *
  * Two things still win over this:
  *  - a value set in the shell (`MAIL_DRIVER=smtp bun zt test`), which is
  *    someone deliberately testing that path;
@@ -40,6 +43,30 @@ export const TEST_SAFE_DRIVERS: Readonly<Record<string, string>> = {
   /** In-process cache, so one test file cannot see another's entries. */
   CACHE_DRIVER: "memory",
 };
+
+/**
+ * The terminal's log level for a test run, unless the shell or `.env.test` sets `LOG_LEVEL`.
+ *
+ * At the logger's own default every request a test makes prints a line, so one run of a
+ * starter's suite printed several hundred of them around the few lines that said what
+ * failed. Warnings and errors still print: a 4xx or 5xx response, a failed job, a slow
+ * query — the lines a failing test is usually explained by.
+ */
+export const TEST_LOG_LEVEL = "warn";
+
+/**
+ * The `LOG_LEVEL` a test child runs with: what the overrides chose (`.env.test`, or the
+ * reset of a `.env` value), else what the shell set, else {@link TEST_LOG_LEVEL}.
+ *
+ * @param overrides - From {@link testEnvOverrides}, or empty under `--keep-env`.
+ * @param env - The parent's environment.
+ */
+export function testLogLevel(
+  overrides: Record<string, string>,
+  env: Record<string, string | undefined>,
+): string {
+  return overrides["LOG_LEVEL"] ?? env["LOG_LEVEL"] ?? TEST_LOG_LEVEL;
+}
 
 /**
  * Parse a dotenv file into a map. Deliberately small: this is used to find out
@@ -126,6 +153,19 @@ export async function testEnvOverrides(
 
     overrides[key] = safe;
     neutralised.push(`${key}=${safe}`);
+  }
+
+  // The log level, like the drivers: one set in the shell is kept, and one that came
+  // from `.env` — written for `zt dev`, where every request line is wanted — is not.
+  // (Unset is left to the caller, which applies the same default; see `testLogLevel`.)
+  const level = env["LOG_LEVEL"];
+  if (
+    level !== undefined &&
+    level !== TEST_LOG_LEVEL &&
+    (dotenv.get("LOG_LEVEL") === level || dotenvLocal.get("LOG_LEVEL") === level)
+  ) {
+    overrides["LOG_LEVEL"] = TEST_LOG_LEVEL;
+    neutralised.push(`LOG_LEVEL=${TEST_LOG_LEVEL}`);
   }
 
   // `.env.test` last: it is the app saying what a test run should use, which

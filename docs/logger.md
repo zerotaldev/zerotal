@@ -88,6 +88,7 @@ export default LoggingConfig({
 | `default`     | no       | `"app"`                   | Name of the channel that `Log.info()` (and friends) also write to. |
 | `channels`    | no       | `{}`                      | Named map of extra destinations, discriminated by `driver`.        |
 | `slowQueryMs` | no       | `1000`                    | Queries slower than this (ms) are auto-logged at `warn`.           |
+| `requests`    | no       | `true`                    | Log every HTTP request. `false` turns the access log off.          |
 
 ### The two sinks
 
@@ -436,25 +437,38 @@ no `level` defaults to `debug`, letting everything through):
 ## HTTP access logging
 
 `LoggerMiddleware` is registered automatically by `LogProvider`. It times every
-request, sets an `X-Request-Id` response header, and emits one line per request.
-By default it writes a coloured text line straight to `process.stdout`:
+request, sets an `X-Request-Id` response header, and logs one entry per request.
+
+The entry goes through the logger like any other: its message is the method and
+path, its context carries `method`, `path`, `status`, `duration_ms` and
+`request_id`, and its level follows the status — `info` below 400, `warn` for a
+4xx, `error` for a 5xx. On the console it reads as an ordinary line:
 
 ```text
-  GET     /posts ......................................... 200    42ms
+15:44:46.504 INFO             GET /posts method=GET path=/posts status=200 duration_ms=42 request_id=3f2a9c1e-7b4d-4e0a-9c8f-5d6e1b2a4c70
 ```
 
-Set the format to `json` (via the `LOG_FORMAT` env var) to route the entry through
-the configured `LogManager` channels instead, at `info`/`warn`/`error` by status:
+Because it is an ordinary entry, the usual rules apply. The console's `level`
+filters request lines along with everything else, so `console: { level: "warn" }`
+keeps successful requests off your terminal while 4xx and 5xx responses still
+show. The file trail applies its own `level` (default `debug`), so it still
+keeps every request. The console's `format` decides whether the line is pretty
+or JSON.
 
-```bash
-# in your project root
-LOG_FORMAT=json bun run start
+To turn access logging off, set `requests: false`. `LogProvider` then does not
+register the middleware at all:
+
+```ts fragment
+// config/logging.ts
+export default LoggingConfig({ requests: false });
 ```
 
-> **Note** — In text mode the access line goes directly to stdout, not through the
-> default channel. Use `LOG_FORMAT=json` when you want request lines persisted to
-> your file/daily channels. To drop access logging entirely, omit `LogProvider`
-> and register your own middleware.
+> **Note** — When no `LogManager` is wired — `LoggerMiddleware` used in an app or
+> test that does not register `LogProvider` — the middleware falls back to writing
+> straight to `process.stdout`: a coloured text line, or one JSON object per line
+> when `LOG_FORMAT=json` (or the middleware's `format` option) asks for it. That
+> fallback is the only place `LOG_FORMAT` applies; with `LogProvider` registered,
+> the console's `format` decides.
 
 ## Automatic framework signals
 

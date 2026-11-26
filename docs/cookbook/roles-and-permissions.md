@@ -492,10 +492,19 @@ What each part relies on:
 
 The starter's `tests/project-policy.test.ts` calls the policy with users made by
 `new User()`, which have no database behind them, so `can()` has nothing to read. Give
-its helper a list of permissions to answer from, and add a test for the new rule:
+its `user()` helper a list of permissions to answer from, and add a test for the new rule:
 
 ```ts fragment
 // tests/project-policy.test.ts
+import { describe, expect, test } from "bun:test";
+import { ProjectPolicy } from "../app/policies/ProjectPolicy";
+import { Project } from "../app/models/Project";
+import { User } from "../app/models/User";
+
+/**
+ * The policy on its own, without HTTP: who may do what with a project. Delete this file
+ * with the rest of the example (see "Remove the example" in the README).
+ */
 function user(id: number, permissions: string[] = []): User {
   const u = new User();
   u.id = id;
@@ -504,7 +513,32 @@ function user(id: number, permissions: string[] = []): User {
   return u;
 }
 
-// …
+function projectOwnedBy(id: number): Project {
+  const p = new Project();
+  p.userId = id;
+  return p;
+}
+
+describe("project policy", () => {
+  const policy = new ProjectPolicy();
+
+  test("lets the owner view, update and delete", () => {
+    const owner = user(1);
+    const project = projectOwnedBy(1);
+
+    expect(policy.view(owner, project)).toBe(true);
+    expect(policy.update(owner, project)).toBe(true);
+    expect(policy.delete(owner, project)).toBe(true);
+  });
+
+  test("refuses everyone else", () => {
+    const stranger = user(2);
+    const project = projectOwnedBy(1);
+
+    expect(policy.view(stranger, project)).toBe(false);
+    expect(policy.update(stranger, project)).toBe(false);
+    expect(policy.delete(stranger, project)).toBe(false);
+  });
 
   test("lets someone granted projects.manage view, update and delete", () => {
     const admin = user(2, ["projects.manage"]);
@@ -514,6 +548,11 @@ function user(id: number, permissions: string[] = []): User {
     expect(policy.update(admin, project)).toBe(true);
     expect(policy.delete(admin, project)).toBe(true);
   });
+
+  test("lets any signed-in user create one", () => {
+    expect(policy.create(user(3))).toBe(true);
+  });
+});
 ```
 
 Make sure the tests can fail. Take `|| user.can("projects.manage")` off `update` in the

@@ -1,6 +1,6 @@
 ---
 title: Support Policy
-description: What Zerotal supports and for how long — Bun versions, databases, release cadence, maturity levels, and deprecation.
+description: What Zerotal supports and for how long — Bun versions, databases, release cadence, support windows and long-term support, maturity levels, and deprecation.
 ---
 
 # Support Policy
@@ -145,25 +145,65 @@ dependency order, from CI. Never mix versions across packages.
 - **Provenance:** packages are published with npm provenance, so you can verify
   a tarball was built by this repository's release workflow rather than someone's
   laptop.
-- **Cadence:** releases ship when they are ready rather than on a calendar.
-  Security fixes are released out of band — see the response windows in
+- **Cadence:** patches ship when they are ready. Breaking changes are batched onto
+  a calendar: at most one minor a quarter, released in January, April or October,
+  and the major each July. A quarter with no break to ship gets no minor. Security
+  fixes are released out of band — see the response windows in
   [SECURITY.md](https://github.com/zerotaldev/zerotal/blob/main/SECURITY.md).
-- **Supported versions:** the latest minor gets every fix. The minor before it gets
-  security fixes for three months after its successor ships, released as patches on
-  its own line, so an app that has not yet crossed a breaking minor is not left
-  exposed while it does. Older minors get nothing. There is no long-term-support line
-  beyond that; one will be declared when the project's adoption warrants maintaining
-  it honestly rather than nominally.
+- **Supported versions:** each line is supported for a fixed window after its
+  successor ships, and the July major is a long-term-support line. The windows are
+  in [Support windows](#support-windows) below.
 
-  | Line   | Gets              | Until            |
-  | ------ | ----------------- | ---------------- |
-  | 1.18.x | Every fix         | 1.19.0 ships     |
-  | 1.17.x | Security fixes    | 26 February 2027 |
-  | 1.16.x | Nothing — upgrade |                  |
+## Support windows
 
-  Minors ship weeks apart, not years, which is why the window is three months from
-  the successor rather than a fixed span from each release: a fixed span would mean
-  patching four or five lines at once, a promise one maintainer could not keep.
+A line is a minor and its patches — 1.18.0, 1.18.1 and so on. Every line moves
+through the same stages, and its dates are fixed on the day its successor ships, so
+an upgrade can be planned against them rather than guessed at.
+
+| Line                                  | Gets                                                     | For how long                         |
+| ------------------------------------- | -------------------------------------------------------- | ------------------------------------ |
+| The newest minor                      | Every fix, and new features in patches                   | Until the next minor ships           |
+| An earlier minor                      | Security fixes                                           | Six months after its successor ships |
+| The last minor before a major         | Security fixes                                           | Twelve months after the major ships  |
+| A July major (long-term support, LTS) | Bug and security fixes, then security and critical fixes | Twelve months, then twelve more      |
+
+- **A security fix** is a fix for anything reported and confirmed under
+  [SECURITY.md](https://github.com/zerotaldev/zerotal/blob/main/SECURITY.md).
+- **A critical fix** is a defect that loses or corrupts data, or stops an app
+  booting or serving requests, with no workaround in the app's own code.
+- **A fix on an older line** ships as a patch on that line — 1.17.5, say — from a
+  `1.17.x` branch, through the same release workflow and gates as every release.
+  It is published under the npm dist-tag `release-1.17`, so `latest` never moves
+  back to an older line. A tilde range already takes it (`~1.17.0`), or install it
+  by tag: `bun add zerotal@release-1.17`.
+- **An LTS line** is the July major and its patches — 2.0.x. A later minor, 2.1.0
+  in October, carries breaking changes as usual; an app that would rather not take
+  them stays on 2.0.x and gets its fixes for two years.
+
+Quarterly minors keep this load honest. At any time there is the newest minor, at
+most two earlier minors inside their six months, the current LTS, and while a major
+is fresh the last minor before it. Only the newest minor and the LTS in its first
+year take ordinary bug fixes; every other line takes security and critical fixes
+alone. That is a load one maintainer can carry, which is the test these windows were
+set against.
+
+The windows start with 1.17. Lines superseded before this policy was published are
+not covered: an app on 1.16 or older should upgrade to 1.17 or later to be inside
+one.
+
+| Line             | Gets              | Until                                 |
+| ---------------- | ----------------- | ------------------------------------- |
+| 1.18.x           | Every fix         | 1.19.0 ships, not before January 2027 |
+| 1.17.x           | Security fixes    | 26 May 2027                           |
+| 1.16.x and older | Nothing — upgrade |                                       |
+
+The next breaking releases are on the calendar:
+
+| Release | When         | What                                                  |
+| ------- | ------------ | ----------------------------------------------------- |
+| 1.19.0  | January 2027 | A breaking minor, if there is a break to ship         |
+| 1.20.0  | April 2027   | A breaking minor, if there is a break to ship         |
+| 2.0.0   | July 2027    | The major, and the first LTS — supported to July 2029 |
 
 ## Maturity levels
 

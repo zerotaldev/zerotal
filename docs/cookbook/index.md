@@ -9,8 +9,8 @@ Each recipe adds one thing a real app needs to a new starter, and ends with a te
 proves it works. They are shorter than the [tutorial](/docs/tutorial) and independent of
 each other: start from a fresh app or from your own, and pick the one you need.
 
-Every recipe was run, block by block, on an app scaffolded from `create-zerotal@1.18.1`
-with the React starter. The server code is the same on Vue and Flow; only the page
+Every recipe was run, block by block, on a new React starter scaffolded from the packages
+this release was cut from. The server code is the same on Vue and Flow; only the page
 components differ.
 
 - **[Uploading several files](/docs/cookbook/uploads)** — attach files to a model with

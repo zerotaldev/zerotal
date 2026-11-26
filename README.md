@@ -758,6 +758,7 @@ On [zerotal.dev](https://zerotal.dev/docs) every page also has a Markdown copy a
 | [About Zerotal](docs/about.md)                     | The whole framework in one tour                    |
 | [Release Notes](docs/changelog.md)                 | What changed in each release                       |
 | [Support Policy](docs/support-policy.md)           | Bun versions, databases, maturity levels           |
+| [Supply-Chain Security](docs/supply-chain.md)      | Provenance, pinned CI, dependencies, no installs   |
 | [Agent Surface](docs/arch.md)                      | Machine-readable framework truth for coding agents |
 | [Package Development](docs/package-development.md) | Building a first-party package                     |
 | [Inspirations](docs/inspirations.md)               | What shaped the design                             |

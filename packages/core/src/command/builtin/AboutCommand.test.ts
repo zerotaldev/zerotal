@@ -72,8 +72,14 @@ describe("_aboutReport", () => {
   });
 
   it("reads the real index from the app's own @zerotal/arch", async () => {
-    // This repository's arch, linked in the way a workspace install links it.
-    symlinkSync(join(import.meta.dir, "../../../../arch"), join(dir, "node_modules/@zerotal/arch"));
+    // This repository's arch, linked in the way a workspace install links it. A
+    // junction, because Windows refuses a directory symlink without admin rights or
+    // developer mode; the type is ignored everywhere else.
+    symlinkSync(
+      join(import.meta.dir, "../../../../arch"),
+      join(dir, "node_modules/@zerotal/arch"),
+      "junction",
+    );
     const report = await _aboutReport(dir);
     expect(report.installed.map((p) => p.name)).toContain("@zerotal/arch");
     expect(report.available?.map((a) => a.pkg)).toContain("@zerotal/tenancy");

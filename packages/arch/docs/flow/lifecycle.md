@@ -9,20 +9,20 @@ Lifecycle hooks let you run code at precise points in a component's life — on 
 
 ## Hook reference
 
-| Hook                          | `GET` (initial) | WebSocket (subsequent)          |
-| ----------------------------- | --------------- | ------------------------------- |
-| `onBoot()`                    | ✓               | ✓                               |
-| `onMount()`                   | ✓               | only if `this.refresh()` called |
-| `onHydrate()`                 | —               | ✓                               |
-| `onUpdating(prop, val, key?)` | —               | ✓ (per client write)            |
-| `onUpdated(prop, val, key?)`  | —               | ✓ (per client write)            |
-| `action()`                    | —               | ✓ (the invoked method)          |
-| `onUpdate()`                  | —               | ✓ (once, after action)          |
-| `onRendering()`               | ✓               | ✓                               |
-| `render()`                    | ✓               | ✓                               |
-| `onRendered(html)`            | ✓               | ✓                               |
-| `onDehydrate()`               | ✓               | ✓                               |
-| `onError(error)`              | —               | ✓ (on throw)                    |
+| Hook                          | `GET` (initial) | WebSocket (subsequent)                                      |
+| ----------------------------- | --------------- | ----------------------------------------------------------- |
+| `onBoot()`                    | ✓               | ✓                                                           |
+| `onMount()`                   | ✓               | after `this.refresh()`, or when the client asks (see below) |
+| `onHydrate()`                 | —               | ✓                                                           |
+| `onUpdating(prop, val, key?)` | —               | ✓ (per client write)                                        |
+| `onUpdated(prop, val, key?)`  | —               | ✓ (per client write)                                        |
+| `action()`                    | —               | ✓ (the invoked method)                                      |
+| `onUpdate()`                  | —               | ✓ (once, after action)                                      |
+| `onRendering()`               | ✓               | ✓                                                           |
+| `render()`                    | ✓               | ✓                                                           |
+| `onRendered(html)`            | ✓               | ✓                                                           |
+| `onDehydrate()`               | ✓               | ✓                                                           |
+| `onError(error)`              | —               | ✓ (on throw)                                                |
 
 ## Request flow
 
@@ -42,6 +42,8 @@ GET /page  (initial render)            WebSocket action frame (subsequent)
 ```
 
 `onMount()` is absent from the WebSocket column because it only runs on the initial `GET` — unless the action called `this.refresh()`, which re-inserts it into the WebSocket flow.
+
+The client can also ask for `onMount()` again on its own: a `$refresh` or `$mount` from the browser, and the refresh after a dropped connection, each run it once more. Use it to load state, and keep anything that must happen only once (sending a mail, charging a card) out of it.
 
 ## Child component initialisation
 
@@ -93,7 +95,7 @@ Avoid expensive database queries in `onBoot()` — it fires on every round-trip,
 
 ## Loading data
 
-Runs once on the initial `GET` render, then is skipped on all subsequent WebSocket updates. It's the primary place to load data for the page.
+Runs on the initial `GET` render, and is skipped on later WebSocket updates unless one of them [asks for it](#request-flow). It's the primary place to load data for the page.
 
 A page on a dynamic segment needs no code here for the record it is about. A field of the model's type is [filled from the segment](/docs/flow/routing#path-parameters) before `onMount()` runs, so the query, the id field, and the 404 all belong to the route:
 
@@ -177,7 +179,7 @@ are not part of a re-read, and anything derived from them.
 
 ## Intercepting client writes
 
-Fires **before** a client-written property value is applied to the component. Throw to reject the write — the value is discarded, an error is added, and the component re-renders:
+Fires **before** a client-written property value is applied to the component. Throw to reject the write — the value is discarded, the error goes to [`onError()`](#custom-error-handling), and the component re-renders. Nothing is added to `this.errors`. The default `onError()` flashes a plain `Error`'s message only in development and tests; throw with `abort(422, "…")` when the visitor should read your words everywhere:
 
 ```typescript fragment
 override async onUpdating(prop: string, value: unknown, key?: string) {

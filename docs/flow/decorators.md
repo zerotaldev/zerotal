@@ -36,7 +36,7 @@ export class CounterPage extends Component {
 }
 ```
 
-Only `@expose` properties are two-way: the client can push updates back to the server. If you only need the server to push state to the client, use `@locked` instead.
+`@expose`, `@url`, `@reactive` and `@modelable` properties are writable from the browser. If you only need the server to push state to the client, use `@locked` instead.
 
 ## The @locked decorator
 
@@ -45,6 +45,8 @@ Sent to the client for display, but the client cannot mutate it. Included in the
 An ORM model is the exception: only its id travels in the snapshot and the row is re-read on every round-trip, so what the page shows is always current. See [Models in Components](/docs/flow/models).
 
 A `value={this.x}` binding on a `@locked` property renders as a read-only display — not an editable field.
+
+**What `@locked` does not cover.** The client cannot write a `@locked` field, and cannot forge a snapshot. It can send back an older snapshot it was given: one stays valid for the same user for 12 hours. So a `@locked` value can be rewound to an earlier value the server itself issued. That is harmless for what a page displays and wrong for anything that counts: attempts left, a wizard step that must not be skipped back, a one-time discount. Keep those where the browser never holds them, in the database or in a `@session` field. See [The snapshot](/docs/flow/security#the-snapshot).
 
 Use `@locked` for anything the server owns: a record the route resolved, results loaded in `onMount()`, computed totals, child props from the parent:
 
@@ -346,6 +348,8 @@ Pass the prop from the parent:
 
 Unlike `@locked`, `@reactive` props are **live** — the parent keeps them current on every round-trip. See [Layouts & Composition](/docs/flow/layouts#reactive-props) for the full pattern.
 
+A `@reactive` prop is also writable from the browser, like an `@expose` field: that is how the parent's new value reaches the child. Do not use one for a value the child trusts, such as the id of the account it acts on. Pass that as a `@locked` prop, or re-check it in the action.
+
 ## The @modelable decorator
 
 A reactive prop that **also syncs back to the parent** (two-way). The parent property and the child prop stay in lock-step. Use for reusable input/control components that need to write a value back to their parent:
@@ -419,7 +423,7 @@ this.flash("Your session expires in 5 minutes.", "warning");
 // Redirect after the action completes (sends a redirect effect to the browser)
 this.redirect("/dashboard");
 this.redirect(`/posts/${post.id}`);
-this.redirectRoute("profile", { id: 1 }); // named route → /users/1 (extra keys become ?query)
+this.redirectRoute("profile", { id: 1 }); // named route → /users/1 (one value per segment; an extra key throws)
 this.redirectIntended("/dashboard"); // back to where AuthMiddleware intercepted, else the fallback
 
 // Force onMount() to re-run this round-trip (useful for reloading stale data)

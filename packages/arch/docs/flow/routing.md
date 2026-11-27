@@ -85,14 +85,15 @@ Any `Component` subclass exported from a file under `app/flow/` is registered au
 
 | File                                 | URL                     |
 | ------------------------------------ | ----------------------- |
-| `app/flow/DashboardPage.tsx`         | `/dashboard-page`       |
-| `app/flow/PostsPage.tsx`             | `/posts-page`           |
-| `app/flow/posts/IndexPage.tsx`       | `/posts/index-page`     |
+| `app/flow/index.tsx`                 | `/`                     |
+| `app/flow/dashboard.tsx`             | `/dashboard`            |
+| `app/flow/posts/index.tsx`           | `/posts`                |
 | `app/flow/posts/[slug].tsx`          | `/posts/:slug`          |
 | `app/flow/posts/[slug]/comments.tsx` | `/posts/:slug/comments` |
 | `app/flow/admin/users/[id].tsx`      | `/admin/users/:id`      |
+| `app/flow/(account)/billing.tsx`     | `/billing`              |
 
-Class names become kebab-case URL segments: `DashboardPage` → `/dashboard-page`. For cleaner URLs, use explicit `Router.flow()` registration in a route file alongside file-based routing — both can coexist in the same app.
+The URL is the file's path, exactly as written. The class name plays no part and nothing is re-cased, so `DashboardPage.tsx` would be served at `/DashboardPage`: name page files in lowercase. `index` stands for its directory, and a `(group)` directory adds no segment. Explicit `Router.flow()` registration in a route file works alongside file-based routing — both can coexist in the same app.
 
 ### Dynamic segments
 
@@ -115,7 +116,7 @@ app/flow/
 Export a `middleware` array from a file-route to attach middleware to that specific page:
 
 ```typescript fragment
-// app/flow/admin/DashboardPage.tsx
+// app/flow/admin/dashboard.tsx
 import { RequireAuthMiddleware } from "#app/middleware/RequireAuth.ts";
 import { RequireAdminMiddleware } from "#app/middleware/RequireAdmin.ts";
 
@@ -156,7 +157,7 @@ For query string parameters (`/posts?page=2&search=typescript`), use the `@url` 
 
 ### Query-aware navigation
 
-Where `@url` syncs a reactive prop **to** the URL, `this.currentUrl()` and `this.navigateCurrent()` go the other way — they **build** a URL from the one you're on with some query params changed, for filter links and instant filtering. Both are client-only helpers (the compiler rewrites them to the client runtime), so they update without a server round-trip to start.
+Where `@url` syncs a reactive prop **to** the URL, `this.currentUrl()` and `this.navigateCurrent()` go the other way — they **build** a URL from the one you're on with some query params changed, for filter links and instant filtering. Written in JSX, the compiler rewrites both to the client runtime, so they update without a server round-trip to start.
 
 ```typescript fragment
 // Build a URL from the current one — returns a string, does NOT navigate.
@@ -211,7 +212,7 @@ Pagination is the opposite case: page 2 should start at the top, so leave it off
 `<Link preserveScroll>` does the same thing for a link — see
 [Components](/docs/flow/components).
 
-> **Warning** — Both helpers are client-only: they have no value on the server and throw if called from a server action or `onMount()`. Use them directly inside JSX bindings (an attribute value, a text child, or an `onClick`/`onChange` handler) — the compiler rewrites those to the `$flow.currentUrl` / `$flow.navigateCurrent` client magics. They're fully type-checked, no `$`-prefixed syntax. To navigate from server code instead, return a `redirect()`.
+> **Warning** — Use both helpers directly inside JSX bindings (an attribute value, a text child, or an `onClick`/`onChange` handler) — the compiler rewrites those to the `$flow.currentUrl` / `$flow.navigateCurrent` client magics, which read the address in the browser. They're fully type-checked, no `$`-prefixed syntax. Called from server code they still work, against the request's URL: `currentUrl()` returns the string and `navigateCurrent()` queues a redirect to it. Inside an action that URL is the route's pattern with no query string (see the warning under [Child components](#child-components)), so from an action build the URL yourself and call `this.redirect(...)`.
 
 ### Path parameters
 
@@ -303,7 +304,7 @@ A child still gets the request in `onBoot(ctx)` / `onMount(ctx)` — session, si
 
 Mark props `@locked` (or `@expose`) so their values survive round-trips in the child's own snapshot.
 
-> **Warning** — Fields are filled from the URL on the first request only. A WebSocket action carries no URL, so the value comes back from the component's snapshot instead — which is why a model is never re-queried on every click. It also means you should not read `ctx.params` yourself in `onBoot()`: that hook runs on every request, after the snapshot has been restored, so it would blank the value on the first action.
+> **Warning** — The URL reaches a component on the first request only. An action is not a request for the page's URL: inside one, `request().params` is empty, the query string is gone, and `request().url` is the route's pattern (`/posts/:post`), not the address in the browser. Whatever the page needs from the URL has to be held in a field (`@locked`, `@expose` or `@url`), which comes back from the snapshot — which is also why a model is never re-queried by its URL on every click. That includes `onMount()` when it runs again after `this.refresh()` or a reconnect: it gets the same empty params, so have it read fields, never `ctx.params`. For the same reason, do not read `ctx.params` in `onBoot()`: it runs after the snapshot is restored and would blank the value on the first action.
 
 ### Integer route params
 
@@ -329,9 +330,9 @@ const ctx = request();
 
 ctx.params.slug; // string — matched route segment (initial GET only)
 ctx.params.post; // Post   — a resolved route-model binding (initial GET only)
-ctx.url.searchParams.get("q"); // string | null — raw query string access
-ctx.string("search"); // string | undefined — reads params + query string
-ctx.integer("page", 1); // number — coerced integer with fallback
+ctx.url.searchParams.get("q"); // string | null — raw query string access (initial GET only)
+ctx.string("search"); // string | undefined — reads params + query string (initial GET only)
+ctx.integer("page", 1); // number — coerced integer with fallback (initial GET only)
 ctx.boolean("active"); // boolean
 ctx.user; // AuthenticatedUser | undefined — set by AuthMiddleware
 ctx.ip(); // string | null — client IP
@@ -472,7 +473,6 @@ A fully wired page with a dynamic route param, auth, session, query string, and 
 
 ```typescript fragment
 import { Component, expose, locked, url, session } from "@zerotal/flow";
-import { request } from "zerotal";
 import { RequireAuthMiddleware } from "#app/middleware/RequireAuth.ts";
 import { AppLayout } from "#app/flow/AppLayout.tsx";
 import { Post } from "#app/models/Post.ts";
@@ -481,31 +481,17 @@ export class PostDetailPage extends Component {
   static layout   = AppLayout;
   static title    = "Post";
 
-  // Route: /posts/:slug
-  // Register: Router.flow("/posts/:slug", PostDetailPage, [RequireAuthMiddleware]);
+  // Route: /posts/:post
+  // Register: Router.flow("/posts/:post", PostDetailPage, [RequireAuthMiddleware]);
 
-  @locked slug:    string   = "";
-  @locked post:    Post | null = null;
-  @expose editing: boolean  = false;
+  @locked post!:   Post;              // the record the route found; re-read by id on every round-trip
+  @expose editing: boolean = false;
 
-  @url tab: string = "content";   // ?tab=content|comments
-  @session viewed: boolean = false;       // persists across browser refreshes
-
-  override async onBoot() {
-    // Read the :slug segment on every request (initial + WebSocket updates)
-    this.slug = request().params.slug ?? "";
-  }
+  @url tab: string = "content";       // ?tab=content|comments
+  @session viewed: boolean = false;   // persists across browser refreshes
 
   override async onMount() {
-    this.post = await Post.query()
-      .where("slug", this.slug)
-      .withRelationships(["author", "tags"])
-      .first();
-
-    if (!this.post) {
-      this.redirect("/posts");
-      return;
-    }
+    await this.post.loadMissing(["author", "tags"]);
 
     // Track that the user has viewed this post (session-persisted)
     if (!this.viewed) {
@@ -514,24 +500,24 @@ export class PostDetailPage extends Component {
     }
   }
 
+  override async onHydrate() {
+    await this.post.loadMissing(["author", "tags"]); // relations do not survive a round-trip
+  }
+
   @expose async publish(): Promise<void> {
-    if (!this.post) return;
     await this.post.fill({ status: "published" }).save();
     this.flash(`"${this.post.title}" is now live.`);
     this.editing = false;
   }
 
   @expose async delete(): Promise<void> {
-    if (!this.post) return;
     await this.post.delete();
-    this.dispatch("post-deleted", { slug: this.slug });
+    this.dispatch("post-deleted", { id: this.post.id });
     this.redirect("/posts");
     this.flash("Post deleted.");
   }
 
   override async render() {
-    if (!this.post) return <div>Not found.</div>;
-
     return (
       <div class="max-w-3xl mx-auto py-12 px-6">
         <h1 class="text-3xl font-bold mb-4">{this.post.title}</h1>
@@ -555,6 +541,8 @@ export class PostDetailPage extends Component {
   }
 }
 ```
+
+The route finds the post by id. To find it by its slug instead, say so once on the model, as [Path parameters](#path-parameters) describes; the page does not change.
 
 ## Next steps
 

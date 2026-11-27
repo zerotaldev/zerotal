@@ -3293,7 +3293,7 @@
       "file": "docs/flow/components.md",
       "heading": "FileUpload + FileUploads mixin",
       "ordinal": 0,
-      "hash": "3tnxeb7wit7n"
+      "hash": "32ww0857bogk"
     },
     {
       "file": "docs/flow/components.md",
@@ -3407,7 +3407,7 @@
       "file": "docs/flow/decorators.md",
       "heading": "Action helpers",
       "ordinal": 0,
-      "hash": "22wwnjl0t6b3"
+      "hash": "36u57o2qkdhd"
     },
     {
       "file": "docs/flow/decorators.md",
@@ -3581,7 +3581,7 @@
       "file": "docs/flow/events.md",
       "heading": "Requirements",
       "ordinal": 0,
-      "hash": "pbrp1jyqzvyi"
+      "hash": "10g6sxbzr0n5"
     },
     {
       "file": "docs/flow/events.md",
@@ -3629,7 +3629,7 @@
       "file": "docs/flow/forms.md",
       "heading": "Form objects",
       "ordinal": 1,
-      "hash": "28el2z0i7ox7"
+      "hash": "10z2wvwjz1it"
     },
     {
       "file": "docs/flow/forms.md",
@@ -3767,7 +3767,7 @@
       "file": "docs/flow/index.md",
       "heading": "Loading, confirm, polling, and show/hide",
       "ordinal": 0,
-      "hash": "pzjsde7z2foj"
+      "hash": "1e4u4bxl256p"
     },
     {
       "file": "docs/flow/index.md",
@@ -3785,7 +3785,7 @@
       "file": "docs/flow/index.md",
       "heading": "Passing arguments to a server action",
       "ordinal": 1,
-      "hash": "1dn2wxmlrr31"
+      "hash": "mqx7rev53fb6"
     },
     {
       "file": "docs/flow/index.md",
@@ -4289,7 +4289,7 @@
       "file": "docs/flow/performance.md",
       "heading": "Hover-prefetch",
       "ordinal": 0,
-      "hash": "1s0xurnl19vj"
+      "hash": "u7m3goz7qhi0"
     },
     {
       "file": "docs/flow/performance.md",
@@ -4361,7 +4361,7 @@
       "file": "docs/flow/routing.md",
       "heading": "Complete example",
       "ordinal": 0,
-      "hash": "1rawkmui4mv5"
+      "hash": "2elfwwz102bj"
     },
     {
       "file": "docs/flow/routing.md",
@@ -4409,7 +4409,7 @@
       "file": "docs/flow/routing.md",
       "heading": "Per-file middleware",
       "ordinal": 0,
-      "hash": "33udg353j6bz"
+      "hash": "ibc9df4dxcdr"
     },
     {
       "file": "docs/flow/routing.md",
@@ -4517,7 +4517,7 @@
       "file": "docs/flow/testing.md",
       "heading": "Accessors",
       "ordinal": 0,
-      "hash": "26chpvioi1ei"
+      "hash": "3vj0jfwvbeq4"
     },
     {
       "file": "docs/flow/testing.md",
@@ -4535,7 +4535,7 @@
       "file": "docs/flow/testing.md",
       "heading": "Event assertions",
       "ordinal": 0,
-      "hash": "261m8soipc5c"
+      "hash": "3hhh5ivwvrhd"
     },
     {
       "file": "docs/flow/testing.md",
@@ -4583,25 +4583,13 @@
       "file": "docs/flow/testing.md",
       "heading": "Testing events",
       "ordinal": 0,
-      "hash": "24rk7212fuso"
-    },
-    {
-      "file": "docs/flow/testing.md",
-      "heading": "Testing in a real browser",
-      "ordinal": 0,
-      "hash": "1wt39j9y7u1n"
-    },
-    {
-      "file": "docs/flow/testing.md",
-      "heading": "Testing in a real browser",
-      "ordinal": 1,
-      "hash": "3l8xmbzun0ft"
+      "hash": "1xfykvrd57bj"
     },
     {
       "file": "docs/flow/testing.md",
       "heading": "Testing redirects and navigation",
       "ordinal": 0,
-      "hash": "1989pgpled6o"
+      "hash": "3a7e4pg7jr6f"
     },
     {
       "file": "docs/flow/testing.md",
@@ -8016,6 +8004,12 @@
       "heading": "Checking layout at a width",
       "ordinal": 0,
       "hash": "2ae298txnsa8"
+    },
+    {
+      "file": "docs/testing/flow-browser.md",
+      "heading": "Driving a server you started yourself",
+      "ordinal": 0,
+      "hash": "107kiqg8nd94"
     },
     {
       "file": "docs/testing/flow-browser.md",

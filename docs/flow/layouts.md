@@ -67,7 +67,7 @@ The layout's `render(slot)` receives the page's HTML as `slot`. Multiple pages c
 
 ### The `layout(page)` hook — layouts as plain JSX
 
-`static layout = SomeLayout` is the class form. The JSX-native alternative — and the same convention the framework's React/Inertia pages use — is to override the `layout(page)` method and wrap the rendered page in **any JSX** you like. There is no separate `Layout` base class and no named-slot mechanism: a layout is just a component you wrap the page in, and its regions are ordinary **props**.
+`static layout = SomeLayout` is the class form. The JSX-native alternative is to override the `layout(page)` method and wrap the rendered page in **any JSX** you like. There is no separate `Layout` base class and no named-slot mechanism: a layout is just a component you wrap the page in, and its regions are ordinary **props**.
 
 ```tsx fragment
 import { Component } from "@zerotal/flow";

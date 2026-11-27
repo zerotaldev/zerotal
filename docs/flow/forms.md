@@ -199,7 +199,7 @@ export class LoginPage extends Component {
   @expose form = new LoginForm();
 
   @expose async login(): Promise<void> {
-    this.validate(this.form); // runs the form's rules
+    await this.validate(this.form); // runs the form's rules; stops here when one fails
 
     const ok = await Auth.attempt({
       email: this.form.email,

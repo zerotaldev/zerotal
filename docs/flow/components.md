@@ -13,7 +13,7 @@ Flow ships a library of ready-made native components and unstyled headless primi
 
 ### Link
 
-SPA navigation — prevents a full reload, swaps the page over the WebSocket, and updates the URL. The bridge automatically adds `data-current` to the link matching the current URL, so you style the active state with Tailwind's `data-[current]:` variant or a CSS attribute selector:
+SPA navigation — prevents a full reload, fetches the target page and swaps it in, and updates the URL. The bridge automatically adds `data-current` to the link matching the current URL, so you style the active state with Tailwind's `data-[current]:` variant or a CSS attribute selector:
 
 ```tsx
 import { Link } from "@zerotal/flow";
@@ -494,6 +494,10 @@ export class AvatarPage extends Component.using(FileUploads) {
 
   @expose async save(): Promise<void> {
     if (!this.photo) return;
+    if (this.photo.size > 5 * 1024 * 1024) {
+      this.addError("photo", "Choose an image under 5 MB."); // the size limit lives here, on the server
+      return;
+    }
     const path = await this.photo.store("avatars"); // moves to permanent storage
     this.user.avatarUrl = path;
     await this.user.save();
@@ -505,7 +509,7 @@ export class AvatarPage extends Component.using(FileUploads) {
       <div class="space-y-4">
         {this.user.avatarUrl && <img src={this.user.avatarUrl} class="h-24 w-24 rounded-full" />}
 
-        <FileUpload bind={this.photo} accept="image/*" maxSize="5mb" />
+        <FileUpload bind={this.photo} accept="image/*" />
 
         {this.photo && (
           <div class="flex items-center gap-2">
@@ -918,8 +922,8 @@ you wrap a component rather than use it directly — the usual reason an app nee
 import { Modal, type ModalProps } from "@zerotal/flow";
 
 /** Our confirm dialog: the same API, one decision already made. */
-export function ConfirmModal(props: Omit<ModalProps, "closeable">) {
-  return <Modal closeable={false} {...props} />;
+export function ConfirmModal(props: Omit<ModalProps, "closable">) {
+  return <Modal closable={false} {...props} />;
 }
 ```
 

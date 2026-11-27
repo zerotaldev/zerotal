@@ -1,8 +1,13 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   runConventions,
   _isDevCommand,
   importConventionModules,
+  _bootImportFailures,
+  _resetBootImportFailures,
   type ConcernDescriptor,
   type ConcernContext,
 } from "./ConventionLoader.ts";
@@ -185,5 +190,56 @@ describe("importConventionModules", () => {
     let called = false;
     await importConventionModules(`${import.meta.dir}/missing`, "test", () => void (called = true));
     expect(called).toBe(false);
+  });
+
+  describe("a file that will not import", () => {
+    let dir: string;
+    beforeEach(async () => {
+      dir = await mkdtemp(join(tmpdir(), "zt-convention-import-"));
+      await Bun.write(join(dir, "Good.ts"), 'export const Good = { marker: "good" };');
+      await Bun.write(join(dir, "Broken.ts"), 'throw new Error("model import failure");');
+      _resetBootImportFailures();
+    });
+    afterEach(async () => {
+      _resetBootImportFailures();
+      await rm(dir, { recursive: true, force: true });
+    });
+
+    it("is skipped and recorded outside the dev worker", async () => {
+      const markers: string[] = [];
+      await importConventionModules(dir, "models", (mod) => {
+        for (const v of Object.values(mod)) markers.push(String((v as { marker?: string }).marker));
+      });
+      expect(markers).toEqual(["good"]);
+      expect(_bootImportFailures()).toEqual([`${dir}/Broken.ts`]);
+    });
+
+    it("fails the boot under the dev worker", async () => {
+      const before = Bun.env["ZT_DEV"];
+      Bun.env["ZT_DEV"] = "1";
+      try {
+        await expect(importConventionModules(dir, "models", () => {})).rejects.toThrow(
+          /model import failure/,
+        );
+      } finally {
+        if (before === undefined) delete Bun.env["ZT_DEV"];
+        else Bun.env["ZT_DEV"] = before;
+      }
+    });
+
+    it("still only logs a handler that throws, under the dev worker too", async () => {
+      await rm(join(dir, "Broken.ts"));
+      const before = Bun.env["ZT_DEV"];
+      Bun.env["ZT_DEV"] = "1";
+      try {
+        await importConventionModules(dir, "models", () => {
+          throw new Error("register failed");
+        });
+      } finally {
+        if (before === undefined) delete Bun.env["ZT_DEV"];
+        else Bun.env["ZT_DEV"] = before;
+      }
+      expect(_bootImportFailures()).toEqual([]);
+    });
   });
 });

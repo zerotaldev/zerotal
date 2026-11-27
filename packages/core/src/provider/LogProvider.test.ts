@@ -177,3 +177,62 @@ describe("a request that ends in a thrown error", () => {
     expect(reported).toHaveLength(1);
   });
 });
+
+describe("a thrown error the app's exception handler prints", () => {
+  it("prints its stack once, not once from the handler and again from the request log", async () => {
+    // The default `report()` prints the error, stack and all; the request log then printed the
+    // same stack again under it.
+    const { _takeReportedStack } = await import("../application/ExceptionHandler.ts");
+    class PrintingHandler extends ExceptionHandler {}
+    const error = new TypeError("stock is undefined");
+    const printed: unknown[][] = [];
+    const consoleError = console.error;
+    console.error = (...args: unknown[]) => void printed.push(args);
+    try {
+      await new PrintingHandler().report(error);
+    } finally {
+      console.error = consoleError;
+    }
+
+    expect(printed).toHaveLength(1);
+    expect(_takeReportedStack(error.stack)).toBe(true);
+    // Asked once: a second failure with the same stack is logged in full.
+    expect(_takeReportedStack(error.stack)).toBe(false);
+  });
+
+  it("logs the request line without the stack the handler already printed", async () => {
+    Application._resetInstance();
+    Router.reset();
+    const logging = { ...LoggingConfig({ file: false }) };
+    class PrintingHandler extends ExceptionHandler {}
+    const second = Application.create({
+      env: "test",
+      providers: [LogProvider],
+      config: { logging },
+    }).withExceptionHandler(PrintingHandler);
+    await second.boot();
+    Router.get("/twice", () => {
+      throw new TypeError("printed once");
+    });
+    await second.start(0);
+    const port = (second as unknown as { _static?: { port: number } })._static?.port;
+    const seen: LogEntry[] = [];
+    const off = LogManager.tap((entry) => seen.push(entry));
+    const consoleError = console.error;
+    const printed: unknown[][] = [];
+    console.error = (...args: unknown[]) => void printed.push(args);
+    try {
+      await (await fetch(`http://localhost:${port}/twice`)).arrayBuffer();
+    } finally {
+      console.error = consoleError;
+      off();
+      await second.close?.();
+    }
+
+    const failure = seen.find((e) => e.message === "Request pipeline error");
+    expect(printed).toHaveLength(1);
+    expect(failure?.level).toBe("error");
+    expect(failure?.error).toContain("printed once");
+    expect(failure?.stack).toBeUndefined();
+  });
+});

@@ -61,6 +61,10 @@ export class QueueProvider extends ServiceProvider {
         // A worker that exits cleanly has been told to stop; one that crashes
         // has not, and the developer wants it back.
         restart: "on-failure",
+        // It runs the app's own job classes, so a job edited under `zt dev` would otherwise
+        // keep running the code the worker booted with. Restarting is safe: the worker is
+        // asked to stop and finishes the job in hand first.
+        restartOnChange: true,
       },
     ];
   }

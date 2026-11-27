@@ -15,8 +15,9 @@
  * The server is a card in the deck like any other, which is what makes
  * `--only=server` mean something and lets its tab show `restarting` on a save.
  */
-import { DevOrchestrator } from "./DevOrchestrator.ts";
-import { DevSupervisor } from "./DevSupervisor.ts";
+import { DevOrchestrator, type DevWatchPaths } from "./DevOrchestrator.ts";
+import { DevSupervisor, _childEnv } from "./DevSupervisor.ts";
+import { _DevEnv } from "./devEnv.ts";
 import type { DevProcessStatus } from "./DevSupervisor.ts";
 import { createDeck } from "./DevDeck.ts";
 import type { ResolvedDevProcess } from "./DevProcess.ts";
@@ -27,11 +28,15 @@ export interface StartDevModeOptions {
   port: number;
   cwd: string;
   /**
-   * The asset build. Optional because a run with no server has nothing to build
-   * and nothing to serve it to — `--only=queue` is supervision and a deck, and
-   * the orchestrator that would call this never starts.
+   * The asset build. Absent for an app with nothing to build — an API — which gets
+   * the same supervised server, deck and startup-error page without one, and for a
+   * run with no server, where the orchestrator that would call it never starts.
    */
   build?: BuildHookFn | undefined;
+  /** The interface the server binds; `127.0.0.1` when absent. */
+  host?: string | undefined;
+  /** Extra paths that restart the server or rebuild assets (`app.dev.watch`). */
+  watch?: DevWatchPaths | undefined;
   /** Everything the providers and the app contributed, already filtered. */
   processes: ResolvedDevProcess[];
   writer: OutputWriter;
@@ -91,35 +96,47 @@ export async function startDevMode(options: StartDevModeOptions): Promise<void> 
     onQuit: () => void orchestrator.shutdown(),
   });
 
+  // One source for every process's environment, read again on each spawn, so an edit to
+  // `.env` reaches the restarted server and the processes that restart with it.
+  const env = new _DevEnv(options.cwd);
+
   supervisor = new DevSupervisor({
     cwd: options.cwd,
+    env: () => _childEnv(env.current()),
     onLine: (name, line, stream) => deck.line(name, line, stream),
     onState: (status) => deck.state(status),
   });
 
-  const build: BuildHookFn =
-    options.build ?? ((): Promise<{ success: boolean }> => Promise.resolve({ success: true }));
-
-  orchestrator = new DevOrchestrator(options.port, options.cwd, build, {
-    ...(wantsServer
-      ? {
-          onServerLine: (line, stream) => deck.line(SERVER_PROCESS_NAME, line, stream),
-          onServerState: (state) => {
-            serverStatus.state = state;
-            deck.state({ ...serverStatus });
-          },
-        }
-      : {}),
-    onNotice: (text) => deck.notice(text.trim()),
-    onServerReady: () => {
-      supervisor.start(supervised.filter((entry) => entry.after === "server"));
+  orchestrator = new DevOrchestrator(
+    options.port,
+    options.cwd,
+    options.build ?? null,
+    {
+      ...(wantsServer
+        ? {
+            onServerLine: (line, stream) => deck.line(SERVER_PROCESS_NAME, line, stream),
+            onServerState: (state) => {
+              serverStatus.state = state;
+              deck.state({ ...serverStatus });
+            },
+          }
+        : {}),
+      onNotice: (text) => deck.notice(text.trim()),
+      onServerReady: () => {
+        supervisor.start(supervised.filter((entry) => entry.after === "server"));
+      },
+      onServerRestart: () => void supervisor.restartWithServer(),
+      onCleanup: async () => {
+        await supervisor.stopAll();
+        deck.stop();
+      },
     },
-    onServerRestart: () => void supervisor.restartWithServer(),
-    onCleanup: async () => {
-      await supervisor.stopAll();
-      deck.stop();
+    {
+      host: options.host,
+      watch: options.watch,
+      env: () => env.current(),
     },
-  });
+  );
 
   try {
     // Cards exist before anything can write to them, so early output has a tab to

@@ -7,6 +7,8 @@
  *
  * See: plans/boot-modes.md §6
  */
+import { _forStream } from "../logger/color.ts";
+
 export interface OutputWriter {
   write(message: string): void;
   writeLine(message: string): void;
@@ -22,14 +24,16 @@ export class TerminalWriter implements OutputWriter {
   // Explicit constructor so JSC's function-coverage counter attributes
   // the new TerminalWriter() call to this entry.
   constructor() {}
+  // Colour codes only on a terminal, never with NO_COLOR: `zt routes:list > routes.txt`
+  // wrote them into the file as text.
   write(message: string): void {
-    process.stdout.write(message);
+    process.stdout.write(_forStream(message, process.stdout));
   }
   writeLine(message: string): void {
-    console.log(message);
+    console.log(_forStream(message, process.stdout));
   }
   writeError(message: string): void {
-    console.error(message);
+    console.error(_forStream(message, process.stderr));
   }
 }
 

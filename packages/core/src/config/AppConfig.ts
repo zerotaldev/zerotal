@@ -252,18 +252,21 @@ export interface AppConfigShape {
 
   // ── Dev mode ──────────────────────────────────────────────────────────────
   /**
-   * Extra processes for `bun zt dev`, and names to drop.
+   * Extra processes for `bun zt dev`, names to drop, and extra paths to watch.
    *
    * App entries are registered after every provider's, so reusing a provider's
    * name replaces it rather than adding a second tab — which is how an app swaps
    * out, say, the queue worker for its own. `disable` removes by name whoever
-   * registered it.
+   * registered it. `watch.restart` and `watch.rebuild` add paths that restart the
+   * server or rebuild assets, beside the built-in `app/`, `routes/`, `config/`,
+   * `lang/`, `.env` and `resources/` lists.
    *
    * @example
    * ```ts
    * dev: {
    *   processes: [{ name: "stripe", command: ["stripe", "listen", "--forward-to", "localhost:3000"] }],
    *   disable: ["queue"],
+   *   watch: { restart: ["content/"], rebuild: ["resources/svg/"] },
    * }
    * ```
    */

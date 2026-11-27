@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The inspector stays off in the `zt dev` process itself, and says it is active once.** That
+  process boots the app only to ask what to run and serves no pages, yet opened the trace store,
+  loaded the panel bundles and printed the banner; and every restart of the server printed the
+  banner again. The server `zt dev` starts first prints it; a restart does not.
+- **The history file is capped by rows, not only by age.** A page polling every second wrote a
+  row a second, and a day of them was kept. `maxRows` (default 5 000, or `ZT_DEVTOOLS_MAX_ROWS`)
+  keeps the newest, never fewer than `capacity`, and the file is trimmed as it grows.
+
 ## [1.18.4] — 2026-11-27
 
 ### Security

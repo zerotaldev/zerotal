@@ -8,6 +8,18 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **`schedule:work` lets a running task finish when it is asked to stop.** `zt dev` killed it on
+  every restart and on quit, half way through whatever a task was doing. It now stops on a stop
+  request from `zt dev` as well as on `SIGINT` and `SIGTERM`, starts no new runs, and gives a
+  running task 2.5 seconds to end, naming any still running as it exits.
+
+### Added
+
+- **`SchedulerManager.drain(timeoutMs)`** stops the scheduler and waits for running tasks,
+  resolving to the names of any still running when the wait ran out.
+
 ## [1.18.4] — 2026-11-27
 
 ### Fixed

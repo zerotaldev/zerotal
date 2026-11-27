@@ -8,6 +8,58 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: `bun zt dev` binds `127.0.0.1`.** It listened on every interface, so a phone, a
+  container's published port or anyone on the same network could open a server that answers
+  with stack traces, source and the inspector. It now answers this machine only, and the banner
+  shows a Network line only when the network can reach it. A phone on the same Wi-Fi, another
+  computer, or a container whose port is published to the host needs `bun zt dev --host 0.0.0.0`
+  (for example `"dev": "bun zt.ts dev --host 0.0.0.0"` in the container's start script).
+  `bun zt serve` still binds every interface, and now takes `--host` too.
+- **BREAKING: under `bun zt dev`, a model, route or other convention file that will not import
+  stops the server from starting.** It was logged and skipped: the routes it declared answered
+  404, and `types/routes.generated.ts` was rewritten without them, turning every `route()` call
+  that named them into a type error. The browser now shows the "server did not start" page with
+  the file, line and code frame, and a save that fixes it brings the server back. An app that
+  relied on `zt dev` booting past a broken file has to fix or remove the file. Outside `zt dev`
+  the file is still logged and skipped, and the route types are not written from that boot:
+  `zt route:types` exits 1 and names the file.
+- **An API app gets the full dev mode.** With no view package and no `app.assets`, `bun zt dev`
+  fell back to a bare `bun --watch`: no deck, no queue tab, no startup-error page, and dev
+  processes not supervised. It now runs the same supervisor as every other app, with nothing to
+  build.
+- **`bun zt dev` asks the processes it runs to stop.** The queue and scheduler tabs were killed
+  mid-instruction on every restart and on quit, on every platform, and quitting killed the
+  server without waiting for it. Every process that runs one of the app's `zt` commands is now
+  spawned with an IPC channel and asked first, given 3 seconds to finish what it holds, and
+  killed only after that. `onGracefulStopRequest` and `requestGracefulStop` are exported from
+  `@zerotal/core/dev` for a command of your own, and `onGracefulStopRequest` now returns a
+  function that removes the handler.
+- **A save to `.env` or `lang/` restarts the server, with the new values.** The watcher dropped
+  every file starting with a dot, `.env` included, and nothing watched translations. And a
+  restart alone would not have helped: the server inherited the environment `zt dev` read at
+  boot, and Bun does not let `.env` override a variable that is already set. Each server and
+  each process that restarts with it is now started with the `.env` files read again; a variable
+  set in the shell still wins. `lang/` and `resources/lang/` restart the server too.
+- **Every restart reloads a waiting browser tab.** The token a tab compares on reconnect was the
+  asset build's alone, so a restart that rebuilt nothing (an API, a skipped build, a fix to the
+  code behind a 500) left the tab on the old page. It now carries the server's boot id.
+- **The development error page reloads itself under `zt dev`.** It is rendered past the
+  middleware that adds the live-reload client to every other page, so a tab showing a 500 stayed
+  on the old error after the fix was saved.
+- **Colour codes go to a terminal only.** Logs, command output and the dev banner wrote them into
+  pipes and files (`[2m05:20:51.132[0m [32mINFO`). They are now left out when stdout is not a
+  terminal or `NO_COLOR` is set; `FORCE_COLOR=1` keeps them, and `zt dev` sets it for the
+  processes whose output its deck draws in colour.
+- `RateLimiter`'s `byUser()` key reads the user with `currentUserId()`. A user whose id is
+  `null` is keyed by address, like a guest, instead of as `user:null`.
+
+- **`app.dev.watch`** adds paths of your own to what `zt dev` restarts or rebuilds on:
+  `{ restart: ["content/"], rebuild: ["resources/svg/"] }`. An entry is a directory, a file or a
+  glob, relative to the app root.
+- **`Application.start(port, hostname)`** takes the interface to bind; omitted, every interface.
+
 ### Added
 
 - **`make:resource --model <Model>` hands an Inertia app's screen to `@zerotal/inertia`.**
@@ -23,10 +75,19 @@ follows the Zerotal monorepo's unified versioning.
   being handled. `user` is still not declared on `HttpContext`, so an app that declares its own
   `user` field there keeps it.
 
-### Changed
+### Fixed
 
-- `RateLimiter`'s `byUser()` key reads the user with `currentUserId()`. A user whose id is
-  `null` is keyed by address, like a guest, instead of as `user:null`.
+- **The "server did not start" page reads an error in a route group.** A path with parentheses,
+  such as `app/routes/(guest)/login.ts`, was not recognised as the app's own file, so the page
+  showed the raw output after three identical retries that blamed the port.
+- **An error thrown in a request prints its stack once.** An app with its own exception handler
+  printed it from the handler's `report()` and again from the request log under it. The request
+  log now says what failed and leaves the stack to the handler.
+
+### Removed
+
+- **The unused `DevReloadServer` module**, and the comments that described a server-sent-events
+  reload channel long since replaced by `/__dev/ws`.
 
 ## [1.18.4] — 2026-11-27
 

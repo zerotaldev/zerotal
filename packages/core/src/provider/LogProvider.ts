@@ -14,6 +14,7 @@ import type { LoggingConfigShape } from "../logger/types.ts";
 import { LoggingConfig } from "../logger/config.ts";
 import { LogManager } from "../logger/LogManager.ts";
 import { LoggerMiddleware } from "../logger/LoggerMiddleware.ts";
+import { _takeReportedStack } from "../application/ExceptionHandler.ts";
 
 /**
  * What an app without a `config/logging.ts` gets. Deliberately the same as
@@ -150,7 +151,13 @@ export class LogProvider extends ServiceProvider {
           log.warn("Request warning", { ...ctx, error: _describe(e) });
           return;
         }
-        log.error("Request pipeline error", ctx, _failure(e));
+        // Once: when the app's exception handler has just printed this stack, the line says what
+        // failed and leaves the stack to the handler's report above it.
+        log.error(
+          "Request pipeline error",
+          ctx,
+          _takeReportedStack(e.stack) ? _describe(e) : _failure(e),
+        );
       }),
     );
   }

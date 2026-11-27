@@ -27,6 +27,9 @@ import {
 import { localNetworkAddress } from "../../support/network.ts";
 import { ZEROTAL_VERSION } from "../../support/version.ts";
 import { createInterface } from "node:readline";
+import type { DevWatchPaths } from "../../dev/DevOrchestrator.ts";
+import { _forStream } from "../../logger/color.ts";
+import { _bootImportFailures } from "../../conventions/ConventionLoader.ts";
 
 /**
  * `bun zt serve` — starts the HTTP server (and orchestrates dev mode when
@@ -47,6 +50,11 @@ export class ServeCommand extends Command {
       type: "number",
       // No default here: one would always win, and `app.port` (from `PORT`) would never be read.
       description: "Port to listen on (default: app.port, which is PORT or 3000)",
+    },
+    {
+      name: "host",
+      type: "string",
+      description: "Interface to bind (default: every interface; `zt dev` binds 127.0.0.1)",
     },
     {
       // Declared only so it can be refused by name. Removing it outright would be
@@ -121,8 +129,8 @@ export class ServeCommand extends Command {
 
     // ── DEV WORKER (Process 2) ──────────────────────────────────────────────
     // Normal server start, but:
-    //   1. Registers GET /__dev/events for browser SSE reload.
-    //   2. Reads stdin: when it sees "reload", broadcasts to SSE clients.
+    //   1. Serves the /__dev/ws reload socket and /__dev/reload.js, its client.
+    //   2. Reads stdin: when it sees "reload", broadcasts it to every connected tab.
     if (isWorker) {
       const app = this.app as import("../../application/Application.ts").Application;
 
@@ -141,7 +149,7 @@ export class ServeCommand extends Command {
 
       // The application logs "Server listening on …" once it binds; announcing it
       // here as well printed the same fact twice, in two different formats.
-      await app.start(port);
+      await app.start(port, this._host());
       await new Promise<never>(() => {});
       return;
     }
@@ -153,8 +161,9 @@ export class ServeCommand extends Command {
     // Announced after the bind, not before: booting logs its own progress, and a
     // banner printed first ends up buried above it — worse, it would promise a
     // URL that a failed bind never makes good on.
-    await (this.app as Application).start(port);
-    this._announce("serve", port);
+    const host = this._host();
+    await (this.app as Application).start(port, host);
+    this._announce("serve", port, host);
     await new Promise<never>(() => {});
   }
 
@@ -199,11 +208,17 @@ export class ServeCommand extends Command {
     }
 
     const port = await this._resolvePort(this._wantedPort(), false);
-    this._announce("dev", port);
+    // Loopback unless asked: a dev server answers with stack traces, source and the
+    // inspector, which are for this machine. `--host 0.0.0.0` opens it to the network,
+    // for a phone on the same Wi-Fi or a port published from a container.
+    const host = this._host() ?? DEV_HOST;
+    this._announce("dev", port, host);
 
     // Every view package (Inertia/Flow) that registered a build routine gets
     // run on each change; otherwise synthesise one from `app.assets` so
-    // configured assets rebuild on change.
+    // configured assets rebuild on change. An app with neither (an API) has
+    // nothing to build, and gets the same supervised server, deck, queue tab and
+    // startup-error page without one.
     let buildHook: (() => Promise<{ success: boolean; logs?: unknown[] }>) | undefined =
       hasDevBuildHooks() ? runDevBuildHooks : undefined;
     if (!buildHook && assets) {
@@ -211,34 +226,12 @@ export class ServeCommand extends Command {
         buildConfiguredAssets(assets, process.cwd());
     }
 
-    if (!buildHook) {
-      // No Inertia (or no frontend build configured). Fall back to simple
-      // bun --watch restart so the developer still gets auto-reload.
-      //
-      // Deliberately keeps the terminal to itself: `bun --watch` needs stdin,
-      // and a deck drawn over a process we are not supervising would show tabs
-      // that no key could restart.
-      this.warn("  [zerotal:dev] no build hook registered — falling back to bun --watch");
-      if (processes.some((entry) => entry.name !== SERVER_PROCESS_NAME)) {
-        this.dim("  [zerotal:dev] dev processes are not supervised on this path.");
-      }
-      const subprocess = Bun.spawn(["bun", "--watch", Bun.main, "serve", "--port", String(port)], {
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-        // The port is already settled here, and each --watch restart races
-        // the socket the previous run is still letting go of. Without this
-        // the child would re-prompt on every save.
-        env: { ...Bun.env, [PORT_RESOLVED_ENV_VAR]: "1" },
-      });
-      await subprocess.exited;
-      return;
-    }
-
     await startDevMode({
       port,
       cwd: process.cwd(),
       build: buildHook,
+      host,
+      watch: this._config()?.get<DevWatchPaths>("app.dev.watch"),
       processes,
       writer: this._writer,
       deckMode: this.flags["stream"] ? "stream" : undefined,
@@ -314,6 +307,13 @@ export class ServeCommand extends Command {
    * still runs perfectly well without it — only the compile-time check is lost.
    */
   private async _writeRouteTypes(): Promise<void> {
+    // A boot that skipped a file it could not import is missing that file's routes, and
+    // writing the map from it would turn every link to them into a type error.
+    const failed = _bootImportFailures();
+    if (failed.length > 0) {
+      this.dim(`  [zerotal:dev] route types not written: ${failed.length} file(s) did not import`);
+      return;
+    }
     try {
       const { writeRouteTypes } = await import("../../router/routeTypes.ts");
       const { Router } = await import("../../router/Router.ts");
@@ -335,15 +335,23 @@ export class ServeCommand extends Command {
 
   // ── Private ────────────────────────────────────────────────────────────────
 
+  /** The `--host` flag, when one was given. */
+  private _host(): string | undefined {
+    const host = this.flags["host"];
+    return typeof host === "string" && host.trim() !== "" ? host.trim() : undefined;
+  }
+
   /**
    * The banner a starting server prints: the mode, then one URL per way in.
    *
-   * The server binds every interface (`Bun.serve()` defaults to `0.0.0.0`), so
-   * the network URL is not an invitation to configure anything — it is the
-   * address a phone on the same Wi-Fi can already open, spared the `ipconfig`.
+   * The Network line appears only when the server answers the network: bound to
+   * every interface (`serve` by default, `zt dev --host 0.0.0.0`) it is the
+   * address a phone on the same Wi-Fi can open, spared the `ipconfig`; bound to
+   * one address it is that address. A loopback server (`zt dev` by default) has
+   * no Network line, because nothing on the network can reach it.
    */
-  private _announce(mode: string, port: number): void {
-    const network = localNetworkAddress();
+  private _announce(mode: string, port: number, host: string | undefined): void {
+    const network = _networkUrl(host, port);
 
     this.newLine();
     // The version is here because a running server holds the framework it booted
@@ -353,16 +361,13 @@ export class ServeCommand extends Command {
     this.line(`  Zerotal v${ZEROTAL_VERSION}  ›  ${mode}`);
     this.newLine();
     this._route("Local", `http://localhost:${port}`);
-    this._route(
-      "Network",
-      network ? `http://${network}:${port}` : "unavailable — this machine is on no network",
-    );
+    if (network !== null) this._route("Network", network);
     this.newLine();
   }
 
   /** One `label   url` row of the banner: dim label, cyan value. */
   private _route(label: string, value: string): void {
-    this._writer.writeLine(`  \x1b[2m${label.padEnd(9)}\x1b[0m\x1b[36m${value}\x1b[0m`);
+    this._writer.writeLine(_forStream(`  \x1b[2m${label.padEnd(9)}\x1b[0m\x1b[36m${value}\x1b[0m`));
   }
 
   /**
@@ -557,6 +562,34 @@ export function _onOrchestratorLine(line: string): void {
       /* a line that is not the orchestrator's — nothing to show */
     }
   }
+}
+
+/** What `zt dev` binds without `--host`. */
+const DEV_HOST = "127.0.0.1";
+
+/**
+ * The banner's Network row for a server bound to `host`, or `null` for none.
+ *
+ * @param host - The `--host` value; absent means every interface, `Bun.serve()`'s default.
+ * @internal Exported for tests.
+ */
+export function _networkUrl(
+  host: string | undefined,
+  port: number,
+  address: () => string | undefined = localNetworkAddress,
+): string | null {
+  if (host !== undefined && _isLoopback(host)) return null;
+  if (host === undefined || host === "0.0.0.0" || host === "::" || host === "[::]") {
+    const network = address();
+    return network ? `http://${network}:${port}` : "unavailable — this machine is on no network";
+  }
+  return `http://${host.includes(":") && !host.startsWith("[") ? `[${host}]` : host}:${port}`;
+}
+
+/** Whether `host` names this machine only. */
+function _isLoopback(host: string): boolean {
+  const bare = host.toLowerCase().replace(/^\[|\]$/g, "");
+  return bare === "localhost" || bare === "::1" || /^127\./.test(bare);
 }
 
 /** The `--list` row for a process that restarts with the server. */

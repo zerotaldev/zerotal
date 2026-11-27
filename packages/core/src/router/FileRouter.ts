@@ -16,6 +16,7 @@ import {
   _importAppFile,
   _scanAppFiles,
 } from "../support/appFiles.ts";
+import { _onAppImportFailure } from "../conventions/ConventionLoader.ts";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Router } from "./Router.ts";
@@ -537,7 +538,11 @@ export async function scanFileRoutes(baseDir: string, reloadId?: string): Promis
     try {
       loadedModule = await _importAppFile<RouteModule & { meta?: RouteFileMeta }>(importUrl);
     } catch (error) {
-      console.error(`[FileRouter] Failed to import ${normalised}:`, error);
+      const report = (): void =>
+        console.error(`[FileRouter] Failed to import ${normalised}:`, error);
+      // A hot reload keeps the routes it already has, so only a boot can fail on this.
+      if (reloadId) report();
+      else _onAppImportFailure(absoluteFile, error, report);
       continue;
     }
 

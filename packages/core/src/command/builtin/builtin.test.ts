@@ -40,7 +40,7 @@ describe("ServeCommand", () => {
     expect(ServeCommand.commandName).toBe("serve");
     expect(ServeCommand.description).toBe("Start the HTTP server");
     expect(ServeCommand.needsApp).toBe(true);
-    expect(ServeCommand.flags).toHaveLength(5);
+    expect(ServeCommand.flags).toHaveLength(6);
     const flag = ServeCommand.flags[0]!;
     expect(flag.name).toBe("port");
     expect(flag.short).toBe("p");

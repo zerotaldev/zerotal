@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, afterAll } from "bun:test"
 import { rm } from "node:fs/promises";
 import { Router } from "./Router.ts";
 import { filePathToRoutePath, generateRouteName, scanFileRoutes } from "./FileRouter.ts";
+import { _bootImportFailures, _resetBootImportFailures } from "../conventions/ConventionLoader.ts";
 
 // ── filePathToRoutePath ───────────────────────────────────────────────────────
 
@@ -470,6 +471,23 @@ describe("scanFileRoutes — import failure is caught and logged", () => {
     const count = await scanFileRoutes(badDir);
     // good.ts should still register (count ≥ 1)
     expect(count).toBeGreaterThanOrEqual(1);
+    // And the boot is known to be partial, so no route types are written from it.
+    expect(_bootImportFailures()).toContain(join(badDir, "bad.ts"));
+    _resetBootImportFailures();
+  });
+
+  it("fails the boot under the dev worker, so the browser shows the error", async () => {
+    await Bun.write(join(badDir, "good.ts"), "export function GET() {}");
+    await Bun.write(join(badDir, "broken.ts"), 'throw new Error("dev worker import failure");');
+
+    const before = Bun.env["ZT_DEV"];
+    Bun.env["ZT_DEV"] = "1";
+    try {
+      await expect(scanFileRoutes(badDir)).rejects.toThrow(/dev worker import failure/);
+    } finally {
+      if (before === undefined) delete Bun.env["ZT_DEV"];
+      else Bun.env["ZT_DEV"] = before;
+    }
   });
 });
 

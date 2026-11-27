@@ -2,6 +2,7 @@ import type { NextFn } from "../pipeline/types.ts";
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { BaseMiddleware } from "../middleware/BaseMiddleware.ts";
 import type { LogManager } from "./LogManager.ts";
+import { _forStream } from "./color.ts";
 
 // ANSI escape codes
 const R = "\x1b[0m";
@@ -117,7 +118,7 @@ export class LoggerMiddleware extends BaseMiddleware<LoggerOptions> {
       const tRaw = `${ms}ms`;
       const tStr = `${tColor}${tRaw.padStart(6)}${R}`;
 
-      process.stdout.write(`  ${mStr} ${pStr}${sStr}  ${tStr}\n`);
+      process.stdout.write(_forStream(`  ${mStr} ${pStr}${sStr}  ${tStr}\n`));
     }
 
     return http.response;

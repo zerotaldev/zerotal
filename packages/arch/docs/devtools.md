@@ -346,14 +346,17 @@ export default DevtoolsConfig({
 | `capacity`      | `number`                 | `100`                      | Traces kept in memory and reloaded on start.                  |
 | `dbPath`        | `string \| null`         | `.zerotal/devtools.sqlite` | History file. `null` keeps traces in memory only.             |
 | `pruneHours`    | `number`                 | `24`                       | How long a persisted trace survives.                          |
+| `maxRows`       | `number`                 | `5000`                     | Most traces the history file keeps, newest first.             |
 | `redact`        | `RedactionOptions`       | `{ enabled: true }`        | Whether sensitive values are masked. See below.               |
 | `editor`        | `EditorName \| null`     | `"vscode"`                 | Which editor `file:line` links open.                          |
 | `editorPathMap` | `Record<string, string>` | `{}`                       | Rewrite captured paths for editing on another machine.        |
 | `captureSource` | `boolean`                | `true`                     | Capture the call site of each query and log line.             |
 | `headers`       | `string[]`               | `[]`                       | Extra request headers to record. `["*"]` for all but secrets. |
 
-`ZT_DEVTOOLS_DB` and `ZT_DEVTOOLS_PRUNE_HOURS` set `dbPath` and `pruneHours`
-when the config leaves them out.
+`ZT_DEVTOOLS_DB`, `ZT_DEVTOOLS_PRUNE_HOURS` and `ZT_DEVTOOLS_MAX_ROWS` set `dbPath`,
+`pruneHours` and `maxRows` when the config leaves them out. The file is trimmed to
+`maxRows` as it grows, not only by age: a page polling every second wrote a row a
+second, and a day of that was kept.
 
 `cookie`, `set-cookie`, `authorization` and `proxy-authorization` are never
 recorded. `headers: ["*"]` records every other header except those whose name
@@ -570,6 +573,7 @@ environment variables tune persistence:
 # .env
 ZT_DEVTOOLS_DB=.data/devtools.sqlite   # default: .zerotal/devtools.sqlite
 ZT_DEVTOOLS_PRUNE_HOURS=48             # default: 24
+ZT_DEVTOOLS_MAX_ROWS=20000             # default: 5000
 ```
 
 > **Note** — If `bun:sqlite` is unavailable, the store degrades silently to

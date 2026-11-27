@@ -1,6 +1,7 @@
 import type { LogChannel, LogEntry } from "../types.ts";
 import { renderTable } from "../renderTable.ts";
 import { formatPairs, visibleWidth } from "../format.ts";
+import { _forStream } from "../color.ts";
 
 const LEVEL_COLOR: Record<string, string> = {
   debug: "\x1b[2m",
@@ -24,7 +25,8 @@ const MIN_WRAP_WIDTH = 20;
 /**
  * Writes log entries to `process.stdout`.
  *
- * In `"pretty"` format (the default) it emits a colorized, human-readable line
+ * In `"pretty"` format (the default) it emits a human-readable line, colorized
+ * when stdout is a terminal and `NO_COLOR` is unset (`FORCE_COLOR` forces it)
  * — dimmed time, level-colored level, message, an 8-char request-id snippet,
  * inline context JSON, and any error/stack. In `"json"` format it writes the
  * full {@link LogEntry} as one JSON line, suitable for log collectors.
@@ -84,7 +86,8 @@ export class ConsoleChannel implements LogChannel {
       line += `\n\x1b[2m${entry.stack}${RESET}`;
     }
 
-    process.stdout.write(line + "\n");
+    // Colour only on a terminal: piped to a file or a collector, the codes arrive as text.
+    process.stdout.write(_forStream(line + "\n"));
   }
 
   /**

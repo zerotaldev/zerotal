@@ -6,12 +6,13 @@
  *     change and pushed it straight through the worker.
  *
  *   • `version:<token>` — sent by the worker the moment a socket opens. A
- *     backend change also rebuilds assets, but it restarts the worker, and the
- *     restart kills every socket: a `reload` pushed at that instant reaches
- *     nobody, because the tab only reconnects a second later. So the tab
- *     remembers the build token it first saw and reloads when a reconnect
- *     reports a different one. That is how a rebuild riding along with a
- *     server restart still reaches the browser.
+ *     backend change restarts the worker, and the restart kills every socket: a
+ *     `reload` pushed at that instant reaches nobody, because the tab only
+ *     reconnects a moment later. So the tab remembers the token it first saw and
+ *     reloads when a reconnect reports a different one. The token is the asset
+ *     build's plus the server's boot id ({@link _DEV_BOOT_ID_VAR}), so every
+ *     restart reloads a waiting tab — including one showing the error page, and
+ *     one whose restart rebuilt nothing — not only a restart that changed assets.
  *
  *   • `build-error:<json lines>` — the last frontend build failed. The server goes
  *     on serving the last bundle that built, so the tab draws the error over the
@@ -30,6 +31,14 @@
  * @internal
  */
 export const _DEV_RELOAD_SCRIPT_PATH = "/__dev/reload.js";
+
+/**
+ * The environment variable carrying the dev server's boot id: one value per server `zt dev`
+ * starts, part of the `version:` token a tab compares on reconnect.
+ *
+ * @internal
+ */
+export const _DEV_BOOT_ID_VAR = "ZT_DEV_BOOT_ID";
 
 /**
  * The tag `DevReloadMiddleware` injects into dev HTML responses, and Inertia bakes

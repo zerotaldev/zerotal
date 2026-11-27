@@ -111,4 +111,42 @@ describe("schedule:work", () => {
     expect(col.out).toContain("Scheduler not registered");
     expect(process.exitCode).toBe(1);
   });
+
+  it("stops when `zt dev` asks it to over IPC, not only on a signal", async () => {
+    const { DEV_SHUTDOWN_MESSAGE } = await import("@zerotal/core/dev");
+    const before = process.listeners("message");
+    const c = new ScheduleWorkCommand();
+    const stopped = (c as unknown as { _untilStopped(): Promise<void> })._untilStopped();
+    let resolved = false;
+    void stopped.then(() => (resolved = true));
+
+    // Only this command's handler: an app another test started would stop the process on it.
+    const others = before;
+    for (const l of others) process.off("message", l as never);
+    process.emit("message" as never, DEV_SHUTDOWN_MESSAGE as never);
+    for (const l of others) process.on("message", l as never);
+    await stopped;
+
+    expect(resolved).toBe(true);
+    expect(process.listenerCount("SIGTERM")).toBe(0);
+  });
+
+  it("lets a task that is running finish before it stops", async () => {
+    const s = new SchedulerManager();
+    const task = s.job("report", () => {}).dailyAt("02:30");
+    (task as unknown as { _running: boolean })._running = true;
+    setTimeout(() => ((task as unknown as { _running: boolean })._running = false), 60);
+
+    const started = Date.now();
+    expect(await s.drain(2_000)).toEqual([]);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(50);
+  });
+
+  it("names a task that is still running when the wait runs out", async () => {
+    const s = new SchedulerManager();
+    const task = s.job("stuck", () => {}).dailyAt("02:30");
+    (task as unknown as { _running: boolean })._running = true;
+
+    expect(await s.drain(30)).toEqual(["stuck"]);
+  });
 });

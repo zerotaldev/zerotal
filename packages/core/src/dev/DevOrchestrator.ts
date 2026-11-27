@@ -7,7 +7,8 @@ import type { BuildHookFn } from "./DevBuildHook.ts";
 import { DEV_WORKER_ENV_VAR } from "../support/env.ts";
 import { requestGracefulStop } from "./devShutdown.ts";
 import { ZEROTAL_VERSION, installedCoreVersion } from "../support/version.ts";
-import { _DEV_RELOAD_SCRIPT_PATH, _DEV_RELOAD_SOURCE } from "./reloadClient.ts";
+import { _DEV_BOOT_ID_VAR, _DEV_RELOAD_SCRIPT_PATH, _DEV_RELOAD_SOURCE } from "./reloadClient.ts";
+import { _colorEnv } from "../logger/color.ts";
 
 /**
  * How the orchestrator reports to whatever is presenting dev mode.
@@ -42,35 +43,129 @@ export interface DevOrchestratorHooks {
 }
 
 /**
+ * How the dev server binds and what the watcher acts on.
+ *
+ * @internal
+ */
+export interface DevOrchestratorOptions {
+  /**
+   * The interface the server binds. `127.0.0.1` unless `zt dev --host` says otherwise: a dev
+   * server shows stack traces, source and the inspector, and is for this machine only.
+   */
+  host?: string | undefined;
+  /** Extra paths that restart the server or rebuild assets (`app.dev.watch`). */
+  watch?: DevWatchPaths | undefined;
+  /** The environment each server is spawned with. Defaults to this process's. */
+  env?: (() => Record<string, string | undefined>) | undefined;
+}
+
+/**
+ * Paths, relative to the app root, added to what the dev watcher acts on. An entry is a
+ * directory (`"content/"`), a file (`"schema.graphql"`) or a glob (`"data/**\/*.json"`).
+ *
+ * @internal
+ */
+export interface DevWatchPaths {
+  /** Changes here restart the server, as a change under `app/` does. */
+  restart?: string[] | undefined;
+  /** Changes here rebuild assets and reload the browser, as one under `resources/js/` does. */
+  rebuild?: string[] | undefined;
+}
+
+/**
+ * What a change to one file calls for.
+ *
+ * `restart`: a backend file — the server restarts. `rebuild`: a frontend file — assets rebuild
+ * and the browser reloads. `null`: nothing.
+ *
+ * @internal
+ */
+export type DevChange = "restart" | "rebuild" | null;
+
+/** Paths whose changes trigger a full server restart. */
+const _BACKEND = [
+  "app/",
+  "routes/",
+  "bootstrap/",
+  "config/",
+  "packages/",
+  // Translations: the i18n loader reads them at boot, from `lang/` or `resources/lang/`.
+  "lang/",
+  "resources/lang/",
+  "resources/app.html",
+];
+
+/** Paths whose changes trigger a frontend rebuild only. */
+const _FRONTEND = ["resources/pages/", "resources/js/", "resources/css/"];
+
+/** Always-ignored output and tool directories. */
+const _IGNORE = ["public/", ".zerotal/", "node_modules/", ".git/", "types/"];
+
+/** Written by the build itself — its own change event is not a change. */
+const _IGNORE_FILES = new Set(["resources/js/pages.generated.ts"]);
+
+/**
+ * Whether a file is one of the app's `.env` files, which Bun reads at boot.
+ *
+ * `.env.example` is documentation, not configuration, so it is left alone.
+ */
+function _isEnvFile(path: string): boolean {
+  return (path === ".env" || path.startsWith(".env.")) && !path.endsWith(".example");
+}
+
+/** Whether `path` falls under a configured watch entry. */
+function _matchesEntry(path: string, entry: string): boolean {
+  const normalised = entry.replace(/\\/g, "/").replace(/^\.\//, "");
+  if (/[*?[{]/.test(normalised)) return new Bun.Glob(normalised).match(path);
+  if (normalised.endsWith("/")) return path.startsWith(normalised);
+  return path === normalised || path.startsWith(`${normalised}/`);
+}
+
+/**
+ * What a change to `relativePath` calls for under `zt dev`.
+ *
+ * Hidden files and output directories are ignored, except the `.env` files, which restart
+ * the server so a changed variable takes effect; that rule used to drop them with every other
+ * dotfile. Configured `app.dev.watch` entries come next, then the built-in lists.
+ *
+ * @param relativePath - The file, relative to the app root. Backslashes are accepted.
+ * @param watch - Extra paths from `app.dev.watch`.
+ * @internal
+ */
+export function _classifyChange(relativePath: string, watch: DevWatchPaths = {}): DevChange {
+  const path = relativePath.replace(/\\/g, "/");
+  if (_isEnvFile(path)) return "restart";
+  if (path.startsWith(".")) return null;
+  if (_IGNORE.some((prefix) => path.startsWith(prefix))) return null;
+  if (_IGNORE_FILES.has(path)) return null;
+
+  if (watch.restart?.some((entry) => _matchesEntry(path, entry))) return "restart";
+  if (watch.rebuild?.some((entry) => _matchesEntry(path, entry))) return "rebuild";
+
+  if (_BACKEND.some((prefix) => path.startsWith(prefix) || path === prefix.replace(/\/$/, ""))) {
+    return "restart";
+  }
+  if (_FRONTEND.some((prefix) => path.startsWith(prefix))) return "rebuild";
+  return null;
+}
+
+/**
  * Dev Orchestrator — Process 1 of the two-process dev mode.
  *
  * Responsibilities:
  *   - Runs an initial pages-manifest sync + asset build before the server starts.
  *   - Spawns the Zerotal server (Process 2) as a child process with stdin piped.
- *   - Watches the filesystem and:
+ *   - Watches the filesystem and, by {@link _classifyChange}:
  *       • Backend change  → debounced server restart (150 ms)
  *       • Frontend change → debounced asset rebuild + browser reload signal (80 ms)
  *   - Writes `reload\n` to the child's stdin after each successful rebuild so the
- *     server can forward the signal to connected SSE clients.
+ *     server can forward the signal to the tabs connected to `/__dev/ws`.
  *
  * Process 2 is started with --dev-worker so it:
- *   - Serves GET /__dev/events  (SSE reload endpoint)
- *   - Reads stdin and calls DevReloadServer.broadcast('reload') on each `reload` line
+ *   - Serves the `/__dev/ws` reload socket and `/__dev/reload.js`, the client for it
+ *   - Reads stdin and broadcasts `reload` to every connected tab on each `reload` line
  */
 export class DevOrchestrator {
-  // Paths whose changes trigger a full server restart
-  private static readonly BACKEND = [
-    "app/",
-    "routes/",
-    "bootstrap/",
-    "config/",
-    "packages/",
-    "resources/app.html",
-  ];
-
-  // Paths whose changes trigger a frontend rebuild only
-  private static readonly FRONTEND = ["resources/pages/", "resources/js/", "resources/css/"];
-
   /**
    * Backend paths that only the web server reads: server-rendered pages, their layouts and
    * their components. A restart caused by these alone leaves the other processes (the
@@ -79,12 +174,6 @@ export class DevOrchestrator {
    * them too and let a page's syntax error park the scheduler.
    */
   private static readonly VIEWS = ["app/flow/"];
-
-  // Always-ignored output / tool directories
-  private static readonly IGNORE = ["public/", ".zerotal/", "node_modules/", ".git/"];
-
-  // pages.generated.ts is written BY the build — ignore its own change event
-  private static readonly IGNORE_FILES = new Set(["resources/js/pages.generated.ts"]);
 
   private _child: ReturnType<typeof Bun.spawn> | null = null;
   private _restartTimer: ReturnType<typeof setTimeout> | null = null;
@@ -136,22 +225,38 @@ export class DevOrchestrator {
   private _fallback: { stop(closeActive?: boolean): Promise<void> | void } | null = null;
   /** Per-build asset-version token — bumped on each build, busts `asset()` `?v=` URLs. */
   private _assetVersion = Date.now().toString(36);
+  /** Prefixes each boot id, so one `zt dev` run's boots never match another's. */
+  private readonly _session = Date.now().toString(36);
+  /** Servers spawned so far. */
+  private _boots = 0;
+  private readonly _host: string;
+  private readonly _watchPaths: DevWatchPaths;
+  private readonly _env: () => Record<string, string | undefined>;
 
+  /**
+   * @param _build - The asset build, or `null` for an app with nothing to build (an API):
+   *   it gets the same server supervision, deck and startup-error page, without the build.
+   */
   constructor(
     private readonly _port: number,
     private readonly _cwd: string,
-    private readonly _build: BuildHookFn,
+    private readonly _build: BuildHookFn | null,
     private readonly _hooks: DevOrchestratorHooks = {},
-  ) {}
+    options: DevOrchestratorOptions = {},
+  ) {
+    this._host = options.host ?? "127.0.0.1";
+    this._watchPaths = options.watch ?? {};
+    this._env = options.env ?? ((): Record<string, string | undefined> => ({ ...Bun.env }));
+  }
 
   async start(): Promise<void> {
-    this._say("  [zerotal:dev] ⚙  building assets...");
+    if (this._build) this._say("  [zerotal:dev] ⚙  building assets...");
     const started = Bun.nanoseconds();
     const build = await this._runBuild();
 
     if (!build.ok) {
       this._say("  [zerotal:dev] ⚠  initial build failed — starting server anyway", "warn");
-    } else if (build.skipped) {
+    } else if (build.skipped && this._build) {
       // Said out loud on purpose. A boot that prints "building assets…" and then
       // nothing looks like a hang, and a developer who cannot tell a skip from a
       // stall deletes `.zerotal/` and stops trusting the cache.
@@ -194,8 +299,18 @@ export class DevOrchestrator {
     this._hooks.onServerState?.("starting");
     this._serverOutput = [];
 
+    this._boots += 1;
     const child = Bun.spawn(
-      ["bun", Bun.main, "serve", "--port", String(this._port), "--dev-worker"],
+      [
+        "bun",
+        Bun.main,
+        "serve",
+        "--port",
+        String(this._port),
+        "--host",
+        this._host,
+        "--dev-worker",
+      ],
       {
         stdin: "pipe",
         stdout: routed ? "pipe" : "inherit",
@@ -205,7 +320,9 @@ export class DevOrchestrator {
         ipc: () => {},
         cwd: this._cwd,
         env: {
-          ...Bun.env,
+          // Re-read on every spawn, so an edited `.env` reaches the restarted server; and with
+          // `FORCE_COLOR` when the deck shows its piped output in colour.
+          ..._colorEnv(this._env()),
           APP_TYPE: "web",
           // Mark the worker as developer-supervised. APP_ENV above is the
           // runtime mode, not a deployment name, so it cannot carry this —
@@ -213,6 +330,7 @@ export class DevOrchestrator {
           // dev-surface gate and `serve --dev` renders bare 500s with no stack.
           [DEV_WORKER_ENV_VAR]: "1",
           ZT_ASSET_VERSION: this._assetVersion,
+          [_DEV_BOOT_ID_VAR]: `${this._session}-${this._boots}`,
         },
       },
     );
@@ -361,10 +479,11 @@ export class DevOrchestrator {
     // Decided before anything awaits, so a change saved during this restart counts towards
     // the follow-up restart it queues rather than this one.
     const restartFollowers = this._takeFollowersDecision();
+    const rebuilding = this._build ? "rebuilding + restarting" : "restarting";
     this._say(
       restartFollowers
-        ? "  [zerotal:dev] ↻  backend change — rebuilding + restarting server..."
-        : "  [zerotal:dev] ↻  page change — rebuilding + restarting the server only...",
+        ? `  [zerotal:dev] ↻  backend change — ${rebuilding} server...`
+        : `  [zerotal:dev] ↻  page change — ${rebuilding} the server only...`,
     );
     this._hooks.onServerState?.("restarting");
 
@@ -526,6 +645,7 @@ export class DevOrchestrator {
     try {
       this._fallback = Bun.serve({
         port: this._port,
+        hostname: this._host,
         fetch(req, server) {
           const path = new URL(req.url).pathname;
           if (path === "/__dev/ws" && server.upgrade(req)) return undefined;
@@ -586,6 +706,7 @@ export class DevOrchestrator {
   }
 
   private async _runBuild(): Promise<{ ok: boolean; skipped: boolean }> {
+    if (!this._build) return { ok: true, skipped: true };
     try {
       const result = await this._build();
       if (!result.success) {
@@ -648,24 +769,11 @@ export class DevOrchestrator {
   private _watch(): void {
     const watcher = watch(this._cwd, { recursive: true }, (_event, filename) => {
       if (!filename) return;
-
       // Normalise to forward slashes (Windows reports backslashes).
       const relativePath = filename.replace(/\\/g, "/");
-
-      // Skip hidden dirs, ignored dirs, and generated files.
-      if (relativePath.startsWith(".")) return;
-      if (DevOrchestrator.IGNORE.some((prefix) => relativePath.startsWith(prefix))) return;
-      if (DevOrchestrator.IGNORE_FILES.has(relativePath)) return;
-
-      if (
-        DevOrchestrator.BACKEND.some(
-          (prefix) => relativePath.startsWith(prefix) || relativePath === prefix.replace(/\/$/, ""),
-        )
-      ) {
-        this._backendChanged(relativePath);
-      } else if (DevOrchestrator.FRONTEND.some((prefix) => relativePath.startsWith(prefix))) {
-        this._scheduleBuild(relativePath);
-      }
+      const change = _classifyChange(relativePath, this._watchPaths);
+      if (change === "restart") this._backendChanged(relativePath);
+      else if (change === "rebuild") this._scheduleBuild(relativePath);
     });
 
     process.on("SIGTERM", () => void this.shutdown(watcher));
@@ -683,13 +791,20 @@ export class DevOrchestrator {
   async shutdown(watcher?: { close(): void }): Promise<never> {
     watcher?.close();
     await this._stopFallback().catch(() => {});
-    try {
-      await this._hooks.onCleanup?.();
-    } catch {
-      // A failing cleanup must not stop the rest of the shutdown; whatever it
-      // could not release, exiting releases anyway.
-    }
-    this._child?.kill("SIGTERM");
+    // The server is stopped the way a restart stops it — asked over IPC, then killed if it does
+    // not go — alongside the processes the cleanup stops, rather than killed outright, which
+    // left its providers undrained and its open responses half-written on every quit.
+    await Promise.all([
+      (async () => {
+        try {
+          await this._hooks.onCleanup?.();
+        } catch {
+          // A failing cleanup must not stop the rest of the shutdown; whatever it
+          // could not release, exiting releases anyway.
+        }
+      })(),
+      this._stopChild().catch(() => {}),
+    ]);
     process.exit(0);
   }
 }
@@ -726,13 +841,18 @@ export function _startupFailure(output: readonly string[]): StartupFailure {
   if (index === -1) return { kind: "unknown", lines: output.filter(Boolean).slice(-15) };
   const message = output[index]!.trim().replace(/^error:\s*/, "");
   for (const line of output.slice(index + 1, index + 12)) {
-    const at = /\bat\s+(?:.*?\()?((?:[A-Za-z]:)?[^\s():]+):(\d+):(\d+)\)?\s*$/.exec(line);
-    if (at && !at[1]!.includes("node_modules")) {
+    const at = /\bat\s+(.+?):(\d+):(\d+)\)?\s*$/.exec(line);
+    if (!at) continue;
+    // `at fn (/app/x.ts:1:2)` or `at /app/x.ts:1:2`. The path itself can hold parentheses (a
+    // route group such as `app/routes/(guest)/`), so only a ` (` opens the location.
+    const open = at[1]!.indexOf(" (");
+    const file = open === -1 ? at[1]! : at[1]!.slice(open + 2);
+    if (!file.includes("node_modules")) {
       // The code frame Bun prints above the error, which shows the line itself.
       const frame = output
         .slice(Math.max(0, index - 4), index)
         .filter((l) => /^\s*\d+ \|/.test(l) || /^\s+\^/.test(l));
-      return { kind: "source", lines: [`${at[1]}:${at[2]}:${at[3]} ${message}`, ...frame] };
+      return { kind: "source", lines: [`${file}:${at[2]}:${at[3]} ${message}`, ...frame] };
     }
   }
   return { kind: "unknown", lines: output.slice(index, index + 15) };

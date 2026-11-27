@@ -16,6 +16,8 @@
  */
 import type { ResolvedDevProcess } from "./DevProcess.ts";
 import { RUNTIME_MODE_VAR } from "../support/env.ts";
+import { requestGracefulStop } from "./devShutdown.ts";
+import { _colorEnv } from "../logger/color.ts";
 
 /**
  * What the supervisor needs back from whatever it spawned.
@@ -27,6 +29,11 @@ export interface DevChild {
   readonly stderr: ReadableStream<Uint8Array> | null;
   readonly exited: Promise<number>;
   kill(signal?: number | NodeJS.Signals): void;
+  /**
+   * The IPC channel, when the child was spawned with one. A stop asks over it first, so the
+   * process can finish what it is doing; see `devShutdown.ts`.
+   */
+  send?: ((message: unknown) => void) | undefined;
 }
 
 /**
@@ -36,7 +43,12 @@ export interface DevChild {
  */
 export type DevSpawnFn = (
   argv: string[],
-  options: { cwd: string; env: Record<string, string | undefined> },
+  options: {
+    cwd: string;
+    env: Record<string, string | undefined>;
+    /** Open an IPC channel, for a `zt` command that can be asked to stop. */
+    ipc?: boolean | undefined;
+  },
 ) => DevChild;
 
 /**
@@ -73,7 +85,11 @@ export interface DevSupervisorHooks {
 /** @internal */
 export interface DevSupervisorOptions extends DevSupervisorHooks {
   cwd: string;
-  env?: Record<string, string | undefined> | undefined;
+  /**
+   * The environment each process starts with, or a function giving it, called on every spawn
+   * so a restart picks up an edited `.env`. Defaults to {@link _childEnv}.
+   */
+  env?: Record<string, string | undefined> | (() => Record<string, string | undefined>) | undefined;
   /** Defaults to `Bun.spawn` with output piped and **stdin ignored**. */
   spawn?: DevSpawnFn | undefined;
   /**
@@ -84,6 +100,8 @@ export interface DevSupervisorOptions extends DevSupervisorHooks {
   backoffMs?: number[] | undefined;
   /** How long a run must last to be considered healthy. See {@link HEALTHY_AFTER_MS}. */
   healthyAfterMs?: number | undefined;
+  /** How long a process asked to stop gets to finish before it is killed. See {@link STOP_GRACE_MS}. */
+  stopGraceMs?: number | undefined;
 }
 
 /** Give up after this many consecutive failed starts. */
@@ -96,6 +114,12 @@ const BACKOFF_MS = [300, 900, 2_400];
  * for a reason that has nothing to do with the current failure.
  */
 const HEALTHY_AFTER_MS = 10_000;
+/**
+ * How long a `zt` process asked to stop has to finish on its own: a queue worker completing
+ * the job in hand, a scheduler letting a running task end. Longer than the server's grace,
+ * because a job does real work; short enough that quitting still feels immediate.
+ */
+const STOP_GRACE_MS = 3_000;
 
 /** One supervised process's mutable state. */
 interface Entry {
@@ -114,19 +138,22 @@ interface Entry {
 export class DevSupervisor {
   private readonly _entries = new Map<string, Entry>();
   private readonly _cwd: string;
-  private readonly _env: Record<string, string | undefined>;
+  private readonly _env: () => Record<string, string | undefined>;
   private readonly _spawn: DevSpawnFn;
   private readonly _hooks: DevSupervisorHooks;
   private readonly _backoff: number[];
   private readonly _healthyAfter: number;
+  private readonly _stopGrace: number;
   private _stopped = false;
 
   constructor(options: DevSupervisorOptions) {
     this._cwd = options.cwd;
-    this._env = options.env ?? _childEnv();
+    const env = options.env ?? _childEnv();
+    this._env = typeof env === "function" ? env : (): Record<string, string | undefined> => env;
     this._spawn = options.spawn ?? _bunSpawn;
     this._backoff = options.backoffMs ?? BACKOFF_MS;
     this._healthyAfter = options.healthyAfterMs ?? HEALTHY_AFTER_MS;
+    this._stopGrace = options.stopGraceMs ?? STOP_GRACE_MS;
     this._hooks = {
       ...(options.onLine && { onLine: options.onLine }),
       ...(options.onState && { onState: options.onState }),
@@ -234,7 +261,8 @@ export class DevSupervisor {
 
     let child: DevChild;
     try {
-      child = this._spawn(entry.definition.argv!, { cwd: this._cwd, env: this._env });
+      const argv = entry.definition.argv!;
+      child = this._spawn(argv, { cwd: this._cwd, env: this._env(), ipc: _isZtCommand(argv) });
     } catch (error) {
       // A missing binary is the usual cause, and it fails every attempt
       // identically — report it as output so the tab explains itself.
@@ -323,6 +351,14 @@ export class DevSupervisor {
     entry.abort?.abort();
 
     const child = entry.child;
+    // Asked first, over IPC, when the child is a `zt` command: a signal stops a process where
+    // it stands — on Windows it cannot be caught at all — and a queue worker killed mid-job
+    // leaves the job reserved until its lease runs out.
+    if (child && (await requestGracefulStop(child, this._stopGrace))) {
+      entry.child = undefined;
+      entry.abort = undefined;
+      return;
+    }
     if (child) {
       child.kill("SIGTERM");
       // A child ignoring SIGTERM would otherwise hold the whole quit open, and a
@@ -395,7 +431,7 @@ export class DevSupervisor {
  */
 function _bunSpawn(
   argv: string[],
-  options: { cwd: string; env: Record<string, string | undefined> },
+  options: { cwd: string; env: Record<string, string | undefined>; ipc?: boolean | undefined },
 ): DevChild {
   return Bun.spawn(argv, {
     stdin: "ignore",
@@ -403,7 +439,22 @@ function _bunSpawn(
     stderr: "pipe",
     cwd: options.cwd,
     env: options.env,
+    // The channel `_stopEntry` asks over. Bun only gives the parent a `send` when a handler is
+    // present; nothing is read from it.
+    ...(options.ipc ? { ipc: () => {} } : {}),
   });
+}
+
+/**
+ * Whether an argv runs one of the app's own `zt` commands, which can be asked to stop over IPC.
+ *
+ * A bare-string `command` is settled into `["bun", Bun.main, …]`. Anything else is another
+ * program, which would not answer on the channel and has no use for one.
+ *
+ * @internal
+ */
+export function _isZtCommand(argv: readonly string[], main: string = Bun.main): boolean {
+  return argv[0] === "bun" && argv[1] === main;
 }
 
 /**
@@ -420,7 +471,7 @@ function _bunSpawn(
 export function _childEnv(
   from: Record<string, string | undefined> = Bun.env,
 ): Record<string, string | undefined> {
-  const env = { ...from };
+  const env = { ..._colorEnv(from) };
   delete env[RUNTIME_MODE_VAR];
   return env;
 }

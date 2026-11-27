@@ -36,12 +36,7 @@ import {
 import { GateMiddleware } from "../gate/GateMiddleware.ts";
 import { isAllowedOrigin, allowedOriginsFrom } from "../http/originGuard.ts";
 import { rescueSync } from "../helpers/index.ts";
-import {
-  configureAssets,
-  setAssetVersion,
-  assetVersion,
-  deriveAssetVersion,
-} from "../assets/assets.ts";
+import { configureAssets, setAssetVersion, deriveAssetVersion } from "../assets/assets.ts";
 import { ConfigLoader, type ConfigMap } from "../config/ConfigLoader.ts";
 import { Emitter } from "../events/Emitter.ts";
 import { FrameworkEvents, AppBooted } from "../events/FrameworkEvents.ts";
@@ -1192,13 +1187,13 @@ export class Application {
       open: (ws: unknown) => {
         if ((ws as AnyWS).data._dev) {
           DevWsServer.open(ws as AnyWS);
-          // Tell the tab which build this worker is serving. A tab that
-          // reconnects after a backend restart compares this against the token
-          // it saw on its first connect and reloads itself when they differ —
-          // the rebuild that came with the restart has no other way to reach it,
-          // because the push arrives while the socket is down.
+          // Tell the tab which build and which boot this worker is serving. A tab
+          // that reconnects after a restart compares this against the token it saw
+          // on its first connect and reloads itself when they differ — the restart
+          // has no other way to reach it, because the push arrives while the
+          // socket is down.
           try {
-            (ws as AnyWS).send(`version:${assetVersion()}`);
+            (ws as AnyWS).send(`version:${DevWsServer._reloadToken()}`);
           } catch {
             /* socket closed between upgrade and open — the tab will reconnect */
           }
@@ -1628,6 +1623,8 @@ export class Application {
    * handlers that call {@link stop} and a SIGUSR2 handler that hot-reloads routes.
    *
    * @param port - TCP port to bind; pass `0` to let the OS choose a free port.
+   * @param hostname - Interface to bind. Omitted, every interface (`Bun.serve()`'s default);
+   *   `zt dev` passes `127.0.0.1` unless given `--host`.
    * @category Lifecycle
    * @example
    * ```ts
@@ -1635,7 +1632,7 @@ export class Application {
    * await app.start(3000);
    * ```
    */
-  async start(port = 3000): Promise<void> {
+  async start(port = 3000, hostname?: string): Promise<void> {
     if (!this._booted) await this.boot();
 
     // Phase 4 — STARTING (before server binds)
@@ -1694,6 +1691,7 @@ export class Application {
 
     this._static = Bun.serve({
       port,
+      ...(hostname !== undefined ? { hostname } : {}),
       maxRequestBodySize: bodyCeiling,
       routes: this._serveTable(compiledRoutes),
       ...(Object.keys(extraOptions).length

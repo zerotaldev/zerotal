@@ -85,6 +85,7 @@ interface DevtoolsConfigShape = {
   enabled: boolean | null
   gate: DevtoolsGate | null
   headers: string[]
+  maxRows: number
   pruneHours: number
   redact: RedactionOptions
 }
@@ -223,6 +224,7 @@ interface TraceSink = {
 interface TraceStoreOptions = {
   capacity?: number | undefined
   dbPath?: string | null | undefined
+  maxRows?: number | undefined
   pruneHours?: number | undefined
 }
 

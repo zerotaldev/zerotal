@@ -1,6 +1,7 @@
 import type { Application } from "@zerotal/core";
 import { Command } from "@zerotal/core";
 import type { ConfigManager } from "@zerotal/core/config";
+import { onGracefulStopRequest } from "@zerotal/core/dev";
 import type { QueueManager } from "../QueueManager.ts";
 
 export class QueueWorkCommand extends Command {
@@ -77,6 +78,34 @@ export class QueueWorkCommand extends Command {
     }
 
     this.info(`Processing queue(s) [${queues.join(", ")}] — Ctrl+C to stop.`);
+    const removeStopHandlers = this._onStopRequest(
+      () => {
+        if (manager.isShuttingDown) return;
+        // The second-press hint only for someone at a terminal; `zt dev` asks once.
+        this.dim(
+          process.stdin.isTTY
+            ? "Stopping after the current job — Ctrl+C again to stop now."
+            : "Stopping after the current job.",
+        );
+        void manager.drain();
+      },
+      () => process.exit(130),
+    );
+    try {
+      await this._work(manager, queues);
+    } finally {
+      removeStopHandlers();
+    }
+    this.info("Queue worker stopped.");
+  }
+
+  /**
+   * Take jobs until the manager is draining.
+   *
+   * Each job is awaited before the flag is read again, so when this returns no job this loop
+   * took is still running.
+   */
+  private async _work(manager: QueueManager, queues: string[]): Promise<void> {
     while (!manager.isShuttingDown) {
       // Sleep whenever nothing was *claimable* this tick — not merely when the
       // queue is empty. size() counts not-yet-due delayed jobs and jobs reserved
@@ -95,6 +124,33 @@ export class QueueWorkCommand extends Command {
         await new Promise<void>((r) => setTimeout(r, 500));
       }
     }
-    this.info("Queue worker stopped.");
+  }
+
+  /**
+   * Call `drain` when asked to stop, and `force` when asked a second time.
+   *
+   * Asked by `zt dev` over IPC on every restart and on quit, by a process manager with
+   * SIGTERM, by a developer with Ctrl+C. Without this the worker had no stop handler at all:
+   * every one of those killed it where it stood, mid-job, and the job stayed reserved until its
+   * lease ran out. A second request is the way out of a job that will not finish.
+   *
+   * @returns A function that removes the handlers.
+   * @internal
+   */
+  protected _onStopRequest(drain: () => void, force: () => void): () => void {
+    let asked = false;
+    const stop = (): void => {
+      if (asked) return force();
+      asked = true;
+      drain();
+    };
+    const offIpc = onGracefulStopRequest(stop);
+    process.on("SIGINT", stop);
+    process.on("SIGTERM", stop);
+    return () => {
+      offIpc();
+      process.off("SIGINT", stop);
+      process.off("SIGTERM", stop);
+    };
   }
 }

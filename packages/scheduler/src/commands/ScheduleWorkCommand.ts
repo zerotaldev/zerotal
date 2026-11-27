@@ -1,5 +1,6 @@
 import type { Application } from "@zerotal/core";
 import { Command, FrameworkEvents } from "@zerotal/core";
+import { onGracefulStopRequest } from "@zerotal/core/dev";
 import type { SchedulerManager } from "../SchedulerManager.ts";
 import { TaskFailed, TaskRan, TaskSkipped } from "../events.ts";
 import { _loadSchedulesFile } from "./loadSchedulesFile.ts";
@@ -64,14 +65,19 @@ export class ScheduleWorkCommand extends Command {
     try {
       await this._untilStopped();
     } finally {
-      scheduler.stop();
+      // No new runs from here; a task already running is let finish, so a restart under
+      // `zt dev` does not cut a schedule off half way through what it was doing.
+      const unfinished = await scheduler.drain();
+      if (unfinished.length > 0) {
+        this.warn(`Stopped while still running: ${unfinished.join(", ")}`);
+      }
       for (const off of unsubscribe) off();
     }
   }
 
   /**
-   * Resolve on SIGINT or SIGTERM. The dev supervisor stops this process with
-   * SIGTERM; a developer running it by hand presses Ctrl+C. Returning lets the
+   * Resolve when asked to stop: by `zt dev` over IPC (on every restart and on quit), or by
+   * SIGINT or SIGTERM — a developer running it by hand presses Ctrl+C. Returning lets the
    * command runner exit with code 0 once the scheduler has stopped.
    *
    * @internal
@@ -79,10 +85,12 @@ export class ScheduleWorkCommand extends Command {
   protected _untilStopped(): Promise<void> {
     return new Promise<void>((resolve) => {
       const stop = (): void => {
+        offIpc();
         process.off("SIGINT", stop);
         process.off("SIGTERM", stop);
         resolve();
       };
+      const offIpc = onGracefulStopRequest(stop);
       process.on("SIGINT", stop);
       process.on("SIGTERM", stop);
     });

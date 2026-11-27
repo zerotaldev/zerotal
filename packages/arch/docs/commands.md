@@ -208,6 +208,29 @@ make sense with a deck on screen — anything true of `serve` is true of it.
 message rather than starting a plain server. The scaffold's `dev` script runs this,
 so `bun run dev` and `bun zt dev` are the same thing.
 
+An app with nothing to build (an API, with no view package and no `app.assets`) gets
+the same dev mode as any other: the deck, the queue tab, restarts on save and the
+startup-error page. Before 1.19.0 it fell back to a bare `bun --watch` with none of
+them.
+
+#### Who can reach the dev server
+
+`bun zt dev` binds `127.0.0.1`, so only this machine can open it. A dev server answers
+with stack traces, source code and the inspector, which are not for the rest of the
+network. The banner shows a Network line only when something on the network can reach
+the server:
+
+```bash
+# in your project root
+bun zt dev                    # http://localhost:3000, this machine only
+bun zt dev --host 0.0.0.0     # also http://<this machine's address>:3000
+```
+
+Pass `--host 0.0.0.0` to open the app on a phone or another computer on the same
+network, and when `zt dev` runs in a container whose port is published to the host: a
+server bound to the container's loopback is not reachable through the published port.
+`bun zt serve` binds every interface unless given `--host`, as before.
+
 An app with a queue no longer needs a second terminal:
 
 ```bash
@@ -256,6 +279,31 @@ one tab parks with a message telling you how to retry. Everything else keeps
 running. This is the opposite of the asset build, where a failure deliberately
 aborts the reload.
 
+**A restart or quit asks first.** The server, and every process that runs one of the
+app's own `zt` commands (`queue:work`, `schedule:work`), is asked to stop over an IPC
+channel and given time to finish what it holds: the queue worker completes the job in
+hand, the scheduler lets a running task end. Only a process that has not gone after a
+few seconds is killed. A command of your own can do the same with
+`onGracefulStopRequest` from `@zerotal/core/dev`:
+
+```ts
+// app/commands/SyncCommand.ts
+import { onGracefulStopRequest } from "@zerotal/core/dev";
+
+let stopping = false;
+const off = onGracefulStopRequest(() => {
+  stopping = true; // finish the current batch, then return
+});
+// ... loop while !stopping, then:
+off();
+```
+
+The other side is `requestGracefulStop(child, graceMs)`, for a supervisor of your own: it
+sends `DEV_SHUTDOWN_MESSAGE` over the child's IPC channel and resolves `true` once the
+child has exited, or `false` when there is no channel or the grace period ran out and the
+caller still has to kill it. The child can be anything with a `send` and an `exited`
+promise (a `StoppableChild`), such as what `Bun.spawn` returns when given an `ipc` handler.
+
 #### When a build or the server fails
 
 A save that breaks something shows the error where you are looking, not only in the
@@ -266,11 +314,17 @@ terminal:
   the page: the file, line and column, and the compiler's message. A tab you open or
   reload while the build is broken shows it too. Save a fix and the tab reloads by
   itself. `Esc` hides the panel.
-- **The server will not start** (a syntax error in a Flow page, or an error thrown
-  while booting). Instead of the browser's "connection refused", the port answers with
-  a page naming the file, line and message, and the terminal says the same. A syntax
-  error is not retried, and only a port another process holds is reported as one.
-  Save a fix and the page reloads by itself once the server is back.
+- **The server will not start** (a syntax error in a Flow page, a model or a route
+  file, or an error thrown while booting). Instead of the browser's "connection
+  refused", the port answers with a page naming the file, line and message, with the
+  code frame, and the terminal says the same. A syntax error is not retried, and only
+  a port another process holds is reported as one. Save a fix and the page reloads by
+  itself once the server is back. A file that will not import fails the boot under
+  `zt dev` rather than being skipped: skipping it left a server answering 404 for every
+  route the file declared. `types/routes.generated.ts` is never written from a boot
+  that skipped a file, and `zt route:types` refuses to write it then.
+- **A request fails with a 500.** The development error page reloads by itself after
+  you save a fix, once the restarted server answers, like every other page.
 
 Both are drawn by `/__dev/reload.js`, the same file that does live-reload, with no
 inline script or style, so they work under a strict Content-Security-Policy.
@@ -289,6 +343,10 @@ escape codes at all:
 
 That happens automatically; `--stream` forces it, and `s` switches to it
 mid-session. It is the same information, and it is what you want in a file.
+
+Colour follows the same rule everywhere the framework writes, in `zt dev` and in every
+other command: colour codes go to a terminal, never to a pipe or a file, and never when
+`NO_COLOR` is set. `FORCE_COLOR=1` keeps them for a pipe whose reader draws colour.
 
 #### Choosing what runs
 
@@ -338,6 +396,10 @@ export default AppConfig({
   },
 });
 ```
+
+What a save restarts or rebuilds is listed in
+[Hot reload](/docs/assets#what-triggers-a-restart-and-what-only-rebuilds); `app.dev.watch`
+adds paths of your own to either list.
 
 Packages register their own — see
 [Registering a dev process](/docs/package-development#registering-a-dev-process).

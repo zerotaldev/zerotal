@@ -49,6 +49,32 @@ describe("_startupFailure()", () => {
     );
   });
 
+  it("reads a parse error in a route group, whose path holds parentheses", () => {
+    const failure = _startupFailure([
+      "44 | export const broken = {;",
+      "                            ^",
+      'error: Expected identifier but found ";"',
+      "    at /app/app/routes/(guest)/login.ts:44:24",
+      "",
+      "Bun v1.3.14 (Linux x64)",
+    ]);
+
+    expect(failure.kind).toBe("source");
+    expect(failure.lines[0]).toBe(
+      '/app/app/routes/(guest)/login.ts:44:24 Expected identifier but found ";"',
+    );
+    expect(failure.lines).toContain("44 | export const broken = {;");
+  });
+
+  it("reads a frame inside a route group when it names a function", () => {
+    const failure = _startupFailure([
+      "TypeError: nope",
+      "      at load (/app/app/routes/(auth)/settings/index.ts:3:9)",
+    ]);
+
+    expect(failure.lines[0]).toBe("/app/app/routes/(auth)/settings/index.ts:3:9 TypeError: nope");
+  });
+
   it("reads a port held by another process as that, and only that", () => {
     expect(_startupFailure(["error: Failed to start server. Is port 3000 in use?"]).kind).toBe(
       "port",

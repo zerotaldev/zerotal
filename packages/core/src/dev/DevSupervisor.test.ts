@@ -5,7 +5,7 @@
  * rather than about whether timers fire.
  */
 import { describe, it, expect } from "bun:test";
-import { DevSupervisor, _childEnv } from "./DevSupervisor.ts";
+import { DevSupervisor, _childEnv, _isZtCommand } from "./DevSupervisor.ts";
 import type { DevChild } from "./DevSupervisor.ts";
 import type { ResolvedDevProcess } from "./DevProcess.ts";
 
@@ -455,5 +455,110 @@ describe("DevSupervisor — child environment", () => {
 
     expect(seen).toHaveLength(1);
     expect("APP_TYPE" in seen[0]!).toBe(false);
+  });
+});
+
+describe("DevSupervisor — asking a zt command to stop", () => {
+  /** A child with an IPC channel that exits when asked, as `queue:work` now does. */
+  class PoliteChild extends FakeChild {
+    readonly messages: unknown[] = [];
+    constructor(private readonly _answers: boolean) {
+      super();
+    }
+    send = (message: unknown): void => {
+      this.messages.push(message);
+      if (this._answers) setTimeout(() => this.exit(0), 5);
+    };
+  }
+
+  it("opens an IPC channel for the app's own zt commands only", async () => {
+    const ipc: Array<[string, boolean | undefined]> = [];
+    const supervisor = new DevSupervisor({
+      cwd: "/app",
+      spawn: (argv, options) => {
+        ipc.push([argv.join(" "), options.ipc]);
+        return new FakeChild();
+      },
+    });
+    supervisor.start([
+      definition({ name: "queue", label: "queue", argv: ["bun", Bun.main, "queue:work"] }),
+      definition({ name: "stripe", label: "stripe", argv: ["stripe", "listen"] }),
+    ]);
+    await supervisor.stopAll();
+
+    expect(ipc).toEqual([
+      [`bun ${Bun.main} queue:work`, true],
+      ["stripe listen", false],
+    ]);
+  });
+
+  it("asks over IPC first and does not signal a child that goes on its own", async () => {
+    const children: PoliteChild[] = [];
+    const supervisor = new DevSupervisor({
+      cwd: "/app",
+      spawn: () => {
+        const child = new PoliteChild(true);
+        children.push(child);
+        return child;
+      },
+    });
+    supervisor.start([definition({ argv: ["bun", Bun.main, "queue:work"] })]);
+    await settle();
+
+    await supervisor.stopAll();
+
+    expect(children[0]!.messages).toEqual(["zerotal:dev:shutdown"]);
+    expect(children[0]!.signals).toEqual([]);
+  });
+
+  it("asks on a restart too, so the job in hand finishes before the new code runs", async () => {
+    const children: PoliteChild[] = [];
+    const supervisor = new DevSupervisor({
+      cwd: "/app",
+      spawn: () => {
+        const child = new PoliteChild(true);
+        children.push(child);
+        return child;
+      },
+    });
+    supervisor.start([
+      definition({ argv: ["bun", Bun.main, "queue:work"], restartOnChange: true }),
+    ]);
+    await settle();
+
+    await supervisor.restartWithServer();
+
+    expect(children).toHaveLength(2);
+    expect(children[0]!.messages).toEqual(["zerotal:dev:shutdown"]);
+    expect(children[0]!.signals).toEqual([]);
+    await supervisor.stopAll();
+  });
+
+  it("signals a child that does not answer within the grace period", async () => {
+    const children: PoliteChild[] = [];
+    const supervisor = new DevSupervisor({
+      cwd: "/app",
+      stopGraceMs: 20,
+      spawn: () => {
+        const child = new PoliteChild(false);
+        children.push(child);
+        return child;
+      },
+    });
+    supervisor.start([definition({ argv: ["bun", Bun.main, "queue:work"] })]);
+    await settle();
+
+    await supervisor.stopAll();
+
+    expect(children[0]!.messages).toEqual(["zerotal:dev:shutdown"]);
+    expect(children[0]!.signals).toContain("SIGTERM");
+  });
+});
+
+describe("_isZtCommand()", () => {
+  it("is a zt command when it runs the app's own entry point through bun", () => {
+    expect(_isZtCommand(["bun", "/app/zt.ts", "queue:work"], "/app/zt.ts")).toBe(true);
+    expect(_isZtCommand(["bun", "x", "tsc"], "/app/zt.ts")).toBe(false);
+    expect(_isZtCommand(["stripe", "listen"], "/app/zt.ts")).toBe(false);
   });
 });

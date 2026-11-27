@@ -2657,7 +2657,7 @@
       "file": "docs/cookbook/roles-and-permissions.md",
       "heading": "The tests",
       "ordinal": 0,
-      "hash": "306ctu6wugqe"
+      "hash": "1b2izrq3bui9"
     },
     {
       "file": "docs/cookbook/roles-and-permissions.md",
@@ -2711,7 +2711,7 @@
       "file": "docs/cookbook/settings.md",
       "heading": "The tests",
       "ordinal": 0,
-      "hash": "3nt5364nf72m"
+      "hash": "pmaxip2l5yy5"
     },
     {
       "file": "docs/cookbook/tenancy.md",
@@ -2777,7 +2777,7 @@
       "file": "docs/cookbook/uploads.md",
       "heading": "The test",
       "ordinal": 0,
-      "hash": "2nce7yzgkhvw"
+      "hash": "22qvd1vc0has"
     },
     {
       "file": "docs/cookbook/uploads.md",
@@ -8070,6 +8070,12 @@
       "heading": "Headers and redirects",
       "ordinal": 0,
       "hash": "2gvg3yig86l7"
+    },
+    {
+      "file": "docs/testing/http.md",
+      "heading": "Reading Inertia props, typed",
+      "ordinal": 0,
+      "hash": "11qui1w6skvo"
     },
     {
       "file": "docs/testing/http.md",

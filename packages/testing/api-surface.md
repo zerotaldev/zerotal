@@ -220,7 +220,7 @@ class TestResponse = {
   assertValid: (fields?: string | string[]) => TestResponse
   exception: () => unknown
   headers: Headers
-  inertia: <P extends object = Record<string, unknown>>() => InertiaPage<P> | null
+  inertia: {    (): InertiaPage | null;    <P extends object>(): InertiaPageOf<P> | null;}
   json: <T = unknown>() => T
   ok: boolean
   session: () => Record<string, unknown> | null
@@ -269,7 +269,7 @@ interface FakeStoredFile = {
 
 interface InertiaPage = {
   component: string
-  props: P
+  props: Record<string, unknown>
   url: string
   version: string | null
 }
@@ -305,6 +305,8 @@ interface WithConfigOptions = {
 type FactoryPayload = Omit<InsertPayload<T>, FKKeys<T> & Exclude<{ [K in keyof T]-?: (<G>() => G extends { [P in K]: T[P]; } ? 1 : 2) extends <G>() => G extends { -readonly [P in K]: T[P]; } ? 1 : 2 ? K : never; }[keyof T] & { [K in keyof T & string]-?: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : NonNullable<T[K]> extends {    readonly __isZerotalModel: true;} | {    readonly __isZerotalModel: true;}[] ? never : K; }[keyof T & string], 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>> & Partial<Pick<InsertPayload<T>, FKKeys<T> & Exclude<{ [K in keyof T]-?: (<G>() => G extends { [P in K]: T[P]; } ? 1 : 2) extends <G>() => G extends { -readonly [P in K]: T[P]; } ? 1 : 2 ? K : never; }[keyof T] & { [K in keyof T & string]-?: K extends `_${string}` ? never : T[K] extends (...args: any[]) => any ? never : NonNullable<T[K]> extends {    readonly __isZerotalModel: true;} | {    readonly __isZerotalModel: true;}[] ? never : K; }[keyof T & string], 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>>>
 
 type FakeFile = {    create(name: string, content?: string | Uint8Array, type?: string): File;    sized(name: string, size: number, type?: string): File;    image(name?: string, options?: {        width?: number;        height?: number;    }): File;    jpeg(name?: string): File;    gif(name?: string): File;    pdf(name?: string): File;}
+
+type InertiaPageOf = Omit<InertiaPage, 'props'> & {    props: P;}
 
 type SessionDecoder = (response: Response) => Promise<Record<string, unknown> | null>
 

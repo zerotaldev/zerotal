@@ -820,7 +820,7 @@ export class TestResponse {
    * type says what the test expects the page to have been given, the way a page
    * component's own props type does.
    *
-   * @typeParam P - The props the page receives. Defaults to an untyped record.
+   * @typeParam P - The props the page receives. Without it they are an untyped record.
    *
    * @example
    * ```ts
@@ -828,10 +828,12 @@ export class TestResponse {
    * expect(page?.props.projects).toHaveLength(2);
    * ```
    */
-  inertia<P extends object = Record<string, unknown>>(): InertiaPage<P> | null {
+  inertia(): InertiaPage | null;
+  inertia<P extends object>(): InertiaPageOf<P> | null;
+  inertia<P extends object>(): InertiaPage | InertiaPageOf<P> | null {
     if (this._res.headers.get("X-Inertia") === "true") {
       try {
-        return JSON.parse(this._body) as InertiaPage<P>;
+        return JSON.parse(this._body) as InertiaPage;
       } catch {
         return null;
       }
@@ -839,7 +841,7 @@ export class TestResponse {
     const match = /<script[^>]*data-page="app"[^>]*>([\s\S]*?)<\/script>/.exec(this._body);
     if (!match?.[1]) return null;
     try {
-      return JSON.parse(match[1]) as InertiaPage<P>;
+      return JSON.parse(match[1]) as InertiaPage;
     } catch {
       return null;
     }
@@ -995,17 +997,20 @@ export class TestResponse {
   }
 }
 
-/**
- * The page object the Inertia protocol puts on the wire.
- *
- * @typeParam P - The page's props, as {@link TestResponse.inertia} was told them.
- */
-export interface InertiaPage<P extends object = Record<string, unknown>> {
+/** The page object the Inertia protocol puts on the wire. */
+export interface InertiaPage {
   component: string;
-  props: P;
+  props: Record<string, unknown>;
   url: string;
   version: string | null;
 }
+
+/**
+ * The Inertia page object with its props typed, as `inertia<P>()` returns it.
+ *
+ * @typeParam P - The page's props, as {@link TestResponse.inertia} was told them.
+ */
+export type InertiaPageOf<P extends object> = Omit<InertiaPage, "props"> & { props: P };
 
 const _SESSION_UNAVAILABLE =
   "Session assertions need a response produced by a TestApp whose container can " +

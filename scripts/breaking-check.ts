@@ -189,6 +189,7 @@ export function isWidening(removed: string, added: Set<string>): boolean {
     if (isOptionalMemberAddition(removed, candidate)) return true;
     if (isReordered(removed, candidate)) return true;
     if (isMembersAdded(removed, candidate)) return true;
+    if (isMethodOverloaded(removed, candidate)) return true;
     if (gainedOptionalParameters(removed, candidate)) return true;
     if (isParameterWidenedByAlias(removed, candidate, added)) return true;
   }
@@ -283,6 +284,29 @@ function isMembersAdded(removed: string, added: string): boolean {
     next++;
   }
   return true;
+}
+
+/**
+ * Whether `added` is the method `removed` with overloads added beside its one signature.
+ *
+ * A method with one signature is snapshotted as an arrow, `inertia: () => InertiaPage | null`.
+ * Give it a second overload and it is printed as a call-signature set instead,
+ * `inertia: {    (): InertiaPage | null;    <P extends object>(): Page<P> | null;}`, though every
+ * call that compiled still picks the first. The old signature has to appear in the set exactly,
+ * as its call-signature form, and the property's name and optionality must not change.
+ */
+function isMethodOverloaded(removed: string, added: string): boolean {
+  const arrow = /^(\s*[\w$]+\??:\s*)(\(.*\)) => (.+)$/.exec(removed.trimEnd());
+  if (!arrow) return false;
+  const [, prefix, parameters, result] = arrow as unknown as [string, string, string, string];
+  const trimmed = added.trimEnd();
+  if (!trimmed.startsWith(`${prefix}{`) || !trimmed.endsWith("}")) return false;
+  const signatures = trimmed
+    .slice(prefix.length + 1, -1)
+    .split(";")
+    .map((piece) => piece.trim())
+    .filter(Boolean);
+  return signatures.length > 1 && signatures.includes(`${parameters}: ${result}`);
 }
 
 /**

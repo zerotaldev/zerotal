@@ -1,7 +1,12 @@
 export { createTestApp, closeSharedTestApps, TestApp } from "./TestApp.ts";
 export type { TestFileInput, TestFormValue, TestMultipartValue } from "./TestApp.ts";
 export { TestResponse } from "./TestResponse.ts";
-export type { SessionDecoder, TestResponseContext, InertiaPage } from "./TestResponse.ts";
+export type {
+  SessionDecoder,
+  TestResponseContext,
+  InertiaPage,
+  InertiaPageOf,
+} from "./TestResponse.ts";
 export { withDatabase } from "./withDatabase.ts";
 export { refreshDatabase } from "./refreshDatabase.ts";
 export type { RefreshDatabaseOptions } from "./refreshDatabase.ts";

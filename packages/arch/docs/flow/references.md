@@ -260,7 +260,7 @@ A write syncs to the server after the expression finishes, unless the same expre
 | `this.currentUrl({ query, hash })`      | Build a URL from the current one with merged query params (no navigation) |
 | `this.navigateCurrent({ query, hash })` | Build that URL and SPA-navigate to it                                     |
 
-`currentUrl()` / `navigateCurrent()` merge query params onto the current URL: listed params are added/updated, unlisted ones preserved, and a `null`/`undefined`/`""` value removes a param. Use `currentUrl()` in a binding (`href={this.currentUrl({ query: { page: this.page + 1 } })}`) and `navigateCurrent()` in a handler (`onChange={(e) => this.navigateCurrent({ query: { status: e.target.value || null } })}`). In JSX the compiler runs both in the browser. From server code they work against the request's URL, which inside an action is the route's pattern with no query string. See [Query-aware navigation](/docs/flow/routing#query-aware-navigation).
+`currentUrl()` / `navigateCurrent()` merge query params onto the current URL: listed params are added/updated, unlisted ones preserved, and a `null`/`undefined`/`""` value removes a param. Use `currentUrl()` in a binding (`href={this.currentUrl({ query: { page: this.page + 1 } })}`) and `navigateCurrent()` in a handler (`onChange={(e) => this.navigateCurrent({ query: { status: e.target.value || null } })}`). In JSX the compiler runs both in the browser. From server code they work against the request's URL, which inside an action is the address the page was rendered at, query string included. See [Query-aware navigation](/docs/flow/routing#query-aware-navigation).
 
 ### Event dispatch
 

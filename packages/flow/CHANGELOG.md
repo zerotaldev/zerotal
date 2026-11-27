@@ -30,7 +30,13 @@ change.
   Code that read the patch frame or the snapshot memo shape must allow for both. A slow action
   (past the 15 s ack wait) followed by another click no longer leaves the page refusing every
   action as "Invalid snapshot": the component's queue stays held after an ack timeout until a
-  full snapshot has resynced it, and a reconnect resyncs the same way.
+  full snapshot has resynced it, and a reconnect resyncs the same way. An action already queued
+  behind the timed-out one waits for that snapshot too, and a full snapshot that arrives after
+  its resync was given up on is dropped.
+- **BREAKING:** a refused or failed action now shows a notice. When no `flow:error` listener
+  calls `preventDefault()`, the browser shows one through `flow:flash`. An app that already shows
+  its own message for these errors shows two: call `e.preventDefault()` in its `flow:error`
+  listener to keep only its own.
 
 ### Added
 

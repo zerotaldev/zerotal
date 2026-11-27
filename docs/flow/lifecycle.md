@@ -113,7 +113,7 @@ override async onMount({ user }: HttpContext) {
 }
 ```
 
-The context is passed to `onBoot()` too, but only the initial `GET` populates `ctx.params` — see the [warning in Routing](/docs/flow/routing#path-parameters). The argument is optional because a component can also be mounted outside a request (in a test, for example).
+The context is passed to `onBoot()` too. On an action, `ctx.params` holds the segments of the address the page was rendered at, as strings, not the models the first render bound — see the [note in Routing](/docs/flow/routing#child-components). The argument is optional because a component can also be mounted outside a request (in a test, for example).
 
 ```typescript fragment
 override async onMount() {

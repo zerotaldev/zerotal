@@ -205,6 +205,9 @@ describe("matching the route params again", () => {
     ["/posts/:post", "/users/7", {}],
     ["/posts/:post", "/posts/7/edit", {}],
     ["/posts/:post/edit", "/posts/7", {}],
+    // A snapshot built outside a request carries the pattern itself: no values in it.
+    ["/posts/:post", "/posts/:post", {}],
+    ["/:tenant/posts/:post", "/acme/posts/:post", { tenant: "acme" }],
   ])("matches %s against %s", (pattern, pathname, expected) => {
     expect(_routeParamsFor(pattern, pathname)).toEqual(expected);
   });

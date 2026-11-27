@@ -184,6 +184,8 @@ export function dehydrate(
   // Excluded from HMAC — see the signing-payload note above.
   const snapshotMemo: Snapshot["memo"] = {
     ...memo,
+    // Outside a request there is no address: the route pattern stands in, so an action still has
+    // a URL to rebuild its request from, and `_routeParamsFor` reads no values out of it.
     url: memo.url ?? currentPageUrl() ?? memo.path,
     children: [...page._childIds],
     listeners,

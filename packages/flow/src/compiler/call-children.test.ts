@@ -323,6 +323,52 @@ import { row } from "./rows";`,
       `fns = [(n: number) => n];`,
     ],
     ["ReviverPage", "", `<p>{JSON.parse("0", () => 1)}</p>`, "", ""],
+    // Round six: a function held where a value would be, handed to a package or a global.
+    [
+      "ArrowFieldPage",
+      `import { collect } from "@zerotal/core";`,
+      `<ul>{collect(this.rows).map(this.rowFn).toArray()}</ul>`,
+      "",
+      `rows = ["a"];
+  rowFn = (r: string) => r;`,
+    ],
+    [
+      "ImportedFnFieldPage",
+      `import { collect } from "@zerotal/core";
+import { row } from "./rows";`,
+      `<ul>{collect(["a"]).map(this.fn).toArray()}</ul>`,
+      "",
+      `fn = row;`,
+    ],
+    [
+      "InheritedArgPage",
+      `import { collect } from "@zerotal/core";`,
+      `<ul>{collect(["a"]).map(this.helperFromBase).toArray()}</ul>`,
+      "",
+      "",
+    ],
+    [
+      "LocalCopyPage",
+      `import { collect } from "@zerotal/core";`,
+      `<ul>{collect(["a"]).map(f).toArray()}</ul>`,
+      "const f = this.rowFn;",
+      `rowFn = (r: string) => r;`,
+    ],
+    [
+      "ElementAccessPage",
+      `import { collect } from "@zerotal/core";`,
+      `<ul>{collect(["a"]).map(this.fns[0]).toArray()}</ul>`,
+      "",
+      `fns = [(r: string) => r];`,
+    ],
+    [
+      "GlobalThisPage",
+      `import { collect } from "@zerotal/core";`,
+      `<ul>{collect(["a"]).map(globalThis.x).toArray()}</ul>`,
+      "",
+      "",
+    ],
+    ["ReviverFieldPage", "", `<p>{JSON.parse("0", this.rev)}</p>`, "", `rev = () => 1;`],
     [
       "ShadowNamespacePage",
       "namespace Math { export const round = (n: number) => n; }",

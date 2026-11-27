@@ -3237,20 +3237,33 @@ function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner:
 
 /**
  * Whether `node`, handed to a call, is data the call cannot run: no function, no method of the
- * page, none of the app's functions, and no call that does not itself pass the rule. With
- * `strict` (a package's call), a callback's parameter, which may hold a function, is refused too.
+ * page, none of the app's functions, and no call that does not itself pass the rule.
+ *
+ * - `this.x` is data only when the class declares `x` as a field with no initializer (it is
+ *   filled from the snapshot or the route) or with a plain literal one. A method, an accessor,
+ *   an inherited member, or a field initialized with a function or anything computed may hold
+ *   code.
+ * - A local is data only when its initializer is.
+ * - A name nothing declares is data only when it is one of the safe globals.
+ * - With `strict` (a package's call), a callback's parameter, which may hold a function, is
+ *   refused too.
  */
-function _isData(node: ts.Node, sf: ts.SourceFile, owner: ts.Node, strict: boolean): boolean {
+function _isData(
+  node: ts.Node,
+  sf: ts.SourceFile,
+  owner: ts.Node,
+  strict: boolean,
+  seen: Set<string> = new Set(),
+): boolean {
   let data = true;
   const cls = ts.isClassLike(owner.parent) ? owner.parent : undefined;
-  const isMethod = (member: string): boolean =>
-    cls?.members.some(
-      (m) =>
-        (ts.isMethodDeclaration(m) || ts.isGetAccessorDeclaration(m)) &&
-        m.name !== undefined &&
-        ts.isIdentifier(m.name) &&
-        m.name.text === member,
-    ) ?? true;
+  const fieldIsData = (member: string): boolean => {
+    const decl = cls?.members.find(
+      (m) => m.name !== undefined && ts.isIdentifier(m.name) && m.name.text === member,
+    );
+    if (decl === undefined || !ts.isPropertyDeclaration(decl)) return false;
+    return decl.initializer === undefined || _isPlainLiteral(decl.initializer);
+  };
   const visit = (n: ts.Node): void => {
     if (!data) return;
     if (ts.isFunctionLike(n) || ts.isClassLike(n) || ts.isNewExpression(n)) {
@@ -3262,10 +3275,10 @@ function _isData(node: ts.Node, sf: ts.SourceFile, owner: ts.Node, strict: boole
       return;
     }
     if (n.kind === ts.SyntaxKind.ThisKeyword) {
-      // `this.field` reads a value; `this` alone, or a method of it, is code.
+      // `this.field` reads a value; `this` alone, or anything but a plain field of it, is code.
       const parent = n.parent;
       if (!ts.isPropertyAccessExpression(parent) || parent.expression !== n) data = false;
-      else if (isMethod(parent.name.text)) data = false;
+      else if (!fieldIsData(parent.name.text)) data = false;
       return;
     }
     if (ts.isPropertyAccessExpression(n)) {
@@ -3273,9 +3286,7 @@ function _isData(node: ts.Node, sf: ts.SourceFile, owner: ts.Node, strict: boole
       return;
     }
     if (ts.isIdentifier(n)) {
-      const kind = _declarationKind(sf, owner, n.text);
-      if (kind === "function" || kind === "import-app") data = false;
-      else if (kind === "parameter" && strict) data = false;
+      if (!_identifierIsData(n.text, sf, owner, strict, seen)) data = false;
       return;
     }
     ts.forEachChild(n, visit);
@@ -3284,46 +3295,81 @@ function _isData(node: ts.Node, sf: ts.SourceFile, owner: ts.Node, strict: boole
   return data;
 }
 
-/**
- * What `name` is in `sf`: a function (declared, or a const holding one), one imported from the
- * app, a callback's parameter, a value, or a global (nothing declares it).
- */
-function _declarationKind(
+/** Literals, and arrays and objects of literals: a field initialized with one holds no code. */
+function _isPlainLiteral(node: ts.Node): boolean {
+  if (
+    ts.isStringLiteral(node) ||
+    ts.isNumericLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    node.kind === ts.SyntaxKind.TrueKeyword ||
+    node.kind === ts.SyntaxKind.FalseKeyword ||
+    node.kind === ts.SyntaxKind.NullKeyword ||
+    (ts.isIdentifier(node) && node.text === "undefined")
+  ) {
+    return true;
+  }
+  if (ts.isPrefixUnaryExpression(node)) return _isPlainLiteral(node.operand);
+  if (ts.isAsExpression(node) || ts.isSatisfiesExpression(node))
+    return _isPlainLiteral(node.expression);
+  if (ts.isArrayLiteralExpression(node)) return node.elements.every(_isPlainLiteral);
+  if (ts.isObjectLiteralExpression(node)) {
+    return node.properties.every(
+      (p) => ts.isPropertyAssignment(p) && _isPlainLiteral(p.initializer),
+    );
+  }
+  return false;
+}
+
+/** Globals a call may be handed as data besides those it may call. */
+const _DATA_GLOBALS = new Set(["undefined", "NaN", "Infinity"]);
+
+/** Whether the name `name`, handed to a call, is data. See {@link _isData}. */
+function _identifierIsData(
+  name: string,
   sf: ts.SourceFile,
   owner: ts.Node,
-  name: string,
-): "function" | "import-app" | "import-package" | "parameter" | "value" | "global" {
+  strict: boolean,
+  seen: Set<string>,
+): boolean {
   const specifier = _importedFrom(sf, name);
-  if (specifier !== undefined) {
-    return _isPackageSpecifier(specifier, sf.fileName) ? "import-package" : "import-app";
-  }
-  let kind: "function" | "parameter" | "value" | undefined;
+  if (specifier !== undefined) return _isPackageSpecifier(specifier, sf.fileName);
+  if (seen.has(name)) return false;
+  let verdict: boolean | undefined;
   const visit = (n: ts.Node): void => {
-    if (kind !== undefined || ts.isImportDeclaration(n)) return;
-    if ((ts.isFunctionDeclaration(n) || ts.isClassDeclaration(n)) && n.name?.text === name) {
-      kind = "function";
+    if (verdict !== undefined || ts.isImportDeclaration(n)) return;
+    if (
+      (ts.isFunctionDeclaration(n) ||
+        ts.isClassDeclaration(n) ||
+        ts.isModuleDeclaration(n) ||
+        ts.isImportEqualsDeclaration(n) ||
+        ts.isEnumDeclaration(n)) &&
+      n.name !== undefined &&
+      ts.isIdentifier(n.name) &&
+      n.name.text === name
+    ) {
+      verdict = false;
       return;
     }
     if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === name) {
       const init = n.initializer;
-      kind =
-        init === undefined || ts.isFunctionLike(init) || ts.isIdentifier(init) || _containsJsx(init)
-          ? "function"
-          : "value";
+      verdict =
+        init !== undefined &&
+        !ts.isIdentifier(init) &&
+        _isData(init, sf, owner, true, new Set([...seen, name]));
       return;
     }
-    if (
-      (ts.isParameter(n) || ts.isBindingElement(n)) &&
-      ts.isIdentifier(n.name) &&
-      n.name.text === name
-    ) {
-      kind = n.parent === owner ? "value" : "parameter";
+    if (ts.isBindingElement(n) && ts.isIdentifier(n.name) && n.name.text === name) {
+      verdict = false; // destructured from something this does not follow
+      return;
+    }
+    if (ts.isParameter(n) && ts.isIdentifier(n.name) && n.name.text === name) {
+      verdict = !strict;
       return;
     }
     ts.forEachChild(n, visit);
   };
   visit(sf);
-  return kind ?? "global";
+  return verdict ?? (_SAFE_GLOBALS.has(name) || _DATA_GLOBALS.has(name));
 }
 
 /** Globals whose functions return values and never call back into the page's code. */

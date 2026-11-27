@@ -96,37 +96,15 @@ change.
 - The readers of the signed-in user (snapshot ownership, durable keys, the upload endpoint) use
   `currentUser()` / `currentUserId()` from `@zerotal/core/auth` instead of casting the context.
 
-- **A function call as a text child compiles.** `{__("projects.title")}`, `{formatDate(x)}` and
-  `{this.label()}` sent the page to the runtime renderer, and under `cspSafe` stopped the boot,
-  though the same call compiled in an attribute or hoisted into a leading const. A call that
-  returns a value now compiles to `__esc(call)`, which writes its result as the runtime writes a
-  child: an array item by item, anything else escaped. So a page that translates its strings
-  with `__()` compiles, `cspSafe` included. Only a call that is plainly a value compiles: a
-  global, a local, a function this file declares with no JSX, one from a package or from the
-  app's own `.ts` module that re-exports nothing, or a method of the page with no JSX and no calls
-  in it. Anything else may return markup, whose bindings and class components need the render
-  context, so it still renders through the runtime and the compile log says why. So does a call
-  that awaits or is handed markup, and a client-only magic in one is still refused.
-
-- **A function call as a text child compiles, when it returns a value.** `{__("projects.title")}`,
-  `{String(n).padStart(3, "0")}` and `{this.fullName()}` sent the page to the runtime renderer, and
-  under `cspSafe` stopped the boot, though the same call compiled in an attribute or hoisted into a
-  leading const. A call now compiles to `__esc(call)` when what it calls cannot be the app's own
-  code: a global, a method on a plain value, a package's function (`__()` from `zerotal/i18n`), or
-  a page method with no JSX and no calls in it. So a page that translates its strings compiles,
-  `cspSafe` included. The app's own functions can return markup at any depth, whose bindings and
-  class components need the render context, so a call to one still renders through the runtime
-  and the compile log says why; compute its value in a leading const instead. So does a call that
-  awaits or is handed markup, and a client-only magic in one is still refused.
-
 - **A call to a package's function, or to a global, compiles as a text child.**
   `{__("projects.title")}`, `{CsrfMiddleware.field()}` and `{String(n).padStart(3, "0")}` sent the
   page to the runtime renderer, and under `cspSafe` stopped the boot, though the same call compiled
   in an attribute or hoisted into a leading const. Such a call now compiles to `__esc(call)`, so a
   page that translates its strings compiles, `cspSafe` included. It has to start from a package (a
   framework package other than Flow's own, or one in `node_modules` that does not depend on Flow)
-  or from one of a listed set of globals the file does not shadow, and be handed only data, never
-  a function or one of the app's own. The app's own code can return markup by any route, and
+  or from one of a listed set of globals the file does not shadow, and be handed only data:
+  literals, fields declared plain, and locals computed from those, never anything that may hold
+  a function. The app's own code can return markup by any route, and
   markup needs the render context, so every other call still renders through the runtime and the
   compile log says why; compute such a value in a leading const instead. A call that awaits or is
   handed markup stays on the runtime too, and a client-only magic in one is still refused.

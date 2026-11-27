@@ -25,8 +25,10 @@ describe("sessions", () => {
     await (await signedIn(user.email)).get("/dashboard");
     const here = await signedIn(user.email);
 
-    const page = (await here.get("/settings/sessions")).assertOk().inertia();
-    const sessions = page?.props["sessions"] as { current: boolean }[];
+    const page = (await here.get("/settings/sessions"))
+      .assertOk()
+      .inertia<{ sessions: { current: boolean }[] }>();
+    const sessions = page?.props.sessions ?? [];
 
     expect(sessions).toHaveLength(2);
     expect(sessions.filter((s) => s.current)).toHaveLength(1);

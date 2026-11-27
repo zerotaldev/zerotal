@@ -220,7 +220,7 @@ class TestResponse = {
   assertValid: (fields?: string | string[]) => TestResponse
   exception: () => unknown
   headers: Headers
-  inertia: () => InertiaPage | null
+  inertia: <P extends object = Record<string, unknown>>() => InertiaPage<P> | null
   json: <T = unknown>() => T
   ok: boolean
   session: () => Record<string, unknown> | null
@@ -269,7 +269,7 @@ interface FakeStoredFile = {
 
 interface InertiaPage = {
   component: string
-  props: Record<string, unknown>
+  props: P
   url: string
   version: string | null
 }

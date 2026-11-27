@@ -316,7 +316,9 @@ Each run, failure and skip is printed in the tab as it happens:
 ```
 
 The tab restarts with the server whenever a file under `app/`, `config/` or
-`routes/` changes, so a schedule you add or edit runs as saved. It runs
+`routes/` changes, so a schedule you add or edit runs as saved. A save that touches only
+Flow views (files under `app/flow/`) restarts the server alone, since no schedule reads them.
+Press `r` in the server's tab to restart everything regardless. It runs
 `bun zt schedule:work`, which runs the scheduler and nothing else; the queue has
 its own tab. To leave it out:
 

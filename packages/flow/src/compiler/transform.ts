@@ -137,6 +137,230 @@ let _cspSafe = false;
  *  caller resolved from relative imports, minus any name the page class re-declares. Set
  *  per-call by transformFlowFile, like `_cspSafe`. */
 let _staticStrings: StaticStrings = new Map();
+
+/**
+ * Whether each function component the current page uses can be called from compiled output,
+ * keyed by file and export name. Reset per call by transformFlowFile, like `_cspSafe`.
+ */
+let _componentVerdicts = new Map<string, ComponentVerdict>();
+
+/** How many function components deep the current check is, so a cycle cannot recurse forever. */
+let _componentDepth = 0;
+
+/** How deep components may nest inside one another and still compile. */
+const MAX_COMPONENT_DEPTH = 6;
+
+/**
+ * Whether a function component can be called from a compiled page, and if not, why not.
+ *
+ * A compiled page calls the component itself, so what it renders is exactly what the runtime
+ * renders. What the check guards is everything else the compiler promises: that the component
+ * puts no client code on the page (`cspSafe` depends on that), reads no page state of its own,
+ * and holds nothing that only the runtime renderer can do.
+ */
+type ComponentVerdict = { ok: true } | { ok: false; reason: string; fix: string };
+
+/**
+ * A function component's declaration, found in the module it is imported from.
+ *
+ * Only an app's own modules are read: a component imported from a package, or declared in the
+ * page's own file, is not looked into. The second because the compiled page is a `.ts` module
+ * built from the page file's declarations, and a function holding JSX cannot be carried there.
+ */
+type ComponentDeclaration =
+  | { fn: ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression; file: string }
+  | { reason: string; fix: string };
+
+/** Find the function component `name` refers to in `sf`. */
+function _findImportedComponent(sf: ts.SourceFile, name: string): ComponentDeclaration {
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const clause = stmt.importClause;
+    if (!clause || clause.isTypeOnly) continue;
+    let exported: string | null = null;
+    if (clause.name?.text === name) exported = "default";
+    const bindings = clause.namedBindings;
+    if (!exported && bindings && ts.isNamedImports(bindings)) {
+      const element = bindings.elements.find((e) => e.name.text === name && !e.isTypeOnly);
+      if (element) exported = (element.propertyName ?? element.name).text;
+    }
+    if (!exported) continue;
+
+    const specifier = stmt.moduleSpecifier.text;
+    if (!specifier.startsWith("./") && !specifier.startsWith("../")) {
+      return {
+        reason: `\`<${name}>\` is a component from a package (${specifier})`,
+        fix: "a compiled page can use components from the app's own modules; inline this one's markup, or let the page render through the runtime",
+      };
+    }
+    const file = resolveRelativeModule(sf.fileName, specifier);
+    const text = file ? readModuleText(file) : null;
+    if (!file || text === null) {
+      return {
+        reason: `\`<${name}>\`'s module (${specifier}) could not be read`,
+        fix: "check the import path",
+      };
+    }
+    const kind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+    const module = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind);
+    const fn = _exportedFunction(module, exported);
+    if (!fn) {
+      return {
+        reason: `\`<${name}>\` is not a function exported from ${specifier}`,
+        fix: "export it as `export function " + name + "(props) { return (…); }`",
+      };
+    }
+    return { fn, file };
+  }
+
+  const local = sf.statements.some(
+    (s) =>
+      (ts.isFunctionDeclaration(s) && s.name?.text === name) ||
+      (ts.isVariableStatement(s) &&
+        s.declarationList.declarations.some(
+          (d) => ts.isIdentifier(d.name) && d.name.text === name,
+        )) ||
+      (ts.isClassDeclaration(s) && s.name?.text === name),
+  );
+  return local
+    ? {
+        reason: `\`<${name}>\` is declared in the page's own file`,
+        fix: "move it into a module of its own (app/flow/components/) and import it",
+      }
+    : {
+        reason: `\`<${name}>\` is a component, not an HTML element`,
+        fix: "inline its markup here, or let this page render through the runtime",
+      };
+}
+
+/** The function `module` exports as `name` (`"default"` for the default export), if any. */
+function _exportedFunction(
+  module: ts.SourceFile,
+  name: string,
+): ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression | null {
+  const isExported = (node: ts.Node): boolean =>
+    ts.canHaveModifiers(node) &&
+    (ts.getModifiers(node)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false);
+  const isDefault = (node: ts.Node): boolean =>
+    ts.canHaveModifiers(node) &&
+    (ts.getModifiers(node)?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword) ?? false);
+
+  // `export default Name;` points at a declaration elsewhere in the module.
+  let local = name;
+  if (name === "default") {
+    for (const stmt of module.statements) {
+      if (ts.isFunctionDeclaration(stmt) && isExported(stmt) && isDefault(stmt)) return stmt;
+      if (ts.isExportAssignment(stmt) && !stmt.isExportEquals && ts.isIdentifier(stmt.expression)) {
+        local = stmt.expression.text;
+      }
+    }
+    if (local === "default") return null;
+  }
+
+  for (const stmt of module.statements) {
+    const exportedHere = name === "default" || isExported(stmt);
+    if (ts.isFunctionDeclaration(stmt) && stmt.name?.text === local && exportedHere) {
+      return stmt.body ? stmt : null;
+    }
+    if (ts.isVariableStatement(stmt) && exportedHere) {
+      for (const decl of stmt.declarationList.declarations) {
+        if (!ts.isIdentifier(decl.name) || decl.name.text !== local || !decl.initializer) continue;
+        let init: ts.Expression = decl.initializer;
+        while (ts.isParenthesizedExpression(init)) init = init.expression;
+        if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) return init;
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+/** An empty member table: a function component has no `this`. */
+function _noMembers(): MemberInfo {
+  return {
+    exposed: new Set(),
+    locked: new Set(),
+    computed: new Set(),
+    readable: new Set(),
+    declaredMethods: new Set(),
+    callableMethods: new Set(),
+  };
+}
+
+/**
+ * Decide whether the function component `name`, used in `sf`, can be called from compiled
+ * output: its own markup has to compile under the same rules as a page's, with no `this`.
+ */
+function _componentVerdict(sf: ts.SourceFile, name: string): ComponentVerdict {
+  const found = _findImportedComponent(sf, name);
+  if ("reason" in found) return { ok: false, reason: found.reason, fix: found.fix };
+
+  const key = `${found.file}#${found.fn.pos}`;
+  const known = _componentVerdicts.get(key);
+  if (known) return known;
+
+  const rel = path.relative(process.cwd(), found.file).split("\\").join("/");
+  let verdict: ComponentVerdict;
+  const async = ts.getModifiers(found.fn)?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
+  if (async || found.fn.asteriskToken) {
+    verdict = {
+      ok: false,
+      reason: `\`<${name}>\` is ${async ? "async" : "a generator"}`,
+      fix: "a component returns its markup; load what it needs in the page and pass it in",
+    };
+  } else if (found.fn.parameters.length > 1) {
+    verdict = {
+      ok: false,
+      reason: `\`<${name}>\` takes more than one parameter`,
+      fix: "take one props object",
+    };
+  } else if (_componentDepth >= MAX_COMPONENT_DEPTH) {
+    verdict = {
+      ok: false,
+      reason: `\`<${name}>\` nests components more than ${MAX_COMPONENT_DEPTH} deep`,
+      fix: "flatten the components, or let the page render through the runtime",
+    };
+  } else {
+    // Settled before checking, so a component that renders itself is refused, not followed.
+    _componentVerdicts.set(key, {
+      ok: false,
+      reason: `\`<${name}>\` renders itself`,
+      fix: "a compiled page cannot follow a recursive component",
+    });
+    const inner: BlockerReport = {};
+    _componentDepth++;
+    try {
+      const body = _compileRenderMethod(found.fn, found.file, _noMembers(), inner, true);
+      verdict =
+        body !== null
+          ? { ok: true }
+          : {
+              ok: false,
+              reason:
+                `\`<${name}>\`'s own markup does not compile: ` +
+                (inner.blocker
+                  ? `${rel}:${inner.blocker.line}:${inner.blocker.column}  ${inner.blocker.reason}`
+                  : `see ${rel}`),
+              fix: inner.blocker?.fix ?? "simplify the component's markup",
+            };
+    } catch (error) {
+      const first = (error as Error).message.replace(/^\[Flow[^\]]*\]\s*/, "").split("\n")[0];
+      verdict = {
+        ok: false,
+        reason: `\`<${name}>\` (${rel}) cannot be compiled: ${first}`,
+        fix: "a component sees only its props: pass page state in rather than reading `this`",
+      };
+    } finally {
+      _componentDepth--;
+    }
+  }
+  _componentVerdicts.set(key, verdict);
+  return verdict;
+}
+
+/** Props that the runtime turns into a binding when their value is page state. */
+const COMPONENT_BINDING_PROPS = new Set(["value", "checked", "text", "show", "bind", "query"]);
+
 /**
  * Names this file imports from a relative module whose value the compiler was not handed. A
  * class that names one is a shared class list the compiler could not read, which it leaves to
@@ -200,6 +424,8 @@ export function transformFlowFile(
 ): TransformResult | null {
   _cspSafe = opts.cspSafe ?? false;
   _staticStrings = new Map();
+  _componentVerdicts = new Map();
+  _componentDepth = 0;
   const sf = ts.createSourceFile(
     filename,
     source,
@@ -1024,12 +1250,16 @@ export function describeBlocker(blocker: CompileBlocker | undefined, filename: s
 }
 
 function _compileRenderMethod(
-  method: ts.MethodDeclaration,
+  method: ts.MethodDeclaration | ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression,
   filename: string,
   members: MemberInfo,
   report?: BlockerReport,
+  /** True when checking a function component's markup rather than compiling a page. */
+  component = false,
 ): string | null {
   let canCompile = true;
+  /** The file this markup is in: components it uses are looked up through its imports. */
+  const sourceFile = method.getSourceFile();
 
   /** Record the first blocker and stop compiling. */
   function bail(reason: string, fix: string, node: ts.Node): null {
@@ -1040,45 +1270,54 @@ function _compileRenderMethod(
 
   if (!method.body) return bail("render() has no body", "give it a body that returns JSX", method);
 
-  // The body must be: [zero or more non-return leading statements] then ONE top-level
-  // return of JSX. Any other return anywhere (early returns / branching) → bail to runtime.
-  const returns: ts.ReturnStatement[] = [];
-  const countReturns = (n: ts.Node): void => {
-    if (ts.isReturnStatement(n)) returns.push(n);
-    // A return inside a nested function is that function's own — the block body of a
-    // `.map((row) => { const x = …; return <li>…</li>; })` callback, say — not render()'s.
-    if (ts.isFunctionLike(n)) return;
-    ts.forEachChild(n, countReturns);
-  };
-  countReturns(method.body);
-  if (returns.length !== 1) {
-    return bail(
-      `render() has ${returns.length} return statements; the compiler needs exactly one`,
-      "fold the branching into the returned JSX (a ternary) or into a leading const",
-      returns[1] ?? method,
-    );
-  }
-
-  const stmts = method.body.statements;
-  const returnIdx = stmts.findIndex((s) => ts.isReturnStatement(s));
-  if (returnIdx === -1) {
-    return bail(
-      "render()'s only return is nested inside another block",
-      "return the JSX from the top level of render()",
-      returns[0] ?? method,
-    );
-  }
-  const retStmt = stmts[returnIdx] as ts.ReturnStatement;
-  if (!retStmt.expression) return bail("render() returns nothing", "return JSX", retStmt);
-
   // Leading statements (const/let computations etc.) carried verbatim — they run against
   // `this` and the carried module scope before the JSX is emitted.
-  const leading = stmts
-    .slice(0, returnIdx)
-    .map((s) => s.getText())
-    .join("\n  ");
+  let leading = "";
+  let returned: ts.Expression;
 
-  let returnExpr: ts.Expression = retStmt.expression;
+  if (!ts.isBlock(method.body)) {
+    // `(props) => (<div>…</div>)`: a component whose body is the markup itself.
+    returned = method.body;
+  } else {
+    // The body must be: [zero or more non-return leading statements] then ONE top-level
+    // return of JSX. Any other return anywhere (early returns / branching) → bail to runtime.
+    const returns: ts.ReturnStatement[] = [];
+    const countReturns = (n: ts.Node): void => {
+      if (ts.isReturnStatement(n)) returns.push(n);
+      // A return inside a nested function is that function's own — the block body of a
+      // `.map((row) => { const x = …; return <li>…</li>; })` callback, say — not render()'s.
+      if (ts.isFunctionLike(n)) return;
+      ts.forEachChild(n, countReturns);
+    };
+    countReturns(method.body);
+    if (returns.length !== 1) {
+      return bail(
+        `render() has ${returns.length} return statements; the compiler needs exactly one`,
+        "fold the branching into the returned JSX (a ternary) or into a leading const",
+        returns[1] ?? method,
+      );
+    }
+
+    const stmts = method.body.statements;
+    const returnIdx = stmts.findIndex((s) => ts.isReturnStatement(s));
+    if (returnIdx === -1) {
+      return bail(
+        "render()'s only return is nested inside another block",
+        "return the JSX from the top level of render()",
+        returns[0] ?? method,
+      );
+    }
+    const retStmt = stmts[returnIdx] as ts.ReturnStatement;
+    if (!retStmt.expression) return bail("render() returns nothing", "return JSX", retStmt);
+
+    leading = stmts
+      .slice(0, returnIdx)
+      .map((s) => s.getText())
+      .join("\n  ");
+    returned = retStmt.expression;
+  }
+
+  let returnExpr: ts.Expression = returned;
   while (ts.isParenthesizedExpression(returnExpr)) returnExpr = returnExpr.expression;
   if (
     !ts.isJsxElement(returnExpr) &&
@@ -1538,6 +1777,112 @@ function _compileRenderMethod(
     );
   }
 
+  /**
+   * `<ProjectForm action={…} values={values}>…</ProjectForm>`: call a function component the
+   * app declares in a module of its own, when its markup compiles under the page's rules.
+   *
+   * The component is called as the runtime would call it, with its props and its children
+   * already rendered, so what it renders is the same either way. The page stays compiled; only
+   * the component's own markup goes through the runtime's element factory, and the check above
+   * has made sure that markup holds nothing the runtime alone can do.
+   *
+   * @returns false when `tag` is not a component at all, true when it was emitted or the
+   *   compile bailed with the component's own reason.
+   */
+  function emitComponent(
+    tag: string,
+    attrs: ts.JsxAttributes,
+    children: readonly ts.JsxChild[],
+    at: ts.Node,
+  ): boolean {
+    if (!_isComponent(tag)) return false;
+    const verdict = _componentVerdict(sourceFile, tag);
+    if (!verdict.ok) {
+      // Quote the tag as it is written: `<Demo />` for a self-closing one.
+      const written = ts.isJsxSelfClosingElement(at.parent) ? `\`<${tag} />\`` : `\`<${tag}>\``;
+      bail(verdict.reason.replace(`\`<${tag}>\``, written), verdict.fix, at);
+      return true;
+    }
+
+    const props: string[] = [];
+    for (const attr of attrs.properties) {
+      if (ts.isJsxSpreadAttribute(attr)) {
+        if (_containsClientMagic(attr.expression) || _referencesGel(attr.expression)) {
+          bail(`\`<${tag}>\` is passed a client value`, "pass server values to a component", attr);
+          return true;
+        }
+        props.push(`...(${attr.expression.getText()})`);
+        continue;
+      }
+      if (!ts.isIdentifier(attr.name)) {
+        bail(`\`<${tag}>\` has a namespaced prop`, "use a plain prop name", attr);
+        return true;
+      }
+      const name = attr.name.text;
+      if (name === "key") continue; // the runtime's list identity, never a prop
+      const key = JSON.stringify(name);
+      const init = attr.initializer;
+      if (init === undefined) {
+        props.push(`${key}: true`);
+        continue;
+      }
+      if (ts.isStringLiteral(init)) {
+        props.push(`${key}: ${JSON.stringify(init.text)}`);
+        continue;
+      }
+      if (ts.isJsxExpression(init)) {
+        if (!init.expression) continue;
+        let expr: ts.Expression = init.expression;
+        while (ts.isParenthesizedExpression(expr)) expr = expr.expression;
+        if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
+          bail(
+            `\`<${tag} ${name}={…}>\` is passed a function`,
+            "a compiled page can pass a component values, not handlers",
+            attr,
+          );
+          return true;
+        }
+        if (_containsClientMagic(expr) || _referencesGel(expr)) {
+          bail(`\`<${tag} ${name}={…}>\` is passed a client value`, "pass a server value", attr);
+          return true;
+        }
+        // The runtime turns `value={this.name}` into a binding to the page's field; a call from
+        // compiled output would pass the value alone and drop the binding without a word.
+        if (COMPONENT_BINDING_PROPS.has(name) && /\bthis\b/.test(expr.getText())) {
+          bail(
+            `\`<${tag} ${name}={${_snippet(expr, 24)}}>\` binds page state into a component`,
+            "bind the field on the page's own element, or let the page render through the runtime",
+            attr,
+          );
+          return true;
+        }
+        if (ts.isJsxElement(expr) || ts.isJsxFragment(expr) || ts.isJsxSelfClosingElement(expr)) {
+          const node = expr;
+          const markup = captureExpr(() => visitChild(node));
+          if (markup === null) return true;
+          props.push(`${key}: { html: ${markup} }`);
+          continue;
+        }
+        props.push(`${key}: (${expr.getText()})`);
+        continue;
+      }
+      bail(`\`<${tag}>\` has a prop the compiler can't read`, "write it as name={value}", attr);
+      return true;
+    }
+
+    const meaningful = children.some(
+      (child) => !(ts.isJsxText(child) && child.containsOnlyTriviaWhiteSpaces),
+    );
+    if (meaningful) {
+      const markup = captureExpr(() => visitChildren(children));
+      if (markup === null) return true;
+      props.push(`"children": { html: ${markup} }`);
+    }
+
+    emitDynamic(`(${tag}({ ${props.join(", ")} })).html`);
+    return true;
+  }
+
   function visitElement(node: ts.JsxElement): void {
     const tag = _tagName(node.openingElement.tagName);
     if (tag === "ErrorMessage") {
@@ -1562,9 +1907,15 @@ function _compileRenderMethod(
       emitStatic("</a>");
       return;
     }
-    if (!tag || _isComponent(tag)) {
+    if (
+      tag &&
+      emitComponent(tag, node.openingElement.attributes, node.children, node.openingElement.tagName)
+    ) {
+      return;
+    }
+    if (!tag) {
       bail(
-        `\`<${tag ?? "?"}>\` is a component, not an HTML element`,
+        "`<?>` is a component, not an HTML element",
         "inline its markup here, or let this page render through the runtime",
         node.openingElement.tagName,
       );
@@ -1604,9 +1955,10 @@ function _compileRenderMethod(
       emitStatic("></a>");
       return;
     }
-    if (!tag || _isComponent(tag)) {
+    if (tag && emitComponent(tag, node.attributes, [], node.tagName)) return;
+    if (!tag) {
       bail(
-        `\`<${tag ?? "?"} />\` is a component, not an HTML element`,
+        "`<? />` is a component, not an HTML element",
         "inline its markup here, or let this page render through the runtime",
         node.tagName,
       );
@@ -1879,6 +2231,16 @@ function _compileRenderMethod(
 
       const init = attr.initializer;
 
+      // A directive that takes a value is a client expression; inside a component it would reach
+      // the page through the runtime, unchecked. Markers with no value (`cloak`) are plain HTML.
+      if (component && (name in STRING_DIRECTIVES || name === "text" || name === "model")) {
+        return bail(
+          `\`${name}=\` puts a client directive inside a component`,
+          "set it on the page's own element, or let the page render through the runtime",
+          attr,
+        );
+      }
+
       // `transition` on a `show=` element is animated by Alpine's x-transition (emitted with the
       // show binding), so skip the flow:transition emission here (that's the morph-enter feature,
       // for `transition` WITHOUT `show=`).
@@ -1966,6 +2328,17 @@ function _compileRenderMethod(
             : null;
       if (eventName !== null) {
         const event = eventName;
+        // A component called from a compiled page renders through the runtime, which ships a
+        // handler as the source of the function it was given: client code the compiler never
+        // saw, and that `cspSafe` cannot vouch for. The page binds handlers; the component
+        // takes values.
+        if (component) {
+          return bail(
+            `\`${name}={…}\` puts a handler inside a component`,
+            "bind the handler on the page, or let the page render through the runtime",
+            attr,
+          );
+        }
         // onClick={this.method} — server action (named method reference).
         if (_isThisProp(expr)) {
           const method = (expr as ts.PropertyAccessExpression).name.text;

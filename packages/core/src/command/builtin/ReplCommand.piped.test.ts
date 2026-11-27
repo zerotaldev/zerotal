@@ -13,9 +13,13 @@ import { join } from "node:path";
 
 const REPL = join(import.meta.dir, "ReplCommand.ts");
 
-async function pipe(input: string): Promise<{ code: number; stdout: string; stderr: string }> {
+async function pipe(
+  input: string,
+  files: Record<string, string> = {},
+): Promise<{ code: number; stdout: string; stderr: string }> {
   const dir = mkdtempSync(join(tmpdir(), "zt-repl-"));
   try {
+    for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);
     const script = join(dir, "run.ts");
     // The command alone, with an app that contributes nothing: what is under test is the loop.
     writeFileSync(
@@ -68,5 +72,43 @@ describe("repl with piped input", () => {
     expect(stderr).toContain("✖ ReferenceError");
     expect(stdout.trim()).toBe('"after"');
     expect(code).toBe(0);
+  });
+});
+
+/**
+ * From the 1.18.2 walk: `const { TwoFactor } = await import("zerotal/auth")` failed with
+ * "A dynamic import callback was not specified", and an `import … from` line was a syntax error,
+ * so nothing but the globals providers contribute could be reached from the prompt.
+ */
+describe("repl imports", () => {
+  /** The last line the REPL printed. */
+  const last = (stdout: string): string | undefined => stdout.trim().split("\n").at(-1);
+
+  it("runs an import() expression", async () => {
+    const { stdout, stderr } = await pipe(
+      'const { sep } = await import("node:path")\nsep.length\n',
+    );
+
+    expect(stderr).toBe("");
+    expect(last(stdout)).toBe("1");
+  });
+
+  it("runs an import declaration, named and default", async () => {
+    const { stdout, stderr } = await pipe(
+      'import { basename as base } from "node:path"\nimport path from "node:path"\n' +
+        'base("/a/b.ts") + path.extname("x.md")\n',
+    );
+
+    expect(stderr).toBe("");
+    expect(last(stdout)).toBe('"b.ts.md"');
+  });
+
+  it("resolves a ./ path from the app root, where the app's own files are", async () => {
+    const { stdout, stderr } = await pipe('import { answer } from "./thing.ts"\nanswer\n', {
+      "thing.ts": "export const answer = 42;\n",
+    });
+
+    expect(stderr).toBe("");
+    expect(last(stdout)).toBe("42");
   });
 });

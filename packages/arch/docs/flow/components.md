@@ -790,8 +790,11 @@ import { Tooltip } from "@zerotal/flow";
 ## Why a page renders through the runtime
 
 Most pages compile ahead of time to string concatenation. A page the compiler can't
-handle renders through the runtime instead — slower, but identical output, and the
-usual outcome for anything built from components. The boot line counts them:
+handle renders through the runtime instead — slower, but identical output. The components on
+this page come from a package, so a page that uses them renders through the runtime; your own
+function components can be used on a compiled page (see
+[what forces the runtime fallback](/docs/flow/performance#what-forces-the-runtime-fallback)).
+The boot line counts them:
 
 ```text
 [Flow] Compiled 4 page(s), 2 from cache, 3 bind-injected, 8 using runtime (76ms)
@@ -809,8 +812,8 @@ Every fallback then names itself, with the exact spot to look at:
 ```text
 [Flow] ListsPage renders through the runtime.
   What stops it compiling:
-  app/showcase/flow/lists.tsx:83:10  `<Demo>` is a component, not an HTML element
-      → inline its markup here, or let this page render through the runtime
+  app/showcase/flow/lists.tsx:83:10  `<Demo>` is a component from a package (@zerotal/flow-ui)
+      → a compiled page can use components from the app's own modules; inline this one's markup, or let the page render through the runtime
 ```
 
 It stays off by default because falling back is normal, not a defect. Turn it on

@@ -43,6 +43,16 @@ follows the Zerotal monorepo's unified versioning.
 - **The browser reloads sooner after a backend save.** The reload client waited a fixed second
   between reconnect attempts; it now tries after 100 ms and backs off to a second.
 
+- **Saving a Flow page no longer restarts the scheduler and the queue under `bun zt dev`.** Both
+  boot the app, so both parsed every page: each page save cost them a restart, and a syntax error
+  in a page stopped the scheduler until the next save. A save that touches only files under
+  `app/flow/` now restarts the server alone; any other backend change, and the `r` key on the
+  server's tab, still restart them with it.
+- **`bun zt repl` can import.** `import()` at the prompt failed with "A dynamic import callback
+  was not specified", and an `import … from` line was a syntax error, so nothing but the
+  providers' globals could be reached. Both work now and resolve as from a file at the app root:
+  `import { TwoFactor } from "zerotal/auth"`, `import { Task } from "./app/models/Task"`.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

@@ -71,12 +71,12 @@ verb. The project search is the one live page: its box is bound to a Flow proper
 list re-renders on the server as you type.
 
 Flow compiles each page's `render()` ahead of time, which makes it faster and is the only way a
-page renders under `cspSafe`. A compiled `render()` writes its markup out element by element, so
-it does not call the components: a page builds the same markup from the class lists in
-`app/flow/lib/ui.ts` (`class={CARD}`, `class={buttonClass("secondary")}`), and works out what it
-shows at the top of `render()` or in `onMount()`. The components serve the layouts, and any page
-you would rather render through the runtime. Run with `ZT_FLOW_COMPILE_LOG=1` to see what stops a
-page compiling.
+page renders under `cspSafe`. A compiled page can use the components in `app/flow/components/`
+that take values and hold no handlers: the project pages share `ProjectForm` and `PageHeader`,
+and build the rest from the class lists in `app/flow/lib/ui.ts` (`class={CARD}`,
+`class={buttonClass("secondary")}`). A component with a handler or a client directive, such as
+the dropdowns and dialogs, sends a page that uses it through the runtime; the layouts use those.
+Run with `ZT_FLOW_COMPILE_LOG=1` to see what stops a page compiling.
 
 ## Scripts
 
@@ -144,8 +144,9 @@ and the scheduler already run in their own tabs.
 - `app/models/Project.ts`, `app/policies/ProjectPolicy.ts`, `app/requests/ProjectRequest.ts`
 - `app/routes/(auth)/(verified)/projects/`
 - `database/migrations/0006_create_projects_table.ts` and `database/factories/ProjectFactory.ts`
-- `app/flow/pages/projects/` and `app/flow/lib/projects.ts`, and `ProjectStatusBadge.tsx` and
-  `Pagination.tsx` (if nothing else uses it) in `app/flow/components/`
+- `app/flow/pages/projects/` and `app/flow/lib/projects.ts`, and `ProjectForm.tsx`,
+  `ProjectStatusBadge.tsx` and `Pagination.tsx` (if nothing else uses it) in
+  `app/flow/components/`
 - `tests/projects.test.ts` and `tests/project-policy.test.ts`
 
 Then edit:

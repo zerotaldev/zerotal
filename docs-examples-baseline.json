@@ -8890,6 +8890,12 @@
       "hash": "34yqvflqmnl2"
     },
     {
+      "file": "docs/testing/http.md",
+      "heading": "TestResponse assertions",
+      "ordinal": 1,
+      "hash": "bfhg2mcuj9cs"
+    },
+    {
       "file": "docs/upgrade.md",
       "heading": "Pre-release checkout to 1.0",
       "ordinal": 0,

@@ -815,11 +815,23 @@ export class TestResponse {
    * protocol uses: the JSON body of an `X-Inertia` visit, or the
    * `<script data-page>` payload embedded in a full page load. `null` when the
    * response is not an Inertia response.
+   *
+   * Name the page's props to read them typed. Nothing checks them at run time: the
+   * type says what the test expects the page to have been given, the way a page
+   * component's own props type does.
+   *
+   * @typeParam P - The props the page receives. Defaults to an untyped record.
+   *
+   * @example
+   * ```ts
+   * const page = (await app.get("/projects")).inertia<{ projects: Project[] }>();
+   * expect(page?.props.projects).toHaveLength(2);
+   * ```
    */
-  inertia(): InertiaPage | null {
+  inertia<P extends object = Record<string, unknown>>(): InertiaPage<P> | null {
     if (this._res.headers.get("X-Inertia") === "true") {
       try {
-        return JSON.parse(this._body) as InertiaPage;
+        return JSON.parse(this._body) as InertiaPage<P>;
       } catch {
         return null;
       }
@@ -827,7 +839,7 @@ export class TestResponse {
     const match = /<script[^>]*data-page="app"[^>]*>([\s\S]*?)<\/script>/.exec(this._body);
     if (!match?.[1]) return null;
     try {
-      return JSON.parse(match[1]) as InertiaPage;
+      return JSON.parse(match[1]) as InertiaPage<P>;
     } catch {
       return null;
     }
@@ -983,10 +995,14 @@ export class TestResponse {
   }
 }
 
-/** The page object the Inertia protocol puts on the wire. */
-export interface InertiaPage {
+/**
+ * The page object the Inertia protocol puts on the wire.
+ *
+ * @typeParam P - The page's props, as {@link TestResponse.inertia} was told them.
+ */
+export interface InertiaPage<P extends object = Record<string, unknown>> {
   component: string;
-  props: Record<string, unknown>;
+  props: P;
   url: string;
   version: string | null;
 }

@@ -71,6 +71,15 @@ export class DevOrchestrator {
   // Paths whose changes trigger a frontend rebuild only
   private static readonly FRONTEND = ["resources/pages/", "resources/js/", "resources/css/"];
 
+  /**
+   * Backend paths that only the web server reads: server-rendered pages, their layouts and
+   * their components. A restart caused by these alone leaves the other processes (the
+   * scheduler, the queue) running, because nothing they load has changed. Each of those
+   * processes boots the app and so parses every page, which made each page save restart
+   * them too and let a page's syntax error park the scheduler.
+   */
+  private static readonly VIEWS = ["app/flow/"];
+
   // Always-ignored output / tool directories
   private static readonly IGNORE = ["public/", ".zerotal/", "node_modules/", ".git/"];
 
@@ -93,6 +102,10 @@ export class DevOrchestrator {
   /** The installed version already warned about, so one upgrade warns once. */
   private _warnedVersion: string | null = null;
   private _restartQueued = false;
+  /** Backend files changed since the last restart began. */
+  private _changedPaths = new Set<string>();
+  /** A restart was asked for without a file change (the `r` key), so everything follows. */
+  private _restartAll = false;
 
   /**
    * Bounded respawn attempts. The race above is fixed at the source, but a port can
@@ -270,9 +283,40 @@ export class DevOrchestrator {
    *
    * Goes through the same path a file change takes, so it rebuilds assets first
    * and folds into a restart already running rather than racing it for the port.
+   * The processes that follow the server restart with it, whatever changed.
    */
   restartServer(): Promise<void> {
+    this._restartAll = true;
     return this._requestRestart();
+  }
+
+  /**
+   * Note a backend file that changed, then schedule the restart it calls for.
+   *
+   * @param relativePath - The file, relative to the app root, with forward slashes.
+   */
+  private _backendChanged(relativePath: string): void {
+    this._changedPaths.add(relativePath);
+    this._scheduleRestart();
+  }
+
+  /**
+   * Whether the restart about to run needs the processes that follow the server to restart
+   * too, and forget what caused it.
+   *
+   * They are left alone only when every file that changed is a view, which only the server
+   * reads. A restart with no recorded change (the `r` key, a test) restarts everything,
+   * as before.
+   *
+   * @returns `true` to restart the followers as well.
+   */
+  private _takeFollowersDecision(): boolean {
+    const paths = [...this._changedPaths];
+    const all = this._restartAll;
+    this._changedPaths.clear();
+    this._restartAll = false;
+    if (all || paths.length === 0) return true;
+    return !paths.every((path) => DevOrchestrator.VIEWS.some((prefix) => path.startsWith(prefix)));
   }
 
   private _scheduleRestart(): void {
@@ -314,7 +358,14 @@ export class DevOrchestrator {
   }
 
   private async _restartOnce(): Promise<void> {
-    this._say("  [zerotal:dev] ↻  backend change — rebuilding + restarting server...");
+    // Decided before anything awaits, so a change saved during this restart counts towards
+    // the follow-up restart it queues rather than this one.
+    const restartFollowers = this._takeFollowersDecision();
+    this._say(
+      restartFollowers
+        ? "  [zerotal:dev] ↻  backend change — rebuilding + restarting server..."
+        : "  [zerotal:dev] ↻  page change — rebuilding + restarting the server only...",
+    );
     this._hooks.onServerState?.("restarting");
 
     // Rebuild assets before respawning: server-rendered views (Flow pages in `app/`,
@@ -328,8 +379,9 @@ export class DevOrchestrator {
     this._warnIfFrameworkUpgradedUnderneath();
 
     // Processes that load the app's own files restart with the server, so a
-    // schedule edited under `app/` is not left running its old code.
-    this._hooks.onServerRestart?.();
+    // schedule edited under `app/` is not left running its old code. A save that
+    // touched only views leaves them be: they read none of it.
+    if (restartFollowers) this._hooks.onServerRestart?.();
 
     // Stop before spawning, always: the old server owns the port until it exits.
     await this._stopChild();
@@ -610,7 +662,7 @@ export class DevOrchestrator {
           (prefix) => relativePath.startsWith(prefix) || relativePath === prefix.replace(/\/$/, ""),
         )
       ) {
-        this._scheduleRestart();
+        this._backendChanged(relativePath);
       } else if (DevOrchestrator.FRONTEND.some((prefix) => relativePath.startsWith(prefix))) {
         this._scheduleBuild(relativePath);
       }

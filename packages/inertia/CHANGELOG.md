@@ -19,6 +19,15 @@ follows the Zerotal monorepo's unified versioning.
 - **`DELETE /_inertia/devtools/entries` refuses a request sent by a web page on another site.**
   The browser extension and command-line clients are unaffected.
 
+### Added
+
+- **`make:page --route` writes the route that serves the page.** A new screen in the React or
+  Vue kit meant writing its route file by hand beside the page. With `--route`, `make:page` also
+  writes a file route exporting `GET`, at the page's own path (`tasks/index` serves `/tasks`),
+  inside `app/routes/(auth)/(verified)/` when the app has that group, rendering the page with its
+  `title`. `--path "tasks/[task]/edit"` puts it elsewhere. A route that already serves the path is
+  left alone. Without the flag, `make:page` says how to get one.
+
 ## [1.18.2] — 2026-11-26
 
 ### Fixed

@@ -266,9 +266,16 @@ async function addFeature(
   if (template === "react" || template === "vue") {
     // It wrote single quotes, a component named `index` and no layout, and failed format:check.
     const ext = template === "vue" ? "vue" : "tsx";
-    await step(["make:page", "tasks/index"], async () => {
+    // With --route it also writes the route that serves the page, so nothing is written by hand.
+    await step(["make:page", "tasks/index", "--route"], async () => {
       const page = await read(`resources/js/pages/tasks/index.${ext}`);
-      return page.includes("AppLayout") && page.includes("TasksIndex") && !page.includes("TODO");
+      const route = await read("app/routes/(auth)/(verified)/tasks/index.ts");
+      return (
+        page.includes("AppLayout") &&
+        page.includes("TasksIndex") &&
+        !page.includes("TODO") &&
+        route.includes('Inertia.render("tasks/index", { title: "Tasks" })')
+      );
     });
   }
 
@@ -296,12 +303,12 @@ async function addFeature(
     check("register /tasks in routes/web.ts", routed);
   }
 
-  // With /tasks routed (Flow), the list test runs; without (React), every test is a todo.
+  // /tasks is routed in every kit by now (make:flow in Flow, make:page --route in React and Vue),
+  // so the list test runs rather than being a todo, and `zt test` below has to pass it.
   await step(["make:test", "tasks"], async () => {
     const test = await read("tests/tasks.test.ts");
     return (
-      test.includes('import { bootApp } from "./support"') &&
-      (template === "flow" ? test.includes('  test("lists tasks"') : !/^\s+test\(/m.test(test))
+      test.includes('import { bootApp } from "./support"') && test.includes('  test("lists tasks"')
     );
   });
 

@@ -20,6 +20,12 @@ follows the Zerotal monorepo's unified versioning.
   `app/auth/sessions.ts` pass the row type to the query (`.get<PasskeyRow>()`,
   `.first<SessionRow>()`) instead of casting the result, so the starters have no casts on query
   results.
+- **The Flow starter's project pages share one form.** `app/flow/components/ProjectForm.tsx`
+  holds the fields, and the create and edit pages pass it values, errors, where to send them and
+  the button's label; both still compile ahead of time, under `cspSafe` too. Both pages use
+  `PageHeader` for their title.
+- **The React and Vue starters' tests read Inertia props without casts**, through
+  `inertia<P>()` from `zerotal/testing`.
 
 ## [1.18.3] — 2026-11-26
 

@@ -100,6 +100,15 @@ change.
 - **`flow.exposeErrorMessages`** in `config/flow.ts`: `true` shows an error's own message to the
   visitor in every environment, `false` hides it in every environment. Unset, it is shown in
   development, under `bun zt dev` and in tests, and hidden everywhere else.
+- **A compiled page can use the app's own function components.** Every capitalised tag sent a
+  page to the runtime renderer, and under `cspSafe` stopped the boot, so a page that wanted to
+  stay compiled wrote its markup out in full: the starter's create and edit forms were the same
+  130 lines twice. A function component exported from one of the app's modules is now called
+  from the compiled page when its own markup compiles under the page's rules: one `return`, no
+  event handler, no directive that takes a value, and nothing but its props to read. What it
+  renders is what the runtime renders, since the compiled page calls it. A component that does
+  not qualify names itself and the line that stopped it in the `ZT_FLOW_COMPILE_LOG=1` output.
+  Pages are compiled again when a module one of their components comes from changes.
 
 ## [1.18.3] — 2026-11-26
 

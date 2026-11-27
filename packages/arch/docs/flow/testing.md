@@ -123,9 +123,12 @@ link or a form goes — parse the render with `parseHtml()` from `@zerotal/testi
 `FlowTest` itself, and gives it every query and assertion an HTTP test has on `res.html()`
 (see [Reading the page](/docs/testing/http#reading-the-page)):
 
-```typescript fragment
+```typescript
+import type { Component } from "@zerotal/flow";
 import { FlowTest } from "@zerotal/flow/testing";
 import { parseHtml } from "@zerotal/testing";
+
+declare const CreatePostPage: new () => Component; // your page, from app/flow/pages/
 
 const t = await FlowTest.mount(CreatePostPage);
 await t.call("save");

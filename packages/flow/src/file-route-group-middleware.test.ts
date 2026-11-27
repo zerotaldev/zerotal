@@ -44,6 +44,8 @@ afterAll(async () => {
   // `close()`, not `stop()`: the latter exits the process before the summary prints.
   await app?.close?.();
   Router.reset();
+  // A closed app is still the process's current one; later files must not inherit it.
+  Application._resetInstance();
 });
 
 describe("a Flow file page under a middleware group", () => {

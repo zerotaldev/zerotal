@@ -14,6 +14,7 @@
  * broken page your users find first.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { PASSWORD_CONFIRMED_AT_KEY, TWO_FACTOR_PENDING_KEY } from "zerotal/auth";
 import { refreshDatabase, type HtmlDocument, type TestApp } from "zerotal/testing";
 import type { Page } from "../app/flow/lib/page";
 import { ProjectFactory } from "../database/factories/ProjectFactory";
@@ -51,10 +52,38 @@ beforeAll(async () => {
 });
 afterAll(() => app.close());
 
+/**
+ * What a visit needs before the page will show at all. Each page is requested through its
+ * route's middleware, as a visitor's is, so a page behind a check gets past it here the way
+ * a visitor does: a password confirmed a minute ago, an address still to verify, a feature on.
+ */
+interface Visit {
+  session?: Record<string, unknown>;
+  unverified?: boolean;
+  env?: Record<string, string>;
+}
+
 // A page class, with the state to lay over it. Typed loosely on purpose: the list mixes
 // every page in the app, and each entry's state is checked by the page it is given to.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PageCase = [name: string, page: any, state: Record<string, unknown>];
+type PageCase = [name: string, page: any, state: Record<string, unknown>, visit?: Visit];
+
+/** Two-factor settings ask for the password again; this is it, entered just now. */
+const PASSWORD_CONFIRMED: Visit = { session: { [PASSWORD_CONFIRMED_AT_KEY]: Date.now() } };
+
+/** Run `fn` with `vars` set in the environment, then put it back. */
+async function withEnv<T>(vars: Record<string, string>, fn: () => Promise<T>): Promise<T> {
+  const before = Object.fromEntries(Object.keys(vars).map((key) => [key, Bun.env[key]]));
+  Object.assign(Bun.env, vars);
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of Object.entries(before)) {
+      if (value === undefined) delete Bun.env[key];
+      else Bun.env[key] = value;
+    }
+  }
+}
 
 const PUBLIC: PageCase[] = [
   ["home", HomePage, {}],
@@ -65,7 +94,6 @@ const PUBLIC: PageCase[] = [
   ["auth/register", RegisterPage, {}],
   ["auth/forgot-password", ForgotPasswordPage, {}],
   ["auth/reset-password", ResetPasswordPage, { token: "test-token", email: "ada@example.com" }],
-  ["auth/two-factor-challenge", TwoFactorChallengePage, {}],
 ];
 
 /** The markup a page and its layout built: enough to show something real came out. */
@@ -82,6 +110,17 @@ describe("pages render", () => {
       expectAPage(await renderPage<Page>(PageClass, { url: `/${name}`, state }));
     });
   }
+
+  // The challenge only shows to a sign-in waiting for its second factor; anyone else is sent
+  // back to /login.
+  test("auth/two-factor-challenge builds for a sign-in waiting on its code", async () => {
+    const user = await UserFactory.create();
+    const page = await renderPage(TwoFactorChallengePage, {
+      url: "/two-factor/challenge",
+      session: { user_id: user.id, [TWO_FACTOR_PENDING_KEY]: true },
+    });
+    expectAPage(page);
+  });
 });
 
 /**
@@ -106,21 +145,23 @@ const SIGNED_IN: PageCase[] = [
   ["projects/index", ProjectsPage, {}],
   ["projects/index", ProjectsPage, { search: "nothing matches this" }],
   ["projects/create", CreateProjectPage, {}],
-  ["auth/verify-email", VerifyEmailPage, {}],
+  ["auth/verify-email", VerifyEmailPage, {}, { unverified: true }],
   ["auth/confirm-password", ConfirmPasswordPage, {}],
   ["settings/profile", ProfilePage, {}],
   ["settings/password", PasswordPage, {}],
   ["settings/appearance", AppearancePage, {}],
-  ["settings/two-factor", TwoFactorPage, {}],
+  ["settings/two-factor", TwoFactorPage, {}, PASSWORD_CONFIRMED],
   [
     "settings/two-factor",
     TwoFactorPage,
     { setup: { qrSvg: "<svg></svg>", uri: "otpauth://totp/x", secret: "JBSWY3DPEHPK3PXP" } },
+    PASSWORD_CONFIRMED,
   ],
   [
     "settings/two-factor",
     TwoFactorPage,
     { enabled: true, recoveryCodes: ["aaaa-bbbb"], recoveryCodesLeft: 8 },
+    PASSWORD_CONFIRMED,
   ],
   [
     "settings/passkeys",
@@ -137,6 +178,8 @@ const SIGNED_IN: PageCase[] = [
         },
       ],
     },
+    // Passkeys are off without a relying-party id, and their pages are not there at all.
+    { env: { PASSKEY_RP_ID: "localhost" }, ...PASSWORD_CONFIRMED },
   ],
   [
     "settings/sessions",
@@ -161,10 +204,21 @@ const SIGNED_IN: PageCase[] = [
 describe("pages render for a signed-in user", () => {
   refreshDatabase();
 
-  for (const [name, PageClass, state] of SIGNED_IN) {
+  for (const [name, PageClass, state, visit = {}] of SIGNED_IN) {
     test(`${name} builds with a user`, async () => {
-      const user = await UserFactory.create({ name: "Ada Lovelace" });
-      expectAPage(await renderPage<Page>(PageClass, { user, url: `/${name}`, state }));
+      const user = await UserFactory.create({
+        name: "Ada Lovelace",
+        ...(visit.unverified ? { emailVerifiedAt: null } : {}),
+      });
+      const page = await withEnv(visit.env ?? {}, () =>
+        renderPage<Page>(PageClass, {
+          user,
+          url: `/${name}`,
+          state,
+          ...(visit.session ? { session: visit.session } : {}),
+        }),
+      );
+      expectAPage(page);
     });
   }
 

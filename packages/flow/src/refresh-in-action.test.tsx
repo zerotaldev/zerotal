@@ -119,8 +119,8 @@ describe("this.refresh() inside an action", () => {
 
 /**
  * The same thing through the server's own dispatcher, the one the socket and the HTTP fallback
- * both call. FlowTest drives a copy of that pipeline, so a fix there proves nothing about the
- * server: the bug was in this one.
+ * both call, with the frames it sends read directly. FlowTest sends its calls through this
+ * dispatcher too, so the tests above already exercise it; these pin the wire format as well.
  */
 describe("this.refresh() inside an action, through the server's dispatcher", () => {
   async function callThroughServer(method: string): Promise<Array<Record<string, unknown>>> {

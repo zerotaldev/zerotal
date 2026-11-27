@@ -133,6 +133,8 @@ describe("serving the scripts", () => {
 
   afterAll(async () => {
     await app?.close?.();
+    // A closed app is still the process's current one; later files must not inherit it.
+    Application._resetInstance();
   });
 
   it("links the route table, then the runtime, both at hashed URLs", () => {
@@ -281,6 +283,8 @@ describe("an app whose middleware keeps every page private", () => {
 
   afterAll(async () => {
     await app?.close?.();
+    // A closed app is still the process's current one; later files must not inherit it.
+    Application._resetInstance();
   });
 
   it("keeps its route table from a visitor it turns away, under any hash", async () => {

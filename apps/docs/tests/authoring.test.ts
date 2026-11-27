@@ -6,16 +6,15 @@
  * the database, and the file-backed posts that predate it. A post written here
  * has to appear at /blog with no redeploy, and a draft has to stay invisible.
  *
- * Everything runs inside `inRequest()`. `FlowTest` drives a component's
- * lifecycle but does not open a request scope, and these pages read the session
- * (auth) and the request (pagination) — in production the WebSocket dispatch
- * provides that scope, so the harness needs one too.
+ * `FlowTest` sends each page through the app's own pipeline: the admin guard runs on
+ * the mount and on every action, each request has its own scope, and the editor is
+ * mounted at its real URL so the router resolves the post the way it does for a visit.
+ * The desk pages are driven as the seeded author with `FlowTest.actingAs()`.
  */
 import { beforeAll, afterAll, beforeEach, describe, test, expect } from "bun:test";
 import { createTestApp, type TestApp } from "@zerotal/testing";
 import { FlowTest } from "@zerotal/flow/testing";
-import { HttpContext, RequestContext } from "zerotal";
-import { Auth, Hash } from "zerotal/auth";
+import { Hash } from "zerotal/auth";
 import { Carbon } from "zerotal/carbon";
 import { User } from "../app/models/User.ts";
 import { Post } from "../app/models/Post.ts";
@@ -36,33 +35,36 @@ beforeAll(async () => {
 
 afterAll(() => app.close());
 
+let author: User;
+
 beforeEach(async () => {
   await Post.query().delete();
   await User.query().delete();
-  await User.create({
+  author = await User.create({
     name: "Author",
     email: "author@zerotal.dev",
     password: await Hash.make("correct-horse"),
   });
 });
 
-/** Run `fn` inside a request scope, the way a real Flow frame does. */
-function inRequest<T>(fn: () => Promise<T>, url = "http://localhost/admin"): Promise<T> {
-  return RequestContext.run(HttpContext.fake(url), fn);
+/** The writing desk, as the seeded author sees it. */
+function asAuthor() {
+  return FlowTest.actingAs(author);
 }
 
-/** Sign in the seeded author by driving the login page. */
-async function signIn(): Promise<void> {
-  const t = await FlowTest.mount(LoginPage);
-  await t.set("email", "author@zerotal.dev");
-  await t.set("password", "correct-horse");
-  await t.call("login");
-  t.assertRedirectedTo("/admin");
+/** The editor on a new post, at the URL the "New post" link opens. */
+function newPost() {
+  return asAuthor().mount(PostEditorPage, {}, { url: "/admin/posts/new" });
+}
+
+/** The editor on a saved post, at its edit URL — the router resolves the slug to the post. */
+function editPost(post: Post) {
+  return asAuthor().mount(PostEditorPage, {}, { url: `/admin/posts/${post.slug}/edit` });
 }
 
 /** Write and publish a post through the editor, returning its slug. */
 async function publishPost(title: string, body: string): Promise<void> {
-  const editor = await FlowTest.mount(PostEditorPage);
+  const editor = await newPost();
   // The browser patches the whole form object (one `form` key on the wire, not a
   // dotted path per field), so the harness does the same.
   await editor.update("form", { title, body });
@@ -71,37 +73,36 @@ async function publishPost(title: string, body: string): Promise<void> {
 
 describe("signing in", () => {
   test("a fresh form shows no errors and no signed-in navigation", async () => {
-    await inRequest(async () => {
-      const t = await FlowTest.mount(LoginPage);
+    const t = await FlowTest.mount(LoginPage);
 
-      // `this.errors.<field>` is an always-truthy sentinel for `<ErrorMessage for>`;
-      // rendering it directly used to print "[object Object]" under every input.
-      t.assertDontSee("[object Object]");
-      // The login page wears AdminLayout, which must not offer the desk to a guest.
-      t.assertDontSee("Sign out");
-      t.assertDontSee("New post");
-    });
+    // `this.errors.<field>` is an always-truthy sentinel for `<ErrorMessage for>`;
+    // rendering it directly used to print "[object Object]" under every input.
+    t.assertDontSee("[object Object]");
+    // The login page wears AdminLayout, which must not offer the desk to a guest.
+    t.assertDontSee("Sign out");
+    t.assertDontSee("New post");
   });
 
   test("wrong credentials are refused without saying which half was wrong", async () => {
-    await inRequest(async () => {
-      const t = await FlowTest.mount(LoginPage);
-      await t.set("email", "author@zerotal.dev");
-      await t.set("password", "not-the-password");
-      await t.call("login");
+    const t = await FlowTest.mount(LoginPage);
+    await t.set("email", "author@zerotal.dev");
+    await t.set("password", "not-the-password");
+    await t.call("login");
 
-      t.assertNotRedirected();
-      t.assertHasErrors("email", "do not match");
-      expect(Auth.check()).toBe(false);
-    });
+    t.assertNotRedirected();
+    t.assertHasErrors("email", "do not match");
   });
 
   test("correct credentials sign the author in", async () => {
-    await inRequest(async () => {
-      await signIn();
-      expect(Auth.check()).toBe(true);
-      expect(Auth.userOrNull()?.email).toBe("author@zerotal.dev");
-    });
+    const t = await FlowTest.mount(LoginPage);
+    await t.set("email", "author@zerotal.dev");
+    await t.set("password", "correct-horse");
+    await t.call("login");
+
+    t.assertRedirectedTo("/admin");
+    // The redirect carries the new session for the browser to collect — that is the sign-in.
+    const redirect = t.frames().find((frame) => frame.type === "redirect");
+    expect(typeof redirect?.["sessionToken"]).toBe("string");
   });
 
   test("the guard keeps anonymous visitors out of the writing desk", async () => {
@@ -113,120 +114,93 @@ describe("signing in", () => {
 
 describe("writing a post", () => {
   test("a published post reaches the public blog with no redeploy", async () => {
-    await inRequest(async () => {
-      await signIn();
-
-      const editor = await FlowTest.mount(PostEditorPage);
-      await editor.update("form", {
-        title: "Deploying on a Friday",
-        body: "# Ship it\n\nThe database is the deploy.",
-      });
-      await editor.call("publish");
-
-      // The slug came from the title — the editor never asked for one.
-      editor.assertRedirectedTo("/admin/posts/deploying-on-a-friday/edit");
-
-      const live = await loadPost("deploying-on-a-friday");
-      expect(live?.title).toBe("Deploying on a Friday");
-      expect((await listPosts()).map((p) => p.slug)).toContain("deploying-on-a-friday");
+    const editor = await newPost();
+    await editor.update("form", {
+      title: "Deploying on a Friday",
+      body: "# Ship it\n\nThe database is the deploy.",
     });
+    await editor.call("publish");
+
+    // The slug came from the title — the editor never asked for one.
+    editor.assertRedirectedTo("/admin/posts/deploying-on-a-friday/edit");
+
+    const live = await loadPost("deploying-on-a-friday");
+    expect(live?.title).toBe("Deploying on a Friday");
+    expect((await listPosts()).map((p) => p.slug)).toContain("deploying-on-a-friday");
   });
 
   test("the post records who wrote it", async () => {
-    await inRequest(async () => {
-      await signIn();
-      await publishPost("Attributed", "Mine.");
+    await publishPost("Attributed", "Mine.");
 
-      const post = await Post.query().where("slug", "attributed").firstOrFail();
-      expect(post.authorId).toBe(Auth.id());
-    });
+    const post = await Post.query().where("slug", "attributed").firstOrFail();
+    expect(post.authorId).toBe(author.id);
   });
 
   test("a draft is saved but stays off the blog", async () => {
-    await inRequest(async () => {
-      await signIn();
+    const editor = await newPost();
+    await editor.update("form", { title: "Half a thought", body: "Not ready." });
+    await editor.call("save");
 
-      const editor = await FlowTest.mount(PostEditorPage);
-      await editor.update("form", { title: "Half a thought", body: "Not ready." });
-      await editor.call("save");
-
-      expect(await Post.query().where("slug", "half-a-thought").first()).not.toBeNull();
-      expect(await loadPost("half-a-thought")).toBeNull();
-      expect((await listPosts()).map((p) => p.slug)).not.toContain("half-a-thought");
-    });
+    expect(await Post.query().where("slug", "half-a-thought").first()).not.toBeNull();
+    expect(await loadPost("half-a-thought")).toBeNull();
+    expect((await listPosts()).map((p) => p.slug)).not.toContain("half-a-thought");
   });
 
   test("an empty body is refused", async () => {
-    await inRequest(async () => {
-      await signIn();
+    const editor = await newPost();
+    editor.assertDontSee("[object Object]");
 
-      const editor = await FlowTest.mount(PostEditorPage);
-      editor.assertDontSee("[object Object]");
+    await editor.update("form", { title: "Nothing to say" });
+    await editor.call("publish");
 
-      await editor.update("form", { title: "Nothing to say" });
-      await editor.call("publish");
-
-      editor.assertHasErrors("body");
-      editor.assertDontSee("[object Object]");
-      expect(await Post.query().count()).toBe(0);
-    });
+    editor.assertHasErrors("body");
+    editor.assertDontSee("[object Object]");
+    expect(await Post.query().count()).toBe(0);
   });
 
   test("a colliding slug is suffixed rather than overwriting the post that holds it", async () => {
-    await inRequest(async () => {
-      await signIn();
-      await publishPost("Same Title", "First.");
-      await publishPost("Same Title", "Second.");
+    await publishPost("Same Title", "First.");
+    await publishPost("Same Title", "Second.");
 
-      const slugs = (await Post.query().orderBy("id").get<Post>()).map((p) => p.slug);
-      expect(slugs).toEqual(["same-title", "same-title-2"]);
-    });
+    const slugs = (await Post.query().orderBy("id").get<Post>()).map((p) => p.slug);
+    expect(slugs).toEqual(["same-title", "same-title-2"]);
   });
 });
 
 describe("editing an existing post", () => {
   test("@param binds the post by slug, and the editor opens on its content", async () => {
-    await inRequest(async () => {
-      await signIn();
-      await publishPost("Original Title", "Original body.");
+    await publishPost("Original Title", "Original body.");
 
-      const post = await Post.query().where("slug", "original-title").firstOrFail();
-      // What the router does for /admin/posts/original-title/edit: resolve the
-      // segment to a model, then hand it to the page.
-      const editor = await FlowTest.mount(PostEditorPage, { post });
+    const post = await Post.query().where("slug", "original-title").firstOrFail();
+    // /admin/posts/original-title/edit: the router resolves the segment to the post,
+    // and @param hands it to the page.
+    const editor = await editPost(post);
 
-      expect(editor.page().form.title).toBe("Original Title");
-      editor.assertSee("Original body.");
-    });
+    expect(editor.page().form.title).toBe("Original Title");
+    editor.assertSee("Original body.");
   });
 
   test("editing updates the post in place rather than creating a second one", async () => {
-    await inRequest(async () => {
-      await signIn();
-      await publishPost("Original Title", "Original body.");
+    await publishPost("Original Title", "Original body.");
 
-      const post = await Post.query().where("slug", "original-title").firstOrFail();
-      const editor = await FlowTest.mount(PostEditorPage, { post });
-      await editor.update("form", { body: "Revised body." });
-      await editor.call("save");
+    const post = await Post.query().where("slug", "original-title").firstOrFail();
+    const editor = await editPost(post);
+    await editor.update("form", { body: "Revised body." });
+    await editor.call("save");
 
-      expect(await Post.query().count()).toBe(1);
-      expect((await loadPost("original-title"))?.content).toBe("Revised body.");
-    });
+    expect(await Post.query().count()).toBe(1);
+    expect((await loadPost("original-title"))?.content).toBe("Revised body.");
   });
 
   test("unpublishing pulls a live post off the blog without deleting it", async () => {
-    await inRequest(async () => {
-      await signIn();
-      await publishPost("Temporarily Live", "Up for now.");
+    await publishPost("Temporarily Live", "Up for now.");
 
-      const post = await Post.query().where("slug", "temporarily-live").firstOrFail();
-      const editor = await FlowTest.mount(PostEditorPage, { post });
-      await editor.call("unpublish");
+    const post = await Post.query().where("slug", "temporarily-live").firstOrFail();
+    const editor = await editPost(post);
+    await editor.call("unpublish");
 
-      expect(await loadPost("temporarily-live")).toBeNull();
-      expect(await Post.query().where("slug", "temporarily-live").first()).not.toBeNull();
-    });
+    expect(await loadPost("temporarily-live")).toBeNull();
+    expect(await Post.query().where("slug", "temporarily-live").first()).not.toBeNull();
   });
 });
 
@@ -235,285 +209,244 @@ describe("the block editor", () => {
 
   /** Open the editor on a saved post whose body has three blocks. */
   async function openEditor() {
-    await signIn();
     const post = new Post();
     post.fill({ slug: "blocky", title: "Blocky", body: BODY });
     post.publishedAt = Carbon.now().subtractMinutes(1);
     await post.save();
-    return FlowTest.mount(PostEditorPage, { post });
+    return editPost(post);
   }
 
   test("renders the article, not a form — each block as published HTML", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      // The heading is real markup, so the page reads as the post it will be.
-      expect(editor.html()).toContain("<h1");
-      expect(editor.html()).toContain("First paragraph.");
-      expect(editor.html()).toContain("<code");
-    });
+    // The heading is real markup, so the page reads as the post it will be.
+    expect(editor.html()).toContain("<h1");
+    expect(editor.html()).toContain("First paragraph.");
+    expect(editor.html()).toContain("<code");
   });
 
   test("editing one block leaves the others untouched", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("editBlock", 1);
-      // A prose block opens as rendered HTML — that is what makes it editable as
-      // the article rather than as Markdown source.
-      expect(editor.page().draftIsRich).toBe(true);
-      expect(editor.page().draft).toContain("First paragraph.");
-      expect(editor.page().draft).toContain("<p>");
+    await editor.call("editBlock", 1);
+    // A prose block opens as rendered HTML — that is what makes it editable as
+    // the article rather than as Markdown source.
+    expect(editor.page().draftIsRich).toBe(true);
+    expect(editor.page().draft).toContain("First paragraph.");
+    expect(editor.page().draft).toContain("<p>");
 
-      // What the contenteditable hands back; commit converts it to Markdown.
-      await editor.set("draft", "<p>Rewritten paragraph.</p>");
-      await editor.call("commitBlock");
+    // What the contenteditable hands back; commit converts it to Markdown.
+    await editor.set("draft", "<p>Rewritten paragraph.</p>");
+    await editor.call("commitBlock");
 
-      const body = editor.page().form.body;
-      expect(body).toContain("Rewritten paragraph.");
-      expect(body).not.toContain("First paragraph.");
-      // The heading and the fence are byte-identical either side of the edit.
-      expect(body).toContain("# Heading");
-      expect(body).toContain("```ts\nconst a = 1;\n\nconst b = 2;\n```");
-    });
+    const body = editor.page().form.body;
+    expect(body).toContain("Rewritten paragraph.");
+    expect(body).not.toContain("First paragraph.");
+    // The heading and the fence are byte-identical either side of the edit.
+    expect(body).toContain("# Heading");
+    expect(body).toContain("```ts\nconst a = 1;\n\nconst b = 2;\n```");
   });
 
   test("a fenced code block is one block, blank lines and all", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      // Index 2 is the fence — if the splitter broke on its blank line this
-      // would be `const a = 1;` alone.
-      await editor.call("editBlock", 2);
-      expect(editor.page().draft).toBe("```ts\nconst a = 1;\n\nconst b = 2;\n```");
-    });
+    // Index 2 is the fence — if the splitter broke on its blank line this
+    // would be `const a = 1;` alone.
+    await editor.call("editBlock", 2);
+    expect(editor.page().draft).toBe("```ts\nconst a = 1;\n\nconst b = 2;\n```");
   });
 
   test("code opens as plain text, never as rich text", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("editBlock", 2); // the fence
-      // The whole point of the split: a contenteditable round trip is what
-      // damages a code fence, so this block never takes one.
-      expect(editor.page().draftIsRich).toBe(false);
+    await editor.call("editBlock", 2); // the fence
+    // The whole point of the split: a contenteditable round trip is what
+    // damages a code fence, so this block never takes one.
+    expect(editor.page().draftIsRich).toBe(false);
 
-      await editor.call("editBlock", 1); // a paragraph
-      expect(editor.page().draftIsRich).toBe(true);
-    });
+    await editor.call("editBlock", 1); // a paragraph
+    expect(editor.page().draftIsRich).toBe(true);
   });
 
   test("rich formatting is stored as Markdown, not HTML", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("editBlock", 1);
-      // What the toolbar's bold/italic/link buttons leave in the editor.
-      await editor.set(
-        "draft",
-        '<p>A <strong>bold</strong> word and a <a href="/docs">link</a>.</p>',
-      );
-      await editor.call("commitBlock");
+    await editor.call("editBlock", 1);
+    // What the toolbar's bold/italic/link buttons leave in the editor.
+    await editor.set(
+      "draft",
+      '<p>A <strong>bold</strong> word and a <a href="/docs">link</a>.</p>',
+    );
+    await editor.call("commitBlock");
 
-      const body = editor.page().form.body;
-      expect(body).toContain("A **bold** word and a [link](/docs).");
-      expect(body).not.toContain("<strong>");
-      expect(body).not.toContain("<a href");
-    });
+    const body = editor.page().form.body;
+    expect(body).toContain("A **bold** word and a [link](/docs).");
+    expect(body).not.toContain("<strong>");
+    expect(body).not.toContain("<a href");
   });
 
   test("a heading made with the toolbar saves as a Markdown heading", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("editBlock", 1);
-      await editor.set("draft", "<h2>Made With The Toolbar</h2>");
-      await editor.call("commitBlock");
+    await editor.call("editBlock", 1);
+    await editor.set("draft", "<h2>Made With The Toolbar</h2>");
+    await editor.call("commitBlock");
 
-      expect(editor.page().form.body).toContain("## Made With The Toolbar");
-    });
+    expect(editor.page().form.body).toContain("## Made With The Toolbar");
   });
 
   test("a list made with the toolbar saves as a Markdown list", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("editBlock", 1);
-      await editor.set("draft", "<ul><li>one</li><li>two</li></ul>");
-      await editor.call("commitBlock");
+    await editor.call("editBlock", 1);
+    await editor.set("draft", "<ul><li>one</li><li>two</li></ul>");
+    await editor.call("commitBlock");
 
-      expect(editor.page().form.body).toContain("- one\n- two");
-    });
+    expect(editor.page().form.body).toContain("- one\n- two");
   });
 
   test("emptying a block deletes it — the way a writer deletes a paragraph", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("editBlock", 1);
-      await editor.set("draft", "   ");
-      await editor.call("commitBlock");
+    await editor.call("editBlock", 1);
+    await editor.set("draft", "   ");
+    await editor.call("commitBlock");
 
-      expect(editor.page().form.body).not.toContain("First paragraph.");
-      expect(editor.page().form.body).toContain("# Heading");
-    });
+    expect(editor.page().form.body).not.toContain("First paragraph.");
+    expect(editor.page().form.body).toContain("# Heading");
   });
 
   test("a new block is inserted where it was asked for, not appended", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("addBlock", 0); // after the heading
-      expect(editor.page().isNew).toBe(true);
-      await editor.set("draft", "Inserted second.");
-      await editor.call("commitBlock");
+    await editor.call("addBlock", 0); // after the heading
+    expect(editor.page().isNew).toBe(true);
+    await editor.set("draft", "Inserted second.");
+    await editor.call("commitBlock");
 
-      const blocks = editor.page().form.body.split("\n\n");
-      expect(blocks[0]).toBe("# Heading");
-      expect(blocks[1]).toBe("Inserted second.");
-    });
+    const blocks = editor.page().form.body.split("\n\n");
+    expect(blocks[0]).toBe("# Heading");
+    expect(blocks[1]).toBe("Inserted second.");
   });
 
   test("an abandoned new block adds nothing", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
-      const before = editor.page().form.body;
+    const editor = await openEditor();
+    const before = editor.page().form.body;
 
-      await editor.call("addBlock", 0);
-      await editor.call("commitBlock"); // blurred without typing
+    await editor.call("addBlock", 0);
+    await editor.call("commitBlock"); // blurred without typing
 
-      expect(editor.page().form.body).toBe(before);
-    });
+    expect(editor.page().form.body).toBe(before);
   });
 
   test("blocks move, and the ends refuse to move past themselves", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("moveBlock", 0, 1);
-      expect(editor.page().form.body.startsWith("First paragraph.")).toBe(true);
+    await editor.call("moveBlock", 0, 1);
+    expect(editor.page().form.body.startsWith("First paragraph.")).toBe(true);
 
-      const afterMove = editor.page().form.body;
-      await editor.call("moveBlock", 0, -1); // already first
-      expect(editor.page().form.body).toBe(afterMove);
-    });
+    const afterMove = editor.page().form.body;
+    await editor.call("moveBlock", 0, -1); // already first
+    expect(editor.page().form.body).toBe(afterMove);
   });
 
   test("deleting a block removes only that block", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("deleteBlock", 1);
+    await editor.call("deleteBlock", 1);
 
-      expect(editor.page().form.body).not.toContain("First paragraph.");
-      expect(editor.page().form.body).toContain("# Heading");
-      expect(editor.page().form.body).toContain("const b = 2;");
-    });
+    expect(editor.page().form.body).not.toContain("First paragraph.");
+    expect(editor.page().form.body).toContain("# Heading");
+    expect(editor.page().form.body).toContain("const b = 2;");
   });
 
   test("source mode and block mode agree on the same body", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("toggleSource");
-      expect(editor.page().sourceMode).toBe(true);
+    await editor.call("toggleSource");
+    expect(editor.page().sourceMode).toBe(true);
 
-      // Editing the raw Markdown, as the escape hatch exists for.
-      await editor.update("form", { body: "Only one paragraph now." });
-      await editor.call("toggleSource");
+    // Editing the raw Markdown, as the escape hatch exists for.
+    await editor.update("form", { body: "Only one paragraph now." });
+    await editor.call("toggleSource");
 
-      // Back in block mode the new body is what renders — blocks are derived,
-      // never a second copy that can fall out of step.
-      expect(editor.page().form.body).toBe("Only one paragraph now.");
-      editor.assertSee("Only one paragraph now.");
-    });
+    // Back in block mode the new body is what renders — blocks are derived,
+    // never a second copy that can fall out of step.
+    expect(editor.page().form.body).toBe("Only one paragraph now.");
+    editor.assertSee("Only one paragraph now.");
   });
 
   test("Save appears only once there is something to write", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      // Freshly opened: nothing to save, so no button.
-      expect(editor.page().isDirty).toBe(false);
-      editor.assertSee("Saved");
-      editor.assertDontSee(">Save<");
+    // Freshly opened: nothing to save, so no button.
+    expect(editor.page().isDirty).toBe(false);
+    editor.assertSee("Saved");
+    editor.assertDontSee(">Save<");
 
-      await editor.call("editBlock", 1);
-      // Merely opening a block is not a change.
-      expect(editor.page().isDirty).toBe(false);
+    await editor.call("editBlock", 1);
+    // Merely opening a block is not a change.
+    expect(editor.page().isDirty).toBe(false);
 
-      await editor.set("draft", "<p>Now it differs.</p>");
-      // Typing counts before the block is even committed.
-      expect(editor.page().isDirty).toBe(true);
+    await editor.set("draft", "<p>Now it differs.</p>");
+    // Typing counts before the block is even committed.
+    expect(editor.page().isDirty).toBe(true);
 
-      await editor.call("commitBlock");
-      expect(editor.page().isDirty).toBe(true);
+    await editor.call("commitBlock");
+    expect(editor.page().isDirty).toBe(true);
 
-      await editor.call("save");
-      // Written — the baseline moves and the button steps back out of the way.
-      expect(editor.page().isDirty).toBe(false);
-      editor.assertSee("Saved");
-    });
+    await editor.call("save");
+    // Written — the baseline moves and the button steps back out of the way.
+    expect(editor.page().isDirty).toBe(false);
+    editor.assertSee("Saved");
   });
 
   test("a metadata edit counts as a change, not just the body", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
-      expect(editor.page().isDirty).toBe(false);
+    const editor = await openEditor();
+    expect(editor.page().isDirty).toBe(false);
 
-      await editor.update("form", { title: "A New Title" });
-      expect(editor.page().isDirty).toBe(true);
-    });
+    await editor.update("form", { title: "A New Title" });
+    expect(editor.page().isDirty).toBe(true);
   });
 
   test("reordering and deleting count as changes", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("moveBlock", 0, 1);
-      expect(editor.page().isDirty).toBe(true);
+    await editor.call("moveBlock", 0, 1);
+    expect(editor.page().isDirty).toBe(true);
 
-      await editor.call("save");
-      expect(editor.page().isDirty).toBe(false);
+    await editor.call("save");
+    expect(editor.page().isDirty).toBe(false);
 
-      await editor.call("deleteBlock", 0);
-      expect(editor.page().isDirty).toBe(true);
-    });
+    await editor.call("deleteBlock", 0);
+    expect(editor.page().isDirty).toBe(true);
   });
 
   test("an empty new post has nothing to save", async () => {
-    await inRequest(async () => {
-      await signIn();
-      const editor = await FlowTest.mount(PostEditorPage);
+    const editor = await newPost();
 
-      expect(editor.page().isDirty).toBe(false);
+    expect(editor.page().isDirty).toBe(false);
 
-      await editor.update("form", { title: "Something" });
-      expect(editor.page().isDirty).toBe(true);
-    });
+    await editor.update("form", { title: "Something" });
+    expect(editor.page().isDirty).toBe(true);
   });
 
   test("saving folds in a block still open, so Save needs no click-away first", async () => {
-    await inRequest(async () => {
-      const editor = await openEditor();
+    const editor = await openEditor();
 
-      await editor.call("editBlock", 1);
-      await editor.set("draft", "Saved while still editing.");
-      await editor.call("save");
+    await editor.call("editBlock", 1);
+    await editor.set("draft", "Saved while still editing.");
+    await editor.call("save");
 
-      const reloaded = await Post.query().where("slug", "blocky").firstOrFail();
-      expect(reloaded.body).toContain("Saved while still editing.");
-    });
+    const reloaded = await Post.query().where("slug", "blocky").firstOrFail();
+    expect(reloaded.body).toContain("Saved while still editing.");
   });
 
   test("a brand-new post opens with an editor already waiting", async () => {
-    await inRequest(async () => {
-      await signIn();
-      const editor = await FlowTest.mount(PostEditorPage);
+    const editor = await newPost();
 
-      expect(editor.page().editing).toBe(0);
-      expect(editor.page().isNew).toBe(true);
-    });
+    expect(editor.page().editing).toBe(0);
+    expect(editor.page().isNew).toBe(true);
   });
 });
 
@@ -528,32 +461,26 @@ describe("the post list", () => {
   }
 
   test("paginates on the component's own page, not a stale query string", async () => {
-    await inRequest(async () => {
-      await signIn();
-      await seedPosts("post");
+    await seedPosts("post");
 
-      const list = await FlowTest.mount(PostsPage);
-      list.assertSee("12 posts");
+    const list = await asAuthor().mount(PostsPage);
+    list.assertSee("12 posts");
 
-      // Page 2 of 10-per-page holds the remaining 2. The mixin's resolver is what
-      // makes paginate() inside render() return this page.
-      await list.call("gotoPage", 2);
-      expect(list.page().page).toBe(2);
-      expect(list.html().match(/href="\/admin\/posts\/post-\d+\/edit"/g)?.length).toBe(2);
-    });
+    // Page 2 of 10-per-page holds the remaining 2. The mixin's resolver is what
+    // makes paginate() inside render() return this page.
+    await list.call("gotoPage", 2);
+    expect(list.page().page).toBe(2);
+    expect(list.html().match(/href="\/admin\/posts\/post-\d+\/edit"/g)?.length).toBe(2);
   });
 
   test("searching resets to page 1, so the author is never left past the end", async () => {
-    await inRequest(async () => {
-      await signIn();
-      await seedPosts("note");
+    await seedPosts("note");
 
-      const list = await FlowTest.mount(PostsPage);
-      await list.call("gotoPage", 2);
-      await list.update("search", "Note 1");
+    const list = await asAuthor().mount(PostsPage);
+    await list.call("gotoPage", 2);
+    await list.update("search", "Note 1");
 
-      expect(list.page().page).toBe(1);
-    });
+    expect(list.page().page).toBe(1);
   });
 });
 
@@ -764,23 +691,19 @@ describe("posts committed as files", () => {
   test("still render when no row shadows them", async () => {
     // blog/*.md ships in the repo; with an empty table the index is still served
     // from those files, which keeps a fresh checkout from looking broken.
-    await inRequest(async () => {
-      expect((await listPosts()).map((p) => p.slug)).toContain("introducing-zerotal");
-    });
+    expect((await listPosts()).map((p) => p.slug)).toContain("introducing-zerotal");
   });
 
   test("a row of the same slug takes over, which is what makes them editable", async () => {
-    await inRequest(async () => {
-      const post = new Post();
-      post.fill({
-        slug: "introducing-zerotal",
-        title: "Rewritten In The Browser",
-        body: "Edited without a redeploy.",
-      });
-      post.publishedAt = Carbon.now().subtractMinutes(1);
-      await post.save();
-
-      expect((await loadPost("introducing-zerotal"))?.title).toBe("Rewritten In The Browser");
+    const post = new Post();
+    post.fill({
+      slug: "introducing-zerotal",
+      title: "Rewritten In The Browser",
+      body: "Edited without a redeploy.",
     });
+    post.publishedAt = Carbon.now().subtractMinutes(1);
+    await post.save();
+
+    expect((await loadPost("introducing-zerotal"))?.title).toBe("Rewritten In The Browser");
   });
 });

@@ -95,6 +95,26 @@ change.
   hands the storage disk a file-backed `Blob`.
 - The readers of the signed-in user (snapshot ownership, durable keys, the upload endpoint) use
   `currentUser()` / `currentUserId()` from `@zerotal/core/auth` instead of casting the context.
+- **BREAKING: `FlowTest` runs the server's own pipeline instead of a copy of it.** `mount()`
+  sends the initial GET through the page's route handler inside the app's global and route
+  middleware, and every `call()`, `update()`, `set()` and `render()` is a call frame handed to
+  the action handler with a collecting socket, as the HTTP fallback does. Each request runs in
+  a request scope of the app's container. Three kinds of test that passed against the copy now
+  fail, each where production fails too:
+  - A field that is neither `@expose`d nor `@locked` is back at its initial value on the next
+    action, and `t.page()` is the page rebuilt from the snapshot rather than the instance the
+    last action ran on. Mark state the page keeps `@expose` (the browser may change it) or
+    `@locked` (the server owns it), or assert on the render with `assertSee()` instead.
+  - Calling a method that is not `@expose`d is refused with the server's own message
+    (`Method "x" is not allowed`). Expose the method if the browser calls it, or test it through
+    the action that does, or directly on an instance.
+  - A render, `onBoot()` or middleware that throws fails the test with its error and stack,
+    where the copy rendered empty markup. Fix the render.
+
+  `set()` now throws for a field the snapshot does not carry, and `update()` throws for one
+  the browser may not write (not `@expose`d, or `@locked`), since the server ignores that write
+  without a word. Tests that wrapped `FlowTest` in `RequestContext.run()` to sign a user in
+  sign in with `FlowTest.actingAs(user)` instead: the outer scope no longer reaches the page.
 
 - **A call to a package's function, or to a global, compiles as a text child.**
   `{__("projects.title")}`, `{CsrfMiddleware.field()}` and `{String(n).padStart(3, "0")}` sent the
@@ -130,6 +150,13 @@ change.
 - The WebSocket handshake times out after 4 s. When the page's first handshake hangs, as it does
   behind a proxy that swallows upgrades, the page switches to the HTTP transport at once instead
   of waiting out three browser-length timeouts.
+- **`FlowTest.actingAs(user).mount(...)`, `t.actingAs(user)`, and a third `mount()` argument
+  for the URL, route parameters, user and headers.** A query string fills `@url` fields; a
+  routed page is matched against its route, its model bindings resolved, and `@param` fields
+  seeded as the router seeds them. Cookies the app sets are kept between requests, so a session
+  carries from the mount to the actions. A middleware's redirect of the mount is assertable with
+  `assertRedirectedTo()`. `t.document()` is the whole page the mount answered with, layout
+  included, and `t.frames()` the frames the server sent back for the last action.
 
 ### Fixed
 

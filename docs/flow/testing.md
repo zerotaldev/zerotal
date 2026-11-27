@@ -5,13 +5,29 @@ description: Drive a component in-process with FlowTest, assert on its state, ef
 
 # Testing
 
-`FlowTest` runs the full Flow server-side pipeline in-process — no running server, no WebSocket connection, no browser. It's the fastest way to write component tests and covers the complete request cycle: mount, hydrate, action, render, dehydrate.
+`FlowTest` drives a page through the same code your running app uses — in-process, with no
+server, no socket and no browser. The mount goes through the page's route handler, and every
+action after it is a call frame handed to the action handler, exactly as the browser's HTTP
+fallback hands it one. So a test fails where production would:
+
+- **State is rebuilt from the snapshot on every action.** A field that is neither `@expose`d
+  nor `@locked` is back at its initial value on the next request, in the test as in the app.
+- **Only `@expose`d methods can be called.** Calling anything else is refused with the
+  server's own error.
+- **Middleware runs.** The app's middleware on the mount, and the route's middleware plus the
+  persistent global ones on every action.
+- **Every request has its own request scope**, with the app's container, the signed-in user
+  and the URL.
+- **A render that throws fails the test** with the error and its stack.
 
 Import it from `@zerotal/flow/testing`.
 
 ## Mounting a component
 
-`FlowTest.mount()` drives the **initial GET** cycle: `onBoot → onMount → onRendering → render → onRendered → onDehydrate`. It returns a test handle you can use for assertions and further interactions:
+`FlowTest.mount()` sends the **initial GET**: the app's global middleware and the page's route
+middleware run, then the page's handler — `onBoot → onMount → onRendering → render → onRendered
+→ onDehydrate` — renders it in its layout and signs the snapshot later actions start from. It
+returns a test handle you can use for assertions and further interactions:
 
 ```typescript fragment
 import { FlowTest } from "@zerotal/flow/testing";
@@ -25,23 +41,77 @@ t.assertSee("Count: 0");
 t.assertDontSee("Count: 1");
 ```
 
-### Seeding initial state
+When the app has been booted (with `createTestApp()`, say), `FlowTest` uses its container and
+its middleware. Without one, a page runs with an empty container and no global middleware.
 
-Pass initial props to seed state before `onMount()` runs. Props are applied to the component instance before the lifecycle starts:
+### The URL, route parameters and the signed-in user
+
+The third argument says how the page is requested:
 
 ```typescript fragment
-const t = await FlowTest.mount(PostsPage, { page: 2, search: "TypeScript" });
+// A query string fills @url fields, as a visit does.
+const search = await FlowTest.mount(PostsPage, {}, { url: "/posts?page=2&search=TypeScript" });
+expect(search.page().search).toBe("TypeScript");
 
-expect(t.page().search).toBe("TypeScript");
-expect(t.page().page).toBe(2);
-t.assertSee("TypeScript");
+// A routed page is matched against its route: `/posts/:post/edit` gets `post` from the URL,
+// resolved through the route's model binding, and a `@param` or same-named field receives it.
+const editor = await FlowTest.mount(EditPostPage, {}, { url: "/posts/hello-world/edit" });
+
+// Route parameters can be given directly too — a model you already have, for instance.
+const direct = await FlowTest.mount(EditPostPage, {}, { url: "/posts/1/edit", params: { post } });
 ```
 
-This is equivalent to the component being navigated to with `?page=2&search=TypeScript` in the URL.
+| Option    | What it does                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------ |
+| `url`     | Where the page is requested, query string included. Defaults to the page's route, or `/`.                    |
+| `params`  | Route parameters, as the router puts them on `ctx.params`; laid over what the URL matched.                   |
+| `user`    | The signed-in user (anything with an `id`), or `null` for a guest — the same as `actingAs()`.                |
+| `headers` | Headers sent with the mount and every action after it.                                                       |
+| `session` | Values the session holds before the visit — a password just confirmed — written by the app's session driver. |
+
+`FlowTestMountOptions` is the type of that argument. A page routed with `Router.flow()` or a
+file route keeps its route, so its middleware is the one a visitor gets; a page with no route of
+its own is given a path no route serves, so it runs only the persistent global middleware.
+
+To sign in, chain `FlowTest.actingAs(user)` before the mount. The user (a `FlowTestUser`:
+anything with an `id`, your `User` model included) is put on the request before any middleware
+runs, where the session middleware leaves it, so guards, `Auth.user()` and `ctx.user` all see it:
+
+```typescript fragment
+const t = await FlowTest.actingAs(alice).mount(SettingsPage);
+await t.call("save");
+```
+
+The snapshot belongs to whoever the page was rendered for. `t.actingAs(bob)` on a mounted page
+makes the next action Bob's, and it is refused the way a page left open across a sign-out is:
+"Your session changed — reload the page."
+
+Cookies the app sets — the session's, above all — are kept between the mount and the actions,
+as a browser keeps them, including the ones an action hands over after signing someone in.
+
+### Seeding initial state
+
+Props passed as the second argument are assigned to the new instance before anything else
+runs, `onMount()` included:
+
+```typescript fragment
+const t = await FlowTest.mount(ProjectPage, { projectId: 7 });
+```
+
+Only props on `@expose` or `@locked` fields outlive that first request — exactly as in
+production, where nothing else carries a value from one request to the next. For `@url` fields,
+prefer the query string, which is how a visitor sets them.
+
+A middleware that answers the mount with a redirect (a guest sent to `/login`) is an outcome you
+can assert: `t.assertRedirectedTo("/login")`. Any other refusal, or an error thrown by the page,
+fails the mount.
 
 ## Calling actions
 
-`t.call(method, ...args)` drives a **WebSocket action frame**: `onBoot → onHydrate → [onUpdating/onUpdated] → action → onUpdate → onRendering → render → onRendered → onDehydrate`.
+`t.call(method, ...args)` sends a **call frame** through the action handler: the page is rebuilt
+from its signed snapshot, the middleware runs again, then `onBoot → onHydrate → action → onUpdate
+→ onRendering → render → onRendered → onDehydrate`. The arguments travel as JSON, as the
+browser sends them.
 
 ```typescript fragment
 await t.call("increment");
@@ -57,13 +127,24 @@ await t.call("save");
 t.assertRedirectedTo("/posts");
 ```
 
-The full lifecycle fires on every `call()` — hooks like `onHydrate`, `onUpdate`, `onRendering`, and `onDehydrate` run exactly as they would in production.
+The full lifecycle fires on every `call()`, because it is production's own code that runs. The
+method has to be `@expose`d: anything else is refused with the server's message —
+`Method "purge" is not allowed` — and the test fails. A helper the page calls itself is tested
+through the action that calls it, or directly on an instance.
 
 ### When an action throws
 
 A `ValidationError` is an expected outcome: the error bag is populated, the page re-renders, and you assert on it with `assertHasErrors`.
 
-Any other error is passed to `onError()` — as in production — and then **rethrown**, so the test fails with the real stack. This matters because a swallowed exception is easy to miss: in the running app the error goes to the log and the visitor gets a flash, and otherwise the page stays as it was. A test that let it pass would see an action that ran and did nothing.
+Any other error is passed to `onError()` — by the server, as in production — and then
+**rethrown**, so the test fails with the real stack. This matters because a swallowed exception
+is easy to miss: in the running app the error goes to the log and the visitor gets a flash, and
+otherwise the page stays as it was. A test that let it pass would see an action that ran and did
+nothing.
+
+The same goes for a render that throws, an `onBoot()` that throws, and a middleware that turns
+the action away: the test fails with that error, and the page keeps the markup and snapshot the
+visitor last had.
 
 When the error path is what you're testing, opt in with `tolerateErrors()`:
 
@@ -80,23 +161,36 @@ t.assertFlashed("error", "Payment failed");
 Three methods change a property between calls:
 
 ```typescript fragment
-// set() — direct assignment, then re-renders; no hooks fire
-await t.set("draft", "Hello world");
-await t.set("page", 3);
-
-// update() — simulates a client input; fires onUpdating and onUpdated hooks
+// update() — what the browser sends when a visitor types into a bound input:
+// it goes through the @expose allowlist and fires onUpdating and onUpdated
 await t.update("username", "alice");
 await t.update("email", "alice@example.com");
 
-// seed() — assignment WITHOUT re-rendering, for batching
+// set() — setup: puts a value into the snapshot, then renders; no hooks fire
+await t.set("draft", "Hello world");
+await t.set("ownerId", 3); // @locked, which the browser could never write
+
+// seed() — the same WITHOUT rendering, for batching
 await t.seed("step", 3);
 await t.seed("mode", "advanced");
 await t.render(); // one render for both
 ```
 
-`set()` re-renders, so `html()` and every assertion that reads it describe the state you just set. Reach for `seed()` only when you're assigning several properties and want to pay for a single render — and remember that nothing reads the new values until the next `render()`, `update()`, or `call()`.
+`update()` is the one to reach for when the value is something a visitor types. It throws when
+the field is not `@expose`d or is `@locked`: the server ignores such a write without a word, so
+the test says so instead.
 
-Use `set()` to put the component in a specific state for a test scenario. Use `update()` when you're testing that `onUpdating`/`onUpdated` hooks run correctly:
+`set()` is for putting the page in a state a test needs. It rebuilds the page from its
+snapshot, assigns the value, signs the result as the server would, and renders it as fast
+refresh does (`onBoot → onHydrate → render`, no `onMount`). It throws for a field the snapshot
+does not carry — a value there would be gone by the next action. Reach for `seed()` only when
+you're assigning several properties and want to pay for a single render.
+
+A static page (`static interactive = false`) has no snapshot and no next request. There,
+`set()` and `render()` work on the instance the mount built, standing in for what `onMount()`
+left on it, and `call()`/`update()` throw — a browser could not call one either.
+
+Use `update()` when you're testing that `onUpdating`/`onUpdated` hooks run correctly:
 
 ```typescript fragment
 // Test that onUpdatedUsername normalises to lowercase
@@ -153,7 +247,7 @@ t.assertHasErrors("password", "min"); // error message contains "min"
 t.assertNoErrors(); // no validation errors at all
 ```
 
-`assertHasErrors(field, msg?)` checks the error bag returned from the last action. `msg` is a substring match on the first error message for that field.
+`assertHasErrors(field, msg?)` checks the error bag the last action sent with its patch. `msg` is a substring match on the first error message for that field.
 
 ## Redirect assertions
 
@@ -190,53 +284,39 @@ expect(event?.data).toMatchObject({ id: 1 });
 ## Accessors
 
 ```typescript fragment
-t.page(); // the Component instance — inspect properties and call methods directly
-t.html(); // the rendered HTML string from the last render
-t.errors(); // current error bag: Record<string, string[]>
-t.effects(); // effects from the last action: { flashes, redirectUrl, events, downloads, … }, or null
-t.snapshot(); // the serialised snapshot blob
+t.page(); // the page as the server rebuilds it for the next action
+t.html(); // the page's own markup from the last render, without the layout
+t.document(); // the whole document the mount was answered with, layout and <head> included
+t.errors(); // the error bag the last action sent: Record<string, string[]>
+t.effects(); // what the last action did: { flashes, redirectUrl, events, downloads, … }, or null
+t.frames(); // every frame the server sent back for the last action, parsed, in order
+t.snapshot(); // the signed snapshot the next action is sent with
 ```
 
-`t.page()` gives you the live component instance, so you can read any property:
+`t.page()` is a fresh instance with the snapshot's state restored — what the next action
+starts from, not the object the last one ran on. So it answers the question production asks:
 
 ```typescript fragment
-const page = t.page();
-expect(page.posts.length).toBe(10);
-expect(page.user?.email).toBe("alice@example.com");
-expect(page.totalRevenue).toBe(450.0);
+await t.call("loadReport");
+
+expect(t.page().reportId).toBe(42); // @locked: carried to the next action
+expect(t.page().rows).toEqual([]); // undecorated: gone, as it is for the next request
+t.assertSee("450.00"); // …though the action's own render used it
 ```
 
-## No request scope
+Read what a render showed with `assertSee()` and [`parseHtml()`](#reading-the-render), and what
+the page keeps with `t.page()`.
 
-`FlowTest` drives the server-side pipeline but does **not** open a request context. There is no
-`RequestContext.run` inside it, so anything reaching for the request throws rather than
-returning empty:
+## The request scope
 
-- `Auth.user()` → `E_UNAUTHORIZED`
-- `Auth.attempt()` / `Auth.login()` → `E_CONTEXT_OUTSIDE_REQUEST`
-- request-scoped pagination, and any facade that reads `RequestContext`
+Every request `FlowTest` sends — the mount, each action — runs inside its own request scope with
+the app's container, as a real one does. `Auth.user()`, `ctx.user`, request-scoped pagination and
+any facade that reads the request work inside the page without any setup; sign the page in with
+`FlowTest.actingAs(user)` (see [above](#the-url-route-parameters-and-the-signed-in-user)).
 
-That covers most actions on any page behind a sign-in, so open the scope yourself. `HttpContext.fake()`
-rather than an object literal cast to the type — it carries a real `Request`, which matters as soon
-as anything downstream reads a header (an audited model records the actor's IP, for one):
-
-```typescript fragment
-import { RequestContext, HttpContext } from "@zerotal/core";
-
-function asUser<T>(user: User | null, fn: () => Promise<T>): Promise<T> {
-  const ctx = HttpContext.fake("http://localhost/");
-  if (user) ctx.user = user;
-  return RequestContext.run(ctx, fn);
-}
-
-await asUser(alice, async () => {
-  const t = await FlowTest.mount(IssuePage, { issue });
-  await t.call("postComment");
-});
-```
-
-`app.actingAs()` does not help here: it encodes a session cookie for `app.get()`, and `FlowTest`
-never makes a request to send it on.
+The scope belongs to the request, so code in the test itself is outside it. Check what an action
+did through what it left behind — a row in the database, the page it renders, the redirect, the
+session it hands over — rather than by asking `Auth.check()` in the test.
 
 ## Testing with a database
 
@@ -270,7 +350,6 @@ describe("PostsPage", () => {
 
     t.assertSee("Hello world");
     t.assertDontSee("Draft post");
-    expect(t.page().posts.length).toBe(1);
   });
 });
 ```
@@ -291,8 +370,8 @@ describe("LoginPage", () => {
     await User.create({ email: "alice@example.com", password: "secret123" });
 
     const t = await FlowTest.mount(LoginPage);
-    await t.set("email", "alice@example.com");
-    await t.set("password", "secret123");
+    await t.update("email", "alice@example.com");
+    await t.update("password", "secret123");
     await t.call("login");
 
     t.assertRedirectedTo("/dashboard");
@@ -301,8 +380,8 @@ describe("LoginPage", () => {
 
   test("shows error on invalid credentials", async () => {
     const t = await FlowTest.mount(LoginPage);
-    await t.set("email", "alice@example.com");
-    await t.set("password", "wrongpassword");
+    await t.update("email", "alice@example.com");
+    await t.update("password", "wrongpassword");
     await t.call("login");
 
     t.assertNotRedirected();
@@ -327,8 +406,8 @@ describe("LoginPage", () => {
 
   test("flashes error after too many attempts", async () => {
     const t = await FlowTest.mount(LoginPage);
-    await t.set("email", "alice@example.com");
-    await t.set("password", "wrong");
+    await t.update("email", "alice@example.com");
+    await t.update("password", "wrong");
 
     for (let i = 0; i < 5; i++) {
       await t.call("login");
@@ -346,8 +425,8 @@ To test that a component dispatches events and that `@on` listeners respond, mou
 ```typescript fragment
 test("dispatches post-created when saved", async () => {
   const editor = await FlowTest.mount(PostEditorPage);
-  await editor.set("title", "My post");
-  await editor.set("body", "Content here");
+  await editor.update("title", "My post");
+  await editor.update("body", "Content here");
   await editor.call("save");
 
   editor.assertDispatched("post-created");
@@ -359,13 +438,13 @@ test("post list responds to post-created event", async () => {
   await Post.create({ title: "Existing post", status: "published" });
 
   const list = await FlowTest.mount(PostListPage);
-  expect(list.page().posts.length).toBe(1);
+  list.assertSee("Existing post");
 
-  // Simulate the event arriving (same as calling the @on listener):
+  // Simulate the event arriving (the client calls the @on listener, which is @expose'd):
   await list.call("handlePostCreated", { id: 99, title: "New post" });
 
-  // The listener called this.refresh() — posts re-loaded:
-  expect(list.page().posts.length).toBe(2);
+  // The listener called this.refresh() — the list re-loaded before the render:
+  list.assertSee("New post");
 });
 ```
 
@@ -374,8 +453,8 @@ test("post list responds to post-created event", async () => {
 ```typescript fragment
 test("redirects to the created post after save", async () => {
   const t = await FlowTest.mount(NewPostPage);
-  await t.set("title", "Hello");
-  await t.set("body", "World");
+  await t.update("title", "Hello");
+  await t.update("body", "World");
   await t.call("save");
 
   // The URL contains the new post's ID — match with a regex
@@ -395,20 +474,22 @@ test("redirects to the created post after save", async () => {
 | `t.assertHasErrors(field)`      | Validation error exists for `field`                                 |
 | `t.assertHasErrors(field, msg)` | Error for `field` contains `msg` as a substring                     |
 | `t.assertNoErrors()`            | No validation errors in the error bag                               |
-| `t.assertRedirectedTo(url)`     | Last action redirected to this exact URL                            |
+| `t.assertRedirectedTo(url)`     | Last action (or the mount) redirected to this exact URL             |
 | `t.assertNotRedirected()`       | Last action did not produce a redirect                              |
 | `t.assertFlashed(level?, msg?)` | Flash was emitted; both args are optional substrings                |
 | `t.assertDispatched(event)`     | An event with this name was dispatched (the payload is not checked) |
-| `t.page()`                      | Returns the component instance                                      |
-| `t.html()`                      | Returns the rendered HTML string                                    |
+| `t.page()`                      | Returns the page as rebuilt for the next action                     |
+| `t.html()`                      | Returns the page's rendered HTML, without its layout                |
+| `t.document()`                  | Returns the whole document the mount was answered with              |
 | `t.errors()`                    | Returns the error bag: `Record<string, string[]>`                   |
-| `t.effects()`                   | Returns drained effects (flashes, `redirectUrl`, events, downloads) |
-| `t.snapshot()`                  | Returns the serialised snapshot blob                                |
+| `t.effects()`                   | Returns what the last action did (flashes, `redirectUrl`, events)   |
+| `t.frames()`                    | Returns the frames the server sent for the last action              |
+| `t.snapshot()`                  | Returns the signed snapshot                                         |
 
 ## Testing in a real browser
 
-`FlowTest` never opens a socket. That is what makes it fast, and it is also what it
-cannot check: whether the attribute the client needs was rendered, whether the click
+`FlowTest` never opens a socket and runs no client code. That is what makes it fast, and it is
+also what it cannot check: whether the attribute the client needs was rendered, whether the click
 reached the server, whether the patch came back. A page can pass every `FlowTest`
 assertion and still do nothing when a person clicks it.
 [FlowBrowser](/docs/testing/flow-browser) drives a real browser against your app for

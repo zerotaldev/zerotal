@@ -1,0 +1,88 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { FACTORY_PASSWORD, UserFactory } from "../database/factories/UserFactory";
+import { Browser, bootApp } from "./support";
+
+let app: TestApp;
+
+beforeAll(async () => {
+  app = await bootApp();
+});
+afterAll(() => app.close());
+beforeEach(() => app.actingAsGuest());
+
+/**
+ * CSRF protection is on (bootstrap/app.ts): a POST, PUT, PATCH or DELETE that does not carry
+ * this session's token is refused, so another site cannot make a signed-in browser submit one
+ * of the app's forms. Every form carries the token in a hidden `_token` field.
+ */
+describe("CSRF protection", () => {
+  refreshDatabase();
+
+  test("refuses a form post that carries no token", async () => {
+    // Straight to the server, without the token the test helpers add.
+    const res = await fetch(`${app.baseUrl}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ email: "ada@example.com", password: "secret" }),
+      redirect: "manual",
+    });
+
+    expect(res.status).toBe(419);
+  });
+
+  test("refuses a form post whose token is not this session's", async () => {
+    const user = await UserFactory.create();
+    const browser = new Browser(app);
+
+    const res = await browser.post("/login", {
+      email: user.email,
+      password: FACTORY_PASSWORD,
+      _token: "not-the-token",
+    });
+
+    res.assertStatus(419);
+  });
+
+  test("the sign-in form carries this session's token, and posting it signs in", async () => {
+    const user = await UserFactory.create();
+    const browser = new Browser(app);
+
+    const form = (await browser.get("/login")).assertOk().html().form("/login");
+    const field = form.get('input[type="hidden"][name="_token"]');
+    expect(field.attr("value")).toBe(await browser.token());
+
+    (
+      await browser.post("/login", { email: user.email, password: FACTORY_PASSWORD })
+    ).assertRedirect("/dashboard");
+  });
+
+  test.each(["/login", "/register", "/forgot-password"])(
+    "every form on %s that posts carries the token",
+    async (url) => {
+      const page = (await app.get(url)).assertOk().html();
+      const forms = page.findAll('form[method="post"]');
+
+      expect(forms.length).toBeGreaterThan(0);
+      for (const form of forms) expect(form.findAll('input[name="_token"]')).toHaveLength(1);
+    },
+  );
+
+  test.each([
+    "/dashboard",
+    "/projects",
+    "/projects/create",
+    "/settings/profile",
+    "/settings/password",
+    "/settings/sessions",
+    "/settings/delete-account",
+  ])("every form on %s that posts carries the token, the layout's own included", async (url) => {
+    const user = await UserFactory.create();
+    const page = (await app.actingAs(user).get(url)).assertOk().html();
+    const forms = page.findAll('form[method="post"]');
+
+    // The sign-out item in the user menu is a form too.
+    expect(forms.length).toBeGreaterThan(0);
+    for (const form of forms) expect(form.findAll('input[name="_token"]')).toHaveLength(1);
+  });
+});

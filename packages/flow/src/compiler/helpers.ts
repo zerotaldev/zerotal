@@ -32,7 +32,9 @@ export function __esc(v: unknown): string {
   if (typeof v === "object" && typeof (v as { html?: unknown }).html === "string") {
     return (v as { html: string }).html;
   }
-  return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Escaped exactly as the runtime escapes text, quotes included, so a call's result (a
+  // translated "You're in") comes out the same from either path.
+  return Bun.escapeHTML(String(v));
 }
 
 /**

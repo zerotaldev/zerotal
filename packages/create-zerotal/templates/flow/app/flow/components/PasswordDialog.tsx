@@ -1,3 +1,4 @@
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import type { ButtonVariant } from "../lib/button";
 import { Button } from "./Button";
@@ -40,6 +41,7 @@ export function PasswordDialog({
         data-method={method === "post" ? undefined : method}
         class="space-y-5"
       >
+        {CsrfMiddleware.field()}
         <TextField
           label="Password"
           name="password"

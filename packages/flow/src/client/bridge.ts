@@ -3696,6 +3696,23 @@ const _debouncedModelSend = (() => {
 // then $set them onto the bound property (single value, or array for `multiple`). Emits
 // flow:upload-start / -progress / -finish / -error CustomEvents on window for the UI.
 
+/**
+ * The anti-forgery token from the `XSRF-TOKEN` cookie, as the header CSRF protection reads, or
+ * nothing when the app sets no such cookie. The upload endpoint runs the app's middleware, so
+ * with CSRF protection on an upload without it was refused with a 419.
+ *
+ * @internal Exported for tests.
+ */
+export function _xsrfHeader(cookie: string): Record<string, string> {
+  const match = /(?:^|;\s*)XSRF-TOKEN=([^;]+)/.exec(cookie);
+  if (!match?.[1]) return {};
+  try {
+    return { "X-XSRF-TOKEN": decodeURIComponent(match[1]) };
+  } catch {
+    return {};
+  }
+}
+
 function _uploadOne(file: File, key: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
@@ -3703,6 +3720,9 @@ function _uploadOne(file: File, key: string): Promise<unknown> {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/__flow/upload");
     xhr.withCredentials = true;
+    for (const [name, value] of Object.entries(_xsrfHeader(document.cookie))) {
+      xhr.setRequestHeader(name, value);
+    }
     xhr.upload.onprogress = (ev) => {
       if (!ev.lengthComputable) return;
       const percent = Math.round((ev.loaded / ev.total) * 100);

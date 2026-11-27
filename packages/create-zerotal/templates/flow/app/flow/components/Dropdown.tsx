@@ -1,3 +1,4 @@
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { cn } from "../lib/cn";
 import type { IconName } from "../lib/icons";
@@ -103,6 +104,7 @@ export function Dropdown({
           if (item.post) {
             return (
               <form method="post" action={item.post}>
+                {CsrfMiddleware.field()}
                 <button type="submit" role="menuitem" tabindex="-1" class={itemClass(item.danger)}>
                   {content(item)}
                 </button>

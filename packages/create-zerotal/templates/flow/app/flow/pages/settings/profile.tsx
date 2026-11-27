@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { SettingsLayout } from "../../layouts/SettingsLayout";
 import { buttonClass } from "../../lib/button";
@@ -56,6 +57,7 @@ export class ProfilePage extends Page {
               </div>
               <div class="mt-3 flex flex-wrap gap-2">
                 <form method="post" action={route("verify-email.store")}>
+                  {CsrfMiddleware.field()}
                   <button
                     type="submit"
                     class={buttonClass("secondary", "sm")}
@@ -72,6 +74,7 @@ export class ProfilePage extends Page {
         <div class={CARD}>
           {/* PATCH, which a browser form can't send alone: see resources/js/lib/forms.ts. */}
           <form method="post" action={route("settings.profile.update")} data-method="patch">
+            {CsrfMiddleware.field()}
             <div class={CARD_HEADER}>
               <div class="min-w-0">
                 <h2 class={CARD_TITLE}>Profile</h2>

@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { listPasskeys, type PasskeySummary } from "@app/auth/passkeys";
 import { SettingsLayout } from "../../layouts/SettingsLayout";
@@ -270,6 +271,7 @@ export class PasskeysPage extends Page {
                     action={route("settings.passkeys.destroy", { passkey: passkey.id })}
                     data-method="delete"
                   >
+                    {CsrfMiddleware.field()}
                     <button
                       type="submit"
                       class={buttonClass("danger", "md", "w-full")}

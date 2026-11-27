@@ -24,7 +24,7 @@ export { SessionMiddleware } from "./SessionMiddleware.ts";
 export type { SessionOptions } from "./SessionMiddleware.ts";
 export { AuthSessionMiddleware } from "./AuthSessionMiddleware.ts";
 export { CsrfMiddleware } from "./CsrfMiddleware.ts";
-export type { CsrfOptions } from "./CsrfMiddleware.ts";
+export type { CsrfField, CsrfOptions } from "./CsrfMiddleware.ts";
 export { CookieDriver, SESSION_ISSUED_AT_KEY } from "./drivers/CookieDriver.ts";
 export type { SessionDriver, SessionPayload } from "./drivers/CookieDriver.ts";
 export { RedisDriver } from "./drivers/RedisDriver.ts";

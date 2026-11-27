@@ -7245,6 +7245,7 @@ class CookieDriver = {
 
 class CsrfMiddleware = {
   new (options?: CsrfOptions): CsrfMiddleware
+  static field: (ctx?: HttpContext | undefined) => CsrfField
   static token: (ctx?: HttpContext) => string | undefined
   static with: <T extends new (...args: any[]) => BaseMiddleware<any>, Opts = T extends new (...args: any[]) => BaseMiddleware<infer U> ? U : object>(this: T, options: DeepPartial<NoInfer<Opts>>) => new () => InstanceType<T>
   afterResponse?: (ctx: HttpContext) => Promise<void>
@@ -7355,6 +7356,11 @@ class SessionSecretMissingError = {
 const Session = SessionAccessor
 
 function SessionConfig = (options?: Partial<SessionConfigShape>) => SessionConfigShape
+
+interface CsrfField = {
+  readonly html: string
+  toString: () => string
+}
 
 interface CsrfOptions = {
   secure?: boolean | undefined

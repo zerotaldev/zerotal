@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import { TwoFactor } from "zerotal/auth";
 import type { HtmlNode } from "@zerotal/flow";
 import { RECOVERY_CODES_FLASH, SETUP_SECRET_KEY } from "@app/auth/two-factor";
@@ -151,6 +152,7 @@ export class TwoFactorPage extends Page {
               </div>
               <div class={`${CARD_FOOTER} justify-between`}>
                 <form method="post" action={route("settings.two-factor.recovery-codes.store")}>
+                  {CsrfMiddleware.field()}
                   <button type="submit" class={buttonClass("secondary", "md")}>
                     Make new recovery codes
                   </button>
@@ -167,6 +169,7 @@ export class TwoFactorPage extends Page {
           ) : setup ? (
             <>
               <form method="post" action={route("settings.two-factor.confirm.store")}>
+                {CsrfMiddleware.field()}
                 <div class={`${CARD_BODY} space-y-6`}>
                   <ol class="space-y-6 text-sm">
                     <li>
@@ -260,7 +263,9 @@ export class TwoFactorPage extends Page {
                 action={route("settings.two-factor.destroy")}
                 data-method="delete"
                 hidden
-              />
+              >
+                {CsrfMiddleware.field()}
+              </form>
             </>
           ) : (
             <>
@@ -270,6 +275,7 @@ export class TwoFactorPage extends Page {
               </div>
               <div class={CARD_FOOTER}>
                 <form method="post" action={route("settings.two-factor.store")}>
+                  {CsrfMiddleware.field()}
                   <button type="submit" class={buttonClass("primary", "md")}>
                     Set up two-factor
                   </button>
@@ -315,6 +321,7 @@ export class TwoFactorPage extends Page {
                 action={route("settings.two-factor.destroy")}
                 data-method="delete"
               >
+                {CsrfMiddleware.field()}
                 <button
                   type="submit"
                   class={buttonClass("danger", "md", "w-full")}

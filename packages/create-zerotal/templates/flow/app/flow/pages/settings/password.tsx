@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { SettingsLayout } from "../../layouts/SettingsLayout";
 import { buttonClass } from "../../lib/button";
@@ -35,6 +36,7 @@ export class PasswordPage extends Page {
       <div class={CARD}>
         {/* PUT, which a browser form can't send alone: see resources/js/lib/forms.ts. */}
         <form method="post" action={route("settings.password.update")} data-method="put">
+          {CsrfMiddleware.field()}
           <div class={CARD_HEADER}>
             <div class="min-w-0">
               <h2 class={CARD_TITLE}>Change password</h2>

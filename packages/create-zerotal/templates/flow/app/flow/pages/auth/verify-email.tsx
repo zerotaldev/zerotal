@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { mailIsLogged } from "@app/support/mail";
 import { AuthLayout } from "../../layouts/AuthLayout";
@@ -25,6 +26,7 @@ export class VerifyEmailPage extends Page {
         description="One more step: confirm your email address."
         footer={
           <form method="post" action={route("logout.store")}>
+            {CsrfMiddleware.field()}
             <button type="submit" class="font-medium text-primary hover:underline">
               Sign out
             </button>
@@ -63,6 +65,7 @@ export class VerifyEmailPage extends Page {
 
         <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <form method="post" action={route("verify-email.store")}>
+            {CsrfMiddleware.field()}
             <button type="submit" class={buttonClass()} data-loading-text="Sending…">
               Send the link again
             </button>

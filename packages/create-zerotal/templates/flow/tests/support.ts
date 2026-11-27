@@ -23,7 +23,36 @@ export async function bootApp(): Promise<TestApp> {
   // The real migrations — synchronize is off, so these are the only thing that builds
   // the schema, and the schema under test is the one that ships.
   await migrateDatabase();
+  sendFormTokens(app);
   return app;
+}
+
+/** The anti-forgery token a test's own form posts carry. */
+export const CSRF_TOKEN = "test-csrf-token";
+
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * Send the anti-forgery token with every POST, PUT, PATCH and DELETE, as the app's pages do.
+ *
+ * bootstrap/app.ts turns CSRF protection on, so a request without the session's token is
+ * refused with a 419. Every form on a page carries it in a hidden `_token` field. A test that
+ * posts straight to a handler has no page to take it from, so the session starts with a known
+ * token and the request sends it back. A request that brings its own cookies (the `Browser`
+ * below) or its own token is left alone, and tests/csrf.test.ts checks what happens without one.
+ */
+export function sendFormTokens(app: TestApp): void {
+  const request = app.request.bind(app);
+  app.request = (url, init = {}) => {
+    const headers = { ...(init.headers as Record<string, string> | undefined) };
+    const names = Object.keys(headers).map((name) => name.toLowerCase());
+    const own = ["cookie", "x-csrf-token", "x-xsrf-token"].some((name) => names.includes(name));
+    if (!UNSAFE_METHODS.has((init.method ?? "GET").toUpperCase()) || own) {
+      return request(url, init);
+    }
+    app.withSession({ _csrf_token: CSRF_TOKEN });
+    return request(url, { ...init, headers: { ...headers, "X-CSRF-TOKEN": CSRF_TOKEN } });
+  };
 }
 
 /**
@@ -56,7 +85,10 @@ export class Browser {
     return this.send(url, { method: "GET" });
   }
 
-  /** A form post, as a browser sends one without JavaScript. */
+  /**
+   * A form post, as a browser sends one without JavaScript: with the `_token` field every form
+   * on a page carries.
+   */
   post(url: string, body: Record<string, unknown> = {}): Promise<TestResponse> {
     return this.form("POST", url, body);
   }
@@ -73,13 +105,26 @@ export class Browser {
     return this.form("DELETE", url, body);
   }
 
-  /** A JSON request, as the passkey ceremonies make. */
-  json(url: string, body: unknown = {}): Promise<TestResponse> {
+  /** A JSON request, as the passkey ceremonies make: the token goes in a header. */
+  async json(url: string, body: unknown = {}): Promise<TestResponse> {
     return this.send(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-XSRF-TOKEN": await this.token(),
+      },
       body: JSON.stringify(body),
     });
+  }
+
+  /**
+   * This session's anti-forgery token, from the `XSRF-TOKEN` cookie every response sets. A
+   * browser that has loaded no page yet loads one first, as a visitor would before posting.
+   */
+  async token(): Promise<string> {
+    if (!this.jar.has("XSRF-TOKEN")) await this.get("/");
+    return decodeURIComponent(this.jar.get("XSRF-TOKEN") ?? "");
   }
 
   /** The session cookie's value, to replay it from somewhere else. */
@@ -87,8 +132,12 @@ export class Browser {
     return this.jar.get(String(config("session.cookie")));
   }
 
-  private form(method: string, url: string, body: Record<string, unknown>): Promise<TestResponse> {
-    const params = new URLSearchParams();
+  private async form(
+    method: string,
+    url: string,
+    body: Record<string, unknown>,
+  ): Promise<TestResponse> {
+    const params = new URLSearchParams({ _token: await this.token() });
     for (const [key, value] of Object.entries(body)) params.set(key, String(value));
     return this.send(url, {
       method,

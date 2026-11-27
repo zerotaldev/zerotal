@@ -8,6 +8,19 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`CsrfMiddleware` reads the token from a form's `_token` field.** It read the
+  `X-CSRF-TOKEN` and `X-XSRF-TOKEN` headers only, which a plain HTML form cannot send, so turning
+  it on made every server-rendered form a 419. A urlencoded or multipart body's `_token` field
+  now counts too. It is read from a copy of the request, so the handler still reads the body
+  itself, by `ctx.body()`, `ctx.file()` or `request.formData()`. A header, when sent, still
+  decides.
+- **`CsrfMiddleware.field()` renders the hidden `_token` input.** Put `{CsrfMiddleware.field()}`
+  in every form that posts. A Flow page renders it as markup and a compiled page compiles it;
+  in a template string it is the same markup. It renders nothing outside a request or without a
+  session token.
+
 ## [1.16.3] — 2026-11-17
 
 ### Fixed

@@ -171,9 +171,9 @@ On a development machine, requests from that machine never ask the gate — a ga
 that can lock you out of your own laptop is a gate that gets switched off. Every
 other request does. The dev server listens on this machine only unless started with
 `--host 0.0.0.0`; then another device on your network reaches the app, but the recorder
-refuses it unless the gate lets it in, and so is a request
-whose `Host` is not a loopback name, which is how a page on another site would
-reach the API through your browser. A gate that throws is a refusal.
+refuses it unless the gate lets it in. So it refuses a request whose `Host` is not a loopback
+name, which is how a page on another site would reach the API through your browser. A gate
+that throws is a refusal.
 `DELETE /_inertia/devtools/entries` also refuses a request sent by a web page on
 another site; the browser extension and command-line clients are unaffected.
 

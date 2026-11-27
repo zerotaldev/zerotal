@@ -11,6 +11,8 @@ change.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Security
 
 - **Bad frames from one address no longer switch Flow off for that address.** Ten frames whose

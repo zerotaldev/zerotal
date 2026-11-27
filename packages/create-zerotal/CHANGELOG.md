@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Added
 
 - **The starters test that one two-factor code signs in once when two requests carry it at the
@@ -16,6 +18,7 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Changed
 
+- **A new app depends on `~1.18.4`.**
 - **The starters' passkey and session code reads typed rows.** `app/auth/passkeys.ts` and
   `app/auth/sessions.ts` pass the row type to the query (`.get<PasskeyRow>()`,
   `.first<SessionRow>()`) instead of casting the result, so the starters have no casts on query

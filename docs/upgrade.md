@@ -81,6 +81,115 @@ something, and puts the work where it is useful: reading the notes for each mino
    bun dev
    ```
 
+## 1.18.4
+
+A patch: security fixes for Flow and the dev server, and the starter walk's remaining items.
+Nothing needs changing in an app that works today, but a Flow app behaves differently in three
+places, the debug panel in one, and a production app should check one setting.
+
+### Flow: a frame that verifies is always served
+
+A Flow page sends its signed state with every action. Before 1.18.4, ten frames whose state did
+not verify, from one address, made the server refuse **every** frame from that address for ten
+minutes, valid ones included. It needed no sign-in, and behind a reverse proxy every visitor
+shares the proxy's address, so one client could stop Flow for everyone.
+
+Now the signature is checked first and a frame that verifies is always served. Frames that do
+not (and malformed ones, and calls to methods the page does not expose) are refused before any
+middleware runs, and counted per address only to keep the log short: ten warnings, then one line
+saying the rest are refused quietly.
+
+**What to check.** If a reverse proxy or load balancer fronts the app, set
+`app.throttle.trustedProxies` to how many there are. Nobody is locked out without it any more,
+but the log names the proxy instead of the client, and the rate limiters and the audit trail read
+the same setting:
+
+```typescript fragment
+// config/app.ts
+export default AppConfig({
+  throttle: { trustedProxies: 1 },
+});
+```
+
+### Flow: visitors no longer see an error's own text in production
+
+When an action throws, the default `onError()` flashed `error.message`, and an error thrown in a
+render or a middleware went to the browser as the error frame's message. A failed query could
+show a table name, a host or a file path. Outside development and tests both now say "Something
+went wrong. Please try again." An error you raise to answer the visitor (`abort(403, "…")`, a
+`ForbiddenError`) still shows its own message.
+
+**What to check.** A page that relies on the raw message reaching the visitor (`throw new
+Error("That name is taken")` in an action) shows the generic sentence in production now. Either
+throw an HTTP error for messages meant for the visitor (`abort(422, "That name is taken")`), or
+set this in `config/flow.ts` to keep the old behaviour everywhere:
+
+```typescript fragment
+export default FlowConfig({ exposeErrorMessages: true });
+```
+
+### Flow: thrown actions are reported
+
+An action that threw was caught by Flow and reported nowhere. It now goes to the exception
+handler you registered with `app.withExceptionHandler()` (or the log), and the
+`FlowActionHandled` event says `ok: false`.
+
+**What to check.** If an `onError()` override sends errors to your tracker, remove that call, or
+each error is reported twice. A `@task` the visitor stops no longer flashes "This operation was
+aborted".
+
+### In development the debug panel answers this machine only
+
+`bun zt dev` listens on every network interface. The debug panel and the Inertia recorder used to
+answer any caller there, so a device on the same network could read every trace: queries, the
+signed-in user, and mail previews holding live password-reset links. They now answer a request
+only when it comes from this machine by a loopback name (`localhost`, `127.0.0.1`, `[::1]`,
+`*.localhost`). Anything else gets a 404, and no panel is injected into its pages. The app itself
+is still reachable from the network as before.
+
+**What to check.** To use the panel from another device, say who may with a gate. The gate is
+given the request, not the address of the device that sent it, so it cannot single out one phone.
+The form below lets in any device that opens the app by this machine's IP address:
+
+```typescript fragment
+// config/devtools.ts
+import { DevtoolsConfig } from "@zerotal/devtools";
+
+export default DevtoolsConfig({
+  // A device that opens the app by this machine's IP address may use the panel.
+  gate: (request) => /^\d+\.\d+\.\d+\.\d+$/.test(new URL(request.url).hostname),
+});
+```
+
+That is everyone on the same network who can reach the port, which is the exposure the new
+default closes: use it on a network you trust, and take it out when you are done.
+
+An app run in a container and opened through a published port is reached from the container's
+network, not from loopback, so it needs a gate too; one that allows the name you browse
+(`new URL(request.url).hostname === "localhost"`) is enough there, and lets in anything else that
+can reach the published port and names `localhost`. The Inertia recorder takes the
+same kind of gate under `inertia.devtools.gate`. Both are asked only for requests that do not come
+from the machine itself.
+
+### Also worth knowing (not breaking)
+
+- **`bun zt dev` reads `PORT`** from the shell and `.env`, as `bun zt serve` does. `--port` still
+  wins.
+- **A flash chained onto a redirect in a Flow action now shows** on the next page, through
+  `<Flash>`.
+- **Flow uploads** are held to `app.maxRequestBodySize` (8 MiB by default), as they always were;
+  the guide's "25 MB" was wrong. Set `flow.uploads.maxBytes` to give uploads their own limit.
+- **A Flow page that uses your own function components may now compile** where it used to render
+  through the runtime. It renders the same HTML. `ZT_FLOW_COMPILE_LOG=1` shows which pages compile
+  and why a page does not.
+- **`TestResponse.inertia()` gained a typed overload.** Existing calls compile as they are. Two
+  type-level reads change: `ReturnType<TestResponse["inertia"]>` now names the typed overload (use
+  `InertiaPage` directly), and a test subclass that overrides `inertia()` declares both
+  overloads.
+- **Saving a Flow page under `bun zt dev`** restarts the server only, not the scheduler and the
+  queue. A job or schedule that imports from `app/flow/` keeps its old code until another save or
+  a restart of `bun zt dev`.
+
 ## 1.18.3
 
 A patch. One change can affect a test suite; an app made from a starter can take one more

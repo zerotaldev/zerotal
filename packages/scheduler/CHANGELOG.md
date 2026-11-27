@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Fixed
 
 - **The web process no longer says it stopped tasks it never ran.** `All tasks stopped` was

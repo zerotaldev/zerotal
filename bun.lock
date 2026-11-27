@@ -46,7 +46,7 @@
     },
     "packages/admin": {
       "name": "@zerotal/admin",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/auth": "workspace:*",
         "@zerotal/cache": "workspace:*",
@@ -74,7 +74,7 @@
     },
     "packages/ai": {
       "name": "@zerotal/ai",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/queue": "workspace:*",
@@ -93,7 +93,7 @@
     },
     "packages/arch": {
       "name": "@zerotal/arch",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "bin": {
         "zerotal-arch": "./src/bin/mcp.ts",
       },
@@ -113,7 +113,7 @@
     },
     "packages/audit": {
       "name": "@zerotal/audit",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -124,7 +124,7 @@
     },
     "packages/auth": {
       "name": "@zerotal/auth",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/cache": "workspace:*",
         "@zerotal/core": "workspace:*",
@@ -147,7 +147,7 @@
     },
     "packages/broadcasting": {
       "name": "@zerotal/broadcasting",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -157,7 +157,7 @@
     },
     "packages/cache": {
       "name": "@zerotal/cache",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -167,7 +167,7 @@
     },
     "packages/client": {
       "name": "@zerotal/client",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -177,7 +177,7 @@
     },
     "packages/core": {
       "name": "@zerotal/core",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@js-temporal/polyfill": "^0.5.1",
       },
@@ -187,7 +187,7 @@
     },
     "packages/create-zerotal": {
       "name": "create-zerotal",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "bin": {
         "create-zerotal": "./src/index.ts",
       },
@@ -197,7 +197,7 @@
     },
     "packages/devtools": {
       "name": "@zerotal/devtools",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -208,7 +208,7 @@
     },
     "packages/flow": {
       "name": "@zerotal/flow",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/client": "workspace:*",
         "@zerotal/core": "workspace:*",
@@ -244,7 +244,7 @@
     },
     "packages/flow-ui": {
       "name": "@zerotal/flow-ui",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/flow": "workspace:*",
@@ -259,7 +259,7 @@
     },
     "packages/i18n": {
       "name": "@zerotal/i18n",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -269,7 +269,7 @@
     },
     "packages/inertia": {
       "name": "@zerotal/inertia",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -301,7 +301,7 @@
     },
     "packages/media": {
       "name": "@zerotal/media",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -322,7 +322,7 @@
     },
     "packages/monitor": {
       "name": "@zerotal/monitor",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/flow": "workspace:*",
@@ -331,7 +331,7 @@
     },
     "packages/notifications": {
       "name": "@zerotal/notifications",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -350,7 +350,7 @@
     },
     "packages/orm": {
       "name": "@zerotal/orm",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -367,7 +367,7 @@
     },
     "packages/queue": {
       "name": "@zerotal/queue",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -378,7 +378,7 @@
     },
     "packages/scheduler": {
       "name": "@zerotal/scheduler",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -388,7 +388,7 @@
     },
     "packages/session": {
       "name": "@zerotal/session",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -398,7 +398,7 @@
     },
     "packages/settings": {
       "name": "@zerotal/settings",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -411,7 +411,7 @@
     },
     "packages/telemetry": {
       "name": "@zerotal/telemetry",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -421,7 +421,7 @@
     },
     "packages/tenancy": {
       "name": "@zerotal/tenancy",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/orm": "workspace:*",
@@ -439,7 +439,7 @@
     },
     "packages/testing": {
       "name": "@zerotal/testing",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
         "@zerotal/notifications": "workspace:*",
@@ -453,7 +453,7 @@
     },
     "packages/validator": {
       "name": "@zerotal/validator",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/core": "workspace:*",
       },
@@ -463,7 +463,7 @@
     },
     "packages/zerotal": {
       "name": "zerotal",
-      "version": "1.18.3",
+      "version": "1.18.4",
       "dependencies": {
         "@zerotal/auth": "workspace:*",
         "@zerotal/cache": "workspace:*",

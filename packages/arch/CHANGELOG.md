@@ -13,6 +13,8 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Added
 
 - **The testing docs cover reading a page.** "Reading the page" in the HTTP tests guide, and

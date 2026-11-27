@@ -46,28 +46,34 @@ An ORM model is the exception: only its id travels in the snapshot and the row i
 
 A `value={this.x}` binding on a `@locked` property renders as a read-only display — not an editable field.
 
-**What `@locked` does not cover.** The client cannot write a `@locked` field, and cannot forge a snapshot. It can send back an older snapshot it was given: one stays valid for the same user for 12 hours. So a `@locked` value can be rewound to an earlier value the server itself issued. That is harmless for what a page displays and wrong for anything that counts: attempts left, a wizard step that must not be skipped back, a one-time discount. Mark those `@locked({ monotonic: true })`, below, or keep them where the browser never holds them, in the database or in a `@session` field. See [The snapshot](/docs/flow/security#the-snapshot).
+**What `@locked` does not cover.** The client cannot write a `@locked` field, and cannot forge a snapshot. It can send back an older snapshot it was given: one stays valid for the same user for 12 hours. So a `@locked` value can be rewound to an earlier value the server itself issued. That is harmless for what a page displays and wrong for anything that counts: attempts left, a wizard step that must not be skipped back, a one-time discount. Mark those `@locked({ monotonic: true })`, below, or keep them where the browser never holds them: in the database, or in a `@session` field with a server-side session driver (the cookie driver hands the whole session to the browser). See [The snapshot](/docs/flow/security#the-snapshot).
 
 ### Values that only move forward
 
 `@locked({ monotonic: true })` accepts only the component's newest snapshot. Each snapshot it issues carries a sequence number, and a frame is accepted only when its number is the next one after the last accepted for that component instance. Accepting it is one atomic step on the server, so of two frames sent at the same moment with the same snapshot, one runs and the other is refused. Sending back an earlier copy of the page, or the same one twice, is refused (`code: "snapshot_replayed"`), and the browser is told to reload:
 
 ```tsx fragment
-export class RedeemPage extends Component {
-  @locked({ monotonic: true }) attemptsLeft = 3;
-  @expose code = "";
+export class CheckoutPage extends Component {
+  @locked({ monotonic: true }) step = 1;
 
-  @expose async redeem() {
-    if (this.attemptsLeft === 0) return this.addError("code", "No attempts left.");
-    this.attemptsLeft--;
-    // ...
+  @expose async next() {
+    if (this.step === 3) return;
+    this.step++;
   }
 }
 ```
 
+It guards one page instance: what one rendered page did cannot be undone by sending back what
+it was before. A reload, a second tab or a restored [durable](/docs/flow/performance) snapshot is
+a new instance, with its own count, starting from what `onMount()` sets. So a limit that must
+hold for the user (attempts left, a one-time discount) belongs in the database, read in
+`onMount()` and written by the action; monotonic then stops the page in hand being rewound
+between those writes.
+
 The options are `LockedOptions`; `monotonic` is the only one, and on any field it turns the check on for the whole component. Two tabs on the same page each have their own counter.
 
-- **An action that fails** without sending a new snapshot back (a refused call, a thrown error) gives its number back, so the page the browser holds still works. One that succeeds keeps it, a redirect included, so its snapshot cannot run it twice.
+- **A call refused before its action runs** (a `@can` rule, `beforeAction()`) gives its number back, so the page the browser holds still works. Once the action body has started, the number is kept, whatever happens after it: a redirect, a thrown error, a failed render. So a snapshot can never run its action twice.
+- **A running `@task`'s streamed snapshots** cannot be acted on; only its final one can.
 - **An action whose reply never arrives** (a dropped connection, a timeout) leaves the browser holding a snapshot that was already acted on: its next action reloads the page.
 - **The counters live on the server**, not in the session, which with the cookie driver the browser holds. By default they are kept in the process and cleared on a restart, after which a page open from before reloads on its next action. Where more than one process serves Flow, give them one store with `setMonotonicStore()`: a `MonotonicStore`, an object with an `epoch`, `get(key)` and an atomic `compareAndSet(key, expected, next, ttlMs)`. It is the same idea as [the durable-snapshot store](/docs/flow/performance), and its `compareAndSet` is what stops two frames running at once, so it has to be atomic across every process.
 

@@ -1,6 +1,6 @@
 ---
 title: Testing Flow Components
-description: Drive a component in-process with FlowTest, and pin the wiring in a real browser with FlowBrowser.
+description: Drive a component in-process with FlowTest, assert on its state, effects and rendered markup.
 ---
 
 # Testing
@@ -63,7 +63,7 @@ The full lifecycle fires on every `call()` — hooks like `onHydrate`, `onUpdate
 
 A `ValidationError` is an expected outcome: the error bag is populated, the page re-renders, and you assert on it with `assertHasErrors`.
 
-Any other error is passed to `onError()` — as in production — and then **rethrown**, so the test fails with the real stack. This matters because the alternative is invisible: an action that throws produces no server error, no browser error, and an unchanged page, so a swallowed exception looks exactly like an action that ran and did nothing.
+Any other error is passed to `onError()` — as in production — and then **rethrown**, so the test fails with the real stack. This matters because a swallowed exception is easy to miss: in the running app the error goes to the log and the visitor gets a flash, and otherwise the page stays as it was. A test that let it pass would see an action that ran and did nothing.
 
 When the error path is what you're testing, opt in with `tolerateErrors()`:
 
@@ -155,7 +155,10 @@ t.assertFlashed(); // any flash was emitted
 await t.call("createPost");
 
 t.assertDispatched("post-created"); // event was dispatched
-t.assertDispatched("post-created", { id: 1 }); // event was dispatched with this payload
+
+// assertDispatched() checks the name only — read the payload from effects()
+const event = t.effects()?.events.find((e) => e.name === "post-created");
+expect(event?.data).toMatchObject({ id: 1 });
 ```
 
 ## Accessors
@@ -164,7 +167,7 @@ t.assertDispatched("post-created", { id: 1 }); // event was dispatched with this
 t.page(); // the Component instance — inspect properties and call methods directly
 t.html(); // the rendered HTML string from the last render
 t.errors(); // current error bag: Record<string, string[]>
-t.effects(); // effects from the last action: { flashes, redirects, events, downloads }
+t.effects(); // effects from the last action: { flashes, redirectUrl, events, downloads, … }, or null
 t.snapshot(); // the serialised snapshot blob
 ```
 
@@ -317,11 +320,13 @@ To test that a component dispatches events and that `@on` listeners respond, mou
 ```typescript fragment
 test("dispatches post-created when saved", async () => {
   const editor = await FlowTest.mount(PostEditorPage);
-  await t.set("title", "My post");
-  await t.set("body", "Content here");
-  await t.call("save");
+  await editor.set("title", "My post");
+  await editor.set("body", "Content here");
+  await editor.call("save");
 
-  editor.assertDispatched("post-created", { title: "My post" });
+  editor.assertDispatched("post-created");
+  const event = editor.effects()?.events.find((e) => e.name === "post-created");
+  expect(event?.data).toMatchObject({ title: "My post" });
 });
 
 test("post list responds to post-created event", async () => {
@@ -348,8 +353,7 @@ test("redirects to the created post after save", async () => {
   await t.call("save");
 
   // The URL contains the new post's ID — match with a regex
-  const effects = t.effects();
-  expect(effects.redirect).toMatch(/^\/posts\/\d+$/);
+  expect(t.effects()?.redirectUrl).toMatch(/^\/posts\/\d+$/);
 
   // Or use the assertion helper for an exact URL
   // t.assertRedirectedTo("/posts/1");
@@ -358,86 +362,31 @@ test("redirects to the created post after save", async () => {
 
 ## FlowTest assertions
 
-| Method                               | Asserts                                                         |
-| ------------------------------------ | --------------------------------------------------------------- |
-| `t.assertSee(text)`                  | Rendered HTML contains `text`                                   |
-| `t.assertDontSee(text)`              | Rendered HTML does NOT contain `text`                           |
-| `t.assertHasErrors(field)`           | Validation error exists for `field`                             |
-| `t.assertHasErrors(field, msg)`      | Error for `field` contains `msg` as a substring                 |
-| `t.assertNoErrors()`                 | No validation errors in the error bag                           |
-| `t.assertRedirectedTo(url)`          | Last action redirected to this exact URL                        |
-| `t.assertNotRedirected()`            | Last action did not produce a redirect                          |
-| `t.assertFlashed(level?, msg?)`      | Flash was emitted; both args are optional substrings            |
-| `t.assertDispatched(event)`          | Cross-component event was dispatched                            |
-| `t.assertDispatched(event, payload)` | Event was dispatched with matching payload                      |
-| `t.page()`                           | Returns the component instance                                  |
-| `t.html()`                           | Returns the rendered HTML string                                |
-| `t.errors()`                         | Returns the error bag: `Record<string, string[]>`               |
-| `t.effects()`                        | Returns drained effects (flashes, redirects, events, downloads) |
-| `t.snapshot()`                       | Returns the serialised snapshot blob                            |
+| Method                          | Asserts                                                             |
+| ------------------------------- | ------------------------------------------------------------------- |
+| `t.assertSee(text)`             | Rendered HTML contains `text`                                       |
+| `t.assertDontSee(text)`         | Rendered HTML does NOT contain `text`                               |
+| `t.assertHasErrors(field)`      | Validation error exists for `field`                                 |
+| `t.assertHasErrors(field, msg)` | Error for `field` contains `msg` as a substring                     |
+| `t.assertNoErrors()`            | No validation errors in the error bag                               |
+| `t.assertRedirectedTo(url)`     | Last action redirected to this exact URL                            |
+| `t.assertNotRedirected()`       | Last action did not produce a redirect                              |
+| `t.assertFlashed(level?, msg?)` | Flash was emitted; both args are optional substrings                |
+| `t.assertDispatched(event)`     | An event with this name was dispatched (the payload is not checked) |
+| `t.page()`                      | Returns the component instance                                      |
+| `t.html()`                      | Returns the rendered HTML string                                    |
+| `t.errors()`                    | Returns the error bag: `Record<string, string[]>`                   |
+| `t.effects()`                   | Returns drained effects (flashes, `redirectUrl`, events, downloads) |
+| `t.snapshot()`                  | Returns the serialised snapshot blob                                |
 
 ## Testing in a real browser
 
 `FlowTest` never opens a socket. That is what makes it fast, and it is also what it
 cannot check: whether the attribute the client needs was rendered, whether the click
-listener fired, whether the frame reached the dispatcher, whether the patch came back.
-A page can pass every `FlowTest` assertion and still do nothing when a person clicks it.
-
-`FlowBrowser`, from `@zerotal/flow/browser`, closes that gap. It drives headless Chrome
-over the DevTools Protocol — no Puppeteer or Playwright dependency — so the click is a
-real click and the round-trip is a real round-trip.
-
-```ts fragment
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { Application, Router } from "zerotal";
-import { FlowProvider } from "@zerotal/flow";
-import { FlowBrowser } from "@zerotal/flow/browser";
-import { CounterPage } from "../app/flow/pages/Counter.tsx";
-
-let app: Application;
-let url: string;
-
-beforeAll(async () => {
-  app = Application.create({ env: "web", providers: [FlowProvider] });
-  await app.boot(); // Router.flow is a macro FlowProvider installs, so route after boot
-  Router.flow("/counter", CounterPage);
-  await app.start(0);
-  url = `http://localhost:${(app as any)._static.port}/counter`;
-}, 30_000);
-
-// close(), not stop(): stop() ends with process.exit(0) and would kill the test run.
-afterAll(async () => await app.close(), 30_000);
-
-it("increments through the socket", async () => {
-  const page = await FlowBrowser.open(url);
-  try {
-    await page.click("#increment");
-    await page.waitForText("#count", "1");
-    expect(page.consoleErrors()).toEqual([]);
-  } finally {
-    await page.close();
-  }
-}, 30_000);
-```
-
-A few things are deliberate and worth copying:
-
-- **Assert `consoleErrors()` is empty.** An action the server refuses is reported
-  _only_ to the browser console — nothing reaches the server log and the page does not
-  change. Without this assertion that failure is invisible to the test too.
-- **Use `waitForText` / `waitUntil` rather than a sleep.** Every wait is a poll with a
-  timeout, so a slow round-trip waits longer and a broken one fails naming what it was
-  waiting for and what the console said.
-- **Give browser tests an explicit timeout.** Bun's default is 5 s, which a browser
-  launch plus a page load can exceed.
-- **Guard the suite with `FlowBrowser.available()`** so it skips where no browser is
-  installed instead of failing:
-
-```ts fragment
-const describeBrowser = FlowBrowser.available() ? describe : describe.skip;
-```
-
-Set `CHROME_PATH` to pin a specific binary (this is how CI selects one).
+reached the server, whether the patch came back. A page can pass every `FlowTest`
+assertion and still do nothing when a person clicks it.
+[FlowBrowser](/docs/testing/flow-browser) drives a real browser against your app for
+exactly those cases.
 
 ### What to test where
 
@@ -451,27 +400,6 @@ Set `CHROME_PATH` to pin a specific binary (this is how CI selects one).
 
 Keep the browser tests few — a handful pinning the wiring of each critical flow — and
 write the rest with `FlowTest`. They cost about a second each.
-
-### API
-
-| Call                               | What it does                                          |
-| ---------------------------------- | ----------------------------------------------------- |
-| `FlowBrowser.available()`          | Whether a browser is installed, for skipping          |
-| `FlowBrowser.open(url, opts?)`     | Launch, load, and wait for Flow to connect            |
-| `page.goto(url, opts?)`            | Navigate again, clearing recorded console output      |
-| `page.click(sel)`                  | Real click, through the page's own delegated listener |
-| `page.fill(sel, value)`            | Set a value and fire `input`/`change`, as a user does |
-| `page.text(sel)`                   | An element's trimmed text                             |
-| `page.value(sel)`                  | An input's current value                              |
-| `page.attr(sel, name)`             | An attribute, for asserting a binding was rendered    |
-| `page.html()`                      | The whole document, for diagnosing a failure          |
-| `page.waitForText(sel, text, ms?)` | Poll until the text matches                           |
-| `page.waitForSelector(sel, ms?)`   | Poll until the element exists                         |
-| `page.waitUntil(expr, label, ms?)` | Poll until a JS expression is truthy                  |
-| `page.evaluate(expr)`              | Evaluate an expression in the page                    |
-| `page.consoleErrors()`             | Console errors recorded so far                        |
-| `page.pageErrors()`                | Uncaught exceptions recorded so far                   |
-| `page.close()`                     | Close the page and kill the browser                   |
 
 ## Next steps
 

@@ -1222,7 +1222,7 @@ export abstract class Component {
    *
    * @example
    * async save() {
-   *   this.validate({
+   *   await this.validate({
    *     email:    (rule) => rule.required().email(),
    *     password: (rule) => rule.required().min(8),
    *   });

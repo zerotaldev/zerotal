@@ -219,6 +219,64 @@ const sent = page.transport().frames.filter((f) => f.direction === "sent");
 expect(sent.some((f) => f.payload.includes(`"method":"save"`))).toBe(true);
 ```
 
+## Driving a server you started yourself
+
+`@zerotal/flow` has a smaller driver of its own, also named `FlowBrowser`, imported from
+`@zerotal/flow/browser`. It does not boot your app: you start the server, give it a URL, and
+get the page back. Use it when the server under test is already running; for an app you
+boot from its bootstrap, use the harness above.
+
+```ts fragment
+import { FlowBrowser } from "@zerotal/flow/browser";
+
+const describeBrowser = FlowBrowser.available() ? describe : describe.skip;
+
+describeBrowser("counter", () => {
+  it("increments through the socket", async () => {
+    const page = await FlowBrowser.open(url); // the address of a server you started
+    try {
+      await page.click("#increment");
+      await page.waitForText("#count", "1");
+      expect(page.consoleErrors()).toEqual([]);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+});
+```
+
+`FlowBrowser.available()` is synchronous and only says whether a browser binary was found.
+The driver looks for Chrome, Chromium or Edge where they are usually installed; set `CHROME_PATH` to
+name a binary instead. It always launches its own browser, so `ZT_BROWSER_CDP_URL` does not
+apply to it. Give each test an explicit timeout: Bun's default of 5 s can be shorter than a
+browser launch plus a page load.
+
+| Call                               | What it does                                          |
+| ---------------------------------- | ----------------------------------------------------- |
+| `FlowBrowser.open(url, opts?)`     | Launch, load, and wait for Flow to connect            |
+| `page.goto(url, opts?)`            | Navigate again, clearing recorded console output      |
+| `page.click(sel)`                  | Real click, through the page's own delegated listener |
+| `page.fill(sel, value)`            | Set a value and fire `input`/`change`, as a user does |
+| `page.text(sel)`                   | An element's trimmed text                             |
+| `page.value(sel)`                  | An input's current value                              |
+| `page.attr(sel, name)`             | An attribute, for asserting a binding was rendered    |
+| `page.html()`                      | The whole document, for diagnosing a failure          |
+| `page.waitForText(sel, text, ms?)` | Poll until the text matches                           |
+| `page.waitForSelector(sel, ms?)`   | Poll until the element exists                         |
+| `page.waitUntil(expr, label, ms?)` | Poll until a JS expression is truthy                  |
+| `page.evaluate(expr)`              | Evaluate an expression in the page                    |
+| `page.consoleErrors()`             | Console errors recorded so far                        |
+| `page.pageErrors()`                | Uncaught exceptions recorded so far                   |
+| `page.close()`                     | Close the page and kill the browser                   |
+
+`opts` takes `timeout` and `waitForConnection` (set it `false` for a page with no Flow
+component on it).
+
+Assert that `consoleErrors()` is empty. A frame the server refuses leaves the page as it was
+and is reported to the browser console; the server logs most refusals as a warning (see
+[Frames that are refused](/docs/flow/security#frames-that-are-refused)), but the console is
+the only place the test can see it.
+
 ## What this cannot cover
 
 **The origin guard.** The harness talks to `http://127.0.0.1:<port>`, which is the
@@ -235,4 +293,4 @@ green browser suite as coverage of it.
 
 - [Flow testing](/docs/flow/testing) — `FlowTest`, for everything that does not need a browser.
 - [HTTP Tests](/docs/testing/http) — `createTestApp`, the bootstrap this shares.
-- [Browser Tests](/docs/testing/browser) — Playwright, for cross-browser end-to-end work beyond Flow.
+- [Browser Tests](/docs/testing/browser) — for cross-browser end-to-end work beyond Flow.

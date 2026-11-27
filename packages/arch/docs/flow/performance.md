@@ -266,10 +266,10 @@ mirror image for deletes.
 
 ### Hover-prefetch
 
-Add `hover` to a `navigate` link and Flow fetches the target after a brief hover dwell (and on first touch on mobile), caching the HTML so the click swaps instantly instead of waiting on a cold request:
+Add `navigateHover` to a `navigate` link (or `hover` to a `<Link>`) and Flow fetches the target after a brief hover dwell (and on first touch on mobile), caching the HTML so the click swaps instantly instead of waiting on a cold request:
 
 ```tsx fragment
-<a href="/posts" navigate hover>
+<a href="/posts" navigate navigateHover>
   Posts
 </a>;
 {

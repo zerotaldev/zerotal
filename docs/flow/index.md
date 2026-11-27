@@ -89,8 +89,9 @@ A Flow action is not an HTTP request, so the pipeline is rebuilt for each one:
   three defaults are the ones that establish _identity_ — session, user, bearer
   token — which the action genuinely needs.
 
-Because Flow pages are file-routed by default, the natural place for shared
-middleware is a `_middleware.ts` in the page tree. It stacks from the root down,
+When your pages are file-routed (`fileBasedRouting()` pointed at the page tree), the
+natural place for shared middleware is a `_middleware.ts` in the page tree. The Flow
+starter registers its pages in `routes/web.ts` instead, where a route group carries it. It stacks from the root down,
 covers every page beneath it, and — being route middleware — re-runs on every
 action with nothing else to configure:
 
@@ -169,7 +170,7 @@ export class CounterPage extends Component {
 
 `onClick={this.increment}` is a **server action** — it round-trips over the WebSocket, runs `increment()` on the server, and patches only the changed DOM nodes back. `onClick={() => this.count--}` is a **client expression** — it updates the DOM instantly with no round-trip.
 
-The distinction is the syntax: a named method reference is always a server action; an arrow function is always a client expression. You express the distinction the same way you would in React.
+The distinction is the syntax: a named method reference is always a server action; an arrow function is always a client expression.
 
 Register the route:
 
@@ -241,7 +242,7 @@ The command lives on `FlowProvider`, so it's available in any app that registers
 
 Client expressions read and write the same `@expose` properties your server sees. Assigning to an `@expose` property from a client expression updates the UI immediately, then syncs to the server, which re-renders with the new value — so anything `render()` derives from that property (a selected row's detail, a conditional branch) reflects the write without needing a separate action. The sync is skipped when the same expression also calls a server action (that action's round-trip already carries the write), and when the write leaves the value back where it started. `@locked` properties are read-only on the client.
 
-State that the server should never see — a hover flag, which accordion section is open — belongs in the [global client store](#the-global-client-store) (`this.store()`), which is client-only and never round-trips.
+State that the server should never see — a hover flag, which accordion section is open — belongs in the [global client store](#the-global-client-store) (`$flow.store`), which is client-only and never round-trips.
 
 ### Passing arguments to a server action
 
@@ -260,15 +261,18 @@ A list with per-row actions needs to tell the server _which_ row. Write the call
 }
 ```
 
-The arguments are evaluated **on the server, during the render** — where `row` exists — and travel with the action as `data-args`. Your action receives them as ordinary parameters:
+The arguments are evaluated **on the server, during the render** — where `row` exists — and travel with the action as `data-args`. Your action receives them as ordinary parameters. They come back from the browser, so treat them like any request input: an id is a claim, not a permission. Look the record up through what the signed-in user may touch:
 
 ```ts fragment
 @expose async archive(id: number) {
-  await Enquiry.findOrFail(id).archive();
+  const enquiry = await Enquiry.where("id", id)
+    .where("user_id", request().user!.id) // only this user's enquiries
+    .firstOrFail();
+  await enquiry.archive();
 }
 ```
 
-You can also write `data-args` yourself, which is useful when the handler is built dynamically:
+You can also write `data-args` yourself, which is useful when the handler is built dynamically. The same rule holds: the browser can send any value there, so the action checks it:
 
 ```tsx fragment
 <button onClick={this.archive} data-args={JSON.stringify([row.id])}>
@@ -414,7 +418,7 @@ Common interaction states are first-class props:
 <a href="/dashboard" navigate>Dashboard</a>
 
 {/* Prefetch the page on hover (after ~60ms) */}
-<a href="/posts" navigate hover>Posts</a>
+<a href="/posts" navigate navigateHover>Posts</a>
 
 {/* Poll a server action on an interval */}
 <div poll={{ every: "5s", action: this.tick }} />
@@ -490,7 +494,7 @@ export class Header extends Component {
 
 Every one of those `$flow.store.*` reads updates **instantly, with no server round-trip** — the compiler turns them into native Alpine bindings backed by client-side reactivity. A write from a client handler (the `onClick` above) mutates the shared object, and every component reading that value re-renders at once. Because it lives entirely in the browser, it also keeps working while the WebSocket is down.
 
-Declare the store's initial shape once, at app start, in `resources/js/app.ts`. Import `defineStore` from the browser-safe `@zerotal/flow/store` subpath (not the package barrel, which pulls server code into the browser bundle):
+Declare the store's initial shape once, at app start, in `resources/js/app.js`. Import `defineStore` from the browser-safe `@zerotal/flow/store` subpath (not the package barrel, which pulls server code into the browser bundle):
 
 ```ts
 import { defineStore } from "@zerotal/flow/store";

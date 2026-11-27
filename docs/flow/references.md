@@ -83,13 +83,13 @@ Visual loading indicators (`showOnLoading`, `hideOnLoading`, `loadingClass`) wai
 
 ### Navigation props
 
-| You write         | Behaviour                                                 | Compiles to                         |
-| ----------------- | --------------------------------------------------------- | ----------------------------------- |
-| `navigate`        | SPA navigation to `href`, layout stays mounted            | `flow:navigate`                     |
-| `navigate hover`  | Prefetch page on hover (~60ms debounce)                   | `flow:navigate flow:navigate.hover` |
-| `navigate down`   | Prefetch page on pointer-down (no dwell; dense lists)     | `flow:navigate flow:navigate.down`  |
-| `current={false}` | Disable automatic `data-current` attribute                | —                                   |
-| `exact`           | `data-current` only on an exact URL match (not sub-pages) | `flow:current.exact`                |
+| You write                                | Behaviour                                                                                                                        | Compiles to                                  |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `navigate`                               | SPA navigation to `href`, layout stays mounted                                                                                   | `flow:navigate`                              |
+| `navigate navigateHover`                 | Prefetch page on hover (~60ms debounce)                                                                                          | `flow:navigate flow:navigate.hover`          |
+| `navigate navigateDown`                  | Prefetch page on pointer-down (no dwell; dense lists). Applied when the page renders through the runtime, not on a compiled page | `flow:navigate flow:navigate.down`           |
+| `currentExact`                           | `data-current` only on an exact URL match (not sub-pages)                                                                        | `flow:current.exact`                         |
+| `<Link hover>`, `<Link current={false}>` | The `<Link>` names for hover prefetch and for turning off `data-current` — see [Components](/docs/flow/components)               | `flow:navigate.hover`, `flow:current.ignore` |
 
 ### Polling
 
@@ -242,7 +242,7 @@ Inside a client expression — `onClick={() => this.X(...)}` — `this.` resolve
 | `this.open = true`       | Set any `@expose` prop; `@locked` props are read-only                                        |
 | `this.filter = "active"` | Works with any primitive value                                                               |
 
-A write syncs to the server after the expression finishes, unless the same expression also calls a server action (that action's round-trip already carries it) or the value ends back where it started. Client-only UI state belongs in [`this.store()`](#global-client-store), which never round-trips.
+A write syncs to the server after the expression finishes, unless the same expression also calls a server action (that action's round-trip already carries it) or the value ends back where it started. Client-only UI state belongs in [`$flow.store`](#global-client-store), which never round-trips.
 
 ### Querying state
 
@@ -254,13 +254,13 @@ A write syncs to the server after the expression finishes, unless the same expre
 
 ### Navigation props and lifecycle
 
-| Expression                              | Behaviour                                                                               |
-| --------------------------------------- | --------------------------------------------------------------------------------------- |
-| `this.refresh()`                        | Request a fresh server render of this component                                         |
-| `this.currentUrl({ query, hash })`      | Build a URL from the current one with merged query params (no navigation) — client-only |
-| `this.navigateCurrent({ query, hash })` | Build that URL and SPA-navigate to it — client-only                                     |
+| Expression                              | Behaviour                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------- |
+| `this.refresh()`                        | Request a fresh server render of this component                           |
+| `this.currentUrl({ query, hash })`      | Build a URL from the current one with merged query params (no navigation) |
+| `this.navigateCurrent({ query, hash })` | Build that URL and SPA-navigate to it                                     |
 
-`currentUrl()` / `navigateCurrent()` merge query params onto the current URL: listed params are added/updated, unlisted ones preserved, and a `null`/`undefined`/`""` value removes a param. Use `currentUrl()` in a binding (`href={this.currentUrl({ query: { page: this.page + 1 } })}`) and `navigateCurrent()` in a handler (`onChange={(e) => this.navigateCurrent({ query: { status: e.target.value || null } })}`). Both are client-only — they throw if called from server code. See [Query-aware navigation](/docs/flow/routing#query-aware-navigation).
+`currentUrl()` / `navigateCurrent()` merge query params onto the current URL: listed params are added/updated, unlisted ones preserved, and a `null`/`undefined`/`""` value removes a param. Use `currentUrl()` in a binding (`href={this.currentUrl({ query: { page: this.page + 1 } })}`) and `navigateCurrent()` in a handler (`onChange={(e) => this.navigateCurrent({ query: { status: e.target.value || null } })}`). In JSX the compiler runs both in the browser. From server code they work against the request's URL, which inside an action is the route's pattern with no query string. See [Query-aware navigation](/docs/flow/routing#query-aware-navigation).
 
 ### Event dispatch
 
@@ -311,20 +311,20 @@ A write syncs to the server after the expression finishes, unless the same expre
 
 ## Lifecycle hook quick reference
 
-| Hook                    | `GET` (initial) | `WebSocket` (subsequent)        |
-| ----------------------- | --------------- | ------------------------------- |
-| `onBoot()`              | ✓               | ✓                               |
-| `onMount()`             | ✓               | only if `this.refresh()` called |
-| `onHydrate()`           | —               | ✓                               |
-| `onUpdating(prop, val)` | —               | ✓ (per client write)            |
-| `onUpdated(prop, val)`  | —               | ✓ (per client write)            |
-| `action()`              | —               | ✓                               |
-| `onUpdate()`            | —               | ✓                               |
-| `onRendering()`         | ✓               | ✓                               |
-| `render()`              | ✓               | ✓                               |
-| `onRendered(html)`      | ✓               | ✓                               |
-| `onDehydrate()`         | ✓               | ✓                               |
-| `onError(error)`        | —               | ✓ (on throw)                    |
+| Hook                    | `GET` (initial) | `WebSocket` (subsequent)                                                |
+| ----------------------- | --------------- | ----------------------------------------------------------------------- |
+| `onBoot()`              | ✓               | ✓                                                                       |
+| `onMount()`             | ✓               | after `this.refresh()`, a client `$refresh` or `$mount`, or a reconnect |
+| `onHydrate()`           | —               | ✓                                                                       |
+| `onUpdating(prop, val)` | —               | ✓ (per client write)                                                    |
+| `onUpdated(prop, val)`  | —               | ✓ (per client write)                                                    |
+| `action()`              | —               | ✓                                                                       |
+| `onUpdate()`            | —               | ✓                                                                       |
+| `onRendering()`         | ✓               | ✓                                                                       |
+| `render()`              | ✓               | ✓                                                                       |
+| `onRendered(html)`      | ✓               | ✓                                                                       |
+| `onDehydrate()`         | ✓               | ✓                                                                       |
+| `onError(error)`        | —               | ✓ (on throw)                                                            |
 
 ## FlowTest assertion reference
 

@@ -327,11 +327,11 @@ Broadcasting requires a global `window.Socket` client configured by your applica
 If `window.Socket` is not present, all `socket:` listeners are silently inert — no errors, no subscriptions attempted.
 
 ```typescript fragment
-// In your frontend bootstrap (app.ts or similar):
+// In your frontend bootstrap (resources/js/app.js):
 import { Socket } from "@zerotal/client";
 
 // The first-party Socket speaks Zerotal's native broadcast protocol and is a
-// drop-in for `window.Socket` — no external client library or Pusher credentials.
+// drop-in for `window.Socket` — no external client library or third-party credentials.
 window.Socket = new Socket();
 ```
 

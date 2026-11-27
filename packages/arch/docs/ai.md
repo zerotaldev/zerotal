@@ -691,17 +691,17 @@ sections above; this is the index.
 
 ### Spend and statistics
 
-| Name                 | Description                                               |
-| -------------------- | --------------------------------------------------------- |
-| `spentToday`         | USD recorded so far today; the shared total when shared.  |
-| `resetSpend`         | Reset the ledger. Tests, and the `ai:spend --reset` path. |
-| `AiDelivery`         | One recorded generation.                                  |
-| `modelStats`         | Per-model roll-up over everything still in the buffer.    |
-| `ModelStat`          | Rolled-up figures for one model.                          |
-| `recentGenerations`  | The most recent generations, newest first.                |
-| `refusalRate`        | Share of recorded calls that the provider declined, 0–1.  |
-| `resetStats`         | Reset the buffer. Tests.                                  |
-| `CapturedGeneration` | One recorded call, as `AiFake` captures it.               |
+| Name                 | Description                                              |
+| -------------------- | -------------------------------------------------------- |
+| `spentToday`         | USD recorded so far today; the shared total when shared. |
+| `resetSpend`         | Reset the ledger. Tests.                                 |
+| `AiDelivery`         | One recorded generation.                                 |
+| `modelStats`         | Per-model roll-up over everything still in the buffer.   |
+| `ModelStat`          | Rolled-up figures for one model.                         |
+| `recentGenerations`  | The most recent generations, newest first.               |
+| `refusalRate`        | Share of recorded calls that the provider declined, 0–1. |
+| `resetStats`         | Reset the buffer. Tests.                                 |
+| `CapturedGeneration` | One recorded call, as `AiFake` captures it.              |
 
 ### Queued generation
 

@@ -59,11 +59,14 @@ export class SchedulerManager {
   }
 
   stop(): void {
+    // Said only by a process that ran tasks: the web process has none, and used to print it on
+    // every dev restart.
+    const ran = this._started && this._tasks.size > 0;
     this._stopBeat?.();
     this._stopBeat = undefined;
     for (const task of this._tasks.values()) task.stop();
     this._started = false;
-    frameworkLog("scheduler").info("All tasks stopped");
+    if (ran) frameworkLog("scheduler").info("All tasks stopped");
   }
 
   get tasks(): ReadonlyMap<string, ScheduledTask> {

@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The web process no longer says it stopped tasks it never ran.** `All tasks stopped` was
+  printed by every process that stopped the scheduler, including the dev server tab on each
+  restart. Only a process that started tasks says so.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

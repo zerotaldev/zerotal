@@ -288,6 +288,12 @@ export function attributeBindings(sql: string, count: number): Array<string | un
       // keyword ends that column's scope, so `AND`/`WHERE` cannot carry a stale
       // column onto the next placeholder.
       if (_OPERATORS.has(token)) continue;
+      // `LIMIT ?` and `OFFSET ?` take a row count, never a secret: attribute the placeholder to
+      // the keyword so it is shown, instead of masking every `first()` as unattributed.
+      if (token === "limit" || token === "offset") {
+        lastIdentifier = token;
+        continue;
+      }
       if (_KEYWORDS.has(token)) {
         lastIdentifier = undefined;
         continue;

@@ -30,6 +30,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ### Fixed
 
+- **A request that threw records the status it was answered with.** A failed validation showed
+  status `0`; the trace now takes the status from the error (`303`, `404`) when the request has
+  no response of its own.
+- **`LIMIT ?` and `OFFSET ?` bindings are shown.** They were masked as unattributed on every
+  `first()`.
+- **The Routes view names each verb by its own name.** A lookup by path gave every verb at a path
+  the name registered last, so `GET /about` showed as `about.store`.
+- **A recorded `Referer` has its secret-named query parameters masked**, like the request's own
+  query string: a form posted from `/reset-password?token=…` carried the token there.
 - **The guide no longer says email addresses are masked.** They never were, by design: a listing
   filtered by email is what you open the panel to read. Add `"email"` to `redact.deny` to mask
   them.

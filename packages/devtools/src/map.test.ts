@@ -149,3 +149,16 @@ describe("eventRows", () => {
     expect(eventRows(undefined).map((r) => r.event)).toEqual(["AlphaEvent", "ZebraEvent"]);
   });
 });
+
+describe("routeRows names", () => {
+  class Handler {}
+  it("names each verb at a path by its own name", () => {
+    // A lookup by path gave every verb the name registered last: `GET /about` read `about.store`.
+    Router.get("/about", Handler as never, "show", []).name("about");
+    Router.post("/about", Handler as never, "store", []).name("about.store");
+
+    const rows = routeRows().filter((r) => r.path === "/about");
+    expect(rows.find((r) => r.method === "GET")?.name).toBe("about");
+    expect(rows.find((r) => r.method === "POST")?.name).toBe("about.store");
+  });
+});

@@ -26,7 +26,7 @@
  * does not exist at all. Guard 1 is the belt to that braces.
  */
 import { Router, devSurfacesEnabled } from "@zerotal/core";
-import { isAllowedOrigin } from "@zerotal/core/http";
+import { _isLocalDevRequest, isAllowedOrigin } from "@zerotal/core/http";
 import { loadMigrations } from "../commands/_loadMigrations.ts";
 import { MigrationRunner } from "../schema/MigrationRunner.ts";
 import type { MigrationEntry } from "../schema/MigrationRunner.ts";
@@ -92,33 +92,47 @@ export async function _runPendingMigrations(): Promise<string[]> {
 export function registerRunMigrationsEndpoint(allowedOrigins: () => string[]): void {
   if (!devSurfacesEnabled()) return;
 
-  Router.raw("POST", RUN_MIGRATIONS_PATH, async (req: Request): Promise<Response> => {
-    // Guard 1 — re-checked at request time, not inherited from registration.
-    if (!devSurfacesEnabled()) {
-      return new Response("Not available.", { status: 404 });
-    }
+  Router.raw(
+    "POST",
+    RUN_MIGRATIONS_PATH,
+    async (req: Request, server?: unknown): Promise<Response> => {
+      // Guard 1 — re-checked at request time, not inherited from registration.
+      if (!devSurfacesEnabled()) {
+        return new Response("Not available.", { status: 404 });
+      }
 
-    // Guard 2 — a raw route bypasses the middleware pipeline, so CSRF protection
-    // does not apply and this is the check standing in for it.
-    if (!isAllowedOrigin(req, allowedOrigins())) {
-      return new Response("Forbidden origin.", { status: 403 });
-    }
+      // Guard 1b — this machine only, by the debug panel's rule. The error page is same-origin to
+      // this endpoint, so a page that pointed its own name at 127.0.0.1 could read the token from
+      // it; that request names the page's host, and a phone on the network has its own address.
+      const requestIP = (
+        server as { requestIP?: (r: Request) => { address: string } | null } | undefined
+      )?.requestIP;
+      if (!_isLocalDevRequest(req, requestIP?.call(server, req)?.address ?? null)) {
+        return new Response("Not available.", { status: 404 });
+      }
 
-    // Guard 3 — single use. A caller that cannot read the error page cannot have
-    // this, and replaying a captured one does not work twice.
-    if (!_spendDiagnosisToken(req.headers.get(TOKEN_HEADER))) {
-      return new Response("Invalid or already-used token.", { status: 403 });
-    }
+      // Guard 2 — a raw route bypasses the middleware pipeline, so CSRF protection
+      // does not apply and this is the check standing in for it.
+      if (!isAllowedOrigin(req, allowedOrigins())) {
+        return new Response("Forbidden origin.", { status: 403 });
+      }
 
-    try {
-      const ran = await _runPendingMigrations();
-      if (ran.length === 0) return new Response("Nothing to run.", { status: 200 });
-      return new Response(`Ran ${ran.length}: ${ran.join(", ")}`, { status: 200 });
-    } catch (error) {
-      // The migration itself failed — which is a real answer, and more useful
-      // than a generic 500. It goes back as text so the panel can show it.
-      const message = error instanceof Error ? error.message : String(error);
-      return new Response(`Migration failed: ${message}`, { status: 500 });
-    }
-  });
+      // Guard 3 — single use. A caller that cannot read the error page cannot have
+      // this, and replaying a captured one does not work twice.
+      if (!_spendDiagnosisToken(req.headers.get(TOKEN_HEADER))) {
+        return new Response("Invalid or already-used token.", { status: 403 });
+      }
+
+      try {
+        const ran = await _runPendingMigrations();
+        if (ran.length === 0) return new Response("Nothing to run.", { status: 200 });
+        return new Response(`Ran ${ran.length}: ${ran.join(", ")}`, { status: 200 });
+      } catch (error) {
+        // The migration itself failed — which is a real answer, and more useful
+        // than a generic 500. It goes back as text so the panel can show it.
+        const message = error instanceof Error ? error.message : String(error);
+        return new Response(`Migration failed: ${message}`, { status: 500 });
+      }
+    },
+  );
 }

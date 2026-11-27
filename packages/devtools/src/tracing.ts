@@ -291,6 +291,24 @@ const SAFE_HEADERS = new Set([
 /** Never recorded, whatever the allowlist says — these *are* the credentials. */
 const NEVER_HEADERS = new Set(["cookie", "set-cookie", "authorization", "proxy-authorization"]);
 
+/** `url` with the value of every secret-named query parameter masked. */
+function _maskUrlQuery(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  let changed = false;
+  for (const name of [...parsed.searchParams.keys()]) {
+    if (isSensitiveName(name, _redaction)) {
+      parsed.searchParams.set(name, "‹redacted›");
+      changed = true;
+    }
+  }
+  return changed ? parsed.toString() : url;
+}
+
 function _recordHeader(name: string): boolean {
   const key = name.toLowerCase();
   if (NEVER_HEADERS.has(key)) return false;
@@ -389,7 +407,9 @@ function _buildTrace(
 
   const headers: Record<string, string> = {};
   ctx.request.headers.forEach((v, k) => {
-    if (_recordHeader(k)) headers[k] = v;
+    // The previous page's URL, query string and all: a form posted from
+    // `/reset-password?token=…` would carry the token here.
+    if (_recordHeader(k)) headers[k] = k.toLowerCase() === "referer" ? _maskUrlQuery(v) : v;
   });
 
   // The response half of the exchange: its status line and the headers it set.
@@ -415,7 +435,9 @@ function _buildTrace(
     requestId: ctx.requestId,
     method: (method ?? ctx.request.method).toUpperCase(),
     path: _recordedPath(ctx.url.pathname, rd?.pattern),
-    statusCode: ctx.response?.status ?? 0,
+    // A request that threw has no response on its context; the status it was answered with is
+    // the error's (a validation failure's 303, a 404), not 0.
+    statusCode: ctx.response?.status ?? exception?.status ?? 0,
     startMs,
     durationMs,
     memory: _heapUsed(),

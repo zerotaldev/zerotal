@@ -64,9 +64,13 @@ afterEach(async () => {
 describe("the queue worker doctor check", () => {
   it("counts the job classes in app/jobs when nothing is waiting", async () => {
     await mkdir(join(dir, "app/jobs"), { recursive: true });
-    await Bun.write(join(dir, "app/jobs/SendInvoice.ts"), "export {};\n");
-    await Bun.write(join(dir, "app/jobs/PruneExports.ts"), "export {};\n");
-    await Bun.write(join(dir, "app/jobs/SendInvoice.test.ts"), "export {};\n");
+    const job = (name: string) =>
+      `import { Job } from "@zerotal/queue";\nexport class ${name} extends Job {}\n`;
+    await Bun.write(join(dir, "app/jobs/SendInvoice.ts"), job("SendInvoice"));
+    await Bun.write(join(dir, "app/jobs/PruneExports.ts"), job("PruneExports"));
+    await Bun.write(join(dir, "app/jobs/SendInvoice.test.ts"), job("SendInvoiceTest"));
+    // A helper beside them is not a job, and the app/jobs check does not count it either.
+    await Bun.write(join(dir, "app/jobs/helpers.ts"), "export const RETRIES = 3;\n");
 
     const result = await check();
     expect(result.status).toBe("ok");

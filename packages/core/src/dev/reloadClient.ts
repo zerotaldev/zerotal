@@ -68,7 +68,9 @@ export const _DEV_RELOAD_SOURCE: string =
   `o.appendChild(el('div','Fix it and save: the page reloads by itself. Esc hides this.',{color:'#a1a1aa',marginTop:'16px'}));` +
   `(document.body||document.documentElement).appendChild(o);overlay=o;}` +
   `document.addEventListener('keydown',function(e){if(e.key==='Escape')hide();});` +
-  `function connect(){` +
+  // Reconnect fast, then back off: a restarted server answers well inside a second, and a fixed
+  // one-second wait was most of the time between a backend save and the page reloading.
+  `var delay=100;function connect(){` +
   `var ws=new WebSocket(proto+'//'+location.host+'/__dev/ws');` +
   `ws.onmessage=function(e){` +
   `var d=e.data;` +
@@ -81,5 +83,5 @@ export const _DEV_RELOAD_SOURCE: string =
   `if(build===null)build=v;` +
   `else if(build!==v)location.reload();` +
   `}};` +
-  `ws.onclose=function(){setTimeout(connect,1000);};` +
+  `ws.onopen=function(){delay=100;};ws.onclose=function(){setTimeout(connect,delay);delay=Math.min(delay*2,1000);};` +
   `}connect();})();`;

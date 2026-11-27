@@ -90,8 +90,8 @@ You rarely set cookies by hand — two parts of the framework manage their own:
   (`lifetime`) come from `config/session.ts`. Put user state in the session rather
   than rolling your own signed cookie.
 - **`XSRF-TOKEN` cookie** — [`CsrfMiddleware`](/docs/csrf) sets this readable
-  (non-`HttpOnly`) cookie after every request so Axios/Inertia can echo it back as
-  the `X-XSRF-TOKEN` header.
+  (non-`HttpOnly`) cookie after every request, so a script's HTTP client, and the
+  Inertia adapter, can echo it back as the `X-XSRF-TOKEN` header.
 
 ## Types
 

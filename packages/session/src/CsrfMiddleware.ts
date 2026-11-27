@@ -6,6 +6,7 @@ import {
   RequestContext,
   safeEqual,
   buildCookie,
+  HttpError,
 } from "@zerotal/core";
 import type { SessionManager } from "./SessionManager.ts";
 
@@ -13,6 +14,13 @@ const CSRF_TOKEN_KEY = "_csrf_token";
 /** The form field a page's own form sends the token back in. */
 const CSRF_FIELD = "_token";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const CSRF_MISMATCH = "CSRF token mismatch.";
+/**
+ * The largest form body the `_token` field is read from. A form that posts more (a file
+ * upload) sends the token in the `x-csrf-token` header, so a refused request is never buffered
+ * up to the route's whole limit.
+ */
+const FORM_TOKEN_MAX_BYTES = 1024 * 1024;
 
 /**
  * The hidden field {@link CsrfMiddleware.field} renders. Flow renders it as the markup it is; in
@@ -56,8 +64,11 @@ export interface CsrfOptions {
  * header on subsequent mutating requests, as common HTTP clients do on their own.
  *
  * Register it after {@link SessionMiddleware} (it reads/writes the session).
- * On a failed check the pipeline short-circuits with an HTTP `419` JSON
- * response and `next()` is never called.
+ * On a failed check `next()` is never called. A browser that posted a page's
+ * form gets a `419` `HttpError`, which the app's exception handler renders as
+ * its page; any other client gets a `419` JSON response. The `_token` field is
+ * read only from a form body of at most 1 MB that another site did not send:
+ * a larger form (a file upload) sends the token in the header.
  *
  * @example
  * ```ts
@@ -86,6 +97,10 @@ export class CsrfMiddleware extends BaseMiddleware<CsrfOptions> {
   async handle(http: HttpContext, next: NextFn): Promise<Response | void> {
     const session = http.session as SessionManager | undefined;
 
+    // The token the session held before this request: one minted just now cannot have been
+    // sent back yet, so a request whose session had none is refused without reading its body.
+    const sessionToken = session?.get(CSRF_TOKEN_KEY) as string | undefined;
+
     // Ensure a CSRF token exists in the session for this request.
     if (!session?.has(CSRF_TOKEN_KEY)) {
       session?.set(CSRF_TOKEN_KEY, crypto.randomUUID());
@@ -95,14 +110,22 @@ export class CsrfMiddleware extends BaseMiddleware<CsrfOptions> {
 
     // Safe methods (GET, HEAD, OPTIONS) skip the token check.
     if (!SAFE_METHODS.has(method)) {
-      const sessionToken = session?.get(CSRF_TOKEN_KEY) as string | undefined;
+      const request = http.request;
       const sentToken =
-        http.request.headers.get("x-csrf-token") ??
-        http.request.headers.get("x-xsrf-token") ??
-        (sessionToken ? await _formToken(http.request) : undefined);
+        request.headers.get("x-csrf-token") ??
+        request.headers.get("x-xsrf-token") ??
+        // A browser marks a request another site made; its form is refused unread.
+        (sessionToken && request.headers.get("sec-fetch-site") !== "cross-site"
+          ? await _formToken(request)
+          : undefined);
 
       if (!sessionToken || !sentToken || !_tokensMatch(sessionToken, sentToken)) {
-        return new Response(JSON.stringify({ message: "CSRF token mismatch." }), {
+        // A browser that posted a page's form gets the app's own 419 page through its exception
+        // handler (an expired session, say); every other client gets the JSON it always got.
+        if (_wantsPage(request)) {
+          throw new HttpError(CSRF_MISMATCH, 419, "E_CSRF_TOKEN_MISMATCH");
+        }
+        return new Response(JSON.stringify({ message: CSRF_MISMATCH }), {
           status: 419,
           headers: { "Content-Type": "application/json" },
         });
@@ -182,12 +205,49 @@ async function _formToken(request: Request): Promise<string | undefined> {
   ) {
     return undefined;
   }
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (declared > FORM_TOKEN_MAX_BYTES) return undefined;
   try {
-    const value = (await request.clone().formData()).get(CSRF_FIELD);
+    // Read from a copy, and stop at the cap whatever the body claims its length is.
+    const reader = request.clone().body?.getReader();
+    if (!reader) return undefined;
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > FORM_TOKEN_MAX_BYTES) {
+        await reader.cancel();
+        return undefined;
+      }
+      chunks.push(value);
+    }
+    const body = new Uint8Array(size);
+    let at = 0;
+    for (const chunk of chunks) {
+      body.set(chunk, at);
+      at += chunk.byteLength;
+    }
+    const form = await new Response(body, {
+      headers: { "content-type": type },
+    }).formData();
+    const value = form.get(CSRF_FIELD);
     return typeof value === "string" && value ? value : undefined;
   } catch {
     return undefined;
   }
+}
+
+/**
+ * @internal Whether the request is a browser asking for a page: it accepts HTML and is not a
+ * script's request (`fetch` with JSON, or the `X-Requested-With` header older scripts send).
+ */
+function _wantsPage(request: Request): boolean {
+  const accept = request.headers.get("accept") ?? "";
+  if (!accept.includes("text/html")) return false;
+  if (request.headers.get("x-requested-with") !== null) return false;
+  return !(request.headers.get("content-type") ?? "").includes("application/json");
 }
 
 /** @internal A value for a double-quoted attribute. */

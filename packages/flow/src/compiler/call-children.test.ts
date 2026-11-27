@@ -145,46 +145,87 @@ describe("a call in a text child compiles", () => {
     expect(compiled).toContain("<li>A &amp; B</li>");
   });
 
-  it("renders a method that returns markup as that markup", async () => {
-    const { compiled, runtime } = await bothWays(
-      "MarkupPage",
-      page(
-        "MarkupPage",
-        "",
-        `<div>{this.badge()}</div>`,
-        "",
-        `@expose name = "Ada <admin>";
-  badge() {
-    return <span class="badge">{this.name}</span>;
-  }`,
-      ),
-    );
-    expect(compiled).toBe(runtime);
-    expect(compiled).toContain('<span class="badge">Ada &lt;admin&gt;</span>');
-  });
-
-  it("renders a method that returns an array item by item", async () => {
+  it("renders a method that returns an array of values item by item", async () => {
     const { compiled, runtime } = await bothWays(
       "ArrayPage",
       page(
         "ArrayPage",
         "",
-        `<ul>{this.items()}<li>{this.words()}</li></ul>`,
+        `<ul><li>{this.words()}</li></ul>`,
         "",
-        `@expose tags = ["a", "b & c"];
-  items() {
-    return this.tags.map((t) => <li>{t}</li>);
-  }
-  words() {
+        `words() {
     return ["x", "<y>", null, 2];
   }`,
       ),
     );
     expect(compiled).toBe(runtime);
-    expect(compiled).toContain("<li>a</li><li>b &amp; c</li>");
     expect(compiled).toContain("<li>x&lt;y&gt;2</li>");
   });
+});
 
+describe("a call that may return markup stays on the runtime", () => {
+  // Markup a method returns is rendered by the runtime: a binding in it (`live`) and a class
+  // component in it need the render context, which a compiled render does not run in. Compiled,
+  // the first lost its binding without a word and the second threw.
+  const cases: [string, string, string, string][] = [
+    [
+      "BindingPage",
+      `<form>{this.field()}</form>`,
+      `@expose q = "x";
+  field() {
+    return <input value={this.q} live />;
+  }`,
+      'flow:model.live="q"',
+    ],
+    [
+      "MarkupPage",
+      `<div>{this.badge()}</div>`,
+      `@expose name = "Ada <admin>";
+  badge() {
+    return <span class="badge">{this.name}</span>;
+  }`,
+      '<span class="badge">Ada &lt;admin&gt;</span>',
+    ],
+    [
+      "ListPage",
+      `<ul>{this.items()}</ul>`,
+      `@expose tags = ["a", "b & c"];
+  items() {
+    return this.tags.map((t) => <li>{t}</li>);
+  }`,
+      "<li>a</li><li>b &amp; c</li>",
+    ],
+  ];
+
+  for (const [name, body, members, expected] of cases) {
+    it(`${name}: says why, and the runtime renders it`, async () => {
+      const file = join(TMP, `${name}.tsx`);
+      const source = page(name, "", body, "", members);
+      writeFileSync(file, source);
+      expect(compile(source, file).blocked).toContain("may return markup");
+      const mod = (await import(file)) as Record<string, new () => Component>;
+      expect((await FlowTest.mount(mod[name]!)).html()).toContain(expected);
+    });
+  }
+
+  it("treats a function from the app's own .tsx module, and an inherited method, as markup", () => {
+    writeFileSync(
+      join(TMP, "rows.tsx"),
+      `export function row(t: string) { return <li>{t}</li>; }\n`,
+    );
+    const fromTsx = join(TMP, "TsxHelperPage.tsx");
+    const tsxSource = page("TsxHelperPage", `import { row } from "./rows";`, `<ul>{row("a")}</ul>`);
+    writeFileSync(fromTsx, tsxSource);
+    expect(compile(tsxSource, fromTsx).blocked).toContain("may return markup");
+
+    const inherited = join(TMP, "InheritedPage.tsx");
+    const inheritedSource = page("InheritedPage", "", `<p>{this.helperFromBase()}</p>`);
+    writeFileSync(inherited, inheritedSource);
+    expect(compile(inheritedSource, inherited).blocked).toContain("may return markup");
+  });
+});
+
+describe("a call in a text child, compiled", () => {
   it("compiles under cspSafe", () => {
     const file = join(TMP, "CspLangPage.tsx");
     const source = page(

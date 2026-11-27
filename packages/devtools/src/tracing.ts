@@ -293,20 +293,31 @@ const NEVER_HEADERS = new Set(["cookie", "set-cookie", "authorization", "proxy-a
 
 /** `url` with the value of every secret-named query parameter masked. */
 function _maskUrlQuery(url: string): string {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return url;
-  }
+  if (_redaction.enabled === false) return url;
+  const query = url.indexOf("?");
+  if (query === -1) return url;
+  const hash = url.indexOf("#", query);
+  const end = hash === -1 ? url.length : hash;
+  // Rebuilt by hand rather than through URLSearchParams, which would re-encode every other
+  // parameter and print the mask percent-encoded.
   let changed = false;
-  for (const name of [...parsed.searchParams.keys()]) {
-    if (isSensitiveName(name, _redaction)) {
-      parsed.searchParams.set(name, "‹redacted›");
+  const pairs = url
+    .slice(query + 1, end)
+    .split("&")
+    .map((pair) => {
+      const eq = pair.indexOf("=");
+      const raw = eq === -1 ? pair : pair.slice(0, eq);
+      let name = raw;
+      try {
+        name = decodeURIComponent(raw.replace(/\+/g, " "));
+      } catch {
+        // A malformed escape: judge the name as written.
+      }
+      if (eq === -1 || !isSensitiveName(name, _redaction)) return pair;
       changed = true;
-    }
-  }
-  return changed ? parsed.toString() : url;
+      return `${raw}=‹redacted›`;
+    });
+  return changed ? `${url.slice(0, query + 1)}${pairs.join("&")}${url.slice(end)}` : url;
 }
 
 function _recordHeader(name: string): boolean {

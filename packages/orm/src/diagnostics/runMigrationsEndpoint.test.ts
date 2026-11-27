@@ -9,14 +9,19 @@ import { registerRunMigrationsEndpoint, _resetDiagnosisTokens } from "./runMigra
  */
 const priorEnv = Bun.env["APP_ENV"];
 
-async function post(url: string): Promise<Response> {
+async function post(url: string, peer?: string): Promise<Response> {
   const table = Router.compile(new Container(), []) as Record<
     string,
     Record<string, (req: Request) => Response | Promise<Response>>
   >;
   const handler = table["/__zerotal/run-migrations"]?.["POST"];
   if (!handler) throw new Error("endpoint not registered");
-  return handler(new Request(url, { method: "POST" }));
+  const request = new Request(url, { method: "POST" });
+  const server = peer ? { requestIP: () => ({ address: peer }) } : undefined;
+  return (handler as (req: Request, server?: unknown) => Response | Promise<Response>)(
+    request,
+    server,
+  );
 }
 
 describe("the one-click migration fix", () => {
@@ -34,6 +39,11 @@ describe("the one-click migration fix", () => {
 
   it("refuses a request addressed to a foreign name", async () => {
     expect((await post("http://evil.example:3000/__zerotal/run-migrations")).status).toBe(404);
+  });
+
+  it("refuses another device on the network, even addressed as localhost", async () => {
+    const response = await post("http://localhost:3000/__zerotal/run-migrations", "192.168.0.7");
+    expect(response.status).toBe(404);
   });
 
   it("goes on to its token check for this machine", async () => {

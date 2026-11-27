@@ -101,7 +101,8 @@ export function workerLivenessCheck(options: WorkerLivenessOptions): DoctorCheck
             status: "warn",
             message:
               `${work.summary}, and nothing shows a worker is running them — cannot verify: ` +
-              `${seen.reason}. In production a missing worker means the work silently never happens.`,
+              `${seen.reason.replace(/\.+$/, "")}. In production a missing worker means the ` +
+              `work silently never happens.`,
             fix:
               `Make sure \`${options.command}\` runs beside the web server. To let this check see ` +
               `it, give the app a cache every process shares (not the in-memory driver), where the worker checks in.`,

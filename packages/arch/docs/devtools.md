@@ -13,7 +13,8 @@ injected for you, and it connects over Server-Sent Events.
 
 `DevtoolsProvider` is gated to the `web` environment and is on only where the framework's other
 debug output is: under `bun zt dev`, or with `APP_ENV` set to `development`, `dev`, `local`,
-`test` or `testing`. Anything else, an unset `APP_ENV` and `staging` included, is off.
+`test` or `testing`. Anything else, an unset `APP_ENV` and `staging` included, is off, unless
+`devtools.enabled` turns it on (see [Running it outside development](#running-it-outside-development)).
 
 It records the web process only. A job run by the `bun zt dev` worker tab, a scheduled task and
 a command run in their own processes, so their queries and logs appear in that tab of the

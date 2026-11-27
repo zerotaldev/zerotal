@@ -778,7 +778,6 @@ describe("1.18.4: a trace of a failed request, and the Referer", () => {
     });
     FrameworkEvents.emit(new RequestHandled(ctx, startMs, 1));
     const referer = traceStore().all()[0]!.headers["referer"] ?? "";
-    expect(referer).not.toContain("abc123");
-    expect(referer).toContain("page=2");
+    expect(referer).toBe("http://localhost/reset-password?token=‹redacted›&page=2");
   });
 });

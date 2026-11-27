@@ -194,16 +194,12 @@ describe("withDatabase()", () => {
 
 describe("TestResponse.assertCookie()", () => {
   it("passes when cookie is present", () => {
-    const res = new TestResponse(
-      new Response("ok", { headers: { "Set-Cookie": "theme=dark; Path=/" } }),
-    );
+    const res = mk("ok", { headers: { "Set-Cookie": "theme=dark; Path=/" } });
     expect(() => res.assertCookie("theme")).not.toThrow();
   });
 
   it("passes when cookie name and value both match", () => {
-    const res = new TestResponse(
-      new Response("ok", { headers: { "Set-Cookie": "theme=dark; Path=/" } }),
-    );
+    const res = mk("ok", { headers: { "Set-Cookie": "theme=dark; Path=/" } });
     expect(() => res.assertCookie("theme", "dark")).not.toThrow();
   });
 
@@ -213,9 +209,7 @@ describe("TestResponse.assertCookie()", () => {
   });
 
   it("throws when cookie value does not match", () => {
-    const res = new TestResponse(
-      new Response("ok", { headers: { "Set-Cookie": "theme=light; Path=/" } }),
-    );
+    const res = mk("ok", { headers: { "Set-Cookie": "theme=light; Path=/" } });
     expect(() => res.assertCookie("theme", "dark")).toThrow("dark");
   });
 });
@@ -227,9 +221,7 @@ describe("TestResponse.assertCookieMissing()", () => {
   });
 
   it("throws when cookie IS present", () => {
-    const res = new TestResponse(
-      new Response("ok", { headers: { "Set-Cookie": "theme=dark; Path=/" } }),
-    );
+    const res = mk("ok", { headers: { "Set-Cookie": "theme=dark; Path=/" } });
     expect(() => res.assertCookieMissing("theme")).toThrow("theme");
   });
 });
@@ -509,9 +501,7 @@ describe("TestResponse — status shortcuts", () => {
 
   it("assertMovedPermanently passes on 301", () => {
     expect(() =>
-      new TestResponse(
-        new Response(null, { status: 301, headers: { Location: "/" } }),
-      ).assertMovedPermanently(),
+      mk(null, { status: 301, headers: { Location: "/" } }).assertMovedPermanently(),
     ).not.toThrow();
   });
 
@@ -536,9 +526,7 @@ describe("TestResponse — status shortcuts", () => {
 
 describe("TestResponse.assertRedirect()", () => {
   it("passes on 302 with matching Location", () => {
-    const res = new TestResponse(
-      new Response(null, { status: 302, headers: { Location: "/dashboard" } }),
-    );
+    const res = mk(null, { status: 302, headers: { Location: "/dashboard" } });
     expect(() => res.assertRedirect("/dashboard")).not.toThrow();
   });
 
@@ -547,9 +535,7 @@ describe("TestResponse.assertRedirect()", () => {
   });
 
   it("throws when Location does not match", () => {
-    const res = new TestResponse(
-      new Response(null, { status: 302, headers: { Location: "/other" } }),
-    );
+    const res = mk(null, { status: 302, headers: { Location: "/other" } });
     expect(() => res.assertRedirect("/dashboard")).toThrow("/dashboard");
   });
 });
@@ -711,9 +697,7 @@ describe("TestResponse.assertHeader()", () => {
   });
 
   it("passes when header value matches", () => {
-    const res = new TestResponse(
-      new Response("ok", { headers: { "Content-Type": "application/json" } }),
-    );
+    const res = mk("ok", { headers: { "Content-Type": "application/json" } });
     expect(() => res.assertHeader("Content-Type", "application/json")).not.toThrow();
   });
 

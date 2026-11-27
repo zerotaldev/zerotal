@@ -1,7 +1,7 @@
 {
   "packages": {
     "validator": 1,
-    "testing": 13,
+    "testing": 5,
     "tenancy": 6,
     "session": 13,
     "queue": 5,
@@ -17,6 +17,6 @@
     "audit": 3,
     "admin": 10
   },
-  "total": 216,
-  "updatedAt": "2026-11-19T22:05:46.031Z"
+  "total": 208,
+  "updatedAt": "2026-11-27T00:55:11.537Z"
 }

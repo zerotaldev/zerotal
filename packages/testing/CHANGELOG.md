@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The package's own tests type-check where they build a `TestResponse` with no body.** Eight
+  cookie, redirect and header tests passed only the `Response`; they use the suite's helper that
+  passes the body too. Nothing in the shipped package changes.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

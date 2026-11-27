@@ -90,9 +90,8 @@ A Flow action is not an HTTP request, so the pipeline is rebuilt for each one:
   token — which the action genuinely needs.
 
 When your pages are file-routed (`fileBasedRouting()` pointed at the page tree), the
-natural place for shared middleware is a `_middleware.ts` in the page tree. The Flow
-starter registers its pages in `routes/web.ts` instead, where a route group carries it. It stacks from the root down,
-covers every page beneath it, and — being route middleware — re-runs on every
+natural place for shared middleware is a `_middleware.ts` in the page tree. It stacks from
+the root down, covers every page beneath it, and — being route middleware — re-runs on every
 action with nothing else to configure:
 
 ```typescript fragment
@@ -101,6 +100,9 @@ import { TenantMiddleware } from "../../middleware/TenantMiddleware.ts";
 
 export const middleware = [TenantMiddleware];
 ```
+
+The Flow starter registers its pages in `routes/web.ts` instead, where a route group carries
+shared middleware the same way.
 
 Scope it to part of the tree with a `(group)` directory — `(protected)/_middleware.ts`
 guards the pages inside it without changing their URLs. See

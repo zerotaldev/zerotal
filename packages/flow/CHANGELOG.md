@@ -53,6 +53,10 @@ change.
 - **Abandoned uploads are deleted after a restart.** Temporary uploads were remembered only in
   memory, so a restart (a deploy) left every pending one in `flow-tmp/` for good. On a local disk
   that directory is now swept by file age at boot and every 30 minutes.
+- **`<Link down>`, `<Link exact>`, `<Link current={true}>` and `navigateDown` work on a compiled
+  page.** The compiler translated only `hover`, `preserveScroll` and `current={false}`; the rest
+  reached the browser as attributes nothing reads, so pointer-down prefetch and exact matching
+  worked only on pages that fell back to the runtime.
 - **Markup held in a const renders as markup on a compiled page.** The compiler advises moving
   an expression "into a leading const"; a const holding JSX then rendered as `[object Object]`,
   and an array as its items joined with commas, while the same page rendered correctly through

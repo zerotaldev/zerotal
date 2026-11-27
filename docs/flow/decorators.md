@@ -36,7 +36,7 @@ export class CounterPage extends Component {
 }
 ```
 
-`@expose`, `@url`, `@reactive` and `@modelable` properties are writable from the browser. If you only need the server to push state to the client, use `@locked` instead.
+`@expose`, `@url`, `@reactive`, `@modelable`, `@shared` and `@presence` properties are writable from the browser. If you only need the server to push state to the client, use `@locked` instead.
 
 ## The @locked decorator
 

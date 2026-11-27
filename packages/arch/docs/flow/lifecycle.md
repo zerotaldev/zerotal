@@ -185,12 +185,12 @@ Fires **before** a client-written property value is applied to the component. Th
 override async onUpdating(prop: string, value: unknown, key?: string) {
   // Prevent role escalation
   if (prop === "role" && value === "super_admin") {
-    throw new Error("You cannot assign this role.");
+    abort(403, "You cannot assign this role.");
   }
 
   // Reject negative numbers for any numeric prop
   if (typeof value === "number" && value < 0) {
-    throw new Error(`${prop} cannot be negative.`);
+    abort(422, `${prop} cannot be negative.`);
   }
 }
 ```

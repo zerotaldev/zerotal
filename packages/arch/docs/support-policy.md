@@ -148,8 +148,8 @@ dependency order, from CI. Never mix versions across packages.
 - **Cadence:** patches ship when they are ready. Breaking changes are batched onto
   a calendar: at most one minor a quarter, released in January, April or October,
   and the major each July. A quarter with no break to ship gets no minor. The
-  calendar starts once 1.19.0 has shipped; every minor up to and including 1.19.0
-  ships when its break is ready. Security fixes are released out of band — see the
+  calendar starts once 1.19 has shipped; every minor up to and including 1.19 ships
+  when its break is ready. Security fixes are released out of band — see the
   response windows in
   [SECURITY.md](https://github.com/zerotaldev/zerotal/blob/main/SECURITY.md).
 - **Supported versions:** from 1.19, each line is supported for a fixed window after

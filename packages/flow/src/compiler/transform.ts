@@ -278,30 +278,72 @@ function _exportedFunction(
 /**
  * The first place a function component reads its `children` as a value, if it does.
  *
- * A compiled page passes a component its children already rendered, as markup. The runtime passes
- * them as they were written: a string stays a string. So a component that places `{children}` in
- * its markup renders the same either way, and one that tests whether it has any does too (an
- * empty rendering is passed as no children). One that uses them as a value (`aria-label={children}`,
- * `labels[children]`, `` `${children}` ``) would read `[object Object]` from compiled output, so
- * such a component keeps the page on the runtime.
+ * A compiled page passes a component its children as the runtime would only in shape: a JSX child
+ * arrives already rendered, as markup. So a component that places its children in its markup
+ * (`{children}`), or tests whether it has any, renders the same either way. One that uses them as
+ * a value (`aria-label={children}`, `labels[children]`, `` `${children}` ``) would read
+ * `[object Object]` from compiled output, so such a component keeps the page on the runtime.
+ *
+ * The children are followed under every name the component gives them: `props.children`,
+ * `props["children"]`, `{ children }` and `{ children: label }` in the parameter or in a
+ * `const … = props`, and a `const` that copies one of those.
  */
 function _childrenReadAsValue(
   fn: ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression,
 ): ts.Node | null {
-  let found: ts.Node | null = null;
+  /** Local names the children are bound to. */
+  const names = new Set<string>();
 
-  /** Whether `node` names the children: `children`, or `props.children`. */
-  const isChildren = (node: ts.Node): boolean =>
-    (ts.isIdentifier(node) &&
-      node.text === "children" &&
-      !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) &&
-      !ts.isBindingElement(node.parent) &&
-      !(ts.isPropertyAssignment(node.parent) && node.parent.name === node) &&
-      !ts.isShorthandPropertyAssignment(node.parent) &&
-      !ts.isJsxAttribute(node.parent)) ||
-    (ts.isPropertyAccessExpression(node) && node.name.text === "children");
+  /** Whether `node` reads the children off an object: `x.children` or `x["children"]`. */
+  const isChildrenAccess = (node: ts.Node): boolean =>
+    (ts.isPropertyAccessExpression(node) && node.name.text === "children") ||
+    (ts.isElementAccessExpression(node) &&
+      ts.isStringLiteralLike(node.argumentExpression) &&
+      node.argumentExpression.text === "children");
 
-  /** Whether `node` is used in one of the ways that read the same from either path. */
+  /** Record the names a binding pattern gives `children`, however deep it sits. */
+  const collectPattern = (pattern: ts.BindingName): void => {
+    if (!ts.isObjectBindingPattern(pattern)) return;
+    for (const element of pattern.elements) {
+      const key = element.propertyName
+        ? ts.isIdentifier(element.propertyName) || ts.isStringLiteral(element.propertyName)
+          ? element.propertyName.text
+          : null
+        : ts.isIdentifier(element.name)
+          ? element.name.text
+          : null;
+      if (key === "children" && ts.isIdentifier(element.name)) names.add(element.name.text);
+    }
+  };
+
+  for (const parameter of fn.parameters) collectPattern(parameter.name);
+  // `const { children: text } = props`, and `const kids = props.children`, anywhere in the body.
+  const declarations = (node: ts.Node): void => {
+    if (ts.isVariableDeclaration(node)) {
+      collectPattern(node.name);
+      let init = node.initializer;
+      while (init && ts.isParenthesizedExpression(init)) init = init.expression;
+      if (init && ts.isIdentifier(node.name) && isChildrenAccess(init)) names.add(node.name.text);
+    }
+    ts.forEachChild(node, declarations);
+  };
+  if (fn.body) declarations(fn.body);
+
+  /** Whether `node` is a read of the children, by any of its names. */
+  const isChildren = (node: ts.Node): boolean => {
+    if (isChildrenAccess(node)) return true;
+    if (!ts.isIdentifier(node) || !names.has(node.text)) return false;
+    const parent = node.parent;
+    // A declaration or a property name, not a read.
+    if (ts.isBindingElement(parent) || ts.isVariableDeclaration(parent)) return false;
+    if (ts.isParameter(parent)) return false;
+    if (ts.isPropertyAccessExpression(parent) && parent.name === node) return false;
+    if (ts.isPropertyAssignment(parent) && parent.name === node) return false;
+    if (ts.isJsxAttribute(parent)) return false;
+    return true;
+  };
+
+  /** Whether the value at `node` ends up placed as a JSX child, or is only tested. */
   const isSafeUse = (node: ts.Node): boolean => {
     let at: ts.Node = node;
     while (ts.isParenthesizedExpression(at.parent)) at = at.parent;
@@ -310,16 +352,20 @@ function _childrenReadAsValue(
     if (ts.isJsxExpression(parent)) {
       return ts.isJsxElement(parent.parent) || ts.isJsxFragment(parent.parent);
     }
-    // Tested for whether there are any.
-    if (ts.isConditionalExpression(parent)) return parent.condition === at;
-    if (ts.isPrefixUnaryExpression(parent))
+    if (ts.isPrefixUnaryExpression(parent)) {
       return parent.operator === ts.SyntaxKind.ExclamationToken;
+    }
     if (ts.isIfStatement(parent)) return parent.expression === at;
+    // Tested by a ternary, or one of its branches: the branch lands where the ternary does.
+    if (ts.isConditionalExpression(parent)) {
+      return parent.condition === at || isSafeUse(parent);
+    }
     if (ts.isBinaryExpression(parent)) {
       const op = parent.operatorToken.kind;
-      if (op === ts.SyntaxKind.AmpersandAmpersandToken) return parent.left === at;
-      // `children || fallback` / `children ?? fallback` hand the children on: safe only where
-      // the result lands as a JSX child, which the walk sees when it reaches `parent` itself.
+      // `children && …` tests them; `open && children` hands them on.
+      if (op === ts.SyntaxKind.AmpersandAmpersandToken) {
+        return parent.left === at || isSafeUse(parent);
+      }
       if (op === ts.SyntaxKind.BarBarToken || op === ts.SyntaxKind.QuestionQuestionToken) {
         return isSafeUse(parent);
       }
@@ -327,6 +373,7 @@ function _childrenReadAsValue(
     return false;
   };
 
+  let found: ts.Node | null = null;
   const walk = (node: ts.Node): void => {
     if (found) return;
     if (isChildren(node)) {
@@ -1904,6 +1951,82 @@ function _compileRenderMethod(
    * @returns false when `tag` is not a component at all, true when it was emitted or the
    *   compile bailed with the component's own reason.
    */
+  /**
+   * A single `{…}` child of a component, as JS that evaluates to what the runtime would hand the
+   * component: the value itself where there is no markup in it, and markup as `{ html }`.
+   *
+   * `a && <p/>` passes `a` itself when it is falsy, as the runtime does, and the paragraph when it
+   * is not; `c ? <a/> : null` passes the branch taken. So a component that tests its children sees
+   * exactly what it would on the runtime, `false`, `0` and `""` included. Shapes beyond those
+   * pass as markup, and as no children when the markup is empty.
+   *
+   * @returns null when the compile bailed, with the blocker recorded.
+   */
+  function childShape(raw: ts.Expression): string | null {
+    let expr: ts.Expression = raw;
+    while (ts.isParenthesizedExpression(expr)) expr = expr.expression;
+
+    if (!_containsJsx(expr)) {
+      if (_containsClientMagic(expr) || _referencesGel(expr)) {
+        bail("a component is passed a client value as children", "pass a server value", expr);
+        return null;
+      }
+      return `(${expr.getText()})`;
+    }
+
+    /** Markup, compiled as a value-position expression. */
+    const markup = (node: ts.Expression): string | null => {
+      const compiled = _compileValueExpr(node);
+      if (compiled === null && canCompile) {
+        bail(
+          `\`{${_snippet(node)}}\` is a child the compiler can't render`,
+          "compute it into a leading const, or let the page render through the runtime",
+          node,
+        );
+      }
+      return compiled;
+    };
+
+    if (ts.isJsxElement(expr) || ts.isJsxFragment(expr) || ts.isJsxSelfClosingElement(expr)) {
+      const html = markup(expr);
+      return html === null ? null : `{ html: ${html} }`;
+    }
+    if (
+      ts.isCallExpression(expr) &&
+      ts.isPropertyAccessExpression(expr.expression) &&
+      expr.expression.name.text === "map"
+    ) {
+      const html = markup(expr);
+      return html === null ? null : `{ html: ${html} }`;
+    }
+    if (
+      ts.isBinaryExpression(expr) &&
+      expr.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken &&
+      !_containsJsx(expr.left)
+    ) {
+      if (_containsClientMagic(expr.left) || _referencesGel(expr.left)) {
+        bail("a component's children test a client value", "test a server value", expr.left);
+        return null;
+      }
+      const right = childShape(expr.right);
+      return right === null ? null : `((v) => (v ? ${right} : v))(${expr.left.getText()})`;
+    }
+    if (ts.isConditionalExpression(expr) && !_containsJsx(expr.condition)) {
+      if (_containsClientMagic(expr.condition) || _referencesGel(expr.condition)) {
+        bail("a component's children test a client value", "test a server value", expr.condition);
+        return null;
+      }
+      const yes = childShape(expr.whenTrue);
+      if (yes === null) return null;
+      const no = childShape(expr.whenFalse);
+      if (no === null) return null;
+      return `(${expr.condition.getText()} ? ${yes} : ${no})`;
+    }
+
+    const html = markup(expr);
+    return html === null ? null : `((h) => (h === "" ? undefined : { html: h }))(${html})`;
+  }
+
   function emitComponent(
     tag: string,
     attrs: ts.JsxAttributes,
@@ -1996,16 +2119,37 @@ function _compileRenderMethod(
       return true;
     }
 
-    const meaningful = children.some(
-      (child) => !(ts.isJsxText(child) && child.containsOnlyTriviaWhiteSpaces),
+    // The children, in the shape the runtime hands them over, since a component may test them.
+    // Several children are an array there, and one `.map()` is one: both always truthy, so they
+    // pass as markup. One `{…}` holding no JSX passes as the value itself (a string, `0`,
+    // `false`), exactly as the runtime has it. One `{cond && <p/>}` is falsy at runtime when the
+    // condition is, and its markup is then empty: it passes as no children. Anything else is a
+    // single element or text, truthy either way.
+    const present = children.filter(
+      (child) =>
+        !(ts.isJsxText(child) && child.containsOnlyTriviaWhiteSpaces) &&
+        !(ts.isJsxExpression(child) && !child.expression),
     );
-    if (meaningful) {
-      const markup = captureExpr(() => visitChildren(children));
-      if (markup === null) return true;
-      // Children that render to nothing (`{this.error && <p>…</p>}` with no error) are no
-      // children at all, as the runtime's falsy child is: a component that tests `children`
-      // must not find a truthy empty node and draw an empty wrapper.
-      props.push(`"children": ((h) => (h === "" ? undefined : { html: h }))(${markup})`);
+    if (present.length > 0) {
+      const only = present.length === 1 ? present[0] : undefined;
+      let inner: ts.Expression | undefined =
+        only && ts.isJsxExpression(only) ? only.expression : undefined;
+      while (inner && ts.isParenthesizedExpression(inner)) inner = inner.expression;
+      const isMap =
+        inner !== undefined &&
+        ts.isCallExpression(inner) &&
+        ts.isPropertyAccessExpression(inner.expression) &&
+        inner.expression.name.text === "map";
+
+      if (inner && !isMap) {
+        const shaped = childShape(inner);
+        if (shaped === null) return true;
+        props.push(`"children": ${shaped}`);
+      } else {
+        const markup = captureExpr(() => visitChildren(children));
+        if (markup === null) return true;
+        props.push(`"children": { html: ${markup} }`);
+      }
     }
 
     emitDynamic(`(${tag}({ ${props.join(", ")} })).html`);

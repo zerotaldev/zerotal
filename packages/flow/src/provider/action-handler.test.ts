@@ -79,6 +79,12 @@ class LedgerPage extends Component {
     });
   }
 
+  /** A task whose cleanup throws a real error once it is stopped. */
+  @expose @task async streamThenBreak(): Promise<void> {
+    await new Promise<void>((resolve) => this.signal.addEventListener("abort", () => resolve()));
+    throw new Error("cleanup write failed");
+  }
+
   @expose async breakTheRender(): Promise<void> {
     this.breakRender = true;
   }
@@ -489,6 +495,20 @@ describe("a @task the visitor stops", () => {
     expect(flashOf(frames)).toBeUndefined();
     expect(patchOf(frames)?.["actionError"]).toBeUndefined();
     expect(events.map((e) => e.ok)).toEqual([true]);
+  });
+});
+
+describe("a @task that fails for its own reason after Stop", () => {
+  it("is still reported", async () => {
+    const { ws } = socket();
+    const done = _handleFlowMessage(ws, call("streamThenBreak", await snapshotOf()), deps());
+    await Bun.sleep(20);
+
+    await _handleFlowMessage(ws, call("$cancel", await snapshotOf()), deps());
+    await done;
+
+    expect(reported).toHaveLength(1);
+    expect(events.map((e) => e.ok)).toEqual([false]);
   });
 });
 

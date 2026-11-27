@@ -8,8 +8,8 @@ import {
   registerFileRouteResolver,
   FrameworkEvents,
   config,
-  _isExpectedOutcome,
 } from "@zerotal/core";
+import { _isExpectedOutcome } from "@zerotal/core/errors";
 import {
   WebSocketConnected,
   WebSocketDisconnected,
@@ -210,11 +210,11 @@ setInterval(() => _sweepInvalidFrames(Date.now()), INVALID_FRAME_WINDOW_MS).unre
  * reason. The one after logs a single line saying the rest will be refused quietly, and the
  * rest log nothing, so the log cannot be filled from outside.
  *
- * @param ip - The address the frame came from.
- * @param why - What was wrong with it, for the log.
  * Across all addresses at most {@link INVALID_FRAME_LOG_MAX} warnings are logged per window, so a
  * client that rotates its address cannot fill the log either.
  *
+ * @param ip - The address the frame came from.
+ * @param why - What was wrong with it, for the log.
  * @param now - The current time in ms; a parameter so a test can move the clock.
  * @param detail - More context for the log line. Values are written as JSON, never as text.
  * @returns `true` when the address has sent more than the limit in this window.
@@ -276,7 +276,7 @@ function _mayLogRefusal(now: number): boolean {
   if (!budget.warned) {
     budget.warned = true;
     frameworkLog("flow").warn(
-      `Refused more than ${INVALID_FRAME_LOG_MAX} invalid frames in ` +
+      `Logged ${INVALID_FRAME_LOG_MAX} refused frames in ` +
         `${INVALID_FRAME_WINDOW_MS / 60_000} minutes across all addresses. Further refusals are ` +
         `not logged until the window ends. Frames that verify are still served.`,
     );
@@ -513,6 +513,11 @@ export async function _handleFlowMessage(
       // The socket is gone; there is nobody to tell.
     }
   }
+}
+
+/** Whether `error` is the rejection an aborted signal causes, rather than some other fault. */
+function _isAbort(error: unknown, signal: AbortSignal): boolean {
+  return error === signal.reason || (error as { name?: unknown } | null)?.name === "AbortError";
 }
 
 /** The `component` a raw frame names, when it parses and names one. */
@@ -1032,7 +1037,7 @@ async function _dispatchFrame(
       // a stale tab after a deploy renamed the action, or someone trying names by hand.
       // Counted like an invalid frame, so a loop of them is bounded too; the name the client
       // sent goes in the context, escaped and cut short, never into the message itself.
-      _noteInvalidFrame(
+      const limited = _noteInvalidFrame(
         ws.data.remoteIp ?? "unknown",
         `it calls a method ${className} does not expose to the browser`,
         Date.now(),
@@ -1042,7 +1047,7 @@ async function _dispatchFrame(
         JSON.stringify({
           type: "error",
           component: frame.snapshot.memo.id,
-          message: `Method "${method}" is not allowed`,
+          message: limited ? "Too many invalid requests" : `Method "${method}" is not allowed`,
         }),
       );
       return { failed: true };
@@ -1112,7 +1117,7 @@ async function _dispatchFrame(
         // Validation errors are NOT bugs — store them and continue to re-render.
         // The client will show field-level error messages via $errors.
         // _errors is already set on the page by validate().
-      } else if (taskController?.signal.aborted) {
+      } else if (taskController?.signal.aborted && _isAbort(error, taskController.signal)) {
         // The visitor pressed Stop. The guide tells a @task to let the aborted signal reject its
         // work, so this rejection is the cancellation working: re-render what was streamed so
         // far, with no report and no error toast.

@@ -196,14 +196,14 @@ row representing a media item, a guide or a review. The document title is
 
 The names in use:
 
-| Group             | Names                                                                                                                 |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Lifecycle         | `onBoot` `onMount` `onHydrate` `onDehydrate` `onRendering` `onRendered` `onUpdate` `onUpdating` `onUpdated` `onError` |
-| Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child` `isInteractive`                                              |
-| Actions & state   | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal`              |
-| Navigation        | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent`                                          |
-| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `$`                                                                   |
-| Misc              | `flash` `download` `clearDurable`                                                                                     |
+| Group             | Names                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Lifecycle         | `onBoot` `onMount` `onHydrate` `onDehydrate` `onRendering` `onRendered` `onUpdate` `onUpdating` `onUpdated` `onError` `beforeAction` |
+| Rendering         | `render` `layout` `placeholder` `slot` `hasSlot` `child` `isInteractive`                                                             |
+| Actions & state   | `bind` `validate` `resetValidation` `errors` `addError` `refresh` `$refresh` `$set` `cancelled` `signal`                             |
+| Navigation        | `redirect` `redirectRoute` `redirectIntended` `currentUrl` `navigateCurrent`                                                         |
+| Events & realtime | `dispatch` `dispatchSelf` `dispatchTo` `stream` `$`                                                                                  |
+| Misc              | `flash` `download` `clearDurable`                                                                                                    |
 
 Anything beginning with `_` is also framework-internal, as are the statics `durable`
 and `title`.

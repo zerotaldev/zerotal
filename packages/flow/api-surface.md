@@ -19,6 +19,8 @@ class Component = {
   $refresh: () => void
   $set: (key: string, value: unknown) => void
   _applyClientUpdate: (key: string, value: unknown, arrayKey?: string) => Promise<void>
+  _applyParentProps: (json: unknown, sig: unknown) => Promise<void>
+  _applyWrite: (key: string, value: unknown, arrayKey?: string) => Promise<void>
   _buildSchema: (builders: Map<string, ValidateBuilder>) => Schema
   _childIds: string[]
   _clearDurable: boolean
@@ -34,6 +36,7 @@ class Component = {
   _flowId: string
   _flowPath: string
   _flowSlots: Record<string, string>
+  _isClientWritable: (key: string) => boolean
   _isHydrated: boolean
   _prevChildIds: string[]
   _redirectStatus: number | null
@@ -45,7 +48,9 @@ class Component = {
   _streamSender: ((ref: string, content: string, replace: boolean) => void) | null
   _taskSignal: AbortSignal | null
   _validateField: (field: string) => Promise<void>
+  _writeClientValue: (key: string, value: unknown) => void
   addError: (field: string, message: string) => void
+  beforeAction: (_name: string, _args: unknown[]) => boolean | void | Promise<boolean | void>
   bind: (key: string, optionValue?: string) => Record<string, unknown>
   cancelled: boolean
   child: <C extends Component>(ChildClass: new () => C, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    stream?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>
@@ -144,7 +149,7 @@ class Layout = {
 
 class TemporaryUploadedFile = {
   new (d: TufData): TemporaryUploadedFile
-  static fromSignedRef: (ref: UploadRef) => TemporaryUploadedFile | null
+  static fromSignedRef: (ref: UploadRef, sub?: string | undefined) => TemporaryUploadedFile | null
   static fromTrustedRef: (data: TufData) => TemporaryUploadedFile
   bytes: () => Promise<Uint8Array>
   extension: () => string
@@ -180,8 +185,6 @@ class WebSocketDisconnected = {
 
 const FLOW_ENHANCE_PATH = '/__flow/enhance.js'
 
-const locked = (value: unknown, context: ClassFieldDecoratorContext) => void
-
 const modelable = (value: unknown, context: ClassFieldDecoratorContext) => void
 
 const reactive = (value: unknown, context: ClassFieldDecoratorContext) => void
@@ -193,6 +196,8 @@ function Accordion = (props: AccordionProps) => HtmlNode
 function Alert = (props: AlertProps) => HtmlNode
 
 function Calendar = (props: CalendarProps) => HtmlNode
+
+function can = (ability: string, model?: CanModel) => (fn: unknown, context: ClassMethodDecoratorContext) => void
 
 function Checkbox = (props: CheckboxProps) => HtmlNode
 
@@ -249,6 +254,8 @@ function Link = (props: LinkProps & {    children?: unknown;}) => HtmlNode
 function Listbox = (props: ListboxProps) => HtmlNode
 
 function Loading = (props: LoadingProps) => HtmlNode
+
+function locked = {    (value: unknown, context: ClassFieldDecoratorContext): void;    (opts?: LockedOptions): LockedDecorator;}
 
 function Modal = (props: ModalProps) => HtmlNode
 
@@ -645,6 +652,10 @@ interface LoadingProps = {
   target?: string | string[]
 }
 
+interface LockedOptions = {
+  monotonic?: boolean | undefined
+}
+
 interface ModalProps = {
   [key: string]: unknown
   children?: unknown
@@ -842,10 +853,12 @@ interface TooltipProps = {
 
 interface UploadRef = {
   __flow_upload: true
+  exp: number
   mime: string
   originalName: string
   sig: string
   size: number
+  sub: string
   tempDisk?: string | undefined
   tmpPath: string
 }
@@ -866,6 +879,8 @@ interface VirtualizeProps = {
   start?: number
   total?: number
 }
+
+type CanModel = (page: any, args: unknown[]) => object | null | undefined
 
 type Constructor = abstract new (...args: any[]) => T
 

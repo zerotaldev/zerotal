@@ -27,22 +27,25 @@ After each render the server serialises the component's `@expose` and `@locked` 
   same segments on an action as on the first render. The browser cannot point an action at
   another address without the signature failing. A snapshot issued before 1.19 has no address
   and is answered with a reload instruction.
-- **An older snapshot is still a valid one.** Nothing marks a snapshot as used, so a client can
-  send back any snapshot it was given in the last 12 hours instead of the newest. `@locked`
-  stops the browser changing a value; it does not stop it rewinding to an earlier one. State
-  that must only move forward (attempts left, the step of a checkout, a balance) belongs in
-  the database or the session, not only in a `@locked` field.
+- **An older snapshot is still a valid one, unless the component opts out.** Plain `@locked`
+  marks nothing as used, so a client can send back any snapshot it was given in the last 12
+  hours instead of the newest. `@locked` stops the browser changing a value; it does not stop
+  it rewinding to an earlier one. State that must only move forward (attempts left, the step of
+  a checkout, a balance) needs
+  [`@locked({ monotonic: true })`](/docs/flow/decorators#values-that-only-move-forward), which
+  refuses a snapshot older than one the component already acted on, or a home the browser never
+  holds, in the database or the session.
 
 ## What the browser can call and write
 
 Nothing is reachable unless you opt in.
 
 - **Methods:** only those marked `@expose` can be called. A call to any other name is refused
-  and logged as a warning.
+  and logged as a warning. An exposed method can still be refused per call, below.
 - **Fields:** only `@expose` fields can be written, through `flow:model` or `$set`. `@locked`
   fields travel in the snapshot and cannot be written. A `@reactive` prop on a child component
-  is written by its parent on each render, and can also be written by the browser, so do not
-  use one to carry an id the child trusts.
+  is written by its parent on each render and cannot be written by the browser: the parent's
+  values reach the child signed for it. A `@modelable` prop is the child's to write too.
 - **Arguments are client input.** `onClick={() => this.remove(post.id)}` sends the id from the
   browser, and a client can send any id. Check that the record belongs to the user inside the
   action, exactly as you would in a controller:
@@ -55,9 +58,49 @@ Nothing is reachable unless you opt in.
   }
   ```
 
+- **Uploads belong to whoever uploaded them.** The reference `/__flow/upload` returns is
+  signed with the uploader's user id and an expiry six hours out, the time the temporary file is
+  kept. Another user's `$set` of it, or one after it expires, clears the field instead. See
+  [File uploads](/docs/flow/forms#file-uploads).
 - **`onMount()` can be asked for again.** The browser may send a refresh at any time, which
   runs `onMount()` once more. Use it to load state, not for an effect that must happen once
   (sending a mail, charging a card).
+
+## Authorizing each action
+
+Route middleware decides who may load the page. Which of its actions a user may call is often a
+narrower question, and two places answer it before the action body runs:
+
+- **`@can(ability, model?)`** checks a policy ability through the app's Gate (`@zerotal/auth`),
+  with the model read off the component when the call arrives: the same policy a controller
+  uses. Pair it with `@expose`; it does not expose a method by itself.
+- **`beforeAction(name, args)`** runs before every exposed method, after the `@can` rules allow
+  it. Return `false`, or throw, to refuse.
+
+```tsx fragment
+export class ProjectPage extends Component {
+  @locked project!: Project;
+
+  @expose
+  @can("update", (page) => page.project)
+  async rename(name: string) {
+    await this.project.merge({ name }).save();
+  }
+
+  @expose async archive() {
+    await this.project.merge({ archived: true }).save();
+  }
+
+  override beforeAction(name: string) {
+    if (this.project.archived) return name !== "archive" && name !== "rename";
+  }
+}
+```
+
+A refused call does not run, and the browser is answered as for a method that is not exposed:
+`Method … not allowed`, logged and counted the same way. Neither runs for the built-in calls
+(`$set` and the rest), and neither runs when server code calls the method. Arguments are still
+client input: `@can` reads the model from the component, not from what the browser sent.
 
 ## What runs on every action
 
@@ -81,7 +124,11 @@ A frame is checked in this order, and the first failure answers it:
 | The page class is registered          | `Unknown component`    | `unknown_component`  | No                       |
 | Route and persistent middleware pass  | A redirect or an error | `blocked`            | By the middleware        |
 | The snapshot belongs to this user     | Reload instruction     | `session_changed`    | No                       |
+| It is not older than one acted on¹    | Reload instruction     | `snapshot_replayed`  | No                       |
 | The method is `@expose`d              | `Method … not allowed` | `method_not_allowed` | Warning, counted (below) |
+| Its `@can` rules and `beforeAction`   | `Method … not allowed` | `method_not_allowed` | Warning, counted (below) |
+
+¹ Only for a component with a `@locked({ monotonic: true })` field.
 
 A frame that fails one of the first three checks never reaches your middleware, starts no
 session and loads no page. Once a frame passes them, an error thrown outside the action body (a
@@ -117,8 +164,8 @@ not fix the page does not reload it again until an action has succeeded in betwe
 
 ### The invalid-frame count
 
-Malformed frames, frames that do not verify and calls to a method that is not exposed are
-counted per client address, in ten-minute windows, so that a client sending them in a loop
+Malformed frames, frames that do not verify, calls to a method that is not exposed and calls
+an action's authorization refuses are counted per client address, in ten-minute windows, so that a client sending them in a loop
 cannot fill your log. The first ten in a window are each logged as a warning. The eleventh logs
 one line saying the rest will be refused quietly, and from then on that address's bad frames are
 answered `Too many invalid requests` with nothing logged, until the window ends. Across all

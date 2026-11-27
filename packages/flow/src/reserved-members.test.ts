@@ -27,6 +27,7 @@ const DOCUMENTED = [
   "$refresh",
   "$set",
   "addError",
+  "beforeAction",
   "bind",
   "cancelled",
   "child",

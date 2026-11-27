@@ -11,6 +11,49 @@ change.
 
 ## [Unreleased]
 
+### Security
+
+- **BREAKING:** **The browser can no longer write a `@reactive` prop.** The parent sets it on
+  every render, but `@reactive` also exposed the field, so any client could `$set` it to a value
+  the parent never passed. A `$set` or `flow:model` write to a `@reactive` field that is not also
+  `@modelable` is now ignored, as a `@locked` one is. The parent's values travel to the child
+  signed for that child (`data-flow-props-sig`) and are applied with the new `$props` built-in,
+  so parent-to-child updates keep working with no change. An app that wrote a `@reactive` prop
+  from the browser (`$flow.$set("amount", …)`, a `value=` bound to it) must mark the field
+  `@modelable` if the child owns it too, or make it `@expose` if it is not a parent's prop.
+- **`@locked({ monotonic: true })` refuses a snapshot older than one already acted on.** Plain
+  `@locked` stops the browser editing a value but not rewinding it: any snapshot issued to the
+  same user in the last twelve hours verifies. A component with a monotonic field carries a
+  sequence number from a per-component counter kept in the session, and a frame whose number is
+  not higher than the last accepted one is refused with a reload instruction. Needs
+  `SessionMiddleware` and a server-side session store. Plain `@locked` is unchanged; the docs
+  now say what it does not cover.
+- **Per-action authorization.** `beforeAction(name, args)` on `Component` runs before every
+  exposed method the browser calls; return `false` or throw to refuse. `@can(ability, model?)`
+  checks a policy ability through the app's Gate before the action runs, for example
+  `@expose @can("update", (page) => page.project)`. A refused call does not run and is answered
+  and logged like a call to a method that is not exposed. `@zerotal/flow` still does not depend
+  on `@zerotal/auth`: the Gate is found in the container.
+- **BREAKING:** **Under `cspSafe` the boot fails for any registered component that would render
+  through the runtime.** Pages with no source file under the page tree (a package's pages, pages
+  registered from code whose class no file exports) and children registered on first render
+  skipped the compiler and rendered through the eval-based runtime anyway. The boot now lists
+  every such component and stops, and a component first registered after a cspSafe boot is
+  refused when it renders. An app running `cspSafe` must register its child components at boot
+  with `registerComponent(Child)` from a service provider, with each class exported from a file
+  under `app/flow/components/` or `app/flow/pages/` (now searched too), and must not register
+  pages from a package that cannot be compiled.
+- **BREAKING:** **Upload references are tied to the uploader and expire.** The reference
+  `/__flow/upload` returns is now signed with the uploader's user id and an expiry six hours
+  out (as long as the temp file is kept), and `$set` refuses one issued to another user or past
+  its expiry, clearing the field. References issued by 1.18 are refused. `makeSignedRef()` takes
+  the user (`{ sub }`) and reads the signed-in user when it is not given; code that called it
+  outside a request must pass one.
+- **BREAKING:** **Two page classes with the same name are an error at registration.** 1.18.4
+  warned; the second registration now throws `FlowPageNameCollisionError` naming both routes,
+  because the second class would take over the first one's actions. Rename one of the classes
+  (two anonymous `export default class extends Component` pages are both named `default`).
+
 ### Changed
 
 - **BREAKING:** an action runs against the page's real address. The URL the page was rendered at
@@ -37,6 +80,12 @@ change.
   calls `preventDefault()`, the browser shows one through `flow:flash`. An app that already shows
   its own message for these errors shows two: call `e.preventDefault()` in its `flow:error`
   listener to keep only its own.
+- **Uploads stream to disk.** `/__flow/upload` read the whole body with `formData()` and then
+  copied the file into a second buffer to store it. It now reads the multipart stream chunk by
+  chunk into a temporary file, stops as soon as the file passes the size limit (`422`), and
+  hands the storage disk a file-backed `Blob`.
+- The readers of the signed-in user (snapshot ownership, durable keys, the upload endpoint) use
+  `currentUser()` / `currentUserId()` from `@zerotal/core/auth` instead of casting the context.
 
 ### Added
 

@@ -192,13 +192,19 @@ function _applyChildBindings(from: Element, to: Element): void {
   }
 
   const baseline = _modelBaselineFor(childId);
+  let changed = false;
   for (const [k, v] of Object.entries(props)) {
     const nextJson = JSON.stringify(v);
     baseline.set(k, nextJson); // parent-originated → suppress echo
     if (JSON.stringify(child.reactive[k]) === nextJson) continue;
     child.reactive[k] = v; // reactive first (proxy), then raw target
     child.ephemeral[k] = v;
-    _callAction(child, "$set", [k, v]); // re-render child with the new prop
+    changed = true;
+  }
+  // Re-render the child with the parent's values. The server writes a @reactive prop only from
+  // the JSON the parent signed for this child, so it is forwarded exactly as it arrived.
+  if (changed) {
+    _callAction(child, "$props", [propsRaw, to.getAttribute("data-flow-props-sig") ?? ""]);
   }
 }
 

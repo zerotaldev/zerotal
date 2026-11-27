@@ -2265,6 +2265,18 @@
     },
     {
       "file": "docs/context.md",
+      "heading": "Reading the user without the auth package",
+      "ordinal": 0,
+      "hash": "u2zqeap7mr0g"
+    },
+    {
+      "file": "docs/context.md",
+      "heading": "Reading the user without the auth package",
+      "ordinal": 1,
+      "hash": "17botckbnujx"
+    },
+    {
+      "file": "docs/context.md",
       "heading": "Route-model bindings",
       "ordinal": 0,
       "hash": "22wlwjmhkf60"
@@ -3249,6 +3261,12 @@
     },
     {
       "file": "docs/flow/components.md",
+      "heading": "CSP-safe mode",
+      "ordinal": 1,
+      "hash": "4vbi9594f9ih"
+    },
+    {
+      "file": "docs/flow/components.md",
       "heading": "Drawer",
       "ordinal": 0,
       "hash": "1l9v7rsknppz"
@@ -3417,6 +3435,12 @@
     },
     {
       "file": "docs/flow/decorators.md",
+      "heading": "The @can decorator",
+      "ordinal": 0,
+      "hash": "2vtwcfiezk9o"
+    },
+    {
+      "file": "docs/flow/decorators.md",
       "heading": "The @computed decorator",
       "ordinal": 0,
       "hash": "1g8n92vcmlio"
@@ -3426,12 +3450,6 @@
       "heading": "The @expose decorator",
       "ordinal": 0,
       "hash": "77odoczo7rin"
-    },
-    {
-      "file": "docs/flow/decorators.md",
-      "heading": "The @locked decorator",
-      "ordinal": 0,
-      "hash": "1detsr18x068"
     },
     {
       "file": "docs/flow/decorators.md",
@@ -3510,6 +3528,18 @@
       "heading": "The errors API",
       "ordinal": 0,
       "hash": "24i72cwich6c"
+    },
+    {
+      "file": "docs/flow/decorators.md",
+      "heading": "Values that only move forward",
+      "ordinal": 0,
+      "hash": "2j17g5v89y3q"
+    },
+    {
+      "file": "docs/flow/decorators.md",
+      "heading": "Values that only move forward",
+      "ordinal": 1,
+      "hash": "1detsr18x068"
     },
     {
       "file": "docs/flow/events.md",
@@ -4494,6 +4524,12 @@
       "heading": "The Router.flow method",
       "ordinal": 0,
       "hash": "1uhabwwbwxfy"
+    },
+    {
+      "file": "docs/flow/security.md",
+      "heading": "Authorizing each action",
+      "ordinal": 0,
+      "hash": "1isephom373a"
     },
     {
       "file": "docs/flow/security.md",

@@ -46,7 +46,26 @@ An ORM model is the exception: only its id travels in the snapshot and the row i
 
 A `value={this.x}` binding on a `@locked` property renders as a read-only display — not an editable field.
 
-**What `@locked` does not cover.** The client cannot write a `@locked` field, and cannot forge a snapshot. It can send back an older snapshot it was given: one stays valid for the same user for 12 hours. So a `@locked` value can be rewound to an earlier value the server itself issued. That is harmless for what a page displays and wrong for anything that counts: attempts left, a wizard step that must not be skipped back, a one-time discount. Keep those where the browser never holds them, in the database or in a `@session` field. See [The snapshot](/docs/flow/security#the-snapshot).
+**What `@locked` does not cover.** The client cannot write a `@locked` field, and cannot forge a snapshot. It can send back an older snapshot it was given: one stays valid for the same user for 12 hours. So a `@locked` value can be rewound to an earlier value the server itself issued. That is harmless for what a page displays and wrong for anything that counts: attempts left, a wizard step that must not be skipped back, a one-time discount. Mark those `@locked({ monotonic: true })`, below, or keep them where the browser never holds them, in the database or in a `@session` field. See [The snapshot](/docs/flow/security#the-snapshot).
+
+### Values that only move forward
+
+`@locked({ monotonic: true })` refuses a snapshot older than one the component has already acted on. Each snapshot it issues carries a number from a counter kept in the session, one counter per component instance, and a frame is accepted only when its number is higher than the last one accepted. Sending back an earlier copy of the page, or the same one twice, is refused, and the browser is told to reload:
+
+```tsx fragment
+export class RedeemPage extends Component {
+  @locked({ monotonic: true }) attemptsLeft = 3;
+  @expose code = "";
+
+  @expose async redeem() {
+    if (this.attemptsLeft === 0) return this.addError("code", "No attempts left.");
+    this.attemptsLeft--;
+    // ...
+  }
+}
+```
+
+The options are `LockedOptions`; `monotonic` is the only one. The counter lives in the session, so the route needs `SessionMiddleware` (it is in `flow.persistentMiddleware` by default), and a session store the browser cannot rewind either: a server-side driver, not the cookie driver, whose whole session the browser holds. Two tabs on the same page each have their own counter. One option on any field turns it on for the whole component. A session tracks the 32 components used most recently; a page untouched past that reloads on its next action.
 
 Use `@locked` for anything the server owns: a record the route resolved, results loaded in `onMount()`, computed totals, child props from the parent:
 
@@ -280,6 +299,39 @@ An `@expose`d method that runs on the server but **skips the re-render cycle**. 
 
 Because the render cycle is skipped, `@renderless` actions are faster and cheaper for effects that don't produce UI output.
 
+## The @can decorator
+
+Checks a policy ability before an action runs. The second argument, a `CanModel`, reads the
+model the ability is about off the component when the browser calls the action; omit it for an
+ability with no model. The check goes through the app's Gate from `@zerotal/auth`, so it is the
+same policy a controller uses:
+
+```tsx fragment
+export class PostPage extends Component {
+  @locked post!: Post;
+
+  @expose
+  @can("update", (page) => page.post)
+  async publish() {
+    await this.post.merge({ status: "published" }).save();
+  }
+
+  @expose
+  @can("viewAny")
+  @can("delete", (page) => page.post)
+  async remove() {
+    await this.post.delete();
+    this.redirect("/posts");
+  }
+}
+```
+
+Several rules on one action must all allow, checked top to bottom. A denied call does not run
+and is answered as a call to a method that is not exposed would be. `@can` does not expose a
+method: pair it with `@expose`. For a check no policy expresses, override `beforeAction(name,
+args)`, which runs after the `@can` rules on every exposed method. See
+[Authorizing each action](/docs/flow/security#authorizing-each-action).
+
 ## The @on decorator
 
 Registers a method as a listener for cross-component events dispatched via `this.dispatch()`. The method is implicitly exposed — no separate `@expose` needed:
@@ -348,7 +400,7 @@ Pass the prop from the parent:
 
 Unlike `@locked`, `@reactive` props are **live** — the parent keeps them current on every round-trip. See [Layouts & Composition](/docs/flow/layouts#reactive-props) for the full pattern.
 
-A `@reactive` prop is also writable from the browser, like an `@expose` field: that is how the parent's new value reaches the child. Do not use one for a value the child trusts, such as the id of the account it acts on. Pass that as a `@locked` prop, or re-check it in the action.
+The browser cannot write a `@reactive` prop. The parent's values reach the child signed for that child, and a `$set` or `value=` write to the field is refused, as for a `@locked` one. A prop the child also writes back is `@modelable`, below. The values a parent sent earlier remain valid for that child, so a value the child must not be handed again (the id of the account it acts on, say) is still re-checked in the action.
 
 ## The @modelable decorator
 
@@ -391,6 +443,7 @@ See [Layouts & Composition](/docs/flow/layouts#two-way-props) for the full `@mod
 | ----------------------------------------------- | --------------------------------------------------------------------- |
 | `@expose prop`                                  | Synced to client; client can mutate via `value=` or client expression |
 | `@locked prop`                                  | Synced to client for display only; client cannot change it            |
+| `@locked({ monotonic: true }) prop`             | Locked, and an older snapshot of the component is refused             |
 | `@url prop`                                     | Two-way, AND synced to the URL query string                           |
 | `@url({ as: "q" }) prop`                        | URL-synced with a custom query parameter name                         |
 | `@url({ history: "push" }) prop`                | URL-synced; browser history entry pushed on each change               |
@@ -403,10 +456,11 @@ See [Layouts & Composition](/docs/flow/layouts#two-way-props) for the full `@mod
 | `@computed get prop()`                          | Derived; not in snapshot; memoized per render pass                    |
 | `@expose method`                                | Callable from the browser via WebSocket                               |
 | `@expose @renderless method`                    | Callable from browser; skips re-render cycle                          |
+| `@expose @can("update", (p) => p.post) method`  | Callable only when the policy allows `update` on `this.post`          |
 | `@on("event") method`                           | Listens for cross-component events (auto-exposed)                     |
 | `@on("socket:channel,Event") method`            | Listens for real-time server broadcasts                               |
 | `@on((self) => "socket:…") method`              | Same, with the channel resolved per instance (record ids)             |
-| `@reactive prop`                                | Child prop; parent re-pushes on change, child re-renders              |
+| `@reactive prop`                                | Child prop; parent re-pushes on change; the browser cannot write it   |
 | `@modelable prop`                               | Two-way child prop; writes from child flow back to parent             |
 
 ## Action helpers

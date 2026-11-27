@@ -840,6 +840,15 @@ When on, the client runtime swaps Alpine's evaluator for an eval-free interprete
 
 In CSP mode, **every page must AOT-compile** — an unsupported expression fails the build loudly rather than degrading silently.
 
+That covers every registered component, not only those the compiler happened to find. The boot lists each one that would render through the runtime and stops: a page a package registers, a page or component whose class no file under `app/flow/pages/` or `app/flow/components/` exports, and one the compiler could not read. A child component is registered the first time a parent renders it, after the boot, so under CSP mode it is refused there, naming it. Register children at boot instead, from a service provider:
+
+```typescript fragment
+// app/providers/AppServiceProvider.ts
+override async boot() {
+  registerComponent(ProfileCard); // exported from app/flow/components/ProfileCard.tsx
+}
+```
+
 **Supported in CSP mode:** `onClick={this.save}`, `onClick={() => this.count++}`, `value={this.x}`, `show={this.flag}`, member access (`$flow.user.name`), method calls with args, comparisons, arithmetic, ternaries, `&&`/`||`, string concat, array/object literals.
 
 **Compile-time error (move to a server action):** arrow handlers that use the event (`(e) => …`), block-body arrows, template literals (`` `${x}` `` — use `a + b`), `.filter(i => …)`, computed access (`obj[key]`), spread.

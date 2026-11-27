@@ -1,10 +1,10 @@
 import { describe, it, expect, afterEach } from "bun:test";
 import { Component } from "./Component.ts";
-import { registerPage, getPage, _getPageEntries } from "./registry.ts";
+import { registerPage, getPage, _getPageEntries, FlowPageNameCollisionError } from "./registry.ts";
 
 /**
- * Pages are found by class name, so a second page class with the same name takes over the
- * first one's actions. That is an app's mistake, and it is now said out loud.
+ * Pages are found by class name, so a second page class with the same name would take over the
+ * first one's actions. That is an app's mistake, and registration refuses it.
  */
 const warned: string[] = [];
 const originalWarn = console.warn;
@@ -31,19 +31,27 @@ function pageNamed(name: string): typeof Component {
 }
 
 describe("two page classes with one name", () => {
-  it("warns once, naming both routes", () => {
-    capture();
-    registerPage("/projects", pageNamed("CollidingIndex"));
-    registerPage("/tasks", pageNamed("CollidingIndex"));
-    registerPage("/tasks", pageNamed("CollidingIndex"));
+  it("is an error at registration, naming both routes", () => {
+    const First = pageNamed("CollidingIndex");
+    registerPage("/projects", First);
 
-    expect(warned).toHaveLength(1);
-    expect(warned[0]).toContain('Two page classes are named "CollidingIndex"');
-    expect(warned[0]).toContain("/projects");
-    expect(warned[0]).toContain("/tasks");
+    let thrown: unknown;
+    try {
+      registerPage("/tasks", pageNamed("CollidingIndex"));
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(FlowPageNameCollisionError);
+    const message = (thrown as Error).message;
+    expect(message).toContain('Two page classes are named "CollidingIndex"');
+    expect(message).toContain("/projects");
+    expect(message).toContain("/tasks");
+    // The first page keeps its actions: nothing was swapped in before the refusal.
+    expect(getPage("CollidingIndex")?.PageClass).toBe(First);
   });
 
-  it("does not warn for the same class registered again, or a fresh copy at the same path", () => {
+  it("allows the same class registered again, or a fresh copy at the same path", () => {
     capture();
     const First = pageNamed("CollidingIndex");
     registerPage("/projects", First);

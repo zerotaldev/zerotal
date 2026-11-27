@@ -298,6 +298,64 @@ describe("Extended request capture", () => {
     }
   });
 
+  it("keeps a header named like a secret out of the wildcard, but records it by name", async () => {
+    const send = async () => {
+      const ctx = HttpContext.fake("http://localhost/keys", {
+        headers: { "x-api-key": "sk-live", "x-csrf-token": "t0k", "x-tenant": "acme" },
+      });
+      const startMs = Date.now();
+      await RequestContext.run(ctx, async () => {
+        ctx.response = new Response("ok");
+      });
+      FrameworkEvents.emit(new RequestHandled(ctx, startMs, Date.now() - startMs));
+      return traceStore().all()[0]!;
+    };
+
+    _setHeaderAllowlist(["*"]);
+    try {
+      const t = await send();
+      expect(t.headers["x-api-key"]).toBeUndefined();
+      expect(t.headers["x-csrf-token"]).toBeUndefined();
+      expect(t.headers["x-tenant"]).toBe("acme");
+    } finally {
+      _setHeaderAllowlist([]);
+    }
+
+    // Named on its own, it is a choice rather than a wildcard catching something.
+    _setHeaderAllowlist(["x-api-key"]);
+    try {
+      expect((await send()).headers["x-api-key"]).toBe("sk-live");
+    } finally {
+      _setHeaderAllowlist([]);
+    }
+  });
+
+  it("masks query-string values whose name says they are a secret", async () => {
+    await runRequest("http://localhost/reset?token=abc123&signature=s1g&page=2");
+    const t = traceStore().all()[0]!;
+    expect(t.queryParams).toEqual({ token: "‹redacted›", signature: "‹redacted›", page: "2" });
+  });
+
+  it("masks a sensitive route parameter in the recorded path", async () => {
+    await runRequest("http://localhost/verify-email/abc123", async (c) => {
+      (c as unknown as Record<string, unknown>)["_routeDef"] = {
+        pattern: "/verify-email/:token",
+        controller: "FileRoute",
+        action: "handle",
+      };
+    });
+    expect(traceStore().all()[0]!.path).toBe("/verify-email/‹redacted›");
+
+    await runRequest("http://localhost/projects/42", async (c) => {
+      (c as unknown as Record<string, unknown>)["_routeDef"] = {
+        pattern: "/projects/:id",
+        controller: "FileRoute",
+        action: "handle",
+      };
+    });
+    expect(traceStore().all()[0]!.path).toBe("/projects/42");
+  });
+
   it("keeps a custom header out until it is asked for", async () => {
     const ctx = HttpContext.fake("http://localhost/custom", {
       headers: { "x-tenant": "acme" },

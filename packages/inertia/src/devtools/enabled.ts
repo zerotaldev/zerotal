@@ -6,6 +6,7 @@
  * serving request headers in production.
  */
 import { config, devSurfacesEnabled } from "@zerotal/core";
+import { _isLocalDevRequest } from "@zerotal/core/http";
 import type { InertiaDevtoolsConfig } from "../config.ts";
 import { DEVTOOLS_API_PREFIX } from "./types.ts";
 
@@ -50,15 +51,29 @@ export function isRecordablePath(pathname: string): boolean {
 /**
  * Whether this request may read the recorded entries.
  *
- * A dev process always may — a gate that can lock a developer out of their own
- * machine gets switched off, and then nothing is gated. Anywhere else the app's
- * `gate` decides, and the absence of one is a refusal rather than a default
- * allow: an app that turned the recorder on in production without saying who
- * may read it has not made a decision this code should make for it.
+ * On a development machine, a request from that machine always may — a gate
+ * that can lock a developer out of their own machine gets switched off, and then
+ * nothing is gated. A request from anywhere else needs the app's `gate`: the dev
+ * server listens on every interface, and the entries hold every page's props.
+ * "From this machine" means a loopback socket address and a loopback `Host`, so
+ * a page on another site that points its own domain at `127.0.0.1` is refused
+ * too. Outside development the `gate` decides every request, and the absence of
+ * one is a refusal rather than a default allow: an app that turned the recorder
+ * on in production without saying who may read it has not made a decision this
+ * code should make for it.
+ *
+ * A gate that throws has not said yes.
+ *
+ * @param request - The request asking.
+ * @param peer - The socket address it came from, when the caller can read one.
  */
-export async function devtoolsAuthorized(request: Request): Promise<boolean> {
-  if (devSurfacesEnabled()) return true;
+export async function devtoolsAuthorized(request: Request, peer?: string | null): Promise<boolean> {
+  if (devSurfacesEnabled() && _isLocalDevRequest(request, peer)) return true;
   const gate = devtoolsSettings().gate;
   if (!gate) return false;
-  return await gate(request);
+  try {
+    return (await gate(request)) === true;
+  } catch {
+    return false;
+  }
 }

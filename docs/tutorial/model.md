@@ -122,6 +122,16 @@ zerotal> await DB.table("tasks").get()
 []
 ```
 
-An empty list: the table exists and has no rows yet. Type `.exit` to leave.
+An empty list: the table exists and has no rows yet. Anything else can be imported at the
+prompt, the framework's modules and the app's own files alike, the way a file at the app's root
+would import them:
+
+```
+zerotal> import { Task } from "./app/models/Task"
+zerotal> await Task.query().count()
+0
+```
+
+Type `.exit` to leave.
 
 **Next:** [Routes and pages](/docs/tutorial/routes-and-pages).

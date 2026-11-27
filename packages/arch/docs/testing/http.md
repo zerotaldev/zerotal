@@ -331,6 +331,15 @@ res.assertInertia("Posts/Show", { post: { id: 1 } }); // props match partially
 res.assertInertiaProp("filters");
 ```
 
+To read the props themselves, name their type on `inertia()`. Nothing checks it at run time:
+it says what the test expects the page to have been given, the way the page component's own
+props type does, and it saves a cast on every read:
+
+```ts
+const page = res.inertia<{ posts: { id: number; title: string }[] }>();
+expect(page?.props.posts).toHaveLength(2);
+```
+
 ### Validation, whichever shape it arrives in
 
 A failed validation reaches the client two different ways: an API client gets
@@ -466,7 +475,7 @@ expect(ctx.response?.status).toBe(200);
 | `session`                                                                           | `(): Record<string, unknown> \| null`            | The decoded session.                                                           |
 | `assertInertia`                                                                     | `assertInertia(component?, props?): this`        | Assert the Inertia page and a partial prop match.                              |
 | `assertInertiaProp`                                                                 | `assertInertiaProp(key, value?): this`           | Assert a single Inertia prop.                                                  |
-| `inertia`                                                                           | `(): InertiaPage \| null`                        | The Inertia page object, from either wire shape.                               |
+| `inertia`                                                                           | `inertia<P>(): InertiaPage<P> \| null`           | The Inertia page object, from either wire shape.                               |
 | `exception`                                                                         | `(): unknown`                                    | The exception the request raised, if any.                                      |
 | `json`                                                                              | `json<T>(): T`                                   | Parse and return the full JSON body.                                           |
 | `text`                                                                              | `text(): string`                                 | Return the body as text.                                                       |

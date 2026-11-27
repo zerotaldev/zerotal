@@ -6,6 +6,7 @@ import {
   type TestApp,
 } from "zerotal/testing";
 import { Project } from "../app/models/Project";
+import type { Pagination, Project as ProjectRow } from "../resources/js/types";
 import { ProjectFactory } from "../database/factories/ProjectFactory";
 import { UserFactory } from "../database/factories/UserFactory";
 import { bootApp } from "./support";
@@ -16,6 +17,12 @@ import { bootApp } from "./support";
  * of the example (see "Remove the example" in the README).
  */
 let app: TestApp;
+
+/** What `projects/index` is given: the page's own props, as the test reads them. */
+interface ProjectsPage {
+  projects: ProjectRow[];
+  pagination: Pagination;
+}
 
 beforeAll(async () => {
   app = await bootApp();
@@ -41,8 +48,8 @@ describe("projects", () => {
     const page = (await app.actingAs(user).get("/projects"))
       .assertOk()
       .assertInertia("projects/index")
-      .inertia();
-    const projects = page?.props["projects"] as { name: string }[];
+      .inertia<ProjectsPage>();
+    const projects = page?.props.projects ?? [];
 
     expect(projects).toHaveLength(2);
     expect(projects.map((p) => p.name)).not.toContain("Not yours");
@@ -57,8 +64,8 @@ describe("projects", () => {
     });
     await ProjectFactory.for(user).create({ name: "Dark mode", description: "Themes." });
 
-    const page = (await app.actingAs(user).get("/projects?search=billing")).inertia();
-    const names = (page?.props["projects"] as { name: string }[]).map((p) => p.name).sort();
+    const page = (await app.actingAs(user).get("/projects?search=billing")).inertia<ProjectsPage>();
+    const names = (page?.props.projects ?? []).map((p) => p.name).sort();
 
     expect(names).toEqual(["Billing migration", "Status page"]);
   });
@@ -67,10 +74,10 @@ describe("projects", () => {
     const user = await UserFactory.create();
     await ProjectFactory.for(user).count(12).create();
 
-    const second = (await app.actingAs(user).get("/projects?page=2")).inertia();
+    const second = (await app.actingAs(user).get("/projects?page=2")).inertia<ProjectsPage>();
 
-    expect(second?.props["projects"]).toHaveLength(2);
-    expect(second?.props["pagination"]).toMatchObject({
+    expect(second?.props.projects).toHaveLength(2);
+    expect(second?.props.pagination).toMatchObject({
       page: 2,
       lastPage: 2,
       total: 12,

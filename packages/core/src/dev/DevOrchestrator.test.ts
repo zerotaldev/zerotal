@@ -180,3 +180,64 @@ describe("onServerRestart", () => {
     expect(h.events.indexOf("hook")).toBeLessThan(h.events.indexOf("spawn"));
   });
 });
+
+/**
+ * A Flow page save restarted the scheduler and the queue as well as the server. Both boot the
+ * app, so both parse every page: each save cost them a restart, and a page's syntax error parked
+ * the scheduler. Nothing they run reads a view, so a save that touched only views leaves them be.
+ */
+describe("onServerRestart after a file change", () => {
+  /** Record a changed file the way the watcher does, then run the restart it schedules. */
+  async function changeThenRestart(h: Harness, ...paths: string[]): Promise<void> {
+    const o = h.orchestrator as unknown as {
+      _changedPaths: Set<string>;
+      _requestRestart(): Promise<void>;
+    };
+    for (const path of paths) o._changedPaths.add(path);
+    const done = o._requestRestart();
+    await h.finishBuild();
+    await done;
+  }
+
+  const hooked = (): Harness =>
+    harness((events) => ({ onServerRestart: () => events.push("hook") }));
+
+  it("is skipped when only Flow views changed", async () => {
+    const h = hooked();
+    await changeThenRestart(h, "app/flow/pages/about.tsx", "app/flow/components/Card.tsx");
+    expect(h.events).toContain("spawn");
+    expect(h.events).not.toContain("hook");
+  });
+
+  it("still fires when any other backend file changed with them", async () => {
+    const h = hooked();
+    await changeThenRestart(h, "app/flow/pages/about.tsx", "app/schedules/Report.ts");
+    expect(h.events).toContain("hook");
+  });
+
+  it("still fires for a route file, a model or config", async () => {
+    for (const path of ["routes/web.ts", "app/models/User.ts", "config/app.ts"]) {
+      const h = hooked();
+      await changeThenRestart(h, path);
+      expect({ path, hook: h.events.includes("hook") }).toEqual({ path, hook: true });
+    }
+  });
+
+  it("still fires for the r key, whatever changed before it", async () => {
+    const h = hooked();
+    (h.orchestrator as unknown as { _changedPaths: Set<string> })._changedPaths.add(
+      "app/flow/pages/about.tsx",
+    );
+    const done = h.orchestrator.restartServer();
+    await h.finishBuild();
+    await done;
+    expect(h.events).toContain("hook");
+  });
+
+  it("judges each restart by its own changes, not the previous one's", async () => {
+    const h = hooked();
+    await changeThenRestart(h, "app/models/User.ts");
+    await changeThenRestart(h, "app/flow/pages/about.tsx");
+    expect(h.events.filter((e) => e === "hook")).toHaveLength(1);
+  });
+});

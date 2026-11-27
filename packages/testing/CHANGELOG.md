@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`TestResponse.inertia<P>()` reads the page's props typed.** Props came back as
+  `Record<string, unknown>`, so every read needed a cast (`page?.props["projects"] as …`). Name
+  the props' type, `inertia<{ projects: Project[] }>()`, and read `page?.props.projects`. The
+  default is unchanged, so existing tests compile as they are.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

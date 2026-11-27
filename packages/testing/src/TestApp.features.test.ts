@@ -365,4 +365,13 @@ describe("TestResponse.assertInertia()", () => {
     expect(res.inertia()).toBeNull();
     expect(() => res.assertInertia()).toThrow("no Inertia page object");
   });
+
+  it("reads the props as the type it is given, with no cast", async () => {
+    const res = await app.get("/inertia");
+    const page = res.inertia<{ posts: { id: number; title: string }[] }>();
+
+    // `posts` is typed here: a misspelt prop or a wrong field is a compile error.
+    const titles: string[] = (page?.props.posts ?? []).map((post) => post.title);
+    expect(titles).toEqual(["Hello"]);
+  });
 });

@@ -4,6 +4,7 @@
  */
 import { join } from "node:path";
 import { Command } from "../Command.ts";
+import { _rewriteImportDeclaration } from "./replImports.ts";
 
 const isSyntaxError = (error: unknown): boolean =>
   error != null && typeof error === "object" && (error as { name?: string }).name === "SyntaxError";
@@ -33,8 +34,16 @@ export class ReplCommand extends Command {
       Object.assign(sandbox, provider.replContext());
     }
 
-    const { createContext, runInContext } = await import("node:vm");
+    const { createContext, runInContext, constants } = await import("node:vm");
     const vmContext = createContext(sandbox);
+    // `import()` resolves as it would in a file at the app root: framework modules from the
+    // app's dependencies, the app's own files by a `./` path. Without a loader every
+    // `import()` failed with "A dynamic import callback was not specified".
+    const scriptOptions = {
+      filename: join(process.cwd(), "repl.ts"),
+      importModuleDynamically: constants.USE_MAIN_CONTEXT_DEFAULT_LOADER,
+    };
+    const run = (code: string): unknown => runInContext(code, vmContext, scriptOptions);
 
     const userFacing = ["app", "$", "DB", "Mail", "Cache", "Broadcast"].filter(
       (key) => key in sandbox,
@@ -92,13 +101,15 @@ export class ReplCommand extends Command {
     //
     // NOTE: Bun's vm throws an internal error class whose .name is 'SyntaxError'
     // but which is NOT instanceof the global SyntaxError. Use isSyntaxError().
-    const evaluate = async (line: string): Promise<void> => {
+    const evaluate = async (input: string): Promise<void> => {
+      // `import { X } from "m"` cannot run in a script; it becomes the `await import()` it means.
+      const line = _rewriteImportDeclaration(input);
       let result: unknown;
       let firstError: Error | undefined;
 
       // ① Sync
       try {
-        result = runInContext(line, vmContext);
+        result = run(line);
         if (result instanceof Promise) result = await result;
         if (result !== undefined) process.stdout.write(Bun.inspect(result, { colors }) + "\n");
         return;
@@ -110,10 +121,7 @@ export class ReplCommand extends Command {
       // ② Async expression — strip declaration keyword → global assignment persists
       const asyncLine = line.replace(/^(?:const|let|var)\s+/, "");
       try {
-        const promise = runInContext(
-          `(async () => { return (${asyncLine}); })()`,
-          vmContext,
-        ) as Promise<unknown>;
+        const promise = run(`(async () => { return (${asyncLine}); })()`) as Promise<unknown>;
         result = await promise;
         if (result !== undefined) process.stdout.write(Bun.inspect(result, { colors }) + "\n");
         return;
@@ -123,10 +131,7 @@ export class ReplCommand extends Command {
 
       // ③ Async statement fallback
       try {
-        const promise = runInContext(
-          `(async () => { ${asyncLine}; })()`,
-          vmContext,
-        ) as Promise<unknown>;
+        const promise = run(`(async () => { ${asyncLine}; })()`) as Promise<unknown>;
         await promise;
         return;
       } catch (error) {

@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MakePageCommand, _componentName, _pageStub } from "./MakePageCommand.ts";
+import {
+  MakePageCommand,
+  _componentName,
+  _pageStub,
+  _routeFile,
+  _routeStub,
+} from "./MakePageCommand.ts";
 
 class Collector {
   out = "";
@@ -91,9 +97,80 @@ describe("make:page", () => {
     expect(src).toContain("export default About;");
   });
 
+  it("says how to write the route when --route is not given", async () => {
+    await starter("tsx");
+    const out = await run({ name: "tasks/index" }, { layout: "", framework: "react" });
+    expect(out).toContain("--route");
+    expect(await Bun.file("app/routes/tasks/index.ts").exists()).toBe(false);
+  });
+
   it("says so when the layout it was asked for is not there", async () => {
     await starter("tsx");
     const out = await run({ name: "about" }, { layout: "PublicLayout", framework: "react" });
     expect(out).toContain("No PublicLayout.tsx");
+  });
+});
+
+// From the 1.18.2 and 1.18.3 walks: the React and Vue kits had no generator for a route, so a new
+// screen meant writing the route file by hand beside the page make:page wrote.
+describe("make:page --route", () => {
+  /** The starter's signed-in groups, so a new page lands where its own pages are. */
+  async function withGroups(root: string): Promise<void> {
+    await Bun.write(join(root, "app/routes/(auth)/(verified)/_middleware.ts"), "");
+  }
+
+  it("writes the GET route that renders the page, in the signed-in group", async () => {
+    const root = await starter("tsx");
+    await withGroups(root);
+    const out = await run({ name: "tasks/index" }, { layout: "", framework: "react", route: true });
+
+    const src = await Bun.file(join(root, "app/routes/(auth)/(verified)/tasks/index.ts")).text();
+    expect(src).toContain('import { Inertia } from "@zerotal/inertia";');
+    expect(src).toContain(
+      'export const GET = () => Inertia.render("tasks/index", { title: "Tasks" });',
+    );
+    expect(src).not.toContain("'");
+    expect(() => new Bun.Transpiler({ loader: "ts" }).transformSync(src)).not.toThrow();
+    expect(out).toContain("GET /tasks");
+    expect(out).toContain("route:types");
+  });
+
+  it("writes it at --path, parameters included, for Vue too", async () => {
+    const root = await starter("vue");
+    await withGroups(root);
+    await run({ name: "tasks/edit" }, { layout: "", framework: "vue", path: "tasks/[task]/edit" });
+
+    const src = await Bun.file(
+      join(root, "app/routes/(auth)/(verified)/tasks/[task]/edit.ts"),
+    ).text();
+    expect(src).toContain("// GET /tasks/:task/edit");
+    expect(src).toContain('Inertia.render("tasks/edit", { title: "Edit" })');
+  });
+
+  it("leaves a route that already serves the path alone", async () => {
+    const root = await starter("tsx");
+    await Bun.write(join(root, "app/routes/reports.ts"), "// mine\n");
+    const out = await run({ name: "reports" }, { layout: "", framework: "react", route: true });
+
+    expect(await Bun.file(join(root, "app/routes/reports.ts")).text()).toBe("// mine\n");
+    expect(out).toContain("already serves /reports");
+  });
+
+  it("maps a page name to its URL", () => {
+    const none = (): boolean => false;
+    expect(_routeFile("app/routes", "tasks/index", "", none)).toEqual({
+      file: "app/routes/tasks/index.ts",
+      url: "/tasks",
+      group: "",
+    });
+    expect(_routeFile("app/routes", "reports/monthly-totals", "", none).url).toBe(
+      "/reports/monthly-totals",
+    );
+    expect(_routeFile("app/routes", "x", "/projects/[project]/edit.ts", none).file).toBe(
+      "app/routes/projects/[project]/edit.ts",
+    );
+    expect(_routeStub("reports/monthly-totals", "/reports/monthly-totals")).toContain(
+      'title: "Monthly totals"',
+    );
   });
 });

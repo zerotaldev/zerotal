@@ -104,6 +104,7 @@ lighter; only a boot with something to compile pays for it. A page is compiled a
 
 - its own source changes;
 - a module it imports class lists from changes, or the import starts resolving to another file;
+- a module a component it uses comes from changes, however deep the component is nested;
 - the cached file for it is missing;
 - Flow itself is upgraded, or you switch [`cspSafe`](/docs/flow/components#csp-safe-mode) on or off.
 
@@ -134,7 +135,8 @@ Set `ZT_FLOW_COMPILE_LOG=1` to print what blocks each page. The common causes:
 | ----------------------------------------------------------------------- | --------------------------------------------------- |
 | `render()` with more than one `return`                                  | Build the branches into a variable and return once  |
 | A function call in a text child — including **`__()`**                  | See below                                           |
-| An imported child component in `render()` (`<Header/>`)                 | Inline it, or accept the fallback                   |
+| A component from a package, or one declared in the page's own file      | See below                                           |
+| A component whose own markup does not compile                           | See below                                           |
 | A `class` naming an imported constant it could not read                 | Export the constant as a plain string `const`       |
 | A `class` given as an array, or a `style={{ … }}` object                | Join the classes into one string; write `style="…"` |
 | A class that extends neither `Component` nor a class of yours that does | See below                                           |
@@ -148,6 +150,26 @@ out on the server when the page renders, and written as the runtime would write 
 bare attribute, `false` and `undefined` leaving it out, and a URL attribute with its scheme
 checked. It needs no client code, so it is legal under `cspSafe` too. A `value` on a `<textarea>`
 is the one exception: put the value inside the element instead.
+
+A page can use the app's own function components and stay compiled: a form shared by a create
+and an edit page, a page header, an icon. The compiled page calls the component, so what it
+renders is exactly what the runtime renders. The compiler reads each one first, through the
+page's imports, and calls it only when:
+
+- it is a function exported from one of the app's modules, imported by a relative path. A
+  component from a package, or one declared in the page's own file, keeps the page on the
+  runtime: move a local one into `app/flow/components/` and import it;
+- it returns its markup from one `return`, and that markup compiles under the same rules as a
+  page's, with nothing but its props to read. It may use other components on the same terms;
+- it holds no event handler and no directive that takes a value (`show=`, `model=`, `text=`).
+  Those are client code, which `cspSafe` has to see in the page itself. Put them on the page's
+  own elements and pass the component values;
+- the page passes it values, not functions, and does not pass a field of its own as `value=`,
+  `checked=`, `show=` or `text=`: on the runtime that becomes a binding to the field, and from
+  compiled output it would not.
+
+A component that fails one of these names itself in the `ZT_FLOW_COMPILE_LOG=1` output, with the
+line in its own file that stopped it.
 
 A page can extend a class of your own instead of `Component`, to share what every page needs (a
 head, a layout, reading the signed-in user), as long as that class is imported from a relative

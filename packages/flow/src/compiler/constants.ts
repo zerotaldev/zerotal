@@ -22,6 +22,7 @@
  * read are part of the cache key (see {@link staticStringsFingerprint}); otherwise editing the
  * shared file would leave every page that uses it serving its old classes.
  */
+import { dirname, relative, sep } from "node:path";
 import * as ts from "typescript";
 import {
   moduleDigest,
@@ -198,6 +199,80 @@ export function readImportedStrings(
     }
   }
   return { strings: imported, imports };
+}
+
+/** How many modules deep {@link readComponentImports} follows components into components. */
+const MAX_COMPONENT_MODULE_DEPTH = 6;
+
+/**
+ * Every module of the app's own a page's markup uses a component from, directly or through
+ * another component: the files a compiled page's verdict depends on.
+ *
+ * A compiled page calls a function component rather than inlining it, so its compiled output
+ * does not change when the component does. Whether it may call it does: a component that gains
+ * a handler can no longer be called from compiled output. So each file is recorded with a digest,
+ * for the cache key and the manifest, and a change to any of them compiles the page again.
+ *
+ * Specifiers are relative to the page, so the manifest's check resolves them from there. Only
+ * capitalised JSX tags imported from a relative module are followed.
+ *
+ * @param source - The page's text.
+ * @param filename - The page's path.
+ * @returns The modules, nearest first, each once.
+ */
+export function readComponentImports(source: string, filename: string): StaticImport[] {
+  const found: StaticImport[] = [];
+  const seen = new Set<string>();
+  const fromDir = dirname(filename);
+
+  const visit = (text: string, file: string, depth: number): void => {
+    if (depth >= MAX_COMPONENT_MODULE_DEPTH) return;
+    let sf: ts.SourceFile;
+    try {
+      const kind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+      sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind);
+    } catch {
+      return;
+    }
+
+    const tags = new Set<string>();
+    const collect = (node: ts.Node): void => {
+      const tag =
+        ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node) ? node.tagName : null;
+      if (tag && ts.isIdentifier(tag) && /^[A-Z]/.test(tag.text)) tags.add(tag.text);
+      ts.forEachChild(node, collect);
+    };
+    collect(sf);
+    if (tags.size === 0) return;
+
+    for (const statement of sf.statements) {
+      if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier))
+        continue;
+      const clause = statement.importClause;
+      if (!clause || clause.isTypeOnly) continue;
+      const names = [
+        ...(clause.name ? [clause.name.text] : []),
+        ...(clause.namedBindings && ts.isNamedImports(clause.namedBindings)
+          ? clause.namedBindings.elements.filter((e) => !e.isTypeOnly).map((e) => e.name.text)
+          : []),
+      ];
+      if (!names.some((name) => tags.has(name))) continue;
+
+      const specifier = statement.moduleSpecifier.text;
+      if (!specifier.startsWith("./") && !specifier.startsWith("../")) continue;
+      const target = resolveRelativeModule(file, specifier);
+      if (!target || seen.has(target)) continue;
+      seen.add(target);
+      const targetText = readModuleText(target);
+      let fromPage = relative(fromDir, target).split(sep).join("/");
+      if (!fromPage.startsWith(".")) fromPage = `./${fromPage}`;
+      found.push({ specifier: fromPage, file: target, digest: moduleDigest(targetText) });
+      if (targetText !== null) visit(targetText, target, depth + 1);
+    }
+  };
+
+  visit(source, filename, 0);
+  return found;
 }
 
 /** A class list with its whitespace collapsed to single spaces, as the browser reads it. */

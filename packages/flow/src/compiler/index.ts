@@ -46,6 +46,7 @@ async function _loadCompiler() {
     buildBindInjectedRender: transform.buildBindInjectedRender,
     describeBlocker: transform.describeBlocker,
     readImportedStrings: constants.readImportedStrings,
+    readComponentImports: constants.readComponentImports,
   };
 }
 
@@ -277,8 +278,20 @@ async function _buildPage(
   // ── Cache hit ────────────────────────────────────────────────────────
   // Class lists imported from a shared module are folded into the output, so the values
   // that were read are part of the cache key: editing that module must recompile its pages.
-  const { strings: constants, imports } = compiler.readImportedStrings(source, sourceFile);
-  const variant = staticStringsFingerprint(constants);
+  const { strings: constants, imports: stringImports } = compiler.readImportedStrings(
+    source,
+    sourceFile,
+  );
+  // The components the page calls decide whether it may stay compiled, so their text is part of
+  // the key too: a component that gains a handler sends its pages back through the compiler.
+  const components = compiler.readComponentImports(source, sourceFile);
+  const recorded = new Set(stringImports.map((entry) => entry.file));
+  const imports = [...stringImports, ...components.filter((entry) => !recorded.has(entry.file))];
+  const variant =
+    staticStringsFingerprint(constants) +
+    (components.length > 0
+      ? `c${Bun.hash(components.map((entry) => `${entry.file}\0${entry.digest}`).join("\n"))}`
+      : "");
   const recorder = (outcome: CompileOutcome) => () =>
     writeManifest(source, sourceFile, appRoot, cspSafe, outcome, variant, imports);
 

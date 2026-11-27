@@ -154,28 +154,28 @@ const token = await this.secret("API token:"); // input hidden on a Unix TTY
 
 ### Server & Development
 
-| Command                       | Description                                                     |
-| ----------------------------- | --------------------------------------------------------------- |
-| `bun zt dev`                  | Dev mode: the server plus every registered process (alias: `d`) |
-| `bun zt dev --only=server`    | Run only the named processes, comma-separated                   |
-| `bun zt dev --without=queue`  | Run everything except the named processes                       |
-| `bun zt dev --list`           | Print what would run, and which provider registered it          |
-| `bun zt dev --stream`         | Interleave prefixed output instead of drawing tabs              |
-| `bun zt dev --force-build`    | Rebuild assets even when the build cache says they're current   |
-| `bun zt serve`                | Start the HTTP server on `app.port`: `PORT`, else 3000          |
-| `bun zt serve --port 8080`    | Start on a custom port, over `PORT` and `app.port`              |
-| `bun zt serve --force`        | If the port is busy, stop whatever holds it                     |
-| `bun zt serve --auto-port`    | If the port is busy, start on the next free port                |
-| `bun zt reload`               | Hot-reload routes in the running server (sends SIGUSR2)         |
-| `bun zt status`               | Show live metrics from the running server                       |
-| `bun zt repl`                 | Start an interactive REPL with the bootstrapped app in scope    |
-| `bun zt worker`               | Start the background job worker process                         |
-| `bun zt worker --queue email` | Process a specific queue                                        |
-| `bun zt worker --once`        | Process one job then exit                                       |
-| `bun zt test`                 | Run the test suite in the `test` environment                    |
-| `bun zt test --randomize`     | Run tests in a random order; `--seed=<n>` replays one           |
-| `bun zt compile`              | Compile to a binary; Deployment has its limits (alias: `build`) |
-| `bun zt css:build`            | Build the Tailwind CSS bundle for production                    |
+| Command                       | Description                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `bun zt dev`                  | Dev mode: the server plus every registered process (alias: `d`)                            |
+| `bun zt dev --only=server`    | Run only the named processes, comma-separated                                              |
+| `bun zt dev --without=queue`  | Run everything except the named processes                                                  |
+| `bun zt dev --list`           | Print what would run, and which provider registered it                                     |
+| `bun zt dev --stream`         | Interleave prefixed output instead of drawing tabs                                         |
+| `bun zt dev --force-build`    | Rebuild assets even when the build cache says they're current                              |
+| `bun zt serve`                | Start the HTTP server on `app.port`: `PORT`, else 3000                                     |
+| `bun zt serve --port 8080`    | Start on a custom port, over `PORT` and `app.port`                                         |
+| `bun zt serve --force`        | If the port is busy, stop whatever holds it                                                |
+| `bun zt serve --auto-port`    | If the port is busy, start on the next free port                                           |
+| `bun zt reload`               | Hot-reload routes in the running server (sends SIGUSR2)                                    |
+| `bun zt status`               | Show live metrics from the running server                                                  |
+| `bun zt repl`                 | Start an interactive REPL with the bootstrapped app in scope; `import` works at the prompt |
+| `bun zt worker`               | Start the background job worker process                                                    |
+| `bun zt worker --queue email` | Process a specific queue                                                                   |
+| `bun zt worker --once`        | Process one job then exit                                                                  |
+| `bun zt test`                 | Run the test suite in the `test` environment                                               |
+| `bun zt test --randomize`     | Run tests in a random order; `--seed=<n>` replays one                                      |
+| `bun zt compile`              | Compile to a binary; Deployment has its limits (alias: `build`)                            |
+| `bun zt css:build`            | Build the Tailwind CSS bundle for production                                               |
 
 #### When the port is already taken
 

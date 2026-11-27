@@ -26,6 +26,24 @@ framework (React `.tsx` or Vue `.vue`) is auto-detected from the Inertia adapter
 installed; force it with `--framework vue` or `--framework react`. After writing the file,
 `make:page` regenerates the [page registry](#page-registry) automatically.
 
+### The route that serves it — --route
+
+Add `--route` to write the route that renders the page as well, so a new screen is served with
+nothing written by hand:
+
+```bash
+# in your project root
+bun zt make:page tasks/index --route
+bun zt make:page tasks/edit --path "tasks/[task]/edit"
+```
+
+The route is a file route exporting `GET`, at the page's own path (`tasks/index` serves
+`/tasks`), inside `app/routes/(auth)/(verified)/` when the app has that group, as the
+starters' signed-in pages are. It renders the page with the `title` its props ask for.
+`--path` writes it at another path, `[param]` segments included, and implies `--route`. A
+route that already serves the path is left alone. Run `bun zt route:types` afterwards, so
+`route()` knows the new name.
+
 ### Persistent layouts — --layout
 
 A page is wrapped in an Inertia persistent layout (the layout mounts once and survives

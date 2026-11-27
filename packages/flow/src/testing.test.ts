@@ -200,7 +200,24 @@ class GatedPage extends Component {
   }
 }
 
+class TakenPage extends Component {
+  override async render(): Promise<HtmlNode> {
+    return { html: "<p>the app's page</p>" };
+  }
+}
+
+/** A test-only page that happens to share the app's page's name. */
+const ImpostorPage = (() => {
+  class TakenPage extends Component {
+    override async render(): Promise<HtmlNode> {
+      return { html: "<p>the test's page</p>" };
+    }
+  }
+  return TakenPage;
+})();
+
 beforeAll(() => {
+  flowRoute("/flowtest-taken", TakenPage, [Recorder]);
   flowRoute("/flowtest-posts/:post", RoutedPage, [Recorder]);
   flowRoute("/flowtest-gated", GatedPage, [Gate]);
 });
@@ -321,5 +338,16 @@ describe("update() on a prop the parent owns", () => {
   it("says the server ignores the write, rather than passing", async () => {
     const t = await FlowTest.mount(ReactiveChild);
     await expect(t.update("limit", 9)).rejects.toThrow(/@reactive/);
+  });
+});
+
+describe("a test-only page named like one of the app's", () => {
+  it("borrows the name, and the app's page keeps its route and middleware after", async () => {
+    (await FlowTest.mount(ImpostorPage)).assertSee("the test's page");
+
+    seen.length = 0;
+    const real = await FlowTest.mount(TakenPage);
+    real.assertSee("the app's page");
+    expect(seen).toEqual(["/flowtest-taken"]);
   });
 });

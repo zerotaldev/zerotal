@@ -27,8 +27,6 @@ follows the Zerotal monorepo's unified versioning.
   the token, or with another session's, is refused, and that every form that posts on the
   public, auth and settings pages carries it.
 
-- **The Flow starter's `tests/render.ts` requests a page the way a visit does.** `renderPage()`
-
 - **BREAKING:** **The Flow starter's `tests/render.ts` requests a page the way a visit does.**
   `renderPage()`
   mounts it with `FlowTest` through its route's middleware and handler, as the given user, and

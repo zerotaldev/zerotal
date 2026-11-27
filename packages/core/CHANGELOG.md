@@ -42,7 +42,6 @@ follows the Zerotal monorepo's unified versioning.
   it. `--port` still wins when given.
 - **The browser reloads sooner after a backend save.** The reload client waited a fixed second
   between reconnect attempts; it now tries after 100 ms and backs off to a second.
-
 - **Saving a Flow page no longer restarts the scheduler and the queue under `bun zt dev`.** Both
   boot the app, so both parsed every page: each page save cost them a restart, and a syntax error
   in a page stopped the scheduler until the next save. A save that touches only files under

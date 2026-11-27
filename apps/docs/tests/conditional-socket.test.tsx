@@ -52,7 +52,7 @@ class StaticPage extends Component {
 }
 
 /** One interactive component is enough to need the socket. */
-class LivePage extends Component {
+class SocketTestLivePage extends Component {
   @expose count = 0;
   @expose bump(): void {
     this.count++;
@@ -79,7 +79,7 @@ describe.skipIf(!availability.available)("the socket is conditional", () => {
     browser = await FlowBrowser.serve(() => import("../bootstrap/app.ts").then((m) => m.default), {
       setup: () => {
         Router.flow("/__socket-test/static", StaticPage);
-        Router.flow("/__socket-test/live", LivePage);
+        Router.flow("/__socket-test/live", SocketTestLivePage);
       },
     });
   });

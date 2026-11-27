@@ -50,7 +50,7 @@ class Sibling extends Component {
   }
 }
 
-class IslandsPage extends Component {
+class IslandsTestPage extends Component {
   static title = "islands";
   @expose parentTicks = 0;
 
@@ -119,7 +119,7 @@ describe.skipIf(!availability.available)("islands and B16", () => {
     Bun.env.DATABASE_URL = ":memory:";
     browser = await FlowBrowser.serve(() => import("../bootstrap/app.ts").then((m) => m.default), {
       setup: () => {
-        Router.flow("/__islands/page", IslandsPage);
+        Router.flow("/__islands/page", IslandsTestPage);
         Router.flow("/__islands/selection", SelectionPage);
       },
     });

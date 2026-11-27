@@ -5,7 +5,7 @@ import {
   _relativeImport,
   _writeAppSource,
 } from "@zerotal/core/commands";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { generatePageRegistry } from "../PageRegistry.ts";
 import { DEFAULT_PAGES_DIR } from "../config.ts";
 import { _refreshRouteTypes } from "../scaffold/resource.ts";
@@ -81,14 +81,17 @@ export class MakeRouteCommand extends Command {
     const bad = _badSegment(path);
     if (bad !== undefined) {
       this.error(
-        `"${bad}" is not a route segment. Use letters, digits, - and _ in a name, ` +
-          "(group) for a group, and [param] or [...param] for a parameter (letters, digits and _).",
+        /^\[\.\.\./.test(bad)
+          ? `"${bad}": make:route does not write catch-all routes, because their value does not ` +
+              "arrive in http.params. Write that route by hand."
+          : `"${bad}" is not a route segment. Use letters, digits, - and _ in a name, ` +
+              "(group) for a group, and [param] for a parameter (letters, digits and _).",
       );
       process.exitCode = 1;
       return;
     }
     const file = `app/routes/${path}.ts`;
-    const taken = _sameRouteFiles(path).find((f) => existsSync(f));
+    const taken = _fileServing(path);
     if (taken !== undefined) {
       this.error(`${taken} already serves ${_urlOf(path)}.`);
       process.exitCode = 1;
@@ -111,7 +114,16 @@ export class MakeRouteCommand extends Command {
       .safe("inertia.pagesDir", DEFAULT_PAGES_DIR)
       .replace(/\\/g, "/")
       .replace(/\/+$/, "");
-    const pageFlag = String(this.flags["page"] ?? "").replace(/^\/+|\/+$/g, "");
+    const pageFlag = String(this.flags["page"] ?? "")
+      .replace(/\\/g, "/")
+      .replace(/^\/+|\/+$/g, "");
+    if (pageFlag !== "" && !pageFlag.split("/").every((s) => /^[A-Za-z0-9_-]+$/.test(s))) {
+      this.error(
+        `--page "${pageFlag}" is not a page name: use letters, digits, - and _, with / between folders.`,
+      );
+      process.exitCode = 1;
+      return;
+    }
     const page = methods.includes("GET") ? pageFlag || _pageName(path) : undefined;
 
     const params = _params(path).map((name) => {
@@ -204,7 +216,9 @@ export function _routePath(input: string): string {
 /**
  * The first segment of `path` that is not a name, a `(group)` or a `[param]`, or undefined when
  * every one is. `.` and `..` are refused, so the route cannot be written outside `app/routes/`,
- * and a parameter must be an identifier, since the route reads it as `http.params.<name>`.
+ * and a parameter must be an identifier, since the route reads it as `http.params.<name>`. A
+ * catch-all `[...rest]` is refused too: file routing serves it as `*`, and its value does not
+ * arrive in `http.params`.
  *
  * @internal Exported for tests.
  */
@@ -215,20 +229,27 @@ export function _badSegment(path: string): string | undefined {
       (s) =>
         !/^[A-Za-z0-9_-]+$/.test(s) &&
         !/^\([A-Za-z0-9_-]+\)$/.test(s) &&
-        !/^\[(?:\.\.\.)?[A-Za-z_][A-Za-z0-9_]*\]$/.test(s),
+        !/^\[[A-Za-z_][A-Za-z0-9_]*\]$/.test(s),
     );
 }
 
 /**
- * The files that would serve the same URL as `app/routes/<path>.ts`: `reports` and
- * `reports/index` are one route, in either extension.
+ * The route file under `dir` that already serves the URL `<dir>/<path>.ts` would, or undefined.
+ * Groups add nothing to a URL and `index` is its directory, so `reports`, `reports/index` and
+ * `(auth)/reports` are one route; two parameters in the same place match whatever their names.
  *
  * @internal Exported for tests.
  */
-export function _sameRouteFiles(path: string): string[] {
-  const base = path.endsWith("/index") ? path.slice(0, -"/index".length) : path;
-  const stems = path === "index" ? ["index"] : [base, `${base}/index`];
-  return stems.flatMap((s) => [`app/routes/${s}.ts`, `app/routes/${s}.tsx`]);
+export function _fileServing(path: string, dir = "app/routes"): string | undefined {
+  if (!existsSync(dir)) return undefined;
+  const shape = (p: string) => _urlOf(p).replace(/:[^/]+/g, ":");
+  const want = shape(path);
+  const files = readdirSync(dir, { recursive: true })
+    .map((entry) => String(entry).replace(/\\/g, "/"))
+    .filter((rel) => /\.tsx?$/.test(rel) && !/\.(test|spec|d)\.tsx?$/.test(rel))
+    .sort();
+  const hit = files.find((rel) => shape(rel.replace(/\.tsx?$/, "")) === want);
+  return hit === undefined ? undefined : `${dir}/${hit}`;
 }
 
 /** The segments that serve a URL: groups `(auth)` add none. */

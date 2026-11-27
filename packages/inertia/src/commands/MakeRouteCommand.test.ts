@@ -157,6 +157,31 @@ describe("make:route", () => {
     process.exitCode = 0;
     await Bun.write(join(root, "app/routes/about.tsx"), "");
     expect(await run("about/index")).toContain("app/routes/about.tsx already serves /about.");
+
+    // A group adds nothing to the URL, and a parameter matches another of any name.
+    process.exitCode = 0;
+    await Bun.write(join(root, "app/routes/(auth)/billing.ts"), "");
+    expect(await run("billing")).toContain("app/routes/(auth)/billing.ts already serves /billing.");
+    process.exitCode = 0;
+    await Bun.write(join(root, "app/routes/(auth)/projects/[id]/edit.ts"), "");
+    expect(await run("projects/[project]/edit")).toContain(
+      "app/routes/(auth)/projects/[id]/edit.ts already serves /projects/:project/edit.",
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("refuses a catch-all, whose value does not arrive in http.params", async () => {
+    const root = await starter();
+    expect(await run("docs/[...slug]")).toContain("does not write catch-all routes");
+    expect(process.exitCode).toBe(1);
+    expect(existsSync(join(root, "app/routes/docs/[...slug].ts"))).toBe(false);
+  });
+
+  it("refuses a --page that is not a page name", async () => {
+    const root = await starter();
+    expect(await run("reports", { page: "../../x" })).toContain("is not a page name");
+    expect(process.exitCode).toBe(1);
+    expect(existsSync(join(root, "app/routes/reports.ts"))).toBe(false);
   });
 
   it("refuses a path that leaves app/routes/, and a parameter that is not an identifier", async () => {
@@ -168,6 +193,7 @@ describe("make:route", () => {
     }
     expect(existsSync(join(root, "x.ts"))).toBe(false);
     expect(existsSync(join(root, "app/x.ts"))).toBe(false);
-    expect(_badSegment("(auth)/projects/[project]/[...rest]/monthly-report")).toBeUndefined();
+    expect(_badSegment("(auth)/projects/[project]/monthly-report")).toBeUndefined();
+    expect(_badSegment("docs/[...rest]")).toBe("[...rest]");
   });
 });

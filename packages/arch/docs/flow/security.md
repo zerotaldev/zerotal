@@ -73,8 +73,6 @@ own origin and `app.allowedOrigins`, so another site cannot drive a signed-in us
 
 A frame is checked in this order, and the first failure answers it:
 
-| Check                                 | Answer                 | Logged               |
-| ------------------------------------- | ---------------------- | -------------------- |
 | Check                                 | Answer                 | `code`               | Logged                   |
 | ------------------------------------- | ---------------------- | -------------------- | ------------------------ |
 | It has the shape of a call frame      | `Malformed frame`      | `malformed_frame`    | Warning, counted (below) |
@@ -88,7 +86,8 @@ A frame is checked in this order, and the first failure answers it:
 A frame that fails one of the first three checks never reaches your middleware, starts no
 session and loads no page. Once a frame passes them, an error thrown outside the action body (a
 render, `onBoot()`, a middleware) is answered with `code: "server_error"` and the message the
-visitor may see: the error's own outside development, one generic sentence in production.
+visitor may see: the error's own message in development, one generic sentence in production
+(unless `flow.exposeErrorMessages` is on).
 
 ### What the browser does with a refusal
 

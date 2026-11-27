@@ -80,6 +80,23 @@ describe("the hold a resync puts on a component's queue", () => {
     expect(await settles(_fullSyncInternals.queue("c1"))).toBe(true);
   });
 
+  it("keeps an action queued behind a timed-out one waiting until the full snapshot lands", async () => {
+    // A is in flight and B was clicked behind it. A's ack times out: the queue moves past A,
+    // and the hold is added after B. B must still not go out from A's old snapshot.
+    const ackA = _fullSyncInternals.inFlight("c1");
+    const sentB: string[] = [];
+    _fullSyncInternals.enqueue("c1", () => sentB.push("B"));
+
+    ackA(); // _timeOutAck: release A's ack, then hold for the full snapshot
+    _fullSyncInternals.begin("c1", () => true);
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(sentB).toEqual([]);
+
+    _fullSyncInternals.end("c1", () => true);
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(sentB).toEqual(["B"]);
+  });
+
   it("asks once more when another patch was set aside while it waited", async () => {
     // The reply to the first request may predate what the set-aside patch carried.
     let sends = 0;

@@ -701,8 +701,38 @@ function _timeOutAck(compId: string): void {
  * patch that could not be applied): the reply to the first may predate whatever that patch
  * carried, so one more is sent before the queue is released.
  */
-const _fullSyncs = new Map<string, { release: () => void; again: boolean; seq: number }>();
+const _fullSyncs = new Map<
+  string,
+  { release: () => void; held: Promise<void>; again: boolean; seq: number }
+>();
 let _fullSyncSeq = 0;
+
+/**
+ * Settles once no full sync holds `compId`'s queue. An action waits on it right before it
+ * reads `comp.snapshot`: one already queued when an ack timed out was ahead of the hold in the
+ * queue, and would otherwise go out from the snapshot the timed-out action started from.
+ */
+async function _afterFullSync(compId: string): Promise<void> {
+  for (let sync = _fullSyncs.get(compId); sync; sync = _fullSyncs.get(compId)) await sync.held;
+}
+
+/**
+ * Put `run` on `compId`'s serial queue: it starts once every earlier entry has settled and no
+ * full sync holds the component, and the queue moves on when the promise it returns settles.
+ */
+function _enqueue(compId: string, run: () => Promise<void>): void {
+  const prev = _queues.get(compId) ?? Promise.resolve();
+  _queues.set(
+    compId,
+    prev
+      .then(() => _afterFullSync(compId))
+      .then(run)
+      .catch((e) => {
+        console.error(e);
+        _resolveAck(compId);
+      }),
+  );
+}
 
 /**
  * Hold `compId`'s queue and ask the server for its whole snapshot, from `onMount()` again.
@@ -729,7 +759,7 @@ function _beginFullSync(compId: string, send: (id: string) => boolean = _sendFul
     compId,
     prev.then(() => held),
   );
-  _fullSyncs.set(compId, { release, again: false, seq: ++_fullSyncSeq });
+  _fullSyncs.set(compId, { release, held, again: false, seq: ++_fullSyncSeq });
   _staleComponents.delete(compId);
   if (!send(compId)) _abandonFullSync(compId);
 }
@@ -905,6 +935,8 @@ export const _fullSyncInternals = {
   abandon: (id: string): void => _abandonFullSync(id),
   fail: (id: string): void => _failFullSync(id),
   active: (id: string): boolean => _fullSyncs.has(id),
+  /** Queue an action as `_sendCall` does; `onSend` runs when it would read the snapshot and go out. */
+  enqueue: (id: string, onSend: () => void): void => _enqueue(id, async () => onSend()),
   /** The component's send queue: it settles when the next action could go out. */
   queue: (id: string): Promise<void> => _queues.get(id) ?? Promise.resolve(),
   /** Put an action in flight on the queue, as `_sendCall` does; resolve it to acknowledge it. */
@@ -939,52 +971,44 @@ function _sendCall(
   fixedUpdates?: Record<string, unknown>,
 ): void {
   const compId = comp.id;
-  const prev = _queues.get(compId) ?? Promise.resolve();
-  _queues.set(
+  _enqueue(
     compId,
-    prev
-      .then(
-        () =>
-          new Promise<void>((resolve) => {
-            const updates = fixedUpdates ?? _pendingUpdates(comp);
-            const frame = {
-              type: "call",
-              component: compId,
-              method,
-              args,
-              updates,
-              snapshot: comp.snapshot,
-            };
-            // Here is where the client writes riding along with this call are
-            // finally resolved, so it is the only place the panel can learn them.
-            const pending = _pendingActionByComp.get(compId);
-            if (pending && pending.method === method) pending.updates = updates;
-            // Safety net: never wedge the queue if a patch is dropped (server crash / HTTP error).
-            // A timed-out ack carries the same ambiguity as a dropped socket: the action may
-            // well have run. The queue stays held until a full snapshot has resynced the
-            // component, so the next action does not go out from one that no longer matches.
-            const armSafetyNet = (): void => _armAckTimer(compId, resolve);
+    () =>
+      new Promise<void>((resolve) => {
+        const updates = fixedUpdates ?? _pendingUpdates(comp);
+        const frame = {
+          type: "call",
+          component: compId,
+          method,
+          args,
+          updates,
+          snapshot: comp.snapshot,
+        };
+        // Here is where the client writes riding along with this call are
+        // finally resolved, so it is the only place the panel can learn them.
+        const pending = _pendingActionByComp.get(compId);
+        if (pending && pending.method === method) pending.updates = updates;
+        // Safety net: never wedge the queue if a patch is dropped (server crash / HTTP error).
+        // A timed-out ack carries the same ambiguity as a dropped socket: the action may
+        // well have run. The queue stays held until a full snapshot has resynced the
+        // component, so the next action does not go out from one that no longer matches.
+        const armSafetyNet = (): void => _armAckTimer(compId, resolve);
 
-            if (_ws && _ws.readyState === WebSocket.OPEN) {
-              _ws.send(JSON.stringify(frame));
-              _pendingAcks.set(compId, resolve);
-              armSafetyNet();
-            } else if (_httpMode && _isOnline) {
-              // HTTP fallback: the returned frames resolve the ack (a patch → _resolveAck).
-              _pendingAcks.set(compId, resolve);
-              _httpSend(frame, compId);
-              armSafetyNet();
-            } else {
-              const q = _offlineQueues.get(compId) ?? [];
-              q.push({ comp, method, args, updates: fixedUpdates ?? _pendingUpdates(comp) });
-              _offlineQueues.set(compId, q);
-              resolve();
-            }
-          }),
-      )
-      .catch((e) => {
-        console.error(e);
-        _resolveAck(compId);
+        if (_ws && _ws.readyState === WebSocket.OPEN) {
+          _ws.send(JSON.stringify(frame));
+          _pendingAcks.set(compId, resolve);
+          armSafetyNet();
+        } else if (_httpMode && _isOnline) {
+          // HTTP fallback: the returned frames resolve the ack (a patch → _resolveAck).
+          _pendingAcks.set(compId, resolve);
+          _httpSend(frame, compId);
+          armSafetyNet();
+        } else {
+          const q = _offlineQueues.get(compId) ?? [];
+          q.push({ comp, method, args, updates: fixedUpdates ?? _pendingUpdates(comp) });
+          _offlineQueues.set(compId, q);
+          resolve();
+        }
       }),
   );
 }
@@ -2033,6 +2057,10 @@ async function _handleServerFrame(
     // another (the reply to an action sent before the previous patch landed) is set aside, and
     // the whole snapshot is asked for instead; the queue stays held until it arrives.
     const decision = _patchBaseDecision(frame, comp.snapshot.checksum);
+    // The server sends a whole snapshot only when asked for one. One that arrives after its
+    // full sync was given up on (timed out, or refused) is a late reply: it may predate a patch
+    // applied since, and it is no action's ack, so it is dropped.
+    if (decision === "full" && !_fullSyncs.has(component)) return;
     if (decision === "resync") {
       if (!frame.partial) {
         _setLoading(comp, false);
@@ -2128,7 +2156,7 @@ async function _handleServerFrame(
     // and loading on: only the final patch releases the ack, so the task stays "in flight".
     // The full snapshot a resync asked for releases the resync's hold instead: an action still
     // in flight keeps its ack until its own reply comes back.
-    if (decision === "full" && _fullSyncs.has(component)) _endFullSync(component);
+    if (decision === "full") _endFullSync(component);
     else if (!frame.partial) _resolveAck(component);
     return;
   }

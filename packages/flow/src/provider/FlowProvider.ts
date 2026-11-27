@@ -362,6 +362,9 @@ export function _routeParamsFor(pattern: string, pathname: string): Record<strin
     const value = have[i];
     if (value === undefined) return {};
     if (part.startsWith(":")) {
+      // A snapshot built outside a request (a test, a job) carries the route pattern itself as
+      // its URL: `:post` there is no value, so the param is left out rather than set to ":post".
+      if (value === part) continue;
       try {
         params[part.slice(1)] = decodeURIComponent(value);
       } catch {

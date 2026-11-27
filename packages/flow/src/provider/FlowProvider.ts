@@ -9,7 +9,6 @@ import {
   FrameworkEvents,
   config,
 } from "@zerotal/core";
-import { _isExpectedOutcome } from "@zerotal/core/errors";
 import {
   WebSocketConnected,
   WebSocketDisconnected,
@@ -32,7 +31,7 @@ import {
   type SnapshotDelta,
 } from "../dehydrate.ts";
 import { frameworkLog } from "@zerotal/core/logger";
-import { _isClientFacingError, _publicErrorMessage } from "../errorText.ts";
+import { _isClientFacingError, _isExpectedOutcome, _publicErrorMessage } from "../errorText.ts";
 import { _renderFlowPage } from "../jsx-runtime.ts";
 import { populatePresence } from "../presence.ts";
 import { populateShared, snapshotSharedValues, commitShared } from "../shared.ts";

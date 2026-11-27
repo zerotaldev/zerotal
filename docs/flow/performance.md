@@ -167,9 +167,10 @@ page's imports, and calls it only when:
 - the page passes it values, not functions, and does not pass a field of its own as `value=`,
   `checked=`, `show=` or `text=`: on the runtime that becomes a binding to the field, and from
   compiled output it would not.
-- it places its children as `{children}` in its markup, or tests whether it has any. A compiled
-  page hands them over already rendered (and none when they render to nothing), so a component
-  that uses them as a value, `aria-label={children}`, keeps the page on the runtime.
+- it places its children as `{children}` in its markup, hands them on (`{open && children}`), or
+  tests whether it has any. A compiled page hands them over in the shape the runtime does, with
+  markup already rendered, so a component that uses them as a value, `aria-label={children}`
+  under any name, keeps the page on the runtime.
 
 A component that fails one of these names itself in the `ZT_FLOW_COMPILE_LOG=1` output, with the
 line in its own file that stopped it.

@@ -98,6 +98,42 @@ export default Card;
 }
 `,
   );
+  // Hands its children on through `&&` and a ternary branch, which read the same either way.
+  writeFileSync(
+    join(TMP, "components", "Toggle.tsx"),
+    `${PRAGMA}export function Toggle(props: { open: boolean; children?: unknown }) {
+  return (
+    <div>
+      {props.open && props.children}
+      {props.open ? props.children : null}
+    </div>
+  );
+}
+`,
+  );
+  // Read their children as a value under another name.
+  writeFileSync(
+    join(TMP, "components", "Renamed.tsx"),
+    `${PRAGMA}export const Renamed = ({ children: label }: { children?: unknown }) => (
+  <span aria-label={label}>x</span>
+);
+`,
+  );
+  writeFileSync(
+    join(TMP, "components", "Unpacked.tsx"),
+    `${PRAGMA}export function Unpacked(props: { children?: unknown }) {
+  const { children: text } = props;
+  return <span title={text}>x</span>;
+}
+`,
+  );
+  writeFileSync(
+    join(TMP, "components", "Indexed.tsx"),
+    `${PRAGMA}export function Indexed(props: { children?: unknown }) {
+  return <span title={props["children"]}>x</span>;
+}
+`,
+  );
   // Uses its text child as a value, which only the runtime hands it as a string.
   writeFileSync(
     join(TMP, "components", "Labelled.tsx"),
@@ -239,6 +275,61 @@ describe("children and string props arrive as the runtime hands them", () => {
     expect(compiled).toContain('<div class="wrap"><b>yes</b></div>');
   });
 
+  it("an empty .map() is an empty array, which the runtime treats as children", async () => {
+    const { compiled, runtime } = await bothWays(
+      "EmptyMap",
+      page(
+        "EmptyMap",
+        `import { Maybe } from "./components/Maybe";`,
+        `<div><Maybe>{rows.map((row) => <li>{row}</li>)}</Maybe></div>`,
+        `const rows: string[] = [];`,
+      ),
+    );
+    expect(compiled).toBe(runtime);
+    expect(compiled).toContain('<div class="wrap"></div>');
+  });
+
+  it("several children that all render to nothing are still an array of children", async () => {
+    const { compiled, runtime } = await bothWays(
+      "SeveralEmpty",
+      page(
+        "SeveralEmpty",
+        `import { Maybe } from "./components/Maybe";`,
+        `<div><Maybe>{a && <p>a</p>}{b && <p>b</p>}</Maybe></div>`,
+        `const a = false; const b = false;`,
+      ),
+    );
+    expect(compiled).toBe(runtime);
+    expect(compiled).toContain('<div class="wrap"></div>');
+  });
+
+  it("a single value child passes as the value: 0, a ternary's null, a string", async () => {
+    const { compiled, runtime } = await bothWays(
+      "ValueKids",
+      page(
+        "ValueKids",
+        `import { Maybe } from "./components/Maybe";`,
+        `<div><Maybe>{count}</Maybe><Maybe>{flag ? <b>y</b> : null}</Maybe><Maybe>{label}</Maybe><Maybe>{flag && <b>y</b>}</Maybe></div>`,
+        `const count = 0; const flag = false; const label = "Open";`,
+      ),
+    );
+    expect(compiled).toBe(runtime);
+    expect(compiled).toContain('<div class="wrap">Open</div>');
+  });
+
+  it("children handed on through && or a ternary branch keep the page compiled", async () => {
+    const { compiled, runtime } = await bothWays(
+      "Handed",
+      page(
+        "Handed",
+        `import { Toggle } from "./components/Toggle";`,
+        `<div><Toggle open={true}><b>on</b></Toggle><Toggle open={false}><b>off</b></Toggle></div>`,
+      ),
+    );
+    expect(compiled).toBe(runtime);
+    expect(compiled).toContain("<b>on</b><b>on</b>");
+  });
+
   it("decodes the entities in a string prop", async () => {
     const { compiled, runtime } = await bothWays(
       "EntityProp",
@@ -327,6 +418,24 @@ describe("and falls back, saying why, when it cannot", () => {
     );
     expect(why).toContain("reads its children as a value");
     expect(why).toContain("Labelled.tsx:3:");
+  });
+
+  it("a component that reads its children as a value under another name, or by index", () => {
+    for (const [name, file] of [
+      ["Renamed", "Renamed"],
+      ["Unpacked", "Unpacked"],
+      ["Indexed", "Indexed"],
+    ] as const) {
+      const why = blocked(
+        `B${name}`,
+        `import { ${name} } from "./components/${file}";`,
+        `<${name}>Close</${name}>`,
+      );
+      expect({ name, why: why.includes("reads its children as a value") }).toEqual({
+        name,
+        why: true,
+      });
+    }
   });
 
   it("a string prop holding an entity it cannot vouch for", () => {

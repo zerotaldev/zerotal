@@ -99,10 +99,11 @@ route's name is known to `route()` and the file typechecks as written.
 The route is only behind the groups you name: `make:route reports` is public, and
 `make:route "(auth)/(verified)/reports"` is for signed-in, verified visitors, as `make:page
 --route` and `make:resource --model` place theirs. A segment is a name (letters, digits, `-`,
-`_`), a `(group)`, or a `[param]` or `[...param]` whose name is an identifier, since the route
-reads it as `http.params.<name>`. `make:route` refuses anything else, `.` and `..` included,
-and refuses a URL another file already serves (`reports.ts` and `reports/index.ts` are one
-route).
+`_`), a `(group)`, or a `[param]` whose name is an identifier, since the route reads it as
+`http.params.<name>`. `make:route` refuses anything else, `.` and `..` included, and a
+catch-all `[...rest]`, whose value does not arrive in `http.params`: write that route by hand.
+It also refuses a URL another file already serves: `reports.ts`, `reports/index.ts` and
+`(auth)/reports.ts` are one route.
 
 | Argument / flag | Description                                                                                    |
 | --------------- | ---------------------------------------------------------------------------------------------- |

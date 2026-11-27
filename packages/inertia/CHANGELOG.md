@@ -26,8 +26,8 @@ follows the Zerotal monorepo's unified versioning.
   page (written too when the app has none by that name) and a `POST` that validates with `r.*`
   rules, flashes and redirects; `--methods` picks the handlers. A `[param]` named after a model
   arrives as the loaded record and is authorized against the model's policy when it has one. It
-  refuses `.` and `..`, a parameter whose name is not an identifier, and a URL another route file
-  already serves.
+  refuses `.` and `..`, a parameter whose name is not an identifier, a catch-all, a `--page`
+  that is not a page name, and a URL another route file already serves, in any group.
 
 ## [1.18.4] — 2026-11-27
 

@@ -8,6 +8,9 @@ description: How updates reach the browser, what to do on hostile networks, and 
 Every WebSocket action returns a **patch**. To keep those patches small, Flow sends only what changed:
 
 - **Snapshot deltas.** Instead of re-sending the whole snapshot each round-trip, Flow transmits only the properties that changed (plus any that were removed) and the new signed checksum. The client rebuilds the full snapshot from the copy it already holds. This is exact — the server diffs against the client's own snapshot — and still HMAC-verified, so a large `@locked` collection that doesn't change on a given action isn't re-sent on every keystroke.
+
+  Each delta also names the snapshot it was computed against (its base checksum), and the client applies it only to that snapshot. One action runs at a time per component, so normally the base is always the snapshot the client holds. When an action takes longer than the client's 15-second wait, the client stops waiting but keeps that component's actions queued, and asks the server for the component's whole snapshot (`onMount()` runs again and the full snapshot comes back, not a delta). The queued actions go out once it lands. A late reply whose base no longer matches is set aside the same way rather than applied to the wrong snapshot, which used to rebuild a snapshot that did not verify and leave every later action refused.
+
 - **HTML suppression.** When an action re-renders to markup byte-identical to
   the last patch on that connection, the server omits the HTML entirely and the
   client keeps its DOM — no morph at all. This covers a save that only flashed a
@@ -24,7 +27,7 @@ Set `ZT_FLOW_TRANSPORT_LOG=1` in development to log each patch's delta size vers
 
 ## WebSocket-blocked networks (HTTP fallback)
 
-Some strict corporate proxies and firewalls block WebSocket upgrades outright — which would otherwise lock those users out of a socket-driven app. Flow has an automatic **circuit breaker**: after a few failed handshakes the client stops waiting on the socket and starts sending action frames over a plain **HTTP POST** to `/__flow/http`. That endpoint runs the _exact same_ server pipeline — hydrate → dispatch →
+Some strict corporate proxies and firewalls block WebSocket upgrades outright — which would otherwise lock those users out of a socket-driven app. Flow has an automatic **circuit breaker**: after three refused handshakes, or as soon as the page's first handshake has hung for four seconds (what a proxy that swallows the upgrade looks like, rather than refusing it), the client stops waiting on the socket and starts sending action frames over a plain **HTTP POST** to `/__flow/http`. Actions clicked while it was deciding are sent then, in order. That endpoint runs the _exact same_ server pipeline — hydrate → dispatch →
 render → patch — and returns the frames for the client to apply. Actions,
 validation, flashes, redirects, and events all keep working, with no code change
 in your components.

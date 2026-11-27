@@ -43,7 +43,15 @@ export interface ChildMemo {
 export interface SnapshotMemo {
   id: string;
   name: string;
+  /** The route pattern the page is registered at (`/posts/:post`). Selects its middleware. */
   path: string;
+  /**
+   * The address the page was rendered at, path and query (`/posts/7?tab=comments`). Signed.
+   * An action rebuilds its request from it, so `ctx.params`, `request().url` and
+   * `currentUrl()` read inside an action match the first render. A snapshot without one was
+   * issued before it existed and is refused with a reload instruction.
+   */
+  url?: string | undefined;
   children: string[];
   /** @on listener map: eventName → methodName. Excluded from HMAC (server-derived). */
   listeners?: Record<string, string> | undefined;
@@ -108,6 +116,11 @@ export interface CallFrame {
   args: unknown[];
   updates: Record<string, unknown>;
   snapshot: Snapshot;
+  /**
+   * Ask for the whole snapshot back instead of a delta. The browser sets it when it resyncs a
+   * component whose snapshot it can no longer trust a delta to apply to.
+   */
+  full?: boolean;
 }
 
 /**
@@ -115,10 +128,11 @@ export interface CallFrame {
  *
  * The snapshot travels as a **delta** by default: only changed fields (`dataDelta`)
  * and removed keys (`dataRemoved`) are sent, alongside the new `memo` and full-snapshot
- * `checksum`. The client rebuilds the full snapshot from its prior copy + the delta (an
- * exact reconstruction, since the server diffed against the client's own snapshot). The
- * legacy `snapshot` field remains as a full fallback. `html` is omitted when the
- * re-render is byte-identical to the last patch on this connection (HTML suppression).
+ * `checksum`, and `base`, the checksum of the snapshot the delta was computed against. The
+ * client applies a delta only when `base` is the checksum of the snapshot it holds, and
+ * otherwise asks for the full snapshot. A full patch carries `snapshot` instead of the delta
+ * fields. `html` is omitted when the re-render is byte-identical to the last patch on this
+ * connection (HTML suppression), never on a full patch.
  * @category Frames
  *
  * @internal
@@ -132,7 +146,9 @@ export interface PatchFrame {
   checksum?: string;
   dataDelta?: SnapshotData;
   dataRemoved?: string[];
-  // Full snapshot — legacy/fallback path (e.g. when there is no client base to diff against).
+  /** Checksum of the snapshot the delta was computed against. Absent on a full patch. */
+  base?: string;
+  /** The whole snapshot, sent when the browser asked for it (`full` on the call frame). */
   snapshot?: Snapshot;
   scripts?: string[];
   errors?: Record<string, string[]>;
@@ -247,6 +263,36 @@ export interface RedirectFrame {
 }
 
 /**
+ * What an error frame reports, carried as its `code` and as `code` on the browser's
+ * `flow:error` event.
+ *
+ * - `server_error`: a render, `onBoot()`, `onUpdate()` or a middleware threw.
+ * - `action_failed`: an action threw (development only; production shows `onError()`'s flash).
+ * - `invalid_snapshot`: the snapshot's signature did not verify. The browser reloads once.
+ * - `stale_snapshot`: the snapshot was issued by an older release. The browser reloads once.
+ * - `session_changed`: the snapshot belongs to another session, or expired. Reloads once.
+ * - `unknown_component`: the page class is not registered. The browser reloads once.
+ * - `method_not_allowed`: the method is not exposed to the browser.
+ * - `blocked`: a middleware refused the action without redirecting.
+ * - `malformed_frame`: the frame did not have a call frame's shape.
+ * - `rate_limited`: too many refused frames from this address.
+ * @category Frames
+ *
+ * @internal
+ */
+export type FlowErrorCode =
+  | "server_error"
+  | "action_failed"
+  | "invalid_snapshot"
+  | "stale_snapshot"
+  | "session_changed"
+  | "unknown_component"
+  | "method_not_allowed"
+  | "blocked"
+  | "malformed_frame"
+  | "rate_limited";
+
+/**
  * Error frame (action threw, onError ran).
  * @category Frames
  *
@@ -256,6 +302,10 @@ export interface ErrorFrame {
   type: "error";
   component: string;
   message: string;
+  /** What was refused or failed, for code to branch on. See {@link FlowErrorCode}. */
+  code?: FlowErrorCode;
+  /** The page cannot recover in place: the browser reloads it (once). */
+  reload?: boolean;
   /**
    * Dev-only error detail — the server attaches these only under the `serve --dev` worker so the
    * client can render a full-screen error overlay. Never sent in production (no stack leak).

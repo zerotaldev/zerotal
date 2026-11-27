@@ -22,6 +22,11 @@ After each render the server serialises the component's `@expose` and `@locked` 
   sends it, and one issued to a guest is refused once that browser signs in. The browser is
   told to reload.
 - **It expires after 12 hours.** A page left open longer reloads on its next action.
+- **It carries the page's address.** The URL the page was rendered at, path and query, is signed
+  into the snapshot, and each action's request is rebuilt from it, so route middleware sees the
+  same segments on an action as on the first render. The browser cannot point an action at
+  another address without the signature failing. A snapshot issued before 1.19 has no address
+  and is answered with a reload instruction.
 - **An older snapshot is still a valid one.** Nothing marks a snapshot as used, so a client can
   send back any snapshot it was given in the last 12 hours instead of the newest. `@locked`
   stops the browser changing a value; it does not stop it rewinding to an earlier one. State
@@ -68,17 +73,48 @@ own origin and `app.allowedOrigins`, so another site cannot drive a signed-in us
 
 A frame is checked in this order, and the first failure answers it:
 
-| Check                                | Answer                 | Logged                   |
-| ------------------------------------ | ---------------------- | ------------------------ |
-| It has the shape of a call frame     | `Malformed frame`      | Warning, counted (below) |
-| Its snapshot's signature verifies    | `Invalid snapshot`     | Warning, counted (below) |
-| The page class is registered         | `Unknown component`    | No (the browser reloads) |
-| Route and persistent middleware pass | A redirect or an error | By the middleware        |
-| The snapshot belongs to this user    | Reload instruction     | No                       |
-| The method is `@expose`d             | `Method … not allowed` | Warning, counted (below) |
+| Check                                 | Answer                 | Logged               |
+| ------------------------------------- | ---------------------- | -------------------- |
+| Check                                 | Answer                 | `code`               | Logged                   |
+| ------------------------------------- | ---------------------- | -------------------- | ------------------------ |
+| It has the shape of a call frame      | `Malformed frame`      | `malformed_frame`    | Warning, counted (below) |
+| Its snapshot's signature verifies     | `Invalid snapshot`     | `invalid_snapshot`   | Warning, counted (below) |
+| Its snapshot carries the page address | Reload instruction     | `stale_snapshot`     | No                       |
+| The page class is registered          | `Unknown component`    | `unknown_component`  | No                       |
+| Route and persistent middleware pass  | A redirect or an error | `blocked`            | By the middleware        |
+| The snapshot belongs to this user     | Reload instruction     | `session_changed`    | No                       |
+| The method is `@expose`d              | `Method … not allowed` | `method_not_allowed` | Warning, counted (below) |
 
-A frame that fails one of the first two checks never reaches your middleware, starts no
-session and loads no page.
+A frame that fails one of the first three checks never reaches your middleware, starts no
+session and loads no page. Once a frame passes them, an error thrown outside the action body (a
+render, `onBoot()`, a middleware) is answered with `code: "server_error"` and the message the
+visitor may see: the error's own outside development, one generic sentence in production.
+
+### What the browser does with a refusal
+
+Every error frame is announced as a `flow:error` event on `window`, with the component's id, the
+message and the code:
+
+```ts fragment
+window.addEventListener("flow:error", (e) => {
+  const { component, message, code } = (
+    e as CustomEvent<{ component: string | null; message: string; code: string }>
+  ).detail;
+  if (code === "blocked") {
+    e.preventDefault(); // this app explains a refusal its own way
+    showSignInPrompt(component);
+  }
+  reportToMonitoring({ component, message, code });
+});
+```
+
+When no listener calls `preventDefault()`, a default notice is shown through `flow:flash`, so
+the `<Flash>` component in your layout displays it: the message itself for a `server_error`,
+one plain sentence for every other refusal, whose wording is meant for a developer. The page
+reloads instead, once, for `invalid_snapshot`, `stale_snapshot`, `session_changed` and
+`unknown_component`, which no action from the page in hand can recover from. A reload that does
+not fix the page does not reload it again until an action has succeeded in between.
+`rate_limited` answers frames past the count below.
 
 ### The invalid-frame count
 

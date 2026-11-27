@@ -11,6 +11,45 @@ change.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** an action runs against the page's real address. The URL the page was rendered at
+  (path and query) is signed into the snapshot memo as `memo.url`, and each action's request is
+  rebuilt from it, with the route params matched again. `ctx.params` in `onMount(ctx)` after
+  `refresh()` or a resync, `request().url`, `currentUrl()` and route middleware reading a segment
+  (a tenant prefix) now see what the first render saw; they used to see the route pattern, no
+  query string and empty params. Params are the segment strings, as before binding: a model the
+  first render bound is still read from its field. An app that relied on empty params inside an
+  action, or that writes a field from `ctx.params` in `onBoot()`, must read the field instead.
+- **BREAKING:** a snapshot signed by 1.18 or earlier has no `memo.url` and is refused with a
+  reload instruction (`code: "stale_snapshot"`), so every tab open across the deploy reloads
+  once on its next action.
+- **BREAKING:** a delta patch carries `base`, the checksum of the snapshot it was computed
+  against, and the browser applies it only when that is the snapshot it holds; otherwise it asks
+  for the whole snapshot, which comes back as a patch carrying `snapshot` and no delta fields.
+  Code that read the patch frame or the snapshot memo shape must allow for both. A slow action
+  (past the 15 s ack wait) followed by another click no longer leaves the page refusing every
+  action as "Invalid snapshot": the component's queue stays held after an ack timeout until a
+  full snapshot has resynced it, and a reconnect resyncs the same way.
+
+### Added
+
+- Error frames carry a `code` (`server_error`, `invalid_snapshot`, `stale_snapshot`,
+  `session_changed`, `unknown_component`, `method_not_allowed`, `blocked`, `malformed_frame`,
+  `rate_limited`, `action_failed`), and the browser announces each as a cancelable `flow:error`
+  window event with `{ component, message, code }`. When no listener calls `preventDefault()`, a
+  default notice is shown through `flow:flash`; it used to reach `console.error` only.
+- "Invalid snapshot" reloads the page once, with the same one-shot guard as the other reload
+  paths, instead of leaving it refusing every action.
+- The WebSocket handshake times out after 4 s. When the page's first handshake hangs, as it does
+  behind a proxy that swallows upgrades, the page switches to the HTTP transport at once instead
+  of waiting out three browser-length timeouts.
+
+### Fixed
+
+- A `@task` that streams patches for longer than 15 s is no longer taken for a lost action: each
+  streamed patch counts as progress for its ack.
+
 ## [1.18.4] — 2026-11-27
 
 ### Security

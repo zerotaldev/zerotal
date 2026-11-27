@@ -297,3 +297,23 @@ describe("where a page comes from", () => {
     parseHtml(rendered).getByRole("button", { name: "Save" });
   });
 });
+
+describe("edge cases a browser handles", () => {
+  test("leaves a legacy reference alone in an attribute when = or a letter follows it", () => {
+    const page = parseHtml(`<a href="/x?a=1&copy=2&reg=3&amp;b=4">&copy 2026</a>`);
+    expect(page.get("a").attr("href")).toBe("/x?a=1&copy=2&reg=3&b=4");
+    expect(page.get("a").text()).toBe("© 2026");
+  });
+
+  test("finds labels on a large form without rescanning it for every field", () => {
+    const fields = Array.from(
+      { length: 1500 },
+      (_, i) => `<label for="f${i}">Field ${i}</label><input id="f${i}" name="f${i}">`,
+    ).join("");
+    const page = parseHtml(`<form>${fields}</form>`);
+    const started = performance.now();
+    expect(page.field("Field 1499").attr("name")).toBe("f1499");
+    expect(page.getByRole("textbox", { name: "Field 750" }).attr("id")).toBe("f750");
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});

@@ -114,7 +114,11 @@ export async function startDevMode(options: StartDevModeOptions): Promise<void> 
     onServerReady: () => {
       supervisor.start(supervised.filter((entry) => entry.after === "server"));
     },
-    onServerRestart: () => void supervisor.restartWithServer(),
+    // Not for a change only the server loads, such as a Flow page: the processes that
+    // restart with the server would boot the whole app again for a file they never read.
+    onServerRestart: ({ processes }) => {
+      if (processes) void supervisor.restartWithServer();
+    },
     onCleanup: async () => {
       await supervisor.stopAll();
       deck.stop();

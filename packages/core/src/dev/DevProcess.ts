@@ -69,8 +69,9 @@ export interface DevProcessDefinition {
    * rather than the code it booted with. Defaults to `false`.
    *
    * For a process that loads the app's own files, such as a scheduler reading
-   * `app/schedules/`. Nothing watches files when the server is left out
-   * (`--only` without `server`), so this has no effect there.
+   * `app/schedules/`. A change only the server loads, such as a Flow page under
+   * `app/flow/`, restarts the server without it. Nothing watches files when the
+   * server is left out (`--only` without `server`), so this has no effect there.
    */
   restartOnChange?: boolean;
   /** Display name for the tab. Defaults to {@link name}. */
@@ -104,7 +105,7 @@ export interface ResolvedDevProcess {
   run?: (signal: AbortSignal) => Promise<void>;
   restart: "always" | "on-failure" | "never";
   after: "server" | "none";
-  /** Restarted alongside the server on a backend change. Absent means no. */
+  /** Restarted alongside the server on a backend change (not a Flow page). Absent means no. */
   restartOnChange?: boolean;
   /**
    * Who registered it — a provider class name, or `"app.dev.processes"`.

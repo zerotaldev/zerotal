@@ -439,7 +439,7 @@ what happens on a change depends on which directory the change landed in:
 │  └─ Watch filesystem                                 │
 │       │                                              │
 │       ├─ Backend change (app/, routes/, bootstrap/)  │
-│       │    └─ Rebuild, then kill + respawn (150 ms)  │
+│       │    └─ Stop + rebuild, then respawn (150 ms)  │
 │       │                                              │
 │       └─ Frontend change (resources/css/, js/)       │
 │            └─ Rebuild assets (80 ms debounce)        │
@@ -463,15 +463,24 @@ what happens on a change depends on which directory the change landed in:
 
 ### What triggers a restart, and what only rebuilds
 
-| Changed path                               | Action                                 |
-| ------------------------------------------ | -------------------------------------- |
-| `app/`, `routes/`, `bootstrap/`, `config/` | Server restart (150 ms)                |
-| `resources/css/`, `resources/js/`          | Asset rebuild + browser reload (80 ms) |
-| `public/`                                  | Ignored (output dir)                   |
-| `node_modules/`, `.git/`                   | Ignored                                |
+Processes that set `restartOnChange`, such as the `scheduler` tab, boot the whole app again
+when they restart. So a change restarts them only when they can load the file:
 
-Inertia pages live under `resources/js/pages/`, so they're covered by the
-`resources/js/` watch and rebuild rather than restart.
+| Changed path                                                        | Server                    | `restartOnChange` tabs | Browser                         |
+| ------------------------------------------------------------------- | ------------------------- | ---------------------- | ------------------------------- |
+| `app/flow/` (Flow pages, components, layouts), `resources/app.html` | Rebuild, restart (150 ms) | Keep running           | Reloads when the server is back |
+| The rest of `app/`, `routes/`, `bootstrap/`, `config/`, `packages/` | Rebuild, restart (150 ms) | Restart                | Reloads when the server is back |
+| `resources/js/`, `resources/css/`, `resources/pages/`               | Keeps running             | Keep running           | Rebuild, then reload (80 ms)    |
+| `public/`, `.zerotal/`, `node_modules/`, hidden files and folders   | Ignored                   | Ignored                | Ignored                         |
+| Anything else                                                       | Ignored                   | Ignored                | Ignored                         |
+
+Inertia pages live under `resources/js/pages/`, so they rebuild rather than restart. A save
+under `app/flow/` together with one elsewhere in `app/` restarts everything. Keep code a
+schedule or a job imports out of `app/flow/`: the scheduler does not restart when it changes.
+The deck's `r` key on the server tab restarts the `restartOnChange` tabs too.
+
+On a restart the old server stops while the assets rebuild, and the new one starts once both
+are done.
 
 ### Browser client
 

@@ -14,6 +14,14 @@ follows the Zerotal monorepo's unified versioning.
   internal `Application._reportError()` reports an error the way an unhandled route error is
   reported (the registered exception handler, or the log when there is none) without rendering
   a response. Flow uses it for actions that throw, which until now reached neither.
+- **Saving a Flow page under `bun zt dev` restarts the server only.** Every change under `app/`
+  also restarted the processes that restart with the server, so each save of a page, component
+  or layout under `app/flow/` booted the scheduler's whole app again beside the server. A change
+  under `app/flow/` (or to `resources/app.html`) now leaves those tabs running; the rest of `app/`,
+  `routes/`, `bootstrap/`, `config/` and `packages/` restarts them as before, and so does `r` on
+  the server tab. On every restart the old server now stops while the assets rebuild instead of
+  after. The watch list is one tested function; the assets guide's watch table lists what each
+  path restarts.
 
 ## [1.18.3] — 2026-11-26
 

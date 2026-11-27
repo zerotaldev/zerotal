@@ -106,6 +106,22 @@ function requestRestart(o: DevOrchestrator): Promise<void> {
   return (o as unknown as { _requestRestart(): Promise<void> })._requestRestart();
 }
 
+/** What the file watcher does for a change, `processes` saying whether it was a backend one. */
+function scheduleRestart(o: DevOrchestrator, processes: boolean): void {
+  (o as unknown as { _scheduleRestart(processes: boolean): void })._scheduleRestart(processes);
+}
+
+/**
+ * Wait out the watcher's debounce, and hand back the restart it started, which is held at
+ * its build. Wrapped, because awaiting a returned promise would wait for the restart too.
+ */
+async function debounced(o: DevOrchestrator): Promise<{ run: Promise<void> }> {
+  await Bun.sleep(200);
+  const running = (o as unknown as { _restartInFlight: Promise<void> | null })._restartInFlight;
+  expect(running).not.toBeNull();
+  return { run: running! };
+}
+
 describe("concurrent restart requests", () => {
   it("never runs two restarts at once", async () => {
     const h = harness();
@@ -178,5 +194,95 @@ describe("onServerRestart", () => {
 
     expect(h.events.filter((e) => e === "hook")).toHaveLength(2);
     expect(h.events.indexOf("hook")).toBeLessThan(h.events.indexOf("spawn"));
+  });
+
+  /** A harness whose hook records whether each restart reaches the other processes. */
+  function recording(): Harness {
+    return harness((events) => ({
+      onServerRestart: ({ processes }) => events.push(processes ? "with-processes" : "alone"),
+    }));
+  }
+
+  it("leaves the other processes running for a change only the server loads", async () => {
+    const h = recording();
+
+    scheduleRestart(h.orchestrator, false); // app/flow/pages/about.tsx
+    const { run } = await debounced(h.orchestrator);
+    await h.finishBuild();
+    await run;
+
+    expect(h.events).toContain("alone");
+    expect(h.events).not.toContain("with-processes");
+    expect(h.events.filter((e) => e === "spawn")).toHaveLength(1);
+  });
+
+  it("restarts them for a backend change", async () => {
+    const h = recording();
+
+    scheduleRestart(h.orchestrator, true); // app/schedules/Nightly.ts
+    const { run } = await debounced(h.orchestrator);
+    await h.finishBuild();
+    await run;
+
+    expect(h.events).toContain("with-processes");
+    expect(h.events).not.toContain("alone");
+  });
+
+  it("restarts them when a burst holds a backend change among page saves", async () => {
+    const h = recording();
+
+    scheduleRestart(h.orchestrator, false);
+    scheduleRestart(h.orchestrator, true);
+    scheduleRestart(h.orchestrator, false);
+    const { run } = await debounced(h.orchestrator);
+    await h.finishBuild();
+    await run;
+
+    expect(h.events.filter((e) => e === "with-processes")).toHaveLength(1);
+    expect(h.events).not.toContain("alone");
+  });
+
+  it("restarts them for the deck's r key on the server tab", async () => {
+    const h = recording();
+
+    const run = h.orchestrator.restartServer();
+    await h.finishBuild();
+    await run;
+
+    expect(h.events).toContain("with-processes");
+  });
+
+  it("does not carry a backend change over to the next page save", async () => {
+    const h = recording();
+
+    scheduleRestart(h.orchestrator, true);
+    let { run } = await debounced(h.orchestrator);
+    await h.finishBuild();
+    await run;
+
+    scheduleRestart(h.orchestrator, false);
+    ({ run } = await debounced(h.orchestrator));
+    await h.finishBuild();
+    await run;
+
+    expect(h.events.filter((e) => e === "with-processes" || e === "alone")).toEqual([
+      "with-processes",
+      "alone",
+    ]);
+  });
+});
+
+describe("restart timing", () => {
+  it("stops the old server while the build runs, and spawns only after both", async () => {
+    const h = harness();
+
+    const run = requestRestart(h.orchestrator);
+    // Let the restart reach its waits; the build is still held open.
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    expect(h.events).toEqual(["build", "stop"]);
+
+    await h.finishBuild();
+    await run;
+    expect(h.events).toEqual(["build", "stop", "spawn"]);
   });
 });

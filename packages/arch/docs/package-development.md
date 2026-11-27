@@ -579,7 +579,9 @@ a process that talks to the server, so it does not spend its restart budget
 against a closed port before the server has bound. Set `restartOnChange: true` for
 a process that loads the app's own files, so it restarts with the server when one
 of them changes instead of running the code it booted with; the scheduler's tab
-does this for `app/schedules/`.
+does this for `app/schedules/`. A change only the server loads, such as a Flow page
+under `app/flow/`, does not restart it (see
+[what triggers a restart](/docs/assets#what-triggers-a-restart-and-what-only-rebuilds)).
 
 A `zt` command runs in the mode its own name selects (`queue:work` as `worker`,
 anything unlisted as `console`), the same as when a developer runs it by hand. It

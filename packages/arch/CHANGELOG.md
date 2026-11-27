@@ -13,6 +13,12 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Changed
+
+- **The vendored docs say what each saved file restarts under `bun zt dev`.** The assets guide's
+  watch table now has a column for the server and one for the tabs that restart with it, such as
+  the scheduler; a Flow page under `app/flow/` restarts the server only.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

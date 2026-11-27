@@ -316,7 +316,10 @@ Each run, failure and skip is printed in the tab as it happens:
 ```
 
 The tab restarts with the server whenever a file under `app/`, `config/` or
-`routes/` changes, so a schedule you add or edit runs as saved. It runs
+`routes/` changes, so a schedule you add or edit runs as saved. A Flow page,
+component or layout under `app/flow/` restarts the server only; the
+[watch table](/docs/assets#what-triggers-a-restart-and-what-only-rebuilds) lists what
+each path restarts. It runs
 `bun zt schedule:work`, which runs the scheduler and nothing else; the queue has
 its own tab. To leave it out:
 

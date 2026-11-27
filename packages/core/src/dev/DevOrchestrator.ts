@@ -8,6 +8,7 @@ import { DEV_WORKER_ENV_VAR } from "../support/env.ts";
 import { requestGracefulStop } from "./devShutdown.ts";
 import { ZEROTAL_VERSION, installedCoreVersion } from "../support/version.ts";
 import { _DEV_RELOAD_SCRIPT_PATH, _DEV_RELOAD_SOURCE } from "./reloadClient.ts";
+import { _classifyChange } from "./devChanges.ts";
 
 /**
  * How the orchestrator reports to whatever is presenting dev mode.
@@ -35,8 +36,12 @@ export interface DevOrchestratorHooks {
   /**
    * Called each time the server restarts, for a file change or the deck's `r`
    * key, before the new server is spawned. Not called for the first start.
+   *
+   * `processes` says whether the processes that restart with the server should
+   * restart too. It is `false` when every change behind the restart is to a file
+   * only the server loads, such as a Flow page under `app/flow/`.
    */
-  onServerRestart?: () => void;
+  onServerRestart?: (restart: { processes: boolean }) => void;
   /** Called on SIGINT/SIGTERM, before the process exits. */
   onCleanup?: () => void | Promise<void>;
 }
@@ -47,8 +52,10 @@ export interface DevOrchestratorHooks {
  * Responsibilities:
  *   - Runs an initial pages-manifest sync + asset build before the server starts.
  *   - Spawns the Zerotal server (Process 2) as a child process with stdin piped.
- *   - Watches the filesystem and:
- *       • Backend change  → debounced server restart (150 ms)
+ *   - Watches the filesystem and, by `_classifyChange()`:
+ *       • Backend change  → debounced server restart (150 ms), with the processes
+ *                           that restart with it
+ *       • View change     → the same restart, without those processes (`app/flow/`)
  *       • Frontend change → debounced asset rebuild + browser reload signal (80 ms)
  *   - Writes `reload\n` to the child's stdin after each successful rebuild so the
  *     server can forward the signal to connected SSE clients.
@@ -58,25 +65,6 @@ export interface DevOrchestratorHooks {
  *   - Reads stdin and calls DevReloadServer.broadcast('reload') on each `reload` line
  */
 export class DevOrchestrator {
-  // Paths whose changes trigger a full server restart
-  private static readonly BACKEND = [
-    "app/",
-    "routes/",
-    "bootstrap/",
-    "config/",
-    "packages/",
-    "resources/app.html",
-  ];
-
-  // Paths whose changes trigger a frontend rebuild only
-  private static readonly FRONTEND = ["resources/pages/", "resources/js/", "resources/css/"];
-
-  // Always-ignored output / tool directories
-  private static readonly IGNORE = ["public/", ".zerotal/", "node_modules/", ".git/"];
-
-  // pages.generated.ts is written BY the build — ignore its own change event
-  private static readonly IGNORE_FILES = new Set(["resources/js/pages.generated.ts"]);
-
   private _child: ReturnType<typeof Bun.spawn> | null = null;
   private _restartTimer: ReturnType<typeof setTimeout> | null = null;
   private _buildTimer: ReturnType<typeof setTimeout> | null = null;
@@ -93,6 +81,12 @@ export class DevOrchestrator {
   /** The installed version already warned about, so one upgrade warns once. */
   private _warnedVersion: string | null = null;
   private _restartQueued = false;
+  /**
+   * Whether a restart that has not run yet must also restart the processes that
+   * restart with the server. Set by a backend change and by the deck's `r` key, left
+   * unset by a change only the server loads, and read once by the restart that runs.
+   */
+  private _processesDue = false;
 
   /**
    * Bounded respawn attempts. The race above is fixed at the source, but a port can
@@ -272,10 +266,18 @@ export class DevOrchestrator {
    * and folds into a restart already running rather than racing it for the port.
    */
   restartServer(): Promise<void> {
+    this._processesDue = true;
     return this._requestRestart();
   }
 
-  private _scheduleRestart(): void {
+  /**
+   * Restart after a burst of saves settles.
+   *
+   * `processes` accumulates over the burst: a page saved together with a schedule
+   * restarts the scheduler too.
+   */
+  private _scheduleRestart(processes: boolean): void {
+    if (processes) this._processesDue = true;
     if (this._restartTimer) clearTimeout(this._restartTimer);
     this._restartTimer = setTimeout(() => {
       this._restartTimer = null;
@@ -314,8 +316,24 @@ export class DevOrchestrator {
   }
 
   private async _restartOnce(): Promise<void> {
-    this._say("  [zerotal:dev] ↻  backend change — rebuilding + restarting server...");
+    // Taken now, so a change that lands during this restart queues the next one with
+    // its own answer.
+    const processes = this._processesDue;
+    this._processesDue = false;
+    this._say(
+      processes
+        ? "  [zerotal:dev] ↻  backend change — rebuilding + restarting server..."
+        : "  [zerotal:dev] ↻  view change — rebuilding + restarting the server only...",
+    );
     this._hooks.onServerState?.("restarting");
+
+    this._warnIfFrameworkUpgradedUnderneath();
+
+    // Processes that load the app's own files restart with the server, so a
+    // schedule edited under `app/` is not left running its old code. A change only
+    // the server loads (a Flow page) leaves them running: restarting a scheduler
+    // boots the whole app again, for a file it never reads.
+    this._hooks.onServerRestart?.({ processes });
 
     // Rebuild assets before respawning: server-rendered views (Flow pages in `app/`,
     // controllers returning markup) contain Tailwind classes the stylesheet scans via
@@ -323,16 +341,13 @@ export class DevOrchestrator {
     // used in a page wouldn't appear until an unrelated `resources/` file changed. The
     // fresh `_assetVersion` (bumped by _runBuild) is passed to the respawned worker, so the
     // browser refetches the updated CSS.
-    await this._runBuild();
-
-    this._warnIfFrameworkUpgradedUnderneath();
-
-    // Processes that load the app's own files restart with the server, so a
-    // schedule edited under `app/` is not left running its old code.
-    this._hooks.onServerRestart?.();
-
+    //
+    // The old server stops while the build runs rather than after it. It is about to be
+    // replaced either way, and the two waits overlapping takes the shorter one off every
+    // save. A build failure still reaches the new server, which is told on start.
+    //
     // Stop before spawning, always: the old server owns the port until it exits.
-    await this._stopChild();
+    await Promise.all([this._runBuild(), this._stopChild()]);
     await this._spawnServerWithRetry();
   }
 
@@ -600,20 +615,11 @@ export class DevOrchestrator {
       // Normalise to forward slashes (Windows reports backslashes).
       const relativePath = filename.replace(/\\/g, "/");
 
-      // Skip hidden dirs, ignored dirs, and generated files.
-      if (relativePath.startsWith(".")) return;
-      if (DevOrchestrator.IGNORE.some((prefix) => relativePath.startsWith(prefix))) return;
-      if (DevOrchestrator.IGNORE_FILES.has(relativePath)) return;
-
-      if (
-        DevOrchestrator.BACKEND.some(
-          (prefix) => relativePath.startsWith(prefix) || relativePath === prefix.replace(/\/$/, ""),
-        )
-      ) {
-        this._scheduleRestart();
-      } else if (DevOrchestrator.FRONTEND.some((prefix) => relativePath.startsWith(prefix))) {
-        this._scheduleBuild(relativePath);
-      }
+      // The watch list, and what each path restarts, is in devChanges.ts.
+      const change = _classifyChange(relativePath);
+      if (change === "restart-all") this._scheduleRestart(true);
+      else if (change === "restart-server") this._scheduleRestart(false);
+      else if (change === "rebuild") this._scheduleBuild(relativePath);
     });
 
     process.on("SIGTERM", () => void this.shutdown(watcher));

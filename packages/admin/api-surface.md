@@ -1777,8 +1777,10 @@ value VerifyEmailPage = unknown
 ## ./testing  `(./src/testing.ts)`
 
 class FlowTest = {
-  new <T extends Component>(page: T, name: string): FlowTest<T>
-  static mount: <T extends Component>(PageClass: PageClass<T>, props?: Partial<T>) => Promise<FlowTest<T>>
+  new <T extends Component>(PageClass: PageClass<T>, path: string, user: FlowTestUser | null, headers: Record<string, string>): FlowTest<T>
+  static actingAs: (user: FlowTestUser | null) => {    mount<T extends Component>(PageClass: PageClass<T>, props?: Partial<T>, options?: FlowTestMountOptions): Promise<FlowTest<T>>;}
+  static mount: <T extends Component>(PageClass: PageClass<T>, props?: Partial<T>, options?: FlowTestMountOptions) => Promise<FlowTest<T>>
+  actingAs: (user: FlowTestUser | null) => FlowTest<T>
   assertDispatched: (eventName: string) => FlowTest<T>
   assertDontSee: (text: string) => FlowTest<T>
   assertErrored: (match?: string | RegExp) => FlowTest<T>
@@ -1789,9 +1791,11 @@ class FlowTest = {
   assertRedirectedTo: (url: string) => FlowTest<T>
   assertSee: (text: string) => FlowTest<T>
   call: (method: string, ...args: unknown[]) => Promise<FlowTest<T>>
+  document: () => string
   effects: () => FlowEffects | null
   errors: () => Record<string, string[]>
   flashes: () => FlowEffects['flashes']
+  frames: () => ReadonlyArray<{    type: string;} & Record<string, unknown>>
   html: () => string
   lastError: () => Error | null
   page: () => T

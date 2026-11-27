@@ -22,11 +22,13 @@ beforeAll(() => {
 
 // ── Computed caching ──────────────────────────────────────────────────────────
 
+/** How many times `doubled` was computed. Kept outside the page, which each request rebuilds. */
+let doubledCalls = 0;
+
 class CachePage extends Component {
-  calls = 0;
   @expose n = 2;
   @computed get doubled(): number {
-    this.calls++;
+    doubledCalls++;
     return this.n * 2;
   }
   override async render(): Promise<HtmlNode> {
@@ -39,16 +41,17 @@ class CachePage extends Component {
 
 describe("computed caching", () => {
   it("memoizes a @computed getter within a single render pass", async () => {
+    doubledCalls = 0;
     const t = await FlowTest.mount(CachePage);
     expect(t.html()).toContain("4/4/4");
-    expect(t.page().calls).toBe(1); // 3 reads → 1 computation
+    expect(doubledCalls).toBe(1); // 3 reads → 1 computation
   });
 
   it("recomputes outside the render pass (no stale cache)", async () => {
     const t = await FlowTest.mount(CachePage);
-    const before = t.page().calls; // 1
+    const before = doubledCalls;
     void t.page().doubled; // read outside render
-    expect(t.page().calls).toBe(before + 1);
+    expect(doubledCalls).toBe(before + 1);
   });
 });
 

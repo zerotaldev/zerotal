@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "bun:test";
+import { describe, it, expect, beforeAll, beforeEach } from "bun:test";
 import { Component } from "./Component.ts";
 import { expose, locked } from "./decorators.ts";
 import { FlowTest } from "./testing.ts";
@@ -9,17 +9,28 @@ beforeAll(() => {
 });
 
 /**
- * A page that records every lifecycle hook into a (non-serialised) log so tests
- * can assert ordering and firing. `log` / `renderedHtml` are undecorated, so they
- * never cross the wire and persist across the harness's reused instance.
+ * Every lifecycle hook a request ran, in order, across the instances the server builds.
+ *
+ * Outside the component on purpose: each request rebuilds the page from its snapshot, so a
+ * log kept on the instance would only ever show the last request, and only if it were state.
  */
+const log: string[] = [];
+let renderedHtml = "";
+
+beforeEach(() => {
+  log.length = 0;
+  renderedHtml = "";
+});
+
+/** A page that records every lifecycle hook into {@link log}. */
 class HookPage extends Component {
   @expose count = 0;
   @expose username = "";
   @locked secret = "x";
 
-  log: string[] = [];
-  renderedHtml = "";
+  get log(): string[] {
+    return log;
+  }
 
   override async onBoot() {
     this.log.push("boot");
@@ -40,7 +51,7 @@ class HookPage extends Component {
     this.log.push("rendering");
   }
   override async onRendered(html: string) {
-    this.renderedHtml = html;
+    renderedHtml = html;
     this.log.push("rendered");
   }
 
@@ -80,15 +91,14 @@ class HookPage extends Component {
 
 describe("lifecycle hooks — initial render", () => {
   it("runs boot then mount once, with rendering/rendered/dehydrate, but not hydrate", async () => {
-    const t = await FlowTest.mount(HookPage);
-    const log = t.page().log;
+    await FlowTest.mount(HookPage);
 
     expect(log.slice(0, 2)).toEqual(["boot", "mount"]);
     expect(log).toContain("rendering");
     expect(log).toContain("rendered");
     expect(log).toContain("dehydrate");
     expect(log).not.toContain("hydrate"); // hydrate is subsequent-only
-    expect(t.page().renderedHtml).toContain("count:0");
+    expect(renderedHtml).toContain("count:0");
     // rendering fires before rendered
     expect(log.indexOf("rendering")).toBeLessThan(log.indexOf("rendered"));
   });
@@ -97,10 +107,9 @@ describe("lifecycle hooks — initial render", () => {
 describe("lifecycle hooks — subsequent (action) request", () => {
   it("runs boot + hydrate on each action, not mount", async () => {
     const t = await FlowTest.mount(HookPage);
-    t.page().log.length = 0; // reset after the initial render
+    log.length = 0; // reset after the initial render
 
     await t.call("bump");
-    const log = t.page().log;
 
     expect(log[0]).toBe("boot");
     expect(log[1]).toBe("hydrate");
@@ -135,20 +144,19 @@ describe("lifecycle hooks — subsequent (action) request", () => {
     await t.update("count", 9);
     await t.call("bump");
 
-    const mounts = t.page().log.filter((entry) => entry === "mount");
+    const mounts = log.filter((entry) => entry === "mount");
     expect(mounts).toHaveLength(1);
     // …and it was the very first thing after boot, not a later re-entry.
-    expect(t.page().log.indexOf("mount")).toBe(1);
+    expect(log.indexOf("mount")).toBe(1);
   });
 });
 
 describe("property update hooks", () => {
   it("fires updating then updated around a client update", async () => {
     const t = await FlowTest.mount(HookPage);
-    t.page().log.length = 0;
+    log.length = 0;
 
     await t.update("count", 5);
-    const log = t.page().log;
 
     expect(log).toContain("updating:count=5");
     expect(log).toContain("updated:count=5");
@@ -161,17 +169,20 @@ describe("property update hooks", () => {
 
     await t.update("username", "ALICE");
 
-    expect(t.page().log).toContain("updatedUsername");
+    expect(log).toContain("updatedUsername");
     expect(t.page().username).toBe("alice"); // lower-cased by onUpdatedUsername
   });
 
   it("does not fire update hooks for @locked props (and leaves them unchanged)", async () => {
     const t = await FlowTest.mount(HookPage);
-    t.page().log.length = 0;
+    log.length = 0;
 
-    await t.update("secret", "hacked");
+    // The server drops a browser write to a @locked prop without a word; the harness says so.
+    await expect(t.update("secret", "hacked")).rejects.toThrow(/ignores a browser write.*@locked/);
 
-    expect(t.page().log.some((l) => l.startsWith("updating"))).toBe(false);
+    // Sent anyway, as a browser could, the write changes nothing and fires no hook.
+    await t.call("$set", "secret", "hacked");
+    expect(log.some((l) => l.startsWith("updating"))).toBe(false);
     expect(t.page().secret).toBe("x");
   });
 });

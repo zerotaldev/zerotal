@@ -27,6 +27,14 @@ follows the Zerotal monorepo's unified versioning.
   the token, or with another session's, is refused, and that every form that posts on the
   public, auth and settings pages carries it.
 
+- **The Flow starter's `tests/render.ts` requests a page the way a visit does.** `renderPage()`
+  mounts it with `FlowTest` through its route's middleware and handler, as the given user, and
+  returns the whole document the route answered with, layout included; it no longer opens a
+  request scope of its own or wraps the layout by hand. `state` is laid over the page the visit
+  built and rendered again. An app generated from an earlier starter needs this file when it
+  moves to `@zerotal/flow` 1.19: its copy signs the user in through an outer request scope,
+  which no longer reaches the page, so its signed-in pages render as a guest's.
+
 ## [1.18.4] — 2026-11-27
 
 ### Added

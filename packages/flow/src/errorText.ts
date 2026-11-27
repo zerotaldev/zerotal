@@ -42,6 +42,34 @@ export function _isClientFacingError(error: unknown): boolean {
 }
 
 /**
+ * Error names that are an ordinary outcome of a request rather than a fault, as core's
+ * exception handler counts them (`_EXPECTED_OUTCOMES` in
+ * `packages/core/src/application/ExceptionHandler.ts`). Kept here rather than imported: that
+ * module is server-only and is not on any of core's entry points a browser bundle can share.
+ */
+const EXPECTED_OUTCOMES: ReadonlySet<string> = new Set([
+  "ValidationRedirectError",
+  "ValidationJsonError",
+  "ValidationError",
+  "PrecognitionResponse",
+  "NotFoundError",
+  "ModelNotFoundError",
+]);
+
+/**
+ * Whether `error` is an expected outcome (a failed validation, a record that is not there) or
+ * an answer to the client, rather than a fault. Flow logs no error line of its own for these;
+ * the app's exception handler still receives them and applies its own rules.
+ *
+ * @internal
+ */
+export function _isExpectedOutcome(error: unknown): boolean {
+  if (_isClientFacingError(error)) return true;
+  const name = (error as { name?: unknown } | null)?.name;
+  return typeof name === "string" && EXPECTED_OUTCOMES.has(name);
+}
+
+/**
  * Whether error messages are shown to the visitor as they are.
  *
  * `flow.exposeErrorMessages` decides when it is set. Left unset, the answer is yes where the

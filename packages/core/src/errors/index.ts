@@ -35,7 +35,6 @@ export { RuntimeMismatchError } from "./RuntimeMismatchError.ts";
 export { OptionalPeerMissingError } from "./OptionalPeerMissingError.ts";
 export type { OptionalPeerMissing } from "./OptionalPeerMissingError.ts";
 export { BootCheckError } from "../application/BootDoctor.ts";
-export { _isExpectedOutcome } from "../application/ExceptionHandler.ts";
 export type { BootCheckFailure } from "../application/BootDoctor.ts";
 export { ConfigValidationError } from "../config/validation.ts";
 export {

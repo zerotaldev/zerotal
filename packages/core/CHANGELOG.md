@@ -23,6 +23,14 @@ follows the Zerotal monorepo's unified versioning.
   origin check the app's own sockets get, so any page open in the browser could connect and read
   a failed build's file paths and source lines.
 
+### Added
+
+- **`bun zt doctor` warns when a production app has work and no worker it can see.** With
+  schedules or jobs defined and no cache every process shares, the worker checks said "cannot
+  verify" as a pass, so a deploy that forgot `bun zt worker` got green ticks. With `app.env` set
+  to a production name that is now a warning naming the command to run. Outside production the
+  check is unchanged.
+
 ### Fixed
 
 - **Errors caught outside the HTTP error path can reach the app's exception handler.** An

@@ -202,7 +202,28 @@ describe("workerLivenessCheck", () => {
     });
   });
 
-  it("stays ok — never a finding — when it cannot tell", async () => {
+  it("warns when it cannot tell in production, where a missing worker is the likely cause", async () => {
+    app = appWith("memory");
+    app.container.value(
+      "config" as never,
+      {
+        get: <T>(key: string, fallback: T): T =>
+          key === "cache.driver"
+            ? ("memory" as unknown as T)
+            : key === "app.env"
+              ? ("production" as unknown as T)
+              : fallback,
+      } as never,
+    );
+    await withApp(app, async () => {
+      const result = await check().run(app!);
+      expect(result.status).toBe("warn");
+      expect(result.message).toContain("cannot verify");
+      expect(result.fix).toContain("beside the web server");
+    });
+  });
+
+  it("stays ok — never a finding — when it cannot tell outside production", async () => {
     // The rule that keeps the check worth reading.
     app = appWith("memory");
     await withApp(app, async () => {

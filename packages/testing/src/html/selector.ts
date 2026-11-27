@@ -377,7 +377,7 @@ class Parser {
 
   private atIdent(): boolean {
     const char = this.peek();
-    return char !== undefined && /[A-Za-z_\-\\ -￿]/.test(char);
+    return char !== undefined && /[A-Za-z_\-\\\u00a0-\uffff]/.test(char);
   }
 
   private ident(): string {
@@ -387,7 +387,7 @@ class Parser {
       if (char === "\\") {
         out += this.source[this.i + 1] ?? "";
         this.i += 2;
-      } else if (/[A-Za-z0-9_\- -￿]/.test(char)) {
+      } else if (/[A-Za-z0-9_\-\u00a0-\uffff]/.test(char)) {
         out += char;
         this.i++;
       } else {

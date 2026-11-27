@@ -306,6 +306,25 @@ describe("Flow compiler — <Link>", () => {
     expect(html(r)).toContain("Learn more</a>");
   });
 
+  it("compiles <Link down exact> as the runtime renders it", () => {
+    const r = compile(`<Link href="/section" down exact>Section</Link>`);
+    expect(r).not.toBeNull();
+    expect(html(r)).toContain("flow:navigate.down");
+    expect(html(r)).toContain("flow:current.exact");
+    expect(html(r)).not.toMatch(/ down[ >]| exact[ >]/);
+  });
+
+  it("compiles <Link current={true}> to an always-active link", () => {
+    const r = compile(`<Link href="/" current={true}>Home</Link>`);
+    expect(html(r)).toContain("flow:current.force");
+    expect(html(r)).toContain("data-current");
+  });
+
+  it("compiles navigateDown on a plain link", () => {
+    const r = compile(`<a href="/x" navigate navigateDown>x</a>`);
+    expect(html(r)).toContain("flow:navigate.down");
+  });
+
   it("compiles <Link preserveScroll> to flow:navigate.preserve", () => {
     const r = compile(`<Link href="/posts?sort=title" preserveScroll>Title</Link>`);
     expect(r).not.toBeNull();

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { PASSWORD_CONFIRMED_AT_KEY, TwoFactorService, loginThrottle } from "zerotal/auth";
 import { refreshDatabase, type TestApp } from "zerotal/testing";
 import { User } from "../../app/models/User";
+import { claimTwoFactorStep } from "../../app/auth/two-factor";
 import { FACTORY_PASSWORD, UserFactory } from "../../database/factories/UserFactory";
 import { Browser, bootApp } from "../support";
 import { assertPage, attributes, textOf } from "../html";
@@ -172,25 +173,17 @@ describe("signing in with two-factor", () => {
     (await second.get("/dashboard")).assertRedirect("/login");
   });
 
-  test("lets one of two sign-ins with the same code in, when they arrive together", async () => {
+  test("claims a code's step once, however many requests race for it", async () => {
     const { user, secret } = await userWithTwoFactor();
-    const code = authenticator.generateCode(secret);
-    const [first, second] = [
-      await signInWithPassword(user.email),
-      await signInWithPassword(user.email),
-    ];
+    const check = authenticator.verifyCodeWithCounter(secret, authenticator.generateCode(secret));
+    expect(check.valid).toBe(true);
+    const step = check.valid ? check.counter : 0;
 
-    // Sent at once: checking the step and saving it is one update, so only one of them can win.
-    await Promise.all([
-      first.post("/two-factor/challenge", { code }),
-      second.post("/two-factor/challenge", { code }),
-    ]);
+    // The claim is one conditional update, so of several at once exactly one changes the row.
+    const claims = await Promise.all([1, 2, 3].map(() => claimTwoFactorStep(user.id, step)));
 
-    const statuses = [
-      (await first.get("/dashboard")).status,
-      (await second.get("/dashboard")).status,
-    ];
-    expect(statuses.filter((status) => status === 200)).toHaveLength(1);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(await claimTwoFactorStep(user.id, step)).toBe(false);
   });
 
   test("refuses a code older than the last one used", async () => {

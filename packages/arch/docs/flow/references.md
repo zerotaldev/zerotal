@@ -83,13 +83,13 @@ Visual loading indicators (`showOnLoading`, `hideOnLoading`, `loadingClass`) wai
 
 ### Navigation props
 
-| You write                                | Behaviour                                                                                                                        | Compiles to                                  |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `navigate`                               | SPA navigation to `href`, layout stays mounted                                                                                   | `flow:navigate`                              |
-| `navigate navigateHover`                 | Prefetch page on hover (~60ms debounce)                                                                                          | `flow:navigate flow:navigate.hover`          |
-| `navigate navigateDown`                  | Prefetch page on pointer-down (no dwell; dense lists). Applied when the page renders through the runtime, not on a compiled page | `flow:navigate flow:navigate.down`           |
-| `currentExact`                           | `data-current` only on an exact URL match (not sub-pages)                                                                        | `flow:current.exact`                         |
-| `<Link hover>`, `<Link current={false}>` | The `<Link>` names for hover prefetch and for turning off `data-current` — see [Components](/docs/flow/components)               | `flow:navigate.hover`, `flow:current.ignore` |
+| You write                                                               | Behaviour                                                                       | Compiles to                                                                              |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `navigate`                                                              | SPA navigation to `href`, layout stays mounted                                  | `flow:navigate`                                                                          |
+| `navigate navigateHover`                                                | Prefetch page on hover (~60ms debounce)                                         | `flow:navigate flow:navigate.hover`                                                      |
+| `navigate navigateDown`                                                 | Prefetch page on pointer-down (no dwell; dense lists)                           | `flow:navigate flow:navigate.down`                                                       |
+| `currentExact`                                                          | `data-current` only on an exact URL match (not sub-pages)                       | `flow:current.exact`                                                                     |
+| `<Link hover>`, `<Link down>`, `<Link exact>`, `<Link current={false}>` | The `<Link>` names for the same props — see [Components](/docs/flow/components) | `flow:navigate.hover`, `flow:navigate.down`, `flow:current.exact`, `flow:current.ignore` |
 
 ### Polling
 

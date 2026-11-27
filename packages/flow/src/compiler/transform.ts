@@ -1834,6 +1834,16 @@ function _compileRenderMethod(
           emitStatic(" flow:navigate.preserve");
           continue;
         }
+        // `down` and `exact` are <Link>'s short names, as the runtime renders them; written
+        // out as they were, they reached the browser as attributes nothing reads.
+        if (ln === "down" && attr.initializer === undefined) {
+          emitStatic(" flow:navigate.down");
+          continue;
+        }
+        if (ln === "exact" && attr.initializer === undefined) {
+          emitStatic(" flow:current.exact");
+          continue;
+        }
         if (ln === "current") {
           const ci = attr.initializer;
           // current={false} → opt out of the auto active class; current={true} → default (skip).
@@ -1841,7 +1851,9 @@ function _compileRenderMethod(
             emitStatic(" flow:current.ignore");
             continue;
           }
+          // current={true} → always active, rendered active on first paint, as the runtime does.
           if (ci && ts.isJsxExpression(ci) && ci.expression?.kind === ts.SyntaxKind.TrueKeyword) {
+            emitStatic(' flow:current.force data-current=""');
             continue;
           }
           // current="active-class" → falls through to STRING_DIRECTIVES (current → flow:current).

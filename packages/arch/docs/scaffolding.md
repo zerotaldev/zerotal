@@ -39,7 +39,9 @@ passes; without Prettier, the stubs are already in the starters' style.
 | `make:listener`       | `app/listeners/<Name>.ts`             | `handle(event)` method                                          |
 | `make:observer`       | `app/observers/<Name>.ts`             | `--model` sets the target model                                 |
 | `make:policy`         | `app/policies/<Name>.ts`              | `--model` sets the target model                                 |
-| `make:resource`       | `app/resources/<Name>.ts`             | API resource transformer                                        |
+| `make:resource`       | `app/resources/<Name>.ts`             | API resource transformer; `--model` writes an Inertia screen    |
+| `make:route`          | `app/routes/<path>.ts`                | Inertia apps: a file route and the page it renders              |
+| `make:page`           | `resources/js/pages/<name>.tsx`       | Inertia apps: a page component (`.vue` in a Vue app)            |
 | `make:admin-resource` | `app/admin/<Name>Resource.ts`         | Admin panel resource for a model                                |
 | `make:provider`       | `app/providers/<Name>Provider.ts`     | Auto-registers in `bootstrap/providers.ts`                      |
 | `make:package`        | `packages/<name>/…`                   | Full `@zerotal/*` package skeleton                              |
@@ -225,6 +227,33 @@ bun zt make:resource UserResource
 
 The stub extends `Resource<Model>` with a `toArray()` method and includes commented
 usage examples for single models and paginated `ResourceCollection`s.
+
+In an Inertia app, `--model` writes a screen over the model instead: owner-scoped file routes
+for list, create, edit, update and delete, a form request, a policy, the React or Vue pages and
+their shared form, and a feature test. See
+[Generating a resource](/docs/inertia/build#generating-a-resource).
+
+```bash
+# in your project root
+bun zt make:resource Task --model Task
+```
+
+| Flag             | Type   | Description                                                      |
+| ---------------- | ------ | ---------------------------------------------------------------- |
+| `--model` (`-m`) | string | Write an Inertia screen listing and editing this model           |
+| `--framework`    | string | With `--model`, force `react` or `vue` (auto-detected otherwise) |
+
+## make:route
+
+In an Inertia app, writes a file route under `app/routes/` with `GET` (rendering its page)
+and `POST` handlers in the starters' style, and the page when there is none. See
+[Generating a route](/docs/inertia/build#generating-a-route).
+
+```bash
+# in your project root
+bun zt make:route reports
+bun zt make:route "(auth)/(verified)/tasks/[task]/archive" --methods POST
+```
 
 ## make:provider
 

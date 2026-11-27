@@ -123,7 +123,11 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
         "`Inertia.render(...)` with the page's props. Props are serialised — do not pass class " +
         "instances. In a Vue app, a page's props are checked against `Inertia.render` only when " +
         "`InertiaTypeOptions` sets `checkVueProps: true` (the Vue starter's `types/inertia.d.ts`), " +
-        "and only by `vue-tsc`: plain `tsc` does not read `.vue` files.",
+        "and only by `vue-tsc`: plain `tsc` does not read `.vue` files. " +
+        "Generate a screen rather than writing one: `bun zt make:resource <Name> --model <Model>` " +
+        "writes the routes, request, policy, React or Vue pages, shared form and feature test for " +
+        "a model, owner-scoped when it has a `userId`; `bun zt make:route <path>` writes one file " +
+        "route under `app/routes/` and the page it renders; `bun zt make:page <name>` writes a page.",
     ],
   },
   {

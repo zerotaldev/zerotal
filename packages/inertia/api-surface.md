@@ -326,6 +326,10 @@ type RenderProps = {    [x: string]: unknown;}
 
 type RouteTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>
 
+## ./scaffold  `(./src/scaffold.ts)`
+
+_(no exports)_
+
 ## ./testing  `(./src/testing.ts)`
 
 function renderPage = (component: unknown, props?: Record<string, unknown>, options?: RenderPageOptions) => Promise<string>

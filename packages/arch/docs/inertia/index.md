@@ -14,7 +14,8 @@ on the first load.
 Zerotal's `@zerotal/inertia` package is a native, Bun-powered Inertia server adapter with full
 **Inertia v3** protocol support: controller-less page routes, automatic shared props, asset
 versioning, the complete data-props layer (partial reloads, `optional`/`defer`/`merge`/`once` props,
-history encryption, precognition), a `make:page` generator, a `Bun.build`-based bundler, and optional
+history encryption, precognition), generators for pages, routes and whole screens (`make:page`,
+`make:route`, `make:resource --model`), a `Bun.build`-based bundler, and optional
 streaming SSR — all wired by a single provider. The stock `@inertiajs/react` / `@inertiajs/vue3`
 clients work against it unchanged.
 
@@ -72,7 +73,7 @@ That's the only wiring you need. Registering the provider switches on the follow
 
 - `onRegister` — registers the `Router.inertia()` route macro so it's available before routes load.
 - `onBooting` — auto-registers `InertiaMiddleware` via `app.useOnce()`, loads the HTML template and asset version into memory, resolves the pages directory, applies the history-encryption default, and (when `ssr: true`) registers `POST /__ssr`.
-- `onBooted` — registers Inertia's dev build routine (alongside any other view layer's, so both keep rebuilding) and lazily registers the `make:page` and `inertia:build` CLI commands when running in console mode.
+- `onBooted` — registers Inertia's dev build routine (alongside any other view layer's, so both keep rebuilding) and lazily registers the `make:page`, `make:route` and `inertia:build` CLI commands when running in console mode. (`make:resource --model` is a core command that finds `@zerotal/inertia/scaffold` in the app.)
 
 You do **not** add `InertiaMiddleware` to `.use()` manually (see [Middleware & Versioning](/docs/inertia/middleware)).
 
@@ -178,7 +179,9 @@ export default function Dashboard({ posts, auth }: Props) {
 
 Note `auth` is available without the controller passing it — see
 [Shared Props](/docs/inertia/props). Generate new pages with
-[`make:page`](/docs/inertia/build#generating-a-page) and bundle them with
+[`make:page`](/docs/inertia/build#generating-a-page), a route with
+[`make:route`](/docs/inertia/build#generating-a-route), a whole screen over a model with
+[`make:resource --model`](/docs/inertia/build#generating-a-resource), and bundle them with
 [`inertia:build`](/docs/inertia/build#building-assets).
 
 `route("posts.show", { slug })` builds the URL from the route's **name** rather than

@@ -3,8 +3,9 @@ import providers from "./providers";
 import { Handler } from "../app/exceptions/Handler";
 import type { User } from "../app/models/User.ts";
 
-// Tell @zerotal/auth which model `Auth.user()` returns. The empty body is the
-// point: this augmentation exists to bind the type, not to add members.
+// Tell @zerotal/auth which model `Auth.user()` returns — and so `http.user`, and a
+// Flow page's `this.user`. The empty body is the point: this augmentation exists to
+// bind the type, not to add members.
 declare module "zerotal/auth" {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface UserModel extends User {}

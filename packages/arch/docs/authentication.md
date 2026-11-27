@@ -98,8 +98,8 @@ export class User extends AuthUser {
 
 ### Bind the type — a required step
 
-Do this once, or every `Auth.user()` in the app returns the framework's minimal `UserModel`
-and reading your own columns off it is a type error:
+Do this once, or every `Auth.user()` and `ctx.user` in the app is the framework's minimal
+`UserModel`, and reading your own columns off it is a type error:
 
 ```typescript fragment
 // bootstrap/app.ts (or any file imported at boot)

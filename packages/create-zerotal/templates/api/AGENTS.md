@@ -67,7 +67,7 @@ bun zt doctor          # health checks, with a fix beside each finding
 
 **Data.** Models are Active Record classes in `app/models/`, declared with `@table` and `@column` decorators; `DB` from `zerotal/orm` is the query builder. Migrations live in `database/migrations/` — generate with `bun zt make:migration`, never hand-edit an applied one. Call `schema` before writing a query or a factory.
 
-**Auth.** `Auth` from `zerotal/auth` for the current user; policies go in `app/policies/` and are discovered automatically. Do not hand-roll password hashing or session handling.
+**Auth.** `Auth` from `zerotal/auth` for the current user; policies go in `app/policies/` and are discovered automatically. Do not hand-roll password hashing or session handling. `Auth.user()` and `ctx.user` are the app's `User` through one declaration, `declare module "zerotal/auth" { interface UserModel extends User {} }`, in `bootstrap/app.ts`; add it if it is missing rather than casting either.
 
 **Validation.** `FormRequest` subclasses in `app/requests/`, or `validate()` inline. Rules are built with `RuleBuilder`, so a typo is a compile error rather than a runtime one.
 

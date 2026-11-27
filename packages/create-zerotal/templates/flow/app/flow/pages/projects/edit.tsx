@@ -1,7 +1,7 @@
 import { route } from "zerotal";
 import { Gate } from "zerotal/auth";
-import type { HtmlNode } from "@zerotal/flow";
-import type { Project } from "@app/models/Project";
+import { locked, param, type HtmlNode } from "@zerotal/flow";
+import { Project } from "@app/models/Project";
 import { PageHeader } from "../../components/PageHeader";
 import { ProjectForm } from "../../components/ProjectForm";
 import { AppLayout } from "../../layouts/AppLayout";
@@ -19,15 +19,12 @@ export class EditProjectPage extends Page {
       .filter(Boolean)
       .join(" — ");
 
-  project: Project | null = null;
+  /** `:project`, already loaded by the router — or, in a test, set on the page directly. */
+  @locked @param(Project) project: Project | null = null;
 
   override async onMount(): Promise<void> {
-    // `:project`, already loaded by the router — or, in a test, set on the page directly.
-    const project =
-      (this.http?.params as { project?: Project } | undefined)?.project ?? this.project;
-    if (!project) return;
-    Gate.authorize("update", project);
-    this.project = project;
+    if (!this.project) return;
+    Gate.authorize("update", this.project);
   }
 
   override layout(page: HtmlNode): HtmlNode {

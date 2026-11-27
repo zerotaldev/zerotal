@@ -15,7 +15,7 @@ import { claimTwoFactorStep } from "@app/auth/two-factor";
  */
 
 function pendingUser(): User | undefined {
-  return Auth.pendingTwoFactorUser() as User | undefined;
+  return Auth.pendingTwoFactorUser();
 }
 
 // POST /two-factor/challenge — a code from the authenticator app, or a recovery code.

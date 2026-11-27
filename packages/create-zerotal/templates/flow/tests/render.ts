@@ -37,7 +37,7 @@ export async function renderPage<T extends Page>(
     await t.render();
 
     // The layout as the route applies it, around the markup the page just rendered.
-    const page = t.page() as unknown as Page;
+    const page = t.page();
     const document = await page.layout({ html: `<div data-flow-page>${t.html()}</div>` });
     return parseHtml(document.html);
   });

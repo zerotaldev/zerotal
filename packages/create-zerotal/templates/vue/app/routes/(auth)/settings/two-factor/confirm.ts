@@ -1,14 +1,13 @@
 import type { HttpContext } from "zerotal";
 import { Auth, TWO_FACTOR_SESSION_KEY, TwoFactor } from "zerotal/auth";
 import { validate } from "zerotal/validator";
-import type { User } from "@app/models/User";
 import { rejectInput } from "@app/support/validation";
 import { RECOVERY_CODES_FLASH, SETUP_SECRET_KEY } from "@app/auth/two-factor";
 
 // POST /settings/two-factor/confirm — the first code from the app. Only now is the
 // secret saved, with the recovery codes, and the account asks for a code at sign-in.
 export async function POST(http: HttpContext): Promise<void> {
-  const user = Auth.user() as User;
+  const user = Auth.user();
   const secret = http.session?.get(SETUP_SECRET_KEY);
 
   if (typeof secret !== "string") {

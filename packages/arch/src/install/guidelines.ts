@@ -85,7 +85,9 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
     lines: ({ from }) => [
       `**Auth.** \`Auth\` from \`${from("@zerotal/auth")}\` for the current user; policies go in ` +
         "`app/policies/` and are discovered automatically. Do not hand-roll password hashing or " +
-        "session handling.",
+        "session handling. `Auth.user()` and `ctx.user` are the app's `User` through one " +
+        `declaration, \`declare module "${from("@zerotal/auth")}" { interface UserModel extends User {} }\`, ` +
+        "in `bootstrap/app.ts`; add it if it is missing rather than casting either.",
     ],
   },
   {
@@ -103,7 +105,8 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
         "called over a socket — unless it or a base class sets `static interactive = false`, " +
         "which renders plain HTML with no snapshot. Check the base class before relying on " +
         "either; a page base often turns it off and a page that needs live state turns it " +
-        "back on. `bun zt make:flow` scaffolds one.",
+        "back on. A page reads a route segment through a field — `@locked @param(Post) post!: Post` " +
+        "— rather than by casting `ctx.params`. `bun zt make:flow` scaffolds one.",
     ],
   },
   {

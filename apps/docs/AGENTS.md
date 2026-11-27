@@ -67,11 +67,11 @@ bun zt doctor          # health checks, with a fix beside each finding
 
 **Data.** Models are Active Record classes in `app/models/`, declared with `@table` and `@column` decorators; `DB` from `zerotal/orm` is the query builder. Migrations live in `database/migrations/` — generate with `bun zt make:migration`, never hand-edit an applied one. Call `schema` before writing a query or a factory.
 
-**Auth.** `Auth` from `zerotal/auth` for the current user; policies go in `app/policies/` and are discovered automatically. Do not hand-roll password hashing or session handling.
+**Auth.** `Auth` from `zerotal/auth` for the current user; policies go in `app/policies/` and are discovered automatically. Do not hand-roll password hashing or session handling. `Auth.user()` and `ctx.user` are the app's `User` through one declaration, `declare module "zerotal/auth" { interface UserModel extends User {} }`, in `bootstrap/app.ts`; add it if it is missing rather than casting either.
 
 **Validation.** `FormRequest` subclasses in `app/requests/`, or `validate()` inline. Rules are built with `RuleBuilder`, so a typo is a compile error rather than a runtime one.
 
-**Flow components.** Server-rendered components: a class with state fields and actions, rendered as JSX. A component is interactive — state kept between requests, actions called over a socket — unless it or a base class sets `static interactive = false`, which renders plain HTML with no snapshot. Check the base class before relying on either; a page base often turns it off and a page that needs live state turns it back on. `bun zt make:flow` scaffolds one.
+**Flow components.** Server-rendered components: a class with state fields and actions, rendered as JSX. A component is interactive — state kept between requests, actions called over a socket — unless it or a base class sets `static interactive = false`, which renders plain HTML with no snapshot. Check the base class before relying on either; a page base often turns it off and a page that needs live state turns it back on. A page reads a route segment through a field — `@locked @param(Post) post!: Post` — rather than by casting `ctx.params`. `bun zt make:flow` scaffolds one.
 
 **UI kit.** `@zerotal/flow-ui` ships the component set. Check it before writing a button, modal, table or form field from scratch.
 

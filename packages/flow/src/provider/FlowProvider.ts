@@ -1151,6 +1151,13 @@ async function _dispatchFrame(
   page._isHydrated = true;
   // Use the HMAC-signed id from the snapshot — frame.component is unsigned.
   page._flowId = frame.snapshot.memo.id;
+  // A frame that writes fields, or calls a built-in, runs the page's own hooks from here on
+  // (`onUpdating`, `onMount` under `$refresh`): a monotonic page keeps its claim for it, so
+  // the same snapshot cannot run them again. Only a call refused with nothing written gives
+  // its claim back; an exposed method marks it just before its body runs.
+  if (Object.keys(frame.updates ?? {}).length > 0 || frame.method.startsWith("$")) {
+    _markActionRan(page);
+  }
   page._flowPath = frame.snapshot.memo.path;
   page._prevChildIds = frame.snapshot.memo.children ?? [];
   page._childIds = [];

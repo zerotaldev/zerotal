@@ -20,6 +20,17 @@ follows the Zerotal monorepo's unified versioning.
   `ReturnType<() => InertiaPage | null>`, or use `InertiaPage` directly), and a subclass that
   overrides `inertia()` has to declare both overloads.
 
+- **`res.html()` reads a server-rendered page the way a visitor does.** It parses the body once,
+  with Bun's `HTMLRewriter` and no new dependency, into an `HtmlDocument`: find elements by CSS
+  selector, by role and accessible name (`getByRole("button", { name: "Save" })`), by visible
+  text or by label; assert the title, visible text, a field's value, a checked box, a field's
+  error (as `aria-invalid` and `aria-describedby` show it), where a link or a form goes, and how
+  many elements match. Every query works inside an element too, and a form names its default
+  button with `submitButton()`. A failure quotes the page's text and lists what the query could
+  have meant — the links and where they go, the fields and their labels, the elements with that
+  role — and says first when the response was a redirect or JSON rather than a page.
+  `parseHtml()` reads any other HTML, including the render a `FlowTest` holds.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

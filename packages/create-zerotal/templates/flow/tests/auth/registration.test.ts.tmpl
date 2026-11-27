@@ -4,8 +4,7 @@ import { refreshDatabase, type TestApp } from "zerotal/testing";
 import { User } from "../../app/models/User";
 import { VerifyEmailNotification } from "../../app/notifications/VerifyEmailNotification";
 import { UserFactory } from "../../database/factories/UserFactory";
-import { bootApp } from "../support";
-import { assertPage } from "../html";
+import { assertPage, bootApp } from "../support";
 
 let app: TestApp;
 let mail: NotificationFake;

@@ -7,8 +7,12 @@
  * so the page can read the signed-in user. The page loads its data in `onMount()`, as it
  * does for a real visit; `state` is laid over the top afterwards, to show a page in a
  * state that would take several requests to reach (two-factor half set up, say).
+ *
+ * It returns the page parsed, to read the way the HTTP tests read a response: `res.html()`
+ * there, this here.
  */
 import { HttpContext, RequestContext } from "zerotal";
+import { parseHtml, type HtmlDocument } from "zerotal/testing";
 import { FlowTest } from "@zerotal/flow/testing";
 import type { Page } from "../app/flow/lib/page";
 import type { User } from "../app/models/User";
@@ -23,7 +27,7 @@ export async function renderPage<T extends Page>(
     url = "/",
     state = {},
   }: { user?: User | null; url?: string; state?: Partial<T> } = {},
-): Promise<string> {
+): Promise<HtmlDocument> {
   const http = HttpContext.fake(`http://localhost${url}`);
   if (user) http.user = user;
 
@@ -35,6 +39,6 @@ export async function renderPage<T extends Page>(
     // The layout as the route applies it, around the markup the page just rendered.
     const page = t.page() as unknown as Page;
     const document = await page.layout({ html: `<div data-flow-page>${t.html()}</div>` });
-    return document.html;
+    return parseHtml(document.html);
   });
 }

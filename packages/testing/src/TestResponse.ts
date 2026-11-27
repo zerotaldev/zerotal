@@ -20,6 +20,8 @@
  * takes the already-read body so it can stay synchronous.
  */
 
+import { HtmlDocument } from "./html/HtmlDocument.ts";
+
 /**
  * Decodes the session carried by a response, using the application's own
  * session driver. Returns `null` when the response sets no session cookie.
@@ -49,6 +51,8 @@ export class TestResponse {
    */
   private readonly _session: Record<string, unknown> | null | undefined;
   private readonly _exception: unknown;
+  /** The parsed page, built the first time {@link html} is called. */
+  private _html: HtmlDocument | undefined;
 
   constructor(
     private readonly _res: Response,
@@ -485,6 +489,41 @@ export class TestResponse {
   /** Return the full response body as text. */
   text(): string {
     return this._body;
+  }
+
+  // ── HTML ──────────────────────────────────────────────────────────────
+
+  /**
+   * The body, parsed as a page: find what is on it by CSS selector, role, label or text, and
+   * assert on what a visitor sees — text, field values, checked boxes, field errors, links,
+   * form actions, counts. Parsed once, the first time it is called.
+   *
+   * When an assertion on it fails, the message quotes the page's text; on a response that is
+   * not a page (a redirect, a JSON error) it says that first.
+   *
+   * @example
+   * const page = (await app.get("/projects")).assertOk().html();
+   * page.assertTitle(/^Projects/).assertLink("New project", "/projects/create");
+   *
+   * @example
+   * (await app.get("/settings/profile")).html().assertValue("email", user.email);
+   */
+  html(): HtmlDocument {
+    this._html ??= new HtmlDocument(this._body, this._pageNote());
+    return this._html;
+  }
+
+  /** What a failed page assertion says first, when this response is not a page at all. */
+  private _pageNote(): string | undefined {
+    const status = this._res.status;
+    if (status >= 300 && status <= 399) {
+      const location = this._res.headers.get("Location");
+      return `The response is a ${status} redirect${location ? ` to "${location}"` : ""}, not a page.`;
+    }
+    const type = this._res.headers.get("Content-Type") ?? "";
+    if (type.includes("json")) return `The response is HTTP ${status} JSON, not a page.`;
+    if (status >= 400) return `The response is HTTP ${status}.`;
+    return undefined;
   }
 
   // ── Validation assertions ─────────────────────────────────────────────

@@ -13,6 +13,11 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Added
+
+- **The testing docs cover reading a page.** "Reading the page" in the HTTP tests guide, and
+  "Reading the render" in the Flow testing guide.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

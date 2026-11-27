@@ -386,6 +386,167 @@ const code = res.status; // number
 const ok = res.ok; // boolean
 ```
 
+## Reading the page
+
+A page rendered on the server — a Flow page, a view a controller returns — reaches a test as
+HTML, not as a component and its props. `res.html()` parses it, and a test reads it the way a
+visitor does: by its title and text, a link or a button by its role and name, a field by its
+label. The markup around a value can change, the classes can change, and the test still
+passes; nothing is added to the page only so a test can find it.
+
+```typescript
+// tests/projects.test.ts
+import { expect, test } from "bun:test";
+import type { TestApp } from "@zerotal/testing";
+
+declare const app: TestApp; // booted in beforeAll, as in "Booting the app"
+
+test("lists the projects", async () => {
+  const page = (await app.get("/projects")).assertOk().html();
+
+  page.assertTitle("Projects — Acme").assertSeeText("Showing 1–2 of 2 projects");
+  page.assertLink("New project", "/projects/create");
+
+  const items = page.getByRole("list", { name: "Projects" }).findAllByRole("listitem");
+  expect(items.map((item) => item.get("a").text())).toEqual(["Billing", "Website"]);
+});
+```
+
+The page is parsed once, the first time `html()` is called, with Bun's own `HTMLRewriter`:
+no dependency, and no regular expression guessing at the markup.
+
+### Finding what is on it
+
+Every query comes in three shapes: `find…` returns the first match or `null`, `findAll…`
+every match (possibly none), and `get…` the first match, throwing with what the page held
+when there is none.
+
+| Query                                                        | Finds                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `find(selector)` / `findAll` / `get` / `count`               | Elements matching a CSS selector: tags, `#id`, `.class`, every attribute operator, the four combinators, `:not()`, `:is()`, `:has()`, `:nth-child()` and its relatives, `:checked`, `:disabled`.                                                                       |
+| `findByRole(role, options?)` / `findAllByRole` / `getByRole` | Elements with a role — a `role` attribute, or the one the tag implies: `link`, `button`, `heading`, `textbox`, `checkbox`, `list`, `listitem`, `row`, `group`, `main`… `options` is a `ByRoleOptions`: `name` (the accessible name), `level` (for headings), `hidden`. |
+| `findByText(text, options?)` / `findAllByText` / `getByText` | The innermost elements whose visible text is `text`. `options` is a `ByTextOptions`: `exact: false` for a case-insensitive substring, `selector` to narrow the candidates.                                                                                             |
+| `findByLabel(text)` / `findAllByLabel` / `getByLabel`        | Form controls labelled `text`, by `<label>`, `aria-label` or `aria-labelledby`.                                                                                                                                                                                        |
+| `field(field)`                                               | A form control by its `name`, then its `id`, then its label.                                                                                                                                                                                                           |
+| `form(action?)`                                              | The form that sends to `action` — the first form with none given.                                                                                                                                                                                                      |
+
+Text to match is a `TextMatch`: a string, compared once whitespace is collapsed, or a pattern.
+The accessible name is what a screen reader announces: `aria-labelledby`, `aria-label`, a
+`<label>`, an image's `alt`, the element's own text, then `title`. An icon link with
+`aria-label="Edit Website"` is named "Edit Website"; a link wrapping an image is named by the
+image's `alt`.
+
+Each query returns an `HtmlElement`, which has every query and assertion the page has, scoped
+to itself. `HtmlDocument` (the page) and `HtmlElement` share them through `HtmlScope`:
+
+```typescript
+import { expect } from "bun:test";
+import { parseHtml } from "@zerotal/testing";
+
+const page = parseHtml(`
+  <form action="/settings/two-factor/confirm" method="post">
+    <label for="code">Code</label>
+    <input id="code" name="code" inputmode="numeric">
+    <button type="button">Cancel</button>
+    <button>Turn on</button>
+  </form>`);
+
+const form = page.form("/settings/two-factor/confirm");
+expect(form.field("Code").attr("inputmode")).toBe("numeric");
+// What Enter in the code field presses: the first submit button that belongs to the form.
+expect(form.submitButton()?.text()).toBe("Turn on");
+```
+
+An element also reads back what it is: `tag`, `attr(name)`, `attributes()`, `text()`,
+`html()`, `role()`, `name()`, `value()`, `isChecked()`, `isDisabled()`, `parent()` and
+`children()`.
+
+### Asserting on it
+
+Every assertion returns the page (or element) it was called on, so they chain:
+
+```typescript
+import { parseHtml } from "@zerotal/testing";
+
+parseHtml(`
+  <title>Profile — Acme</title>
+  <form action="/settings/profile" method="post">
+    <label for="email">Email</label>
+    <input id="email" name="email" value="ada@example" aria-invalid="true"
+      aria-describedby="email-error">
+    <p id="email-error">The email must be a valid email address.</p>
+    <label><input type="checkbox" name="newsletter" checked> Send me the newsletter</label>
+    <button>Save</button>
+  </form>
+  <a href="/settings/password">Password</a>`)
+  .assertTitle(/^Profile/)
+  .assertSeeText("Send me the newsletter")
+  .assertDontSeeText("Two-factor")
+  .assertValue("email", "ada@example")
+  .assertChecked("newsletter")
+  .assertFieldError("email", "must be a valid email address")
+  .assertLink("Password", "/settings/password")
+  .assertFormAction("/settings/profile", "POST")
+  .assertCount("input", 2)
+  .assertPresent("button")
+  .assertMissing("table");
+```
+
+| Assertion                                                  | Passes when                                                                                                                                                            |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assertTitle(title)`                                       | The page's `<title>` is `title`, or matches the pattern. On `HtmlDocument` only.                                                                                       |
+| `assertSeeText(text)` / `assertDontSeeText(text)`          | A visitor can (or cannot) read `text` here: no scripts, styles, `<template>` or `hidden` elements, and a space where one block meets the next.                         |
+| `assertValue(field, value)`                                | The field holds `value` as the page was sent: an input's `value`, a textarea's text, a select's chosen option, the checked radio of a group.                           |
+| `assertChecked(field, value?)` / `assertNotChecked`        | The checkbox or radio is (or is not) checked. With `value`, the one of that name with that value.                                                                      |
+| `assertFieldError(field, message?)` / `assertNoFieldError` | The field shows a validation error (containing `message`): it is `aria-invalid="true"`, with the visible text its `aria-errormessage` or `aria-describedby` points to. |
+| `assertLink(name, href)`                                   | A link with that accessible name points to `href`. A path matches an absolute URL with that path.                                                                      |
+| `assertFormAction(action, method?)`                        | A form sends to `action`, with that `method` (`GET` when the form names none).                                                                                         |
+| `assertCount(selector, count)`                             | Exactly `count` elements match.                                                                                                                                        |
+| `assertPresent(selector)` / `assertMissing(selector)`      | At least one element matches, or none does.                                                                                                                            |
+
+A field's error is read the way assistive technology reads it, so a field whose error is only
+coloured red has none to find. Wire the error to the field — `aria-invalid` and
+`aria-describedby` — and the test and the screen reader both find it.
+
+### When one fails
+
+A failure says what was on the page instead, and what the query could have meant:
+
+```text
+Expected an element with the role "button" named "Delete", but none is here.
+
+With the role "button":
+  button "Delete Website relaunch"
+  button "Sign out"
+
+On the page "Projects — Acme":
+  Projects New project Website relaunch Active Updated 2 minutes ago …
+```
+
+A missing link lists the links and where they go, a missing field lists the fields with their
+names, labels and values, and a wrong count shows what did match. On a response that is not a
+page, the message says so first — `The response is a 302 redirect to "/login", not a page.` —
+which is usually the whole story.
+
+### HTML from somewhere else
+
+`parseHtml()` reads any HTML: a string, or anything with an `html()` method. That includes
+the `FlowTest` that rendered one component (see [Testing Flow](/docs/flow/testing)), so a
+component test asks the same questions an HTTP test does:
+
+```typescript fragment
+import { FlowTest } from "@zerotal/flow/testing";
+import { parseHtml } from "@zerotal/testing";
+
+const t = await FlowTest.mount(LoginPage);
+parseHtml(t).getByLabel("Email");
+```
+
+None of this runs the page's JavaScript or applies its styles: an element is hidden when it has
+`hidden`, sits in a `<template>`, or (for roles) has `aria-hidden="true"`. To click, type, and
+see what a script does with the page, drive a real browser — see
+[Browser Tests](/docs/testing/browser).
+
 ## Unit-testing a controller
 
 Skip HTTP entirely for fast, focused controller tests by faking the context:
@@ -479,7 +640,30 @@ expect(ctx.response?.status).toBe(200);
 | `exception`                                                                         | `(): unknown`                                    | The exception the request raised, if any.                                                      |
 | `json`                                                                              | `json<T>(): T`                                   | Parse and return the full JSON body.                                                           |
 | `text`                                                                              | `text(): string`                                 | Return the body as text.                                                                       |
+| `html`                                                                              | `html(): HtmlDocument`                           | The body parsed as a page, to query and assert on — see "Reading the page".                    |
 | `status` / `ok` / `headers`                                                         | getters                                          | The underlying `Response` status, `ok`, and headers.                                           |
+
+### HtmlDocument and HtmlElement
+
+What `res.html()` and `parseHtml()` return, and every element their queries find.
+
+| Member                                                              | Signature                                               | Description                                                            |
+| ------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `parseHtml`                                                         | `parseHtml(source: string \| { html() }): HtmlDocument` | Parse HTML, a `TestResponse`, or a `FlowTest`'s render.                |
+| `title` / `assertTitle`                                             | `(): string` / `(title: TextMatch): this`               | The `<title>`, and an assertion on it. `HtmlDocument` only.            |
+| `text` / `html`                                                     | `(): string`                                            | The visible text, whitespace collapsed; the markup.                    |
+| `find` / `findAll` / `get` / `count`                                | `(selector: string)`                                    | By CSS selector.                                                       |
+| `findByRole` / `findAllByRole` / `getByRole`                        | `(role: string, options?: ByRoleOptions)`               | By role, accessible name and heading level.                            |
+| `findByText` / `findAllByText` / `getByText`                        | `(text: TextMatch, options?: ByTextOptions)`            | By visible text, innermost first.                                      |
+| `findByLabel` / `findAllByLabel` / `getByLabel`                     | `(text: TextMatch)`                                     | Form controls by label.                                                |
+| `field` / `form`                                                    | `(field: string)` / `(action?: string \| RegExp)`       | A control by name, id or label; a form by its action.                  |
+| `assertSeeText` / `assertDontSeeText`                               | `(text: TextMatch): this`                               | The visible text contains (or lacks) `text`.                           |
+| `assertValue` / `assertChecked` / `assertNotChecked`                | `(field, value?): this`                                 | A field's value, a checkbox's or radio's state.                        |
+| `assertFieldError` / `assertNoFieldError`                           | `(field, message?): this`                               | A field's validation error, as `aria-invalid` and its message show it. |
+| `assertLink` / `assertFormAction`                                   | `(name, href): this` / `(action, method?): this`        | Where a link or a form goes.                                           |
+| `assertCount` / `assertPresent` / `assertMissing`                   | `(selector, count?): this`                              | How many elements match.                                               |
+| `tag` / `attr` / `attributes` / `role` / `name` / `value`           | `HtmlElement`                                           | What one element is.                                                   |
+| `isChecked` / `isDisabled` / `parent` / `children` / `submitButton` | `HtmlElement`                                           | Its state, its neighbours, and a form's default button.                |
 
 ## Next steps
 

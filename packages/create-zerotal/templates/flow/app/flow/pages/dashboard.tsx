@@ -93,7 +93,7 @@ export class DashboardPage extends Page {
 
         <div class="grid gap-4 sm:grid-cols-3">
           {stats.map((stat) => (
-            <div class={`${CARD} flex items-center gap-4 p-5`}>
+            <div role="group" aria-label={stat.label} class={`${CARD} flex items-center gap-4 p-5`}>
               <div class="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
                 <svg
                   viewBox="0 0 24 24"
@@ -104,9 +104,7 @@ export class DashboardPage extends Page {
               </div>
               <div>
                 <p class="text-sm text-muted-foreground">{stat.label}</p>
-                <p class="text-2xl font-semibold tabular-nums" data-stat={stat.label.toLowerCase()}>
-                  {stat.value}
-                </p>
+                <p class="text-2xl font-semibold tabular-nums">{stat.value}</p>
               </div>
             </div>
           ))}

@@ -21,7 +21,7 @@ describe("social sign-in", () => {
   refreshDatabase();
 
   test("offers no providers until their keys are set", async () => {
-    (await app.get("/login")).assertOk().assertDontSee('href="/auth/');
+    (await app.get("/login")).assertOk().html().assertMissing('a[href^="/auth/"]');
     (await app.get("/auth/github")).assertNotFound();
   });
 

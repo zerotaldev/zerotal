@@ -1,9 +1,17 @@
 /**
- * What the feature tests share: one booted app per file, and a browser that keeps its
- * cookies between requests for the flows that take more than one.
+ * What the feature tests share: one booted app per file, a browser that keeps its cookies
+ * between requests for the flows that take more than one, and the check that a response is
+ * the page a test expects.
  */
 import { config } from "zerotal";
-import { createTestApp, migrateDatabase, type TestApp, type TestResponse } from "zerotal/testing";
+import {
+  createTestApp,
+  migrateDatabase,
+  type HtmlDocument,
+  type TestApp,
+  type TestResponse,
+} from "zerotal/testing";
+import { titled } from "../app/flow/lib/page";
 
 /** Boot the app from its own bootstrap, against a fresh in-memory database. */
 export async function bootApp(): Promise<TestApp> {
@@ -16,6 +24,18 @@ export async function bootApp(): Promise<TestApp> {
   // the schema, and the schema under test is the one that ships.
   await migrateDatabase();
   return app;
+}
+
+/**
+ * The response is the page with this title — "Sign in" for "Sign in — Acme" — and the page,
+ * to read the rest of: `assertPage(res, "Projects").getByRole("link", { name: "New project" })`.
+ *
+ * A Flow page reaches a test as finished HTML, not as a component and its props, so a test
+ * reads it the way a visitor does: the title, the text, a field by its label, a button by its
+ * name. See "Reading the page" in the testing docs for the rest of what `res.html()` asks.
+ */
+export function assertPage(res: TestResponse, title: string): HtmlDocument {
+  return res.assertOk().html().assertTitle(titled(title)());
 }
 
 /**

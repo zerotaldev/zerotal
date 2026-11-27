@@ -3,13 +3,21 @@ import {
   assertDatabaseHas,
   assertDatabaseMissing,
   refreshDatabase,
+  type HtmlDocument,
   type TestApp,
 } from "zerotal/testing";
 import { Project } from "../app/models/Project";
 import { ProjectFactory } from "../database/factories/ProjectFactory";
 import { UserFactory } from "../database/factories/UserFactory";
-import { bootApp } from "./support";
-import { assertPage, attributes, textIn, textOf } from "./html";
+import { assertPage, bootApp } from "./support";
+
+/** The names in the projects list, in the order it shows them. */
+function projectNames(page: HtmlDocument): string[] {
+  return page
+    .getByRole("list", { name: "Projects" })
+    .findAllByRole("listitem")
+    .map((item) => item.get("a").text());
+}
 
 /**
  * The example resource, end to end: every action a user takes on a project, and the
@@ -39,9 +47,8 @@ describe("projects", () => {
     await ProjectFactory.for(user).count(2).create();
     await ProjectFactory.for(other).create({ name: "Not yours" });
 
-    const projects = attributes(
+    const projects = projectNames(
       assertPage(await app.actingAs(user).get("/projects"), "Projects"),
-      "data-project",
     );
 
     expect(projects).toHaveLength(2);
@@ -57,27 +64,34 @@ describe("projects", () => {
     });
     await ProjectFactory.for(user).create({ name: "Dark mode", description: "Themes." });
 
-    const page = await app.actingAs(user).get("/projects?search=billing");
-    const names = attributes(page, "data-project").sort();
+    const page = (await app.actingAs(user).get("/projects?search=billing")).assertOk().html();
 
-    expect(names).toEqual(["Billing migration", "Status page"]);
+    expect(projectNames(page).sort()).toEqual(["Billing migration", "Status page"]);
+    // What was searched for stays in the box.
+    page.assertValue("search", "billing");
   });
 
   test("pages through a long list", async () => {
     const user = await UserFactory.create();
     await ProjectFactory.for(user).count(12).create();
 
-    const second = await app.actingAs(user).get("/projects?page=2");
+    const second = (await app.actingAs(user).get("/projects?page=2")).assertOk().html();
 
-    expect(attributes(second, "data-project")).toHaveLength(2);
-    expect(textIn(second)).toContain("Showing 11–12 of 12 projects");
-    second.assertSee('rel="prev"').assertDontSee('rel="next"');
+    expect(projectNames(second)).toHaveLength(2);
+    second
+      .getByRole("navigation", { name: "Pagination" })
+      .assertSeeText("Showing 11–12 of 12 projects")
+      .assertPresent('a[rel="prev"]')
+      .assertMissing('a[rel="next"]');
   });
 
   test("creates a project owned by the signed-in user", async () => {
     const user = await UserFactory.create();
 
-    assertPage(await app.actingAs(user).get("/projects/create"), "New project");
+    assertPage(await app.actingAs(user).get("/projects/create"), "New project").assertFormAction(
+      "/projects",
+      "POST",
+    );
     const res = await app.actingAs(user).postForm("/projects", valid);
 
     res.assertRedirect("/projects");
@@ -120,10 +134,9 @@ describe("projects", () => {
     const user = await UserFactory.create();
     const project = await ProjectFactory.for(user).create();
 
-    assertPage(
-      await app.actingAs(user).get(`/projects/${project.id}/edit`),
-      `Edit ${project.name}`,
-    );
+    assertPage(await app.actingAs(user).get(`/projects/${project.id}/edit`), `Edit ${project.name}`)
+      .assertValue("name", project.name)
+      .assertFormAction(`/projects/${project.id}`);
     const res = await app
       .actingAs(user)
       .putForm(`/projects/${project.id}`, { ...valid, name: "Renamed" });
@@ -164,12 +177,13 @@ describe("projects", () => {
     await ProjectFactory.for(user).create({ status: "active" });
     await ProjectFactory.for(user).create({ status: "completed" });
 
-    const dashboard = (await app.actingAs(user).get("/dashboard")).assertOk();
+    const dashboard = (await app.actingAs(user).get("/dashboard")).assertOk().html();
+    const stat = (name: string) => dashboard.getByRole("group", { name }).text();
 
-    expect({
-      total: textOf(dashboard, 'data-stat="projects"'),
-      active: textOf(dashboard, 'data-stat="active"'),
-      completed: textOf(dashboard, 'data-stat="completed"'),
-    }).toEqual({ total: "2", active: "1", completed: "1" });
+    expect([stat("Projects"), stat("Active"), stat("Completed")]).toEqual([
+      "Projects 2",
+      "Active 1",
+      "Completed 1",
+    ]);
   });
 });

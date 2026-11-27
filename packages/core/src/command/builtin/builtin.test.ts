@@ -214,6 +214,25 @@ describe("MakeTestCommand", () => {
     expect(present).toContain('test.todo("creates a task"');
   });
 
+  it("in a Flow app, reads the page the way a visitor does", () => {
+    const stub = featureTestStub("tasks", {
+      support: true,
+      html: true,
+      userFactory: true,
+      routeExists: true,
+    });
+
+    expect(stub).toContain("import { afterAll, beforeAll, beforeEach, describe, expect, test }");
+    expect(stub).toContain(
+      'const page = (await app.actingAs(user).get("/tasks")).assertOk().html();',
+    );
+    expect(stub).toContain('.html().assertSeeText("Example");');
+    // The React and Vue starters' pages are props, not HTML: their stub is unchanged.
+    const props = featureTestStub("tasks", { support: true, userFactory: true, routeExists: true });
+    expect(props).not.toContain(".html()");
+    expect(props).not.toContain("expect");
+  });
+
   it("does not pluralise a name that is already plural", () => {
     const stub = featureTestStub("Posts");
 

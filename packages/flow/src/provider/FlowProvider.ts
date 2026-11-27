@@ -1155,9 +1155,8 @@ async function _dispatchFrame(
   // (`onUpdating`, `onMount` under `$refresh`): a monotonic page keeps its claim for it, so
   // the same snapshot cannot run them again. Only a call refused with nothing written gives
   // its claim back; an exposed method marks it just before its body runs.
-  if (Object.keys(frame.updates ?? {}).length > 0 || frame.method.startsWith("$")) {
-    _markActionRan(page);
-  }
+  const wroteFields = Object.keys(frame.updates ?? {}).length > 0;
+  if (wroteFields || BUILTIN_ACTIONS.has(frame.method)) _markActionRan(page);
   page._flowPath = frame.snapshot.memo.path;
   page._prevChildIds = frame.snapshot.memo.children ?? [];
   page._childIds = [];
@@ -1318,88 +1317,93 @@ async function _dispatchFrame(
           code: limited ? "rate_limited" : "method_not_allowed",
         }),
       );
-      return { failed: true };
-    }
+      // A monotonic page whose fields this frame wrote has kept its claim (the writes ran its
+      // hooks), so it renders and sends its snapshot back with the refusal: the tab then holds
+      // the newest one, and its next action is accepted. Any other refusal sends nothing back.
+      const keepsClaim = wroteFields && getMonotonicProps(entry.PageClass.prototype).size > 0;
+      if (!keepsClaim) return { failed: true };
+      actionErrored = true;
+    } else {
+      const renderlessMethods = getRenderlessMethods(entry.PageClass as typeof Component);
+      skipRender = renderlessMethods.has(method);
 
-    const renderlessMethods = getRenderlessMethods(entry.PageClass as typeof Component);
-    skipRender = renderlessMethods.has(method);
+      // @task: while the action runs, stream throttled partial patches of its changing state
+      // (so `this.answer += token` appears live) and wire an AbortSignal the client trips via
+      // this.cancel(). A @renderless task doesn't stream (no re-render) but still gets cancel.
+      const isTask = getTaskMethods(entry.PageClass as typeof Component).has(method);
+      let taskController: AbortController | null = null;
+      let flushTimer: ReturnType<typeof setInterval> | null = null;
+      let flushing = false;
+      let taskDone = false;
 
-    // @task: while the action runs, stream throttled partial patches of its changing state
-    // (so `this.answer += token` appears live) and wire an AbortSignal the client trips via
-    // this.cancel(). A @renderless task doesn't stream (no re-render) but still gets cancel.
-    const isTask = getTaskMethods(entry.PageClass as typeof Component).has(method);
-    let taskController: AbortController | null = null;
-    let flushTimer: ReturnType<typeof setInterval> | null = null;
-    let flushing = false;
-    let taskDone = false;
+      const flushPartial = (): void => {
+        if (flushing || taskDone || skipRender) return;
+        flushing = true;
+        try {
+          // Field-level streaming: serialize the component's current state WITHOUT re-rendering,
+          // and send only the changed snapshot fields (no html). Reactive bindings of those fields
+          // — `text={this.x}` / `x-text` / `:attr` — update the DOM instantly off the client store;
+          // the final (full) patch re-renders once to reconcile any static template positions. This
+          // is why a streamed field should be bound reactively for a live view.
+          //
+          // No render ran, so preserve the client's child ids in the memo (dehydrate reads them),
+          // and restore the dispatch's own child-id bookkeeping afterward.
+          const savedChildIds = page._childIds;
+          page._childIds = [...page._prevChildIds];
+          // A partial snapshot of a monotonic page carries a sequence that cannot be claimed.
+          const snap = _asPartialSnapshot(page, () => dehydrate(page, frame.snapshot.memo));
+          page._childIds = savedChildIds;
+          // Skip when no serialized field changed since the last patch on this connection.
+          if (JSON.stringify(snap.data) === JSON.stringify(deltaBase.data)) return;
+          _sendPatch(ws, compId, undefined, snap, deltaBase, _EMPTY_EFFECTS, false, true);
+          deltaBase = snap;
+        } catch {
+          /* a mid-stream serialization error is non-fatal — the final patch reports the outcome */
+        } finally {
+          flushing = false;
+        }
+      };
 
-    const flushPartial = (): void => {
-      if (flushing || taskDone || skipRender) return;
-      flushing = true;
-      try {
-        // Field-level streaming: serialize the component's current state WITHOUT re-rendering,
-        // and send only the changed snapshot fields (no html). Reactive bindings of those fields
-        // — `text={this.x}` / `x-text` / `:attr` — update the DOM instantly off the client store;
-        // the final (full) patch re-renders once to reconcile any static template positions. This
-        // is why a streamed field should be bound reactively for a live view.
-        //
-        // No render ran, so preserve the client's child ids in the memo (dehydrate reads them),
-        // and restore the dispatch's own child-id bookkeeping afterward.
-        const savedChildIds = page._childIds;
-        page._childIds = [...page._prevChildIds];
-        // A partial snapshot of a monotonic page carries a sequence that cannot be claimed.
-        const snap = _asPartialSnapshot(page, () => dehydrate(page, frame.snapshot.memo));
-        page._childIds = savedChildIds;
-        // Skip when no serialized field changed since the last patch on this connection.
-        if (JSON.stringify(snap.data) === JSON.stringify(deltaBase.data)) return;
-        _sendPatch(ws, compId, undefined, snap, deltaBase, _EMPTY_EFFECTS, false, true);
-        deltaBase = snap;
-      } catch {
-        /* a mid-stream serialization error is non-fatal — the final patch reports the outcome */
-      } finally {
-        flushing = false;
-      }
-    };
-
-    if (isTask) {
-      taskController = new AbortController();
-      _runningTasks.set(compId, { controller: taskController, owner: ws });
-      page._taskSignal = taskController.signal;
-      flushTimer = setInterval(flushPartial, TASK_FLUSH_MS);
-    }
-
-    try {
-      const fn = (page as unknown as Record<string, unknown>)[method] as (
-        ...a: unknown[]
-      ) => unknown;
-      _markActionRan(page);
-      await fn.apply(page, frame.args ?? []);
-      // The action called this.refresh(): re-run onMount() now, on this same round trip, so the
-      // render below reads what it reloaded. The check before the action only sees a refresh an
-      // update hook asked for; one made by the action itself would otherwise be dropped, and a
-      // list the action just changed would render as it was.
-      if (page._shouldRefresh) {
-        page._shouldRefresh = false;
-        await page.onMount(ctx);
-      }
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        // Validation errors are NOT bugs — store them and continue to re-render.
-        // The client will show field-level error messages via $errors.
-        // _errors is already set on the page by validate().
-      } else if (taskController?.signal.aborted && _isAbort(error, taskController.signal)) {
-        // The visitor pressed Stop. The guide tells a @task to let the aborted signal reject its
-        // work, so this rejection is the cancellation working: re-render what was streamed so
-        // far, with no report and no error toast.
-      } else {
-        await fail(error);
-      }
-    } finally {
       if (isTask) {
-        taskDone = true;
-        if (flushTimer) clearInterval(flushTimer);
-        _runningTasks.delete(compId);
-        page._taskSignal = null;
+        taskController = new AbortController();
+        _runningTasks.set(compId, { controller: taskController, owner: ws });
+        page._taskSignal = taskController.signal;
+        flushTimer = setInterval(flushPartial, TASK_FLUSH_MS);
+      }
+
+      try {
+        const fn = (page as unknown as Record<string, unknown>)[method] as (
+          ...a: unknown[]
+        ) => unknown;
+        _markActionRan(page);
+        await fn.apply(page, frame.args ?? []);
+        // The action called this.refresh(): re-run onMount() now, on this same round trip, so the
+        // render below reads what it reloaded. The check before the action only sees a refresh an
+        // update hook asked for; one made by the action itself would otherwise be dropped, and a
+        // list the action just changed would render as it was.
+        if (page._shouldRefresh) {
+          page._shouldRefresh = false;
+          await page.onMount(ctx);
+        }
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          // Validation errors are NOT bugs — store them and continue to re-render.
+          // The client will show field-level error messages via $errors.
+          // _errors is already set on the page by validate().
+        } else if (taskController?.signal.aborted && _isAbort(error, taskController.signal)) {
+          // The visitor pressed Stop. The guide tells a @task to let the aborted signal reject its
+          // work, so this rejection is the cancellation working: re-render what was streamed so
+          // far, with no report and no error toast.
+        } else {
+          await fail(error);
+        }
+      } finally {
+        if (isTask) {
+          taskDone = true;
+          if (flushTimer) clearInterval(flushTimer);
+          _runningTasks.delete(compId);
+          page._taskSignal = null;
+        }
       }
     }
   }

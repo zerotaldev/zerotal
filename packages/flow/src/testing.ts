@@ -1067,8 +1067,20 @@ function _serializedKeys(page: Component): Set<string> {
  * find it and run no middleware but the persistent kind — never that of whatever route
  * happens to sit at the URL the test asked for.
  */
+/**
+ * Pages of the app that a test-only page of the same name took the registry over from, by name.
+ * The app's page gets its entry back, route middleware included, when it is mounted again.
+ */
+const _displacedPages = new Map<string, NonNullable<ReturnType<typeof getPage>>>();
+
 function _routeOf(PageClass: PageClass<Component>, url: string | undefined): string {
-  const entry = getPage(PageClass.name);
+  let entry = getPage(PageClass.name);
+  const displaced = _displacedPages.get(PageClass.name);
+  if (displaced && displaced.PageClass === (PageClass as unknown) && entry !== displaced) {
+    _getPageEntries().set(PageClass.name, displaced);
+    _displacedPages.delete(PageClass.name);
+    entry = displaced;
+  }
   if (entry && entry.PageClass === (PageClass as unknown)) {
     if (url === undefined) return entry.path;
     const pathname = new URL(url, ORIGIN).pathname;
@@ -1085,10 +1097,14 @@ function _routeOf(PageClass: PageClass<Component>, url: string | undefined): str
   // The registry is keyed by class name and holds the abstract `Component` type; any concrete
   // subclass is one. Test files declare pages of the same name (`ListPage`) far more often than
   // an app does, and a page with no route is the test's own: it takes the name over for the
-  // test, where the app's registration would refuse it as a collision.
-  const page = PageClass as unknown as typeof Component;
-  if (entry) _getPageEntries().set(PageClass.name, { PageClass: page, path });
-  else registerPage(path, page);
+  // test, where the app's registration would refuse it as a collision. Registering it the usual
+  // way also registers its models.
+  // An app's page it takes the name from is kept, and given back when that page is mounted.
+  if (entry) {
+    if (!_isTestRoute(entry.path)) _displacedPages.set(PageClass.name, entry);
+    _getPageEntries().delete(PageClass.name);
+  }
+  registerPage(path, PageClass as unknown as typeof Component);
   return path;
 }
 

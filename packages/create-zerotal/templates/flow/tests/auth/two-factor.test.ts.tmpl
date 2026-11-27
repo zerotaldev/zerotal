@@ -176,8 +176,8 @@ describe("signing in with two-factor", () => {
   test("claims a code's step once, however many requests race for it", async () => {
     const { user, secret } = await userWithTwoFactor();
     const check = authenticator.verifyCodeWithCounter(secret, authenticator.generateCode(secret));
-    expect(check.valid).toBe(true);
-    const step = check.valid ? check.counter : 0;
+    if (check.counter === null) throw new Error("the code did not verify");
+    const step = check.counter;
 
     // The claim is one conditional update, so of several at once exactly one changes the row.
     const claims = await Promise.all([1, 2, 3].map(() => claimTwoFactorStep(user.id, step)));

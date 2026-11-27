@@ -123,45 +123,26 @@ describe("a call in a text child compiles", () => {
     expect(compiled).toContain("&lt;beta");
   });
 
-  it("renders globals and methods on values, in a .map() and a ternary branch too", async () => {
+  it("renders globals, in a .map() and a ternary branch too", async () => {
     const { compiled, runtime } = await bothWays(
-      "DatePage",
+      "GlobalsPage",
       page(
-        "DatePage",
+        "GlobalsPage",
         "",
         `<ul>
-          <li>{start.toISOString().slice(0, 10)}</li>
-          {days.map((d) => <li>{d.toISOString().slice(0, 10)}</li>)}
-          {days.length > 1 ? <b>{String(days.length).padStart(3, "0")}</b> : null}
-          <li>{label?.toUpperCase()}</li>
+          <li>{String(total).padStart(3, "0")}</li>
+          {days.map((d) => <li>{Math.round(d)}</li>)}
+          {days.length > 1 ? <b>{JSON.stringify(label)}</b> : null}
         </ul>`,
-        `const start = new Date(1795219200000);
-    const days = [new Date(1767225600000), new Date(1769990400000)];
-    const label: string | undefined = "a & b";`,
+        `const total = 7;
+    const days = [1.4, 2.6];
+    const label = "a & b";`,
       ),
     );
     expect(compiled).toBe(runtime);
-    expect(compiled).toContain("<li>2026-11-21</li>");
-    expect(compiled).toContain("<li>2026-02-02</li>");
-    expect(compiled).toContain("<b>002</b>");
-    expect(compiled).toContain("<li>A &amp; B</li>");
-  });
-
-  it("renders a method that returns an array of values item by item", async () => {
-    const { compiled, runtime } = await bothWays(
-      "ArrayPage",
-      page(
-        "ArrayPage",
-        "",
-        `<ul><li>{this.words()}</li></ul>`,
-        "",
-        `words() {
-    return ["x", "<y>", null, 2];
-  }`,
-      ),
-    );
-    expect(compiled).toBe(runtime);
-    expect(compiled).toContain("<li>x&lt;y&gt;2</li>");
+    expect(compiled).toContain("<li>007</li>");
+    expect(compiled).toContain("<li>1</li><li>3</li>");
+    expect(compiled).toContain("<b>&quot;a &amp; b&quot;</b>");
   });
 });
 
@@ -261,6 +242,54 @@ function wrap() {
     ["AliasLocalPage", `import { row } from "./rows";`, `<ul>{f("a")}</ul>`, "const f = row;", ""],
     ["RequirePage", "", `<ul>{rq.row("a")}</ul>`, `const rq = require("./rows");`, ""],
     ["LocalArrowPage", "", `<form>{field()}</form>`, "const field = () => <input />;", ""],
+    // Round four: a map over render functions, destructuring, a const copy of a field, a path
+    // alias of another shape, and Flow's own JSX runtime.
+    ["MapFnPage", "", `<form>{this.fns.map((f) => f(this))}</form>`, "", `fns = [() => "x"];`],
+    [
+      "MapParamPage",
+      "",
+      `<ul>{this.cols.map((c) => c.cell())}</ul>`,
+      "",
+      `cols = [{ cell: () => "x" }];`,
+    ],
+    [
+      "DestructurePage",
+      `import { make } from "./rows";`,
+      `<ul>{field()}</ul>`,
+      "const { field } = make;",
+      "",
+    ],
+    [
+      "FieldCopyPage",
+      "",
+      `<form>{ui.field()}</form>`,
+      "const ui = this.ui;",
+      `ui = { field: () => "x" };`,
+    ],
+    ["PagesAliasPage", `import { row } from "@pages/rows";`, `<ul>{row("a")}</ul>`, "", ""],
+    [
+      "JsxRuntimePage",
+      `import { jsx } from "@zerotal/flow/jsx-runtime";`,
+      `<ul>{jsx("li", {})}</ul>`,
+      "",
+      "",
+    ],
+    [
+      "ShadowGlobalPage",
+      "",
+      `<ul>{String(1)}</ul>`,
+      "const String = (n: number) => <li>{n}</li>;",
+      "",
+    ],
+    [
+      "MethodPage",
+      "",
+      `<ul><li>{this.words()}</li></ul>`,
+      "",
+      `words() {
+    return ["x", "<y>"];
+  }`,
+    ],
   ];
 
   for (const [name, imports, body, lead, members] of reaches) {
@@ -277,21 +306,15 @@ function wrap() {
     });
   }
 
-  it("still compiles a method that only reads fields", () => {
-    const file = join(TMP, "FullNamePage.tsx");
+  it("compiles a static method of a package's class, and a namespace import from a package", () => {
+    const file = join(TMP, "PackageStaticPage.tsx");
     const source = page(
-      "FullNamePage",
-      "",
-      `<p>{this.fullName()}</p>`,
-      "",
-      `@expose first = "Ada";
-  @expose last = "Lovelace";
-  fullName() {
-    return this.first + " " + this.last;
-  }`,
+      "PackageStaticPage",
+      `import * as core from "@zerotal/core";`,
+      `<p>{core.pluralize("task")}</p>`,
     );
     writeFileSync(file, source);
-    expect(compile(source, file).render).toContain("__esc(this.fullName())");
+    expect(compile(source, file).render).toContain('__esc(core.pluralize("task"))');
   });
 });
 

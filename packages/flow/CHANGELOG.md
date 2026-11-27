@@ -118,6 +118,17 @@ change.
   class components need the render context, so a call to one still renders through the runtime
   and the compile log says why; compute its value in a leading const instead. So does a call that
   awaits or is handed markup, and a client-only magic in one is still refused.
+
+- **A call to a package's function, or to a global, compiles as a text child.**
+  `{__("projects.title")}`, `{CsrfMiddleware.field()}` and `{String(n).padStart(3, "0")}` sent the
+  page to the runtime renderer, and under `cspSafe` stopped the boot, though the same call compiled
+  in an attribute or hoisted into a leading const. Such a call now compiles to `__esc(call)`, so a
+  page that translates its strings compiles, `cspSafe` included. A package counts when it is a
+  framework package other than Flow's own, or resolves into `node_modules`. The app's own code can
+  return markup by any route, and markup needs the render context, so every other call (the app's
+  functions, the page's methods, methods on values) still renders through the runtime, and the
+  compile log says why; compute such a value in a leading const instead. A call that awaits or is
+  handed markup stays on the runtime too, and a client-only magic in one is still refused.
 - **Compiled text is escaped exactly as the runtime escapes it.** `__esc` left `"` and `'` as
   they were, where the runtime writes `&quot;` and `&#x27;`. The page reads the same; the HTML is
   now byte for byte what the runtime renders.

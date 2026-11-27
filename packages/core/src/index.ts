@@ -58,7 +58,12 @@
 // Application
 export { Application, registerAppScope } from "./application/Application.ts";
 export { currentApp, tryCurrentApp, withApp } from "./application/currentApp.ts";
-export type { AuthenticatedUser } from "./auth/AuthenticatedUser.ts";
+export type {
+  AuthenticatedUser,
+  CurrentUser,
+  UserIdentity,
+  UserRegistry,
+} from "./auth/AuthenticatedUser.ts";
 export type {
   WebSocketHandlers,
   RoutingEntry,

@@ -13,6 +13,14 @@ declare module "@zerotal/core" {
     "auth.userLoader": (id: number) => Promise<UserModel | null>;
   }
 
+  /**
+   * Registers {@link UserModel} as the signed-in user's type, so `currentUser(ctx)` from
+   * `@zerotal/core/auth` returns it in packages that never import this one.
+   */
+  interface UserRegistry {
+    user: UserModel;
+  }
+
   interface HttpContext {
     /**
      * The authenticated user for this request, populated by AuthMiddleware.

@@ -8,6 +8,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- Channel authorization reads the signed-in user with `currentUser()` from
+  `@zerotal/core/auth` instead of casting the request context.
+
 ## [1.17.1] — 2026-11-21
 
 ### Fixed

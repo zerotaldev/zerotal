@@ -15,6 +15,18 @@ follows the Zerotal monorepo's unified versioning.
   `@zerotal/inertia/scaffold` in the app, as `compile` looks for its contributors, and that
   package writes the routes, pages, form and test; an app without Inertia is pointed at
   `make:flow --crud --model` instead.
+- **A typed signed-in user for code that does not import `@zerotal/auth`.** `UserRegistry` is an
+  empty interface `@zerotal/auth` fills with its `UserModel`, and `CurrentUser` is the type it
+  resolves to (`AuthenticatedUser` when nothing is registered). `currentUser(ctx?)` and
+  `currentUserId(ctx?)` on the new server-only `@zerotal/core/auth` subpath read the user off the
+  request with that type, or `undefined` for a guest; with no argument they read the request
+  being handled. `user` is still not declared on `HttpContext`, so an app that declares its own
+  `user` field there keeps it.
+
+### Changed
+
+- `RateLimiter`'s `byUser()` key reads the user with `currentUserId()`. A user whose id is
+  `null` is keyed by address, like a guest, instead of as `user:null`.
 
 ## [1.18.4] — 2026-11-27
 

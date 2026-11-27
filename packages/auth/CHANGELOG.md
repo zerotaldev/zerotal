@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `@zerotal/auth` registers `UserModel` in core's `UserRegistry`, so `currentUser(ctx)` from
+  `@zerotal/core/auth` returns the app's user model, typed, in packages that never import this
+  one.
+
 ## [1.18.2] — 2026-11-26
 
 ### Changed

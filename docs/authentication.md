@@ -115,6 +115,12 @@ has to talk about "the user" without depending on `@zerotal/auth`, so it declare
 interface for apps to augment, and `UserModel` extends it. Augmenting either resolves to the same
 shape — augment `UserModel`, which is the one the auth docs and examples use.
 
+`@zerotal/auth` also registers `UserModel` in core's `UserRegistry`, which is what types
+`currentUser(ctx)` from `@zerotal/core/auth`: the reader Flow, broadcasting, Inertia and the
+rate limiter use, and the one for code of your own that should not import this package. Binding
+`UserModel` above types it as well. See
+[Reading the user without the auth package](/docs/context#reading-the-user-without-the-auth-package).
+
 **The empty body is the point.** The interface is not being given members — it is being
 pointed at your class, so that everywhere the framework says `UserModel` it means `User`.
 That is not a shape anyone guesses, which is why it is here in setup rather than filed

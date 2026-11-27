@@ -962,6 +962,14 @@ interface ThrottleOptions = {
   windowSeconds?: number | undefined
 }
 
+interface UserIdentity = {
+  id?: unknown
+}
+
+interface UserRegistry = {
+  user: UserModel
+}
+
 interface ViewRegistration = {
   name: (routeName: string) => ViewRegistration
   withLayout: (layout: ViewLayout) => ViewRegistration
@@ -993,6 +1001,8 @@ type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 type BindingToken = ClassToken<T> | AbstractToken<T> | keyof ContainerBindings
 
 type ControllerResponse = void | ResponseBuilder | MarkdownBuilder
+
+type CurrentUser = UserModel & UserIdentity
 
 type DeepPartial = { [K in keyof T]?: (NonNullable<T[K]> extends _Atomic ? T[K] : NonNullable<T[K]> extends object ? DeepPartial<NonNullable<T[K]>> : T[K]) | undefined; }
 

@@ -16,6 +16,7 @@ import {
 } from "./decorators.ts";
 import { ZerotalError, safeEqual, hmacHex, RequestContext } from "@zerotal/core";
 import { isProdLike, deployEnv } from "@zerotal/core";
+import { currentUserId } from "@zerotal/core/auth";
 
 // ── Stable JSON stringify ─────────────────────────────────────────────────────
 // Keys are sorted so the HMAC is deterministic regardless of insertion order.
@@ -68,9 +69,7 @@ export const SNAPSHOT_MAX_AGE_SECONDS = 12 * 60 * 60;
  * @internal
  */
 function currentSubject(): string | undefined {
-  const ctx = RequestContext.tryGet() as { user?: { id?: unknown } | null } | undefined;
-  const id = ctx?.user?.id;
-  return id === undefined || id === null ? undefined : String(id);
+  return currentUserId(RequestContext.tryGet());
 }
 
 /**

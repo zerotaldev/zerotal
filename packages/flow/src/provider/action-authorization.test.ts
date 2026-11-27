@@ -9,7 +9,7 @@ import type { HttpContext } from "@zerotal/core";
 import { Component } from "../Component.ts";
 import { expose, locked, reactive } from "../decorators.ts";
 import { MONOTONIC_FIELD, _resetMonotonicStore } from "../monotonic.ts";
-import { dehydrate } from "../dehydrate.ts";
+import { applySnapshotDelta, dehydrate, type SnapshotDelta } from "../dehydrate.ts";
 import { registerPage, _getPageEntries } from "../registry.ts";
 import { _signParentProps } from "../parentProps.ts";
 import { _handleFlowMessage, _resetInvalidFrames } from "./FlowProvider.ts";
@@ -195,6 +195,14 @@ class CreditsPage extends Component {
     ran.push("spend");
   }
 
+  @expose async closedAction(): Promise<void> {
+    ran.push("closedAction");
+  }
+
+  override beforeAction(name: string): boolean {
+    return name !== "closedAction";
+  }
+
   override async onUpdating(prop: string): Promise<void> {
     ran.push(`updating ${prop}`);
   }
@@ -227,7 +235,7 @@ describe("a @locked({ monotonic: true }) page over the wire", () => {
     const snapshot = dehydrate(page, { id: "credits-1", name: "CreditsPage", path: "/credits" });
     const writeAndRefuse = async () => {
       const { ws, frames } = socket();
-      const frame = { ...JSON.parse(call("noSuchMethod", snapshot)), component: "credits-1" };
+      const frame = { ...JSON.parse(call("closedAction", snapshot)), component: "credits-1" };
       frame.updates = { note: "hi" };
       await _handleFlowMessage(ws, JSON.stringify(frame), deps());
       return frames;
@@ -238,10 +246,25 @@ describe("a @locked({ monotonic: true }) page over the wire", () => {
     // The refusal comes with the page's snapshot, so the tab holds the newest one and its next
     // action is accepted, rather than reloading.
     expect(errorOf(first)).toMatchObject({ code: "method_not_allowed" });
-    expect(patchOf(first)).toBeDefined();
+    // No component on the error: the patch releases the browser's queue, so an action waiting
+    // behind this one goes out from the new snapshot.
+    expect(errorOf(first)?.["component"]).toBeUndefined();
+    const patch = patchOf(first);
+    expect(patch).toBeDefined();
     const again = await writeAndRefuse();
     expect(ran).toEqual(["updating note"]);
     expect(errorOf(again)).toMatchObject({ code: "snapshot_replayed" });
+
+    // The snapshot the refusal sent back is accepted.
+    const next = applySnapshotDelta(snapshot, patch as unknown as SnapshotDelta);
+    const { ws, frames } = socket();
+    await _handleFlowMessage(
+      ws,
+      JSON.stringify({ ...JSON.parse(call("spend", next)), component: "credits-1" }),
+      deps(),
+    );
+    expect(errorOf(frames)).toBeUndefined();
+    expect(ran).toEqual(["updating note", "spend"]);
     _getPageEntries().delete("CreditsPage");
   });
 

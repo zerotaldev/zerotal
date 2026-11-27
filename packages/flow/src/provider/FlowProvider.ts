@@ -1309,18 +1309,21 @@ async function _dispatchFrame(
         Date.now(),
         { method: method.slice(0, 80), ...("error" in refusal ? { error: refusal.error } : {}) },
       );
-      ws.send(
-        JSON.stringify({
-          type: "error",
-          component: frame.snapshot.memo.id,
-          message: limited ? "Too many invalid requests" : `Method "${method}" is not allowed`,
-          code: limited ? "rate_limited" : "method_not_allowed",
-        }),
-      );
       // A monotonic page whose fields this frame wrote has kept its claim (the writes ran its
       // hooks), so it renders and sends its snapshot back with the refusal: the tab then holds
       // the newest one, and its next action is accepted. Any other refusal sends nothing back.
       const keepsClaim = wroteFields && getMonotonicProps(entry.PageClass.prototype).size > 0;
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          // The browser releases a component's queue on an error naming it. When a snapshot
+          // follows, the patch releases it instead, so an action waiting behind this one goes
+          // out from the new snapshot rather than the one just used.
+          ...(keepsClaim ? {} : { component: frame.snapshot.memo.id }),
+          message: limited ? "Too many invalid requests" : `Method "${method}" is not allowed`,
+          code: limited ? "rate_limited" : "method_not_allowed",
+        }),
+      );
       if (!keepsClaim) return { failed: true };
       actionErrored = true;
     } else {

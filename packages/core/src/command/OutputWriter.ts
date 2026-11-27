@@ -85,9 +85,7 @@ export class TerminalWriter implements OutputWriter {
   }
   writeLine(message: string): void {
     const text = _forStream(message, process.stdout);
-    if (reservedStdout)
-      reservedStdout(`${text}
-`);
+    if (reservedStdout) reservedStdout(`${text}\n`);
     else console.log(text);
   }
   writeError(message: string): void {

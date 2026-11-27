@@ -8,6 +8,32 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Security
+
+- **In development the inspector answers your own machine only.** `bun zt dev` listens on every
+  network interface, and the inspector's endpoints handed their traces to any caller: another
+  device on the same network could read every query, the signed-in user and every mail the app
+  sent, password-reset links included. A request is now served without asking only when it
+  comes from a loopback address _and_ names a loopback host (`localhost`, `127.0.0.1`, `[::1]`,
+  `*.localhost`). Anything else is refused with a 404 and gets no panel, unless the `gate` you
+  configure lets it in — the gate is now asked in development too, for every request that is not
+  from the machine itself. The `Host` check also stops a page on another site that points its
+  own domain at `127.0.0.1` from reading the traces through your browser.
+- **`POST /__zerotal/devtools/api/clear` refuses a request sent by a page on another site.**
+- **Secrets in the URL are masked in a trace.** Query-string values were recorded as sent, so
+  `?token=` on a reset link or the `signature` on a signed URL was kept in
+  `.zerotal/devtools.sqlite` for a day. They are now masked by name like a query binding, and a
+  route parameter named like a secret (`/verify-email/:token`) is masked in the recorded path.
+- **`headers: ["*"]` no longer records headers named like a secret.** It recorded every header
+  except `cookie`, `set-cookie`, `authorization` and `proxy-authorization`, so `x-api-key` and
+  `x-csrf-token` were stored. A header named on its own in `headers` is still recorded.
+
+### Fixed
+
+- **The guide no longer says email addresses are masked.** They never were, by design: a listing
+  filtered by email is what you open the panel to read. Add `"email"` to `redact.deny` to mask
+  them.
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

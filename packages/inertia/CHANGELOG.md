@@ -8,6 +8,17 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Security
+
+- **In development the recorder's read API answers your own machine only.** The dev server
+  listens on every network interface, and `/_inertia/devtools/entries` served every recorded
+  page's props to any caller. A request is now served without asking only when it comes from a
+  loopback address and names a loopback host; anything else needs the `inertia.devtools.gate`.
+  The gate is now asked in development too, for every request that is not from the machine
+  itself, and a gate that throws is a refusal (it was a 500).
+- **`DELETE /_inertia/devtools/entries` refuses a request sent by a web page on another site.**
+  The browser extension and command-line clients are unaffected.
+
 ## [1.17.1] — 2026-11-21
 
 ### Fixed

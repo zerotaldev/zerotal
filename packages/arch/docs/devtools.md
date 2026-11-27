@@ -329,25 +329,30 @@ import { DevtoolsConfig } from "@zerotal/devtools";
 
 export default DevtoolsConfig({
   capacity: 250,
-  redact: { allow: ["email", "slug"] },
+  redact: { deny: ["email"] },
 });
 ```
 
-| Option          | Type                     | Default                    | Purpose                                                      |
-| --------------- | ------------------------ | -------------------------- | ------------------------------------------------------------ |
-| `enabled`       | `boolean \| null`        | `null`                     | `null` follows the dev-surface gate; `true`/`false` decides. |
-| `gate`          | `DevtoolsGate \| null`   | `null`                     | Who may read it outside development. See below.              |
-| `capacity`      | `number`                 | `100`                      | Traces kept in memory and reloaded on start.                 |
-| `dbPath`        | `string \| null`         | `.zerotal/devtools.sqlite` | History file. `null` keeps traces in memory only.            |
-| `pruneHours`    | `number`                 | `24`                       | How long a persisted trace survives.                         |
-| `redact`        | `RedactionOptions`       | `{ enabled: true }`        | Whether sensitive values are masked. See below.              |
-| `editor`        | `EditorName \| null`     | `"vscode"`                 | Which editor `file:line` links open.                         |
-| `editorPathMap` | `Record<string, string>` | `{}`                       | Rewrite captured paths for editing on another machine.       |
-| `captureSource` | `boolean`                | `true`                     | Capture the call site of each query and log line.            |
-| `headers`       | `string[]`               | `[]`                       | Extra request headers to record. `["*"]` for all.            |
+| Option          | Type                     | Default                    | Purpose                                                       |
+| --------------- | ------------------------ | -------------------------- | ------------------------------------------------------------- |
+| `enabled`       | `boolean \| null`        | `null`                     | `null` follows the dev-surface gate; `true`/`false` decides.  |
+| `gate`          | `DevtoolsGate \| null`   | `null`                     | Who may read it outside development. See below.               |
+| `capacity`      | `number`                 | `100`                      | Traces kept in memory and reloaded on start.                  |
+| `dbPath`        | `string \| null`         | `.zerotal/devtools.sqlite` | History file. `null` keeps traces in memory only.             |
+| `pruneHours`    | `number`                 | `24`                       | How long a persisted trace survives.                          |
+| `redact`        | `RedactionOptions`       | `{ enabled: true }`        | Whether sensitive values are masked. See below.               |
+| `editor`        | `EditorName \| null`     | `"vscode"`                 | Which editor `file:line` links open.                          |
+| `editorPathMap` | `Record<string, string>` | `{}`                       | Rewrite captured paths for editing on another machine.        |
+| `captureSource` | `boolean`                | `true`                     | Capture the call site of each query and log line.             |
+| `headers`       | `string[]`               | `[]`                       | Extra request headers to record. `["*"]` for all but secrets. |
 
-`ZT_DEVTOOLS_DB` and `ZT_DEVTOOLS_PRUNE_HOURS` still set `dbPath` and
-`pruneHours` when no config file is present.
+`ZT_DEVTOOLS_DB` and `ZT_DEVTOOLS_PRUNE_HOURS` set `dbPath` and `pruneHours`
+when the config leaves them out.
+
+`cookie`, `set-cookie`, `authorization` and `proxy-authorization` are never
+recorded. `headers: ["*"]` records every other header except those whose name
+says they hold a secret (`x-api-key`, `x-csrf-token`); name one of those in the
+list on its own to record it anyway.
 
 ### Editor links
 
@@ -391,28 +396,37 @@ package — shows no location rather than pointing at a file you did not write.
 
 A trace does not stay on screen: it streams to the browser **and** is written to
 `.zerotal/devtools.sqlite`, where it sits for a day. What it carries is the
-request's real values — the password on a registration, a reset token, every
-customer email a listing selects by. So they are masked by default:
+request's real values — the password on a registration, a reset token, the
+signature on a signed link. So those are masked by default:
 
 ```text
-SELECT * FROM users WHERE email = ‹redacted› AND id = 42
+UPDATE users SET password = ‹redacted›, remember_token = ‹redacted› WHERE id = 42
 ```
 
 Masking happens where a value enters the trace, not where the panel draws it.
 Redacting in a renderer would protect nothing: by then the unredacted copy is
-already on disk. Four things are covered:
+already on disk. Six things are covered:
 
-| What                              | Matched on                           |
-| --------------------------------- | ------------------------------------ |
-| **Query bindings**                | the column each one sets or compares |
-| **Channel entries**               | each field name, at every depth      |
-| **Objects passed to `console.*`** | each field name, at every depth      |
-| **Cache keys**                    | each segment of the key              |
+| What                              | Matched on                              |
+| --------------------------------- | --------------------------------------- |
+| **Query bindings**                | the column each one sets or compares    |
+| **Query-string values**           | each parameter name (`?token=…`)        |
+| **The request path**              | each route parameter's name (`/:token`) |
+| **Channel entries**               | each field name, at every depth         |
+| **Objects passed to `console.*`** | each field name, at every depth         |
+| **Cache keys**                    | each segment of the key                 |
 
 One rule decides all four: a name is sensitive when it contains `password`,
 `token`, `secret`, `session`, `api_key`, … — matched as substrings, so
 `password` covers `password_hash`. `id` and the timestamp columns are always
 shown, so a trace stays readable.
+
+Email addresses are **not** on the list: a listing filtered by email is one of the
+things you open the panel to read. They are shown in query bindings, on the
+request's signed-in user and in mail previews. Add `"email"` to `deny` to mask
+them too. Mail previews are recorded as sent, links included — a password-reset
+mail carries a working reset link, which is one more reason the panel only
+answers your own machine (see [Who can reach it](#who-can-reach-it)).
 
 Two deliberate choices about the edges. A binding that cannot be attributed to a
 column is masked — guessing the other way is what writes a password to disk. And
@@ -429,8 +443,8 @@ Open individual names back up, close extra ones, or turn it off entirely:
 // config/devtools.ts
 export default DevtoolsConfig({
   redact: {
-    allow: ["email"], // show these in full
-    deny: ["nickname"], // mask these too
+    allow: ["author_id"], // show these in full (`author_id` matches `auth`)
+    deny: ["email", "nickname"], // mask these too
     // enabled: false,   // mask nothing — only when nothing sensitive is in reach
   },
 });
@@ -503,8 +517,9 @@ binary runs today.
 
 > **Danger** — These endpoints expose request headers, SQL with its bindings,
 > session key names, stack traces, and rendered mail. They are all behind one
-> gate: a development process always passes, and anywhere else the absence of a
-> `gate` is a refusal. See [Running it outside development](#running-it-outside-development).
+> gate: on a development machine they answer that machine only, and anywhere
+> else the absence of a `gate` is a refusal. `POST /api/clear` also refuses a
+> request sent by a page on another site. See [Who can reach it](#who-can-reach-it).
 
 ## Reading traces programmatically
 
@@ -555,6 +570,29 @@ ZT_DEVTOOLS_PRUNE_HOURS=48             # default: 24
 > memory-only: traces still appear in the panel but are not persisted across
 > restarts.
 
+## Who can reach it
+
+`bun zt dev` listens on every network interface, so a phone on the same Wi-Fi can
+open the app. The inspector does not follow it there. On a development machine it
+answers requests from that machine only: the connection must come from a loopback
+address and the `Host` header must be a loopback name (`localhost`, `127.0.0.1`,
+`[::1]` or `*.localhost`). Any other device on the network gets a 404, and no
+panel is injected into the pages it loads.
+
+The `Host` check is what stops a page on another site from reading your traces.
+It can point its own domain at `127.0.0.1` and send your browser there; the
+connection is then local, but the browser still names that domain.
+
+To use the panel from another device, say who may with a `gate`. It is asked for
+every request that does not come from the machine itself:
+
+```typescript fragment
+// config/devtools.ts
+export default DevtoolsConfig({
+  gate: (request) => request.headers.get("X-Debug-Key") === Bun.env["DEBUG_KEY"],
+});
+```
+
 ## Running it outside development
 
 By default the inspector follows the same gate as the stack-trace error page: on
@@ -574,8 +612,10 @@ export default DevtoolsConfig({
 
 Four rules, and they are the point of it:
 
-- **A development process always passes.** A gate that can lock you out of your
-  own laptop is a gate that gets switched off, and then nothing is gated.
+- **Your own machine always passes in development.** A gate that can lock you out
+  of your own laptop is a gate that gets switched off, and then nothing is gated.
+  Every other device needs the gate, in development too; see
+  [Who can reach it](#who-can-reach-it).
 - **Anywhere else, no gate is a refusal.** An app that turned the inspector on
   outside development without saying who may read it has not made a decision this
   code should make for it. A gate that _throws_ is also a refusal — failing open

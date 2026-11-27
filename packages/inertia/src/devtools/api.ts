@@ -11,6 +11,35 @@ import { devtoolsAuthorized } from "./enabled.ts";
 import { getEntry, listEntries, parseListQuery, clearEntries } from "./store.ts";
 import { DEVTOOLS_API_PREFIX } from "./types.ts";
 
+/** The part of `Bun.serve`'s server a raw route can read the socket address from. */
+interface PeerSource {
+  requestIP?(request: Request): { address: string } | null;
+}
+
+/** The socket address a raw route's request came from, or `null` when there is no server. */
+function _peer(request: Request, server: unknown): string | null {
+  return (server as PeerSource | undefined)?.requestIP?.(request)?.address ?? null;
+}
+
+/**
+ * Whether a request that changes something was sent by a page on another site.
+ *
+ * A web page on another site can send one from the developer's own browser, which
+ * passes the gate — it is the developer's machine asking. Browsers always name the
+ * sending page's origin. The browser extension that reads this API sends its own
+ * extension origin, and a command-line client sends none, so only a web origin
+ * that is not this server's is refused.
+ */
+function _crossSite(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin || !/^https?:\/\//i.test(origin)) return false;
+  try {
+    return origin !== new URL(request.url).origin;
+  } catch {
+    return true;
+  }
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -33,8 +62,10 @@ export function registerDevtoolsApi(): void {
   Router.raw(
     "GET",
     `${DEVTOOLS_API_PREFIX}/entries`,
-    async (request: Request): Promise<Response> => {
-      if (!(await devtoolsAuthorized(request))) return json({ error: "Forbidden" }, 403);
+    async (request: Request, server?: unknown): Promise<Response> => {
+      if (!(await devtoolsAuthorized(request, _peer(request, server)))) {
+        return json({ error: "Forbidden" }, 403);
+      }
       const url = new URL(request.url);
       return json(listEntries(parseListQuery(url.searchParams)));
     },
@@ -43,8 +74,10 @@ export function registerDevtoolsApi(): void {
   Router.raw(
     "GET",
     `${DEVTOOLS_API_PREFIX}/entries/:id`,
-    async (request: Request): Promise<Response> => {
-      if (!(await devtoolsAuthorized(request))) return json({ error: "Forbidden" }, 403);
+    async (request: Request, server?: unknown): Promise<Response> => {
+      if (!(await devtoolsAuthorized(request, _peer(request, server)))) {
+        return json({ error: "Forbidden" }, 403);
+      }
 
       // Read the id from the URL rather than from route params: this is a raw
       // route, so nothing has parsed the pattern for us.
@@ -59,8 +92,11 @@ export function registerDevtoolsApi(): void {
   Router.raw(
     "DELETE",
     `${DEVTOOLS_API_PREFIX}/entries`,
-    async (request: Request): Promise<Response> => {
-      if (!(await devtoolsAuthorized(request))) return json({ error: "Forbidden" }, 403);
+    async (request: Request, server?: unknown): Promise<Response> => {
+      if (!(await devtoolsAuthorized(request, _peer(request, server)))) {
+        return json({ error: "Forbidden" }, 403);
+      }
+      if (_crossSite(request)) return json({ error: "Forbidden origin" }, 403);
       clearEntries();
       return new Response(null, { status: 204 });
     },

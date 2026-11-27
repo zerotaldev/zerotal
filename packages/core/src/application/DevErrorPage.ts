@@ -222,6 +222,51 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** What {@link _scriptJson} escapes. Built from char codes so the source holds no raw line separators. */
+const _SCRIPT_UNSAFE = new RegExp(`[<>&${String.fromCharCode(0x2028, 0x2029)}]`, "g");
+
+/**
+ * A value as JavaScript source for an inline `<script>`.
+ *
+ * `JSON.stringify` alone is not enough there: the HTML parser ends the script at
+ * the first `</script>` it meets, inside a string or not, so an error message
+ * that echoes request input (`No such user: …`) could close the block and write
+ * its own markup into the page. Writing `<`, `>` and `&` as JSON unicode escapes
+ * (backslash, u, four hex digits) keeps the same string for the script and leaves the parser
+ * nothing to find. U+2028 and U+2029 are escaped too: valid in JSON, line breaks
+ * in older engines.
+ *
+ * @internal Exported for tests.
+ */
+export function _scriptJson(value: unknown): string {
+  return JSON.stringify(value).replace(
+    _SCRIPT_UNSAFE,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
+/** Request headers never shown, because they are the request's credentials. */
+const _HIDDEN_HEADERS = new Set(["cookie", "set-cookie"]);
+
+/**
+ * Header names whose value is shown masked: a credential by name or by convention
+ * (`authorization`, `x-api-key`, `x-csrf-token`). The page is development-only,
+ * but it is also the page that gets screenshotted into an issue or pasted to a
+ * colleague, and a bearer token in it leaks with it.
+ */
+const _MASKED_HEADER = /auth|token|secret|key|password|passwd|signature|session|credential/i;
+
+/**
+ * The request headers as the page shows them.
+ *
+ * @internal Exported for tests.
+ */
+export function _displayHeaders(headers: Headers): Array<{ k: string; v: string }> {
+  return [...headers.entries()]
+    .filter(([k]) => !_HIDDEN_HEADERS.has(k.toLowerCase()))
+    .map(([k, v]) => ({ k, v: _MASKED_HEADER.test(k) ? "‹redacted›" : v }));
+}
+
 function shortPath(full: string): string {
   // Show path relative to packages/ or apps/ root if possible
   const idx = full.replace(/\\/g, "/").lastIndexOf("/packages/");
@@ -283,11 +328,7 @@ export async function renderDevErrorPage(err: unknown, ctx?: HttpContext): Promi
 
   const method = ctx?.request.method ?? "";
   const url = ctx ? ctx.url.pathname + ctx.url.search : "";
-  const headers = ctx
-    ? [...ctx.request.headers.entries()]
-        .filter(([k]) => !["cookie"].includes(k))
-        .map(([k, v]) => ({ k, v }))
-    : [];
+  const headers = ctx ? _displayHeaders(ctx.request.headers) : [];
 
   // Runs before the page is assembled so a diagnosis can lead, above the stack.
   // The stack for this error class is usually all framework frames — the answer
@@ -507,7 +548,7 @@ ${diagnosis ? renderDiagnosis(diagnosis) : ""}
 </div>
 
 <script>
-const ctxData = ${JSON.stringify(ctxFrames.map((f) => f.file + ":" + f.line))};
+const ctxData = ${_scriptJson(ctxFrames.map((f) => f.file + ":" + f.line))};
 
 // The diagnosis button, when one was offered. Attached by id rather than inline
 // so the panel's markup carries no script, and disabled while in flight so a
@@ -541,7 +582,7 @@ const ctxData = ${JSON.stringify(ctxFrames.map((f) => f.file + ":" + f.line))};
   });
 })();
 
-const _errorMd = ${JSON.stringify({
+const _errorMd = ${_scriptJson({
     errClass,
     message,
     code: code ?? null,

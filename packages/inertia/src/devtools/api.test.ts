@@ -12,7 +12,11 @@ const priorEnv = Bun.env["APP_ENV"];
  * `Bun.serve()` is handed, so this exercises registration too, not just the
  * handler closure.
  */
-function call(method: string, path: string): Promise<Response> {
+function call(
+  method: string,
+  path: string,
+  init: { headers?: Record<string, string>; peer?: string; host?: string } = {},
+): Promise<Response> {
   const compiled = Router.compile(new Container(), []) as Record<
     string,
     Record<string, (req: Request) => Response | Promise<Response>>
@@ -30,7 +34,15 @@ function call(method: string, path: string): Promise<Response> {
 
   const handler = key ? compiled[key]?.[method] : undefined;
   if (!handler) throw new Error(`No route compiled for ${method} ${pathname}`);
-  return Promise.resolve(handler(new Request(`http://localhost${path}`, { method })));
+  const request = new Request(`http://${init.host ?? "localhost"}${path}`, {
+    method,
+    headers: init.headers ?? {},
+  });
+  // A raw route gets the server as its second argument, which is how it reads the socket.
+  const server = { requestIP: () => (init.peer ? { address: init.peer } : null) };
+  return Promise.resolve(
+    (handler as (req: Request, server: unknown) => Response | Promise<Response>)(request, server),
+  );
 }
 
 function entry(id: string, component: string, requestType: DevtoolsEntry["__meta"]["requestType"]) {
@@ -112,6 +124,31 @@ describe("devtools read API", () => {
 
     const after = await call("GET", `${DEVTOOLS_API_PREFIX}/entries`);
     expect(await after.json()).toEqual([]);
+  });
+
+  it("refuses another device on the network, and a local connection naming another host", async () => {
+    const entries = `${DEVTOOLS_API_PREFIX}/entries`;
+    expect((await call("GET", entries, { peer: "192.168.0.20" })).status).toBe(403);
+    expect(
+      (await call("GET", entries, { host: "192.168.0.131:3000", peer: "192.168.0.20" })).status,
+    ).toBe(403);
+    expect(
+      (await call("GET", entries, { host: "evil.example:3000", peer: "127.0.0.1" })).status,
+    ).toBe(403);
+    expect((await call("GET", entries, { peer: "127.0.0.1" })).status).toBe(200);
+  });
+
+  it("refuses a clear sent by a page on another site, and allows the extension's", async () => {
+    const entries = `${DEVTOOLS_API_PREFIX}/entries`;
+    const foreign = await call("DELETE", entries, { headers: { origin: "http://evil.example" } });
+    expect(foreign.status).toBe(403);
+
+    // The browser extension sends its own scheme as the origin; a CLI sends none.
+    const extension = await call("DELETE", entries, {
+      headers: { origin: "chrome-extension://abcdefghijklmnop" },
+    });
+    expect(extension.status).toBe(204);
+    expect((await call("DELETE", entries)).status).toBe(204);
   });
 
   it("refuses every read outside a dev process when no gate is configured", async () => {

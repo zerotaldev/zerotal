@@ -13,6 +13,7 @@
  * about `APP_ENV`.
  */
 import { config, devSurfacesEnabled } from "@zerotal/core";
+import { _isLocalDevRequest } from "@zerotal/core/http";
 import { DevtoolsConfig, type DevtoolsConfigShape } from "./config.ts";
 
 /** The `devtools` config block, with defaults when config is not loaded. */
@@ -36,17 +37,27 @@ export function devtoolsEnabled(): boolean {
 /**
  * Whether this request may reach the inspector's endpoints.
  *
- * A dev process always may — a gate that can lock a developer out of their own
- * machine gets switched off, and then nothing is gated. Anywhere else the app's
- * `gate` decides, and the absence of one is a **refusal** rather than a default
- * allow: an app that turned the inspector on outside development without saying
- * who may read it has not made a decision this code should make for it.
+ * On a development machine, a request from that machine always may — a gate that
+ * can lock a developer out of their own laptop gets switched off, and then nothing
+ * is gated. A request from anywhere else may not, unless the app's `gate` says
+ * so: the dev server listens on every interface, and the traces hold every query,
+ * the signed-in user and every mail the app sent, password-reset links included.
+ * "From this machine" means a loopback socket address *and* a loopback `Host`, so
+ * a page on another site that points its own domain at `127.0.0.1` is refused too.
+ *
+ * Outside development the app's `gate` decides every request, and the absence of
+ * one is a **refusal** rather than a default allow: an app that turned the
+ * inspector on outside development without saying who may read it has not made
+ * a decision this code should make for it.
  *
  * One function answers for every endpoint. The SSE stream, the trace JSON, the
  * dashboard, and the panel bundle are the same secret.
+ *
+ * @param request - The request asking.
+ * @param peer - The socket address it came from, when the caller can read one.
  */
-export async function devtoolsAuthorized(request: Request): Promise<boolean> {
-  if (devSurfacesEnabled()) return true;
+export async function devtoolsAuthorized(request: Request, peer?: string | null): Promise<boolean> {
+  if (devSurfacesEnabled() && _isLocalDevRequest(request, peer)) return true;
   const gate = devtoolsSettings().gate;
   if (!gate) return false;
   try {

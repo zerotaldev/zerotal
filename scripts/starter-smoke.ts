@@ -303,6 +303,10 @@ async function addFeature(
         '    Router.flow("/projects", ProjectsPage).name("projects");\n    Router.flow("/tasks", TasksPage).name("tasks");',
       ));
     check("register /tasks in routes/web.ts", routed);
+    // The other modes write pages on the starter's base and layout too: the typecheck below
+    // covers what they write.
+    await step(["make:flow", "ReportsPage"], (out) => out.includes("Created"));
+    await step(["make:flow", "NotesPage", "--crud"], (out) => out.includes("Created"));
   }
 
   // /tasks is routed in every kit by now (make:flow in Flow, make:page --route in React and Vue),

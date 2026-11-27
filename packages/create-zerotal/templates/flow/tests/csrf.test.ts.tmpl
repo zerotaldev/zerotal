@@ -31,6 +31,22 @@ describe("CSRF protection", () => {
     expect(res.status).toBe(419);
   });
 
+  test("shows a browser the app's own page for a refused form, not JSON", async () => {
+    // A form left open past the session's lifetime: the visitor sees the 419 page.
+    const res = await fetch(`${app.baseUrl}/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      body: new URLSearchParams({ email: "ada@example.com", password: "secret" }),
+      redirect: "manual",
+    });
+
+    expect(res.status).toBe(419);
+    expect(res.headers.get("content-type")).toContain("text/html");
+  });
+
   test("refuses a form post whose token is not this session's", async () => {
     const user = await UserFactory.create();
     const browser = new Browser(app);

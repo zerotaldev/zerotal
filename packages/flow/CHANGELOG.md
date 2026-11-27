@@ -98,11 +98,14 @@ change.
 
 - **A function call as a text child compiles.** `{__("projects.title")}`, `{formatDate(x)}` and
   `{this.label()}` sent the page to the runtime renderer, and under `cspSafe` stopped the boot,
-  though the same call compiled in an attribute or hoisted into a leading const. A call now
-  compiles to `__esc(call)`, which writes its result as the runtime writes a child: markup as
-  markup, an array item by item, anything else escaped. So a page that translates its strings
-  with `__()` compiles, `cspSafe` included. A call that awaits, or is handed markup as an
-  argument, still renders through the runtime, and a client-only magic in one is still refused.
+  though the same call compiled in an attribute or hoisted into a leading const. A call that
+  returns a value now compiles to `__esc(call)`, which writes its result as the runtime writes a
+  child: an array item by item, anything else escaped. So a page that translates its strings
+  with `__()` compiles, `cspSafe` included. A call that may return markup still renders through
+  the runtime, and says why: a method of the page whose body holds JSX, a method the page
+  inherits, or a function from the app's own `.tsx` module, since a binding or a class component
+  in that markup needs the render context. So does a call that awaits or is handed markup, and
+  a client-only magic in one is still refused.
 - **Compiled text is escaped exactly as the runtime escapes it.** `__esc` left `"` and `'` as
   they were, where the runtime writes `&quot;` and `&#x27;`. The page reads the same; the HTML is
   now byte for byte what the runtime renders.

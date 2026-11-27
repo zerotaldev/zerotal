@@ -248,63 +248,9 @@ export default SessionConfig({
 
 ## CSRF protection
 
-`CsrfMiddleware` defends state-changing requests against cross-site request forgery.
-Unlike `SessionMiddleware`, it is **not** auto-registered — add it after the session
-middleware, typically in the `web` middleware group:
-
-```typescript fragment
-// bootstrap/app.ts (or wherever you register middleware)
-import { SessionMiddleware, CsrfMiddleware } from "@zerotal/session";
-
-app.use([SessionMiddleware, CsrfMiddleware]);
-// In production over HTTPS, mark the XSRF cookie Secure:
-// app.use([SessionMiddleware, CsrfMiddleware.with({ secure: true })]);
-```
-
-On its first request the middleware stores a random token in the session. On any
-unsafe method (anything other than `GET`, `HEAD`, `OPTIONS`) it compares — in
-constant time — the session token against the `x-csrf-token` or `x-xsrf-token`
-request header, returning **`419`** on a mismatch.
-
-After every request it also sets a non-HttpOnly `XSRF-TOKEN` cookie, so Axios
-(and therefore Inertia) reads it and replays it as the `X-XSRF-TOKEN` header
-automatically — no manual wiring for those clients.
-
-To expose the token elsewhere (HTML meta tag, Inertia shared props), read it with
-`CsrfMiddleware.token()`:
-
-```typescript
-// in a controller or Inertia shared-props factory
-import { CsrfMiddleware } from "@zerotal/session";
-
-const token = CsrfMiddleware.token(); // reads the active request's session
-```
-
-For a plain HTML form posting via `fetch`, surface the token in a meta tag and send
-it as a header:
-
-```html
-<!-- in your layout -->
-<meta name="csrf-token" content="${CsrfMiddleware.token()}" />
-```
-
-```typescript fragment
-// in your client JS
-const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-
-fetch("/posts", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "X-CSRF-Token": token ?? "",
-  },
-  body: JSON.stringify({ title: "Hello" }),
-});
-```
-
-> **Warning** — The token is validated from a request **header**, not a `_token`
-> form field. A classic `<form method="POST">` with no JavaScript will not pass
-> the header, so submit through `fetch`/Axios (Inertia does this for you).
+`CsrfMiddleware` keeps its token in the session, so register it after
+`SessionMiddleware`. [CSRF protection](/docs/csrf) covers how a form, a script and the Inertia
+adapter send the token back, and what a refused request gets.
 
 ## Accessing the session outside a handler
 

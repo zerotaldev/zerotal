@@ -7479,18 +7479,6 @@
     },
     {
       "file": "docs/session.md",
-      "heading": "CSRF protection",
-      "ordinal": 0,
-      "hash": "3fraszx3lz3g"
-    },
-    {
-      "file": "docs/session.md",
-      "heading": "CSRF protection",
-      "ordinal": 2,
-      "hash": "p9yb2l3xclgr"
-    },
-    {
-      "file": "docs/session.md",
       "heading": "Errors",
       "ordinal": 0,
       "hash": "28vuwvem7t2r"

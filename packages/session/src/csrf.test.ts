@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { HttpContext } from "@zerotal/core";
+import { HttpContext, HttpError } from "@zerotal/core";
 import { CookieDriver } from "./drivers/CookieDriver.ts";
 import { SessionManager } from "./SessionManager.ts";
 import { CsrfMiddleware } from "./CsrfMiddleware.ts";
@@ -226,6 +226,56 @@ describe("CsrfMiddleware reads the token from a form", () => {
     });
     await run(new CsrfMiddleware(), ctx);
     expect(ctx.response?.status).toBe(419);
+  });
+
+  it("does not read a form larger than 1 MB, or one another site sent", async () => {
+    const big = formCtx(
+      "POST",
+      new URLSearchParams({ _token: "t", blob: "x".repeat(1024 * 1024) }),
+      "t",
+    );
+    await run(new CsrfMiddleware(), big);
+    expect(big.response?.status).toBe(419);
+
+    const crossSite = formCtx("POST", new URLSearchParams({ _token: "t" }), "t", {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Sec-Fetch-Site": "cross-site",
+    });
+    await run(new CsrfMiddleware(), crossSite);
+    expect(crossSite.response?.status).toBe(419);
+  });
+
+  it("refuses a request whose session had no token yet, without reading its body", async () => {
+    const req = new Request("http://localhost/test", {
+      method: "POST",
+      body: new URLSearchParams({ _token: "guess" }),
+    });
+    const ctx = new HttpContext(req, null as never);
+    (ctx as unknown as Record<string, unknown>)["session"] = new SessionManager("id", {}, driver);
+    await run(new CsrfMiddleware(), ctx);
+    expect(ctx.response?.status).toBe(419);
+    expect(req.bodyUsed).toBe(false);
+  });
+
+  it("sends a browser posting a page's form to the app's 419 page", async () => {
+    const ctx = formCtx("POST", new URLSearchParams({ _token: "stale" }), "right", {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "text/html,application/xhtml+xml",
+    });
+    const thrown = await run(new CsrfMiddleware(), ctx).then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(thrown).toBeInstanceOf(HttpError);
+    expect((thrown as HttpError).status).toBe(419);
+
+    // A script asking for HTML too still gets JSON.
+    const script = formCtx("POST", new URLSearchParams({ _token: "stale" }), "right", {
+      Accept: "text/html",
+      "X-Requested-With": "XMLHttpRequest",
+    });
+    await run(new CsrfMiddleware(), script);
+    expect(script.response?.status).toBe(419);
   });
 
   it("prefers the header when both are sent", async () => {

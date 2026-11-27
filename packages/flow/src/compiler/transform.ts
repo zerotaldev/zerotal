@@ -1670,6 +1670,15 @@ function _compileRenderMethod(
       }
       // Markup handed to a call, or a `$flow` read, is not a value the server can work out.
       if (_containsJsx(expr) || _referencesGel(expr)) return null;
+      // Markup a call returns is rendered by the runtime: its bindings, and any class component
+      // in it, need the render context a compiled page does not run in.
+      if (_callMayReturnMarkup(expr, sourceFile, method)) {
+        return bail(
+          `\`{${_snippet(expr)}}\` may return markup`,
+          "render it as a component (`<Badge />`), or let the page render through the runtime",
+          expr,
+        );
+      }
       _assertNoServerMagic(expr.expression, "a call");
       for (const arg of expr.arguments) _assertNoServerMagic(arg, "a call's arguments");
       return `__esc(${expr.getText()})`;
@@ -3169,6 +3178,60 @@ function _containsJsx(node: ts.Node): boolean {
   };
   visit(node);
   return found;
+}
+
+/**
+ * Whether the call in a text child may hand back markup, which only the runtime renders right.
+ *
+ * - `this.method()`: the method this class declares holds JSX. A method the class does not
+ *   declare (an inherited helper) cannot be read here, so it is treated as markup.
+ * - `name()`: the function declared in this file holds JSX, or it is imported from one of the
+ *   app's `.tsx`/`.jsx` modules. A package's helper (`__()`, a formatter) and a global are
+ *   values.
+ * - Anything else (`date.toLocaleDateString()`) is a value.
+ */
+function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner: ts.Node): boolean {
+  const callee = call.expression;
+  if (
+    ts.isPropertyAccessExpression(callee) &&
+    callee.expression.kind === ts.SyntaxKind.ThisKeyword
+  ) {
+    const cls = ts.isClassLike(owner.parent) ? owner.parent : undefined;
+    const member = cls?.members.find(
+      (m) =>
+        (ts.isMethodDeclaration(m) || ts.isPropertyDeclaration(m)) &&
+        m.name !== undefined &&
+        ts.isIdentifier(m.name) &&
+        m.name.text === callee.name.text,
+    );
+    return member === undefined || _containsJsx(member);
+  }
+  if (!ts.isIdentifier(callee)) return false;
+  const name = callee.text;
+  for (const stmt of sf.statements) {
+    if (ts.isFunctionDeclaration(stmt) && stmt.name?.text === name) return _containsJsx(stmt);
+    if (ts.isVariableStatement(stmt)) {
+      for (const d of stmt.declarationList.declarations) {
+        if (ts.isIdentifier(d.name) && d.name.text === name) {
+          return d.initializer === undefined || _containsJsx(d.initializer);
+        }
+      }
+    }
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const clause = stmt.importClause;
+    const bindings = clause?.namedBindings;
+    const imported =
+      clause?.name?.text === name ||
+      (bindings !== undefined &&
+        ts.isNamedImports(bindings) &&
+        bindings.elements.some((e) => e.name.text === name));
+    if (!imported) continue;
+    const specifier = stmt.moduleSpecifier.text;
+    if (!specifier.startsWith("./") && !specifier.startsWith("../")) return false;
+    const file = resolveRelativeModule(sf.fileName, specifier);
+    return file === undefined || /\.[jt]sx$/.test(file);
+  }
+  return false;
 }
 
 /**

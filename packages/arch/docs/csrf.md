@@ -42,8 +42,14 @@ import { CsrfMiddleware } from "@zerotal/session";
 3. On a **mutating** request it requires that token back, compared in constant time: in an
    `X-CSRF-TOKEN` or `X-XSRF-TOKEN` header, or in a `_token` field of a form body
    (`application/x-www-form-urlencoded` or `multipart/form-data`). The field is read from a
-   copy of the request, so the handler still reads the body itself, however it reads it.
-4. A missing or wrong token returns **419** (`{ "message": "CSRF token mismatch." }`).
+   copy of the request, so the handler still reads the body itself, however it reads it. It
+   is read only from a form body of at most 1 MB that another site did not send
+   (`Sec-Fetch-Site: cross-site`); a larger form, one with a file upload say, sends the token
+   in the header.
+4. A missing or wrong token returns **419**. A browser that posted a page's form (it accepts
+   HTML and is not a script's request) gets the app's own 419 page, through the
+   [exception handler](/docs/errors); any other client gets
+   `{ "message": "CSRF token mismatch." }`.
 
 `GET`, `HEAD`, and `OPTIONS` are treated as safe and skip the check.
 

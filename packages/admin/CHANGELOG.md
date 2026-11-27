@@ -14,8 +14,9 @@ follows the Zerotal monorepo's unified versioning.
   two different page classes of one name. Each panel builds its own `DashboardPage`,
   `<Model>ListPage` and the rest, so a second panel stopped the boot. The first panel to
   register a name keeps it; another panel's page of that name is named for the panel
-  (`BillingDashboardPage` for a panel `billing`). Before, the second panel's page silently took
-  over the first's actions.
+  (`BillingDashboardPage` for a panel `billing`), and so are its resources' create and edit
+  forms. Before, the second panel's page silently took over the first's actions, and a form
+  validated with the other panel's rules.
 
 ## [1.18.0] — 2026-11-26
 

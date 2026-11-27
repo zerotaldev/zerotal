@@ -34,7 +34,7 @@ After each render the server serialises the component's `@expose` and `@locked` 
   a checkout, a balance) needs
   [`@locked({ monotonic: true })`](/docs/flow/decorators#values-that-only-move-forward), which
   refuses a snapshot older than one the component already acted on, or a home the browser never
-  holds, in the database or the session.
+  holds: the database, or the session with a server-side driver.
 
 ## What the browser can call and write
 

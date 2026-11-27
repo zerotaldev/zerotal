@@ -5,7 +5,10 @@ import { dehydrate, hydrate } from "./dehydrate.ts";
 import {
   MONOTONIC_FIELD,
   FlowSnapshotReplayError,
+  _asPartialSnapshot,
   _claimMonotonic,
+  _markActionRan,
+  _noteSnapshotSent,
   _resetMonotonicStore,
   setMonotonicStore,
   type MonotonicStore,
@@ -143,11 +146,54 @@ describe("@locked({ monotonic: true })", () => {
     const snapshot = firstRender();
     const a = await arrive(snapshot);
     const sent = reply(a.page, snapshot); // the page re-rendered its errors
+    _noteSnapshotSent(sent); // and the patch went out
     await a.claim.settle(a.page, true);
 
     await expect(arrive(snapshot)).rejects.toBeInstanceOf(FlowSnapshotReplayError);
     const next = await arrive(sent);
     expect(next.page.balance).toBe(100);
+  });
+
+  it("keeps the claim once the action body has run, even when something after it throws", async () => {
+    // The action spent a credit, then the render threw: giving the claim back would let the same
+    // snapshot spend it again.
+    const snapshot = firstRender();
+    const a = await arrive(snapshot);
+    _markActionRan(a.page);
+    a.page.spend();
+    await a.claim.settle(a.page, true);
+    await expect(arrive(snapshot)).rejects.toBeInstanceOf(FlowSnapshotReplayError);
+  });
+
+  it("gives a running @task's partial snapshots a sequence that is never accepted", async () => {
+    const snapshot = firstRender();
+    const a = await arrive(snapshot);
+    _markActionRan(a.page);
+    a.page.spend();
+    const partial = _asPartialSnapshot(a.page, () => reply(a.page, snapshot));
+    a.page.spend();
+    const final = reply(a.page, snapshot);
+    _noteSnapshotSent(final);
+    await a.claim.settle(a.page, false);
+
+    // The half-way state cannot be acted on, after the task or before it ends.
+    await expect(arrive(partial)).rejects.toBeInstanceOf(FlowSnapshotReplayError);
+    const next = await arrive(final);
+    expect(next.page.balance).toBe(80);
+  });
+
+  it("gives a component mounted again under the same id a counter of its own", async () => {
+    // A keyed child removed and rendered again keeps its id; its new mount starts afresh.
+    const first = firstRender();
+    const a = await arrive(first);
+    await a.claim.settle(a.page, false);
+
+    const again = new Wallet();
+    again._flowId = first.memo.id;
+    const remounted = dehydrate(again, first.memo);
+    const b = await arrive(remounted);
+    await b.claim.settle(b.page, false);
+    await expect(arrive(first)).rejects.toBeInstanceOf(FlowSnapshotReplayError);
   });
 
   it("refuses a snapshot issued before the store's counters were lost", async () => {

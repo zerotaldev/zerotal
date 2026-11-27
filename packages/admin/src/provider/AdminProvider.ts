@@ -68,13 +68,34 @@ export function _panelScopedPage(page: unknown, panelId: string): unknown {
     _pageNames.set(page.name, { panelId, page });
     return page;
   }
-  const prefix = panelId
+  Object.defineProperty(page, "name", { value: `${_panelPrefix(panelId)}${page.name}` });
+  return _panelScopedPage(page, panelId);
+}
+
+/**
+ * A class name for something a panel builds by name (a resource's create and edit forms), under
+ * the same rule as {@link _panelScopedPage}: the first panel keeps the plain name, another gets it
+ * prefixed. Flow finds a form class by its name too.
+ *
+ * @internal Exported for tests.
+ */
+export function _panelScopedName(name: string, panelId: string): string {
+  const owner = _pageNames.get(name);
+  if (owner === undefined) {
+    _pageNames.set(name, { panelId, page: undefined });
+    return name;
+  }
+  if (owner.panelId === panelId) return name;
+  return _panelScopedName(`${_panelPrefix(panelId)}${name}`, panelId);
+}
+
+/** `billing-desk` → `BillingDesk`. */
+function _panelPrefix(panelId: string): string {
+  return panelId
     .split(/[^A-Za-z0-9]+/)
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join("");
-  Object.defineProperty(page, "name", { value: `${prefix}${page.name}` });
-  return _panelScopedPage(page, panelId);
 }
 
 declare module "@zerotal/core" {
@@ -336,8 +357,16 @@ export class AdminProvider extends ServiceProvider {
 
         const fields = resource.isEditable() ? resource.form() : [];
         if (resource.isEditable()) {
-          const create = makeResourceForm(fields, "create", `${model}CreateForm`);
-          const edit = makeResourceForm(fields, "edit", `${model}EditForm`);
+          const create = makeResourceForm(
+            fields,
+            "create",
+            _panelScopedName(`${model}CreateForm`, panel.id),
+          );
+          const edit = makeResourceForm(
+            fields,
+            "edit",
+            _panelScopedName(`${model}EditForm`, panel.id),
+          );
           // One shared page class serves every resource's Create/Edit route; it
           // resolves which panel/resource/mode it is serving from the URL via
           // this registry.

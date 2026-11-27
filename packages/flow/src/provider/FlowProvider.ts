@@ -41,7 +41,14 @@ import { Component as FlowComponent } from "../Component.ts";
 import { flowRoute, registerFlowFileRoute, _persistSessionProps } from "../router.ts";
 import type { PageClassWithMeta } from "../registry.ts";
 import { getTaskMethods, getMonotonicProps } from "../decorators.ts";
-import { _claimMonotonic, FlowSnapshotReplayError, type MonotonicClaim } from "../monotonic.ts";
+import {
+  _asPartialSnapshot,
+  _claimMonotonic,
+  _markActionRan,
+  _noteSnapshotSent,
+  FlowSnapshotReplayError,
+  type MonotonicClaim,
+} from "../monotonic.ts";
 import { _actionRefusal } from "../authorize.ts";
 import { ValidationError } from "../validation.ts";
 import { makeSignedRef } from "../uploads/TemporaryUploadedFile.ts";
@@ -1053,6 +1060,7 @@ function _sendPatch(
   partial = false,
   full = false,
 ): void {
+  if (!partial) _noteSnapshotSent(next);
   const delta = encodeSnapshotDelta(prev, next);
 
   let outHtml = html;
@@ -1332,7 +1340,8 @@ async function _dispatchFrame(
         // and restore the dispatch's own child-id bookkeeping afterward.
         const savedChildIds = page._childIds;
         page._childIds = [...page._prevChildIds];
-        const snap = dehydrate(page, frame.snapshot.memo);
+        // A partial snapshot of a monotonic page carries a sequence that cannot be claimed.
+        const snap = _asPartialSnapshot(page, () => dehydrate(page, frame.snapshot.memo));
         page._childIds = savedChildIds;
         // Skip when no serialized field changed since the last patch on this connection.
         if (JSON.stringify(snap.data) === JSON.stringify(deltaBase.data)) return;
@@ -1356,6 +1365,7 @@ async function _dispatchFrame(
       const fn = (page as unknown as Record<string, unknown>)[method] as (
         ...a: unknown[]
       ) => unknown;
+      _markActionRan(page);
       await fn.apply(page, frame.args ?? []);
       // The action called this.refresh(): re-run onMount() now, on this same round trip, so the
       // render below reads what it reloaded. The check before the action only sees a refresh an

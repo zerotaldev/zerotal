@@ -7,12 +7,12 @@
 // before an action, run the action, then send the old snapshot back and act on it again.
 //
 // A component that declares a monotonic field carries one more locked value in its snapshot:
-// `"<epoch>:<sequence>:<componentId>"`. The first render issues sequence 1. A frame is accepted
+// `"<epoch>:<sequence>:<mount>:<componentId>"`. The first render issues sequence 1. A frame is accepted
 // only when its sequence is the next one after the last accepted for that component, and
 // accepting it is one compare-and-set in the store, so of two frames sent at once carrying the
 // same snapshot, one runs and the other is refused. The snapshot the action sends back carries
-// the sequence after it. An action that fails without sending a snapshot back gives its claim
-// back, so the snapshot the browser still holds stays good.
+// the sequence after it. A call refused before its action body starts gives its claim back, so
+// the snapshot the browser still holds stays good; once the body has started, the claim is kept.
 //
 // The counters are kept in a store on the server, not in the session: a cookie session is held
 // by the browser, which could send an older one back with the older snapshot. The default store
@@ -22,7 +22,7 @@
 import { ZerotalError } from "@zerotal/core";
 import type { Snapshot } from "./types.ts";
 
-/** The snapshot field carrying `"<epoch>:<sequence>:<componentId>"`. Server-issued, locked, signed. */
+/** The snapshot field carrying `"<epoch>:<sequence>:<mount>:<componentId>"`. Server-issued, locked, signed. */
 export const MONOTONIC_FIELD = "__flowMonotonic";
 
 /** How long a component's counter is kept: longer than a snapshot stays valid (12 h). */
@@ -126,28 +126,76 @@ interface MonotonicState {
   _flowId: string;
   /** The sequence this instance's frame was accepted with; absent on a first render. */
   _flowMonotonicAccepted?: number | undefined;
-  /** Set once the instance's next snapshot has been built, so its claim is kept. */
-  _flowMonotonicIssued?: boolean | undefined;
+  /**
+   * Names this mount of the component. A child's id is the same each time its parent renders it,
+   * so a child removed and added again would meet its old counter; each mount has its own.
+   */
+  _flowMonotonicMount?: string | undefined;
+  /** Set while a running `@task` streams a partial snapshot, whose sequence cannot be claimed. */
+  _flowMonotonicPartial?: boolean | undefined;
+  /** Set once the action body has started: from then on the claim is kept, whatever happens. */
+  _flowMonotonicRan?: boolean | undefined;
 }
+
+/** The tokens of snapshots sent back to a browser in a patch, until their frame is settled. */
+const _sent = new Set<string>();
 
 /**
  * The value the monotonic field carries in the snapshot being built: the sequence after the one
  * this instance was accepted with (`1` on a first render). Reading it twice gives the same value.
+ * A partial snapshot a running `@task` streams carries sequence `0`, which is never accepted, so
+ * only the task's final snapshot can be acted on.
  *
  * @internal
  */
 export function _issueMonotonicSeq(component: MonotonicState): string {
-  component._flowMonotonicIssued = true;
-  const next = (component._flowMonotonicAccepted ?? 0) + 1;
-  return `${_store.epoch}:${next}:${component._flowId}`;
+  component._flowMonotonicMount ??= crypto.randomUUID().slice(0, 8);
+  const next =
+    component._flowMonotonicPartial === true ? 0 : (component._flowMonotonicAccepted ?? 0) + 1;
+  return `${_store.epoch}:${next}:${component._flowMonotonicMount}:${component._flowId}`;
+}
+
+/**
+ * Run `build` with `page` marked as streaming a partial snapshot. See {@link _issueMonotonicSeq}.
+ *
+ * @internal
+ */
+export function _asPartialSnapshot<T>(page: object, build: () => T): T {
+  Reflect.set(page, "_flowMonotonicPartial", true);
+  try {
+    return build();
+  } finally {
+    Reflect.set(page, "_flowMonotonicPartial", false);
+  }
+}
+
+/**
+ * Mark `page`'s action body as started: its claim is kept from now on, so a snapshot whose
+ * action ran cannot be sent back to run it again, even when something after it throws.
+ *
+ * @internal
+ */
+export function _markActionRan(page: object): void {
+  Reflect.set(page, "_flowMonotonicRan", true);
+}
+
+/**
+ * Record that `snapshot` went back to the browser in a patch, so the claim of the frame that
+ * built it is kept even when the frame then failed.
+ *
+ * @internal
+ */
+export function _noteSnapshotSent(snapshot: Snapshot): void {
+  const value: unknown = snapshot.data[MONOTONIC_FIELD]?.[0];
+  if (typeof value === "string") _sent.add(value);
 }
 
 /**
  * A frame's accepted claim on its component's counter. {@link MonotonicClaim.settle} keeps it,
- * except for a frame that failed without the page building a new snapshot (a refused or thrown
- * action): that claim is given back, so the snapshot the browser still holds can be acted on
- * again. An action that succeeded keeps it even with no snapshot sent back (a redirect), so its
- * snapshot cannot be replayed to run it twice.
+ * except for a frame that failed before its action body started and sent no snapshot back (a
+ * refused call): that claim is given back, so the snapshot the browser still holds can be acted
+ * on again. Once the action body has started, the claim is kept, a redirect and a later error
+ * included, so its snapshot cannot be replayed to run the action twice.
  *
  * @internal
  */
@@ -165,8 +213,8 @@ export interface MonotonicClaim {
  * @returns The claim to settle once the frame is answered, or `undefined` for a page without a
  *   monotonic field.
  * @throws {@link FlowSnapshotReplayError} For a snapshot that is not the newest: older, the same
- *   one again, sent at the same moment as another carrying it, issued under another epoch, or
- *   carrying no sequence.
+ *   one again, sent at the same moment as another carrying it, a `@task`'s partial one, issued
+ *   under another epoch, or carrying no sequence.
  * @internal
  */
 export async function _claimMonotonic(
@@ -178,14 +226,20 @@ export async function _claimMonotonic(
   const tuple = snapshot.data[MONOTONIC_FIELD];
   const value: unknown = tuple?.[0];
   if (typeof value !== "string") throw new FlowSnapshotReplayError();
-  const [epoch, seqText, ...rest] = value.split(":");
+  const [epoch, seqText, mount, ...rest] = value.split(":");
   const id = rest.join(":");
   const seq = Number(seqText);
-  if (epoch !== _store.epoch || !Number.isSafeInteger(seq) || seq < 1 || id !== snapshot.memo.id) {
+  if (
+    epoch !== _store.epoch ||
+    !Number.isSafeInteger(seq) ||
+    seq < 1 ||
+    !mount ||
+    id !== snapshot.memo.id
+  ) {
     throw new FlowSnapshotReplayError();
   }
 
-  const key = `flow:monotonic:${id}`;
+  const key = `flow:monotonic:${id}:${mount}`;
   const accepted = (await _store.get(key)) ?? 0;
   if (seq !== accepted + 1) throw new FlowSnapshotReplayError();
   const previous = accepted === 0 ? undefined : accepted;
@@ -194,14 +248,18 @@ export async function _claimMonotonic(
   }
 
   page._flowMonotonicAccepted = seq;
-  page._flowMonotonicIssued = false;
+  page._flowMonotonicMount = mount;
+  page._flowMonotonicRan = false;
+  const reply = `${epoch}:${seq + 1}:${mount}:${id}`;
   let settled = false;
   return {
     async settle(built, failed) {
       if (settled) return;
       settled = true;
-      if (!failed || built?._flowMonotonicIssued === true) return;
-      // No new snapshot went back: give the claim back, unless something has moved it since.
+      const sentBack = _sent.delete(reply);
+      if (!failed || sentBack || built?._flowMonotonicRan === true) return;
+      // Refused before the action ran, and nothing sent back: give the claim back, unless
+      // something has moved it since.
       await _store.compareAndSet(key, seq, previous, COUNTER_TTL_MS);
     },
   };
@@ -210,4 +268,5 @@ export async function _claimMonotonic(
 /** @internal Exported for tests: put back the default in-process store. */
 export function _resetMonotonicStore(): void {
   _store = new MemoryMonotonicStore();
+  _sent.clear();
 }

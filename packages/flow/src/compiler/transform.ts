@@ -12,6 +12,7 @@
 
 import * as ts from "typescript";
 import * as path from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { FlowValidationError } from "./errors.ts";
 import {
@@ -1672,15 +1673,16 @@ function _compileRenderMethod(
       if (_containsJsx(expr) || _referencesGel(expr)) return null;
       // Markup a call returns is rendered by the runtime: its bindings, and any class component
       // in it, need the render context a compiled page does not run in.
-      if (_callMayReturnMarkup(expr, sourceFile)) {
+      // A client-only magic in the call is refused first, whatever else the call is.
+      _assertNoServerMagic(expr.expression, "a call");
+      for (const arg of expr.arguments) _assertNoServerMagic(arg, "a call's arguments");
+      if (_callMayReturnMarkup(expr, sourceFile, method)) {
         return bail(
           `\`{${_snippet(expr)}}\` may return markup`,
           "render it as a component (`<Badge />`), or let the page render through the runtime",
           expr,
         );
       }
-      _assertNoServerMagic(expr.expression, "a call");
-      for (const arg of expr.arguments) _assertNoServerMagic(arg, "a call's arguments");
       return `__esc(${expr.getText()})`;
     }
 
@@ -3185,42 +3187,146 @@ function _containsJsx(node: ts.Node): boolean {
  *
  * Kept as narrow as it can be on purpose. The app's own code can return markup at any depth and
  * by any route (a helper that calls a component function, a map over render functions, a const
- * copied from a field, a module behind a path alias), and markup needs the render context for its
- * bindings and for any class component in it. A compiler reading one file cannot follow all of
- * that, so a call compiles only when it starts from code that is not the app's:
+ * copied from a field, a module behind a path alias, a callback handed to a library), and markup
+ * needs the render context for its bindings and for any class component in it. A compiler reading
+ * one file cannot follow all of that, so a call compiles only when it starts from code that is not
+ * the app's, and is handed nothing but data:
  *
- * - a function, class or namespace imported from a package (`__()` from `zerotal/i18n`,
- *   `CsrfMiddleware.field()` from `zerotal/session`, a date library): a framework package other
- *   than Flow's own, or one that resolves into `node_modules`;
- * - a JavaScript global (`String(n).padStart(3, "0")`, `Math.round(x)`, `JSON.stringify(v)`),
- *   when nothing in the file declares that name.
+ * - it starts from a function, class or namespace imported from a package (`__()` from
+ *   `zerotal/i18n`, `CsrfMiddleware.field()` from `zerotal/session`, a date library): a framework
+ *   package other than Flow's own, or one that resolves into `node_modules` and does not itself
+ *   build on Flow; or from one of a fixed set of JavaScript globals (`String`, `Math`, …), when
+ *   nothing in the file declares that name;
+ * - every argument along the chain is data: literals, the page's fields, locals the render
+ *   computed, and calls that pass this same rule. A function, a method of the page, one of the
+ *   app's functions, or a callback's parameter handed to a package call could be called back by
+ *   it, so any of those keeps the page on the runtime.
  *
  * Everything else keeps the page on the runtime, as every call did before calls compiled. A value
  * from the app's own code can be computed in a leading const instead.
  */
-function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile): boolean {
+function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner: ts.Node): boolean {
   let root: ts.Expression = call.expression;
+  const args: ts.Expression[] = [...call.arguments];
   for (;;) {
-    if (
+    if (ts.isCallExpression(root)) {
+      args.push(...root.arguments);
+      root = root.expression;
+    } else if (
       ts.isPropertyAccessExpression(root) ||
-      ts.isElementAccessExpression(root) ||
-      ts.isCallExpression(root) ||
       ts.isNonNullExpression(root) ||
       ts.isParenthesizedExpression(root)
     ) {
+      root = root.expression;
+    } else if (ts.isElementAccessExpression(root)) {
+      args.push(root.argumentExpression);
       root = root.expression;
     } else break;
   }
   if (!ts.isIdentifier(root)) return true;
   const name = root.text;
-  const specifier = _importedFrom(sf, name);
   // A parameter, a const or a destructured name of the same name: whatever it holds is the app's.
   if (_declaresName(sf, name)) return true;
-  if (specifier !== undefined) return !_isPackageSpecifier(specifier, sf.fileName);
-  return !_SAFE_GLOBALS.has(name);
+  const specifier = _importedFrom(sf, name);
+  const fromPackage = specifier !== undefined && _isPackageSpecifier(specifier, sf.fileName);
+  if (!fromPackage && (specifier !== undefined || !_SAFE_GLOBALS.has(name))) return true;
+  // A package's function may call what it is handed; a global here never calls an argument back,
+  // except JSON.parse's reviver, which is a function and is refused as one.
+  return args.some((arg) => !_isData(arg, sf, owner, fromPackage));
 }
 
-/** Globals whose functions return values, never markup. */
+/**
+ * Whether `node`, handed to a call, is data the call cannot run: no function, no method of the
+ * page, none of the app's functions, and no call that does not itself pass the rule. With
+ * `strict` (a package's call), a callback's parameter, which may hold a function, is refused too.
+ */
+function _isData(node: ts.Node, sf: ts.SourceFile, owner: ts.Node, strict: boolean): boolean {
+  let data = true;
+  const cls = ts.isClassLike(owner.parent) ? owner.parent : undefined;
+  const isMethod = (member: string): boolean =>
+    cls?.members.some(
+      (m) =>
+        (ts.isMethodDeclaration(m) || ts.isGetAccessorDeclaration(m)) &&
+        m.name !== undefined &&
+        ts.isIdentifier(m.name) &&
+        m.name.text === member,
+    ) ?? true;
+  const visit = (n: ts.Node): void => {
+    if (!data) return;
+    if (ts.isFunctionLike(n) || ts.isClassLike(n) || ts.isNewExpression(n)) {
+      data = false;
+      return;
+    }
+    if (ts.isCallExpression(n)) {
+      if (_callMayReturnMarkup(n, sf, owner)) data = false;
+      return;
+    }
+    if (n.kind === ts.SyntaxKind.ThisKeyword) {
+      // `this.field` reads a value; `this` alone, or a method of it, is code.
+      const parent = n.parent;
+      if (!ts.isPropertyAccessExpression(parent) || parent.expression !== n) data = false;
+      else if (isMethod(parent.name.text)) data = false;
+      return;
+    }
+    if (ts.isPropertyAccessExpression(n)) {
+      visit(n.expression); // the name after the dot is a property, not a variable
+      return;
+    }
+    if (ts.isIdentifier(n)) {
+      const kind = _declarationKind(sf, owner, n.text);
+      if (kind === "function" || kind === "import-app") data = false;
+      else if (kind === "parameter" && strict) data = false;
+      return;
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return data;
+}
+
+/**
+ * What `name` is in `sf`: a function (declared, or a const holding one), one imported from the
+ * app, a callback's parameter, a value, or a global (nothing declares it).
+ */
+function _declarationKind(
+  sf: ts.SourceFile,
+  owner: ts.Node,
+  name: string,
+): "function" | "import-app" | "import-package" | "parameter" | "value" | "global" {
+  const specifier = _importedFrom(sf, name);
+  if (specifier !== undefined) {
+    return _isPackageSpecifier(specifier, sf.fileName) ? "import-package" : "import-app";
+  }
+  let kind: "function" | "parameter" | "value" | undefined;
+  const visit = (n: ts.Node): void => {
+    if (kind !== undefined || ts.isImportDeclaration(n)) return;
+    if ((ts.isFunctionDeclaration(n) || ts.isClassDeclaration(n)) && n.name?.text === name) {
+      kind = "function";
+      return;
+    }
+    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === name) {
+      const init = n.initializer;
+      kind =
+        init === undefined || ts.isFunctionLike(init) || ts.isIdentifier(init) || _containsJsx(init)
+          ? "function"
+          : "value";
+      return;
+    }
+    if (
+      (ts.isParameter(n) || ts.isBindingElement(n)) &&
+      ts.isIdentifier(n.name) &&
+      n.name.text === name
+    ) {
+      kind = n.parent === owner ? "value" : "parameter";
+      return;
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(sf);
+  return kind ?? "global";
+}
+
+/** Globals whose functions return values and never call back into the page's code. */
 const _SAFE_GLOBALS = new Set([
   "String",
   "Number",
@@ -3243,13 +3349,46 @@ function _isPackageSpecifier(specifier: string, fromFile: string): boolean {
   // Flow's own packages hold the JSX runtime and components, which return markup.
   if (/^(@zerotal\/flow|zerotal\/flow)/.test(specifier)) return false;
   if (/^(zerotal|@zerotal\/)/.test(specifier)) return true;
-  // Anything else is a package only where it resolves into node_modules: a path alias
-  // (`@app/…`, `@pages/…`, `$lib/…`) or a workspace package is the app's own code.
+  // Anything else is a package only where it resolves into node_modules (a path alias or a
+  // workspace package is the app's own code), and only when it does not build on Flow itself:
+  // a component library's functions return markup.
   try {
-    return /[\\/]node_modules[\\/]/.test(Bun.resolveSync(specifier, path.dirname(fromFile)));
+    const file = Bun.resolveSync(specifier, path.dirname(fromFile));
+    if (!/[\\/]node_modules[\\/]/.test(file)) return false;
+    return !_buildsOnFlow(file);
   } catch {
     return false;
   }
+}
+
+/** Whether the package `file` belongs to declares Flow (or the framework bundle) as a dependency. */
+function _buildsOnFlow(file: string): boolean {
+  let dir = path.dirname(file);
+  for (let i = 0; i < 12; i++) {
+    const manifest = path.join(dir, "package.json");
+    if (existsSync(manifest)) {
+      try {
+        const pkg: unknown = JSON.parse(readFileSync(manifest, "utf8"));
+        if (
+          typeof pkg === "object" &&
+          pkg !== null &&
+          typeof Reflect.get(pkg, "name") === "string"
+        ) {
+          const deps = ["dependencies", "peerDependencies"].flatMap((k) => {
+            const listed: unknown = Reflect.get(pkg, k);
+            return typeof listed === "object" && listed !== null ? Object.keys(listed) : [];
+          });
+          return deps.some((d) => d === "zerotal" || d.startsWith("@zerotal/flow"));
+        }
+      } catch {
+        return true;
+      }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir || path.basename(dir) === "node_modules") break;
+    dir = parent;
+  }
+  return true;
 }
 
 /** The module `name` is imported from in `sf`, or undefined when it is not imported. */
@@ -3270,8 +3409,8 @@ function _importedFrom(sf: ts.SourceFile, name: string): string | undefined {
 }
 
 /**
- * Whether anything in `sf` other than an import declares `name`: a variable, a parameter, a
- * destructured binding, a function or a class.
+ * Whether anything in `sf` other than an import declaration declares `name`: a variable, a
+ * parameter, a destructured binding, a function, a class, a namespace or an `import x = require()`.
  */
 function _declaresName(sf: ts.SourceFile, name: string): boolean {
   let found = false;
@@ -3282,7 +3421,10 @@ function _declaresName(sf: ts.SourceFile, name: string): boolean {
         ts.isParameter(n) ||
         ts.isBindingElement(n) ||
         ts.isFunctionDeclaration(n) ||
-        ts.isClassDeclaration(n)) &&
+        ts.isClassDeclaration(n) ||
+        ts.isModuleDeclaration(n) ||
+        ts.isImportEqualsDeclaration(n) ||
+        ts.isEnumDeclaration(n)) &&
       n.name !== undefined &&
       ts.isIdentifier(n.name) &&
       n.name.text === name

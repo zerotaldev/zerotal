@@ -182,22 +182,28 @@ head, a layout, reading the signed-in user), as long as that class is imported f
 module and extends `Component` itself, or through another such class. Its `@expose` and `@locked`
 fields count as the page's own.
 
-A function call in a text child compiles too, when it starts from code that is not the app's:
-a function, class or namespace from a package (`{__("projects.title")}` from `zerotal/i18n`,
-`{CsrfMiddleware.field()}`, a date library's formatter), or a JavaScript global
-(`{String(n).padStart(3, "0")}`, `{Math.round(total)}`), at the top of the markup, in a ternary
-branch or inside a `.map()`. It runs on the server as the page renders, and its result is written
-the way the runtime writes a child: an array item by item, `null`, `undefined` and booleans as
-nothing, and anything else escaped. It needs no client code, so a page that translates its strings
-with `__()` compiles under [`cspSafe`](/docs/flow/components#csp-safe-mode). A package counts when
-it is a framework package other than Flow's own, or resolves into `node_modules`; a path alias or a
-workspace package is the app's.
+A function call in a text child compiles too, when it starts from code that is not the app's and
+is handed only data: `{__("projects.title", { count: this.count })}` from `zerotal/i18n`,
+`{CsrfMiddleware.field()}`, a date library's formatter, or `{String(n).padStart(3, "0")}`, at the
+top of the markup, in a ternary branch or inside a `.map()`. It runs on the server as the page
+renders, and its result is written the way the runtime writes a child: an array item by item,
+`null`, `undefined` and booleans as nothing, and anything else escaped. It needs no client code, so
+a page that translates its strings with `__()` compiles under
+[`cspSafe`](/docs/flow/components#csp-safe-mode).
 
-The app's own code can return markup by any route (a helper that calls a component function, a map
-over render functions, a const copied from a field), and markup needs the render context for its
+- **Where it starts.** A function, class or namespace imported from a package: a framework package
+  other than Flow's own, or one that resolves into `node_modules` and does not itself depend on
+  Flow. A path alias or a workspace package is the app's code. Or one of these globals: `String`,
+  `Number`, `Boolean`, `Math`, `JSON`, `Date`, `Intl`, `parseInt`, `parseFloat`, `encodeURI`,
+  `encodeURIComponent`, `isNaN` and `isFinite`, when nothing in the file declares that name.
+- **What it is handed.** Every argument along the chain is data: literals, the page's fields,
+  locals the render computed, and calls that pass the same rule. A function, a method of the page,
+  one of the app's functions, or a callback's parameter handed to a package's call could be called
+  back by it, so any of those keeps the page on the runtime.
+
+The app's own code can return markup by any route, and markup needs the render context for its
 bindings and for any class component in it. So any other call keeps the page on the runtime, and
-the compile log says why: the app's own functions, the page's methods, and methods on values the
-render holds. For a value from your own code, compute it in a leading const
+the compile log says why. For a value from your own code, compute it in a leading const
 (`const due = formatDate(project.dueOn);`) and render the const; for markup, render a component
 (`<Badge />`). A call that awaits (`{format(await load())}`) or is handed markup
 (`{wrap(<b>hi</b>)}`) stays on the runtime too.

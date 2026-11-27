@@ -30,3 +30,13 @@ describe("initial-render error page (dev)", () => {
     expect(html).toContain("<title>Error — P</title>");
   });
 });
+
+describe("initial-render error page as text", () => {
+  it("carries the message and the stack as text in the body, for a reader that runs no script", () => {
+    const html = _renderBootErrorPage(new TypeError("kaboom <b>"), "DashboardPage");
+    const text = /<pre data-flow-error[^>]*>(.*?)<\/pre>/s.exec(html)?.[1] ?? "";
+    expect(text).toContain("TypeError: kaboom &lt;b&gt;");
+    expect(text).toContain("During action initial render in DashboardPage");
+    expect(text).toContain("bootError.test.ts");
+  });
+});

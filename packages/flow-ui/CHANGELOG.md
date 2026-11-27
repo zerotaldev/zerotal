@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`<AlertDialog>` can only be closed by its buttons.** Its docs say a backdrop click or Escape
+  does not dismiss it, and it passed `closable={false}` to `<Dialog>` for that, but `<Dialog>`
+  removed only the × and still closed on the backdrop and on Escape. `closable={false}` now does
+  what `<Dialog>`'s own docs say: no ×, no backdrop close, no Escape. `<AlertDialog>` also keeps
+  its `alertdialog` role, which `<Dialog>` overwrote with `dialog`.
+
 ## [1.17.0] — 2026-11-20
 
 ### Changed

@@ -242,6 +242,8 @@ export interface RedirectFrame {
   type: "redirect";
   url: string;
   sessionToken?: string;
+  /** Flashes queued with the redirect, shown on the page the browser lands on. */
+  flashes?: Record<string, unknown>[];
 }
 
 /**

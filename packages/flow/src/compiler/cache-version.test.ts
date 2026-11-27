@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from "bun:test";
-import { readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
+import { existsSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,7 +14,9 @@ import { getCachedPath } from "./cache.ts";
 describe("compiled-page cache version", () => {
   const dir = fileURLToPath(new URL(".", import.meta.url));
   const cacheMod = join(dir, "cache.ts");
-  const probe = join(dir, "directives.ts");
+  // A file of its own, created and removed by the test: rewriting a tracked compiler source left
+  // it modified whenever a run was interrupted, and raced any other test reading it.
+  const probe = join(dir, "__fingerprint-probe.ts");
   const scratch = mkdtempSync(join(tmpdir(), "flow-cache-"));
 
   afterAll(() => rmSync(scratch, { recursive: true, force: true }));
@@ -32,14 +34,13 @@ describe("compiled-page cache version", () => {
 
   it("changes when the compiler's source changes", () => {
     const before = keyInFreshProcess();
-    const orig = readFileSync(probe, "utf8");
     try {
-      writeFileSync(probe, orig + "\n// fingerprint probe\n");
+      writeFileSync(probe, "// fingerprint probe\n");
       expect(keyInFreshProcess()).not.toBe(before); // a compiler edit MUST invalidate cached pages
     } finally {
-      writeFileSync(probe, orig);
+      rmSync(probe, { force: true });
     }
-    expect(readFileSync(probe, "utf8")).toBe(orig); // probe file restored
+    expect(existsSync(probe)).toBe(false);
   });
 
   it("is stable across processes when nothing changed", () => {

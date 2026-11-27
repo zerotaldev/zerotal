@@ -187,3 +187,37 @@ describe("Flow compiler — JSX text", () => {
     ).toBe("<p>Edit <code>x</code> and the page reloads.</p>");
   });
 });
+
+/**
+ * A text child the compiler renders from a value must come out as the runtime renders it. Markup
+ * held in a const used to render as `[object Object]` and an array comma-joined, though the
+ * compiler's own advice was to compute the value into a leading const.
+ */
+describe("Flow compiler — text children worked out on the server", () => {
+  it("renders markup held in a const as markup", async () => {
+    // Compiled output keeps the const's JSX for the bundler to turn into a rendered node; this
+    // harness runs the body as plain JS, so the const holds that node directly.
+    const html = await render(`<div>{note}</div>`, {
+      lead: `const note = { html: "<b>bold</b>" };`,
+    });
+    expect(html).toBe("<div><b>bold</b></div>");
+  });
+
+  it("renders an array of text as its items, not comma-joined", async () => {
+    const html = await render(`<p>{parts}</p>`, { lead: `const parts = ["a", "b"];` });
+    expect(html).toBe("<p>ab</p>");
+  });
+
+  it("still escapes text, and writes zero", async () => {
+    expect(await render(`<p>{t}</p>`, { lead: `const t = "<i>x</i>";` })).toBe(
+      "<p>&lt;i&gt;x&lt;/i&gt;</p>",
+    );
+    expect(await render(`<p>{n}</p>`, { lead: "const n = 0;" })).toBe("<p>0</p>");
+  });
+});
+
+describe("__esc", () => {
+  it("renders nested arrays and nodes the way the runtime does", () => {
+    expect(__esc([["a", { html: "<b>b</b>" }], null, false, "<c>"])).toBe("a<b>b</b>&lt;c&gt;");
+  });
+});

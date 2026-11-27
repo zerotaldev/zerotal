@@ -16,12 +16,22 @@
 import { URL_ATTRIBUTES, sanitizeUrl } from "../urlSafety.ts";
 
 /**
- * Escape a value for safe injection as HTML text content.
+ * A value as HTML text content, rendered the way the runtime renders a JSX child: markup (a
+ * rendered node, such as JSX held in a const) as it is, an array as its items one after another,
+ * and anything else escaped.
+ *
+ * It used to stringify everything, so markup held in a const rendered as `[object Object]` and
+ * an array came out comma-joined, while the same page rendered correctly when it fell back to the
+ * runtime. The compiler's own advice ("compute it into a leading const") led straight there.
  *
  * @internal
  */
 export function __esc(v: unknown): string {
   if (v == null || v === false || v === true) return "";
+  if (Array.isArray(v)) return v.map(__esc).join("");
+  if (typeof v === "object" && typeof (v as { html?: unknown }).html === "string") {
+    return (v as { html: string }).html;
+  }
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 

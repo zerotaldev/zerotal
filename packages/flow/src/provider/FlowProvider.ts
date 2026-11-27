@@ -342,9 +342,13 @@ function _isRecord(value: unknown): value is Record<string, unknown> {
 // stores the cookie, then the redirect to the intended page proceeds.
 //
 // Tokens expire after 30 s; a sweep runs every 60 s to prune stale entries.
+//
+// Every cookie is kept on its own. `Headers.get("Set-Cookie")` joins several into one comma-
+// separated value, which a browser reads as a single broken cookie, so an action that set two (a
+// session and a remember-me cookie) used to deliver neither intact.
 
 interface _RelayEntry {
-  setCookie: string;
+  setCookies: string[];
   expiresAt: number;
 }
 const _sessionRelayStore = new Map<string, _RelayEntry>();
@@ -353,15 +357,100 @@ setInterval(() => {
   for (const [k, v] of _sessionRelayStore) if (v.expiresAt < now) _sessionRelayStore.delete(k);
 }, 60_000).unref?.();
 
+/**
+ * Hold `setCookies` for the browser to collect, and return the one-time token that collects them.
+ *
+ * @internal exported for tests.
+ */
+export function _holdSessionCookies(setCookies: string[]): string {
+  const token = crypto.randomUUID();
+  _sessionRelayStore.set(token, { setCookies: [...setCookies], expiresAt: Date.now() + 30_000 });
+  return token;
+}
+
+/**
+ * The response to `/__flow/session-relay?t=<token>`: every cookie held under the token, each in
+ * a `Set-Cookie` header of its own, once. An unknown or expired token gets an empty answer.
+ *
+ * @internal exported for tests.
+ */
+export function _sessionRelayResponse(token: string): Response {
+  const entry = _sessionRelayStore.get(token);
+  _sessionRelayStore.delete(token); // one-time use regardless of validity
+  const headers = new Headers();
+  if (entry && entry.expiresAt >= Date.now()) {
+    for (const cookie of entry.setCookies) headers.append("Set-Cookie", cookie);
+  }
+  return new Response(null, { status: 204, headers });
+}
+
 // ── Temporary upload garbage collection ───────────────────────────────────────
 // Files uploaded to /__flow/upload land on the temp disk under flow-tmp/. We track
 // each one and delete it after a TTL so abandoned uploads don't accumulate. (Promoting a
 // file to permanent storage via TemporaryUploadedFile.store() removes the temp copy itself.)
+//
+// The list lives in memory, so it forgets every upload when the process restarts, and a deploy
+// restarts it. On a local disk the directory itself is swept as well, by file age, at boot and on
+// the same timer, which catches what a restart forgot. An object store cannot be listed through
+// the storage contract, so there only the in-memory list applies.
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB ceiling (apps can validate stricter)
 const TEMP_UPLOAD_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const _tempUploads = new Map<string, number>(); // tmpPath → expiresAt
+
+/**
+ * Delete files under `dir` last modified more than `ttlMs` ago. Best effort: a file that cannot
+ * be read or removed is skipped, and a missing directory is nothing to do.
+ *
+ * @returns How many files were removed.
+ * @internal exported for tests.
+ */
+export async function _sweepTempUploadDir(
+  dir: string,
+  ttlMs: number = TEMP_UPLOAD_TTL_MS,
+  now: number = Date.now(),
+): Promise<number> {
+  const { readdir, stat, rm } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch {
+    return 0;
+  }
+  let removed = 0;
+  for (const name of names) {
+    const file = join(dir, name);
+    try {
+      const info = await stat(file);
+      if (!info.isFile() || now - info.mtimeMs <= ttlMs) continue;
+      await rm(file, { force: true });
+      removed++;
+    } catch {
+      /* best-effort sweep */
+    }
+  }
+  return removed;
+}
+
+/** `flow-tmp/` on the default disk, when that disk is a local directory. */
+function _localTempUploadDir(): string | null {
+  const storage = config.safe<
+    { default?: string; disks?: Record<string, { driver?: string; root?: string }> } | undefined
+  >("storage", undefined);
+  const name = storage?.default;
+  const disk = name ? storage?.disks?.[name] : undefined;
+  if (disk?.driver !== "local" || typeof disk.root !== "string") return null;
+  return `${disk.root.replace(/[\\/]+$/, "")}/flow-tmp`;
+}
+
+function _sweepLocalTempUploads(): void {
+  const dir = _localTempUploadDir();
+  if (dir) void _sweepTempUploadDir(dir);
+}
+
 setInterval(() => {
+  _sweepLocalTempUploads();
   const now = Date.now();
   for (const [path, exp] of _tempUploads) {
     if (exp >= now) continue;
@@ -378,6 +467,15 @@ setInterval(() => {
     })();
   }
 }, 30 * 60_000).unref?.();
+
+/** `flow.uploads.maxBytes`, when it is a whole number of bytes. */
+function _uploadMaxBytes(): number | undefined {
+  const limit = config.safe<{ maxBytes?: unknown } | undefined>(
+    "flow.uploads",
+    undefined,
+  )?.maxBytes;
+  return typeof limit === "number" && Number.isInteger(limit) && limit >= 0 ? limit : undefined;
+}
 
 // ── WS message handler ────────────────────────────────────────────────────────
 
@@ -445,6 +543,8 @@ type FlowWsDeps = {
 interface DispatchOutcome {
   /** Where the action sent the browser, when it called `this.redirect()`. */
   redirectUrl?: string | undefined;
+  /** Flashes queued by an action that redirected, for the page the browser lands on. */
+  flashes?: unknown[] | undefined;
   /** True when the action threw, a client write was rejected, or the call was refused. */
   failed: boolean;
 }
@@ -768,32 +868,28 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
         }
       }
 
-      const setCookieHeader = ctx.response?.headers.get("Set-Cookie");
+      const setCookies = ctx.response?.headers.getSetCookie() ?? [];
       const redirectUrl = outcome.redirectUrl;
 
       if (redirectUrl) {
-        if (setCookieHeader) {
-          const token = crypto.randomUUID();
-          _sessionRelayStore.set(token, {
-            setCookie: setCookieHeader,
-            expiresAt: Date.now() + 30_000,
-          });
-          ws.send(JSON.stringify({ type: "redirect", url: redirectUrl, sessionToken: token }));
-        } else {
-          ws.send(JSON.stringify({ type: "redirect", url: redirectUrl }));
-        }
+        // A flash queued with the redirect (`this.redirect(url).withSuccess("…")`) rides on the
+        // frame, and the browser shows it on the page it lands on.
+        const flashes = outcome.flashes ?? [];
+        ws.send(
+          JSON.stringify({
+            type: "redirect",
+            url: redirectUrl,
+            ...(setCookies.length > 0 ? { sessionToken: _holdSessionCookies(setCookies) } : {}),
+            ...(flashes.length > 0 ? { flashes } : {}),
+          }),
+        );
         return;
       }
 
       // Non-redirect action: if session was mutated, relay the updated cookie to
       // the browser (WebSocket frames cannot carry Set-Cookie directly).
-      if (setCookieHeader) {
-        const token = crypto.randomUUID();
-        _sessionRelayStore.set(token, {
-          setCookie: setCookieHeader,
-          expiresAt: Date.now() + 30_000,
-        });
-        ws.send(JSON.stringify({ type: "session", token }));
+      if (setCookies.length > 0) {
+        ws.send(JSON.stringify({ type: "session", token: _holdSessionCookies(setCookies) }));
       }
     });
   });
@@ -1145,7 +1241,7 @@ async function _dispatchFrame(
   const effects = page._drainEffects();
 
   if (effects.redirectUrl) {
-    return { redirectUrl: effects.redirectUrl, failed: actionErrored };
+    return { redirectUrl: effects.redirectUrl, flashes: effects.flashes, failed: actionErrored };
   }
 
   // Use the HMAC-signed component id for all outbound frames.
@@ -1443,24 +1539,19 @@ export class FlowProvider extends ServiceProvider {
     //
     // Registered as a RAW route (no middleware pipeline) so that SessionMiddleware
     // does not run and overwrite the relay's Set-Cookie with a fresh empty session.
-    Router.raw("GET", "/__flow/session-relay", (req: Request): Response => {
-      const token = new URL(req.url).searchParams.get("t") ?? "";
-      const entry = _sessionRelayStore.get(token);
-      _sessionRelayStore.delete(token); // one-time use regardless of validity
-      if (!entry || entry.expiresAt < Date.now()) {
-        return new Response(null, { status: 204 });
-      }
-      return new Response(null, {
-        status: 204,
-        headers: { "Set-Cookie": entry.setCookie },
-      });
-    });
+    Router.raw("GET", "/__flow/session-relay", (req: Request): Response =>
+      _sessionRelayResponse(new URL(req.url).searchParams.get("t") ?? ""),
+    );
 
     // Authenticated file-upload endpoint. Bytes can't ride the WebSocket (JSON-only), so the
     // client POSTs multipart here; we store to the temp disk and return a signed reference the
     // client then $sets onto the bound component property. Goes through the normal middleware
     // pipeline (Session/Auth), so ctx.user is populated.
-    Router.post(
+    // A file is one request, held to `app.maxRequestBodySize` like any other unless the app gives
+    // uploads a limit of their own with `flow.uploads.maxBytes`.
+    const uploadLimit = _uploadMaxBytes();
+    _sweepLocalTempUploads();
+    const uploadRoute = Router.post(
       "/__flow/upload",
       class FlowUploadHandler {
         async handle(http: HttpContext): Promise<void> {
@@ -1481,7 +1572,7 @@ export class FlowProvider extends ServiceProvider {
             http.response = Response.json({ error: "No file provided." }, { status: 422 });
             return;
           }
-          if (entry.size > MAX_UPLOAD_BYTES) {
+          if (entry.size > (uploadLimit ?? MAX_UPLOAD_BYTES)) {
             http.response = Response.json(
               { error: "File exceeds the size limit." },
               { status: 422 },
@@ -1519,6 +1610,7 @@ export class FlowProvider extends ServiceProvider {
       },
       "handle",
     );
+    if (uploadLimit !== undefined) uploadRoute.maxBodySize(uploadLimit);
 
     // Register WebSocket handlers
     const app = this.app as unknown as Application;

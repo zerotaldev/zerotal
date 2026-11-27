@@ -19,11 +19,13 @@ export interface DevtoolsConfigShape {
    */
   enabled: boolean | null;
   /**
-   * Who may read the inspector outside a development process.
+   * Who may read the inspector, other than the machine it runs on.
    *
-   * Never consulted on a development machine: a gate that can lock you out of
-   * your own laptop is a gate that gets switched off, and then nothing is gated.
-   * One function answers for every endpoint — the stream, the trace JSON, the
+   * On a development machine, requests from that machine are never asked: a gate
+   * that can lock you out of your own laptop is a gate that gets switched off, and
+   * then nothing is gated. Every other request is — another device on the network
+   * in development, and everyone outside development — and with no gate the
+   * answer is no. One function answers for every endpoint — the stream, the trace JSON, the
    * dashboard, and the panel bundle are the same secret.
    *
    * @example
@@ -51,8 +53,8 @@ export interface DevtoolsConfigShape {
    *
    * On by default: a trace is streamed to the browser *and* written to disk for
    * a day, and what it carries is the request's real values — the password on a
-   * registration, a reset token, every customer email a listing selects by.
-   * Turn it off only when you are debugging the values themselves.
+   * registration, a reset token, the signature on a signed link. Email
+   * addresses are not masked unless `deny` names them. Turn it off only when you are debugging the values themselves.
    */
   redact: RedactionOptions;
   /**
@@ -92,7 +94,8 @@ export interface DevtoolsConfigShape {
    * The allowlist exists because a trace is persisted: `cookie` and
    * `authorization` are the request's credentials. This opens up the ones you
    * are actually debugging — matched case-insensitively, and `"*"` records every
-   * header except those `redact` masks.
+   * header except those whose name says they hold a secret (`x-api-key`). A
+   * header named on its own is recorded whatever its name.
    */
   headers: string[];
 }
@@ -120,7 +123,7 @@ const defaults: DevtoolsConfigShape = {
  * export default DevtoolsConfig({
  *   capacity: 250,
  *   editor: 'cursor',
- *   redact: { allow: ['email', 'slug'] },
+ *   redact: { deny: ['email'] },
  * });
  */
 export function DevtoolsConfig(options: Partial<DevtoolsConfigShape> = {}): DevtoolsConfigShape {

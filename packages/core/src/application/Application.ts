@@ -1738,6 +1738,12 @@ export class Application {
           const pathname = new URL(req.url).pathname;
 
           if (this._devWsEnabled && pathname === "/__dev/ws") {
+            // The same guard as the app's own sockets below. This one carries a failed
+            // build's file paths and source lines, and any page open in the developer's
+            // browser could otherwise connect to it and read them.
+            if (!isAllowedOrigin(req, this._allowedOrigins())) {
+              return new Response("Forbidden origin.", { status: 403 });
+            }
             const upgraded = bunServer.upgrade(req, {
               data: { _dev: true, id: crypto.randomUUID() },
             });

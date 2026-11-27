@@ -2987,7 +2987,7 @@
       "file": "docs/devtools.md",
       "heading": "Redaction",
       "ordinal": 0,
-      "hash": "0tfk5e4u57km"
+      "hash": "38htl4tu5fek"
     },
     {
       "file": "docs/devtools.md",
@@ -3018,6 +3018,12 @@
       "heading": "Testing",
       "ordinal": 2,
       "hash": "3ajaeiccxj7x"
+    },
+    {
+      "file": "docs/devtools.md",
+      "heading": "Who can reach it",
+      "ordinal": 0,
+      "hash": "1gfd3jkfnaqb"
     },
     {
       "file": "docs/email-verification.md",

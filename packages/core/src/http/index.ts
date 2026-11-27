@@ -49,5 +49,6 @@ export type {
   NegotiateMap,
 } from "./negotiate.ts";
 export { isAllowedOrigin } from "./originGuard.ts";
+export { _isLocalDevRequest } from "./localRequest.ts";
 export { _clientAddress, _trustedProxyCount } from "./clientAddress.ts";
 export type { ClientAddressSources } from "./clientAddress.ts";

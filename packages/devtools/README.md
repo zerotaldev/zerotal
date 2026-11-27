@@ -77,7 +77,7 @@ export default DevtoolsConfig({
   capacity: 250,
   dbPath: ".data/devtools.sqlite", // null keeps traces in memory only
   pruneHours: 48,
-  redact: { allow: ["email"] }, // query bindings are masked by default
+  redact: { deny: ["email"] }, // passwords, tokens and secrets are masked by default; add more
 });
 ```
 

@@ -8,6 +8,21 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Security
+
+- **The development error page no longer runs script from an error message.** The page writes
+  the error into a `<script>` block for "Copy for AI", and an error whose message echoed request
+  input (`No such user: …`) could end that block with `</script>` and add its own markup to the
+  page. Every value written into the page's scripts is now escaped for that context. Only the
+  development error page was affected; production renders no stack.
+- **The development error page masks credentials in the request headers.** It showed every
+  header except `cookie`, so a bearer token or an API key went wherever the page was
+  screenshotted or saved. Headers named like a credential (`authorization`, `x-api-key`,
+  `x-csrf-token`, …) now show `‹redacted›`, and `set-cookie` is left out with `cookie`.
+- **The dev reload socket refuses a page on another site.** `/__dev/ws` was upgraded without the
+  origin check the app's own sockets get, so any page open in the browser could connect and read
+  a failed build's file paths and source lines.
+
 ### Fixed
 
 - **Errors caught outside the HTTP error path can reach the app's exception handler.** An

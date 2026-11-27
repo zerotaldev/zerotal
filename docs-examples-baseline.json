@@ -4514,6 +4514,12 @@
       "hash": "1v7r5d0wg6z8"
     },
     {
+      "file": "docs/flow/security.md",
+      "heading": "What the browser does with a refusal",
+      "ordinal": 0,
+      "hash": "10atproewdm8"
+    },
+    {
       "file": "docs/flow/testing.md",
       "heading": "Accessors",
       "ordinal": 0,

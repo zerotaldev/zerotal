@@ -59,14 +59,14 @@ export function passkeys(): PasskeyService {
     origin: env("PASSKEY_ORIGIN", config("app.url")),
 
     async findUserCredentials(userId) {
-      const rows = (await DB.table("passkeys").where("user_id", userId).get()) as PasskeyRow[];
+      const rows = await DB.table("passkeys").where("user_id", userId).get<PasskeyRow>();
       return rows.map(toCredential);
     },
 
     async findCredential(credentialId) {
-      const row = (await DB.table("passkeys")
+      const row = await DB.table("passkeys")
         .where("credential_id", credentialId)
-        .first()) as PasskeyRow | null;
+        .first<PasskeyRow>();
       return row ? toCredential(row) : null;
     },
 
@@ -100,10 +100,10 @@ export interface PasskeySummary {
 }
 
 export async function listPasskeys(userId: number): Promise<PasskeySummary[]> {
-  const rows = (await DB.table("passkeys")
+  const rows = await DB.table("passkeys")
     .where("user_id", userId)
     .orderBy("created_at", "desc")
-    .get()) as PasskeyRow[];
+    .get<PasskeyRow>();
   return rows.map((row) => ({
     id: Number(row.id),
     name: row.name ?? "Passkey",

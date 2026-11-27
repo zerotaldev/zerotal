@@ -534,9 +534,12 @@ which is usually the whole story.
 the `FlowTest` that rendered one component (see [Testing Flow](/docs/flow/testing)), so a
 component test asks the same questions an HTTP test does:
 
-```typescript fragment
+```typescript
+import type { Component } from "@zerotal/flow";
 import { FlowTest } from "@zerotal/flow/testing";
 import { parseHtml } from "@zerotal/testing";
+
+declare const LoginPage: new () => Component; // your page, from app/flow/pages/
 
 const t = await FlowTest.mount(LoginPage);
 parseHtml(t).getByLabel("Email");

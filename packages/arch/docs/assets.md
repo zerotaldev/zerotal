@@ -446,9 +446,9 @@ what happens on a change depends on which directory the change landed in:
 │                 └─ Write "reload:<token>" to         │
 │                      Process 2 stdin                 │
 │                                                      │
-│  Process 2: Zerotal server (--dev-worker)             │
+│  Process 2: Zerotal server (--dev-worker)            │
 │  ├─ Serves app routes                                │
-│  ├─ Sends "version:<token>" on every WS connect      │
+│  ├─ Sends "version:<build>.<boot>" on every connect  │
 │  ├─ Broadcasts "reload" to WS clients                │
 │  └─ WebSocket at /__dev/ws                           │
 │                              │                       │
@@ -464,17 +464,42 @@ what happens on a change depends on which directory the change landed in:
 
 ### What triggers a restart, and what only rebuilds
 
-| Changed path                                                                       | Action                                 |
-| ---------------------------------------------------------------------------------- | -------------------------------------- |
-| `app/`, `routes/`, `bootstrap/`, `config/`, `packages/`, `resources/app.html`      | Server restart (150 ms)                |
-| `resources/css/`, `resources/js/`, `resources/pages/`                              | Asset rebuild + browser reload (80 ms) |
-| `public/`, `.zerotal/`                                                             | Ignored (output dirs)                  |
-| `node_modules/`, `.git/`                                                           | Ignored                                |
-| Anything else: `.env` files, `database/`, `lang/`, `tests/`, files at the app root | Nothing; restart `bun zt dev` yourself |
+| Changed path                                                                  | Action                                 |
+| ----------------------------------------------------------------------------- | -------------------------------------- |
+| `app/`, `routes/`, `bootstrap/`, `config/`, `packages/`, `resources/app.html` | Server restart (150 ms)                |
+| `.env`, `.env.local`, `.env.<mode>` (not `.env.example`)                      | Server restart, with the new values    |
+| `lang/`, `resources/lang/`                                                    | Server restart                         |
+| `resources/css/`, `resources/js/`, `resources/pages/`                         | Asset rebuild + browser reload (80 ms) |
+| `app.dev.watch.restart` / `app.dev.watch.rebuild` entries                     | Restart / rebuild, as listed           |
+| `public/`, `.zerotal/`, `types/`                                              | Ignored (output dirs)                  |
+| `node_modules/`, `.git/`, other hidden files                                  | Ignored                                |
+| Anything else: `database/`, `tests/`, files at the app root                   | Nothing                                |
 
-The queue worker tab does not restart when you save: after editing a job, a mailable or a
-notification, restart `bun zt dev` before you test it, or the
-worker runs the code it started with. The scheduler tab restarts with the server.
+An edited `.env` reaches the restarted server, and the processes that restart with it:
+each is started with the `.env` files read again. A variable you set in the shell still
+wins over the file, as it does outside `zt dev`.
+
+The queue worker and the scheduler tabs restart with the server, so a job, a mailable,
+a notification or a schedule you edit runs as saved. Each is asked to stop first and
+finishes the job or task in hand. A save that touches only Flow views (`app/flow/`)
+restarts the server alone.
+
+`app.dev.watch` adds paths of your own. An entry is a directory (`"content/"`), a file
+(`"schema.graphql"`) or a glob (`"data/**/*.json"`), relative to the app root:
+
+```ts
+// config/app.ts
+import { AppConfig } from "zerotal/config";
+
+export default AppConfig({
+  dev: {
+    watch: {
+      restart: ["content/"], // read at boot: restart the server
+      rebuild: ["resources/svg/"], // bundled: rebuild and reload the browser
+    },
+  },
+});
+```
 
 Inertia pages live under `resources/js/pages/`, so they're covered by the
 `resources/js/` watch and rebuild rather than restart.
@@ -521,8 +546,13 @@ restarts the server, and the restart closes every socket, so a reload pushed at
 that moment reaches nobody — the tab does not reconnect for another second. The
 build token closes that gap. The server states its token whenever a socket
 opens; the tab remembers the first one it sees and reloads when a reconnect
-reports a different one. That is how a rebuild triggered by a backend edit still
-reaches the browser.
+reports a different one. The token is the asset build's plus the server's boot id,
+which changes on every restart, so a restart reloads a waiting tab whether or not it
+rebuilt anything: an API, a skipped build, a fix to the code behind a 500.
+
+The development error page carries the client too. It is rendered past the middleware
+that injects it everywhere else, so before 1.19.0 a tab showing a 500 stayed on the old
+error after the fix was saved.
 
 Inertia is the one exception to where the script comes from: it bakes the same
 client into its cached HTML template at boot rather than receiving it from the

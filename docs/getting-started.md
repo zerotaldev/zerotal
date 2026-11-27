@@ -212,6 +212,10 @@ Your app is now running at **http://localhost:3000** with hot reload enabled —
 generated `package.json` also gives you `bun start` (production serve) and
 `bun test`.
 
+The dev server answers this machine only. To open it from a phone on the same Wi-Fi,
+or through a port a container publishes, start it with `bun zt dev --host 0.0.0.0`;
+see [Who can reach the dev server](/docs/commands#who-can-reach-the-dev-server).
+
 ## Your first route
 
 Open `routes/index.ts` and add:

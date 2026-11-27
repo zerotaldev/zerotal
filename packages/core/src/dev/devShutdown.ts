@@ -25,7 +25,7 @@ export const DEV_SHUTDOWN_GRACE_MS = 1_000;
 
 /** The part of a spawned child this module needs. */
 export interface StoppableChild {
-  send?: (message: unknown) => void;
+  send?: ((message: unknown) => void) | undefined;
   exited: Promise<number>;
 }
 
@@ -76,14 +76,22 @@ export async function requestGracefulStop(
 /**
  * Run `stop` when a supervisor asks this process to shut down.
  *
- * Installed by {@link Application} alongside its signal handlers. Harmless in a
- * process with no IPC channel — the message never arrives — so it needs no
- * environment check to stay out of production's way.
+ * Installed by {@link Application} alongside its signal handlers, and by the
+ * long-running commands `zt dev` supervises (`queue:work`, `schedule:work`), so
+ * each can stop taking work and finish what it holds. Harmless in a process with
+ * no IPC channel — the message never arrives — so it needs no environment check
+ * to stay out of production's way.
  *
  * @param stop - What to run. Called at most once per request.
+ * @returns A function that removes the handler again.
+ *
+ * @example
+ * const off = onGracefulStopRequest(() => void queue.drain());
  */
-export function onGracefulStopRequest(stop: () => void): void {
-  process.on("message", (message: unknown) => {
+export function onGracefulStopRequest(stop: () => void): () => void {
+  const listener = (message: unknown): void => {
     if (message === DEV_SHUTDOWN_MESSAGE) stop();
-  });
+  };
+  process.on("message", listener);
+  return () => void process.off("message", listener);
 }

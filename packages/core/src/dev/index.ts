@@ -25,11 +25,22 @@ export { createDeck, StreamDeck, TabsDeck } from "./DevDeck.ts";
 export type { Deck, DeckOptions } from "./DevDeck.ts";
 export { startDevMode, SERVER_PROCESS_NAME } from "./startDevMode.ts";
 export { DevOrchestrator } from "./DevOrchestrator.ts";
-export type { DevOrchestratorHooks } from "./DevOrchestrator.ts";
+export type {
+  DevOrchestratorHooks,
+  DevOrchestratorOptions,
+  DevWatchPaths,
+} from "./DevOrchestrator.ts";
 export type { BuildHookFn, BuildResult } from "./DevBuildHook.ts";
 export { DevReloadMiddleware, registerDevHtmlSnippet } from "./DevReloadMiddleware.ts";
 export type { DevHtmlSnippet } from "./DevReloadMiddleware.ts";
 export { DEV_RELOAD_CLIENT } from "./reloadClient.ts";
+// What a long-running `zt` command installs so `zt dev` can ask it to stop and let it finish
+// the work in hand, instead of killing it mid-instruction on every restart and on quit.
+export { onGracefulStopRequest, requestGracefulStop, DEV_SHUTDOWN_MESSAGE } from "./devShutdown.ts";
+export type { StoppableChild } from "./devShutdown.ts";
+// Lets a provider that serves pages skip the `zt dev` process, which serves none, and print its
+// banner once rather than on every restart.
+export { _isDevParent, _isDevRestart } from "./devRole.ts";
 export { browserEnvDefines } from "./buildEnv.ts";
 export { detectCssPlugins, buildCssBundle, buildJsBundle } from "./CssPlugins.ts";
 export type { AssetBuildConfig } from "./CssPlugins.ts";

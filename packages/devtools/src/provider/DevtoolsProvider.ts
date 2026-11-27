@@ -6,7 +6,13 @@ import {
 } from "@zerotal/core";
 import { devtoolsEnabled } from "../enabled.ts";
 import { startActivityCapture, _resetActivity } from "../activity.ts";
-import { DevReloadMiddleware, registerDevHtmlSnippet } from "@zerotal/core/dev";
+import {
+  DevReloadMiddleware,
+  registerDevHtmlSnippet,
+  _isDevParent,
+  _isDevRestart,
+} from "@zerotal/core/dev";
+import { _forStream } from "@zerotal/core/logger";
 import {
   DevtoolsInjectionMiddleware,
   startDevtoolsStream,
@@ -93,6 +99,10 @@ export class DevtoolsProvider extends ServiceProvider {
     // defers to the dev-surface gate, so nothing changes for anyone who has not
     // asked for it.
     if (!devtoolsEnabled()) return;
+    // The `zt dev` process boots the app only to ask what to run, and serves no pages: the
+    // server it starts is where the inspector lives. Activating here opened the trace store,
+    // loaded the panel bundles and printed the banner for a process no browser ever reaches.
+    if (_isDevParent()) return;
     this._active = true;
 
     const config = this._config();
@@ -105,6 +115,7 @@ export class DevtoolsProvider extends ServiceProvider {
         capacity: config.capacity,
         dbPath: config.dbPath,
         pruneHours: config.pruneHours,
+        maxRows: config.maxRows,
       }),
     );
     _setRedaction(config.redact);
@@ -163,11 +174,16 @@ export class DevtoolsProvider extends ServiceProvider {
     this._stopActivity = startActivityCapture();
     this._stopStream = startDevtoolsStream();
 
-    process.stdout.write(
-      `  ${PURPLE}[Zerotal Inspector]${RESET} DevTools active\n` +
-        `  ${DIM}Panel${RESET}     → auto-injected into dev pages\n` +
-        `  ${DIM}Dashboard${RESET} → ${CYAN}/__zerotal/devtools${RESET}\n`,
-    );
+    // Once per `zt dev` run, not on every save that restarts the server.
+    if (!_isDevRestart()) {
+      process.stdout.write(
+        _forStream(
+          `  ${PURPLE}[Zerotal Inspector]${RESET} DevTools active\n` +
+            `  ${DIM}Panel${RESET}     → auto-injected into dev pages\n` +
+            `  ${DIM}Dashboard${RESET} → ${CYAN}/__zerotal/devtools${RESET}\n`,
+        ),
+      );
+    }
   }
 
   async onStopping(): Promise<void> {

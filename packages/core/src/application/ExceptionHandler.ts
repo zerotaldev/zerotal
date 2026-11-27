@@ -60,6 +60,26 @@ export function _isExpectedOutcome(error: unknown): boolean {
   return typeof status === "number" && status >= 100 && status < 500;
 }
 
+/** Stacks the default {@link ExceptionHandler.report} printed lately, newest last. */
+const _reportedStacks: string[] = [];
+
+/**
+ * Whether the default `report()` already printed this stack, forgetting it if so.
+ *
+ * The request log prints a failed request's stack as well, so an app with an exception handler
+ * of its own got every stack twice, one under the other. The request log asks here and, when the
+ * handler has printed it, says what failed without printing it again.
+ *
+ * @internal
+ */
+export function _takeReportedStack(stack: string | undefined): boolean {
+  if (stack === undefined) return false;
+  const index = _reportedStacks.indexOf(stack);
+  if (index === -1) return false;
+  _reportedStacks.splice(index, 1);
+  return true;
+}
+
 /**
  * Base class for application-level exception handling.
  *
@@ -98,6 +118,11 @@ export abstract class ExceptionHandler {
   async report(error: unknown, _ctx?: HttpContext): Promise<void> {
     if (!this.shouldReport(error)) return;
     console.error("[Zerotal] Unhandled error:", error);
+    if (error instanceof Error && error.stack) {
+      _reportedStacks.push(error.stack);
+      // Bounded: a stack nobody asks about (an error outside a request) must not pile up.
+      if (_reportedStacks.length > 50) _reportedStacks.shift();
+    }
   }
 
   async render(error: unknown, ctx: HttpContext): Promise<Response> {

@@ -21,6 +21,12 @@ export interface TraceStoreOptions {
   dbPath?: string | null | undefined;
   /** How long a persisted trace survives, in hours. */
   pruneHours?: number | undefined;
+  /**
+   * The most traces the SQLite file keeps, newest first. Default 5 000, or
+   * `ZT_DEVTOOLS_MAX_ROWS`. Age alone bounded nothing during a busy day: a page polling
+   * every second wrote 86 400 rows before the first one was old enough to go.
+   */
+  maxRows?: number | undefined;
 }
 
 /**
@@ -32,6 +38,7 @@ const BATCH_MS = 500;
 const MAX_PENDING = 200;
 
 const DEFAULT_DB_PATH = ".zerotal/devtools.sqlite";
+const DEFAULT_MAX_ROWS = 5_000;
 
 /**
  * The in-memory ring of recent request traces, optionally backed by SQLite so
@@ -47,6 +54,9 @@ export class TraceStore {
   private readonly _capacity: number;
   private readonly _dbPath: string | null;
   private readonly _pruneMs: number;
+  private readonly _maxRows: number;
+  /** Rows written since the last prune, so the file is trimmed as it grows, not only hourly. */
+  private _writtenSincePrune = 0;
 
   private _traces: RequestTrace[] = [];
   private _subscribers = new Set<Subscriber>();
@@ -68,6 +78,9 @@ export class TraceStore {
       opts.dbPath === null ? null : (opts.dbPath ?? Bun.env["ZT_DEVTOOLS_DB"] ?? DEFAULT_DB_PATH);
     this._pruneMs =
       (opts.pruneHours ?? Number(Bun.env["ZT_DEVTOOLS_PRUNE_HOURS"] ?? 24)) * 3_600_000;
+    const maxRows = opts.maxRows ?? Number(Bun.env["ZT_DEVTOOLS_MAX_ROWS"] ?? DEFAULT_MAX_ROWS);
+    // Never below what is shown, or a restart would load back less than the panel held.
+    this._maxRows = Math.max(Number.isFinite(maxRows) ? maxRows : DEFAULT_MAX_ROWS, this._capacity);
   }
 
   // ── Public API ────────────────────────────────────────────────────────
@@ -220,18 +233,30 @@ export class TraceStore {
         });
       }
       this._insert(batch);
+      this._writtenSincePrune += batch.length;
+      // A tenth of the cap between trims keeps the file within 10% of it without a
+      // DELETE on every flush.
+      if (this._writtenSincePrune >= Math.max(1, Math.floor(this._maxRows / 10))) this._prune();
     } catch {
       // Rebuild the prepared statement on the next flush.
       this._insert = null;
     }
   }
 
+  /** Drop traces older than `pruneHours`, then all but the newest `maxRows`. */
   private _prune(): void {
     if (!this._db) return;
+    this._writtenSincePrune = 0;
     try {
       this._db
         .prepare("DELETE FROM zerotal_devtools_entries WHERE created_at < ?")
         .run(Date.now() - this._pruneMs);
+      this._db
+        .prepare(
+          "DELETE FROM zerotal_devtools_entries WHERE id NOT IN " +
+            "(SELECT id FROM zerotal_devtools_entries ORDER BY created_at DESC LIMIT ?)",
+        )
+        .run(this._maxRows);
     } catch {
       /* ignore */
     }

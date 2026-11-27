@@ -136,6 +136,7 @@ class SchedulerError = {
 class SchedulerManager = {
   new (): SchedulerManager
   add: (name: string, cronExpression: string, callback: TaskCallback) => ScheduledTask
+  drain: (timeoutMs?: number) => Promise<string[]>
   job: (name: string, callback: TaskCallback) => SchedulerBuilder
   readonly staticConfigFindings: {    className: string;    keys: string[];}[]
   start: () => void

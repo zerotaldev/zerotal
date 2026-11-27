@@ -125,6 +125,18 @@ export interface DevConfigShape {
   processes?: DevProcessDefinition[] | undefined;
   /** Names to drop, whoever registered them. */
   disable?: string[] | undefined;
+  /**
+   * Paths, relative to the app root, added to what the dev watcher acts on: a directory
+   * (`"content/"`), a file (`"schema.graphql"`) or a glob (`"data/**\/*.json"`).
+   */
+  watch?:
+    | {
+        /** Changes here restart the server, as a change under `app/` does. */
+        restart?: string[] | undefined;
+        /** Changes here rebuild assets and reload the browser. */
+        rebuild?: string[] | undefined;
+      }
+    | undefined;
 }
 
 /** The bits of `Application` this module needs — kept structural to avoid a cycle. */

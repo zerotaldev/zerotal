@@ -51,7 +51,7 @@ class Application = {
   routedFiles: string[]
   routing: (config: string | RoutingConfig | (RoutingEntry & {    file: string;})) => Application
   serverMetrics: () => {    pendingRequests: number;    pendingWebSockets: number;}
-  start: (port?: number) => Promise<void>
+  start: (port?: number, hostname?: string) => Promise<void>
   stop: (options?: {    exit?: boolean;}) => Promise<void>
   use: (middleware: PipeClass | PipeClass[]) => Application
   useConfig: (input: ConfigMap | ConfigLoader) => Application
@@ -2691,7 +2691,7 @@ interface TransactionContext = {
 ## ./dev  `(./src/dev/index.ts)`
 
 class DevOrchestrator = {
-  new (_port: number, _cwd: string, _build: BuildHookFn, _hooks?: DevOrchestratorHooks): DevOrchestrator
+  new (_port: number, _cwd: string, _build: BuildHookFn | null, _hooks?: DevOrchestratorHooks, options?: DevOrchestratorOptions): DevOrchestrator
   restartServer: () => Promise<void>
   shutdown: (watcher?: {    close(): void;}) => Promise<never>
   start: () => Promise<void>
@@ -2705,12 +2705,23 @@ class DevReloadMiddleware = {
   onError?: (ctx: HttpContext, error: Error) => Promise<void>
 }
 
+const DEV_SHUTDOWN_MESSAGE = 'zerotal:dev:shutdown'
+
+function onGracefulStopRequest = (stop: () => void) => () => void
+
+function requestGracefulStop = (child: StoppableChild, graceMs?: number) => Promise<boolean>
+
 interface Deck = {
   line: (name: string, text: string, stream: 'stdout' | 'stderr') => void
   notice: (text: string) => void
   start: (statuses: DevProcessStatus[]) => void
   state: (status: DevProcessStatus) => void
   stop: () => void
+}
+
+interface StoppableChild = {
+  exited: Promise<number>
+  send?: ((message: unknown) => void) | undefined
 }
 
 ## ./env  `(./src/env/index.ts)`

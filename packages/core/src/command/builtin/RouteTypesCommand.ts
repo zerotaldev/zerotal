@@ -3,6 +3,7 @@ import type { FlagDef } from "../Command.ts";
 import { Router } from "../../router/Router.ts";
 import { writeRouteTypes, ROUTE_TYPES_FILE } from "../../router/routeTypes.ts";
 import { _runTypeGenerators } from "../TypeGenerators.ts";
+import { _bootImportFailures } from "../../conventions/ConventionLoader.ts";
 
 /**
  * `bun zt route:types` — refresh every type file the app generates from its own
@@ -43,6 +44,16 @@ export class RouteTypesCommand extends Command {
 
   async run(): Promise<void> {
     const check = this.flags["check"] as boolean;
+
+    // Written from a boot that skipped a file, the map would drop that file's routes.
+    const skipped = _bootImportFailures();
+    if (skipped.length > 0) {
+      this.error(
+        `${ROUTE_TYPES_FILE} not written: ${skipped.join(", ")} did not import. Fix it and rerun.`,
+      );
+      process.exitCode = 1;
+      return;
+    }
 
     const routes = await writeRouteTypes(Router.namedRoutes, { check });
 

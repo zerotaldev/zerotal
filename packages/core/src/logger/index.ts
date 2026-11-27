@@ -56,6 +56,8 @@ export { LoggerMiddleware } from "./LoggerMiddleware.ts";
 export type { LoggerOptions } from "./LoggerMiddleware.ts";
 
 export { renderTable } from "./renderTable.ts";
+// Colour only on a terminal, never with NO_COLOR: for the framework's own banners and logs.
+export { _colorEnabled, _forStream, _stripColor } from "./color.ts";
 export type { TableData } from "./renderTable.ts";
 
 export type {

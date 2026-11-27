@@ -191,6 +191,68 @@ describe("QueueWorkCommand", () => {
     await run();
     expect(lines.some((l) => l.includes("stopped"))).toBe(true);
   });
+
+  it("finishes the job in hand and stops when `zt dev` asks it to", async () => {
+    // A real manager over a driver holding one job, whose handler is released by the test: the
+    // stop request arrives while it is running.
+    const { QueueManager } = await import("../QueueManager.ts");
+    let release!: () => void;
+    const running = new Promise<void>((resolve) => (release = resolve));
+    let started!: () => void;
+    const inHand = new Promise<void>((resolve) => (started = resolve));
+    let finished = false;
+    class SlowJob extends Job {
+      override async handle(): Promise<void> {
+        started();
+        await running;
+        finished = true;
+      }
+    }
+    JobRegistry.register(SlowJob);
+    const record = {
+      id: 1,
+      queue: "default",
+      className: "SlowJob",
+      payload: "{}",
+      attempts: 1,
+      maxAttempts: 1,
+      retryDelay: 0,
+      availableAt: 0,
+    };
+    let popped = false;
+    const deleted: number[] = [];
+    const driver = {
+      pop: async () => (popped ? null : ((popped = true), record)),
+      delete: async (r: { id: number }) => void deleted.push(r.id),
+    };
+    const manager = new QueueManager(driver as never);
+
+    const cmd = new QueueWorkCommand();
+    const { run, lines } = runCmd(cmd, {
+      flags: { queue: "default", once: false },
+      app: makeApp(manager as never),
+    });
+    const before = process.listeners("message");
+    const done = run();
+    await inHand;
+
+    const { DEV_SHUTDOWN_MESSAGE } = await import("@zerotal/core/dev");
+    // Only this command's handler: an app another test started would stop the process on it.
+    const others = before;
+    for (const l of others) process.off("message", l as never);
+    process.emit("message" as never, DEV_SHUTDOWN_MESSAGE as never);
+    for (const l of others) process.on("message", l as never);
+    expect(manager.isShuttingDown).toBe(true);
+    expect(finished).toBe(false);
+
+    release();
+    await done;
+    expect(finished).toBe(true);
+    expect(deleted).toEqual([1]);
+    expect(lines.some((l) => l.includes("Queue worker stopped"))).toBe(true);
+    // The handlers are gone once the worker has stopped.
+    expect(process.listenerCount("SIGTERM")).toBe(0);
+  });
 });
 
 // ── QueueFailedCommand ────────────────────────────────────────────────────────

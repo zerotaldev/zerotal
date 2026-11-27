@@ -1,5 +1,10 @@
 import { describe, it, expect } from "bun:test";
-import { DEV_SHUTDOWN_MESSAGE, requestGracefulStop, type StoppableChild } from "./devShutdown.ts";
+import {
+  DEV_SHUTDOWN_MESSAGE,
+  onGracefulStopRequest,
+  requestGracefulStop,
+  type StoppableChild,
+} from "./devShutdown.ts";
 
 /** A child that exits `afterMs` after it is asked, or never if `afterMs` is null. */
 function fakeChild(afterMs: number | null): StoppableChild & { sent: unknown[] } {
@@ -84,4 +89,25 @@ describe("the dev worker, end to end", () => {
       await Bun.file(file).unlink();
     }
   }, 20_000);
+});
+
+describe("onGracefulStopRequest", () => {
+  it("runs on the shutdown message only, and can be removed again", () => {
+    // Apps started by other tests in this process listen for the same message and stop the
+    // process on it, so they are set aside while it is sent.
+    const others = process.listeners("message");
+    process.removeAllListeners("message");
+    const calls: string[] = [];
+    try {
+      const off = onGracefulStopRequest(() => calls.push("stop"));
+      process.emit("message" as never, "something else" as never);
+      process.emit("message" as never, DEV_SHUTDOWN_MESSAGE as never);
+      off();
+      process.emit("message" as never, DEV_SHUTDOWN_MESSAGE as never);
+    } finally {
+      for (const listener of others) process.on("message", listener as never);
+    }
+
+    expect(calls).toEqual(["stop"]);
+  });
 });

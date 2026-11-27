@@ -334,11 +334,37 @@ describe("ConsoleChannel — pretty format", () => {
   });
 
   it("uses bright-magenta for fatal", async () => {
-    const out = await captureStdout(() =>
+    // Colour is for a terminal; the test's stdout is not one, so it is asked for.
+    Bun.env["FORCE_COLOR"] = "1";
+    try {
+      const out = await captureStdout(() =>
+        new ConsoleChannel("pretty").write(makeEntry({ level: "fatal" })),
+      );
+      expect(out).toContain("FATAL");
+      expect(out).toContain("\x1b[95m");
+    } finally {
+      delete Bun.env["FORCE_COLOR"];
+    }
+  });
+
+  it("writes no colour codes to a pipe, or under NO_COLOR", async () => {
+    const piped = await captureStdout(() =>
       new ConsoleChannel("pretty").write(makeEntry({ level: "fatal" })),
     );
-    expect(out).toContain("FATAL");
-    expect(out).toContain("\x1b[95m");
+    expect(piped).toContain("FATAL");
+    expect(piped).not.toContain("\x1b[");
+
+    Bun.env["FORCE_COLOR"] = "1";
+    Bun.env["NO_COLOR"] = "1";
+    try {
+      const out = await captureStdout(() =>
+        new ConsoleChannel("pretty").write(makeEntry({ level: "fatal" })),
+      );
+      expect(out).not.toContain("\x1b[");
+    } finally {
+      delete Bun.env["FORCE_COLOR"];
+      delete Bun.env["NO_COLOR"];
+    }
   });
 
   it("includes requestId snippet when present", async () => {

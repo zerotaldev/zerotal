@@ -25,6 +25,7 @@ import type { FlagDef } from "../Command.ts";
  * bun zt dev --without=queue     # everything but the worker
  * bun zt dev --list              # what would run, and who registered it
  * bun zt dev --stream            # no TUI — prefixed lines, pipe-friendly
+ * bun zt dev --host 0.0.0.0      # reachable from the network (a phone, a container)
  * ```
  *
  * @category Serving
@@ -43,6 +44,12 @@ export class DevCommand extends ServeCommand {
       // No default, as on `serve`: one would always win, and `app.port` (from `PORT`, in the
       // shell or `.env`) would never be read.
       description: "Port to listen on (default: app.port, which is PORT or 3000)",
+    },
+    {
+      // Loopback by default: a dev server shows stack traces, source and the inspector.
+      name: "host",
+      type: "string",
+      description: "Interface to bind (default: 127.0.0.1; 0.0.0.0 for a phone or a container)",
     },
     {
       name: "force",

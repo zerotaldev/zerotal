@@ -647,7 +647,11 @@ bun zt worker       # starts the queue worker + scheduler
 ```
 
 `bun zt schedule:work` runs the scheduler alone, without consuming the queue. It is
-what the `scheduler` tab in `bun zt dev` runs, and stops on `SIGINT` or `SIGTERM`.
+what the `scheduler` tab in `bun zt dev` runs. It stops on `SIGINT`, `SIGTERM`, or a
+stop request from `bun zt dev`: no new runs start, and a task already running is given
+2.5 seconds to finish. A task still running then is named in the output as the process
+exits. `SchedulerManager.drain(timeoutMs)` does the same from code, and returns the names
+of the tasks still running.
 
 For simpler deployments, `AppServiceProvider.onStarted()` can run inline polling
 instead of a dedicated worker process (skip it when this IS the worker):

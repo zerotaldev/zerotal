@@ -67,10 +67,55 @@ async function _scanDir(absoluteDirectory: string): Promise<string[]> {
   return _scanAppFiles(absoluteDirectory, "**/*.{ts,tsx}");
 }
 
+/** App files that failed to import during this process's boot, by path. */
+const _failedImports: string[] = [];
+
+/**
+ * The app files that failed to import while this process booted.
+ *
+ * A boot that skipped one is partial: whatever the file declared (its routes, its model) is
+ * missing, so anything generated from it, such as the route-name types, would be wrong.
+ *
+ * @internal
+ */
+export function _bootImportFailures(): readonly string[] {
+  return _failedImports;
+}
+
+/**
+ * Forget recorded import failures, for tests that boot more than once.
+ *
+ * @internal
+ */
+export function _resetBootImportFailures(): void {
+  _failedImports.length = 0;
+}
+
+/**
+ * Deal with an app file that would not import during discovery.
+ *
+ * Under the dev worker the error is rethrown and boot fails. Logging it and carrying on left a
+ * server that answered 404 for every route the file declared, with the cause scrolled away in the
+ * terminal; a failed boot is shown in the browser instead, with the file, the line and the frame.
+ * Everywhere else the file is logged, recorded, and skipped, so one bad file cannot stop a
+ * production boot.
+ *
+ * @param file   - The file, as it should appear in the log.
+ * @param error  - What the import threw.
+ * @param report - Logs the failure, when it is not rethrown.
+ * @internal
+ */
+export function _onAppImportFailure(file: string, error: unknown, report: () => void): void {
+  if (Bun.env[DEV_WORKER_ENV_VAR] === "1") throw error;
+  _failedImports.push(file);
+  report();
+}
+
 /**
  * Scan a directory, import each non-skipped file, and hand the module to `onModule`. Shared by the
- * concern loop and by the early provider/middleware discovery in Application. Import/handler
- * errors are logged and skipped so one bad file can't abort boot.
+ * concern loop and by the early provider/middleware discovery in Application. Handler errors are
+ * logged and skipped so one bad file can't abort boot; an import error is handled by
+ * {@link _onAppImportFailure}, which fails the boot under the dev worker.
  */
 export async function importConventionModules(
   absoluteDirectory: string,
@@ -79,8 +124,16 @@ export async function importConventionModules(
 ): Promise<void> {
   for (const file of await _scanDir(absoluteDirectory)) {
     if (_shouldSkip(file)) continue;
+    let loadedModule: Record<string, unknown>;
     try {
-      const loadedModule = await _importAppFile(`${absoluteDirectory}/${file}`);
+      loadedModule = await _importAppFile(`${absoluteDirectory}/${file}`);
+    } catch (error) {
+      _onAppImportFailure(`${absoluteDirectory}/${file}`, error, () =>
+        frameworkLog("app").error(`${label} discovery failed for ${file}`, { file }, error),
+      );
+      continue;
+    }
+    try {
       await onModule(loadedModule, file);
     } catch (error) {
       frameworkLog("app").error(`${label} discovery failed for ${file}`, { file }, error);

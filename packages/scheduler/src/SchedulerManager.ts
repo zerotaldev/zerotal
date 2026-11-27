@@ -69,6 +69,25 @@ export class SchedulerManager {
     if (ran) frameworkLog("scheduler").info("All tasks stopped");
   }
 
+  /**
+   * Stop starting runs, then wait for the runs already going to end.
+   *
+   * What a scheduler process does when it is asked to stop: {@link stop} alone leaves a task
+   * that is half way through its callback to be killed with the process.
+   *
+   * @param timeoutMs - How long to wait for running tasks. Default 2.5 s, inside the 3 s
+   *   `zt dev` allows a process to stop before it kills it.
+   * @returns The names of the tasks still running when the wait ran out; empty when all ended.
+   */
+  async drain(timeoutMs = 2_500): Promise<string[]> {
+    this.stop();
+    const deadline = Date.now() + timeoutMs;
+    const running = (): string[] =>
+      [...this._tasks.values()].filter((task) => task.isRunning).map((task) => task.name);
+    while (running().length > 0 && Date.now() < deadline) await Bun.sleep(25);
+    return running();
+  }
+
   get tasks(): ReadonlyMap<string, ScheduledTask> {
     return this._tasks;
   }

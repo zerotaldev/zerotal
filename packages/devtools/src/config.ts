@@ -49,6 +49,11 @@ export interface DevtoolsConfigShape {
    */
   pruneHours: number;
   /**
+   * The most traces the history file keeps, newest first; never fewer than `capacity`.
+   * Default: `5000`, or `ZT_DEVTOOLS_MAX_ROWS`.
+   */
+  maxRows: number;
+  /**
    * Whether sensitive values are masked before a trace leaves the process.
    *
    * On by default: a trace is streamed to the browser *and* written to disk for
@@ -106,6 +111,7 @@ const defaults: DevtoolsConfigShape = {
   capacity: 100,
   dbPath: Bun.env["ZT_DEVTOOLS_DB"] ?? ".zerotal/devtools.sqlite",
   pruneHours: Number(Bun.env["ZT_DEVTOOLS_PRUNE_HOURS"] ?? 24),
+  maxRows: Number(Bun.env["ZT_DEVTOOLS_MAX_ROWS"] ?? 5_000),
   redact: { enabled: true, allow: [], deny: [] },
   editor: "vscode",
   editorPathMap: {},

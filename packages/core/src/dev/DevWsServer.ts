@@ -6,9 +6,23 @@
  * the dev-worker's stdin; ServeCommand reads that line and calls broadcast()
  * here, pushing the message to every connected tab.
  *
- * The browser client (injected by InertiaProvider) reconnects automatically
- * on close, so server restarts never create a reload loop.
+ * The browser client (`/__dev/reload.js`, injected into dev HTML) reconnects
+ * automatically on close, so server restarts never create a reload loop.
  */
+
+import { assetVersion } from "../assets/assets.ts";
+import { _DEV_BOOT_ID_VAR } from "./reloadClient.ts";
+
+/**
+ * The token a tab is sent when its socket opens: the asset build it is being served, and the
+ * boot of the server serving it. A tab that reconnects and is sent a different token reloads.
+ *
+ * @internal
+ */
+export function _reloadToken(env: Record<string, string | undefined> = Bun.env): string {
+  const boot = env[_DEV_BOOT_ID_VAR];
+  return boot ? `${assetVersion()}.${boot}` : assetVersion();
+}
 
 /** A connected dev-reload browser socket. */
 type DevSocket = {

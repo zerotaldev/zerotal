@@ -293,6 +293,10 @@ describe("QueueProvider.devProcesses()", () => {
     expect(new QueueProvider(makeApp()).devProcesses()[0]!.restart).toBe("on-failure");
   });
 
+  it("restarts with the server, so an edited job runs its new code", () => {
+    expect(new QueueProvider(makeApp()).devProcesses()[0]!.restartOnChange).toBe(true);
+  });
+
   it("runs by default — the sqlite driver with no worker pool", async () => {
     expect(await enabled({})).toBe(true);
   });

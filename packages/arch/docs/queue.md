@@ -404,6 +404,18 @@ nobody.
 The worker polls continuously, retries failed jobs up to `maxAttempts`, and moves
 permanently-failed jobs to the `zerotal_failed_jobs` table.
 
+#### Stopping the worker
+
+`SIGTERM`, `Ctrl+C`, or a stop request from `bun zt dev` makes the worker stop taking
+jobs and finish the one it is running, then exit with code 0. Asked a second time, it
+exits at once, which is the way out of a job that will not finish. Before 1.19.0 the
+worker had no stop handler: every stop killed it where it stood, mid-job, and the job
+stayed reserved until its lease ran out.
+
+Under `bun zt dev` the `queue` tab restarts with the server, so a job, mailable or
+notification you edit runs as saved. The worker is asked to stop first and finishes
+the job in hand; one still running after 3 seconds is killed.
+
 ### Manual processing
 
 For development or small apps that don't need a separate process, drive

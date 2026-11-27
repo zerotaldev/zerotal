@@ -55,6 +55,38 @@ describe("DevtoolsProvider — environment gate", () => {
   });
 });
 
+describe("DevtoolsProvider — under zt dev", () => {
+  it("stays inert in the `zt dev` process, which serves no pages", async () => {
+    const argv = [...Bun.argv];
+    Bun.argv.splice(2, Bun.argv.length - 2, "dev");
+    try {
+      const app = await bootUnder("development");
+      expect(app.container.tryMake("devtools.trace" as never)).toBeUndefined();
+    } finally {
+      Bun.argv.splice(0, Bun.argv.length, ...argv);
+    }
+  });
+
+  it("prints its banner for the first server only, not on every restart", async () => {
+    const writes: string[] = [];
+    const write = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string) => (writes.push(String(chunk)), true)) as never;
+    const before = Bun.env["ZT_DEV_BOOT_ID"];
+    try {
+      Bun.env["ZT_DEV_BOOT_ID"] = "s-1";
+      const first = await bootUnder("development");
+      await first.stop({ exit: false });
+      Bun.env["ZT_DEV_BOOT_ID"] = "s-2";
+      await bootUnder("development");
+    } finally {
+      process.stdout.write = write;
+      if (before === undefined) delete Bun.env["ZT_DEV_BOOT_ID"];
+      else Bun.env["ZT_DEV_BOOT_ID"] = before;
+    }
+    expect(writes.filter((w) => w.includes("DevTools active"))).toHaveLength(1);
+  });
+});
+
 describe("DevtoolsProvider — teardown", () => {
   it("drops declared channels and the store when the app stops", async () => {
     const app = await bootUnder("development");

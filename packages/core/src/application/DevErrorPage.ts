@@ -6,7 +6,23 @@
 import type { HttpContext } from "../pipeline/HttpContext.ts";
 import { _diagnoseError } from "./diagnostics.ts";
 import type { ErrorDiagnosis } from "./diagnostics.ts";
-import { devSurfacesEnabled } from "../support/env.ts";
+import { devSurfacesEnabled, DEV_WORKER_ENV_VAR } from "../support/env.ts";
+import { DEV_RELOAD_CLIENT } from "../dev/reloadClient.ts";
+
+/**
+ * The live-reload client, for an error page served by the `zt dev` server.
+ *
+ * The page is rendered by the exception handler, past the middleware that puts the client into
+ * every other dev page, so a tab showing an error never reloaded: the developer fixed the code,
+ * saved, the server restarted, and the tab sat on the old error until reloaded by hand. With the
+ * client the tab reloads as soon as the restarted server answers. Nowhere else does
+ * `/__dev/reload.js` exist, so nowhere else is it added.
+ *
+ * @internal Exported for tests.
+ */
+export function _devReloadTag(env: Record<string, string | undefined> = Bun.env): string {
+  return env[DEV_WORKER_ENV_VAR] === "1" ? DEV_RELOAD_CLIENT : "";
+}
 
 // ── HTTP error page (4xx / production 5xx) ────────────────────────────────────
 
@@ -680,6 +696,7 @@ function showTab(name) {
   if (tb) tb.classList.add('active');
 }
 </script>
+${_devReloadTag()}
 </body>
 </html>`;
 

@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from "bun:test";
 import { DevCommand } from "./DevCommand.ts";
-import { ServeCommand } from "./ServeCommand.ts";
+import { ServeCommand, _networkUrl } from "./ServeCommand.ts";
 import { BufferWriter } from "../OutputWriter.ts";
 import type { ResolvedDevProcess } from "../../dev/DevProcess.ts";
 import type { ServiceProvider } from "../../provider/ServiceProvider.ts";
@@ -179,5 +179,41 @@ describe("zt dev and the port", () => {
     expect(port).toBeDefined();
     expect(port?.default).toBeUndefined();
     expect(ServeCommand.flags.find((f) => f.name === "port")?.default).toBeUndefined();
+  });
+});
+
+describe("zt dev and the interface it binds", () => {
+  it("takes --host, with no default, so loopback is decided in one place", () => {
+    const host = DevCommand.flags.find((f) => f.name === "host");
+    expect(host?.type).toBe("string");
+    expect(host?.default).toBeUndefined();
+    expect(ServeCommand.flags.find((f) => f.name === "host")?.default).toBeUndefined();
+  });
+
+  it("shows a Network line only for a server the network can reach", () => {
+    const address = (): string => "192.168.1.20";
+    // `zt dev` without --host binds loopback: nothing on the network can open it.
+    expect(_networkUrl("127.0.0.1", 3000, address)).toBeNull();
+    expect(_networkUrl("localhost", 3000, address)).toBeNull();
+    expect(_networkUrl("::1", 3000, address)).toBeNull();
+    // Every interface: `zt dev --host 0.0.0.0`, and `serve` with no --host.
+    expect(_networkUrl("0.0.0.0", 3000, address)).toBe("http://192.168.1.20:3000");
+    expect(_networkUrl(undefined, 3000, address)).toBe("http://192.168.1.20:3000");
+    // One address: that address.
+    expect(_networkUrl("10.0.0.5", 4000, address)).toBe("http://10.0.0.5:4000");
+    expect(_networkUrl("0.0.0.0", 3000, () => undefined)).toContain("unavailable");
+  });
+
+  it("prints no Network line in the banner of a loopback server", () => {
+    // The banner a loopback run prints, read back without starting anything.
+    const { instance, writer } = command({ port: 3000 });
+    (instance as unknown as { _announce(m: string, p: number, h?: string): void })._announce(
+      "dev",
+      3000,
+      "127.0.0.1",
+    );
+    const out = writer.flush();
+    expect(out).toContain("http://localhost:3000");
+    expect(out).not.toContain("Network");
   });
 });

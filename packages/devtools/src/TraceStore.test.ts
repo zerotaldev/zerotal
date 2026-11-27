@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "bun:test";
 import { mkdtempSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Database } from "bun:sqlite";
 import { TraceStore, traceStore, _setTraceStore } from "./TraceStore.ts";
 import type { RequestTrace } from "./RequestTrace.ts";
 
@@ -127,6 +128,42 @@ describe("TraceStore — persistence", () => {
 
     const reader = new TraceStore({ dbPath: path });
     expect(reader.all().map((t) => t.path)).toEqual(["/after", "/before"]);
+    reader.dispose();
+  });
+
+  it("caps the file by rows, not only by age", () => {
+    // Every trace here is minutes old, so the age prune keeps all of them; a busy session
+    // grew the file without bound until a day had passed.
+    const path = tempDb();
+    const store = new TraceStore({ dbPath: path, capacity: 2, maxRows: 3 });
+    const now = Date.now();
+    for (let i = 0; i < 10; i++)
+      store.push(trace({ path: `/${i}`, startMs: now - (10 - i) * 1_000 }));
+    store.dispose();
+
+    const db = new Database(path);
+    const rows = db
+      .prepare("SELECT payload FROM zerotal_devtools_entries ORDER BY created_at DESC")
+      .all() as Array<{ payload: string }>;
+    db.close();
+
+    expect(rows.map((r) => (JSON.parse(r.payload) as RequestTrace).path)).toEqual([
+      "/9",
+      "/8",
+      "/7",
+    ]);
+  });
+
+  it("never keeps fewer rows than the panel shows", () => {
+    const path = tempDb();
+    const store = new TraceStore({ dbPath: path, capacity: 5, maxRows: 1 });
+    const now = Date.now();
+    for (let i = 0; i < 5; i++)
+      store.push(trace({ path: `/${i}`, startMs: now - (5 - i) * 1_000 }));
+    store.dispose();
+
+    const reader = new TraceStore({ dbPath: path, capacity: 5 });
+    expect(reader.all()).toHaveLength(5);
     reader.dispose();
   });
 

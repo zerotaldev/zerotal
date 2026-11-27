@@ -27,6 +27,16 @@ follows the Zerotal monorepo's unified versioning.
 - **The React and Vue starters' tests read Inertia props without casts**, through
   `inertia<P>()` from `zerotal/testing`.
 
+- **The Flow starter's tests read pages with `res.html()`, and its regex HTML helpers are gone.**
+  `tests/html.ts` is deleted: a test finds the projects list, the recovery codes or the sessions
+  by role and name, a field by its label, and a form's default button with `submitButton()`. The
+  `data-project`, `data-stat`, `data-session`, `data-recovery-code`, `data-two-factor-status` and
+  `data-two-factor-secret` attributes that existed only for tests are gone too; the lists they
+  marked are labelled for screen readers instead, the dashboard figures are labelled groups, the
+  setup key is a `<code>`, and the QR code is an image named for what it is. New tests check the
+  sign-in form, its error as the page shows it, and the values the profile and project forms
+  are filled with.
+
 ## [1.18.3] — 2026-11-26
 
 ### Changed

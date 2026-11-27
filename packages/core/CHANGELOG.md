@@ -30,6 +30,9 @@ follows the Zerotal monorepo's unified versioning.
   verify" as a pass, so a deploy that forgot `bun zt worker` got green ticks. With `app.env` set
   to a production name that is now a warning naming the command to run. Outside production the
   check is unchanged.
+- **`make:test` in a Flow app writes a test that reads the page.** The list test parses the page
+  with `res.html()`, and the create todo checks the new record shows on it, rather than only
+  asserting a 200.
 
 ### Fixed
 

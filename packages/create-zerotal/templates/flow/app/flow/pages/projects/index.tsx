@@ -192,7 +192,7 @@ export class ProjectsPage extends Page {
               </div>
             ) : (
               <div class={`${CARD} overflow-hidden`}>
-                <ul class="divide-y divide-border">
+                <ul aria-label="Projects" class="divide-y divide-border">
                   {projects.map((project) => {
                     const edit = route("projects.edit", { project: project.id });
                     const status = PROJECT_STATUS[project.status];
@@ -200,7 +200,6 @@ export class ProjectsPage extends Page {
                     return (
                       <li
                         key={String(project.id)}
-                        data-project={project.name}
                         class="flex items-center gap-4 px-4 py-4 sm:px-5"
                       >
                         <div class="min-w-0 flex-1">

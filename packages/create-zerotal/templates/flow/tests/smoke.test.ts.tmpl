@@ -9,7 +9,7 @@
 import { beforeAll, afterAll, describe, test, expect } from "bun:test";
 import { config } from "zerotal";
 import { createTestApp, migrateDatabase, type TestApp } from "zerotal/testing";
-import { assertPage } from "./html";
+import { assertPage } from "./support";
 
 let app: TestApp;
 
@@ -32,16 +32,16 @@ afterAll(() => app.close());
 
 describe("scaffold", () => {
   test("boots and serves the home page", async () => {
-    const res = await app.get("/");
+    const page = assertPage(await app.get("/"), "Home");
 
-    assertPage(res, "Home");
     // Where the asset build writes them: a wrong path renders every page unstyled.
-    res.assertSee("/css/app.css").assertSee("/js/app.js");
+    page.assertPresent('link[rel="stylesheet"][href*="/css/app.css"]');
+    page.assertPresent('script[src*="/js/app.js"]');
   });
 
   test("shares the app name from config with every page", async () => {
     expect(config("app.name")).not.toBe("");
-    (await app.get("/about")).assertSee(`— ${config("app.name")}</title>`);
+    expect((await app.get("/about")).html().title()).toEndWith(` — ${config("app.name")}`);
   });
 
   test("renders the about page", async () => {

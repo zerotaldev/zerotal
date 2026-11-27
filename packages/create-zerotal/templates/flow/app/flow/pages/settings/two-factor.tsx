@@ -100,9 +100,12 @@ export class TwoFactorPage extends Page {
                   Each one signs you in once if you lose your phone. Keep them in a password
                   manager. They will not be shown again.
                 </p>
-                <ul class="mt-3 space-y-1 font-mono text-sm break-all text-foreground">
+                <ul
+                  aria-label="Recovery codes"
+                  class="mt-3 space-y-1 font-mono text-sm break-all text-foreground"
+                >
                   {recoveryCodes.map((code) => (
-                    <li data-recovery-code="">{code}</li>
+                    <li>{code}</li>
                   ))}
                 </ul>
               </div>
@@ -129,13 +132,11 @@ export class TwoFactorPage extends Page {
               </p>
             </div>
             <div class={CARD_ACTIONS}>
-              <span data-two-factor-status="">
-                {enabled ? (
-                  <span class={badgeClass("success")}>On</span>
-                ) : (
-                  <span class={badgeClass()}>Off</span>
-                )}
-              </span>
+              {enabled ? (
+                <span class={badgeClass("success")}>On</span>
+              ) : (
+                <span class={badgeClass()}>Off</span>
+              )}
             </div>
           </div>
 
@@ -178,16 +179,17 @@ export class TwoFactorPage extends Page {
                       <div class="mt-4 flex flex-col gap-5 sm:flex-row sm:items-center">
                         {/* Drawn on the server, from data that never leaves it. Inline on purpose. */}
                         <div
+                          role="img"
+                          aria-label="QR code for your authenticator app"
                           class="w-fit shrink-0 rounded-xl border border-border bg-white p-2"
                           dangerouslySetInnerHTML={{ __html: setup.qrSvg }}
                         />
                         <div class="min-w-0 space-y-2 text-muted-foreground">
                           <p>Can't scan it? Type this key into the app instead:</p>
-                          <p
-                            class="font-mono text-base break-all text-foreground select-all"
-                            data-two-factor-secret=""
-                          >
-                            {secret}
+                          <p>
+                            <code class="font-mono text-base break-all text-foreground select-all">
+                              {secret}
+                            </code>
                           </p>
                           <p>
                             On your phone already?{" "}

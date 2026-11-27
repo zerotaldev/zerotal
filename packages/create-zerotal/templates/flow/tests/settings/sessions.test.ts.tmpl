@@ -2,7 +2,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import { refreshDatabase, type TestApp } from "zerotal/testing";
 import { FACTORY_PASSWORD, UserFactory } from "../../database/factories/UserFactory";
 import { Browser, bootApp } from "../support";
-import { attributes } from "../html";
 
 let app: TestApp;
 
@@ -26,10 +25,12 @@ describe("sessions", () => {
     await (await signedIn(user.email)).get("/dashboard");
     const here = await signedIn(user.email);
 
-    const sessions = attributes((await here.get("/settings/sessions")).assertOk(), "data-session");
+    const page = (await here.get("/settings/sessions")).assertOk().html();
+    const sessions = page.getByRole("list", { name: "Sessions" }).findAllByRole("listitem");
 
     expect(sessions).toHaveLength(2);
-    expect(sessions.filter((s) => s === "current")).toHaveLength(1);
+    // The one this request came from says so.
+    expect(sessions.filter((session) => session.findByText("This device"))).toHaveLength(1);
   });
 
   test("signs out the other sessions, and keeps this one", async () => {

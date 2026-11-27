@@ -42,6 +42,19 @@ describe("POST /posts", () => {
 });
 ```
 
+### Reading a page
+
+`res.html()` parses an HTML response into a page a test reads the way a visitor does — by role
+and name, label, text or CSS selector — with assertions that quote the page when they fail:
+
+```typescript fragment
+const page = (await testApp.get("/login")).assertOk().html();
+
+page.assertTitle(/^Sign in/).assertFormAction("/login", "POST");
+page.getByLabel("Email");
+page.getByRole("button", { name: "Sign in" });
+```
+
 ### Database isolation
 
 ```typescript
@@ -98,6 +111,7 @@ The package exposes two subpaths:
 | ------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------- |
 | `createTestApp`, `TestApp`                                          | helper / class | Boot the app and drive HTTP requests (`actingAs`, `get`/`post`/…).                     |
 | `TestResponse`                                                      | class          | Fluent assertions on responses (`assertCreated`, `assertOk`, …).                       |
+| `HtmlDocument`, `HtmlElement`, `HtmlScope`, `parseHtml`             | classes        | `res.html()`: read a page by selector, role, label or text, and assert on it.          |
 | `withDatabase`                                                      | helper         | Run a callback against a temporary connection.                                         |
 | `refreshDatabase`                                                   | helper         | Suite-level transactional rollback. Type: `RefreshDatabaseOptions`.                    |
 | `resetTestState`                                                    | helper         | Dispose the `Application` and clear router/ORM observers/global scopes.                |

@@ -1,9 +1,8 @@
-import { afterAll, beforeAll, beforeEach, describe, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { loginThrottle } from "zerotal/auth";
 import { refreshDatabase, type TestApp } from "zerotal/testing";
 import { FACTORY_PASSWORD, UserFactory } from "../../database/factories/UserFactory";
-import { Browser, bootApp } from "../support";
-import { assertPage } from "../html";
+import { Browser, assertPage, bootApp } from "../support";
 
 let app: TestApp;
 
@@ -20,7 +19,14 @@ describe("signing in", () => {
   refreshDatabase();
 
   test("shows the sign-in form", async () => {
-    assertPage(await app.get("/login"), "Sign in");
+    const page = assertPage(await app.get("/login"), "Sign in");
+
+    page
+      .assertFormAction("/login", "POST")
+      .assertLink("Forgot password?", "/forgot-password")
+      .assertNotChecked("remember");
+    expect(page.getByLabel("Email").attr("type")).toBe("email");
+    expect(page.getByLabel("Password").attr("type")).toBe("password");
   });
 
   test("signs a user in and sends them to the dashboard", async () => {
@@ -44,6 +50,18 @@ describe("signing in", () => {
     res.assertRedirect("/login");
     res.assertInvalid({ email: "Those credentials do not match our records." });
     res.assertSessionMissing("user_id");
+  });
+
+  test("shows the error on the form", async () => {
+    const user = await UserFactory.create();
+    const browser = new Browser(app);
+    await browser.post("/login", { email: user.email, password: "not-the-password" });
+
+    assertPage(await browser.get("/login"), "Sign in")
+      .assertFieldError("email", "Those credentials do not match our records.")
+      .assertNoFieldError("password")
+      // The password is never sent back to the page.
+      .assertValue("password", "");
   });
 
   test("locks an address out after five failed attempts, and says for how long", async () => {

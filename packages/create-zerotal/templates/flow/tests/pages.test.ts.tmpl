@@ -14,7 +14,7 @@
  * broken page your users find first.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { refreshDatabase, type HtmlDocument, type TestApp } from "zerotal/testing";
 import type { Page } from "../app/flow/lib/page";
 import { ProjectFactory } from "../database/factories/ProjectFactory";
 import { UserFactory } from "../database/factories/UserFactory";
@@ -69,9 +69,9 @@ const PUBLIC: PageCase[] = [
 ];
 
 /** The markup a page and its layout built: enough to show something real came out. */
-function expectAPage(html: string): void {
-  expect(html).toContain("data-flow-layout");
-  expect(html).toContain("<main");
+function expectAPage(page: HtmlDocument): void {
+  page.assertPresent("[data-flow-layout]");
+  expect(page.getByRole("main").text()).not.toBe("");
 }
 
 describe("pages render", () => {
@@ -173,19 +173,19 @@ describe("pages render for a signed-in user", () => {
     const user = await UserFactory.create();
     await ProjectFactory.for(user).create({ name: "Website relaunch" });
 
-    const html = await renderPage(ProjectsPage, { user, url: "/projects" });
-    expect(html).toContain("Website relaunch");
+    const page = await renderPage(ProjectsPage, { user, url: "/projects" });
+    page.getByRole("link", { name: "Website relaunch" });
   });
 
   test("projects/edit builds with a user", async () => {
     const user = await UserFactory.create();
     const project = await ProjectFactory.for(user).create({ name: "Website relaunch" });
 
-    const html = await renderPage(EditProjectPage, {
+    const page = await renderPage(EditProjectPage, {
       user,
       url: `/projects/${project.id}/edit`,
       state: { project },
     });
-    expect(html).toContain("Website relaunch");
+    page.assertValue("name", "Website relaunch");
   });
 });

@@ -16,6 +16,11 @@ export interface FeatureTestStubOptions {
    * and send forms, as those starters' own tests do.
    */
   support?: boolean | undefined;
+  /**
+   * The app's pages are server-rendered HTML (the Flow starter's are), so the tests read a page
+   * with `res.html()`: its text, and its links, fields and buttons by role and name.
+   */
+  html?: boolean | undefined;
   /** Sign in as a user from `database/factories/UserFactory.ts`, which the starters have. */
   userFactory?: boolean | undefined;
   /** The resource's list route already answers, so the test that reads it can run. */
@@ -50,7 +55,23 @@ export function featureTestStub(name: string, options: FeatureTestStubOptions = 
   if (options.support) {
     const signIn = options.userFactory ? "    const user = await UserFactory.create();\n" : "";
     const as = options.userFactory ? "app.actingAs(user)" : "app";
-    return `import { afterAll, beforeAll, beforeEach, describe, test } from "bun:test";
+    const listed = options.html
+      ? `    const page = (await ${as}.get("/${route}")).assertOk().html();
+
+    // Read it as a visitor does: \`page.assertSeeText("…")\`, a link or a button by its role and
+    // name with \`page.getByRole("link", { name: "…" })\`, a field by its label or name with
+    // \`page.field("…")\`. Then assert on what the list shows.
+    expect(page.text()).not.toBe("");
+`
+      : `    (await ${as}.get("/${route}")).assertOk();
+`;
+    const shown = options.html
+      ? `
+    // And the list shows it.
+    (await ${as}.get("/${route}")).assertOk().html().assertSeeText("Example");
+`
+      : "";
+    return `import { afterAll, beforeAll, beforeEach, describe, ${options.html ? "expect, " : ""}test } from "bun:test";
 import { assertDatabaseHas, refreshDatabase, type TestApp } from "${testing}";
 ${options.userFactory ? `import { UserFactory } from "${up}database/factories/UserFactory";\n` : ""}import { bootApp } from "./support";
 
@@ -70,15 +91,13 @@ describe("${subject}", () => {
   // A \`test.todo\` is listed by \`bun zt test\` and not run. Take \`.todo\` off each one
   // once the route it calls exists, and change the fields to the ones your form sends.
   ${list}("lists ${table.replace(/_/g, " ")}", async () => {
-${signIn}    (await ${as}.get("/${route}")).assertOk();
-  });
+${signIn}${listed}  });
 
   test.todo("creates a ${singular}", async () => {
 ${signIn}    const res = await ${as}.postForm("/${route}", { name: "Example" });
 
     res.assertRedirect("/${route}");
-    await assertDatabaseHas("${table}", { name: "Example" });
-  });
+    await assertDatabaseHas("${table}", { name: "Example" });${shown}  });
 
   test.todo("rejects an invalid ${singular}", async () => {
 ${signIn}    const from = \`\${app.baseUrl}/${route}\`;
@@ -281,6 +300,8 @@ export class MakeTestCommand extends Command {
         : featureTestStub(name, {
             support,
             helpers: !support && helpers,
+            // A Flow app's pages are HTML on the server; the React and Vue starters' are props.
+            html: support && existsSync("app/flow"),
             userFactory: existsSync("database/factories/UserFactory.ts"),
             routeExists,
             dir,

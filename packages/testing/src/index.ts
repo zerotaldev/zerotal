@@ -7,6 +7,8 @@ export type {
   InertiaPage,
   InertiaPageOf,
 } from "./TestResponse.ts";
+export { HtmlDocument, HtmlElement, HtmlScope, parseHtml } from "./html/HtmlDocument.ts";
+export type { ByRoleOptions, ByTextOptions, TextMatch } from "./html/HtmlDocument.ts";
 export { withDatabase } from "./withDatabase.ts";
 export { refreshDatabase } from "./refreshDatabase.ts";
 export type { RefreshDatabaseOptions } from "./refreshDatabase.ts";

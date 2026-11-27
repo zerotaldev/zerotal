@@ -55,13 +55,9 @@ export class SessionsPage extends Page {
               </p>
             </div>
           </div>
-          <ul class="mt-5 divide-y divide-border border-y border-border">
+          <ul aria-label="Sessions" class="mt-5 divide-y divide-border border-y border-border">
             {sessions.map((session) => (
-              <li
-                key={session.id}
-                class="flex items-center gap-4 px-5 py-4 sm:px-6"
-                data-session={session.current ? "current" : "other"}
-              >
+              <li key={session.id} class="flex items-center gap-4 px-5 py-4 sm:px-6">
                 <svg
                   viewBox="0 0 24 24"
                   aria-hidden="true"

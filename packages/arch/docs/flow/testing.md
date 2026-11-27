@@ -116,6 +116,29 @@ t.assertSee("<h1>Dashboard</h1>"); // can match HTML tags too
 
 Both methods check `t.html()` — the raw rendered HTML string for this component. The check is a simple substring match, not a DOM query.
 
+### Reading the render
+
+To ask what a visitor would see — the text, a button by its name, a field by its label, where a
+link or a form goes — parse the render with `parseHtml()` from `@zerotal/testing`. It takes the
+`FlowTest` itself, and gives it every query and assertion an HTTP test has on `res.html()`
+(see [Reading the page](/docs/testing/http#reading-the-page)):
+
+```typescript fragment
+import { FlowTest } from "@zerotal/flow/testing";
+import { parseHtml } from "@zerotal/testing";
+
+const t = await FlowTest.mount(CreatePostPage);
+await t.call("save");
+
+parseHtml(t)
+  .assertFieldError("title", "The title field is required.")
+  .assertValue("title", "")
+  .getByRole("button", { name: "Publish" });
+```
+
+`parseHtml(t)` reads the latest render, so call it again after an action. A page served over HTTP
+reads the same way: `(await app.get("/posts/create")).html()` is the page, layout and all.
+
 ## Validation assertions
 
 ```typescript fragment

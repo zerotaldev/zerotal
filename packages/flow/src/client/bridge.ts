@@ -2060,7 +2060,12 @@ async function _handleServerFrame(
     // The server sends a whole snapshot only when asked for one. One that arrives after its
     // full sync was given up on (timed out, or refused) is a late reply: it may predate a patch
     // applied since, and it is no action's ack, so it is dropped.
-    if (decision === "full" && !_fullSyncs.has(component)) return;
+    if (decision === "full" && !_fullSyncs.has(component)) {
+      // It may be the only reply the timed-out action gets: clear its loading state, unless
+      // another action is now in flight and still owns it.
+      if (!_pendingAcks.has(component)) _setLoading(comp, false);
+      return;
+    }
     if (decision === "resync") {
       if (!frame.partial) {
         _setLoading(comp, false);

@@ -333,11 +333,11 @@ import { request } from "zerotal";
 // Inside an @expose method, which takes its own arguments rather than a context:
 const ctx = request();
 
-ctx.params.slug; // string — matched route segment (initial GET only)
-ctx.params.post; // Post   — a resolved route-model binding (initial GET only)
-ctx.url.searchParams.get("q"); // string | null — raw query string access (initial GET only)
-ctx.string("search"); // string | undefined — reads params + query string (initial GET only)
-ctx.integer("page", 1); // number — coerced integer with fallback (initial GET only)
+ctx.params.slug; // string — matched route segment, on an action too
+ctx.params.post; // Post   — a resolved route-model binding (initial GET only; "7" on an action)
+ctx.url.searchParams.get("q"); // string | null — the query string the page was rendered with
+ctx.string("search"); // string | undefined — reads params + query string
+ctx.integer("page", 1); // number — coerced integer with fallback
 ctx.boolean("active"); // boolean
 ctx.user; // your User | undefined — set by the auth middleware
 ctx.ip(); // string | null — client IP

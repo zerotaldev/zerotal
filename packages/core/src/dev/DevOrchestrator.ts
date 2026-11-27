@@ -137,9 +137,18 @@ export function _classifyChange(relativePath: string, watch: DevWatchPaths = {})
   if (_isEnvFile(path)) return "restart";
   if (_IGNORE.some((prefix) => path.startsWith(prefix))) return null;
   if (_IGNORE_FILES.has(path)) return null;
-  // What the app lists in `app.dev.watch` is watched, a dotfile (`.graphqlrc`) included.
-  if (watch.restart?.some((entry) => _matchesEntry(path, entry))) return "restart";
-  if (watch.rebuild?.some((entry) => _matchesEntry(path, entry))) return "rebuild";
+  // What the app lists in `app.dev.watch` is watched. A dotted path (`.graphqlrc`, a file in
+  // `.vscode/`) only by an entry that names a dotted path itself: `**/*.json` is not meant to
+  // pick up an editor's settings.
+  const dotted = path.split("/").some((segment) => segment.startsWith("."));
+  const listed = (entries: readonly string[] | undefined): boolean =>
+    entries?.some(
+      (entry) =>
+        _matchesEntry(path, entry) &&
+        (!dotted || entry.split("/").some((segment) => segment.startsWith("."))),
+    ) ?? false;
+  if (listed(watch.restart)) return "restart";
+  if (listed(watch.rebuild)) return "rebuild";
   if (path.startsWith(".")) return null;
 
   if (_BACKEND.some((prefix) => path.startsWith(prefix) || path === prefix.replace(/\/$/, ""))) {

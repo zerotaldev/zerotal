@@ -13,7 +13,8 @@ follows the Zerotal monorepo's unified versioning.
 - **`queue:work` finishes the job in hand when it is asked to stop.** It had no stop handler: a
   `SIGTERM`, a `Ctrl+C` or a `zt dev` restart killed it mid-job, and the job stayed reserved
   until its lease ran out. It now stops taking jobs, lets the current one finish and exits 0; a
-  second request exits at once. `zt dev` asks over IPC, so this holds on Windows too.
+  second signal exits at once. `zt dev` asks over IPC, so this holds on Windows too, and its
+  request never counts as the second: one `Ctrl+C` reaches the worker both ways.
 - **The `queue` tab in `bun zt dev` restarts with the server**, so a job, mailable or
   notification you edit runs as saved instead of the code the worker booted with. It is asked to
   stop first and finishes the job it is running.

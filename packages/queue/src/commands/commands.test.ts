@@ -547,3 +547,43 @@ describe("QueueWorkCommand queue selection", () => {
     expect(manager.processNextCalls).toEqual(["default"]);
   });
 });
+
+describe("queue:work asked to stop", () => {
+  // Ctrl+C in `zt dev` reaches the worker as SIGINT, and `zt dev` then asks over IPC too: one
+  // keypress, two requests. Counting both as a "second request" killed the job mid-run.
+  class StopProbe extends QueueWorkCommand {
+    listen(drain: () => void, force: () => void): () => void {
+      return this._onStopRequest(drain, force);
+    }
+  }
+
+  it("drains on a signal followed by the dev server's IPC request, and does not force", () => {
+    const calls: string[] = [];
+    const off = new StopProbe().listen(
+      () => calls.push("drain"),
+      () => calls.push("force"),
+    );
+    try {
+      process.emit("SIGINT");
+      process.emit("message", "zerotal:dev:shutdown", undefined);
+      expect(calls).toEqual(["drain"]);
+    } finally {
+      off();
+    }
+  });
+
+  it("forces on a second signal, the way out of a job that will not finish", () => {
+    const calls: string[] = [];
+    const off = new StopProbe().listen(
+      () => calls.push("drain"),
+      () => calls.push("force"),
+    );
+    try {
+      process.emit("SIGINT");
+      process.emit("SIGINT");
+      expect(calls).toEqual(["drain", "force"]);
+    } finally {
+      off();
+    }
+  });
+});

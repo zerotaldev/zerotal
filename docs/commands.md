@@ -229,6 +229,8 @@ bun zt dev --host 0.0.0.0     # also http://<this machine's address>:3000
 Pass `--host 0.0.0.0` to open the app on a phone or another computer on the same
 network, and when `zt dev` runs in a container whose port is published to the host: a
 server bound to the container's loopback is not reachable through the published port.
+The app opens there; the debug panel and the Inertia recorder still answer this machine
+only, so they also need a `gate` (see [Who can reach it](/docs/devtools#who-can-reach-it)).
 `bun zt serve` binds every interface unless given `--host`, as before.
 
 An app with a queue no longer needs a second terminal:

@@ -582,8 +582,10 @@ ZT_DEVTOOLS_MAX_ROWS=20000             # default: 5000
 
 ## Who can reach it
 
-`bun zt dev` listens on every network interface, so a phone on the same Wi-Fi can
-open the app. The inspector does not follow it there. On a development machine it
+`bun zt dev` listens on this machine only. With `--host 0.0.0.0` a phone on the same
+Wi-Fi, or a container's published port, can open the app (see
+[`zt dev`](/docs/commands)), but the inspector does not follow it there. On a development
+machine it
 answers requests from that machine only: the connection must come from a loopback
 address and the `Host` header must be a loopback name (`localhost`, `127.0.0.1`,
 `[::1]` or `*.localhost`). Any other device on the network gets a 404, and no

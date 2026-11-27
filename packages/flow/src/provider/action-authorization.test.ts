@@ -189,9 +189,14 @@ describe("an authorization check that throws", () => {
 
 class CreditsPage extends Component {
   @locked({ monotonic: true }) credits = 3;
+  @expose note = "";
 
   @expose async spend(): Promise<void> {
     ran.push("spend");
+  }
+
+  override async onUpdating(prop: string): Promise<void> {
+    ran.push(`updating ${prop}`);
   }
 
   override async render() {
@@ -209,6 +214,32 @@ describe("a @locked({ monotonic: true }) page over the wire", () => {
     );
     return frames;
   };
+
+  it("keeps the claim of a frame whose field writes ran, even when its method is refused", async () => {
+    // The hooks a write runs are the page's own code: a refused method name on top must not
+    // hand the snapshot back to run them again.
+    _getPageEntries().delete("CreditsPage");
+    registerPage("/credits", CreditsPage);
+    _resetMonotonicStore();
+    const page = new CreditsPage();
+    page._flowId = "credits-1";
+    page._flowPath = "/credits";
+    const snapshot = dehydrate(page, { id: "credits-1", name: "CreditsPage", path: "/credits" });
+    const writeAndRefuse = async () => {
+      const { ws, frames } = socket();
+      const frame = { ...JSON.parse(call("noSuchMethod", snapshot)), component: "credits-1" };
+      frame.updates = { note: "hi" };
+      await _handleFlowMessage(ws, JSON.stringify(frame), deps());
+      return frames;
+    };
+
+    await writeAndRefuse();
+    expect(ran).toEqual(["updating note"]);
+    const again = await writeAndRefuse();
+    expect(ran).toEqual(["updating note"]);
+    expect(errorOf(again)).toMatchObject({ code: "snapshot_replayed" });
+    _getPageEntries().delete("CreditsPage");
+  });
 
   it("runs a snapshot once, and refuses it the second time with snapshot_replayed and a reload", async () => {
     _getPageEntries().delete("CreditsPage");

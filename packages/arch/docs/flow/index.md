@@ -514,7 +514,7 @@ declare module "@zerotal/flow/store" {
 }
 ```
 
-**Which to use.** Reach for `$flow.store` when the state is live UI shared _across_ components and the server doesn't need it. Reach for `@session` when a preference must survive a page refresh — it's persisted server-side, and the common pattern is both: the store drives the instant UI, and a single deferred action syncs the settled value to `@session`. Reach for `@expose` when one component owns the state and the server may reconcile it. The rule of thumb: if getting the value wrong could only ever be a cosmetic glitch — never a wrong answer or a security decision — it's a good fit for the store.
+**Which to use.** Reach for `$flow.store` when the state is live UI shared _across_ components and the server doesn't need it. Reach for `@session` when a preference must survive a page refresh — it's kept in the session (on the server with a server-side driver; the cookie driver hands it to the browser), and the common pattern is both: the store drives the instant UI, and a single deferred action syncs the settled value to `@session`. Reach for `@expose` when one component owns the state and the server may reconcile it. The rule of thumb: if getting the value wrong could only ever be a cosmetic glitch — never a wrong answer or a security decision — it's a good fit for the store.
 
 The store is client-only by design: use it inside JSX client expressions (handlers, attribute bindings, text children), where the compiler routes it to the client global. It can't switch between JSX subtrees (`{$flow.store.x ? <A/> : <B/>}`); drive the DOM from it with a class, `show`, or text binding instead.
 

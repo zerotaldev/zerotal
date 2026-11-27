@@ -78,9 +78,19 @@ export class MakeRouteCommand extends Command {
       process.exitCode = 1;
       return;
     }
+    const bad = _badSegment(path);
+    if (bad !== undefined) {
+      this.error(
+        `"${bad}" is not a route segment. Use letters, digits, - and _ in a name, ` +
+          "(group) for a group, and [param] or [...param] for a parameter (letters, digits and _).",
+      );
+      process.exitCode = 1;
+      return;
+    }
     const file = `app/routes/${path}.ts`;
-    if (existsSync(file) || existsSync(`app/routes/${path}.tsx`)) {
-      this.error(`File already exists: ${file}`);
+    const taken = _sameRouteFiles(path).find((f) => existsSync(f));
+    if (taken !== undefined) {
+      this.error(`${taken} already serves ${_urlOf(path)}.`);
       process.exitCode = 1;
       return;
     }
@@ -189,6 +199,36 @@ export function _routePath(input: string): string {
     .replace(/^app\/routes\//, "")
     .replace(/\.tsx?$/, "")
     .replace(/^\/+|\/+$/g, "");
+}
+
+/**
+ * The first segment of `path` that is not a name, a `(group)` or a `[param]`, or undefined when
+ * every one is. `.` and `..` are refused, so the route cannot be written outside `app/routes/`,
+ * and a parameter must be an identifier, since the route reads it as `http.params.<name>`.
+ *
+ * @internal Exported for tests.
+ */
+export function _badSegment(path: string): string | undefined {
+  return path
+    .split("/")
+    .find(
+      (s) =>
+        !/^[A-Za-z0-9_-]+$/.test(s) &&
+        !/^\([A-Za-z0-9_-]+\)$/.test(s) &&
+        !/^\[(?:\.\.\.)?[A-Za-z_][A-Za-z0-9_]*\]$/.test(s),
+    );
+}
+
+/**
+ * The files that would serve the same URL as `app/routes/<path>.ts`: `reports` and
+ * `reports/index` are one route, in either extension.
+ *
+ * @internal Exported for tests.
+ */
+export function _sameRouteFiles(path: string): string[] {
+  const base = path.endsWith("/index") ? path.slice(0, -"/index".length) : path;
+  const stems = path === "index" ? ["index"] : [base, `${base}/index`];
+  return stems.flatMap((s) => [`app/routes/${s}.ts`, `app/routes/${s}.tsx`]);
 }
 
 /** The segments that serve a URL: groups `(auth)` add none. */

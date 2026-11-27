@@ -100,6 +100,16 @@ export async function _makeResource(
   const cwd = options.cwd ?? process.cwd();
   const at = (file: string) => join(cwd, file);
 
+  // Every file name and identifier the resource writes comes from these two, so a `/` or `.`
+  // would put files outside their folders and an import would not parse.
+  const bad = [options.name, options.model].find((n) => !/^[A-Za-z][A-Za-z0-9_-]*$/.test(n));
+  if (bad !== undefined) {
+    out.error(
+      `"${bad}" is not a name make:resource can use: start with a letter, then letters, digits, - or _.`,
+    );
+    return false;
+  }
+
   const read = _readResourceModel(options.model, cwd);
   if (!read) {
     out.error(

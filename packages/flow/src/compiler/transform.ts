@@ -386,6 +386,14 @@ function _childrenReadAsValue(
   return found;
 }
 
+/** Whether `node` holds an `await` that belongs to the enclosing function, not to one of its own. */
+function _containsAwait(node: ts.Node): boolean {
+  if (ts.isAwaitExpression(node)) return true;
+  // An `await` inside a nested async function waits in that function, wherever it is called.
+  if (ts.isFunctionLike(node)) return false;
+  return ts.forEachChild(node, (child) => (_containsAwait(child) ? true : undefined)) ?? false;
+}
+
 /** The named entities {@link _decodeJsxEntities} reads; any other leaves a page on the runtime. */
 const JSX_ENTITIES: Readonly<Record<string, string>> = {
   amp: "&",
@@ -1966,6 +1974,18 @@ function _compileRenderMethod(
     let expr: ts.Expression = raw;
     while (ts.isParenthesizedExpression(expr)) expr = expr.expression;
 
+    // The shapes below put parts of the child inside small arrow functions, where an `await` is a
+    // syntax error, and a child inside a `.map()` already sits in one. Such a child renders
+    // through the runtime, as every component child did before compiled pages could call them.
+    if (_containsAwait(expr)) {
+      bail(
+        "a component's child awaits",
+        "await it in a leading const and pass the result, or let the page render through the runtime",
+        expr,
+      );
+      return null;
+    }
+
     if (!_containsJsx(expr)) {
       if (_containsClientMagic(expr) || _referencesGel(expr)) {
         bail("a component is passed a client value as children", "pass a server value", expr);
@@ -2044,6 +2064,16 @@ function _compileRenderMethod(
 
     const props: string[] = [];
     for (const attr of attrs.properties) {
+      // A component inside a `.map()` is called from the arrow the compiler writes for the loop,
+      // where an `await` in its props would be a syntax error.
+      if (_containsAwait(attr)) {
+        bail(
+          `\`<${tag}>\` is passed a value that awaits`,
+          "await it in a leading const and pass the result",
+          attr,
+        );
+        return true;
+      }
       if (ts.isJsxSpreadAttribute(attr)) {
         if (_containsClientMagic(attr.expression) || _referencesGel(attr.expression)) {
           bail(`\`<${tag}>\` is passed a client value`, "pass server values to a component", attr);

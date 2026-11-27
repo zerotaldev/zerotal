@@ -317,6 +317,20 @@ describe("children and string props arrive as the runtime hands them", () => {
     expect(compiled).toContain('<div class="wrap">Open</div>');
   });
 
+  it("a truthy left side of && hands over the markup it guards", async () => {
+    const { compiled, runtime } = await bothWays(
+      "TruthyLeft",
+      page(
+        "TruthyLeft",
+        `import { Maybe } from "./components/Maybe";`,
+        `<div><Maybe>{label && <b>{label}</b>}</Maybe></div>`,
+        `const label = "Ready";`,
+      ),
+    );
+    expect(compiled).toBe(runtime);
+    expect(compiled).toContain('<div class="wrap"><b>Ready</b></div>');
+  });
+
   it("children handed on through && or a ternary branch keep the page compiled", async () => {
     const { compiled, runtime } = await bothWays(
       "Handed",
@@ -436,6 +450,24 @@ describe("and falls back, saying why, when it cannot", () => {
         why: true,
       });
     }
+  });
+
+  it("a child or a prop that awaits, which would sit inside an arrow, falls back", () => {
+    const child = blocked(
+      "AwaitChild",
+      `import { Maybe } from "./components/Maybe";`,
+      `<Maybe>{show && (ready ? await this.note() : <i>none</i>)}</Maybe>`,
+      `@expose show = true; @expose ready = true; async note(): Promise<string> { return "n"; }`,
+    );
+    expect(child).toContain("a component's child awaits");
+
+    const prop = blocked(
+      "AwaitProp",
+      `import Card from "./components/Card";`,
+      `<ul>{rows.map((row) => <li><Card title={await row.title()} /></li>)}</ul>`,
+      `@locked rows: { title(): Promise<string> }[] = [];`,
+    );
+    expect(prop).toContain("is passed a value that awaits");
   });
 
   it("a string prop holding an entity it cannot vouch for", () => {

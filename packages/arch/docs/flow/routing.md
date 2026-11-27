@@ -339,7 +339,7 @@ ctx.url.searchParams.get("q"); // string | null — raw query string access (ini
 ctx.string("search"); // string | undefined — reads params + query string (initial GET only)
 ctx.integer("page", 1); // number — coerced integer with fallback (initial GET only)
 ctx.boolean("active"); // boolean
-ctx.user; // AuthenticatedUser | undefined — set by AuthMiddleware
+ctx.user; // your User | undefined — set by the auth middleware
 ctx.ip(); // string | null — client IP
 ```
 

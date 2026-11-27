@@ -48,7 +48,7 @@ describe("passkeys", () => {
 
     res.assertOk();
     expect(res.json()).toMatchObject({ rpId: "localhost", userVerification: "required" });
-    expect(typeof (res.json() as { challenge: unknown }).challenge).toBe("string");
+    expect(typeof res.json<{ challenge: unknown }>().challenge).toBe("string");
   });
 
   test("issues a registration challenge to a signed-in user", async () => {

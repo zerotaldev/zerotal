@@ -277,6 +277,7 @@ import SettingsPreferences from "../resources/js/pages/settings/preferences";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { InvalidSettingValueError, SettingsFake } from "@zerotal/settings";
 import { assertDatabaseHas, refreshDatabase, type TestApp } from "zerotal/testing";
+import { inertiaProps } from "@zerotal/inertia/testing";
 import type { User } from "../app/models/User";
 import { preferences } from "../app/settings";
 import { ProjectFactory } from "../database/factories/ProjectFactory";
@@ -293,8 +294,8 @@ beforeEach(() => app.actingAsGuest());
 
 /** How many projects the first page of /projects shows this user. */
 async function firstPageSize(user: User): Promise<number> {
-  const page = (await app.actingAs(user).get("/projects")).assertOk().inertia();
-  return (page?.props["projects"] as unknown[]).length;
+  const res = (await app.actingAs(user).get("/projects")).assertOk();
+  return inertiaProps(res, "projects/index").projects.length;
 }
 
 describe("preferences", () => {

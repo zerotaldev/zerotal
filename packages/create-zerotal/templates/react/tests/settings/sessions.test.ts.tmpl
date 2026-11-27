@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { inertiaProps } from "@zerotal/inertia/testing";
 import { FACTORY_PASSWORD, UserFactory } from "../../database/factories/UserFactory";
 import { Browser, bootApp } from "../support";
 
@@ -25,8 +26,10 @@ describe("sessions", () => {
     await (await signedIn(user.email)).get("/dashboard");
     const here = await signedIn(user.email);
 
-    const page = (await here.get("/settings/sessions")).assertOk().inertia();
-    const sessions = page?.props["sessions"] as { current: boolean }[];
+    const { sessions } = inertiaProps(
+      (await here.get("/settings/sessions")).assertOk(),
+      "settings/sessions",
+    );
 
     expect(sessions).toHaveLength(2);
     expect(sessions.filter((s) => s.current)).toHaveLength(1);

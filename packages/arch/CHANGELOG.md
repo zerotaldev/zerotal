@@ -13,6 +13,11 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Changed
+
+- **The vendored docs show tests reading Inertia props with `inertiaProps()`**, in the HTTP testing
+  guide, the typed props section and the settings, roles and uploads recipes.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

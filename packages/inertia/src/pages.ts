@@ -208,6 +208,18 @@ any
 export type PropsOf<N extends string> = PropsOfComponent<PageComponent<N>>;
 
 /**
+ * The props page `N` arrives with: everything its component declares, plus the
+ * shared props merged into every page. What a test reads back off a response,
+ * where {@link RenderProps} is what a controller hands in.
+ *
+ * An open record until the registry is generated, so a new app's tests compile
+ * before its first build.
+ */
+export type ReceivedProps<N extends string> = [PageName] extends [never]
+  ? Record<string, unknown>
+  : PropsOf<N> & AllSharedProps;
+
+/**
  * What a controller may pass for a prop the component declares as `T`.
  *
  * The two sides genuinely differ: the controller passes `optional(() => posts)`

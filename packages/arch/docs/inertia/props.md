@@ -524,6 +524,12 @@ hands them to the server. Rebuild it with `bun zt inertia:build` (or just run
 The check runs in the direction that costs nothing: the **component** declares
 the shape and the **controller** is checked against it.
 
+Tests read the same types back. `inertiaProps(response, "Posts/Show")` from
+`@zerotal/inertia/testing` returns the page's props as `ReceivedProps<"Posts/Show">`:
+what the component declares, plus the shared props. A test that reads `post` stops
+compiling when the component renames it. See
+[Reading Inertia props, typed](/docs/testing/http#reading-inertia-props-typed).
+
 ### Wrappers are unwrapped
 
 The two sides genuinely differ — the controller passes `merge(() => posts)` and

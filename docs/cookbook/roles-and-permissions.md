@@ -396,6 +396,7 @@ user is refused everywhere.
 // tests/roles.test.ts
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { inertiaProps } from "@zerotal/inertia/testing";
 import { Project } from "../app/models/Project";
 import { ProjectFactory } from "../database/factories/ProjectFactory";
 import { UserFactory } from "../database/factories/UserFactory";
@@ -439,10 +440,10 @@ describe("roles", () => {
     await ProjectFactory.for(owner).create({ name: "Not the admin's" });
     const admin = await createAdmin();
 
-    const page = (await app.actingAs(admin).get("/projects")).assertOk().inertia();
-    const names = (page?.props["projects"] as { name: string }[]).map((p) => p.name);
+    const res = (await app.actingAs(admin).get("/projects")).assertOk();
+    const { projects } = inertiaProps(res, "projects/index");
 
-    expect(names).toContain("Not the admin's");
+    expect(projects.map((p) => p.name)).toContain("Not the admin's");
   });
 
   test("an admin may change and delete anyone's project", async () => {
@@ -465,8 +466,8 @@ describe("roles", () => {
     const project = await ProjectFactory.for(owner).create({ name: "Private" });
     const user = await UserFactory.create();
 
-    const page = (await app.actingAs(user).get("/projects")).assertOk().inertia();
-    expect(page?.props["projects"]).toHaveLength(0);
+    const res = (await app.actingAs(user).get("/projects")).assertOk();
+    expect(inertiaProps(res, "projects/index").projects).toHaveLength(0);
 
     (await app.actingAs(user).get(`/projects/${project.id}/edit`)).assertForbidden();
     (await app.actingAs(user).putForm(`/projects/${project.id}`, valid)).assertForbidden();

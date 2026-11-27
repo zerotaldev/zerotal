@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Tests read a page's props with the page's own types.** `inertiaProps(response, "projects/index")`
+  from `@zerotal/inertia/testing` asserts the response rendered that page and returns its props as
+  `ReceivedProps<"projects/index">`: what the component declares, plus the shared props. The types
+  come from the generated page registry that checks `Inertia.render`, so a test needs no cast, a
+  page name that does not exist is a type error, and a prop renamed in the component fails
+  typecheck in every test that reads the old name. Before the registry is generated the props are
+  an open record, as `res.inertia()?.props` is. `TestResponse.inertia()` is unchanged.
+
 ## [1.18.2] — 2026-11-26
 
 ### Fixed

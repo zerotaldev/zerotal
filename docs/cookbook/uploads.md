@@ -364,6 +364,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } fr
 import { MediaFake } from "zerotal/media";
 import { Storage } from "zerotal/storage";
 import { fakeFile, refreshDatabase, type TestApp } from "zerotal/testing";
+import { inertiaProps } from "@zerotal/inertia/testing";
 import { ProjectFactory } from "../database/factories/ProjectFactory";
 import { UserFactory } from "../database/factories/UserFactory";
 import { bootApp } from "./support";
@@ -414,10 +415,8 @@ describe("project attachments", () => {
     const project = await ProjectFactory.for(user).create();
     await project.addMedia(fakeFile.pdf("brief.pdf")).toCollection("attachments");
 
-    const page = (await app.actingAs(user).get(`/projects/${project.id}/edit`))
-      .assertOk()
-      .inertia();
-    const attachments = page?.props["attachments"] as { name: string; url: string }[];
+    const res = (await app.actingAs(user).get(`/projects/${project.id}/edit`)).assertOk();
+    const { attachments } = inertiaProps(res, "projects/edit");
 
     expect(attachments.map((file) => file.name)).toEqual(["brief"]);
   });

@@ -331,6 +331,35 @@ res.assertInertia("Posts/Show", { post: { id: 1 } }); // props match partially
 res.assertInertiaProp("filters");
 ```
 
+### Reading Inertia props, typed
+
+`assertInertia` matches props you already know. To work with a prop — count a list,
+map it, pass a value it holds to the next request — read it with `inertiaProps()` from
+`@zerotal/inertia/testing`. It asserts the response rendered the page you name and
+returns that page's props, typed by the page component itself:
+
+```typescript fragment
+import { inertiaProps } from "@zerotal/inertia/testing";
+
+const { projects, pagination } = inertiaProps(
+  (await app.actingAs(user).get("/projects")).assertOk(),
+  "projects/index",
+);
+
+expect(projects.map((p) => p.name)).not.toContain("Not yours");
+expect(pagination.total).toBe(2);
+```
+
+The types come from the same generated page registry that
+[checks a controller's props](/docs/inertia/props#typed-props), so there is no cast to
+write, and a prop renamed in the component fails `bun run typecheck` in every test that
+reads the old name. The page name is checked too. Shared props (`auth`, `flash`,
+`errors`, `old`, and the ones you declare in `SharedProps`) are on the result as well.
+
+If the response is not an Inertia page, or rendered a different component, it throws the
+message `assertInertia` would. Until the registry has been generated once, the props are an
+open record, as `res.inertia()?.props` is.
+
 ### Validation, whichever shape it arrives in
 
 A failed validation reaches the client two different ways: an API client gets
@@ -466,7 +495,7 @@ expect(ctx.response?.status).toBe(200);
 | `session`                                                                           | `(): Record<string, unknown> \| null`            | The decoded session.                                                           |
 | `assertInertia`                                                                     | `assertInertia(component?, props?): this`        | Assert the Inertia page and a partial prop match.                              |
 | `assertInertiaProp`                                                                 | `assertInertiaProp(key, value?): this`           | Assert a single Inertia prop.                                                  |
-| `inertia`                                                                           | `(): InertiaPage \| null`                        | The Inertia page object, from either wire shape.                               |
+| `inertia`                                                                           | `(): InertiaPage \| null`                        | The Inertia page object, from either wire shape. For typed props, `inertiaProps()`. |
 | `exception`                                                                         | `(): unknown`                                    | The exception the request raised, if any.                                      |
 | `json`                                                                              | `json<T>(): T`                                   | Parse and return the full JSON body.                                           |
 | `text`                                                                              | `text(): string`                                 | Return the body as text.                                                       |

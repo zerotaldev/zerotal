@@ -8,7 +8,7 @@
  * value or a status code, so a page could throw and the suite stayed green.
  */
 import { describe, it, expect } from "bun:test";
-import { renderPage } from "./testing.ts";
+import { inertiaProps, renderPage, type InertiaPageResponse } from "./testing.ts";
 
 const load = async (name: string): Promise<unknown> => {
   const dir = new URL("../resources/pages", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
@@ -51,5 +51,44 @@ describe("renderPage", () => {
       { shared: { search: "from-shared" } },
     );
     expect(html).toContain("from-page");
+  });
+});
+
+/** A response carrying `page`, whose `assertInertia` throws as `TestResponse`'s does. */
+function responseWith(
+  page: { component: string; props: Record<string, unknown> } | null,
+): InertiaPageResponse {
+  return {
+    assertInertia(component?: string) {
+      if (page === null)
+        throw new Error("assertInertia: the response carries no Inertia page object.");
+      if (component !== undefined && page.component !== component) {
+        throw new Error(
+          `assertInertia: expected component "${component}" but rendered "${page.component}".`,
+        );
+      }
+      return this;
+    },
+    inertia: () => page,
+  };
+}
+
+describe("inertiaProps", () => {
+  it("returns the props of the page the response rendered", () => {
+    const props = { projects: [{ name: "Website relaunch" }], auth: { user: null } };
+    expect(
+      inertiaProps(responseWith({ component: "projects/index", props }), "projects/index"),
+    ).toEqual(props);
+  });
+
+  it("throws when the response rendered another page", () => {
+    const res = responseWith({ component: "projects/edit", props: {} });
+    expect(() => inertiaProps(res, "projects/index")).toThrow(
+      'expected component "projects/index" but rendered "projects/edit"',
+    );
+  });
+
+  it("throws when the response is not an Inertia page", () => {
+    expect(() => inertiaProps(responseWith(null), "projects/index")).toThrow(/no Inertia page/);
   });
 });

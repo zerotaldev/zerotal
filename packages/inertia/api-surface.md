@@ -320,6 +320,8 @@ type PropInput = T | (() => T | Promise<T>) | AlwaysProp<T> | MergeProp<T> | (T 
 
 type PropsOf = PageComponent<N> extends (props: infer Props, ...rest: any[]) => any ? Props : PageComponent<N> extends abstract new (props: infer Props, ...rest: any[]) => any ? Props : Record<string, unknown>
 
+type ReceivedProps = {    [x: string]: unknown;}
+
 type RenderArgs = [props?: Record<string, unknown>]
 
 type RenderProps = {    [x: string]: unknown;}
@@ -328,7 +330,14 @@ type RouteTable = Readonly<Record<string, string>> | ReadonlyMap<string, string>
 
 ## ./testing  `(./src/testing.ts)`
 
+function inertiaProps = <N extends PageTarget>(response: InertiaPageResponse, component: N) => ReceivedProps<N>
+
 function renderPage = (component: unknown, props?: Record<string, unknown>, options?: RenderPageOptions) => Promise<string>
+
+interface InertiaPageResponse = {
+  assertInertia: (component?: string) => unknown
+  inertia: () => {    props: Record<string, unknown>;} | null
+}
 
 interface RenderPageOptions = {
   component?: string | undefined

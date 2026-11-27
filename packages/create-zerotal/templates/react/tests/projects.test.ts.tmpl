@@ -5,6 +5,7 @@ import {
   refreshDatabase,
   type TestApp,
 } from "zerotal/testing";
+import { inertiaProps } from "@zerotal/inertia/testing";
 import { Project } from "../app/models/Project";
 import { ProjectFactory } from "../database/factories/ProjectFactory";
 import { UserFactory } from "../database/factories/UserFactory";
@@ -38,11 +39,10 @@ describe("projects", () => {
     await ProjectFactory.for(user).count(2).create();
     await ProjectFactory.for(other).create({ name: "Not yours" });
 
-    const page = (await app.actingAs(user).get("/projects"))
-      .assertOk()
-      .assertInertia("projects/index")
-      .inertia();
-    const projects = page?.props["projects"] as { name: string }[];
+    const { projects } = inertiaProps(
+      (await app.actingAs(user).get("/projects")).assertOk(),
+      "projects/index",
+    );
 
     expect(projects).toHaveLength(2);
     expect(projects.map((p) => p.name)).not.toContain("Not yours");
@@ -57,20 +57,20 @@ describe("projects", () => {
     });
     await ProjectFactory.for(user).create({ name: "Dark mode", description: "Themes." });
 
-    const page = (await app.actingAs(user).get("/projects?search=billing")).inertia();
-    const names = (page?.props["projects"] as { name: string }[]).map((p) => p.name).sort();
+    const res = await app.actingAs(user).get("/projects?search=billing");
+    const { projects } = inertiaProps(res, "projects/index");
 
-    expect(names).toEqual(["Billing migration", "Status page"]);
+    expect(projects.map((p) => p.name).sort()).toEqual(["Billing migration", "Status page"]);
   });
 
   test("pages through a long list", async () => {
     const user = await UserFactory.create();
     await ProjectFactory.for(user).count(12).create();
 
-    const second = (await app.actingAs(user).get("/projects?page=2")).inertia();
+    const second = inertiaProps(await app.actingAs(user).get("/projects?page=2"), "projects/index");
 
-    expect(second?.props["projects"]).toHaveLength(2);
-    expect(second?.props["pagination"]).toMatchObject({
+    expect(second.projects).toHaveLength(2);
+    expect(second.pagination).toMatchObject({
       page: 2,
       lastPage: 2,
       total: 12,

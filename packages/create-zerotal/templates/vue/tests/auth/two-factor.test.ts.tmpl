@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { PASSWORD_CONFIRMED_AT_KEY, TwoFactorService, loginThrottle } from "zerotal/auth";
 import { refreshDatabase, type TestApp } from "zerotal/testing";
+import { inertiaProps } from "@zerotal/inertia/testing";
 import { User } from "../../app/models/User";
 import { FACTORY_PASSWORD, UserFactory } from "../../database/factories/UserFactory";
 import { Browser, bootApp } from "../support";
@@ -48,21 +49,21 @@ describe("setting up two-factor", () => {
     await browser.post("/confirm-password", { password: FACTORY_PASSWORD });
 
     (await browser.post("/settings/two-factor")).assertRedirect("/settings/two-factor");
-    const setup = (await browser.get("/settings/two-factor")).inertia()?.props["setup"] as {
-      secret: string;
-      qrSvg: string;
-    };
-    expect(setup.qrSvg).toContain("<svg");
+    const { setup } = inertiaProps(
+      await browser.get("/settings/two-factor"),
+      "settings/two-factor",
+    );
+    expect(setup?.qrSvg).toContain("<svg");
 
     const res = await browser.post("/settings/two-factor/confirm", {
-      code: authenticator.generateCode(setup.secret),
+      code: authenticator.generateCode(setup?.secret ?? ""),
     });
     res.assertRedirect("/settings/two-factor");
 
-    const page = (await browser.get("/settings/two-factor")).inertia();
-    expect(page?.props["enabled"]).toBe(true);
+    const page = inertiaProps(await browser.get("/settings/two-factor"), "settings/two-factor");
+    expect(page.enabled).toBe(true);
     // Shown once, straight after they were made.
-    expect(page?.props["recoveryCodes"]).toHaveLength(8);
+    expect(page.recoveryCodes).toHaveLength(8);
     expect((await User.find(user.id))?.hasTwoFactorEnabled()).toBe(true);
   });
 
@@ -72,10 +73,11 @@ describe("setting up two-factor", () => {
     await browser.post("/login", { email: user.email, password: FACTORY_PASSWORD });
     await browser.post("/confirm-password", { password: FACTORY_PASSWORD });
     await browser.post("/settings/two-factor");
-    const { secret } = (await browser.get("/settings/two-factor")).inertia()?.props["setup"] as {
-      secret: string;
-    };
-    const code = authenticator.generateCode(secret);
+    const { setup } = inertiaProps(
+      await browser.get("/settings/two-factor"),
+      "settings/two-factor",
+    );
+    const code = authenticator.generateCode(setup?.secret ?? "");
     (await browser.post("/settings/two-factor/confirm", { code })).assertRedirect(
       "/settings/two-factor",
     );
@@ -101,12 +103,14 @@ describe("setting up two-factor", () => {
   test("never shows the secret or the recovery codes to the page", async () => {
     const { user } = await userWithTwoFactor();
 
-    const page = (await app.actingAs(user).get("/settings/profile")).inertia();
-    const shared = page?.props["auth"] as { user: Record<string, unknown> };
+    const { auth } = inertiaProps(
+      await app.actingAs(user).get("/settings/profile"),
+      "settings/profile",
+    );
 
-    expect(shared.user["twoFactorSecret"]).toBeUndefined();
-    expect(shared.user["twoFactorRecoveryCodes"]).toBeUndefined();
-    expect(shared.user["password"]).toBeUndefined();
+    expect(auth.user).not.toHaveProperty("twoFactorSecret");
+    expect(auth.user).not.toHaveProperty("twoFactorRecoveryCodes");
+    expect(auth.user).not.toHaveProperty("password");
   });
 });
 

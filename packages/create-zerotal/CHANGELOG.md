@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The React and Vue starters' tests read Inertia props without a cast.** The projects, sessions
+  and two-factor tests read props with `inertiaProps()` from `@zerotal/inertia/testing`, typed by
+  each page's component, so renaming a prop in a page fails `bun run typecheck` in the test that
+  reads it. The passkey test reads its JSON with `res.json<…>()` rather than a cast.
+
 ## [1.18.3] — 2026-11-26
 
 ### Changed

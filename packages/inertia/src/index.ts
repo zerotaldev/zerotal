@@ -75,6 +75,7 @@ export type {
   PageTarget,
   PropsOf,
   PropInput,
+  ReceivedProps,
   RenderProps,
   RenderArgs,
 } from "./pages.ts";

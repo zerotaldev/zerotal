@@ -108,7 +108,9 @@ change.
   event handler, no directive that takes a value, and nothing but its props to read. What it
   renders is what the runtime renders, since the compiled page calls it. A component that does
   not qualify names itself and the line that stopped it in the `ZT_FLOW_COMPILE_LOG=1` output.
-  Pages are compiled again when a module one of their components comes from changes.
+  A component is handed its children already rendered (no children when they render to
+  nothing), so one that uses them as a value, `aria-label={children}`, keeps the page on the
+  runtime. Pages are compiled again when a module one of their components comes from changes.
 
 ## [1.18.3] — 2026-11-26
 

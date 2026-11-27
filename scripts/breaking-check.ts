@@ -291,9 +291,18 @@ function isMembersAdded(removed: string, added: string): boolean {
  *
  * A method with one signature is snapshotted as an arrow, `inertia: () => InertiaPage | null`.
  * Give it a second overload and it is printed as a call-signature set instead,
- * `inertia: {    (): InertiaPage | null;    <P extends object>(): Page<P> | null;}`, though every
- * call that compiled still picks the first. The old signature has to appear in the set exactly,
- * as its call-signature form, and the property's name and optionality must not change.
+ * `inertia: {    (): InertiaPage | null;    <P extends object>(): Page<P> | null;}`, and every call
+ * that compiled still resolves to the old signature.
+ *
+ * Only when the old signature comes **first**. TypeScript takes the first overload a call fits, so
+ * an overload placed ahead of it can capture the old calls: `<P extends object>(): Page<P>` first
+ * would answer a plain `inertia()` with `Page<object>`, and `page.props.foo` would stop compiling.
+ * The set is split only at its top level, so a `;` inside a parameter's or a result's own braces
+ * is not read as the end of a signature. The property's name and optionality must not change.
+ *
+ * Two things a caller can still see are not covered, and are a changelog note's job rather than
+ * this check's: `ReturnType<>` of an overloaded method reads the *last* signature, and a subclass
+ * that overrides the method with one signature no longer matches the set.
  */
 function isMethodOverloaded(removed: string, added: string): boolean {
   const arrow = /^(\s*[\w$]+\??:\s*)(\(.*\)) => (.+)$/.exec(removed.trimEnd());
@@ -301,12 +310,34 @@ function isMethodOverloaded(removed: string, added: string): boolean {
   const [, prefix, parameters, result] = arrow as unknown as [string, string, string, string];
   const trimmed = added.trimEnd();
   if (!trimmed.startsWith(`${prefix}{`) || !trimmed.endsWith("}")) return false;
-  const signatures = trimmed
-    .slice(prefix.length + 1, -1)
-    .split(";")
-    .map((piece) => piece.trim())
-    .filter(Boolean);
-  return signatures.length > 1 && signatures.includes(`${parameters}: ${result}`);
+  const signatures = _topLevelSignatures(trimmed.slice(prefix.length + 1, -1));
+  if (signatures === null || signatures.length < 2) return false;
+  // Every piece of the set must be a call signature: `y: string` beside them is a different shape.
+  if (!signatures.every((signature) => /^(<[^]*?>)?\(/.test(signature))) return false;
+  return signatures[0] === `${parameters}: ${result}`;
+}
+
+/**
+ * The members of a `{ … }` set, split at the `;` that sit at its top level, trimmed. `null` when
+ * the brackets do not balance, so a line the snapshot printed oddly is never read as additive.
+ */
+function _topLevelSignatures(body: string): string[] | null {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (c === "(" || c === "{" || c === "[" || c === "<") depth++;
+    else if (c === ")" || c === "}" || c === "]" || (c === ">" && body[i - 1] !== "=")) depth--;
+    else if (c === ";" && depth === 0) {
+      out.push(body.slice(start, i).trim());
+      start = i + 1;
+    }
+    if (depth < 0) return null;
+  }
+  if (depth !== 0) return null;
+  out.push(body.slice(start).trim());
+  return out.filter(Boolean);
 }
 
 /**

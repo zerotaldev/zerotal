@@ -47,7 +47,8 @@ follows the Zerotal monorepo's unified versioning.
   boot the app, so both parsed every page: each page save cost them a restart, and a syntax error
   in a page stopped the scheduler until the next save. A save that touches only files under
   `app/flow/` now restarts the server alone; any other backend change, and the `r` key on the
-  server's tab, still restart them with it.
+  server's tab, still restart them with it. A job or schedule that imports something from `app/flow/`
+  keeps running the code it booted with until the next save outside it, or `r`.
 - **`bun zt repl` can import.** `import()` at the prompt failed with "A dynamic import callback
   was not specified", and an `import … from` line was a syntax error, so nothing but the
   providers' globals could be reached. Both work now and resolve as from a file at the app root:

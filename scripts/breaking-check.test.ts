@@ -247,6 +247,29 @@ describe("isWidening — overloads added to a method", () => {
   it("reports a signature set with nothing added", () => {
     expect(isWidening(before, added("  inertia: {    (): InertiaPage | null;}"))).toBe(false);
   });
+
+  it("reports a new overload placed ahead of the old one, which captures its calls", () => {
+    // TypeScript takes the first overload a call fits: a plain inertia() would get Page<object>.
+    const after =
+      "  inertia: {    <P extends object>(): InertiaPageOf<P> | null;    (): InertiaPage | null;}";
+    expect(isWidening(before, added(after))).toBe(false);
+  });
+
+  it("does not read a ; inside a parameter's own braces as the end of a signature", () => {
+    const after = "  inertia: {    (cb: { x: 1; (): InertiaPage | null }): void;    y: string;}";
+    expect(isWidening(before, added(after))).toBe(false);
+  });
+
+  it("reports a set that holds a property as well as call signatures", () => {
+    const after = "  inertia: {    (): InertiaPage | null;    y: string;}";
+    expect(isWidening(before, added(after))).toBe(false);
+  });
+
+  it("still accepts the old signature first when a later one has braces of its own", () => {
+    const after =
+      "  inertia: {    (): InertiaPage | null;    <P extends object>(o: { a: 1; b: 2 }): InertiaPageOf<P> | null;}";
+    expect(isWidening(before, added(after))).toBe(true);
+  });
 });
 
 describe("isWidening — a parameter widened through a new union", () => {

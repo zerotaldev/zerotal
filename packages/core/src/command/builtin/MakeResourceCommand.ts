@@ -2,9 +2,9 @@
  * The `make:resource` command, which scaffolds an API resource transformer — or, given
  * `--model` in an Inertia app, a whole screen over that model.
  */
-import { Command } from "../Command.ts";
 import type { FlagDef } from "../Command.ts";
-import { _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 import { pluralize, singularize, snakeCase } from "../../support/str.ts";
 
 /**
@@ -38,17 +38,15 @@ interface ResourceGenerator {
  *
  * @category Scaffolding (make:*)
  */
-export class MakeResourceCommand extends Command {
-  static commandName = "make:resource";
-  static description =
+export class MakeResourceCommand extends GeneratorCommand {
+  static override commandName = "make:resource";
+  static override description =
     "Create an API resource transformer, or with --model an Inertia screen over a model";
-  static needsApp = false;
-
-  static args = [
+  static override args = [
     { name: "name", required: true, description: "Resource name (e.g. UserResource, or Task)" },
   ];
 
-  static flags: FlagDef[] = [
+  static override flags: FlagDef[] = [
     {
       name: "model",
       short: "m",
@@ -65,24 +63,28 @@ export class MakeResourceCommand extends Command {
     },
   ];
 
-  async run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!;
     const screenOf = ((this.flags["model"] as string | undefined) ?? "").trim();
     if (screenOf) {
+      // The screen is written by the view package, file by file; it does not yet take the
+      // generator flags, and dropping them would write what a --dry-run asked not to.
+      if (this.dryRun || this.force) {
+        return this.refuse(
+          `make:resource --model does not take ${this.dryRun ? "--dry-run" : "--force"} yet; ` +
+            "without --model, make:resource writes an API resource transformer and takes both.",
+        );
+      }
       await this.screen(name, screenOf);
       return;
     }
     const path = `app/resources/${name}.ts`;
-
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
-      return;
-    }
-
-    await _writeAppSource(path, _stub(name));
-    this.info(`Created: ${path}`);
+    if (!(await this.writeFile(path, _stub(name, _frameworkImport("@zerotal/core"))))) return;
 
     const model = name.replace(/Resource$/, "");
+    this.next(
+      `Return it from a controller: ctx.json(new ${name}(${model.charAt(0).toLowerCase() + model.slice(1)}).toJson());`,
+    );
     if (!(await Bun.file(`app/models/${model}.ts`).exists())) {
       this.warn(
         `  It is typed against app/models/${model}.ts, which does not exist yet: ` +
@@ -95,13 +97,11 @@ export class MakeResourceCommand extends Command {
   private async screen(name: string, model: string): Promise<void> {
     const generator = await _resourceGenerator(process.cwd());
     if (!generator) {
-      this.error(
+      return this.refuse(
         "make:resource --model writes an Inertia screen, and this app has no @zerotal/inertia. " +
           `In a Flow app, run \`bun zt make:flow ${name} --crud --model ${model}\`; ` +
           "without --model, make:resource writes an API resource transformer.",
       );
-      process.exitCode = 1;
-      return;
     }
     const forced = ((this.flags["framework"] as string | undefined) ?? "").toLowerCase();
     const ok = await generator._makeResource(
@@ -117,7 +117,10 @@ export class MakeResourceCommand extends Command {
         ...(forced === "react" || forced === "vue" ? { framework: forced } : {}),
       },
     );
-    if (!ok) process.exitCode = 1;
+    if (!ok) {
+      this.refused = true;
+      process.exitCode = 1;
+    }
   }
 }
 
@@ -140,19 +143,19 @@ async function _resourceGenerator(cwd: string): Promise<ResourceGenerator | unde
 }
 
 /** @internal Exported for tests. */
-export function _stub(name: string): string {
+export function _stub(name: string, core = "zerotal"): string {
   const model = name.replace(/Resource$/, "");
   // From the singular, so `Post` and `Posts` are both `/api/posts`, and `BlogPost` is
   // `/api/blog-posts`. The old conversion read a capture group as an index and produced `/api/-post`.
   const route = pluralize(singularize(snakeCase(model))).replace(/_/g, "-");
-  return `import { Resource } from 'zerotal/http';
-import type { ${model} } from '../models/${model}';
+  return `import { Resource } from "${core}/http";
+import type { ${model} } from "../models/${model}";
 
 export class ${name} extends Resource<${model}> {
   toArray(): Record<string, unknown> {
     return {
-      id:         this.resource.id,
-      // Add fields here — omit sensitive ones like 'password'
+      id: this.resource.id,
+      // Add fields here — omit sensitive ones like "password"
       created_at: this.resource.createdAt,
     };
   }
@@ -165,8 +168,8 @@ export class ${name} extends Resource<${model}> {
 //   ctx.response = new ${name}(model).toResponse(201);
 
 // Paginated list (ResourceCollection adds { data, meta, links } automatically):
-//   import { ResourceCollection } from 'zerotal/http';
+//   import { ResourceCollection } from "${core}/http";
 //   const paginated = await ${model}.query().paginate(15, page);
-//   ctx.json(ResourceCollection.of(${name}, paginated, '/api/${route}'));
+//   ctx.json(ResourceCollection.of(${name}, paginated, "/api/${route}"));
 `;
 }

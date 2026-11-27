@@ -57,12 +57,10 @@ export class ServeCommand extends Command {
       description: "Interface to bind (default: every interface; `zt dev` binds 127.0.0.1)",
     },
     {
-      // Declared only so it can be refused by name. Removing it outright would be
-      // worse than keeping it: `parseFlagsAndArgs` runs with `strict: false`, so an
-      // undeclared `--dev` is parsed and dropped, and `serve --dev` would have gone
-      // on starting a plain server with no watcher and no message. A retired flag
-      // that silently changes what a command does is the failure this release is
-      // otherwise about.
+      // Declared only so it can be refused by name, with the command to run instead.
+      // Undeclared, it would be refused too (since 1.19.0 every undeclared option is),
+      // but with a generic message; before that, `serve --dev` went on starting a plain
+      // server with no watcher and no message.
       name: "dev",
       type: "boolean",
       description: "Retired in 1.13.0 — use `zt dev`",
@@ -276,6 +274,22 @@ export class ServeCommand extends Command {
 
   /** `--list`: what would run, and who asked for it. */
   private _listDevProcesses(processes: ResolvedDevProcess[]): void {
+    if (this.flags["json"] === true) {
+      const document: DevListJson = {
+        processes: processes.map((entry) => ({
+          name: entry.name,
+          label: entry.label,
+          argv: entry.run ? null : (entry.argv ?? null),
+          inProcess: entry.run !== undefined,
+          registeredBy: entry.registrant,
+          restart: entry.restart,
+          after: entry.after,
+          restartsWithServer: entry.restartOnChange === true,
+        })),
+      };
+      this.json(document);
+      return;
+    }
     this.section("Dev processes");
     if (processes.length === 0) {
       this.dim("  Nothing to run — every process was filtered out.");
@@ -594,6 +608,29 @@ export function _networkUrl(
 function _isLoopback(host: string): boolean {
   const bare = host.toLowerCase().replace(/^\[|\]$/g, "");
   return bare === "localhost" || bare === "::1" || /^127\./.test(bare);
+}
+
+/**
+ * What `zt dev --list --json` prints: each process `zt dev` would run, after `--only` and
+ * `--without`, in the order it would start them.
+ */
+export interface DevListJson {
+  processes: {
+    name: string;
+    label: string;
+    /**
+     * The command it spawns, or `null` for one that runs inside the dev process (`inProcess`)
+     * or that the orchestrator starts itself (the server).
+     */
+    argv: string[] | null;
+    inProcess: boolean;
+    /** The provider class that registered it, `"app.dev.processes"`, or `"@zerotal/core"`. */
+    registeredBy: string;
+    restart: "always" | "on-failure" | "never";
+    after: "server" | "none";
+    /** Restarted along with the server on a backend change. */
+    restartsWithServer: boolean;
+  }[];
 }
 
 /** The `--list` row for a process that restarts with the server. */

@@ -28,6 +28,8 @@ const dirs: string[] = [];
 afterEach(async () => {
   process.chdir(cwd);
   while (dirs.length) await rm(dirs.pop()!, { recursive: true, force: true });
+  // A refusal fails the command through the exit code, which would fail this test run too.
+  process.exitCode = 0;
 });
 
 /** An app laid out like the React or Vue starter: pages beside `Layouts/AppLayout`. */
@@ -113,6 +115,49 @@ describe("make:page", () => {
 
 // From the 1.18.2 and 1.18.3 walks: the React and Vue kits had no generator for a route, so a new
 // screen meant writing the route file by hand beside the page make:page wrote.
+// Through the shared generator base since 1.19.0: before it, `--dry-run` was dropped by the
+// parser and the page, its route and the registry were all written; and an existing page was
+// refused with exit code 0.
+describe("make:page as a generator", () => {
+  it("--dry-run prints the page and its route, and writes neither, nor the registry", async () => {
+    const root = await starter("tsx");
+    const out = await run(
+      { name: "tasks/index" },
+      { layout: "", framework: "react", route: true, "dry-run": true },
+    );
+
+    expect(out).toContain("Would create: resources/js/pages/tasks/index.tsx");
+    expect(out).toContain("function TasksIndex(");
+    expect(out).toContain("Would create: app/routes/tasks/index.ts");
+    expect(out).toContain("Would regenerate the page registry.");
+    expect(await Bun.file(join(root, "resources/js/pages/tasks/index.tsx")).exists()).toBe(false);
+    expect(await Bun.file(join(root, "app/routes/tasks/index.ts")).exists()).toBe(false);
+  });
+
+  it("refuses an existing page with a failing exit code, and --force overwrites it", async () => {
+    const root = await starter("tsx");
+    await Bun.write(join(root, "resources/js/pages/reports.tsx"), "// mine\n");
+
+    const refused = await run({ name: "reports" }, { layout: "", framework: "react" });
+    expect(refused).toContain("File already exists: resources/js/pages/reports.tsx");
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+
+    const forced = await run({ name: "reports" }, { layout: "", framework: "react", force: true });
+    expect(forced).toContain("Overwrote: resources/js/pages/reports.tsx");
+    expect(process.exitCode ?? 0).toBe(0);
+  });
+
+  it("refuses a name that leaves the pages directory", async () => {
+    const root = await starter("tsx");
+    const out = await run({ name: "../escape" }, { layout: "", framework: "react" });
+
+    expect(out).toContain('"../escape" is not a valid file name');
+    expect(process.exitCode).toBe(1);
+    expect(await Bun.file(join(root, "resources/js/escape.tsx")).exists()).toBe(false);
+  });
+});
+
 describe("make:page --route", () => {
   /** The starter's signed-in groups, so a new page lands where its own pages are. */
   async function withGroups(root: string): Promise<void> {

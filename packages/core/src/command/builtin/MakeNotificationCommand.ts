@@ -1,8 +1,7 @@
 /**
  * The `make:notification` command and the notification source stub it writes.
  */
-import { Command } from "../Command.ts";
-import { _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
 
 /**
  * `bun zt make:notification <name>` — scaffolds a new notification class under
@@ -10,25 +9,21 @@ import { _writeAppSource } from "../appSource.ts";
  *
  * @category Scaffolding (make:*)
  */
-export class MakeNotificationCommand extends Command {
-  static commandName = "make:notification";
-  static description = "Create a new notification class";
-  static needsApp = false;
-  static args = [
+export class MakeNotificationCommand extends GeneratorCommand {
+  static override commandName = "make:notification";
+  static override description = "Create a new notification class";
+  static override args = [
     { name: "name", required: true, description: "Notification name (e.g. OrderShipped)" },
   ];
 
-  async run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!;
     const path = `app/notifications/${name}.ts`;
-
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
-      return;
-    }
-
-    await _writeAppSource(path, notificationStub(name));
-    this.info(`Created: ${path}`);
+    if (!(await this.writeFile(path, notificationStub(name)))) return;
+    this.next(
+      `Send it: await Notify.send(user, new ${name}());  (Notify from "@zerotal/notifications")`,
+      `It needs NotificationProvider in bootstrap/providers.ts, and @zerotal/notifications installed.`,
+    );
   }
 }
 

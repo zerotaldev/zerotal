@@ -3,8 +3,8 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Command } from "../Command.ts";
-import { _frameworkImport, _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 import { pluralize, singularize, snakeCase } from "../../support/str.ts";
 
 /** What {@link featureTestStub} is told about the app it writes into. */
@@ -252,35 +252,29 @@ export function _routeExists(url: string, cwd: string = process.cwd()): boolean 
  *
  * @category Scaffolding (make:*)
  */
-export class MakeTestCommand extends Command {
-  static commandName = "make:test";
-  static description = "Create a new test file";
-  static needsApp = false;
+export class MakeTestCommand extends GeneratorCommand {
+  static override commandName = "make:test";
+  static override description = "Create a new test file";
+  // A test is named after what it covers, `PostTest` or `tasks`, and the file is kebab-case.
+  static override nameKind = "file" as const;
 
-  static get args() {
-    return [{ name: "name", required: true, description: "Test name (e.g. PostTest)" }];
-  }
+  static override args = [
+    { name: "name", required: true, description: "Test name (e.g. PostTest or tasks)" },
+  ];
 
-  static get flags() {
-    return [
-      {
-        name: "unit",
-        type: "boolean" as const,
-        description: "Create a unit test (no app, no database) instead of a feature test",
-        default: false,
-      },
-    ];
-  }
+  static override flags = [
+    {
+      name: "unit",
+      type: "boolean" as const,
+      description: "Create a unit test (no app, no database) instead of a feature test",
+      default: false,
+    },
+  ];
 
-  async run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!;
     const unit = this.flags["unit"] === true;
     const path = _testPath(name, unit);
-
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
-      return;
-    }
 
     const dir = path.slice(0, path.lastIndexOf("/"));
     // The React, Vue and Flow starters boot their tests through `bootApp()` in tests/support.ts;
@@ -294,7 +288,7 @@ export class MakeTestCommand extends Command {
     const route = `/${pluralize(singularize(snakeCase(subject))).replace(/_/g, "-")}`;
     const routeExists = _routeExists(route);
 
-    await _writeAppSource(
+    const written = await this.writeFile(
       path,
       unit
         ? unitTestStub(name)
@@ -309,7 +303,7 @@ export class MakeTestCommand extends Command {
             testing: _frameworkImport("@zerotal/testing"),
           }),
     );
-    this.info(`Created: ${path}`);
+    if (!written) return;
     if (!unit) {
       this.dim(
         routeExists
@@ -318,6 +312,7 @@ export class MakeTestCommand extends Command {
               `and stays green. Take \`.todo\` off each once its route exists.`,
       );
     }
+    this.next(`Run it: bun zt test ${path}`);
   }
 }
 

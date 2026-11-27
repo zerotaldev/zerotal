@@ -21,9 +21,18 @@ import {
   _relativeImport,
 } from "./appSource.ts";
 import { commandStub, MakeCommandCommand } from "./builtin/MakeCommandCommand.ts";
+import { basicStub, resourceStub } from "./builtin/MakeControllerCommand.ts";
+import { _eventStub, broadcastEventStub } from "./builtin/MakeEventCommand.ts";
 import { jobStub } from "./builtin/MakeJobCommand.ts";
+import { _listenerStub } from "./builtin/MakeListenerCommand.ts";
+import { middlewareStub } from "./builtin/MakeMiddlewareCommand.ts";
 import { notificationStub } from "./builtin/MakeNotificationCommand.ts";
+import { _observerStub } from "./builtin/MakeObserverCommand.ts";
 import { policyStub } from "./builtin/MakePolicyCommand.ts";
+import { _providerStub } from "./builtin/MakeProviderCommand.ts";
+import { _requestStub } from "./builtin/MakeRequestCommand.ts";
+import { _stub as resourceTransformerStub } from "./builtin/MakeResourceCommand.ts";
+import { _scheduleStub } from "./builtin/MakeScheduleCommand.ts";
 import { featureTestStub, unitTestStub } from "./builtin/MakeTestCommand.ts";
 import { CommandRunner } from "./CommandRunner.ts";
 import { Application } from "../application/Application.ts";
@@ -179,29 +188,96 @@ describe("_readModel()", () => {
   });
 });
 
-describe("generated sources pass a starter's `format:check` as written", () => {
-  // In an app without Prettier installed the stub is written as it is, so it has to be in the
-  // starters' style already: double quotes, the starters' print width.
-  const stubs: Record<string, string> = {
-    "make:command": commandStub("SendReport"),
-    "make:job": jobStub("SendReport"),
-    "make:notification": notificationStub("TaskAssigned"),
-    "make:policy (owned)": policyStub("TaskPolicy", "Task", { owner: "userId" }),
-    "make:policy (no owner)": policyStub("TaskPolicy", "Task"),
-    "make:policy (no User)": policyStub("TaskPolicy", "Task", { userImport: false }),
-    "make:test (starter)": featureTestStub("tasks", { support: true, userFactory: true }),
-    "make:test (starter, no users)": featureTestStub("tasks", { support: true, routeExists: true }),
-    "make:test (Flow starter)": featureTestStub("tasks", {
+/**
+ * Every stub a core generator writes, as it writes it into a starter, with the file it goes to.
+ *
+ * Until 1.19.0 only some of them were checked: the controller, middleware, provider, request,
+ * resource and observer stubs were written in single quotes, so each failed a starter's
+ * `format:check` the moment it was generated.
+ */
+const STUBS: Record<string, { path: string; source: string }> = {
+  "make:controller": {
+    path: "app/controllers/PostController.ts",
+    source: basicStub("PostController"),
+  },
+  "make:controller --resource": {
+    path: "app/controllers/TaskController.ts",
+    source: resourceStub("TaskController"),
+  },
+  "make:middleware": {
+    path: "app/middleware/RequireAdmin.ts",
+    source: middlewareStub("RequireAdmin"),
+  },
+  "make:command": { path: "app/commands/SendReport.ts", source: commandStub("SendReport") },
+  "make:request": { path: "app/requests/StoreTask.ts", source: _requestStub("StoreTask") },
+  "make:notification": {
+    path: "app/notifications/TaskAssigned.ts",
+    source: notificationStub("TaskAssigned"),
+  },
+  "make:job": { path: "app/jobs/SendReport.ts", source: jobStub("SendReport") },
+  "make:schedule": { path: "app/schedules/Nightly.ts", source: _scheduleStub("Nightly") },
+  "make:event": { path: "app/events/TaskCreated.ts", source: _eventStub("TaskCreated") },
+  "make:event --broadcast": {
+    path: "app/events/TaskShipped.ts",
+    source: broadcastEventStub("TaskShipped"),
+  },
+  "make:listener": { path: "app/listeners/SendWelcome.ts", source: _listenerStub("SendWelcome") },
+  "make:observer": {
+    path: "app/observers/TaskObserver.ts",
+    source: _observerStub("TaskObserver", "Task"),
+  },
+  "make:policy (owned)": {
+    path: "app/policies/TaskPolicy.ts",
+    source: policyStub("TaskPolicy", "Task", { owner: "userId" }),
+  },
+  "make:policy (no owner)": {
+    path: "app/policies/NotePolicy.ts",
+    source: policyStub("NotePolicy", "Task"),
+  },
+  "make:policy (no User)": {
+    path: "app/policies/GuestPolicy.ts",
+    source: policyStub("GuestPolicy", "Task", { userImport: false }),
+  },
+  "make:resource": {
+    path: "app/resources/TaskResource.ts",
+    source: resourceTransformerStub("TaskResource"),
+  },
+  "make:provider": {
+    path: "app/providers/PaymentProvider.ts",
+    source: _providerStub("PaymentProvider"),
+  },
+  "make:test (starter)": {
+    path: "tests/tasks.test.ts",
+    source: featureTestStub("tasks", { support: true, userFactory: true }),
+  },
+  "make:test (starter, no users)": {
+    path: "tests/projects.test.ts",
+    source: featureTestStub("projects", { support: true, routeExists: true }),
+  },
+  "make:test (Flow starter)": {
+    path: "tests/notes.test.ts",
+    source: featureTestStub("notes", {
       support: true,
       html: true,
       userFactory: true,
       routeExists: true,
     }),
-    "make:test (helpers)": featureTestStub("tasks", { helpers: true }),
-    "make:test (bootstrap)": featureTestStub("tasks"),
-    "make:test --unit": unitTestStub("Slugify"),
-  };
-  for (const [name, source] of Object.entries(stubs)) {
+  },
+  "make:test (helpers)": {
+    path: "tests/posts.test.ts",
+    source: featureTestStub("posts", { helpers: true }),
+  },
+  "make:test (bootstrap)": {
+    path: "tests/feature/orders.test.ts",
+    source: featureTestStub("orders", { dir: "tests/feature" }),
+  },
+  "make:test --unit": { path: "tests/unit/slugify.test.ts", source: unitTestStub("Slugify") },
+};
+
+describe("generated sources pass a starter's `format:check` as written", () => {
+  // In an app without Prettier installed the stub is written as it is, so it has to be in the
+  // starters' style already: double quotes, the starters' print width.
+  for (const [name, { source }] of Object.entries(STUBS)) {
     it(name, async () => {
       const formatted = await prettier.format(source, {
         ...STARTER_PRETTIER,
@@ -210,6 +286,74 @@ describe("generated sources pass a starter's `format:check` as written", () => {
       expect(source).toBe(formatted);
     });
   }
+});
+
+describe("generated sources pass a starter's `typecheck` as written", () => {
+  // The files a stub leans on in a starter: its models, the test helpers, the user factory.
+  const SUPPORT: Record<string, string> = {
+    // TASK_MODEL above is shaped for reading, with a `name` override the column options do not
+    // type; this one compiles.
+    "app/models/Task.ts": TASK_MODEL.replace(
+      '@column({ name: "due_on" })',
+      '@column({ type: "date" })',
+    ),
+    "app/models/User.ts": `import { Model, column, table } from "zerotal/orm";
+
+@table("users")
+export class User extends Model {
+  @column({ type: "string" }) name!: string;
+}
+`,
+    "tests/support.ts": `import { createTestApp, type TestApp } from "zerotal/testing";
+export function bootApp(): Promise<TestApp> {
+  return createTestApp(() => import("../bootstrap/app.ts").then((m) => m.default));
+}
+`,
+    "tests/helpers.ts": `export { bootApp as createApp } from "./support.ts";
+`,
+    "bootstrap/app.ts": `import { Application } from "zerotal";
+export default Application.create({ env: "test" });
+`,
+    "database/factories/UserFactory.ts": `import { User } from "../../app/models/User.ts";
+export const UserFactory = { create: async (): Promise<User> => new User() };
+`,
+  };
+
+  it("every stub, beside the starter's own files", async () => {
+    const files = {
+      ...SUPPORT,
+      ...Object.fromEntries(Object.values(STUBS).map((s) => [s.path, s.source])),
+    };
+    for (const [path, source] of Object.entries(files)) write(path, source);
+
+    // The starter's own compiler options, with the framework pointed at this checkout instead of
+    // an installed package.
+    const starter = JSON.parse(
+      readFileSync(join(ROOT, "packages/create-zerotal/templates/react/tsconfig.json"), "utf8"),
+    ) as { compilerOptions: Record<string, unknown> };
+    write(
+      "tsconfig.json",
+      JSON.stringify({
+        compilerOptions: {
+          ...starter.compilerOptions,
+          types: ["bun"],
+          typeRoots: [join(ROOT, "node_modules", "@types")],
+          paths: {
+            zerotal: [join(ROOT, "packages/zerotal/src/index.ts")],
+            "zerotal/*": [join(ROOT, "packages/zerotal/src/*.ts")],
+            "@zerotal/notifications": [join(ROOT, "packages/notifications/src/index.ts")],
+            "@zerotal/broadcasting": [join(ROOT, "packages/broadcasting/src/index.ts")],
+          },
+        },
+        files: Object.values(STUBS).map((s) => s.path),
+      }),
+    );
+
+    const tsc = Bun.spawnSync([join(ROOT, "node_modules", ".bin", "tsc"), "-p", "."], { cwd: app });
+
+    expect(tsc.stdout.toString()).toBe("");
+    expect(tsc.exitCode).toBe(0);
+  }, 120_000);
 });
 
 describe("make:policy --model", () => {

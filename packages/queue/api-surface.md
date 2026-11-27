@@ -352,11 +352,13 @@ type WorkerResult = { success: true } | { success: false; error: string }
 
 class QueueFailedCommand = {
   new (): QueueFailedCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: {    name: string;    short: string;    type: 'string';    description: string;    default: string;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -368,6 +370,7 @@ class QueueFailedCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -382,11 +385,13 @@ class QueueFailedCommand = {
 
 class QueueFlushCommand = {
   new (): QueueFlushCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    short: string;    type: 'string';    description: string;    default: string;} | {    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -398,6 +403,7 @@ class QueueFlushCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -412,11 +418,13 @@ class QueueFlushCommand = {
 
 class QueueRetryCommand = {
   new (): QueueRetryCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -428,6 +436,7 @@ class QueueRetryCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -442,11 +451,13 @@ class QueueRetryCommand = {
 
 class QueueWorkCommand = {
   new (): QueueWorkCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    short: string;    type: 'string';    description: string;    default: string;} | {    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -458,6 +469,7 @@ class QueueWorkCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]

@@ -1,8 +1,8 @@
 /**
  * The `make:policy` command and the authorization-policy source stub it writes.
  */
-import { Command } from "../Command.ts";
-import { _frameworkImport, _readModel, _relativeImport, _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport, _readModel, _relativeImport } from "../appSource.ts";
 
 /** What {@link policyStub} is told about the app. */
 export interface PolicyStubOptions {
@@ -94,12 +94,13 @@ export const _policyStub: typeof policyStub = policyStub;
  *
  * @category Scaffolding (make:*)
  */
-export class MakePolicyCommand extends Command {
-  static commandName = "make:policy";
-  static description = "Create a new authorization policy class";
-  static needsApp = false;
-  static args = [{ name: "name", required: true, description: "Policy name (e.g. PostPolicy)" }];
-  static flags = [
+export class MakePolicyCommand extends GeneratorCommand {
+  static override commandName = "make:policy";
+  static override description = "Create a new authorization policy class";
+  static override args = [
+    { name: "name", required: true, description: "Policy name (e.g. PostPolicy)" },
+  ];
+  static override flags = [
     {
       name: "model",
       short: "m",
@@ -109,22 +110,17 @@ export class MakePolicyCommand extends Command {
     },
   ];
 
-  async run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!;
     const model = (this.flags["model"] as string) || name.replace(/Policy$/, "");
     const path = `app/policies/${name}.ts`;
-
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
-      return;
-    }
 
     // The model and the user are read from app/models/, so the checks are typed by the app's
     // own classes and compare the model's real owner column. The stub used to ignore --model
     // entirely: `Policy<unknown>`, the imports commented out, and every check `return true`.
     const shape = _readModel(model);
     const user = model === "User" ? shape : _readModel("User");
-    await _writeAppSource(
+    const written = await this.writeFile(
       path,
       policyStub(name, model, {
         auth: _frameworkImport("@zerotal/auth"),
@@ -133,7 +129,7 @@ export class MakePolicyCommand extends Command {
         ...(shape?.owner ? { owner: shape.owner.property } : {}),
       }),
     );
-    this.info(`Created: ${path}`);
+    if (!written) return;
 
     if (!shape) {
       this.warn(
@@ -146,5 +142,11 @@ export class MakePolicyCommand extends Command {
           `is and allows every check. Add an owner column, or write the rules in ${path}.`,
       );
     }
+    // Policies are found by name — `TaskPolicy` for `Task` — so there is nothing to register.
+    this.next(
+      name === `${model}Policy`
+        ? `Check it where the work is done: await Gate.authorize("update", ${variableFor(model)});`
+        : `Register it, e.g. in a provider: Gate.registerPolicy(${model}, ${name});`,
+    );
   }
 }

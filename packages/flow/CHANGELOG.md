@@ -163,6 +163,9 @@ change.
   carries from the mount to the actions. A middleware's redirect of the mount is assertable with
   `assertRedirectedTo()`. `t.document()` is the whole page the mount answered with, layout
   included, and `t.frames()` the frames the server sent back for the last action.
+- **`make:flow --dry-run` and `--force`.** `--dry-run` prints the page it would write and writes
+  nothing; `--force` overwrites an existing one. They come from the generator base the core
+  generators share.
 
 ### Fixed
 
@@ -170,6 +173,13 @@ change.
   streamed patch counts as progress for its ack.
 - **A Flow upload carries the anti-forgery token.** `/__flow/upload` runs the app's middleware,
   so with `CsrfMiddleware` on, as the Flow starter now has it, every upload was refused with a 419. The client sends the `XSRF-TOKEN` cookie back as the `X-XSRF-TOKEN` header.
+
+### Changed — **BREAKING**
+
+- **BREAKING: `make:flow` exits 1 when it refuses, and refuses a name that is not a class name.**
+  An existing file was refused with exit code 0, and `make:flow ../x` wrote outside the pages
+  directory. A name is class names separated by `/` (`Users/Index`). A script that runs it
+  again on purpose must pass `--force`.
 
 ## [1.18.4] — 2026-11-27
 

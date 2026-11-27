@@ -453,11 +453,13 @@ value TooltipProps = unknown
 
 class FlowAddCommand = {
   new (): FlowAddCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'string';    description: string;    default: string;    short?: never;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -469,6 +471,7 @@ class FlowAddCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -483,11 +486,13 @@ class FlowAddCommand = {
 
 class FlowInitCommand = {
   new (): FlowInitCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'string';    description: string;    default: string;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -499,6 +504,7 @@ class FlowInitCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -513,11 +519,13 @@ class FlowInitCommand = {
 
 class FlowListCommand = {
   new (): FlowListCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -529,6 +537,7 @@ class FlowListCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]

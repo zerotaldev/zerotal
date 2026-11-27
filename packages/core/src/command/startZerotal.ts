@@ -5,6 +5,7 @@
  * orchestration lives in one place.
  */
 import { CommandRunner } from "./CommandRunner.ts";
+import { _reserveStdoutForJson } from "./OutputWriter.ts";
 import { _reportConfigFailures, configLoader } from "../config/ConfigLoader.ts";
 import { setAppEnv } from "../helpers/index.ts";
 import {
@@ -68,6 +69,13 @@ export async function startZerotal(
     return;
   }
 
+  // A `--json` run keeps stdout for the one document the command prints, from before the app
+  // is imported: a provider or an app file that logs at import time would otherwise land ahead
+  // of it. A command that does not take `--json` refuses it, on stderr, so nothing is lost.
+  const typed = process.argv.slice(3);
+  const end = typed.indexOf("--");
+  if ((end === -1 ? typed : typed.slice(0, end)).includes("--json")) _reserveStdoutForJson();
+
   // Before anything else, because everything after this is an assertion about a
   // runtime — and if there are two of them, which one made the assertion is the
   // first thing worth knowing.
@@ -102,7 +110,7 @@ export async function startZerotal(
     app.useConfig(config.all());
 
     runner = new CommandRunner(app);
-    await runner.boot(command);
+    await runner.boot(command, process.argv.slice(3));
     report(app.booted);
   } catch (error) {
     // Whatever went wrong, a config file that did not load is part of the story.

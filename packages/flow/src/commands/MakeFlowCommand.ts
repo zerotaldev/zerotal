@@ -7,11 +7,11 @@
  * with an `@expose`/`render` skeleton; `--child`, `--crud`, and `--layout`
  * cover the common shapes.
  */
-import { Command, pluralize } from "@zerotal/core";
+import { pluralize } from "@zerotal/core";
 import {
+  GeneratorCommand,
   _frameworkImport,
   _readModel,
-  _writeAppSource,
   type _ModelColumn,
   type _ModelShape,
 } from "@zerotal/core/commands";
@@ -23,10 +23,12 @@ const PAGE_DIRS = ["app/flow/pages", "app/flow"];
 /** Where child components live, in preference order. */
 const CHILD_DIRS = ["app/flow/components", "app/flow/components"];
 
-export class MakeFlowCommand extends Command {
+export class MakeFlowCommand extends GeneratorCommand {
   static override commandName = "make:flow";
   static override description = "Create a new Flow page or child component";
   static override needsApp = false;
+  // `Dashboard`, or `Users/Index` for a page in a folder; the last part is the class.
+  static override nameKind = "nested-class" as const;
 
   static override args = [
     {
@@ -69,7 +71,7 @@ export class MakeFlowCommand extends Command {
     },
   ];
 
-  override async run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!; // e.g. "Users/Index"
     const child = this.flags["child"] as boolean;
     const crud = this.flags["crud"] as boolean;
@@ -88,10 +90,7 @@ export class MakeFlowCommand extends Command {
     // its class name.
     const path = child ? `${baseDir}/${name}.tsx` : `${baseDir}/${_pageFile(name)}.tsx`;
 
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
-      return;
-    }
+    if (!(await this.canWrite(path))) return;
 
     // The layout is looked for where it actually is, not where its name suggests: the starters
     // keep `AppLayout` in `layouts/app.tsx`, and an import of `layouts/AppLayout.tsx` failed to
@@ -164,8 +163,7 @@ export class MakeFlowCommand extends Command {
     // pragma; a page generated beside them carries it only where no tsconfig says it.
     if (!_tsconfigSetsFlowJsx(dirname(path))) stub = `${FLOW_JSX_PRAGMA}\n${stub}`;
 
-    await _writeAppSource(path, stub);
-    this.info(`Created: ${path}`);
+    if (!(await this.writeFile(path, stub))) return;
 
     if (layout && !child && !layoutFile) {
       this.warn(

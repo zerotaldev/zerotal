@@ -38,6 +38,23 @@ command, so it is safe to ask about one you are unsure of. A command that declar
 its own `help` flag or `-h` option keeps it, and everything after a bare `--` is
 passed to the command as it is.
 
+### Options a command does not take
+
+An option a command does not declare is refused, the command does not run, and the exit code
+is 1. The message names the declared option you most likely meant and lists the ones it takes:
+
+```text
+$ bun zt route:list --jsn
+✖ route:list does not take --jsn. Did you mean --json?
+Its options: --method (-m), --path (-p), --name (-n), --verbose (-v), --json.
+See: bun zt help route:list
+```
+
+Everything after a bare `--` is an operand, not an option, so it is never refused. A command
+that hands options on to another tool says so with `static allowUnknownFlags = true` and reads
+them from `this.unknownFlags`; `zt test` does, and refuses them itself with a hint to pass them
+to `bun test` after `--`.
+
 ## Class-based commands
 
 Extend `Command`, declare static metadata, and implement `run()`. Inside `run()`
@@ -69,7 +86,7 @@ A `FlagDef`'s `type` is `"string" | "boolean" | "number"`; the `as const`
 keeps the literal type so the field stays type-checked.
 
 > **Tip** — Run `bun zt make:command SendDigest` to scaffold a ready-to-edit
-> command class at `app/commands/SendDigestCommand.ts`.
+> command class at `app/commands/SendDigest.ts`.
 
 ## Closure commands
 
@@ -154,28 +171,29 @@ const token = await this.secret("API token:"); // input hidden on a Unix TTY
 
 ### Server & Development
 
-| Command                       | Description                                                                                |
-| ----------------------------- | ------------------------------------------------------------------------------------------ |
-| `bun zt dev`                  | Dev mode: the server plus every registered process (alias: `d`)                            |
-| `bun zt dev --only=server`    | Run only the named processes, comma-separated                                              |
-| `bun zt dev --without=queue`  | Run everything except the named processes                                                  |
-| `bun zt dev --list`           | Print what would run, and which provider registered it                                     |
-| `bun zt dev --stream`         | Interleave prefixed output instead of drawing tabs                                         |
-| `bun zt dev --force-build`    | Rebuild assets even when the build cache says they're current                              |
-| `bun zt serve`                | Start the HTTP server on `app.port`: `PORT`, else 3000                                     |
-| `bun zt serve --port 8080`    | Start on a custom port, over `PORT` and `app.port`                                         |
-| `bun zt serve --force`        | If the port is busy, stop whatever holds it                                                |
-| `bun zt serve --auto-port`    | If the port is busy, start on the next free port                                           |
-| `bun zt reload`               | Hot-reload routes in the running server (sends SIGUSR2)                                    |
-| `bun zt status`               | Show live metrics from the running server                                                  |
-| `bun zt repl`                 | Start an interactive REPL with the bootstrapped app in scope; `import` works at the prompt |
-| `bun zt worker`               | Start the background job worker process                                                    |
-| `bun zt worker --queue email` | Process a specific queue                                                                   |
-| `bun zt worker --once`        | Process one job then exit                                                                  |
-| `bun zt test`                 | Run the test suite in the `test` environment                                               |
-| `bun zt test --randomize`     | Run tests in a random order; `--seed=<n>` replays one                                      |
-| `bun zt compile`              | Compile to a binary; Deployment has its limits (alias: `build`)                            |
-| `bun zt css:build`            | Build the Tailwind CSS bundle for production                                               |
+| Command                      | Description                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------ |
+| `bun zt dev`                 | Dev mode: the server plus every registered process (alias: `d`)                            |
+| `bun zt dev --only=server`   | Run only the named processes, comma-separated                                              |
+| `bun zt dev --without=queue` | Run everything except the named processes                                                  |
+| `bun zt dev --list`          | Print what would run, and which provider registered it                                     |
+| `bun zt dev --list --json`   | The same, as one JSON document for a script                                                |
+| `bun zt dev --stream`        | Interleave prefixed output instead of drawing tabs                                         |
+| `bun zt dev --force-build`   | Rebuild assets even when the build cache says they're current                              |
+| `bun zt serve`               | Start the HTTP server on `app.port`: `PORT`, else 3000                                     |
+| `bun zt serve --port 8080`   | Start on a custom port, over `PORT` and `app.port`                                         |
+| `bun zt serve --force`       | If the port is busy, stop whatever holds it                                                |
+| `bun zt serve --auto-port`   | If the port is busy, start on the next free port                                           |
+| `bun zt reload`              | Hot-reload routes in the running server (sends SIGUSR2)                                    |
+| `bun zt status`              | Show live metrics from the running server                                                  |
+| `bun zt repl`                | Start an interactive REPL with the bootstrapped app in scope; `import` works at the prompt |
+| `bun zt worker`              | Start the background job worker process                                                    |
+| `bun zt queue:work -q email` | Process a specific queue                                                                   |
+| `bun zt queue:work --once`   | Process one job then exit                                                                  |
+| `bun zt test`                | Run the test suite in the `test` environment                                               |
+| `bun zt test --randomize`    | Run tests in a random order; `--seed=<n>` replays one                                      |
+| `bun zt compile`             | Compile to a binary; Deployment has its limits (alias: `build`)                            |
+| `bun zt css:build`           | Build the Tailwind CSS bundle for production                                               |
 
 #### When the port is already taken
 
@@ -412,9 +430,9 @@ Packages register their own — see
 | ---------------------- | ------------------------------------------------------ |
 | `bun zt version`       | Show the Zerotal, Bun and app versions                 |
 | `bun zt about`         | Installed Zerotal packages, and what else ships        |
-| `bun zt route:list`    | List all registered routes with methods and middleware |
+| `bun zt route:list`    | List all registered routes (`--json` for a script)     |
 | `bun zt route:types`   | Write `types/routes.generated.ts` (`--check` in CI)    |
-| `bun zt doctor`        | Check the app for silent misconfigurations             |
+| `bun zt doctor`        | Check the app for silent misconfigurations (`--json`)  |
 | `bun zt key:generate`  | Generate a new `APP_KEY` and write it to `.env`        |
 | `bun zt key:rotate`    | Replace `APP_KEY`, keeping the old one to decrypt with |
 | `bun zt init:env`      | Create `.env` from `.env.example`, secrets generated   |
@@ -469,11 +487,10 @@ bun zt --version
 bun zt --version --json     # for a script
 ```
 
-Prefer the flag form in scripts, for two reasons. It still answers when the app does
-not boot — a config that no longer validates is exactly when you want to know which
-version you are on. And it is the form whose output can be piped: the application's
-boot log is written to stdout, so `bun zt version --json` carries a log line ahead of
-the JSON, while `bun zt --version --json` never boots and emits nothing else.
+Prefer the flag form in scripts: it still answers when the app does not boot, and a
+config that no longer validates is exactly when you want to know which version you are
+on. Both forms print only the JSON on stdout; `bun zt version --json` boots, and its
+boot log goes to stderr (see [Output for scripts](#output-for-scripts)).
 
 If `node_modules` contains a second Bun, the report names it. Nothing executes that
 copy — it arrives as a peer dependency — but it is the one an install would use.
@@ -542,6 +559,88 @@ most expensive kind to find. Packages can contribute checks via
 `app.registerDoctorCheck()`. Exits non-zero when a check fails outright, so it
 can gate a deploy.
 
+### Output for scripts
+
+`route:list`, `doctor`, `dev --list`, `version`, `about`, `gate:status` and `upgrade --notes`
+take `--json`, which prints one JSON document on stdout and nothing else: no colour, no
+headings. The application's boot log, a provider's notice and anything else that would have
+gone to stdout are written to stderr for a `--json` run, so the output pipes straight into a
+parser:
+
+```bash
+# in your project root
+bun zt route:list --json | jq '.routes[] | select(.name == null) | .path'
+bun zt doctor --json > doctor.json || echo "doctor found a failure"
+```
+
+`route:list --json` takes the same filters as the table (`--method`, `--path`, `--name`), and
+an empty match is `"routes": []` rather than a warning:
+
+```json
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/posts",
+      "name": "posts.index",
+      "controller": "PostController",
+      "action": "index",
+      "middleware": ["Authenticate"]
+    }
+  ],
+  "ambiguousNames": { "home": ["/", "/welcome"] }
+}
+```
+
+`name` is `null` for a route without one, `controller` is `"file"` for a file route, and
+`ambiguousNames` lists each name given to more than one path, which `route()` refuses.
+
+`doctor --json` exits 1 exactly when `ok` is false. `transport` and `headers` are `null`
+unless `--url` is given; with it, they hold each WebSocket path probed through the public URL
+and each security header the response carried more than once:
+
+```json
+{
+  "ok": true,
+  "checks": [
+    {
+      "id": "app-key",
+      "label": "APP_KEY",
+      "status": "warn",
+      "message": "APP_KEY is not set. Sessions, signed URLs and encrypted columns all derive from it; …",
+      "fix": "bun zt key:generate"
+    }
+  ],
+  "transport": null,
+  "headers": null,
+  "summary": { "checks": 12, "warnings": 1, "failures": 0 }
+}
+```
+
+`dev --list --json` lists each process `zt dev` would start, after `--only` and `--without`.
+`argv` is `null` for the server (the orchestrator starts it) and for a process that runs inside
+the dev process (`inProcess: true`). `--json` without `--list` is refused:
+
+```json
+{
+  "processes": [
+    {
+      "name": "queue",
+      "label": "queue",
+      "argv": ["bun", "zt", "queue:work"],
+      "inProcess": false,
+      "registeredBy": "QueueProvider",
+      "restart": "on-failure",
+      "after": "server",
+      "restartsWithServer": false
+    }
+  ]
+}
+```
+
+The shapes are exported as types for a TypeScript script: `RouteListJson`, `DoctorJson` and
+`DevListJson` from `zerotal/commands`.
+
 ### Database
 
 | Command                       | Description                                                    |
@@ -568,18 +667,22 @@ failure, so it is safe to run from a timer — see
 
 ### Generators
 
+Every generator in `zerotal` takes `--dry-run` (print the files and their contents, write
+nothing) and `--force` (overwrite a file that exists), refuses a name that is not a class or
+file name, and exits 1 when it refuses. See [Scaffolding](/docs/scaffolding).
+
 | Command                                              | Creates                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------------------- |
 | `bun zt make:model Post`                             | `app/models/Post.ts`                                                       |
 | `bun zt make:controller PostController [--resource]` | `app/controllers/PostController.ts`                                        |
-| `bun zt make:middleware RequireAdmin`                | `app/middleware/RequireAdminMiddleware.ts`                                 |
-| `bun zt make:command SendDigest`                     | `app/commands/SendDigestCommand.ts`                                        |
-| `bun zt make:request StorePost`                      | `app/requests/StorePostRequest.ts`                                         |
-| `bun zt make:notification OrderShipped`              | `app/notifications/OrderShippedNotification.ts`                            |
-| `bun zt make:job ProcessPayment`                     | `app/jobs/ProcessPaymentJob.ts`                                            |
+| `bun zt make:middleware RequireAdmin`                | `app/middleware/RequireAdmin.ts`                                           |
+| `bun zt make:command SendDigest`                     | `app/commands/SendDigest.ts`                                               |
+| `bun zt make:request StorePostRequest`               | `app/requests/StorePostRequest.ts`                                         |
+| `bun zt make:notification OrderShipped`              | `app/notifications/OrderShipped.ts`                                        |
+| `bun zt make:job ProcessPayment`                     | `app/jobs/ProcessPayment.ts`                                               |
 | `bun zt make:schedule SendReminders`                 | `app/schedules/SendReminders.ts`                                           |
-| `bun zt make:event UserRegistered`                   | `app/events/UserRegisteredEvent.ts`                                        |
-| `bun zt make:listener SendWelcome`                   | `app/listeners/SendWelcomeListener.ts`                                     |
+| `bun zt make:event UserRegistered`                   | `app/events/UserRegistered.ts`                                             |
+| `bun zt make:listener SendWelcome`                   | `app/listeners/SendWelcome.ts`                                             |
 | `bun zt make:observer UserObserver [--model User]`   | `app/observers/UserObserver.ts`                                            |
 | `bun zt make:policy PostPolicy [--model Post]`       | `app/policies/PostPolicy.ts`                                               |
 | `bun zt make:resource UserResource`                  | `app/resources/UserResource.ts`                                            |
@@ -624,40 +727,44 @@ registry and dispatcher.
 
 ### Command static metadata
 
-| Field         | Type        | Description                               |
-| ------------- | ----------- | ----------------------------------------- |
-| `commandName` | `string`    | The name invoked on the CLI.              |
-| `description` | `string`    | Shown in `list` and `help`.               |
-| `args`        | `ArgDef[]`  | Positional arguments the command accepts. |
-| `flags`       | `FlagDef[]` | Named flags the command accepts.          |
-| `needsApp`    | `boolean`   | Whether the bootstrapped app is injected. |
+| Field               | Type        | Description                               |
+| ------------------- | ----------- | ----------------------------------------- |
+| `commandName`       | `string`    | The name invoked on the CLI.              |
+| `description`       | `string`    | Shown in `list` and `help`.               |
+| `args`              | `ArgDef[]`  | Positional arguments the command accepts. |
+| `flags`             | `FlagDef[]` | Named flags the command accepts.          |
+| `needsApp`          | `boolean`   | Whether the bootstrapped app is injected. |
+| `sharedFlags`       | `FlagDef[]` | Flags a base class gives every subclass.  |
+| `allowUnknownFlags` | `boolean`   | Take undeclared options (`false`).        |
 
 `ArgDef` is `{ name: string; required?: boolean; default?: string }`. `FlagDef`
 is `{ name: string; short?: string; type: "string" | "boolean" | "number"; description?: string; default?: unknown }`.
 
 ### Command instance members
 
-| Member  | Signature                                     | Description                                       |
-| ------- | --------------------------------------------- | ------------------------------------------------- |
-| `run`   | `run(): Promise<void>`                        | The work the command performs (abstract).         |
-| `args`  | `Record<string, string>`                      | Parsed positional arguments, set before `run()`.  |
-| `rest`  | `string[]`                                    | Positionals beyond the declared `args`, in order. |
-| `flags` | `Record<string, string \| boolean \| number>` | Parsed flags, set before `run()`.                 |
-| `app`   | `unknown`                                     | The application instance, set before `run()`.     |
+| Member         | Signature                                     | Description                                       |
+| -------------- | --------------------------------------------- | ------------------------------------------------- |
+| `run`          | `run(): Promise<void>`                        | The work the command performs (abstract).         |
+| `args`         | `Record<string, string>`                      | Parsed positional arguments, set before `run()`.  |
+| `rest`         | `string[]`                                    | Positionals beyond the declared `args`, in order. |
+| `unknownFlags` | `string[]`                                    | Undeclared options, with `allowUnknownFlags`.     |
+| `flags`        | `Record<string, string \| boolean \| number>` | Parsed flags, set before `run()`.                 |
+| `app`          | `unknown`                                     | The application instance, set before `run()`.     |
 
 ### Output helpers
 
-| Method    | Signature                                        | Description                  |
-| --------- | ------------------------------------------------ | ---------------------------- |
-| `info`    | `info(msg: string): void`                        | Green success line.          |
-| `warn`    | `warn(msg: string): void`                        | Yellow warning line.         |
-| `error`   | `error(msg: string): void`                       | Red line, written to stderr. |
-| `line`    | `line(msg: string): void`                        | Cyan line.                   |
-| `dim`     | `dim(msg: string): void`                         | Dimmed line.                 |
-| `write`   | `write(msg: string): void`                       | Raw write, no newline.       |
-| `newLine` | `newLine(): void`                                | Blank line.                  |
-| `section` | `section(title: string): void`                   | Bold heading.                |
-| `table`   | `table(rows: [string, string][], indent?): void` | Aligned two-column rows.     |
+| Method    | Signature                                        | Description                      |
+| --------- | ------------------------------------------------ | -------------------------------- |
+| `info`    | `info(msg: string): void`                        | Green success line.              |
+| `warn`    | `warn(msg: string): void`                        | Yellow warning line.             |
+| `error`   | `error(msg: string): void`                       | Red line, written to stderr.     |
+| `line`    | `line(msg: string): void`                        | Cyan line.                       |
+| `dim`     | `dim(msg: string): void`                         | Dimmed line.                     |
+| `write`   | `write(msg: string): void`                       | Raw write, no newline.           |
+| `json`    | `json(value: unknown): void`                     | One JSON document, for `--json`. |
+| `newLine` | `newLine(): void`                                | Blank line.                      |
+| `section` | `section(title: string): void`                   | Bold heading.                    |
+| `table`   | `table(rows: [string, string][], indent?): void` | Aligned two-column rows.         |
 
 ### Prompts
 

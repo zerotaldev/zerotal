@@ -6,16 +6,51 @@ description: Generate typed boilerplate files at conventional paths with the mak
 # Scaffolding
 
 Zerotal's `make:*` commands generate boilerplate files so you spend time on logic,
-not structure. Each generator writes a typed stub to the conventional path and
-reports what it created.
+not structure. Each generator writes a typed stub to the conventional path, reports
+what it created, and says what to do with it next.
 
 ```bash
 # in your project root
 bun zt make:<type> <Name> [flags]
 ```
 
-Every generator is idempotent: if the target file already exists it reports
-`File already exists: <path>` and writes nothing, so it never overwrites your work.
+## What every generator does
+
+The generators in `zerotal` share one base, so they behave the same way:
+
+- **It never overwrites your work unless asked.** If the target file exists it reports
+  `File already exists: <path>`, writes nothing and exits 1. `--force` overwrites it.
+- **`--dry-run` writes nothing.** It prints each file the generator would write, with its
+  contents, so you can read the stub before it lands. A dry run that would be refused exits 1
+  too, and side effects (registering a provider, regenerating the page registry) are reported,
+  not made.
+- **The name is checked first.** A class name is letters, digits and `_`, not starting with a
+  digit; `make:test` takes a file name (`posts`, `post-test`); `make:flow` and `make:page`
+  take names separated by `/` (`Users/Index`, `tasks/index`). Anything else, `../x` included,
+  is refused with exit code 1 before anything is read or written.
+- **It says what comes next.** After `Created:`, a `Next:` block says where to register the
+  file, or that nothing needs registering, and how to run or test it.
+- **A refusal is a failure.** Every refusal exits 1, so a script can tell "created" from
+  "refused": `bun zt make:controller PostController || exit 1`.
+- **An option it does not take is refused**, naming the nearest one it does (see
+  [Commands](/docs/commands#options-a-command-does-not-take)).
+
+```bash
+# in your project root
+bun zt make:controller PostController --dry-run   # print it, write nothing
+bun zt make:controller PostController --force     # replace the one that is there
+```
+
+```text
+Created: app/controllers/PostController.ts
+Next:
+  Route to it in routes/web.ts: Router.get("/posts", PostController, "index");
+  Then cover it with a test: bun zt make:test posts
+```
+
+The generators from other packages (`make:model`, `make:migration`, `make:factory`,
+`make:seeder`, `make:admin-resource`, `make:channel`) keep their own options; `make:flow` and
+`make:page` share the base.
 
 A generated file passes your app's own checks as it is written. It imports the framework
 the way your app does: through the `zerotal` bundle (`zerotal/orm`, `zerotal/auth`) when
@@ -29,6 +64,7 @@ passes; without Prettier, the stubs are already in the starters' style.
 | Command               | Creates                               | Notes                                                           |
 | --------------------- | ------------------------------------- | --------------------------------------------------------------- |
 | `make:controller`     | `app/controllers/<Name>.ts`           | `--resource` adds CRUD stubs                                    |
+| `make:test`           | `tests/<name>.test.ts`                | Feature test; `--unit` for one with no app                      |
 | `make:middleware`     | `app/middleware/<Name>.ts`            | Pass-through `Pipe<HttpContext>` stub                           |
 | `make:command`        | `app/commands/<Name>.ts`              | CLI command extending `Command`                                 |
 | `make:request`        | `app/requests/<Name>.ts`              | `FormRequest` with `rules()`                                    |
@@ -62,7 +98,9 @@ bun zt make:controller PostController --resource
 ```
 
 The basic stub has a single `index` action; `--resource` adds the full CRUD set:
-`index`, `show`, `store`, `update`, and `destroy`.
+`index`, `show`, `store`, `update`, and `destroy`. The next step it prints is the route to
+add: `Router.get("/posts", PostController, "index")`, or `Router.resource("posts",
+PostController)` for a resource controller.
 
 | Flag         | Type    | Description           |
 | ------------ | ------- | --------------------- |
@@ -77,7 +115,9 @@ bun zt make:middleware RequireAdminMiddleware
 ```
 
 The stub implements `Pipe<HttpContext>` with a `handle(ctx, next)` method that calls
-`next()`, plus a commented example of short-circuiting with a `Response`.
+`next()`, plus a commented example of short-circuiting with a `Response`. A class in
+`app/middleware/` is registered at boot as a named group under its own name, so a route uses it
+as `Router.group({ middleware: ["RequireAdminMiddleware"] }, …)` without importing it.
 
 ## make:command
 
@@ -102,8 +142,9 @@ bun zt make:request StorePostRequest
 # Created: app/requests/StorePostRequest.ts
 ```
 
-The stub extends `FormRequest` from `@zerotal/validator` with a `rules(r)` method
-that returns a `Record<string, FieldRule>`.
+The stub extends `FormRequest` from `zerotal/validator` with a `rules(r)` method. Its
+return type is left for TypeScript to infer, so each field `StorePostRequest.validate()`
+returns is typed by the rule that checks it.
 
 ## make:notification
 
@@ -171,7 +212,9 @@ bun zt make:listener SendWelcomeEmail
 # Created: app/listeners/SendWelcomeEmail.ts
 ```
 
-The stub has a `handle(event: unknown)` method you narrow to the correct event type.
+The stub has an empty `static listens` and a `handle(event: unknown)` method. Name the event it
+handles in `static listens` (`static listens = UserRegistered;`) and narrow `handle()`'s
+parameter to it; a listener in `app/listeners/` is bound at boot with no registration code.
 
 ## make:observer
 
@@ -184,9 +227,11 @@ bun zt make:observer UserObserver --model User
 # Same path; stub names its parameters after the model
 ```
 
-The stub implements `ModelObserver` from `@zerotal/orm` with `creating`/`created`,
+The stub implements `ModelObserver` from `zerotal/orm` with `creating`/`created`,
 `updating`/`updated`, and `deleting`/`deleted` hooks. When `--model` is omitted the
-model name is inferred by stripping the `Observer` suffix.
+model name is inferred by stripping the `Observer` suffix. An observer named `<Model>Observer`
+is attached to that model at boot; for any other name, the next step it prints is the
+`<Model>.observe(<Name>)` call to make.
 
 | Flag             | Type   | Description                       |
 | ---------------- | ------ | --------------------------------- |
@@ -289,14 +334,17 @@ Scaffolds a complete, conformant `@zerotal/<name>` package under `packages/`.
 # in your project root
 bun zt make:package billing
 # Created @zerotal/billing
-#   ./packages/billing/package.json
-#   ./packages/billing/src/index.ts
-#   ./packages/billing/src/config.ts
-#   ./packages/billing/src/BillingManager.ts
-#   ./packages/billing/src/provider/BillingProvider.ts
-#   ./packages/billing/src/facades/Billing.ts
-#   ./packages/billing/src/Billing.test.ts
+# Created: packages/billing/package.json
+# Created: packages/billing/src/index.ts
+# Created: packages/billing/src/config.ts
+# Created: packages/billing/src/BillingManager.ts
+# Created: packages/billing/src/provider/BillingProvider.ts
+# Created: packages/billing/src/facades/Billing.ts
+# Created: packages/billing/src/Billing.test.ts
 ```
+
+Every file is checked before any is written, so a refused run (one of them exists, and no
+`--force`) leaves no half-made package behind.
 
 The generated package follows the Zerotal package conventions: a manager class, a
 service provider (with a container binding and config wiring), a facade, a
@@ -322,6 +370,61 @@ bun zt lint:packages          # verify the package passes structural checks
 
 > **Note** — See [Package Development](/docs/package-development) for the full
 > package conventions the scaffold conforms to.
+
+## make:test
+
+```bash
+# in your project root
+bun zt make:test posts
+# Created: tests/posts.test.ts
+# Next:
+#   Run it: bun zt test tests/posts.test.ts
+
+bun zt make:test Slugify --unit
+# Created: tests/slugify.test.ts
+```
+
+The feature test boots the app the way the rest of the suite does, and every test in it either
+passes on the app as it stands or is a `test.todo` until the route it calls exists. `--unit`
+writes a test with no app and no database. The file goes in `tests/feature/` or `tests/unit/`
+when the app has those directories.
+
+| Flag     | Type    | Description                                |
+| -------- | ------- | ------------------------------------------ |
+| `--unit` | boolean | Write a unit test, with no app or database |
+
+## Writing your own generator
+
+Extend `GeneratorCommand` from `zerotal/commands` and implement `generate()` instead of `run()`.
+Write each file through `this.writeFile()`, and your generator takes `--dry-run` and `--force`,
+checks its name, and fails on a refusal, like the built-in ones:
+
+```ts
+// app/commands/MakeReportCommand.ts
+import { GeneratorCommand } from "zerotal/commands";
+
+export class MakeReportCommand extends GeneratorCommand {
+  static override commandName = "make:report";
+  static override description = "Create a new report class";
+
+  protected override async generate(): Promise<void> {
+    const name = this.args["name"]!;
+    if (!(await this.writeFile(`app/reports/${name}.ts`, `export class ${name} {}\n`))) return;
+    this.next(`Build it from a command: new ${name}()`);
+  }
+}
+```
+
+| Member                             | Description                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `static nameKind`                  | A `GeneratorNameKind`: `"class"` (default), `"nested-class"`, `"file"` or `"path"`. |
+| `static nameArgument`              | The argument checked, `"name"` by default; `undefined` to check none.               |
+| `generate()`                       | The work, run once the name is checked.                                             |
+| `writeFile(path, source, options)` | Write one file, formatted as the app formats its own; `false` if refused.           |
+| `canWrite(path)`                   | Whether a file may be written, refusing if not: to check several before any.        |
+| `refuse(message)`                  | Print the reason and set exit code 1.                                               |
+| `next(...steps)`                   | Print the `Next:` block.                                                            |
+| `dryRun`, `force`                  | Whether `--dry-run` / `--force` was given.                                          |
 
 ## Codemod helpers
 

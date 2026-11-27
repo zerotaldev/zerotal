@@ -1029,6 +1029,8 @@ beforeEach(() => {
 afterEach(() => {
   (Bun as any).file = _origFile;
   (Bun as any).write = _origWrite;
+  // A refusing generator sets the exit code, which would otherwise fail this whole test run.
+  process.exitCode = 0;
 });
 
 const _noop = { write: () => {}, writeLine: () => {}, writeError: () => {} };
@@ -1085,6 +1087,7 @@ describe("MakePolicyCommand.run() — new file", () => {
     await cmd.run();
     expect(errors.length).toBeGreaterThan(0);
     expect(_written["app/policies/ExistingPolicy.ts"]).toBeUndefined();
+    expect(process.exitCode).toBe(1);
   });
 });
 

@@ -24,6 +24,7 @@ import type { FlagDef } from "../Command.ts";
  * bun zt dev --only=server,queue # just these two
  * bun zt dev --without=queue     # everything but the worker
  * bun zt dev --list              # what would run, and who registered it
+ * bun zt dev --list --json       # the same, as one JSON document
  * bun zt dev --stream            # no TUI — prefixed lines, pipe-friendly
  * bun zt dev --host 0.0.0.0      # reachable from the network (a phone, a container)
  * ```
@@ -80,6 +81,12 @@ export class DevCommand extends ServeCommand {
       default: false,
     },
     {
+      name: "json",
+      type: "boolean",
+      description: "With --list, print it as one JSON document, for a script",
+      default: false,
+    },
+    {
       name: "force-build",
       type: "boolean",
       description: "Rebuild assets even when the build cache says they are current",
@@ -94,6 +101,12 @@ export class DevCommand extends ServeCommand {
   ];
 
   override async run(): Promise<void> {
+    // `--json` describes the listing; on its own it would start the deck and print no JSON.
+    if (this.flags["json"] === true && this.flags["list"] !== true) {
+      this.error("--json goes with --list: bun zt dev --list --json");
+      process.exitCode = 1;
+      return;
+    }
     // Set the parent's own switch rather than the `dev` flag, which is now
     // reserved for refusing `serve --dev` by name. Same supervisor, same port
     // resolution, same banner — this subclasses so the two cannot drift.

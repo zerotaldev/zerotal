@@ -1,19 +1,19 @@
 /**
  * The `make:middleware` command and the middleware source stub it writes.
  */
-import { Command } from "../Command.ts";
-import { _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 
 /** Source for a pass-through middleware class implementing `Pipe<HttpContext>`. */
-export function middlewareStub(name: string): string {
-  return `import type { HttpContext, Pipe, NextFn } from 'zerotal';
+export function middlewareStub(name: string, core = "zerotal"): string {
+  return `import type { HttpContext, NextFn, Pipe } from "${core}";
 
 export class ${name} implements Pipe<HttpContext> {
   async handle(ctx: HttpContext, next: NextFn): Promise<Response | void> {
     // Continue down the pipeline:
     return next();
     // ...or short-circuit by returning a Response instead of calling next():
-    // return Response.json({ message: 'Forbidden' }, { status: 403 });
+    // return Response.json({ message: "Forbidden" }, { status: 403 });
   }
 }
 `;
@@ -29,36 +29,23 @@ function middlewarePath(name: string): string {
  *
  * @category Scaffolding (make:*)
  */
-export class MakeMiddlewareCommand extends Command {
-  static commandName = "make:middleware";
-  static description = "Create a new middleware class";
-  static needsApp = false;
+export class MakeMiddlewareCommand extends GeneratorCommand {
+  static override commandName = "make:middleware";
+  static override description = "Create a new middleware class";
 
-  static get args() {
-    return [
-      { name: "name", required: true, description: "Middleware class name (e.g. AuthMiddleware)" },
-    ];
-  }
+  static override args = [
+    { name: "name", required: true, description: "Middleware class name (e.g. AuthMiddleware)" },
+  ];
 
-  static get flags() {
-    return [];
-  }
-
-  run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!;
     const path = middlewarePath(name);
-
-    return Bun.file(path)
-      .exists()
-      .then((exists) => {
-        if (exists) {
-          this.error(`File already exists: ${path}`);
-          return;
-        }
-        // _writeAppSource() creates any missing parent directories, so no mkdir is needed.
-        return _writeAppSource(path, middlewareStub(name)).then(() => {
-          this.info(`Created: ${path}`);
-        });
-      });
+    if (!(await this.writeFile(path, middlewareStub(name, _frameworkImport("@zerotal/core")))))
+      return;
+    // app/middleware/ is discovered at boot, each class as a named group under its own name.
+    this.next(
+      `Use it on routes by name: Router.group({ middleware: ["${name}"] }, () => { … });`,
+      `Or on every request: set \`static global = true\` on the class.`,
+    );
   }
 }

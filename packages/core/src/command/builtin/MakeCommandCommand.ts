@@ -1,8 +1,8 @@
 /**
  * The `make:command` command and the CLI-command source stub it writes.
  */
-import { Command } from "../Command.ts";
-import { _frameworkImport, _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 
 /** Convert a name to kebab-case (e.g. `SendDailyReport` → `send-daily-report`). */
 export function toKebab(name: string): string {
@@ -51,40 +51,20 @@ function commandPath(name: string): string {
  *
  * @category Scaffolding (make:*)
  */
-export class MakeCommandCommand extends Command {
-  static commandName = "make:command";
-  static description = "Create a new CLI command class";
-  static needsApp = false;
+export class MakeCommandCommand extends GeneratorCommand {
+  static override commandName = "make:command";
+  static override description = "Create a new CLI command class";
 
-  static get args() {
-    return [
-      { name: "name", required: true, description: "Command class name (e.g. SendDailyReport)" },
-    ];
-  }
+  static override args = [
+    { name: "name", required: true, description: "Command class name (e.g. SendDailyReport)" },
+  ];
 
-  static get flags() {
-    return [];
-  }
-
-  run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!;
     const path = commandPath(name);
-
-    return Bun.file(path)
-      .exists()
-      .then((exists) => {
-        if (exists) {
-          this.error(`File already exists: ${path}`);
-          return;
-        }
-        return _writeAppSource(path, commandStub(name, _frameworkImport("@zerotal/core"))).then(
-          () => {
-            this.info(`Created: ${path}`);
-            // app/commands/ is auto-discovered, so the command is immediately runnable. Every
-            // starter's package.json has a `zt` script, so `bun zt` is how an app runs one.
-            this.info(`Run it with: bun zt ${toKebab(name)}`);
-          },
-        );
-      });
+    if (!(await this.writeFile(path, commandStub(name, _frameworkImport("@zerotal/core"))))) return;
+    // app/commands/ is auto-discovered, so the command is immediately runnable. Every
+    // starter's package.json has a `zt` script, so `bun zt` is how an app runs one.
+    this.next(`Run it with: bun zt ${toKebab(name)}`);
   }
 }

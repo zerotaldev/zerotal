@@ -147,11 +147,13 @@ class Collection = {
 
 class Command = {
   new (): Command
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -163,6 +165,7 @@ class Command = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -186,7 +189,7 @@ class CommandRan = {
 
 class CommandRunner = {
   new (_app: Application): CommandRunner
-  boot: (commandName?: string) => Promise<void>
+  boot: (commandName?: string, argv?: string[]) => Promise<void>
   callInProcess: (argv: string[], parameters?: Record<string, string | boolean | number>) => Promise<{    code: number;    output: string;}>
   command: (definition: CommandDefinition, aliases?: string[]) => CommandClass
   discover: (dir: string) => Promise<string[]>
@@ -1322,11 +1325,13 @@ type CarbonInput = string | number | Date | Carbon | Temporal.ZonedDateTime | Te
 
 class AboutCommand = {
   new (): AboutCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1338,6 +1343,7 @@ class AboutCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1352,11 +1358,13 @@ class AboutCommand = {
 
 class AssetsBuildCommand = {
   new (): AssetsBuildCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1368,6 +1376,7 @@ class AssetsBuildCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1382,11 +1391,13 @@ class AssetsBuildCommand = {
 
 class AssetsPruneCommand = {
   new (): AssetsPruneCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    type: 'string';    description: string;    default?: never;} | {    name: string;    type: 'boolean';    description: string;    default: boolean;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1398,6 +1409,7 @@ class AssetsPruneCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1412,11 +1424,13 @@ class AssetsPruneCommand = {
 
 class CompileCommand = {
   new (): CompileCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1428,6 +1442,7 @@ class CompileCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1442,11 +1457,13 @@ class CompileCommand = {
 
 class CssBuildCommand = {
   new (): CssBuildCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    short: string;    type: 'string';    description: string;    default: string;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1458,6 +1475,7 @@ class CssBuildCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1473,11 +1491,13 @@ class CssBuildCommand = {
 class DevCommand = {
   new (): DevCommand
   static aliases: string[]
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1489,6 +1509,7 @@ class DevCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1503,11 +1524,13 @@ class DevCommand = {
 
 class DoctorCommand = {
   new (): DoctorCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
-  static flags: {    name: string;    type: 'string';    description: string;}[]
+  static flags: ({    name: string;    type: 'string';    description: string;    default?: never;} | {    name: string;    type: 'boolean';    description: string;    default: boolean;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1519,6 +1542,7 @@ class DoctorCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1533,11 +1557,13 @@ class DoctorCommand = {
 
 class DownCommand = {
   new (): DownCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    type: 'number';    description: string;    default: number;} | {    name: string;    type: 'string';    description: string;    default?: never;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1549,6 +1575,7 @@ class DownCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1563,11 +1590,13 @@ class DownCommand = {
 
 class GateStatusCommand = {
   new (): GateStatusCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1579,6 +1608,7 @@ class GateStatusCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1591,13 +1621,56 @@ class GateStatusCommand = {
   write: (msg: string) => void
 }
 
+class GeneratorCommand = {
+  new (): GeneratorCommand
+  static allowUnknownFlags: boolean
+  static args: {    name: string;    required: boolean;}[]
+  static commandName: string
+  static description: string
+  static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
+  static needsApp: boolean
+  static sharedFlags: FlagDef[]
+  _readLine: () => Promise<string>
+  _writer: OutputWriter
+  app: unknown
+  args: Record<string, string>
+  ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
+  choice: (question: string, options: string[]) => Promise<string>
+  confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
+  dim: (msg: string) => void
+  dryRun: boolean
+  error: (msg: string) => void
+  flags: Record<string, string | number | boolean>
+  force: boolean
+  info: (msg: string) => void
+  json: (value: unknown) => void
+  line: (msg: string) => void
+  newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
+  rest: string[]
+  run: () => Promise<void>
+  secret: (question: string) => Promise<string>
+  section: (title: string) => void
+  table: (rows: [string, string][], indent?: number) => void
+  unknownFlags: string[]
+  warn: (msg: string) => void
+  write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
+}
+
 class InitEnvCommand = {
   new (): InitEnvCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: never[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1609,6 +1682,7 @@ class InitEnvCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1623,11 +1697,13 @@ class InitEnvCommand = {
 
 class KeyGenerateCommand = {
   new (): KeyGenerateCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: never[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1639,6 +1715,7 @@ class KeyGenerateCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1653,11 +1730,13 @@ class KeyGenerateCommand = {
 
 class KeyRotateCommand = {
   new (): KeyRotateCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1669,6 +1748,7 @@ class KeyRotateCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1683,11 +1763,13 @@ class KeyRotateCommand = {
 
 class LintPackagesCommand = {
   new (): LintPackagesCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    default: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1699,6 +1781,7 @@ class LintPackagesCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1713,24 +1796,34 @@ class LintPackagesCommand = {
 
 class MakeCommandCommand = {
   new (): MakeCommandCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
-  static flags: never[]
+  static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1739,28 +1832,39 @@ class MakeCommandCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeControllerCommand = {
   new (): MakeControllerCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1769,28 +1873,39 @@ class MakeControllerCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeEventCommand = {
   new (): MakeEventCommand
-  static args: {    name: string;    required: boolean;    default: string;}[]
+  static allowUnknownFlags: boolean
+  static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1799,28 +1914,39 @@ class MakeEventCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeJobCommand = {
   new (): MakeJobCommand
-  static args: {    name: string;    required: boolean;    default: string;}[]
+  static allowUnknownFlags: boolean
+  static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1829,28 +1955,39 @@ class MakeJobCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeListenerCommand = {
   new (): MakeListenerCommand
-  static args: {    name: string;    required: boolean;    default: string;}[]
+  static allowUnknownFlags: boolean
+  static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1859,28 +1996,39 @@ class MakeListenerCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeMiddlewareCommand = {
   new (): MakeMiddlewareCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
-  static flags: never[]
+  static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1889,28 +2037,39 @@ class MakeMiddlewareCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeNotificationCommand = {
   new (): MakeNotificationCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1919,28 +2078,39 @@ class MakeNotificationCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeObserverCommand = {
   new (): MakeObserverCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    short: string;    type: 'string';    description: string;    default: string;}[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1949,28 +2119,39 @@ class MakeObserverCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakePackageCommand = {
   new (): MakePackageCommand
+  static allowUnknownFlags: boolean
   static args: ({    name: string;    required: boolean;    default?: never;} | {    name: string;    required: boolean;    default: string;})[]
   static commandName: string
   static description: string
-  static flags: never[]
+  static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -1979,28 +2160,39 @@ class MakePackageCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakePolicyCommand = {
   new (): MakePolicyCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    short: string;    type: 'string';    description: string;    default: string;}[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -2009,28 +2201,39 @@ class MakePolicyCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeProviderCommand = {
   new (): MakeProviderCommand
-  static args: {    name: string;    required: boolean;}[]
+  static allowUnknownFlags: boolean
+  static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -2039,28 +2242,39 @@ class MakeProviderCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeRequestCommand = {
   new (): MakeRequestCommand
-  static args: {    name: string;    required: boolean;    default: string;}[]
+  static allowUnknownFlags: boolean
+  static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -2069,28 +2283,39 @@ class MakeRequestCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeResourceCommand = {
   new (): MakeResourceCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -2099,28 +2324,39 @@ class MakeResourceCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeScheduleCommand = {
   new (): MakeScheduleCommand
-  static args: {    name: string;    required: boolean;    default: string;}[]
+  static allowUnknownFlags: boolean
+  static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
+  static nameArgument: string | undefined
+  static nameKind: GeneratorNameKind
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -2129,28 +2365,39 @@ class MakeScheduleCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class MakeTestCommand = {
   new (): MakeTestCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
+  static nameArgument: string | undefined
+  static nameKind: 'file'
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
   args: Record<string, string>
   ask: (question: string, defaultValue?: string) => Promise<string>
+  canWrite: (path: string) => Promise<boolean>
   choice: (question: string, options: string[]) => Promise<string>
   confirm: (question: string, defaultValue?: boolean) => Promise<boolean>
   dim: (msg: string) => void
+  dryRun: boolean
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
+  force: boolean
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
+  next: (...steps: string[]) => void
+  refuse: (message: string) => void
   rest: string[]
   run: () => Promise<void>
   secret: (question: string) => Promise<string>
@@ -2159,15 +2406,18 @@ class MakeTestCommand = {
   unknownFlags: string[]
   warn: (msg: string) => void
   write: (msg: string) => void
+  writeFile: (path: string, source: string, options?: {    format?: boolean;}) => Promise<boolean>
 }
 
 class PreviewCommand = {
   new (): PreviewCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'string';    description: string;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2179,6 +2429,7 @@ class PreviewCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2193,11 +2444,13 @@ class PreviewCommand = {
 
 class ReloadCommand = {
   new (): ReloadCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: never[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2209,6 +2462,7 @@ class ReloadCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2223,11 +2477,13 @@ class ReloadCommand = {
 
 class ReplCommand = {
   new (): ReplCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2239,6 +2495,7 @@ class ReplCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2253,11 +2510,13 @@ class ReplCommand = {
 
 class RouteListCommand = {
   new (): RouteListCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
-  static flags: ({    name: string;    short: string;    type: 'string';    description: string;    default?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;})[]
+  static flags: ({    name: string;    short: string;    type: 'string';    description: string;    default?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2269,6 +2528,7 @@ class RouteListCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2283,11 +2543,13 @@ class RouteListCommand = {
 
 class RouteTypesCommand = {
   new (): RouteTypesCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2299,6 +2561,7 @@ class RouteTypesCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2314,11 +2577,13 @@ class RouteTypesCommand = {
 class ServeCommand = {
   new (): ServeCommand
   static aliases: string[]
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2330,6 +2595,7 @@ class ServeCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2345,11 +2611,13 @@ class ServeCommand = {
 class StartCommand = {
   new (): ServeCommand
   static aliases: string[]
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2361,6 +2629,7 @@ class StartCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2375,11 +2644,13 @@ class StartCommand = {
 
 class StatusCommand = {
   new (): StatusCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    short: string;    type: 'number';    description: string;    default?: never;} | {    name: string;    type: 'string';    description: string;    default: string;    short?: never;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2391,6 +2662,7 @@ class StatusCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2405,12 +2677,14 @@ class StatusCommand = {
 
 class TestCommand = {
   new (): TestCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    default: string;}[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    type: 'boolean';    description: string;    default: boolean;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    type: 'number';    description: string;    default: number;    short?: never;})[]
   static needsApp: boolean
   static readonly DEFAULT_TIMEOUT_MS: 30000
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2422,6 +2696,7 @@ class TestCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2436,11 +2711,13 @@ class TestCommand = {
 
 class UpCommand = {
   new (): UpCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: never[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2452,6 +2729,7 @@ class UpCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2466,11 +2744,13 @@ class UpCommand = {
 
 class UpgradeCommand = {
   new (): UpgradeCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: ({    name: string;    type: 'string';    description: string;    default: string;    short?: never;} | {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;} | {    name: string;    short: string;    type: 'string';    description: string;    default: string;})[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2482,6 +2762,7 @@ class UpgradeCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2496,11 +2777,13 @@ class UpgradeCommand = {
 
 class VersionCommand = {
   new (): VersionCommand
+  static allowUnknownFlags: boolean
   static args: never[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'boolean';    description: string;    default: boolean;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2512,6 +2795,7 @@ class VersionCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2527,11 +2811,13 @@ class VersionCommand = {
 class WorkerCommand = {
   new (): WorkerCommand
   static aliases: string[]
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -2543,6 +2829,7 @@ class WorkerCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -2554,6 +2841,25 @@ class WorkerCommand = {
   warn: (msg: string) => void
   write: (msg: string) => void
 }
+
+interface DevListJson = {
+  processes: {    name: string;    label: string;    argv: string[] | null;    inProcess: boolean;    registeredBy: string;    restart: 'always' | 'on-failure' | 'never';    after: 'server' | 'none';    restartsWithServer: boolean;}[]
+}
+
+interface DoctorJson = {
+  checks: {    id: string;    label: string;    status: 'ok' | 'warn' | 'fail';    message: string;    fix?: string;}[]
+  headers: HeaderProbeResult[] | null
+  ok: boolean
+  summary: {    checks: number;    warnings: number;    failures: number;}
+  transport: TransportProbeResult[] | null
+}
+
+interface RouteListJson = {
+  ambiguousNames: Record<string, string[]>
+  routes: {    method: string;    path: string;    name: string | null;    controller: string;    action: string;    middleware: string[];}[]
+}
+
+type GeneratorNameKind = 'class' | 'nested-class' | 'file' | 'path'
 
 ## ./config  `(./src/config/index.ts)`
 

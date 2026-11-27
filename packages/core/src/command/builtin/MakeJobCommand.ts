@@ -1,33 +1,31 @@
 /**
  * The `make:job` command, which scaffolds a queue job class.
  */
-import { Command } from "../Command.ts";
-import { _frameworkImport, _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 
 /**
  * `bun zt make:job <name>` — scaffolds a new queue job class under `app/jobs/`.
  *
  * @category Scaffolding (make:*)
  */
-export class MakeJobCommand extends Command {
-  static commandName = "make:job";
-  static description = "Create a new queue job class";
-  static needsApp = false;
-  static override args = [{ name: "name", required: true, default: "" }];
+export class MakeJobCommand extends GeneratorCommand {
+  static override commandName = "make:job";
+  static override description = "Create a new queue job class";
+  static override args = [
+    { name: "name", required: true, description: "Job class name (e.g. ProcessPayment)" },
+  ];
 
-  async run(): Promise<void> {
-    const name = this.args["name"];
-    if (!name) {
-      this.error("Name is required.");
-      return;
-    }
+  protected override async generate(): Promise<void> {
+    const name = this.args["name"]!;
     const path = `app/jobs/${name}.ts`;
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
-      return;
-    }
-    await _writeAppSource(path, jobStub(name, _frameworkImport("@zerotal/queue")));
-    this.info(`Created: ${path}`);
+    const queue = _frameworkImport("@zerotal/queue");
+    if (!(await this.writeFile(path, jobStub(name, queue)))) return;
+    // app/jobs/ is imported at boot, which runs the file's JobRegistry.register().
+    this.next(
+      `Dispatch it: await Queue.dispatch(new ${name}());  (Queue from "${queue}")`,
+      `Process it: bun zt queue:work --once`,
+    );
   }
 }
 

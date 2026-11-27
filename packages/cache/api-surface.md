@@ -175,11 +175,13 @@ interface IdempotencyOptions = {
 
 class CacheClearCommand = {
   new (): CacheClearCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'string';    description: string;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -191,6 +193,7 @@ class CacheClearCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]

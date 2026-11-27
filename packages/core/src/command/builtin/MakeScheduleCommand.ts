@@ -1,7 +1,8 @@
 /**
  * The `make:schedule` command, which scaffolds a scheduled task class.
  */
-import { Command } from "../Command.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 
 /**
  * `bun zt make:schedule <Name>` — scaffolds a `Schedule` subclass under
@@ -13,31 +14,20 @@ import { Command } from "../Command.ts";
  *
  * @category Scaffolding (make:*)
  */
-export class MakeScheduleCommand extends Command {
-  static commandName = "make:schedule";
-  static description = "Create a new scheduled task class";
-  static needsApp = false;
-  static override args = [{ name: "name", required: true, default: "" }];
+export class MakeScheduleCommand extends GeneratorCommand {
+  static override commandName = "make:schedule";
+  static override description = "Create a new scheduled task class";
+  // The name becomes a class name, and the class name the task's name.
+  static override args = [
+    { name: "name", required: true, description: "Task class name (e.g. SendReminders)" },
+  ];
 
-  async run(): Promise<void> {
-    const name = this.args["name"];
-    if (!name) {
-      this.error("Name is required.");
-      return;
-    }
-    // The name becomes a class name, and the class name the task's name.
-    if (!/^[A-Za-z_$][\w$]*$/.test(name)) {
-      this.error(`"${name}" is not a valid class name. Use PascalCase, e.g. SendDailyReports.`);
-      return;
-    }
+  protected override async generate(): Promise<void> {
+    const name = this.args["name"]!;
     const path = `app/schedules/${name}.ts`;
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
-      return;
-    }
-    await Bun.write(path, _scheduleStub(name));
-    this.info(`Created: ${path}`);
-    this.dim(`  Run it now with: bun zt schedule:run ${name}`);
+    const scheduler = _frameworkImport("@zerotal/scheduler");
+    if (!(await this.writeFile(path, _scheduleStub(name, scheduler)))) return;
+    this.next(`Run it now with: bun zt schedule:run ${name}`);
 
     // The convention only runs with the provider registered, and a schedule that
     // silently never fires is the failure this generator exists to prevent.
@@ -56,8 +46,8 @@ export class MakeScheduleCommand extends Command {
  *
  * @internal
  */
-export function _scheduleStub(name: string): string {
-  return `import { Schedule } from "zerotal/scheduler";
+export function _scheduleStub(name: string, scheduler = "zerotal/scheduler"): string {
+  return `import { Schedule } from "${scheduler}";
 
 export class ${name} extends Schedule {
   // Every hour, on the hour. Override frequency(every) instead for helpers

@@ -1,24 +1,25 @@
 /**
  * The `make:controller` command and the controller source stubs it writes.
  */
-import { Command } from "../Command.ts";
-import { _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
+import { pluralize, singularize, snakeCase } from "../../support/str.ts";
 
 /** Source for a minimal controller with a single `index` action. */
-export function basicStub(name: string): string {
-  return `import type { HttpContext } from 'zerotal';
+export function basicStub(name: string, core = "zerotal"): string {
+  return `import type { HttpContext } from "${core}";
 
 export class ${name} {
   async index(ctx: HttpContext): Promise<void> {
-    ctx.response = Response.json({ message: 'ok' });
+    ctx.response = Response.json({ message: "ok" });
   }
 }
 `;
 }
 
 /** Source for a resourceful controller with full CRUD action stubs. */
-export function resourceStub(name: string): string {
-  return `import type { HttpContext } from 'zerotal';
+export function resourceStub(name: string, core = "zerotal"): string {
+  return `import type { HttpContext } from "${core}";
 
 export class ${name} {
   async index(ctx: HttpContext): Promise<void> {
@@ -47,50 +48,52 @@ export class ${name} {
 `;
 }
 
+/** `PostController` → `posts`, the path segment its routes are served under. */
+function routeSegment(name: string): string {
+  return pluralize(singularize(snakeCase(name.replace(/Controller$/, "") || name))).replace(
+    /_/g,
+    "-",
+  );
+}
+
 /**
  * `bun zt make:controller <name>` — scaffolds a new controller class under
  * `app/controllers/` (pass `--resource` for a full CRUD controller).
  *
  * @category Scaffolding (make:*)
  */
-export class MakeControllerCommand extends Command {
-  static commandName = "make:controller";
-  static description = "Create a new controller class";
-  static needsApp = false;
+export class MakeControllerCommand extends GeneratorCommand {
+  static override commandName = "make:controller";
+  static override description = "Create a new controller class";
 
-  static get args() {
-    return [
-      { name: "name", required: true, description: "Controller class name (e.g. UserController)" },
-    ];
-  }
+  static override args = [
+    { name: "name", required: true, description: "Controller class name (e.g. UserController)" },
+  ];
 
-  static get flags() {
-    return [
-      {
-        name: "resource",
-        type: "boolean" as const,
-        description: "Include CRUD action stubs",
-        default: false,
-      },
-    ];
-  }
+  static override flags = [
+    {
+      name: "resource",
+      type: "boolean" as const,
+      description: "Include CRUD action stubs",
+      default: false,
+    },
+  ];
 
-  run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!;
-    const resource = this.flags["resource"] as boolean;
+    const resource = this.flags["resource"] === true;
     const path = `app/controllers/${name}.ts`;
+    const core = _frameworkImport("@zerotal/core");
 
-    return Bun.file(path)
-      .exists()
-      .then((exists) => {
-        if (exists) {
-          this.error(`File already exists: ${path}`);
-          return;
-        }
-        // _writeAppSource() creates any missing parent directories, so no mkdir is needed.
-        return _writeAppSource(path, resource ? resourceStub(name) : basicStub(name)).then(() => {
-          this.info(`Created: ${path}`);
-        });
-      });
+    if (!(await this.writeFile(path, resource ? resourceStub(name, core) : basicStub(name, core))))
+      return;
+
+    const segment = routeSegment(name);
+    this.next(
+      resource
+        ? `Route to it in routes/web.ts: Router.resource("${segment}", ${name});`
+        : `Route to it in routes/web.ts: Router.get("/${segment}", ${name}, "index");`,
+      `Then cover it with a test: bun zt make:test ${segment}`,
+    );
   }
 }

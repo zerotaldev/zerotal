@@ -28,6 +28,9 @@ follows the Zerotal monorepo's unified versioning.
   public, auth and settings pages carries it.
 
 - **The Flow starter's `tests/render.ts` requests a page the way a visit does.** `renderPage()`
+
+- **BREAKING:** **The Flow starter's `tests/render.ts` requests a page the way a visit does.**
+  `renderPage()`
   mounts it with `FlowTest` through its route's middleware and handler, as the given user, and
   returns the whole document the route answered with, layout included; it no longer opens a
   request scope of its own or wraps the layout by hand. `state` is laid over the page the visit

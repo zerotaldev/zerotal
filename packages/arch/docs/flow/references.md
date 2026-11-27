@@ -328,19 +328,19 @@ A write syncs to the server after the expression finishes, unless the same expre
 
 ## FlowTest assertion reference
 
-| Method                          | Asserts                                      |
-| ------------------------------- | -------------------------------------------- |
-| `t.assertSee(text)`             | Rendered HTML contains `text`                |
-| `t.assertDontSee(text)`         | Rendered HTML does NOT contain `text`        |
-| `t.assertHasErrors(field)`      | Validation error exists for `field`          |
-| `t.assertHasErrors(field, msg)` | Error for `field` contains `msg`             |
-| `t.assertNoErrors()`            | No validation errors                         |
-| `t.assertRedirectedTo(url)`     | Last action redirected to `url`              |
-| `t.assertNotRedirected()`       | Last action did not redirect                 |
-| `t.assertFlashed(level?, msg?)` | Flash notification was emitted               |
-| `t.assertDispatched(event)`     | Cross-component event was dispatched         |
-| `t.page()`                      | The component instance                       |
-| `t.html()`                      | Rendered HTML string                         |
-| `t.errors()`                    | Error bag: `Record<string, string[]>`        |
-| `t.effects()`                   | Drained effects (flashes, redirects, events) |
-| `t.snapshot()`                  | Serialised snapshot                          |
+| Method                          | Asserts                                       |
+| ------------------------------- | --------------------------------------------- |
+| `t.assertSee(text)`             | Rendered HTML contains `text`                 |
+| `t.assertDontSee(text)`         | Rendered HTML does NOT contain `text`         |
+| `t.assertHasErrors(field)`      | Validation error exists for `field`           |
+| `t.assertHasErrors(field, msg)` | Error for `field` contains `msg`              |
+| `t.assertNoErrors()`            | No validation errors                          |
+| `t.assertRedirectedTo(url)`     | Last action redirected to `url`               |
+| `t.assertNotRedirected()`       | Last action did not redirect                  |
+| `t.assertFlashed(level?, msg?)` | Flash notification was emitted                |
+| `t.assertDispatched(event)`     | Cross-component event was dispatched          |
+| `t.page()`                      | The instance rebuilt from the latest snapshot |
+| `t.html()`                      | Rendered HTML string                          |
+| `t.errors()`                    | Error bag: `Record<string, string[]>`         |
+| `t.effects()`                   | Drained effects (flashes, redirects, events)  |
+| `t.snapshot()`                  | Serialised snapshot                           |

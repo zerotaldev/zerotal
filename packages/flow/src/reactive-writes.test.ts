@@ -51,9 +51,9 @@ describe("a client write to a @reactive prop", () => {
     expect(tag.amount).toBe(0);
   });
 
-  it("is refused through the test harness too", async () => {
+  it("is refused through the test harness too, which says so", async () => {
     const t = await FlowTest.mount(PriceTag);
-    await t.update("currency", "XXX");
+    await expect(t.update("currency", "XXX")).rejects.toThrow(/@reactive/);
     expect(t.page().currency).toBe("EUR");
   });
 

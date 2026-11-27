@@ -7,7 +7,7 @@ import { parseArgs } from "node:util";
 import type { Application } from "../application/Application.ts";
 import { Command } from "./Command.ts";
 import type { ArgDef, FlagDef } from "./Command.ts";
-import { BufferWriter } from "./OutputWriter.ts";
+import { BufferWriter, _reserveStdoutForJson } from "./OutputWriter.ts";
 import { FrameworkEvents, CommandRan } from "../events/FrameworkEvents.ts";
 import { makeDeployCommand } from "./builtin/DeployCommand.ts";
 import { DEFAULT_DEPLOY_TARGETS } from "../config/DeployConfig.ts";
@@ -22,6 +22,8 @@ interface CommandStatic {
   needsApp?: boolean;
   args: ArgDef[];
   flags: FlagDef[];
+  sharedFlags?: FlagDef[];
+  allowUnknownFlags?: boolean;
 }
 
 type CommandClass = CommandStatic;
@@ -134,11 +136,109 @@ function buildParseOptions(flags: FlagDef[]): Record<string, ParseArgsOption> {
   return options;
 }
 
+/**
+ * Every flag a command takes: its own, then the ones its base class shares
+ * ({@link Command.sharedFlags}) that it does not declare itself.
+ *
+ * @internal
+ */
+export function _declaredFlags(Cmd: Pick<CommandClass, "flags" | "sharedFlags">): FlagDef[] {
+  const own = Cmd.flags ?? [];
+  const names = new Set(own.map((flag) => flag.name));
+  const shorts = new Set(own.map((flag) => flag.short).filter(Boolean));
+  const shared = (Cmd.sharedFlags ?? [])
+    .filter((flag) => !names.has(flag.name))
+    .map((flag) => {
+      if (flag.short === undefined || !shorts.has(flag.short)) return flag;
+      const { short: _taken, ...rest } = flag;
+      return rest;
+    });
+  return [...own, ...shared];
+}
+
 /** `<required>` / `[optional]` signature for a command's positional arguments. */
 function argumentSignature(Cmd: CommandClass): string {
   return (Cmd.args ?? [])
     .map((argument) => (argument.required ? `<${argument.name}>` : `[${argument.name}]`))
     .join(" ");
+}
+
+/** The edit distance between two names, for suggesting the flag a typo meant. */
+function distance(a: string, b: string): number {
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(previous[j]! + 1, current[j - 1]! + 1, previous[j - 1]! + cost);
+    }
+    previous = current;
+  }
+  return previous[b.length]!;
+}
+
+/**
+ * The declared flag a mistyped one most likely meant, as it would be typed, or `undefined` when
+ * none is close: `--jsn` is `--json`, `--dryrun` is `--dry-run`, `--verb` is `--verbose`.
+ *
+ * @internal Exported for tests.
+ */
+export function _nearestFlag(typed: string, flags: FlagDef[]): string | undefined {
+  const bare = typed.replace(/^-+/, "").split("=")[0]!;
+  if (!typed.startsWith("--") && bare.length === 1) {
+    const short = flags.find((flag) => flag.short?.toLowerCase() === bare.toLowerCase());
+    if (short) return `-${short.short}`;
+  }
+  let best: { name: string; score: number } | undefined;
+  for (const flag of flags) {
+    const name = flag.name;
+    const score =
+      bare.length >= 3 && name.startsWith(bare) ? 0.5 : distance(bare.toLowerCase(), name);
+    if (best === undefined || score < best.score) best = { name, score };
+  }
+  if (best === undefined) return undefined;
+  const allowed = Math.max(2, Math.floor(bare.length / 3));
+  return best.score <= allowed ? `--${best.name}` : undefined;
+}
+
+/** A flag as `--name (-n)`, the way a refusal lists what a command takes. */
+function describeFlag(flag: FlagDef): string {
+  return `--${flag.name}${flag.short ? ` (-${flag.short})` : ""}`;
+}
+
+/**
+ * Why argv cannot run `Cmd`: options it does not declare. `undefined` when there is nothing to
+ * refuse, or when the command takes free options ({@link Command.allowUnknownFlags}).
+ *
+ * The parser runs with `strict: false` so that every unknown option is named in one message,
+ * rather than the parser throwing on the first. What it could not place under a declared name
+ * used to be dropped without a word: `route:list --json` printed the table,
+ * `make:controller X --dry-run` wrote the file, and the command reported success either way.
+ *
+ * @internal Exported for tests.
+ */
+export function _flagProblem(
+  Cmd: CommandClass,
+  commandName: string,
+  unknownFlags: string[],
+): string | undefined {
+  const flags = _declaredFlags(Cmd);
+  const lines: string[] = [];
+  if (unknownFlags.length > 0 && Cmd.allowUnknownFlags !== true) {
+    const typed = unknownFlags.join(", ");
+    const nearest = unknownFlags.length === 1 ? _nearestFlag(unknownFlags[0]!, flags) : undefined;
+    lines.push(
+      `${commandName} does not take ${typed}.${nearest ? ` Did you mean ${nearest}?` : ""}`,
+    );
+    lines.push(
+      flags.length > 0
+        ? `Its options: ${flags.map(describeFlag).join(", ")}.`
+        : `It takes no options.`,
+    );
+  }
+  if (lines.length === 0) return undefined;
+  lines.push(`See: bun zt help ${commandName}`);
+  return lines.join("\n");
 }
 
 function parseFlagsAndArgs(
@@ -149,20 +249,26 @@ function parseFlagsAndArgs(
   /** Positional arguments past the last declared one. */
   rest: string[];
   parsedFlags: Record<string, string | boolean | number>;
-  /** Options typed that the command does not declare, as `--name` or `-n`. */
+  /** Options typed that the command does not declare, as typed: `--name` or `-n`. */
   unknownFlags: string[];
   /** Names of `required` arguments the caller omitted. */
   missingArgs: string[];
 } {
-  const { values: rawFlags, positionals } = parseArgs({
+  const flags = _declaredFlags(Cmd);
+  const {
+    values: rawFlags,
+    positionals,
+    tokens,
+  } = parseArgs({
     args: rawArgv,
-    options: buildParseOptions(Cmd.flags ?? []),
+    options: buildParseOptions(flags),
     strict: false,
     allowPositionals: true,
+    tokens: true,
   });
 
   const parsedFlags: Record<string, string | boolean | number> = {};
-  for (const flag of Cmd.flags ?? []) {
+  for (const flag of flags) {
     const rawValue = rawFlags[flag.name];
     if (flag.type === "number" && typeof rawValue === "string") {
       parsedFlags[flag.name] = Number(rawValue);
@@ -173,12 +279,14 @@ function parseFlagsAndArgs(
     }
   }
 
-  // `strict: false` keeps what it cannot place under its own name; whatever is left once the
-  // declared options are taken out was typed and means nothing to this command.
-  const declared = new Set((Cmd.flags ?? []).map((flag) => flag.name));
-  const unknownFlags = Object.keys(rawFlags)
-    .filter((name) => !declared.has(name))
-    .map((name) => (name.length === 1 ? `-${name}` : `--${name}`));
+  // What the parser could not place under a declared name was typed and means nothing to this
+  // command. Reported as typed, so `-x` and `--x` read back the way they were written.
+  const declared = new Set(flags.map((flag) => flag.name));
+  const unknownFlags: string[] = [];
+  for (const token of tokens ?? []) {
+    if (token.kind !== "option" || declared.has(token.name)) continue;
+    if (!unknownFlags.includes(token.rawName)) unknownFlags.push(token.rawName);
+  }
 
   const parsedArgs: Record<string, string> = {};
   const missingArgs: string[] = [];
@@ -202,9 +310,27 @@ function parseFlagsAndArgs(
 }
 
 /**
+ * Whether argv asks a command for its `--json` output, before a bare `--`.
+ *
+ * @internal
+ */
+export function _wantsJson(
+  Cmd: Pick<CommandClass, "flags" | "sharedFlags">,
+  argv: string[],
+): boolean {
+  const json = _declaredFlags(Cmd).find((flag) => flag.name === "json" && flag.type === "boolean");
+  if (!json) return false;
+  for (const token of argv) {
+    if (token === "--") return false;
+    if (token === "--json" || (json.short !== undefined && token === `-${json.short}`)) return true;
+  }
+  return false;
+}
+
+/**
  * Whether the arguments after a command's name are asking how to use it, not to run it.
  *
- * The flag parser runs with `strict: false`, so an unrecognised `--help` is dropped
+ * Answered before anything is parsed or refused. An unrecognised `--help` used to be dropped
  * without complaint — and the command it was typed after ran. `zt dev --help` started a
  * dev server; `zt migrate --help` would have migrated. People type `--help` exactly when
  * they are unsure what a command does, which is the worst moment to run it.
@@ -215,7 +341,7 @@ function parseFlagsAndArgs(
  * @internal
  */
 export function _wantsHelp(Cmd: CommandClass, rawArgv: string[]): boolean {
-  const flags = Cmd.flags ?? [];
+  const flags = _declaredFlags(Cmd);
   const ownsLong = flags.some((flag) => flag.name === "help");
   const ownsShort = flags.some((flag) => flag.short === "h");
   for (const token of rawArgv) {
@@ -367,7 +493,7 @@ export class CommandRunner {
    * is dynamically imported. Application.create() reads it, so _env is already
    * correct by the time boot() runs — no argv inspection needed here.
    */
-  async boot(commandName?: string): Promise<void> {
+  async boot(commandName?: string, argv: string[] = []): Promise<void> {
     this._app.container.value("commands", this);
 
     // Config first, and separately from the application.
@@ -512,6 +638,11 @@ export class CommandRunner {
     const requested = commandName ? this._resolveStatic(commandName) : undefined;
     const skipBoot = requested !== undefined && requested.needsApp === false;
 
+    // A `--json` run keeps stdout for the one document the command prints. Reserved before the
+    // boot, because the boot is what writes the log lines a parser chokes on: providers announce
+    // themselves, the logger's console channel writes to stdout.
+    if (requested !== undefined && _wantsJson(requested, argv)) _reserveStdoutForJson();
+
     if (skipBoot) return;
 
     await this._app.boot();
@@ -643,6 +774,12 @@ export class CommandRunner {
       argv.slice(1),
     );
 
+    const flagProblem = _flagProblem(Cmd, commandName, unknownFlags);
+    if (flagProblem) {
+      console.error(`\x1b[31m✖ ${flagProblem}\x1b[0m`);
+      process.exit(1);
+    }
+
     if (missingArgs.length > 0) {
       console.error(
         `\x1b[31mMissing required argument${missingArgs.length > 1 ? "s" : ""}: ${missingArgs.join(", ")}\x1b[0m`,
@@ -720,6 +857,9 @@ export class CommandRunner {
       Cmd,
       fullArgv.slice(1),
     );
+
+    const flagProblem = _flagProblem(Cmd, commandName, unknownFlags);
+    if (flagProblem) return { code: 1, output: `\x1b[31m✖ ${flagProblem}\x1b[0m\n` };
 
     if (missingArgs.length > 0) {
       const plural = missingArgs.length > 1 ? "s" : "";
@@ -826,8 +966,9 @@ export class CommandRunner {
     }
 
     const signature = argumentSignature(Cmd);
+    const flags = _declaredFlags(Cmd);
     console.log(
-      `\x1b[1mUsage:\x1b[0m ${Cmd.commandName}${signature ? " " + signature : ""}${(Cmd.flags ?? []).length ? " [options]" : ""}`,
+      `\x1b[1mUsage:\x1b[0m ${Cmd.commandName}${signature ? " " + signature : ""}${flags.length ? " [options]" : ""}`,
     );
     if (Cmd.description) console.log(`\n${Cmd.description}`);
 
@@ -843,9 +984,9 @@ export class CommandRunner {
       }
     }
 
-    if ((Cmd.flags ?? []).length) {
+    if (flags.length) {
       console.log("\n\x1b[1mOptions:\x1b[0m");
-      for (const flag of Cmd.flags) {
+      for (const flag of flags) {
         const flagName = `--${flag.name}${flag.short ? `, -${flag.short}` : ""}`;
         const description =
           flag.description ??

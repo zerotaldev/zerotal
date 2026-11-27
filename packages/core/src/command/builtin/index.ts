@@ -15,7 +15,7 @@
  * @example
  * ```bash
  * # Start the dev server
- * bun zt serve --dev
+ * bun zt dev
  *
  * # Scaffold a controller and list the registered routes
  * bun zt make:controller PostController --resource
@@ -25,6 +25,7 @@
  * @packageDocumentation
  */
 export { ServeCommand } from "./ServeCommand.ts";
+export type { DevListJson } from "./ServeCommand.ts";
 export { DevCommand } from "./DevCommand.ts";
 export { ReplCommand } from "./ReplCommand.ts";
 export { StartCommand } from "./StartCommand.ts";
@@ -38,6 +39,9 @@ export { StatusCommand } from "./StatusCommand.ts";
 export { VersionCommand } from "./VersionCommand.ts";
 export { AboutCommand } from "./AboutCommand.ts";
 export { DownCommand, PreviewCommand, UpCommand, GateStatusCommand } from "./GateCommands.ts";
+// The base every generator extends, for an app's or a package's own `make:*` commands.
+export { GeneratorCommand } from "../GeneratorCommand.ts";
+export type { GeneratorNameKind } from "../GeneratorCommand.ts";
 export { MakeControllerCommand } from "./MakeControllerCommand.ts";
 export { MakeMiddlewareCommand } from "./MakeMiddlewareCommand.ts";
 export { MakeCommandCommand } from "./MakeCommandCommand.ts";
@@ -54,8 +58,10 @@ export { MakeResourceCommand } from "./MakeResourceCommand.ts";
 export { MakeTestCommand } from "./MakeTestCommand.ts";
 export { TestCommand } from "./TestCommand.ts";
 export { RouteListCommand } from "./RouteListCommand.ts";
+export type { RouteListJson } from "./RouteListCommand.ts";
 export { RouteTypesCommand } from "./RouteTypesCommand.ts";
 export { DoctorCommand } from "./DoctorCommand.ts";
+export type { DoctorJson } from "./DoctorCommand.ts";
 export { UpgradeCommand } from "./UpgradeCommand.ts";
 export { DeployCommand, makeDeployCommand } from "./DeployCommand.ts";
 export { MakeProviderCommand } from "./MakeProviderCommand.ts";

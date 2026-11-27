@@ -2,7 +2,7 @@
  * The `make:package` command, which scaffolds a conformant `@zerotal/<name>`
  * workspace package on disk.
  */
-import { Command } from "../Command.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
 import { scaffoldPackage, packageNames } from "../../build/PackageScaffold.ts";
 
 /**
@@ -11,35 +11,40 @@ import { scaffoldPackage, packageNames } from "../../build/PackageScaffold.ts";
  *
  * @category Scaffolding (make:*)
  */
-export class MakePackageCommand extends Command {
-  static commandName = "make:package";
-  static description = "Scaffold a conformant @zerotal/<name> package";
-  static needsApp = false;
-  static args = [
+export class MakePackageCommand extends GeneratorCommand {
+  static override commandName = "make:package";
+  static override description = "Scaffold a conformant @zerotal/<name> package";
+  static override args = [
     { name: "name", required: true },
     { name: "baseDir", required: false, default: "./packages" },
   ];
-  static flags = [];
+  // Normalised to a package token below (`@zerotal/Billing` is `billing`), so the name is checked
+  // there rather than as a class name.
+  static override nameArgument: string | undefined = undefined;
 
-  async run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const rawName = this.args["name"]!;
-    const baseDir = (this.args["baseDir"] as string | undefined) || "./packages";
+    const baseDir = ((this.args["baseDir"] as string | undefined) || "./packages")
+      .replace(/\\/g, "/")
+      .replace(/^\.\//, "")
+      .replace(/\/+$/, "");
     const { token } = packageNames(rawName);
-    if (!token) {
-      this.error(`Invalid package name: "${rawName}"`);
-      return;
-    }
+    if (!token) return this.refuse(`Invalid package name: "${rawName}"`);
     const packageDir = `${baseDir}/${token}`;
-    if (await Bun.file(`${packageDir}/package.json`).exists()) {
-      this.error(`Package already exists: ${packageDir}`);
-      return;
+    if (!this.force && (await Bun.file(`${packageDir}/package.json`).exists())) {
+      return this.refuse(`Package already exists: ${packageDir} (pass --force to overwrite it)`);
     }
     const files = scaffoldPackage(rawName);
+    // Every file is checked before any is written, so a refusal leaves no half-made package.
+    for (const relativePath of files.keys()) {
+      if (!(await this.canWrite(`${packageDir}/${relativePath}`))) return;
+    }
+    this.section(`${this.dryRun ? "Would create" : "Created"} @zerotal/${token}`);
     for (const [relativePath, content] of files)
-      await Bun.write(`${packageDir}/${relativePath}`, content);
-    this.section(`Created @zerotal/${token}`);
-    for (const relativePath of files.keys()) this.info(`  ${packageDir}/${relativePath}`);
-    this.newLine();
-    this.line(`Next: add it to your app's providers, then run 'bun zerotal lint:packages'.`);
+      await this.writeFile(`${packageDir}/${relativePath}`, content, { format: false });
+    this.next(
+      `Register its provider in your app's bootstrap/providers.ts.`,
+      `Check it against the package conventions: bun zt lint:packages`,
+    );
   }
 }

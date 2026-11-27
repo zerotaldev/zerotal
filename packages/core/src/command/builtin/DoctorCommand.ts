@@ -13,7 +13,30 @@ import type { Application } from "../../application/Application.ts";
 import { runDoctor } from "../../doctor/AppDoctor.ts";
 import type { DoctorReportEntry } from "../../doctor/AppDoctor.ts";
 import { probeTransport } from "../../doctor/TransportProbe.ts";
+import type { TransportProbeResult } from "../../doctor/TransportProbe.ts";
 import { probeHeaders } from "../../doctor/HeaderProbe.ts";
+import type { HeaderProbeResult } from "../../doctor/HeaderProbe.ts";
+
+/**
+ * What `zt doctor --json` prints. `ok` is false exactly when the command exits 1: a check failed,
+ * a WebSocket path did not answer through the proxy, or a security header arrived twice with
+ * different values.
+ */
+export interface DoctorJson {
+  ok: boolean;
+  checks: {
+    id: string;
+    label: string;
+    status: "ok" | "warn" | "fail";
+    message: string;
+    fix?: string;
+  }[];
+  /** With `--url`: each WebSocket path, handshaken through the public URL. Otherwise `null`. */
+  transport: TransportProbeResult[] | null;
+  /** With `--url`: each security header the response carried more than once. Otherwise `null`. */
+  headers: HeaderProbeResult[] | null;
+  summary: { checks: number; warnings: number; failures: number };
+}
 
 export class DoctorCommand extends Command {
   static override commandName = "doctor";
@@ -27,6 +50,12 @@ export class DoctorCommand extends Command {
         "Also read the deployed app at this public URL: handshake its WebSocket transport " +
         "as a browser would, and report security headers the response carries twice",
     },
+    {
+      name: "json",
+      type: "boolean" as const,
+      description: "Print the findings as one JSON document, for a script",
+      default: false,
+    },
   ];
 
   async run(): Promise<void> {
@@ -34,6 +63,7 @@ export class DoctorCommand extends Command {
     if (!app) throw new Error("doctor needs a booted application.");
 
     const report = await runDoctor(app);
+    if (this.flags["json"] === true) return this._printJson(app, report);
     this.section("Doctor");
     for (const entry of report) this._print(entry);
 
@@ -156,6 +186,39 @@ export class DoctorCommand extends Command {
       if (finding.fix) this.line(`    fix: ${finding.fix}`);
     }
     return { failures, warnings };
+  }
+
+  /**
+   * `--json`: the same findings as one document, and the same exit code. Sets the code rather
+   * than throwing, so the failure is not a second, unparseable line.
+   */
+  private async _printJson(app: Application, report: DoctorReportEntry[]): Promise<void> {
+    const url = this.flags["url"] as string | undefined;
+    const paths = url ? app.webSocketPaths().filter((path) => path !== "*") : [];
+    const transport = url ? (paths.length > 0 ? await probeTransport(url, paths) : []) : null;
+    const headers = url ? await probeHeaders(url) : null;
+    const warnings =
+      report.filter((entry) => entry.result.status === "warn").length +
+      (headers ?? []).filter((finding) => !finding.conflicting).length;
+    const failures =
+      report.filter((entry) => entry.result.status === "fail").length +
+      (transport ?? []).filter((result) => !result.ok).length +
+      (headers ?? []).filter((finding) => finding.conflicting).length;
+    const document: DoctorJson = {
+      ok: failures === 0,
+      checks: report.map(({ check, result }) => ({
+        id: check.id,
+        label: check.label,
+        status: result.status,
+        message: result.message,
+        ...(result.fix !== undefined ? { fix: result.fix } : {}),
+      })),
+      transport,
+      headers,
+      summary: { checks: report.length, warnings, failures },
+    };
+    this.json(document);
+    if (failures > 0) process.exitCode = 1;
   }
 
   private _print({ check, result }: DoctorReportEntry): void {

@@ -41,6 +41,8 @@ export class TestCommand extends Command {
   static commandName = "test";
   static description = "Run the test suite in test environment";
   static needsApp = false;
+  // It refuses an unknown option itself, with the `--` hint that hands it on to `bun test`.
+  static override allowUnknownFlags = true;
 
   /**
    * Default per-test and per-hook timeout, in milliseconds.

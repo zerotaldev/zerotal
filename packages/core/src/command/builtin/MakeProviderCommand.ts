@@ -2,17 +2,22 @@
  * The `make:provider` command, which scaffolds a service provider and (unless
  * skipped) wires it into `bootstrap/providers.ts`.
  */
-import { Command } from "../Command.ts";
-import { _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 import { registerProvider } from "../../build/codemod.ts";
 
-function providerStub(name: string): string {
-  return `import { ServiceProvider } from 'zerotal';
+/**
+ * The generated file.
+ *
+ * @internal
+ */
+export function _providerStub(name: string, core = "zerotal"): string {
+  return `import { ServiceProvider } from "${core}";
 
 export class ${name} extends ServiceProvider {
   override onRegister(): void {
     // Bind singletons into the container here.
-    // this.app.container.singleton('my-service', () => new MyService());
+    // this.app.container.singleton("my-service", () => new MyService());
   }
 
   override async onBooting(): Promise<void> {
@@ -34,12 +39,17 @@ export class ${name} extends ServiceProvider {
  *
  * @category Scaffolding (make:*)
  */
-export class MakeProviderCommand extends Command {
-  static commandName = "make:provider";
-  static description = "Create a new service provider class";
-  static needsApp = false;
-  static args = [{ name: "name", required: true }];
-  static flags = [
+export class MakeProviderCommand extends GeneratorCommand {
+  static override commandName = "make:provider";
+  static override description = "Create a new service provider class";
+  static override args = [
+    {
+      name: "name",
+      required: true,
+      description: "Provider name (e.g. Payment or PaymentProvider)",
+    },
+  ];
+  static override flags = [
     {
       name: "no-register",
       type: "boolean" as const,
@@ -48,29 +58,30 @@ export class MakeProviderCommand extends Command {
     },
   ];
 
-  async run(): Promise<void> {
+  protected override async generate(): Promise<void> {
     const name = this.args["name"]!;
     const className = name.endsWith("Provider") ? name : `${name}Provider`;
     const path = `app/providers/${className}.ts`;
-
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
+    if (!(await this.writeFile(path, _providerStub(className, _frameworkImport("@zerotal/core")))))
       return;
-    }
-
-    await _writeAppSource(path, providerStub(className));
-    this.info(`Created: ${path}`);
 
     // Codemod: wire the new provider into bootstrap/providers.ts.
     if (this.flags["no-register"] !== true) {
-      const result = await registerProvider({
-        className,
-        importPath: `../app/providers/${className}.ts`,
-      });
-      if (result === "added") this.info("Registered in bootstrap/providers.ts");
-      if (result === "exists") this.info("Already registered in bootstrap/providers.ts");
-      if (result === "missing")
-        this.warn("bootstrap/providers.ts not found — add the provider manually.");
+      if (this.dryRun) {
+        this.info(`Would register ${className} in bootstrap/providers.ts`);
+      } else {
+        const result = await registerProvider({
+          className,
+          importPath: `../app/providers/${className}.ts`,
+        });
+        if (result === "added") this.info("Registered in bootstrap/providers.ts");
+        if (result === "exists") this.info("Already registered in bootstrap/providers.ts");
+        if (result === "missing")
+          this.warn("bootstrap/providers.ts not found — add the provider manually.");
+      }
     }
+    this.next(
+      `Bind what it provides in onRegister(), and resolve it from the container where it is used.`,
+    );
   }
 }

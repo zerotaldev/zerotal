@@ -66,6 +66,22 @@ export abstract class Command {
   static needsApp: boolean;
   static args: ArgDef[] = [];
   static flags: FlagDef[] = [];
+  /**
+   * Flags a base class gives every command that extends it, on top of the subclass's own
+   * {@link Command.flags}. A flag the subclass declares under the same name wins.
+   * `GeneratorCommand` uses it for `--dry-run` and `--force`.
+   */
+  static sharedFlags: FlagDef[] = [];
+  /**
+   * Whether this command takes options it does not declare.
+   *
+   * Off by default: the runner refuses an option a command does not declare, naming the nearest
+   * one it does, because an option that is dropped without a word runs the command without what
+   * it asked for (`route:list --json` printed the table; `make:controller X --dry-run` wrote the
+   * file). A command that hands options on to another tool turns this on and reads them from
+   * {@link Command.unknownFlags}.
+   */
+  static allowUnknownFlags = false;
 
   /** Output destination. Replaced with BufferWriter by Artisan.call(). */
   _writer: OutputWriter = new TerminalWriter();
@@ -80,9 +96,9 @@ export abstract class Command {
   rest: string[] = [];
   /**
    * Options the caller typed that this command does not declare in {@link Command.flags}, as
-   * `--name` or `-n` — set by CommandRunner before run(). The parser ignores them, which is the
-   * right default for most commands and the wrong one for a command that wraps another: a
-   * `--coverge` that is dropped without a word runs the wrong thing and reports success.
+   * `--name` or `-n` — set by CommandRunner before run(). Only a command that sets
+   * {@link Command.allowUnknownFlags} ever sees any: for every other command the runner refuses
+   * them before `run()`.
    */
   unknownFlags: string[] = [];
   /** Parsed flags — set by CommandRunner before run(). */
@@ -109,6 +125,13 @@ export abstract class Command {
   }
   write(msg: string): void {
     this._writer.write(msg);
+  }
+  /**
+   * Print `value` as one JSON document, for a command's `--json` mode. Nothing else a `--json`
+   * run prints should reach stdout: the runner sends the boot log to stderr for it.
+   */
+  json(value: unknown): void {
+    this._writer.write(`${JSON.stringify(value, null, 2)}\n`);
   }
   newLine(): void {
     this._writer.writeLine("");

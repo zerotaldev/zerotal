@@ -14,6 +14,8 @@ class RecordsFlagsCommand extends Command {
   static commandName = "records:flags";
   static description = "Records what it was given";
   static needsApp = false;
+  // Only a command that says it takes free options is handed them; every other is refused.
+  static override allowUnknownFlags = true;
   static flags = [{ name: "loud", short: "l", type: "boolean" as const, default: false }];
   static seen: string[] = [];
 

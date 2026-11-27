@@ -1,8 +1,8 @@
 /**
  * The `make:request` command, which scaffolds a FormRequest validation class.
  */
-import { Command } from "../Command.ts";
-import { _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 
 /**
  * `bun zt make:request <name>` — scaffolds a new FormRequest validation class
@@ -10,42 +10,45 @@ import { _writeAppSource } from "../appSource.ts";
  *
  * @category Scaffolding (make:*)
  */
-export class MakeRequestCommand extends Command {
-  static commandName = "make:request";
-  static description = "Create a new FormRequest class";
-  static needsApp = false;
-  static override args = [{ name: "name", required: true, default: "" }];
+export class MakeRequestCommand extends GeneratorCommand {
+  static override commandName = "make:request";
+  static override description = "Create a new FormRequest class";
+  static override args = [
+    { name: "name", required: true, description: "Request class name (e.g. StorePostRequest)" },
+  ];
 
-  async run(): Promise<void> {
-    const name = this.args["name"];
-    if (!name) {
-      this.error("Name is required.");
-      return;
-    }
+  protected override async generate(): Promise<void> {
+    const name = this.args["name"]!;
     const path = `app/requests/${name}.ts`;
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
+    if (!(await this.writeFile(path, _requestStub(name, _frameworkImport("@zerotal/validator")))))
       return;
-    }
-    await _writeAppSource(path, stub(name));
-    this.info(`Created: ${path}`);
+    this.next(
+      `Validate with it in a controller or route: const data = await ${name}.validate();`,
+      `Fill in rules(); each field arrives typed by the rule that checks it.`,
+    );
   }
 }
 
-// Two things this stub deliberately does not do.
-//
-// It imports from `zerotal/validator`, not `@zerotal/validator`: a scaffolded app
-// depends on the umbrella, so the scoped name resolves to nothing and the file it
-// just generated does not compile.
-//
-// And it leaves `rules()` unannotated. `validate()` reads the narrow return type
-// through `ReturnType<T['rules']>`, so writing `Record<string, FieldRule>` there
-// widens it back and every validated field arrives as `unknown` — silently, with
-// the first sign a cast somewhere downstream. `FormRequest`'s own docblock says
-// so; the generator used to emit exactly what it warns against.
-function stub(name: string): string {
-  return `import { FormRequest } from 'zerotal/validator';
-import type { RuleBuilder } from 'zerotal/validator';
+/**
+ * The generated file.
+ *
+ * Two things this stub deliberately does not do.
+ *
+ * It imports through the app's own specifier (`zerotal/validator` in a starter), not
+ * `@zerotal/validator`: a scaffolded app depends on the umbrella, so the scoped name resolves to
+ * nothing and the file it just generated does not compile.
+ *
+ * And it leaves `rules()` unannotated. `validate()` reads the narrow return type through
+ * `ReturnType<T['rules']>`, so writing `Record<string, FieldRule>` there widens it back and every
+ * validated field arrives as `unknown` — silently, with the first sign a cast somewhere
+ * downstream. `FormRequest`'s own docblock says so; the generator used to emit exactly what it
+ * warns against.
+ *
+ * @internal
+ */
+export function _requestStub(name: string, validator = "zerotal/validator"): string {
+  return `import { FormRequest } from "${validator}";
+import type { RuleBuilder } from "${validator}";
 
 export class ${name} extends FormRequest {
   rules(r: RuleBuilder) {

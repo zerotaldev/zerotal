@@ -35,6 +35,8 @@ describe("MakeScheduleCommand", () => {
   afterEach(() => {
     process.chdir(previous);
     rmSync(dir, { recursive: true, force: true });
+    // A refusal fails the command through the exit code, which would fail this test run too.
+    process.exitCode = 0;
   });
 
   it("declares static properties", () => {
@@ -68,6 +70,7 @@ describe("MakeScheduleCommand", () => {
     const { errors } = await generate("Existing");
 
     expect(errors).toContain("File already exists");
+    expect(process.exitCode).toBe(1);
     expect(await Bun.file(join(dir, "app/schedules/Existing.ts")).text()).toBe("// mine\n");
   });
 
@@ -75,6 +78,7 @@ describe("MakeScheduleCommand", () => {
     const { errors } = await generate("send-reminders");
 
     expect(errors).toContain("not a valid class name");
+    expect(process.exitCode).toBe(1);
     expect(await Bun.file(join(dir, "app/schedules/send-reminders.ts")).exists()).toBe(false);
   });
 

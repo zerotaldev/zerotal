@@ -169,6 +169,49 @@ describe("DevCommand — --list", () => {
 
     expect(writer.flush()).toContain("Nothing to run");
   });
+
+  // `--list --json` used to print the table: `--json` was not declared, so the parser dropped it.
+  it("--json prints one JSON document and nothing else", async () => {
+    const { instance, writer } = command({ list: true, json: true });
+    withApp(instance);
+
+    const processes = await collect(instance);
+    (instance as unknown as { _listDevProcesses(p: ResolvedDevProcess[]): void })._listDevProcesses(
+      processes,
+    );
+    const output = writer.flush();
+
+    expect(output).not.toContain("\x1b[");
+    const document = JSON.parse(output) as {
+      processes: { name: string; argv: string[] | null; registeredBy: string }[];
+    };
+    expect(document.processes.map((entry) => entry.name)).toEqual(["server", "queue", "types"]);
+    expect(document.processes[0]).toMatchObject({
+      argv: null,
+      inProcess: false,
+      registeredBy: "@zerotal/core",
+      restart: "on-failure",
+      after: "none",
+      restartsWithServer: false,
+    });
+    expect(document.processes[2]).toMatchObject({
+      argv: ["tsc", "--watch"],
+      registeredBy: "TypesProvider",
+    });
+  });
+
+  it("refuses --json without --list, rather than starting the deck", async () => {
+    const { instance, writer } = command({ json: true });
+    withApp(instance);
+    const before = process.exitCode;
+    try {
+      await instance.run();
+      expect(writer.flush()).toContain("--json goes with --list");
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = before ?? 0;
+    }
+  });
 });
 
 describe("zt dev and the port", () => {

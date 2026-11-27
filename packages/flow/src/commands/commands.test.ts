@@ -26,6 +26,8 @@ async function freshDir(): Promise<string> {
 }
 afterEach(async () => {
   while (tmpDirs.length) await rm(tmpDirs.pop()!, { recursive: true, force: true });
+  // A refusal fails the command through the exit code, which would fail this test run too.
+  process.exitCode = 0;
 });
 
 function mk(
@@ -67,6 +69,8 @@ describe("make:flow — page", () => {
     const { c, col } = mk({ name: "Dashboard" }, { dir });
     await c.run();
     expect(col.out).toContain("File already exists");
+    // A refusal fails the command, so a script can tell it from a file that was written.
+    expect(process.exitCode).toBe(1);
   });
 });
 

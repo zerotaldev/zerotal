@@ -27,9 +27,30 @@ const METHOD_COLOR: Record<string, string> = {
  *   --path   / -p   filter by path prefix substring
  *   --name          only show named routes
  *   --verbose / -v  add a middleware column
+ *   --json          print the routes as one JSON document ({@link RouteListJson})
  *
  * @category Diagnostics
  */
+/**
+ * What `zt route:list --json` prints: the routes that match the filters, sorted by path and then
+ * method, and the names given to more than one path (which `route()` refuses).
+ */
+export interface RouteListJson {
+  routes: {
+    method: string;
+    path: string;
+    /** The route's name, or `null` when it has none (or one `route()` refuses). */
+    name: string | null;
+    /** The controller class, or `"file"` for a file route. */
+    controller: string;
+    action: string;
+    /** The route's own middleware classes, by name. */
+    middleware: string[];
+  }[];
+  /** Each name given to more than one path, with those paths. */
+  ambiguousNames: Record<string, string[]>;
+}
+
 export class RouteListCommand extends Command {
   static commandName = "route:list";
   static description = "List all registered routes";
@@ -62,6 +83,12 @@ export class RouteListCommand extends Command {
       description: "Show per-route middleware classes",
       default: false,
     },
+    {
+      name: "json",
+      type: "boolean" as const,
+      description: "Print the routes as one JSON document, for a script",
+      default: false,
+    },
   ];
 
   async run(): Promise<void> {
@@ -92,16 +119,34 @@ export class RouteListCommand extends Command {
       rows = rows.filter((route) => nameOf(route) !== "");
     }
 
-    if (rows.length === 0) {
-      this.warn("No routes match the given filters.");
-      return;
-    }
-
     // Sort: path asc, then method asc.
     rows.sort((first, second) => {
       const pathComparison = first.path.localeCompare(second.path);
       return pathComparison !== 0 ? pathComparison : first.method.localeCompare(second.method);
     });
+
+    if (this.flags["json"] === true) {
+      const document: RouteListJson = {
+        routes: rows.map((route) => ({
+          method: route.method,
+          path: route.path,
+          name: nameOf(route) || null,
+          controller: _controllerName(route.controller.name),
+          action: route.action,
+          middleware: route.middleware.map((middleware) => middleware.name).filter(Boolean),
+        })),
+        ambiguousNames: Object.fromEntries(
+          [...Router.ambiguousRouteNames].map(([name, paths]) => [name, [...paths]]),
+        ),
+      };
+      this.json(document);
+      return;
+    }
+
+    if (rows.length === 0) {
+      this.warn("No routes match the given filters.");
+      return;
+    }
 
     // Derive display strings
     type Row = {

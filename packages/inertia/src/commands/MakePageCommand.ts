@@ -1,5 +1,5 @@
-import { Command, config } from "@zerotal/core";
-import { _writeAppSource } from "@zerotal/core/commands";
+import { config } from "@zerotal/core";
+import { GeneratorCommand } from "@zerotal/core/commands";
 import { existsSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { generatePageRegistry } from "../PageRegistry.ts";
@@ -31,10 +31,12 @@ import { DEFAULT_PAGES_DIR } from "../config.ts";
  * // bun zt make:page Settings --framework vue
  * ```
  */
-export class MakePageCommand extends Command {
+export class MakePageCommand extends GeneratorCommand {
   static override commandName = "make:page";
   static override description = "Create a new Inertia page component";
   static override needsApp = false;
+  // As Inertia.render() names it: `tasks/index`, `auth/forgot-password`.
+  static override nameKind = "path" as const;
 
   static override args = [
     {
@@ -74,7 +76,13 @@ export class MakePageCommand extends Command {
   ];
 
   override async run(): Promise<void> {
-    const name = this.args["name"]!.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+    // A Windows path or a stray slash is still the same page; tidied before the base checks it.
+    this.args["name"] = (this.args["name"] ?? "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+    await super.run();
+  }
+
+  protected override async generate(): Promise<void> {
+    const name = this.args["name"]!;
     const pagesDir = config
       .safe("inertia.pagesDir", DEFAULT_PAGES_DIR)
       .replace(/\\/g, "/")
@@ -91,10 +99,7 @@ export class MakePageCommand extends Command {
 
     const path = `${pagesDir}/${name}.${ext}`;
 
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
-      return;
-    }
+    if (!(await this.canWrite(path))) return;
 
     const asked = ((this.flags["layout"] as string | undefined) ?? "").trim();
     const layoutName = asked === "" ? "AppLayout" : asked;
@@ -112,8 +117,7 @@ export class MakePageCommand extends Command {
         : undefined,
     });
 
-    await _writeAppSource(path, stub);
-    this.info(`Created: ${path}`);
+    if (!(await this.writeFile(path, stub))) return;
     if (layoutFile) this.dim(`  Layout: ${layoutName}, from ${layoutFile}`);
 
     const askedPath = ((this.flags["path"] as string | undefined) ?? "").trim();
@@ -124,6 +128,10 @@ export class MakePageCommand extends Command {
       this.dim(`  Or run this again with --route to write that route too.`);
     }
 
+    if (this.dryRun) {
+      this.dim("  Would regenerate the page registry.");
+      return;
+    }
     this.dim("  Regenerating page registry...");
     await generatePageRegistry(process.cwd());
     this.info("Page registry updated.");
@@ -133,12 +141,11 @@ export class MakePageCommand extends Command {
   private async _writeRoute(page: string, askedPath: string): Promise<void> {
     // Where the starters' `fileBasedRouting()` points, and where AGENTS.md says routes live.
     const target = _routeFile("app/routes", page, askedPath, (dir) => existsSync(dir));
-    if (await Bun.file(target.file).exists()) {
+    if (!this.force && (await Bun.file(target.file).exists())) {
       this.warn(`  A route already serves ${target.url}: ${target.file}. It was left alone.`);
       return;
     }
-    await _writeAppSource(target.file, _routeStub(page, target.url));
-    this.info(`Created: ${target.file}`);
+    if (!(await this.writeFile(target.file, _routeStub(page, target.url)))) return;
     this.dim(
       `  GET ${target.url} renders the page${target.group ? `, behind ${target.group}` : ""}.`,
     );

@@ -2,8 +2,8 @@
  * The `make:event` command and the event source stubs it writes (plain and
  * broadcastable).
  */
-import { Command } from "../Command.ts";
-import { _writeAppSource } from "../appSource.ts";
+import { GeneratorCommand } from "../GeneratorCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 
 /**
  * `bun zt make:event <name>` — scaffolds a new event class under `app/events/`
@@ -11,11 +11,12 @@ import { _writeAppSource } from "../appSource.ts";
  *
  * @category Scaffolding (make:*)
  */
-export class MakeEventCommand extends Command {
-  static commandName = "make:event";
-  static description = "Create a new event class";
-  static needsApp = false;
-  static override args = [{ name: "name", required: true, default: "" }];
+export class MakeEventCommand extends GeneratorCommand {
+  static override commandName = "make:event";
+  static override description = "Create a new event class";
+  static override args = [
+    { name: "name", required: true, description: "Event class name (e.g. UserRegistered)" },
+  ];
   static override flags = [
     {
       name: "broadcast",
@@ -26,25 +27,37 @@ export class MakeEventCommand extends Command {
     },
   ];
 
-  async run(): Promise<void> {
-    const name = this.args["name"];
-    if (!name) {
-      this.error("Name is required.");
-      return;
-    }
+  protected override async generate(): Promise<void> {
+    const name = this.args["name"]!;
     const path = `app/events/${name}.ts`;
-    if (await Bun.file(path).exists()) {
-      this.error(`File already exists: ${path}`);
+    const broadcast = this.flags["broadcast"] === true;
+    if (!(await this.writeFile(path, broadcast ? broadcastEventStub(name) : _eventStub(name))))
       return;
-    }
-    const broadcast = this.flags["broadcast"] as boolean;
-    await _writeAppSource(path, broadcast ? broadcastEventStub(name) : plainEventStub(name));
-    this.info(`Created: ${path}`);
+    this.next(
+      broadcast
+        ? `Dispatch it: ${name}.dispatch();  (broadcasts it, and runs its listeners)`
+        : `Emit it: await Events.emit(new ${name}());  (Events from "${_frameworkImport("@zerotal/core")}")`,
+      `Handle it: bun zt make:listener <Name>, with \`static listens = ${name}\` in it.`,
+    );
   }
 }
 
-function plainEventStub(name: string): string {
-  return `/**\n * ${name} event.\n */\nexport class ${name} {\n  constructor(\n    // public readonly userId: number,\n  ) {}\n}\n`;
+/**
+ * The generated file for a plain event.
+ *
+ * @internal
+ */
+export function _eventStub(name: string): string {
+  return `/**
+ * ${name} event.
+ */
+export class ${name} {
+  constructor() {
+    // Whatever a listener needs to know, as constructor parameters, e.g.
+    //   constructor(public readonly userId: number) {}
+  }
+}
+`;
 }
 
 /** Source for a broadcastable event that extends `BroadcastingEvent`. */

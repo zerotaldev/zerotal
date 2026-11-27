@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed — **BREAKING**
+
+- **BREAKING: `make:page` exits 1 when it refuses, and refuses a name that is not a page path.**
+  An existing page was refused with exit code 0, and `make:page ../x` wrote outside the pages
+  directory. A name is file names separated by `/` (`tasks/index`). A script that runs it again
+  on purpose must pass `--force`.
+
 ### Added
 
 - **`make:resource <Name> --model <Model>` writes a whole screen over a model.** The routes
@@ -28,6 +35,10 @@ follows the Zerotal monorepo's unified versioning.
   arrives as the loaded record and is authorized against the model's policy when it has one. It
   refuses `.` and `..`, a parameter whose name is not an identifier, a catch-all, a `--page`
   that is not a page name, and a URL another route file already serves, in any group.
+- **`make:page --dry-run` and `--force`.** `--dry-run` prints the page (and, with `--route`, the
+  route) it would write, and neither writes them nor regenerates the page registry; `--force`
+  overwrites an existing page, and its route with `--route`. They come from the generator base
+  the core generators share.
 
 ### Changed
 

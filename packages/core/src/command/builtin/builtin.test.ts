@@ -22,7 +22,8 @@ import { MakeNotificationCommand, notificationStub } from "./MakeNotificationCom
 import { MakeObserverCommand } from "./MakeObserverCommand.ts";
 import { MakePolicyCommand, policyStub } from "./MakePolicyCommand.ts";
 import { MakeProviderCommand } from "./MakeProviderCommand.ts";
-import { MakeRequestCommand } from "./MakeRequestCommand.ts";
+import { MakeRequestCommand, _requestStub } from "./MakeRequestCommand.ts";
+import { _frameworkImport } from "../appSource.ts";
 import { MakeResourceCommand, _stub as apiResourceStub } from "./MakeResourceCommand.ts";
 import { RouteListCommand } from "./RouteListCommand.ts";
 import { StatusCommand } from "./StatusCommand.ts";
@@ -375,6 +376,11 @@ beforeEach(() => {
 afterEach(() => {
   (Bun as any).file = origFile;
   (Bun as any).write = origWrite;
+});
+
+// A refusing generator sets the exit code, which would otherwise fail this whole test run.
+afterEach(() => {
+  process.exitCode = 0;
 });
 
 function mockFile(exists: boolean, text?: string): void {
@@ -1052,9 +1058,10 @@ describe("MakeRequestCommand", () => {
 
     // A scaffolded app depends on the `zerotal` umbrella and not on the scoped
     // package, so the scoped name resolves to nothing and the generated file
-    // does not compile.
-    expect(out).toContain("zerotal/validator");
-    expect(out).not.toContain("@zerotal/validator");
+    // does not compile. The import follows the app's own manifest.
+    expect(out).toContain(`from "${_frameworkImport("@zerotal/validator")}"`);
+    expect(_requestStub("StorePostRequest")).toContain('from "zerotal/validator"');
+    expect(_requestStub("StorePostRequest")).not.toContain("@zerotal/validator");
 
     // `validate()` reads the narrow return type through `ReturnType<T['rules']>`.
     // Annotating the override widens it back, and every validated field arrives
@@ -1127,15 +1134,15 @@ describe("MakeResourceCommand", () => {
   it("imports the model it is typed against, and nothing it does not use", () => {
     const stub = apiResourceStub("PostResource");
 
-    expect(stub).toContain("import type { Post } from '../models/Post';");
+    expect(stub).toContain('import type { Post } from "../models/Post";');
     expect(stub).toContain("extends Resource<Post>");
-    expect(stub).toContain("import { Resource } from 'zerotal/http';");
+    expect(stub).toContain('import { Resource } from "zerotal/http";');
     expect(stub).not.toContain("PaginatedData");
   });
 
   it("writes the collection route plural and without a stray dash", () => {
-    expect(apiResourceStub("PostResource")).toContain("'/api/posts'");
-    expect(apiResourceStub("BlogPostResource")).toContain("'/api/blog-posts'");
+    expect(apiResourceStub("PostResource")).toContain('"/api/posts"');
+    expect(apiResourceStub("BlogPostResource")).toContain('"/api/blog-posts"');
     expect(apiResourceStub("PostResource")).not.toContain("/-");
   });
 
@@ -1265,7 +1272,7 @@ describe("RouteListCommand", () => {
     expect(RouteListCommand.description).toBe("List all registered routes");
     expect(RouteListCommand.needsApp).toBe(true);
     expect(RouteListCommand.args).toHaveLength(0);
-    expect(RouteListCommand.flags).toHaveLength(4);
+    expect(RouteListCommand.flags).toHaveLength(5);
   });
 
   it("has method, path, name, verbose flags", () => {

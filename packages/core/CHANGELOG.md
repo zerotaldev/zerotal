@@ -60,6 +60,27 @@ follows the Zerotal monorepo's unified versioning.
   glob, relative to the app root.
 - **`Application.start(port, hostname)`** takes the interface to bind; omitted, every interface.
 
+### Changed — **BREAKING**
+
+- **BREAKING: an option a command does not declare is refused, and the command does not run.**
+  The parser dropped it without a word, so `zt route:list --json` printed the table,
+  `zt make:controller PostController --dry-run` wrote the file, and `zt worker --once` (an
+  option only `queue:work` has) started a worker that never stopped, each exiting 0. The
+  refusal exits 1, names the declared option nearest the one typed (`--jsn` → `--json`) and
+  lists the command's options. Everything after a bare `--` is still an operand. A script that
+  passes an option a command never had must drop it; a command of your own that hands options
+  on to another tool sets `static allowUnknownFlags = true` and reads them from
+  `this.unknownFlags`, as `zt test` does.
+- **BREAKING: a `make:*` generator that refuses exits 1.** "File already exists", "Name is
+  required", an invalid name and "Package already exists" all exited 0, so
+  `zt make:controller X || exit 1` went on as though the file on disk were the one it asked
+  for. A script that runs a generator again on purpose and reads the exit code must pass
+  `--force` (overwrite) or check for the file first.
+- **BREAKING: a generator's name must be a class name, or a file name for `make:test`.**
+  `zt make:controller ../x` wrote `x.ts` beside `app/`; a name with a space, a dot or a leading
+  digit wrote a class that did not compile. Only `make:schedule` checked. Each is now refused,
+  with exit code 1, before anything is written.
+
 ### Added
 
 - **`make:resource --model <Model>` hands an Inertia app's screen to `@zerotal/inertia`.**
@@ -83,11 +104,39 @@ follows the Zerotal monorepo's unified versioning.
 - **An error thrown in a request prints its stack once.** An app with its own exception handler
   printed it from the handler's `report()` and again from the request log under it. The request
   log now says what failed and leaves the stack to the handler.
+- **The controller, middleware, provider, request, resource and observer stubs pass a starter's
+  `format:check` as written.** They were in single quotes and imported `zerotal` whatever the app
+  declared; they now follow the app's own imports, as the other stubs do. Every core stub is now
+  put through a starter's Prettier config and its `tsc` in the test suite.
+- **`make:listener` writes `static listens`.** A listener is bound by what it names there, and
+  the stub named nothing, so a generated listener never ran.
+- **`make:observer` no longer tells you to register an observer that registers itself.** A
+  `<Model>Observer` in `app/observers/` is attached at boot; the command said to call
+  `Model.observe()` in a provider.
+- **`make:package` refuses before it writes.** It checks every file first, so a refusal leaves
+  no half-made package.
 
 ### Removed
 
 - **The unused `DevReloadServer` module**, and the comments that described a server-sent-events
   reload channel long since replaced by `/__dev/ws`.
+
+- **`--dry-run` and `--force` on every generator.** `--dry-run` prints each file a generator
+  would write, with its contents, and writes nothing (`make:provider` reports the registration it
+  would make; `make:page` the page registry it would regenerate). `--force` overwrites an
+  existing file. Both come from `GeneratorCommand`, the base every built-in generator, `make:flow`
+  and `make:page` now extend, exported from `zerotal/commands` for an app's own generators. A
+  command class can share flags with its subclasses the same way, through `static sharedFlags`.
+- **Each generator says what to do next.** After `Created:`, a `Next:` block says where to
+  register the file (or that nothing needs registering) and how to run or test it: the route to
+  add for a controller, `Model.observe()` for an observer not named after its model,
+  `bun zt test <file>` for a test.
+- **`--json` on `zt route:list`, `zt doctor` and `zt dev --list`.** Each prints one JSON
+  document on stdout, with no colour and no headings; the shapes are documented in Commands and
+  exported as `RouteListJson`, `DoctorJson` and `DevListJson`. `doctor --json` exits 1 exactly
+  when its `ok` is false. For any `--json` run, the boot log and anything else that would have
+  gone to stdout are written to stderr, which also makes `zt version --json` pipeable.
+  `Command.json(value)` prints a document from a command of your own.
 
 ## [1.18.4] — 2026-11-27
 

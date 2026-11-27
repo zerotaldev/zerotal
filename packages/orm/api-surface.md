@@ -1143,11 +1143,13 @@ type WithLoaded = Omit<M, R> & { [K in R]: M[K] extends ManyToMany<infer T> ? Ma
 
 class DbSeedCommand = {
   new (): DbSeedCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1159,6 +1161,7 @@ class DbSeedCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1173,11 +1176,13 @@ class DbSeedCommand = {
 
 class MakeFactoryCommand = {
   new (): MakeFactoryCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1189,6 +1194,7 @@ class MakeFactoryCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1203,11 +1209,13 @@ class MakeFactoryCommand = {
 
 class MakeMigrationCommand = {
   new (): MakeMigrationCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1219,6 +1227,7 @@ class MakeMigrationCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1233,11 +1242,13 @@ class MakeMigrationCommand = {
 
 class MakeModelCommand = {
   new (): MakeModelCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    short: string;    type: 'boolean';    description: string;    default: boolean;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1249,6 +1260,7 @@ class MakeModelCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1263,11 +1275,13 @@ class MakeModelCommand = {
 
 class MakeSeederCommand = {
   new (): MakeSeederCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1279,6 +1293,7 @@ class MakeSeederCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1294,12 +1309,14 @@ class MakeSeederCommand = {
 class MigrateCommand = {
   new (): MigrateCommand
   static aliases: string[]
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
   static readonly BACKUP_DIR: string
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1311,6 +1328,7 @@ class MigrateCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1325,11 +1343,13 @@ class MigrateCommand = {
 
 class MigrateFreshCommand = {
   new (): MigrateFreshCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1341,6 +1361,7 @@ class MigrateFreshCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1355,11 +1376,13 @@ class MigrateFreshCommand = {
 
 class MigrateGenerateCommand = {
   new (): MigrateGenerateCommand
+  static allowUnknownFlags: boolean
   static args: {    name: string;    required: boolean;    description: string;}[]
   static commandName: string
   static description: string
   static flags: {    name: string;    type: 'string';    description: string;    default: string;}[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1371,6 +1394,7 @@ class MigrateGenerateCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1385,11 +1409,13 @@ class MigrateGenerateCommand = {
 
 class MigrateRefreshCommand = {
   new (): MigrateRefreshCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1401,6 +1427,7 @@ class MigrateRefreshCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1415,11 +1442,13 @@ class MigrateRefreshCommand = {
 
 class MigrateRollbackCommand = {
   new (): MigrateRollbackCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1431,6 +1460,7 @@ class MigrateRollbackCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]
@@ -1445,11 +1475,13 @@ class MigrateRollbackCommand = {
 
 class MigrateStatusCommand = {
   new (): MigrateStatusCommand
+  static allowUnknownFlags: boolean
   static args: ArgDef[]
   static commandName: string
   static description: string
   static flags: FlagDef[]
   static needsApp: boolean
+  static sharedFlags: FlagDef[]
   _readLine: () => Promise<string>
   _writer: OutputWriter
   app: unknown
@@ -1461,6 +1493,7 @@ class MigrateStatusCommand = {
   error: (msg: string) => void
   flags: Record<string, string | number | boolean>
   info: (msg: string) => void
+  json: (value: unknown) => void
   line: (msg: string) => void
   newLine: () => void
   rest: string[]

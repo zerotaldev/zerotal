@@ -233,8 +233,12 @@ describe("a @locked({ monotonic: true }) page over the wire", () => {
       return frames;
     };
 
-    await writeAndRefuse();
+    const first = await writeAndRefuse();
     expect(ran).toEqual(["updating note"]);
+    // The refusal comes with the page's snapshot, so the tab holds the newest one and its next
+    // action is accepted, rather than reloading.
+    expect(errorOf(first)).toMatchObject({ code: "method_not_allowed" });
+    expect(patchOf(first)).toBeDefined();
     const again = await writeAndRefuse();
     expect(ran).toEqual(["updating note"]);
     expect(errorOf(again)).toMatchObject({ code: "snapshot_replayed" });

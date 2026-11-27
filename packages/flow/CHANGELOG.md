@@ -27,8 +27,9 @@ change.
   number, and a frame is accepted only when its number is the next one after the last accepted,
   in one atomic step on the server: of two frames sent at once with the same snapshot, one runs.
   Any other is refused with a reload instruction (`code: "snapshot_replayed"`). A call refused
-  before its action runs gives its number back; once the action body has started it is kept, so
-  a snapshot never runs its action twice, and a `@task`'s streamed snapshots cannot be acted on.
+  before any of the page's code ran gives its number back; once field writes, a built-in or the
+  action body have run it is kept (a refusal then sends the page's snapshot back), so a snapshot
+  never runs the page's code twice, and a `@task`'s streamed snapshots cannot be acted on.
   It guards one page instance: a reload starts a new count. The counters are kept on the
   server, not in the session, in this process by default; `setMonotonicStore()` installs a store
   every process shares, and the `MonotonicStore` type says what it must do. Plain `@locked` is

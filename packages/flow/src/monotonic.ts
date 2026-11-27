@@ -11,8 +11,9 @@
 // only when its sequence is the next one after the last accepted for that component, and
 // accepting it is one compare-and-set in the store, so of two frames sent at once carrying the
 // same snapshot, one runs and the other is refused. The snapshot the action sends back carries
-// the sequence after it. A call refused before its action body starts gives its claim back, so
-// the snapshot the browser still holds stays good; once the body has started, the claim is kept.
+// the sequence after it. A call refused before any of the page's code ran (no field written,
+// no built-in, no action body) gives its claim back, so the snapshot the browser still holds
+// stays good; otherwise the claim is kept, and a refusal sends the page's snapshot back.
 //
 // The counters are kept in a store on the server, not in the session: a cookie session is held
 // by the browser, which could send an older one back with the older snapshot. The default store

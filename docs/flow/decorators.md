@@ -36,7 +36,7 @@ export class CounterPage extends Component {
 }
 ```
 
-`@expose`, `@url`, `@reactive`, `@modelable`, `@shared` and `@presence` properties are writable from the browser. If you only need the server to push state to the client, use `@locked` instead.
+`@expose`, `@url`, `@modelable`, `@shared` and `@presence` properties are writable from the browser. A `@reactive` prop is not: its value comes from the parent, and a write from the browser is refused. If you only need the server to push state to the client, use `@locked` instead.
 
 ## The @locked decorator
 
@@ -50,7 +50,7 @@ A `value={this.x}` binding on a `@locked` property renders as a read-only displa
 
 ### Values that only move forward
 
-`@locked({ monotonic: true })` refuses a snapshot older than one the component has already acted on. Each snapshot it issues carries a number from a counter kept in the session, one counter per component instance, and a frame is accepted only when its number is higher than the last one accepted. Sending back an earlier copy of the page, or the same one twice, is refused, and the browser is told to reload:
+`@locked({ monotonic: true })` accepts only the component's newest snapshot. Each snapshot it issues carries a sequence number, and a frame is accepted only when its number is the next one after the last accepted for that component instance. Accepting it is one atomic step on the server, so of two frames sent at the same moment with the same snapshot, one runs and the other is refused. Sending back an earlier copy of the page, or the same one twice, is refused (`code: "snapshot_replayed"`), and the browser is told to reload:
 
 ```tsx fragment
 export class RedeemPage extends Component {
@@ -65,7 +65,11 @@ export class RedeemPage extends Component {
 }
 ```
 
-The options are `LockedOptions`; `monotonic` is the only one. The counter lives in the session, so the route needs `SessionMiddleware` (it is in `flow.persistentMiddleware` by default), and a session store the browser cannot rewind either: a server-side driver, not the cookie driver, whose whole session the browser holds. Two tabs on the same page each have their own counter. One option on any field turns it on for the whole component. A session tracks the 32 components used most recently; a page untouched past that reloads on its next action.
+The options are `LockedOptions`; `monotonic` is the only one, and on any field it turns the check on for the whole component. Two tabs on the same page each have their own counter.
+
+- **An action that fails** without sending a new snapshot back (a refused call, a thrown error) gives its number back, so the page the browser holds still works. One that succeeds keeps it, a redirect included, so its snapshot cannot run it twice.
+- **An action whose reply never arrives** (a dropped connection, a timeout) leaves the browser holding a snapshot that was already acted on: its next action reloads the page.
+- **The counters live on the server**, not in the session, which with the cookie driver the browser holds. By default they are kept in the process and cleared on a restart, after which a page open from before reloads on its next action. Where more than one process serves Flow, give them one store with `setMonotonicStore()`: a `MonotonicStore`, an object with an `epoch`, `get(key)` and an atomic `compareAndSet(key, expected, next, ttlMs)`. It is the same idea as [the durable-snapshot store](/docs/flow/performance), and its `compareAndSet` is what stops two frames running at once, so it has to be atomic across every process.
 
 Use `@locked` for anything the server owns: a record the route resolved, results loaded in `onMount()`, computed totals, child props from the parent:
 

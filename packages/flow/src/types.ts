@@ -271,6 +271,8 @@ export interface RedirectFrame {
  * - `invalid_snapshot`: the snapshot's signature did not verify. The browser reloads once.
  * - `stale_snapshot`: the snapshot was issued by an older release. The browser reloads once.
  * - `session_changed`: the snapshot belongs to another session, or expired. Reloads once.
+ * - `snapshot_replayed`: a `@locked({ monotonic: true })` component was sent a snapshot older
+ *   than one it already acted on. Reloads once.
  * - `unknown_component`: the page class is not registered. The browser reloads once.
  * - `method_not_allowed`: the method is not exposed to the browser.
  * - `blocked`: a middleware refused the action without redirecting.
@@ -286,6 +288,7 @@ export type FlowErrorCode =
   | "invalid_snapshot"
   | "stale_snapshot"
   | "session_changed"
+  | "snapshot_replayed"
   | "unknown_component"
   | "method_not_allowed"
   | "blocked"

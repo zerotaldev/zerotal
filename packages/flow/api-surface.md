@@ -291,6 +291,8 @@ function session = {    (value: unknown, context: ClassFieldDecoratorContext): v
 
 function setDurableStore = (store: DurableStore) => void
 
+function setMonotonicStore = (store: MonotonicStore) => void
+
 function setSharedStore = (store: SharedStore) => void
 
 function shared = (channel: SharedChannel) => (value: unknown, context: ClassFieldDecoratorContext) => void
@@ -665,6 +667,12 @@ interface ModalProps = {
   onClose?: unknown
   show?: unknown
   title?: unknown
+}
+
+interface MonotonicStore = {
+  compareAndSet: (key: string, expected: number | undefined, next: number | undefined, ttlMs: number) => Promise<boolean> | boolean
+  get: (key: string) => Promise<number | undefined> | number | undefined
+  readonly epoch: string
 }
 
 interface PagerProps = {

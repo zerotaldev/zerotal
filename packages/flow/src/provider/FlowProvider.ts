@@ -41,7 +41,7 @@ import { Component as FlowComponent } from "../Component.ts";
 import { flowRoute, registerFlowFileRoute, _persistSessionProps } from "../router.ts";
 import type { PageClassWithMeta } from "../registry.ts";
 import { getTaskMethods, getMonotonicProps } from "../decorators.ts";
-import { _assertMonotonic, FlowSnapshotReplayError } from "../monotonic.ts";
+import { _claimMonotonic, FlowSnapshotReplayError, type MonotonicClaim } from "../monotonic.ts";
 import { _actionRefusal } from "../authorize.ts";
 import { ValidationError } from "../validation.ts";
 import { makeSignedRef } from "../uploads/TemporaryUploadedFile.ts";
@@ -844,6 +844,9 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
     await RequestContext.run(ctx, async () => {
       let passed = false;
       let outcome: DispatchOutcome = { failed: false };
+      // A monotonic page's claim on its counter, settled once the frame is answered.
+      let claim: MonotonicClaim | undefined;
+      let claimed: Component | undefined;
 
       const DispatchTerminal = class {
         async handle(c: HttpContext, next: NextFn): Promise<Response | void> {
@@ -857,8 +860,14 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
               frame.snapshot,
               entry.PageClass as unknown as new () => Component,
             );
-            // A @locked({ monotonic: true }) page refuses a snapshot older than one it acted on.
-            _assertMonotonic(frame.snapshot, getMonotonicProps(entry.PageClass.prototype).size > 0);
+            // A @locked({ monotonic: true }) page refuses any snapshot but its newest, and
+            // claims that one, so the same snapshot cannot run twice.
+            claimed = page;
+            claim = await _claimMonotonic(
+              frame.snapshot,
+              getMonotonicProps(entry.PageClass.prototype).size > 0,
+              page,
+            );
           } catch (e) {
             if (e instanceof FlowSnapshotOwnershipError || e instanceof FlowSnapshotReplayError) {
               // Not tampering — the session changed under a page that is still
@@ -904,7 +913,9 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
         // resolving rather than plain construction.
         pipeline.via(deps.container);
         await pipeline.thenReturn();
+        await claim?.settle(claimed, outcome.failed);
       } catch (e) {
+        await claim?.settle(claimed, true).catch(() => {});
         // Thrown outside the action body: a render, `onBoot()`, `onUpdate()`, a middleware.
         // Nothing caught it to repaint the page, so the error frame is all the browser gets.
         _reportFlowError(deps, e, ctx, where);
@@ -1270,6 +1281,9 @@ async function _dispatchFrame(
       ? { why: `it calls a method ${className} does not expose to the browser` }
       : await _actionRefusal(page, method, frame.args);
     if (refusal) {
+      if ("thrown" in refusal) {
+        _reportFlowError(deps, refusal.thrown, ctx, `authorizing "${method}" on ${className}`);
+      }
       // The snapshot verified, so this is a real page asking for something it may not call:
       // a stale tab after a deploy renamed the action, someone trying names by hand, or a call
       // the page's authorization refused. Counted like an invalid frame, so a loop of them is

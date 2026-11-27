@@ -662,9 +662,10 @@ export function expose(_value: unknown, context: ExposeContext): void {
  */
 export interface LockedOptions {
   /**
-   * Refuse a snapshot older than one this component has already acted on, so the browser cannot
-   * send back an earlier copy of the state and act on it again. Kept with a counter per component
-   * in the session, which needs `SessionMiddleware` on the route. Default: `false`.
+   * Refuse any snapshot of this component but its newest, so the browser cannot send back an
+   * earlier copy of the state, or the same one twice, and act on it again. Kept with a counter
+   * per component on the server, in this process unless `setMonotonicStore()` installs a shared
+   * one. Default: `false`.
    */
   monotonic?: boolean | undefined;
 }
@@ -724,9 +725,9 @@ function _lockedDecorator(opts: LockedOptions): LockedDecorator {
  * Give `proto` the server-issued sequence number a monotonic component carries in its snapshot.
  *
  * An accessor, so it needs no change to how a snapshot is built: dehydration reads every locked
- * field, and reading this one issues the next number from the session (see `monotonic.ts`). The
- * setter discards the value a snapshot restores: that value was already checked against the
- * session when the frame arrived, before the page was built.
+ * field, and reading this one gives the sequence after the one the frame was accepted with (see
+ * `monotonic.ts`). The setter discards the value a snapshot restores: that value was already
+ * checked against the store when the frame arrived, before the page ran.
  */
 function _installMonotonicField(proto: object): void {
   if (Object.prototype.hasOwnProperty.call(proto, MONOTONIC_FIELD)) return;

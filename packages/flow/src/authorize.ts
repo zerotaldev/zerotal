@@ -47,7 +47,7 @@ export async function _actionRefusal(
   page: Component,
   method: string,
   args: unknown[],
-): Promise<{ why: string; error?: string } | null> {
+): Promise<{ why: string; error?: string; thrown?: unknown } | null> {
   try {
     const rules = getCanRules(page.constructor as { prototype: object }).get(method) ?? [];
     for (const rule of rules) {
@@ -61,9 +61,12 @@ export async function _actionRefusal(
     }
     return null;
   } catch (error) {
+    // Still a refusal, but not a denial: a policy that could not run (a database down, a bug)
+    // goes to the app's exception handler too, as an error thrown in the action would.
     return {
       why: `authorizing ${method} threw`,
       error: error instanceof Error ? error.message : String(error),
+      thrown: error,
     };
   }
 }

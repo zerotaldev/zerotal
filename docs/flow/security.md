@@ -124,7 +124,7 @@ A frame is checked in this order, and the first failure answers it:
 | The page class is registered          | `Unknown component`    | `unknown_component`  | No                       |
 | Route and persistent middleware pass  | A redirect or an error | `blocked`            | By the middleware        |
 | The snapshot belongs to this user     | Reload instruction     | `session_changed`    | No                       |
-| It is not older than one acted on¹    | Reload instruction     | `snapshot_replayed`  | No                       |
+| It is the component's newest¹         | Reload instruction     | `snapshot_replayed`  | No                       |
 | The method is `@expose`d              | `Method … not allowed` | `method_not_allowed` | Warning, counted (below) |
 | Its `@can` rules and `beforeAction`   | `Method … not allowed` | `method_not_allowed` | Warning, counted (below) |
 
@@ -157,8 +157,8 @@ window.addEventListener("flow:error", (e) => {
 When no listener calls `preventDefault()`, a default notice is shown through `flow:flash`, so
 the `<Flash>` component in your layout displays it: the message itself for a `server_error`,
 one plain sentence for every other refusal, whose wording is meant for a developer. The page
-reloads instead, once, for `invalid_snapshot`, `stale_snapshot`, `session_changed` and
-`unknown_component`, which no action from the page in hand can recover from. A reload that does
+reloads instead, once, for `invalid_snapshot`, `stale_snapshot`, `session_changed`,
+`snapshot_replayed` and `unknown_component`, which no action from the page in hand can recover from. A reload that does
 not fix the page does not reload it again until an action has succeeded in between.
 `rate_limited` answers frames past the count below.
 

@@ -185,8 +185,10 @@ export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
 
             // dehydrate() hook runs at the end of the request, before serialisation.
             if (interactive) await page.onDehydrate();
+            // The address the page was rendered at rides in the signed memo, so an action
+            // rebuilds its request from it and reads the same params and query as this render.
             const snapshot = interactive
-              ? dehydrate(page, { id: compId, name: compName, path })
+              ? dehydrate(page, { id: compId, name: compName, path, url: _pageUrlOf(http.request) })
               : undefined;
             if (snapshot) warnIfLarge(snapshot, compName);
 
@@ -343,6 +345,12 @@ export function _makeFlowHandler(path: string, PageClass: PageClassWithMeta) {
   };
 }
 
+/** The path and query of `request`, as signed into the snapshot memo. */
+function _pageUrlOf(request: Request): string {
+  const url = new URL(request.url);
+  return url.pathname + url.search;
+}
+
 /** True under the `serve --dev` worker — gates the dev-only initial-render error overlay. */
 const _IS_DEV_WORKER = Bun.argv.includes("--dev-worker");
 
@@ -431,11 +439,11 @@ function _seedUrlProps(page: Component, request: Request): void {
 /**
  * Seed `@param` properties from the matched route segments before onMount().
  *
- * Initial GET only — that is the sole request carrying the URL's segments, and the only
- * one where route-model bindings are resolved. WebSocket round-trips rebuild the context
- * from the stored route *pattern* (so `ctx.params` is empty) and restore these fields from
- * the snapshot instead, models included via the model synth. Calling this on that path
- * would overwrite a hydrated value with nothing.
+ * Initial GET only — the one request where route-model bindings are resolved. An action
+ * rebuilds its request from the page's signed URL, so its `ctx.params` holds the same
+ * segments, as strings; the fields themselves are restored from the snapshot, models
+ * included via the model synth. Calling this on that path would overwrite a restored model
+ * with its id.
  */
 export function _seedRouteParams(page: Component, ctx: HttpContext): void {
   const params = ctx.params as Record<string, unknown>;

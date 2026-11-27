@@ -516,6 +516,39 @@ let _wsFailures = 0;
 const HTTP_FALLBACK_AFTER = 3; // consecutive failed WS handshakes before switching to HTTP
 
 /**
+ * How long a socket may stay connecting before the attempt is given up.
+ *
+ * A network that swallows WebSocket upgrades does not refuse them: the request hangs until the
+ * browser's own timeout, which can be minutes, and three of those stood between the visitor and
+ * the HTTP fallback. A socket that has never opened on this page and times out here is taken as
+ * that network, and the page switches to HTTP at once.
+ */
+const HANDSHAKE_TIMEOUT_MS = 4_000;
+
+/** Whether a socket has opened on this page. A timeout after that is a slow server, not a proxy. */
+let _wsEverOpened = false;
+
+/**
+ * Whether a failed handshake should switch the page to the HTTP transport. Pure, for tests.
+ *
+ * @param state.failures - Consecutive failed handshakes, this one included.
+ * @param state.timedOut - This handshake hit {@link HANDSHAKE_TIMEOUT_MS} rather than closing.
+ * @param state.everOpened - A socket has opened on this page before.
+ * @param state.httpMode - The page is already on HTTP.
+ * @internal exported for tests.
+ */
+export function _fallBackToHttp(state: {
+  failures: number;
+  timedOut: boolean;
+  everOpened: boolean;
+  httpMode: boolean;
+}): boolean {
+  if (state.httpMode) return false;
+  if (state.timedOut && !state.everOpened) return true;
+  return state.failures >= HTTP_FALLBACK_AFTER;
+}
+
+/**
  * The origin guard refused this page, and no retry will change that.
  *
  * Reported once, in full, because the alternative is the worst failure this app has: the
@@ -584,6 +617,7 @@ function _httpSend(frame: unknown, compId: string): void {
       if (e.status === 403) _reportOriginRefused(e.body ?? "");
       else console.error("[Flow] HTTP action failed:", e);
       _resolveAck(compId); // never wedge the per-component queue
+      if ((frame as { full?: unknown }).full === true) _abandonFullSync(compId);
     });
 }
 
@@ -621,6 +655,161 @@ function _pendingUpdates(comp: FlowComponent): Record<string, unknown> {
 // fires), which gates the next send until comp.snapshot reflects the previous patch.
 const _pendingAcks = new Map<string, () => void>();
 const ACK_TIMEOUT_MS = 15_000;
+
+/**
+ * When each in-flight action last showed signs of life: when it was sent, and each streamed
+ * (`partial`) patch of a running `@task` since. The ack times out only after this long without
+ * any, so a task that streams for minutes is not taken for a lost one.
+ */
+const _ackProgress = new Map<string, number>();
+
+/**
+ * Wait for `resolve`'s action to be acknowledged, and time it out after {@link ACK_TIMEOUT_MS}
+ * without progress.
+ */
+function _armAckTimer(compId: string, resolve: () => void): void {
+  _ackProgress.set(compId, Date.now());
+  const check = (): void => {
+    if (_pendingAcks.get(compId) !== resolve) return;
+    const idle = Date.now() - (_ackProgress.get(compId) ?? 0);
+    if (idle < ACK_TIMEOUT_MS) {
+      setTimeout(check, ACK_TIMEOUT_MS - idle);
+      return;
+    }
+    _timeOutAck(compId);
+  };
+  setTimeout(check, ACK_TIMEOUT_MS);
+}
+
+/**
+ * An action's patch did not arrive in time. The action may still be running, or may have run.
+ *
+ * The queue used to be released here, so the next click went out from the snapshot the slow
+ * action started from. When both replies then landed, the second delta was applied to a
+ * snapshot it was not computed against, the rebuilt snapshot no longer verified, and every
+ * later action was refused. Now the queue stays held until a full snapshot has come back.
+ */
+function _timeOutAck(compId: string): void {
+  _resolveAck(compId);
+  _beginFullSync(compId);
+}
+
+/**
+ * Components whose queue is held until a full snapshot comes back from the server.
+ *
+ * `again` is set when another reason to resync turned up while one was in flight (a second
+ * patch that could not be applied): the reply to the first may predate whatever that patch
+ * carried, so one more is sent before the queue is released.
+ */
+const _fullSyncs = new Map<string, { release: () => void; again: boolean; seq: number }>();
+let _fullSyncSeq = 0;
+
+/**
+ * Hold `compId`'s queue and ask the server for its whole snapshot, from `onMount()` again.
+ *
+ * The full snapshot replaces whatever the browser holds, so it is the one reply that can be
+ * applied whatever the browser's snapshot is. Actions clicked meanwhile wait in the queue and
+ * go out from it.
+ *
+ * @param send - Sends the request; `false` when it could not be sent (offline, or the
+ *   component is gone). Then the queue is released and the component left for the reconnect.
+ */
+function _beginFullSync(compId: string, send: (id: string) => boolean = _sendFullSync): void {
+  const pending = _fullSyncs.get(compId);
+  if (pending) {
+    pending.again = true;
+    return;
+  }
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const prev = _queues.get(compId) ?? Promise.resolve();
+  _queues.set(
+    compId,
+    prev.then(() => held),
+  );
+  _fullSyncs.set(compId, { release, again: false, seq: ++_fullSyncSeq });
+  _staleComponents.delete(compId);
+  if (!send(compId)) _abandonFullSync(compId);
+}
+
+/** The full snapshot arrived: send one more if asked to, else release the queue. */
+function _endFullSync(compId: string, send: (id: string) => boolean = _sendFullSync): void {
+  const pending = _fullSyncs.get(compId);
+  if (!pending) return;
+  if (pending.again) {
+    pending.again = false;
+    pending.seq = ++_fullSyncSeq;
+    if (send(compId)) return;
+    _staleComponents.add(compId);
+  }
+  _fullSyncs.delete(compId);
+  pending.release();
+}
+
+/** Give up on a full sync (no reply, or it could not be sent): release the queue, resync later. */
+function _abandonFullSync(compId: string): void {
+  const pending = _fullSyncs.get(compId);
+  if (!pending) return;
+  _fullSyncs.delete(compId);
+  _staleComponents.add(compId);
+  pending.release();
+}
+
+/** Release a full sync the server refused with an error frame. Nothing more to ask for. */
+function _failFullSync(compId: string): void {
+  const pending = _fullSyncs.get(compId);
+  if (!pending) return;
+  _fullSyncs.delete(compId);
+  pending.release();
+}
+
+/** Send `$refresh` asking for the whole snapshot back. `false` when it could not be sent. */
+function _sendFullSync(compId: string): boolean {
+  const comp = _components.get(compId);
+  if (!comp) return false;
+  const frame = {
+    type: "call",
+    component: compId,
+    method: "$refresh",
+    args: [],
+    updates: {},
+    snapshot: comp.snapshot,
+    full: true,
+  };
+  if (_ws && _ws.readyState === WebSocket.OPEN) _ws.send(JSON.stringify(frame));
+  else if (_httpMode && _isOnline) _httpSend(frame, compId);
+  else return false;
+
+  const seq = _fullSyncs.get(compId)?.seq;
+  setTimeout(() => {
+    if (seq !== undefined && _fullSyncs.get(compId)?.seq === seq) _abandonFullSync(compId);
+  }, ACK_TIMEOUT_MS);
+  return true;
+}
+
+/**
+ * What to do with a patch, given the checksum of the snapshot the browser holds. Pure, for tests.
+ *
+ * - `full`: it carries the whole snapshot, which replaces the held one.
+ * - `apply`: its delta was computed against the held snapshot.
+ * - `resync`: its delta was computed against another snapshot (a reply to an action sent
+ *   before the last patch landed). Applying it would rebuild a snapshot that does not verify,
+ *   so it is set aside and the full snapshot is asked for instead.
+ *
+ * A patch with no `base` comes from a server older than this check and is applied as before.
+ *
+ * @internal exported for tests.
+ */
+export function _patchBaseDecision(
+  frame: { snapshot?: unknown; base?: unknown },
+  heldChecksum: string,
+): "full" | "apply" | "resync" {
+  if (frame.snapshot !== undefined && frame.snapshot !== null) return "full";
+  if (typeof frame.base !== "string") return "apply";
+  return frame.base === heldChecksum ? "apply" : "resync";
+}
 
 /**
  * Components whose last action was released without its patch ever being applied — the
@@ -681,11 +870,13 @@ function _resyncStaleComponents(refresh: (id: string) => boolean = _refreshMount
   return resynced;
 }
 
-/** Send `$refresh` to a mounted component. Returns false when it is no longer on the page. */
+/**
+ * Resync a mounted component from a full snapshot, holding its queue until it lands. Returns
+ * false when it is no longer on the page.
+ */
 function _refreshMounted(id: string): boolean {
-  const comp = _components.get(id);
-  if (!comp) return false;
-  _callAction(comp, "$refresh", []);
+  if (!_components.has(id)) return false;
+  _beginFullSync(id);
   return true;
 }
 
@@ -702,6 +893,37 @@ export const _resyncInternals = {
   size: (): number => _staleComponents.size,
   clear: (): void => _staleComponents.clear(),
   drain: (refresh: (id: string) => boolean): string[] => _resyncStaleComponents(refresh),
+};
+
+/**
+ * @internal Exported for tests: the hold a full sync puts on a component's queue, driven with
+ * a stand-in for the send so it runs without a socket or a DOM.
+ */
+export const _fullSyncInternals = {
+  begin: (id: string, send: (id: string) => boolean): void => _beginFullSync(id, send),
+  end: (id: string, send: (id: string) => boolean): void => _endFullSync(id, send),
+  abandon: (id: string): void => _abandonFullSync(id),
+  fail: (id: string): void => _failFullSync(id),
+  active: (id: string): boolean => _fullSyncs.has(id),
+  /** The component's send queue: it settles when the next action could go out. */
+  queue: (id: string): Promise<void> => _queues.get(id) ?? Promise.resolve(),
+  /** Put an action in flight on the queue, as `_sendCall` does; resolve it to acknowledge it. */
+  inFlight: (id: string): (() => void) => {
+    let ack: () => void = () => {};
+    const acked = new Promise<void>((resolve) => {
+      ack = resolve;
+    });
+    _queues.set(
+      id,
+      (_queues.get(id) ?? Promise.resolve()).then(() => acked),
+    );
+    return ack;
+  },
+  reset: (): void => {
+    _fullSyncs.clear();
+    _queues.clear();
+    _staleComponents.clear();
+  },
 };
 
 /**
@@ -738,14 +960,10 @@ function _sendCall(
             const pending = _pendingActionByComp.get(compId);
             if (pending && pending.method === method) pending.updates = updates;
             // Safety net: never wedge the queue if a patch is dropped (server crash / HTTP error).
-            const armSafetyNet = (): void => {
-              setTimeout(() => {
-                // A timed-out ack carries exactly the same ambiguity as a dropped socket:
-                // the action may well have run. Mark the component for resync rather than
-                // carrying on from a snapshot that may no longer match the server.
-                if (_pendingAcks.get(compId) === resolve) _abandonAck(compId);
-              }, ACK_TIMEOUT_MS);
-            };
+            // A timed-out ack carries the same ambiguity as a dropped socket: the action may
+            // well have run. The queue stays held until a full snapshot has resynced the
+            // component, so the next action does not go out from one that no longer matches.
+            const armSafetyNet = (): void => _armAckTimer(compId, resolve);
 
             if (_ws && _ws.readyState === WebSocket.OPEN) {
               _ws.send(JSON.stringify(frame));
@@ -816,9 +1034,21 @@ function _ensureConnected(): void {
 
 function _connect(): void {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  _ws = new WebSocket(`${proto}//${location.host}/__flow/ws`);
+  const socket = new WebSocket(`${proto}//${location.host}/__flow/ws`);
+  _ws = socket;
+
+  // Give the handshake a few seconds, not however long the browser would wait. Closing a socket
+  // that is still connecting fails it, and the close handler below counts the failure.
+  let timedOut = false;
+  const handshake = setTimeout(() => {
+    if (socket.readyState !== WebSocket.CONNECTING) return;
+    timedOut = true;
+    socket.close();
+  }, HANDSHAKE_TIMEOUT_MS);
 
   _ws.onopen = () => {
+    clearTimeout(handshake);
+    _wsEverOpened = true;
     _reconnectDelay = 1_000;
     _wsFailures = 0;
     if (_httpMode) {
@@ -852,6 +1082,7 @@ function _connect(): void {
   };
 
   _ws.onclose = () => {
+    clearTimeout(handshake);
     _ws = null;
 
     // Release any in-flight ack waiters and reset the per-component queues so a fresh
@@ -859,6 +1090,7 @@ function _connect(): void {
     // that may have completed server-side, so its component is flagged for resync rather
     // than left silently holding pre-action state.
     for (const id of [..._pendingAcks.keys()]) _abandonAck(id);
+    for (const id of [..._fullSyncs.keys()]) _abandonFullSync(id);
     for (const [id] of _queues) _queues.set(id, Promise.resolve());
 
     _components.forEach((c) => _setLoading(c, false));
@@ -866,7 +1098,16 @@ function _connect(): void {
     // Trip the circuit breaker after a few failed handshakes — switch to HTTP so the app keeps
     // working where WebSockets are blocked. WS reconnection continues in the background.
     _wsFailures++;
-    if (!_httpMode && _wsFailures >= HTTP_FALLBACK_AFTER) _enableHttpMode();
+    if (
+      _fallBackToHttp({
+        failures: _wsFailures,
+        timedOut,
+        everOpened: _wsEverOpened,
+        httpMode: _httpMode,
+      })
+    ) {
+      _enableHttpMode();
+    }
     if (!_httpMode) _setConnectionState(false);
 
     setTimeout(() => {
@@ -1181,14 +1422,85 @@ const _EXPIRY_RELOAD_KEY = "flow:reloaded-for-expired-component";
  * must not reload again.
  */
 export function _reloadReasonFor(
-  frame: { message?: string; reload?: boolean },
+  frame: { message?: string; reload?: boolean; code?: string },
   alreadyReloaded: boolean,
-): "session-changed" | "unknown-component" | null {
+): "session-changed" | "page-outdated" | "unknown-component" | "invalid-snapshot" | null {
   if (alreadyReloaded) return null;
   // The server's explicit instruction outranks any inference from the message.
-  if (frame.reload) return "session-changed";
-  if (frame.message === "Unknown component") return "unknown-component";
+  if (frame.reload) return frame.code === "stale_snapshot" ? "page-outdated" : "session-changed";
+  if (frame.code === "unknown_component" || frame.message === "Unknown component") {
+    return "unknown-component";
+  }
+  // A snapshot that does not verify cannot be acted on again: every later action from it is
+  // refused the same way, and the page was left looking alive with nothing working. A reload
+  // gets a fresh one.
+  if (frame.code === "invalid_snapshot" || frame.message === "Invalid snapshot") {
+    return "invalid-snapshot";
+  }
   return null;
+}
+
+/** The console line for a reload {@link _reloadReasonFor} asked for. */
+function _reloadMessageFor(
+  reason: NonNullable<ReturnType<typeof _reloadReasonFor>>,
+  frame: { message?: string; component?: string },
+): string {
+  switch (reason) {
+    case "session-changed":
+      return `[Flow] ${frame.message ?? "The session changed"} — reloading the page.`;
+    case "page-outdated":
+      return "[Flow] This page was rendered by an earlier release — reloading the page.";
+    case "invalid-snapshot":
+      return `[Flow] The server refused component "${frame.component}"'s snapshot — reloading the page.`;
+    case "unknown-component":
+      return (
+        `[Flow] Component "${frame.component}" is no longer registered on the server ` +
+        `(likely a server restart) — reloading the page to recover.`
+      );
+  }
+}
+
+/**
+ * The `detail` of the `flow:error` event an error frame is announced with. Pure, for tests.
+ *
+ * `code` is the server's (see the error codes in the security guide), or `"error"` for a frame
+ * that carries none.
+ *
+ * @internal exported for tests.
+ */
+export function _flowErrorDetail(frame: { component?: string; message?: string; code?: string }): {
+  component: string | null;
+  message: string;
+  code: string;
+} {
+  return {
+    component: typeof frame.component === "string" ? frame.component : null,
+    message: typeof frame.message === "string" ? frame.message : "",
+    code: typeof frame.code === "string" ? frame.code : "error",
+  };
+}
+
+/** What the default notice says when the error's own words are not meant for the visitor. */
+const _GENERIC_NOTICE = "Something went wrong. Please try again.";
+
+/**
+ * The flash shown for an error frame nobody handled, or `null` when none should be. Pure.
+ *
+ * None for a frame that carries a stack: that is the development overlay, which shows more. A
+ * `server_error` frame's message is already the one the server chose for the visitor (generic
+ * outside development); every other refusal is worded for a developer, so the visitor gets
+ * one plain sentence.
+ *
+ * @internal exported for tests.
+ */
+export function _errorNoticeFor(frame: {
+  message?: string;
+  code?: string;
+  stack?: string;
+}): { level: "error"; message: string } | null {
+  if (typeof frame.stack === "string" && frame.stack !== "") return null;
+  const own = frame.code === "server_error" && typeof frame.message === "string";
+  return { level: "error", message: own && frame.message ? frame.message : _GENERIC_NOTICE };
 }
 
 function _reloadedForExpiry(): boolean {
@@ -1694,9 +2006,11 @@ async function _handleServerFrame(
     checksum?: string;
     dataDelta?: SnapshotData;
     dataRemoved?: string[];
+    base?: string;
     actionError?: boolean;
     dev?: boolean;
     reload?: boolean;
+    code?: string;
   },
 ): Promise<void> {
   if (frame.type === "ready") {
@@ -1715,13 +2029,28 @@ async function _handleServerFrame(
     const comp = _components.get(component);
     if (!comp) return;
 
+    // A delta applies only to the snapshot it was computed against. One computed against
+    // another (the reply to an action sent before the previous patch landed) is set aside, and
+    // the whole snapshot is asked for instead; the queue stays held until it arrives.
+    const decision = _patchBaseDecision(frame, comp.snapshot.checksum);
+    if (decision === "resync") {
+      if (!frame.partial) {
+        _setLoading(comp, false);
+        _resolveAck(component);
+      }
+      _beginFullSync(component);
+      return;
+    }
+    // A streamed patch of a running @task is progress: its ack is not timed out while they come.
+    if (frame.partial) _ackProgress.set(component, Date.now());
+
     // Optimistic failed state: the reconciliation below already reverts a rejected write;
     // this drives the visible `showOnError` region. Cleared on the next successful patch
     // (and when a new action is dispatched, see _callAction).
     _setActionError(comp, frame.actionError === true);
 
     // Snapshot travels as a delta by default (only changed fields); rebuild the full
-    // snapshot from the component's prior copy. A full `snapshot` is honoured if present.
+    // snapshot from the component's prior copy. A full `snapshot` replaces it.
     const snapshot: Snapshot = frame.snapshot ?? _reconstructSnapshot(comp.snapshot, frame);
 
     // A patch landed on a live component — normal operation has resumed, so re-arm the
@@ -1797,7 +2126,10 @@ async function _handleServerFrame(
     // Patch applied and comp.snapshot updated — release the queue so the next action for this
     // component sends against the fresh base. A partial (mid-@task) patch keeps the queue held
     // and loading on: only the final patch releases the ack, so the task stays "in flight".
-    if (!frame.partial) _resolveAck(component);
+    // The full snapshot a resync asked for releases the resync's hold instead: an action still
+    // in flight keeps its ack until its own reply comes back.
+    if (decision === "full" && _fullSyncs.has(component)) _endFullSync(component);
+    else if (!frame.partial) _resolveAck(component);
     return;
   }
 
@@ -1849,7 +2181,10 @@ async function _handleServerFrame(
   if (frame.type === "error") {
     _components.forEach((c) => _setLoading(c, false));
     // A rejected action is terminal — release the queue so the component isn't wedged.
-    if (frame.component) _resolveAck(frame.component);
+    if (frame.component) {
+      _resolveAck(frame.component);
+      _failFullSync(frame.component);
+    }
 
     // Dev fast-refresh fallback: an error during the soft-refresh window means the edit is
     // incompatible with the held snapshot (a render throw / integrity failure), so a plain
@@ -1870,14 +2205,18 @@ async function _handleServerFrame(
     // re-hydrates the client. A one-shot guard (cleared once patches flow again, below)
     // prevents a reload loop if the reload doesn't resolve it.
     const reloadReason = _reloadReasonFor(frame, _reloadedForExpiry());
+
+    // Every error frame is announced, so an app can show it its own way. A listener that calls
+    // `preventDefault()` takes it over, and the default notice below is not shown.
+    const announced = new CustomEvent("flow:error", {
+      detail: _flowErrorDetail(frame),
+      cancelable: true,
+    });
+    const unhandled = window.dispatchEvent(announced);
+
     if (reloadReason) {
       _markReloadedForExpiry();
-      console.warn(
-        reloadReason === "session-changed"
-          ? `[Flow] ${frame.message ?? "The session changed"} — reloading the page.`
-          : `[Flow] Component "${frame.component}" is no longer registered on the server ` +
-              `(likely a server restart) — reloading the page to recover.`,
-      );
+      console.warn(_reloadMessageFor(reloadReason, frame));
       window.location.reload();
       return;
     }
@@ -1901,6 +2240,11 @@ async function _handleServerFrame(
         frame: errFrame.frame,
         component: frame.component ? _components.get(frame.component)?.name : undefined,
       });
+    }
+
+    if (unhandled) {
+      const notice = _errorNoticeFor(frame);
+      if (notice) _dispatchFlash(notice);
     }
 
     console.error(`[Flow] Server error on ${frame.component}: ${frame.message}`);
@@ -3690,6 +4034,8 @@ function _cleanupDisconnected(): void {
       _modelBaselines.delete(id);
       _offlineQueues.delete(id);
       _queues.delete(id); // per-component outbound frame chain
+      _failFullSync(id);
+      _ackProgress.delete(id);
       clearTimeout(_loadingTimers.get(id)); // pending loading-delay timer
       _loadingTimers.delete(id);
       (_intervals.get(id) ?? []).forEach(clearInterval);

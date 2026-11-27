@@ -73,6 +73,24 @@ function currentSubject(): string | undefined {
   return id === undefined || id === null ? undefined : String(id);
 }
 
+/**
+ * The path and query of the request being served, or `undefined` outside one.
+ *
+ * A page passes its own URL to {@link dehydrate}; a child rendered inside it does not, and
+ * gets the URL of the request that rendered it, which is the page's: on the first render the
+ * page's address, and inside an action the address the action's request was rebuilt from.
+ */
+function currentPageUrl(): string | undefined {
+  const request = (RequestContext.tryGet() as { request?: Request } | undefined)?.request;
+  if (!request) return undefined;
+  try {
+    const url = new URL(request.url);
+    return url.pathname + url.search;
+  } catch {
+    return undefined;
+  }
+}
+
 // ── Signing payload ───────────────────────────────────────────────────────────
 // children and listeners are excluded from signing:
 //   - children: ids are derived server-side, never trusted from the client
@@ -90,6 +108,7 @@ export function dehydrate(
   page: Component,
   memo: Pick<Snapshot["memo"], "id" | "name" | "path"> & {
     children?: Snapshot["memo"]["children"];
+    url?: Snapshot["memo"]["url"];
   },
 ): Snapshot {
   const computedKeys = getComputedKeys(page);
@@ -165,6 +184,7 @@ export function dehydrate(
   // Excluded from HMAC — see the signing-payload note above.
   const snapshotMemo: Snapshot["memo"] = {
     ...memo,
+    url: memo.url ?? currentPageUrl() ?? memo.path,
     children: [...page._childIds],
     listeners,
     slots,
@@ -283,6 +303,16 @@ export function stripPendingSecrets(snapshot: Snapshot): Snapshot {
   return { ...stripped, checksum: _sign(_signingPayload(stripped)) };
 }
 
+/**
+ * Sign `snapshot` as {@link dehydrate} does, memo as given. For tests that need a genuine
+ * signature over a memo `dehydrate` would not produce (one from an earlier release).
+ *
+ * @internal
+ */
+export function _signSnapshot(snapshot: Omit<Snapshot, "checksum">): Snapshot {
+  return { ...snapshot, checksum: _sign(_signingPayload(snapshot)) };
+}
+
 /** Verify a snapshot's HMAC against the current APP_KEY. Public so durable-snapshot
  *  restore can validate a stored snapshot before trusting it (a rotated key → false). */
 export function verifySnapshot(snapshot: Snapshot): boolean {
@@ -339,6 +369,8 @@ export async function applySnapshotData(page: Component, snapshot: Snapshot): Pr
 export interface SnapshotDelta {
   memo: Snapshot["memo"];
   checksum: string;
+  /** Checksum of the snapshot the delta was computed against: it applies to that one only. */
+  base: string;
   /** Changed (or newly added) `[value, meta]` tuples, keyed by property name. */
   dataDelta: SnapshotData;
   /** Property names present in `prev` but gone from `next`. */
@@ -364,7 +396,7 @@ export function encodeSnapshotDelta(prev: Snapshot, next: Snapshot): SnapshotDel
   for (const key of Object.keys(prev.data)) {
     if (!(key in next.data)) dataRemoved.push(key);
   }
-  return { memo: next.memo, checksum: next.checksum, dataDelta, dataRemoved };
+  return { memo: next.memo, checksum: next.checksum, base: prev.checksum, dataDelta, dataRemoved };
 }
 
 /**

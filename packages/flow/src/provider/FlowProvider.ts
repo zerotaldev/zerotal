@@ -305,6 +305,8 @@ export function _asCallFrame(value: unknown): CallFrame | null {
   // Lenient where leniency is harmless: a frame with no `updates`, or a nonsense one, has none.
   if (!_isRecord(value.updates)) value.updates = {};
   if (!Array.isArray(value.args)) value.args = [];
+  // Only a literal `true` asks for the whole snapshot back.
+  if (value.full !== true) delete value.full;
   return value;
 }
 
@@ -327,6 +329,49 @@ function _hasCallFrameShape(value: unknown): value is CallFrame {
     return false;
   }
   return memo["children"] === undefined || Array.isArray(memo["children"]);
+}
+
+/**
+ * The page address signed into a verified snapshot's memo, or `null` when it has none (a
+ * snapshot from before 1.19) or it is not a path on this origin.
+ */
+function _pageUrlOf(memo: CallFrame["snapshot"]["memo"]): string | null {
+  const url = memo.url;
+  if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) return null;
+  return url;
+}
+
+/**
+ * The route params `pathname` matches `pattern` with, as the router hands them to the first
+ * render: `:name` segments, decoded, as strings. Empty when the two do not match, which a
+ * snapshot the server signed cannot produce.
+ *
+ * @param pattern - The registered route (`/:tenant/posts/:post`).
+ * @param pathname - The page's path (`/acme/posts/7`).
+ * @internal exported for tests.
+ */
+export function _routeParamsFor(pattern: string, pathname: string): Record<string, string> {
+  const split = (path: string): string[] => path.split("/").filter((part) => part !== "");
+  const want = split(pattern);
+  const have = split(pathname);
+  const params: Record<string, string> = {};
+
+  for (let i = 0; i < want.length; i++) {
+    const part = want[i]!;
+    if (part === "*") return params; // the rest of the path, whatever it is
+    const value = have[i];
+    if (value === undefined) return {};
+    if (part.startsWith(":")) {
+      try {
+        params[part.slice(1)] = decodeURIComponent(value);
+      } catch {
+        params[part.slice(1)] = value;
+      }
+    } else if (part !== value) {
+      return {};
+    }
+  }
+  return have.length === want.length ? params : {};
 }
 
 function _isRecord(value: unknown): value is Record<string, unknown> {
@@ -628,6 +673,7 @@ export async function _handleFlowMessage(
           type: "error",
           ...(component ? { component } : {}),
           message: _publicErrorMessage(error),
+          code: "server_error",
         }),
       );
     } catch {
@@ -687,6 +733,7 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
         type: "error",
         ...(typeof loose.component === "string" ? { component: loose.component } : {}),
         message: limited ? "Too many invalid requests" : "Malformed frame",
+        code: limited ? "rate_limited" : "malformed_frame",
       }),
     );
     return;
@@ -703,6 +750,24 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
         type: "error",
         component: frame.component,
         message: limited ? "Too many invalid requests" : "Invalid snapshot",
+        code: limited ? "rate_limited" : "invalid_snapshot",
+      }),
+    );
+    return;
+  }
+
+  // The address the page was rendered at, signed into the memo since 1.19. A snapshot without
+  // one was issued by an older release: its signature is genuine, but an action run from it
+  // would see no route params and no query string, so the tab is told to reload once instead.
+  const pageUrl = _pageUrlOf(frame.snapshot.memo);
+  if (pageUrl === null) {
+    ws.send(
+      JSON.stringify({
+        type: "error",
+        component: frame.component,
+        message: "This page is out of date — reload the page.",
+        code: "stale_snapshot",
+        reload: true,
       }),
     );
     return;
@@ -712,7 +777,12 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
 
   if (!entry) {
     ws.send(
-      JSON.stringify({ type: "error", component: frame.component, message: "Unknown component" }),
+      JSON.stringify({
+        type: "error",
+        component: frame.component,
+        message: "Unknown component",
+        code: "unknown_component",
+      }),
     );
     return;
   }
@@ -733,14 +803,19 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
     ...Router.middlewareFor("GET", pagePath),
   ];
 
-  const request = new Request(`${ws.data.origin ?? "http://localhost"}${pagePath}`, {
+  // The action's request is the page's own address, so whatever reads the URL inside it (a
+  // middleware reading a tenant segment, `currentUrl()`, `onMount(ctx)` after a refresh) sees
+  // what the first render saw. The route params are matched again from it against the pattern.
+  const request = new Request(`${ws.data.origin ?? "http://localhost"}${pageUrl}`, {
     headers: ws.data.headers ?? new Headers(),
   });
+  const routeParams = _routeParamsFor(pagePath, new URL(request.url).pathname);
 
   const where = `action "${frame.method}" on ${entry.PageClass.name}`;
 
   await deps.container.runScoped(async (scoped) => {
     const ctx = new HttpContext(request, scoped);
+    ctx.params = routeParams;
 
     // A WebSocket action has no Bun `Server` behind it, so `ctx.ip()` — which resolves
     // through `server.requestIP(request)` — would return null for every action even
@@ -786,6 +861,7 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
                   type: "error",
                   component: frame.component,
                   message: "Your session changed — reload the page.",
+                  code: "session_changed",
                   reload: true,
                 }),
               );
@@ -837,6 +913,7 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
             type: "error",
             component: frame.snapshot.memo.id,
             message: _publicErrorMessage(e),
+            code: "server_error",
             ...(dev
               ? { name: dev.name, stack: dev.stack, action: dev.action, frame: dev.frame }
               : {}),
@@ -870,6 +947,7 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
               type: "error",
               component: frame.snapshot.memo.id,
               message: `Request blocked by middleware (${ctx.response?.status ?? 403})`,
+              code: "blocked",
             }),
           );
         }
@@ -936,7 +1014,8 @@ const _EMPTY_EFFECTS: DispatchEffects = { scripts: [], errors: {}, title: null }
  * Send a "patch" frame, delta-encoding the snapshot and suppressing `html` when the
  * re-render is byte-identical to the last one on this connection. `prev` is the client's
  * own snapshot (`frame.snapshot`), so the delta reconstructs to exactly what was signed.
- * `html` is undefined for @renderless patches (snapshot-only).
+ * `html` is undefined for @renderless patches (snapshot-only). `full` sends the whole
+ * snapshot instead, for a browser that asked for it.
  */
 function _sendPatch(
   ws: FlowBunWs,
@@ -947,6 +1026,7 @@ function _sendPatch(
   effects: DispatchEffects,
   actionError = false,
   partial = false,
+  full = false,
 ): void {
   const delta = encodeSnapshotDelta(prev, next);
 
@@ -954,22 +1034,33 @@ function _sendPatch(
   if (html !== undefined) {
     const hashes = (ws.data.flowHtmlHashes ??= new Map<string, string>());
     const h = Bun.hash(html).toString();
-    if (hashes.get(componentId) === h) {
+    // A full patch always carries its HTML: the browser asked for one because it set aside a
+    // patch it could not apply, whose HTML it never showed.
+    if (hashes.get(componentId) === h && !full) {
       outHtml = undefined; // unchanged since last patch → let the client keep its DOM
     } else {
       hashes.set(componentId, h);
     }
   }
 
+  // A delta names the snapshot it was computed against (`base`), and the browser applies it to
+  // that snapshot only. A full patch replaces whatever the browser holds.
+  const snapshotFields = full
+    ? { snapshot: next }
+    : {
+        memo: delta.memo,
+        checksum: delta.checksum,
+        base: delta.base,
+        dataDelta: delta.dataDelta,
+        dataRemoved: delta.dataRemoved,
+      };
+
   ws.send(
     JSON.stringify({
       type: "patch",
       component: componentId,
       ...(outHtml !== undefined ? { html: outHtml } : {}),
-      memo: delta.memo,
-      checksum: delta.checksum,
-      dataDelta: delta.dataDelta,
-      dataRemoved: delta.dataRemoved,
+      ...snapshotFields,
       scripts: effects.scripts.length > 0 ? effects.scripts : undefined,
       errors: Object.keys(effects.errors).length > 0 ? effects.errors : undefined,
       title: effects.title ?? undefined,
@@ -1035,11 +1126,10 @@ async function _dispatchFrame(
     ws.send(JSON.stringify({ type: "stream", ref, content, replace }));
   };
 
-  // The route HttpContext handed to lifecycle hooks. On WebSocket round-trips the request URL is
-  // the stored route pattern, so model bindings aren't re-resolved here — bound models persist
-  // on the component via synths. We still pass the context for consistency with the initial GET
-  // (and controllers), so a hook signature like `onMount(ctx)` remains type-safe even when
-  // `ctx.params` is empty.
+  // The route HttpContext handed to lifecycle hooks. Its request is the page's own address and
+  // `ctx.params` holds the route segments matched from it, as strings. Model bindings are not
+  // re-resolved here: bound models persist on the component via synths, so the first render's
+  // models are in the page's fields, not in `ctx.params`.
 
   // Lifecycle: boot() runs on every request; hydrate() runs only on these
   // subsequent (WebSocket) requests, after state has been restored from the snapshot.
@@ -1169,6 +1259,7 @@ async function _dispatchFrame(
           type: "error",
           component: frame.snapshot.memo.id,
           message: limited ? "Too many invalid requests" : `Method "${method}" is not allowed`,
+          code: limited ? "rate_limited" : "method_not_allowed",
         }),
       );
       return { failed: true };
@@ -1316,6 +1407,7 @@ async function _dispatchFrame(
         type: "error",
         component: canonicalId,
         message: de.message,
+        code: "action_failed",
         name: de.name,
         stack: de.stack,
         action: de.action,
@@ -1331,7 +1423,17 @@ async function _dispatchFrame(
     const snapshot = dehydrate(page, frame.snapshot.memo);
     warnIfLarge(snapshot, frame.snapshot.memo.name);
     await persistDurable(page, ctx, snapshot);
-    _sendPatch(ws, canonicalId, undefined, snapshot, deltaBase, effects, actionErrored);
+    _sendPatch(
+      ws,
+      canonicalId,
+      undefined,
+      snapshot,
+      deltaBase,
+      effects,
+      actionErrored,
+      false,
+      frame.full === true,
+    );
     return { failed: actionErrored };
   }
 
@@ -1344,7 +1446,17 @@ async function _dispatchFrame(
 
   const compName = frame.snapshot.memo.name;
   const html = `<div data-flow-root x-data="{}" data-flow-id="${canonicalId}" data-flow-name="${compName}">${innerHtml}</div>`;
-  _sendPatch(ws, canonicalId, html, snapshot, deltaBase, effects, actionErrored);
+  _sendPatch(
+    ws,
+    canonicalId,
+    html,
+    snapshot,
+    deltaBase,
+    effects,
+    actionErrored,
+    false,
+    frame.full === true,
+  );
   return { failed: actionErrored };
 }
 

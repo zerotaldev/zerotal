@@ -21,13 +21,19 @@ change.
   so parent-to-child updates keep working with no change. An app that wrote a `@reactive` prop
   from the browser (`$flow.$set("amount", …)`, a `value=` bound to it) must mark the field
   `@modelable` if the child owns it too, or make it `@expose` if it is not a parent's prop.
-- **`@locked({ monotonic: true })` refuses a snapshot older than one already acted on.** Plain
-  `@locked` stops the browser editing a value but not rewinding it: any snapshot issued to the
-  same user in the last twelve hours verifies. A component with a monotonic field carries a
-  sequence number from a per-component counter kept in the session, and a frame whose number is
-  not higher than the last accepted one is refused with a reload instruction. Needs
-  `SessionMiddleware` and a server-side session store. Plain `@locked` is unchanged; the docs
-  now say what it does not cover.
+- **`@locked({ monotonic: true })` accepts only a component's newest snapshot.** Plain `@locked`
+  stops the browser editing a value but not rewinding it: any snapshot issued to the same user
+  in the last twelve hours verifies. A component with a monotonic field carries a sequence
+  number, and a frame is accepted only when its number is the next one after the last accepted,
+  in one atomic step on the server: of two frames sent at once with the same snapshot, one runs.
+  Any other is refused with a reload instruction (`code: "snapshot_replayed"`). An action that
+  fails without sending a snapshot back gives its number back. The counters are kept on the
+  server, not in the session, in this process by default; `setMonotonicStore()` installs a store
+  every process shares, and the `MonotonicStore` type says what it must do. Plain `@locked` is
+  unchanged; the docs now say what it does not cover.
+- **An error thrown while authorizing an action reaches the app's exception handler.** A `@can`
+  rule or `beforeAction()` that throws (a database down) still refuses the call, and is now
+  reported like an error in the action, rather than only counted as an invalid frame.
 - **Per-action authorization.** `beforeAction(name, args)` on `Component` runs before every
   exposed method the browser calls; return `false` or throw to refuse. `@can(ability, model?)`
   checks a policy ability through the app's Gate before the action runs, for example

@@ -45,6 +45,38 @@ import { hostedPage } from "../support/hostPage.ts";
 import { adminPackagesCheck } from "../doctor.ts";
 import { frameworkLog } from "@zerotal/core/logger";
 
+/** The panel, and the class, that first registered each page class name. */
+const _pageNames = new Map<string, { panelId: string; page: unknown }>();
+
+/**
+ * `page` under a name no other panel's page has. The first panel to register a name keeps it;
+ * another panel's page of that name is renamed `<Panel><Name>` (`BillingDashboardPage`). One class
+ * registered by several panels (`ResourceFormPage`) keeps its name, and so does a panel
+ * registering its own page again (routes reloaded), so a name never drifts.
+ *
+ * @internal Exported for tests.
+ */
+export function _panelScopedPage(page: unknown, panelId: string): unknown {
+  if (typeof page !== "function" || !page.name) return page;
+  const owner = _pageNames.get(page.name);
+  if (owner === undefined) {
+    _pageNames.set(page.name, { panelId, page });
+    return page;
+  }
+  if (owner.page === page) return page;
+  if (owner.panelId === panelId) {
+    _pageNames.set(page.name, { panelId, page });
+    return page;
+  }
+  const prefix = panelId
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join("");
+  Object.defineProperty(page, "name", { value: `${prefix}${page.name}` });
+  return _panelScopedPage(page, panelId);
+}
+
 declare module "@zerotal/core" {
   interface ContainerBindings {
     /** The panel's contribution surface — see `plugin.ts`. */
@@ -226,16 +258,20 @@ export class AdminProvider extends ServiceProvider {
     // does not silently expose full CRUD. See _effectiveGuard().
     const guard: MiddlewareClass[] = this._effectiveGuard(panel.config().middleware);
 
-    const flow = (
+    const routerFlow = (
       Router as unknown as {
         flow?: (p: string, page: unknown, mw?: MiddlewareClass[]) => unknown;
       }
     ).flow;
-    if (typeof flow !== "function") {
+    if (typeof routerFlow !== "function") {
       throw new Error(
         "[Zerotal Admin] Router.flow() is unavailable — register FlowProvider before AdminProvider.",
       );
     }
+    // Flow finds a page by its class name. Each panel builds its own page classes, under the same
+    // names, so a second panel's are named for it.
+    const flow = (p: string, page: unknown, mw?: MiddlewareClass[]): unknown =>
+      routerFlow(p, _panelScopedPage(page, panel.id), mw);
 
     Router.group({ prefix: path, middleware: guard }, () => {
       flow("", makeDashboardPage(panel));

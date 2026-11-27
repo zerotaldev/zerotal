@@ -209,6 +209,8 @@ export { getSharedStore, setSharedStore } from "./shared.ts";
 export type { SharedStore } from "./shared.ts";
 export { getDurableStore, setDurableStore } from "./durable.ts";
 export type { DurableStore, DurableOption } from "./durable.ts";
+export { setMonotonicStore } from "./monotonic.ts";
+export type { MonotonicStore } from "./monotonic.ts";
 export { registerFlowEvent } from "./events.ts";
 export type { FlowEvents, EventName, EventPayload } from "./events.ts";
 

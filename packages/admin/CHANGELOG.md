@@ -8,6 +8,15 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **An app with two panels boots.** Flow finds a page by its class name and, from 1.19, refuses
+  two different page classes of one name. Each panel builds its own `DashboardPage`,
+  `<Model>ListPage` and the rest, so a second panel stopped the boot. The first panel to
+  register a name keeps it; another panel's page of that name is named for the panel
+  (`BillingDashboardPage` for a panel `billing`). Before, the second panel's page silently took
+  over the first's actions.
+
 ## [1.18.0] — 2026-11-26
 
 ### Added

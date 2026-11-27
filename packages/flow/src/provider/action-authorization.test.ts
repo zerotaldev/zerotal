@@ -8,6 +8,7 @@ import { Application, Container } from "@zerotal/core";
 import type { HttpContext } from "@zerotal/core";
 import { Component } from "../Component.ts";
 import { expose, locked, reactive } from "../decorators.ts";
+import { MONOTONIC_FIELD, _resetMonotonicStore } from "../monotonic.ts";
 import { dehydrate } from "../dehydrate.ts";
 import { registerPage, _getPageEntries } from "../registry.ts";
 import { _signParentProps } from "../parentProps.ts";
@@ -145,5 +146,97 @@ describe("a @reactive prop over the wire", () => {
     );
 
     expect(String(patchOf(frames)?.["html"])).toContain("limit 5");
+  });
+});
+
+class BrokenPolicyPage extends Component {
+  @expose async go(): Promise<void> {
+    ran.push("go");
+  }
+
+  override beforeAction(): boolean {
+    throw new Error("policy store down");
+  }
+
+  override async render() {
+    return { html: "<p></p>" };
+  }
+}
+
+describe("an authorization check that throws", () => {
+  it("refuses the call and reports the error to the app's handler", async () => {
+    _getPageEntries().delete("BrokenPolicyPage");
+    registerPage("/broken", BrokenPolicyPage);
+    const page = new BrokenPolicyPage();
+    page._flowId = "broken-1";
+    page._flowPath = "/broken";
+    const snapshot = dehydrate(page, { id: "broken-1", name: "BrokenPolicyPage", path: "/broken" });
+    const reported: unknown[] = [];
+    const { ws, frames } = socket();
+
+    await _handleFlowMessage(
+      ws,
+      JSON.stringify({ ...JSON.parse(call("go", snapshot)), component: "broken-1" }),
+      { ...deps(), report: async (error: unknown) => void reported.push(error) },
+    );
+
+    expect(ran).toEqual([]);
+    expect(errorOf(frames)).toMatchObject({ code: "method_not_allowed" });
+    expect(String(reported[0])).toContain("policy store down");
+    _getPageEntries().delete("BrokenPolicyPage");
+  });
+});
+
+class CreditsPage extends Component {
+  @locked({ monotonic: true }) credits = 3;
+
+  @expose async spend(): Promise<void> {
+    ran.push("spend");
+  }
+
+  override async render() {
+    return { html: `<p>${this.credits}</p>` };
+  }
+}
+
+describe("a @locked({ monotonic: true }) page over the wire", () => {
+  const send = async (snapshot: unknown) => {
+    const { ws, frames } = socket();
+    await _handleFlowMessage(
+      ws,
+      JSON.stringify({ ...JSON.parse(call("spend", snapshot)), component: "credits-1" }),
+      deps(),
+    );
+    return frames;
+  };
+
+  it("runs a snapshot once, and refuses it the second time with snapshot_replayed and a reload", async () => {
+    _getPageEntries().delete("CreditsPage");
+    registerPage("/credits", CreditsPage);
+    const page = new CreditsPage();
+    page._flowId = "credits-1";
+    page._flowPath = "/credits";
+    const snapshot = dehydrate(page, { id: "credits-1", name: "CreditsPage", path: "/credits" });
+    expect(snapshot.data[MONOTONIC_FIELD]).toBeDefined();
+
+    const first = await send(snapshot);
+    expect(ran).toEqual(["spend"]);
+    const next = patchOf(first);
+    expect(next).toBeDefined();
+
+    const again = await send(snapshot);
+    expect(ran).toEqual(["spend"]);
+    expect(errorOf(again)).toMatchObject({ code: "snapshot_replayed", reload: true });
+
+    // Sent at the same moment, the same snapshot runs once.
+    ran = [];
+    const fresh = new CreditsPage();
+    fresh._flowId = "credits-1";
+    fresh._flowPath = "/credits";
+    _resetMonotonicStore();
+    const twin = dehydrate(fresh, { id: "credits-1", name: "CreditsPage", path: "/credits" });
+    await Promise.all([send(twin), send(twin)]);
+    expect(ran).toEqual(["spend"]);
+    _getPageEntries().delete("CreditsPage");
   });
 });

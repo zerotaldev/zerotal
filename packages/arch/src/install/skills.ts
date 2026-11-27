@@ -250,6 +250,20 @@ If this app still has the starter's example \`Project\` resource, it is the patt
 \`tests/projects.test.ts\`. Read those before writing anything — they answer most of the
 questions below the way this app already answers them.
 
+## Start from a generator
+
+Once the model exists (step 1), one command writes steps 3 to 6 the way the starter wrote
+\`Project\`, owner-scoped when the model has a \`userId\`, passing \`typecheck\`,
+\`format:check\` and its own test as written:
+
+- **Inertia (React or Vue):** \`bun zt make:resource <Name> --model <Name>\` — the routes under
+  \`app/routes/\`, a request, a policy, the pages and their shared form, and \`tests/<names>.test.ts\`.
+  \`bun zt make:route <path>\` adds one more file route beside them.
+- **Flow:** \`bun zt make:flow <Name>Page --crud --model <Name>\` — one live page that lists,
+  creates, edits and deletes.
+
+Then read what it wrote and change it; the steps below are what it did, and what to check.
+
 ## Sequence
 
 1. **Model and schema.** ${schemaStep(shape)} Make the model's \`table(...)\` name and the

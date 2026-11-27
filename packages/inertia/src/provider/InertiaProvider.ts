@@ -196,6 +196,13 @@ export class InertiaProvider extends ServiceProvider {
           (m) => (m as { MakePageCommand: unknown }).MakePageCommand,
         ),
     );
+    (runner as { registerLazy(name: string, thunk: () => Promise<unknown>): void }).registerLazy(
+      "make:route",
+      () =>
+        import("../commands/MakeRouteCommand.ts").then(
+          (m) => (m as { MakeRouteCommand: unknown }).MakeRouteCommand,
+        ),
+    );
   }
 
   override async onStopping(): Promise<void> {

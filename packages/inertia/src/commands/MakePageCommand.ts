@@ -206,8 +206,12 @@ export const GET = () => Inertia.render("${page}", { title: "${title}" });
 
 type Framework = "vue" | "react";
 
-/** Detect the frontend framework from the Inertia adapter installed in `cwd`. */
-function _detectFramework(cwd: string): Framework {
+/**
+ * Detect the frontend framework from the Inertia adapter installed in `cwd`.
+ *
+ * @internal Shared with `make:route` and `make:resource`.
+ */
+export function _detectFramework(cwd: string): Framework {
   try {
     Bun.resolveSync("@inertiajs/vue3", cwd);
     return "vue";
@@ -236,8 +240,10 @@ export function _componentName(page: string): string {
 /**
  * The layout's file, relative to the app root, without extension for React: looked for in
  * `Layouts/` and `layouts/` beside the pages directory, as the starters keep them.
+ *
+ * @internal Shared with `make:route`.
  */
-function _findLayout(pagesDir: string, layout: string, ext: string): string | undefined {
+export function _findLayout(pagesDir: string, layout: string, ext: string): string | undefined {
   const root = dirname(pagesDir);
   for (const dir of ["Layouts", "layouts"]) {
     const file = join(root, dir, `${layout}.${ext}`).replace(/\\/g, "/");
@@ -246,8 +252,12 @@ function _findLayout(pagesDir: string, layout: string, ext: string): string | un
   return undefined;
 }
 
-/** A relative import from the page at `from` to `to`; React's has no extension, Vue's keeps it. */
-function _importPath(from: string, to: string, framework: Framework): string {
+/**
+ * A relative import from the page at `from` to `to`; React's has no extension, Vue's keeps it.
+ *
+ * @internal Shared with `make:route`.
+ */
+export function _importPath(from: string, to: string, framework: Framework): string {
   const target = framework === "react" ? to.replace(/\.tsx$/, "") : to;
   const path = relative(dirname(from), target).replace(/\\/g, "/");
   return path.startsWith(".") ? path : `./${path}`;

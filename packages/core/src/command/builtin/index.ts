@@ -47,7 +47,7 @@ export { MakeListenerCommand } from "./MakeListenerCommand.ts";
 export { MakeJobCommand } from "./MakeJobCommand.ts";
 export { MakeScheduleCommand } from "./MakeScheduleCommand.ts";
 
-export { MakePolicyCommand } from "./MakePolicyCommand.ts";
+export { MakePolicyCommand, _policyStub } from "./MakePolicyCommand.ts";
 export { MakeNotificationCommand } from "./MakeNotificationCommand.ts";
 export { MakeObserverCommand } from "./MakeObserverCommand.ts";
 export { MakeResourceCommand } from "./MakeResourceCommand.ts";

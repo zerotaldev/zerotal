@@ -1100,7 +1100,9 @@ describe("MakeRequestCommand", () => {
 describe("MakeResourceCommand", () => {
   it("declares static properties", () => {
     expect(MakeResourceCommand.commandName).toBe("make:resource");
-    expect(MakeResourceCommand.description).toBe("Create a new API resource transformer class");
+    expect(MakeResourceCommand.description).toBe(
+      "Create an API resource transformer, or with --model an Inertia screen over a model",
+    );
     expect(MakeResourceCommand.needsApp).toBe(false);
     expect(MakeResourceCommand.args).toHaveLength(1);
     expect(MakeResourceCommand.args[0]!.name).toBe("name");
@@ -1135,6 +1137,29 @@ describe("MakeResourceCommand", () => {
     expect(apiResourceStub("PostResource")).toContain("'/api/posts'");
     expect(apiResourceStub("BlogPostResource")).toContain("'/api/blog-posts'");
     expect(apiResourceStub("PostResource")).not.toContain("/-");
+  });
+
+  // `--model` hands the screen to @zerotal/inertia, found in the app; an app without it is told
+  // what to run instead, rather than given a transformer it did not ask for.
+  it("run() with --model, in an app without @zerotal/inertia, says what to run instead", async () => {
+    mockFile(false);
+    const dir = mkdtempSync(join(tmpdir(), "zt-make-resource-"));
+    const before = process.cwd();
+    const errors: string[] = [];
+    try {
+      process.chdir(dir);
+      const cmd = new MakeResourceCommand();
+      cmd.args = { name: "Task" };
+      cmd.flags = { model: "Task", framework: "" };
+      cmd._writer = { ...noop, writeError: (m: string) => void errors.push(m) };
+      await cmd.run();
+    } finally {
+      process.chdir(before);
+      process.exitCode = 0;
+      rmSync(dir, { recursive: true, force: true });
+    }
+    expect(errors.join("\n")).toContain("make:flow Task --crud --model Task");
+    expect(Object.keys(written).some((file) => file.startsWith("app/resources/"))).toBe(false);
   });
 
   it("run() errors when file already exists", async () => {

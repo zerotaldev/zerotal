@@ -81,6 +81,14 @@ ${check("delete")}
 }
 
 /**
+ * {@link policyStub}, for another package's generator: `@zerotal/inertia`'s `make:resource`
+ * writes the same policy `make:policy --model` would.
+ *
+ * @internal
+ */
+export const _policyStub: typeof policyStub = policyStub;
+
+/**
  * `bun zt make:policy <name>` — scaffolds a new authorization policy class
  * under `app/policies/` (pass `--model`/`-m` to bind it to a model).
  *

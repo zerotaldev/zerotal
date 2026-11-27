@@ -9,6 +9,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./scaffold": "./src/scaffold.ts",
     "./testing": "./src/testing.ts"
   },
   "files": [

@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`make:resource --model <Model>` hands an Inertia app's screen to `@zerotal/inertia`.**
+  Without `--model` it writes the API resource transformer it always has. With it, it looks for
+  `@zerotal/inertia/scaffold` in the app, as `compile` looks for its contributors, and that
+  package writes the routes, pages, form and test; an app without Inertia is pointed at
+  `make:flow --crud --model` instead.
+
 ## [1.18.4] — 2026-11-27
 
 ### Security

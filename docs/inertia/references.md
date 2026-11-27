@@ -14,6 +14,8 @@ A consolidated cheat-sheet for `@zerotal/inertia`. Each entry links to the secti
 | `bun zt make:page <Name>`                          | Scaffold a page component under your pages directory.           |
 | `bun zt make:page <Name> --layout <Layout>`        | Wrap the page in another layout than `AppLayout`, or `none`.    |
 | `bun zt make:page <Name> --framework <vue\|react>` | Force the frontend framework instead of auto-detecting.         |
+| `bun zt make:route <path>`                         | Write a file route under `app/routes/` and the page it renders. |
+| `bun zt make:resource <Name> --model <Model>`      | Write a whole screen over a model: routes, pages, form, test.   |
 | `bun zt inertia:build`                             | Bundle the frontend — development build (external source maps). |
 | `bun zt inertia:build -p`                          | Production build (minified, no source maps).                    |
 

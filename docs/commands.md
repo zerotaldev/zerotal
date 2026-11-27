@@ -519,6 +519,8 @@ failure, so it is safe to run from a timer — see
 | `bun zt make:observer UserObserver [--model User]`   | `app/observers/UserObserver.ts`                                            |
 | `bun zt make:policy PostPolicy [--model Post]`       | `app/policies/PostPolicy.ts`                                               |
 | `bun zt make:resource UserResource`                  | `app/resources/UserResource.ts`                                            |
+| `bun zt make:resource Task --model Task`             | Inertia apps: routes, request, policy, pages, form and test for `Task`     |
+| `bun zt make:route reports`                          | Inertia apps: `app/routes/reports.ts` and the page it renders              |
 | `bun zt make:migration create_posts_table`           | `database/migrations/{timestamp}_create_posts_table.ts`                    |
 | `bun zt make:factory Post`                           | `database/factories/PostFactory.ts`                                        |
 | `bun zt make:seeder PostSeeder`                      | `database/seeders/PostSeeder.ts`                                           |

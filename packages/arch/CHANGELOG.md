@@ -13,6 +13,12 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Added
+
+- **The agent files name the Inertia screen generators.** The Inertia guidance and the
+  `zerotal-crud-resource` skill point at `make:resource <Name> --model <Model>` and
+  `make:route <path>` (and, in Flow, `make:flow --crud --model`) before the hand-written steps.
+
 ## [1.18.4] — 2026-11-27
 
 ### Added

@@ -8,6 +8,23 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`make:resource <Name> --model <Model>` writes a whole screen over a model.** The routes
+  under `app/routes/` for list, create, edit, update and delete (in the starters' signed-in
+  group, scoped to the signed-in user when the model has a `userId`, with a policy that turns
+  anyone else away), a `FormRequest` both forms share, the React or Vue pages in `AppLayout`, a
+  shared form component, and a feature test using `bootApp()` that also renders each page. Each
+  column gets its input: a checkbox for a boolean, a date or `datetime-local` field for a date, a
+  select for a union of string literals (read inline, from an alias, or from an exported
+  constant the request then validates against), a text area for `text`. The files pass the
+  app's `typecheck` and `format:check`, and the page registry and route types are regenerated.
+  Published as `@zerotal/inertia/scaffold`, which core's `make:resource` finds in the app.
+- **`make:route <path>` writes a file route in the starters' style.** A `GET` that renders its
+  page (written too when the app has none by that name) and a `POST` that validates with `r.*`
+  rules, flashes and redirects; `--methods` picks the handlers. A `[param]` named after a model
+  arrives as the loaded record and is authorized against the model's policy when it has one.
+
 ## [1.18.4] — 2026-11-27
 
 ### Security

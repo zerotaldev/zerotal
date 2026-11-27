@@ -25,8 +25,9 @@
  * Then, in the React, Vue and Flow starters, a feature is added the way a developer adds one — the
  * generators a 1.18.0 walk found writing files the starter's own checks rejected — and the
  * checks run again: `make:model`, `make:factory`, `make:notification`, `make:job`,
- * `make:command`, `make:policy --model`, `make:test`, `make:page` in React and Vue, and, in Flow,
- * `make:flow --crud --model`, then `typecheck`, `format:check` and `zt test` must all still pass,
+ * `make:command`, `make:policy --model`, `make:test`, `make:page`, `make:resource --model` and
+ * `make:route` in React and Vue, and, in Flow, `make:flow --crud --model`, then `typecheck`,
+ * `format:check` and `zt test` must all still pass (the test `make:resource` wrote among them),
  * and `zt repl` must read piped input.
  *
  * Run in the release workflow after the dry run, so a starter that does not work stops
@@ -277,6 +278,7 @@ async function addFeature(
         route.includes('Inertia.render("tasks/index", { title: "Tasks" })')
       );
     });
+    await addResource(app, ext, step, read, check, zt);
   }
 
   if (template === "flow") {
@@ -322,6 +324,105 @@ async function addFeature(
 
   const repl = await run([process.execPath, "zt.ts", "repl"], app, 60_000, "1+1\n");
   check("zt repl reads piped input", repl.code === 0 && /^2$/m.test(repl.out), tail(repl.out));
+}
+
+/**
+ * The Inertia kits' screen generators: `make:resource --model` over a model with one column of
+ * each kind its form has an input for (a text, a checkbox, a date, a select, a number), and
+ * `make:route` beside it. Before them, a new screen in these kits was hand-written: routes, pages,
+ * form and test. The checks after the generators then typecheck, format-check and test the lot.
+ */
+async function addResource(
+  app: string,
+  ext: string,
+  step: (args: string[], ok: (out: string) => Promise<boolean> | boolean) => Promise<void>,
+  read: (file: string) => Promise<string>,
+  check: (name: string, ok: boolean, detail?: string) => void,
+  zt: (...args: string[]) => Promise<{ code: number; out: string }>,
+): Promise<void> {
+  await step(["make:model", "Chore", "-m"], () => true);
+  const columns =
+    (await edit(
+      app,
+      "app/models/Chore.ts",
+      'static override fillable = ["name"] as const;\n\n  @column({ type: "string" }) name!: string;',
+      [
+        'static override fillable = ["name", "notes", "done", "dueOn", "priority", "minutes"] as const;',
+        "",
+        '  @column({ type: "number" }) userId!: number;',
+        '  @column({ type: "string" }) name!: string;',
+        '  @column({ type: "text", nullable: true }) notes?: string | null | undefined;',
+        '  @column({ type: "boolean", default: false }) done!: boolean;',
+        '  @column("date") dueOn?: Date | null | undefined;',
+        '  @column({ type: "string", default: "normal" }) priority!: ChorePriority;',
+        '  @column({ type: "number", nullable: true }) minutes?: number | null | undefined;',
+      ].join("\n"),
+    )) &&
+    (await edit(
+      app,
+      "app/models/Chore.ts",
+      "@table(",
+      'export const CHORE_PRIORITIES = ["low", "normal", "high"] as const;\nexport type ChorePriority = (typeof CHORE_PRIORITIES)[number];\n\n@table(',
+    )) &&
+    (await Promise.all(
+      [...new Bun.Glob("database/migrations/*_create_chores_table.ts").scanSync({ cwd: app })].map(
+        (file) =>
+          edit(
+            app,
+            file,
+            'table.string("name");',
+            [
+              'table.integer("user_id").index();',
+              'table.string("name");',
+              'table.text("notes").nullable();',
+              'table.boolean("done").default(false);',
+              'table.date("due_on").nullable();',
+              'table.string("priority").default("normal");',
+              'table.integer("minutes").nullable();',
+            ].join("\n      "),
+          ),
+      ),
+    ).then((done) => done.length === 1 && done[0] === true));
+  check("give Chore an owner and a column of each kind", columns);
+
+  await step(["make:resource", "Chore", "--model", "Chore"], async (out) => {
+    const base = "app/routes/(auth)/(verified)/chores";
+    const index = await read(`${base}/index.ts`);
+    const form = await read(`resources/js/Components/ChoreForm.${ext}`);
+    const request = await read("app/requests/ChoreRequest.ts");
+    return (
+      out.includes("Route types updated.") &&
+      index.includes('.where("user_id", Auth.user().id)') &&
+      (await read(`${base}/[chore]/index.ts`)).includes('Gate.authorize("delete", chore);') &&
+      (await read(`resources/js/pages/chores/index.${ext}`)).includes("AppLayout") &&
+      form.includes('type="date"') &&
+      form.includes("Checkbox") &&
+      form.includes("SelectField") &&
+      request.includes("r.string().in([...CHORE_PRIORITIES])") &&
+      (await read("tests/chores.test.ts")).includes('import { bootApp } from "./support";') &&
+      ![index, form, request].some((source) => /from "@zerotal\/(?!inertia)/.test(source))
+    );
+  });
+  await step(["make:route", "reports"], async (out) => {
+    const route = await read("app/routes/reports.ts");
+    return (
+      out.includes("Serves /reports (GET, POST).") &&
+      route.includes('Inertia.render("reports"') &&
+      route.includes("await validate(http") &&
+      (await read(`resources/js/pages/reports.${ext}`)).includes("AppLayout")
+    );
+  });
+  await step(
+    ["make:route", "(auth)/(verified)/chores/[chore]/archive", "--methods", "POST"],
+    async () =>
+      (await read("app/routes/(auth)/(verified)/chores/[chore]/archive.ts")).includes(
+        'Gate.authorize("update", http.params.chore);',
+      ),
+  );
+
+  // Its own test, on its own, so a failure names the generator rather than the suite.
+  const test = await zt("test", "tests/chores.test.ts");
+  check("zt test tests/chores.test.ts (make:resource's test)", test.code === 0, tail(test.out));
 }
 
 const tarballs = await tarballMap();

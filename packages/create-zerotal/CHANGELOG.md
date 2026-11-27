@@ -8,6 +8,12 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **The starters' agent files name `make:resource --model` and `make:route`.** Regenerated
+  from `@zerotal/arch`, so an agent working in a new app reaches for the generators before
+  writing a screen by hand.
+
 ## [1.18.4] — 2026-11-27
 
 ### Added

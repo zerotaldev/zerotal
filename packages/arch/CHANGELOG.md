@@ -23,8 +23,8 @@ against. `mcp-surface.md` is diffed alongside it.
 - **`AGENTS.md` says how the app's user type is declared, and how a Flow page reads a route
   segment.** The Auth line names the one `UserModel` declaration that types `Auth.user()` and
   `ctx.user`, and says to add it rather than cast; the Flow line says to read a segment through
-  a `@param` field rather than by casting `ctx.params`. The authentication and context guides
-  say `ctx.user` is typed by that same declaration.
+  a `@param` field rather than by casting `ctx.params`. The authentication and Flow routing
+  guides say `ctx.user` is typed by that same declaration.
 
 ## [1.18.3] — 2026-11-26
 

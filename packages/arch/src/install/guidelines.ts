@@ -87,7 +87,7 @@ const PACKAGE_BLOCKS: PackageBlock[] = [
         "`app/policies/` and are discovered automatically. Do not hand-roll password hashing or " +
         "session handling. `Auth.user()` and `ctx.user` are the app's `User` through one " +
         `declaration, \`declare module "${from("@zerotal/auth")}" { interface UserModel extends User {} }\`, ` +
-        "in `bootstrap/app.ts`; add it if it is missing rather than casting either.",
+        "in `bootstrap/app.ts`; once the app has a `User` model, add it if it is missing rather than casting either.",
     ],
   },
   {

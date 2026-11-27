@@ -392,6 +392,22 @@ import { row } from "./rows";`,
     });
   }
 
+  it("compiles a call handed an object of values, keys and types included", () => {
+    // `__("welcome", { name: this.q })` is the common translation call: its keys are names, not
+    // variables, and a type assertion is not a value.
+    const file = join(TMP, "ObjectArgPage.tsx");
+    const source = page(
+      "ObjectArgPage",
+      `import { pluralize } from "@zerotal/core";`,
+      `<p>{pluralize(JSON.stringify({ count: this.count, name: this.noun as string }))}</p>`,
+      "",
+      `@expose count = 3;
+  @expose noun = "task";`,
+    );
+    writeFileSync(file, source);
+    expect(compile(source, file).render).toContain("__esc(pluralize(JSON.stringify(");
+  });
+
   it("compiles a static method of a package's class, and a namespace import from a package", () => {
     const file = join(TMP, "PackageStaticPage.tsx");
     const source = page(

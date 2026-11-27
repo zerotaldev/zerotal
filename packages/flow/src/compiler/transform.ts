@@ -3205,7 +3205,12 @@ function _containsJsx(node: ts.Node): boolean {
  * Everything else keeps the page on the runtime, as every call did before calls compiled. A value
  * from the app's own code can be computed in a leading const instead.
  */
-function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner: ts.Node): boolean {
+function _callMayReturnMarkup(
+  call: ts.CallExpression,
+  sf: ts.SourceFile,
+  owner: ts.Node,
+  seen: Set<string> = new Set(),
+): boolean {
   let root: ts.Expression = call.expression;
   const args: ts.Expression[] = [...call.arguments];
   for (;;) {
@@ -3232,7 +3237,7 @@ function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner:
   if (!fromPackage && (specifier !== undefined || !_SAFE_GLOBALS.has(name))) return true;
   // A package's function may call what it is handed; a global here never calls an argument back,
   // except JSON.parse's reviver, which is a function and is refused as one.
-  return args.some((arg) => !_isData(arg, sf, owner, fromPackage));
+  return args.some((arg) => !_isData(arg, sf, owner, fromPackage, seen));
 }
 
 /**
@@ -3271,7 +3276,7 @@ function _isData(
       return;
     }
     if (ts.isCallExpression(n)) {
-      if (_callMayReturnMarkup(n, sf, owner)) data = false;
+      if (_callMayReturnMarkup(n, sf, owner, seen)) data = false;
       return;
     }
     if (n.kind === ts.SyntaxKind.ThisKeyword) {
@@ -3285,6 +3290,14 @@ function _isData(
       visit(n.expression); // the name after the dot is a property, not a variable
       return;
     }
+    // `{ count: this.n }`: the key is a name, not a variable; only the value is handed over.
+    if (ts.isPropertyAssignment(n)) {
+      if (ts.isComputedPropertyName(n.name)) visit(n.name.expression);
+      visit(n.initializer);
+      return;
+    }
+    // A type (`this.q as Key`) is not a value at all.
+    if (ts.isTypeNode(n)) return;
     if (ts.isIdentifier(n)) {
       if (!_identifierIsData(n.text, sf, owner, strict, seen)) data = false;
       return;

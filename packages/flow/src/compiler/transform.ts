@@ -1672,7 +1672,7 @@ function _compileRenderMethod(
       if (_containsJsx(expr) || _referencesGel(expr)) return null;
       // Markup a call returns is rendered by the runtime: its bindings, and any class component
       // in it, need the render context a compiled page does not run in.
-      if (_callMayReturnMarkup(expr, sourceFile, method)) {
+      if (_callMayReturnMarkup(expr, sourceFile)) {
         return bail(
           `\`{${_snippet(expr)}}\` may return markup`,
           "render it as a component (`<Badge />`), or let the page render through the runtime",
@@ -3182,46 +3182,24 @@ function _containsJsx(node: ts.Node): boolean {
 
 /**
  * Whether the call in a text child may hand back markup, which only the runtime renders right.
- * It is an allow-list, kept narrow on purpose: a call compiles only when what it calls cannot be
- * the app's own code, and anything else is left to the runtime, as every call was before calls
- * compiled. The app's own code can return markup at any depth (a helper that calls a component
- * function, a `.ts` module that wraps a `.tsx` one), which a compiler reading one file cannot
- * follow.
  *
- * A value is:
- * - a global (`String(n)`, `Math.round(x)`);
- * - a method called on a plain value the render holds (`label.toUpperCase()`, `d.getTime()`,
- *   `String(n).padStart(3, "0")`);
- * - a function from a package (`__()` from `zerotal/i18n`, `pluralize()`), called directly or
- *   through its namespace;
- * - `this.method()` for a method this class declares whose body has no JSX and makes no calls.
+ * Kept as narrow as it can be on purpose. The app's own code can return markup at any depth and
+ * by any route (a helper that calls a component function, a map over render functions, a const
+ * copied from a field, a module behind a path alias), and markup needs the render context for its
+ * bindings and for any class component in it. A compiler reading one file cannot follow all of
+ * that, so a call compiles only when it starts from code that is not the app's:
  *
- * Everything else keeps the page on the runtime: a function of the app (declared in this file,
- * imported from a relative module or through a path alias, held in a render const), an inherited
- * method, a method that calls another, a call through a field (`this.ui.field()`), and `require`.
- * Compute such a value in a leading const instead, which compiles.
+ * - a function, class or namespace imported from a package (`__()` from `zerotal/i18n`,
+ *   `CsrfMiddleware.field()` from `zerotal/session`, a date library): a framework package other
+ *   than Flow's own, or one that resolves into `node_modules`;
+ * - a JavaScript global (`String(n).padStart(3, "0")`, `Math.round(x)`, `JSON.stringify(v)`),
+ *   when nothing in the file declares that name.
+ *
+ * Everything else keeps the page on the runtime, as every call did before calls compiled. A value
+ * from the app's own code can be computed in a leading const instead.
  */
-function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner: ts.Node): boolean {
-  const callee = call.expression;
-
-  if (
-    ts.isPropertyAccessExpression(callee) &&
-    callee.expression.kind === ts.SyntaxKind.ThisKeyword
-  ) {
-    const cls = ts.isClassLike(owner.parent) ? owner.parent : undefined;
-    const member = cls?.members.find(
-      (m) =>
-        ts.isMethodDeclaration(m) &&
-        m.name !== undefined &&
-        ts.isIdentifier(m.name) &&
-        m.name.text === callee.name.text,
-    );
-    return member === undefined || _containsJsx(member) || _containsCall(member);
-  }
-
-  // The name the call is rooted at, and whether the call is a method on it (`x.f()`) or it itself
-  // (`f()`).
-  let root: ts.Expression = callee;
+function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile): boolean {
+  let root: ts.Expression = call.expression;
   for (;;) {
     if (
       ts.isPropertyAccessExpression(root) ||
@@ -3233,28 +3211,45 @@ function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner:
       root = root.expression;
     } else break;
   }
-  if (!ts.isIdentifier(root)) return true; // `this.ui.field()`, `(cond ? a : b)()`: unknowable
+  if (!ts.isIdentifier(root)) return true;
   const name = root.text;
-  const direct = root === callee;
-
-  // Imported: only a package's functions are values.
   const specifier = _importedFrom(sf, name);
-  if (specifier !== undefined) {
-    const relative = specifier.startsWith("./") || specifier.startsWith("../");
-    return relative || /^(@app\/|@\/|~\/|#)/.test(specifier);
-  }
+  // A parameter, a const or a destructured name of the same name: whatever it holds is the app's.
+  if (_declaresName(sf, name)) return true;
+  if (specifier !== undefined) return !_isPackageSpecifier(specifier, sf.fileName);
+  return !_SAFE_GLOBALS.has(name);
+}
 
-  // Declared in this file, or in the render: the app's own function, or a value.
-  const declared = _localDeclaration(owner, name) ?? _fileDeclaration(sf, name);
-  if (declared !== undefined) {
-    // A function is the app's own code: runtime. A value is fine to call methods on, unless it
-    // came from somewhere a function could (`require()`, another name, a call).
-    if (direct) return true;
-    if (ts.isFunctionLike(declared) || ts.isClassLike(declared)) return true;
-    return _containsCall(declared) || ts.isIdentifier(declared) || _containsJsx(declared);
+/** Globals whose functions return values, never markup. */
+const _SAFE_GLOBALS = new Set([
+  "String",
+  "Number",
+  "Boolean",
+  "Math",
+  "JSON",
+  "Date",
+  "Intl",
+  "parseInt",
+  "parseFloat",
+  "encodeURIComponent",
+  "encodeURI",
+  "isNaN",
+  "isFinite",
+]);
+
+/** Whether an import from `specifier` is a package's code, not the app's. */
+function _isPackageSpecifier(specifier: string, fromFile: string): boolean {
+  if (specifier.startsWith(".") || specifier.startsWith("/")) return false;
+  // Flow's own packages hold the JSX runtime and components, which return markup.
+  if (/^(@zerotal\/flow|zerotal\/flow)/.test(specifier)) return false;
+  if (/^(zerotal|@zerotal\/)/.test(specifier)) return true;
+  // Anything else is a package only where it resolves into node_modules: a path alias
+  // (`@app/…`, `@pages/…`, `$lib/…`) or a workspace package is the app's own code.
+  try {
+    return /[\\/]node_modules[\\/]/.test(Bun.resolveSync(specifier, path.dirname(fromFile)));
+  } catch {
+    return false;
   }
-  // A global (`String`), or a parameter of an enclosing callback (`d` in `.map((d) => …)`).
-  return false;
 }
 
 /** The module `name` is imported from in `sf`, or undefined when it is not imported. */
@@ -3274,56 +3269,30 @@ function _importedFrom(sf: ts.SourceFile, name: string): string | undefined {
   return undefined;
 }
 
-/** What `name` is declared as at the top of `sf`: a function or class node, or a const's initializer. */
-function _fileDeclaration(sf: ts.SourceFile, name: string): ts.Node | undefined {
-  for (const stmt of sf.statements) {
-    if (
-      (ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt)) &&
-      stmt.name?.text === name
-    ) {
-      return stmt;
-    }
-    if (ts.isVariableStatement(stmt)) {
-      for (const d of stmt.declarationList.declarations) {
-        if (ts.isIdentifier(d.name) && d.name.text === name) return d.initializer ?? d;
-      }
-    }
-  }
-  return undefined;
-}
-
-/** The declaration of `name` inside `owner`'s body: a const's initializer, or a function. */
-function _localDeclaration(owner: ts.Node, name: string): ts.Node | undefined {
-  let found: ts.Node | undefined;
-  const visit = (n: ts.Node): void => {
-    if (found) return;
-    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === name) {
-      found = n.initializer ?? n;
-      return;
-    }
-    if (ts.isFunctionDeclaration(n) && n.name?.text === name && n !== owner) {
-      found = n;
-      return;
-    }
-    ts.forEachChild(n, visit);
-  };
-  const body = (owner as { body?: ts.Node }).body;
-  if (body) visit(body);
-  return found;
-}
-
-/** True if `node` makes any call (`this.other()`, `helper()`). */
-function _containsCall(node: ts.Node): boolean {
+/**
+ * Whether anything in `sf` other than an import declares `name`: a variable, a parameter, a
+ * destructured binding, a function or a class.
+ */
+function _declaresName(sf: ts.SourceFile, name: string): boolean {
   let found = false;
   const visit = (n: ts.Node): void => {
-    if (found) return;
-    if (ts.isCallExpression(n)) {
+    if (found || ts.isImportDeclaration(n)) return;
+    if (
+      (ts.isVariableDeclaration(n) ||
+        ts.isParameter(n) ||
+        ts.isBindingElement(n) ||
+        ts.isFunctionDeclaration(n) ||
+        ts.isClassDeclaration(n)) &&
+      n.name !== undefined &&
+      ts.isIdentifier(n.name) &&
+      n.name.text === name
+    ) {
       found = true;
       return;
     }
     ts.forEachChild(n, visit);
   };
-  visit(node);
+  visit(sf);
   return found;
 }
 

@@ -182,24 +182,25 @@ head, a layout, reading the signed-in user), as long as that class is imported f
 module and extends `Component` itself, or through another such class. Its `@expose` and `@locked`
 fields count as the page's own.
 
-A function call in a text child compiles too, when it returns a value: `{__("projects.title")}`
-from `zerotal/i18n`, `{String(n).padStart(3, "0")}`, `{label.toUpperCase()}`, `{this.fullName()}`,
-at the top of the markup, in a ternary branch or inside a `.map()`. It runs on the server as the
-page renders, and its result is written the way the runtime writes a child: an array item by item,
-`null`, `undefined` and booleans as nothing, and anything else escaped. It needs no client code, so
-a page that translates its strings with `__()` compiles under
-[`cspSafe`](/docs/flow/components#csp-safe-mode).
+A function call in a text child compiles too, when it starts from code that is not the app's:
+a function, class or namespace from a package (`{__("projects.title")}` from `zerotal/i18n`,
+`{CsrfMiddleware.field()}`, a date library's formatter), or a JavaScript global
+(`{String(n).padStart(3, "0")}`, `{Math.round(total)}`), at the top of the markup, in a ternary
+branch or inside a `.map()`. It runs on the server as the page renders, and its result is written
+the way the runtime writes a child: an array item by item, `null`, `undefined` and booleans as
+nothing, and anything else escaped. It needs no client code, so a page that translates its strings
+with `__()` compiles under [`cspSafe`](/docs/flow/components#csp-safe-mode). A package counts when
+it is a framework package other than Flow's own, or resolves into `node_modules`; a path alias or a
+workspace package is the app's.
 
-A call compiles only when what it calls cannot be the app's own code: a global, a method on a plain
-value the render holds, a function from a package, or a method of the page whose body has no JSX
-and makes no calls. The app's own code can return markup, at any depth, and markup needs the render
-context for its bindings and for any class component in it. So a call to one of the app's own
-functions (declared in the file, imported from a relative module or a path alias, or held in a
-const), a method that calls another or that the page inherits, and a call through a field
-(`{this.ui.field()}`) keep the page on the runtime, and the compile log says why. For a value from
-your own helper, compute it in a leading const (`const due = formatDate(project.dueOn);`) and render
-the const; for markup, render a component (`<Badge />`). A call that awaits
-(`{format(await load())}`) or is handed markup (`{wrap(<b>hi</b>)}`) stays on the runtime too.
+The app's own code can return markup by any route (a helper that calls a component function, a map
+over render functions, a const copied from a field), and markup needs the render context for its
+bindings and for any class component in it. So any other call keeps the page on the runtime, and
+the compile log says why: the app's own functions, the page's methods, and methods on values the
+render holds. For a value from your own code, compute it in a leading const
+(`const due = formatDate(project.dueOn);`) and render the const; for markup, render a component
+(`<Badge />`). A call that awaits (`{format(await load())}`) or is handed markup
+(`{wrap(<b>hi</b>)}`) stays on the runtime too.
 
 ## Interaction polish
 

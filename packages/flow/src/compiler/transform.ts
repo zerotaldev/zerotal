@@ -3182,16 +3182,24 @@ function _containsJsx(node: ts.Node): boolean {
 
 /**
  * Whether the call in a text child may hand back markup, which only the runtime renders right.
+ * It is an allow-list: a call compiles only when it is plainly a value, and anything this cannot
+ * tell is left to the runtime, as every call was before calls compiled.
  *
- * - `this.method()`: the method this class declares holds JSX. A method the class does not
- *   declare (an inherited helper) cannot be read here, so it is treated as markup.
- * - `name()`: the function declared in this file holds JSX, or it is imported from one of the
- *   app's `.tsx`/`.jsx` modules. A package's helper (`__()`, a formatter) and a global are
- *   values.
- * - Anything else (`date.toLocaleDateString()`) is a value.
+ * A value is:
+ * - a global (`String(x)`), a local or a map parameter (`label?.toUpperCase()`, `d.getTime()`),
+ *   unless it is a function the render declares that holds JSX;
+ * - a function this file declares with no JSX in it;
+ * - a function from a package (`__()` from `zerotal/i18n`, a formatter);
+ * - a function from one of the app's own `.ts` modules that re-exports nothing, since a `.ts`
+ *   file cannot hold JSX but a barrel can pass a `.tsx` one on;
+ * - `this.method()` for a method this class declares whose body has no JSX and makes no calls.
+ *
+ * Markup, or unknown, is everything else: a `.tsx`/`.jsx` module, a path alias (`@app/…`), an
+ * inherited method, a method that calls another, and any call through `this.<field>`.
  */
 function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner: ts.Node): boolean {
   const callee = call.expression;
+
   if (
     ts.isPropertyAccessExpression(callee) &&
     callee.expression.kind === ts.SyntaxKind.ThisKeyword
@@ -3204,12 +3212,32 @@ function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner:
         ts.isIdentifier(m.name) &&
         m.name.text === callee.name.text,
     );
-    return member === undefined || _containsJsx(member);
+    return member === undefined || _containsJsx(member) || _containsCall(member);
   }
-  if (!ts.isIdentifier(callee)) return false;
-  const name = callee.text;
+
+  // The name the call is rooted at: `formatDate` in `formatDate(d)`, `ns` in `ns.fn()`, `String`
+  // in `String(n).padStart(3)`.
+  let root: ts.Expression = callee;
+  for (;;) {
+    if (ts.isPropertyAccessExpression(root) || ts.isElementAccessExpression(root)) {
+      root = root.expression;
+    } else if (ts.isCallExpression(root) || ts.isNonNullExpression(root)) {
+      root = root.expression;
+    } else if (ts.isParenthesizedExpression(root)) {
+      root = root.expression;
+    } else break;
+  }
+  if (root.kind === ts.SyntaxKind.ThisKeyword) return true; // `this.ui.field()`: unknowable
+  if (!ts.isIdentifier(root)) return true;
+  const name = root.text;
+
+  // Declared in the render itself: `const field = () => <input />`.
+  const local = _localDeclaration(owner, name);
+  if (local !== undefined) return _containsJsx(local);
+
   for (const stmt of sf.statements) {
     if (ts.isFunctionDeclaration(stmt) && stmt.name?.text === name) return _containsJsx(stmt);
+    if (ts.isClassDeclaration(stmt) && stmt.name?.text === name) return true;
     if (ts.isVariableStatement(stmt)) {
       for (const d of stmt.declarationList.declarations) {
         if (ts.isIdentifier(d.name) && d.name.text === name) {
@@ -3223,15 +3251,62 @@ function _callMayReturnMarkup(call: ts.CallExpression, sf: ts.SourceFile, owner:
     const imported =
       clause?.name?.text === name ||
       (bindings !== undefined &&
-        ts.isNamedImports(bindings) &&
-        bindings.elements.some((e) => e.name.text === name));
+        (ts.isNamespaceImport(bindings)
+          ? bindings.name.text === name
+          : bindings.elements.some((e) => e.name.text === name)));
     if (!imported) continue;
-    const specifier = stmt.moduleSpecifier.text;
-    if (!specifier.startsWith("./") && !specifier.startsWith("../")) return false;
-    const file = resolveRelativeModule(sf.fileName, specifier);
-    return file === undefined || /\.[jt]sx$/.test(file);
+    return _moduleMayHoldMarkup(sf.fileName, stmt.moduleSpecifier.text);
   }
-  return false;
+  return false; // a global, or a parameter of an enclosing map
+}
+
+/** The declaration of `name` inside `owner`'s body (a leading const, a map parameter's arrow). */
+function _localDeclaration(owner: ts.Node, name: string): ts.Node | undefined {
+  let found: ts.Node | undefined;
+  const visit = (n: ts.Node): void => {
+    if (found) return;
+    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === name) {
+      found = n.initializer ?? n;
+      return;
+    }
+    if (ts.isFunctionDeclaration(n) && n.name?.text === name && n !== owner) {
+      found = n;
+      return;
+    }
+    ts.forEachChild(n, visit);
+  };
+  const body = (owner as { body?: ts.Node }).body;
+  if (body) visit(body);
+  return found;
+}
+
+/**
+ * Whether a function imported from `specifier` may return markup. A package's (a bare specifier
+ * that is not a path alias) is taken for a value. An app module is a value only when it is a
+ * `.ts`/`.js` file that re-exports nothing.
+ */
+function _moduleMayHoldMarkup(fromFile: string, specifier: string): boolean {
+  const relative = specifier.startsWith("./") || specifier.startsWith("../");
+  if (!relative) return /^(@app\/|@\/|~\/|#)/.test(specifier);
+  const file = resolveRelativeModule(fromFile, specifier);
+  if (file === undefined || /\.[jt]sx$/.test(file)) return true;
+  const text = readModuleText(file);
+  return text === null || /\bexport\s+(\*|\{[^}]*\}|type\s+\{[^}]*\})\s*from\b/.test(text);
+}
+
+/** True if `node` makes any call (`this.other()`, `helper()`). */
+function _containsCall(node: ts.Node): boolean {
+  let found = false;
+  const visit = (n: ts.Node): void => {
+    if (found) return;
+    if (ts.isCallExpression(n)) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return found;
 }
 
 /**

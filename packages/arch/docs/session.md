@@ -360,6 +360,7 @@ methods anywhere. The facade is generic (`Session.get<T>(key)`), while
 | ---------------------------- | -------------------------------------------- | --------------------------------------------------- |
 | `CsrfMiddleware.token(ctx?)` | `(ctx?: HttpContext) => string \| undefined` | Read the current request's CSRF token from session. |
 | `CsrfMiddleware.with(opts)`  | `(opts: { secure?: boolean }) => Middleware` | Configure the middleware (e.g. a `Secure` cookie).  |
+| `CsrfMiddleware.field(ctx?)` | `(ctx?: HttpContext) => CsrfField`           | The hidden `_token` input a form posts back.        |
 
 ### Errors
 

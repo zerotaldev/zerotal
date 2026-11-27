@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **`bun zt repl` reaches the app's own code.** `import()` on a REPL line failed with "A dynamic
+  import callback was not specified"; it now resolves from the project root, through the app's
+  `tsconfig.json` paths, with `@app/*` read as `app/*`. `use(specifier)` imports a module and
+  puts its exports in scope. The app's models are in scope by class name, as are `Config`,
+  `Storage`, `DB`, `Auth`, `Cache`, `Queue` and `Notify` for the packages the app has installed,
+  and an interactive session opens with one line naming what is in scope. Piped input such as
+  `echo 'await User.count()' | bun zt repl` prints each result and exits.
+
 ### Fixed
 
 - **Errors caught outside the HTTP error path can reach the app's exception handler.** An

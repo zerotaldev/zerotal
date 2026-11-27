@@ -61,6 +61,7 @@ bun zt route:list      # registered routes
 bun zt route:types     # regenerate typed route names after changing routes
 bun zt test            # tests, with the app booted
 bun zt doctor          # health checks, with a fix beside each finding
+echo '<code>' | bun zt repl  # evaluate in the booted app (models, facades, use()); prints the result
 ```
 
 ### What this app has

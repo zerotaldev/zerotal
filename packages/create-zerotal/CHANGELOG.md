@@ -8,6 +8,11 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **The starters' `AGENTS.md` says how to run code in the booted app**, with
+  `echo '<code>' | bun zt repl`.
+
 ## [1.18.3] — 2026-11-26
 
 ### Changed

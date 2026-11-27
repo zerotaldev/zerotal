@@ -4,13 +4,22 @@
  */
 import { join } from "node:path";
 import { Command } from "../Command.ts";
+import { _replExports, _replFacades, _replImporter, _replModels } from "./replScope.ts";
 
 const isSyntaxError = (error: unknown): boolean =>
   error != null && typeof error === "object" && (error as { name?: string }).name === "SyntaxError";
 
+/** The names that are always there, and that nothing the app contributes replaces. */
+const BUILTINS = ["app", "$", "use", "console", "process"] as const;
+
 /**
  * `bun zt repl` — starts an interactive REPL with the bootstrapped app (and
  * provider-contributed bindings) in the evaluation scope.
+ *
+ * In scope: `app`, `$`, `use()`, the common facades of the packages the app has installed, the
+ * app's models by class name, and whatever providers add. `import()` resolves from the project
+ * root, through the app's `tsconfig.json` paths and `@app/*`. Input piped in is read as a script:
+ * each line is evaluated, its result printed, and the REPL exits at the end of input.
  *
  * @category Diagnostics
  */
@@ -22,30 +31,57 @@ export class ReplCommand extends Command {
   async run(): Promise<void> {
     const { $ } = await import("bun");
     const app = this.app as import("../../application/Application.ts").Application;
+    const root = process.cwd();
+    const importer = _replImporter(root);
 
     // Collect all globals BEFORE createContext — properties added after may not be
     // visible inside the vm in Bun's implementation.
-    const sandbox: Record<string, unknown> = { app, $, console, process };
-
+    //
+    // Lowest first: the facades, then what providers contribute, then the app's own models, so
+    // a model named like a facade is the model. The built-ins are set last and always win.
+    const facades = await _replFacades(root);
+    const contributed: Record<string, unknown> = {};
     // Ask every active provider what it wants available in the REPL.
-    // DatabaseProvider returns { DB }, BroadcastProvider could return { Broadcast }, etc.
+    // DatabaseProvider returns { DB }, AiProvider returns { Ai, … }, etc.
     for (const provider of app._activeProviders) {
-      Object.assign(sandbox, provider.replContext());
+      Object.assign(contributed, provider.replContext());
     }
+    const models = await _replModels(root, this._modelsDirectory(app));
+
+    const sandbox: Record<string, unknown> = { ...facades, ...contributed, ...models };
+    // Where `use()` writes: the sandbox until the context exists, then the context's own global.
+    const target = { scope: sandbox };
+    // `use("@app/models/User")` imports a module and puts its exports in scope.
+    const use = async (specifier: string): Promise<Record<string, unknown>> => {
+      if (typeof specifier !== "string") throw new TypeError("use() takes a module specifier");
+      const namespace = await importer(specifier);
+      Object.assign(target.scope, _replExports(namespace));
+      return namespace;
+    };
+    Object.assign(sandbox, { app, $, use, console, process });
 
     const { createContext, runInContext } = await import("node:vm");
     const vmContext = createContext(sandbox);
+    target.scope = runInContext("globalThis", vmContext) as Record<string, unknown>;
+    // Every evaluation gets the loader, so `import()` on a line reaches the app's own code.
+    const runOptions = {
+      importModuleDynamically: (specifier: string) => importer(specifier),
+    } as unknown as import("node:vm").RunningScriptOptions;
+    const run = (source: string): unknown => runInContext(source, vmContext, runOptions);
 
-    const userFacing = ["app", "$", "DB", "Mail", "Cache", "Broadcast"].filter(
-      (key) => key in sandbox,
-    );
-    const contextKeys = userFacing.length
-      ? userFacing
-      : Object.keys(sandbox).filter((key) => !["console", "process"].includes(key));
+    const inScope = [
+      "app",
+      "$",
+      "use",
+      ...[...Object.keys(facades), ...Object.keys(contributed), ...Object.keys(models)].filter(
+        (key, index, keys) =>
+          !(BUILTINS as readonly string[]).includes(key) && keys.indexOf(key) === index,
+      ),
+    ];
     // A script piped in reads only its own results, without the banner.
     if (process.stdin.isTTY === true) {
       console.log("Zerotal REPL  –  type '.exit' or Ctrl+D to quit");
-      console.log(`  Context: ${contextKeys.join(", ")}\n`);
+      console.log(`  In scope: ${inScope.join(", ")}\n`);
     }
 
     // ── Persistent history ────────────────────────────────────────────────────
@@ -69,8 +105,8 @@ export class ReplCommand extends Command {
     const colors = process.stdout.isTTY === true;
     const { createInterface } = await import("node:readline");
     const completer = (line: string): [string[], string] => {
-      const matches = contextKeys.filter((key) => key.startsWith(line));
-      return [matches.length ? matches : contextKeys, line];
+      const matches = inScope.filter((key) => key.startsWith(line));
+      return [matches.length ? matches : inScope, line];
     };
     const readline = createInterface({
       input: process.stdin,
@@ -80,7 +116,9 @@ export class ReplCommand extends Command {
       prompt: "zerotal> ",
       completer,
     });
-    (readline as unknown as { history: string[] }).history = savedHistory.slice(0, 1000);
+    // readline's history and current line, which its types leave out.
+    const internals = readline as unknown as { history: string[]; line: string };
+    internals.history = savedHistory.slice(0, 1000);
 
     // ── Evaluator ─────────────────────────────────────────────────────────────
     // Three-stage fallback:
@@ -98,7 +136,7 @@ export class ReplCommand extends Command {
 
       // ① Sync
       try {
-        result = runInContext(line, vmContext);
+        result = run(line);
         if (result instanceof Promise) result = await result;
         if (result !== undefined) process.stdout.write(Bun.inspect(result, { colors }) + "\n");
         return;
@@ -110,10 +148,7 @@ export class ReplCommand extends Command {
       // ② Async expression — strip declaration keyword → global assignment persists
       const asyncLine = line.replace(/^(?:const|let|var)\s+/, "");
       try {
-        const promise = runInContext(
-          `(async () => { return (${asyncLine}); })()`,
-          vmContext,
-        ) as Promise<unknown>;
+        const promise = run(`(async () => { return (${asyncLine}); })()`) as Promise<unknown>;
         result = await promise;
         if (result !== undefined) process.stdout.write(Bun.inspect(result, { colors }) + "\n");
         return;
@@ -123,10 +158,7 @@ export class ReplCommand extends Command {
 
       // ③ Async statement fallback
       try {
-        const promise = runInContext(
-          `(async () => { ${asyncLine}; })()`,
-          vmContext,
-        ) as Promise<unknown>;
+        const promise = run(`(async () => { ${asyncLine}; })()`) as Promise<unknown>;
         await promise;
         return;
       } catch (error) {
@@ -152,7 +184,7 @@ export class ReplCommand extends Command {
       readline.on("close", () => {
         closed = true;
         void queue.then(() => {
-          const history = (readline as unknown as { history: string[] }).history;
+          const history = internals.history;
           if (interactive && history?.length) {
             Bun.write(historyFile, [...history].reverse().join("\n") + "\n").catch(() => {});
           }
@@ -162,7 +194,7 @@ export class ReplCommand extends Command {
       });
 
       readline.on("SIGINT", () => {
-        if (!(readline as unknown as { line: string }).line) {
+        if (!internals.line) {
           readline.close();
         } else {
           process.stdout.write("\n");
@@ -194,5 +226,19 @@ export class ReplCommand extends Command {
 
       prompt();
     });
+  }
+
+  /** `app.conventions.paths.models`, or the default when the app's config does not say. */
+  private _modelsDirectory(app: import("../../application/Application.ts").Application): string {
+    try {
+      // `container` is optional here only for the tests, which run the command with no app.
+      const container = app.container as typeof app.container | undefined;
+      const config = container?.makeSync("config") as { get(key: string): unknown } | undefined;
+      const conventions = config?.get("app.conventions") as
+        { paths?: Record<string, string> } | undefined;
+      return conventions?.paths?.["models"] ?? "app/models";
+    } catch {
+      return "app/models";
+    }
   }
 }

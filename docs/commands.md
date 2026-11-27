@@ -341,6 +341,51 @@ export default AppConfig({
 Packages register their own — see
 [Registering a dev process](/docs/package-development#registering-a-dev-process).
 
+#### The REPL
+
+`bun zt repl` boots the app and evaluates JavaScript against it, `await` included. It
+opens with one line naming what is in scope:
+
+```text
+Zerotal REPL  –  type '.exit' or Ctrl+D to quit
+  In scope: app, $, use, Config, Storage, DB, Auth, Cache, Queue, Notify, Notification, Project, User
+```
+
+- **`app`**, the booted application, and **`$`**, Bun's shell.
+- **The facades** `Config`, `Storage`, `DB`, `Auth`, `Cache`, `Queue` and `Notify`, each only
+  when the app has the package it comes from installed. Mail goes out through
+  [notifications](/docs/notifications), so `Notify` is the one that sends it.
+- **The app's models**, by class name: every class exported from `app/models/`, or from the
+  directory `app.conventions.paths.models` names.
+- **Whatever providers add** through `replContext()`, such as `Ai`.
+
+`import()` resolves the way the app's own files do: from the project root, through the
+`paths` in its `tsconfig.json`, and with `@app/*` read as `app/*` even where the tsconfig
+does not declare it. `use()` imports a module and puts its exports in scope, and returns the
+module:
+
+```text
+zerotal> await use("@app/support/redirects")
+Module {
+  intendedUrl: [Function: intendedUrl],
+}
+zerotal> intendedUrl
+[Function: intendedUrl]
+```
+
+A model file's other exports, such as a list of statuses, stay out of scope until `use()`
+asks for them.
+
+Input piped in is read as a script: each line is evaluated in order, its result printed,
+and the REPL exits at the end of input, with no prompt and no colour codes. A line that
+throws is reported on stderr and the next one still runs:
+
+```bash
+echo 'await User.count()' | bun zt repl
+```
+
+The application's boot log is written to stdout too, so the result is the last line.
+
 ### Inspection
 
 | Command                | Description                                            |

@@ -13,6 +13,12 @@ against. `mcp-surface.md` is diffed alongside it.
 
 ## [Unreleased]
 
+### Added
+
+- **`AGENTS.md` says how to run code in the booted app.** The command list gains
+  `echo '<code>' | bun zt repl`, which evaluates the piped lines with the app's models and
+  facades in scope and prints each result.
+
 ## [1.18.3] — 2026-11-26
 
 ### Fixed

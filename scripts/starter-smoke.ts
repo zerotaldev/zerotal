@@ -27,7 +27,7 @@
  * checks run again: `make:model`, `make:factory`, `make:notification`, `make:job`,
  * `make:command`, `make:policy --model`, `make:test`, `make:page` in React and Vue, and, in Flow,
  * `make:flow --crud --model`, then `typecheck`, `format:check` and `zt test` must all still pass,
- * and `zt repl` must read piped input.
+ * and `zt repl` must read piped input and reach the app's models.
  *
  * Run in the release workflow after the dry run, so a starter that does not work stops
  * the release before any package reaches npm.
@@ -315,6 +315,19 @@ async function addFeature(
 
   const repl = await run([process.execPath, "zt.ts", "repl"], app, 60_000, "1+1\n");
   check("zt repl reads piped input", repl.code === 0 && /^2$/m.test(repl.out), tail(repl.out));
+
+  // The app's own code, from the REPL: a model by name, and `use()` through `@app/*`.
+  const own = await run(
+    [process.execPath, "zt.ts", "repl"],
+    app,
+    60_000,
+    'typeof Task\n(await use("@app/models/Task")).Task === Task\n',
+  );
+  check(
+    "zt repl reaches the app's models",
+    own.code === 0 && /^"function"$/m.test(own.out) && /^true$/m.test(own.out),
+    tail(own.out),
+  );
 }
 
 const tarballs = await tarballMap();

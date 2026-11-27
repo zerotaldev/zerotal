@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { _formatStack, showErrorOverlay, hideErrorOverlay } from "./errorOverlay.ts";
+import { _errorText, _formatStack, showErrorOverlay, hideErrorOverlay } from "./errorOverlay.ts";
 import { _devErrorInfo } from "../provider/FlowProvider.ts";
 
 describe("dev error overlay", () => {
@@ -51,5 +51,38 @@ describe("dev error overlay", () => {
       expect(() => showErrorOverlay({ message: "x" })).not.toThrow();
       expect(() => hideErrorOverlay()).not.toThrow();
     });
+  });
+});
+
+describe("_errorText (the overlay's readable copy)", () => {
+  it("names the error, where it happened, the code around it and the stack", () => {
+    const text = _errorText({
+      name: "TypeError",
+      message: "boom",
+      action: "save",
+      component: "TasksPage",
+      frame: {
+        file: "app/flow/pages/tasks.tsx",
+        line: 12,
+        column: 9,
+        lines: [
+          { num: 11, code: "const a = 1;", active: false },
+          { num: 12, code: "a.b.c();", active: true },
+        ],
+      },
+      stack: "TypeError: boom\n    at save (app/flow/pages/tasks.tsx:12:9)",
+    });
+    expect(text).toBe(
+      [
+        "TypeError: boom",
+        "During action save in TasksPage",
+        "",
+        "app/flow/pages/tasks.tsx:12:9",
+        "  11 | const a = 1;",
+        "> 12 | a.b.c();",
+        "",
+        "at save (app/flow/pages/tasks.tsx:12:9)",
+      ].join("\n"),
+    );
   });
 });

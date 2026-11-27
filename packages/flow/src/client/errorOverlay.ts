@@ -32,6 +32,39 @@ function _esc(s: unknown): string {
   );
 }
 
+/**
+ * The error as plain text: heading, where it was thrown, the code around it, the stack.
+ *
+ * The overlay draws in a shadow root, which a page-text reader (a coding agent, a screen reader
+ * in some modes, `innerText`) does not see, so the same detail is also written into the document
+ * as ordinary text. Shared with the server's boot-error page so the two read the same.
+ *
+ * @internal
+ */
+export function _errorText(err: OverlayError): string {
+  const lines: string[] = [`${err.name ?? "Error"}: ${err.message}`];
+  const where = [
+    err.action ? `action ${err.action}` : "",
+    err.component ? `in ${err.component}` : "",
+  ].filter(Boolean);
+  if (where.length > 0) lines.push(`During ${where.join(" ")}`);
+  if (err.frame) {
+    lines.push("", `${err.frame.file}:${err.frame.line}:${err.frame.column}`);
+    for (const l of err.frame.lines) lines.push(`${l.active ? ">" : " "} ${l.num} | ${l.code}`);
+  }
+  if (err.stack) {
+    const frames = err.stack
+      .split("\n")
+      .slice(1)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (frames.length > 0) lines.push("", ...frames);
+  }
+  return lines.join("\n");
+}
+
+const TEXT_ID = "flow-error-overlay-text";
+
 /** Render each stack line, dimming framework/node_modules frames so app frames stand out. @internal */
 export function _formatStack(stack: string): string {
   return stack
@@ -129,6 +162,16 @@ export function showErrorOverlay(err: OverlayError): void {
 
   document.body.appendChild(root);
 
+  // The readable copy: off screen, not hidden, so it stays in the page's text.
+  const text = document.createElement("pre");
+  text.id = TEXT_ID;
+  text.setAttribute("data-flow-error", "");
+  text.style.cssText =
+    "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;" +
+    "clip:rect(0,0,0,0);white-space:pre-wrap;border:0";
+  text.textContent = _errorText(err);
+  document.body.appendChild(text);
+
   const back = shadow.querySelector<HTMLElement>(".flow-eo-back")!;
   back.addEventListener("click", (e) => {
     // Dismiss on backdrop click or the Dismiss button; keep clicks inside the card.
@@ -146,5 +189,6 @@ function _onKey(e: KeyboardEvent): void {
 export function hideErrorOverlay(): void {
   if (typeof document === "undefined") return;
   document.getElementById(OVERLAY_ID)?.remove();
+  document.getElementById(TEXT_ID)?.remove();
   document.removeEventListener("keydown", _onKey);
 }

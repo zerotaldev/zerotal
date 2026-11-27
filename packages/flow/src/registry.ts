@@ -12,9 +12,28 @@ export interface PageEntry {
 
 const _pages = new Map<string, PageEntry>();
 
+/** Names already warned about, so a collision is reported once per process. */
+const _collisionsWarned = new Set<string>();
+
 /** Register a Component class by its constructor name. Called by Router.flow(). */
 export function registerPage(path: string, PageClass: typeof Component): void {
   const name = PageClass.name;
+  const existing = _pages.get(name);
+  // Registration is keyed by class name, so a second page class with the same name takes over
+  // the first one's actions: a call from the first page runs the second page's code, under the
+  // first page's route middleware. A file-routed app with two `Index` classes does exactly that.
+  // The same class registered again, or a fresh copy of it at the same path (routes reloaded), is
+  // not a collision.
+  if (existing && existing.PageClass !== PageClass && existing.path !== path) {
+    if (!_collisionsWarned.has(name)) {
+      _collisionsWarned.add(name);
+      console.warn(
+        `[Flow] Two page classes are named "${name}" (at ${existing.path || "(no route)"} and ` +
+          `${path || "(no route)"}). Flow finds a page by its class name, so actions sent from ` +
+          `the first now run the second's code. Give each page class its own name.`,
+      );
+    }
+  }
   _pages.set(name, { PageClass, path });
 
   // Auto-register any model classes declared in PageClass.models. The map key is

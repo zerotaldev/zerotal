@@ -20,6 +20,7 @@ import { _clientScriptTags } from "./clientAssets.ts";
 import { randomComponentId, toScriptJson } from "./utils.ts";
 import type { Layout } from "./Layout.ts";
 import { _codeFrame } from "./devFrame.ts";
+import { _errorText } from "./client/errorOverlay.ts";
 import {
   getUrlProps,
   getSessionProps,
@@ -363,10 +364,23 @@ export function _renderBootErrorPage(error: unknown, compName: string): string {
     frame: _codeFrame(e.stack),
   });
   const runtimeTag = _clientScriptTags();
+  // The same detail as text in the body, for whatever reads the page without running its script.
+  // The overlay draws over it once the runtime boots.
+  const text = escapeHtml(
+    _errorText({
+      name: e.name || "Error",
+      message: e.message,
+      stack: e.stack,
+      action: "initial render",
+      component: compName,
+      frame: _codeFrame(e.stack),
+    }),
+  );
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Error — ${compName}</title></head>
 <body>
+  <pre data-flow-error style="white-space:pre-wrap;font:13px/1.5 ui-monospace,monospace;padding:16px">${text}</pre>
   <script type="application/json" id="flow-boot-error">${boot}</script>
   ${runtimeTag}
 </body>

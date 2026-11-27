@@ -38,7 +38,8 @@ const CHROME_PATHS: Record<string, string[]> = {
 /**
  * The browser binary to drive, or `null` when none is installed.
  *
- * `CHROME_PATH` overrides the search, which is how CI pins a specific build.
+ * `CHROME_PATH` (or `BUN_CHROME_PATH`) overrides the search, which is how CI pins a specific
+ * build.
  * Returning `null` rather than throwing lets a suite skip itself on a machine
  * without a browser instead of failing — a browser test that cannot run is not
  * the same as one that failed.
@@ -46,7 +47,8 @@ const CHROME_PATHS: Record<string, string[]> = {
  * @internal
  */
 export function findChrome(): string | null {
-  const override = Bun.env["CHROME_PATH"];
+  // CI pins the browser as BUN_CHROME_PATH, which is what Bun's own detection reads.
+  const override = Bun.env["CHROME_PATH"] || Bun.env["BUN_CHROME_PATH"];
   if (override) return override;
   for (const candidate of CHROME_PATHS[process.platform] ?? []) {
     try {

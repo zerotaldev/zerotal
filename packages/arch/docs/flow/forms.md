@@ -534,10 +534,24 @@ export class AvatarUploader extends Component {
 
 - The temp reference is HMAC-signed with `APP_KEY`; the server verifies it on `$set` and refuses
   forged paths. Once in the snapshot it's covered by the snapshot HMAC.
-- The endpoint enforces a 25 MB ceiling (apps should validate stricter — size/mime — in the
-  `save` action via the file's `size`/`mime`).
-- Temp files (`flow-tmp/…`, random UUID names) are garbage-collected after 6h; `.store()`
-  removes the temp copy immediately.
+- An upload is one request, held to `app.maxRequestBodySize` like every other route: 8 MiB
+  unless you change it. That counts the whole multipart body, so the largest file is a little
+  under it, and a larger one is answered `413`. To give uploads a limit of their own, set it in
+  `config/flow.ts`:
+
+  ```typescript fragment
+  export default FlowConfig({
+    uploads: { maxBytes: 25 * 1024 * 1024 },
+  });
+  ```
+
+  Without it, a single file over 25 MB is refused whatever `app.maxRequestBodySize` is. The file
+  is held in memory while it is stored. Check `size` and `mime` yourself in the `save` action:
+  those are the limits that fit your app.
+
+- Temp files (`flow-tmp/…` on the default disk, random UUID names) are deleted after 6 hours;
+  `.store()` removes the temp copy at once. On a local disk the directory is also swept by file
+  age when the app boots, so a restart does not leave abandoned uploads behind.
 
 ### Notes / future
 

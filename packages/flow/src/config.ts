@@ -39,6 +39,17 @@ export interface FlowConfigShape {
    * hidden everywhere else.
    */
   exposeErrorMessages?: boolean | undefined;
+  /**
+   * Uploads through `<FileUpload>` and `flow:model` on a file input.
+   *
+   * `maxBytes` is the largest request body the upload endpoint accepts. It counts the whole
+   * multipart body, so the largest file is a little under it. Unset, the endpoint is held to
+   * `app.maxRequestBodySize` like every other route (8 MiB unless you change it), and a single
+   * file over 25 MB is refused whatever that is.
+   *
+   * Default: unset.
+   */
+  uploads?: { maxBytes?: number | undefined } | undefined;
 }
 
 /**

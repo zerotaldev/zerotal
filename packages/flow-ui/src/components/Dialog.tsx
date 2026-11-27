@@ -58,9 +58,11 @@ export function Dialog(props: DialogProps): HtmlNode {
       ? { "flow:click": `$flow.${name} = false` }
       : {};
 
+  // `closable={false}` leaves no way out but the dialog's own buttons: no ×, no backdrop click
+  // and no Escape. The backdrop used to close it whatever the prop said.
   const backdrop = jsx("div", {
     class: "absolute inset-0 bg-black/50",
-    ...closeProps,
+    ...(closable ? closeProps : {}),
   });
 
   const titleId = name ? `flow-dialog-title-${name}` : undefined;
@@ -111,14 +113,15 @@ export function Dialog(props: DialogProps): HtmlNode {
 
   const overlay: Record<string, unknown> = {
     ...rest,
-    role: "dialog",
+    // A caller's role wins: <AlertDialog> passes "alertdialog", which this used to overwrite.
+    role: typeof rest["role"] === "string" ? rest["role"] : "dialog",
     "aria-modal": "true",
     class: "fixed inset-0 z-50 flex items-center justify-center p-4",
     children: [backdrop, panel],
   };
   if (name) {
     overlay["flow:show"] = name;
-    overlay["data-flow-modal"] = name;
+    if (closable) overlay["data-flow-modal"] = name; // Escape-to-close (the bridge reads it)
     overlay["x-trap"] = `$flow.${name}`; // trap focus while open (@alpinejs/focus)
     if (title) overlay["aria-labelledby"] = titleId;
     if (descId) overlay["aria-describedby"] = descId;

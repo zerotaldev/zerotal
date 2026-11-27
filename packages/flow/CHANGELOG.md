@@ -39,6 +39,32 @@ change.
 
 ### Fixed
 
+- **A flash chained onto a redirect is shown on the page the browser lands on.**
+  `this.redirect("/dashboard").withSuccess("Welcome back.")`, and `this.flash()` followed by
+  `this.redirect()`, queued the flash and dropped it: the server sent the redirect before it
+  sent flashes. The redirect frame now carries them, and the browser replays them as `flow:flash`
+  events once the next page has loaded, so a `<Flash>` there shows them.
+- **An action that sets two cookies delivers both.** The session relay read
+  `Headers.get("Set-Cookie")`, which joins every cookie into one comma-separated value that a
+  browser reads as one broken cookie, so signing in through an action with "remember me" kept
+  neither intact. Each cookie is now relayed in a header of its own.
+- **Abandoned uploads are deleted after a restart.** Temporary uploads were remembered only in
+  memory, so a restart (a deploy) left every pending one in `flow-tmp/` for good. On a local disk
+  that directory is now swept by file age at boot and every 30 minutes.
+- **Markup held in a const renders as markup on a compiled page.** The compiler advises moving
+  an expression "into a leading const"; a const holding JSX then rendered as `[object Object]`,
+  and an array as its items joined with commas, while the same page rendered correctly through
+  the runtime. A text child now renders as the runtime renders it.
+- **Two page classes with the same name are reported.** Flow finds a page by its class name, so
+  a second page class called `Index` took over the first one's actions: a call from the first
+  page ran the second page's code under the first page's route middleware. Flow now warns once,
+  naming both routes. Rename one of the classes.
+- **The dev error overlay can be read as text.** It draws in a shadow root, and the page shown
+  for an error in the first render held its detail only in a JSON script, so anything that reads
+  a page's text (a coding agent, a screen reader) saw nothing. The message, where it was thrown,
+  the code around it and the stack are now also in the document as plain text. Dev server only.
+- **`FlowBrowser` finds the browser CI pins.** It read `CHROME_PATH` only; it now also reads
+  `BUN_CHROME_PATH`.
 - **An action that throws is logged and reported.** Flow catches the error to keep the page
   alive, and until now nobody else heard of it: no log line, no call to the exception handler
   the app registered with `app.withExceptionHandler()`, and a `FlowActionHandled` event that
@@ -62,6 +88,9 @@ change.
 
 ### Added
 
+- **`flow.uploads.maxBytes`** in `config/flow.ts`: the largest request body the upload endpoint
+  accepts. Unset, it is held to `app.maxRequestBodySize` (8 MiB by default), as before; the
+  guide's "25 MB ceiling" applied only when that setting was raised above it.
 - **`flow.exposeErrorMessages`** in `config/flow.ts`: `true` shows an error's own message to the
   visitor in every environment, `false` hides it in every environment. Unset, it is shown in
   development, under `bun zt dev` and in tests, and hidden everywhere else.

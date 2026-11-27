@@ -1089,6 +1089,59 @@ function _dispatchFlash(detail: Record<string, unknown>): void {
   window.dispatchEvent(new CustomEvent("flow:flash", { detail }));
 }
 
+// Flashes that came with a redirect frame. The browser is about to load another page, which
+// has its own listeners, so they wait in sessionStorage until that page boots.
+const _PENDING_FLASHES_KEY = "flow:pending-flashes";
+
+/**
+ * Keep `flashes` for the next page this tab loads. Pure over `storage` so it is testable.
+ * @internal exported for tests.
+ */
+export function _holdFlashes(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  flashes: unknown,
+): void {
+  if (!Array.isArray(flashes) || flashes.length === 0) return;
+  try {
+    storage.setItem(_PENDING_FLASHES_KEY, JSON.stringify(flashes));
+  } catch {
+    // Storage full or unavailable: the flash is lost, the navigation is not.
+  }
+}
+
+/**
+ * The flashes held for this page, removed as they are read. Pure over `storage`.
+ * @internal exported for tests.
+ */
+export function _takeHeldFlashes(
+  storage: Pick<Storage, "getItem" | "removeItem">,
+): Record<string, unknown>[] {
+  try {
+    const raw = storage.getItem(_PENDING_FLASHES_KEY);
+    if (raw === null) return [];
+    storage.removeItem(_PENDING_FLASHES_KEY);
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((f): f is Record<string, unknown> => typeof f === "object" && f !== null)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function _replayHeldFlashes(): void {
+  let held: Record<string, unknown>[] = [];
+  try {
+    held = _takeHeldFlashes(sessionStorage);
+  } catch {
+    return; // sessionStorage unavailable
+  }
+  for (const flash of held) {
+    const { type: _t, ...detail } = flash;
+    _dispatchFlash(detail);
+  }
+}
+
 // ── Server frame handler ──────────────────────────────────────────────────────
 
 // One-shot guard for the auto-reload that recovers from an expired/unknown component
@@ -1760,6 +1813,11 @@ async function _handleServerFrame(
   }
 
   if (frame.type === "redirect") {
+    try {
+      _holdFlashes(sessionStorage, frame.flashes);
+    } catch {
+      // sessionStorage unavailable (private mode, etc.)
+    }
     if (frame.sessionToken) {
       try {
         await fetch(`/__flow/session-relay?t=${encodeURIComponent(frame.sessionToken)}`, {
@@ -4221,4 +4279,5 @@ export function initBridge(): void {
   _setupEventDelegation();
   _setupNavigationLinks();
   _setupModalEscape();
+  _replayHeldFlashes(); // a flash chained onto the redirect that brought us here
 }

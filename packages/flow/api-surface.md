@@ -574,6 +574,7 @@ interface FlowConfigShape = {
   cspSafe: boolean
   exposeErrorMessages?: boolean | undefined
   persistentMiddleware: (string | MiddlewareClass)[]
+  uploads?: {    maxBytes?: number | undefined;} | undefined
 }
 
 interface FlowEvents = {}

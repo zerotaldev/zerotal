@@ -196,8 +196,9 @@ a page that translates its strings with `__()` compiles under
   Flow. A path alias or a workspace package is the app's code. Or one of these globals: `String`,
   `Number`, `Boolean`, `Math`, `JSON`, `Date`, `Intl`, `parseInt`, `parseFloat`, `encodeURI`,
   `encodeURIComponent`, `isNaN` and `isFinite`, when nothing in the file declares that name.
-- **What it is handed.** Every argument along the chain is data: literals, the page's fields,
-  locals the render computed, and calls that pass the same rule. A function, a method of the page,
+- **What it is handed.** Every argument along the chain is data: literals, the page's fields
+  declared with no initializer or a plain literal one, locals the render computed from data, and
+  calls that pass the same rule. A function, a method of the page,
   one of the app's functions, or a callback's parameter handed to a package's call could be called
   back by it, so any of those keeps the page on the runtime.
 

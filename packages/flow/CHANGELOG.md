@@ -107,6 +107,17 @@ change.
   in it. Anything else may return markup, whose bindings and class components need the render
   context, so it still renders through the runtime and the compile log says why. So does a call
   that awaits or is handed markup, and a client-only magic in one is still refused.
+
+- **A function call as a text child compiles, when it returns a value.** `{__("projects.title")}`,
+  `{String(n).padStart(3, "0")}` and `{this.fullName()}` sent the page to the runtime renderer, and
+  under `cspSafe` stopped the boot, though the same call compiled in an attribute or hoisted into a
+  leading const. A call now compiles to `__esc(call)` when what it calls cannot be the app's own
+  code: a global, a method on a plain value, a package's function (`__()` from `zerotal/i18n`), or
+  a page method with no JSX and no calls in it. So a page that translates its strings compiles,
+  `cspSafe` included. The app's own functions can return markup at any depth, whose bindings and
+  class components need the render context, so a call to one still renders through the runtime
+  and the compile log says why; compute its value in a leading const instead. So does a call that
+  awaits or is handed markup, and a client-only magic in one is still refused.
 - **Compiled text is escaped exactly as the runtime escapes it.** `__esc` left `"` and `'` as
   they were, where the runtime writes `&quot;` and `&#x27;`. The page reads the same; the HTML is
   now byte for byte what the runtime renders.

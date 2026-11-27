@@ -182,22 +182,24 @@ head, a layout, reading the signed-in user), as long as that class is imported f
 module and extends `Component` itself, or through another such class. Its `@expose` and `@locked`
 fields count as the page's own.
 
-A function call in a text child compiles too, when it returns a value: `{__("projects.title")}`,
-`{formatDate(project.dueOn)}`, `{this.fullName()}`, at the top of the markup, in a ternary branch or
-inside a `.map()`. It runs on the server as the page renders, and its result is written the way the
-runtime writes a child: an array item by item, `null`, `undefined` and booleans as nothing, and
-anything else escaped. It needs no client code, so a page that translates its strings with `__()`
-compiles under [`cspSafe`](/docs/flow/components#csp-safe-mode).
+A function call in a text child compiles too, when it returns a value: `{__("projects.title")}`
+from `zerotal/i18n`, `{String(n).padStart(3, "0")}`, `{label.toUpperCase()}`, `{this.fullName()}`,
+at the top of the markup, in a ternary branch or inside a `.map()`. It runs on the server as the
+page renders, and its result is written the way the runtime writes a child: an array item by item,
+`null`, `undefined` and booleans as nothing, and anything else escaped. It needs no client code, so
+a page that translates its strings with `__()` compiles under
+[`cspSafe`](/docs/flow/components#csp-safe-mode).
 
-A call compiles only when it is plainly a value: a global, a local, a function this file declares
-with no JSX in it, one from a package, one from the app's own `.ts` module that re-exports nothing,
-or a method of the page whose body has no JSX and makes no calls. Markup a call returns needs the
-render context, for its bindings and for any class component in it, so anything else keeps the page
-on the runtime and the compile log says why: a function from a `.tsx` module or through a path
-alias, a method that calls another or that the page inherits, a call through a field
-(`{this.ui.field()}`), and a function the render declares that holds JSX. Render such markup as a
-component (`<Badge />`) instead. So do a call that awaits (`{format(await load())}`; await it in a
-leading const and render the const) and one handed markup as an argument (`{wrap(<b>hi</b>)}`).
+A call compiles only when what it calls cannot be the app's own code: a global, a method on a plain
+value the render holds, a function from a package, or a method of the page whose body has no JSX
+and makes no calls. The app's own code can return markup, at any depth, and markup needs the render
+context for its bindings and for any class component in it. So a call to one of the app's own
+functions (declared in the file, imported from a relative module or a path alias, or held in a
+const), a method that calls another or that the page inherits, and a call through a field
+(`{this.ui.field()}`) keep the page on the runtime, and the compile log says why. For a value from
+your own helper, compute it in a leading const (`const due = formatDate(project.dueOn);`) and render
+the const; for markup, render a component (`<Badge />`). A call that awaits
+(`{format(await load())}`) or is handed markup (`{wrap(<b>hi</b>)}`) stays on the runtime too.
 
 ## Interaction polish
 

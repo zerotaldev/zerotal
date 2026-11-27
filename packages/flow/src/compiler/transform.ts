@@ -3296,6 +3296,11 @@ function _isData(
       visit(n.initializer);
       return;
     }
+    // `fn<T>` is the function itself with type arguments, not a type.
+    if (ts.isExpressionWithTypeArguments(n)) {
+      visit(n.expression);
+      return;
+    }
     // A type (`this.q as Key`) is not a value at all.
     if (ts.isTypeNode(n)) return;
     if (ts.isIdentifier(n)) {

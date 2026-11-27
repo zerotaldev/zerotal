@@ -370,6 +370,13 @@ import { row } from "./rows";`,
     ],
     ["ReviverFieldPage", "", `<p>{JSON.parse("0", this.rev)}</p>`, "", `rev = () => 1;`],
     [
+      "TypeArgsPage",
+      `import { collect } from "@zerotal/core";`,
+      `<ul>{collect(["a"]).map(this.rowFn<string>).toArray()}</ul>`,
+      "",
+      `rowFn = (r: string) => r;`,
+    ],
+    [
       "ShadowNamespacePage",
       "namespace Math { export const round = (n: number) => n; }",
       `<p>{Math.round(1)}</p>`,

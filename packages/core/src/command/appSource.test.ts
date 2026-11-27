@@ -191,6 +191,12 @@ describe("generated sources pass a starter's `format:check` as written", () => {
     "make:policy (no User)": policyStub("TaskPolicy", "Task", { userImport: false }),
     "make:test (starter)": featureTestStub("tasks", { support: true, userFactory: true }),
     "make:test (starter, no users)": featureTestStub("tasks", { support: true, routeExists: true }),
+    "make:test (Flow starter)": featureTestStub("tasks", {
+      support: true,
+      html: true,
+      userFactory: true,
+      routeExists: true,
+    }),
     "make:test (helpers)": featureTestStub("tasks", { helpers: true }),
     "make:test (bootstrap)": featureTestStub("tasks"),
     "make:test --unit": unitTestStub("Slugify"),

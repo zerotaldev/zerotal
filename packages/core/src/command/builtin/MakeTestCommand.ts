@@ -97,7 +97,8 @@ ${signIn}${listed}  });
 ${signIn}    const res = await ${as}.postForm("/${route}", { name: "Example" });
 
     res.assertRedirect("/${route}");
-    await assertDatabaseHas("${table}", { name: "Example" });${shown}  });
+    await assertDatabaseHas("${table}", { name: "Example" });
+${shown}  });
 
   test.todo("rejects an invalid ${singular}", async () => {
 ${signIn}    const from = \`\${app.baseUrl}/${route}\`;

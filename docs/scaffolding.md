@@ -49,8 +49,9 @@ Next:
 ```
 
 The generators from other packages (`make:model`, `make:migration`, `make:factory`,
-`make:seeder`, `make:admin-resource`, `make:channel`) keep their own options; `make:flow` and
-`make:page` share the base.
+`make:seeder`, `make:admin-resource`, `make:channel`, `make:route`, and `make:resource --model`,
+which hands the screen to `@zerotal/inertia`) keep their own options, and do not take
+`--dry-run` or `--force`; `make:flow` and `make:page` share the base.
 
 A generated file passes your app's own checks as it is written. It imports the framework
 the way your app does: through the `zerotal` bundle (`zerotal/orm`, `zerotal/auth`) when

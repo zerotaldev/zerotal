@@ -71,7 +71,7 @@ follows the Zerotal monorepo's unified versioning.
   passes an option a command never had must drop it; a command of your own that hands options
   on to another tool sets `static allowUnknownFlags = true` and reads them from
   `this.unknownFlags`, as `zt test` does.
-- **BREAKING: a `make:*` generator that refuses exits 1.** "File already exists", "Name is
+- **BREAKING: a built-in generator that refuses exits 1** (and `make:flow`, `make:page`). "File already exists", "Name is
   required", an invalid name and "Package already exists" all exited 0, so
   `zt make:controller X || exit 1` went on as though the file on disk were the one it asked
   for. A script that runs a generator again on purpose and reads the exit code must pass
@@ -121,7 +121,7 @@ follows the Zerotal monorepo's unified versioning.
 - **The unused `DevReloadServer` module**, and the comments that described a server-sent-events
   reload channel long since replaced by `/__dev/ws`.
 
-- **`--dry-run` and `--force` on every generator.** `--dry-run` prints each file a generator
+- **`--dry-run` and `--force` on the built-in generators, `make:flow` and `make:page`.** `--dry-run` prints each file a generator
   would write, with its contents, and writes nothing (`make:provider` reports the registration it
   would make; `make:page` the page registry it would regenerate). `--force` overwrites an
   existing file. Both come from `GeneratorCommand`, the base every built-in generator, `make:flow`

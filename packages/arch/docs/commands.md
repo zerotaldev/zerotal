@@ -667,9 +667,10 @@ failure, so it is safe to run from a timer — see
 
 ### Generators
 
-Every generator in `zerotal` takes `--dry-run` (print the files and their contents, write
-nothing) and `--force` (overwrite a file that exists), refuses a name that is not a class or
-file name, and exits 1 when it refuses. See [Scaffolding](/docs/scaffolding).
+The generators `zerotal` builds in, and `make:flow` and `make:page`, take `--dry-run` (print
+the files and their contents, write nothing) and `--force` (overwrite a file that exists),
+refuse a name that is not a class or file name, and exit 1 when they refuse. The generators
+other packages add keep their own options; see [Scaffolding](/docs/scaffolding) for the list.
 
 | Command                                              | Creates                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------------------- |

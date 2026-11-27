@@ -14,6 +14,13 @@ follows the Zerotal monorepo's unified versioning.
   same moment.** The 1.18.3 fix claims the code's step in one update; the replay tests were all
   sequential, so nothing pinned the concurrent case.
 
+### Changed
+
+- **The starters' passkey and session code reads typed rows.** `app/auth/passkeys.ts` and
+  `app/auth/sessions.ts` pass the row type to the query (`.get<PasskeyRow>()`,
+  `.first<SessionRow>()`) instead of casting the result, so the starters have no casts on query
+  results.
+
 ## [1.18.3] — 2026-11-26
 
 ### Changed

@@ -45,7 +45,7 @@ export async function trackSession(http: HttpContext, userId: number): Promise<"
 
   const id = session.get(SESSION_ROW_KEY);
   if (typeof id === "string") {
-    const row = (await DB.table("user_sessions").where("id", id).first()) as SessionRow | null;
+    const row = await DB.table("user_sessions").where("id", id).first<SessionRow>();
     if (!row) return "revoked";
     if (Number(row.user_id) === userId) {
       if (Date.now() - new Date(row.last_active_at).getTime() > TOUCH_EVERY_MS) {
@@ -76,10 +76,10 @@ export async function trackSession(http: HttpContext, userId: number): Promise<"
 /** Every browser the user is signed in on, most recently active first. */
 export async function listSessions(http: HttpContext, userId: number): Promise<SessionSummary[]> {
   const current = http.session?.get(SESSION_ROW_KEY);
-  const rows = (await DB.table("user_sessions")
+  const rows = await DB.table("user_sessions")
     .where("user_id", userId)
     .orderBy("last_active_at", "desc")
-    .get()) as SessionRow[];
+    .get<SessionRow>();
 
   return rows.map((row) => ({
     id: row.id,
@@ -93,7 +93,7 @@ export async function listSessions(http: HttpContext, userId: number): Promise<S
 /** Sign out every browser but this one. Returns how many were signed out. */
 export async function revokeOtherSessions(http: HttpContext, userId: number): Promise<number> {
   const current = http.session?.get(SESSION_ROW_KEY);
-  const others = (await DB.table("user_sessions").where("user_id", userId).get()) as SessionRow[];
+  const others = await DB.table("user_sessions").where("user_id", userId).get<SessionRow>();
   const revoke = others.filter((row) => row.id !== current);
   for (const row of revoke) await DB.table("user_sessions").where("id", row.id).delete();
   return revoke.length;

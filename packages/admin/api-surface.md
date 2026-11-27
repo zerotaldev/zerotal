@@ -108,6 +108,8 @@ class AdminPage = {
   $refresh: () => void
   $set: (key: string, value: unknown) => void
   _applyClientUpdate: (key: string, value: unknown, arrayKey?: string) => Promise<void>
+  _applyParentProps: (json: unknown, sig: unknown) => Promise<void>
+  _applyWrite: (key: string, value: unknown, arrayKey?: string) => Promise<void>
   _buildSchema: (builders: Map<string, ValidateBuilder>) => Schema
   _childIds: string[]
   _clearDurable: boolean
@@ -123,6 +125,7 @@ class AdminPage = {
   _flowId: string
   _flowPath: string
   _flowSlots: Record<string, string>
+  _isClientWritable: (key: string) => boolean
   _isHydrated: boolean
   _prevChildIds: string[]
   _redirectStatus: number | null
@@ -134,7 +137,9 @@ class AdminPage = {
   _streamSender: ((ref: string, content: string, replace: boolean) => void) | null
   _taskSignal: AbortSignal | null
   _validateField: (field: string) => Promise<void>
+  _writeClientValue: (key: string, value: unknown) => void
   addError: (field: string, message: string) => void
+  beforeAction: (_name: string, _args: unknown[]) => boolean | void | Promise<boolean | void>
   bind: (key: string, optionValue?: string) => Record<string, unknown>
   cancelled: boolean
   child: <C extends Component>(ChildClass: new () => C, opts?: {    key?: string | number;    props?: Partial<C>;    lazy?: boolean;    defer?: boolean;    stream?: boolean;    slots?: Record<string, string>;}) => Promise<HtmlNode>

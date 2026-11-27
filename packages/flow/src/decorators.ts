@@ -30,6 +30,7 @@
 
 import type { RuleBuilder, FieldRule } from "@zerotal/validator";
 import type { LooseEventName } from "./events.ts";
+import { MONOTONIC_FIELD, _issueMonotonicSeq } from "./monotonic.ts";
 
 /**
  * A `@validate` rule: a callback that receives the validator's chain API and returns the built
@@ -67,6 +68,8 @@ const _modelableProps = new WeakMap<object, Set<string>>();
 const _taskMethods = new WeakMap<object, Set<string>>();
 const _presenceProps = new WeakMap<object, Map<string, PresenceChannel>>();
 const _sharedProps = new WeakMap<object, Map<string, SharedChannel>>();
+const _monotonicProps = new WeakMap<object, Set<string>>();
+const _canRules = new WeakMap<object, Map<string, CanRule[]>>();
 
 function _register(map: WeakMap<object, Set<string>>, proto: object, key: string): void {
   let s = map.get(proto);
@@ -136,6 +139,8 @@ interface MemberTag {
   computed?: boolean;
   /** The event name, or a resolver over the instance — see {@link ListenerName}. */
   on?: ListenerName;
+  /** `@can` rules, outermost decorator last (decorators apply bottom-up). */
+  can?: CanRule[];
 }
 
 // `unique symbol` (not a plain `symbol`) so the computed-key types below resolve.
@@ -178,6 +183,7 @@ function _scanProto(proto: object): void {
     if (tag.task) _register(_taskMethods, proto, name);
     if (tag.computed) _register(_computedProtos, proto, name);
     if (tag.on !== undefined) _registerMap(_onListeners, proto, tag.on, name);
+    if (tag.can) _registerMap(_canRules, proto, name, [...tag.can].reverse());
   }
 }
 
@@ -443,6 +449,11 @@ export function getLockedProps(instance: object): Set<string> {
   _ensureDrained(instance);
   return _collect(_lockedProps, Object.getPrototypeOf(instance) as object);
 }
+/** `@locked({ monotonic: true })` field names. Accepts a prototype directly. */
+export function getMonotonicProps(proto: object): Set<string> {
+  _ensureDrained(proto);
+  return _collect(_monotonicProps, proto);
+}
 export function getExposedMethods(PageClass: { prototype: object }): Set<string> {
   _scanChain(PageClass.prototype as object);
   return _collect(_exposedMethods, PageClass.prototype as object);
@@ -451,6 +462,11 @@ export function getExposedMethods(PageClass: { prototype: object }): Set<string>
 export function getTaskMethods(PageClass: { prototype: object }): Set<string> {
   _scanChain(PageClass.prototype as object);
   return _collect(_taskMethods, PageClass.prototype as object);
+}
+/** `@can` rules per action, in the order they are written. */
+export function getCanRules(PageClass: { prototype: object }): Map<string, CanRule[]> {
+  _scanChain(PageClass.prototype as object);
+  return _collectMap(_canRules, PageClass.prototype as object);
 }
 export function getRenderlessMethods(PageClass: { prototype: object }): Set<string> {
   _scanChain(PageClass.prototype as object);
@@ -640,6 +656,22 @@ export function expose(_value: unknown, context: ExposeContext): void {
 // ── @locked ───────────────────────────────────────────────────────────────────
 
 /**
+ * Options for {@link locked}.
+ *
+ * @category Exposure & state
+ */
+export interface LockedOptions {
+  /**
+   * Refuse a snapshot older than one this component has already acted on, so the browser cannot
+   * send back an earlier copy of the state and act on it again. Kept with a counter per component
+   * in the session, which needs `SessionMiddleware` on the route. Default: `false`.
+   */
+  monotonic?: boolean | undefined;
+}
+
+type LockedDecorator = (value: unknown, context: ClassFieldDecoratorContext) => void;
+
+/**
  * Marks a field as exposed but read-only client-side: it is included in the snapshot (the client
  * can read/render it) but the client cannot mutate it via `flow:model`.
  *
@@ -649,20 +681,68 @@ export function expose(_value: unknown, context: ExposeContext): void {
  * UI displays but must not change directly — the value only moves via server actions. Applies to
  * a field only.
  *
+ * A locked value cannot be edited, but it can be rewound: the browser may send back any snapshot
+ * it was given for that user in the last twelve hours, with the locked value as it was then. Use
+ * `@locked({ monotonic: true })` for a value that must only move forward (a balance, a step, a
+ * count of attempts left): a snapshot older than one already acted on is refused, and the page
+ * is reloaded. See {@link LockedOptions}.
+ *
  * @example
  * ```tsx
  * class Profile extends Component {
  *   // Client renders it, but cannot bind it with flow:model.
  *   @locked role = "member";
+ *   // Cannot be rewound to an earlier snapshot either.
+ *   @locked({ monotonic: true }) creditsLeft = 3;
  * }
  * ```
  *
  * @category Exposure & state
  */
-export const locked = _fieldDecorator((proto, name) => {
-  _register(_exposedProps, proto, name);
-  _register(_lockedProps, proto, name);
-});
+export function locked(value: unknown, context: ClassFieldDecoratorContext): void;
+export function locked(opts?: LockedOptions): LockedDecorator;
+export function locked(
+  optsOrValue?: LockedOptions | unknown,
+  context?: ClassFieldDecoratorContext,
+): LockedDecorator | void {
+  if (context !== undefined) return _lockedDecorator({})(optsOrValue, context); // bare @locked
+  return _lockedDecorator((optsOrValue ?? {}) as LockedOptions);
+}
+
+function _lockedDecorator(opts: LockedOptions): LockedDecorator {
+  return _fieldDecorator((proto, name) => {
+    _register(_exposedProps, proto, name);
+    _register(_lockedProps, proto, name);
+    if (opts.monotonic) {
+      _register(_monotonicProps, proto, name);
+      _installMonotonicField(proto);
+    }
+  });
+}
+
+/**
+ * Give `proto` the server-issued sequence number a monotonic component carries in its snapshot.
+ *
+ * An accessor, so it needs no change to how a snapshot is built: dehydration reads every locked
+ * field, and reading this one issues the next number from the session (see `monotonic.ts`). The
+ * setter discards the value a snapshot restores: that value was already checked against the
+ * session when the frame arrived, before the page was built.
+ */
+function _installMonotonicField(proto: object): void {
+  if (Object.prototype.hasOwnProperty.call(proto, MONOTONIC_FIELD)) return;
+  Object.defineProperty(proto, MONOTONIC_FIELD, {
+    configurable: true,
+    enumerable: false,
+    get(this: { _flowId: string; constructor: unknown }) {
+      return _issueMonotonicSeq(this);
+    },
+    set(_restored: unknown) {
+      /* checked on arrival — see _assertMonotonic */
+    },
+  });
+  _register(_exposedProps, proto, MONOTONIC_FIELD);
+  _register(_lockedProps, proto, MONOTONIC_FIELD);
+}
 
 // ── @presence ─────────────────────────────────────────────────────────────────
 // Binds a property to a broadcast presence channel: the framework keeps it filled
@@ -785,18 +865,18 @@ export function resolveSharedChannel(channel: SharedChannel, instance: object): 
 
 // ── @reactive ───────────────────────────────────────────────────────────────
 // A child-component prop the PARENT can push new values into on every re-render.
-// Included in the snapshot and client-writable (so the framework can deliver
-// parent updates), and re-emitted by the parent so the child re-renders when the
-// bound value changes.
+// Included in the snapshot, NOT client-writable: the parent's values reach the child signed
+// for it (`$props`), and `$set` refuses the field unless it is also @modelable.
 
 /**
  * Marks a child-component prop as reactive — the parent re-pushes new values into it on every
  * re-render.
  *
  * @remarks
- * The prop is included in the snapshot and is client-writable (so the framework can deliver the
- * parent's updates), and the parent re-emits it so the child re-renders when the bound value
- * changes. This is a one-way parent→child binding; use `@modelable` for two-way.
+ * The prop is included in the snapshot, and the parent re-emits it so the child re-renders when
+ * the bound value changes. The browser cannot write it: the parent's values travel to the child
+ * signed for that child, and a `$set` or `flow:model` write to the field is refused. This is a
+ * one-way parent→child binding; use `@modelable` for two-way, which the child may also write.
  * Applies to a field only.
  *
  * @example
@@ -873,6 +953,73 @@ export function renderless(_fn: unknown, context: ClassMethodDecoratorContext): 
   context.addInitializer(function (this: unknown) {
     _registerOn(_renderlessMethods, this, String(context.name));
   });
+}
+
+// ── @can ──────────────────────────────────────────────────────────────────────
+
+/**
+ * What a `@can` rule checks against: the model an ability is about, read off the component (and
+ * the action's arguments) when the action is called.
+ *
+ * @category Actions
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- `unknown` would break `page.project`
+export type CanModel = (page: any, args: unknown[]) => object | null | undefined;
+
+/** One `@can` rule: the ability, and where its model comes from. */
+export interface CanRule {
+  ability: string;
+  model?: CanModel | undefined;
+}
+
+/**
+ * Checks a policy ability before an action runs, and refuses the call when it is denied.
+ *
+ * @remarks
+ * The check goes through the app's Gate (`@zerotal/auth`), with the model `model` returns, read
+ * off the component when the browser calls the action: the same policy a controller would use.
+ * A denied call does not run and is answered like a call to a method that is not exposed. Several
+ * `@can` on one action must all allow, checked in the order written, before
+ * {@link Component.beforeAction} runs.
+ *
+ * `@can` does not expose a method: pair it with `@expose` (or `@task`, `@on`). Applies to a
+ * method only, and only to calls from the browser; calling the method from server code does not
+ * check it.
+ *
+ * @param ability - The ability to check, as the policy names it.
+ * @param model - Reads the model the ability is about. Omit it for an ability with no model.
+ * @returns A method decorator that registers the rule.
+ *
+ * @example
+ * ```tsx
+ * class ProjectPage extends Component {
+ *   @locked project!: Project;
+ *
+ *   @expose @can("update", (page) => page.project)
+ *   async rename(name: string) {
+ *     await this.project.merge({ name }).save();
+ *   }
+ * }
+ * ```
+ *
+ * @category Actions
+ */
+export function can(
+  ability: string,
+  model?: CanModel,
+): (fn: unknown, context: ClassMethodDecoratorContext) => void {
+  return (_fn: unknown, context: ClassMethodDecoratorContext): void => {
+    const name = String(context.name);
+    if ((context as { kind: string }).kind !== "method") {
+      throw new Error(`[Flow] @can can only decorate a method, not a ${context.kind} ("${name}").`);
+    }
+    const rule: CanRule = { ability, model };
+    const existing =
+      typeof _fn === "function" && Object.prototype.hasOwnProperty.call(_fn, TAG)
+        ? ((_fn as { [TAG]?: MemberTag })[TAG]?.can ?? [])
+        : [];
+    _tag(_fn, { can: [...existing, rule] });
+  };
 }
 
 // ── @task ───────────────────────────────────────────────────────────────────────

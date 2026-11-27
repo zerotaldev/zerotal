@@ -40,9 +40,14 @@ import type { Component } from "../Component.ts";
 import { Component as FlowComponent } from "../Component.ts";
 import { flowRoute, registerFlowFileRoute, _persistSessionProps } from "../router.ts";
 import type { PageClassWithMeta } from "../registry.ts";
-import { getTaskMethods } from "../decorators.ts";
+import { getTaskMethods, getMonotonicProps } from "../decorators.ts";
+import { _assertMonotonic, FlowSnapshotReplayError } from "../monotonic.ts";
+import { _actionRefusal } from "../authorize.ts";
 import { ValidationError } from "../validation.ts";
 import { makeSignedRef } from "../uploads/TemporaryUploadedFile.ts";
+import { _receiveUpload } from "../uploads/receive.ts";
+import { rm } from "node:fs/promises";
+import { currentUserId } from "@zerotal/core/auth";
 import { isAllowedOrigin, _clientAddress, _trustedProxyCount } from "@zerotal/core/http";
 import { _loadClientBundle, type ClientBundleName } from "../clientBundles.ts";
 import {
@@ -852,8 +857,10 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
               frame.snapshot,
               entry.PageClass as unknown as new () => Component,
             );
+            // A @locked({ monotonic: true }) page refuses a snapshot older than one it acted on.
+            _assertMonotonic(frame.snapshot, getMonotonicProps(entry.PageClass.prototype).size > 0);
           } catch (e) {
-            if (e instanceof FlowSnapshotOwnershipError) {
+            if (e instanceof FlowSnapshotOwnershipError || e instanceof FlowSnapshotReplayError) {
               // Not tampering — the session changed under a page that is still
               // open, which is what signing out in another tab looks like. The
               // page's state belongs to who you were, so reloading is the only
@@ -863,8 +870,12 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
                 JSON.stringify({
                   type: "error",
                   component: frame.component,
-                  message: "Your session changed — reload the page.",
-                  code: "session_changed",
+                  message:
+                    e instanceof FlowSnapshotReplayError
+                      ? e.message
+                      : "Your session changed — reload the page.",
+                  code:
+                    e instanceof FlowSnapshotReplayError ? "snapshot_replayed" : "session_changed",
                   reload: true,
                 }),
               );
@@ -1240,22 +1251,35 @@ async function _dispatchFrame(
     } else if (method === "$presence") {
       // A presence join/leave occurred — refill the @presence member list(s), then render.
       await populatePresence(page);
+    } else if (method === "$props") {
+      // Parent-pushed @reactive values, applied only when the parent's signature verifies.
+      const [json, sig] = frame.args as [unknown, unknown];
+      try {
+        await page._applyParentProps(json, sig);
+      } catch (error) {
+        if (!(error instanceof ValidationError)) await fail(error);
+      }
     } else if (method === "$shared") {
       // The channel signalled a shared-state change — the read-latest at the top of this
       // dispatch already refilled the @shared prop(s) from the store; just re-render.
     }
   } else {
     const allowed = getAllowedMethods(entry.PageClass as typeof Component);
-    if (!allowed.has(method)) {
+    // An exposed method still has to pass its @can rules and the page's beforeAction().
+    const refusal = !allowed.has(method)
+      ? { why: `it calls a method ${className} does not expose to the browser` }
+      : await _actionRefusal(page, method, frame.args);
+    if (refusal) {
       // The snapshot verified, so this is a real page asking for something it may not call:
-      // a stale tab after a deploy renamed the action, or someone trying names by hand.
-      // Counted like an invalid frame, so a loop of them is bounded too; the name the client
-      // sent goes in the context, escaped and cut short, never into the message itself.
+      // a stale tab after a deploy renamed the action, someone trying names by hand, or a call
+      // the page's authorization refused. Counted like an invalid frame, so a loop of them is
+      // bounded too; the name the client sent goes in the context, escaped and cut short, never
+      // into the message itself.
       const limited = _noteInvalidFrame(
         ws.data.remoteIp ?? "unknown",
-        `it calls a method ${className} does not expose to the browser`,
+        refusal.why.slice(0, 160),
         Date.now(),
-        { method: method.slice(0, 80) },
+        { method: method.slice(0, 80), ...("error" in refusal ? { error: refusal.error } : {}) },
       );
       ws.send(
         JSON.stringify({
@@ -1696,56 +1720,42 @@ export class FlowProvider extends ServiceProvider {
       "/__flow/upload",
       class FlowUploadHandler {
         async handle(http: HttpContext): Promise<void> {
-          const user = (http as unknown as { user?: unknown }).user;
-          if (!user) {
+          const sub = currentUserId(http);
+          if (sub === undefined) {
             http.response = Response.json({ error: "Unauthenticated." }, { status: 401 });
             return;
           }
-          let form: FormData;
-          try {
-            form = await http.request.formData();
-          } catch {
-            http.response = Response.json({ error: "Invalid upload." }, { status: 400 });
+          // Streamed to a temporary file as it arrives, never held in memory whole, and cut off
+          // as soon as it passes the limit.
+          const received = await _receiveUpload(http.request, uploadLimit ?? MAX_UPLOAD_BYTES);
+          if (!received.ok) {
+            http.response = Response.json({ error: received.error }, { status: received.status });
             return;
           }
-          const entry = form.get("file");
-          if (!(entry instanceof File) || !entry.name || entry.size === 0) {
-            http.response = Response.json({ error: "No file provided." }, { status: 422 });
-            return;
-          }
-          if (entry.size > (uploadLimit ?? MAX_UPLOAD_BYTES)) {
-            http.response = Response.json(
-              { error: "File exceeds the size limit." },
-              { status: 422 },
-            );
-            return;
-          }
-          const ext = (entry.name.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const { file } = received;
+          const ext = (file.name.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
           const tmpPath = `flow-tmp/${crypto.randomUUID()}${ext ? "." + ext : ""}`;
-          const bytes = new Uint8Array(await entry.arrayBuffer());
           try {
             const { Storage } = (await import("@zerotal/core/storage")) as {
               Storage: {
                 disk(): {
-                  put(p: string, d: Uint8Array, o?: { contentType?: string }): Promise<void>;
+                  put(p: string, d: Blob, o?: { contentType?: string }): Promise<void>;
                 };
               };
             };
-            await Storage.disk().put(tmpPath, bytes, {
-              contentType: entry.type || "application/octet-stream",
-            });
+            await Storage.disk().put(tmpPath, Bun.file(file.path), { contentType: file.type });
           } catch {
             http.response = Response.json({ error: "Storage is not configured." }, { status: 500 });
             return;
+          } finally {
+            await rm(file.path, { force: true });
           }
           _tempUploads.set(tmpPath, Date.now() + TEMP_UPLOAD_TTL_MS);
           http.response = Response.json(
-            makeSignedRef({
-              tmpPath,
-              originalName: entry.name,
-              mime: entry.type || "application/octet-stream",
-              size: entry.size,
-            }),
+            makeSignedRef(
+              { tmpPath, originalName: file.name, mime: file.type, size: file.size },
+              { sub },
+            ),
           );
         }
       },

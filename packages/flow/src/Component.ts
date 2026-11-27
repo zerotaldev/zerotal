@@ -27,6 +27,7 @@ import type { ValidationRules } from "./validation.ts";
 import { _applyWireValues, _isRegisteredModel } from "./synths/ModelSynth.ts";
 import { resolveUploadValue } from "./uploads/TemporaryUploadedFile.ts";
 import { toScriptJson } from "./utils.ts";
+import { _verifyParentProps, _signParentProps } from "./parentProps.ts";
 import { _compose } from "./mixins.ts";
 import type { Compose } from "./mixins.ts";
 import { _validateEventPayload } from "./events.ts";
@@ -864,6 +865,31 @@ export abstract class Component {
   async onUpdated(_prop: string, _value: unknown, _key?: string): Promise<void> {}
 
   /**
+   * Called before every action the browser calls, after the page is restored and its client
+   * updates are applied. Return `false`, or throw, to refuse the call: the action does not run,
+   * and the browser is answered as it is for a method that is not exposed.
+   *
+   * Runs after any {@link can | `@can`} rules on the action have allowed it. Built-in calls
+   * (`$set`, `$refresh`, …) do not pass through it; neither does calling the method from server
+   * code.
+   *
+   * @example
+   * ```ts
+   * override async beforeAction(name: string) {
+   *   if (name === "archive") return this.project.ownerId === Auth.id();
+   * }
+   * ```
+   *
+   * @param _name  the action's method name.
+   * @param _args  the arguments the browser sent with it.
+   * @returns `false` to refuse; anything else lets the action run.
+   * @category Lifecycle
+   */
+  beforeAction(_name: string, _args: unknown[]): boolean | void | Promise<boolean | void> {
+    return true;
+  }
+
+  /**
    * Called BEFORE `render()` runs.
    *
    * @category Lifecycle
@@ -1663,7 +1689,12 @@ export abstract class Component {
       const propsObj: Record<string, unknown> = {};
       for (const k of reactiveKeys) if (k in givenProps) propsObj[k] = givenProps[k];
       if (Object.keys(propsObj).length) {
-        bindAttrs += ` data-flow-props='${_attrJson(JSON.stringify(propsObj))}'`;
+        // Signed for this child: the browser forwards these with `$props`, and may not write a
+        // `@reactive` prop any other way.
+        const json = JSON.stringify(propsObj);
+        bindAttrs +=
+          ` data-flow-props='${_attrJson(json)}'` +
+          ` data-flow-props-sig="${_signParentProps(childId, json)}"`;
       }
     }
     if (modelableKeys.size) {
@@ -1861,14 +1892,28 @@ export abstract class Component {
 
   /**
    * @internal Handles flow:model updates from the client.
-   * Silently ignores unexposed or @locked properties — both are defense-in-depth
-   * against confused-deputy attacks (HMAC signing is the primary guard).
+   * Silently ignores properties the browser may not write (see {@link _isClientWritable}) —
+   * defense-in-depth against confused-deputy attacks (HMAC signing is the primary guard).
    */
   $set(key: string, value: unknown): void {
-    const exposed = getExposedProps(this);
-    const locked = getLockedProps(this);
-    if (!exposed.has(key) && !locked.has(key)) return;
-    if (locked.has(key)) return;
+    if (!this._isClientWritable(key)) return;
+    this._writeClientValue(key, value);
+  }
+
+  /**
+   * @internal Whether the browser may write `key`: `@expose`d, not `@locked`, and not a
+   * `@reactive` prop unless it is also `@modelable`. A `@reactive` prop belongs to the parent,
+   * which sets it on every render; the browser only forwards the parent's signed values
+   * (see {@link _applyParentProps}).
+   */
+  _isClientWritable(key: string): boolean {
+    if (!getExposedProps(this).has(key) || getLockedProps(this).has(key)) return false;
+    const proto = Object.getPrototypeOf(this) as object;
+    return !getReactiveProps(proto).has(key) || getModelableProps(proto).has(key);
+  }
+
+  /** @internal Write a value that arrived from the browser, once it may be written. */
+  _writeClientValue(key: string, value: unknown): void {
     // Form object: fill the existing instance instead of replacing it with a plain
     // object, so its class + methods survive a `value={this.form.field}` edit.
     const cur = (this as Record<string, unknown>)[key];
@@ -1909,20 +1954,42 @@ export abstract class Component {
 
   /**
    * @internal Apply a client-driven property update, firing the updating/updated
-   * lifecycle hooks (generic + per-property) around the write. Only writable
-   * (`@expose`, non-`@locked`) props fire hooks and get written; everything else
-   * is silently ignored by `$set` (defense-in-depth). An `onUpdating` hook may
+   * lifecycle hooks (generic + per-property) around the write. Only writable props
+   * (see {@link _isClientWritable}) fire hooks and get written; everything else is
+   * silently ignored (defense-in-depth). An `onUpdating` hook may
    * throw to reject the update.
    */
   async _applyClientUpdate(key: string, value: unknown, arrayKey?: string): Promise<void> {
-    const exposed = getExposedProps(this);
-    const locked = getLockedProps(this);
-    if (!exposed.has(key) || locked.has(key)) {
-      this.$set(key, value); // no-op for unknown/locked, kept for symmetry
+    if (!this._isClientWritable(key)) return;
+    await this._applyWrite(key, value, arrayKey);
+  }
+
+  /**
+   * @internal Apply the `@reactive` values a parent rendered onto this child, as the browser
+   * forwarded them with the `$props` built-in. `json` must be what the parent signed for this
+   * component's id; anything else is ignored, and so is a key that is not a `@reactive` prop.
+   */
+  async _applyParentProps(json: unknown, sig: unknown): Promise<void> {
+    if (typeof json !== "string" || !_verifyParentProps(this._flowId, json, sig)) return;
+    let props: unknown;
+    try {
+      props = JSON.parse(json);
+    } catch {
       return;
     }
+    if (props === null || typeof props !== "object" || Array.isArray(props)) return;
+    const reactiveKeys = getReactiveProps(Object.getPrototypeOf(this) as object);
+    for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
+      if (reactiveKeys.has(key) && !getLockedProps(this).has(key)) {
+        await this._applyWrite(key, value);
+      }
+    }
+  }
+
+  /** @internal One accepted write, with its update hooks and the field's validation. */
+  async _applyWrite(key: string, value: unknown, arrayKey?: string): Promise<void> {
     await this._emitUpdateHook("onUpdating", key, value, arrayKey);
-    this.$set(key, value);
+    this._writeClientValue(key, value);
     await this._emitUpdateHook("onUpdated", key, value, arrayKey);
 
     // Real-time validation: if this field carries a `@validate` rule, validate

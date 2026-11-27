@@ -532,8 +532,10 @@ export class AvatarUploader extends Component {
 
 ### Security
 
-- The temp reference is HMAC-signed with `APP_KEY`; the server verifies it on `$set` and refuses
-  forged paths. Once in the snapshot it's covered by the snapshot HMAC.
+- The temp reference is HMAC-signed with `APP_KEY`, together with the id of the user who
+  uploaded it and an expiry six hours out, as long as the temp file is kept. On `$set` the
+  server verifies all three: a forged path, another user's reference and an expired one each
+  clear the field instead of filling it. Once in the snapshot it's covered by the snapshot HMAC.
 - An upload is one request, held to `app.maxRequestBodySize` like every other route: 8 MiB
   unless you change it. That counts the whole multipart body, so the largest file is a little
   under it, and a larger one is answered `413`. To give uploads a limit of their own, set it in
@@ -546,8 +548,9 @@ export class AvatarUploader extends Component {
   ```
 
   Without it, a single file over 25 MB is refused whatever `app.maxRequestBodySize` is. The file
-  is held in memory while it is stored. Check `size` and `mime` yourself in the `save` action:
-  those are the limits that fit your app.
+  is streamed to a temporary file as it arrives, never held in memory whole, and the upload is
+  cut off, answered `422`, as soon as it passes the limit. Check `size` and `mime` yourself in
+  the `save` action: those are the limits that fit your app.
 
 - Temp files (`flow-tmp/…` on the default disk, random UUID names) are deleted after 6 hours;
   `.store()` removes the temp copy at once. On a local disk the directory is also swept by file

@@ -16,10 +16,12 @@
  * Skips where no browser is installed, like the suites beside it.
  */
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { fileURLToPath } from "node:url";
 import { Application, Router, SecureHeadersMiddleware } from "@zerotal/core";
 import { FlowProvider } from "../provider/FlowProvider.ts";
 import { FlowBrowser } from "./FlowBrowser.ts";
 import { CounterPage } from "./__fixtures__/CounterPage.tsx";
+import { _getPageEntries, _refuseRuntimeComponents, type PageEntry } from "../registry.ts";
 
 const T = 60_000;
 
@@ -31,12 +33,22 @@ const describeBrowser = hasBrowser ? describe : describe.skip;
 let app: Application;
 let url: string;
 const priorCspSafe = Bun.env["ZT_FLOW_CSP_SAFE"];
+let savedPages: Array<[string, PageEntry]> = [];
 
 beforeAll(async () => {
   if (!hasBrowser) return;
   Bun.env.APP_KEY = "test-app-key-aaaaaaaaaaaaaaaaaaaaaaaa";
   Bun.env.APP_ENV = "test";
   Bun.env["ZT_FLOW_CSP_SAFE"] = "true";
+
+  // A cspSafe boot refuses any registered component it cannot compile, so this boot registers
+  // only the page under test, and tells the compiler where its source is (the file router
+  // would; `Router.flow` from a test file cannot).
+  savedPages = [..._getPageEntries().entries()];
+  _getPageEntries().clear();
+  (CounterPage as unknown as { __sourceFile?: string }).__sourceFile = fileURLToPath(
+    new URL("./__fixtures__/CounterPage.tsx", import.meta.url),
+  );
 
   Application._resetInstance();
   app = Application.create({ env: "web", providers: [FlowProvider] });
@@ -55,6 +67,9 @@ afterAll(async () => {
   else Bun.env["ZT_FLOW_CSP_SAFE"] = priorCspSafe;
   if (!hasBrowser) return;
   await app?.close?.();
+  _refuseRuntimeComponents(false);
+  _getPageEntries().clear();
+  for (const [name, entry] of savedPages) _getPageEntries().set(name, entry);
 }, T);
 
 describeBrowser("Flow under script-src 'self'", () => {

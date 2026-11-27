@@ -1,4 +1,11 @@
+import { currentUserId } from "@zerotal/core/auth";
 import { sign, verify } from "./sign.ts";
+
+/**
+ * How long an upload reference stays good: as long as the temporary file it names is kept (the
+ * upload endpoint deletes abandoned temp files after the same six hours).
+ */
+export const UPLOAD_REF_MAX_AGE_SECONDS = 6 * 60 * 60;
 
 /**
  * The plain metadata describing a pending upload on the temp disk — the fields
@@ -32,28 +39,58 @@ export interface TufData {
  * The signature lets the server trust a client-supplied ref: on `$set` it is
  * verified (see {@link TemporaryUploadedFile.fromSignedRef}) before wrapping into
  * a {@link TemporaryUploadedFile}. A forged or altered ref fails verification and
- * is discarded.
+ * is discarded, and so is one issued to another user or one past its expiry.
  */
 export interface UploadRef extends TufData {
   /** Discriminator marking this object as a flow upload reference. */
   __flow_upload: true;
-  /** HMAC signature over the signed payload of {@link TufData} fields. */
+  /** The id of the user who uploaded the file. Signed: another user's `$set` is refused. */
+  sub: string;
+  /** When the reference stops being accepted, in seconds since the epoch. Signed. */
+  exp: number;
+  /** HMAC signature over the signed payload of {@link TufData} fields, `sub` and `exp`. */
   sig: string;
 }
 
-function payload(d: TufData): string {
+function payload(d: TufData & { sub: string; exp: number }): string {
   // Every field that steers later I/O MUST be signed:
   //  - originalName → store() derives the permanent file's extension from it, so
   //    an unsigned name lets a client swap a validated .png ref for an .html/.svg
   //    one (stored-XSS / content-type confusion on a public disk).
   //  - tempDisk → bytes()/store()/temporaryUrl() resolve against it, so an
   //    unsigned value lets a client redirect reads/writes to a different disk.
-  return `${d.tmpPath}|${d.size}|${d.mime}|${d.originalName}|${d.tempDisk ?? ""}`;
+  //  - sub / exp → a reference is the uploader's, and only until its file is swept.
+  // JSON, not a joined string: the browser chooses `originalName`, and a separator inside it
+  // could otherwise shift the fields after it.
+  return JSON.stringify([
+    "flow-upload:2",
+    d.tmpPath,
+    d.size,
+    d.mime,
+    d.originalName,
+    d.tempDisk ?? "",
+    d.sub,
+    d.exp,
+  ]);
 }
 
-/** Build a signed reference (server side, in the upload endpoint). */
-export function makeSignedRef(d: TufData): UploadRef {
-  return { __flow_upload: true, ...d, sig: sign(payload(d)) };
+/**
+ * Build a signed reference (server side, in the upload endpoint), issued to the signed-in user
+ * and good for {@link UPLOAD_REF_MAX_AGE_SECONDS}.
+ *
+ * @param d - The upload's metadata.
+ * @param opts - The user to issue it to and its lifetime; the current user and the default.
+ * @throws When there is no user to issue it to.
+ */
+export function makeSignedRef(
+  d: TufData,
+  opts: { sub?: string | undefined; ttlSeconds?: number | undefined } = {},
+): UploadRef {
+  const sub = opts.sub ?? currentUserId();
+  if (sub === undefined) throw new Error("[Flow] An upload reference needs a signed-in user.");
+  const exp = Math.floor(Date.now() / 1000) + (opts.ttlSeconds ?? UPLOAD_REF_MAX_AGE_SECONDS);
+  const signed = { ...d, sub, exp };
+  return { __flow_upload: true, ...signed, sig: sign(payload(signed)) };
 }
 
 export function isUploadRef(v: unknown): v is UploadRef {
@@ -63,6 +100,8 @@ export function isUploadRef(v: unknown): v is UploadRef {
     (v as Record<string, unknown>)["__flow_upload"] === true &&
     typeof (v as Record<string, unknown>)["sig"] === "string" &&
     typeof (v as Record<string, unknown>)["tmpPath"] === "string"
+    // `sub` and `exp` are checked by fromSignedRef: a ref without them is still a ref, and
+    // is refused there rather than passed through as a plain object.
   );
 }
 
@@ -194,14 +233,22 @@ export class TemporaryUploadedFile {
 
   /**
    * Verify a client-supplied signed ref and wrap it. Returns null when the
-   * signature is invalid (a forged or tampered ref), so callers discard it rather
-   * than trusting attacker-controlled paths.
+   * signature is invalid (a forged or tampered ref), when the ref was issued to a
+   * different user than the one signed in now, or when it has expired, so callers
+   * discard it rather than trusting attacker-controlled paths.
    * @param ref - The signed reference the client `$set`.
-   * @returns A verified file, or `null` if the signature check fails.
+   * @param sub - The user expected to own it; the signed-in user by default.
+   * @returns A verified file, or `null` if any check fails.
    * @category Storage
    */
-  static fromSignedRef(ref: UploadRef): TemporaryUploadedFile | null {
+  static fromSignedRef(
+    ref: UploadRef,
+    sub: string | undefined = currentUserId(),
+  ): TemporaryUploadedFile | null {
+    if (typeof ref.sub !== "string" || typeof ref.exp !== "number") return null;
     if (!verify(payload(ref), ref.sig)) return null;
+    if (sub === undefined || ref.sub !== sub) return null;
+    if (ref.exp < Math.floor(Date.now() / 1000)) return null;
     return new TemporaryUploadedFile(ref);
   }
   /**
@@ -260,8 +307,9 @@ export class TemporaryUploadedFile {
 
 /**
  * Used by Component.$set: convert client-supplied upload refs (single or array) into
- * `TemporaryUploadedFile` instances, verifying signatures. Non-upload values pass through.
- * A forged/invalid ref resolves to null (clearing the property) rather than trusting it.
+ * `TemporaryUploadedFile` instances, verifying signatures, owner and expiry. Non-upload values
+ * pass through. A forged, foreign or expired ref resolves to null (clearing the property) rather
+ * than trusting it.
  */
 export function resolveUploadValue(value: unknown): unknown {
   if (isUploadRef(value)) return TemporaryUploadedFile.fromSignedRef(value);

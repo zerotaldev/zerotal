@@ -1,5 +1,6 @@
 import type { Component } from "./Component.ts";
 import type { BaseModel } from "@zerotal/orm";
+import { ZerotalError } from "@zerotal/core";
 import { registerFlowModel } from "./synths/ModelSynth.ts";
 import { getExposedMethods, getRenderlessMethods } from "./decorators.ts";
 
@@ -12,27 +13,40 @@ export interface PageEntry {
 
 const _pages = new Map<string, PageEntry>();
 
-/** Names already warned about, so a collision is reported once per process. */
-const _collisionsWarned = new Set<string>();
+/**
+ * Two page classes share a name. Flow finds a page by its class name, so the second would take
+ * over the first one's actions.
+ */
+export class FlowPageNameCollisionError extends ZerotalError {
+  constructor(name: string, firstPath: string, secondPath: string) {
+    super(
+      `[Flow] Two page classes are named "${name}" (at ${firstPath || "(no route)"} and ` +
+        `${secondPath || "(no route)"}). Flow finds a page by its class name, so actions sent from ` +
+        `the first would run the second's code. Give each page class its own name, for example ` +
+        `\`export default class ProjectsIndex extends Component\`.`,
+      "E_PULSE_PAGE_NAME_COLLISION",
+      500,
+    );
+  }
+}
 
-/** Register a Component class by its constructor name. Called by Router.flow(). */
+/**
+ * Register a Component class by its constructor name. Called by Router.flow().
+ *
+ * @throws {@link FlowPageNameCollisionError} When a different class with the same name is
+ *   already registered at another route.
+ */
 export function registerPage(path: string, PageClass: typeof Component): void {
   const name = PageClass.name;
   const existing = _pages.get(name);
-  // Registration is keyed by class name, so a second page class with the same name takes over
-  // the first one's actions: a call from the first page runs the second page's code, under the
-  // first page's route middleware. A file-routed app with two `Index` classes does exactly that.
-  // The same class registered again, or a fresh copy of it at the same path (routes reloaded), is
-  // not a collision.
+  // Registration is keyed by class name, so a second page class with the same name would take
+  // over the first one's actions: a call from the first page would run the second page's code,
+  // under the first page's route middleware. A file-routed app with two `Index` classes does
+  // exactly that, so it stops the boot rather than serving the wrong code. The same class
+  // registered again, or a fresh copy of it at the same path (routes reloaded), is not a
+  // collision.
   if (existing && existing.PageClass !== PageClass && existing.path !== path) {
-    if (!_collisionsWarned.has(name)) {
-      _collisionsWarned.add(name);
-      console.warn(
-        `[Flow] Two page classes are named "${name}" (at ${existing.path || "(no route)"} and ` +
-          `${path || "(no route)"}). Flow finds a page by its class name, so actions sent from ` +
-          `the first now run the second's code. Give each page class its own name.`,
-      );
-    }
+    throw new FlowPageNameCollisionError(name, existing.path, path);
   }
   _pages.set(name, { PageClass, path });
 
@@ -79,7 +93,32 @@ export function _getPageEntries(): Map<string, PageEntry> {
  * @internal
  */
 export function registerComponent(PageClass: typeof Component, path = ""): void {
-  if (!_pages.has(PageClass.name)) registerPage(path, PageClass);
+  if (_pages.has(PageClass.name)) return;
+  if (_runtimeRefused && !(PageClass as { __flowCompiled?: boolean }).__flowCompiled) {
+    // Under cspSafe the boot compiled every registered component; this one arrived after it,
+    // on first render, so it would render through the runtime. Refused like the boot refuses.
+    throw new Error(
+      `[Flow CSP] ${PageClass.name} is registered on first render, after the boot compiled ` +
+        `every component, so it would render through the runtime, which flow.cspSafe forbids. ` +
+        `Register it at boot with registerComponent(${PageClass.name}) from a service ` +
+        `provider, with its class exported from a file under app/flow/components/ or ` +
+        `app/flow/pages/, so the compiler reads it.`,
+    );
+  }
+  registerPage(path, PageClass);
+}
+
+/** Set once a cspSafe boot has compiled every registered component. */
+let _runtimeRefused = false;
+
+/**
+ * Refuse to register an uncompiled component from now on (`true`), or allow it again. Called by
+ * the compiler at the end of a cspSafe boot.
+ *
+ * @internal
+ */
+export function _refuseRuntimeComponents(refuse: boolean): void {
+  _runtimeRefused = refuse;
 }
 
 // ── Method allowlist (opt-in via @expose) ────────────────────────────────────
@@ -91,6 +130,7 @@ export function registerComponent(PageClass: typeof Component, path = ""): void 
 // dev fast refresh to apply new code while preserving state.
 // $presence refills the @presence member list(s) from the broadcast presence channel.
 // $shared re-reads @shared props from the room store (convergence) and re-renders.
+// $props applies the @reactive values a parent signed for this child (see parentProps.ts).
 export const BUILTIN_ACTIONS = new Set([
   "$set",
   "$refresh",
@@ -98,6 +138,7 @@ export const BUILTIN_ACTIONS = new Set([
   "$rerender",
   "$presence",
   "$shared",
+  "$props",
 ]);
 
 /**

@@ -82,6 +82,12 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
   let external = 0;
 
   const start = Date.now();
+  // Under cspSafe, every registered component that would render through the runtime. The boot
+  // stops on them below, naming each: the runtime emits client code a strict policy refuses.
+  const runtime: Array<{ name: string; path: string; why: string }> = [];
+  const onRuntime = (entry: { PageClass: { name: string }; path: string }, why: string): void => {
+    runtime.push({ name: entry.PageClass.name, path: entry.path, why });
+  };
 
   const embedded = _appFilesEmbedded();
   await _locateRegisteredPages(appRoot, entries.values());
@@ -97,6 +103,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
     if (!sourceFile) {
       skipped++;
       external++;
+      onRuntime(entry, "no source file under app/flow/ for the compiler to read");
       continue;
     }
 
@@ -126,6 +133,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
       const recorded = _embeddedPageBuild(sourceFile, cspSafe);
       if (!recorded) {
         skipped++;
+        onRuntime(entry, "the binary carries no compile of it");
         continue;
       }
       if ("validation" in recorded) throw new FlowValidationError(recorded.validation);
@@ -165,6 +173,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
     if (build.path === null) {
       await build.record?.();
       skipped++;
+      onRuntime(entry, "the compiler could not read its render()");
       continue;
     }
     try {
@@ -182,6 +191,7 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
         // still uses jsx() and needs the runtime getter instrumentation for the
         // non-component bindings (value=/checked=/text= on intrinsic elements).
         injected++;
+        onRuntime(entry, "its render() still goes through the runtime");
       }
       await build.record?.();
     } catch (err) {
@@ -199,10 +209,34 @@ export async function compileRegisteredPages(appRoot: string, cspSafe = false): 
   }
 
   _warnIfMostlyRuntime(compiled + cached + injected + skipped - external, skipped - external);
+
+  if (cspSafe) {
+    if (runtime.length > 0) throw new FlowValidationError(_cspRuntimeReport(runtime));
+    // From here on, a component first registered while rendering cannot have been compiled.
+    const { _refuseRuntimeComponents } = await import("../registry.ts");
+    _refuseRuntimeComponents(true);
+  }
 }
 
-/** Where an app keeps its Flow pages, from the project root. */
+/** The boot error for components that would render through the runtime under cspSafe. */
+function _cspRuntimeReport(runtime: Array<{ name: string; path: string; why: string }>): string {
+  const lines = runtime.map(
+    ({ name, path, why }) => `  - ${name}${path ? ` (${path})` : ""}: ${why}`,
+  );
+  return (
+    `[Flow CSP] ${runtime.length} registered component(s) would render through the runtime, ` +
+    `which emits client code a policy without 'unsafe-eval' refuses:\n${lines.join("\n")}\n` +
+    `  Fix: keep each one's class in a file under app/flow/pages/ or app/flow/components/ that ` +
+    `exports it, so the compiler can read it. A child component registered on first render ` +
+    `is not compiled at all: register it at boot with registerComponent(Child) from a service ` +
+    `provider. A page a package registers cannot be compiled: turn flow.cspSafe off, or do not ` +
+    `register that package's pages.`
+  );
+}
+
+/** Where an app keeps its Flow pages and components, from the project root. */
 const PAGES_DIRECTORY = join("app", "flow", "pages");
+const COMPONENTS_DIRECTORY = join("app", "flow", "components");
 
 /**
  * Give each page registered from code its source file, so it is compiled like a file-routed one.
@@ -225,22 +259,25 @@ async function _locateRegisteredPages(
   }
   if (unplaced.size === 0) return;
 
-  const directory = join(appRoot, PAGES_DIRECTORY);
-  for (const file of await _scanAppFiles(directory, "**/*.{ts,tsx}")) {
-    if (/\.(test|spec)\.tsx?$/.test(file)) continue;
-    const path = join(directory, file);
-    let module: Record<string, unknown>;
-    try {
-      module = await _importAppFile(pathToFileURL(path).href);
-    } catch {
-      continue;
+  // Components too: a child registered at boot with registerComponent() lives there.
+  for (const relative of [PAGES_DIRECTORY, COMPONENTS_DIRECTORY]) {
+    const directory = join(appRoot, relative);
+    for (const file of await _scanAppFiles(directory, "**/*.{ts,tsx}")) {
+      if (/\.(test|spec)\.tsx?$/.test(file)) continue;
+      const path = join(directory, file);
+      let module: Record<string, unknown>;
+      try {
+        module = await _importAppFile(pathToFileURL(path).href);
+      } catch {
+        continue;
+      }
+      for (const value of Object.values(module)) {
+        if (!unplaced.has(value)) continue;
+        (value as { __sourceFile?: string }).__sourceFile = path;
+        unplaced.delete(value);
+      }
+      if (unplaced.size === 0) return;
     }
-    for (const value of Object.values(module)) {
-      if (!unplaced.has(value)) continue;
-      (value as { __sourceFile?: string }).__sourceFile = path;
-      unplaced.delete(value);
-    }
-    if (unplaced.size === 0) return;
   }
 }
 

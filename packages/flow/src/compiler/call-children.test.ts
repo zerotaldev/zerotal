@@ -104,43 +104,45 @@ async function bothWays(
 }
 
 describe("a call in a text child compiles", () => {
-  it("renders a translation call as the runtime does", async () => {
+  it("renders a package's function as the runtime does", async () => {
+    // A package's helper is a value: `__()` from zerotal/i18n is the case that matters, and
+    // pluralize() from core stands in for it here.
     const { compiled, runtime, render } = await bothWays(
-      "LangPage",
+      "PackagePage",
       page(
-        "LangPage",
-        `import { __ } from "./lang";`,
-        `<main><h1>{__("projects.title")}</h1><p>{__("projects.count", { count: this.count })}</p></main>`,
+        "PackagePage",
+        `import { pluralize } from "@zerotal/core";`,
+        `<main><h1>{pluralize("project")} & {pluralize(this.noun)}</h1></main>`,
         "",
-        "@expose count = 3;",
+        `@expose noun = "team <beta>";`,
       ),
     );
-    expect(render).toContain('__esc(__("projects.title"))');
+    expect(render).toContain('__esc(pluralize("project"))');
     expect(compiled).toBe(runtime);
-    expect(compiled).toContain("<h1>Projects &amp; teams</h1>");
-    expect(compiled).toContain("You&#x27;re on 3 projects &lt;beta&gt;");
+    expect(compiled).toContain("projects");
+    expect(compiled).toContain("&lt;beta");
   });
 
-  it("renders a helper call, in a .map() and a ternary branch too", async () => {
+  it("renders globals and methods on values, in a .map() and a ternary branch too", async () => {
     const { compiled, runtime } = await bothWays(
       "DatePage",
       page(
         "DatePage",
-        `import { formatDate } from "./format";`,
+        "",
         `<ul>
-          <li>{formatDate(start)}</li>
-          {days.map((d) => <li>{formatDate(d)}</li>)}
+          <li>{start.toISOString().slice(0, 10)}</li>
+          {days.map((d) => <li>{d.toISOString().slice(0, 10)}</li>)}
           {days.length > 1 ? <b>{String(days.length).padStart(3, "0")}</b> : null}
           <li>{label?.toUpperCase()}</li>
         </ul>`,
-        `const start = new Date(Date.UTC(2026, 10, 27));
-    const days = [new Date(Date.UTC(2026, 0, 1)), new Date(Date.UTC(2026, 1, 2))];
+        `const start = new Date(1795219200000);
+    const days = [new Date(1767225600000), new Date(1769990400000)];
     const label: string | undefined = "a & b";`,
       ),
     );
     expect(compiled).toBe(runtime);
-    expect(compiled).toContain("<li>2026-11-27 &lt;UTC&gt;</li>");
-    expect(compiled).toContain("<li>2026-02-02 &lt;UTC&gt;</li>");
+    expect(compiled).toContain("<li>2026-11-21</li>");
+    expect(compiled).toContain("<li>2026-02-02</li>");
     expect(compiled).toContain("<b>002</b>");
     expect(compiled).toContain("<li>A &amp; B</li>");
   });
@@ -244,6 +246,20 @@ describe("a call that may return markup stays on the runtime", () => {
   }`,
     ],
     ["FieldObjectPage", "", `<form>{this.ui.field()}</form>`, "", `ui = { field: () => "x" };`],
+    // The app's own helpers, however they reach the page: any of them can return markup.
+    ["AppHelperPage", `import { __ } from "./lang";`, `<h1>{__("projects.title")}</h1>`, "", ""],
+    [
+      "WrapperPage",
+      `import { row } from "./rows";
+function wrap() {
+  return row("x");
+}`,
+      `<ul>{wrap()}</ul>`,
+      "",
+      "",
+    ],
+    ["AliasLocalPage", `import { row } from "./rows";`, `<ul>{f("a")}</ul>`, "const f = row;", ""],
+    ["RequirePage", "", `<ul>{rq.row("a")}</ul>`, `const rq = require("./rows");`, ""],
     ["LocalArrowPage", "", `<form>{field()}</form>`, "const field = () => <input />;", ""],
   ];
 
@@ -284,11 +300,11 @@ describe("a call in a text child, compiled", () => {
     const file = join(TMP, "CspLangPage.tsx");
     const source = page(
       "CspLangPage",
-      `import { __ } from "./lang";`,
-      `<h1>{__("projects.title")}</h1>`,
+      `import { pluralize } from "@zerotal/core";`,
+      `<h1>{pluralize("project")}</h1>`,
     );
     writeFileSync(file, source);
-    expect(compile(source, file, true).render).toContain('__esc(__("projects.title"))');
+    expect(compile(source, file, true).render).toContain('__esc(pluralize("project"))');
   });
 
   it("leaves a call that awaits on the runtime, and says why", () => {

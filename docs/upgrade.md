@@ -95,9 +95,9 @@ minutes, valid ones included. It needed no sign-in, and behind a reverse proxy e
 shares the proxy's address, so one client could stop Flow for everyone.
 
 Now the signature is checked first and a frame that verifies is always served. Frames that do
-not (and malformed ones, and calls to methods the page does not expose) are refused before any
-middleware runs, and counted per address only to keep the log short: ten warnings, then one line
-saying the rest are refused quietly.
+not, and malformed ones, are refused before any middleware runs. Those, and calls to methods the
+page does not expose, are counted per address only to keep the log short: ten warnings, then one
+line saying the rest are refused quietly.
 
 **What to check.** If a reverse proxy or load balancer fronts the app, set
 `app.throttle.trustedProxies` to how many there are. Nobody is locked out without it any more,
@@ -151,7 +151,7 @@ is still reachable from the network as before.
 given the request, not the address of the device that sent it, so it cannot single out one phone.
 The form below lets in any device that opens the app by this machine's IP address:
 
-```typescript fragment
+```typescript
 // config/devtools.ts
 import { DevtoolsConfig } from "@zerotal/devtools";
 
@@ -180,8 +180,13 @@ from the machine itself.
 - **Flow uploads** are held to `app.maxRequestBodySize` (8 MiB by default), as they always were;
   the guide's "25 MB" was wrong. Set `flow.uploads.maxBytes` to give uploads their own limit.
 - **A Flow page that uses your own function components may now compile** where it used to render
-  through the runtime. It renders the same HTML. `ZT_FLOW_COMPILE_LOG=1` shows which pages compile
-  and why a page does not.
+  through the runtime. It renders the same HTML. `ZT_FLOW_COMPILE_LOG=1` shows each page that does not
+  compile, and why.
+- **`<Dialog closable={false}>` (`@zerotal/flow-ui`) now also ignores the backdrop and Escape**,
+  as its docs say, so only the dialog's own buttons close it. If you set it only to hide the ×
+  and still want the backdrop and Escape to close the dialog, leave `closable` on.
+- **An `onError()` override that re-throws now shows the default flash**, as the lifecycle guide
+  says; before, the visitor saw nothing.
 - **`TestResponse.inertia()` gained a typed overload.** Existing calls compile as they are. Two
   type-level reads change: `ReturnType<TestResponse["inertia"]>` now names the typed overload (use
   `InertiaPage` directly), and a test subclass that overrides `inertia()` declares both

@@ -200,7 +200,8 @@ is about to free itself anyway.
 `bun zt dev` starts the server, the file watcher, and every process a provider or
 your app registered — a queue worker, a type-checker, a Stripe listener — in one
 terminal, each in its own tab. It subclasses `serve`, so it is the same supervisor,
-the same port resolution and the same restart behaviour, plus the flags that only
+the same port resolution (`--port`, else `app.port`, which is `PORT` from the shell or `.env`,
+else 3000) and the same restart behaviour, plus the flags that only
 make sense with a deck on screen — anything true of `serve` is true of it.
 
 `serve --dev` was the old spelling and was retired in 1.13.0; it now fails with a

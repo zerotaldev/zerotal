@@ -29,6 +29,11 @@ follows the Zerotal monorepo's unified versioning.
   internal `Application._reportError()` reports an error the way an unhandled route error is
   reported (the registered exception handler, or the log when there is none) without rendering
   a response. Flow uses it for actions that throw, which until now reached neither.
+- **`bun zt dev` reads `PORT`.** Its `--port` flag carried a default of 3000, which always won,
+  so `PORT` in the shell or `.env` (and `app.port`) was ignored by `dev` while `serve` honoured
+  it. `--port` still wins when given.
+- **The browser reloads sooner after a backend save.** The reload client waited a fixed second
+  between reconnect attempts; it now tries after 100 ms and backs off to a second.
 
 ## [1.18.3] — 2026-11-26
 

@@ -23,6 +23,13 @@ declare module "@zerotal/core" {
   }
 }
 
+/**
+ * What a file that defines a job looks like: a class extending the queue's `Job` (directly or
+ * through a base of the app's own), or an import from the queue package. The same rule as the
+ * `app/jobs` check in `packages/core/src/doctor/AppDoctor.ts`.
+ */
+const _DEFINES_A_JOB = /\bextends\s+[\w$.]*Job\b|["'](?:@zerotal\/queue|zerotal\/queue)["']/;
+
 export class QueueProvider extends ServiceProvider {
   static override provides = ["queue"] as const;
   static override environments: AppEnvironment[] = ["web", "console", "worker", "test"];
@@ -153,6 +160,10 @@ export class QueueProvider extends ServiceProvider {
     this._disposeObservability?.();
     this._disposeObservability = undefined;
 
+    // Only a process that ran jobs says it is draining them. The web process resolves the queue
+    // too (to dispatch), and used to print both lines on every dev restart.
+    const ranWorker = this._workerInterval !== undefined || this._workerPool !== undefined;
+
     if (this._workerInterval !== undefined) {
       clearInterval(this._workerInterval);
       this._workerInterval = undefined;
@@ -160,9 +171,10 @@ export class QueueProvider extends ServiceProvider {
 
     const queue = this.app.container.tryMake("queue") as QueueManager | undefined;
     if (queue) {
-      frameworkLog("queue").info("Draining in-flight jobs");
+      const say = ranWorker || queue.activeJobCount > 0;
+      if (say) frameworkLog("queue").info("Draining in-flight jobs");
       await queue.drain();
-      frameworkLog("queue").info("All jobs drained");
+      if (say) frameworkLog("queue").info("All jobs drained");
     }
 
     if (this._workerPool) {
@@ -260,6 +272,12 @@ export class QueueProvider extends ServiceProvider {
     try {
       for await (const file of new Bun.Glob("**/*.{ts,tsx,js}").scan({ cwd: dir })) {
         if (/\.(test|spec)\.[jt]sx?$/.test(file) || file.endsWith(".d.ts")) continue;
+        // A helper beside the jobs is not a job. Counted by what the file says, with the rule
+        // the `app/jobs` check uses, so the two lines of `zt doctor` give one number.
+        const source = await Bun.file(`${dir}/${file}`)
+          .text()
+          .catch(() => "");
+        if (!_DEFINES_A_JOB.test(source)) continue;
         names.add(file.replace(/\\/g, "/").replace(/\.[jt]sx?$/, ""));
       }
     } catch {

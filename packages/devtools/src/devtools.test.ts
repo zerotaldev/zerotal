@@ -755,3 +755,30 @@ function trace(id: string): RequestTrace {
     channels: {},
   };
 }
+
+describe("1.18.4: a trace of a failed request, and the Referer", () => {
+  it("takes the status of a request that threw from the error", async () => {
+    const ctx = fakeCtx("http://localhost/form");
+    const startMs = Date.now();
+    await RequestContext.run(ctx, async () => {
+      /* threw: the rendered response never reached the context */
+    });
+    FrameworkEvents.emit(new RequestFailed(ctx, startMs, 1, "Validation failed", 303));
+    expect(traceStore().all()[0]!.statusCode).toBe(303);
+  });
+
+  it("masks secret-named parameters of the previous page's URL", async () => {
+    const ctx = HttpContext.fake("http://localhost/reset-password", {
+      method: "POST",
+      headers: { referer: "http://localhost/reset-password?token=abc123&page=2" },
+    });
+    const startMs = Date.now();
+    await RequestContext.run(ctx, async () => {
+      ctx.response = new Response("ok");
+    });
+    FrameworkEvents.emit(new RequestHandled(ctx, startMs, 1));
+    const referer = traceStore().all()[0]!.headers["referer"] ?? "";
+    expect(referer).not.toContain("abc123");
+    expect(referer).toContain("page=2");
+  });
+});

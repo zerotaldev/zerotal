@@ -170,3 +170,14 @@ describe("DevCommand — --list", () => {
     expect(writer.flush()).toContain("Nothing to run");
   });
 });
+
+describe("zt dev and the port", () => {
+  it("declares no default for --port, so app.port (PORT, from the shell or .env) is read", () => {
+    // A default is indistinguishable from a typed flag, so it always won: `PORT=3113 bun zt dev`
+    // tried 3000 while `bun zt serve` took 3113.
+    const port = DevCommand.flags.find((f) => f.name === "port");
+    expect(port).toBeDefined();
+    expect(port?.default).toBeUndefined();
+    expect(ServeCommand.flags.find((f) => f.name === "port")?.default).toBeUndefined();
+  });
+});

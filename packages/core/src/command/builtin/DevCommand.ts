@@ -36,7 +36,14 @@ export class DevCommand extends ServeCommand {
   static override needsApp = true;
 
   static override flags: FlagDef[] = [
-    { name: "port", short: "p", type: "number", description: "Port to listen on", default: 3000 },
+    {
+      name: "port",
+      short: "p",
+      type: "number",
+      // No default, as on `serve`: one would always win, and `app.port` (from `PORT`, in the
+      // shell or `.env`) would never be read.
+      description: "Port to listen on (default: app.port, which is PORT or 3000)",
+    },
     {
       name: "force",
       type: "boolean",

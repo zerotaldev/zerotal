@@ -77,15 +77,16 @@ function tokenName(token: unknown): string {
  * scan for "is `/posts/:id` there" wants the paths together.
  */
 export function routeRows(): RouteRow[] {
-  // `namedRoutes` is name → path; the panel wants the reverse.
-  const nameByPath = new Map<string, string>();
-  for (const [name, path] of Router.namedRoutes) nameByPath.set(path, name);
+  // Each route's own name, as `route:list` reads it. A lookup by path labelled every verb at a
+  // path with whichever name was registered last, so `GET /about` showed as `about.store`.
+  const nameOf = (route: { name?: string | undefined; path: string }): string =>
+    route.name !== undefined && Router.namedRoutes.get(route.name) === route.path ? route.name : "";
 
   return [...Router.routes.values()]
     .map((route) => ({
       method: route.method,
       path: route.path,
-      name: nameByPath.get(route.path) ?? "",
+      name: nameOf(route),
       handler: `${route.controller?.name ?? "—"}@${route.action}`,
       middleware: route.middleware
         .map((m) => m.name)

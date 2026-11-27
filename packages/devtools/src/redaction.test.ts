@@ -253,3 +253,11 @@ describe("redactCacheKey", () => {
     expect(redactCacheKey("session:abc", { enabled: false })).toBe("session:abc");
   });
 });
+
+describe("LIMIT and OFFSET bindings", () => {
+  it("are shown, not masked as unattributed", () => {
+    expect(
+      redactBindings("select * from users where email = ? limit ? offset ?", ["a@b.c", 1, 20]),
+    ).toEqual(["a@b.c", 1, 20]);
+  });
+});

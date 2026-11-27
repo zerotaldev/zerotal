@@ -333,3 +333,20 @@ describe("SchedulerManager — add() after start()", () => {
     }
   });
 });
+
+describe("stopping a scheduler that ran nothing", () => {
+  it("says nothing, so the web process does not report tasks it never ran", () => {
+    const lines: string[] = [];
+    const write = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      lines.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk));
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      new SchedulerManager().stop();
+    } finally {
+      process.stdout.write = write;
+    }
+    expect(lines.join("")).not.toContain("All tasks stopped");
+  });
+});

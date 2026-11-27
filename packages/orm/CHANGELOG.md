@@ -8,6 +8,13 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Security
+
+- **The dev error page's one-click migration fix answers only this machine.** The error page is
+  same-origin to it, so a page that pointed its own name at `127.0.0.1` could read the page's
+  token and run the migrations. It now refuses a request that is not from loopback by a loopback
+  name, as the debug panel does.
+
 ## [1.18.3] — 2026-11-26
 
 ### Added

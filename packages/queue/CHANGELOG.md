@@ -8,6 +8,16 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`bun zt doctor` gives one count of job classes.** The Queue worker check counted
+  every file in `app/jobs`, so a helper beside the jobs made it say "2 job class(es)" while the
+  `app/jobs` check above it said one. It now counts a file only when it defines a job, by the
+  same rule.
+- **The web process no longer says it drained jobs it never ran.** Every `bun zt dev` restart
+  printed `[QUEUE] Draining in-flight jobs` and `All jobs drained` from the server tab, which
+  runs no worker. Only a process that ran jobs, or has one in flight, says so.
+
 ## [1.18.1] — 2026-11-26
 
 ### Fixed

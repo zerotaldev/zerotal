@@ -457,18 +457,24 @@ what happens on a change depends on which directory the change landed in:
 │                    connects on load                  │
 │                    reloads on "reload" message       │
 │                    reloads when the token changed    │
-│                    reconnects on close (1 s delay)   │
+│                    reconnects on close (100 ms, up   │
+│                    to 1 s between tries)             │
 └──────────────────────────────────────────────────────┘
 ```
 
 ### What triggers a restart, and what only rebuilds
 
-| Changed path                               | Action                                 |
-| ------------------------------------------ | -------------------------------------- |
-| `app/`, `routes/`, `bootstrap/`, `config/` | Server restart (150 ms)                |
-| `resources/css/`, `resources/js/`          | Asset rebuild + browser reload (80 ms) |
-| `public/`                                  | Ignored (output dir)                   |
-| `node_modules/`, `.git/`                   | Ignored                                |
+| Changed path                                                                       | Action                                 |
+| ---------------------------------------------------------------------------------- | -------------------------------------- |
+| `app/`, `routes/`, `bootstrap/`, `config/`, `packages/`, `resources/app.html`      | Server restart (150 ms)                |
+| `resources/css/`, `resources/js/`, `resources/pages/`                              | Asset rebuild + browser reload (80 ms) |
+| `public/`, `.zerotal/`                                                             | Ignored (output dirs)                  |
+| `node_modules/`, `.git/`                                                           | Ignored                                |
+| Anything else: `.env` files, `database/`, `lang/`, `tests/`, files at the app root | Nothing; restart `bun zt dev` yourself |
+
+The queue worker tab does not restart when you save: after editing a job, a mailable or a
+notification, restart `bun zt dev` before you test it, or the
+worker runs the code it started with. The scheduler tab restarts with the server.
 
 Inertia pages live under `resources/js/pages/`, so they're covered by the
 `resources/js/` watch and rebuild rather than restart.

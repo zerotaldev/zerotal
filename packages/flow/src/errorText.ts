@@ -56,7 +56,8 @@ export function _exposesErrorMessages(): boolean {
   if (devSurfacesEnabled()) return true;
   // `bun test` sets NODE_ENV for a run that sets nothing else, and a test asserts on the text.
   // Only where the deployment names no environment, or a non-production one: a staging box
-  // started with NODE_ENV=test still hides them.
+  // started with NODE_ENV=test still hides them. A deployment that sets NODE_ENV=test and no
+  // APP_ENV at all would show them; every starter's Dockerfile and deploy guide set APP_ENV.
   const deployment = deployEnv().trim();
   return Bun.env["NODE_ENV"] === "test" && (deployment === "" || isDevSurfaceAllowed(deployment));
 }

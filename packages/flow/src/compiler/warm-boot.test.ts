@@ -299,6 +299,69 @@ describe("a boot after a change (a dev reload)", () => {
   );
 });
 
+describe("a page that renders a function component", () => {
+  /** A page whose markup comes from a component in another module, styled from a third. */
+  const FORMED = page(
+    "Formed",
+    `<div><Card title="Hello" /></div>`,
+    `import { Card } from "../widgets";`,
+  );
+  const WIDGETS = (heading: string) => `/** @jsxImportSource @zerotal/flow */
+import { CARD } from "./ui";
+export function Card({ title }: { title: string }) {
+  return <section class={CARD}><${heading}>{title}</${heading}></section>;
+}
+`;
+  async function compiledOutputs(): Promise<string[]> {
+    return Promise.all(
+      (await cacheFiles())
+        .filter((f) => f.endsWith(".ts"))
+        .map((f) => readFile(join(root, ".zerotal", "compiled", f), "utf8")),
+    );
+  }
+
+  it(
+    "compiles, and boots warm without the parser",
+    async () => {
+      await write("widgets.tsx", WIDGETS("h2"));
+      await write("pages/Formed.tsx", FORMED);
+      const cold = await boot(["Formed"]);
+      expect(cold.error).toBeNull();
+      expect(cold.pages).toEqual({ Formed: "compiled" });
+
+      const warm = await boot(["Formed"], { tripwire: true });
+      expect(warm.typescript).toBeNull();
+      expect(warm.pages).toEqual({ Formed: "compiled" });
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "recompiles when the component changes, or a module the component reads class lists from",
+    async () => {
+      await write("widgets.tsx", WIDGETS("h2"));
+      await write("pages/Formed.tsx", FORMED);
+      await boot(["Formed"]);
+
+      // The page's text is the same; only the component it renders changed.
+      await write("widgets.tsx", WIDGETS("h3"));
+      expect((await boot(["Formed"], { tripwire: true })).typescript).toMatch(/typescript/);
+      expect((await boot(["Formed"])).pages).toEqual({ Formed: "compiled" });
+      expect((await compiledOutputs()).some((o) => o.includes("<h3>"))).toBe(true);
+
+      // Neither the page nor the component changed: the page does not import ui.ts, the
+      // component does.
+      await write("ui.ts", `export const CARD = "p-8 shadow";\n`);
+      expect((await boot(["Formed"], { tripwire: true })).typescript).toMatch(/typescript/);
+      expect((await boot(["Formed"])).pages).toEqual({ Formed: "compiled" });
+      expect((await compiledOutputs()).some((o) => o.includes("p-8 shadow"))).toBe(true);
+
+      expect((await boot(["Formed"], { tripwire: true })).typescript).toBeNull();
+    },
+    TIMEOUT,
+  );
+});
+
 describe("validation", () => {
   it(
     "refuses an invalid page on every boot: nothing is cached that would let it through",

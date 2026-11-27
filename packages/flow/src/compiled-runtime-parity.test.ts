@@ -209,3 +209,204 @@ describe("the fallback still binds what the compiler would have", () => {
     });
   }
 });
+
+// ── Function components ──────────────────────────────────────────────────────
+// A page that renders a function component used to fall back to the runtime. It now compiles,
+// with the component's body compiled into a helper the page calls. The bindings are not the only
+// thing that can drift there: the props, the escaping and the attribute rules all pass through a
+// second function. So these cases compare the whole document, rendered by running the compiled
+// module itself against the very same page.
+
+/** One page and the component module it imports, rendered both ways. */
+interface ComponentCase extends ParityCase {
+  /** The component module, written beside the page as `./widgets<i>.tsx`. */
+  module: string;
+  /** Names the page imports from it. */
+  imports: string[];
+}
+
+const COMPONENT_CASES: ComponentCase[] = [
+  {
+    name: "a component given only literal props",
+    imports: ["Badge"],
+    module: `export function Badge({ label, tone }) {
+  return <span class={"badge badge-" + tone} data-tone={tone}>{label}</span>;
+}`,
+    members: `@expose open = false;`,
+    body: `<p show={this.open}><Badge label="New & shiny" tone="info" /></p>`,
+  },
+  {
+    name: "a component whose input is bound to this.x, destructured",
+    imports: ["TextInput"],
+    module: `export function TextInput({ value, label }) {
+  return (
+    <label class="field">
+      {label}
+      <input class="input" value={value} />
+    </label>
+  );
+}`,
+    members: `@expose draft = "hello";`,
+    body: `<form><TextInput label="Draft" value={this.draft} /></form>`,
+  },
+  {
+    name: "a component whose input is bound to this.x, through props",
+    imports: ["Field"],
+    module: `export const Field = (props) => (
+  <div class="field">
+    <label for={props.id}>{props.label}</label>
+    <input id={props.id} value={props.value} live />
+    <p data-error-for={props.id} hidden={!props.error}>{props.error}</p>
+  </div>
+);`,
+    members: `@expose email = "a@b.c";`,
+    body: `<form><Field id="email" label="Email" value={this.email} error="Required" /></form>`,
+  },
+  {
+    name: "a component bound to a checkbox and a locked value",
+    imports: ["Toggle", "Readout"],
+    module: `export function Toggle({ on, children }) {
+  return <input type="checkbox" checked={on} />;
+}
+export function Readout({ value }) {
+  return <input value={value} />;
+}`,
+    // Unchecked on purpose: a compiled page does not write `checked` for a bound checkbox that
+    // starts on (the bridge sets it), where the runtime does. That is the page compiler's rule,
+    // the same with or without a component, and not what this suite is about.
+    members: `@expose agreed = false; @locked reference = "ABC-1";`,
+    body: `<div><Toggle on={this.agreed} /><Readout value={this.reference} /></div>`,
+  },
+  {
+    name: "the starter's form: server values, errors and a list of options",
+    imports: ["ProjectForm"],
+    module: `const OPTIONS = [
+  { value: "planning", label: "Planning" },
+  { value: "active", label: "Active <now>" },
+];
+const FIELD = "space-y-1.5";
+const BUTTON = FIELD + " btn";
+export function ProjectForm({ action, method, values, errors, submit }) {
+  return (
+    <form method="post" action={action} data-method={method}>
+      <div class={FIELD}>
+        <input name="name" value={values.name} required aria-invalid={errors.name ? "true" : undefined} />
+        <p data-error-for="name" hidden={!errors.name}>{errors.name}</p>
+      </div>
+      <textarea name="description" rows="4">{values.description}</textarea>
+      <select name="status">
+        {OPTIONS.map((option) => (
+          <option value={option.value} selected={option.value === values.status}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <button type="submit" class={BUTTON}>{submit}</button>
+    </form>
+  );
+}`,
+    members: `@expose open = false; protected errorFor(field: string): string | undefined {
+    return field === "name" ? "The name is <required>." : undefined;
+  }`,
+    body: `<div show={this.open}>
+      <ProjectForm
+        action={"/projects/" + 7}
+        method="put"
+        values={{ name: "Q4 \\"plan\\"", description: "a < b & c", status: "active" }}
+        errors={{ name: this.errorFor("name"), description: this.errorFor("description") }}
+        submit="Save changes"
+      />
+    </div>`,
+  },
+  {
+    name: "a component that renders another, passing the binding through",
+    imports: ["Panel"],
+    module: `import { Row } from "./widgets-row.tsx";
+export function Panel({ title, value }) {
+  return (
+    <section>
+      <h2>{title}</h2>
+      <Row label="Town" value={value} />
+    </section>
+  );
+}`,
+    members: `@expose town = "Durban";`,
+    body: `<div><Panel title="Where" value={this.town} /></div>`,
+  },
+];
+
+/** The nested component of the last case. */
+const ROW_MODULE = `/** @jsxImportSource @zerotal/flow */
+export function Row({ label, value }) {
+  return <p class="row">{label}: <input value={value} live /></p>;
+}
+`;
+
+/**
+ * `markup` with each tag's attributes in name order. The two paths write some attributes in a
+ * different order (`:value … readonly value` against `:value … value readonly`), which the
+ * browser does not see; everything else, values and escaping included, has to match exactly.
+ */
+function sortedAttributes(markup: string): string {
+  return markup.replace(
+    /<([a-z][a-z0-9-]*)((?:\s+[^\s=>"]+(?:="[^"]*")?)*)\s*>/g,
+    (_tag, name: string, attrs: string) => {
+      const list = attrs.match(/[^\s=>"]+(?:="[^"]*")?/g) ?? [];
+      return `<${name}${list.length ? " " + list.sort().join(" ") : ""}>`;
+    },
+  );
+}
+
+function componentSourceFor(c: ComponentCase, i: number): string {
+  return sourceFor(c).replace(
+    `import { expose, locked } from "../decorators.ts";`,
+    `import { expose, locked } from "../decorators.ts";\nimport { ${c.imports.join(", ")} } from "./widgets${i}.tsx";`,
+  );
+}
+
+describe("a page that renders a function component compiles, and renders what the runtime does", () => {
+  for (const [i, c] of COMPONENT_CASES.entries()) {
+    it(c.name, async () => {
+      writeFileSync(join(TMP, "widgets-row.tsx"), ROW_MODULE);
+      writeFileSync(
+        join(TMP, `widgets${i}.tsx`),
+        `/** @jsxImportSource @zerotal/flow */\n${c.module}\n`,
+      );
+      const file = join(TMP, `component${i}.tsx`);
+      const source = componentSourceFor(c, i);
+      writeFileSync(file, source);
+
+      const report: BlockerReport = {};
+      const out = transformFlowFile(source, file, { report });
+      // The point of the change: the page compiles, and the component is a compiled helper.
+      expect(report.blocker?.reason).toBeUndefined();
+      expect(out).not.toBeNull();
+      expect(out!.renderBody).toMatch(/__fc\d+(\.call\(this, |\()\{/);
+      expect(out!.renderBody).not.toContain("jsx(");
+
+      const mod = (await import(file)) as {
+        ParityPage: (new () => Component) & { __flowCompiled?: boolean };
+      };
+      const runtime = (await FlowTest.mount(mod.ParityPage)).html();
+
+      // Run the compiled module, as the boot would: helpers, the page's scope, then render().
+      const compiledFile = join(TMP, `component${i}.compiled.ts`);
+      writeFileSync(
+        compiledFile,
+        `import { __esc, __escAttr, __attr } from ${JSON.stringify(join(import.meta.dir, "compiler", "helpers.ts"))};\n` +
+          `${out!.preamble}\n\nexport async function render() {\n${out!.renderBody}\n}\n`,
+      );
+      const compiledModule = (await import(compiledFile)) as {
+        render: Component["render"];
+      };
+      mod.ParityPage.prototype.render = compiledModule.render;
+      mod.ParityPage.__flowCompiled = true;
+      const compiled = (await FlowTest.mount(mod.ParityPage)).html();
+
+      expect(sortedAttributes(compiled)).toBe(sortedAttributes(runtime));
+      // And the bindings in it are the ones the runtime found, which is what the first suite
+      // checks for pages without components.
+      expect(flowAttrs(compiled)).toEqual(flowAttrs(runtime));
+    });
+  }
+});

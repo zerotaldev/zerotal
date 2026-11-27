@@ -8,6 +8,14 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- **The Flow starter's project pages share one form.** `app/flow/components/ProjectForm.tsx`
+  is used by `projects/create.tsx` and `projects/edit.tsx`, which wrote the same form out twice
+  because a page that rendered a component did not compile ahead of time. Both pages still
+  compile, under `cspSafe` too. The Flow starter now has the same components as the React and
+  Vue starters.
+
 ## [1.18.3] — 2026-11-26
 
 ### Changed

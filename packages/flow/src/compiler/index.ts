@@ -36,9 +36,10 @@ import { staticStringsFingerprint } from "./static-imports.ts";
 
 /** The parser-backed half of the compiler, loaded the first time a page misses the cache. */
 async function _loadCompiler() {
-  const [transform, constants] = await Promise.all([
+  const [transform, constants, components] = await Promise.all([
     import("./transform.ts"),
     import("./constants.ts"),
+    import("./components.ts"),
   ]);
   return {
     validateFlowFile: transform.validateFlowFile,
@@ -46,6 +47,7 @@ async function _loadCompiler() {
     buildBindInjectedRender: transform.buildBindInjectedRender,
     describeBlocker: transform.describeBlocker,
     readImportedStrings: constants.readImportedStrings,
+    readImportedComponents: components.readImportedComponents,
   };
 }
 
@@ -277,10 +279,21 @@ async function _buildPage(
   // ── Cache hit ────────────────────────────────────────────────────────
   // Class lists imported from a shared module are folded into the output, so the values
   // that were read are part of the cache key: editing that module must recompile its pages.
+  // A function component the page renders is compiled into it, so the text of its module (and
+  // of what that module reads class lists from) is part of the key in the same way.
   const { strings: constants, imports } = compiler.readImportedStrings(source, sourceFile);
-  const variant = staticStringsFingerprint(constants);
+  const components = compiler.readImportedComponents(source, sourceFile);
+  const variant =
+    staticStringsFingerprint(constants) +
+    (components.fingerprint ? `+components:${components.fingerprint}` : "");
+  const tracked = [...imports];
+  for (const read of components.imports) {
+    if (read.file === null || !tracked.some((known) => known.file === read.file)) {
+      tracked.push(read);
+    }
+  }
   const recorder = (outcome: CompileOutcome) => () =>
-    writeManifest(source, sourceFile, appRoot, cspSafe, outcome, variant, imports);
+    writeManifest(source, sourceFile, appRoot, cspSafe, outcome, variant, tracked);
 
   const cachedPath = getCachedPath(source, appRoot, cspSafe, "ts", variant);
   if (cachedPath) {
@@ -289,7 +302,12 @@ async function _buildPage(
 
   // ── Cache miss — transform and write ─────────────────────────────────
   const report: BlockerReport = {};
-  const result = compiler.transformFlowFile(source, sourceFile, { cspSafe, report, constants });
+  const result = compiler.transformFlowFile(source, sourceFile, {
+    cspSafe,
+    report,
+    constants,
+    components: components.components,
+  });
   if (result) {
     const code =
       HELPERS_IMPORT +

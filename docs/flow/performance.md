@@ -104,6 +104,8 @@ lighter; only a boot with something to compile pays for it. A page is compiled a
 
 - its own source changes;
 - a module it imports class lists from changes, or the import starts resolving to another file;
+- a [function component](#function-components) it renders changes, or a module that component
+  reads class lists from;
 - the cached file for it is missing;
 - Flow itself is upgraded, or you switch [`cspSafe`](/docs/flow/components#csp-safe-mode) on or off.
 
@@ -134,7 +136,7 @@ Set `ZT_FLOW_COMPILE_LOG=1` to print what blocks each page. The common causes:
 | ----------------------------------------------------------------------- | --------------------------------------------------- |
 | `render()` with more than one `return`                                  | Build the branches into a variable and return once  |
 | A function call in a text child — including **`__()`**                  | See below                                           |
-| An imported child component in `render()` (`<Header/>`)                 | Inline it, or accept the fallback                   |
+| A component the compiler can't read (`<Header/>`)                       | See [Function components](#function-components)     |
 | A `class` naming an imported constant it could not read                 | Export the constant as a plain string `const`       |
 | A `class` given as an array, or a `style={{ … }}` object                | Join the classes into one string; write `style="…"` |
 | A class that extends neither `Component` nor a class of yours that does | See below                                           |
@@ -161,6 +163,67 @@ under [`cspSafe`](/docs/flow/components#csp-safe-mode): there, every page **must
 build fails, so an app using `__()` in its templates cannot run in CSP-safe mode today. If you need
 `cspSafe`, keep translation out of the template — resolve strings in the action or `onMount()` into
 `@locked` properties and render those.
+
+## Function components
+
+A function component is compiled into the page that renders it, so a page can share its markup
+through components and keep the fast path, including under
+[`cspSafe`](/docs/flow/components#csp-safe-mode). The Flow starter's project pages share one
+`<ProjectForm>` this way:
+
+```tsx fragment
+// app/flow/components/ProjectForm.tsx
+export function ProjectForm({ action, values, errors, submit }: ProjectFormProps): HtmlNode {
+  return (
+    <form method="post" action={action}>
+      <input name="name" value={values.name} class={INPUT} />
+      <p data-error-for="name" class={FIELD_ERROR} hidden={!errors.name}>
+        {errors.name}
+      </p>
+      <button type="submit">{submit}</button>
+    </form>
+  );
+}
+
+// app/flow/pages/projects/create.tsx, in render()
+<ProjectForm action={route("projects.store")} values={values} errors={errors} submit="Create" />;
+```
+
+The component's body is compiled with the page's rules, into a helper that sits in the page's
+compiled module with the component's own imports, and the page calls it with the props it wrote.
+The output is the markup the runtime would have rendered.
+
+A component compiles when:
+
+- the page imports it **by name from a relative path**, from a `.tsx` module that exports it as a
+  function: `export function ProjectForm(…)`, `export const ProjectForm = (…) => …`, or a
+  function in an `export { … }` list. A function of that same module can be used as a tag inside
+  it too, and components can render other components, up to four modules deep;
+- it takes one props object, plain or destructured, and returns its markup from a single
+  `return`, built by the same rules as a page's `render()`;
+- every prop is written by name, as a literal (`submit="Save"`, a bare `required`), a
+  `this.x` read, or any other value worked out on the server (`action={route("projects.store")}`,
+  `values={values}`).
+
+A prop written `{this.x}`, where `x` is an `@expose` or `@locked` property, carries its binding
+into the component: `<TextInput value={this.draft} />` with an `<input value={value} />` inside
+binds `draft`, exactly as the input would have in the page.
+
+What keeps the page on the runtime renderer, with `ZT_FLOW_COMPILE_LOG=1` naming the component's
+own file and line:
+
+| Blocker                                                                     | Fix                                                  |
+| --------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Children (`<Card>…</Card>`)                                                 | Pass what it shows as a prop                         |
+| Spread props, or a function or markup passed as a prop                      | Write each prop by name, as a value                  |
+| A component that reads `this` or `$flow`, or binds an `on*` handler         | Keep that in the page, or make it a Flow component   |
+| An `async` component, or one with more than one `return`                    | Work the values out first; return once               |
+| A default export, a re-export, a namespace import, or a package's component | Import it by name from the module that declares it   |
+| A module-level value the component reads that builds markup, or a class     | Render it as a tag, or import it from another module |
+| A bound prop the component gives a default (`{ value = "" }`)               | Give the page's property an initial value instead    |
+
+A Flow component class (`<CounterWidget />`, with state and actions of its own) is a separate
+component with its own snapshot, and always renders through the runtime.
 
 ## Interaction polish
 

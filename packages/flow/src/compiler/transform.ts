@@ -27,6 +27,13 @@ import {
   type StaticStrings,
 } from "./constants.ts";
 import { readModuleText, resolveRelativeModule } from "./static-imports.ts";
+import {
+  MAX_COMPONENT_DEPTH,
+  findComponentFunction,
+  readImportedComponents,
+  type ComponentModule,
+  type ComponentSource,
+} from "./components.ts";
 
 export { FlowValidationError };
 
@@ -143,6 +150,22 @@ let _staticStrings: StaticStrings = new Map();
  * the runtime rather than evaluate: the import may not resolve at all.
  */
 let _unreadImports: ReadonlySet<string> = new Set();
+/**
+ * Function components the current page's tags can name, by tag (see components.ts). Set per call
+ * by transformFlowFile, and swapped for a component module's own while that component compiles.
+ */
+let _components: ReadonlyMap<string, ComponentSource> = new Map();
+
+/** What compiling the current page's components has produced so far. */
+interface ComponentHelpers {
+  /** Module-level code, one block per compiled component, in the order they compiled. */
+  code: string[];
+  /** The helper for each component and set of bound props, so one used twice compiles once. */
+  ids: Map<string, string>;
+  /** The components compiling right now, outermost first: a cycle is refused, depth capped. */
+  stack: string[];
+}
+let _helpers: ComponentHelpers = { code: [], ids: new Map(), stack: [] };
 
 /** Every name the class declares anywhere inside it: locals, parameters, destructured names,
  *  inner functions and classes. Any of these could shadow a constant of the same name. */
@@ -196,10 +219,21 @@ function _assertCspExpr(text: string, filename: string): void {
 export function transformFlowFile(
   source: string,
   filename: string,
-  opts: { cspSafe?: boolean; report?: BlockerReport; constants?: ReadonlyMap<string, string> } = {},
+  opts: {
+    cspSafe?: boolean;
+    report?: BlockerReport;
+    constants?: ReadonlyMap<string, string>;
+    /**
+     * The function components the page imports, as {@link readImportedComponents} found them.
+     * Read from disk when not given; the boot passes the very ones its cache key was built from.
+     */
+    components?: ReadonlyMap<string, ComponentSource>;
+  } = {},
 ): TransformResult | null {
   _cspSafe = opts.cspSafe ?? false;
   _staticStrings = new Map();
+  _components = new Map();
+  _helpers = { code: [], ids: new Map(), stack: [] };
   const sf = ts.createSourceFile(
     filename,
     source,
@@ -225,9 +259,16 @@ export function transformFlowFile(
   }
 
   const strings = moduleStringConstants(sf, opts.constants);
-  for (const shadowed of _declaredNames(pageClass)) strings.delete(shadowed);
+  const components = new Map(
+    opts.components ?? readImportedComponents(source, filename).components,
+  );
+  for (const shadowed of _declaredNames(pageClass)) {
+    strings.delete(shadowed);
+    components.delete(shadowed);
+  }
   _staticStrings = strings;
   _unreadImports = _relativeImportNames(sf, strings);
+  _components = components;
 
   const members = _pageMemberInfo(pageClass, bases);
   const className = pageClass.name?.text ?? "Unknown";
@@ -271,7 +312,7 @@ export function transformFlowFile(
     return null;
   }
 
-  const preamble = _buildPreamble(sf, filename);
+  const preamble = [_buildPreamble(sf, filename), ..._helpers.code].filter(Boolean).join("\n\n");
   return { renderBody, className, preamble };
 }
 
@@ -383,18 +424,12 @@ export function buildBindInjectedRender(source: string, filename: string): strin
         for (const p of attrs.properties) {
           if (!ts.isJsxAttribute(p) || !ts.isIdentifier(p.name)) continue;
           if (!BIND_INJECT_ATTRS.has(p.name.text)) continue;
-          const init = p.initializer;
-          if (!init || !ts.isJsxExpression(init) || !init.expression) continue;
-          const e = init.expression;
-          if (
-            ts.isPropertyAccessExpression(e) &&
-            e.expression.kind === ts.SyntaxKind.ThisKeyword &&
-            ts.isIdentifier(e.name)
-          ) {
+          const key = _thisPropKey(p);
+          if (key !== null) {
             binds.push(
               factory.createPropertyAssignment(
                 factory.createIdentifier(p.name.text),
-                factory.createStringLiteral(e.name.text),
+                factory.createStringLiteral(key),
               ),
             );
           }
@@ -454,6 +489,25 @@ export function buildBindInjectedRender(source: string, filename: string): strin
     (preamble ? preamble + "\n\n" : "") +
     `export ${isAsync ? "async " : ""}function render() ${bodyText}\n`
   );
+}
+
+/**
+ * The property an attribute is written to read, `name={this.<key>}`, or null for any other value.
+ *
+ * The prop-to-field mapping: bind injection names the bound property of a component on the
+ * runtime path with it, and the compiler carries the binding into a function component's body
+ * with it (see `emitComponent`).
+ */
+function _thisPropKey(attr: ts.JsxAttributeLike): string | null {
+  if (!ts.isJsxAttribute(attr)) return null;
+  const init = attr.initializer;
+  if (!init || !ts.isJsxExpression(init) || !init.expression) return null;
+  const e = init.expression;
+  return ts.isPropertyAccessExpression(e) &&
+    e.expression.kind === ts.SyntaxKind.ThisKeyword &&
+    ts.isIdentifier(e.name)
+    ? e.name.text
+    : null;
 }
 
 /**
@@ -1024,10 +1078,12 @@ export function describeBlocker(blocker: CompileBlocker | undefined, filename: s
 }
 
 function _compileRenderMethod(
-  method: ts.MethodDeclaration,
+  method: ts.FunctionLikeDeclaration,
   filename: string,
   members: MemberInfo,
   report?: BlockerReport,
+  /** What the messages call the function: the page's `render()`, or a component's name. */
+  what = "render()",
 ): string | null {
   let canCompile = true;
 
@@ -1038,47 +1094,54 @@ function _compileRenderMethod(
     return null;
   }
 
-  if (!method.body) return bail("render() has no body", "give it a body that returns JSX", method);
+  if (!method.body) return bail(`${what} has no body`, "give it a body that returns JSX", method);
 
-  // The body must be: [zero or more non-return leading statements] then ONE top-level
-  // return of JSX. Any other return anywhere (early returns / branching) → bail to runtime.
-  const returns: ts.ReturnStatement[] = [];
-  const countReturns = (n: ts.Node): void => {
-    if (ts.isReturnStatement(n)) returns.push(n);
-    // A return inside a nested function is that function's own — the block body of a
-    // `.map((row) => { const x = …; return <li>…</li>; })` callback, say — not render()'s.
-    if (ts.isFunctionLike(n)) return;
-    ts.forEachChild(n, countReturns);
-  };
-  countReturns(method.body);
-  if (returns.length !== 1) {
-    return bail(
-      `render() has ${returns.length} return statements; the compiler needs exactly one`,
-      "fold the branching into the returned JSX (a ternary) or into a leading const",
-      returns[1] ?? method,
-    );
+  let leading = "";
+  let returnExpr: ts.Expression;
+  if (!ts.isBlock(method.body)) {
+    // `(props) => <form>…</form>` — an arrow component returns its expression body.
+    returnExpr = method.body;
+  } else {
+    // The body must be: [zero or more non-return leading statements] then ONE top-level
+    // return of JSX. Any other return anywhere (early returns / branching) → bail to runtime.
+    const returns: ts.ReturnStatement[] = [];
+    const countReturns = (n: ts.Node): void => {
+      if (ts.isReturnStatement(n)) returns.push(n);
+      // A return inside a nested function is that function's own — the block body of a
+      // `.map((row) => { const x = …; return <li>…</li>; })` callback, say — not render()'s.
+      if (ts.isFunctionLike(n)) return;
+      ts.forEachChild(n, countReturns);
+    };
+    countReturns(method.body);
+    if (returns.length !== 1) {
+      return bail(
+        `${what} has ${returns.length} return statements; the compiler needs exactly one`,
+        "fold the branching into the returned JSX (a ternary) or into a leading const",
+        returns[1] ?? method,
+      );
+    }
+
+    const stmts = method.body.statements;
+    const returnIdx = stmts.findIndex((s) => ts.isReturnStatement(s));
+    if (returnIdx === -1) {
+      return bail(
+        `${what}'s only return is nested inside another block`,
+        `return the JSX from the top level of ${what}`,
+        returns[0] ?? method,
+      );
+    }
+    const retStmt = stmts[returnIdx] as ts.ReturnStatement;
+    if (!retStmt.expression) return bail(`${what} returns nothing`, "return JSX", retStmt);
+
+    // Leading statements (const/let computations etc.) carried verbatim — they run against
+    // `this` and the carried module scope before the JSX is emitted.
+    leading = stmts
+      .slice(0, returnIdx)
+      .map((s) => s.getText())
+      .join("\n  ");
+    returnExpr = retStmt.expression;
   }
 
-  const stmts = method.body.statements;
-  const returnIdx = stmts.findIndex((s) => ts.isReturnStatement(s));
-  if (returnIdx === -1) {
-    return bail(
-      "render()'s only return is nested inside another block",
-      "return the JSX from the top level of render()",
-      returns[0] ?? method,
-    );
-  }
-  const retStmt = stmts[returnIdx] as ts.ReturnStatement;
-  if (!retStmt.expression) return bail("render() returns nothing", "return JSX", retStmt);
-
-  // Leading statements (const/let computations etc.) carried verbatim — they run against
-  // `this` and the carried module scope before the JSX is emitted.
-  const leading = stmts
-    .slice(0, returnIdx)
-    .map((s) => s.getText())
-    .join("\n  ");
-
-  let returnExpr: ts.Expression = retStmt.expression;
   while (ts.isParenthesizedExpression(returnExpr)) returnExpr = returnExpr.expression;
   if (
     !ts.isJsxElement(returnExpr) &&
@@ -1086,7 +1149,7 @@ function _compileRenderMethod(
     !ts.isJsxSelfClosingElement(returnExpr)
   ) {
     return bail(
-      "render() returns something other than a JSX element",
+      `${what} returns something other than a JSX element`,
       "return the markup directly instead of a value computed from it",
       returnExpr,
     );
@@ -1538,6 +1601,103 @@ function _compileRenderMethod(
     );
   }
 
+  /**
+   * `<ProjectForm action={…} values={values} submit="Save" />`, where `ProjectForm` is a
+   * function component the compiler can read (see components.ts): its body is compiled with these
+   * same rules into a helper beside the page's render, and the page calls it with the props it was
+   * given. A prop is worked out on the server, as any attribute value is; one written
+   * `{this.field}` with `field` an `@expose` or `@locked` property also carries the binding, so an
+   * `<input value={props.value} />` inside the component binds `field`, as the same input written
+   * in the page would.
+   */
+  function emitComponent(
+    tag: string,
+    opening: ts.JsxOpeningElement | ts.JsxSelfClosingElement,
+    children: readonly ts.JsxChild[],
+  ): void {
+    const component = _components.get(tag)!;
+    if (children.some((c) => !(ts.isJsxText(c) && !c.text.trim()))) {
+      bail(
+        `\`<${tag}>\` is given children`,
+        "pass what it shows as a prop; a component compiles only when it takes no children",
+        opening.tagName,
+      );
+      return;
+    }
+
+    const props: string[] = [];
+    const binds = new Map<string, string>();
+    for (const attr of opening.attributes.properties) {
+      if (!ts.isJsxAttribute(attr) || !ts.isIdentifier(attr.name)) {
+        bail(
+          `\`<${tag}>\` is given ${ts.isJsxSpreadAttribute(attr) ? "spread props" : "a prop the compiler can't read"}`,
+          "write each prop out by name",
+          attr,
+        );
+        return;
+      }
+      const name = attr.name.text;
+      // `key` is the runtime's list identity, never a prop; `__flowBinds` is the runtime's.
+      if (name === "key" || name === "__flowBinds") continue;
+      const init = attr.initializer;
+      if (init === undefined) {
+        props.push(`${JSON.stringify(name)}: true`);
+        continue;
+      }
+      if (ts.isStringLiteral(init)) {
+        props.push(`${JSON.stringify(name)}: ${JSON.stringify(init.text)}`);
+        continue;
+      }
+      if (!ts.isJsxExpression(init) || !init.expression) continue;
+      const expr = init.expression;
+      if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
+        bail(
+          `\`<${tag} ${name}={…}>\` is given a function`,
+          "pass values; handlers on a component send the page through the runtime",
+          attr,
+        );
+        return;
+      }
+      if (_containsJsx(expr)) {
+        bail(
+          `\`<${tag} ${name}={…}>\` is given markup`,
+          "pass a value, and build the markup inside the component",
+          attr,
+        );
+        return;
+      }
+      if (_containsClientMagic(expr) || _referencesGel(expr)) {
+        bail(
+          `\`<${tag} ${name}={…}>\` is given a client-side value`,
+          "pass a server value, or an @expose property (this.x)",
+          attr,
+        );
+        return;
+      }
+      const key = _thisPropKey(attr);
+      if (key !== null && members.readable.has(key)) binds.set(name, key);
+      props.push(`${JSON.stringify(name)}: (${expr.getText()})`);
+    }
+
+    const compiled = _componentHelper(component, binds, members);
+    if ("blocker" in compiled) {
+      bail(
+        `\`<${tag}>\` can't be compiled: ${compiled.blocker.reason} (${_at(
+          component.module.file,
+          compiled.blocker.line,
+          compiled.blocker.column,
+        )})`,
+        compiled.blocker.fix,
+        opening.tagName,
+      );
+      return;
+    }
+    const call = compiled.usesThis
+      ? `${compiled.id}.call(this, { ${props.join(", ")} })`
+      : `${compiled.id}({ ${props.join(", ")} })`;
+    emitDynamic(`${call}.html`);
+  }
+
   function visitElement(node: ts.JsxElement): void {
     const tag = _tagName(node.openingElement.tagName);
     if (tag === "ErrorMessage") {
@@ -1560,6 +1720,10 @@ function _compileRenderMethod(
       emitStatic(">");
       visitChildren(node.children);
       emitStatic("</a>");
+      return;
+    }
+    if (tag && _components.has(tag)) {
+      emitComponent(tag, node.openingElement, node.children);
       return;
     }
     if (!tag || _isComponent(tag)) {
@@ -1602,6 +1766,10 @@ function _compileRenderMethod(
       _visitAttrs(node.attributes, true);
       if (!canCompile) return;
       emitStatic("></a>");
+      return;
+    }
+    if (tag && _components.has(tag)) {
+      emitComponent(tag, node, []);
       return;
     }
     if (!tag || _isComponent(tag)) {
@@ -2364,12 +2532,453 @@ function _compileRenderMethod(
   if (!canCompile) return null;
   flush();
   if (parts.length === 0) {
-    return bail("render() produced no markup", "return the page's JSX", returnExpr);
+    return bail(`${what} produced no markup`, "return the markup as JSX", returnExpr);
   }
 
   const htmlExpr = parts.join(" + ");
   const body = `  return { html: ${htmlExpr} };`;
   return leading ? `  ${leading}\n${body}` : body;
+}
+
+// ── Function components ───────────────────────────────────────────────────────
+
+type ComponentFunction = ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression;
+
+/** A blocker at `node`, as a component's compile reports one to the page that renders it. */
+function _componentBlocker(
+  node: ts.Node,
+  reason: string,
+  fix: string,
+): { blocker: CompileBlocker } {
+  return { blocker: _blockerAt(node, reason, fix) };
+}
+
+/**
+ * Compile `component` into a helper the page's render calls, or say what stops it.
+ *
+ * The helper is module-level code in the compiled page: an immediately-run function that rebinds
+ * the names the component reads from its own module (its imports, and the top-level declarations
+ * it uses) and returns the component compiled to string building, with its own parameter list.
+ * The page calls it with the props it wrote; when a prop was `{this.field}` on a bound property,
+ * the component's reads of that prop become `this.field`, so the helper is called with the page
+ * as `this` and a bound control inside it binds as it would in the page.
+ *
+ * Narrow on purpose. The component has to be a plain function of one props object, with one
+ * return of markup, no `this`, no `$flow` and no event handlers: everything those need is
+ * client-side behaviour that a function component has no way to own.
+ */
+function _componentHelper(
+  component: ComponentSource,
+  binds: ReadonlyMap<string, string>,
+  members: MemberInfo,
+): { id: string; usesThis: boolean } | { blocker: CompileBlocker } {
+  const { module, name } = component;
+  const identity = `${module.file}#${name}`;
+  const key = `${identity}#${JSON.stringify([...binds].sort())}`;
+  const usesThis = binds.size > 0;
+  const known = _helpers.ids.get(key);
+  if (known) return { id: known, usesThis };
+
+  const fn =
+    findComponentFunction(module.sf, name, true) ?? findComponentFunction(module.sf, name, false);
+  if (!fn || !fn.body) {
+    return _componentBlocker(module.sf, `${name} is not a function`, "declare it as a function");
+  }
+  if (_helpers.stack.includes(identity)) {
+    return _componentBlocker(fn, `${name}() renders itself`, "render the repeated part as a list");
+  }
+  if (_helpers.stack.length >= MAX_COMPONENT_DEPTH) {
+    return _componentBlocker(
+      fn,
+      `components nest more than ${MAX_COMPONENT_DEPTH} deep`,
+      "flatten the components, or let this page render through the runtime",
+    );
+  }
+  if (fn.asteriskToken || ts.getModifiers(fn)?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)) {
+    return _componentBlocker(
+      fn,
+      `${name}() is async`,
+      "work the values out in the page and pass them",
+    );
+  }
+  if (fn.parameters.length > 1) {
+    return _componentBlocker(
+      fn.parameters[1]!,
+      `${name}() takes more than one argument`,
+      "take a single props object",
+    );
+  }
+  if (_referencesThis(fn.body)) {
+    return _componentBlocker(
+      fn,
+      `${name}() reads \`this\`, which a function component does not have`,
+      "pass the value as a prop",
+    );
+  }
+  if (_referencesGel(fn.body)) {
+    return _componentBlocker(
+      fn,
+      `${name}() reads \`$flow\``,
+      "read it in the page, or make the component a Flow component class",
+    );
+  }
+  const handler = _findEventHandler(fn.body);
+  if (handler) {
+    return _componentBlocker(
+      handler,
+      `${name}() binds an event handler (\`${handler.name.getText()}={…}\`)`,
+      "keep handlers in the page; a component compiles when it renders markup only",
+    );
+  }
+
+  let target: ComponentFunction = fn;
+  if (binds.size > 0) {
+    const substituted = _substituteBoundProps(fn, name, binds);
+    if ("blocker" in substituted) return substituted;
+    target = substituted.fn;
+  }
+
+  // Compile with the component module's names in scope, not the page's.
+  const outer = { strings: _staticStrings, unread: _unreadImports, components: _components };
+  const shadowed = _declaredNames(fn);
+  const strings = new Map(module.strings);
+  const components = new Map(module.components);
+  for (const local of shadowed) {
+    strings.delete(local);
+    components.delete(local);
+  }
+  _staticStrings = strings;
+  _unreadImports = _relativeImportNames(module.sf, strings);
+  _components = components;
+  _helpers.stack.push(identity);
+  const report: BlockerReport = {};
+  let body: string | null;
+  try {
+    body = _compileRenderMethod(target, module.file, members, report, `${name}()`);
+  } catch (err) {
+    // What would stop a page's boot (a `<For>` that is not over `this`, say) is, in a component,
+    // a reason to leave the page on the runtime renderer, which is where it rendered before.
+    const message = (err as Error).message.replace(/^\[Flow[^\]]*\]\s*/, "").split("\n")[0]!;
+    return _componentBlocker(fn, message, "let this page render through the runtime");
+  } finally {
+    _helpers.stack.pop();
+    _staticStrings = outer.strings;
+    _unreadImports = outer.unread;
+    _components = outer.components;
+  }
+  if (!body) {
+    const blocker = report.blocker;
+    if (!blocker) return _componentBlocker(fn, `${name}() could not be compiled`, "inline it");
+    // A blocker in the rewritten body points into text that exists nowhere; name the component.
+    return target === fn ? { blocker } : _componentBlocker(fn, blocker.reason, blocker.fix);
+  }
+
+  // Nested components compiled while this one did took their ids first, so the id is chosen now.
+  const id = `__fc${_helpers.ids.size}`;
+  const scope = _componentScope(module, fn, name, id);
+  if ("blocker" in scope) return scope;
+  const params = target.parameters.map((p) => p.getText()).join(", ");
+  _helpers.code.push(
+    [
+      `// <${name}> from ${module.file}`,
+      ...scope.imports,
+      `const ${id} = (() => {`,
+      ...scope.prelude.map((line) => `  ${line}`),
+      `  return function (${params}) {`,
+      body,
+      `  };`,
+      `})();`,
+    ].join("\n"),
+  );
+  _helpers.ids.set(key, id);
+  return { id, usesThis };
+}
+
+/** The first `on*={…}` attribute in `node`: a handler, which a compiled component cannot own. */
+function _findEventHandler(node: ts.Node): ts.JsxAttribute | null {
+  let found: ts.JsxAttribute | null = null;
+  const visit = (n: ts.Node): void => {
+    if (found) return;
+    if (
+      ts.isJsxAttribute(n) &&
+      ts.isIdentifier(n.name) &&
+      ((n.name.text.startsWith("on") && n.name.text.length > 2) || n.name.text === "submit") &&
+      n.initializer &&
+      ts.isJsxExpression(n.initializer)
+    ) {
+      found = n;
+      return;
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return found;
+}
+
+/** True when the identifier `n` names something rather than reading it. */
+function _isNameNotReference(n: ts.Identifier): boolean {
+  const p = n.parent;
+  if (!p) return false;
+  if (ts.isPropertyAccessExpression(p)) return p.name === n;
+  if (ts.isPropertyAssignment(p) || ts.isMethodDeclaration(p) || ts.isPropertyDeclaration(p)) {
+    return p.name === n;
+  }
+  if (ts.isGetAccessorDeclaration(p) || ts.isSetAccessorDeclaration(p)) return p.name === n;
+  if (ts.isBindingElement(p)) return p.name === n || p.propertyName === n;
+  if (
+    ts.isVariableDeclaration(p) ||
+    ts.isParameter(p) ||
+    ts.isFunctionDeclaration(p) ||
+    ts.isFunctionExpression(p) ||
+    ts.isClassDeclaration(p) ||
+    ts.isClassExpression(p) ||
+    ts.isTypeParameterDeclaration(p) ||
+    ts.isEnumDeclaration(p) ||
+    ts.isEnumMember(p) ||
+    ts.isLabeledStatement(p) ||
+    ts.isBreakOrContinueStatement(p)
+  ) {
+    return (p as { name?: ts.Node; label?: ts.Node }).name === n || ("label" in p && p.label === n);
+  }
+  if (ts.isJsxAttribute(p)) return p.name === n;
+  if (ts.isJsxOpeningElement(p) || ts.isJsxSelfClosingElement(p) || ts.isJsxClosingElement(p)) {
+    return p.tagName === n;
+  }
+  return false;
+}
+
+/** Every name `node` reads as a value: not types, property names, declarations or JSX tags. */
+function _referencedNames(node: ts.Node): Set<string> {
+  const names = new Set<string>();
+  const visit = (n: ts.Node): void => {
+    if (ts.isTypeNode(n) || ts.isTypeAliasDeclaration(n) || ts.isInterfaceDeclaration(n)) return;
+    if (ts.isIdentifier(n) && !_isNameNotReference(n)) names.add(n.text);
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return names;
+}
+
+/** The names a top-level statement declares. */
+function _topLevelNames(stmt: ts.Statement): string[] {
+  if (ts.isVariableStatement(stmt)) {
+    const names = new Set<string>();
+    for (const d of stmt.declarationList.declarations) _collectBoundNames(d.name, names);
+    return [...names];
+  }
+  if (
+    (ts.isFunctionDeclaration(stmt) || ts.isClassDeclaration(stmt) || ts.isEnumDeclaration(stmt)) &&
+    stmt.name
+  ) {
+    return [stmt.name.text];
+  }
+  return [];
+}
+
+/**
+ * What a compiled component needs from its own module, as code for the compiled page: imports of
+ * what it reads, under names of its own (`id` + `_` + name), and a prelude that gives them back
+ * their names inside the helper's scope, followed by the module's top-level declarations it reads
+ * (and what those read in turn). Types are left behind; they are only annotations here.
+ */
+function _componentScope(
+  module: ComponentModule,
+  fn: ComponentFunction,
+  name: string,
+  id: string,
+): { imports: string[]; prelude: string[] } | { blocker: CompileBlocker } {
+  const used = _referencedNames(fn);
+  let own: ts.Node = fn;
+  while (own.parent && own.parent !== module.sf) own = own.parent;
+
+  const carried = new Set<ts.Statement>();
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const stmt of module.sf.statements) {
+      if (carried.has(stmt) || stmt === own) continue;
+      const declared = _topLevelNames(stmt);
+      if (!declared.some((d) => used.has(d))) continue;
+      const mods = ts.canHaveModifiers(stmt) ? ts.getModifiers(stmt) : undefined;
+      if (
+        ts.isClassDeclaration(stmt) ||
+        mods?.some(
+          (m) => m.kind === ts.SyntaxKind.DefaultKeyword || m.kind === ts.SyntaxKind.DeclareKeyword,
+        )
+      ) {
+        return _componentBlocker(
+          stmt,
+          `${name}() reads \`${declared[0]}\`, which the compiler can't carry`,
+          "import it from another module, or declare it as a plain const or function",
+        );
+      }
+      if (_containsJsx(stmt)) {
+        return _componentBlocker(
+          stmt,
+          `${name}() reads \`${declared[0]}\`, which builds markup`,
+          "render it as a tag, or move its markup into the component",
+        );
+      }
+      carried.add(stmt);
+      grew = true;
+      for (const ref of _referencedNames(stmt)) used.add(ref);
+    }
+  }
+
+  const dir = path.dirname(module.file);
+  const imports: string[] = [];
+  const rebind: string[] = [];
+  for (const stmt of module.sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const clause = stmt.importClause;
+    if (!clause || clause.isTypeOnly) continue;
+    const spec = stmt.moduleSpecifier.text;
+    const from = JSON.stringify(
+      spec.startsWith(".") ? pathToFileURL(path.resolve(dir, spec)).href : spec,
+    );
+    const alias = (local: string) => {
+      rebind.push(`const ${local} = ${id}_${local};`);
+      return `${id}_${local}`;
+    };
+    if (clause.name && used.has(clause.name.text)) {
+      imports.push(`import ${alias(clause.name.text)} from ${from};`);
+    }
+    const bindings = clause.namedBindings;
+    if (bindings && ts.isNamespaceImport(bindings) && used.has(bindings.name.text)) {
+      imports.push(`import * as ${alias(bindings.name.text)} from ${from};`);
+    }
+    if (bindings && ts.isNamedImports(bindings)) {
+      const named = bindings.elements
+        .filter((e) => !e.isTypeOnly && used.has(e.name.text))
+        .map((e) => `${(e.propertyName ?? e.name).text} as ${alias(e.name.text)}`);
+      if (named.length > 0) imports.push(`import { ${named.join(", ")} } from ${from};`);
+    }
+  }
+
+  const prelude = [
+    ...rebind,
+    ...module.sf.statements
+      .filter((stmt) => carried.has(stmt))
+      .map((stmt) => stmt.getText().replace(/^export\s+/, "")),
+  ];
+  return { imports, prelude };
+}
+
+/**
+ * `fn` with each read of a bound prop rewritten to the page property it was given, as a function
+ * expression parsed on its own: `props.value` (or a destructured `value`) becomes `this.draft`
+ * when the page wrote `value={this.draft}`. The compiler then binds it as it would in the page.
+ */
+function _substituteBoundProps(
+  fn: ComponentFunction,
+  name: string,
+  binds: ReadonlyMap<string, string>,
+): { fn: ts.FunctionExpression } | { blocker: CompileBlocker } {
+  const body = fn.body!;
+  const param = fn.parameters[0];
+  const shadowed = _declaredNames(body);
+  const edits: { start: number; end: number; text: string }[] = [];
+
+  if (param && ts.isIdentifier(param.name)) {
+    const props = param.name.text;
+    if (shadowed.has(props)) {
+      return _componentBlocker(
+        param,
+        `${name}() declares \`${props}\` again`,
+        "rename the inner one",
+      );
+    }
+    const visit = (n: ts.Node): void => {
+      if (
+        ts.isPropertyAccessExpression(n) &&
+        ts.isIdentifier(n.expression) &&
+        n.expression.text === props &&
+        binds.has(n.name.text)
+      ) {
+        edits.push({
+          start: n.getStart(),
+          end: n.getEnd(),
+          text: `this.${binds.get(n.name.text)}`,
+        });
+        return;
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(body);
+  } else if (param && ts.isObjectBindingPattern(param.name)) {
+    const locals = new Map<string, string>();
+    for (const element of param.name.elements) {
+      if (element.dotDotDotToken) continue;
+      const prop = element.propertyName ?? element.name;
+      const key = ts.isIdentifier(prop) || ts.isStringLiteral(prop) ? prop.text : null;
+      if (key === null || !binds.has(key)) continue;
+      if (!ts.isIdentifier(element.name)) {
+        return _componentBlocker(
+          element,
+          `${name}() destructures the bound prop \`${key}\``,
+          "read it whole",
+        );
+      }
+      if (element.initializer) {
+        return _componentBlocker(
+          element,
+          `${name}() gives the bound prop \`${key}\` a default`,
+          "drop the default, or give the page property an initial value",
+        );
+      }
+      if (shadowed.has(element.name.text)) {
+        return _componentBlocker(
+          element,
+          `${name}() declares \`${element.name.text}\` again`,
+          "rename the inner one",
+        );
+      }
+      locals.set(element.name.text, `this.${binds.get(key)}`);
+    }
+    const visit = (n: ts.Node): void => {
+      if (ts.isShorthandPropertyAssignment(n) && locals.has(n.name.text)) {
+        edits.push({
+          start: n.getStart(),
+          end: n.getEnd(),
+          text: `${n.name.text}: ${locals.get(n.name.text)}`,
+        });
+        return;
+      }
+      if (ts.isIdentifier(n) && locals.has(n.text) && !_isNameNotReference(n)) {
+        edits.push({ start: n.getStart(), end: n.getEnd(), text: locals.get(n.text)! });
+        return;
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(body);
+  }
+
+  const offset = body.getStart();
+  let text = body.getText();
+  for (const edit of edits.sort((a, b) => b.start - a.start)) {
+    text = text.slice(0, edit.start - offset) + edit.text + text.slice(edit.end - offset);
+  }
+  const params = fn.parameters.map((p) => p.getText()).join(", ");
+  const block = ts.isBlock(body) ? text : `{\n  return (${text});\n}`;
+  const sf = ts.createSourceFile(
+    fn.getSourceFile().fileName,
+    `const __flowComponent = function (${params}) ${block};`,
+    ts.ScriptTarget.Latest,
+    /* setParentNodes */ true,
+    ts.ScriptKind.TSX,
+  );
+  const stmt = sf.statements[0];
+  const init =
+    stmt && ts.isVariableStatement(stmt)
+      ? stmt.declarationList.declarations[0]?.initializer
+      : undefined;
+  if (!init || !ts.isFunctionExpression(init)) {
+    return _componentBlocker(
+      fn,
+      `${name}() could not be rewritten for its bound props`,
+      "inline it",
+    );
+  }
+  return { fn: init };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

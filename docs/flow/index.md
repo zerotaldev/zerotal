@@ -512,7 +512,7 @@ declare module "@zerotal/flow/store" {
 
 The store is client-only by design: use it inside JSX client expressions (handlers, attribute bindings, text children), where the compiler routes it to the client global. It can't switch between JSX subtrees (`{$flow.store.x ? <A/> : <B/>}`); drive the DOM from it with a class, `show`, or text binding instead.
 
-A page that _reads_ `$flow.store` in a binding must be AOT-compilable — the compiler turns those reads into client bindings, but the runtime fallback (used when a page can't be statically compiled) would try to evaluate `$flow` on the server, where it doesn't exist. In practice this means a page with a reactive `$flow.store` read should avoid the patterns that force the runtime path: an imported child component in `render()` (`<Header/>`), a `class={someLocalConst}`, or a numeric-literal attribute (`rows={3}` → use `rows="3"`). Writing `$flow.store` in a handler (`onClick={() => …}`) is always fine.
+A page that _reads_ `$flow.store` in a binding must be AOT-compilable — the compiler turns those reads into client bindings, but the runtime fallback (used when a page can't be statically compiled) would try to evaluate `$flow` on the server, where it doesn't exist. In practice this means a page with a reactive `$flow.store` read should avoid the patterns that force the runtime path: an imported child component the compiler can't read (see [Function components](/docs/flow/performance#function-components)), a `class={someLocalConst}`, or a numeric-literal attribute (`rows={3}` → use `rows="3"`). Writing `$flow.store` in a handler (`onClick={() => …}`) is always fine.
 
 ### Full page example
 

@@ -105,7 +105,6 @@ describe('the admin template', () => {
 
 describe.each(Object.entries(KITS))('the %s kit', (template, kit) => {
   const { extension, pages, layouts, components } = kit;
-  const omitted: readonly string[] = 'omits' in kit ? kit.omits : [];
   // React is the reference; the other kits are ports of it, checked against the same list.
   const KIT = join(TEMPLATES_DIR, template);
   const has = (rel: string): boolean => existsSync(join(KIT, rel));
@@ -118,7 +117,7 @@ describe.each(Object.entries(KITS))('the %s kit', (template, kit) => {
     expect({ layout, exists: has(`${layouts}/${layout}${extension}`) }).toEqual({ layout, exists: true });
   });
 
-  it.each(MANIFEST.components.filter((c) => !omitted.includes(c)))('has the %s component', (component) => {
+  it.each([...MANIFEST.components])('has the %s component', (component) => {
     expect({ component, exists: has(`${components}/${component}${extension}`) }).toEqual({
       component,
       exists: true,

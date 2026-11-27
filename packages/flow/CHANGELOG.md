@@ -65,6 +65,16 @@ change.
 - **`flow.exposeErrorMessages`** in `config/flow.ts`: `true` shows an error's own message to the
   visitor in every environment, `false` hides it in every environment. Unset, it is shown in
   development, under `bun zt dev` and in tests, and hidden everywhere else.
+- **A page that renders a function component compiles ahead of time.** It used to render through
+  the runtime fallback, which `cspSafe` refuses, so a page could share markup through a
+  component only by giving up compiling. A component imported by name from a relative `.tsx`
+  module, taking one props object and returning its markup once, is now compiled into the page
+  with the page's rules, and the page calls it with its props. A prop written `{this.x}` on an
+  `@expose` or `@locked` property carries its binding into the component. Children, spread or
+  function props, `this`, `$flow` and event handlers inside the component still fall back, and
+  `ZT_FLOW_COMPILE_LOG=1` names the component's file and line. Editing the component, or a
+  module it reads class lists from, recompiles the page. See
+  [Function components](https://zerotal.dev/docs/flow/performance#function-components).
 
 ## [1.18.3] — 2026-11-26
 

@@ -4275,6 +4275,12 @@
     },
     {
       "file": "docs/flow/performance.md",
+      "heading": "Function components",
+      "ordinal": 0,
+      "hash": "28idir0hrk18"
+    },
+    {
+      "file": "docs/flow/performance.md",
       "heading": "Hover-prefetch",
       "ordinal": 0,
       "hash": "1s0xurnl19vj"

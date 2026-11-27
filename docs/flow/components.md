@@ -787,7 +787,10 @@ import { Tooltip } from "@zerotal/flow";
 
 Most pages compile ahead of time to string concatenation. A page the compiler can't
 handle renders through the runtime instead — slower, but identical output, and the
-usual outcome for anything built from components. The boot line counts them:
+usual outcome for a page built from components the compiler can't read. A plain function
+component it can read is compiled into the page; see
+[Function components](/docs/flow/performance#function-components) for which ones. The boot line
+counts them:
 
 ```text
 [Flow] Compiled 4 page(s), 2 from cache, 3 bind-injected, 8 using runtime (76ms)

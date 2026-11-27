@@ -7725,6 +7725,120 @@ class FakeDisk = {
   url: (path: string) => string
 }
 
+class HtmlDocument = {
+  new (source: string, note?: string): HtmlDocument
+  assertChecked: (field: string, value?: FieldValue) => HtmlDocument
+  assertCount: (selector: string, count: number) => HtmlDocument
+  assertDontSeeText: (text: TextMatch) => HtmlDocument
+  assertFieldError: (field: string, message?: string) => HtmlDocument
+  assertFormAction: (action: string | RegExp, method?: string) => HtmlDocument
+  assertLink: (name: TextMatch, href: string | RegExp) => HtmlDocument
+  assertMissing: (selector: string) => HtmlDocument
+  assertNoFieldError: (field: string) => HtmlDocument
+  assertNotChecked: (field: string, value?: FieldValue) => HtmlDocument
+  assertPresent: (selector: string) => HtmlDocument
+  assertSeeText: (text: TextMatch) => HtmlDocument
+  assertTitle: (title: TextMatch) => HtmlDocument
+  assertValue: (field: string, value: FieldValue) => HtmlDocument
+  count: (selector: string) => number
+  field: (field: string) => HtmlElement
+  find: (selector: string) => HtmlElement | null
+  findAll: (selector: string) => HtmlElement[]
+  findAllByLabel: (text: TextMatch) => HtmlElement[]
+  findAllByRole: (role: string, options?: ByRoleOptions) => HtmlElement[]
+  findAllByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement[]
+  findByLabel: (text: TextMatch) => HtmlElement | null
+  findByRole: (role: string, options?: ByRoleOptions) => HtmlElement | null
+  findByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement | null
+  form: (action?: string | RegExp) => HtmlElement
+  get: (selector: string) => HtmlElement
+  getByLabel: (text: TextMatch) => HtmlElement
+  getByRole: (role: string, options?: ByRoleOptions) => HtmlElement
+  getByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement
+  html: () => string
+  text: () => string
+  title: () => string
+}
+
+class HtmlElement = {
+  new (node: _Element, note?: string): HtmlElement
+  static _of: (node: _Element, note?: string) => HtmlElement
+  assertChecked: (field: string, value?: FieldValue) => HtmlElement
+  assertCount: (selector: string, count: number) => HtmlElement
+  assertDontSeeText: (text: TextMatch) => HtmlElement
+  assertFieldError: (field: string, message?: string) => HtmlElement
+  assertFormAction: (action: string | RegExp, method?: string) => HtmlElement
+  assertLink: (name: TextMatch, href: string | RegExp) => HtmlElement
+  assertMissing: (selector: string) => HtmlElement
+  assertNoFieldError: (field: string) => HtmlElement
+  assertNotChecked: (field: string, value?: FieldValue) => HtmlElement
+  assertPresent: (selector: string) => HtmlElement
+  assertSeeText: (text: TextMatch) => HtmlElement
+  assertValue: (field: string, value: FieldValue) => HtmlElement
+  attr: (name: string) => string | null
+  attributes: () => Record<string, string>
+  children: () => HtmlElement[]
+  count: (selector: string) => number
+  field: (field: string) => HtmlElement
+  find: (selector: string) => HtmlElement | null
+  findAll: (selector: string) => HtmlElement[]
+  findAllByLabel: (text: TextMatch) => HtmlElement[]
+  findAllByRole: (role: string, options?: ByRoleOptions) => HtmlElement[]
+  findAllByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement[]
+  findByLabel: (text: TextMatch) => HtmlElement | null
+  findByRole: (role: string, options?: ByRoleOptions) => HtmlElement | null
+  findByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement | null
+  form: (action?: string | RegExp) => HtmlElement
+  get: (selector: string) => HtmlElement
+  getByLabel: (text: TextMatch) => HtmlElement
+  getByRole: (role: string, options?: ByRoleOptions) => HtmlElement
+  getByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement
+  html: () => string
+  isChecked: () => boolean
+  isDisabled: () => boolean
+  name: () => string
+  parent: () => HtmlElement | null
+  role: () => string | null
+  submitButton: () => HtmlElement | null
+  tag: string
+  text: () => string
+  toString: () => string
+  value: () => string
+}
+
+class HtmlScope = {
+  new (node: _Element, note?: string): HtmlScope
+  assertChecked: (field: string, value?: FieldValue) => HtmlScope
+  assertCount: (selector: string, count: number) => HtmlScope
+  assertDontSeeText: (text: TextMatch) => HtmlScope
+  assertFieldError: (field: string, message?: string) => HtmlScope
+  assertFormAction: (action: string | RegExp, method?: string) => HtmlScope
+  assertLink: (name: TextMatch, href: string | RegExp) => HtmlScope
+  assertMissing: (selector: string) => HtmlScope
+  assertNoFieldError: (field: string) => HtmlScope
+  assertNotChecked: (field: string, value?: FieldValue) => HtmlScope
+  assertPresent: (selector: string) => HtmlScope
+  assertSeeText: (text: TextMatch) => HtmlScope
+  assertValue: (field: string, value: FieldValue) => HtmlScope
+  count: (selector: string) => number
+  field: (field: string) => HtmlElement
+  find: (selector: string) => HtmlElement | null
+  findAll: (selector: string) => HtmlElement[]
+  findAllByLabel: (text: TextMatch) => HtmlElement[]
+  findAllByRole: (role: string, options?: ByRoleOptions) => HtmlElement[]
+  findAllByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement[]
+  findByLabel: (text: TextMatch) => HtmlElement | null
+  findByRole: (role: string, options?: ByRoleOptions) => HtmlElement | null
+  findByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement | null
+  form: (action?: string | RegExp) => HtmlElement
+  get: (selector: string) => HtmlElement
+  getByLabel: (text: TextMatch) => HtmlElement
+  getByRole: (role: string, options?: ByRoleOptions) => HtmlElement
+  getByText: (text: TextMatch, options?: ByTextOptions) => HtmlElement
+  html: () => string
+  text: () => string
+}
+
 class Http = {
   new (): Http
   static assertNotSent: (predicate: (req: {    method: string;    url: string;}) => boolean) => void
@@ -7865,6 +7979,7 @@ class TestResponse = {
   assertValid: (fields?: string | string[]) => TestResponse
   exception: () => unknown
   headers: Headers
+  html: () => HtmlDocument
   inertia: {    (): InertiaPage | null;    <P extends object>(): InertiaPageOf<P> | null;}
   json: <T = unknown>() => T
   ok: boolean
@@ -7894,6 +8009,8 @@ function createTestApp = (bootstrap: () => Application | Promise<Application>, s
 
 function migrateDatabase = (options?: MigrateDatabaseOptions) => Promise<string[]>
 
+function parseHtml = (source: string | {    html(): string | HtmlDocument;}) => HtmlDocument
+
 function refreshDatabase = (options?: RefreshDatabaseOptions) => void
 
 function resetTestState = () => void
@@ -7903,6 +8020,17 @@ function withConfig = {    <T>(overrides: Record<string, unknown>, fn: () => T |
 function withDatabase = (fn: () => Promise<void>) => () => Promise<void>
 
 function withEnv = {    <T>(vars: Record<string, string | undefined>, fn: () => T | Promise<T>): Promise<T>;    (vars: Record<string, string | undefined>): void;}
+
+interface ByRoleOptions = {
+  hidden?: boolean | undefined
+  level?: number | undefined
+  name?: TextMatch | undefined
+}
+
+interface ByTextOptions = {
+  exact?: boolean | undefined
+  selector?: string | undefined
+}
 
 interface FakeStoredFile = {
   contentType: string | undefined
@@ -7958,6 +8086,8 @@ type SessionDecoder = (response: Response) => Promise<Record<string, unknown> | 
 type TestFormValue = string | number | boolean | null | undefined | TestFileInput | File | Blob
 
 type TestMultipartValue = TestFormValue | readonly TestFormValue[]
+
+type TextMatch = string | RegExp
 
 ## ./testing/guard  `(./src/testing-guard.ts)`
 

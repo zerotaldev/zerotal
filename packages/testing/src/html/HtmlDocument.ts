@@ -788,7 +788,9 @@ function optionValue(option: _Element): string {
 }
 
 function fieldErrors(control: _Element): { invalid: boolean; messages: string[] } {
-  const invalid = (_attr(control, "aria-invalid") ?? "false") !== "false";
+  // An empty value is the default, false, as in ARIA.
+  const flag = _attr(control, "aria-invalid") ?? "false";
+  const invalid = flag !== "" && flag !== "false";
   const ids = [
     ...(_attr(control, "aria-errormessage") ?? "").split(/\s+/),
     ...(invalid ? (_attr(control, "aria-describedby") ?? "").split(/\s+/) : []),

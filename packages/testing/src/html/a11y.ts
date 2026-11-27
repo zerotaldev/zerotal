@@ -256,15 +256,41 @@ export function _nameOf(el: _Element): string {
   return "";
 }
 
+/**
+ * Each document's ids and `<label for>` targets, indexed once. A parsed page does not change, and
+ * scanning the whole page for every control made a form of a thousand fields take seconds.
+ */
+interface _DocIndex {
+  byId: Map<string, _Element>;
+  labelsFor: Map<string, _Element[]>;
+}
+const _indexes = new WeakMap<_Element, _DocIndex>();
+
+function _indexOf(root: _Element): _DocIndex {
+  let index = _indexes.get(root);
+  if (index) return index;
+  index = { byId: new Map(), labelsFor: new Map() };
+  for (const node of _descendants(root)) {
+    const id = _attr(node, "id");
+    if (id && !index.byId.has(id)) index.byId.set(id, node);
+    if (node.tag === "label") {
+      const target = _attr(node, "for");
+      if (target) {
+        const list = index.labelsFor.get(target);
+        if (list) list.push(node);
+        else index.labelsFor.set(target, [node]);
+      }
+    }
+  }
+  _indexes.set(root, index);
+  return index;
+}
+
 /** The `<label>` elements that label a control: `for` its id, or wrapped around it. */
 export function _labelsOf(control: _Element): _Element[] {
   const labels: _Element[] = [];
   const id = _attr(control, "id");
-  if (id) {
-    for (const node of _descendants(_rootOf(control))) {
-      if (node.tag === "label" && _attr(node, "for") === id) labels.push(node);
-    }
-  }
+  if (id) labels.push(...(_indexOf(_rootOf(control)).labelsFor.get(id) ?? []));
   const wrapping = control.parent ? _closest(control.parent, "label") : null;
   if (wrapping && !labels.includes(wrapping)) {
     const target = _attr(wrapping, "for");
@@ -316,7 +342,7 @@ function textFor(el: _Element, skip: _Element | null, includeHidden: boolean): s
 }
 
 function byId(root: _Element, id: string): _Element | null {
-  return _descendants(root).find((node) => _attr(node, "id") === id) ?? null;
+  return _indexOf(root).byId.get(id) ?? null;
 }
 
 /** The element with this id in `el`'s document. */

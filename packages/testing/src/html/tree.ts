@@ -181,7 +181,7 @@ export function _parseHtml(source: string): _Element {
         const parent = top();
         const attrs: Array<readonly [string, string]> = [];
         for (const [name, value] of el.attributes) {
-          attrs.push([name.toLowerCase(), _decodeEntities(value)]);
+          attrs.push([name.toLowerCase(), _decodeEntities(value, true)]);
         }
         const node: _Element = { type: "element", tag, attrs, children: [], parent };
         parent.children.push(node);
@@ -273,12 +273,26 @@ const NAMED: Record<string, string> = {
 /** The references HTML accepts without a closing semicolon. */
 const LEGACY = new Set(["amp", "lt", "gt", "quot", "nbsp", "copy", "reg"]);
 
-/** Decode the character references in a run of text or an attribute value. */
-export function _decodeEntities(text: string): string {
+/**
+ * Decode the character references in a run of text or an attribute value.
+ *
+ * In an attribute, a named reference with no semicolon is left alone when `=` or a letter or
+ * digit follows it, as a browser does: `href="/x?a=1&copy=2"` keeps its `&copy=` rather than
+ * turning into a copyright sign.
+ */
+export function _decodeEntities(text: string, inAttribute = false): string {
   if (!text.includes("&")) return text;
   return text.replace(
     /&(?:#[xX]([0-9a-fA-F]{1,6})|#([0-9]{1,7})|([A-Za-z][A-Za-z0-9]{1,31}))(;?)/g,
-    (match, hex: string | undefined, dec: string | undefined, name: string | undefined, semi) => {
+    (
+      match: string,
+      hex: string | undefined,
+      dec: string | undefined,
+      name: string | undefined,
+      semi: string,
+      offset: number,
+      whole: string,
+    ) => {
       if (hex !== undefined || dec !== undefined) {
         const code = hex !== undefined ? Number.parseInt(hex, 16) : Number(dec);
         if (code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) return "�";
@@ -286,6 +300,9 @@ export function _decodeEntities(text: string): string {
       }
       const value = NAMED[name!];
       if (value === undefined || (semi === "" && !LEGACY.has(name!))) return match;
+      if (semi === "" && inAttribute && /[=A-Za-z0-9]/.test(whole[offset + match.length] ?? "")) {
+        return match;
+      }
       return value;
     },
   );

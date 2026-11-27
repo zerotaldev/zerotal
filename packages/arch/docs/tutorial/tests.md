@@ -149,10 +149,10 @@ What each part relies on:
 [Testing](/docs/testing) and [HTTP Tests](/docs/testing/http) cover every assertion.
 
 > **On Flow** — a Flow page is HTML, not an Inertia response. Replace
-> `assertInertia("projects/show")` with the starter's helpers from `tests/html.ts`,
-> as `tests/projects.test.ts` does: `assertPage(res, project.name)` checks the page's
-> title, and `attributes(page, "data-task")` reads a `data-task` attribute you put on
-> each row. Everything else is the same.
+> `assertInertia("projects/show")` with `assertPage(res, project.name)` from
+> `tests/support.ts`, which checks the page's title and returns the page, then read it the
+> way a visitor does, by role and name: `page.getByRole("list", { name: "Tasks" })` finds a list
+> labelled "Tasks". `tests/projects.test.ts` shows the pattern. Everything else is the same.
 
 ## The refusal test
 

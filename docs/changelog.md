@@ -27,6 +27,98 @@ the section for every version you cross and apply its migration notes, not only 
 majors. [Releases and versioning](/docs/support-policy#releases-and-versioning) explains
 when that carve-out ends.
 
+## 1.18.4 — 2026-11-27
+
+A patch, from three reviews of 1.18.3 (Flow, the dev tools, the starter walk) and the walk's
+remaining items. Flow no longer lets bad frames switch it off for an address, reports the actions
+that throw, and keeps an error's own text off production pages. In development the debug panel and
+the Inertia recorder answer this machine only. Compiled Flow pages can use the app's own
+components, the Flow starter shares one project form, `zt repl` can import, and tests read pages
+with `res.html()` and Inertia props typed.
+
+### Before you upgrade
+
+Read [1.18.4](/docs/upgrade#1184) in the upgrade guide. Four things can change what an existing
+app does:
+
+- **Production Flow pages show a generic message when something throws** (`@zerotal/flow`), not
+  the error's own text. An error raised to answer the visitor (`abort(422, "…")`, a
+  `ForbiddenError`) keeps its message; `flow.exposeErrorMessages: true` restores the old text.
+- **Thrown Flow actions now reach your exception handler** (`@zerotal/flow`). Remove a tracker
+  call from an `onError()` override, or each error is reported twice.
+- **In development the debug panel and the Inertia recorder answer this machine only**
+  (`@zerotal/devtools`, `@zerotal/inertia`). A phone on your Wi-Fi or a container's published
+  port needs a `gate`; the upgrade guide shows one.
+- **Behind a reverse proxy, set `app.throttle.trustedProxies`.** Nobody is locked out without it
+  any more, but Flow's refusal log names the proxy instead of the client.
+
+### Security
+
+- **Bad frames from one address no longer switch Flow off for that address** (`@zerotal/flow`).
+  Ten frames whose snapshot did not verify refused every later frame from the address for ten
+  minutes, valid ones included, before the signature was even checked; behind a proxy that was
+  every visitor. A frame that verifies is now always served, and invalid ones are refused before
+  any middleware runs.
+- **A malformed Flow frame is refused instead of throwing** (`@zerotal/flow`).
+- **An error's own message is not shown to visitors in production** (`@zerotal/flow`).
+- **In development the debug panel and the Inertia recorder answer this machine only**
+  (`@zerotal/devtools`, `@zerotal/inertia`): a loopback address and a loopback `Host`. Another
+  device on the network, or a page that points its own name at `127.0.0.1`, is refused. Their
+  state-changing endpoints and the `/__dev/ws` reload socket refuse a page on another site, and
+  so does the error page's one-click migration fix (`@zerotal/orm`).
+- **The dev error page cannot be made to run script by an error message, and masks credential
+  headers** (`@zerotal/core`).
+- **Secrets in a URL are masked in traces** (`@zerotal/devtools`): query-string values, secret
+  route parameters, the `Referer`, and credential headers recorded under `headers: ["*"]`.
+
+### Added
+
+- **A compiled Flow page can use the app's own function components** (`@zerotal/flow`). A page
+  that used one fell back to the runtime, and under `cspSafe` could not boot.
+- **`res.html()`** (`@zerotal/testing`): read a server-rendered page by role, label and text, the
+  way a visitor does.
+- **`TestResponse.inertia<P>()`** (`@zerotal/testing`): an Inertia page's props, typed.
+- **`make:page --route`** (`@zerotal/inertia`): the page and the file route that serves it.
+- **`flow.exposeErrorMessages`** and **`flow.uploads.maxBytes`** in `config/flow.ts`
+  (`@zerotal/flow`).
+- **`bun zt doctor` warns when a production app has work and no worker it can see**
+  (`@zerotal/core`).
+- **[Flow security](/docs/flow/security)**: what Flow trusts from the browser, what it checks on
+  every action, and what your code still checks.
+
+### Changed
+
+- **A new app depends on `~1.18.4`** (`create-zerotal`).
+- **The Flow starter's project pages share one form**, and the starters carry no casts on the
+  signed-in user, on route params, on query rows or on Inertia props (`create-zerotal`). The
+  Flow starter's tests read pages with `res.html()`.
+
+### Fixed
+
+- **A Flow action that throws is logged and reported**, and `FlowActionHandled` says `ok: false`
+  (`@zerotal/flow`). A stopped `@task` is no longer an error.
+- **A flash chained onto a redirect from an action is shown on the next page**, an action that
+  sets two cookies delivers both, and abandoned uploads are deleted after a restart
+  (`@zerotal/flow`).
+- **Compiled pages render as the runtime does**: markup held in a const, `<Link down>`,
+  `<Link exact>` and `navigateDown` (`@zerotal/flow`).
+- **Two Flow page classes with the same name are reported, and the dev error overlay can be read
+  as text** (`@zerotal/flow`).
+- **`<AlertDialog>` can only be closed by its buttons** (`@zerotal/flow-ui`).
+- **`bun zt dev` reads `PORT`** from the shell and `.env`, as `bun zt serve` does, reconnects the
+  browser sooner after a save, and leaves the scheduler and queue running when a Flow page is
+  saved (`@zerotal/core`).
+- **`bun zt repl` can import** the app's code (`@zerotal/core`).
+- **`bun zt doctor`'s Queue worker check no longer counts helper files as jobs, and the web
+  process no longer reports draining jobs or stopping tasks it never ran** (`@zerotal/queue`,
+  `@zerotal/scheduler`).
+- **Traces record the status a failed request was answered with, show `LIMIT`/`OFFSET` bindings,
+  and name each route by its own name** (`@zerotal/devtools`).
+- **The 1.18.3 upgrade step names its import**, and the starters test the two-factor claim under
+  concurrent requests (`create-zerotal`).
+- **The Flow guide matches the code** in about thirty places: `await this.validate()`, file-route
+  URLs, navigation props, the request inside an action, `@locked` and `@reactive`, upload limits.
+
 ## 1.18.3 — 2026-11-26
 
 A patch, from the walk of 1.18.2. A test that fakes storage no longer writes media files for real,

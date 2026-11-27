@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Added
 
 - **`TestResponse.inertia<P>()` reads the page's props typed.** Props came back as

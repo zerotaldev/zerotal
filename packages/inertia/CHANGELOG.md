@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Security
 
 - **In development the recorder's read API answers your own machine only.** The dev server

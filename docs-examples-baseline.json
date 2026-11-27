@@ -8457,6 +8457,18 @@
     },
     {
       "file": "docs/upgrade.md",
+      "heading": "Flow: a frame that verifies is always served",
+      "ordinal": 0,
+      "hash": "3nfd12949sqa"
+    },
+    {
+      "file": "docs/upgrade.md",
+      "heading": "Flow: visitors no longer see an error's own text in production",
+      "ordinal": 0,
+      "hash": "3oxoi2tsajyq"
+    },
+    {
+      "file": "docs/upgrade.md",
       "heading": "Two-factor: claim the code's step in one update",
       "ordinal": 1,
       "hash": "4ja5zgoazofc"

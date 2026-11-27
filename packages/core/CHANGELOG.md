@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Security
 
 - **The development error page no longer runs script from an error message.** The page writes

@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Fixed
 
 - **`bun zt doctor`'s Queue worker check no longer counts helper files as jobs.** It counted

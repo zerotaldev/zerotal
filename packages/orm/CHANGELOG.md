@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Security
 
 - **The dev error page's one-click migration fix answers only this machine.** The error page is

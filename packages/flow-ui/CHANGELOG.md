@@ -8,6 +8,8 @@ follows the Zerotal monorepo's unified versioning.
 
 ## [Unreleased]
 
+## [1.18.4] — 2026-11-27
+
 ### Fixed
 
 - **`<AlertDialog>` can only be closed by its buttons.** Its docs say a backdrop click or Escape

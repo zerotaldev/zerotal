@@ -39,11 +39,13 @@ change.
 
 ### Fixed
 
-- **A flash chained onto a redirect is shown on the page the browser lands on.**
+- **A flash chained onto a redirect from an action is shown on the page the browser lands on.**
   `this.redirect("/dashboard").withSuccess("Welcome back.")`, and `this.flash()` followed by
   `this.redirect()`, queued the flash and dropped it: the server sent the redirect before it
   sent flashes. The redirect frame now carries them, and the browser replays them as `flow:flash`
-  events once the next page has loaded, so a `<Flash>` there shows them.
+  events once the next page on the same site has loaded (within 30 seconds), so a `<Flash>`
+  there shows them. Their action buttons are left off, since the component they would call is
+  not on the new page. A redirect from `onMount()` on the first page load still drops them.
 - **An action that sets two cookies delivers both.** The session relay read
   `Headers.get("Set-Cookie")`, which joins every cookie into one comma-separated value that a
   browser reads as one broken cookie, so signing in through an action with "remember me" kept

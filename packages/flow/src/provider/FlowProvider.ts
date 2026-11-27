@@ -433,20 +433,39 @@ export async function _sweepTempUploadDir(
   return removed;
 }
 
-/** `flow-tmp/` on the default disk, when that disk is a local directory. */
-function _localTempUploadDir(): string | null {
-  const storage = config.safe<
-    { default?: string; disks?: Record<string, { driver?: string; root?: string }> } | undefined
-  >("storage", undefined);
-  const name = storage?.default;
-  const disk = name ? storage?.disks?.[name] : undefined;
-  if (disk?.driver !== "local" || typeof disk.root !== "string") return null;
-  return `${disk.root.replace(/[\\/]+$/, "")}/flow-tmp`;
+type _StorageShape = {
+  default?: string;
+  disks?: Record<string, { driver?: string; root?: string }>;
+};
+
+/**
+ * `flow-tmp/` on the default disk, when that disk is a local directory inside the storage root.
+ *
+ * An app with no `config/storage.ts` (every starter) has no `storage` key in config: the storage
+ * provider falls back to the built-in disks, and so does this.
+ *
+ * @internal exported for tests.
+ */
+export async function _localTempUploadDir(): Promise<string | null> {
+  let storage = config.safe<_StorageShape | undefined>("storage", undefined);
+  if (!storage?.disks) {
+    const { StorageConfig } = await import("@zerotal/core/storage");
+    storage = StorageConfig();
+  }
+  const name = storage.default;
+  const disk = name ? storage.disks?.[name] : undefined;
+  if (disk?.driver !== "local" || typeof disk.root !== "string" || disk.root === "") return null;
+  const { resolve, sep } = await import("node:path");
+  const dir = resolve(disk.root, "flow-tmp");
+  // The storage root is the outer bound for every local disk; never sweep anywhere else.
+  const storageRoot = resolve(Bun.env["ZT_STORAGE_ROOT"] ?? "storage");
+  return dir.startsWith(storageRoot + sep) ? dir : null;
 }
 
 function _sweepLocalTempUploads(): void {
-  const dir = _localTempUploadDir();
-  if (dir) void _sweepTempUploadDir(dir);
+  void _localTempUploadDir()
+    .then((dir) => (dir ? _sweepTempUploadDir(dir) : 0))
+    .catch(() => 0);
 }
 
 setInterval(() => {
@@ -539,12 +558,15 @@ type FlowWsDeps = {
   report?: (error: unknown, ctx: HttpContext) => Promise<void>;
 };
 
+/** Flash fields that call back into the component that raised the flash. */
+const _COMPONENT_BOUND = new Set(["actions", "onClose", "component"]);
+
 /** What dispatching one frame came to. */
 interface DispatchOutcome {
   /** Where the action sent the browser, when it called `this.redirect()`. */
   redirectUrl?: string | undefined;
   /** Flashes queued by an action that redirected, for the page the browser lands on. */
-  flashes?: unknown[] | undefined;
+  flashes?: object[] | undefined;
   /** True when the action threw, a client write was rejected, or the call was refused. */
   failed: boolean;
 }
@@ -874,7 +896,11 @@ async function _handleFlowFrame(ws: FlowBunWs, raw: string, deps: FlowWsDeps): P
       if (redirectUrl) {
         // A flash queued with the redirect (`this.redirect(url).withSuccess("…")`) rides on the
         // frame, and the browser shows it on the page it lands on.
-        const flashes = outcome.flashes ?? [];
+        // Without their action buttons and close callback: those call a component on this page,
+        // which the next page does not have.
+        const flashes = (outcome.flashes ?? []).map((flash) =>
+          Object.fromEntries(Object.entries(flash).filter(([key]) => !_COMPONENT_BOUND.has(key))),
+        );
         ws.send(
           JSON.stringify({
             type: "redirect",

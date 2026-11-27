@@ -121,7 +121,10 @@ export function Dialog(props: DialogProps): HtmlNode {
   };
   if (name) {
     overlay["flow:show"] = name;
-    if (closable) overlay["data-flow-modal"] = name; // Escape-to-close (the bridge reads it)
+    // Escape closes the top-most dialog that names its bound prop here. A dialog that may not be
+    // closed still marks itself, with no name, so it stays the top-most one and Escape stops at
+    // it instead of closing a dialog behind it.
+    overlay["data-flow-modal"] = closable ? name : "";
     overlay["x-trap"] = `$flow.${name}`; // trap focus while open (@alpinejs/focus)
     if (title) overlay["aria-labelledby"] = titleId;
     if (descId) overlay["aria-describedby"] = descId;

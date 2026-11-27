@@ -1090,39 +1090,54 @@ function _dispatchFlash(detail: Record<string, unknown>): void {
 }
 
 // Flashes that came with a redirect frame. The browser is about to load another page, which
-// has its own listeners, so they wait in sessionStorage until that page boots.
+// has its own listeners, so they wait in sessionStorage until that page boots. Only for a
+// redirect within this site, and only for a short while: a flash must not surface minutes later
+// on a page that has nothing to do with it (a redirect to a download, or a return from a payment
+// page).
 const _PENDING_FLASHES_KEY = "flow:pending-flashes";
+const _PENDING_FLASHES_MAX_AGE_MS = 30_000;
 
 /**
- * Keep `flashes` for the next page this tab loads. Pure over `storage` so it is testable.
+ * Keep `flashes` for the next page this tab loads, when `target` is on `origin`. Pure over its
+ * arguments so it is testable.
  * @internal exported for tests.
  */
 export function _holdFlashes(
   storage: Pick<Storage, "getItem" | "setItem">,
   flashes: unknown,
+  target = "/",
+  origin = "http://localhost",
+  now: number = Date.now(),
 ): void {
   if (!Array.isArray(flashes) || flashes.length === 0) return;
   try {
-    storage.setItem(_PENDING_FLASHES_KEY, JSON.stringify(flashes));
+    if (new URL(target, origin).origin !== origin) return;
+    storage.setItem(_PENDING_FLASHES_KEY, JSON.stringify({ at: now, flashes }));
   } catch {
-    // Storage full or unavailable: the flash is lost, the navigation is not.
+    // Storage full or unavailable, or a target that is not a URL: the flash is lost, the
+    // navigation is not.
   }
 }
 
 /**
- * The flashes held for this page, removed as they are read. Pure over `storage`.
+ * The flashes held for this page, removed as they are read; none when they were held too long
+ * ago. Pure over its arguments.
  * @internal exported for tests.
  */
 export function _takeHeldFlashes(
   storage: Pick<Storage, "getItem" | "removeItem">,
+  now: number = Date.now(),
 ): Record<string, unknown>[] {
   try {
     const raw = storage.getItem(_PENDING_FLASHES_KEY);
     if (raw === null) return [];
     storage.removeItem(_PENDING_FLASHES_KEY);
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((f): f is Record<string, unknown> => typeof f === "object" && f !== null)
+    const parsed = JSON.parse(raw) as { at?: unknown; flashes?: unknown } | null;
+    if (typeof parsed?.at !== "number" || now - parsed.at > _PENDING_FLASHES_MAX_AGE_MS) return [];
+    return Array.isArray(parsed.flashes)
+      ? parsed.flashes.filter(
+          (f): f is Record<string, unknown> => typeof f === "object" && f !== null,
+        )
       : [];
   } catch {
     return [];
@@ -1814,7 +1829,7 @@ async function _handleServerFrame(
 
   if (frame.type === "redirect") {
     try {
-      _holdFlashes(sessionStorage, frame.flashes);
+      _holdFlashes(sessionStorage, frame.flashes, frame.url, window.location.origin);
     } catch {
       // sessionStorage unavailable (private mode, etc.)
     }

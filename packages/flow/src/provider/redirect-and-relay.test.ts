@@ -22,6 +22,7 @@ import {
   _holdSessionCookies,
   _sessionRelayResponse,
   _sweepTempUploadDir,
+  _localTempUploadDir,
 } from "./FlowProvider.ts";
 import { _holdFlashes, _takeHeldFlashes } from "../client/bridge.ts";
 
@@ -38,6 +39,14 @@ class SignInPage extends Component {
   @expose async signIn(): Promise<void> {
     this.redirect("/dashboard", 303).withSuccess("Welcome back.");
   }
+
+  @expose async signInWithUndo(): Promise<void> {
+    this.flash("Signed in.").action("Undo", "signOut").onClose("acknowledge");
+    this.redirect("/dashboard");
+  }
+
+  @expose signOut(): void {}
+  @expose acknowledge(): void {}
 
   @expose async signInQuietly(): Promise<void> {
     this.redirect("/dashboard");
@@ -107,18 +116,56 @@ describe("a flash chained onto a redirect", () => {
     expect(frames.find((f) => f["type"] === "redirect")).not.toHaveProperty("flashes");
   });
 
-  it("is held across the navigation and replayed once", () => {
+  function memoryStorage() {
     const store = new Map<string, string>();
-    const storage = {
+    return {
+      store,
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => void store.set(k, v),
       removeItem: (k: string) => void store.delete(k),
     };
+  }
+  const origin = "https://app.example";
 
-    _holdFlashes(storage, [{ level: "success", message: "Welcome back." }]);
+  it("is held across the navigation and replayed once", () => {
+    const storage = memoryStorage();
 
-    expect(_takeHeldFlashes(storage)).toEqual([{ level: "success", message: "Welcome back." }]);
-    expect(_takeHeldFlashes(storage)).toEqual([]);
+    _holdFlashes(
+      storage,
+      [{ level: "success", message: "Welcome back." }],
+      "/dashboard",
+      origin,
+      1000,
+    );
+
+    expect(_takeHeldFlashes(storage, 2000)).toEqual([
+      { level: "success", message: "Welcome back." },
+    ]);
+    expect(_takeHeldFlashes(storage, 2000)).toEqual([]);
+  });
+
+  it("is not held for a redirect to another site", () => {
+    const storage = memoryStorage();
+
+    _holdFlashes(storage, [{ message: "Off to pay" }], "https://pay.example/checkout", origin);
+
+    expect(storage.store.size).toBe(0);
+  });
+
+  it("is dropped when the next page loads long after", () => {
+    const storage = memoryStorage();
+    _holdFlashes(storage, [{ message: "Saved." }], "/", origin, 1000);
+
+    expect(_takeHeldFlashes(storage, 1000 + 60_000)).toEqual([]);
+  });
+
+  it("carries no buttons that would call a component the next page lacks", async () => {
+    const frames = await send("signInWithUndo");
+
+    const flash = (frames.find((f) => f["type"] === "redirect")?.["flashes"] as Frame[])[0];
+    expect(flash?.["message"]).toBe("Signed in.");
+    expect(flash).not.toHaveProperty("actions");
+    expect(flash).not.toHaveProperty("onClose");
   });
 
   it("holds nothing for an empty or missing list", () => {
@@ -128,8 +175,8 @@ describe("a flash chained onto a redirect", () => {
       setItem: (k: string, v: string) => void store.set(k, v),
     };
 
-    _holdFlashes(storage, []);
-    _holdFlashes(storage, undefined);
+    _holdFlashes(storage, [], "/", "http://localhost");
+    _holdFlashes(storage, undefined, "/", "http://localhost");
 
     expect(store.size).toBe(0);
   });
@@ -164,6 +211,13 @@ describe("the session cookie relay", () => {
 });
 
 describe("the temporary upload sweep", () => {
+  it("finds flow-tmp on the built-in local disk when the app has no storage config", async () => {
+    const dir = await _localTempUploadDir();
+
+    expect(dir).not.toBeNull();
+    expect(dir!.replace(/\\/g, "/")).toMatch(/storage\/app\/flow-tmp$/);
+  });
+
   it("removes files older than the limit and keeps newer ones", async () => {
     const dir = mkdtempSync(join(tmpdir(), "flow-tmp-"));
     try {

@@ -19,8 +19,10 @@ describe("<AlertDialog>", () => {
     expect(backdrop).not.toContain("flow:click");
   });
 
-  it("cannot be closed with Escape", () => {
-    expect(html).not.toContain("data-flow-modal");
+  it("cannot be closed with Escape, and stops Escape reaching a dialog behind it", () => {
+    // Marked, but with no prop to clear: the bridge's Escape handler stops at the top-most
+    // marked dialog and closes it only when it names one.
+    expect(html).toContain('data-flow-modal=""');
   });
 
   it("keeps its alertdialog role", () => {

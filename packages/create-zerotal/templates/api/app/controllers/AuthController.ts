@@ -66,7 +66,7 @@ export class AuthController {
       http.response = Response.json({ message: 'Unauthenticated.' }, { status: 401 });
       return;
     }
-    const user = await User.findOrFail(http.user.id as number);
+    const user = await User.findOrFail(http.user.id);
     http.response = Response.json({ data: { id: user.id, name: user.name, email: user.email } });
   }
 }

@@ -16,7 +16,7 @@ import { claimTwoFactorStep } from "@app/auth/two-factor";
  */
 
 function pendingUser(): User | undefined {
-  return Auth.pendingTwoFactorUser() as User | undefined;
+  return Auth.pendingTwoFactorUser();
 }
 
 // GET /two-factor/challenge

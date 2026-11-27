@@ -71,13 +71,14 @@ export abstract class Page extends Component {
     const http = ctx ?? RequestContext.tryGet() ?? null;
     if (!http) return;
     this.http = http;
-    this.user = (http.user as User | undefined) ?? null;
+    // Typed as app/models/User by the `UserModel` declaration in bootstrap/app.ts.
+    this.user = http.user ?? null;
     this.path = http.url.pathname;
 
     const session = http.session;
     // Read once: a reload after a failed post shows a clean form, as it would anywhere.
-    this.fieldErrors = (session?.get("errors") as Record<string, string> | undefined) ?? {};
-    this.oldInput = (session?.get("old") as Record<string, unknown> | undefined) ?? {};
+    this.fieldErrors = session?.get<Record<string, string>>("errors") ?? {};
+    this.oldInput = session?.get<Record<string, unknown>>("old") ?? {};
     session?.forget("errors");
     session?.forget("old");
 

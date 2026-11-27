@@ -1,11 +1,10 @@
 import type { HttpContext } from "zerotal";
 import { Auth, TwoFactor } from "zerotal/auth";
-import type { User } from "@app/models/User";
 import { RECOVERY_CODES_FLASH } from "@app/auth/two-factor";
 
 // POST /settings/two-factor/recovery-codes — a fresh set. The old ones stop working.
 export async function POST(http: HttpContext): Promise<void> {
-  const user = Auth.user() as User;
+  const user = Auth.user();
   if (!user.hasTwoFactorEnabled()) {
     http.redirect("/settings/two-factor", 303);
     return;

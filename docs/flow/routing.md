@@ -247,6 +247,8 @@ export class PostDetailPage extends Component {
 
 A segment that names a model arrives as the record; one that doesn't arrives as its plain string, so `@locked slug = ""` on `/posts/:slug` is filled the same way.
 
+The field's declaration is the segment's type. `ctx.params` is a string-keyed bag that knows nothing of the model the router loaded, so reading `ctx.params.post` would need a cast; the field does not.
+
 Flow does not decide how a segment resolves — the router does, and the page just receives the result. A record is looked up by primary key unless the model says otherwise, so resolving by a slug, or only publishing published posts, is [written once on the model](/docs/routing#the-model-owns-its-lookup) and changes nothing here.
 
 Only `@locked` and `@expose` fields are filled, and only from segments the route actually matched. A plain undecorated property is never written from the URL.
@@ -272,6 +274,9 @@ override async onMount({ user }: HttpContext) {
   this.canEdit = user?.id === this.post.authorId;
 }
 ```
+
+`user` is the app's own `User`, columns and all, through the `UserModel` declaration the
+starters keep in `bootstrap/app.ts` (see [Authentication](/docs/authentication#bind-the-type-a-required-step)).
 
 The argument is optional, because a component can also be created outside a request — in a test, for example.
 

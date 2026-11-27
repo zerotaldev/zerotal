@@ -37,6 +37,15 @@ follows the Zerotal monorepo's unified versioning.
   sign-in form, its error as the page shows it, and the values the profile and project forms
   are filled with.
 
+- **The Flow starter has no casts on the user or on route params.** `this.user` in the page base
+  and `Auth.user()` in the two-factor routes are the app's `User` through the `UserModel`
+  declaration in `bootstrap/app.ts`, so the `as User` casts are gone, in the React and Vue
+  starters too. The edit-project page takes `:project` as a typed `@param(Project)` field instead
+  of casting `this.http.params`, session reads use `session.get<T>()`, and the page test helper
+  drops its `as unknown as Page`.
+- **The API starter declares its user type.** `bootstrap/app.ts` binds `UserModel` to its `User`,
+  as the other starters do, so `http.user.id` in `GET /me` needs no cast.
+
 ## [1.18.3] — 2026-11-26
 
 ### Changed

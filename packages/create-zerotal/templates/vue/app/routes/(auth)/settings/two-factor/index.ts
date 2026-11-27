@@ -1,7 +1,6 @@
 import type { HttpContext } from "zerotal";
 import { Inertia } from "@zerotal/inertia";
 import { Auth, TwoFactor } from "zerotal/auth";
-import type { User } from "@app/models/User";
 import { RECOVERY_CODES_FLASH, SETUP_SECRET_KEY } from "@app/auth/two-factor";
 
 // Route names, as `route()` knows them. Set here so they read the same across verbs.
@@ -20,7 +19,7 @@ export const meta = {
 
 // GET /settings/two-factor
 export const GET = async (http: HttpContext) => {
-  const user = Auth.user() as User;
+  const user = Auth.user();
   const pending = user.hasTwoFactorEnabled() ? undefined : http.session?.get(SETUP_SECRET_KEY);
 
   return Inertia.render("settings/two-factor", {
@@ -44,14 +43,14 @@ export const GET = async (http: HttpContext) => {
 
 // POST /settings/two-factor — start setting it up.
 export async function POST(http: HttpContext): Promise<void> {
-  const user = Auth.user() as User;
+  const user = Auth.user();
   if (!user.hasTwoFactorEnabled()) http.session?.set(SETUP_SECRET_KEY, TwoFactor.generateSecret());
   http.redirect("/settings/two-factor", 303);
 }
 
 // DELETE /settings/two-factor — turn it off, or abandon a setup.
 export async function DELETE(http: HttpContext): Promise<void> {
-  const user = Auth.user() as User;
+  const user = Auth.user();
   http.session?.forget(SETUP_SECRET_KEY);
 
   if (user.hasTwoFactorEnabled()) {

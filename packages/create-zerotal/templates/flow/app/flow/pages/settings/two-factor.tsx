@@ -69,8 +69,7 @@ export class TwoFactorPage extends Page {
       };
     }
     // Shown once, straight after they are made, and never again.
-    this.recoveryCodes =
-      (this.http?.session?.get(RECOVERY_CODES_FLASH) as string[] | undefined) ?? null;
+    this.recoveryCodes = this.http?.session?.get<string[]>(RECOVERY_CODES_FLASH) ?? null;
     this.recoveryCodesLeft = this.enabled ? user.recoveryCodeHashes().length : 0;
   }
 

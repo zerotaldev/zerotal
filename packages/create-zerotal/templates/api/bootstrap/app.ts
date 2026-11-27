@@ -7,6 +7,14 @@ import { QueueProvider } from 'zerotal/queue';
 import { LogProvider } from 'zerotal/logger';
 import { StorageProvider } from 'zerotal/storage';
 import { DevtoolsProvider } from '@zerotal/devtools';
+import type { User } from '../app/models/User.ts';
+
+// Tell @zerotal/auth which model `Auth.user()` and `http.user` are. The empty body is
+// the point: this augmentation exists to bind the type, not to add members.
+declare module 'zerotal/auth' {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface UserModel extends User {}
+}
 
 // `DevtoolsProvider` needs no configuration. It activates only when APP_ENV is
 // one of development/dev/local/test/testing — it fails *closed*, so an unset or

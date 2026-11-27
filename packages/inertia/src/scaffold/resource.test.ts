@@ -247,6 +247,22 @@ describe("make:resource --model in a React app", () => {
     expect(lines.join("\n")).toContain("make:model Post");
   });
 
+  it("refuses a name that would put files outside their folders, and writes nothing", async () => {
+    const root = await starter("react");
+    for (const [name, model] of [
+      ["../Foo", "Task"],
+      ["Tasks/Archive", "Task"],
+      ["Task", "../Task"],
+      ["Foo.bar", "Task"],
+    ] as const) {
+      const { out, lines } = collector();
+      expect(await _makeResource(out, { name, model, routeTypes: false, cwd: root })).toBe(false);
+      expect(lines.join("\n")).toContain("is not a name make:resource can use");
+    }
+    expect(existsSync(join(root, "app/requests/TaskRequest.ts"))).toBe(false);
+    expect(existsSync(join(root, "app/routes/(auth)/foos"))).toBe(false);
+  });
+
   it("names the starter components an app is missing", async () => {
     const root = await starter("react");
     await rm(join(root, "resources/js/Components/Modal.tsx"));

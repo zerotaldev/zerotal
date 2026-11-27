@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MakeRouteCommand, _pageName, _routePath, _urlOf } from "./MakeRouteCommand.ts";
+import {
+  MakeRouteCommand,
+  _badSegment,
+  _pageName,
+  _routePath,
+  _urlOf,
+} from "./MakeRouteCommand.ts";
 
 class Collector {
   out = "";
@@ -138,6 +144,30 @@ describe("make:route", () => {
 
     process.exitCode = 0;
     await run("reports");
-    expect(await run("reports")).toContain("File already exists: app/routes/reports.ts");
+    expect(await run("reports")).toContain("app/routes/reports.ts already serves /reports.");
+  });
+
+  it("refuses a second file for a URL another route file already serves", async () => {
+    const root = await starter();
+    await Bun.write(join(root, "app/routes/reports/index.ts"), "");
+    expect(await run("reports")).toContain("app/routes/reports/index.ts already serves /reports.");
+    expect(process.exitCode).toBe(1);
+    expect(existsSync(join(root, "app/routes/reports.ts"))).toBe(false);
+
+    process.exitCode = 0;
+    await Bun.write(join(root, "app/routes/about.tsx"), "");
+    expect(await run("about/index")).toContain("app/routes/about.tsx already serves /about.");
+  });
+
+  it("refuses a path that leaves app/routes/, and a parameter that is not an identifier", async () => {
+    const root = await starter();
+    for (const path of ["../../x", "reports/../../x", "./x/..", "[monthly-report]", "a.b"]) {
+      process.exitCode = 0;
+      expect(await run(path)).toContain("is not a route segment");
+      expect(process.exitCode).toBe(1);
+    }
+    expect(existsSync(join(root, "x.ts"))).toBe(false);
+    expect(existsSync(join(root, "app/x.ts"))).toBe(false);
+    expect(_badSegment("(auth)/projects/[project]/[...rest]/monthly-report")).toBeUndefined();
   });
 });

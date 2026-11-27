@@ -19,11 +19,15 @@ follows the Zerotal monorepo's unified versioning.
   select for a union of string literals (read inline, from an alias, or from an exported
   constant the request then validates against), a text area for `text`. The files pass the
   app's `typecheck` and `format:check`, and the page registry and route types are regenerated.
-  Published as `@zerotal/inertia/scaffold`, which core's `make:resource` finds in the app.
+  Published as `@zerotal/inertia/scaffold`, which core's `make:resource` finds in the app. A
+  name or model that is not a plain identifier (`../Foo`, `Tasks/Archive`) is refused, so no file
+  lands outside its folder.
 - **`make:route <path>` writes a file route in the starters' style.** A `GET` that renders its
   page (written too when the app has none by that name) and a `POST` that validates with `r.*`
   rules, flashes and redirects; `--methods` picks the handlers. A `[param]` named after a model
-  arrives as the loaded record and is authorized against the model's policy when it has one.
+  arrives as the loaded record and is authorized against the model's policy when it has one. It
+  refuses `.` and `..`, a parameter whose name is not an identifier, and a URL another route file
+  already serves.
 
 ## [1.18.4] — 2026-11-27
 

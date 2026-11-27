@@ -96,6 +96,14 @@ the app has the starters' `rejectInput()`, the `POST` says how to fail a check `
 cannot make. The page registry and `types/routes.generated.ts` are regenerated, so the new
 route's name is known to `route()` and the file typechecks as written.
 
+The route is only behind the groups you name: `make:route reports` is public, and
+`make:route "(auth)/(verified)/reports"` is for signed-in, verified visitors, as `make:page
+--route` and `make:resource --model` place theirs. A segment is a name (letters, digits, `-`,
+`_`), a `(group)`, or a `[param]` or `[...param]` whose name is an identifier, since the route
+reads it as `http.params.<name>`. `make:route` refuses anything else, `.` and `..` included,
+and refuses a URL another file already serves (`reports.ts` and `reports/index.ts` are one
+route).
+
 | Argument / flag | Description                                                                                    |
 | --------------- | ---------------------------------------------------------------------------------------------- |
 | `path`          | Its path under `app/routes/`, e.g. `reports` or `"(auth)/tasks/[task]/archive"` (required).    |

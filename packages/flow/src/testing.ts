@@ -54,7 +54,7 @@ import {
 } from "./dehydrate.ts";
 import { _makeFlowHandler } from "./router.ts";
 import { _renderFlowPage } from "./jsx-runtime.ts";
-import { getPage, registerPage, type PageClassWithMeta } from "./registry.ts";
+import { _getPageEntries, getPage, registerPage, type PageClassWithMeta } from "./registry.ts";
 import {
   FlowProvider,
   _handleFlowMessage,
@@ -64,8 +64,11 @@ import {
   getComputedKeys,
   getExposedProps,
   getLockedProps,
+  getModelableProps,
+  getReactiveProps,
   getTransientKeys,
 } from "./decorators.ts";
+import { _carryMonotonic } from "./monotonic.ts";
 import type { Snapshot } from "./types.ts";
 
 type PageClass<T extends Component> = new () => T;
@@ -321,6 +324,10 @@ export class FlowTest<T extends Component> {
       }
       Reflect.set(page, key, value);
       page._childIds = [...(snapshot.memo.children ?? [])];
+      // The id the snapshot was signed with (the dispatcher sets it from the memo too), and a
+      // monotonic page's sequence as it was: setup is not an action.
+      page._flowId = snapshot.memo.id;
+      _carryMonotonic(snapshot, page);
       return dehydrate(page, snapshot.memo);
     });
     this._page = await this._rebuildInRequest(this._snapshot);
@@ -361,11 +368,17 @@ export class FlowTest<T extends Component> {
   async update(prop: keyof T, value: unknown): Promise<this> {
     const key = String(prop);
     const exposed = getExposedProps(this._page);
-    if (!exposed.has(key) || getLockedProps(this._page).has(key)) {
+    const parentOwned =
+      getReactiveProps(this._page).has(key) && !getModelableProps(this._page).has(key);
+    if (!exposed.has(key) || getLockedProps(this._page).has(key) || parentOwned) {
+      const why = !exposed.has(key)
+        ? "not @expose()d"
+        : parentOwned
+          ? "@reactive(), so its value comes from the parent"
+          : "@locked()";
       throw new Error(
         `[FlowTest] update("${key}"): the server ignores a browser write to "${key}" on ` +
-          `${this._name}, because it is ${exposed.has(key) ? "@locked()" : "not @expose()d"}. ` +
-          `Use set() to put a value there as setup.`,
+          `${this._name}, because it is ${why}. Use set() to put a value there as setup.`,
       );
     }
     await this._send("$set", [key, value]);
@@ -1069,9 +1082,13 @@ function _routeOf(PageClass: PageClass<Component>, url: string | undefined): str
     return served.length === 1 ? served[0]!.path : entry.path;
   }
   const path = `/__flowtest/${encodeURIComponent(PageClass.name)}`;
-  // The registry is keyed by class and holds the abstract `Component` type; any concrete
-  // subclass is one.
-  registerPage(path, PageClass as unknown as typeof Component);
+  // The registry is keyed by class name and holds the abstract `Component` type; any concrete
+  // subclass is one. Test files declare pages of the same name (`ListPage`) far more often than
+  // an app does, and a page with no route is the test's own: it takes the name over for the
+  // test, where the app's registration would refuse it as a collision.
+  const page = PageClass as unknown as typeof Component;
+  if (entry) _getPageEntries().set(PageClass.name, { PageClass: page, path });
+  else registerPage(path, page);
   return path;
 }
 

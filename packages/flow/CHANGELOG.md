@@ -95,7 +95,7 @@ change.
   hands the storage disk a file-backed `Blob`.
 - The readers of the signed-in user (snapshot ownership, durable keys, the upload endpoint) use
   `currentUser()` / `currentUserId()` from `@zerotal/core/auth` instead of casting the context.
-- **BREAKING: `FlowTest` runs the server's own pipeline instead of a copy of it.** `mount()`
+- **BREAKING:** **`FlowTest` runs the server's own pipeline instead of a copy of it.** `mount()`
   sends the initial GET through the page's route handler inside the app's global and route
   middleware, and every `call()`, `update()`, `set()` and `render()` is a call frame handed to
   the action handler with a collecting socket, as the HTTP fallback does. Each request runs in
@@ -110,9 +110,15 @@ change.
     the action that does, or directly on an instance.
   - A render, `onBoot()` or middleware that throws fails the test with its error and stack,
     where the copy rendered empty markup. Fix the render.
+  - The page's route middleware runs on the mount and on every action, so a guard can redirect
+    a guest (`t.assertRedirectedTo("/login")`) and a password-confirm or feature check can turn
+    the page away: mount as the user the page expects, with `FlowTest.actingAs(user)`. A routed
+    page with `:segments` needs the address to mount at: `{ url: "/posts/1/edit" }` (or
+    `params`) as the third `mount()` argument.
 
   `set()` now throws for a field the snapshot does not carry, and `update()` throws for one
-  the browser may not write (not `@expose`d, or `@locked`), since the server ignores that write
+  the browser may not write (not `@expose`d, `@locked`, or a parent's `@reactive` prop), since
+  the server ignores that write
   without a word. Tests that wrapped `FlowTest` in `RequestContext.run()` to sign a user in
   sign in with `FlowTest.actingAs(user)` instead: the outer scope no longer reaches the page.
 

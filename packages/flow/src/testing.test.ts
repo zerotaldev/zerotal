@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll } from "bun:test";
 import { RequestContext, type HttpContext, type NextFn } from "@zerotal/core";
 import { Component } from "./Component.ts";
-import { expose, locked, url } from "./decorators.ts";
+import { expose, locked, reactive, url } from "./decorators.ts";
 import { flowRoute } from "./router.ts";
 import { FlowTest } from "./testing.ts";
 import type { HtmlNode } from "./jsx-runtime.ts";
@@ -154,6 +154,26 @@ class Gate {
   }
 }
 
+class MonotonicCounterPage extends Component {
+  @locked({ monotonic: true }) count = 0;
+
+  @expose bump(): void {
+    this.count++;
+  }
+
+  override async render(): Promise<HtmlNode> {
+    return { html: `<p>count:${this.count}</p>` };
+  }
+}
+
+class ReactiveChild extends Component {
+  @reactive limit = 5;
+
+  override async render(): Promise<HtmlNode> {
+    return { html: `<p>limit:${this.limit}</p>` };
+  }
+}
+
 class RoutedPage extends Component {
   @locked post = "";
   @url search = "";
@@ -192,7 +212,8 @@ describe("the route the page is served at", () => {
     await t.call("bump");
     await t.call("bump");
 
-    expect(seen).toEqual(["/flowtest-posts/42", "/flowtest-posts/:post", "/flowtest-posts/:post"]);
+    // An action runs against the address the page was rendered at, as in production.
+    expect(seen).toEqual(["/flowtest-posts/42", "/flowtest-posts/42", "/flowtest-posts/42"]);
     t.assertSee("count:2");
   });
 
@@ -283,5 +304,22 @@ describe("a static page", () => {
   it("has nothing to send an action with", async () => {
     const t = await FlowTest.mount(StaticPage);
     await expect(t.call("noop")).rejects.toThrow(/is static .* and has no snapshot/);
+  });
+});
+
+describe("set() on a page whose state only moves forward", () => {
+  it("keeps the snapshot's sequence, so the actions after it are accepted", async () => {
+    const t = await FlowTest.mount(MonotonicCounterPage);
+    await t.set("count", 5);
+    await t.call("bump");
+    await t.call("bump");
+    t.assertSee("count:7");
+  });
+});
+
+describe("update() on a prop the parent owns", () => {
+  it("says the server ignores the write, rather than passing", async () => {
+    const t = await FlowTest.mount(ReactiveChild);
+    await expect(t.update("limit", 9)).rejects.toThrow(/@reactive/);
   });
 });

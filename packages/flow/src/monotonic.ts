@@ -271,3 +271,22 @@ export function _resetMonotonicStore(): void {
   _store = new MemoryMonotonicStore();
   _sent.clear();
 }
+
+/**
+ * Give `page`, rebuilt from `snapshot` outside a frame, the monotonic state that snapshot was
+ * issued with, so a snapshot built from it again carries the same sequence and mount. A test
+ * harness that changes a field as setup re-signs the snapshot this way; without it the new
+ * snapshot would start a fresh count the store has never seen, and every later action would
+ * be refused as a replay.
+ *
+ * @internal
+ */
+export function _carryMonotonic(snapshot: Snapshot, page: object): void {
+  const value: unknown = snapshot.data[MONOTONIC_FIELD]?.[0];
+  if (typeof value !== "string") return;
+  const [, seqText, mount] = value.split(":");
+  const seq = Number(seqText);
+  if (!mount || !Number.isSafeInteger(seq) || seq < 1) return;
+  Reflect.set(page, "_flowMonotonicMount", mount);
+  Reflect.set(page, "_flowMonotonicAccepted", seq - 1);
+}

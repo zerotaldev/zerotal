@@ -123,10 +123,11 @@ change.
   `{__("projects.title")}`, `{CsrfMiddleware.field()}` and `{String(n).padStart(3, "0")}` sent the
   page to the runtime renderer, and under `cspSafe` stopped the boot, though the same call compiled
   in an attribute or hoisted into a leading const. Such a call now compiles to `__esc(call)`, so a
-  page that translates its strings compiles, `cspSafe` included. A package counts when it is a
-  framework package other than Flow's own, or resolves into `node_modules`. The app's own code can
-  return markup by any route, and markup needs the render context, so every other call (the app's
-  functions, the page's methods, methods on values) still renders through the runtime, and the
+  page that translates its strings compiles, `cspSafe` included. It has to start from a package (a
+  framework package other than Flow's own, or one in `node_modules` that does not depend on Flow)
+  or from one of a listed set of globals the file does not shadow, and be handed only data, never
+  a function or one of the app's own. The app's own code can return markup by any route, and
+  markup needs the render context, so every other call still renders through the runtime and the
   compile log says why; compute such a value in a leading const instead. A call that awaits or is
   handed markup stays on the runtime too, and a client-only magic in one is still refused.
 - **Compiled text is escaped exactly as the runtime escapes it.** `__esc` left `"` and `'` as

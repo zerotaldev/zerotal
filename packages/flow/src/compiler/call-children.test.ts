@@ -290,6 +290,46 @@ function wrap() {
     return ["x", "<y>"];
   }`,
     ],
+    // Round five: a package's call handed the app's code, which it can call back.
+    [
+      "CollectArrowPage",
+      `import { collect } from "@zerotal/core";`,
+      `<form>{collect([this]).map((r) => r.q).toArray()}</form>`,
+      "",
+      `@expose q = "x";`,
+    ],
+    [
+      "CollectMethodPage",
+      `import { collect } from "@zerotal/core";`,
+      `<form>{collect([1]).map(this.field).toArray()}</form>`,
+      "",
+      `field() {
+    return "x";
+  }`,
+    ],
+    [
+      "CollectAppFnPage",
+      `import { collect } from "@zerotal/core";
+import { row } from "./rows";`,
+      `<ul>{collect(["a"]).map(row).toArray()}</ul>`,
+      "",
+      "",
+    ],
+    [
+      "MapParamToPackagePage",
+      `import { collect } from "@zerotal/core";`,
+      `<ul>{this.fns.map((f) => collect([1]).map(f).toArray())}</ul>`,
+      "",
+      `fns = [(n: number) => n];`,
+    ],
+    ["ReviverPage", "", `<p>{JSON.parse("0", () => 1)}</p>`, "", ""],
+    [
+      "ShadowNamespacePage",
+      "namespace Math { export const round = (n: number) => n; }",
+      `<p>{Math.round(1)}</p>`,
+      "",
+      "",
+    ],
   ];
 
   for (const [name, imports, body, lead, members] of reaches) {

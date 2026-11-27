@@ -95,8 +95,8 @@ export class FlowBrowser {
    * Record console errors and uncaught exceptions.
    *
    * This is deliberate, not incidental. A Flow action the server refuses is
-   * reported *only* here — nothing reaches the server log and the page does not
-   * change — so a test that cannot see the console cannot see the failure. B15
+   * reported to the page only here — the server logs a warning, and the page does
+   * not change — so a test that cannot see the console cannot see the failure. B15
    * cost an afternoon for exactly this reason.
    */
   private _captureConsole(): void {

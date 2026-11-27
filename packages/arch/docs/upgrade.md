@@ -118,8 +118,13 @@ export async function claimTwoFactorStep(userId: number, step: number): Promise<
 }
 ```
 
-and in `app/routes/(guest)/two-factor/challenge.ts`, replace the check and the save that
-follows it with:
+and in `app/routes/(guest)/two-factor/challenge.ts`, import it beside the file's other imports:
+
+```ts fragment
+import { claimTwoFactorStep } from "@app/auth/two-factor";
+```
+
+then replace the check and the save that follows it with:
 
 ```ts fragment
 const step = check.valid ? check.counter : null;

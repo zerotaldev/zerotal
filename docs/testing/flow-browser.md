@@ -246,8 +246,8 @@ describeBrowser("counter", () => {
 ```
 
 `FlowBrowser.available()` is synchronous and only says whether a browser binary was found.
-The driver looks for Chrome, Chromium or Edge where they are usually installed; set `CHROME_PATH` to
-name a binary instead. It always launches its own browser, so `ZT_BROWSER_CDP_URL` does not
+The driver looks for Chrome, Chromium or Edge where they are usually installed; set `CHROME_PATH`
+(or `BUN_CHROME_PATH`) to name a binary instead. It always launches its own browser, so `ZT_BROWSER_CDP_URL` does not
 apply to it. Give each test an explicit timeout: Bun's default of 5 s can be shorter than a
 browser launch plus a page load.
 

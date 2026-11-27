@@ -245,6 +245,41 @@ describe("CsrfMiddleware reads the token from a form", () => {
     expect(crossSite.response?.status).toBe(419);
   });
 
+  it("answers a streamed form past 1 MB at once, on a real server", async () => {
+    // Waiting on the cancel of the copy held the request open until the socket timed out.
+    const server = Bun.serve({
+      port: 0,
+      async fetch(req) {
+        const ctx = new HttpContext(req, null as never);
+        (ctx as unknown as Record<string, unknown>)["session"] = new SessionManager(
+          "id",
+          { _csrf_token: "t" },
+          driver,
+        );
+        await run(new CsrfMiddleware(), ctx);
+        return ctx.response ?? new Response("ok");
+      },
+    });
+    try {
+      const chunk = new Uint8Array(512 * 1024).fill(97);
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("_token=t&x="));
+          for (let i = 0; i < 4; i++) controller.enqueue(chunk);
+          controller.close();
+        },
+      });
+      const res = await fetch(server.url, {
+        method: "POST",
+        body,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
+      expect(res.status).toBe(419);
+    } finally {
+      server.stop(true);
+    }
+  });
+
   it("refuses a request whose session had no token yet, without reading its body", async () => {
     const req = new Request("http://localhost/test", {
       method: "POST",

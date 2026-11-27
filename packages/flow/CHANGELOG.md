@@ -101,11 +101,12 @@ change.
   though the same call compiled in an attribute or hoisted into a leading const. A call that
   returns a value now compiles to `__esc(call)`, which writes its result as the runtime writes a
   child: an array item by item, anything else escaped. So a page that translates its strings
-  with `__()` compiles, `cspSafe` included. A call that may return markup still renders through
-  the runtime, and says why: a method of the page whose body holds JSX, a method the page
-  inherits, or a function from the app's own `.tsx` module, since a binding or a class component
-  in that markup needs the render context. So does a call that awaits or is handed markup, and
-  a client-only magic in one is still refused.
+  with `__()` compiles, `cspSafe` included. Only a call that is plainly a value compiles: a
+  global, a local, a function this file declares with no JSX, one from a package or from the
+  app's own `.ts` module that re-exports nothing, or a method of the page with no JSX and no calls
+  in it. Anything else may return markup, whose bindings and class components need the render
+  context, so it still renders through the runtime and the compile log says why. So does a call
+  that awaits or is handed markup, and a client-only magic in one is still refused.
 - **Compiled text is escaped exactly as the runtime escapes it.** `__esc` left `"` and `'` as
   they were, where the runtime writes `&quot;` and `&#x27;`. The page reads the same; the HTML is
   now byte for byte what the runtime renders.

@@ -218,7 +218,8 @@ async function _formToken(request: Request): Promise<string | undefined> {
       if (done) break;
       size += value.byteLength;
       if (size > FORM_TOKEN_MAX_BYTES) {
-        await reader.cancel();
+        // Not awaited: on a socket the cancel can wait for the client to stop sending.
+        void reader.cancel().catch(() => {});
         return undefined;
       }
       chunks.push(value);

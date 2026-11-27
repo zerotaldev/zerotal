@@ -18,14 +18,19 @@ follows the Zerotal monorepo's unified versioning.
   decides. The field is read only from a form body of at most 1 MB that another site did not
   send, and not at all when the session had no token yet; a larger form (a file upload) sends the
   token in the header.
-- **A browser whose form is refused sees the app's 419 page.** A request that accepts HTML and is
-  not a script's gets a 419 `HttpError`, which the app's exception handler renders, so a visitor
-  who posts a form after their session expired sees the app's page rather than JSON. Every other
-  client still gets `{ "message": "CSRF token mismatch." }`.
 - **`CsrfMiddleware.field()` renders the hidden `_token` input.** Put `{CsrfMiddleware.field()}`
   in every form that posts. A Flow page renders it as markup and a compiled page compiles it;
   in a template string it is the same markup. It renders nothing outside a request or without a
   session token.
+
+### Changed
+
+- **BREAKING:** a browser whose form `CsrfMiddleware` refuses gets the app's 419 page. A request
+  that accepts HTML and is not a script's (no `X-Requested-With`, not JSON) gets a 419
+  `HttpError`, which the app's exception handler renders, so a visitor who posts a form after
+  their session expired sees the app's page rather than JSON. Every other client still gets
+  `{ "message": "CSRF token mismatch." }`. A script of your own that posts a form and reads that
+  JSON must send `Accept: application/json` or `X-Requested-With: XMLHttpRequest`.
 
 ## [1.16.3] — 2026-11-17
 

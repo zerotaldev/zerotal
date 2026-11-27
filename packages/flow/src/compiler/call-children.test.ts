@@ -223,6 +223,60 @@ describe("a call that may return markup stays on the runtime", () => {
     writeFileSync(inherited, inheritedSource);
     expect(compile(inheritedSource, inherited).blocked).toContain("may return markup");
   });
+
+  // Each of these compiled once, and either threw or dropped a binding: a call is compiled only
+  // when it is plainly a value.
+  const reaches: [string, string, string, string, string][] = [
+    ["NamespacePage", `import * as rows from "./rows";`, `<ul>{rows.row("a")}</ul>`, "", ""],
+    ["BarrelPage", `import { row } from "./barrel";`, `<ul>{row("a")}</ul>`, "", ""],
+    ["AliasPage", `import { row } from "@app/rows";`, `<ul>{row("a")}</ul>`, "", ""],
+    [
+      "IndirectPage",
+      "",
+      `<form>{this.outer()}</form>`,
+      "",
+      `@expose q = "x";
+  outer() {
+    return this.inner();
+  }
+  inner() {
+    return <input value={this.q} live />;
+  }`,
+    ],
+    ["FieldObjectPage", "", `<form>{this.ui.field()}</form>`, "", `ui = { field: () => "x" };`],
+    ["LocalArrowPage", "", `<form>{field()}</form>`, "const field = () => <input />;", ""],
+  ];
+
+  for (const [name, imports, body, lead, members] of reaches) {
+    it(`${name}: stays on the runtime`, () => {
+      writeFileSync(
+        join(TMP, "rows.tsx"),
+        `export function row(t: string) { return <li>{t}</li>; }\n`,
+      );
+      writeFileSync(join(TMP, "barrel.ts"), `export { row } from "./rows";\n`);
+      const file = join(TMP, `${name}.tsx`);
+      const source = page(name, imports, body, lead, members);
+      writeFileSync(file, source);
+      expect(compile(source, file).blocked).toContain("may return markup");
+    });
+  }
+
+  it("still compiles a method that only reads fields", () => {
+    const file = join(TMP, "FullNamePage.tsx");
+    const source = page(
+      "FullNamePage",
+      "",
+      `<p>{this.fullName()}</p>`,
+      "",
+      `@expose first = "Ada";
+  @expose last = "Lovelace";
+  fullName() {
+    return this.first + " " + this.last;
+  }`,
+    );
+    writeFileSync(file, source);
+    expect(compile(source, file).render).toContain("__esc(this.fullName())");
+  });
 });
 
 describe("a call in a text child, compiled", () => {

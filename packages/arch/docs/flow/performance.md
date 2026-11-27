@@ -182,14 +182,22 @@ head, a layout, reading the signed-in user), as long as that class is imported f
 module and extends `Component` itself, or through another such class. Its `@expose` and `@locked`
 fields count as the page's own.
 
-A function call in a text child compiles too: `{__("projects.title")}`, `{formatDate(project.dueOn)}`,
-`{this.badge()}`, at the top of the markup, in a ternary branch or inside a `.map()`. It runs on the
-server as the page renders, and its result is written the way the runtime writes a child: markup a
-method returns (JSX) as that markup, an array item by item, `null`, `undefined` and booleans as
-nothing, and anything else escaped. It needs no client code, so a page that translates its strings
-with `__()` compiles under [`cspSafe`](/docs/flow/components#csp-safe-mode). Two calls keep the page
-on the runtime: one that awaits (`{format(await load())}`; await it in a leading const and render
-the const), and one handed markup as an argument (`{wrap(<b>hi</b>)}`).
+A function call in a text child compiles too, when it returns a value: `{__("projects.title")}`,
+`{formatDate(project.dueOn)}`, `{this.fullName()}`, at the top of the markup, in a ternary branch or
+inside a `.map()`. It runs on the server as the page renders, and its result is written the way the
+runtime writes a child: an array item by item, `null`, `undefined` and booleans as nothing, and
+anything else escaped. It needs no client code, so a page that translates its strings with `__()`
+compiles under [`cspSafe`](/docs/flow/components#csp-safe-mode).
+
+A call compiles only when it is plainly a value: a global, a local, a function this file declares
+with no JSX in it, one from a package, one from the app's own `.ts` module that re-exports nothing,
+or a method of the page whose body has no JSX and makes no calls. Markup a call returns needs the
+render context, for its bindings and for any class component in it, so anything else keeps the page
+on the runtime and the compile log says why: a function from a `.tsx` module or through a path
+alias, a method that calls another or that the page inherits, a call through a field
+(`{this.ui.field()}`), and a function the render declares that holds JSX. Render such markup as a
+component (`<Badge />`) instead. So do a call that awaits (`{format(await load())}`; await it in a
+leading const and render the const) and one handed markup as an argument (`{wrap(<b>hi</b>)}`).
 
 ## Interaction polish
 

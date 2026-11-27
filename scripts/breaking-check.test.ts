@@ -220,6 +220,35 @@ describe("isWidening — overloads added to a function", () => {
   });
 });
 
+describe("isWidening — overloads added to a method", () => {
+  const before = "  inertia: () => InertiaPage | null";
+
+  it("accepts a method that gained an overload beside its signature", () => {
+    const after =
+      "  inertia: {    (): InertiaPage | null;    <P extends object>(): InertiaPageOf<P> | null;}";
+    expect(isWidening(before, added(after))).toBe(true);
+  });
+
+  it("reports a method whose old signature changed while it gained one", () => {
+    const after =
+      "  inertia: {    (): InertiaPage;    <P extends object>(): InertiaPageOf<P> | null;}";
+    expect(isWidening(before, added(after))).toBe(false);
+  });
+
+  it("reports a method that is renamed or made optional", () => {
+    for (const after of [
+      "  page: {    (): InertiaPage | null;    <P extends object>(): InertiaPageOf<P> | null;}",
+      "  inertia?: {    (): InertiaPage | null;    <P extends object>(): InertiaPageOf<P> | null;}",
+    ]) {
+      expect({ after, ok: isWidening(before, added(after)) }).toEqual({ after, ok: false });
+    }
+  });
+
+  it("reports a signature set with nothing added", () => {
+    expect(isWidening(before, added("  inertia: {    (): InertiaPage | null;}"))).toBe(false);
+  });
+});
+
 describe("isWidening — a parameter widened through a new union", () => {
   const before =
     "multipart: (url: string, body?: Record<string, TestFormValue>, method?: 'POST') => Promise<R>";
